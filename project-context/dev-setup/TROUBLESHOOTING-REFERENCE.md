@@ -116,6 +116,41 @@ cd ..
 npx react-native run-android
 ```
 
+#### `File google-services.json is missing. The Google Services Plugin cannot function without it.`
+**Symptom**: Firebase configuration missing for local development
+**Understanding**: This app uses CI/CD to create Firebase config files from GitHub secrets. Local development should use debug builds without Firebase.
+```bash
+# Solution: Configure debug builds to skip Firebase
+# Edit android/app/build.gradle and change:
+# apply plugin: 'com.google.gms.google-services'
+# To:
+# // Apply Firebase plugin only if google-services.json exists (for release builds)
+# if (file('google-services.json').exists()) {
+#     apply plugin: 'com.google.gms.google-services'
+# }
+
+# After editing, clean and rebuild:
+cd android && ./gradlew clean && cd ..
+npx react-native run-android
+```
+
+#### `Dependency 'androidx.core:core:1.16.0' requires Android Gradle plugin 8.6.0 or higher`
+**Symptom**: Android SDK version mismatch - dependency requires newer tools
+**Understanding**: Some dependencies auto-update to versions requiring newer Android tools
+```bash
+# Solution 1: Update Android Gradle Plugin (recommended)
+# Edit android/build.gradle:
+# classpath("com.android.tools.build:gradle:8.6.0")
+
+# Solution 2: Downgrade problematic dependencies (safer)
+# Check which packages caused the issue:
+./gradlew app:dependencies | grep androidx.core
+
+# Clean and rebuild after changes:
+cd android && ./gradlew clean && cd ..
+npx react-native run-android
+```
+
 #### `Error: JAVA_HOME is not set`
 **Symptom**: Java environment not configured
 ```bash
@@ -184,6 +219,36 @@ adb devices
 ```
 
 ## 🔧 Issue Categories & Solutions
+
+### CI/CD vs Local Development Issues
+
+#### Understanding Missing Configuration Files
+**Symptom**: Files like `google-services.json`, keystore files, or `.env` variables missing
+**Why this happens**: Wildlife Watcher app uses **GitHub Actions CI/CD** for production builds
+
+**Production Build Process** (works automatically):
+```yaml
+# In .github/workflows/build.yml:
+# - Creates google-services.json from GitHub secrets
+# - Creates keystore files from encoded secrets  
+# - Creates .env file with API keys
+# - Uses Fastlane for distribution
+```
+
+**Local Development Solution**: Configure debug builds to work without production files
+```bash
+# Debug builds should:
+# 1. Skip Firebase (no google-services.json needed)
+# 2. Use debug keystore (automatically created)
+# 3. Use development API endpoints
+# 4. Work with minimal configuration
+
+# This is normal and expected for local development
+```
+
+**When to use each**:
+- **Debug builds**: Local development, testing, hot reload
+- **Release builds**: CI/CD, app store distribution, production Firebase
 
 ### WSL2-Specific Issues
 
@@ -406,6 +471,16 @@ npx react-native run-android
 npx react-native start --reset-cache
 # Check device logs for native errors
 adb logcat | grep -E "(FATAL|ReactNativeJS)"
+```
+
+#### Pattern 4: "Build fails with missing configuration files"
+**Likely causes**: Expected CI/CD files missing in local development
+```bash
+# Solution sequence:
+# 1. Check if it's a production-only file (google-services.json, keystore)
+# 2. Configure debug builds to skip production dependencies
+# 3. Focus on local development workflow, not production builds
+# See "CI/CD vs Local Development Issues" section above
 ```
 
 ## 🚀 Performance Troubleshooting

@@ -369,6 +369,42 @@ npx react-native run-android
 
 **Expected total time for first build**: 8-12 minutes
 
+### Step 2.5: Understanding Build Types (Debug vs Release)
+
+**Important concept for junior developers**: The Wildlife Watcher app has two different build configurations.
+
+#### Debug Builds (What You're Creating)
+**Used for**: Local development, testing, debugging
+```bash
+# Debug builds automatically:
+# ✅ Use development keystore (created automatically)
+# ✅ Skip Firebase configuration (no google-services.json needed)
+# ✅ Enable debugging features and hot reload
+# ✅ Connect to development APIs and databases
+# ✅ Work without production secrets or keys
+```
+
+#### Release Builds (Production Use)
+**Used for**: App store distribution, production deployment
+```bash
+# Release builds require:
+# 🔑 Production Firebase configuration (google-services.json)
+# 🔑 Release keystore for app signing
+# 🔑 Production API keys and secrets
+# 🔑 CI/CD pipeline (GitHub Actions) to create these files
+```
+
+#### Why This Matters
+- **You're building debug builds** - this is normal and expected
+- **Missing production files** (like google-services.json) is expected for local development
+- **CI/CD system creates production files** from GitHub secrets when deploying
+- **Don't worry about Firebase errors** during setup - debug builds work without Firebase
+
+**This separation allows**:
+- **Secure production** - secrets never stored in code
+- **Easy development** - minimal local configuration needed
+- **Team collaboration** - everyone can develop without production access
+
 ### Step 3: Verify Successful Installation
 
 After the build completes, you should see:
@@ -522,6 +558,33 @@ npx react-native run-android
 - **Check USB debugging** is enabled on phone
 - **Try different USB cable** (must support data transfer)
 - **Restart ADB server**: `adb kill-server && adb start-server`
+
+### Issue 6: Build fails with "google-services.json is missing"
+
+**Problem**: Firebase configuration file missing, build fails with Google Services Plugin error.
+
+**Understanding**: This is **normal and expected** for local development. See "Understanding Build Types" in Phase 6.
+
+**Solution**:
+```bash
+# Configure debug builds to skip Firebase
+# Edit android/app/build.gradle and change:
+# apply plugin: 'com.google.gms.google-services'
+# To:
+# // Apply Firebase plugin only if google-services.json exists (for release builds)
+# if (file('google-services.json').exists()) {
+#     apply plugin: 'com.google.gms.google-services'
+# }
+
+# Clean and rebuild
+cd android && ./gradlew clean && cd ..
+npx react-native run-android
+```
+
+**Why this works**:
+- **Debug builds** don't need Firebase for local development
+- **Release builds** get Firebase config from CI/CD pipeline
+- **This is the standard mobile development pattern**
 
 ## Success Verification Checklist
 
