@@ -29,8 +29,11 @@ dependencies {
 3. **Multiple Related Dependencies**: androidx.core has multiple packages (`core` and `core-ktx`) that both need forcing
 4. **React Native Maps Compatibility**: Version 1.24.7 → 1.15.6 (Fabric compatibility issues)
 5. **React Native Gesture Handler Compatibility**: Version 2.27.1 → 2.18.1 (Fabric compatibility issues)
-6. **BUILD SUCCESSFUL**: ✅ Clean build completed successfully with all dependency fixes!
-7. **FULL SOLUTION VALIDATED**: ✅ Build completes without compilation errors (only device connection needed)
+6. **Build System Keystore Typo**: Fixed `nkeystoreProperties` → `keystoreProperties` (line 83)
+7. **WSL2 Device Connection**: USB devices not visible to WSL2 - requires ADB over WiFi bridge
+8. **Device Installation Issues**: User must accept installation prompts on Android device
+9. **BUILD SUCCESSFUL**: ✅ Clean build completed successfully with all dependency fixes!
+10. **FULL SOLUTION VALIDATED**: ✅ APK generation successful, ready for device installation
 
 ## Documentation Updates Required
 
@@ -267,8 +270,10 @@ dependencies {
 
 ### Validation Required Before Updates
 - [x] Android build completes successfully with androidx.core forcing
-- [ ] App installs and runs on Android device
-- [ ] No new dependency conflicts introduced
+- [x] APK generation successful (app-debug.apk created)
+- [x] Device connection established (WSL2 ADB over WiFi)
+- [x] No new dependency conflicts introduced
+- [ ] App successfully installs on Android device (user acceptance required)
 - [ ] Hot reload functionality works
 - [ ] Development workflow remains smooth
 
@@ -313,6 +318,24 @@ dependencies {
 - ✅ Full compilation success (18m 30s build time)
 
 **Performance Notes:**
-- WSL2 cross-filesystem performance impacts build times significantly
-- Gradle build cache works effectively for subsequent builds
+- WSL2 cross-filesystem performance impacts build times significantly (17-19 minutes)
+- Gradle build cache works effectively for subsequent builds (~2-3 minutes when cached)
 - Alternative: move project to WSL2 native filesystem for better performance
+
+**WSL2 Development Environment:**
+- **Device Connection**: USB devices not visible to WSL2, requires ADB over WiFi:
+  ```bash
+  # From Windows PowerShell (where adb works with USB)
+  adb tcpip 5555
+  
+  # From WSL2 (connect via WiFi)
+  adb connect PHONE_IP:5555
+  adb devices  # Verify connection
+  ```
+- **Node.js Version**: WSL2 has compatible Node.js 20.x, Windows has incompatible 23.x
+- **Build Tools**: All Android development tools properly configured in WSL2 environment
+
+**Critical Installation Step:**
+- Android device shows installation prompts that **must be accepted**
+- Common errors: `INSTALL_FAILED_USER_RESTRICTED` (user declined) or `INSTALL_FAILED_VERSION_DOWNGRADE`
+- Solution: Accept installation prompts on device or uninstall existing app first
