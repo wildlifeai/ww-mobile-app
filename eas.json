@@ -13,10 +13,6 @@
     },
     "production": {
       "autoIncrement": true,
-      "env": {
-        "GOOGLE_MAPS_API_KEY_ANDROID": "",
-        "GOOGLE_MAPS_API_KEY_IOS": ""
-      },
       "android": {
         "credentialsSource": "local"
       },
