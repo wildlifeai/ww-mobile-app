@@ -58,16 +58,23 @@ module.exports = ({ config }) => ({
 		plugins: [
 			// Add the Firebase plugin
 			"@react-native-firebase/app",
-			// This plugin handles Firebase App Distribution config
-			"@react-native-firebase/app-distribution",
 			// This is required for react-native-ble-manager on Android 12+
 			[
 				"react-native-ble-manager",
 				{
 					"isBackground": false,
-					"bluetoothPermission": "Wildlife Watcher needs access to Bluetooth to connect to cameras."
-				}
-			]
+					"bluetoothPermission": "Wildlife Watcher needs access to Bluetooth to connect to cameras.",
+				},
+			],
+			// Configures react-native-bootsplash
+			[
+				"react-native-bootsplash",
+				{
+					"storyboard": "BootSplash",
+				},
+			],
+			// Reanimated plugin must be listed last.
+			"react-native-reanimated/plugin",
 		],
 	},
 });
