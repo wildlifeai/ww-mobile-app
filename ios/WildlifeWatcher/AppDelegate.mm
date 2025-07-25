@@ -3,14 +3,15 @@
 #import <Firebase.h>
 #import "RNNordicDfu.h"
 #import <GoogleMaps/GoogleMaps.h>
+#import <React/RCTLinkingManager.h>
 #import <React/RCTBundleURLProvider.h>
-#import "RNCConfig.h"
 
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-  NSString *googleMapsApiKey = [RNCConfig envFor:@"GOOGLE_MAPS_API_KEY_IOS"];
+  // Initialize Google Maps with the API key from Info.plist
+  NSString *googleMapsApiKey = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"GMSApiKey"];
   if (googleMapsApiKey && ![googleMapsApiKey isEqualToString:@""]) {
     [GMSServices provideAPIKey:googleMapsApiKey];
   }

@@ -8,20 +8,20 @@ The Wildlife Watcher mobile app allows users to communicate with Wildlife Watche
 
 ## Prerequisites
 
-You need to make sure your environment is set up as per the official React Native documentation - [link here](https://reactnative.dev/docs/set-up-your-environment). If you can run a fresh React Native app, you should be able to run this one without any problems.
-
 Make sure you have the following prerequisites installed on your machine:
 
 - **Node.js**: Version 18 or higher
-- **Ruby**: Version 2.6.10 or higher
+- **EAS CLI**: `npm install -g eas-cli`
+- **Android Device/Emulator** for testing on Windows/Linux.
+- **Xcode** (for macOS developers wanting to run iOS simulators).
 
 ## Getting Started
 
 1. Clone this repository to your local machine:
 
     ```bash
-    git clone https://github.com/your-username/your-project.git
-    cd your-project
+    git clone https://github.com/wildlifeai/wildlife-watcher-mobile-app.git
+    cd wildlife-watcher-mobile-app
     ```
 
 2. Install project dependencies:
@@ -29,47 +29,45 @@ Make sure you have the following prerequisites installed on your machine:
     ```bash
     npm install
     ```
-
-3. Start the Metro bundler:
-
+3. Login to your Expo account:
     ```bash
-    npx react-native start
+    eas login
     ```
 
-## iOS Setup
+## Development Workflow
 
-For iOS development, follow these additional steps:
+This project uses a **Custom Development Client** built with EAS. This allows for a fast, iterative workflow similar to the Expo Go app, but with full support for native modules.
 
-1. Install Bundler and necessary gems:
+1. **Get the Development Client:**
+   - Ask a team member for the latest development build, or build it yourself:
+     ```bash
+     # For Android
+     eas build --profile development --platform android
+     
+     # For iOS (macOS only)
+     eas build --profile development --platform ios
+     ```
+   - Install the generated `.apk` or `.app` file on your device/simulator.
 
-    ```bash
-    gem install bundler
-    bundle install
-    ```
+2. **Start the Development Server:**
+   ```bash
+   npx expo start --dev-client
+   ```
 
-2. Prepare Pods:
-
-    ```bash
-    bundle exec pod install --project-directory=ios
-    ```
-
-3. Run the project in development mode:
-
-    ```bash
-    npx react-native run-ios
-    ```
-
-## Android Setup
-
-For Android development, run the project in development mode:
-
-```bash
-npx react-native run-android
-```
+3. **Connect the App:**
+   - **Android:** Open the app on your device. It should automatically connect to the server. If using WSL, you may need to run `adb reverse tcp:8081 tcp:8081` from your Windows terminal.
+   - **iOS (macOS only):** Press `i` in the terminal where `expo start` is running to launch the app in your simulator.
 
 ## Releasing
 
-Building the app is fully automated via GitHub actions, however, since it's still in Beta you can only release it until the AppTester/Testflight step. Will update the docs once the app is ready for production.
+Building and submitting the app is fully automated via the GitHub Actions workflow defined in `.github/workflows/build.yml`.
+
+To create a new release, simply push a new version tag to the repository:
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+This will trigger EAS to build for both iOS and Android and submit the builds to TestFlight and Firebase App Distribution.
 
 ## Contributing
 
