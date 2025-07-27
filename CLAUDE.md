@@ -97,3 +97,7 @@ SafeAreaProvider → ReduxProvider → PaperProvider → NavigationContainer
 This codebase is currently undergoing an Expo migration. The `project-context/` directory contains detailed migration documentation and planning files. When working on migration-related tasks, refer to these documents for context and requirements.
 
 Key Document are project-context/ww-app-migration-plan/DOCUMENT-INDEX.md (guide to all documentn in the folder) and @project-context/ww-app-migration-plan/DEVELOPMENT-EXECUTION-PLAN.md   (this is the initial work to be done).
+
+## Task Master AI Instructions
+**Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
+@./.taskmaster/CLAUDE.md

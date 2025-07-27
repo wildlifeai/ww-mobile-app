@@ -92,3 +92,26 @@ project-context/ww-app-migration-plan/README.md:Zone.Identifier
 project-context/ww-app-migration-plan/wildlife_watcher_prod_plan.md:Zone.Identifier
 project-context/ww-app-migration-plan/wildlife_watcher_prod_plan.md:Zone.Identifier:Zone.Identifier
 project-context/ww-app-migration-plan/WILDLIFE-WATCHER-APP-ANALYSIS.md:Zone.Identifier
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+# Dependency directories
+# Environment variables
+.env
+# Editor directories and files
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+
+# Task files
+# tasks.json
+# tasks/ 
