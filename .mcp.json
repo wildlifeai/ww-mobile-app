@@ -9,15 +9,8 @@
 				"task-master-ai"
 			],
 			"env": {
-				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-				"OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
-				"GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
-				"XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-				"OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
-				"MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
-				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
-				"OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
+				"ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
+				"GOOGLE_API_KEY": "${GOOGLE_API_KEY}"
 			}
 		},
 		"supabase": {
@@ -27,12 +20,11 @@
 				"-y",
 				"@supabase/mcp-server-supabase@latest",
 				"--read-only",
-				"--project-ref=nuhwmubvygxyddkycmpa",
-				"--access-token=sbp_b5d784c3d3f1699910b024d4886a707b8c5f25ed"
+				"--project-ref=nuhwmubvygxyddkycmpa"
 			],
 			"env": {
-				"SUPABASE_ACCESS_TOKEN": "sbp_b5d784c3d3f1699910b024d4886a707b8c5f25ed"
+				"SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
 			}
 		}
-		}
 	}
+}

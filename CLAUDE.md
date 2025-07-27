@@ -2,8 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-
-
 ## Common Development Commands
 
 ### Running the App
@@ -18,6 +16,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Testing and Quality
 - `npm test` - Run Jest tests
 - `npm run lint` - Run ESLint
+
+### Development Commands
+- `npm install` - Install project dependencies
+- `npx react-native start` - Alternative Metro bundler command
+- `bundle install` - Install Ruby gems for iOS dependencies
+- `gem install bundler` - Install Bundler for iOS development
+
+### Environment Requirements
+- **Node.js**: Version 18 or higher (as specified in package.json engines)
+- **Ruby**: Version 2.6.10 or higher
+- **React Native CLI**: Set up as per [official documentation](https://reactnative.dev/docs/set-up-your-environment)
 
 ## Architecture Overview
 
@@ -76,6 +85,9 @@ SafeAreaProvider → ReduxProvider → PaperProvider → NavigationContainer
 - Use existing UI components (WW-prefixed) for consistency
 - Follow the established provider pattern for new features
 - Implement proper TypeScript typing throughout
+- Always provide full updated answers when making changes
+- Use existing codebase as reference rather than creating new patterns
+- Follow latest TypeScript best practices
 
 ### BLE Development
 - Device connections are managed through the BleEngineProvider
@@ -92,12 +104,78 @@ SafeAreaProvider → ReduxProvider → PaperProvider → NavigationContainer
 - Use Jest with React Native preset
 - Test files should follow the `.test.tsx` naming convention
 
+### Key Dependencies to Understand
+- **BLE Nordic DFU**: Custom GitHub dependency `github:Salt-PepperEngineering/react-native-nordic-dfu` for firmware updates
+- **React Native Paper**: Version 5.12.3 for Material Design components
+- **Redux Toolkit**: Version 2.2.1 with RTK Query for state management
+- **React Navigation**: Version 6 native stack for navigation
+- **React Hook Form**: Version 7.54.1 for form handling
+
+### File Structure Conventions
+- UI components prefixed with "WW" in `src/components/ui/`
+- Redux slices in `src/redux/slices/`
+- API definitions in `src/redux/api/`
+- Screen components in `src/navigation/screens/`
+- Custom hooks in `src/hooks/`
+- BLE functionality in `src/ble/` and `src/providers/BleEngineProvider.tsx`
+
 # IMPORTANT
 ## Migration Context
 This codebase is currently undergoing an Expo migration. The `project-context/` directory contains detailed migration documentation and planning files. When working on migration-related tasks, refer to these documents for context and requirements.
 
-Key Document are project-context/ww-app-migration-plan/DOCUMENT-INDEX.md (guide to all documentn in the folder) and @project-context/ww-app-migration-plan/DEVELOPMENT-EXECUTION-PLAN.md   (this is the initial work to be done).
+Key Documents:
+- `project-context/ww-app-migration-plan/DOCUMENT-INDEX.md` - Guide to all migration documents
+- `project-context/ww-app-migration-plan/DEVELOPMENT-EXECUTION-PLAN.md` - Initial migration work plan
+- `migration-config-snapshot.json` - Comprehensive pre-migration configuration snapshot including bundle IDs, environment variables, CI/CD setup, and current dependencies
+- Migration involves transitioning from bare React Native to Expo SDK 51
+- Critical dependencies to migrate: BLE, Nordic DFU, Maps, File System, Redux
+
+### Migration Phases
+1. **Phase 1 (Critical)**: Expo SDK 51 migration for core functionality (5-6 hours)
+2. **Phase 2 (Cleanup)**: Remove legacy dependencies, security fixes, Supabase foundation (4-6 hours)
+3. **Phase 3 (MVP Dev)**: Complete MVP features with Supabase backend (2-3 weeks)
 
 ## Task Master AI Instructions
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
 @./.taskmaster/CLAUDE.md
+
+## Migration Configuration Snapshot
+- Noted the migration configuration snapshot in project-context directory
+- Reference file contains details about the Expo migration process and configuration requirements
+
+## Available MCP Servers
+
+This project has access to three configured MCP servers:
+
+### 1. Task Master AI (`task-master-ai`)
+- **Purpose**: Project task management and workflow automation
+- **Key Functions**: 
+  - `get_tasks` / `next_task` - Task retrieval and workflow management
+  - `set_task_status` - Update task completion status  
+  - `expand_task` / `update_task` - Task refinement and detail management
+  - `parse_prd` - Generate tasks from Product Requirements Documents
+- **Usage**: Handles the Expo migration task breakdown and progress tracking
+
+### 2. Supabase MCP (`supabase`)
+- **Purpose**: Database operations and backend integration
+- **Key Functions**:
+  - `list_tables` / `execute_sql` - Database schema and query operations
+  - `apply_migration` - Database schema changes and migrations
+  - `get_logs` / `get_advisors` - Debugging and performance monitoring
+- **Usage**: Manages wildlife monitoring database operations and Supabase backend integration
+
+### 3. Context7 (`context7`)
+- **Purpose**: Up-to-date library documentation and code examples
+- **Key Functions**:
+  - `resolve-library-id` - Find Context7-compatible library identifiers
+  - `get-library-docs` - Fetch current documentation for React Native, Expo, and other libraries
+- **Usage**: Provides current documentation during Expo migration for dependency updates
+
+## App Configuration Details
+
+From `migration-config-snapshot.json`:
+- **Bundle ID**: `com.wildlife.wildlifewatcher` (iOS/Android)
+- **Package Name**: `wildlifewatcher`
+- **URL Schemes**: `com.wildlife.auth`, `com.wildlife.watcher`
+- **Current Version**: React Native 0.74.6 → Migrating to Expo SDK 51
+

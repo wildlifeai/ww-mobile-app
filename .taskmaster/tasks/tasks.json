@@ -1,0 +1,329 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Pre-Migration Setup and Environment Preparation",
+        "description": "Create migration branch, install Expo CLI tools, setup development environment, and prepare for Expo SDK 51 migration",
+        "status": "in-progress",
+        "dependencies": [],
+        "priority": "high",
+        "details": "1. Create 'expo-migration' branch from main\n2. Install Expo CLI globally: npm install -g expo-cli@latest eas-cli@latest\n3. Create full project backup (git stash or separate directory)\n4. Login to Expo account: expo login\n5. Verify Node.js version >=18.0.0\n6. Setup .env.local for development\n7. Document current bundle identifiers and app configurations\n8. IMPORTANT: Follow MIGRATION-GUIDE.md Section 1 - Initial Setup (30 minutes) for detailed step-by-step instructions\n\nReference Document: MIGRATION-GUIDE.md Section 1",
+        "testStrategy": "Verify Expo CLI installation with 'expo --version' and 'eas --version', confirm login status with 'expo whoami', ensure git branch created successfully, validate Node.js version compatibility. Follow the automated steps in MIGRATION-GUIDE.md Section 1",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Migration Branch and Project Backup",
+            "description": "Create the expo-migration branch from main, stash any uncommitted changes, and create a complete project backup for rollback safety",
+            "dependencies": [],
+            "details": "Execute: git checkout main && git pull origin main && git checkout -b expo-migration && git stash save 'Pre-migration changes' && cp -r . ../wildlife-watcher-backup-$(date +%Y%m%d_%H%M%S). Document the backup location in a migration-log.txt file. Ensure all current work is safely preserved before beginning migration.",
+            "status": "done",
+            "testStrategy": "Verify branch creation with git branch -a, confirm backup directory exists and contains all project files, check git stash list shows saved changes if any existed"
+          },
+          {
+            "id": 2,
+            "title": "Install and Configure Expo CLI Tools",
+            "description": "Install the latest Expo CLI and EAS CLI globally, verify Node.js compatibility, and authenticate with Expo account",
+            "dependencies": [],
+            "details": "Install tools: npm install -g expo-cli@latest eas-cli@latest. Verify Node.js version: node --version (must be >=18.0.0). If Node version is insufficient, update via nvm or system package manager. Login to Expo: expo login (have credentials ready). Store login status for team reference.",
+            "status": "done",
+            "testStrategy": "Run expo --version and eas --version to confirm installation, execute expo whoami to verify authentication, run node --version to confirm >=18.0.0"
+          },
+          {
+            "id": 3,
+            "title": "Document Current App Configuration",
+            "description": "Create comprehensive documentation of current bundle identifiers, app configurations, and environment variables before migration",
+            "dependencies": [],
+            "details": "Extract and document: 1) Current bundle IDs from android/app/build.gradle (applicationId) and ios/WildlifeWatcherMobileApp/Info.plist (CFBundleIdentifier), 2) App display names from app.json, 3) All environment variables from .env files, 4) Current version numbers and build numbers. Create migration-config-snapshot.json with all values. This ensures we can reference original configurations during migration.",
+            "status": "done",
+            "testStrategy": "Verify migration-config-snapshot.json contains all bundle IDs, app names, version numbers, and lists all environment variables currently in use"
+          },
+          {
+            "id": 4,
+            "title": "Setup Development Environment Configuration",
+            "description": "Create and configure .env.local for development, ensuring all necessary environment variables are properly set for Expo development",
+            "dependencies": [
+              "1.3"
+            ],
+            "details": "Create .env.local file copying from .env.example or existing .env. Add Expo-specific variables if needed (EXPO_PUBLIC_ prefix for client-side vars). Ensure all API keys, endpoints, and configuration values are present. Update .gitignore to exclude .env.local. Document any new Expo-specific environment variables that will be needed.",
+            "status": "pending",
+            "testStrategy": "Verify .env.local exists and contains all required variables, check .gitignore includes .env.local, confirm no sensitive data in tracked files"
+          },
+          {
+            "id": 5,
+            "title": "Execute MIGRATION-GUIDE.md Section 1 Verification",
+            "description": "Run through all steps in MIGRATION-GUIDE.md Section 1 to ensure complete pre-migration setup following the documented procedure",
+            "dependencies": [
+              "1.1",
+              "1.2",
+              "1.3",
+              "1.4"
+            ],
+            "details": "Open MIGRATION-GUIDE.md Section 1 and execute each step sequentially. Use the guide's automated commands where provided. Create a checklist marking each completed step. Pay special attention to any warnings or notes in the guide. Document any deviations or issues encountered. This ensures we follow the proven migration path exactly as designed.",
+            "status": "pending",
+            "testStrategy": "All commands from Section 1 execute successfully, all checklist items marked complete, no errors in terminal output, ready to proceed to Section 2"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Core Expo SDK 51 Integration",
+        "description": "Install Expo SDK 51, create app configuration with proper bundle identifier strategy, initialize EAS project, and setup dependency validation",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "details": "1. Install Expo SDK 51: npm install expo@~51.0.0\n2. Create app.config.js with dynamic bundle identifier logic (.expo suffix for dev) following BUNDLE-IDENTIFIER-STRATEGY.md\n3. Initialize EAS project: eas init\n4. Configure eas.json for development builds\n5. Setup expo-constants for environment variables\n6. Copy dependency validation system from MIGRATION-GUIDE.md\n7. Update app.json to app.config.js format\n8. Configure development client settings\n\nIMPORTANT: Follow MIGRATION-GUIDE.md Section 2 and BUNDLE-IDENTIFIER-STRATEGY.md for bundle ID configuration.\n\nReference Documents:\n- MIGRATION-GUIDE.md Section 2\n- BUNDLE-IDENTIFIER-STRATEGY.md",
+        "testStrategy": "Run 'expo doctor' to validate setup, verify app.config.js exports correct bundle identifiers, confirm EAS project linked with 'eas project:info', test dependency validation script execution. Ensure bundle identifiers follow the strategy outlined in BUNDLE-IDENTIFIER-STRATEGY.md",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Native Module Dependencies Migration",
+        "description": "Replace all native modules with Expo equivalents including file system, environment config, splash screen, and install expo-dev-client",
+        "status": "pending",
+        "dependencies": [
+          2
+        ],
+        "priority": "high",
+        "details": "1. Install expo-dev-client@~3.3.0\n2. Replace react-native-fs with expo-file-system@~16.0.0\n3. Replace react-native-config with expo-constants@~15.4.0\n4. Replace react-native-bootsplash with expo-splash-screen@~0.26.0\n5. Update to React Native 0.74.6\n6. Remove old packages: npm uninstall react-native-fs react-native-config react-native-bootsplash\n7. Run 'npm run validate:deps' after each change\n8. Update package-lock.json\n\nIMPORTANT: Follow MIGRATION-GUIDE.md Section 3 for the complete dependency migration process.",
+        "testStrategy": "Execute dependency validation after each replacement, ensure no old package imports remain with global search, verify TypeScript compilation succeeds, check for peer dependency warnings. Validate each replacement according to MIGRATION-GUIDE.md Section 3",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Code Migration and Import Updates",
+        "description": "Execute automated migration scripts to update all code imports and implementations for Expo modules, update Metro configuration",
+        "status": "pending",
+        "dependencies": [
+          3
+        ],
+        "priority": "high",
+        "details": "1. Run file system migration script from MIGRATION-GUIDE.md Section 4\n2. Update all RNFS imports to expo-file-system APIs using examples from FILE-SYSTEM-MIGRATION-EXAMPLES.md\n3. Run environment variable migration script\n4. Convert Config imports to Constants.expoConfig\n5. Run splash screen migration script\n6. Update Metro configuration for Expo\n7. Fix any TypeScript errors from API changes\n8. Update any native module method calls to Expo equivalents\n\nIMPORTANT: Follow MIGRATION-GUIDE.md Section 4 and use FILE-SYSTEM-MIGRATION-EXAMPLES.md for code migration patterns.\n\nReference Documents:\n- MIGRATION-GUIDE.md Section 4 - Code Migration\n- FILE-SYSTEM-MIGRATION-EXAMPLES.md",
+        "testStrategy": "Global search for old imports should return zero results, TypeScript compilation must succeed, run ESLint to catch any missed imports, verify all file operations work with new APIs, verify migrations match patterns in FILE-SYSTEM-MIGRATION-EXAMPLES.md",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "EAS Build Configuration and Deployment",
+        "description": "Configure EAS build environment, set environment variables, create and test Android development build",
+        "status": "pending",
+        "dependencies": [
+          4
+        ],
+        "priority": "high",
+        "details": "1. Set EAS environment variables: eas secret:create\n2. Configure eas.json for development profile\n3. Set GOOGLE_MAPS_API_KEY in EAS secrets\n4. Build Android dev client: eas build --profile development --platform android\n5. Download and install APK on test device\n6. Configure build credentials if needed\n7. Setup internal distribution for team\n8. Document build URLs and versions\n\nIMPORTANT: Follow MIGRATION-GUIDE.md Section 5 and verify all Phase 1 validation criteria pass before proceeding.\n\nPhase 1 Validation Checkpoint:\n- App builds successfully on EAS (< 15 minutes)\n- Development client installs on Android device\n- BLE CRITICAL: Can scan and connect to real Wildlife Watcher device\n- DFU CRITICAL: Firmware selection and transfer initiation works\n- Maps: Display with markers (API key fallback OK)\n- Navigation: All tabs/screens accessible\n- Redux: State updates correctly, debug panel works\n- File System: Read/write operations work with expo-file-system\n- Hot reload functions for development\n\nSTOP Rule: If any critical criteria fail, fix before proceeding to Phase 2\n\nReference Document: MIGRATION-GUIDE.md Section 5 - Build & Deploy",
+        "testStrategy": "Build must complete in <15 minutes, APK must install successfully, verify all core features work: BLE scanning/connection, DFU initiation, Maps display, Navigation, Redux state, File operations, Hot reload. All Phase 1 validation criteria must pass before proceeding to Phase 2.",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Security Cleanup and Firebase Removal",
+        "description": "Remove all Firebase dependencies, eliminate dangerous SSL bypass code, update Android native files for security compliance",
+        "status": "pending",
+        "dependencies": [
+          5
+        ],
+        "priority": "high",
+        "details": "1. Remove all @react-native-firebase/* packages\n2. Delete android/app/src/main/java/.../IgnoreSSLFactory.java\n3. Update MainActivity.kt to remove SSL factory imports and usage\n4. Clean up AndroidManifest.xml Firebase references\n5. Remove google-services.json\n6. Update android/build.gradle to remove Firebase plugins\n7. Clear Firebase initialization code from JS\n8. Test build still works without Firebase\n\nIMPORTANT: Follow MIGRATION-IMPACT-ANALYSIS.md for security issues to address.\n\nNote: Can execute in parallel with Tasks 8-9 (Phase 2 Stream A - Security & Dependency Cleanup)\nReference document: MIGRATION-IMPACT-ANALYSIS.md - Security vulnerabilities section",
+        "testStrategy": "Verify no Firebase imports remain in codebase, confirm SSL bypass code completely removed, ensure Android build succeeds, test app functionality without Firebase dependencies. Verify all security issues from MIGRATION-IMPACT-ANALYSIS.md are resolved",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Additional Native Modules Replacement",
+        "description": "Replace remaining native modules with Expo equivalents for device info, document picker, and geolocation",
+        "status": "pending",
+        "dependencies": [
+          5
+        ],
+        "priority": "medium",
+        "details": "1. Replace react-native-device-info with expo-device@~5.9.0\n2. Update all device info API calls to Expo format\n3. Replace react-native-document-picker with expo-document-picker@~11.10.0\n4. Update document picker implementations\n5. Replace @react-native-community/geolocation with expo-location@~16.5.0\n6. Update location permission requests and API calls\n7. Remove old packages after successful replacement\n8. Test each module independently\n\nNote: Can execute in parallel with Tasks 8-9 (Phase 2 Stream A - Security & Dependency Cleanup)\n\nIMPORTANT: Follow MIGRATION-GUIDE.md patterns for module replacement",
+        "testStrategy": "Test device info display, verify document picker functionality, confirm location services work correctly, ensure proper permission handling for each module",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Supabase Backend Foundation Setup",
+        "description": "Create Supabase project, configure database schema, setup authentication system, and generate necessary API keys",
+        "status": "pending",
+        "dependencies": [
+          5
+        ],
+        "priority": "high",
+        "details": "1. Create new Supabase project via dashboard\n2. Design database schema for users, devices, projects, deployments\n3. Setup Row Level Security (RLS) policies\n4. Configure authentication providers\n5. Generate and secure API keys (anon, service role)\n6. Setup database migrations\n7. Create initial tables and relationships\n8. Configure storage buckets for files\n\nUse Supabase MCP for efficient project management and database operations.\n\nNOTE: Can execute in parallel with Tasks 6-7 (Phase 2 Stream B - Supabase Foundation)",
+        "testStrategy": "Verify database tables created successfully, test RLS policies with different user roles, confirm authentication endpoints accessible, validate API keys work correctly",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Supabase Client Integration and Auth Migration",
+        "description": "Install Supabase client, implement authentication flows, replace OAuth system with Supabase Auth, setup real-time subscriptions",
+        "status": "pending",
+        "dependencies": [
+          8
+        ],
+        "priority": "high",
+        "details": "1. Install @supabase/supabase-js@^2.39.0\n2. Create Supabase client singleton with API keys\n3. Implement login/signup flows with Supabase Auth\n4. Setup auth state persistence\n5. Remove react-native-app-auth completely\n6. Update AuthProvider to use Supabase\n7. Implement password reset flow\n8. Setup real-time auth state listeners\n9. Use Supabase MCP for database operations\n\nPhase 2 Validation Checkpoint Criteria:\n- All legacy packages removed successfully\n- Security vulnerabilities eliminated (SSL bypass gone)\n- Native module replacements functional\n- Supabase authentication working\n- Database connections operational\n- App still passes Phase 1 validation criteria\n\nSTOP Rule: If Supabase foundation fails, fix before Phase 3\n\nNOTE: Can execute in parallel with Tasks 6-7 (Phase 2 Stream B - Supabase Foundation)",
+        "testStrategy": "Test user registration flow, verify login/logout functionality, confirm auth tokens persist correctly, validate auth state updates in Redux, test password reset process, validate Phase 2 checkpoint criteria are met",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "MVP Feature Planning and Testing Framework",
+        "description": "Analyze MVP requirements, create detailed task breakdown, setup Playwright testing framework, prepare for parallel feature development",
+        "details": "1. Use Task Master AI to analyze mvp-dev-stage-considerations.md\n2. Break down MVP 1 & 2 features into subtasks\n3. Install @playwright/test@^1.41.0 for React Native\n4. Configure Playwright for mobile app testing\n5. Create test utilities for BLE operations\n6. Setup Supabase test helpers\n7. Create CI/CD test pipeline configuration\n8. Document testing strategies for each MVP feature",
+        "testStrategy": "Verify Task Master generates comprehensive task list, confirm Playwright setup works with React Native, test that basic UI tests execute successfully, validate BLE test utilities can mock device operations",
+        "priority": "medium",
+        "dependencies": [
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Data Management & Sync (MVP Stream C)",
+        "description": "Implement offline data storage, create Supabase sync mechanisms, build data conflict resolution, test data persistence",
+        "details": "1. Design offline data storage architecture using AsyncStorage/SQLite\n2. Implement offline-first data models for devices, projects, deployments\n3. Create Supabase sync engine with queue management\n4. Build conflict resolution logic for concurrent edits\n5. Implement data versioning and timestamps\n6. Create background sync service\n7. Add sync status indicators in UI\n8. Test offline/online transitions\n\nDependencies: Supabase foundation from Phase 2\nPriority: HIGH - enables all other MVP features\nStream: Parallel Stream C - Core App Features (Week 1)",
+        "testStrategy": "Test offline data persistence across app restarts, verify sync queue processes correctly, test conflict resolution with multiple device edits, validate data integrity after sync, test performance with large datasets",
+        "status": "pending",
+        "dependencies": [
+          9
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Enhanced BLE Management (MVP Stream C)",
+        "description": "Build on existing BLE from Phase 1 - device pairing persistence, connection state management, enhanced error handling, device settings sync to Supabase",
+        "details": "1. Implement persistent device pairing storage\n2. Create robust connection state management with auto-reconnect\n3. Build comprehensive BLE error handling and recovery\n4. Add device battery level monitoring\n5. Implement device settings sync to Supabase\n6. Create device connection history tracking\n7. Add multi-device management capabilities\n8. Implement BLE connection quality indicators\n9. Create device firmware version tracking\n\nDependencies: BLE validation from Phase 1, Data Management task\nPriority: HIGH - core product feature\nStream: Parallel Stream C - Core App Features (Week 1)",
+        "testStrategy": "Test device pairing persistence across app restarts, verify auto-reconnect functionality, test error recovery scenarios, validate device settings sync to cloud, test multi-device switching, verify connection stability metrics",
+        "status": "pending",
+        "dependencies": [
+          11
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Advanced Maps & Deployment (MVP Stream C)",
+        "description": "Build on basic Maps from Phase 1 - deployment creation workflows, location-based device management, map data sync with Supabase, offline map caching",
+        "details": "1. Create deployment creation workflow with map selection\n2. Implement location-based device management features\n3. Build geofencing capabilities for deployment areas\n4. Sync deployment locations with Supabase\n5. Implement offline map tile caching\n6. Add deployment status visualization on maps\n7. Create location history tracking for devices\n8. Implement deployment analytics dashboard\n9. Add location-based search and filtering\n\nDependencies: Maps validation from Phase 1, Supabase setup, Data Management task\nPriority: MEDIUM - important but not blocking\nStream: Parallel Stream C - Core App Features (Week 2)",
+        "testStrategy": "Test deployment creation with various map interactions, verify location data syncs correctly, test offline map functionality, validate geofencing accuracy, test location-based filtering performance",
+        "status": "pending",
+        "dependencies": [
+          11
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Enhanced Navigation & UX (MVP Stream D)",
+        "description": "Optimize existing navigation - improve drawer navigation performance, add navigation analytics, enhance user onboarding flows, polish UI components",
+        "details": "1. Optimize drawer navigation performance and animations\n2. Implement navigation analytics tracking\n3. Create comprehensive user onboarding flow\n4. Polish all UI components for consistency\n5. Add loading states and skeleton screens\n6. Implement gesture-based navigation enhancements\n7. Create contextual help system\n8. Add user preferences and settings management\n9. Implement accessibility improvements\n\nDependencies: Navigation validation from Phase 1\nPriority: MEDIUM - improves user experience\nStream: Parallel Stream D - UI/UX & Polish (Week 2)",
+        "testStrategy": "Test navigation performance metrics, verify analytics tracking accuracy, test onboarding completion rates, validate accessibility standards compliance, test gesture recognition reliability",
+        "status": "pending",
+        "dependencies": [
+          10
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Error Handling & Monitoring (MVP Stream D)",
+        "description": "Production readiness - implement comprehensive error boundaries, add crash reporting, create user feedback mechanisms, set up analytics",
+        "details": "1. Implement comprehensive React error boundaries\n2. Set up crash reporting with Sentry or similar\n3. Create user feedback and bug reporting system\n4. Implement application analytics and usage tracking\n5. Add performance monitoring and metrics\n6. Create error recovery mechanisms for critical flows\n7. Set up logging and debugging tools\n8. Implement health check endpoints\n9. Add user session replay capabilities\n\nDependencies: Core features complete\nPriority: LOW - nice to have for production\nStream: Parallel Stream D - UI/UX & Polish (Week 3)",
+        "testStrategy": "Test error boundary recovery scenarios, verify crash reports are captured correctly, test user feedback submission flow, validate analytics data accuracy, test performance monitoring alerts",
+        "status": "pending",
+        "dependencies": [
+          14
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "File Management & Export (MVP Stream E)",
+        "description": "Build on file system from Phase 1 - advanced file operations, data export capabilities, file sync with Supabase storage, backup/restore functionality",
+        "details": "1. Implement advanced file operations (move, copy, rename)\n2. Create data export capabilities (CSV, JSON, PDF reports)\n3. Set up file sync with Supabase storage buckets\n4. Implement backup and restore functionality\n5. Add file compression and optimization\n6. Create file sharing capabilities\n7. Implement file versioning system\n8. Add bulk file operations\n9. Create file search and filtering\n\nDependencies: File system validation from Phase 1, Supabase setup\nPriority: LOW - advanced feature\nStream: Parallel Stream E - Advanced Features (Week 3)",
+        "testStrategy": "Test file operations across different file types, verify export functionality generates correct formats, test file sync reliability, validate backup/restore processes, test file sharing permissions",
+        "status": "pending",
+        "dependencies": [
+          11
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Real-time Collaboration Features",
+        "description": "Implement real-time collaboration capabilities for team-based wildlife monitoring projects",
+        "details": "1. Implement real-time device status sharing across team members\n2. Create shared deployment workspace functionality\n3. Add real-time notifications for device events\n4. Implement collaborative project management features\n5. Create team member role and permission system\n6. Add real-time chat or messaging for teams\n7. Implement conflict resolution for simultaneous edits\n8. Create activity feeds for project updates\n9. Add team performance analytics\n\nDependencies: Supabase real-time features, Data Management\nPriority: MEDIUM - enhances team collaboration\nStream: Additional MVP Features",
+        "testStrategy": "Test real-time synchronization across multiple devices, verify permission systems work correctly, test conflict resolution scenarios, validate notification delivery reliability",
+        "status": "pending",
+        "dependencies": [
+          11
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Offline Mode Implementation",
+        "description": "Comprehensive offline functionality for remote wildlife monitoring locations",
+        "details": "1. Implement robust offline data storage and queueing\n2. Create offline-first UI components with loading states\n3. Add offline map functionality with cached tiles\n4. Implement offline BLE operations and data collection\n5. Create sync queue management for when connectivity returns\n6. Add offline notification system\n7. Implement data compression for efficient storage\n8. Create offline analytics and reporting\n9. Add connectivity detection and status indicators\n\nDependencies: Data Management, Maps, BLE Management\nPriority: HIGH - critical for remote deployments\nStream: Additional MVP Features",
+        "testStrategy": "Test extended offline periods, verify data integrity after sync, test offline BLE operations, validate map functionality without internet, test sync queue performance",
+        "status": "pending",
+        "dependencies": [
+          12,
+          13
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "Performance Optimization",
+        "description": "Optimize app performance for smooth operation with multiple devices and large datasets",
+        "details": "1. Implement lazy loading for large data sets\n2. Optimize BLE scanning and connection performance\n3. Add memory management and garbage collection optimization\n4. Implement efficient caching strategies\n5. Optimize image and file loading performance\n6. Add performance monitoring and profiling tools\n7. Implement background task optimization\n8. Create efficient data pagination\n9. Add app startup time optimization\n\nDependencies: Core features implemented\nPriority: MEDIUM - ensures good user experience\nStream: Additional MVP Features",
+        "testStrategy": "Measure app startup times, test performance with large datasets, verify memory usage stays within bounds, test BLE performance with multiple devices, validate UI responsiveness",
+        "status": "pending",
+        "dependencies": [
+          12,
+          13,
+          14
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Production Readiness Checklist",
+        "description": "Final production readiness validation and deployment preparation",
+        "details": "1. Complete security audit and vulnerability testing\n2. Validate all MVP 1 & 2 features are complete and tested\n3. Conduct performance benchmarking and optimization\n4. Complete accessibility compliance testing\n5. Validate app store submission requirements\n6. Create production deployment documentation\n7. Set up production monitoring and alerting\n8. Complete user acceptance testing with stakeholders\n9. Prepare rollback and emergency procedures\n10. Validate all Phase 3 checkpoint criteria are met\n\nWeek 1 Checkpoint: Data management operational, BLE enhancements working, Supabase integration stable, Core user flows functional\nWeek 2 Checkpoint: Maps features complete, Navigation optimized, User experience polished, Performance acceptable\nFinal Checkpoint: All MVP features complete, Testing coverage adequate, Performance benchmarks met, Ready for production\n\nDependencies: All MVP features complete\nPriority: HIGH - critical for production release\nStream: Final Production Validation",
+        "testStrategy": "Execute comprehensive end-to-end testing, validate all checkpoint criteria, perform load testing, conduct security penetration testing, verify app store compliance",
+        "status": "pending",
+        "dependencies": [
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        "priority": "high",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-27T12:38:05.813Z",
+      "updated": "2025-07-27T14:13:48.566Z",
+      "description": "Tasks for master context"
+    }
+  }
+}
