@@ -151,6 +151,166 @@
             padding: 50px;
             color: #7f8c8d;
         }
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .modal-close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        .modal-close:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .modal-section {
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 15px;
+            align-items: start;
+        }
+
+        .modal-input, .modal-select, .modal-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .modal-input:focus, .modal-select:focus, .modal-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+
+        .modal-textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-radius: 0 0 10px 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-primary, .btn-secondary, .btn-cancel {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .btn-cancel {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .btn-cancel:hover {
+            background: #dee2e6;
+            transform: translateY(-1px);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+            }
+            
+            .modal-section {
+                grid-template-columns: 1fr;
+                gap: 5px;
+            }
+            
+            .modal-actions {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body>
@@ -183,6 +343,80 @@
                 <h3>Connecting to TaskMaster AI...</h3>
                 <p>Please ensure TaskMaster is initialized in this project directory.</p>
                 <p>The dashboard will automatically load tasks from <code>.taskmaster/tasks/tasks.json</code></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Modal -->
+    <div id="taskModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTaskTitle">Task Details</h2>
+                <span class="modal-close" onclick="dashboard.closeTaskModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <label><strong>Task ID:</strong></label>
+                    <span id="modalTaskId"></span>
+                </div>
+                <div class="modal-section">
+                    <label><strong>Title:</strong></label>
+                    <input type="text" id="modalTaskTitleInput" class="modal-input">
+                </div>
+                <div class="modal-section">
+                    <label><strong>Description:</strong></label>
+                    <textarea id="modalTaskDescription" class="modal-textarea"></textarea>
+                </div>
+                <div class="modal-section">
+                    <label><strong>Status:</strong></label>
+                    <select id="modalTaskStatus" class="modal-select">
+                        <option value="pending">Pending</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="done">Done</option>
+                        <option value="deferred">Deferred</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div class="modal-section">
+                    <label><strong>Priority:</strong></label>
+                    <select id="modalTaskPriority" class="modal-select">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <div class="modal-section">
+                    <label><strong>Assignee:</strong></label>
+                    <select id="modalTaskAssignee" class="modal-select">
+                        <option value="">Unassigned</option>
+                        <option value="Developer 1">Developer 1</option>
+                        <option value="Developer 2">Developer 2</option>
+                        <option value="Developer 3">Developer 3</option>
+                        <option value="Claude AI">Claude AI</option>
+                        <option value="TaskMaster AI">TaskMaster AI</option>
+                    </select>
+                </div>
+                <div class="modal-section">
+                    <label><strong>Dependencies:</strong></label>
+                    <input type="text" id="modalTaskDependencies" class="modal-input" placeholder="Comma-separated task IDs">
+                </div>
+                <div class="modal-section">
+                    <label><strong>Details:</strong></label>
+                    <textarea id="modalTaskDetails" class="modal-textarea" rows="6"></textarea>
+                </div>
+                <div class="modal-section">
+                    <label><strong>Phase:</strong></label>
+                    <span id="modalTaskPhase"></span>
+                </div>
+                <div class="modal-section">
+                    <label><strong>Stream:</strong></label>
+                    <span id="modalTaskStream"></span>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button onclick="dashboard.saveTaskChanges()" class="btn-primary">Save Changes</button>
+                <button onclick="dashboard.executeTaskMasterCommand()" class="btn-secondary">TaskMaster Commands</button>
+                <button onclick="dashboard.closeTaskModal()" class="btn-cancel">Cancel</button>
             </div>
         </div>
     </div>
@@ -329,6 +563,50 @@
                 // Add controls HTML
                 document.getElementById('controls').innerHTML = `
                     <div class="filter-group">
+                        <label>Phase:</label>
+                        <select id="phaseFilter" onchange="dashboard.applyFilters()">
+                            <option value="">All Phases</option>
+                            <option value="phase1">Phase 1: Migration</option>
+                            <option value="phase2">Phase 2: Cleanup</option>
+                            <option value="phase3">Phase 3: MVP</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Status:</label>
+                        <select id="statusFilter" onchange="dashboard.applyFilters()">
+                            <option value="">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="done">Done</option>
+                            <option value="deferred">Deferred</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Priority:</label>
+                        <select id="priorityFilter" onchange="dashboard.applyFilters()">
+                            <option value="">All Priorities</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Stream:</label>
+                        <select id="streamFilter" onchange="dashboard.applyFilters()">
+                            <option value="">All Streams</option>
+                            <option value="Migration Foundation">Migration Foundation</option>
+                            <option value="Security & Dependency Cleanup">Security & Cleanup</option>
+                            <option value="Supabase Foundation">Supabase Foundation</option>
+                            <option value="Core App Features">Core App Features</option>
+                            <option value="UI/UX & Polish">UI/UX & Polish</option>
+                            <option value="Advanced Features">Advanced Features</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <input type="text" id="searchFilter" placeholder="Search tasks..." oninput="dashboard.applyFilters()" />
+                    </div>
+                    <div class="filter-group">
                         <label>View:</label>
                         <div class="view-toggle">
                             <button id="ganttViewBtn" class="active" onclick="dashboard.switchView('gantt')">Gantt Chart</button>
@@ -380,38 +658,478 @@
             }
 
             renderCurrentView() {
-                document.getElementById('dashboardContent').innerHTML = `
-                    <div style="padding: 40px; text-align: center;">
-                        <h3>TaskMaster Data Loaded Successfully!</h3>
-                        <p>Found ${this.taskData.tasks.length} tasks</p>
-                        <p>Currently displaying: ${this.currentView} view</p>
+                if (this.currentView === 'gantt') {
+                    this.renderGanttView();
+                } else if (this.currentView === 'kanban') {
+                    this.renderKanbanView();
+                }
+            }
+
+            renderGanttView() {
+                // Create timeline header (21 days)
+                const timelineHeader = Array.from({length: 21}, (_, i) => `Day ${i + 1}`);
+                
+                // Group tasks by phases/streams or use default phases
+                const phases = this.getTasksByPhase();
+                
+                let ganttHTML = `
+                    <div class="gantt-container">
+                        <h3>📊 Gantt Chart View</h3>
+                        <div class="gantt-header">
+                            <div><strong>Task</strong></div>
+                            <div class="gantt-timeline">
+                                ${timelineHeader.map(day => `<div>${day}</div>`).join('')}
+                            </div>
+                        </div>
+                `;
+
+                // Group tasks by phase and stream
+                const taskGroups = {};
+                
+                this.filteredTasks.forEach(task => {
+                    const phase = this.getTaskPhase(task);
+                    const stream = this.getTaskStream(task);
+                    const groupKey = `${phase} - ${stream}`;
+                    
+                    if (!taskGroups[groupKey]) {
+                        taskGroups[groupKey] = [];
+                    }
+                    taskGroups[groupKey].push(task);
+                });
+
+                Object.entries(taskGroups).forEach(([groupName, tasks]) => {
+                    if (tasks.length === 0) return;
+
+                    ganttHTML += `
+                        <div class="phase-section">
+                            <div class="phase-header ${groupName.toLowerCase().replace(' ', '-')}">${groupName}</div>
+                    `;
+
+                    tasks.forEach((task, index) => {
+                        // Calculate time slot based on task ID and dependencies
+                        const timeSlot = this.calculateTimeSlot(task);
+                        const duration = this.calculateDuration(task);
                         
-                        <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-                            <h4>Live Integration Active</h4>
-                            <p>This dashboard is now connected to your TaskMaster tasks.json file</p>
-                            <p>Changes will be reflected automatically every 5 seconds</p>
+                        ganttHTML += `
+                            <div class="task-row" onclick="dashboard.openTaskModal(${task.id})" style="cursor: pointer;">
+                                <div class="task-info">
+                                    <div class="task-title">${task.title}</div>
+                                    <div class="task-meta">
+                                        <span class="task-id">ID: ${task.id}</span>
+                                        <span class="task-status status-${task.status}">${task.status}</span>
+                                        ${task.dependencies && task.dependencies.length > 0 ? 
+                                            `<span class="task-deps">Depends: ${task.dependencies.join(', ')}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div class="task-timeline">
+                        `;
+
+                        // Create timeline slots
+                        for (let i = 1; i <= 21; i++) {
+                            const isActive = i >= timeSlot && i < timeSlot + duration;
+                            
+                            if (isActive) {
+                                ganttHTML += `
+                                    <div class="task-bar priority-${task.priority} status-${task.status}" 
+                                         title="${task.title}">
+                                    </div>
+                                `;
+                            } else {
+                                ganttHTML += `<div></div>`;
+                            }
+                        }
+
+                        ganttHTML += `
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    ganttHTML += `</div>`;
+                });
+
+                ganttHTML += `</div>`;
+
+                document.getElementById('dashboardContent').innerHTML = ganttHTML + this.getGanttStyles();
+            }
+
+            calculateTimeSlot(task) {
+                // Simple algorithm: base time slot on task ID and dependencies
+                if (task.dependencies && task.dependencies.length > 0) {
+                    // Start after the highest dependency
+                    return Math.max(...task.dependencies) + 1;
+                }
+                return task.id; // Start based on task ID
+            }
+
+            calculateDuration(task) {
+                // Base duration on task complexity (estimated from description length)
+                const baseLength = task.description ? task.description.length : 100;
+                if (baseLength > 200) return 3; // Long tasks
+                if (baseLength > 100) return 2; // Medium tasks
+                return 1; // Short tasks
+            }
+
+            getGanttStyles() {
+                return `
+                    <style>
+                        .gantt-container { 
+                            padding: 20px; 
+                            background: white;
+                            border-radius: 10px;
+                            margin: 20px 0;
+                        }
+                        .gantt-header {
+                            display: grid;
+                            grid-template-columns: 350px 1fr;
+                            border-bottom: 2px solid #ecf0f1;
+                            padding-bottom: 10px;
+                            margin-bottom: 20px;
+                        }
+                        .gantt-timeline {
+                            display: grid;
+                            grid-template-columns: repeat(21, 1fr);
+                            gap: 2px;
+                            font-size: 11px;
+                            text-align: center;
+                        }
+                        .phase-section {
+                            margin-bottom: 30px;
+                        }
+                        .phase-header {
+                            background: #3498db;
+                            color: white;
+                            padding: 10px 15px;
+                            font-weight: bold;
+                            border-radius: 5px;
+                            margin-bottom: 10px;
+                        }
+                        .phase-header.high-priority { background: #e74c3c; }
+                        .phase-header.medium-priority { background: #f39c12; }
+                        .phase-header.low-priority { background: #95a5a6; }
+                        .task-row {
+                            display: grid;
+                            grid-template-columns: 350px 1fr;
+                            align-items: center;
+                            padding: 8px 0;
+                            border-bottom: 1px solid #ecf0f1;
+                        }
+                        .task-info {
+                            padding-right: 15px;
+                        }
+                        .task-title {
+                            font-weight: bold;
+                            margin-bottom: 5px;
+                            font-size: 14px;
+                        }
+                        .task-meta {
+                            font-size: 11px;
+                            color: #7f8c8d;
+                        }
+                        .task-meta span {
+                            margin-right: 8px;
+                            padding: 2px 6px;
+                            border-radius: 3px;
+                            background: #ecf0f1;
+                        }
+                        .task-timeline {
+                            display: grid;
+                            grid-template-columns: repeat(21, 1fr);
+                            gap: 2px;
+                            height: 25px;
+                            align-items: center;
+                        }
+                        .task-bar {
+                            height: 20px;
+                            border-radius: 10px;
+                            cursor: pointer;
+                            position: relative;
+                        }
+                        .task-bar.priority-high { background: #e74c3c; }
+                        .task-bar.priority-medium { background: #f39c12; }
+                        .task-bar.priority-low { background: #95a5a6; }
+                        .task-bar.status-done { background: #27ae60; }
+                        .task-bar.status-in-progress { 
+                            background: linear-gradient(90deg, #3498db 60%, #ecf0f1 60%);
+                        }
+                        .task-bar:hover {
+                            opacity: 0.8;
+                            transform: scale(1.05);
+                        }
+                        .status-pending { background: #ffeaa7; color: #333; }
+                        .status-in-progress { background: #74b9ff; color: white; }
+                        .status-done { background: #00b894; color: white; }
+                        .task-deps { background: #e8f4f8; color: #2980b9; }
+                    </style>
+                `;
+            }
+
+            renderKanbanView() {
+                const tasksByStatus = this.getFilteredTasksByStatus();
+                
+                // Group by phases first for swim lanes
+                const tasksByPhase = {};
+                Object.entries(tasksByStatus).forEach(([status, tasks]) => {
+                    tasks.forEach(task => {
+                        const phase = this.getTaskPhase(task);
+                        if (!tasksByPhase[phase]) {
+                            tasksByPhase[phase] = { pending: [], 'in-progress': [], done: [], deferred: [], cancelled: [] };
+                        }
+                        tasksByPhase[phase][status] = tasksByPhase[phase][status] || [];
+                        tasksByPhase[phase][status].push(task);
+                    });
+                });
+
+                const phaseNames = {
+                    'phase1': 'Phase 1: Migration',
+                    'phase2': 'Phase 2: Cleanup', 
+                    'phase3': 'Phase 3: MVP'
+                };
+
+                document.getElementById('dashboardContent').innerHTML = `
+                    <div class="kanban-container">
+                        <h3>📋 Kanban Board View</h3>
+                        
+                        <!-- Status Headers -->
+                        <div class="kanban-status-headers">
+                            <div class="phase-label">Phase</div>
+                            <div class="status-header pending">PENDING</div>
+                            <div class="status-header in-progress">IN PROGRESS</div>
+                            <div class="status-header done">DONE</div>
+                            <div class="status-header deferred">DEFERRED</div>
+                            <div class="status-header cancelled">CANCELLED</div>
                         </div>
 
-                        <div style="margin-top: 20px;">
-                            <h4>Available Tasks by Phase:</h4>
-                            <ul style="text-align: left; max-width: 600px; margin: 0 auto;">
-                                ${this.getTasksByPhase()}
-                            </ul>
-                        </div>
+                        <!-- Swim Lanes by Phase -->
+                        ${Object.entries(tasksByPhase).map(([phase, statusGroups]) => `
+                            <div class="swim-lane">
+                                <div class="swim-lane-header ${phase}">
+                                    <h4>${phaseNames[phase]}</h4>
+                                    <span class="phase-count">${Object.values(statusGroups).flat().length} tasks</span>
+                                </div>
+                                <div class="swim-lane-columns">
+                                    ${['pending', 'in-progress', 'done', 'deferred', 'cancelled'].map(status => `
+                                        <div class="kanban-column">
+                                            <div class="column-tasks">
+                                                ${(statusGroups[status] || []).map(task => `
+                                                    <div class="kanban-task priority-${task.priority}" data-task-id="${task.id}" onclick="dashboard.openTaskModal(${task.id})" style="cursor: pointer;">
+                                                        <div class="task-title">${task.title}</div>
+                                                        <div class="task-meta">
+                                                            <span class="task-id">ID: ${task.id}</span>
+                                                            <span class="task-stream">${this.getTaskStream(task)}</span>
+                                                        </div>
+                                                        ${task.dependencies && task.dependencies.length > 0 ? 
+                                                            `<div class="task-deps">Depends: ${task.dependencies.join(', ')}</div>` : ''}
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
                     </div>
+                    ${this.getKanbanStyles()}
                 `;
+            }
+
+            getFilteredTasksByStatus() {
+                const statuses = {};
+                this.filteredTasks.forEach(task => {
+                    const status = task.status || 'pending';
+                    if (!statuses[status]) statuses[status] = [];
+                    statuses[status].push(task);
+                });
+                return statuses;
+            }
+
+            getKanbanStyles() {
+                return `
+                    <style>
+                        .kanban-container { 
+                            padding: 20px; 
+                            background: white;
+                            border-radius: 10px;
+                            margin: 20px 0;
+                        }
+                        .kanban-status-headers {
+                            display: grid;
+                            grid-template-columns: 200px repeat(5, 1fr);
+                            gap: 15px;
+                            margin-bottom: 20px;
+                            padding: 0 15px;
+                        }
+                        .phase-label {
+                            font-weight: bold;
+                            padding: 10px;
+                            text-align: center;
+                        }
+                        .status-header {
+                            text-align: center;
+                            padding: 10px;
+                            border-radius: 5px;
+                            font-weight: bold;
+                            color: white;
+                        }
+                        .status-header.pending { background: #f39c12; }
+                        .status-header.in-progress { background: #3498db; }
+                        .status-header.done { background: #27ae60; }
+                        .status-header.deferred { background: #95a5a6; }
+                        .status-header.cancelled { background: #e74c3c; }
+                        
+                        .swim-lane {
+                            margin-bottom: 20px;
+                            border: 1px solid #ecf0f1;
+                            border-radius: 8px;
+                            overflow: hidden;
+                        }
+                        .swim-lane-header {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 15px;
+                            color: white;
+                            font-weight: bold;
+                        }
+                        .swim-lane-header.phase1 { background: #e74c3c; }
+                        .swim-lane-header.phase2 { background: #f39c12; }
+                        .swim-lane-header.phase3 { background: #27ae60; }
+                        .phase-count {
+                            background: rgba(255,255,255,0.3);
+                            padding: 4px 8px;
+                            border-radius: 12px;
+                            font-size: 12px;
+                        }
+                        
+                        .swim-lane-columns {
+                            display: grid;
+                            grid-template-columns: repeat(5, 1fr);
+                            gap: 15px;
+                            padding: 15px;
+                            background: #f8f9fa;
+                        }
+                        .kanban-column {
+                            min-height: 100px;
+                        }
+                        .column-tasks {
+                            min-height: 80px;
+                        }
+                        .kanban-task {
+                            background: white;
+                            margin: 8px 0;
+                            padding: 12px;
+                            border-radius: 6px;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                            cursor: pointer;
+                            transition: transform 0.2s;
+                            border-left: 4px solid #ddd;
+                        }
+                        .kanban-task.priority-high { border-left-color: #e74c3c; }
+                        .kanban-task.priority-medium { border-left-color: #f39c12; }
+                        .kanban-task.priority-low { border-left-color: #95a5a6; }
+                        .kanban-task:hover { 
+                            transform: translateY(-2px); 
+                            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+                        }
+                        .kanban-task .task-title { 
+                            font-weight: bold; 
+                            margin-bottom: 8px; 
+                            font-size: 13px;
+                            line-height: 1.3;
+                        }
+                        .kanban-task .task-meta { 
+                            margin-bottom: 8px; 
+                        }
+                        .kanban-task .task-id { 
+                            font-size: 11px; 
+                            color: #666; 
+                            display: block;
+                            margin-bottom: 4px;
+                        }
+                        .kanban-task .task-stream { 
+                            font-size: 10px; 
+                            background: #e8f4f8; 
+                            color: #2980b9; 
+                            padding: 2px 6px; 
+                            border-radius: 10px;
+                        }
+                        .kanban-task .task-deps { 
+                            font-size: 10px; 
+                            color: #7f8c8d; 
+                            font-style: italic;
+                        }
+                    </style>
+                `;
+            }
+
+            getTasksByStatus() {
+                const statuses = {};
+                this.taskData.tasks.forEach(task => {
+                    const status = task.status || 'pending';
+                    if (!statuses[status]) statuses[status] = [];
+                    statuses[status].push(task);
+                });
+                return statuses;
             }
 
             getTasksByPhase() {
                 const phases = {};
                 this.taskData.tasks.forEach(task => {
-                    if (!phases[task.phase]) phases[task.phase] = [];
-                    phases[task.phase].push(task);
+                    const phase = task.phase || 'Phase 1';
+                    if (!phases[phase]) phases[phase] = [];
+                    phases[phase].push(task);
                 });
 
                 return Object.entries(phases).map(([phase, tasks]) => 
                     `<li><strong>${phase}:</strong> ${tasks.length} tasks</li>`
                 ).join('');
+            }
+
+            applyFilters() {
+                const phaseFilter = document.getElementById('phaseFilter')?.value || '';
+                const statusFilter = document.getElementById('statusFilter')?.value || '';
+                const priorityFilter = document.getElementById('priorityFilter')?.value || '';
+                const streamFilter = document.getElementById('streamFilter')?.value || '';
+                const searchFilter = document.getElementById('searchFilter')?.value.toLowerCase() || '';
+
+                this.filteredTasks = this.taskData.tasks.filter(task => {
+                    // Add default properties if missing
+                    const taskPhase = this.getTaskPhase(task);
+                    const taskStream = this.getTaskStream(task);
+                    
+                    // Apply filters
+                    if (phaseFilter && taskPhase !== phaseFilter) return false;
+                    if (statusFilter && task.status !== statusFilter) return false;
+                    if (priorityFilter && task.priority !== priorityFilter) return false;
+                    if (streamFilter && taskStream !== streamFilter) return false;
+                    if (searchFilter && !task.title.toLowerCase().includes(searchFilter) && 
+                        !task.description.toLowerCase().includes(searchFilter)) return false;
+                    
+                    return true;
+                });
+
+                this.updateStats();
+                this.renderCurrentView();
+            }
+
+            getTaskPhase(task) {
+                // Map task IDs to phases based on the migration plan
+                if (task.id <= 5) return 'phase1';
+                if (task.id <= 9) return 'phase2';
+                return 'phase3';
+            }
+
+            getTaskStream(task) {
+                // Map task IDs to streams based on the migration plan
+                if (task.id <= 5) return 'Migration Foundation';
+                if (task.id === 6) return 'Security & Dependency Cleanup';
+                if (task.id === 7) return 'Security & Dependency Cleanup';
+                if (task.id === 8 || task.id === 9) return 'Supabase Foundation';
+                if (task.id === 10) return 'MVP Planning';
+                if (task.id === 11 || task.id === 12 || task.id === 13) return 'Core App Features';
+                if (task.id === 14 || task.id === 15) return 'UI/UX & Polish';
+                if (task.id === 16) return 'Advanced Features';
+                return 'Additional MVP Features';
             }
 
             switchView(view) {
@@ -424,10 +1142,201 @@
                 this.renderCurrentView();
             }
 
+            openTaskModal(taskId) {
+                const task = this.taskData.tasks.find(t => t.id == taskId);
+                if (!task) {
+                    console.error('Task not found:', taskId);
+                    return;
+                }
+
+                // Populate modal with task data
+                document.getElementById('modalTaskTitle').textContent = `Task ${task.id}: ${task.title}`;
+                document.getElementById('modalTaskId').textContent = task.id;
+                document.getElementById('modalTaskTitleInput').value = task.title;
+                document.getElementById('modalTaskDescription').value = task.description || '';
+                document.getElementById('modalTaskStatus').value = task.status || 'pending';
+                document.getElementById('modalTaskPriority').value = task.priority || 'medium';
+                document.getElementById('modalTaskAssignee').value = ''; // Default unassigned for now
+                document.getElementById('modalTaskDependencies').value = task.dependencies ? task.dependencies.join(', ') : '';
+                document.getElementById('modalTaskDetails').value = task.details || '';
+                document.getElementById('modalTaskPhase').textContent = this.getTaskPhase(task);
+                document.getElementById('modalTaskStream').textContent = this.getTaskStream(task);
+
+                // Store current task for saving
+                this.currentTask = task;
+
+                // Show modal
+                document.getElementById('taskModal').style.display = 'block';
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            }
+
+            closeTaskModal() {
+                document.getElementById('taskModal').style.display = 'none';
+                document.body.style.overflow = 'auto';
+                this.currentTask = null;
+            }
+
+            async saveTaskChanges() {
+                if (!this.currentTask) return;
+
+                const taskId = this.currentTask.id;
+                const newStatus = document.getElementById('modalTaskStatus').value;
+                const newTitle = document.getElementById('modalTaskTitleInput').value;
+                const newDescription = document.getElementById('modalTaskDescription').value;
+                const newPriority = document.getElementById('modalTaskPriority').value;
+                const assignee = document.getElementById('modalTaskAssignee').value;
+
+                try {
+                    // Update status via API if changed
+                    if (newStatus !== this.currentTask.status) {
+                        const response = await fetch(`/api/tasks/${taskId}/status`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: newStatus })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to update task status');
+                        }
+                    }
+
+                    // For now, we'll handle assignment locally since TaskMaster doesn't have built-in assignee support
+                    if (assignee) {
+                        await this.assignTask(taskId, assignee);
+                    }
+
+                    // Show success message
+                    this.showToast('Task updated successfully!', 'success');
+                    
+                    // Close modal and refresh
+                    this.closeTaskModal();
+                    await this.loadTasks();
+
+                } catch (error) {
+                    console.error('Error updating task:', error);
+                    this.showToast('Failed to update task: ' + error.message, 'error');
+                }
+            }
+
+            async assignTask(taskId, assignee) {
+                try {
+                    const response = await fetch(`/api/tasks/${taskId}/assign`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ assignee })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to assign task');
+                    }
+                } catch (error) {
+                    console.error('Error assigning task:', error);
+                    throw error;
+                }
+            }
+
+            executeTaskMasterCommand() {
+                if (!this.currentTask) return;
+
+                const taskId = this.currentTask.id;
+                const commands = [
+                    `expand --id=${taskId}`,
+                    `update-task --id=${taskId} --prompt="Updated from dashboard"`,
+                    `set-status --id=${taskId} --status=in-progress`,
+                    `add-subtask --id=${taskId}`,
+                    `show ${taskId}`
+                ];
+
+                const selectedCommand = prompt(
+                    'Select TaskMaster command:\n\n' +
+                    commands.map((cmd, i) => `${i + 1}. task-master ${cmd}`).join('\n') +
+                    '\n\nEnter command number (1-' + commands.length + ') or custom command:'
+                );
+
+                if (selectedCommand) {
+                    let command;
+                    const commandNum = parseInt(selectedCommand);
+                    if (commandNum >= 1 && commandNum <= commands.length) {
+                        command = commands[commandNum - 1];
+                    } else {
+                        command = selectedCommand.replace(/^task-master\s+/, ''); // Remove prefix if added
+                    }
+
+                    this.executeCommand(command);
+                }
+            }
+
+            async executeCommand(command) {
+                try {
+                    const response = await fetch('/api/taskmaster/command', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ command })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.showToast('Command executed successfully!', 'success');
+                        console.log('TaskMaster output:', result.output);
+                        
+                        // Refresh tasks after command
+                        await this.loadTasks();
+                    } else {
+                        throw new Error(result.message || 'Command failed');
+                    }
+                } catch (error) {
+                    console.error('Error executing command:', error);
+                    this.showToast('Command failed: ' + error.message, 'error');
+                }
+            }
+
+            showToast(message, type = 'info') {
+                // Create toast notification
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.textContent = message;
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 15px 20px;
+                    border-radius: 5px;
+                    color: white;
+                    font-weight: 500;
+                    z-index: 1001;
+                    animation: slideInRight 0.3s ease;
+                    background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : '#3498db'};
+                `;
+
+                document.body.appendChild(toast);
+
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    toast.style.animation = 'slideOutRight 0.3s ease';
+                    setTimeout(() => document.body.removeChild(toast), 300);
+                }, 3000);
+            }
+
             setupEventListeners() {
                 // Global error handler
                 window.addEventListener('error', (e) => {
                     console.error('Dashboard error:', e.error);
+                });
+
+                // Close modal on background click
+                window.addEventListener('click', (e) => {
+                    const modal = document.getElementById('taskModal');
+                    if (e.target === modal) {
+                        this.closeTaskModal();
+                    }
+                });
+
+                // Close modal on Escape key
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        this.closeTaskModal();
+                    }
                 });
             }
         }

@@ -45,7 +45,7 @@ if [ "$NODE_VERSION" -lt 18 ]; then
 fi
 
 # Check if TaskMaster is initialized in the project
-if [ ! -d "../../.taskmaster" ]; then
+if [ ! -d "../../../.taskmaster" ]; then
     echo "⚠️  Warning: TaskMaster not initialized in project root"
     echo "Run 'task-master init' in the project root to set up TaskMaster"
     echo "Continuing anyway - you can initialize TaskMaster later"
@@ -61,7 +61,7 @@ else
 fi
 
 # Check if tasks.json exists
-TASKS_FILE="../../.taskmaster/tasks/tasks.json"
+TASKS_FILE="../../../.taskmaster/tasks/tasks.json"
 if [ -f "$TASKS_FILE" ]; then
     TASK_COUNT=$(jq '.tasks | length' "$TASKS_FILE" 2>/dev/null || echo "unknown")
     echo "📋 Found TaskMaster tasks file with $TASK_COUNT tasks"
@@ -80,8 +80,8 @@ echo "Press Ctrl+C to stop the dashboard"
 echo ""
 
 # Export environment variables for better integration
-export TASKMASTER_PROJECT_ROOT="$(pwd)/../.."
+export TASKMASTER_PROJECT_ROOT="$(cd ../../.. && pwd)"
 export NODE_ENV="development"
 
 # Start the server
-npm start
+TASKMASTER_PROJECT_ROOT="$TASKMASTER_PROJECT_ROOT" NODE_ENV="$NODE_ENV" npm start

@@ -8,6 +8,7 @@
 
 const express = require('express');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const cors = require('cors');
 const chokidar = require('chokidar');
@@ -25,8 +26,10 @@ app.use(express.static(__dirname)); // Serve dashboard files
 // Configuration
 const CONFIG = {
     port: 3333,
-    tasksFile: path.join(process.cwd(), '.taskmaster/tasks/tasks.json'),
-    projectRoot: process.cwd()
+    projectRoot: process.env.TASKMASTER_PROJECT_ROOT || process.cwd(),
+    get tasksFile() {
+        return path.join(this.projectRoot, '.taskmaster/tasks/tasks.json');
+    }
 };
 
 let tasksData = { tasks: [] };
@@ -53,12 +56,14 @@ async function loadTasks() {
 app.get('/api/tasks', async (req, res) => {
     try {
         await loadTasks();
+        // Handle the nested task structure from TaskMaster
+        const tasks = tasksData.master?.tasks || tasksData.tasks || [];
         res.json({
-            ...tasksData,
+            tasks,
             meta: {
                 lastModified,
                 projectRoot: CONFIG.projectRoot,
-                totalTasks: tasksData.tasks?.length || 0
+                totalTasks: tasks.length
             }
         });
     } catch (error) {
@@ -72,7 +77,8 @@ app.get('/api/tasks', async (req, res) => {
 // Get specific task
 app.get('/api/tasks/:id', async (req, res) => {
     await loadTasks();
-    const task = tasksData.tasks?.find(t => t.id == req.params.id);
+    const tasks = tasksData.master?.tasks || tasksData.tasks || [];
+    const task = tasks.find(t => t.id == req.params.id);
     
     if (task) {
         res.json(task);
@@ -183,7 +189,7 @@ app.get('/', (req, res) => {
 
 // File watching
 function setupFileWatcher() {
-    if (!fs.existsSync(CONFIG.tasksFile)) {
+    if (!fsSync.existsSync(CONFIG.tasksFile)) {
         console.log('⚠️  TaskMaster tasks.json not found. Waiting for file...');
         return;
     }
