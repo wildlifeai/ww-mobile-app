@@ -1,6 +1,6 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query"
 import { RootState } from ".."
-import Config from "react-native-config"
+import Config from "../../utils/environment"
 
 export const extendedBaseQuery = fetchBaseQuery({
 	baseUrl: Config.API_BASE,

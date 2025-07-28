@@ -10,7 +10,7 @@ import { useAppDispatch } from "../../redux"
 import { setCredentials } from "../../redux/slices/authSlice"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { WWText } from "../../components/ui/WWText"
-import Config from "react-native-config"
+import Config from "../../utils/environment"
 
 type FormData = {
 	identifier: string
