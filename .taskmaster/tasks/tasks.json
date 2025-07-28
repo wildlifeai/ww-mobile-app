@@ -80,14 +80,71 @@
         "id": 2,
         "title": "Core Expo SDK 51 Integration",
         "description": "Install Expo SDK 51, create app configuration with proper bundle identifier strategy, initialize EAS project, and setup dependency validation",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           1
         ],
         "priority": "high",
         "details": "1. Install Expo SDK 51: npm install expo@~51.0.0\n2. Create app.config.js with dynamic bundle identifier logic (.expo suffix for dev) following BUNDLE-IDENTIFIER-STRATEGY.md\n3. Initialize EAS project: eas init\n4. Configure eas.json for development builds\n5. Setup expo-constants for environment variables\n6. Copy dependency validation system from MIGRATION-GUIDE.md\n7. Update app.json to app.config.js format\n8. Configure development client settings\n\nIMPORTANT: Follow MIGRATION-GUIDE.md Section 2 and BUNDLE-IDENTIFIER-STRATEGY.md for bundle ID configuration.\n\nReference Documents:\n- MIGRATION-GUIDE.md Section 2\n- BUNDLE-IDENTIFIER-STRATEGY.md",
         "testStrategy": "Run 'expo doctor' to validate setup, verify app.config.js exports correct bundle identifiers, confirm EAS project linked with 'eas project:info', test dependency validation script execution. Ensure bundle identifiers follow the strategy outlined in BUNDLE-IDENTIFIER-STRATEGY.md",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Install Expo SDK 51 and Core Dependencies",
+            "description": "Install Expo SDK 51 and required core Expo packages following the official migration guide",
+            "dependencies": [],
+            "details": "Execute npm install expo@~51.0.0 to install the exact Expo SDK version. Verify installation by checking package.json and running expo --version. Ensure all peer dependencies are resolved and no version conflicts exist. This forms the foundation for the entire Expo migration.\n<info added on 2025-07-28T08:19:27.784Z>\nCOMPLETED: Expo SDK 51 installation successful\n\nInstallation Results:\n- Installed expo@51.0.39 successfully \n- CLI version: 0.18.31\n- Package.json updated with \"expo\": \"~51.0.0\"\n- No duplicate installations detected\n\nConfiguration Issues Identified by expo-doctor:\n4 issues detected that need resolution in subsequent subtasks:\n\n1. app.json schema error: Contains invalid 'displayName' property\n2. Metro config: Not extending @expo/metro-config\n3. Config plugins: @expo/config-plugins@7.9.2 needs upgrade to ~8.0.0\n4. Package versions: Multiple packages need version alignment for SDK 51\n\nThese issues are expected during migration and will be addressed in the remaining subtasks. The core Expo SDK 51 installation is complete and functional.\n</info added on 2025-07-28T08:19:27.784Z>",
+            "status": "done",
+            "testStrategy": "Run 'expo --version' to confirm SDK 51 installation, check package.json for correct version entry, run 'npm list expo' to verify no duplicate installations, execute 'expo doctor' to check for any initial configuration issues"
+          },
+          {
+            "id": 2,
+            "title": "Create Dynamic app.config.js with Bundle Identifier Strategy",
+            "description": "Convert app.json to app.config.js with dynamic bundle identifier logic supporting development and production environments",
+            "dependencies": [
+              "2.1"
+            ],
+            "details": "Create app.config.js that exports a function returning configuration object. Implement dynamic bundle identifier logic: use 'com.wildlife.wildlifewatcher.expo' for development builds and 'com.wildlife.wildlifewatcher' for production. Include all existing app.json configurations migrated to the new format. Reference BUNDLE-IDENTIFIER-STRATEGY.md for the exact implementation pattern.",
+            "status": "pending",
+            "testStrategy": "Test bundle identifier logic by setting different environment variables, verify exported configuration matches expected format, validate that development builds use .expo suffix while production builds use original identifier"
+          },
+          {
+            "id": 3,
+            "title": "Initialize EAS and Configure Build Profiles",
+            "description": "Set up Expo Application Services (EAS) for the project and configure build profiles for development and production",
+            "dependencies": [
+              "2.2"
+            ],
+            "details": "Run 'eas init' to initialize EAS project connection. Create eas.json with development, preview, and production build profiles. Configure development profile to use the development bundle identifier with .expo suffix. Set up proper credentials handling and environment variable injection for each profile.",
+            "status": "pending",
+            "testStrategy": "Execute 'eas project:info' to verify project linkage, validate eas.json structure against EAS documentation, run 'eas build:configure' to ensure all platforms are properly set up, test that each profile references correct bundle identifiers"
+          },
+          {
+            "id": 4,
+            "title": "Setup Expo Constants and Environment Variables",
+            "description": "Configure expo-constants for environment variable management and migrate from react-native-config",
+            "dependencies": [
+              "2.1"
+            ],
+            "details": "Install expo-constants@~15.4.0 package. Update app.config.js to include extra fields for environment variables. Create environment variable loading logic that reads from process.env during build time. Ensure all existing environment variables from react-native-config are properly migrated to the new system.",
+            "status": "pending",
+            "testStrategy": "Verify expo-constants installation, test environment variable access in development and production builds, ensure all previously used config values are accessible through Constants.expoConfig.extra, validate TypeScript types for environment variables"
+          },
+          {
+            "id": 5,
+            "title": "Implement Dependency Validation System",
+            "description": "Set up automated dependency validation system to ensure compatibility with Expo SDK 51 managed workflow",
+            "dependencies": [
+              "2.1",
+              "2.2",
+              "2.3",
+              "2.4"
+            ],
+            "details": "Copy dependency validation script from MIGRATION-GUIDE.md into project scripts. Add 'validate:deps' script to package.json. Configure validation rules for Expo SDK 51 compatibility, checking for incompatible native modules, version mismatches, and managed workflow violations. Set up pre-commit hook to run validation automatically.",
+            "status": "pending",
+            "testStrategy": "Run 'npm run validate:deps' to ensure no errors, intentionally add an incompatible package to verify detection works, test that validation catches native module dependencies, verify script execution time is under 5 seconds for developer experience"
+          }
+        ]
       },
       {
         "id": 3,
@@ -333,7 +390,7 @@
     ],
     "metadata": {
       "created": "2025-07-27T12:38:05.813Z",
-      "updated": "2025-07-28T07:56:54.379Z",
+      "updated": "2025-07-28T08:19:36.223Z",
       "description": "Tasks for master context"
     }
   }
