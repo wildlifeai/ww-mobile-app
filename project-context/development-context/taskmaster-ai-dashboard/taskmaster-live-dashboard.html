@@ -416,6 +416,7 @@
             <div class="modal-actions">
                 <button onclick="dashboard.saveTaskChanges()" class="btn-primary">Save Changes</button>
                 <button onclick="dashboard.executeTaskMasterCommand()" class="btn-secondary">TaskMaster Commands</button>
+                <button onclick="dashboard.showPeopleManager()" class="btn-secondary">Manage People</button>
                 <button onclick="dashboard.closeTaskModal()" class="btn-cancel">Cancel</button>
             </div>
         </div>
@@ -437,6 +438,7 @@
 
             async init() {
                 this.updateConnectionStatus('Connecting...', false);
+                this.initializePeopleManagement();
                 await this.loadTasks();
                 this.setupFileWatcher();
                 this.setupEventListeners();
@@ -709,22 +711,25 @@
                         // Calculate time slot based on task ID and dependencies
                         const timeSlot = this.calculateTimeSlot(task);
                         const duration = this.calculateDuration(task);
+                        const hasSubtasks = task.subtasks && task.subtasks.length > 0;
                         
                         ganttHTML += `
-                            <div class="task-row" onclick="dashboard.openTaskModal(${task.id})" style="cursor: pointer;">
-                                <div class="task-info">
-                                    <div class="task-title">${task.title}</div>
-                                    <div class="task-meta">
-                                        <span class="task-id">ID: ${task.id}</span>
-                                        <span class="task-status status-${task.status}">${task.status}</span>
-                                        ${task.dependencies && task.dependencies.length > 0 ? 
-                                            `<span class="task-deps">Depends: ${task.dependencies.join(', ')}</span>` : ''}
+                            <div class="task-container">
+                                <div class="task-row" onclick="dashboard.openTaskModal('${task.id}')" style="cursor: pointer; position: relative;">
+                                    ${hasSubtasks ? `<button class="expand-btn" onclick="event.stopPropagation(); dashboard.toggleSubtasks(${task.id})" id="expand-${task.id}">+</button>` : ''}
+                                    <div class="task-info">
+                                        <div class="task-title">${task.title}</div>
+                                        <div class="task-meta">
+                                            <span class="task-id">ID: ${task.id}</span>
+                                            <span class="task-status status-${task.status}">${task.status}</span>
+                                            ${task.dependencies && task.dependencies.length > 0 ? 
+                                                `<span class="task-deps">Depends: ${task.dependencies.join(', ')}</span>` : ''}
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="task-timeline">
+                                    <div class="task-timeline">
                         `;
 
-                        // Create timeline slots
+                        // Create timeline slots for main task
                         for (let i = 1; i <= 21; i++) {
                             const isActive = i >= timeSlot && i < timeSlot + duration;
                             
@@ -740,9 +745,67 @@
                         }
 
                         ganttHTML += `
+                                    </div>
+                                    <div class="task-commands">
+                                        <button class="cmd-btn expand" onclick="event.stopPropagation(); dashboard.executeTaskCommand('${task.id}', 'expand')" title="Expand Task">E</button>
+                                        <button class="cmd-btn status" onclick="event.stopPropagation(); dashboard.executeTaskCommand('${task.id}', 'status')" title="Set Status">S</button>
+                                        <button class="cmd-btn update" onclick="event.stopPropagation(); dashboard.executeTaskCommand('${task.id}', 'update')" title="Update Task">U</button>
+                                    </div>
                                 </div>
-                            </div>
                         `;
+
+                        // Add subtasks if they exist
+                        if (hasSubtasks) {
+                            ganttHTML += `<div class="subtasks-container" id="subtasks-${task.id}">`;
+                            
+                            task.subtasks.forEach((subtask, subIndex) => {
+                                const subtaskId = `${task.id}.${subtask.id}`;
+                                const subTimeSlot = timeSlot + (subIndex * 0.5); // Stagger subtasks
+                                const subDuration = Math.max(1, Math.floor(duration / task.subtasks.length));
+                                
+                                ganttHTML += `
+                                    <div class="subtask-row" onclick="dashboard.openTaskModal('${subtaskId}')" style="cursor: pointer; position: relative;">
+                                        <div class="task-info">
+                                            <div class="task-title">${subtask.title}</div>
+                                            <div class="task-meta">
+                                                <span class="task-id">ID: ${subtaskId}</span>
+                                                <span class="task-status status-${subtask.status}">${subtask.status}</span>
+                                                ${subtask.dependencies && subtask.dependencies.length > 0 ? 
+                                                    `<span class="task-deps">Depends: ${subtask.dependencies.map(dep => task.id + '.' + dep).join(', ')}</span>` : ''}
+                                            </div>
+                                        </div>
+                                        <div class="task-timeline">
+                                `;
+
+                                // Create timeline slots for subtask
+                                for (let i = 1; i <= 21; i++) {
+                                    const isActive = i >= subTimeSlot && i < subTimeSlot + subDuration;
+                                    
+                                    if (isActive) {
+                                        ganttHTML += `
+                                            <div class="task-bar priority-${task.priority} status-${subtask.status}" 
+                                                 title="${subtask.title}" style="height: 15px;">
+                                            </div>
+                                        `;
+                                    } else {
+                                        ganttHTML += `<div></div>`;
+                                    }
+                                }
+
+                                ganttHTML += `
+                                        </div>
+                                        <div class="task-commands">
+                                            <button class="cmd-btn status" onclick="event.stopPropagation(); dashboard.executeSubtaskCommand('${subtaskId}', 'status')" title="Set Status">S</button>
+                                            <button class="cmd-btn update" onclick="event.stopPropagation(); dashboard.executeSubtaskCommand('${subtaskId}', 'update')" title="Update Subtask">U</button>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            
+                            ganttHTML += `</div>`;
+                        }
+                        
+                        ganttHTML += `</div>`; // Close task-container
                     });
 
                     ganttHTML += `</div>`;
@@ -807,13 +870,106 @@
                         .phase-header.high-priority { background: #e74c3c; }
                         .phase-header.medium-priority { background: #f39c12; }
                         .phase-header.low-priority { background: #95a5a6; }
+                        .task-container {
+                            margin-bottom: 5px;
+                        }
                         .task-row {
                             display: grid;
                             grid-template-columns: 350px 1fr;
                             align-items: center;
                             padding: 8px 0;
                             border-bottom: 1px solid #ecf0f1;
+                            position: relative;
                         }
+                        
+                        /* Subtask styling */
+                        .subtask-row {
+                            display: grid;
+                            grid-template-columns: 350px 1fr;
+                            align-items: center;
+                            padding: 6px 0 6px 20px;
+                            border-bottom: 1px solid #f8f9fa;
+                            background: #f8f9fa;
+                            position: relative;
+                        }
+                        
+                        .subtask-row .task-title {
+                            font-size: 13px;
+                            color: #495057;
+                        }
+                        
+                        .subtask-row .task-meta {
+                            font-size: 10px;
+                        }
+
+                        /* Expand/collapse button */
+                        .expand-btn {
+                            position: absolute;
+                            left: -15px;
+                            top: 50%;
+                            transform: translateY(-50%);
+                            width: 20px;
+                            height: 20px;
+                            border: none;
+                            background: #28a745;
+                            color: white;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 12px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            z-index: 10;
+                        }
+
+                        .expand-btn:hover {
+                            background: #218838;
+                        }
+
+                        /* Subtasks container */
+                        .subtasks-container {
+                            display: none;
+                        }
+
+                        .subtasks-container.expanded {
+                            display: block;
+                        }
+
+                        /* Task command buttons */
+                        .task-commands {
+                            position: absolute;
+                            right: 8px;
+                            top: 50%;
+                            transform: translateY(-50%);
+                            display: flex;
+                            gap: 2px;
+                            opacity: 0.7;
+                            transition: opacity 0.2s;
+                        }
+
+                        .task-row:hover .task-commands,
+                        .subtask-row:hover .task-commands {
+                            opacity: 1;
+                        }
+
+                        .cmd-btn {
+                            padding: 3px 6px;
+                            border: none;
+                            border-radius: 3px;
+                            background: #007bff;
+                            color: white;
+                            font-size: 10px;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        }
+
+                        .cmd-btn:hover {
+                            transform: translateY(-1px);
+                        }
+
+                        .cmd-btn.expand { background: #28a745; }
+                        .cmd-btn.status { background: #17a2b8; }
+                        .cmd-btn.update { background: #ffc107; color: #000; }
                         .task-info {
                             padding-right: 15px;
                         }
@@ -911,17 +1067,53 @@
                                     ${['pending', 'in-progress', 'done', 'deferred', 'cancelled'].map(status => `
                                         <div class="kanban-column">
                                             <div class="column-tasks">
-                                                ${(statusGroups[status] || []).map(task => `
-                                                    <div class="kanban-task priority-${task.priority}" data-task-id="${task.id}" onclick="dashboard.openTaskModal(${task.id})" style="cursor: pointer;">
-                                                        <div class="task-title">${task.title}</div>
-                                                        <div class="task-meta">
-                                                            <span class="task-id">ID: ${task.id}</span>
-                                                            <span class="task-stream">${this.getTaskStream(task)}</span>
+                                                ${(statusGroups[status] || []).map(task => {
+                                                    const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+                                                    let kanbanHTML = `
+                                                        <div class="kanban-task priority-${task.priority}" data-task-id="${task.id}" onclick="dashboard.openTaskModal('${task.id}')" style="cursor: pointer; position: relative;">
+                                                            ${hasSubtasks ? `<button class="kanban-expand-btn" onclick="event.stopPropagation(); dashboard.toggleKanbanSubtasks(${task.id})" id="kanban-expand-${task.id}">+</button>` : ''}
+                                                            <div class="task-title">${task.title}</div>
+                                                            <div class="task-meta">
+                                                                <span class="task-id">ID: ${task.id}</span>
+                                                                <span class="task-stream">${this.getTaskStream(task)}</span>
+                                                            </div>
+                                                            ${task.dependencies && task.dependencies.length > 0 ? 
+                                                                `<div class="task-deps">Depends: ${task.dependencies.join(', ')}</div>` : ''}
+                                                            <div class="kanban-task-commands">
+                                                                <button class="cmd-btn expand" onclick="event.stopPropagation(); dashboard.executeTaskCommand('${task.id}', 'expand')" title="Expand Task">E</button>
+                                                                <button class="cmd-btn status" onclick="event.stopPropagation(); dashboard.executeTaskCommand('${task.id}', 'status')" title="Set Status">S</button>
+                                                                <button class="cmd-btn update" onclick="event.stopPropagation(); dashboard.executeTaskCommand('${task.id}', 'update')" title="Update Task">U</button>
+                                                            </div>
                                                         </div>
-                                                        ${task.dependencies && task.dependencies.length > 0 ? 
-                                                            `<div class="task-deps">Depends: ${task.dependencies.join(', ')}</div>` : ''}
-                                                    </div>
-                                                `).join('')}
+                                                    `;
+
+                                                    // Add subtasks for Kanban view
+                                                    if (hasSubtasks) {
+                                                        kanbanHTML += `<div class="kanban-subtasks-container" id="kanban-subtasks-${task.id}">`;
+                                                        
+                                                        task.subtasks.forEach(subtask => {
+                                                            if (subtask.status === status) { // Only show subtasks in matching status column
+                                                                const subtaskId = `${task.id}.${subtask.id}`;
+                                                                kanbanHTML += `
+                                                                    <div class="kanban-subtask priority-${task.priority}" onclick="dashboard.openTaskModal('${subtaskId}')" style="cursor: pointer; position: relative;">
+                                                                        <div class="task-title">${subtask.title}</div>
+                                                                        <div class="task-meta">
+                                                                            <span class="task-id">ID: ${subtaskId}</span>
+                                                                        </div>
+                                                                        <div class="kanban-task-commands">
+                                                                            <button class="cmd-btn status" onclick="event.stopPropagation(); dashboard.executeSubtaskCommand('${subtaskId}', 'status')" title="Set Status">S</button>
+                                                                            <button class="cmd-btn update" onclick="event.stopPropagation(); dashboard.executeSubtaskCommand('${subtaskId}', 'update')" title="Update Subtask">U</button>
+                                                                        </div>
+                                                                    </div>
+                                                                `;
+                                                            }
+                                                        });
+                                                        
+                                                        kanbanHTML += `</div>`;
+                                                    }
+
+                                                    return kanbanHTML;
+                                                }).join('')}
                                             </div>
                                         </div>
                                     `).join('')}
@@ -1058,6 +1250,70 @@
                             color: #7f8c8d; 
                             font-style: italic;
                         }
+
+                        /* Kanban subtask styles */
+                        .kanban-subtask {
+                            background: #f8f9fa;
+                            margin: 6px 0;
+                            padding: 10px;
+                            border-radius: 4px;
+                            border-left: 3px solid #28a745;
+                            font-size: 12px;
+                            position: relative;
+                        }
+                        
+                        .kanban-subtask .task-title {
+                            font-size: 12px;
+                            margin-bottom: 6px;
+                        }
+                        
+                        .kanban-subtasks-container {
+                            display: none;
+                            margin-top: 8px;
+                        }
+                        
+                        .kanban-subtasks-container.expanded {
+                            display: block;
+                        }
+
+                        /* Kanban expand button */
+                        .kanban-expand-btn {
+                            position: absolute;
+                            top: 8px;
+                            right: 8px;
+                            width: 18px;
+                            height: 18px;
+                            border: none;
+                            background: #28a745;
+                            color: white;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 11px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            z-index: 10;
+                        }
+
+                        .kanban-expand-btn:hover {
+                            background: #218838;
+                        }
+
+                        /* Kanban task command buttons */
+                        .kanban-task-commands {
+                            position: absolute;
+                            bottom: 8px;
+                            right: 8px;
+                            display: flex;
+                            gap: 2px;
+                            opacity: 0.7;
+                            transition: opacity 0.2s;
+                        }
+
+                        .kanban-task:hover .kanban-task-commands,
+                        .kanban-subtask:hover .kanban-task-commands {
+                            opacity: 1;
+                        }
                     </style>
                 `;
             }
@@ -1143,15 +1399,33 @@
             }
 
             openTaskModal(taskId) {
-                const task = this.taskData.tasks.find(t => t.id == taskId);
+                let task, isSubtask = false;
+                
+                // Check if it's a subtask (contains dot)
+                if (typeof taskId === 'string' && taskId.includes('.')) {
+                    const [parentId, subtaskId] = taskId.split('.');
+                    const parentTask = this.taskData.tasks.find(t => t.id == parentId);
+                    if (parentTask && parentTask.subtasks) {
+                        task = parentTask.subtasks.find(st => st.id == subtaskId);
+                        if (task) {
+                            task.parentId = parentId;
+                            isSubtask = true;
+                        }
+                    }
+                } else {
+                    task = this.taskData.tasks.find(t => t.id == taskId);
+                }
+                
                 if (!task) {
                     console.error('Task not found:', taskId);
                     return;
                 }
 
                 // Populate modal with task data
-                document.getElementById('modalTaskTitle').textContent = `Task ${task.id}: ${task.title}`;
-                document.getElementById('modalTaskId').textContent = task.id;
+                const displayId = isSubtask ? `${task.parentId}.${task.id}` : task.id;
+                const taskType = isSubtask ? 'Subtask' : 'Task';
+                document.getElementById('modalTaskTitle').textContent = `${taskType} ${displayId}: ${task.title}`;
+                document.getElementById('modalTaskId').textContent = displayId;
                 document.getElementById('modalTaskTitleInput').value = task.title;
                 document.getElementById('modalTaskDescription').value = task.description || '';
                 document.getElementById('modalTaskStatus').value = task.status || 'pending';
@@ -1316,6 +1590,226 @@
                     toast.style.animation = 'slideOutRight 0.3s ease';
                     setTimeout(() => document.body.removeChild(toast), 300);
                 }, 3000);
+            }
+
+            // New methods for enhanced functionality
+            toggleSubtasks(taskId) {
+                const subtasksContainer = document.getElementById(`subtasks-${taskId}`);
+                const expandBtn = document.getElementById(`expand-${taskId}`);
+                
+                if (subtasksContainer) {
+                    const isExpanded = subtasksContainer.classList.contains('expanded');
+                    if (isExpanded) {
+                        subtasksContainer.classList.remove('expanded');
+                        expandBtn.textContent = '+';
+                    } else {
+                        subtasksContainer.classList.add('expanded');
+                        expandBtn.textContent = '-';
+                    }
+                }
+            }
+
+            toggleKanbanSubtasks(taskId) {
+                const subtasksContainer = document.getElementById(`kanban-subtasks-${taskId}`);
+                const expandBtn = document.getElementById(`kanban-expand-${taskId}`);
+                
+                if (subtasksContainer) {
+                    const isExpanded = subtasksContainer.classList.contains('expanded');
+                    if (isExpanded) {
+                        subtasksContainer.classList.remove('expanded');
+                        expandBtn.textContent = '+';
+                    } else {
+                        subtasksContainer.classList.add('expanded');
+                        expandBtn.textContent = '-';
+                    }
+                }
+            }
+
+            executeTaskCommand(taskId, commandType) {
+                const commands = {
+                    'expand': `expand --id=${taskId}`,
+                    'status': `set-status --id=${taskId} --status=`,
+                    'update': `update-task --id=${taskId} --prompt=""`
+                };
+
+                if (commandType === 'status') {
+                    const newStatus = prompt('Enter new status (pending, in-progress, done, deferred, cancelled):');
+                    if (newStatus) {
+                        this.executeCommand(`set-status --id=${taskId} --status=${newStatus}`);
+                    }
+                } else if (commandType === 'update') {
+                    const updatePrompt = prompt('Enter update description:');
+                    if (updatePrompt) {
+                        this.executeCommand(`update-task --id=${taskId} --prompt="${updatePrompt}"`);
+                    }
+                } else {
+                    this.executeCommand(commands[commandType]);
+                }
+            }
+
+            executeSubtaskCommand(subtaskId, commandType) {
+                if (commandType === 'status') {
+                    const newStatus = prompt('Enter new status (pending, in-progress, done, deferred, cancelled):');
+                    if (newStatus) {
+                        this.executeCommand(`set-status --id=${subtaskId} --status=${newStatus}`);
+                    }
+                } else if (commandType === 'update') {
+                    const updatePrompt = prompt('Enter update description:');
+                    if (updatePrompt) {
+                        this.executeCommand(`update-subtask --id=${subtaskId} --prompt="${updatePrompt}"`);
+                    }
+                }
+            }
+
+            // People/Roles Management System
+            initializePeopleManagement() {
+                this.people = JSON.parse(localStorage.getItem('taskmaster-people') || '[]');
+                this.updateAssigneeDropdowns();
+            }
+
+            showPeopleManager() {
+                const peopleManagerHTML = `
+                    <div id="peopleModal" class="modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2>People & Roles Management</h2>
+                                <span class="modal-close" onclick="dashboard.closePeopleManager()">&times;</span>
+                            </div>
+                            <div class="modal-body">
+                                <div class="people-section">
+                                    <h3>Add New Person</h3>
+                                    <div class="modal-section">
+                                        <label><strong>Name:</strong></label>
+                                        <input type="text" id="newPersonName" class="modal-input" placeholder="Enter person's name">
+                                    </div>
+                                    <div class="modal-section">
+                                        <label><strong>Role:</strong></label>
+                                        <input type="text" id="newPersonRole" class="modal-input" placeholder="e.g., Developer, Designer, PM">
+                                    </div>
+                                    <div class="modal-section">
+                                        <label><strong>Email:</strong></label>
+                                        <input type="email" id="newPersonEmail" class="modal-input" placeholder="email@example.com">
+                                    </div>
+                                    <button class="btn-primary" onclick="dashboard.addPerson()">Add Person</button>
+                                </div>
+                                
+                                <div class="people-list">
+                                    <h3>Current People</h3>
+                                    <div id="peopleList">${this.renderPeopleList()}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.body.insertAdjacentHTML('beforeend', peopleManagerHTML);
+                document.getElementById('peopleModal').style.display = 'block';
+            }
+
+            renderPeopleList() {
+                if (this.people.length === 0) {
+                    return '<p>No people added yet.</p>';
+                }
+
+                return this.people.map((person, index) => `
+                    <div class="person-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid #eee; margin: 5px 0; border-radius: 5px;">
+                        <div>
+                            <strong>${person.name}</strong> - ${person.role}
+                            ${person.email ? `<br><small>${person.email}</small>` : ''}
+                        </div>
+                        <div>
+                            <button class="btn-secondary" onclick="dashboard.editPerson(${index})" style="margin-right: 5px;">Edit</button>
+                            <button class="btn-cancel" onclick="dashboard.removePerson(${index})">Remove</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            addPerson() {
+                const name = document.getElementById('newPersonName').value.trim();
+                const role = document.getElementById('newPersonRole').value.trim();
+                const email = document.getElementById('newPersonEmail').value.trim();
+
+                if (!name || !role) {
+                    this.showToast('Name and role are required', 'error');
+                    return;
+                }
+
+                const person = { name, role, email, id: Date.now() };
+                this.people.push(person);
+                this.savePeople();
+                this.updatePeopleList();
+                this.updateAssigneeDropdowns();
+
+                // Clear form
+                document.getElementById('newPersonName').value = '';
+                document.getElementById('newPersonRole').value = '';
+                document.getElementById('newPersonEmail').value = '';
+
+                this.showToast('Person added successfully', 'success');
+            }
+
+            editPerson(index) {
+                const person = this.people[index];
+                const newName = prompt('Name:', person.name);
+                const newRole = prompt('Role:', person.role);
+                const newEmail = prompt('Email:', person.email || '');
+
+                if (newName && newRole) {
+                    this.people[index] = { ...person, name: newName, role: newRole, email: newEmail };
+                    this.savePeople();
+                    this.updatePeopleList();
+                    this.updateAssigneeDropdowns();
+                    this.showToast('Person updated successfully', 'success');
+                }
+            }
+
+            removePerson(index) {
+                if (confirm('Are you sure you want to remove this person?')) {
+                    this.people.splice(index, 1);
+                    this.savePeople();
+                    this.updatePeopleList();
+                    this.updateAssigneeDropdowns();
+                    this.showToast('Person removed successfully', 'success');
+                }
+            }
+
+            updatePeopleList() {
+                const peopleListElement = document.getElementById('peopleList');
+                if (peopleListElement) {
+                    peopleListElement.innerHTML = this.renderPeopleList();
+                }
+            }
+
+            savePeople() {
+                localStorage.setItem('taskmaster-people', JSON.stringify(this.people));
+            }
+
+            updateAssigneeDropdowns() {
+                const assigneeSelects = document.querySelectorAll('#modalTaskAssignee');
+                assigneeSelects.forEach(select => {
+                    // Keep the current value
+                    const currentValue = select.value;
+                    
+                    // Clear and repopulate
+                    select.innerHTML = '<option value="">Unassigned</option>';
+                    this.people.forEach(person => {
+                        const option = document.createElement('option');
+                        option.value = person.name;
+                        option.textContent = `${person.name} (${person.role})`;
+                        select.appendChild(option);
+                    });
+                    
+                    // Restore the current value if it still exists
+                    select.value = currentValue;
+                });
+            }
+
+            closePeopleManager() {
+                const modal = document.getElementById('peopleModal');
+                if (modal) {
+                    modal.remove();
+                }
             }
 
             setupEventListeners() {
