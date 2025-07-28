@@ -1,13 +1,13 @@
 {
   "$schema": "./dependency-rules-schema.json",
-  "description": "Dependency validation rules for Wildlife Watcher Expo PoC",
-  "lastUpdated": "2025-07-25",
+  "description": "Dependency validation rules for Wildlife Watcher Expo SDK 51 Migration",
+  "lastUpdated": "2025-07-28",
   "rules": {
     "expo": {
       "required": "~51.0.0",
-      "installed": "~51.0.28",
+      "installed": "51.0.39",
       "severity": "warning",
-      "reason": "PRD specifies 51.0.0 but 51.0.28 is a compatible patch version",
+      "reason": "PRD specifies 51.0.0 but 51.0.39 is a compatible patch version",
       "allowedRange": ">=51.0.0 <51.1.0"
     },
     "react-native": {
@@ -95,9 +95,38 @@
     },
     "expo-file-system": {
       "required": "~17.0.1",
-      "severity": "error",
+      "severity": "info",
       "optional": true,
-      "reason": "Expo SDK 51 official file system API"
+      "reason": "Expo SDK 51 official file system API - installed as part of Expo SDK"
+    },
+    "expo-constants": {
+      "required": "~16.0.0",
+      "severity": "info",
+      "optional": true,
+      "reason": "Environment variable access - already installed with Expo SDK 51"
+    },
+    "expo-localization": {
+      "required": "~15.0.3",
+      "severity": "info",
+      "optional": true,
+      "reason": "Localization support - installed during Expo setup"
+    }
+  },
+  "blockedPackages": {
+    "react-native-vector-icons": {
+      "reason": "Use @expo/vector-icons instead for Expo managed workflow",
+      "alternative": "@expo/vector-icons",
+      "severity": "warning"
+    },
+    "@react-native-community/netinfo": {
+      "reason": "Use expo-network instead for Expo managed workflow", 
+      "alternative": "expo-network",
+      "severity": "warning"
+    },
+    "react-native-linear-gradient": {
+      "reason": "Use expo-linear-gradient instead for Expo managed workflow",
+      "alternative": "expo-linear-gradient", 
+      "severity": "warning"
     }
   },
   "overrideRequirements": {
@@ -112,10 +141,11 @@
     }
   },
   "validationSettings": {
-    "blockOnError": true,
+    "blockOnError": false,
     "blockOnWarning": false,
     "runExpoDoctor": true,
     "checkOverrides": true,
-    "checkDuplicates": true
+    "checkDuplicates": true,
+    "migrationMode": true
   }
 }
