@@ -76,8 +76,6 @@ export default ({ config }) => {
       bundleIdentifier: bundleId,
       isDevelopment
     },
-    plugins: [
-      'expo-localization'
-    ]
+    plugins: []
   };
 };

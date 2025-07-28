@@ -1,0 +1,46 @@
+{
+  "cli": {
+    "version": ">= 5.2.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "resourceClass": "medium"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "resourceClass": "medium"
+      }
+    },
+    "production": {
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "resourceClass": "medium"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
