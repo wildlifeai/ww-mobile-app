@@ -311,6 +311,59 @@
                 flex-direction: column;
             }
         }
+
+        /* Refresh button styles */
+        .refresh-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .refresh-btn:hover {
+            background: #2980b9;
+        }
+
+        .refresh-btn.changes-detected {
+            background: #e74c3c;
+            animation: pulse 1.5s infinite;
+        }
+
+        .refresh-btn.changes-detected:hover {
+            background: #c0392b;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+            }
+        }
+
+        /* People management button styles */
+        .people-btn {
+            background: #9b59b6;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .people-btn:hover {
+            background: #8e44ad;
+        }
     </style>
 </head>
 <body>
@@ -416,7 +469,6 @@
             <div class="modal-actions">
                 <button onclick="dashboard.saveTaskChanges()" class="btn-primary">Save Changes</button>
                 <button onclick="dashboard.executeTaskMasterCommand()" class="btn-secondary">TaskMaster Commands</button>
-                <button onclick="dashboard.showPeopleManager()" class="btn-secondary">Manage People</button>
                 <button onclick="dashboard.closeTaskModal()" class="btn-cancel">Cancel</button>
             </div>
         </div>
@@ -454,6 +506,11 @@
                         this.filteredTasks = [...this.taskData.tasks];
                         this.isConnected = true;
                         this.retryCount = 0;
+                        
+                        // Update baseline for change detection
+                        if (this.lastKnownData !== undefined) {
+                            this.lastKnownData = JSON.stringify(response);
+                        }
                         
                         this.updateConnectionStatus('Connected', true);
                         this.hideError();
@@ -509,12 +566,71 @@
             }
 
             setupFileWatcher() {
-                // Poll for changes every 5 seconds
-                setInterval(() => {
+                this.hasChanges = false;
+                this.lastKnownData = JSON.stringify(this.taskData);
+                
+                // Monitor for changes every 3 seconds (but don't auto-refresh)
+                setInterval(async () => {
                     if (this.isConnected) {
-                        this.loadTasks();
+                        await this.checkForChanges();
                     }
-                }, 5000);
+                }, 3000);
+            }
+
+            async checkForChanges() {
+                try {
+                    const response = await this.tryLoadTasksFile();
+                    if (response) {
+                        const currentData = JSON.stringify(response);
+                        if (currentData !== this.lastKnownData) {
+                            this.hasChanges = true;
+                            this.updateRefreshButtonState();
+                        }
+                    }
+                } catch (error) {
+                    console.log('Error checking for changes:', error);
+                }
+            }
+
+            updateRefreshButtonState() {
+                const refreshBtn = document.getElementById('refreshBtn');
+                if (refreshBtn) {
+                    if (this.hasChanges) {
+                        refreshBtn.classList.add('changes-detected');
+                        refreshBtn.title = 'Changes detected - Click to refresh';
+                    } else {
+                        refreshBtn.classList.remove('changes-detected');
+                        refreshBtn.title = 'Refresh dashboard';
+                    }
+                }
+            }
+
+            async manualRefresh() {
+                // Save current filter states before refresh
+                const savedFilters = {
+                    phase: document.getElementById('phaseFilter')?.value || '',
+                    status: document.getElementById('statusFilter')?.value || '',
+                    priority: document.getElementById('priorityFilter')?.value || '',
+                    stream: document.getElementById('streamFilter')?.value || '',
+                    search: document.getElementById('searchFilter')?.value || ''
+                };
+
+                this.hasChanges = false;
+                this.updateRefreshButtonState();
+                await this.loadTasks();
+                this.lastKnownData = JSON.stringify(this.taskData);
+                
+                // Restore filter states after refresh
+                if (document.getElementById('phaseFilter')) document.getElementById('phaseFilter').value = savedFilters.phase;
+                if (document.getElementById('statusFilter')) document.getElementById('statusFilter').value = savedFilters.status;
+                if (document.getElementById('priorityFilter')) document.getElementById('priorityFilter').value = savedFilters.priority;
+                if (document.getElementById('streamFilter')) document.getElementById('streamFilter').value = savedFilters.stream;
+                if (document.getElementById('searchFilter')) document.getElementById('searchFilter').value = savedFilters.search;
+                
+                // Reapply filters with the restored values
+                this.applyFilters();
+                
+                this.showToast('Dashboard refreshed!', 'success');
             }
 
             updateConnectionStatus(message, connected) {
@@ -616,7 +732,8 @@
                         </div>
                     </div>
                     <div class="filter-group">
-                        <button onclick="dashboard.loadTasks()">🔄 Refresh</button>
+                        <button id="refreshBtn" onclick="dashboard.manualRefresh()" class="refresh-btn">🔄 Refresh</button>
+                        <button onclick="dashboard.showPeopleManager()" class="people-btn">👥 Manage People</button>
                     </div>
                 `;
 
