@@ -22,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npx react-native start` - Alternative Metro bundler command
 - `bundle install` - Install Ruby gems for iOS dependencies
 - `gem install bundler` - Install Bundler for iOS development
+- `npx expo` - Use npx expo instead of global expo command to avoid Node.js compatibility warnings and ensure Expo SDK 51 compatibility
 
 ### Environment Requirements
 - **Node.js**: Version 18 or higher (as specified in package.json engines)
@@ -179,3 +180,12 @@ From `migration-config-snapshot.json`:
 - **Package Name**: `wildlifewatcher`
 - **URL Schemes**: `com.wildlife.auth`, `com.wildlife.watcher`
 - **Current Version**: React Native 0.74.6 → Migrating to Expo SDK 51
+
+## Backup Configuration
+
+### Migration Backup Files
+- Backup files stored in `@migration-backups/` directory
+- Specific backups for important configuration files:
+  - `@package.json.backup`
+  - `@package-lock.json.backup`
+  - Backups created for Task Master task 1.5
