@@ -1,0 +1,121 @@
+{
+  "$schema": "./dependency-rules-schema.json",
+  "description": "Dependency validation rules for Wildlife Watcher Expo PoC",
+  "lastUpdated": "2025-07-25",
+  "rules": {
+    "expo": {
+      "required": "~51.0.0",
+      "installed": "~51.0.28",
+      "severity": "warning",
+      "reason": "PRD specifies 51.0.0 but 51.0.28 is a compatible patch version",
+      "allowedRange": ">=51.0.0 <51.1.0"
+    },
+    "react-native": {
+      "required": "0.74.6",
+      "severity": "error",
+      "reason": "PRD requirement - must match exactly for override compatibility"
+    },
+    "typescript": {
+      "required": "~5.3.3",
+      "severity": "error",
+      "reason": "Expo SDK 51 compatibility"
+    },
+    "react-native-ble-manager": {
+      "required": "11.3.2",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Native module - will be installed in Phase 2"
+    },
+    "react-native-bluetooth-state-manager": {
+      "required": "1.3.5",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Native module - will be installed in Phase 2"
+    },
+    "react-native-reanimated": {
+      "required": "~3.10.1",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Required by Expo SDK 51 and also supported by React Native 0.74"
+    },
+    "expo-dev-client": {
+      "required": "~4.0.29",
+      "installed": "5.2.4",
+      "severity": "info",
+      "reason": "SDK 51 expects ~4.0.29 but 5.2.4 works - intentional deviation",
+      "sdkExpectation": true
+    },
+    "react-native-maps": {
+      "required": "1.20.1",
+      "severity": "error",
+      "optional": true,
+      "reason": "Matches WW app version exactly for migration validation"
+    },
+    "@reduxjs/toolkit": {
+      "required": "^2.2.1",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Redux state management from WW app architecture"
+    },
+    "react-redux": {
+      "required": "^9.1.0",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Redux bindings from WW app architecture"
+    },
+    "@react-navigation/native": {
+      "required": "^6.1.12",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Navigation foundation from WW app architecture"
+    },
+    "@react-navigation/bottom-tabs": {
+      "required": "latest",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Tab navigation from WW app architecture"
+    },
+    "@react-navigation/drawer": {
+      "required": "latest",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Drawer navigation from WW app architecture"
+    },
+    "@react-navigation/native-stack": {
+      "required": "latest",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Stack navigation from WW app architecture"
+    },
+    "react-native-paper": {
+      "required": "^5.12.3",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Material Design components from WW app"
+    },
+    "expo-file-system": {
+      "required": "~17.0.1",
+      "severity": "error",
+      "optional": true,
+      "reason": "Expo SDK 51 official file system API"
+    }
+  },
+  "overrideRequirements": {
+    "react-native": "0.74.6",
+    "react-native-reanimated": "~3.10.1"
+  },
+  "sdkCompatibility": {
+    "51": {
+      "expo-dev-client": "~4.0.29",
+      "@expo/config-plugins": "~8.0.0",
+      "react-native": "0.74.5"
+    }
+  },
+  "validationSettings": {
+    "blockOnError": true,
+    "blockOnWarning": false,
+    "runExpoDoctor": true,
+    "checkOverrides": true,
+    "checkDuplicates": true
+  }
+}

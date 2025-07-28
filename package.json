@@ -8,7 +8,12 @@
 		"pod-install": "bundle exec pod install --project-directory=./ios/",
 		"lint": "eslint .",
 		"start": "react-native start",
-		"test": "jest"
+		"test": "jest",
+		"validate:deps": "node scripts/validate-deps.js",
+		"deps": "node scripts/deps-cli.js",
+		"deps:add": "node scripts/deps-cli.js add",
+		"deps:scan": "node scripts/deps-cli.js scan",
+		"postinstall": "npm run validate:deps"
 	},
 	"dependencies": {
 		"@react-native-async-storage/async-storage": "^2.0.0",
