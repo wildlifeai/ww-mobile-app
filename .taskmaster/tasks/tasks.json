@@ -80,7 +80,7 @@
         "id": 2,
         "title": "Core Expo SDK 51 Integration",
         "description": "Install Expo SDK 51, create app configuration with proper bundle identifier strategy, initialize EAS project, and setup dependency validation",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           1
         ],
@@ -150,14 +150,70 @@
         "id": 3,
         "title": "Native Module Dependencies Migration",
         "description": "Replace all native modules with Expo equivalents including file system, environment config, splash screen, and install expo-dev-client",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           2
         ],
         "priority": "high",
         "details": "1. Install expo-dev-client@~3.3.0\n2. Replace react-native-fs with expo-file-system@~16.0.0\n3. Replace react-native-config with expo-constants@~15.4.0\n4. Replace react-native-bootsplash with expo-splash-screen@~0.26.0\n5. Update to React Native 0.74.6\n6. Remove old packages: npm uninstall react-native-fs react-native-config react-native-bootsplash\n7. Run 'npm run validate:deps' after each change\n8. Update package-lock.json\n\nIMPORTANT: Follow MIGRATION-GUIDE.md Section 3 for the complete dependency migration process.",
         "testStrategy": "Execute dependency validation after each replacement, ensure no old package imports remain with global search, verify TypeScript compilation succeeds, check for peer dependency warnings. Validate each replacement according to MIGRATION-GUIDE.md Section 3",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Install Expo Development Client",
+            "description": "Install expo-dev-client@~3.3.0 and verify installation",
+            "dependencies": [],
+            "details": "Execute 'npm install expo-dev-client@~3.3.0' to add the Expo development client. This provides the foundation for using Expo modules in a bare React Native project. After installation, verify the package is correctly listed in package.json with the specified version. Run 'npm run validate:deps' to ensure no conflicts or peer dependency issues exist.\n<info added on 2025-07-28T11:37:57.109Z>\nCOMPLETED: Installed expo-dev-client@~4.0.29 successfully. Package added to dependencies in package.json. Validation script passed with notes. No dependency conflicts detected. Ready to proceed with file system module replacement.\n</info added on 2025-07-28T11:37:57.109Z>",
+            "status": "done",
+            "testStrategy": "Verify expo-dev-client appears in package.json dependencies with version ~3.3.0, check node_modules for successful installation, run npm run validate:deps to confirm no dependency conflicts"
+          },
+          {
+            "id": 2,
+            "title": "Replace File System Module",
+            "description": "Replace react-native-fs with expo-file-system@~16.0.0 and update all file operations",
+            "dependencies": [
+              "3.1"
+            ],
+            "details": "Install expo-file-system@~16.0.0 using 'npm install expo-file-system@~16.0.0'. Then uninstall react-native-fs with 'npm uninstall react-native-fs'. Update all imports from 'react-native-fs' to 'expo-file-system' throughout the codebase. Reference FILE-SYSTEM-MIGRATION-EXAMPLES.md for API conversion patterns. Common replacements include: RNFS.readFile() to FileSystem.readAsStringAsync(), RNFS.writeFile() to FileSystem.writeAsStringAsync(), RNFS.exists() to FileSystem.getInfoAsync(). Update any file path constants to use FileSystem.documentDirectory or FileSystem.cacheDirectory.\n<info added on 2025-07-28T11:52:05.787Z>\nCOMPLETED: Successfully replaced react-native-fs with expo-file-system. Migrated DfuScreen.tsx file system operations: RNFS.CachesDirectoryPath to FileSystem.cacheDirectory, RNFS.copyFile to FileSystem.copyAsync, RNFS.unlink to FileSystem.deleteAsync with idempotent option. Package uninstalled successfully. No remaining react-native-fs imports found in source code. NOTE: Unit tests for DfuScreen file system operations should be added as follow-up task.\n</info added on 2025-07-28T11:52:05.787Z>",
+            "status": "done",
+            "testStrategy": "Global search for 'react-native-fs' should return 0 results, verify all file read/write operations work correctly, test file existence checks, validate directory operations, ensure TypeScript compilation succeeds"
+          },
+          {
+            "id": 3,
+            "title": "Replace Environment Configuration Module",
+            "description": "Replace react-native-config with expo-constants@~15.4.0 and migrate all environment variables",
+            "dependencies": [
+              "3.1"
+            ],
+            "details": "Install expo-constants@~15.4.0 using 'npm install expo-constants@~15.4.0'. Uninstall react-native-config with 'npm uninstall react-native-config'. Update all imports from 'react-native-config' to 'expo-constants'. Convert Config.VARIABLE_NAME to Constants.expoConfig.extra.VARIABLE_NAME. Update app.config.js to include all environment variables in the 'extra' field. Ensure all API keys, endpoints, and configuration values are properly migrated to the Expo configuration structure.\n<info added on 2025-07-28T11:54:55.073Z>\nCOMPLETED: Environment configuration migration finalized. expo-constants@~16.0.0 installed successfully. react-native-config package removed. The environment utility created in Task 2.4 provides full backward compatibility. All environment variables accessible via expo-constants. No remaining react-native-config imports in source code.\n</info added on 2025-07-28T11:54:55.073Z>",
+            "status": "done",
+            "testStrategy": "Search for 'react-native-config' returns 0 results, verify all environment variables are accessible via Constants.expoConfig.extra, test API connections work with new configuration, validate build-time and runtime config access"
+          },
+          {
+            "id": 4,
+            "title": "Replace Splash Screen Module",
+            "description": "Replace react-native-bootsplash with expo-splash-screen@~0.26.0 and update splash screen implementation",
+            "dependencies": [
+              "3.1"
+            ],
+            "details": "Install expo-splash-screen@~0.26.0 using 'npm install expo-splash-screen@~0.26.0'. Uninstall react-native-bootsplash with 'npm uninstall react-native-bootsplash'. Update App.tsx or index.js to use SplashScreen.preventAutoHideAsync() at app start and SplashScreen.hideAsync() when app is ready. Remove any native configuration files related to react-native-bootsplash. Update splash screen assets to work with Expo's splash screen system if needed.\n<info added on 2025-07-28T11:59:35.004Z>\nCOMPLETED: Successfully replaced react-native-bootsplash with expo-splash-screen. Updated navigation/index.tsx and AndroidPermissionsProvider.tsx to use SplashScreen.hideAsync(). Removed BootSplash.isVisible check as expo-splash-screen manages visibility automatically. Package uninstalled successfully. No remaining react-native-bootsplash imports found in source code.\n</info added on 2025-07-28T11:59:35.004Z>",
+            "status": "done",
+            "testStrategy": "Verify splash screen displays on app launch, confirm smooth transition from splash to app content, ensure no visual glitches during transition, validate splash screen hides at appropriate time"
+          },
+          {
+            "id": 5,
+            "title": "Finalize Migration and Validate",
+            "description": "Update React Native version, clean up package-lock.json, and perform comprehensive validation",
+            "dependencies": [
+              "3.2",
+              "3.3",
+              "3.4"
+            ],
+            "details": "Update React Native to version 0.74.6 if not already done. Delete package-lock.json and run 'npm install' to regenerate with clean dependency tree. Run 'npm run validate:deps' for final validation. Execute global search to ensure no imports remain for: react-native-fs, react-native-config, react-native-bootsplash. Run TypeScript compilation with 'npx tsc --noEmit' to catch any type errors. Update Metro configuration if needed for Expo compatibility. Document any breaking changes or API differences encountered during migration.",
+            "status": "done",
+            "testStrategy": "All old package imports return 0 search results, npm run validate:deps passes without warnings, TypeScript compilation succeeds, ESLint passes, app builds successfully with expo-dev-client, all file operations, environment variables, and splash screen functionality work as expected"
+          }
+        ]
       },
       {
         "id": 4,
@@ -390,7 +446,7 @@
     ],
     "metadata": {
       "created": "2025-07-27T12:38:05.813Z",
-      "updated": "2025-07-28T10:55:19.073Z",
+      "updated": "2025-07-28T12:02:30.796Z",
       "description": "Tasks for master context"
     }
   }
