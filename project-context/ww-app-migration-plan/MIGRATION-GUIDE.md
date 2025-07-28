@@ -83,23 +83,36 @@ eas --version
 ```
 **Status**: ✅ Completed - All Section 1 requirements verified and completed
 
-### 🚨 HUMAN ACTION - Login to Expo:
+### Step 1.6: Complete Required Human Actions for Expo Project Setup ✅ COMPLETED
 ```bash
+# Login to Expo
 eas login
 # Enter your Expo account credentials when prompted
-```
 
-### 🚨 HUMAN ACTION - Create New Expo Project:
-```bash
-# Create new Expo project (choose option 1)
-eas project:create --name="Wildlife Watcher Expo"
-
-# OR alternatively, create via web dashboard:
+# Create New Expo Project via web dashboard:
 # 1. Go to https://expo.dev/accounts/[your-account]/projects
 # 2. Click "Create a project"  
 # 3. Name: "Wildlife Watcher Expo"
 # 4. Slug: "wildlife-watcher-expo"
+
+# Link project to local directory
+eas init --id 6cf53a5e-90e1-4987-82c6-5f0337affe97
+
+# Copy PoC reference files
+mkdir -p scripts
+cp -r ~/dev/wildlifeai/wildlife-watcher-expo-poc-2/ww-expo-poc/scripts/* ./scripts/
+cp ~/dev/wildlifeai/wildlife-watcher-expo-poc-2/ww-expo-poc/app.config.js ./app.config.js.reference
+cp ~/dev/wildlifeai/wildlife-watcher-expo-poc-2/ww-expo-poc/eas.json ./eas.json.reference
+cp -r ~/dev/wildlifeai/wildlife-watcher-expo-poc-2/project-context/connecting-android-phone-instructions ./
+
+# Update package.json with validation scripts
+npm pkg set scripts.validate:deps="node scripts/validate-deps.js"
+npm pkg set scripts.deps="node scripts/deps-cli.js"
+npm pkg set scripts.deps:add="node scripts/deps-cli.js add"
+npm pkg set scripts.deps:scan="node scripts/deps-cli.js scan"
+npm pkg set scripts.postinstall="npm run validate:deps"
 ```
+**Status**: ✅ Completed - Expo account: `apps_wildlife`, Project ID: `6cf53a5e-90e1-4987-82c6-5f0337affe97`, PoC files copied, environment variables configured with Google Maps API key `AIzaSyD4GgP2HPVqgEOIbOiA1QF6AfTaSBg4vfI`, API_BASE set to placeholder (will be replaced with Supabase URL in Task 8)
 
 ---
 
