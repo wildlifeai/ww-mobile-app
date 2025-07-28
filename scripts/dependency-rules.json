@@ -1,7 +1,7 @@
 {
   "$schema": "./dependency-rules-schema.json",
   "description": "Dependency validation rules for Wildlife Watcher Expo SDK 51 Migration",
-  "lastUpdated": "2025-07-28",
+  "lastUpdated": "2025-07-28T15:30:00Z",
   "rules": {
     "expo": {
       "required": "~51.0.0",
@@ -40,10 +40,9 @@
     },
     "expo-dev-client": {
       "required": "~4.0.29",
-      "installed": "5.2.4",
-      "severity": "info",
-      "reason": "SDK 51 expects ~4.0.29 but 5.2.4 works - intentional deviation",
-      "sdkExpectation": true
+      "severity": "warning",
+      "optional": true,
+      "reason": "Expo development client for managed workflow - migrated from bare React Native"
     },
     "react-native-maps": {
       "required": "1.20.1",
@@ -94,22 +93,28 @@
       "reason": "Material Design components from WW app"
     },
     "expo-file-system": {
-      "required": "~17.0.1",
-      "severity": "info",
+      "required": "~16.0.0",
+      "severity": "warning",
       "optional": true,
-      "reason": "Expo SDK 51 official file system API - installed as part of Expo SDK"
+      "reason": "File system operations - migrated from react-native-fs"
     },
     "expo-constants": {
       "required": "~16.0.0",
-      "severity": "info",
+      "severity": "warning",
       "optional": true,
-      "reason": "Environment variable access - already installed with Expo SDK 51"
+      "reason": "Environment variable access - migrated from react-native-config"
     },
     "expo-localization": {
       "required": "~15.0.3",
       "severity": "info",
       "optional": true,
       "reason": "Localization support - installed during Expo setup"
+    },
+    "expo-splash-screen": {
+      "required": "~0.27.7",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Splash screen management - migrated from react-native-bootsplash"
     }
   },
   "blockedPackages": {
@@ -127,6 +132,21 @@
       "reason": "Use expo-linear-gradient instead for Expo managed workflow",
       "alternative": "expo-linear-gradient", 
       "severity": "warning"
+    },
+    "react-native-fs": {
+      "reason": "Migrated to expo-file-system for Expo managed workflow",
+      "alternative": "expo-file-system",
+      "severity": "error"
+    },
+    "react-native-config": {
+      "reason": "Migrated to expo-constants for environment variables",
+      "alternative": "expo-constants",
+      "severity": "error"
+    },
+    "react-native-bootsplash": {
+      "reason": "Migrated to expo-splash-screen for Expo managed workflow",
+      "alternative": "expo-splash-screen",
+      "severity": "error"
     }
   },
   "overrideRequirements": {

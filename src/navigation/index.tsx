@@ -7,7 +7,7 @@ import { LocationProblems } from "./screens/LocationProblems"
 import { BleProblems } from "./screens/BleProblems"
 import { DeviceReconnectProvider } from "../providers/DeviceReconnectProvider"
 import { Terminal } from "./screens/TerminalScreen"
-import BootSplash from "react-native-bootsplash"
+import * as SplashScreen from "expo-splash-screen"
 import { NavigationBar } from "../components/NavigationBar"
 import { AppLoading } from "./screens/AppLoading"
 import { AppDrawer } from "../components/AppDrawer"
@@ -65,7 +65,7 @@ export const MainNavigation = () => {
 
 	useEffect(() => {
 		if (!appLoading) {
-			BootSplash.hide({ fade: true })
+			SplashScreen.hideAsync()
 		}
 	}, [appLoading])
 

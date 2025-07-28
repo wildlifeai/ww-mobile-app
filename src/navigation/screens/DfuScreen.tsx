@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { StyleSheet, View, Platform, PermissionsAndroid } from "react-native"
 import { Button } from "react-native-paper"
 import DocumentPicker from "react-native-document-picker"
-import RNFS from "react-native-fs"
+import * as FileSystem from "expo-file-system"
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWText } from "../../components/ui/WWText"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
@@ -62,7 +62,7 @@ export const DfuScreen = () => {
 			const timestamp = Date.now()
 			const localPath = Platform.select({
 				ios: result[0].uri,
-				android: `${RNFS.CachesDirectoryPath}/firmware_${timestamp}.zip`,
+				android: `${FileSystem.cacheDirectory}firmware_${timestamp}.zip`,
 			})
 
 			if (!localPath) {
@@ -70,7 +70,10 @@ export const DfuScreen = () => {
 			}
 
 			if (Platform.OS === "android") {
-				await RNFS.copyFile(result[0].uri, localPath)
+				await FileSystem.copyAsync({
+					from: result[0].uri,
+					to: localPath
+				})
 			}
 
 			try {
@@ -84,7 +87,7 @@ export const DfuScreen = () => {
 			} finally {
 				// Clean up file regardless of DFU success/failure
 				if (Platform.OS === "android") {
-					await RNFS.unlink(localPath).catch(console.error)
+					await FileSystem.deleteAsync(localPath, { idempotent: true }).catch(console.error)
 				}
 			}
 		} catch (err) {
