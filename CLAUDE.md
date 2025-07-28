@@ -142,6 +142,7 @@ Key Documents:
 ## Migration Configuration Snapshot
 - Noted the migration configuration snapshot in project-context directory
 - Reference file contains details about the Expo migration process and configuration requirements
+- Added references for `@EXPO_ENVIRONMENT_VARIABLES.md` and `@migration-config-snapshot.json` for further investigation and documentation tracking
 
 ## Available MCP Servers
 
@@ -178,4 +179,3 @@ From `migration-config-snapshot.json`:
 - **Package Name**: `wildlifewatcher`
 - **URL Schemes**: `com.wildlife.auth`, `com.wildlife.watcher`
 - **Current Version**: React Native 0.74.6 → Migrating to Expo SDK 51
-
