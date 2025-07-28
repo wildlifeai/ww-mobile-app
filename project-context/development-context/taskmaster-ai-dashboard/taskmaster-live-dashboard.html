@@ -612,6 +612,7 @@
                     status: document.getElementById('statusFilter')?.value || '',
                     priority: document.getElementById('priorityFilter')?.value || '',
                     stream: document.getElementById('streamFilter')?.value || '',
+                    people: document.getElementById('peopleFilter')?.value || '',
                     search: document.getElementById('searchFilter')?.value || ''
                 };
 
@@ -625,6 +626,7 @@
                 if (document.getElementById('statusFilter')) document.getElementById('statusFilter').value = savedFilters.status;
                 if (document.getElementById('priorityFilter')) document.getElementById('priorityFilter').value = savedFilters.priority;
                 if (document.getElementById('streamFilter')) document.getElementById('streamFilter').value = savedFilters.stream;
+                if (document.getElementById('peopleFilter')) document.getElementById('peopleFilter').value = savedFilters.people || '';
                 if (document.getElementById('searchFilter')) document.getElementById('searchFilter').value = savedFilters.search;
                 
                 // Reapply filters with the restored values
@@ -722,6 +724,12 @@
                         </select>
                     </div>
                     <div class="filter-group">
+                        <label>People:</label>
+                        <select id="peopleFilter" onchange="dashboard.applyFilters()">
+                            <option value="">All People</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
                         <input type="text" id="searchFilter" placeholder="Search tasks..." oninput="dashboard.applyFilters()" />
                     </div>
                     <div class="filter-group">
@@ -774,6 +782,64 @@
                         <div class="stat-label">High Priority</div>
                     </div>
                 `;
+                
+                // Populate people filter dropdown
+                this.populatePeopleFilter();
+            }
+
+            populatePeopleFilter() {
+                const peopleFilter = document.getElementById('peopleFilter');
+                if (!peopleFilter) return;
+
+                // Get unique assigned people from tasks and people storage
+                const uniquePeople = new Set();
+                
+                // Add people from tasks
+                this.taskData.tasks.forEach(task => {
+                    if (task.assignedTo) {
+                        uniquePeople.add(task.assignedTo);
+                    }
+                });
+                
+                // Add people from localStorage
+                const storedPeople = JSON.parse(localStorage.getItem('taskmaster-people') || '[]');
+                storedPeople.forEach(person => {
+                    uniquePeople.add(person.name);
+                });
+
+                // Clear existing options except "All People"
+                const currentValue = peopleFilter.value;
+                peopleFilter.innerHTML = '<option value="">All People</option>';
+                
+                // Add unique people as options
+                Array.from(uniquePeople).sort().forEach(person => {
+                    const option = document.createElement('option');
+                    option.value = person;
+                    option.textContent = person;
+                    peopleFilter.appendChild(option);
+                });
+                
+                // Restore previous selection if it still exists
+                if (currentValue && Array.from(uniquePeople).includes(currentValue)) {
+                    peopleFilter.value = currentValue;
+                }
+            }
+
+            toggleSwimLane(phase) {
+                const swimLane = document.getElementById(`swimlane-${phase}`);
+                const indicator = document.getElementById(`indicator-${phase}`);
+                
+                if (swimLane && indicator) {
+                    if (swimLane.classList.contains('collapsed')) {
+                        // Expand
+                        swimLane.classList.remove('collapsed');
+                        indicator.classList.remove('collapsed');
+                    } else {
+                        // Collapse
+                        swimLane.classList.add('collapsed');
+                        indicator.classList.add('collapsed');
+                    }
+                }
             }
 
             renderCurrentView() {
@@ -1129,9 +1195,11 @@
                             opacity: 0.8;
                             transform: scale(1.05);
                         }
-                        .status-pending { background: #ffeaa7; color: #333; }
-                        .status-in-progress { background: #74b9ff; color: white; }
-                        .status-done { background: #00b894; color: white; }
+                        .status-pending { background: #f39c12; color: white; }
+                        .status-in-progress { background: #3498db; color: white; }
+                        .status-done { background: #27ae60; color: white; }
+                        .status-deferred { background: #95a5a6; color: white; }
+                        .status-cancelled { background: #e74c3c; color: white; }
                         .task-deps { background: #e8f4f8; color: #2980b9; }
                     </style>
                 `;
@@ -1176,11 +1244,14 @@
                         <!-- Swim Lanes by Phase -->
                         ${Object.entries(tasksByPhase).map(([phase, statusGroups]) => `
                             <div class="swim-lane">
-                                <div class="swim-lane-header ${phase}">
-                                    <h4>${phaseNames[phase]}</h4>
-                                    <span class="phase-count">${Object.values(statusGroups).flat().length} tasks</span>
+                                <div class="swim-lane-header ${phase}" onclick="dashboard.toggleSwimLane('${phase}')" style="cursor: pointer;">
+                                    <div class="swim-lane-header-content">
+                                        <span class="collapse-indicator" id="indicator-${phase}">▼</span>
+                                        <h4>${phaseNames[phase]}</h4>
+                                        <span class="phase-count">${Object.values(statusGroups).flat().length} tasks</span>
+                                    </div>
                                 </div>
-                                <div class="swim-lane-columns">
+                                <div class="swim-lane-columns" id="swimlane-${phase}">
                                     ${['pending', 'in-progress', 'done', 'deferred', 'cancelled'].map(status => `
                                         <div class="kanban-column">
                                             <div class="column-tasks">
@@ -1299,6 +1370,25 @@
                             padding: 15px;
                             color: white;
                             font-weight: bold;
+                            transition: all 0.3s ease;
+                        }
+                        .swim-lane-header:hover {
+                            opacity: 0.9;
+                        }
+                        .swim-lane-header-content {
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                            width: 100%;
+                            justify-content: space-between;
+                        }
+                        .collapse-indicator {
+                            font-size: 14px;
+                            transition: transform 0.3s ease;
+                            user-select: none;
+                        }
+                        .collapse-indicator.collapsed {
+                            transform: rotate(-90deg);
                         }
                         .swim-lane-header.phase1 { background: #e74c3c; }
                         .swim-lane-header.phase2 { background: #f39c12; }
@@ -1316,6 +1406,11 @@
                             gap: 15px;
                             padding: 15px;
                             background: #f8f9fa;
+                            transition: all 0.3s ease;
+                            overflow: hidden;
+                        }
+                        .swim-lane-columns.collapsed {
+                            display: none;
                         }
                         .kanban-column {
                             min-height: 100px;
@@ -1463,6 +1558,7 @@
                 const statusFilter = document.getElementById('statusFilter')?.value || '';
                 const priorityFilter = document.getElementById('priorityFilter')?.value || '';
                 const streamFilter = document.getElementById('streamFilter')?.value || '';
+                const peopleFilter = document.getElementById('peopleFilter')?.value || '';
                 const searchFilter = document.getElementById('searchFilter')?.value.toLowerCase() || '';
 
                 this.filteredTasks = this.taskData.tasks.filter(task => {
@@ -1475,6 +1571,7 @@
                     if (statusFilter && task.status !== statusFilter) return false;
                     if (priorityFilter && task.priority !== priorityFilter) return false;
                     if (streamFilter && taskStream !== streamFilter) return false;
+                    if (peopleFilter && task.assignedTo !== peopleFilter) return false;
                     if (searchFilter && !task.title.toLowerCase().includes(searchFilter) && 
                         !task.description.toLowerCase().includes(searchFilter)) return false;
                     
