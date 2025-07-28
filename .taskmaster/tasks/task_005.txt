@@ -1,0 +1,35 @@
+# Task ID: 5
+# Title: EAS Build Configuration and Deployment
+# Status: pending
+# Dependencies: 4
+# Priority: high
+# Description: Configure EAS build environment, set environment variables, create and test Android development build
+# Details:
+1. Set EAS environment variables: eas secret:create
+2. Configure eas.json for development profile
+3. Set GOOGLE_MAPS_API_KEY in EAS secrets
+4. Build Android dev client: eas build --profile development --platform android
+5. Download and install APK on test device
+6. Configure build credentials if needed
+7. Setup internal distribution for team
+8. Document build URLs and versions
+
+IMPORTANT: Follow MIGRATION-GUIDE.md Section 5 and verify all Phase 1 validation criteria pass before proceeding.
+
+Phase 1 Validation Checkpoint:
+- App builds successfully on EAS (< 15 minutes)
+- Development client installs on Android device
+- BLE CRITICAL: Can scan and connect to real Wildlife Watcher device
+- DFU CRITICAL: Firmware selection and transfer initiation works
+- Maps: Display with markers (API key fallback OK)
+- Navigation: All tabs/screens accessible
+- Redux: State updates correctly, debug panel works
+- File System: Read/write operations work with expo-file-system
+- Hot reload functions for development
+
+STOP Rule: If any critical criteria fail, fix before proceeding to Phase 2
+
+Reference Document: MIGRATION-GUIDE.md Section 5 - Build & Deploy
+
+# Test Strategy:
+Build must complete in <15 minutes, APK must install successfully, verify all core features work: BLE scanning/connection, DFU initiation, Maps display, Navigation, Redux state, File operations, Hot reload. All Phase 1 validation criteria must pass before proceeding to Phase 2.

@@ -1,0 +1,24 @@
+# Task ID: 2
+# Title: Core Expo SDK 51 Integration
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Install Expo SDK 51, create app configuration with proper bundle identifier strategy, initialize EAS project, and setup dependency validation
+# Details:
+1. Install Expo SDK 51: npm install expo@~51.0.0
+2. Create app.config.js with dynamic bundle identifier logic (.expo suffix for dev) following BUNDLE-IDENTIFIER-STRATEGY.md
+3. Initialize EAS project: eas init
+4. Configure eas.json for development builds
+5. Setup expo-constants for environment variables
+6. Copy dependency validation system from MIGRATION-GUIDE.md
+7. Update app.json to app.config.js format
+8. Configure development client settings
+
+IMPORTANT: Follow MIGRATION-GUIDE.md Section 2 and BUNDLE-IDENTIFIER-STRATEGY.md for bundle ID configuration.
+
+Reference Documents:
+- MIGRATION-GUIDE.md Section 2
+- BUNDLE-IDENTIFIER-STRATEGY.md
+
+# Test Strategy:
+Run 'expo doctor' to validate setup, verify app.config.js exports correct bundle identifiers, confirm EAS project linked with 'eas project:info', test dependency validation script execution. Ensure bundle identifiers follow the strategy outlined in BUNDLE-IDENTIFIER-STRATEGY.md

@@ -1,0 +1,58 @@
+# Task ID: 1
+# Title: Pre-Migration Setup and Environment Preparation
+# Status: in-progress
+# Dependencies: None
+# Priority: high
+# Description: Create migration branch, install Expo CLI tools, setup development environment, and prepare for Expo SDK 51 migration
+# Details:
+1. Create 'expo-migration' branch from main
+2. Install Expo CLI globally: npm install -g expo-cli@latest eas-cli@latest
+3. Create full project backup (git stash or separate directory)
+4. Login to Expo account: expo login
+5. Verify Node.js version >=18.0.0
+6. Setup .env.local for development
+7. Document current bundle identifiers and app configurations
+8. IMPORTANT: Follow MIGRATION-GUIDE.md Section 1 - Initial Setup (30 minutes) for detailed step-by-step instructions
+
+Reference Document: MIGRATION-GUIDE.md Section 1
+
+# Test Strategy:
+Verify Expo CLI installation with 'expo --version' and 'eas --version', confirm login status with 'expo whoami', ensure git branch created successfully, validate Node.js version compatibility. Follow the automated steps in MIGRATION-GUIDE.md Section 1
+
+# Subtasks:
+## 1. Create Migration Branch and Project Backup [done]
+### Dependencies: None
+### Description: Create the expo-migration branch from main, stash any uncommitted changes, and create a complete project backup for rollback safety
+### Details:
+Execute: git checkout main && git pull origin main && git checkout -b expo-migration && git stash save 'Pre-migration changes' && cp -r . ../wildlife-watcher-backup-$(date +%Y%m%d_%H%M%S). Document the backup location in a migration-log.txt file. Ensure all current work is safely preserved before beginning migration.
+
+## 2. Install and Configure Expo CLI Tools [done]
+### Dependencies: None
+### Description: Install the latest Expo CLI and EAS CLI globally, verify Node.js compatibility, and authenticate with Expo account
+### Details:
+Install tools: npm install -g expo-cli@latest eas-cli@latest. Verify Node.js version: node --version (must be >=18.0.0). If Node version is insufficient, update via nvm or system package manager. Login to Expo: expo login (have credentials ready). Store login status for team reference.
+
+## 3. Document Current App Configuration [done]
+### Dependencies: None
+### Description: Create comprehensive documentation of current bundle identifiers, app configurations, and environment variables before migration
+### Details:
+Extract and document: 1) Current bundle IDs from android/app/build.gradle (applicationId) and ios/WildlifeWatcherMobileApp/Info.plist (CFBundleIdentifier), 2) App display names from app.json, 3) All environment variables from .env files, 4) Current version numbers and build numbers. Create migration-config-snapshot.json with all values. This ensures we can reference original configurations during migration.
+
+## 4. Setup Development Environment Configuration [done]
+### Dependencies: 1.3
+### Description: Create and configure .env.local for development, ensuring all necessary environment variables are properly set for Expo development
+### Details:
+Create .env.local file copying from .env.example or existing .env. Add Expo-specific variables if needed (EXPO_PUBLIC_ prefix for client-side vars). Ensure all API keys, endpoints, and configuration values are present. Update .gitignore to exclude .env.local. Document any new Expo-specific environment variables that will be needed.
+
+## 5. Execute MIGRATION-GUIDE.md Section 1 Verification [done]
+### Dependencies: 1.1, 1.2, 1.3, 1.4
+### Description: Run through all steps in MIGRATION-GUIDE.md Section 1 to ensure complete pre-migration setup following the documented procedure
+### Details:
+Open MIGRATION-GUIDE.md Section 1 and execute each step sequentially. Use the guide's automated commands where provided. Create a checklist marking each completed step. Pay special attention to any warnings or notes in the guide. Document any deviations or issues encountered. This ensures we follow the proven migration path exactly as designed.
+
+## 6. Complete Required Human Actions for Expo Project Setup [pending]
+### Dependencies: 1.5
+### Description: Execute the human-required actions from MIGRATION-GUIDE.md including Expo login, project creation, and PoC file copying to prepare for Section 2
+### Details:
+
+

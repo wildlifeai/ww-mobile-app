@@ -1,0 +1,20 @@
+# Task ID: 3
+# Title: Native Module Dependencies Migration
+# Status: pending
+# Dependencies: 2
+# Priority: high
+# Description: Replace all native modules with Expo equivalents including file system, environment config, splash screen, and install expo-dev-client
+# Details:
+1. Install expo-dev-client@~3.3.0
+2. Replace react-native-fs with expo-file-system@~16.0.0
+3. Replace react-native-config with expo-constants@~15.4.0
+4. Replace react-native-bootsplash with expo-splash-screen@~0.26.0
+5. Update to React Native 0.74.6
+6. Remove old packages: npm uninstall react-native-fs react-native-config react-native-bootsplash
+7. Run 'npm run validate:deps' after each change
+8. Update package-lock.json
+
+IMPORTANT: Follow MIGRATION-GUIDE.md Section 3 for the complete dependency migration process.
+
+# Test Strategy:
+Execute dependency validation after each replacement, ensure no old package imports remain with global search, verify TypeScript compilation succeeds, check for peer dependency warnings. Validate each replacement according to MIGRATION-GUIDE.md Section 3
