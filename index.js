@@ -1,7 +1,7 @@
-import { registerRootComponent } from 'expo'
-import { App } from "./src/App"
+import { AppRegistry } from 'react-native';
+import { name as appName } from './app.json';
+import { SimpleApp } from './src/SimpleApp';
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
-registerRootComponent(App)
+console.log("Loading simplified Wildlife Watcher app with working Redux store...");
+
+AppRegistry.registerComponent(appName, () => SimpleApp);

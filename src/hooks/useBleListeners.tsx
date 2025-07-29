@@ -5,7 +5,6 @@ import { useEffect } from "react"
 import { NativeEventEmitter, NativeModules, Platform } from "react-native"
 
 import { Buffer } from "buffer"
-import EventEmitter from "eventemitter3"
 import BleManager, { Peripheral } from "react-native-ble-manager"
 
 import { guard, log } from "./../utils/logger"
@@ -29,11 +28,17 @@ import isEmpty from "lodash.isempty"
 import { useBleActions } from "../providers/BleEngineProvider"
 import { isOurDevice } from "../utils/helpers"
 
-export const bleManagerEmitter = new NativeEventEmitter(
-	NativeModules.BleManager,
-)
+// Lazy-load the emitter to avoid accessing NativeModules during import
+let _bleManagerEmitter: NativeEventEmitter | null = null
+export const getBleManagerEmitter = () => {
+	if (!_bleManagerEmitter) {
+		_bleManagerEmitter = new NativeEventEmitter(NativeModules.BleManager)
+	}
+	return _bleManagerEmitter
+}
 
-export const readlineParserEmitter = new EventEmitter()
+import { readlineParserEmitter } from "../ble/emitters"
+export { readlineParserEmitter }
 
 export type UpdateValueEventType = {
 	characteristic: string
@@ -311,19 +316,19 @@ export const useBleListeners = () => {
 	}, [disconnectDevice, dispatch, pingsPause])
 
 	useEffect(() => {
-		const discoverDeviceFunc = bleManagerEmitter.addListener(
+		const discoverDeviceFunc = getBleManagerEmitter().addListener(
 			"BleManagerDiscoverPeripheral",
 			discoveredPeripheralEvent,
 		)
-		const scanStoppedEventFunc = bleManagerEmitter.addListener(
+		const scanStoppedEventFunc = getBleManagerEmitter().addListener(
 			"BleManagerStopScan",
 			scanStoppedEvent,
 		)
-		const deviceDisconnectedEventFunc = bleManagerEmitter.addListener(
+		const deviceDisconnectedEventFunc = getBleManagerEmitter().addListener(
 			"BleManagerDisconnectPeripheral",
 			deviceDisconnectedEvent,
 		)
-		const readlineParserFunc = bleManagerEmitter.addListener(
+		const readlineParserFunc = getBleManagerEmitter().addListener(
 			"BleManagerDidUpdateValueForCharacteristic",
 			readlineParser,
 		)

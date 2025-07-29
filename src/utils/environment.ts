@@ -1,13 +1,25 @@
-import Constants from 'expo-constants';
-import type { ExpoEnvironmentVariables } from '../types/expo-constants';
+// Lazy import to avoid NativeModule access during initialization
+let Constants: any = null;
 
 /**
  * Environment variables utility that provides backward compatibility 
  * with react-native-config while using expo-constants
  */
 class EnvironmentConfig {
+  private getConstants() {
+    if (!Constants) {
+      Constants = require('expo-constants').default;
+    }
+    return Constants;
+  }
+
   private getExtraConfig() {
-    return Constants.expoConfig?.extra || {};
+    try {
+      return this.getConstants().expoConfig?.extra || {};
+    } catch (e) {
+      console.warn('Could not access expo-constants, using empty config:', e);
+      return {};
+    }
   }
 
   /**
@@ -55,7 +67,7 @@ class EnvironmentConfig {
   /**
    * Get all environment variables as an object (react-native-config compatibility)
    */
-  getAll(): ExpoEnvironmentVariables {
+  getAll(): Record<string, string | undefined> {
     return {
       API_BASE: this.API_BASE,
       GOOGLE_MAPS_API_KEY_ANDROID: this.GOOGLE_MAPS_API_KEY_ANDROID,

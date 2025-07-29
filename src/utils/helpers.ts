@@ -9,7 +9,7 @@ import {
 } from "./constants"
 import BleManager from "react-native-ble-manager"
 import { Buffer } from "buffer"
-import { readlineParserEmitter } from "../hooks/useBleListeners"
+import { readlineParserEmitter } from "../ble/emitters"
 import { Services } from "../ble/types"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
