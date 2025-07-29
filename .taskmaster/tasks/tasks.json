@@ -286,7 +286,7 @@
         "id": 5,
         "title": "EAS Build Configuration and Deployment",
         "description": "Configure EAS build environment, set environment variables, create and test Android development build",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           4
         ],
@@ -500,7 +500,7 @@
     ],
     "metadata": {
       "created": "2025-07-27T12:38:05.813Z",
-      "updated": "2025-07-29T05:04:18.276Z",
+      "updated": "2025-07-29T10:39:31.959Z",
       "description": "Tasks for master context"
     }
   }

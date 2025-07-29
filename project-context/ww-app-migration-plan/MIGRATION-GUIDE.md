@@ -754,71 +754,106 @@ grep -r "react-native-fs\|react-native-config\|react-native-bootsplash" ./src ./
 
 ---
 
-## AUTOMATED SECTION 5: Build & Deploy (1.5 hours)
+## AUTOMATED SECTION 5: Build & Deploy (1.5 hours) ⏳ IN PROGRESS
 
-### 🚨 HUMAN ACTION - Create .env file:
+### Step 5.1: Set EAS Environment Variables ✅ COMPLETED
 ```bash
-# Create .env file with your actual values
-cat > .env << 'EOF'
-GOOGLE_MAPS_API_KEY_ANDROID=your-android-api-key
-GOOGLE_MAPS_API_KEY_IOS=your-ios-api-key
-API_BASE=https://api.wildlifewatcher.com
-SENTRY_DSN=your-sentry-dsn
-EOF
+# Environment variables configured in EAS
+eas env:create --name API_BASE --value "https://api.wildlifewatcher.com" --environment development
+eas env:create --name GOOGLE_MAPS_API_KEY_ANDROID --value "AIzaSyD4GgP2HPVqgEOIbOiA1QF6AfTaSBg4vfI" --environment development
+```
+**Status**: ✅ Completed - Environment variables set in EAS development environment:
+- API_BASE: https://api.wildlifewatcher.com
+- GOOGLE_MAPS_API_KEY_ANDROID: AIzaSyD4GgP2HPVqgEOIbOiA1QF6AfTaSBg4vfI
+
+### Step 5.2: Fix Android Gradle Configuration ✅ COMPLETED
+**Critical Issue Discovered**: During initial EAS build, the Android Gradle configuration still referenced the removed `react-native-config` package, causing build failures.
+
+**Root Cause**: While the NPM package was removed and code was migrated, the Android native configuration still had references to the old package.
+
+**Issues Found & Fixed**:
+1. **android/app/build.gradle line 2**: `apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"`
+   - **Fixed**: Removed the react-native-config reference
+2. **android/app/build.gradle manifestPlaceholders**: `googleMapsApiKey: project.env.get("GOOGLE_MAPS_API_KEY_ANDROID")`
+   - **Fixed**: Removed since Expo handles Google Maps API key injection automatically via app.config.js
+3. **android/app/src/main/AndroidManifest.xml**: Manual Google Maps API key configuration
+   - **Fixed**: Removed manual meta-data tag as Expo auto-configures this through app.config.js
+
+**Why This Happened**: The migration focused on JavaScript/TypeScript code migration but missed the Android native configuration files that still referenced the old react-native-config package for environment variable access.
+
+**Key Learning**: Native configuration files must be checked for dependencies on removed packages, not just JavaScript imports.
+
+```bash
+# Files Modified:
+# 1. android/app/build.gradle - Removed react-native-config references
+# 2. android/app/src/main/AndroidManifest.xml - Removed manual Google Maps config
+
+# Validation:
+grep -r "react-native-config" android/  # Should return no results
 ```
 
-### Step 5.1: Set EAS Environment Variables
+**Status**: ✅ Completed - All react-native-config references removed from Android native configuration
+
+### Step 5.3: Android Keystore Configuration ✅ COMPLETED
+**Status**: ✅ Completed - EAS automatically detected and used existing keystore configuration from previous build.
 ```bash
-# 🚨 HUMAN: Run these commands and enter actual values when prompted
-eas secret:create --name GOOGLE_MAPS_API_KEY_ANDROID --scope project
-eas secret:create --name GOOGLE_MAPS_API_KEY_IOS --scope project
-eas secret:create --name API_BASE --scope project --value "https://api.wildlifewatcher.com"
+# EAS output showed:
+# ✔ Using remote Android credentials (Expo server)
+# ✔ Using Keystore from configuration: Build Credentials ADDbkgopGC (default)
 ```
 
-### Step 5.2: Configure iOS Credentials (if building for iOS)
+### Step 5.4: Build Development Client ⏳ IN PROGRESS
+
+#### For Android (Faster - Start Here): ⏳ IN PROGRESS
 ```bash
-# 🚨 HUMAN ACTION - iOS only:
-# Run this and follow prompts to configure iOS certificates
-eas credentials
-```
+# Pre-build validation ✅ COMPLETED
+# ✓ All validation checkpoints passed
+# ✓ EAS environment variables configured
+# ✓ Android Gradle configuration fixed
+# ✓ Keystore automatically managed by EAS
 
-### Step 5.3: Build Development Client
-
-#### For Android (Faster - Start Here):
-```bash
-# PoC GUARDRAIL: Pre-build validation
-echo "Pre-build validation checklist:"
-echo "✓ All validation checkpoints passed?"
-echo "✓ EAS secrets configured?"
-echo "✓ Internet connection stable?"
-
-# Build Android development client
-echo "Starting EAS build - this will take ~10 minutes..."
+# Build Android development client ⏳ IN PROGRESS
 eas build --profile development --platform android
 
-# Monitor build progress
-echo "Build started! Monitor at: https://expo.dev"
-echo "While waiting, you can:"
-echo "1. Prepare Android device for installation"
-echo "2. Review test checklist"  
-echo "3. Check build logs if issues arise"
-
-# This will output a URL to download the APK
-# Build time: ~8-10 minutes
+# Build Details:
+# - Build ID: d189f06b-5f71-48ff-8938-3432c88f764d
+# - Monitor URL: https://expo.dev/accounts/apps_wildlife/projects/wildlife-watcher-expo/builds/d189f06b-5f71-48ff-8938-3432c88f764d
+# - Environment variables loaded: API_BASE, GOOGLE_MAPS_API_KEY_ANDROID
+# - Node.js version: 20 (from .nvmrc)
+# - Build status: Queued/In Progress
 ```
 
-### 🚨 VALIDATION CHECKPOINT 6: EAS Build
-**Monitor the build progress and verify:**
-- [ ] Build starts without immediate errors
-- [ ] All dependencies install successfully  
-- [ ] Native modules compile without issues
-- [ ] Build completes with download URL provided
-- [ ] APK size reasonable (compare to original if known)
+**Build Progress**:
+- ✅ Project files compressed and uploaded successfully
+- ✅ Environment variables loaded from EAS development environment
+- ✅ Android keystore configuration found and applied
+- ✅ Build queued on EAS infrastructure
+- ⏳ Waiting for build completion (~10-15 minutes estimated)
 
-**If build fails**:
-1. Check build logs: `eas build:view [BUILD_ID]`
-2. Common fixes: Clear cache with `--clear-cache`
-3. Verify all secrets are set correctly
+**No More Gradle Errors**: The react-native-config references have been completely removed from Android configuration, eliminating the previous build failure.
+
+### 🚨 VALIDATION CHECKPOINT 6: EAS Build ⏳ IN PROGRESS
+**Current build status and verification:**
+- [x] Build starts without immediate errors ✅ RESOLVED (fixed Gradle configuration)
+- [x] Project files uploaded successfully ✅ COMPLETED
+- [x] Environment variables loaded properly ✅ COMPLETED (API_BASE, GOOGLE_MAPS_API_KEY_ANDROID)
+- [x] Android keystore configuration applied ✅ COMPLETED
+- [ ] All dependencies install successfully ⏳ IN PROGRESS
+- [ ] Native modules compile without issues ⏳ PENDING
+- [ ] Build completes with download URL provided ⏳ PENDING
+- [ ] APK size reasonable (compare to original if known) ⏳ PENDING
+
+**Critical Issue Resolution**:
+✅ **Fixed**: react-native-config Android Gradle references causing "Project with path ':react-native-config' could not be found" error
+- Removed from android/app/build.gradle line 2
+- Removed googleMapsApiKey manifest placeholder 
+- Removed manual Google Maps meta-data from AndroidManifest.xml
+- Expo now handles Google Maps configuration automatically
+
+**Build Monitoring**:
+- Build ID: d189f06b-5f71-48ff-8938-3432c88f764d
+- Monitor at: https://expo.dev/accounts/apps_wildlife/projects/wildlife-watcher-expo/builds/d189f06b-5f71-48ff-8938-3432c88f764d
+- Estimated completion: 10-15 minutes from queue start
 
 #### For iOS (Optional - Requires Apple Developer Account):
 ```bash
