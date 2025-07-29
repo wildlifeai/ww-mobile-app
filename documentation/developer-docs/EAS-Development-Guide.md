@@ -1,0 +1,183 @@
+# EAS Development Guide
+
+## Quick Start
+
+### Prerequisites
+- Node.js 18+
+- EAS CLI: `npm install -g @expo/cli`
+- Expo account (sign up at expo.dev)
+
+### Initial Setup
+```bash
+# Login to Expo
+npx expo login
+
+# Check project status
+eas project:info
+```
+
+## Development Workflow
+
+### 1. Development Client
+```bash
+# Build development client (one-time setup)
+eas build --profile development --platform android
+
+# Start development server
+npx expo start --dev-client
+```
+
+### 2. Environment Variables
+```bash
+# View current environment variables
+eas env:list --environment development
+
+# Add new environment variable
+eas env:create --name VAR_NAME --value "value" --environment development --visibility plaintext
+
+# Update existing variable
+eas env:update --name VAR_NAME --value "new_value" --environment development
+```
+
+### 3. Building
+
+#### Development Builds
+```bash
+# Android development build
+eas build --profile development --platform android
+
+# iOS development build (requires Apple Developer account)
+eas build --profile development --platform ios
+
+# Both platforms
+eas build --profile development --platform all
+```
+
+#### Production Builds
+```bash
+# Android production build
+eas build --profile production --platform android
+
+# iOS production build
+eas build --profile production --platform ios
+```
+
+### 4. Common Commands
+
+#### Build Management
+```bash
+# List recent builds
+eas build:list
+
+# View specific build details
+eas build:view [BUILD_ID]
+
+# Cancel running build
+eas build:cancel [BUILD_ID]
+```
+
+#### Project Management
+```bash
+# View project information
+eas project:info
+
+# Check build configuration
+eas build:configure
+```
+
+## Build Profiles
+
+### Development Profile
+- **Purpose**: Testing on physical devices
+- **Output**: APK (Android), IPA (iOS)
+- **Features**: Hot reload, debugging enabled
+- **Distribution**: Internal testing only
+
+### Production Profile
+- **Purpose**: App store releases
+- **Output**: AAB (Android), IPA (iOS)
+- **Features**: Optimized, minified
+- **Distribution**: Public app stores
+
+## Troubleshooting
+
+### Common Issues
+
+#### Build Fails
+```bash
+# Clear cache and retry
+eas build --profile development --platform android --clear-cache
+```
+
+#### Environment Variables Not Loading
+```bash
+# Verify environment configuration
+eas env:list --environment development
+
+# Check app.config.js extra field configuration
+```
+
+#### Android Device Connection
+```bash
+# For WSL2 users - forward ADB ports
+adb reverse tcp:8081 tcp:8081
+
+# Use tunnel mode if network issues
+npx expo start --dev-client --tunnel
+```
+
+### Build Time Optimization
+- Use `--local` flag for local builds (requires Android Studio/Xcode)
+- Cache node_modules with custom Docker images
+- Parallelize iOS/Android builds
+
+## Migration Notes
+
+### From Traditional React Native
+- Remove react-native CLI usage (`npx react-native run-android`)
+- Use `npx expo start --dev-client` instead
+- Environment variables now in EAS, not local .env files
+- Build process moved to cloud (EAS) from local machines
+
+### Key Differences
+- **Old**: Local builds with Android Studio/Xcode
+- **New**: Cloud builds with EAS
+- **Old**: Manual keystore management
+- **New**: EAS manages certificates automatically
+- **Old**: Complex CI/CD with Fastlane
+- **New**: Simple EAS build commands
+
+## Best Practices
+
+### Development
+1. **Use development builds** for daily development
+2. **Set up environment variables** in EAS, not local files
+3. **Test on physical devices** regularly
+4. **Monitor build times** and optimize as needed
+
+### Production
+1. **Test production builds** before store submission
+2. **Use semantic versioning** for releases
+3. **Configure auto-increment** for build numbers
+4. **Set up proper app signing** for distribution
+
+## Quick Reference
+
+```bash
+# Essential commands for daily development
+npx expo start --dev-client          # Start development server
+eas build:list                       # Check recent builds
+eas env:list --environment development # View environment variables
+eas build --profile development --platform android # New development build
+```
+
+## Resources
+
+- [EAS Build Documentation](https://docs.expo.dev/build/introduction/)
+- [Environment Variables Guide](https://docs.expo.dev/build-reference/variables/)
+- [Build Configuration Reference](https://docs.expo.dev/build-reference/eas-json/)
+- [Troubleshooting Guide](https://docs.expo.dev/build-reference/troubleshooting/)
+
+---
+
+*Last updated: Post-Expo migration*
