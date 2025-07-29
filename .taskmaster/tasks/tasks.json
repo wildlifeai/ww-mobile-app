@@ -293,7 +293,116 @@
         "priority": "high",
         "details": "1. Set EAS environment variables: eas secret:create\n2. Configure eas.json for development profile\n3. Set GOOGLE_MAPS_API_KEY in EAS secrets\n4. Build Android dev client: eas build --profile development --platform android\n5. Download and install APK on test device\n6. Configure build credentials if needed\n7. Setup internal distribution for team\n8. Document build URLs and versions\n\nIMPORTANT: Follow MIGRATION-GUIDE.md Section 5 and verify all Phase 1 validation criteria pass before proceeding.\n\nPhase 1 Validation Checkpoint:\n- App builds successfully on EAS (< 15 minutes)\n- Development client installs on Android device\n- BLE CRITICAL: Can scan and connect to real Wildlife Watcher device\n- DFU CRITICAL: Firmware selection and transfer initiation works\n- Maps: Display with markers (API key fallback OK)\n- Navigation: All tabs/screens accessible\n- Redux: State updates correctly, debug panel works\n- File System: Read/write operations work with expo-file-system\n- Hot reload functions for development\n\nSTOP Rule: If any critical criteria fail, fix before proceeding to Phase 2\n\nReference Document: MIGRATION-GUIDE.md Section 5 - Build & Deploy",
         "testStrategy": "Build must complete in <15 minutes, APK must install successfully, verify all core features work: BLE scanning/connection, DFU initiation, Maps display, Navigation, Redux state, File operations, Hot reload. All Phase 1 validation criteria must pass before proceeding to Phase 2.",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Configure EAS Environment Variables and Secrets",
+            "description": "Set up all required environment variables in EAS including API keys and configuration values needed for the Wildlife Watcher app build process",
+            "dependencies": [],
+            "details": "Use 'eas secret:create' to set API_BASE, GOOGLE_MAPS_API_KEY_ANDROID, and any other environment variables. Verify secrets are properly configured with 'eas secret:list'. Ensure all variables match those used in the local development environment.",
+            "status": "done",
+            "testStrategy": "Verify secrets are created with 'eas secret:list' command and confirm no sensitive data is exposed in build logs"
+          },
+          {
+            "id": 2,
+            "title": "Fix Android Gradle Build Configuration",
+            "description": "Remove react-native-config references from Android native code and resolve any Gradle build issues that prevent successful compilation",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Clean up MainApplication.java and build.gradle files to remove react-native-config imports. Update any native Android code that references the old configuration system. Ensure Gradle sync completes without errors.",
+            "status": "done",
+            "testStrategy": "Run 'eas build --profile development --platform android --local' to test Gradle configuration without full cloud build"
+          },
+          {
+            "id": 3,
+            "title": "Generate Android Keystore and Configure Credentials",
+            "description": "Create Android signing credentials interactively through EAS and configure keystore for development builds",
+            "dependencies": [
+              "5.2"
+            ],
+            "details": "Use EAS interactive credential generation to create Android keystore. Configure eas.json with proper credential references. Ensure keystore is properly linked to the app bundle identifier.",
+            "status": "done",
+            "testStrategy": "Verify credentials are properly configured with 'eas credentials' command and test signing during build process"
+          },
+          {
+            "id": 4,
+            "title": "Clean Up Incompatible Dependencies",
+            "description": "Remove Firebase dependencies and other packages that cause build conflicts in the Expo environment",
+            "dependencies": [
+              "5.3"
+            ],
+            "details": "Remove Firebase packages and any other dependencies that conflict with Expo SDK 51. Update package.json and run npm install. Clean up any import statements referencing removed packages.",
+            "status": "done",
+            "testStrategy": "Run 'npm run validate:deps' to ensure no conflicting dependencies remain and verify TypeScript compilation succeeds"
+          },
+          {
+            "id": 5,
+            "title": "Fix Android Native Module References",
+            "description": "Clean up Android native code references to removed modules like BootSplash and ensure compatibility with Expo managed workflow",
+            "dependencies": [
+              "5.4"
+            ],
+            "details": "Remove BootSplash references from MainApplication.java and other Android native files. Clean up any remaining native module imports that are no longer needed in the Expo environment.",
+            "status": "done",
+            "testStrategy": "Verify Android build compiles without native module errors by running local build test"
+          },
+          {
+            "id": 6,
+            "title": "Build and Deploy Android Development Client",
+            "description": "Execute EAS build for Android development profile and successfully deploy APK to test device",
+            "dependencies": [
+              "5.5"
+            ],
+            "details": "Run 'eas build --profile development --platform android' and monitor build progress. Download APK when build completes and install on Android test device. Verify installation succeeds without errors.",
+            "status": "done",
+            "testStrategy": "Build must complete in under 15 minutes, APK must install successfully on test device, and app must launch without crashes"
+          },
+          {
+            "id": 7,
+            "title": "Establish Metro Bundler Connection",
+            "description": "Start Metro development server and establish connection between development client and bundler for hot reload functionality",
+            "dependencies": [
+              "5.6"
+            ],
+            "details": "Start Metro bundler with 'npx expo start --dev-client'. Ensure network connectivity between development machine and Android device. Configure any firewall or network settings needed for connection.",
+            "status": "done",
+            "testStrategy": "Verify Metro bundler connects successfully to device, hot reload functions properly, and development client can load JavaScript bundle"
+          },
+          {
+            "id": 8,
+            "title": "Validate Phase 1 Completion Criteria",
+            "description": "Execute comprehensive testing of all Phase 1 validation criteria to ensure successful migration foundation before proceeding to Phase 2",
+            "dependencies": [
+              "5.7"
+            ],
+            "details": "Test all critical functionality: BLE scanning/connection, DFU firmware operations, Maps display with markers, Navigation between tabs, Redux state management, File system operations, and Hot reload. Document any issues that need resolution before Phase 2.",
+            "status": "pending",
+            "testStrategy": "All Phase 1 validation criteria must pass: App builds <15min, installs on device, BLE connects to real device, DFU initiates, Maps display, Navigation works, Redux updates, File operations succeed, Hot reload functions. STOP if any critical criteria fail."
+          },
+          {
+            "id": 9,
+            "title": "Phase 2: Full Wildlife Watcher App Restoration",
+            "description": "Execute the comprehensive plan documented in PHASE-2-FULL-APP-RESTORATION.md to restore complete Wildlife Watcher app functionality by implementing progressive provider loading architecture",
+            "details": "Follow PHASE-2-FULL-APP-RESTORATION.md precisely to:\n\n1. Install missing navigation packages (@react-navigation/bottom-tabs, @react-navigation/drawer)\n2. Create progressive loading architecture with LazyProvider wrapper\n3. Implement step-by-step provider initialization (Redux → SafeArea → Navigation → Custom → BLE)\n4. Fix touch events and gesture handler integration\n5. Test and validate core functionality (BLE, DFU, Maps, Navigation)\n\nThis is the critical final step to complete Task 5. The basic development client is working, but the full Wildlife Watcher app needs to be restored with its complex provider chain properly initialized.\n\nDuration: 3-4 hours\nReference: PHASE-2-FULL-APP-RESTORATION.md\n<info added on 2025-07-29T14:05:10.870Z>\nDEPENDENCY UPDATE: This task now depends on Task 5.10 (Phase 1 Validation and Pre-Phase 2 Verification) instead of Task 5.8. Phase 1 validation must be completed and all criteria must pass before beginning the full app restoration process. This ensures the development build is stable and all core functionality is validated before implementing the complex provider chain restoration.\n</info added on 2025-07-29T14:05:10.870Z>",
+            "status": "pending",
+            "dependencies": [
+              "5.8"
+            ],
+            "parentTaskId": 5
+          },
+          {
+            "id": 10,
+            "title": "Phase 1 Validation and Pre-Phase 2 Verification",
+            "description": "Comprehensive validation of Phase 1 completion criteria and pre-Phase 2 readiness check to ensure solid foundation for full app restoration",
+            "details": "CRITICAL: Verify Phase 1 completion criteria were actually met before proceeding to Phase 2 restoration:\n\n**Phase 1 Validation (Items from Task 5.8 that need verification):**\n1. ✅ App builds successfully on EAS (< 15 minutes) - VERIFIED\n2. ✅ Development client installs on Android device - VERIFIED  \n3. ⚠️ BLE CRITICAL: Can scan and connect to real Wildlife Watcher device - NEEDS TESTING\n4. ⚠️ DFU CRITICAL: Firmware selection and transfer initiation works - NEEDS TESTING\n5. ⚠️ Maps: Display with markers (API key fallback OK) - NEEDS TESTING\n6. ⚠️ Navigation: All tabs/screens accessible - NEEDS TESTING WITH FULL APP\n7. ⚠️ Redux: State updates correctly, debug panel works - NEEDS TESTING\n8. ⚠️ File System: Read/write operations work with expo-file-system - NEEDS TESTING\n9. ✅ Hot reload functions for development - VERIFIED\n\n**Pre-Phase 2 Readiness Check:**\n1. Verify missing navigation packages are identified (@react-navigation/bottom-tabs, @react-navigation/drawer)\n2. Check current provider chain errors and initialization issues\n3. Document which providers are failing and why\n4. Confirm touch events work in current simplified app\n5. Verify Metro bundler stability for extended development sessions\n6. Check development client memory usage and performance\n7. Validate environment variables and API keys are properly configured\n8. Test real device connectivity and debugging capabilities\n\n**STOP Rule**: If any Phase 1 critical criteria fail, they must be fixed before proceeding to Phase 2 restoration.\n\n**Documentation**: Update MIGRATION-GUIDE.md with actual validation results\n<info added on 2025-07-29T14:04:55.495Z>\n**DEPENDENCY UPDATE:**\n\nTask Dependencies Corrected:\n- Task 5.10 (Phase 1 Validation) now depends on Task 5.8 (Phase 1 completion)\n- Task 5.9 (Phase 2 restoration) now depends on Task 5.10 (validation must pass first)\n\nThis ensures proper sequential execution: Phase 1 → Validation → Phase 2 Restoration, preventing premature restoration attempts before critical validation criteria are met.\n</info added on 2025-07-29T14:04:55.495Z>",
+            "status": "pending",
+            "dependencies": [
+              "5.9"
+            ],
+            "parentTaskId": 5
+          }
+        ]
       },
       {
         "id": 6,
@@ -500,7 +609,7 @@
     ],
     "metadata": {
       "created": "2025-07-27T12:38:05.813Z",
-      "updated": "2025-07-29T10:39:31.959Z",
+      "updated": "2025-07-29T14:03:51.679Z",
       "description": "Tasks for master context"
     }
   }

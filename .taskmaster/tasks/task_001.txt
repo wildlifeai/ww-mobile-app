@@ -1,6 +1,6 @@
 # Task ID: 1
 # Title: Pre-Migration Setup and Environment Preparation
-# Status: in-progress
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Create migration branch, install Expo CLI tools, setup development environment, and prepare for Expo SDK 51 migration
@@ -50,9 +50,38 @@ Create .env.local file copying from .env.example or existing .env. Add Expo-spec
 ### Details:
 Open MIGRATION-GUIDE.md Section 1 and execute each step sequentially. Use the guide's automated commands where provided. Create a checklist marking each completed step. Pay special attention to any warnings or notes in the guide. Document any deviations or issues encountered. This ensures we follow the proven migration path exactly as designed.
 
-## 6. Complete Required Human Actions for Expo Project Setup [pending]
+## 6. Complete Required Human Actions for Expo Project Setup [done]
 ### Dependencies: 1.5
 ### Description: Execute the human-required actions from MIGRATION-GUIDE.md including Expo login, project creation, and PoC file copying to prepare for Section 2
 ### Details:
+<info added on 2025-07-28T05:49:40.467Z>
+This task covers all the critical human actions required from MIGRATION-GUIDE.md before proceeding to Section 2. Based on the guide, the specific actions needed are:
 
+1. **Expo Account Login** (Lines 86-90):
+   - Run `eas login` command
+   - Enter Expo account credentials when prompted
+   - Verify authentication with `expo whoami`
+
+2. **Create Expo Project** (Lines 92-102):
+   - Option 1: Run `eas project:create --name="Wildlife Watcher Expo"`
+   - Option 2: Use web dashboard at https://expo.dev/accounts/[your-account]/projects
+   - Project name: "Wildlife Watcher Expo"
+   - Project slug: "wildlife-watcher-expo"
+   - Verify project creation successful
+
+3. **Copy PoC Reference Files** (Lines 17-22, 270-274):
+   - Copy `/ww-expo-poc/scripts/` entire folder to current directory
+   - Copy `/ww-expo-poc/app.config.js` (as reference)
+   - Copy `/ww-expo-poc/eas.json` (as reference)
+   - Copy `/project-context/connecting-android-phone-instructions/` folder
+   - Create `scripts/` directory if needed
+
+4. **Prepare Prerequisites for Section 2**:
+   - Verify Google Maps API keys are available
+   - Confirm Android device with developer mode enabled is ready
+   - Ensure Apple Developer account access (if doing iOS)
+   - Validate all files copied correctly
+
+This task gates progression to Section 2 (Core Expo Integration) and must be completed by human before automated execution can continue.
+</info added on 2025-07-28T05:49:40.467Z>
 
