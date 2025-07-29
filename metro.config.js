@@ -8,4 +8,7 @@ const { getDefaultConfig } = require("expo/metro-config")
  */
 const config = getDefaultConfig(__dirname)
 
+// Add custom asset extensions for Wildlife Watcher app
+config.resolver.assetExts.push('db', 'zip')
+
 module.exports = config

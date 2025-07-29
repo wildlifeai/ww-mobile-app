@@ -64,6 +64,7 @@
     "@react-native/eslint-config": "0.74.88",
     "@react-native/metro-config": "0.74.88",
     "@react-native/typescript-config": "0.74.88",
+    "@types/jest": "^30.0.0",
     "@types/react": "^18.2.6",
     "@types/react-test-renderer": "^18.0.0",
     "babel-jest": "^29.6.3",
