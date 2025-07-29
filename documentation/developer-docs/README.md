@@ -7,6 +7,9 @@ This directory contains development guides and documentation for the Wildlife Wa
 ### [EAS Development Guide](./EAS-Development-Guide.md)
 Essential guide for using Expo Application Services (EAS) during development after the Expo migration.
 
+### [EAS Concepts and Keystores](./EAS-Concepts-and-Keystores.md)
+Comprehensive guide explaining EAS concepts, Android keystore management, and development client workflow.
+
 **Quick Start:**
 - Build development client: `eas build --profile development --platform android`
 - Start development: `npx expo start --dev-client`
@@ -50,12 +53,14 @@ documentation/
 
 Future guides to be added:
 - [ ] BLE Development Guide (using react-native-ble-manager)
-- [ ] DFU Implementation Guide (Nordic DFU integration)
+- [ ] DFU Implementation Guide (Nordic DFU integration)  
 - [ ] Maps Integration Guide (react-native-maps)
 - [ ] Redux State Management Guide
 - [ ] Testing Guide
 - [ ] CI/CD with EAS Guide
 - [ ] Production Deployment Guide
+- [ ] Android Keystore Management Guide (advanced scenarios)
+- [ ] iOS Certificate Management with EAS Guide
 
 ---
 
