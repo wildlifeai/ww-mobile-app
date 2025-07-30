@@ -322,7 +322,8 @@ eas credentials --clear-cache
 - [Android Keystore Guide](https://developer.android.com/studio/publish/app-signing)
 
 ### **Wildlife Watcher Specific:**
-- [EAS Development Guide](./EAS-Development-Guide.md) - Daily workflow commands
+- **[Expo Fundamentals Guide](./Expo-Fundamentals-Guide.md)** - Essential Expo concepts (read this first)
+- **[EAS Development Guide](./EAS-Development-Guide.md)** - Daily workflow commands and build management
 - [Migration Guide](../../project-context/ww-app-migration-plan/MIGRATION-GUIDE.md) - Complete migration process
 
 ---

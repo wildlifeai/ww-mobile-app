@@ -17,11 +17,14 @@ Condensed setup guide for experienced React Native/Expo developers who want to g
 
 ### 🛠️ Development & Deployment
 
+#### [Expo Fundamentals Guide](./Expo-Fundamentals-Guide.md)
+**Start here after onboarding!** Essential Expo SDK concepts, development workflows, and app configuration. Bridges the gap between React Native knowledge and EAS Build system.
+
 #### [EAS Development Guide](./EAS-Development-Guide.md)
-Essential guide for using Expo Application Services (EAS) during development after the Expo migration.
+Daily workflow commands and build management for Expo Application Services (EAS) after understanding the fundamentals.
 
 #### [EAS Concepts and Keystores](./EAS-Concepts-and-Keystores.md)
-Comprehensive guide explaining EAS concepts, Android keystore management, and development client workflow.
+Deep dive into EAS Build system, Android keystore management, and development client architecture.
 
 ### 🔧 Technical Analysis
 
@@ -76,6 +79,7 @@ documentation/
     ├── Developer-Onboarding-Guide.md                  # New developer setup  
     ├── Quick-Start-Checklist.md                       # Experienced dev setup
     ├── Docker-Development-Guide.md                    # Docker environment (recommended)
+    ├── Expo-Fundamentals-Guide.md                     # Expo SDK concepts (read after onboarding)
     ├── EAS-Development-Guide.md                       # EAS workflow guide
     ├── EAS-Concepts-and-Keystores.md                  # EAS detailed concepts
     ├── BLE-DFU-Technical-Analysis.md                  # BLE/DFU deep dive

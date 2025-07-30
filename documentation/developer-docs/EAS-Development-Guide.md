@@ -173,10 +173,15 @@ eas build --profile development --platform android # New development build
 
 ## Resources
 
+### Official Documentation
 - [EAS Build Documentation](https://docs.expo.dev/build/introduction/)
 - [Environment Variables Guide](https://docs.expo.dev/build-reference/variables/)
 - [Build Configuration Reference](https://docs.expo.dev/build-reference/eas-json/)
 - [Troubleshooting Guide](https://docs.expo.dev/build-reference/troubleshooting/)
+
+### Wildlife Watcher Specific
+- **[Expo Fundamentals Guide](./Expo-Fundamentals-Guide.md)** - Essential concepts to understand before using EAS
+- **[EAS Concepts and Keystores](./EAS-Concepts-and-Keystores.md)** - Deep dive into EAS architecture and Android keystores
 
 ---
 
