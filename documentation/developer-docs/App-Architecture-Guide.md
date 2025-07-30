@@ -294,6 +294,8 @@ Fetch with Base Query
 Wildlife Watcher Backend API
 ```
 
+> **📝 Note**: This app will integrate with a **Supabase backend** in the future. The backend project is located at `~/dev/wildlifeai/wildlife-watcher-backend` and will replace the current RTK Query API integration with Supabase client libraries for real-time data synchronization, authentication, and database operations.
+
 ## Development Workflow Integration
 
 ### Hot Reload Support

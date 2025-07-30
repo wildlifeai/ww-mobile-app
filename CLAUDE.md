@@ -194,3 +194,6 @@ From `migration-config-snapshot.json`:
 - Always remind yourself before starting a task of the plan we are executing per the migration documents @project-context/ww-app-migration-plan/MIGRATION-OVERVIEW.md` , 
  @project-context/ww-app-migration-plan/DEVELOPMENT-EXECUTION-PLAN.md` and @project-context/ww-app-migration-plan/README.md `
 - IMPORTANT - Keep track of work done by updating the `@project-context/ww-app-migration-plan/MIGRATION-GUIDE.md` with completed tasks and notes to help reconcile progress and track details of work completed
+
+## Documentation Directories
+- `@documentation/developer-docs/` contains documentation for developers and should be maintained as we develop this codebase
