@@ -1,7 +1,7 @@
 import { AppRegistry } from 'react-native';
 import { name as appName } from './app.json';
-import { SimpleApp } from './src/SimpleApp';
+import { EmergencyApp } from './src/EmergencyApp';
 
-console.log("Loading simplified Wildlife Watcher app with working Redux store...");
+console.log("Loading emergency bulletproof app to test touch system...");
 
-AppRegistry.registerComponent(appName, () => SimpleApp);
+AppRegistry.registerComponent(appName, () => EmergencyApp);

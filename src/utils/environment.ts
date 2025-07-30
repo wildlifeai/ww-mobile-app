@@ -8,7 +8,24 @@ let Constants: any = null;
 class EnvironmentConfig {
   private getConstants() {
     if (!Constants) {
-      Constants = require('expo-constants').default;
+      try {
+        Constants = require('expo-constants').default;
+      } catch (e) {
+        console.warn('expo-constants failed to load, using fallback config:', e instanceof Error ? e.message : 'Unknown error');
+        // Return a mock constants object with fallback configuration
+        Constants = {
+          expoConfig: {
+            extra: {
+              apiBase: 'https://api.wildlifeai.org', // Fallback API base
+              googleMapsApiKeyAndroid: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_ANDROID,
+              googleMapsApiKeyIos: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_IOS,
+              bundleIdentifier: 'com.wildlife.wildlifewatcher.expo',
+              isDevelopment: true,
+              eas: { projectId: '6cf53a5e-90e1-4987-82c6-5f0337affe97' }
+            }
+          }
+        };
+      }
     }
     return Constants;
   }
@@ -17,8 +34,12 @@ class EnvironmentConfig {
     try {
       return this.getConstants().expoConfig?.extra || {};
     } catch (e) {
-      console.warn('Could not access expo-constants, using empty config:', e);
-      return {};
+      console.warn('Could not access expo config, using fallback values:', e);
+      return {
+        apiBase: 'https://api.wildlifeai.org',
+        isDevelopment: true,
+        bundleIdentifier: 'com.wildlife.wildlifewatcher.expo'
+      };
     }
   }
 
