@@ -4,11 +4,32 @@ This directory contains development guides and documentation for the Wildlife Wa
 
 ## 📚 Available Guides
 
-### [EAS Development Guide](./EAS-Development-Guide.md)
+### 🚀 Getting Started
+
+#### [Developer Onboarding Guide](./Developer-Onboarding-Guide.md)
+**Start here!** Complete step-by-step guide for new developers to get the Wildlife Watcher app running on their phone. Covers everything from installing Node.js to testing BLE functionality.
+
+#### [Quick Start Checklist](./Quick-Start-Checklist.md)
+Condensed setup guide for experienced React Native/Expo developers who want to get up and running quickly.
+
+### 🛠️ Development & Deployment
+
+#### [EAS Development Guide](./EAS-Development-Guide.md)
 Essential guide for using Expo Application Services (EAS) during development after the Expo migration.
 
-### [EAS Concepts and Keystores](./EAS-Concepts-and-Keystores.md)
+#### [EAS Concepts and Keystores](./EAS-Concepts-and-Keystores.md)
 Comprehensive guide explaining EAS concepts, Android keystore management, and development client workflow.
+
+### 🔧 Technical Analysis
+
+#### [BLE-DFU Technical Analysis](./BLE-DFU-Technical-Analysis.md)
+Deep technical analysis of the current BLE management and Nordic DFU implementation.
+
+#### [BLE-DFU High Level Report](./BLE-DFU-High-Level-Report.md)
+Executive summary of BLE and DFU capabilities for hardware team collaboration.
+
+#### [BLE-DFU Dependencies and Relationships](./BLE-DFU-Dependencies-and-Relationships.md)
+Detailed analysis of component dependencies and relationships in the BLE/DFU system.
 
 **Quick Start:**
 - Build development client: `eas build --profile development --platform android`
@@ -24,43 +45,51 @@ Comprehensive guide explaining EAS concepts, Android keystore management, and de
 
 ## 🚀 Getting Started (New Developers)
 
-1. **Prerequisites:**
-   ```bash
-   npm install -g @expo/cli
-   npx expo login
-   ```
+**New to the project?** Follow the [Developer Onboarding Guide](./Developer-Onboarding-Guide.md) for complete setup instructions.
 
-2. **Development Setup:**
-   ```bash
-   npm install
-   eas build --profile development --platform android  # One-time
-   npx expo start --dev-client                         # Daily development
-   ```
+**Experienced developer?** Use the [Quick Start Checklist](./Quick-Start-Checklist.md) for faster setup.
 
-3. **Read the guides** in this directory for detailed workflows
+**Quick Commands:**
+```bash
+# Prerequisites
+npm install -g @expo/cli eas-cli
+eas login
+
+# Setup
+git checkout expo-migration
+npm install
+npm start  # Start development server
+
+# Get app: Download development build from link in onboarding guide
+```
 
 ## 📋 Documentation Structure
 
 ```
 documentation/
 └── developer-docs/
-    ├── README.md                  # This file
-    ├── EAS-Development-Guide.md   # EAS workflow guide
-    └── [Future guides...]         # To be expanded
+    ├── README.md                                      # This file
+    ├── Developer-Onboarding-Guide.md                  # New developer setup
+    ├── Quick-Start-Checklist.md                       # Experienced dev setup
+    ├── EAS-Development-Guide.md                       # EAS workflow guide
+    ├── EAS-Concepts-and-Keystores.md                  # EAS detailed concepts
+    ├── BLE-DFU-Technical-Analysis.md                  # BLE/DFU deep dive
+    ├── BLE-DFU-High-Level-Report.md                   # BLE/DFU executive summary
+    └── BLE-DFU-Dependencies-and-Relationships.md      # Component relationships
 ```
 
-## 🎯 Next Documentation
+## 🎯 Future Documentation
 
-Future guides to be added:
-- [ ] BLE Development Guide (using react-native-ble-manager)
-- [ ] DFU Implementation Guide (Nordic DFU integration)  
-- [ ] Maps Integration Guide (react-native-maps)
-- [ ] Redux State Management Guide
-- [ ] Testing Guide
-- [ ] CI/CD with EAS Guide
-- [ ] Production Deployment Guide
+Guides to be added as needed:
+- [ ] Redux State Management Guide (detailed patterns)
+- [ ] Testing Guide (Jest + device testing)
+- [ ] Maps Integration Guide (react-native-maps advanced usage)
+- [ ] CI/CD with EAS Guide (automation)
+- [ ] Production Deployment Guide (app store submission)
 - [ ] Android Keystore Management Guide (advanced scenarios)
 - [ ] iOS Certificate Management with EAS Guide
+- [ ] Performance Optimization Guide
+- [ ] Security Best Practices Guide
 
 ---
 
