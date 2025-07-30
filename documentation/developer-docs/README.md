@@ -15,6 +15,11 @@ Condensed setup guide for experienced React Native/Expo developers who want to g
 #### [Docker Development Guide](./Docker-Development-Guide.md)
 **Recommended for teams!** Docker-based development environment with exact tool versions (Node 20.19.4, Expo CLI 0.18.31, EAS CLI 16.17.3). Eliminates "works on my machine" issues.
 
+### 🏗️ Architecture & Understanding
+
+#### [App Architecture Guide](./App-Architecture-Guide.md)
+**Essential for all developers!** Comprehensive tour of how the Wildlife Watcher app works - its layers, dependencies, features, and how everything fits together. Not too technical, but thorough enough to understand the system.
+
 ### 🛠️ Development & Deployment
 
 #### [Expo Fundamentals Guide](./Expo-Fundamentals-Guide.md)
@@ -79,6 +84,7 @@ documentation/
     ├── Developer-Onboarding-Guide.md                  # New developer setup  
     ├── Quick-Start-Checklist.md                       # Experienced dev setup
     ├── Docker-Development-Guide.md                    # Docker environment (recommended)
+    ├── App-Architecture-Guide.md                      # How the app works (essential reading)
     ├── Expo-Fundamentals-Guide.md                     # Expo SDK concepts (read after onboarding)
     ├── EAS-Development-Guide.md                       # EAS workflow guide
     ├── EAS-Concepts-and-Keystores.md                  # EAS detailed concepts
