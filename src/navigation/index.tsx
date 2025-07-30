@@ -22,6 +22,7 @@ import { AddDeployment } from "./screens/AddDeployment"
 import type { Option } from "../components/ui/WWSelect"
 import { AddProject } from "./screens/AddProject"
 import { BottomTabs } from "./BottomTabs"
+import { DevBuildInfo } from "./screens/DevBuildInfo"
 
 export interface RootStackParamList extends ParamListBase {
 	CommunityDiscussion: undefined
@@ -36,6 +37,7 @@ export interface RootStackParamList extends ParamListBase {
 	Register: undefined
 	AddDeployment: { selectedProject?: Option } | undefined
 	AddProject: undefined
+	DevBuildInfo: undefined
 }
 
 export type Routes = keyof RootStackParamList
@@ -165,6 +167,13 @@ export const MainNavigation = () => {
 							component={AddProject}
 							options={{ title: "New project details" }}
 						/>
+						{__DEV__ && (
+							<Stack.Screen
+								name="DevBuildInfo"
+								component={DevBuildInfo}
+								options={{ title: "Dev Build Info" }}
+							/>
+						)}
 					</Stack.Group>
 				)}
 			</Stack.Navigator>

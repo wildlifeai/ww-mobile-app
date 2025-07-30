@@ -67,6 +67,19 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 			>
 				Sign out
 			</Button>
+			{__DEV__ && (
+				<>
+					<View style={{ height: 1, backgroundColor: colors.outline, marginVertical: spacing, width: '100%' }} />
+					<Button
+						textColor={colors.primary}
+						style={[{ margin: spacing }, styles.link]}
+						icon="developer-board"
+						onPress={() => goTo("DevBuildInfo")}
+					>
+						Dev Build Info
+					</Button>
+				</>
+			)}
 		</View>
 	)
 }
