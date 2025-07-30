@@ -4,15 +4,54 @@
 
 If you're already familiar with React Native and Expo development, here's the condensed setup guide:
 
-## Prerequisites ✅
+## Choose Your Setup Method
 
-- [ ] Node.js 20.19.4 (exact version): `nvm install 20.19.4 && nvm use 20.19.4`
+### 🐳 Docker (Recommended for Teams)
+**Best for:** Teams, identical environments, avoiding system conflicts  
+**Supports:** Windows, macOS, Linux (iOS builds still require macOS)
+
+### 💻 Native Installation
+**Best for:** Solo developers, maximum performance, iOS development  
+**Supports:** Windows (WSL2), macOS, Linux
+
+---
+
+## 🐳 Docker Quick Start (5 minutes)
+
+### Prerequisites
+- [ ] Docker Desktop (Windows/macOS) or Docker Engine (Linux)
+- [ ] Android device with USB debugging enabled
+- [ ] Expo account (free): [expo.dev](https://expo.dev)
+
+### Setup
+```bash
+# 1. Clone and setup
+git clone [REPO_URL] wildlife-watcher-mobile-app
+cd wildlife-watcher-mobile-app
+git checkout expo-migration
+
+# 2. Start Docker environment
+docker-compose -f docker-compose.dev.yml up -d
+docker-compose -f docker-compose.dev.yml exec wildlife-watcher-dev bash
+
+# 3. Inside container - install and start
+npm install
+npx expo start
+```
+
+**✅ DOCKER READY:** Exact environment (Node 20.19.4, Expo CLI 0.18.31, EAS CLI 16.17.3)
+
+---
+
+## 💻 Native Quick Start
+
+### Prerequisites
+- [ ] Node.js 20.19.4 (exact version): `nvm install 20.19.4 && nvm use 20.19.4`  
 - [ ] Expo CLI & EAS CLI: `npm install -g @expo/cli@0.18.31 eas-cli@16.17.3`
 - [ ] Android device with USB debugging enabled
 - [ ] Expo account (free): [expo.dev](https://expo.dev)
 
-## Quick Setup (5 minutes)
-
+### Setup
 ```bash
 # 1. Clone and setup
 git clone [REPO_URL] wildlife-watcher-mobile-app
@@ -27,7 +66,9 @@ npm install
 npx expo start
 ```
 
-## Get App on Device (Choose One)
+---
+
+## Get App on Device (All Platforms)
 
 ### Option A: Pre-built Development Build (Fastest)
 1. Download APK: https://expo.dev/accounts/apps_wildlife/projects/wildlife-watcher-expo/builds/12fa61c8-cf82-47c5-a8b1-f92fea0a04ca
@@ -36,14 +77,17 @@ npx expo start
 
 ### Option B: Build Your Own
 ```bash
+# Login (native or Docker container)
 eas login
+
+# Build development client
 eas build --platform android --profile development
 # Wait ~15 minutes, install APK
 ```
 
 ### Option C: Expo Go (Limited - No BLE)
 - Install Expo Go app
-- Scan QR code from `npx expo start`
+- Scan QR code from `npx expo start` (native) or inside Docker container
 - Note: BLE functionality disabled in Expo Go
 
 ## Key Tech Stack Notes
@@ -101,6 +145,19 @@ eas build --platform ios --profile production
 
 ## Troubleshooting Quick Fixes
 
+### For Docker Setup
+```bash
+# Restart container
+docker-compose -f docker-compose.dev.yml restart wildlife-watcher-dev
+
+# Rebuild container (if environment issues)
+docker-compose -f docker-compose.dev.yml build wildlife-watcher-dev
+
+# Clear cache (inside container)
+npx expo start --clear
+```
+
+### For Native Setup
 ```bash
 # Clear cache
 npx expo start --clear
@@ -113,6 +170,15 @@ adb kill-server && adb start-server
 
 # iOS pod issues (macOS)
 cd ios && pod install --repo-update && cd ..
+```
+
+### Universal Fixes
+```bash
+# Network issues (any setup)
+npx expo start --tunnel
+
+# Port conflicts (change port)
+npx expo start --port 8082
 ```
 
 ## Key Development Notes
@@ -130,16 +196,37 @@ cd ios && pod install --repo-update && cd ..
 - DFU requires firmware files and connected devices
 - Map features work with internet connection
 
+## Setup Decision Matrix
+
+| Scenario | Recommended Approach | Why |
+|----------|---------------------|-----|
+| **Team Development** | 🐳 Docker | Identical environments, 5-min setup |
+| **Windows (avoiding WSL2)** | 🐳 Docker | Simpler than WSL2, no compatibility issues |
+| **Multiple RN Projects** | 🐳 Docker | Isolated tool versions per project |
+| **Solo Development** | 💻 Native | Best performance, direct system access |
+| **iOS Development** | 💻 Native on macOS | Xcode requires macOS regardless |
+| **Performance Critical** | 💻 Native | No container overhead |
+| **Linux Distributions** | Either | Both work well, Docker for consistency |
+
 ## Ready to Code! 🚀
 
-You should now have:
-- ✅ App running on device with full BLE support
-- ✅ Hot reload working
-- ✅ Access to all native functionality
-- ✅ Understanding of key architecture
+### ✅ Verification Checklist (Any Setup)
+- [ ] App running on device with full BLE support
+- [ ] Hot reload working (changes appear automatically)
+- [ ] Access to all native functionality (scanning works)
+- [ ] Debug menu accessible (shake phone)
+- [ ] Development server connects reliably
+
+### 🎯 Platform-Specific Success
+- [ ] **Docker**: Container starts, exact versions verified
+- [ ] **Windows**: No WSL2 issues, ports accessible
+- [ ] **macOS**: iOS development tools working (if needed)
+- [ ] **Linux**: Package dependencies installed correctly
+- [ ] **Android**: ADB recognizes device, APK installs
 
 **Next:** Check `documentation/developer-docs/` for detailed technical docs on BLE, DFU, and system architecture.
 
 ---
 
-*Need the full guide? See [Developer-Onboarding-Guide.md](./Developer-Onboarding-Guide.md)*
+*Need the full guide? See [Developer-Onboarding-Guide.md](./Developer-Onboarding-Guide.md)  
+Docker details? See [Docker-Development-Guide.md](./Docker-Development-Guide.md)*

@@ -36,21 +36,42 @@ The Wildlife Watcher app is a React Native application that:
 
 ### System Requirements
 
-**Windows Users:**
+#### For Docker Setup (Recommended)
+**Windows:**
+- Windows 10/11 with Docker Desktop
+- At least 8GB RAM, 20GB free disk space
+- No WSL2 setup required!
+
+**macOS:**
+- macOS 12.0+ (Monterey or later) with Docker Desktop
+- At least 8GB RAM, 20GB free disk space
+
+**Linux:**
+- Any modern distribution with Docker Engine + Docker Compose
+- At least 8GB RAM, 20GB free disk space
+
+#### For Native Setup
+**Windows:**
 - Windows 10/11 with WSL2 (Windows Subsystem for Linux)
 - At least 8GB RAM, 20GB free disk space
 
-**macOS Users:**
+**macOS:**
 - macOS 12.0+ (Monterey or later)
 - At least 8GB RAM, 20GB free disk space
 
+**Linux:**
+- Any modern distribution (Ubuntu, Fedora, Arch, etc.)
+- At least 8GB RAM, 20GB free disk space
+
+#### Mobile Devices
 **Android Phone:**
 - Android 12+ recommended
 - USB debugging enabled (we'll cover this)
 
-**iOS Phone (Optional):**
+**iOS Phone (Optional - requires macOS):**
 - iOS 15+ recommended
 - Apple Developer account for device installation
+- **Note**: iOS development requires macOS even with Docker
 
 ### Required Accounts
 
@@ -62,6 +83,51 @@ The Wildlife Watcher app is a React Native application that:
    - Access to the Wildlife Watcher repository
 
 ## Development Environment Setup
+
+### Choose Your Setup Method
+
+You have two main options for setting up your development environment:
+
+#### 🐳 **Option 1: Docker (Recommended for Teams)**
+- **Pros**: Identical environment across all platforms, 5-minute setup, no tool conflicts
+- **Cons**: Slight performance overhead, requires Docker knowledge
+- **Best for**: Teams, multiple projects, avoiding system pollution
+- **Supports**: Windows, macOS, Linux (iOS builds still require macOS)
+
+#### 💻 **Option 2: Native Installation** 
+- **Pros**: Best performance, direct system integration
+- **Cons**: Platform differences, potential version conflicts, longer setup
+- **Best for**: Solo developers, performance-critical work, iOS development
+- **Supports**: Windows (WSL2), macOS, Linux
+
+**👥 For teams**: We strongly recommend **Docker** to ensure everyone has identical environments.  
+**🏗️ For iOS development**: You'll need **macOS** regardless of Docker usage.
+
+---
+
+### 🐳 Docker Setup (All Platforms)
+
+If you choose Docker, skip to the [Docker Development Guide](./Docker-Development-Guide.md) for complete setup instructions.
+
+**Quick Docker Start:**
+```bash
+# Install Docker Desktop (Windows/macOS) or Docker Engine (Linux)
+# Then:
+git clone [REPO_URL] wildlife-watcher-mobile-app
+cd wildlife-watcher-mobile-app
+git checkout expo-migration
+docker-compose -f docker-compose.dev.yml up -d
+docker-compose -f docker-compose.dev.yml exec wildlife-watcher-dev bash
+npx expo start
+```
+
+**✅ CHECKPOINT DOCKER:** Environment ready in 5 minutes with exact tool versions.
+
+---
+
+### 💻 Native Installation Setup
+
+If you prefer native installation, continue with the platform-specific instructions below:
 
 ### Step 1: Install Node.js
 
@@ -97,6 +163,25 @@ nvm use 20.19.4
 brew install node
 ```
 
+**Linux:**
+```bash
+# Using Node Version Manager (recommended for version matching)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+source ~/.bashrc
+nvm install 20.19.4
+nvm use 20.19.4
+
+# Or using package manager (Ubuntu/Debian)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Or using package manager (Fedora/RHEL)
+sudo dnf install nodejs npm
+
+# Or using package manager (Arch Linux)
+sudo pacman -S nodejs npm
+```
+
 **✅ CHECKPOINT 1:** Verify Node.js installation
 ```bash
 node --version    # Should show v20.19.4 (or v20.x.x)
@@ -112,6 +197,15 @@ sudo apt update && sudo apt install git
 
 # macOS
 brew install git
+
+# Linux (Ubuntu/Debian)
+sudo apt update && sudo apt install git
+
+# Linux (Fedora/RHEL)
+sudo dnf install git
+
+# Linux (Arch Linux)
+sudo pacman -S git
 ```
 
 **Install Expo CLI and EAS CLI:**
@@ -161,6 +255,22 @@ eas --version              # Should show eas-cli/16.17.3
    **macOS:**
    ```bash
    brew install android-platform-tools
+   ```
+
+   **Linux (Ubuntu/Debian):**
+   ```bash
+   sudo apt update
+   sudo apt install android-tools-adb android-tools-fastboot
+   ```
+
+   **Linux (Fedora/RHEL):**
+   ```bash
+   sudo dnf install android-tools
+   ```
+
+   **Linux (Arch Linux):**
+   ```bash
+   sudo pacman -S android-tools
    ```
 
 **✅ CHECKPOINT 3:** Verify Android connection
@@ -514,10 +624,20 @@ eas build --platform ios --profile production
 
 Before you start developing, make sure all these work:
 
-- [ ] ✅ Node.js 18+ installed
-- [ ] ✅ Expo CLI and EAS CLI installed
+### For Docker Setup:
+- [ ] ✅ Docker Desktop/Engine installed and running
+- [ ] ✅ Container starts and connects successfully
+- [ ] ✅ Exact tool versions verified (Node 20.19.4, Expo CLI 0.18.31, EAS CLI 16.17.3)
+- [ ] ✅ Development server starts (`npx expo start`)
+- [ ] ✅ Hot reload works between container and phone
+
+### For Native Setup:
+- [ ] ✅ Node.js 20.19.4+ installed
+- [ ] ✅ Expo CLI 0.18.31 and EAS CLI 16.17.3 installed
 - [ ] ✅ Project cloned and dependencies installed
-- [ ] ✅ Development server starts (`npm start`)
+- [ ] ✅ Development server starts (`npx expo start`)
+
+### For All Setups:
 - [ ] ✅ Phone can connect to development server
 - [ ] ✅ Development build installed and working
 - [ ] ✅ BLE scanning works (shows scanning interface)
@@ -526,6 +646,11 @@ Before you start developing, make sure all these work:
 - [ ] ✅ Can navigate all app screens
 - [ ] ✅ Maps load correctly
 - [ ] ✅ No major error messages or crashes
+
+### Platform-Specific:
+- [ ] ✅ **iOS (macOS only)**: Xcode installed and device connected
+- [ ] ✅ **Android (All platforms)**: ADB recognizes device
+- [ ] ✅ **Linux**: Package manager dependencies installed correctly
 
 ## Welcome to the Team! 🚀
 
