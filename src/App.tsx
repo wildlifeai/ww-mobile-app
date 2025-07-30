@@ -24,6 +24,8 @@ import { ListenToBleEngineProvider } from "./providers/ListenToBleEngineProvider
 import { PaperProvider } from "react-native-paper"
 import { CombinedDefaultTheme } from "./theme"
 import { AuthProvider } from "./providers/AuthProvider"
+import { ExpoConstantsDebugger } from "./ExpoConstantsDebugger"
+import { View } from "react-native"
 
 export const App = () => {
 	return (
@@ -37,7 +39,10 @@ export const App = () => {
 									<BleEngineProvider>
 										<ListenToBleEngineProvider>
 											<AuthProvider>
-												<MainNavigation />
+												<View style={{ flex: 1 }}>
+													<MainNavigation />
+													<ExpoConstantsDebugger />
+												</View>
 											</AuthProvider>
 										</ListenToBleEngineProvider>
 									</BleEngineProvider>

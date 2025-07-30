@@ -76,6 +76,22 @@ export default ({ config }) => {
       bundleIdentifier: bundleId,
       isDevelopment
     },
-    plugins: []
+    plugins: [
+      'expo-splash-screen',
+      [
+        'expo-build-properties',
+        {
+          android: {
+            compileSdkVersion: 34,
+            targetSdkVersion: 34,
+            buildToolsVersion: '34.0.0',
+            minSdkVersion: 23
+          },
+          ios: {
+            deploymentTarget: '15.1'
+          }
+        }
+      ]
+    ]
   };
 };
