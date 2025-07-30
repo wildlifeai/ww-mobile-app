@@ -72,7 +72,7 @@ Node.js is the JavaScript runtime that powers our development tools.
 node --version
 ```
 
-**If you don't have Node.js (or have version < 18):**
+**If you don't have Node.js (or have version < 20.19.4):**
 
 **Windows (WSL2):**
 ```bash
@@ -80,27 +80,27 @@ node --version
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 source ~/.bashrc
 
-# Install Node.js 18
-nvm install 18
-nvm use 18
+# Install Node.js 20.19.4 (exact version used by project maintainer)
+nvm install 20.19.4
+nvm use 20.19.4
 ```
 
 **macOS:**
 ```bash
-# Using Homebrew
-brew install node@18
-
-# Or using Node Version Manager
+# Using Node Version Manager (recommended for version matching)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 source ~/.zshrc
-nvm install 18
-nvm use 18
+nvm install 20.19.4
+nvm use 20.19.4
+
+# Or using Homebrew (may be slightly different version)
+brew install node
 ```
 
 **✅ CHECKPOINT 1:** Verify Node.js installation
 ```bash
-node --version    # Should show v18.x.x
-npm --version     # Should show 9.x.x or higher
+node --version    # Should show v20.19.4 (or v20.x.x)
+npm --version     # Should show 10.8.2 (or 10.x.x)
 ```
 
 ### Step 2: Install Development Tools
@@ -116,19 +116,21 @@ brew install git
 
 **Install Expo CLI and EAS CLI:**
 ```bash
-# Install Expo development tools globally
-npm install -g @expo/cli eas-cli
+# Install exact versions used by project maintainer
+npm install -g @expo/cli@0.18.31 eas-cli@16.17.3
 
 # Verify installation
-expo --version
+npx @expo/cli --version  # Use npx for new Expo CLI
 eas --version
 ```
 
 **✅ CHECKPOINT 2:** Verify CLI installation
 ```bash
-expo --version    # Should show 0.x.x
-eas --version     # Should show 0.x.x
+npx @expo/cli --version    # Should show 0.18.31
+eas --version              # Should show eas-cli/16.17.3
 ```
+
+**⚠️ Note:** If you see a warning about legacy expo-cli when running `expo --version`, that's expected. Always use `npx @expo/cli` for the new CLI.
 
 ### Step 3: Set Up Your Phone for Development
 
@@ -249,7 +251,7 @@ Expo Go is the fastest way to see your app running, but has limitations with nat
 
 2. **Start the development server:**
    ```bash
-   npm start
+   npx expo start
    ```
 
 3. **Connect your phone:**
@@ -285,7 +287,7 @@ We have a development build ready for Android:
 3. **Connect to development server:**
    ```bash
    # Start the development server
-   npm start
+   npx expo start
 
    # In the Expo CLI, press 'd' to open development menu
    # Or scan QR code from the development build
@@ -380,7 +382,7 @@ If you want to build your own version:
 npx expo start --clear
 
 # If that doesn't work, clear npm cache
-npm start -- --reset-cache
+npx expo start --reset-cache
 ```
 
 ### Issue: "Phone won't connect to development server"

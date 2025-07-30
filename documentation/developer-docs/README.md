@@ -12,6 +12,9 @@ This directory contains development guides and documentation for the Wildlife Wa
 #### [Quick Start Checklist](./Quick-Start-Checklist.md)
 Condensed setup guide for experienced React Native/Expo developers who want to get up and running quickly.
 
+#### [Docker Development Guide](./Docker-Development-Guide.md)
+**Recommended for teams!** Docker-based development environment with exact tool versions (Node 20.19.4, Expo CLI 0.18.31, EAS CLI 16.17.3). Eliminates "works on my machine" issues.
+
 ### 🛠️ Development & Deployment
 
 #### [EAS Development Guide](./EAS-Development-Guide.md)
@@ -45,22 +48,23 @@ Detailed analysis of component dependencies and relationships in the BLE/DFU sys
 
 ## 🚀 Getting Started (New Developers)
 
-**New to the project?** Follow the [Developer Onboarding Guide](./Developer-Onboarding-Guide.md) for complete setup instructions.
+**🐳 Docker (Recommended):** Use [Docker Development Guide](./Docker-Development-Guide.md) for identical environment setup.
 
-**Experienced developer?** Use the [Quick Start Checklist](./Quick-Start-Checklist.md) for faster setup.
+**📖 New to the project?** Follow the [Developer Onboarding Guide](./Developer-Onboarding-Guide.md) for complete setup instructions.
+
+**⚡ Experienced developer?** Use the [Quick Start Checklist](./Quick-Start-Checklist.md) for faster setup.
 
 **Quick Commands:**
 ```bash
-# Prerequisites
-npm install -g @expo/cli eas-cli
-eas login
+# Docker approach (5 minutes, identical environment)
+docker-compose -f docker-compose.dev.yml up -d
+docker-compose -f docker-compose.dev.yml exec wildlife-watcher-dev bash
 
-# Setup
+# Native approach (requires exact versions)
+npm install -g @expo/cli@0.18.31 eas-cli@16.17.3
 git checkout expo-migration
 npm install
-npm start  # Start development server
-
-# Get app: Download development build from link in onboarding guide
+npx expo start  # Start development server
 ```
 
 ## 📋 Documentation Structure
@@ -69,8 +73,9 @@ npm start  # Start development server
 documentation/
 └── developer-docs/
     ├── README.md                                      # This file
-    ├── Developer-Onboarding-Guide.md                  # New developer setup
+    ├── Developer-Onboarding-Guide.md                  # New developer setup  
     ├── Quick-Start-Checklist.md                       # Experienced dev setup
+    ├── Docker-Development-Guide.md                    # Docker environment (recommended)
     ├── EAS-Development-Guide.md                       # EAS workflow guide
     ├── EAS-Concepts-and-Keystores.md                  # EAS detailed concepts
     ├── BLE-DFU-Technical-Analysis.md                  # BLE/DFU deep dive

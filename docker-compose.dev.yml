@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  wildlife-watcher-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: wildlife-watcher-dev
+    ports:  
+      - "8081:8081"    # Metro bundler
+      - "19000:19000"  # Expo DevTools
+      - "19001:19001"  # Expo tunnel
+      - "19002:19002"  # Expo web
+    volumes:
+      - .:/app
+      - /app/node_modules  # Prevent host node_modules from overriding container's
+      - ~/.expo:/home/developer/.expo  # Share Expo credentials
+    environment:
+      - EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
+      - REACT_NATIVE_PACKAGER_HOSTNAME=0.0.0.0
+    stdin_open: true
+    tty: true
+    networks:
+      - wildlife-dev
+    working_dir: /app
+    command: bash
+
+  # Optional: ADB bridge for Android development
+  adb-server:
+    image: sorccu/adb:latest
+    container_name: wildlife-adb
+    privileged: true
+    ports:
+      - "5037:5037"
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+    networks:
+      - wildlife-dev
+    profiles:
+      - android
+
+networks:
+  wildlife-dev:
+    driver: bridge

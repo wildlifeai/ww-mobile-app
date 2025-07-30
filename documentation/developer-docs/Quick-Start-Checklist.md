@@ -6,8 +6,8 @@ If you're already familiar with React Native and Expo development, here's the co
 
 ## Prerequisites ✅
 
-- [ ] Node.js 18+
-- [ ] Expo CLI & EAS CLI: `npm install -g @expo/cli eas-cli`
+- [ ] Node.js 20.19.4 (exact version): `nvm install 20.19.4 && nvm use 20.19.4`
+- [ ] Expo CLI & EAS CLI: `npm install -g @expo/cli@0.18.31 eas-cli@16.17.3`
 - [ ] Android device with USB debugging enabled
 - [ ] Expo account (free): [expo.dev](https://expo.dev)
 
@@ -24,7 +24,7 @@ npm install
 # For iOS: npm run pod-install
 
 # 3. Start development server
-npm start
+npx expo start
 ```
 
 ## Get App on Device (Choose One)
@@ -43,7 +43,7 @@ eas build --platform android --profile development
 
 ### Option C: Expo Go (Limited - No BLE)
 - Install Expo Go app
-- Scan QR code from `npm start`
+- Scan QR code from `npx expo start`
 - Note: BLE functionality disabled in Expo Go
 
 ## Key Tech Stack Notes
@@ -80,7 +80,7 @@ src/
 ## Development Commands
 
 ```bash
-npm start              # Start dev server
+npx expo start        # Start dev server (use npx for new CLI)
 npm test              # Jest tests
 npm run lint          # ESLint
 npm run android       # Run on Android (bare RN)
