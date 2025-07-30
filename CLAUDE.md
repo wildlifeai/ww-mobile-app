@@ -120,6 +120,13 @@ SafeAreaProvider → ReduxProvider → PaperProvider → NavigationContainer
 - Custom hooks in `src/hooks/`
 - BLE functionality in `src/ble/` and `src/providers/BleEngineProvider.tsx`
 
+## Development Wisdom
+
+### Debugging and Optimization
+- Debug simple first: unused packages (carrying dead weight in package.json) before architecture changes
+- Focus on error messages before assumptions 
+- The simplest fix is often the right one (Occam's razor!)
+
 # IMPORTANT
 ## Migration Context
 This codebase is currently undergoing an Expo migration. The `project-context/` directory contains detailed migration documentation and planning files. When working on migration-related tasks, refer to these documents for context and requirements.
