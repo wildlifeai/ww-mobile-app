@@ -96,7 +96,7 @@ export const COMMANDS: {
 		name: CommandNames.LORAWAN,
 		readCommand: "status",
 		readRegex:
-			/Trap: (\w+). Sensor: (enabled|disabled). LoRaWan: ((?:\w+\s*)+)./,
+			/Sensor: (enabled|disabled). LoRaWan: ((?:\w+\s*)+)\./,
 	},
 	[CommandNames.HEARTBEAT]: {
 		name: CommandNames.HEARTBEAT,

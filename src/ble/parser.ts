@@ -139,12 +139,14 @@ export const parseLogs = (finishedLog: string, lastLog: string) => {
 	if (lastLorawanLine) {
 		const matches = COMMANDS.LORAWAN.readRegex!.exec(lastLorawanLine)
 		if (matches) {
-			const [, , , value] = matches
+			const [, , value] = matches // Updated to match new regex with 2 capture groups
 
 			results.push({
 				value,
 				command: COMMANDS.LORAWAN,
 			})
+		} else {
+			console.log("🔍 LORAWAN regex failed to match:", lastLorawanLine)
 		}
 	}
 
