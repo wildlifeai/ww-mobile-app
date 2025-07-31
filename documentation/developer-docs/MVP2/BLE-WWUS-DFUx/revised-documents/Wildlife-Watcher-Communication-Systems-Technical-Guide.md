@@ -11,7 +11,7 @@
 
 | Date | Version | Summary of Changes | Author |
 |------|---------|-------------------|---------|
-| 2025-07-31 | 1.0 | Initial consolidated document addressing Charles Palmer's feedback on BLE/DFU terminology and dual-processor architecture | Claude Code |
+| 2025-07-31 | 1.0 | Initial consolidated document addressing Charles Palmer's feedback on BLE/DFU terminology and dual-processor architecture | Claude Code (with Adarsh's Guidance of course!) |
 
 ---
 
