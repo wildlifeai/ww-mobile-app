@@ -1,5 +1,5 @@
 1. Need to update the wildlife-watcher-implementation-spec-mvp2.md specificatio for:
-- BLE and DFU specification details
+- BLE and DFU specification details - 1 AUg 2025 - In progress - with Charles
 - Items to include from the critical-gaps-and-missing-considerations.md
 - add reference to the figma design document - User Stories_ Navigation 2.0-Figma-Design-med.pdf
 - update for Supdbase database and auth details - Schema, Current RLS Policies, API details, Links to Docs, edge function, Storage
