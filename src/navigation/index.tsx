@@ -23,6 +23,7 @@ import type { Option } from "../components/ui/WWSelect"
 import { AddProject } from "./screens/AddProject"
 import { BottomTabs } from "./BottomTabs"
 import { DevBuildInfo } from "./screens/DevBuildInfo"
+import { AuthTestScreen } from "../screens/AuthTestScreen"
 
 export interface RootStackParamList extends ParamListBase {
 	CommunityDiscussion: undefined
@@ -38,6 +39,7 @@ export interface RootStackParamList extends ParamListBase {
 	AddDeployment: { selectedProject?: Option } | undefined
 	AddProject: undefined
 	DevBuildInfo: undefined
+	AuthTestScreen: undefined
 }
 
 export type Routes = keyof RootStackParamList
@@ -168,11 +170,18 @@ export const MainNavigation = () => {
 							options={{ title: "New project details" }}
 						/>
 						{__DEV__ && (
-							<Stack.Screen
-								name="DevBuildInfo"
-								component={DevBuildInfo}
-								options={{ title: "Dev Build Info" }}
-							/>
+							<>
+								<Stack.Screen
+									name="DevBuildInfo"
+									component={DevBuildInfo}
+									options={{ title: "Dev Build Info" }}
+								/>
+								<Stack.Screen
+									name="AuthTestScreen"
+									component={AuthTestScreen}
+									options={{ title: "🔐 Auth Test" }}
+								/>
+							</>
 						)}
 					</Stack.Group>
 				)}

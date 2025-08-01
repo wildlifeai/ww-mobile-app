@@ -69,8 +69,31 @@ export const register = async (credentials: RegisterRequest): Promise<AuthRespon
       throw new Error(error.message);
     }
 
-    if (!data.user || !data.session) {
-      throw new Error('Registration failed: No user or session data returned');
+    if (!data.user) {
+      throw new Error('Registration failed: No user data returned');
+    }
+
+    // If no session, user needs to confirm email first
+    if (!data.session) {
+      console.log('Registration successful - email confirmation required');
+      // Don't throw an error - this is a success case that requires email confirmation
+      // Instead, return a special response indicating email confirmation is needed
+      const pendingAuthResponse: AuthResponse = {
+        jwt: '', // No JWT until confirmed
+        user: {
+          id: parseInt(data.user.id.replace(/-/g, '').slice(0, 8), 16) || 0, // Convert UUID to number-like ID
+          username: credentials.username,
+          email: credentials.email,
+          confirmed: false,
+          blocked: false,
+          createdAt: data.user.created_at,
+          updatedAt: data.user.updated_at || data.user.created_at,
+        },
+      };
+      
+      // Add a special flag to indicate this is pending confirmation
+      (pendingAuthResponse as any).isPendingConfirmation = true;
+      return pendingAuthResponse;
     }
 
     return transformSupabaseUser(data.user, data.session);

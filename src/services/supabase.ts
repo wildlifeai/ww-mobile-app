@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import type { Database } from '../types/supabase';
 
@@ -15,15 +16,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// Create Supabase client singleton with full type safety
+// Create Supabase client singleton with React Native specific configuration
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
+    // Use AsyncStorage for session persistence in React Native
+    storage: AsyncStorage,
     // Enable automatic session refresh
     autoRefreshToken: true,
-    // Persist session in SecureStore (handled by @supabase/supabase-js)
+    // Persist session in AsyncStorage
     persistSession: true,
-    // Detect session from URL (useful for auth redirects)
-    detectSessionInUrl: true,
+    // Disable URL detection for React Native (not needed)
+    detectSessionInUrl: false,
   },
 });
 

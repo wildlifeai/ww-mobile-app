@@ -78,6 +78,14 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 					>
 						Dev Build Info
 					</Button>
+					<Button
+						textColor={colors.primary}
+						style={[{ margin: spacing }, styles.link]}
+						icon="shield-key"
+						onPress={() => goTo("AuthTestScreen")}
+					>
+						🔐 Auth Test
+					</Button>
 				</>
 			)}
 		</View>

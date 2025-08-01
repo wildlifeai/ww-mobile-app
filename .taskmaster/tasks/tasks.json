@@ -586,7 +586,7 @@
         "id": 8,
         "title": "Supabase Backend Foundation Setup",
         "description": "Integrate existing Supabase backend with the migrated Expo app, configure mobile app connection, and setup client-side authentication integration",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           5
         ],
@@ -650,7 +650,7 @@
               "8.4"
             ],
             "details": "Create test API calls to verify connectivity to main tables (users, devices, projects). Test authenticated API calls with proper RLS policies. Verify real-time subscriptions work for device updates. Test file upload capabilities for images. Validate error handling for network failures. Create a simple debug screen to display connection status and test various API endpoints.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Successfully fetch user profile data after authentication. Query devices table and verify data returns correctly. Test creating a test record respects RLS policies. Confirm real-time updates trigger when data changes. Verify file uploads work for deployment photos. Test offline behavior and error states."
           }
         ]
@@ -821,7 +821,7 @@
     ],
     "metadata": {
       "created": "2025-07-27T12:38:05.813Z",
-      "updated": "2025-08-01T10:58:14.919Z",
+      "updated": "2025-08-01T11:07:54.632Z",
       "description": "Tasks for master context"
     }
   }

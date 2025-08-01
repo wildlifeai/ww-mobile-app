@@ -1,3 +1,6 @@
+// Import URL polyfill for React Native (required for Supabase)
+import 'react-native-url-polyfill/auto';
+
 import { AppRegistry } from 'react-native';
 import { name as appName } from './app.json';
 
@@ -18,7 +21,7 @@ try {
   // Fallback to a simple component
   const React = require('react');
   const { Text, View } = require('react-native');
-  const FallbackApp = () => React.createElement(View, { style: { flex: 1, justifyContent: 'center', alignItems: 'center' } }, React.createElement(Text, null, 'Error loading app: ' + error.message));
+  const FallbackApp = () => React.createElement(View, { style: { flex: 1, justifyContent: 'center', alignItems: 'center' } }, React.createElement(Text, null, 'Error loading app: ' + (error?.message || error?.toString() || 'Unknown error')));
   AppRegistry.registerComponent('main', () => FallbackApp);
   AppRegistry.registerComponent(appName, () => FallbackApp);
 }

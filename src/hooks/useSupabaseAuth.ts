@@ -18,7 +18,7 @@ import { LoginRequest, RegisterRequest, AuthResponse } from '../redux/api/auth/t
  */
 export const useSupabaseAuth = () => {
   const dispatch = useAppDispatch();
-  const authState = useAppSelector((state) => state.auth);
+  const authState = useAppSelector((state) => state.authentication);
 
   const handleLogin = useCallback(async (credentials: LoginRequest): Promise<AuthResponse> => {
     try {
