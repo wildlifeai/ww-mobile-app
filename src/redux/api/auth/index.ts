@@ -1,22 +1,38 @@
 import { api } from ".."
 import { AuthResponse, LoginRequest, RegisterRequest } from "./types"
-import { API_URLS } from "../urls"
+import { login, register } from "../../../services/auth"
 
 export const authApi = api.injectEndpoints({
 	endpoints: (builder) => ({
 		login: builder.mutation<AuthResponse, LoginRequest>({
-			query: (credentials) => ({
-				url: API_URLS.AUTH_LOGIN,
-				method: "POST",
-				body: credentials,
-			}),
+			queryFn: async (credentials) => {
+				try {
+					const result = await login(credentials)
+					return { data: result }
+				} catch (error) {
+					return { 
+						error: { 
+							status: 'CUSTOM_ERROR', 
+							error: error instanceof Error ? error.message : 'Login failed' 
+						} 
+					}
+				}
+			},
 		}),
 		register: builder.mutation<AuthResponse, RegisterRequest>({
-			query: (credentials) => ({
-				url: API_URLS.AUTH_REGISTER,
-				method: "POST",
-				body: credentials,
-			}),
+			queryFn: async (credentials) => {
+				try {
+					const result = await register(credentials)
+					return { data: result }
+				} catch (error) {
+					return { 
+						error: { 
+							status: 'CUSTOM_ERROR', 
+							error: error instanceof Error ? error.message : 'Registration failed' 
+						} 
+					}
+				}
+			},
 		}),
 	}),
 	overrideExisting: false,
