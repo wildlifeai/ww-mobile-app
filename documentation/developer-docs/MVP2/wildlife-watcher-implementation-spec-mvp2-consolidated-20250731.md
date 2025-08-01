@@ -7,15 +7,6 @@
 
 ---
 
-## Revision History
-
-| Date | Version | Summary of Changes | Author |
-|------|---------|-------------------|---------|
-| 2025-07-31 | 0.01 | Initial document creation - Complete MVP2 specification including architecture, authentication, core features, offline support, Supabase integration, and implementation timeline | Adarsh (Initial) |
-| 2025-07-31 | 0.02 | Added revision history table for tracking document changes | Claude Code |
-
----
-
 ## Table of Contents
 
 1. [Project Overview](#1-project-overview)

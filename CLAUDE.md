@@ -205,13 +205,17 @@ From `migration-config-snapshot.json`:
 ## Documentation Directories
 - `@documentation/developer-docs/` contains documentation for developers and should be maintained as we develop this codebase
 
-## Backend and Repository Configuration
+### Backend and Repository Configuration
 
-### Supabase Backend
+#### Supabase Backend
 
-#### git repo
+##### git repo
 - The new Supabase backend is in a git repo locally in folder `~/dev/wildlifeai/wildlife-watcher-backend`
 - The `supabase` subfolder in the backend repository contains the Supabase database configuration
 
-#### project-context document
+##### database/backend project-context documents locaion
 Document on the SUpabase backend can be found in the @project-context/development-context/supabase-backend folder.
+
+
+### App MVP2 Documents
+Documentts relating to the final state for this app for MVP2 is located in folder @documentation/developer-docs/MVP2`.
