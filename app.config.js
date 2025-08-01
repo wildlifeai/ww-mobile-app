@@ -72,6 +72,9 @@ export default ({ config }) => {
       apiBase: process.env.API_BASE || process.env.EXPO_PUBLIC_API_BASE,
       googleMapsApiKeyAndroid: process.env.GOOGLE_MAPS_API_KEY_ANDROID || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_ANDROID,
       googleMapsApiKeyIos: process.env.GOOGLE_MAPS_API_KEY_IOS || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_IOS,
+      // Supabase configuration
+      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+      supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
       // Bundle identifier info for runtime access
       bundleIdentifier: bundleId,
       isDevelopment

@@ -12,6 +12,7 @@
     "deps": "node scripts/deps-cli.js",
     "deps:add": "node scripts/deps-cli.js add",
     "deps:scan": "node scripts/deps-cli.js scan",
+    "supabase:types": "echo 'Types are manually synced from backend repository. See src/types/supabase.ts'",
     "postinstall": "npm run validate:deps"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "@react-navigation/native": "^6.1.12",
     "@react-navigation/native-stack": "^6.9.20",
     "@reduxjs/toolkit": "^2.2.1",
+    "@supabase/supabase-js": "^2.53.0",
     "@types/lodash.isempty": "^4.4.9",
     "buffer": "^6.0.3",
     "dayjs": "^1.11.10",

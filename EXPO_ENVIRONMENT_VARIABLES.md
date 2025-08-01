@@ -15,6 +15,8 @@ These variables are embedded in the client bundle and accessible in React Native
 - `EXPO_PUBLIC_API_BASE` - Client-side API base URL
 - `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_ANDROID` - Android Maps key for client
 - `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_IOS` - iOS Maps key for client
+- `EXPO_PUBLIC_SUPABASE_URL` - Supabase project API URL
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous/public API key
 
 ## Migration Changes
 
@@ -47,7 +49,9 @@ const apiBase = process.env.EXPO_PUBLIC_API_BASE;
     "extra": {
       "apiBase": process.env.API_BASE,
       "googleMapsApiKeyAndroid": process.env.GOOGLE_MAPS_API_KEY_ANDROID,
-      "googleMapsApiKeyIos": process.env.GOOGLE_MAPS_API_KEY_IOS
+      "googleMapsApiKeyIos": process.env.GOOGLE_MAPS_API_KEY_IOS,
+      "supabaseUrl": process.env.EXPO_PUBLIC_SUPABASE_URL,
+      "supabaseAnonKey": process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
     }
   }
 }
@@ -68,7 +72,9 @@ const apiBase = process.env.EXPO_PUBLIC_API_BASE;
 - Client-side variables (EXPO_PUBLIC_) are visible in the bundle
 
 ## Required for Migration
-Based on migration-config-snapshot.json, these runtime environment variables are critical:
+Based on migration-config-snapshot.json and Supabase backend integration, these runtime environment variables are critical:
 1. `API_BASE` / `EXPO_PUBLIC_API_BASE`
 2. `GOOGLE_MAPS_API_KEY_ANDROID` / `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_ANDROID`
 3. `GOOGLE_MAPS_API_KEY_IOS` / `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_IOS`
+4. `EXPO_PUBLIC_SUPABASE_URL` - From existing Dev_Wildlife_Watcher instance
+5. `EXPO_PUBLIC_SUPABASE_ANON_KEY` - From Supabase project API settings

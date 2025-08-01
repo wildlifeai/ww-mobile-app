@@ -585,15 +585,75 @@
       {
         "id": 8,
         "title": "Supabase Backend Foundation Setup",
-        "description": "Create Supabase project, configure database schema, setup authentication system, and generate necessary API keys",
-        "status": "pending",
+        "description": "Integrate existing Supabase backend with the migrated Expo app, configure mobile app connection, and setup client-side authentication integration",
+        "status": "in-progress",
         "dependencies": [
           5
         ],
         "priority": "high",
-        "details": "1. Create new Supabase project via dashboard\n2. Design database schema for users, devices, projects, deployments\n3. Setup Row Level Security (RLS) policies\n4. Configure authentication providers\n5. Generate and secure API keys (anon, service role)\n6. Setup database migrations\n7. Create initial tables and relationships\n8. Configure storage buckets for files\n\nUse Supabase MCP for efficient project management and database operations.\n\nNOTE: Can execute in parallel with Tasks 6-7 (Phase 2 Stream B - Supabase Foundation)",
-        "testStrategy": "Verify database tables created successfully, test RLS policies with different user roles, confirm authentication endpoints accessible, validate API keys work correctly",
-        "subtasks": []
+        "details": "MAJOR DISCOVERY: The Supabase backend foundation is already extensively developed in the separate wildlife-watcher-backend repository.\n\nExisting Backend Status:\n✅ Database schema fully designed and implemented (users, devices, projects, deployments, etc.)\n✅ RLS policies, functions, triggers, and constraints all implemented\n✅ Development instance running: Dev_Wildlife_Watcher (project ref: nuhwmubvygxyddkycmpa)\n✅ Local development environment configured\n✅ Migration and seeding system established\n\nNew Integration Focus:\n1. Configure mobile app to connect to existing Supabase instance\n2. Install and configure @supabase/supabase-js in the Expo app\n3. Set up environment variables for API connection\n4. Test authentication integration between app and backend\n5. Validate API connectivity and data flow\n6. Setup type generation from existing database schema\n\nThis discovery significantly accelerates the backend integration timeline.\n\nNOTE: Can execute in parallel with Tasks 6-7 (Phase 2 Stream B - Supabase Foundation)",
+        "testStrategy": "Verify Supabase client connects to existing backend successfully, test authentication flow between mobile app and backend, confirm API calls work correctly, validate type generation from database schema, test real-time subscriptions functionality",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Install and Configure Supabase Client SDK",
+            "description": "Install @supabase/supabase-js package and create the client configuration with connection to existing backend instance",
+            "dependencies": [],
+            "details": "Install @supabase/supabase-js@^2.39.0 package. Create a Supabase client singleton in src/services/supabase.ts. Configure with the existing Dev_Wildlife_Watcher instance (project ref: nuhwmubvygxyddkycmpa) using environment variables. Set up proper TypeScript types for the client. Ensure client is properly exported for use throughout the app.",
+            "status": "done",
+            "testStrategy": "Verify package installation with correct version. Test client initialization doesn't throw errors. Confirm connection to Supabase instance by making a simple health check query. Validate TypeScript types are properly configured."
+          },
+          {
+            "id": 2,
+            "title": "Setup Environment Variables for Supabase Connection",
+            "description": "Configure environment variables for Supabase API URL and anon key in the Expo app using expo-constants",
+            "dependencies": [
+              "8.1"
+            ],
+            "details": "Create or update .env.local with EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY from the existing backend. Update app.config.js to properly expose these variables through expo-constants. Ensure environment variables are accessible in the app through Constants.expoConfig.extra. Add appropriate .gitignore entries for local environment files.\n<info added on 2025-08-01T09:46:37.004Z>\nEnvironment variables setup completed successfully:\n\n✅ COMPLETED ACTIONS:\n1. Added Supabase environment variables to .env.local:\n   - EXPO_PUBLIC_SUPABASE_URL=\"https://nuhwmubvygxyddkycmpa.supabase.co\"\n   - EXPO_PUBLIC_SUPABASE_ANON_KEY placeholder (needs actual key from Supabase dashboard)\n   - SUPABASE_SERVICE_ROLE_KEY placeholder (optional, for server-side operations)\n\n2. Updated app.config.js to expose Supabase variables through expo-constants:\n   - Added supabaseUrl and supabaseAnonKey to extra configuration\n   - Variables accessible via Constants.expoConfig.extra\n\n3. Created src/services/supabase.ts with client singleton:\n   - Proper error handling for missing environment variables\n   - Auto-refresh and session persistence enabled\n   - Connection checker helper function included\n   - Debug-friendly configuration export\n\n4. Updated EXPO_ENVIRONMENT_VARIABLES.md documentation:\n   - Added Supabase variables to client-side variables list\n   - Updated configuration examples\n   - Added to required variables list\n\n🔑 ACTION NEEDED:\nUser needs to get the actual EXPO_PUBLIC_SUPABASE_ANON_KEY from the Supabase project dashboard (Dev_Wildlife_Watcher project settings > API) and replace the placeholder in .env.local.\n\nEnvironment variable infrastructure is ready for Supabase integration.\n</info added on 2025-08-01T09:46:37.004Z>",
+            "status": "done",
+            "testStrategy": "Verify environment variables are accessible in the app. Test that values match the existing Supabase instance configuration. Confirm variables are not exposed in version control. Validate expo-constants properly reads the configuration."
+          },
+          {
+            "id": 3,
+            "title": "Generate TypeScript Types from Database Schema",
+            "description": "Set up automatic type generation from the existing Supabase database schema to ensure type safety",
+            "dependencies": [
+              "8.1",
+              "8.2"
+            ],
+            "details": "Install Supabase CLI for type generation. Configure package.json script to generate types from the existing database schema. Run type generation against Dev_Wildlife_Watcher instance. Create src/types/supabase.ts file with generated types. Update tsconfig.json if needed to include type definitions. Document the type generation process for team members.",
+            "status": "done",
+            "testStrategy": "Verify Supabase CLI can connect to the backend. Confirm types are generated successfully and match database schema. Test that TypeScript compilation succeeds with new types. Validate generated types include all tables from the schema (users, devices, projects, deployments, etc.)."
+          },
+          {
+            "id": 4,
+            "title": "Implement Basic Authentication Integration",
+            "description": "Create authentication service layer to connect mobile app auth with existing Supabase Auth system",
+            "dependencies": [
+              "8.1",
+              "8.2",
+              "8.3"
+            ],
+            "details": "Create src/services/auth.ts with login, logout, and session management functions. Implement auth state listeners to sync with Redux auth slice. Add auth persistence using SecureStore or AsyncStorage. Create helper functions for checking auth status. Ensure proper error handling for auth operations. Update existing AuthProvider to use Supabase auth methods.",
+            "status": "pending",
+            "testStrategy": "Test login function with test credentials. Verify logout properly clears session. Confirm auth state persists across app restarts. Validate Redux auth slice updates correctly with Supabase auth changes. Test error handling for invalid credentials."
+          },
+          {
+            "id": 5,
+            "title": "Validate API Connectivity and Data Flow",
+            "description": "Test end-to-end connectivity between mobile app and Supabase backend with real API calls",
+            "dependencies": [
+              "8.1",
+              "8.2",
+              "8.3",
+              "8.4"
+            ],
+            "details": "Create test API calls to verify connectivity to main tables (users, devices, projects). Test authenticated API calls with proper RLS policies. Verify real-time subscriptions work for device updates. Test file upload capabilities for images. Validate error handling for network failures. Create a simple debug screen to display connection status and test various API endpoints.",
+            "status": "pending",
+            "testStrategy": "Successfully fetch user profile data after authentication. Query devices table and verify data returns correctly. Test creating a test record respects RLS policies. Confirm real-time updates trigger when data changes. Verify file uploads work for deployment photos. Test offline behavior and error states."
+          }
+        ]
       },
       {
         "id": 9,
@@ -761,7 +821,7 @@
     ],
     "metadata": {
       "created": "2025-07-27T12:38:05.813Z",
-      "updated": "2025-08-01T03:54:45.353Z",
+      "updated": "2025-08-01T09:57:37.708Z",
       "description": "Tasks for master context"
     }
   }
