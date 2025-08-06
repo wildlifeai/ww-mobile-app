@@ -659,7 +659,7 @@
         "id": 9,
         "title": "Supabase Client Integration and Auth Migration",
         "description": "Install Supabase client, implement authentication flows, replace OAuth system with Supabase Auth, setup real-time subscriptions",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           8
         ],
@@ -821,7 +821,7 @@
     ],
     "metadata": {
       "created": "2025-07-27T12:38:05.813Z",
-      "updated": "2025-08-01T11:07:54.632Z",
+      "updated": "2025-08-06T05:08:17.788Z",
       "description": "Tasks for master context"
     }
   }
