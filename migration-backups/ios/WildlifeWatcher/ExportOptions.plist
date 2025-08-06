@@ -1,0 +1,14 @@
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key><string>app-store</string>
+    <key>teamID</key><string>D6C4Y4J2BS</string>
+    <key>provisioningProfiles</key>
+        <dict>
+                <key>com.wildlife.wildlifewatcher</key>
+                <string>Wildlife Watcher App Store</string>
+        </dict>
+        <key>signingStyle</key>
+        <string>manual</string>
+</dict>
+</plist>

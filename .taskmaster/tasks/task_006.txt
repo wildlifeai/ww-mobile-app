@@ -1,0 +1,23 @@
+# Task ID: 6
+# Title: Security Cleanup and Firebase Removal
+# Status: pending
+# Dependencies: 5
+# Priority: high
+# Description: Remove all Firebase dependencies, eliminate dangerous SSL bypass code, update Android native files for security compliance
+# Details:
+1. Remove all @react-native-firebase/* packages
+2. Delete android/app/src/main/java/.../IgnoreSSLFactory.java
+3. Update MainActivity.kt to remove SSL factory imports and usage
+4. Clean up AndroidManifest.xml Firebase references
+5. Remove google-services.json
+6. Update android/build.gradle to remove Firebase plugins
+7. Clear Firebase initialization code from JS
+8. Test build still works without Firebase
+
+IMPORTANT: Follow MIGRATION-IMPACT-ANALYSIS.md for security issues to address.
+
+Note: Can execute in parallel with Tasks 8-9 (Phase 2 Stream A - Security & Dependency Cleanup)
+Reference document: MIGRATION-IMPACT-ANALYSIS.md - Security vulnerabilities section
+
+# Test Strategy:
+Verify no Firebase imports remain in codebase, confirm SSL bypass code completely removed, ensure Android build succeeds, test app functionality without Firebase dependencies. Verify all security issues from MIGRATION-IMPACT-ANALYSIS.md are resolved

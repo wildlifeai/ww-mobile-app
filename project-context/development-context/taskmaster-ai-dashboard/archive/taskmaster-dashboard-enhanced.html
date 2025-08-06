@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskMaster AI Interactive Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        select, input, button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 5px;
+        }
+
+        .view-toggle button {
+            padding: 10px 20px;
+        }
+
+        .view-toggle button.active {
+            background: #27ae60;
+        }
+
+        .dashboard-content {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            min-height: 600px;
+        }
+
+        /* Gantt Chart View */
+        .gantt-view {
+            padding: 20px;
+        }
+
+        .gantt-header {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .gantt-timeline {
+            display: grid;
+            grid-template-columns: repeat(21, 1fr);
+            gap: 2px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .phase-section {
+            margin-bottom: 30px;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .phase-header {
+            padding: 15px;
+            font-weight: bold;
+            font-size: 16px;
+            color: white;
+        }
+
+        .phase1 { background: #e74c3c; }
+        .phase2 { background: #f39c12; }
+        .phase3 { background: #27ae60; }
+
+        .task-row {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            border-bottom: 1px solid #ecf0f1;
+            min-height: 60px;
+            align-items: center;
+        }
+
+        .task-info {
+            padding: 10px;
+            border-right: 1px solid #ecf0f1;
+        }
+
+        .task-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .task-meta {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+
+        .task-timeline {
+            display: grid;
+            grid-template-columns: repeat(21, 1fr);
+            gap: 2px;
+            padding: 5px;
+            height: 100%;
+            align-items: center;
+        }
+
+        .task-bar {
+            height: 30px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .task-bar:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .priority-high { background: #e74c3c; }
+        .priority-medium { background: #f39c12; }
+        .priority-low { background: #9b59b6; }
+
+        .status-pending { opacity: 0.7; border-left: 4px solid #95a5a6; }
+        .status-in-progress { opacity: 1; border-left: 4px solid #3498db; }
+        .status-done { opacity: 1; border-left: 4px solid #27ae60; }
+        .status-blocked { opacity: 0.5; border-left: 4px solid #e74c3c; }
+
+        /* Kanban Board View */
+        .kanban-view {
+            padding: 20px;
+            display: none;
+        }
+
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            height: 70vh;
+        }
+
+        .kanban-column {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .column-header {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .task-count {
+            background: rgba(255,255,255,0.3);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+
+        .status-pending-header { background: #95a5a6; }
+        .status-in-progress-header { background: #3498db; }
+        .status-done-header { background: #27ae60; }
+        .status-blocked-header { background: #e74c3c; }
+
+        .task-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 5px;
+        }
+
+        .task-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s;
+            border-left: 4px solid;
+        }
+
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .task-card.priority-high { border-left-color: #e74c3c; }
+        .task-card.priority-medium { border-left-color: #f39c12; }
+        .task-card.priority-low { border-left-color: #9b59b6; }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .task-id {
+            background: #ecf0f1;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .assignee-select {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .priority-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .stream-badge {
+            background: #3498db;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: black;
+        }
+
+        .details-section {
+            margin-bottom: 20px;
+        }
+
+        .details-section h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .dependency-list {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .dependency-tag {
+            background: #3498db;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+
+        /* Statistics */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        /* Action buttons */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .action-buttons button {
+            padding: 10px 20px;
+        }
+
+        button.success { background: #27ae60; }
+        button.danger { background: #e74c3c; }
+        button.warning { background: #f39c12; }
+
+        /* Scrollbar styles */
+        .task-cards::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .task-cards::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .task-cards::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        .task-cards::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Loading indicator */
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 2000;
+        }
+
+        @media (max-width: 768px) {
+            .gantt-header, .task-row {
+                grid-template-columns: 200px 1fr;
+            }
+            
+            .kanban-board {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-group {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 TaskMaster AI Dashboard</h1>
+            <p>Interactive task management for Wildlife Watcher Expo migration</p>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <!-- Stats will be populated by JavaScript -->
+        </div>
+
+        <div class="controls">
+            <div class="filter-group">
+                <label>Phase:</label>
+                <select id="phaseFilter">
+                    <option value="">All Phases</option>
+                    <option value="phase1">Phase 1: Migration</option>
+                    <option value="phase2">Phase 2: Cleanup</option>
+                    <option value="phase3">Phase 3: MVP</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Status:</label>
+                <select id="statusFilter">
+                    <option value="">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="done">Completed</option>
+                    <option value="blocked">Blocked</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Priority:</label>
+                <select id="priorityFilter">
+                    <option value="">All Priorities</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Assignee:</label>
+                <select id="assigneeFilter">
+                    <option value="">All Assignees</option>
+                    <option value="unassigned">Unassigned</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <input type="text" id="searchFilter" placeholder="Search tasks..." />
+            </div>
+
+            <div class="view-toggle">
+                <button id="ganttViewBtn" class="active">Gantt Chart</button>
+                <button id="kanbanViewBtn">Kanban Board</button>
+            </div>
+
+            <div class="filter-group">
+                <button id="refreshBtn" onclick="refreshData()">🔄 Refresh</button>
+            </div>
+        </div>
+
+        <div class="dashboard-content">
+            <div id="ganttView" class="gantt-view">
+                <!-- Gantt chart will be populated by JavaScript -->
+            </div>
+
+            <div id="kanbanView" class="kanban-view">
+                <div class="kanban-board">
+                    <div class="kanban-column">
+                        <div class="column-header status-pending-header">
+                            <span>Pending</span>
+                            <span class="task-count" id="pendingCount">0</span>
+                        </div>
+                        <div class="task-cards" id="pendingTasks"></div>
+                    </div>
+                    <div class="kanban-column">
+                        <div class="column-header status-in-progress-header">
+                            <span>In Progress</span>
+                            <span class="task-count" id="inProgressCount">0</span>
+                        </div>
+                        <div class="task-cards" id="inProgressTasks"></div>
+                    </div>
+                    <div class="kanban-column">
+                        <div class="column-header status-done-header">
+                            <span>Completed</span>
+                            <span class="task-count" id="doneCount">0</span>
+                        </div>
+                        <div class="task-cards" id="doneTasks"></div>
+                    </div>
+                    <div class="kanban-column">
+                        <div class="column-header status-blocked-header">
+                            <span>Blocked</span>
+                            <span class="task-count" id="blockedCount">0</span>
+                        </div>
+                        <div class="task-cards" id="blockedTasks"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Details Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Task Details</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div id="modalBody">
+                <!-- Task details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div class="loading" id="loadingIndicator">
+        <p>Loading...</p>
+    </div>
+
+    <script>
+        // Task data - this would come from TaskMaster AI in a real implementation
+        const taskData = {
+            "tasks": [
+                {
+                    "id": 1,
+                    "title": "Pre-Migration Setup and Environment Preparation",
+                    "description": "Create migration branch, install Expo CLI tools, setup development environment, and prepare for Expo SDK 51 migration",
+                    "status": "pending",
+                    "dependencies": [],
+                    "priority": "high",
+                    "phase": "phase1",
+                    "stream": "Migration Foundation",
+                    "timeSlot": 1,
+                    "duration": 1,
+                    "details": "1. Create 'expo-migration' branch from main\n2. Install Expo CLI globally: npm install -g expo-cli@latest eas-cli@latest\n3. Create full project backup (git stash or separate directory)\n4. Login to Expo account: expo login\n5. Verify Node.js version >=18.0.0\n6. Setup .env.local for development\n7. Document current bundle identifiers and app configurations\n8. IMPORTANT: Follow MIGRATION-GUIDE.md Section 1 - Initial Setup (30 minutes) for detailed step-by-step instructions\n\nReference Document: MIGRATION-GUIDE.md Section 1",
+                    "testStrategy": "Verify Expo CLI installation with 'expo --version' and 'eas --version', confirm login status with 'expo whoami', ensure git branch created successfully, validate Node.js version compatibility. Follow the automated steps in MIGRATION-GUIDE.md Section 1"
+                },
+                {
+                    "id": 2,
+                    "title": "Core Expo SDK 51 Integration",
+                    "description": "Install Expo SDK 51, create app configuration with proper bundle identifier strategy, initialize EAS project, and setup dependency validation",
+                    "status": "pending",
+                    "dependencies": [1],
+                    "priority": "high",
+                    "phase": "phase1",
+                    "stream": "Migration Foundation",
+                    "timeSlot": 2,
+                    "duration": 1,
+                    "details": "1. Install Expo SDK 51: npm install expo@~51.0.0\n2. Create app.config.js with dynamic bundle identifier logic (.expo suffix for dev) following BUNDLE-IDENTIFIER-STRATEGY.md\n3. Initialize EAS project: eas init\n4. Configure eas.json for development builds\n5. Setup expo-constants for environment variables\n6. Copy dependency validation system from MIGRATION-GUIDE.md\n7. Update app.json to app.config.js format\n8. Configure development client settings\n\nIMPORTANT: Follow MIGRATION-GUIDE.md Section 2 and BUNDLE-IDENTIFIER-STRATEGY.md for bundle ID configuration.\n\nReference Documents:\n- MIGRATION-GUIDE.md Section 2\n- BUNDLE-IDENTIFIER-STRATEGY.md",
+                    "testStrategy": "Run 'expo doctor' to validate setup, verify app.config.js exports correct bundle identifiers, confirm EAS project linked with 'eas project:info', test dependency validation script execution. Ensure bundle identifiers follow the strategy outlined in BUNDLE-IDENTIFIER-STRATEGY.md"
+                },
+                {
+                    "id": 3,
+                    "title": "Native Module Dependencies Migration",
+                    "description": "Replace all native modules with Expo equivalents including file system, environment config, splash screen, and install expo-dev-client",
+                    "status": "pending",
+                    "dependencies": [2],
+                    "priority": "high",
+                    "phase": "phase1",
+                    "stream": "Migration Foundation",
+                    "timeSlot": 3,
+                    "duration": 1,
+                    "details": "1. Install expo-dev-client@~3.3.0\n2. Replace react-native-fs with expo-file-system@~16.0.0\n3. Replace react-native-config with expo-constants@~15.4.0\n4. Replace react-native-bootsplash with expo-splash-screen@~0.26.0\n5. Update to React Native 0.74.6\n6. Remove old packages: npm uninstall react-native-fs react-native-config react-native-bootsplash\n7. Run 'npm run validate:deps' after each change\n8. Update package-lock.json\n\nIMPORTANT: Follow MIGRATION-GUIDE.md Section 3 for the complete dependency migration process.",
+                    "testStrategy": "Execute dependency validation after each replacement, ensure no old package imports remain with global search, verify TypeScript compilation succeeds, check for peer dependency warnings. Validate each replacement according to MIGRATION-GUIDE.md Section 3"
+                },
+                {
+                    "id": 4,
+                    "title": "Code Migration and Import Updates",
+                    "description": "Execute automated migration scripts to update all code imports and implementations for Expo modules, update Metro configuration",
+                    "status": "pending",
+                    "dependencies": [3],
+                    "priority": "high",
+                    "phase": "phase1",
+                    "stream": "Migration Foundation",
+                    "timeSlot": 4,
+                    "duration": 1,
+                    "details": "1. Run file system migration script from MIGRATION-GUIDE.md Section 4\n2. Update all RNFS imports to expo-file-system APIs using examples from FILE-SYSTEM-MIGRATION-EXAMPLES.md\n3. Run environment variable migration script\n4. Convert Config imports to Constants.expoConfig\n5. Run splash screen migration script\n6. Update Metro configuration for Expo\n7. Fix any TypeScript errors from API changes\n8. Update any native module method calls to Expo equivalents\n\nIMPORTANT: Follow MIGRATION-GUIDE.md Section 4 and use FILE-SYSTEM-MIGRATION-EXAMPLES.md for code migration patterns.\n\nReference Documents:\n- MIGRATION-GUIDE.md Section 4 - Code Migration\n- FILE-SYSTEM-MIGRATION-EXAMPLES.md",
+                    "testStrategy": "Global search for old imports should return zero results, TypeScript compilation must succeed, run ESLint to catch any missed imports, verify all file operations work with new APIs, verify migrations match patterns in FILE-SYSTEM-MIGRATION-EXAMPLES.md"
+                },
+                {
+                    "id": 5,
+                    "title": "EAS Build Configuration and Deployment",
+                    "description": "Configure EAS build environment, set environment variables, create and test Android development build",
+                    "status": "pending",
+                    "dependencies": [4],
+                    "priority": "high",
+                    "phase": "phase1",
+                    "stream": "Migration Foundation",
+                    "timeSlot": 5,
+                    "duration": 1,
+                    "details": "1. Set EAS environment variables: eas secret:create\n2. Configure eas.json for development profile\n3. Set GOOGLE_MAPS_API_KEY in EAS secrets\n4. Build Android dev client: eas build --profile development --platform android\n5. Download and install APK on test device\n6. Configure build credentials if needed\n7. Setup internal distribution for team\n8. Document build URLs and versions\n\nIMPORTANT: Follow MIGRATION-GUIDE.md Section 5 and verify all Phase 1 validation criteria pass before proceeding.\n\nPhase 1 Validation Checkpoint:\n- App builds successfully on EAS (< 15 minutes)\n- Development client installs on Android device\n- BLE CRITICAL: Can scan and connect to real Wildlife Watcher device\n- DFU CRITICAL: Firmware selection and transfer initiation works\n- Maps: Display with markers (API key fallback OK)\n- Navigation: All tabs/screens accessible\n- Redux: State updates correctly, debug panel works\n- File System: Read/write operations work with expo-file-system\n- Hot reload functions for development\n\nSTOP Rule: If any critical criteria fail, fix before proceeding to Phase 2\n\nReference Document: MIGRATION-GUIDE.md Section 5 - Build & Deploy",
+                    "testStrategy": "Build must complete in <15 minutes, APK must install successfully, verify all core features work: BLE scanning/connection, DFU initiation, Maps display, Navigation, Redux state, File operations, Hot reload. All Phase 1 validation criteria must pass before proceeding to Phase 2."
+                },
+                {
+                    "id": 6,
+                    "title": "Security Cleanup and Firebase Removal",
+                    "description": "Remove all Firebase dependencies, eliminate dangerous SSL bypass code, update Android native files for security compliance",
+                    "status": "pending",
+                    "dependencies": [5],
+                    "priority": "high",
+                    "phase": "phase2",
+                    "stream": "Security & Dependency Cleanup",
+                    "timeSlot": 6,
+                    "duration": 2,
+                    "details": "1. Remove all @react-native-firebase/* packages\n2. Delete android/app/src/main/java/.../IgnoreSSLFactory.java\n3. Update MainActivity.kt to remove SSL factory imports and usage\n4. Clean up AndroidManifest.xml Firebase references\n5. Remove google-services.json\n6. Update android/build.gradle to remove Firebase plugins\n7. Clear Firebase initialization code from JS\n8. Test build still works without Firebase\n\nIMPORTANT: Follow MIGRATION-IMPACT-ANALYSIS.md for security issues to address.\n\nNote: Can execute in parallel with Tasks 8-9 (Phase 2 Stream A - Security & Dependency Cleanup)\nReference document: MIGRATION-IMPACT-ANALYSIS.md - Security vulnerabilities section",
+                    "testStrategy": "Verify no Firebase imports remain in codebase, confirm SSL bypass code completely removed, ensure Android build succeeds, test app functionality without Firebase dependencies. Verify all security issues from MIGRATION-IMPACT-ANALYSIS.md are resolved"
+                },
+                {
+                    "id": 7,
+                    "title": "Additional Native Modules Replacement",
+                    "description": "Replace remaining native modules with Expo equivalents for device info, document picker, and geolocation",
+                    "status": "pending",
+                    "dependencies": [5],
+                    "priority": "medium",
+                    "phase": "phase2",
+                    "stream": "Security & Dependency Cleanup",
+                    "timeSlot": 7,
+                    "duration": 2,
+                    "details": "1. Replace react-native-device-info with expo-device@~5.9.0\n2. Update all device info API calls to Expo format\n3. Replace react-native-document-picker with expo-document-picker@~11.10.0\n4. Update document picker implementations\n5. Replace @react-native-community/geolocation with expo-location@~16.5.0\n6. Update location permission requests and API calls\n7. Remove old packages after successful replacement\n8. Test each module independently\n\nNote: Can execute in parallel with Tasks 8-9 (Phase 2 Stream A - Security & Dependency Cleanup)\n\nIMPORTANT: Follow MIGRATION-GUIDE.md patterns for module replacement",
+                    "testStrategy": "Test device info display, verify document picker functionality, confirm location services work correctly, ensure proper permission handling for each module"
+                },
+                {
+                    "id": 8,
+                    "title": "Supabase Backend Foundation Setup",
+                    "description": "Create Supabase project, configure database schema, setup authentication system, and generate necessary API keys",
+                    "status": "pending",
+                    "dependencies": [5],
+                    "priority": "high",
+                    "phase": "phase2",
+                    "stream": "Supabase Foundation",
+                    "timeSlot": 6,
+                    "duration": 2,
+                    "details": "1. Create new Supabase project via dashboard\n2. Design database schema for users, devices, projects, deployments\n3. Setup Row Level Security (RLS) policies\n4. Configure authentication providers\n5. Generate and secure API keys (anon, service role)\n6. Setup database migrations\n7. Create initial tables and relationships\n8. Configure storage buckets for files\n\nUse Supabase MCP for efficient project management and database operations.\n\nNOTE: Can execute in parallel with Tasks 6-7 (Phase 2 Stream B - Supabase Foundation)",
+                    "testStrategy": "Verify database tables created successfully, test RLS policies with different user roles, confirm authentication endpoints accessible, validate API keys work correctly"
+                },
+                {
+                    "id": 9,
+                    "title": "Supabase Client Integration and Auth Migration",
+                    "description": "Install Supabase client, implement authentication flows, replace OAuth system with Supabase Auth, setup real-time subscriptions",
+                    "status": "pending",
+                    "dependencies": [8],
+                    "priority": "high",
+                    "phase": "phase2",
+                    "stream": "Supabase Foundation",
+                    "timeSlot": 8,
+                    "duration": 1,
+                    "details": "1. Install @supabase/supabase-js@^2.39.0\n2. Create Supabase client singleton with API keys\n3. Implement login/signup flows with Supabase Auth\n4. Setup auth state persistence\n5. Remove react-native-app-auth completely\n6. Update AuthProvider to use Supabase\n7. Implement password reset flow\n8. Setup real-time auth state listeners\n9. Use Supabase MCP for database operations\n\nPhase 2 Validation Checkpoint Criteria:\n- All legacy packages removed successfully\n- Security vulnerabilities eliminated (SSL bypass gone)\n- Native module replacements functional\n- Supabase authentication working\n- Database connections operational\n- App still passes Phase 1 validation criteria\n\nSTOP Rule: If Supabase foundation fails, fix before Phase 3\n\nNOTE: Can execute in parallel with Tasks 6-7 (Phase 2 Stream B - Supabase Foundation)",
+                    "testStrategy": "Test user registration flow, verify login/logout functionality, confirm auth tokens persist correctly, validate auth state updates in Redux, test password reset process, validate Phase 2 checkpoint criteria are met"
+                },
+                {
+                    "id": 10,
+                    "title": "MVP Feature Planning and Testing Framework",
+                    "description": "Analyze MVP requirements, create detailed task breakdown, setup Playwright testing framework, prepare for parallel feature development",
+                    "status": "pending",
+                    "dependencies": [9],
+                    "priority": "medium",
+                    "phase": "phase3",
+                    "stream": "MVP Planning",
+                    "timeSlot": 9,
+                    "duration": 1,
+                    "details": "1. Use Task Master AI to analyze mvp-dev-stage-considerations.md\n2. Break down MVP 1 & 2 features into subtasks\n3. Install @playwright/test@^1.41.0 for React Native\n4. Configure Playwright for mobile app testing\n5. Create test utilities for BLE operations\n6. Setup Supabase test helpers\n7. Create CI/CD test pipeline configuration\n8. Document testing strategies for each MVP feature",
+                    "testStrategy": "Verify Task Master generates comprehensive task list, confirm Playwright setup works with React Native, test that basic UI tests execute successfully, validate BLE test utilities can mock device operations"
+                },
+                {
+                    "id": 11,
+                    "title": "Data Management & Sync (MVP Stream C)",
+                    "description": "Implement offline data storage, create Supabase sync mechanisms, build data conflict resolution, test data persistence",
+                    "status": "pending",
+                    "dependencies": [9],
+                    "priority": "high",
+                    "phase": "phase3",
+                    "stream": "Core App Features",
+                    "timeSlot": 10,
+                    "duration": 5,
+                    "details": "1. Design offline data storage architecture using AsyncStorage/SQLite\n2. Implement offline-first data models for devices, projects, deployments\n3. Create Supabase sync engine with queue management\n4. Build conflict resolution logic for concurrent edits\n5. Implement data versioning and timestamps\n6. Create background sync service\n7. Add sync status indicators in UI\n8. Test offline/online transitions\n\nDependencies: Supabase foundation from Phase 2\nPriority: HIGH - enables all other MVP features\nStream: Parallel Stream C - Core App Features (Week 1)",
+                    "testStrategy": "Test offline data persistence across app restarts, verify sync queue processes correctly, test conflict resolution with multiple device edits, validate data integrity after sync, test performance with large datasets"
+                },
+                {
+                    "id": 12,
+                    "title": "Enhanced BLE Management (MVP Stream C)",
+                    "description": "Build on existing BLE from Phase 1 - device pairing persistence, connection state management, enhanced error handling, device settings sync to Supabase",
+                    "status": "pending",
+                    "dependencies": [11],
+                    "priority": "high",
+                    "phase": "phase3",
+                    "stream": "Core App Features",
+                    "timeSlot": 10,
+                    "duration": 5,
+                    "details": "1. Implement persistent device pairing storage\n2. Create robust connection state management with auto-reconnect\n3. Build comprehensive BLE error handling and recovery\n4. Add device battery level monitoring\n5. Implement device settings sync to Supabase\n6. Create device connection history tracking\n7. Add multi-device management capabilities\n8. Implement BLE connection quality indicators\n9. Create device firmware version tracking\n\nDependencies: BLE validation from Phase 1, Data Management task\nPriority: HIGH - core product feature\nStream: Parallel Stream C - Core App Features (Week 1)",
+                    "testStrategy": "Test device pairing persistence across app restarts, verify auto-reconnect functionality, test error recovery scenarios, validate device settings sync to cloud, test multi-device switching, verify connection stability metrics"
+                },
+                {
+                    "id": 13,
+                    "title": "Advanced Maps & Deployment (MVP Stream C)",
+                    "description": "Build on basic Maps from Phase 1 - deployment creation workflows, location-based device management, map data sync with Supabase, offline map caching",
+                    "status": "pending",
+                    "dependencies": [11],
+                    "priority": "medium",
+                    "phase": "phase3",
+                    "stream": "Core App Features",
+                    "timeSlot": 15,
+                    "duration": 5,
+                    "details": "1. Create deployment creation workflow with map selection\n2. Implement location-based device management features\n3. Build geofencing capabilities for deployment areas\n4. Sync deployment locations with Supabase\n5. Implement offline map tile caching\n6. Add deployment status visualization on maps\n7. Create location history tracking for devices\n8. Implement deployment analytics dashboard\n9. Add location-based search and filtering\n\nDependencies: Maps validation from Phase 1, Supabase setup, Data Management task\nPriority: MEDIUM - important but not blocking\nStream: Parallel Stream C - Core App Features (Week 2)",
+                    "testStrategy": "Test deployment creation with various map interactions, verify location data syncs correctly, test offline map functionality, validate geofencing accuracy, test location-based filtering performance"
+                },
+                {
+                    "id": 14,
+                    "title": "Enhanced Navigation & UX (MVP Stream D)",
+                    "description": "Optimize existing navigation - improve drawer navigation performance, add navigation analytics, enhance user onboarding flows, polish UI components",
+                    "status": "pending",
+                    "dependencies": [10],
+                    "priority": "medium",
+                    "phase": "phase3",
+                    "stream": "UI/UX & Polish",
+                    "timeSlot": 15,
+                    "duration": 5,
+                    "details": "1. Optimize drawer navigation performance and animations\n2. Implement navigation analytics tracking\n3. Create comprehensive user onboarding flow\n4. Polish all UI components for consistency\n5. Add loading states and skeleton screens\n6. Implement gesture-based navigation enhancements\n7. Create contextual help system\n8. Add user preferences and settings management\n9. Implement accessibility improvements\n\nDependencies: Navigation validation from Phase 1\nPriority: MEDIUM - improves user experience\nStream: Parallel Stream D - UI/UX & Polish (Week 2)",
+                    "testStrategy": "Test navigation performance metrics, verify analytics tracking accuracy, test onboarding completion rates, validate accessibility standards compliance, test gesture recognition reliability"
+                },
+                {
+                    "id": 15,
+                    "title": "Error Handling & Monitoring (MVP Stream D)",
+                    "description": "Production readiness - implement comprehensive error boundaries, add crash reporting, create user feedback mechanisms, set up analytics",
+                    "status": "pending",
+                    "dependencies": [14],
+                    "priority": "low",
+                    "phase": "phase3",
+                    "stream": "UI/UX & Polish",
+                    "timeSlot": 20,
+                    "duration": 1,
+                    "details": "1. Implement comprehensive React error boundaries\n2. Set up crash reporting with Sentry or similar\n3. Create user feedback and bug reporting system\n4. Implement application analytics and usage tracking\n5. Add performance monitoring and metrics\n6. Create error recovery mechanisms for critical flows\n7. Set up logging and debugging tools\n8. Implement health check endpoints\n9. Add user session replay capabilities\n\nDependencies: Core features complete\nPriority: LOW - nice to have for production\nStream: Parallel Stream D - UI/UX & Polish (Week 3)",
+                    "testStrategy": "Test error boundary recovery scenarios, verify crash reports are captured correctly, test user feedback submission flow, validate analytics data accuracy, test performance monitoring alerts"
+                },
+                {
+                    "id": 16,
+                    "title": "File Management & Export (MVP Stream E)",
+                    "description": "Build on file system from Phase 1 - advanced file operations, data export capabilities, file sync with Supabase storage, backup/restore functionality",
+                    "status": "pending",
+                    "dependencies": [11],
+                    "priority": "low",
+                    "phase": "phase3",
+                    "stream": "Advanced Features",
+                    "timeSlot": 20,
+                    "duration": 1,
+                    "details": "1. Implement advanced file operations (move, copy, rename)\n2. Create data export capabilities (CSV, JSON, PDF reports)\n3. Set up file sync with Supabase storage buckets\n4. Implement backup and restore functionality\n5. Add file compression and optimization\n6. Create file sharing capabilities\n7. Implement file versioning system\n8. Add bulk file operations\n9. Create file search and filtering\n\nDependencies: File system validation from Phase 1, Supabase setup\nPriority: LOW - advanced feature\nStream: Parallel Stream E - Advanced Features (Week 3)",
+                    "testStrategy": "Test file operations across different file types, verify export functionality generates correct formats, test file sync reliability, validate backup/restore processes, test file sharing permissions"
+                },
+                {
+                    "id": 17,
+                    "title": "Real-time Collaboration Features",
+                    "description": "Implement real-time collaboration capabilities for team-based wildlife monitoring projects",
+                    "status": "pending",
+                    "dependencies": [11],
+                    "priority": "medium",
+                    "phase": "phase3",
+                    "stream": "Additional MVP Features",
+                    "timeSlot": 18,
+                    "duration": 3,
+                    "details": "1. Implement real-time device status sharing across team members\n2. Create shared deployment workspace functionality\n3. Add real-time notifications for device events\n4. Implement collaborative project management features\n5. Create team member role and permission system\n6. Add real-time chat or messaging for teams\n7. Implement conflict resolution for simultaneous edits\n8. Create activity feeds for project updates\n9. Add team performance analytics\n\nDependencies: Supabase real-time features, Data Management\nPriority: MEDIUM - enhances team collaboration\nStream: Additional MVP Features",
+                    "testStrategy": "Test real-time synchronization across multiple devices, verify permission systems work correctly, test conflict resolution scenarios, validate notification delivery reliability"
+                },
+                {
+                    "id": 18,
+                    "title": "Offline Mode Implementation",
+                    "description": "Comprehensive offline functionality for remote wildlife monitoring locations",
+                    "status": "pending",
+                    "dependencies": [12, 13],
+                    "priority": "high",
+                    "phase": "phase3",
+                    "stream": "Additional MVP Features",
+                    "timeSlot": 18,
+                    "duration": 3,
+                    "details": "1. Implement robust offline data storage and queueing\n2. Create offline-first UI components with loading states\n3. Add offline map functionality with cached tiles\n4. Implement offline BLE operations and data collection\n5. Create sync queue management for when connectivity returns\n6. Add offline notification system\n7. Implement data compression for efficient storage\n8. Create offline analytics and reporting\n9. Add connectivity detection and status indicators\n\nDependencies: Data Management, Maps, BLE Management\nPriority: HIGH - critical for remote deployments\nStream: Additional MVP Features",
+                    "testStrategy": "Test extended offline periods, verify data integrity after sync, test offline BLE operations, validate map functionality without internet, test sync queue performance"
+                },
+                {
+                    "id": 19,
+                    "title": "Performance Optimization",
+                    "description": "Optimize app performance for smooth operation with multiple devices and large datasets",
+                    "status": "pending",
+                    "dependencies": [12, 13, 14],
+                    "priority": "medium",
+                    "phase": "phase3",
+                    "stream": "Additional MVP Features",
+                    "timeSlot": 18,
+                    "duration": 3,
+                    "details": "1. Implement lazy loading for large data sets\n2. Optimize BLE scanning and connection performance\n3. Add memory management and garbage collection optimization\n4. Implement efficient caching strategies\n5. Optimize image and file loading performance\n6. Add performance monitoring and profiling tools\n7. Implement background task optimization\n8. Create efficient data pagination\n9. Add app startup time optimization\n\nDependencies: Core features implemented\nPriority: MEDIUM - ensures good user experience\nStream: Additional MVP Features",
+                    "testStrategy": "Measure app startup times, test performance with large datasets, verify memory usage stays within bounds, test BLE performance with multiple devices, validate UI responsiveness"
+                },
+                {
+                    "id": 20,
+                    "title": "Production Readiness Checklist",
+                    "description": "Final production readiness validation and deployment preparation",
+                    "status": "pending",
+                    "dependencies": [15, 16, 17, 18, 19],
+                    "priority": "high",
+                    "phase": "phase3",
+                    "stream": "Final Production Validation",
+                    "timeSlot": 21,
+                    "duration": 1,
+                    "details": "1. Complete security audit and vulnerability testing\n2. Validate all MVP 1 & 2 features are complete and tested\n3. Conduct performance benchmarking and optimization\n4. Complete accessibility compliance testing\n5. Validate app store submission requirements\n6. Create production deployment documentation\n7. Set up production monitoring and alerting\n8. Complete user acceptance testing with stakeholders\n9. Prepare rollback and emergency procedures\n10. Validate all Phase 3 checkpoint criteria are met\n\nWeek 1 Checkpoint: Data management operational, BLE enhancements working, Supabase integration stable, Core user flows functional\nWeek 2 Checkpoint: Maps features complete, Navigation optimized, User experience polished, Performance acceptable\nFinal Checkpoint: All MVP features complete, Testing coverage adequate, Performance benchmarks met, Ready for production\n\nDependencies: All MVP features complete\nPriority: HIGH - critical for production release\nStream: Final Production Validation",
+                    "testStrategy": "Execute comprehensive end-to-end testing, validate all checkpoint criteria, perform load testing, conduct security penetration testing, verify app store compliance"
+                }
+            ]
+        };
+
+        // Global variables
+        let currentView = 'gantt';
+        let filteredTasks = [...taskData.tasks];
+        let taskAssignments = JSON.parse(localStorage.getItem('taskAssignments') || '{}');
+        let availableDevelopers = JSON.parse(localStorage.getItem('availableDevelopers') || '["Developer 1", "Developer 2", "Developer 3", "Claude AI", "TaskMaster AI"]');
+
+        // Initialize the dashboard
+        function initDashboard() {
+            populateAssigneeFilter();
+            updateStats();
+            renderGanttChart();
+            renderKanbanBoard();
+            setupEventListeners();
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // View toggle
+            document.getElementById('ganttViewBtn').addEventListener('click', () => switchView('gantt'));
+            document.getElementById('kanbanViewBtn').addEventListener('click', () => switchView('kanban'));
+
+            // Filters
+            document.getElementById('phaseFilter').addEventListener('change', applyFilters);
+            document.getElementById('statusFilter').addEventListener('change', applyFilters);
+            document.getElementById('priorityFilter').addEventListener('change', applyFilters);
+            document.getElementById('assigneeFilter').addEventListener('change', applyFilters);
+            document.getElementById('searchFilter').addEventListener('input', applyFilters);
+
+            // Modal
+            document.querySelector('.close').addEventListener('click', () => {
+                document.getElementById('taskModal').style.display = 'none';
+            });
+
+            window.addEventListener('click', (event) => {
+                if (event.target === document.getElementById('taskModal')) {
+                    document.getElementById('taskModal').style.display = 'none';
+                }
+            });
+        }
+
+        // Switch view
+        function switchView(view) {
+            currentView = view;
+            
+            // Update button states
+            document.getElementById('ganttViewBtn').classList.toggle('active', view === 'gantt');
+            document.getElementById('kanbanViewBtn').classList.toggle('active', view === 'kanban');
+            
+            // Show/hide views
+            document.getElementById('ganttView').style.display = view === 'gantt' ? 'block' : 'none';
+            document.getElementById('kanbanView').style.display = view === 'kanban' ? 'block' : 'none';
+        }
+
+        // Apply filters
+        function applyFilters() {
+            const phaseFilter = document.getElementById('phaseFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const priorityFilter = document.getElementById('priorityFilter').value;
+            const assigneeFilter = document.getElementById('assigneeFilter').value;
+            const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+
+            filteredTasks = taskData.tasks.filter(task => {
+                const phaseMatch = !phaseFilter || task.phase === phaseFilter;
+                const statusMatch = !statusFilter || task.status === statusFilter;
+                const priorityMatch = !priorityFilter || task.priority === priorityFilter;
+                const assigneeMatch = !assigneeFilter || 
+                    (assigneeFilter === 'unassigned' && !taskAssignments[task.id]) ||
+                    (assigneeFilter !== 'unassigned' && taskAssignments[task.id] === assigneeFilter);
+                const searchMatch = !searchFilter || 
+                    task.title.toLowerCase().includes(searchFilter) ||
+                    task.description.toLowerCase().includes(searchFilter) ||
+                    task.stream.toLowerCase().includes(searchFilter);
+
+                return phaseMatch && statusMatch && priorityMatch && assigneeMatch && searchMatch;
+            });
+
+            updateStats();
+            
+            if (currentView === 'gantt') {
+                renderGanttChart();
+            } else {
+                renderKanbanBoard();
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const stats = {
+                total: filteredTasks.length,
+                pending: filteredTasks.filter(t => t.status === 'pending').length,
+                inProgress: filteredTasks.filter(t => t.status === 'in-progress').length,
+                done: filteredTasks.filter(t => t.status === 'done').length,
+                high: filteredTasks.filter(t => t.priority === 'high').length,
+                assigned: filteredTasks.filter(t => taskAssignments[t.id]).length
+            };
+
+            const completionRate = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
+
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${stats.total}</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${completionRate}%</div>
+                    <div class="stat-label">Completion Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.pending}</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.inProgress}</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.high}</div>
+                    <div class="stat-label">High Priority</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.assigned}</div>
+                    <div class="stat-label">Assigned</div>
+                </div>
+            `;
+        }
+
+        // Populate assignee filter
+        function populateAssigneeFilter() {
+            const assigneeFilter = document.getElementById('assigneeFilter');
+            availableDevelopers.forEach(dev => {
+                const option = document.createElement('option');
+                option.value = dev;
+                option.textContent = dev;
+                assigneeFilter.appendChild(option);
+            });
+        }
+
+        // Render Gantt Chart
+        function renderGanttChart() {
+            const ganttView = document.getElementById('ganttView');
+            
+            // Create timeline header (21 days)
+            const timelineHeader = Array.from({length: 21}, (_, i) => `Day ${i + 1}`);
+            
+            // Group tasks by phase
+            const phases = {
+                phase1: { name: 'Phase 1: Migration', tasks: [] },
+                phase2: { name: 'Phase 2: Cleanup', tasks: [] },
+                phase3: { name: 'Phase 3: MVP Development', tasks: [] }
+            };
+
+            filteredTasks.forEach(task => {
+                phases[task.phase].tasks.push(task);
+            });
+
+            let ganttHTML = `
+                <div class="gantt-header">
+                    <div><strong>Task</strong></div>
+                    <div class="gantt-timeline">
+                        ${timelineHeader.map(day => `<div>${day}</div>`).join('')}
+                    </div>
+                </div>
+            `;
+
+            Object.entries(phases).forEach(([phaseKey, phase]) => {
+                if (phase.tasks.length === 0) return;
+
+                ganttHTML += `
+                    <div class="phase-section">
+                        <div class="phase-header ${phaseKey}">${phase.name}</div>
+                `;
+
+                phase.tasks.forEach(task => {
+                    const assignee = taskAssignments[task.id] || 'Unassigned';
+                    
+                    ganttHTML += `
+                        <div class="task-row">
+                            <div class="task-info">
+                                <div class="task-title">${task.title}</div>
+                                <div class="task-meta">
+                                    ID: ${task.id} | ${task.priority.toUpperCase()} | ${assignee}<br>
+                                    Stream: ${task.stream}
+                                </div>
+                            </div>
+                            <div class="task-timeline">
+                    `;
+
+                    // Create timeline slots
+                    for (let i = 1; i <= 21; i++) {
+                        const isActive = i >= task.timeSlot && i < task.timeSlot + task.duration;
+                        
+                        if (isActive) {
+                            ganttHTML += `
+                                <div class="task-bar priority-${task.priority} status-${task.status}" 
+                                     onclick="showTaskDetails(${task.id})"
+                                     title="${task.title}">
+                                    ${i === task.timeSlot ? task.id : ''}
+                                </div>
+                            `;
+                        } else {
+                            ganttHTML += `<div></div>`;
+                        }
+                    }
+
+                    ganttHTML += `
+                            </div>
+                        </div>
+                    `;
+                });
+
+                ganttHTML += `</div>`;
+            });
+
+            ganttView.innerHTML = ganttHTML;
+        }
+
+        // Render Kanban Board
+        function renderKanbanBoard() {
+            const statusColumns = ['pending', 'in-progress', 'done', 'blocked'];
+            
+            statusColumns.forEach(status => {
+                const columnTasks = filteredTasks.filter(task => task.status === status);
+                const elementId = status === 'in-progress' ? 'inProgressTasks' : `${status.replace('-', '')}Tasks`;
+                const columnElement = document.getElementById(elementId);
+                const countElement = document.getElementById(`${status.replace('-', '')}Count`);
+                
+                if (countElement) {
+                    countElement.textContent = columnTasks.length;
+                }
+                
+                if (columnElement) {
+                    columnElement.innerHTML = columnTasks.map(task => {
+                        const assignee = taskAssignments[task.id] || '';
+                        
+                        return `
+                            <div class="task-card priority-${task.priority}" onclick="showTaskDetails(${task.id})">
+                                <div class="card-header">
+                                    <span class="task-id">#${task.id}</span>
+                                    <span class="priority-badge priority-${task.priority}">${task.priority.toUpperCase()}</span>
+                                </div>
+                                <div class="task-title">${task.title}</div>
+                                <div class="task-meta">${task.description.substring(0, 100)}...</div>
+                                <div class="stream-badge">${task.stream}</div>
+                                <select class="assignee-select" onchange="assignTask(${task.id}, this.value)" onclick="event.stopPropagation()">
+                                    <option value="">Assign to...</option>
+                                    ${availableDevelopers.map(dev => 
+                                        `<option value="${dev}" ${assignee === dev ? 'selected' : ''}>${dev}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            });
+        }
+
+        // Show task details modal
+        function showTaskDetails(taskId) {
+            const task = taskData.tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const assignee = taskAssignments[task.id] || 'Unassigned';
+            const dependencies = task.dependencies.map(depId => {
+                const depTask = taskData.tasks.find(t => t.id === depId);
+                return depTask ? depTask.title : `Task ${depId}`;
+            });
+
+            document.getElementById('modalTitle').textContent = `Task ${task.id}: ${task.title}`;
+            document.getElementById('modalBody').innerHTML = `
+                <div class="details-section">
+                    <h3>Overview</h3>
+                    <p><strong>Description:</strong> ${task.description}</p>
+                    <p><strong>Phase:</strong> ${task.phase.replace('phase', 'Phase ')}</p>
+                    <p><strong>Stream:</strong> ${task.stream}</p>
+                    <p><strong>Priority:</strong> <span class="priority-badge priority-${task.priority}">${task.priority.toUpperCase()}</span></p>
+                    <p><strong>Status:</strong> ${task.status}</p>
+                    <p><strong>Assigned to:</strong> ${assignee}</p>
+                    <p><strong>Duration:</strong> ${task.duration} day(s)</p>
+                </div>
+
+                <div class="details-section">
+                    <h3>Dependencies</h3>
+                    <div class="dependency-list">
+                        ${dependencies.length > 0 ? 
+                            dependencies.map(dep => `<span class="dependency-tag">${dep}</span>`).join('') :
+                            '<span>No dependencies</span>'
+                        }
+                    </div>
+                </div>
+
+                <div class="details-section">
+                    <h3>Implementation Details</h3>
+                    <pre style="white-space: pre-wrap; background: #f8f9fa; padding: 15px; border-radius: 5px;">${task.details}</pre>
+                </div>
+
+                <div class="details-section">
+                    <h3>Test Strategy</h3>
+                    <pre style="white-space: pre-wrap; background: #f8f9fa; padding: 15px; border-radius: 5px;">${task.testStrategy}</pre>
+                </div>
+
+                <div class="details-section">
+                    <h3>Actions</h3>
+                    <div class="action-buttons">
+                        <button onclick="changeTaskStatus(${task.id}, 'in-progress')">Start Task</button>
+                        <button class="success" onclick="changeTaskStatus(${task.id}, 'done')">Complete Task</button>
+                        <button class="danger" onclick="changeTaskStatus(${task.id}, 'blocked')">Block Task</button>
+                        <button class="warning" onclick="changeTaskStatus(${task.id}, 'pending')">Reset to Pending</button>
+                    </div>
+                </div>
+
+                <div class="details-section">
+                    <h3>TaskMaster AI Commands</h3>
+                    <pre style="background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 5px;">
+# View this task
+task-master show ${task.id}
+
+# Start working on this task
+task-master set-status --id=${task.id} --status=in-progress
+
+# Mark as complete
+task-master set-status --id=${task.id} --status=done
+
+# Add implementation notes
+task-master update-task --id=${task.id} --prompt="implementation notes..."
+
+# Expand into subtasks
+task-master expand --id=${task.id} --research
+                    </pre>
+                </div>
+            `;
+
+            document.getElementById('taskModal').style.display = 'block';
+        }
+
+        // Assign task to developer
+        function assignTask(taskId, developer) {
+            if (developer) {
+                taskAssignments[taskId] = developer;
+            } else {
+                delete taskAssignments[taskId];
+            }
+            
+            localStorage.setItem('taskAssignments', JSON.stringify(taskAssignments));
+            updateStats();
+            
+            if (currentView === 'gantt') {
+                renderGanttChart();
+            } else {
+                renderKanbanBoard();
+            }
+        }
+
+        // Change task status
+        function changeTaskStatus(taskId, newStatus) {
+            const task = taskData.tasks.find(t => t.id === taskId);
+            if (task) {
+                task.status = newStatus;
+                localStorage.setItem('taskStatuses', JSON.stringify(
+                    taskData.tasks.reduce((acc, t) => ({ ...acc, [t.id]: t.status }), {})
+                ));
+                
+                document.getElementById('taskModal').style.display = 'none';
+                updateStats();
+                
+                if (currentView === 'gantt') {
+                    renderGanttChart();
+                } else {
+                    renderKanbanBoard();
+                }
+            }
+        }
+
+        // Refresh data (simulated - would connect to TaskMaster AI in real implementation)
+        function refreshData() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            
+            // Simulate API call
+            setTimeout(() => {
+                document.getElementById('loadingIndicator').style.display = 'none';
+                alert('Data refreshed! (In a real implementation, this would sync with TaskMaster AI)');
+                
+                // Re-render current view
+                if (currentView === 'gantt') {
+                    renderGanttChart();
+                } else {
+                    renderKanbanBoard();
+                }
+            }, 1000);
+        }
+
+        // Load saved task statuses
+        function loadSavedData() {
+            const savedStatuses = JSON.parse(localStorage.getItem('taskStatuses') || '{}');
+            Object.entries(savedStatuses).forEach(([taskId, status]) => {
+                const task = taskData.tasks.find(t => t.id == taskId);
+                if (task) {
+                    task.status = status;
+                }
+            });
+        }
+
+        // Initialize the dashboard when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSavedData();
+            initDashboard();
+        });
+    </script>
+</body>
+</html>

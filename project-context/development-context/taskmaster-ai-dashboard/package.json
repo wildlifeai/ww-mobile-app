@@ -1,0 +1,27 @@
+{
+  "name": "taskmaster-dashboard",
+  "version": "1.0.0",
+  "description": "Live dashboard for TaskMaster AI task management",
+  "main": "taskmaster-api-server.js",
+  "scripts": {
+    "start": "node taskmaster-api-server.js",
+    "dev": "nodemon taskmaster-api-server.js",
+    "dashboard": "npm start && open http://localhost:3333"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "chokidar": "^3.5.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "taskmaster",
+    "dashboard",
+    "task-management",
+    "project-management"
+  ],
+  "author": "TaskMaster AI Integration",
+  "license": "MIT"
+}

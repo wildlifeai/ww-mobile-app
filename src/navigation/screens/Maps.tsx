@@ -79,6 +79,9 @@ export const Maps = () => {
 					onRegionChange={setRegion}
 					showsUserLocation={locationEnabled}
 					showsMyLocationButton={false}
+					onMapReady={() => console.log("🗺️ Maps: MapView ready")}
+					onError={(error) => console.error("🚨 Maps: Error loading map:", error)}
+					onLayout={() => console.log("🗺️ Maps: MapView layout complete")}
 				>
 					{deployments?.map((deployment) =>
 						deployment.latitude && deployment.longitude ? (

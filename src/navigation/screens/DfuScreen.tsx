@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { StyleSheet, View, Platform, PermissionsAndroid } from "react-native"
 import { Button } from "react-native-paper"
 import DocumentPicker from "react-native-document-picker"
-import RNFS from "react-native-fs"
+import * as FileSystem from "expo-file-system"
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWText } from "../../components/ui/WWText"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
@@ -28,41 +28,53 @@ export const DfuScreen = () => {
 	const isUpdating = dfuProgress > 0 && dfuProgress < 100
 
 	const handleFilePick = async () => {
+		console.log("🔍 DFU: Starting file pick process...")
+		console.log("🔍 DFU: FileSystem.cacheDirectory:", FileSystem.cacheDirectory)
 		try {
 			// Request necessary permissions first
 			if (Platform.OS === "android") {
 				try {
+					console.log("🔍 DFU: Requesting notification permission...")
 					const granted = await PermissionsAndroid.request(
 						PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
 						{
-							title: "Notification Permission",
-							message: "App needs notification permission for firmware updates",
+							title: "Firmware Update Notifications",
+							message: "Wildlife Watcher needs notification permission to show firmware update progress",
 							buttonNeutral: "Ask Me Later",
 							buttonNegative: "Cancel",
-							buttonPositive: "OK",
+							buttonPositive: "Allow",
 						},
 					)
-					if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-						throw new Error("Notification permission required for DFU updates")
+					console.log("🔍 DFU: Permission result:", granted)
+					
+					if (granted === PermissionsAndroid.RESULTS.DENIED) {
+						console.log("🔍 DFU: Permission denied, continuing without notifications...")
+						// Continue anyway - notification permission is not critical for file picking
+					} else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+						console.log("🔍 DFU: Permission permanently denied, continuing...")
+						// Continue anyway - notification permission is not critical for file picking
 					}
 				} catch (err) {
-					throw new Error("Failed to request notification permission")
+					console.log("🔍 DFU: Permission request failed, continuing without notifications:", err)
+					// Continue anyway - permission failure shouldn't block file picking
 				}
 			}
 
+			console.log("🔍 DFU: Launching document picker...")
 			const result = await DocumentPicker.pick({
 				type: Platform.select({
 					ios: ["public.archive"],
 					android: [DocumentPicker.types.allFiles],
 				}),
 			})
+			console.log("🔍 DFU: Document picker result:", result[0])
 
 			setFileName(result[0].name || "Unknown file")
 
 			const timestamp = Date.now()
 			const localPath = Platform.select({
 				ios: result[0].uri,
-				android: `${RNFS.CachesDirectoryPath}/firmware_${timestamp}.zip`,
+				android: `${FileSystem.cacheDirectory}firmware_${timestamp}.zip`,
 			})
 
 			if (!localPath) {
@@ -70,7 +82,12 @@ export const DfuScreen = () => {
 			}
 
 			if (Platform.OS === "android") {
-				await RNFS.copyFile(result[0].uri, localPath)
+				console.log("🔍 DFU: Copying file from:", result[0].uri, "to:", localPath)
+				await FileSystem.copyAsync({
+					from: result[0].uri,
+					to: localPath
+				})
+				console.log("🔍 DFU: File copy completed successfully")
 			}
 
 			try {
@@ -84,15 +101,22 @@ export const DfuScreen = () => {
 			} finally {
 				// Clean up file regardless of DFU success/failure
 				if (Platform.OS === "android") {
-					await RNFS.unlink(localPath).catch(console.error)
+					await FileSystem.deleteAsync(localPath, { idempotent: true }).catch(console.error)
 				}
 			}
 		} catch (err) {
 			if (!DocumentPicker.isCancel(err)) {
-				console.error("DFU file pick failed:", err)
+				console.error("🚨 DFU file pick failed:", err)
+				console.error("🚨 DFU error details:", {
+					message: err instanceof Error ? err.message : "Unknown error",
+					stack: err instanceof Error ? err.stack : undefined,
+					name: err instanceof Error ? err.name : undefined
+				})
 				setDfuError(
 					err instanceof Error ? err.message : "Unknown error occurred",
 				)
+			} else {
+				console.log("🔍 DFU: User cancelled file picker")
 			}
 		}
 	}

@@ -1,0 +1,22 @@
+# Task ID: 7
+# Title: Additional Native Modules Replacement
+# Status: pending
+# Dependencies: 5
+# Priority: medium
+# Description: Replace remaining native modules with Expo equivalents for device info, document picker, and geolocation
+# Details:
+1. Replace react-native-device-info with expo-device@~5.9.0
+2. Update all device info API calls to Expo format
+3. Replace react-native-document-picker with expo-document-picker@~11.10.0
+4. Update document picker implementations
+5. Replace @react-native-community/geolocation with expo-location@~16.5.0
+6. Update location permission requests and API calls
+7. Remove old packages after successful replacement
+8. Test each module independently
+
+Note: Can execute in parallel with Tasks 8-9 (Phase 2 Stream A - Security & Dependency Cleanup)
+
+IMPORTANT: Follow MIGRATION-GUIDE.md patterns for module replacement
+
+# Test Strategy:
+Test device info display, verify document picker functionality, confirm location services work correctly, ensure proper permission handling for each module

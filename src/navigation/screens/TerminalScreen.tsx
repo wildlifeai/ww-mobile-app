@@ -221,6 +221,22 @@ export const Terminal = ({ embed }: Props) => {
 		DEVICE,
 	} = config
 
+	// Debug: Log configuration loading status
+	console.log("🔍 Terminal Screen Config Status:", {
+		deviceId,
+		HEARTBEAT: HEARTBEAT?.loaded,
+		APPEUI: APPEUI?.loaded,
+		SENSOR: SENSOR?.loaded,
+		LORAWAN: LORAWAN?.loaded,
+		DEVEUI: DEVEUI?.loaded,
+		BATTERY: BATTERY?.loaded,
+		VERSION: VERSION?.loaded,
+		ID: ID?.loaded,
+		DEVICE: DEVICE?.loaded,
+		configKeys: Object.keys(config),
+		fullConfig: config
+	})
+
 	if (
 		!HEARTBEAT?.loaded ||
 		!APPEUI?.loaded ||
@@ -232,6 +248,7 @@ export const Terminal = ({ embed }: Props) => {
 		!DEVICE?.loaded ||
 		!ID?.loaded
 	) {
+		console.log("🔍 Terminal Screen: Still loading configuration, showing AppLoading...")
 		return <AppLoading />
 	}
 

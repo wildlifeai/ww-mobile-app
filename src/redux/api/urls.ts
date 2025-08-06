@@ -1,4 +1,4 @@
-import Config from "react-native-config"
+import Config from "../../utils/environment"
 
 const { API_BASE } = Config
 

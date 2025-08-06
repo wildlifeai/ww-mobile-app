@@ -74,6 +74,50 @@ yarn-error.log
 
 # testing
 /coverage
+project-context/ww-app-migration-plan/BUNDLE-IDENTIFIER-STRATEGY.md:Zone.Identifier
+project-context/ww-app-migration-plan/dev-decision-action-priorities.md:Zone.Identifier
+project-context/ww-app-migration-plan/dev-to-prod-checklist.md:Zone.Identifier
+project-context/ww-app-migration-plan/DEVELOPMENT-EXECUTION-PLAN.md:Zone.Identifier
+project-context/ww-app-migration-plan/DOCUMENT-INDEX.md:Zone.Identifier
+project-context/ww-app-migration-plan/FILE-SYSTEM-MIGRATION-EXAMPLES.md:Zone.Identifier
+project-context/ww-app-migration-plan/handling-bundle-identifiers.md:Zone.Identifier
+project-context/ww-app-migration-plan/in-place-migraition-plan.md:Zone.Identifier
+project-context/ww-app-migration-plan/MIGRATION-GUIDE.md:Zone.Identifier
+project-context/ww-app-migration-plan/MIGRATION-IMPACT-ANALYSIS.md:Zone.Identifier
+project-context/ww-app-migration-plan/MIGRATION-OVERVIEW.md:Zone.Identifier
+project-context/ww-app-migration-plan/mvp-dev-stage-considerations.md:Zone.Identifier
+project-context/ww-app-migration-plan/PRODUCTION-EXECUTION-PLAN.md:Zone.Identifier
+project-context/ww-app-migration-plan/QUICK-REFERENCE.md:Zone.Identifier
+project-context/ww-app-migration-plan/README.md:Zone.Identifier
+project-context/ww-app-migration-plan/wildlife_watcher_prod_plan.md:Zone.Identifier
+project-context/ww-app-migration-plan/wildlife_watcher_prod_plan.md:Zone.Identifier:Zone.Identifier
+project-context/ww-app-migration-plan/WILDLIFE-WATCHER-APP-ANALYSIS.md:Zone.Identifier
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+# Dependency directories
+# Environment variables
+.env
+# Editor directories and files
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+
+# Task files
+# tasks.json
+# tasks/ 
+project-context/development-context/debugging/Screenshot_2025-07-30-22-19-21-464_com.wildlife.wildlifewatcher.expo.jpg
+.gitignore
+project-context/development-context/debugging/Screenshot_2025-07-30-22-26-19-500_com.wildlife.wildlifewatcher.expo.jpg
 
 # Misc
 .aider.chat.history.md

@@ -7,7 +7,7 @@ import { LocationProblems } from "./screens/LocationProblems"
 import { BleProblems } from "./screens/BleProblems"
 import { DeviceReconnectProvider } from "../providers/DeviceReconnectProvider"
 import { Terminal } from "./screens/TerminalScreen"
-import BootSplash from "react-native-bootsplash"
+import * as SplashScreen from "expo-splash-screen"
 import { NavigationBar } from "../components/NavigationBar"
 import { AppLoading } from "./screens/AppLoading"
 import { AppDrawer } from "../components/AppDrawer"
@@ -22,6 +22,8 @@ import { AddDeployment } from "./screens/AddDeployment"
 import type { Option } from "../components/ui/WWSelect"
 import { AddProject } from "./screens/AddProject"
 import { BottomTabs } from "./BottomTabs"
+import { DevBuildInfo } from "./screens/DevBuildInfo"
+import { AuthTestScreen } from "../screens/AuthTestScreen"
 
 export interface RootStackParamList extends ParamListBase {
 	CommunityDiscussion: undefined
@@ -36,6 +38,8 @@ export interface RootStackParamList extends ParamListBase {
 	Register: undefined
 	AddDeployment: { selectedProject?: Option } | undefined
 	AddProject: undefined
+	DevBuildInfo: undefined
+	AuthTestScreen: undefined
 }
 
 export type Routes = keyof RootStackParamList
@@ -65,7 +69,7 @@ export const MainNavigation = () => {
 
 	useEffect(() => {
 		if (!appLoading) {
-			BootSplash.hide({ fade: true })
+			SplashScreen.hideAsync()
 		}
 	}, [appLoading])
 
@@ -165,6 +169,20 @@ export const MainNavigation = () => {
 							component={AddProject}
 							options={{ title: "New project details" }}
 						/>
+						{__DEV__ && (
+							<>
+								<Stack.Screen
+									name="DevBuildInfo"
+									component={DevBuildInfo}
+									options={{ title: "Dev Build Info" }}
+								/>
+								<Stack.Screen
+									name="AuthTestScreen"
+									component={AuthTestScreen}
+									options={{ title: "🔐 Auth Test" }}
+								/>
+							</>
+						)}
 					</Stack.Group>
 				)}
 			</Stack.Navigator>
