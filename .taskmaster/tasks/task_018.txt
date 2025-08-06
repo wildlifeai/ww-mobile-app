@@ -1,0 +1,111 @@
+# Task ID: 18
+# Title: Device Management & BLE Integration
+# Status: pending
+# Dependencies: 11
+# Priority: high
+# Description: STREAM C: Enhance existing BLE functionality with device management screen, firmware updates, connection reliability, and device information persistence
+# Details:
+PARALLEL DEVELOPMENT STREAM C - Task 18: Device Management & BLE Integration
+
+This task builds upon the existing BLE functionality from the migration to provide comprehensive device management capabilities for Wildlife Watcher hardware.
+
+## Implementation Requirements:
+
+### 18.1: Devices Screen
+- Create `src/navigation/screens/DevicesScreen.tsx`
+- **Device Discovery and Scanning**: Enhanced BLE scanning with user-friendly interface
+- **Device List Display**: Show all discovered and paired devices with:
+  - Device name, Bluetooth ID, signal strength
+  - Connection status (Connected, Available, Offline)
+  - Last seen timestamp and device type
+  - Battery level and firmware version (when available)
+  - Deployment association status
+- **Connection Management**: Connect/disconnect devices with status feedback
+- **Device Actions**: Test camera, check status, update firmware
+- **Persistent Device Storage**: Remember paired devices between sessions
+
+### 18.2: BLE Service Enhancement
+- Extend existing BLE functionality from migration phase
+- **Connection Reliability**: Implement robust connection management with:
+  - Automatic reconnection for lost connections
+  - Connection quality monitoring and reporting
+  - Connection timeout handling and retry logic
+  - Multiple device connection support
+- **Device Command Handling**: Enhanced communication protocol support
+- **Status Monitoring**: Real-time device status updates and reporting
+- **Error Recovery**: Comprehensive error handling and recovery mechanisms
+
+### 18.3: Nordic DFU Integration  
+- **Firmware Update Workflow**: Complete integration with react-native-nordic-dfu
+- **Update Progress Tracking**: Real-time progress reporting during firmware updates
+- **Version Management**: Track device firmware versions and update availability
+- **Error Handling**: Robust error handling during firmware update process
+- **Update Notifications**: Alert users when firmware updates are available
+- **Batch Updates**: Support updating multiple devices efficiently
+
+### 18.4: Device Information & Persistence
+- **Device Database**: Store device information in local SQLite database
+- **Device Profiles**: Maintain persistent device profiles with:
+  - Connection history and reliability statistics
+  - Battery usage patterns and trends
+  - Deployment history and associations
+  - Custom device names and notes
+  - Calibration data and settings
+- **Sync with Supabase**: Sync device information across user's devices
+- **Device Analytics**: Track device performance and usage statistics
+
+## Dependencies:
+- Task 11: Offline SQLite Foundation (for device information persistence)
+- Existing BLE functionality from migration (react-native-ble-manager)
+- Nordic DFU functionality (react-native-nordic-dfu)
+- Device information models in Supabase
+
+## Technical Patterns:
+- Follow Component Implementation Patterns for consistent UI
+- Use DeviceListItem component pattern from Component patterns
+- Extend existing BLE service architecture
+- Implement proper error handling and user feedback
+- Use background task management for firmware updates
+
+## Key Features:
+- **Comprehensive Device Management**: Full lifecycle device management
+- **Enhanced BLE Reliability**: Robust connection management and error recovery
+- **Firmware Update System**: Seamless firmware updates with progress tracking
+- **Device Intelligence**: Learning device patterns and providing insights
+- **Multi-device Support**: Efficiently manage multiple Wildlife Watcher devices
+- **Persistent Storage**: Device information persists across sessions
+
+## BLE Enhancement Features:
+- **Auto-reconnection**: Automatically reconnect to previously paired devices
+- **Signal Quality Monitoring**: Track and report connection quality metrics
+- **Command Queue**: Queue BLE commands when device is temporarily unavailable
+- **Device Discovery**: Enhanced scanning with device type detection
+- **Battery Monitoring**: Real-time battery level tracking and alerts
+
+## Integration Points:
+- Deployment workflows use device management for device selection
+- Maps screen shows device locations and status
+- Real-time updates reflect device status changes
+- Device information syncs with Supabase for cross-device access
+
+## Testing Requirements:
+- Integration tests with real Wildlife Watcher hardware
+- Unit tests for BLE service enhancements
+- Test firmware update process end-to-end
+- Test device persistence and sync functionality
+- Test connection reliability and error recovery
+- Test multi-device management scenarios
+- Performance tests with multiple simultaneous connections
+
+## Success Criteria:
+- [ ] Device management screen fully operational with discovery and connection
+- [ ] BLE communication stable and reliable with enhanced error handling
+- [ ] Firmware updates working correctly with progress feedback
+- [ ] Device information persisted and synced across app instances
+- [ ] Multi-device support working without conflicts
+- [ ] Integration with existing BLE infrastructure seamless
+- [ ] Performance acceptable with multiple connected devices
+- [ ] User experience intuitive for device management tasks
+
+# Test Strategy:
+Test device discovery and connection, verify firmware updates, test BLE reliability improvements, validate device persistence, test multi-device scenarios

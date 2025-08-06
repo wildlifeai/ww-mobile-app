@@ -1,0 +1,84 @@
+# Task ID: 11
+# Title: Offline SQLite Foundation
+# Status: pending
+# Dependencies: 10
+# Priority: high
+# Description: Implement comprehensive offline-first architecture using expo-sqlite with operation queuing, network monitoring, conflict resolution, and background synchronization
+# Details:
+FOUNDATION LAYER - Task 11: Offline SQLite Foundation
+
+This task creates the complete offline-first data management system that enables the Wildlife Watcher app to function fully offline during field deployments and sync when connectivity is restored.
+
+## Implementation Requirements:
+
+### 11.1: SQLite Database Setup
+- Initialize expo-sqlite database (`wildlife_watcher.db`)
+- Create comprehensive schema for offline operations:
+  - `offline_queue` table for sync operations
+  - `local_deployments` table for offline deployment storage
+  - `local_projects` table for offline project storage
+  - `local_devices` table for device information cache
+- Implement database migration system for schema updates
+- Set up proper database connection management and cleanup
+
+### 11.2: Offline Service Architecture
+- Create `src/services/offline/OfflineService.ts` as main coordinator
+- Implement operation queue system for CREATE/UPDATE/DELETE operations
+- Add network state monitoring using @react-native-community/netinfo
+- Create conflict resolution strategies for data synchronization
+- Implement retry logic for failed sync operations
+- Add operation deduplication to prevent duplicate syncs
+
+### 11.3: Sync Infrastructure
+- Build background sync service that triggers when network becomes available
+- Implement incremental sync to minimize data transfer
+- Create data integrity validation during sync operations
+- Add sync status indicators for user feedback
+- Implement sync priority system (critical operations first)
+- Handle partial sync failures gracefully
+
+### 11.4: Integration Patterns
+- Create offline-first service layer that automatically queues operations
+- Integrate with Redux slices for seamless state management
+- Add offline indicators throughout the UI
+- Implement optimistic UI updates with rollback capability
+
+## Dependencies:
+- Task 10: Core Redux Integration (for state management integration)
+- expo-sqlite package (~13.4.0)
+- @react-native-community/netinfo for network monitoring
+- Supabase client for sync operations
+
+## Technical Patterns:
+- Follow offline service patterns from API Integration Guide
+- Implement BaseService pattern for consistent error handling
+- Use TypeScript for all database operations and types
+- Follow conflict resolution patterns from MVP2 docs
+
+## Key Features:
+- **Complete Offline Functionality**: All core operations work without network
+- **Intelligent Sync**: Only sync changed data, handle conflicts gracefully
+- **Network Resilience**: Automatic retry with exponential backoff
+- **Data Integrity**: Validation and rollback mechanisms
+- **User Experience**: Clear offline/sync status indicators
+
+## Testing Requirements:
+- Unit tests for OfflineService and database operations
+- Integration tests for sync scenarios
+- Test offline/online transition scenarios
+- Test conflict resolution with multiple device changes
+- Test data integrity after various sync failure scenarios
+- Performance tests with large offline operation queues
+
+## Success Criteria:
+- [ ] SQLite database operational with proper schema
+- [ ] Offline operations queued correctly and persistently
+- [ ] Sync system functional with network state changes
+- [ ] No data loss during offline/online transitions
+- [ ] Performance acceptable on low-end devices
+- [ ] Conflict resolution working for simultaneous edits
+- [ ] Background sync operating without blocking UI
+- [ ] Proper error handling and user feedback
+
+# Test Strategy:
+Test offline data persistence, verify sync queue processing, test conflict resolution, validate data integrity, test network transition scenarios

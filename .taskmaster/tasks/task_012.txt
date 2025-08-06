@@ -1,0 +1,97 @@
+# Task ID: 12
+# Title: Projects CRUD Operations
+# Status: pending
+# Dependencies: 11
+# Priority: high
+# Description: STREAM A: Implement comprehensive project management including projects list screen, new project creation, project service layer, and RTK Query integration with offline support
+# Details:
+PARALLEL DEVELOPMENT STREAM A - Task 12: Projects CRUD Operations
+
+This task implements the complete project management system for Wildlife Watcher, enabling users to create, view, and manage their wildlife monitoring projects.
+
+## Implementation Requirements:
+
+### 12.1: Projects List Screen
+- Create `src/navigation/screens/ProjectsScreen.tsx`
+- Display project cards with summary information:
+  - Project name, description, member count
+  - Active deployments count, total deployments
+  - Private/public indicator, creation date
+- Implement pull-to-refresh functionality
+- Add search and filter capabilities (by name, status, date)
+- Smooth navigation to project details
+- Empty state when no projects exist
+
+### 12.2: New Project Creation
+- Create `src/navigation/screens/NewProjectScreen.tsx`
+- Multi-section form with react-hook-form:
+  - **Basic Information**: name, description, sampling design
+  - **Project Settings**: private/public, using bait, monitoring marked
+  - **Team Members**: add by email with role assignment
+- Comprehensive form validation and error handling
+- Integration with Supabase projects table
+- Offline support with sync queue integration
+- Success/error feedback with navigation
+
+### 12.3: Project Service Layer
+- Create `src/services/ProjectService.ts` extending BaseService
+- Implement full CRUD operations:
+  - `createProject()` - with offline queue support
+  - `getUserProjects()` - with computed fields (member count, deployment counts)
+  - `updateProject()` - with optimistic updates
+  - `deleteProject()` - with confirmation and cleanup
+- Member management operations:
+  - `addProjectMember()`, `removeProjectMember()`
+  - `getProjectMembers()` with profile information
+- Type-safe operations using generated Supabase types
+
+### 12.4: RTK Query Integration
+- Create `src/store/api/projectsApi.ts`
+- Implement optimized queries with proper caching:
+  - `getProjects` with tag-based invalidation
+  - `createProject` with optimistic updates
+  - `updateProject` with immediate UI feedback
+  - `deleteProject` with proper cleanup
+- Handle loading states and error scenarios
+- Integration with offline service for queue management
+
+## Dependencies:
+- Task 11: Offline SQLite Foundation (for offline support)
+- Generated Supabase TypeScript types
+- React Hook Form for form management
+- React Native Paper for UI components
+
+## Technical Patterns:
+- Follow Component Implementation Patterns from MVP2 docs
+- Use ProjectCard component pattern for consistent UI
+- Implement LoadingStates wrapper for better UX
+- Follow API integration patterns with proper error handling
+- Use Supabase RLS policies for security
+
+## Key Features:
+- **Comprehensive Project Management**: Full CRUD with team collaboration
+- **Offline-First**: Projects can be created and managed offline
+- **Real-time Updates**: Changes sync across team members
+- **Search & Filter**: Easy project discovery and organization
+- **Team Management**: Add/remove members with role-based permissions
+
+## Testing Requirements:
+- Unit tests for ProjectService operations
+- Integration tests for projects list and creation screens
+- Test offline project creation and sync
+- Test search and filtering functionality
+- Test team member management workflows
+- Test error scenarios and edge cases
+
+## Success Criteria:
+- [ ] Project creation working online and offline
+- [ ] Projects list displaying correctly with all summary info
+- [ ] Search and filtering functional and performant
+- [ ] Team member management working with proper permissions
+- [ ] Proper error handling and user feedback
+- [ ] Smooth navigation and user experience
+- [ ] RTK Query integration with optimistic updates
+- [ ] Offline support with reliable sync
+
+# Test Strategy:
+Test project CRUD operations, verify offline functionality, test search/filter performance, validate team member management, test error scenarios

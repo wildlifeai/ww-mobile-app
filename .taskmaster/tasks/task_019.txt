@@ -1,0 +1,114 @@
+# Task ID: 19
+# Title: Maps Integration & Location Services
+# Status: pending
+# Dependencies: 11
+# Priority: high
+# Description: STREAM C: Build comprehensive maps functionality with deployment visualization, location services, offline map caching, and integration with deployment workflows
+# Details:
+PARALLEL DEVELOPMENT STREAM C - Task 19: Maps Integration & Location Services
+
+This task builds upon the basic Maps functionality from the migration to create a comprehensive mapping system that serves as the central hub for Wildlife Watcher deployment management.
+
+## Implementation Requirements:
+
+### 19.1: Maps Screen (Home Screen)
+- Create `src/navigation/screens/MapsScreen.tsx` as the main app landing screen
+- **Google Maps Integration**: Full integration with react-native-maps
+- **User Location Display**: Show user's current location with proper permissions
+- **Deployment Marker Visualization**: Display all user's deployments as custom markers:
+  - Active deployments (green markers with device info)
+  - Ended deployments (gray markers with historical data)
+  - Deployment markers show status, battery, and basic info
+- **Marker Clustering**: Efficient marker clustering when zoomed out
+- **Floating Action Buttons**: 
+  - Start Deployment (green) - bottom right
+  - End Deployment (yellow) - contextual when near active deployment
+- **Map Controls**: Zoom, pan, rotate, map type selection
+
+### 19.2: Location Services Implementation
+- **Permission Handling**: Request and manage location permissions gracefully
+- **GPS Integration**: High-accuracy location services using expo-location
+- **Location Updates**: Periodic location updates for tracking user movement
+- **Location Picker Component**: Reusable component for selecting deployment locations
+- **Coordinate System Support**: Support for various coordinate formats and conversions
+- **Location Validation**: Ensure coordinates are valid and within reasonable bounds
+
+### 19.3: Advanced Map Features
+- **Deployment Visualization**: Rich marker information and interaction:
+  - Custom markers based on deployment status and device type
+  - Marker info windows with deployment details
+  - Marker animation for status changes
+  - Deployment radius/coverage area visualization
+- **Map Data Integration**: 
+  - Sync deployment locations with Supabase
+  - Real-time updates for deployment marker changes
+  - Historical deployment overlay options
+- **Navigation Integration**: 
+  - Navigate to deployment locations using device GPS
+  - Integration with external navigation apps
+  - Distance and bearing calculations
+
+### 19.4: Offline Map Support
+- **Map Tile Caching**: Cache map tiles for offline access using expo-file-system
+- **Offline Area Management**: Allow users to download specific areas for offline use
+- **Offline Location Services**: GPS functionality without network connectivity
+- **Sync Management**: Queue location updates when offline for later sync
+- **Offline Indicators**: Clear indication when operating in offline mode
+
+## Dependencies:
+- Task 11: Offline SQLite Foundation (for offline map data and location caching)
+- Existing Maps functionality from migration (react-native-maps)
+- expo-location for location services
+- Google Maps API for enhanced mapping features
+
+## Technical Patterns:
+- Follow Component Implementation Patterns for Maps components
+- Use DeploymentMarker component pattern from Component patterns
+- Implement proper permission handling for location services
+- Use MapView best practices for performance optimization
+- Follow offline caching patterns for map tiles
+
+## Key Features:
+- **Central Map Hub**: Primary interface for deployment management
+- **Real-time Visualization**: Live deployment status on interactive map
+- **Offline Capability**: Full map functionality without network connectivity
+- **Location Intelligence**: Smart location services and coordinate management
+- **Performance Optimized**: Smooth map interaction even with many deployments
+- **Integration Ready**: Seamless integration with deployment workflows
+
+## Map Visualization Features:
+- **Custom Deployment Markers**: Status-aware markers with rich information
+- **Clustering**: Efficient marker clustering for large numbers of deployments
+- **Info Windows**: Detailed deployment information in marker popups
+- **Search Integration**: Find deployments by name or location
+- **Filter Options**: Show/hide deployments by status, project, or date range
+- **Heat Maps**: Optional heat map overlay for deployment density
+
+## Integration Points:
+- Start Deployment FAB launches deployment creation wizard
+- Deployment markers link to deployment details screens
+- Maps screen accessible from main navigation tabs
+- Location data integrates with deployment creation workflow
+- Real-time updates reflect deployment status changes on map
+
+## Testing Requirements:
+- Integration tests for map display and marker functionality
+- Unit tests for location services and permission handling
+- Test offline map functionality and tile caching
+- Test marker clustering performance with large datasets
+- Test location accuracy and GPS integration
+- Test map integration with deployment workflows
+- Performance tests for smooth map interaction
+
+## Success Criteria:
+- [ ] Maps displaying correctly with all deployment markers
+- [ ] Location services working accurately with proper permissions
+- [ ] Offline map functionality working reliably
+- [ ] Deployment marker interaction smooth and informative
+- [ ] Performance optimized for various device capabilities
+- [ ] Integration with deployment workflows seamless
+- [ ] Real-time updates reflecting deployment changes
+- [ ] Map controls and navigation intuitive and responsive
+
+# Test Strategy:
+Test map display and markers, verify location services accuracy, test offline map functionality, validate deployment integration, test performance with many markers

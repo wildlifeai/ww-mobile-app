@@ -1,0 +1,113 @@
+# Task ID: 17
+# Title: Deployment Status & Management
+# Status: pending
+# Dependencies: 16
+# Priority: medium
+# Description: STREAM B: Implement comprehensive deployment management including deployments list screen, status tracking, real-time updates, and deployment details with quick actions
+# Details:
+PARALLEL DEVELOPMENT STREAM B - Task 17: Deployment Status & Management
+
+This task implements the comprehensive deployment management system that enables users to monitor, track, and manage all their wildlife monitoring deployments.
+
+## Implementation Requirements:
+
+### 17.1: Deployments List Screen
+- Create `src/navigation/screens/DeploymentsScreen.tsx`
+- **Tabbed Interface**: Organized tabs for Active / Ended / All deployments
+- **Deployment Cards**: Rich information display for each deployment:
+  - Project name, deployment name, device identifier
+  - Location information with coordinates/address
+  - Duration (for active) or total duration (for ended)
+  - Battery level and SD card usage indicators
+  - Last updated timestamp and connectivity status
+- **Pull-to-Refresh**: Manual refresh to get latest deployment status
+- **Search and Filter**: Find deployments by name, project, location, or status
+- **Performance Optimization**: Efficient list rendering for large datasets
+
+### 17.2: Deployment Details Screen
+- Create `src/navigation/screens/DeploymentDetailsScreen.tsx`
+- **Comprehensive Information Display**:
+  - Deployment metadata (name, project, dates, duration)
+  - Device information and current status
+  - Location details with map integration
+  - Configuration details (capture method, settings)
+  - Status history and timeline
+  - Associated files and media
+- **Quick Actions**:
+  - End deployment (if active)
+  - View on map
+  - Share deployment details
+  - Export deployment data
+
+### 17.3: Real-Time Status Update System
+- **Supabase Real-time Subscriptions**: Live updates for deployment changes
+- **Battery Level Monitoring**: Real-time battery status with low battery alerts
+- **Storage Monitoring**: SD card usage tracking with storage warnings
+- **Connectivity Status**: Device online/offline status indicators
+- **Alert System**: Push notifications for critical status changes
+- **Background Updates**: Status updates without blocking UI interactions
+
+### 17.4: Status Indicators & Visual Feedback
+- **Status Chips**: Color-coded status indicators (Active, Ended, Issues)
+- **Battery Indicators**: Visual battery level with warning states
+- **Storage Indicators**: SD card usage with capacity warnings
+- **Connectivity Icons**: Real-time connection status
+- **Last Updated Timestamps**: Time since last status update
+- **Issue Detection**: Automatic detection and flagging of problems
+
+## Dependencies:
+- Task 16: End Deployment Flow (for deployment termination integration)
+- Supabase real-time subscriptions for live updates
+- React Navigation for screen transitions
+- Maps integration for location display
+
+## Technical Patterns:
+- Follow Component Implementation Patterns for consistent UI
+- Use FlatList optimization patterns for large deployment lists
+- Implement real-time subscription patterns from API Integration Guide
+- Use StatusChip components for consistent status display
+- Follow performance optimization guidelines
+
+## Key Features:
+- **Comprehensive Overview**: All deployment information in organized views
+- **Real-time Monitoring**: Live status updates without manual refresh
+- **Quick Actions**: Efficient deployment management operations
+- **Performance Optimized**: Smooth operation with large deployment datasets
+- **Visual Status Indicators**: Clear visual feedback for deployment health
+- **Search & Filter**: Easy deployment discovery and organization
+
+## Real-time Update Features:
+- **Live Battery Monitoring**: Updates as devices report battery status
+- **Storage Tracking**: Real-time SD card usage monitoring
+- **Connection Status**: Immediate updates when devices connect/disconnect
+- **Status Changes**: Instant updates when deployments change status
+- **Alert System**: Proactive notifications for issues requiring attention
+
+## Integration Points:
+- Maps screen displays deployment markers with current status
+- Start/End deployment flows update deployment list automatically
+- Device management screen shows deployment associations
+- Project details screen shows deployment statistics
+- Push notifications for critical deployment events
+
+## Testing Requirements:
+- Integration tests for deployments list and details screens
+- Unit tests for real-time subscription management
+- Test performance with large numbers of deployments
+- Test real-time updates and alert system
+- Test search and filtering functionality
+- Test quick actions and navigation flows
+- Test offline behavior and sync when reconnected
+
+## Success Criteria:
+- [ ] Deployment list displaying correctly with all status information
+- [ ] Real-time updates working for all status indicators
+- [ ] Search and filtering functional and performant
+- [ ] Deployment details screen comprehensive and intuitive
+- [ ] Quick actions working with proper error handling
+- [ ] Performance optimized for large deployment datasets
+- [ ] Alert system providing timely notifications
+- [ ] Visual status indicators clear and informative
+
+# Test Strategy:
+Test deployments list functionality, verify real-time updates, test search/filter performance, validate alert system, test quick actions

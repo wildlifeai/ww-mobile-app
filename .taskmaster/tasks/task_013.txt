@@ -1,0 +1,104 @@
+# Task ID: 13
+# Title: Project Member Management
+# Status: pending
+# Dependencies: 12
+# Priority: high
+# Description: STREAM A: Implement team collaboration features including member management UI, role-based permissions system, email invitations, and admin-only features
+# Details:
+PARALLEL DEVELOPMENT STREAM A - Task 13: Project Member Management
+
+This task implements comprehensive team collaboration capabilities for Wildlife Watcher projects, enabling project admins to manage team members and enforce role-based access control.
+
+## Implementation Requirements:
+
+### 13.1: Member Management UI
+- Extend project details screen with member management section
+- Display current project members with:
+  - Profile information (name, email, organization)
+  - Role indicators (Admin, Member)
+  - Join date and added by information
+  - Actions (remove member, change role) for admins
+- Add member functionality with email input
+- Confirm removal dialogs with proper warnings
+- Loading states for all member operations
+
+### 13.2: Permission System Implementation
+- Create comprehensive role-based access control:
+  - **Project Admin**: Can edit project, add/remove members, delete deployments, change settings
+  - **Project Member**: Can create/end deployments, view project data, update own deployments
+- Implement UI permission checks:
+  - Hide/disable admin-only features for regular members
+  - Show appropriate error messages for unauthorized actions
+  - Conditional rendering based on user role
+- Secure API calls with proper authorization headers
+- Backend validation of user permissions before operations
+
+### 13.3: Member Invitation Flow
+- Create email-based member invitation system:
+  - Validate email addresses before sending invitations
+  - Store pending invitations in Supabase
+  - Send invitation emails via Supabase Edge Functions
+  - Handle invitation acceptance/rejection
+- Pending invitation management:
+  - Display pending invitations in member list
+  - Allow admins to resend or cancel invitations
+  - Automatic cleanup of expired invitations
+- Integration with user registration flow for new users
+
+### 13.4: Member Activity & Permissions Integration
+- Track member activity within projects:
+  - Last active timestamp
+  - Recent deployment activity
+  - Permission change history
+- Implement permission enforcement throughout app:
+  - Navigation restrictions based on role
+  - Feature availability based on permissions
+  - Error handling for permission violations
+- Admin tools and project oversight capabilities
+
+## Dependencies:
+- Task 12: Projects CRUD Operations (for project context)
+- Supabase authentication and user profiles
+- Supabase Edge Functions for email invitations
+- Generated TypeScript types for project members
+
+## Technical Patterns:
+- Follow Component Implementation Patterns for consistent UI
+- Use ConfirmationDialog pattern for destructive actions
+- Implement proper error handling with user-friendly messages
+- Use React Context or Redux for permission state management
+- Follow security best practices for role-based access
+
+## Key Features:
+- **Role-Based Access Control**: Granular permissions for project operations
+- **Email Invitations**: Seamless team member onboarding
+- **Member Activity Tracking**: Visibility into team engagement
+- **Admin Tools**: Comprehensive project management capabilities
+- **Security**: Proper authorization throughout the application
+
+## Integration Points:
+- Projects screen shows member count and management access
+- Deployment flows respect member permissions
+- Navigation system enforces role-based access
+- All API calls include proper permission validation
+
+## Testing Requirements:
+- Unit tests for permission checking logic
+- Integration tests for member management workflows
+- Test invitation flow end-to-end
+- Test role-based UI rendering and navigation
+- Test security scenarios and unauthorized access attempts
+- Test admin tools and oversight capabilities
+
+## Success Criteria:
+- [ ] Member management fully functional for project admins
+- [ ] Permissions properly enforced throughout application
+- [ ] Invitation system working with email delivery
+- [ ] Role-based UI rendering working correctly
+- [ ] Security measures preventing unauthorized access
+- [ ] Proper error handling and user feedback
+- [ ] Admin tools providing effective project oversight
+- [ ] Smooth team member onboarding experience
+
+# Test Strategy:
+Test role-based permissions, verify invitation workflows, test member management operations, validate security enforcement, test admin features

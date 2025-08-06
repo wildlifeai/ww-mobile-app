@@ -1,0 +1,118 @@
+# Task ID: 15
+# Title: Start Deployment Flow (6-Step Wizard)
+# Status: pending
+# Dependencies: 11
+# Priority: high
+# Description: STREAM B: Implement comprehensive deployment creation workflow with 6-step wizard including project selection, device discovery, configuration, camera preview, and final setup
+# Details:
+PARALLEL DEVELOPMENT STREAM B - Task 15: Start Deployment Flow (6-Step Wizard)
+
+This task implements the complete deployment creation workflow that enables users to start new wildlife monitoring deployments through a guided 6-step process.
+
+## Implementation Requirements:
+
+### 15.1: Project Selection Screen
+- Create `src/navigation/screens/deployment/start/ProjectSelectionScreen.tsx`
+- **Project Dropdown**: Display user's accessible projects with search/filter
+- **New Project Option**: Quick project creation within deployment flow
+- **Deployment Naming**: Text input for deployment identification
+- **Form Validation**: Ensure project selection and deployment name
+- **Continue Navigation**: Progress to device discovery step
+- Progress indicator showing Step 1 of 6
+
+### 15.2: New Project Creation (Integrated)
+- **Inline Project Creation**: Essential fields only for quick setup
+- **Minimal Form**: Name, description, basic settings
+- **Integration**: Use existing project creation logic from Task 12
+- **Flow Continuation**: Seamlessly return to deployment workflow
+- **Validation**: Ensure new project creation is successful
+
+### 15.3: Device Discovery Screen
+- Create `src/navigation/screens/deployment/start/DeviceDiscoveryScreen.tsx`
+- **BLE Device Scanning**: Integration with existing BLE functionality
+- **Permission Handling**: Request Bluetooth permissions gracefully
+- **Device List**: Display discovered devices with signal strength
+- **Connection Status**: Show device connection and retry logic
+- **Device Selection**: Allow user to select target device
+- **Manual Refresh**: Button to restart scanning process
+- Progress indicator showing Step 3 of 6
+
+### 15.4: Deployment Configuration Screen
+- Create `src/navigation/screens/deployment/start/DeploymentConfigScreen.tsx`
+- **Location Selection**: GPS location or manual coordinate entry
+- **Map Integration**: Visual map showing selected deployment location
+- **Use My Location**: Quick GPS-based location selection
+- **Capture Method Selection**: Motion detection or timelapse modes
+- **Timelapse Configuration**: Interval settings when timelapse is selected
+- **Configuration Validation**: Ensure all required settings are provided
+- Progress indicator showing Step 4 of 6
+
+### 15.5: Camera Preview Screen
+- Create `src/navigation/screens/deployment/start/CameraPreviewScreen.tsx`
+- **Live Camera Preview**: Display camera feed from connected device
+- **Snapshot Functionality**: Take test snapshots to verify camera angle
+- **Image Quality Validation**: Ensure camera is properly positioned
+- **Retake Options**: Allow multiple snapshots until user is satisfied
+- **User Approval Interface**: Confirm camera setup is acceptable
+- Progress indicator showing Step 5 of 6
+
+### 15.6: Final Setup & Deployment Creation
+- Create `src/navigation/screens/deployment/start/FinalSetupScreen.tsx`
+- **Location Photo Capture**: Photo of deployment site using device camera
+- **Description and Notes**: Text area for deployment details and observations
+- **Deployment Summary**: Review all configured settings
+- **Final Deployment Creation**: Submit deployment to Supabase with offline support
+- **Success/Error Handling**: Provide clear feedback on deployment status
+- **Navigation**: Return to appropriate screen after completion
+
+## Dependencies:
+- Task 11: Offline SQLite Foundation (for offline deployment creation)
+- Existing BLE functionality from migration
+- React Navigation 6.x for wizard navigation
+- expo-location for GPS functionality
+- expo-camera for location photo capture
+
+## Technical Patterns:
+- Follow Component Implementation Patterns from MVP2 docs
+- Use StepProgress component for wizard navigation
+- Implement DeviceDiscoveryScreen pattern from Component patterns
+- Follow ScreenLayout pattern for consistent UI
+- Use deployment wizard state management with Redux
+
+## Key Features:
+- **Guided Workflow**: Step-by-step process for deployment creation
+- **BLE Integration**: Seamless device discovery and connection
+- **Location Services**: GPS and manual location selection
+- **Camera Validation**: Ensure proper device setup before deployment
+- **Offline Support**: Deployments can be created without network connectivity
+- **Comprehensive Validation**: Each step validates required information
+
+## Wizard Flow:
+1. **Project Selection** → Choose project and name deployment
+2. **New Project** → (Optional) Create project if needed
+3. **Device Discovery** → Scan and select BLE device
+4. **Configuration** → Set location and capture method
+5. **Camera Preview** → Validate camera positioning
+6. **Final Setup** → Add details and create deployment
+
+## Testing Requirements:
+- Integration tests for complete wizard flow
+- Unit tests for each step's validation logic
+- Test BLE device discovery and selection
+- Test location services and GPS functionality
+- Test camera preview and validation
+- Test offline deployment creation and sync
+- Test error scenarios and recovery mechanisms
+
+## Success Criteria:
+- [ ] Complete 6-step wizard functional from start to finish
+- [ ] Smooth navigation between all steps with proper validation
+- [ ] BLE, GPS, and camera integrations working correctly
+- [ ] Proper validation at each step preventing invalid data
+- [ ] Robust error handling and recovery throughout process
+- [ ] Offline deployment creation with reliable sync support
+- [ ] User-friendly interface with clear progress indicators
+- [ ] Performance acceptable on various device types
+
+# Test Strategy:
+Test complete wizard workflow, verify BLE integration, test location services, validate camera functionality, test offline deployment creation

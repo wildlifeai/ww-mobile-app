@@ -1,0 +1,83 @@
+# Task ID: 10
+# Title: Core Redux Integration with Supabase
+# Status: pending
+# Dependencies: 9
+# Priority: high
+# Description: Extend existing Redux architecture with comprehensive Supabase integration including enhanced auth slice, projects slice, deployments slice, and RTK Query API layer
+# Details:
+FOUNDATION LAYER - Task 10: Core Redux Integration with Supabase
+
+This task extends the existing Redux Toolkit architecture to provide comprehensive state management for all MVP2 features with full Supabase backend integration.
+
+## Implementation Requirements:
+
+### 10.1: Enhanced Auth Redux Slice
+- Extend existing `src/store/slices/authSlice.ts` 
+- Add user profile data handling beyond basic auth
+- Implement session management with refresh tokens
+- Add auth state persistence with AsyncStorage
+- Handle email confirmation states
+- Integrate with Supabase auth service from Task 8
+
+### 10.2: Projects Redux Slice
+- Create `src/store/slices/projectsSlice.ts`
+- Actions for full CRUD operations (create, read, update, delete)
+- Selectors for project lists, details, and filtered views
+- Loading and error state management
+- Optimistic updates for better UX
+- Integration with offline queue system
+
+### 10.3: Deployments Redux Slice  
+- Create `src/store/slices/deploymentsSlice.ts`
+- Separate active/ended deployment states
+- Deployment creation and management actions
+- Status tracking and real-time updates
+- Location-based deployment filtering
+- Device association management
+
+### 10.4: API Integration Layer
+- Set up RTK Query integration with Supabase client
+- Create `src/store/api/` directory with service endpoints
+- Type-safe API calls using generated Supabase types
+- Implement caching strategies for offline support
+- Error handling and automatic retry logic
+- Real-time subscription management
+
+## Dependencies:
+- Task 8: Supabase Backend Integration (completed)
+- Task 9: Authentication Screens (for auth state integration)
+- Existing Redux store configuration
+- Generated TypeScript types from Supabase
+
+## Technical Patterns:
+- Use Redux Toolkit createSlice pattern
+- Implement RTK Query for API calls
+- Follow API integration patterns from MVP2 docs
+- Use proper TypeScript typing throughout
+- Implement proper error boundaries
+
+## Integration Points:
+- Auth slice integrates with authentication screens
+- Projects slice supports project management workflows
+- Deployments slice enables deployment creation/management
+- All slices support offline-first architecture
+
+## Testing Requirements:
+- Unit tests for all Redux slices and actions
+- Test RTK Query integration with mocked Supabase calls
+- Test error handling and retry logic
+- Test optimistic updates and rollback scenarios
+- Test real-time subscription management
+
+## Success Criteria:
+- [ ] All Redux slices properly integrated with store
+- [ ] Type-safe operations throughout the state management
+- [ ] Proper caching and data synchronization
+- [ ] Comprehensive error boundaries and handling
+- [ ] No memory leaks or state inconsistencies
+- [ ] RTK Query working with Supabase backend
+- [ ] Real-time updates functioning correctly
+- [ ] Offline support architecture in place
+
+# Test Strategy:
+Test Redux actions and reducers, verify RTK Query integration, test error handling, validate optimistic updates, test real-time subscriptions

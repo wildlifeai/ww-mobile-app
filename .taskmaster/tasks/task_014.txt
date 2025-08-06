@@ -1,0 +1,107 @@
+# Task ID: 14
+# Title: Project Details & Administration
+# Status: pending
+# Dependencies: 13
+# Priority: medium
+# Description: STREAM A: Complete project management with detailed project information screen, administrative tools, data export capabilities, and project lifecycle management
+# Details:
+PARALLEL DEVELOPMENT STREAM A - Task 14: Project Details & Administration
+
+This task completes the project management system by providing comprehensive project details and administrative capabilities for Wildlife Watcher projects.
+
+## Implementation Requirements:
+
+### 14.1: Project Details Screen
+- Create `src/navigation/screens/ProjectDetailsScreen.tsx`
+- Comprehensive project information display:
+  - **Header Section**: Project name, description, creation date, owner info
+  - **Project Settings**: Sampling design, website, privacy settings
+  - **Project Statistics**: Total deployments, active deployments, team size
+  - **Member Section**: Team members with roles (from Task 13)
+  - **Activity Feed**: Recent project activities and updates
+  - **Deployment History**: List of recent deployments with status
+- Editable fields for project admins:
+  - Project description, sampling design, website URL
+  - Privacy settings (private/public toggle)
+  - Project settings (bait usage, monitoring marked)
+- Real-time updates using Supabase subscriptions
+
+### 14.2: Project Administration Tools
+- **Project Settings Management**:
+  - Update project metadata and configuration
+  - Change project privacy and access settings
+  - Modify project-specific settings (bait, monitoring)
+- **Data Management**:
+  - Export project data (deployments, member activity)
+  - Generate project reports (deployment success rates, team performance)
+  - Data cleanup and archival tools
+- **Project Lifecycle Management**:
+  - Archive inactive projects (preserves data, removes from active lists)
+  - Delete projects (admin only, with confirmation and cascading cleanup)
+  - Transfer project ownership between admins
+
+### 14.3: Analytics and Reporting
+- **Project Analytics Dashboard**:
+  - Deployment success metrics
+  - Team member activity statistics
+  - Device usage patterns
+  - Location-based deployment insights
+- **Export Capabilities**:
+  - CSV export of deployment data
+  - PDF project summary reports
+  - JSON data export for external analysis
+  - Integration with external analytics tools
+
+### 14.4: Advanced Features
+- **Project Templates**: Save project configurations as templates for future use
+- **Bulk Operations**: Manage multiple deployments simultaneously
+- **Integration Points**: Connect with external wildlife monitoring systems
+- **Audit Trail**: Track all project modifications and administrative actions
+
+## Dependencies:
+- Task 13: Project Member Management (for member integration)
+- Supabase real-time subscriptions
+- File export capabilities using expo-file-system
+- Chart/visualization libraries for analytics
+
+## Technical Patterns:
+- Follow ScreenLayout pattern for consistent screen structure
+- Use TabView for organizing different sections of project details
+- Implement proper permission checks for administrative features
+- Use confirmation dialogs for destructive actions
+- Follow data export patterns from MVP2 specifications
+
+## Key Features:
+- **Comprehensive Project Overview**: All project information in one place
+- **Administrative Control**: Full project lifecycle management
+- **Data Export & Analytics**: Insights and reporting capabilities
+- **Team Collaboration**: Integration with member management
+- **Real-time Updates**: Live project information and activity feeds
+
+## Integration Points:
+- Projects list navigates to project details
+- Member management is integrated within project details
+- Deployment workflows reference project settings
+- Maps screen can filter by specific projects
+- Analytics integrate with deployment and device data
+
+## Testing Requirements:
+- Unit tests for all administrative operations
+- Integration tests for project details screen
+- Test data export functionality with various formats
+- Test permission-based feature access
+- Test project lifecycle operations (archive, delete, transfer)
+- Test analytics accuracy and performance
+
+## Success Criteria:
+- [ ] Project details screen comprehensive and intuitive
+- [ ] Administrative functions working properly for authorized users
+- [ ] Data export functionality generating correct formats
+- [ ] Project lifecycle management working with proper safeguards
+- [ ] Analytics providing accurate and useful insights
+- [ ] Real-time updates functioning correctly
+- [ ] Permission enforcement for all administrative features
+- [ ] User-friendly interface with proper error handling
+
+# Test Strategy:
+Test project details display, verify admin permissions, test data export formats, validate lifecycle operations, test analytics accuracy

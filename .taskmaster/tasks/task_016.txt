@@ -1,0 +1,100 @@
+# Task ID: 16
+# Title: End Deployment Flow
+# Status: pending
+# Dependencies: 15
+# Priority: medium
+# Description: STREAM B: Implement deployment termination workflow including active deployment selection, device reconnection, status updates, and cleanup procedures
+# Details:
+PARALLEL DEVELOPMENT STREAM B - Task 16: End Deployment Flow
+
+This task implements the deployment termination workflow that enables users to properly end active wildlife monitoring deployments and retrieve final data.
+
+## Implementation Requirements:
+
+### 16.1: End Deployment Screen
+- Create `src/navigation/screens/deployment/end/EndDeploymentScreen.tsx`
+- **Active Deployment Selection**: List user's active deployments with filtering
+- **Deployment Information Display**: Show deployment details, duration, location
+- **Device Status Check**: Display current device connectivity and battery status
+- **Termination Confirmation**: Clear confirmation dialog with deployment impact info
+- **Batch Operations**: Option to end multiple deployments simultaneously
+
+### 16.2: Device Reconnection & Communication
+- **Automatic Device Discovery**: Attempt to reconnect to deployment device
+- **Manual Device Selection**: If automatic fails, allow manual device selection
+- **BLE Communication**: Send end deployment command to device
+- **Device Status Retrieval**: Get final status data (battery, storage, logs)
+- **Connection Fallback**: Handle scenarios where device is unreachable
+- **Timeout Handling**: Graceful handling of communication timeouts
+
+### 16.3: End Deployment Service Integration
+- Create deployment termination service extending BaseService
+- **Status Update to Supabase**: Mark deployment as ended with timestamp
+- **Final Data Collection**: Retrieve and store final device metrics
+- **Cleanup Operations**: Remove active deployment from local cache
+- **Data Integrity**: Ensure deployment data is preserved correctly
+- **Offline Support**: Queue termination if device is offline
+
+### 16.4: Completion & Feedback
+- **Success Confirmation**: Clear feedback that deployment was ended successfully
+- **Data Summary**: Show final deployment statistics and duration
+- **Next Steps**: Options to view deployment details or start new deployment
+- **Error Recovery**: Handle partial failures and provide recovery options
+- **Navigation**: Return to appropriate screen (Maps or Deployments list)
+
+## Dependencies:
+- Task 15: Start Deployment Flow (for deployment context)
+- Existing BLE functionality for device communication
+- Supabase integration for deployment status updates
+- Offline queue system for reliable updates
+
+## Technical Patterns:
+- Follow Component Implementation Patterns for consistent UI
+- Use LoadingStates pattern for device communication
+- Implement ConfirmationDialog for termination confirmation
+- Follow BaseService pattern for reliable API operations
+- Use proper error handling and user feedback
+
+## Key Features:
+- **Streamlined Termination**: Simple process to end active deployments
+- **Device Communication**: Proper communication with field devices
+- **Data Preservation**: Ensure all deployment data is captured and stored
+- **Offline Support**: End deployments even without network connectivity
+- **Batch Operations**: Efficiency features for managing multiple deployments
+- **Error Recovery**: Robust handling of device communication failures
+
+## Workflow Steps:
+1. **Select Deployment** → Choose active deployment to end
+2. **Device Connection** → Reconnect to deployment device
+3. **Final Data Retrieval** → Get final status and metrics
+4. **Termination Confirmation** → Confirm deployment end
+5. **Status Update** → Update deployment status in backend
+6. **Completion Feedback** → Provide success confirmation and options
+
+## Integration Points:
+- Maps screen provides "End Deployment" quick action
+- Deployments list screen allows batch termination
+- Device management screen shows deployment status
+- Real-time updates reflect termination across app
+
+## Testing Requirements:
+- Integration tests for complete end deployment workflow
+- Unit tests for deployment termination service
+- Test BLE device communication and reconnection
+- Test offline termination scenarios
+- Test error handling for unreachable devices
+- Test batch termination functionality
+- Test data integrity during termination process
+
+## Success Criteria:
+- [ ] End deployment flow working smoothly from selection to completion
+- [ ] Device communication reliable with proper error handling
+- [ ] Deployment status updates synchronized correctly
+- [ ] Offline termination working with sync when network available
+- [ ] Batch operations functional for multiple deployments
+- [ ] Clear user feedback throughout the termination process
+- [ ] Data integrity maintained during all termination scenarios
+- [ ] Error recovery mechanisms handling edge cases effectively
+
+# Test Strategy:
+Test end deployment workflow, verify device communication, test offline termination, validate status updates, test batch operations

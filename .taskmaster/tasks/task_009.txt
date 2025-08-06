@@ -1,0 +1,79 @@
+# Task ID: 9
+# Title: Authentication Screens & Navigation
+# Status: pending
+# Dependencies: 8
+# Priority: high
+# Description: Create comprehensive authentication screens (Login, Sign Up, Forgot Password) and navigation structure with Supabase integration, form validation, and session persistence
+# Details:
+FOUNDATION LAYER - Task 9: Authentication Screens & Navigation
+
+This task creates the complete authentication user interface and navigation structure for the Wildlife Watcher MVP2 implementation.
+
+## Implementation Requirements:
+
+### 9.1: Login Screen Implementation
+- Create `src/navigation/screens/auth/LoginScreen.tsx`
+- Email/password form using react-hook-form
+- Integration with existing Supabase auth service (`src/services/auth.ts`)
+- Form validation (email format, password requirements)
+- Loading states, error handling, user-friendly messages
+- "Remember me" functionality with AsyncStorage
+- Navigate to Maps screen on successful login
+- Links to Forgot Password and Sign Up screens
+
+### 9.2: Sign Up Screen Implementation  
+- Create `src/navigation/screens/auth/SignUpScreen.tsx`
+- Basic fields: email, password, confirmPassword, organization
+- Email confirmation workflow integration
+- Password strength validation
+- Form validation and comprehensive error handling
+- Link back to login screen
+- Handle pending confirmation state
+
+### 9.3: Forgot Password Screen
+- Create `src/navigation/screens/auth/ForgotPasswordScreen.tsx`
+- Email input with Supabase password reset integration
+- Success/error messaging with clear user feedback
+- Return to login navigation
+- Handle email confirmation workflow
+
+### 9.4: Navigation Structure Setup
+- Update main navigation to handle authenticated/unauthenticated states
+- Implement proper routing logic for auth screens
+- Session persistence across app restarts using AsyncStorage
+- Loading splash screen during auth state check
+- Smooth navigation transitions between auth and main app
+
+## Dependencies:
+- Task 8: Supabase Backend Integration (completed)
+- Existing Supabase auth service and types
+- React Navigation 6.x native stack
+- React Hook Form 7.54.1
+- React Native Paper 5.12.3 for UI components
+
+## Technical Patterns:
+- Follow component implementation patterns from MVP2 docs
+- Use FormInput component from Component Implementation Patterns
+- Implement LoadingStates component for consistent UX
+- Follow ScreenLayout pattern for consistent screen structure
+- Use Redux integration for auth state management
+
+## Testing Requirements:
+- Unit tests for all form validation logic
+- Integration tests for Supabase auth service calls
+- UI tests for navigation flows
+- Test error handling and edge cases
+- Test session persistence across app restarts
+
+## Success Criteria:
+- [ ] All auth screens functional with Supabase backend
+- [ ] Form validation working on all required/optional fields
+- [ ] Session persistence works across app restarts
+- [ ] Smooth navigation transitions between screens
+- [ ] Comprehensive error handling for all auth states
+- [ ] Email confirmation workflow integrated
+- [ ] Remember me functionality working
+- [ ] Loading states provide good user experience
+
+# Test Strategy:
+Test email/password validation, verify Supabase auth integration, test session persistence, validate navigation flows, test error scenarios, confirm email confirmation workflow
