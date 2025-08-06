@@ -28,7 +28,7 @@ If you're already familiar with React Native and Expo development, here's the co
 # 1. Clone and setup
 git clone [REPO_URL] wildlife-watcher-mobile-app
 cd wildlife-watcher-mobile-app
-git checkout expo-migration
+git checkout dev-mvp2-development
 
 # 2. Start Docker environment
 docker-compose -f docker-compose.dev.yml up -d
@@ -56,7 +56,7 @@ npx expo start
 # 1. Clone and setup
 git clone [REPO_URL] wildlife-watcher-mobile-app
 cd wildlife-watcher-mobile-app
-git checkout expo-migration
+git checkout dev-mvp2-development
 
 # 2. Install dependencies
 npm install

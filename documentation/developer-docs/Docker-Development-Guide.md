@@ -31,7 +31,7 @@ The Docker environment provides:
 # Clone and enter the project
 git clone [REPO_URL] wildlife-watcher-mobile-app
 cd wildlife-watcher-mobile-app
-git checkout expo-migration
+git checkout dev-mvp2-development
 
 # Start the Docker development environment
 docker-compose -f docker-compose.dev.yml up -d wildlife-watcher-dev

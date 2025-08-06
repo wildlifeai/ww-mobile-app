@@ -175,11 +175,11 @@ Key Documents:
 - EAS Build configuration
 - Core dependencies migrated (expo-file-system, expo-constants, expo-splash-screen)
 - BLE functionality verified with real devices
-- Basic Supabase integration started
+- Supabase integration complete and production-ready (authentication, database operations, real-time subscriptions)\n- Comprehensive developer documentation available
 
 🚧 **In Progress:**
 - MVP2 feature development per implementation spec
-- Offline-first data architecture
+- Offline-first data architecture implementation
 - Project and deployment management screens
 
 ## Task Master AI Instructions
@@ -271,7 +271,7 @@ All user actions must work offline and sync when connectivity is restored.
 - Project members: merge strategy (union of both lists)
 
 ## Documentation Directories
-- `@documentation/developer-docs/` contains documentation for developers and should be maintained as we develop this codebase
+- `@documentation/developer-docs/` contains documentation for developers and should be maintained as we develop this codebase\n- **Key Developer Guide**: `@documentation/developer-docs/Supabase-Integration-Guide.md` - Comprehensive backend integration guide
 
 ### Backend and Repository Configuration
 

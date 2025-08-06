@@ -115,7 +115,7 @@ If you choose Docker, skip to the [Docker Development Guide](./Docker-Developmen
 # Then:
 git clone [REPO_URL] wildlife-watcher-mobile-app
 cd wildlife-watcher-mobile-app
-git checkout expo-migration
+git checkout dev-mvp2-development
 docker-compose -f docker-compose.dev.yml up -d
 docker-compose -f docker-compose.dev.yml exec wildlife-watcher-dev bash
 npx expo start
@@ -303,7 +303,7 @@ git clone [REPOSITORY_URL] wildlife-watcher-mobile-app
 cd wildlife-watcher-mobile-app
 
 # Switch to the expo-migration branch (the latest development branch)
-git checkout expo-migration
+git checkout dev-mvp2-development
 ```
 
 **✅ CHECKPOINT 4:** Verify repository
