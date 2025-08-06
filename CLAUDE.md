@@ -10,10 +10,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npx expo run:ios` - Build and run on iOS device/simulator (when iOS support added)
 
 ### Development Commands
+- `npm start` - Start Expo development server (alias for `npx expo start`)
+- `npm run android` - Build and run on Android (alias for `npx expo run:android`)
+- `npm run ios` - Build and run on iOS (alias for `npx expo run:ios`)
 - `npm install` - Install project dependencies
 - `npx expo install` - Install Expo SDK compatible packages
 - `npx expo prebuild` - Generate native directories (if needed)
 - `eas build` - Build app using EAS Build service
+- `npm run validate:deps` - Validate dependency compatibility
+- `npm run deps` - Interactive dependency management CLI
+- `npm run deps:scan` - Scan for dependency issues
+- `npm run supabase:types` - Sync Supabase types (manual process, see src/types/supabase.ts)
 
 ### Testing and Quality
 - `npm test` - Run Jest tests
@@ -21,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run type-check` - Run TypeScript type checking
 
 ### Environment Requirements
-- **Node.js**: Version 20+ (as specified in package.json engines)
+- **Node.js**: Version 18+ (as specified in package.json engines)
 - **Expo CLI**: For development and local builds
 - **EAS CLI**: For cloud builds and deployments
 - **Android Studio**: For Android development and device connections
@@ -48,6 +55,13 @@ SafeAreaProvider → ReduxProvider → PaperProvider → NavigationContainer
 → AndroidPermissionsProvider → AppSetupProvider → BleEngineProvider
 → ListenToBleEngineProvider → AuthProvider → MainNavigation
 ```
+
+**Key Providers:**
+- **AuthProvider**: Supabase authentication state management
+- **BleEngineProvider**: Core BLE functionality and device management
+- **AndroidPermissionsProvider**: Runtime permissions management
+- **AppSetupProvider**: App initialization and configuration
+- **ListenToBleEngineProvider**: BLE event handling and device communication
 
 #### Key Architectural Components
 
@@ -89,6 +103,13 @@ SafeAreaProvider → ReduxProvider → PaperProvider → NavigationContainer
 - Always provide full updated answers when making changes
 - Use existing codebase as reference rather than creating new patterns
 - Follow latest TypeScript best practices
+
+### Dependency Management
+This project includes custom dependency validation and management tools:
+- `npm run validate:deps` - Automatically runs after install to check compatibility
+- `npm run deps` - Interactive CLI for dependency management
+- `npm run deps:scan` - Scan for potential dependency conflicts
+- Located in: `scripts/validate-deps.js` and `scripts/deps-cli.js`
 
 ### BLE Development
 - Device connections are managed through the BleEngineProvider
@@ -207,12 +228,24 @@ This project has access to three configured MCP servers:
 - **React Native**: Version 0.74.6
 - **Backend**: Supabase with PostgreSQL database
 
+**Bundle Identifier Strategy:**
+- Development: `com.wildlife.wildlifewatcher.expo` 
+- Production: `com.wildlife.wildlifewatcher`
+- Automatically determined by NODE_ENV
+- EAS Project ID: `6cf53a5e-90e1-4987-82c6-5f0337affe97`
+
 ## Supabase Integration Guidelines
 
 ### Database Schema
 - Uses Row Level Security (RLS) for data isolation
 - Project-based multi-tenancy model
 - Offline-first with sync conflict resolution
+
+#### Type Management
+- Supabase types are manually synced from backend repository
+- Located in: `src/types/supabase.ts`
+- Run `npm run supabase:types` for sync instructions
+- Backend repo: `~/dev/wildlifeai/wildlife-watcher-backend`
 
 ### Development Patterns
 - Always save to local SQLite first
@@ -248,8 +281,10 @@ All user actions must work offline and sync when connectivity is restored.
 - The new Supabase backend is in a git repo locally in folder `~/dev/wildlifeai/wildlife-watcher-backend`
 - The `supabase` subfolder in the backend repository contains the Supabase database configuration
 
-##### database/backend project-context documents locaion
-Document on the SUpabase backend can be found in the @project-context/development-context/supabase-backend folder.
+##### database/backend project-context documents location
+Documents on the Supabase backend can be found in the @project-context/development-context/supabase-backend folder.
+
+**Note**: The README.md contains outdated React Native CLI instructions. Follow the commands in this CLAUDE.md file for current Expo-based workflow.
 
 
 ### App MVP2 Documents

@@ -1,19 +1,30 @@
-# Wildlife Watcher mobile app
+# Wildlife Watcher Mobile App
 
 Welcome to the development repository of the Wildlife Watcher mobile app. This document provides instructions for setting up and running the project on your local machine.
 
-The Wildlife Watcher mobile app allows users to communicate with Wildlife Watcher cameras that record animals and use AI to identify them.
+The Wildlife Watcher mobile app allows users to communicate with Wildlife Watcher cameras that record animals and use AI to identify them. Built with **Expo SDK 51** and **React Native 0.74.6** with **Supabase** backend integration.
 
 **Project Overview**: [Watch on YouTube](https://www.youtube.com/watch?v=Ima3n2EYfeE)
 
+## Tech Stack
+
+- **Framework**: Expo SDK 51 with React Native 0.74.6
+- **Backend**: Supabase (PostgreSQL, Auth, Storage, Edge Functions)
+- **State Management**: Redux Toolkit with Supabase integration
+- **UI Library**: React Native Paper with Material Design
+- **BLE Communication**: react-native-ble-manager for device connectivity
+- **Maps**: react-native-maps for location features
+- **Development**: TypeScript with strict typing
+
 ## Prerequisites
 
-You need to make sure your environment is set up as per the official React Native documentation - [link here](https://reactnative.dev/docs/set-up-your-environment). If you can run a fresh React Native app, you should be able to run this one without any problems.
-
-Make sure you have the following prerequisites installed on your machine:
+This app now uses Expo SDK 51 with a managed workflow. Make sure you have the following prerequisites installed on your machine:
 
 - **Node.js**: Version 18 or higher
-- **Ruby**: Version 2.6.10 or higher
+- **Expo CLI**: For development and builds
+- **EAS CLI**: For cloud builds and deployments
+- **Android Studio**: For Android development and device connections (if developing for Android)
+- **Xcode**: For iOS development (macOS only, if developing for iOS)
 
 ## Getting Started
 
@@ -30,46 +41,70 @@ Make sure you have the following prerequisites installed on your machine:
     npm install
     ```
 
-3. Start the Metro bundler:
+3. Start the Expo development server:
 
     ```bash
-    npx react-native start
+    npm start
+    # or
+    npx expo start
     ```
 
 ## iOS Setup
 
-For iOS development, follow these additional steps:
+For iOS development:
 
-1. Install Bundler and necessary gems:
+1. Ensure you have Xcode installed (macOS only)
 
-    ```bash
-    gem install bundler
-    bundle install
-    ```
-
-2. Prepare Pods:
+2. Run the project in development mode:
 
     ```bash
-    bundle exec pod install --project-directory=ios
-    ```
-
-3. Run the project in development mode:
-
-    ```bash
-    npx react-native run-ios
+    npm run ios
+    # or
+    npx expo run:ios
     ```
 
 ## Android Setup
 
-For Android development, run the project in development mode:
+For Android development:
+
+1. Ensure you have Android Studio installed for device/emulator support
+
+2. Run the project in development mode:
 
 ```bash
-npx react-native run-android
+npm run android
+# or
+npx expo run:android
 ```
 
-## Releasing
+## Building and Releasing
 
-Building the app is fully automated via GitHub actions, however, since it's still in Beta you can only release it until the AppTester/Testflight step. Will update the docs once the app is ready for production.
+The app uses EAS Build for cloud builds:
+
+### Development Builds
+```bash
+eas build --profile development
+```
+
+### Production Builds
+```bash
+eas build --profile production
+```
+
+### Local Development
+For local development, use the Expo development server:
+```bash
+npm start
+```
+
+Building and releasing is managed through EAS Build service. See the app configuration in `app.config.js` for build settings.
+
+### Additional Commands
+
+- `npm test` - Run Jest tests
+- `npm run lint` - Run ESLint
+- `npm run validate:deps` - Validate dependency compatibility
+- `npm run deps` - Interactive dependency management CLI
 
 ## Contributing
 
