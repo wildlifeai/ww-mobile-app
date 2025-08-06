@@ -13,7 +13,7 @@ This directory contains development guides and documentation for the Wildlife Wa
 Condensed setup guide for experienced React Native/Expo developers who want to get up and running quickly.
 
 #### [Docker Development Guide](./Docker-Development-Guide.md)
-**Recommended for teams!** Docker-based development environment with exact tool versions (Node 20.19.4, Expo CLI 0.18.31, EAS CLI 16.17.3). Eliminates "works on my machine" issues.
+**Recommended for teams!** Docker-based development environment with exact tool versions (Node 20.19.4, Expo CLI 0.18.31, EAS CLI 16.17.3). Eliminates "works on my machine" issues.\n\n#### [WSL2 Development Setup Guide](./WSL2-Development-Setup-Guide.md)\n**Essential for Windows WSL2 developers!** Complete setup guide for Windows 11 WSL2 development with port forwarding, network configuration, and development client connectivity. Required for BLE/native module development.
 
 ### 🏗️ Architecture & Understanding
 
@@ -99,7 +99,7 @@ documentation/
     ├── App-Architecture-Guide.md                      # How the app works (essential reading)
     ├── Expo-Fundamentals-Guide.md                     # Expo SDK concepts (read after onboarding)
     ├── EAS-Development-Guide.md                       # EAS workflow guide
-    ├── EAS-Concepts-and-Keystores.md                  # EAS detailed concepts\n    ├── Supabase-Integration-Guide.md                  # Backend integration (essential for MVP2)
+    ├── EAS-Concepts-and-Keystores.md                  # EAS detailed concepts\n    ├── Supabase-Integration-Guide.md                  # Backend integration (essential for MVP2)\n    ├── WSL2-Development-Setup-Guide.md                # Windows WSL2 development setup
     # BLE/DFU documentation moved to:
     # ../../project-context/development-context/MVP2/BLE-WWUS-DFUx/
     # Contains: Technical analysis, high-level reports, dependencies, and revised guides
