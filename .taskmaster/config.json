@@ -1,20 +1,20 @@
 {
   "models": {
     "main": {
-      "provider": "anthropic",
-      "modelId": "claude-sonnet-4-20250514",
-      "maxTokens": 64000,
+      "provider": "gemini-cli",
+      "modelId": "gemini-2.5-pro",
+      "maxTokens": 65536,
       "temperature": 0.2
     },
     "research": {
-      "provider": "claude-code",
-      "modelId": "opus",
-      "maxTokens": 32000,
+      "provider": "gemini-cli",
+      "modelId": "gemini-2.5-pro",
+      "maxTokens": 65536,
       "temperature": 0.1
     },
     "fallback": {
       "provider": "gemini-cli",
-      "modelId": "gemini-2.5-pro",
+      "modelId": "gemini-2.5-flash",
       "maxTokens": 65536,
       "temperature": 0.2
     }

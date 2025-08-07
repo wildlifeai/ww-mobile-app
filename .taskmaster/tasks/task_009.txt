@@ -1,6 +1,6 @@
 # Task ID: 9
 # Title: Authentication Screens & Navigation
-# Status: pending
+# Status: in-progress
 # Dependencies: 8
 # Priority: high
 # Description: Create comprehensive authentication screens (Login, Sign Up, Forgot Password) and navigation structure with Supabase integration, form validation, and session persistence
@@ -77,3 +77,58 @@ This task creates the complete authentication user interface and navigation stru
 
 # Test Strategy:
 Test email/password validation, verify Supabase auth integration, test session persistence, validate navigation flows, test error scenarios, confirm email confirmation workflow
+
+# Subtasks:
+## 1. Update Login Screen with MVP2 Requirements [pending]
+### Dependencies: None
+### Description: Update existing Login screen with email/password form, remember me functionality, and proper Supabase integration
+### Details:
+- Change identifier field to email field with proper validation
+- Add remember me checkbox with AsyncStorage persistence
+- Improve error handling and user feedback
+- Add forgot password link navigation
+- Test Supabase auth integration
+
+## 2. Update Sign Up Screen with Organization Field [pending]
+### Dependencies: None
+### Description: Update existing Register screen with organization field and enhanced validation for MVP2
+### Details:
+- Add organization field to registration form
+- Update form validation for all required fields
+- Handle email confirmation workflow properly
+- Improve error messaging and user feedback
+- Test registration flow end-to-end
+
+## 3. Create Forgot Password Screen [pending]
+### Dependencies: None
+### Description: Create new ForgotPasswordScreen component with email reset workflow
+### Details:
+- Create src/navigation/screens/auth/ForgotPasswordScreen.tsx
+- Email input with validation
+- Integrate with Supabase resetPassword service
+- Success/error messaging with clear feedback
+- Navigation back to login screen
+- Handle email confirmation workflow
+
+## 4. Update Navigation Structure for Auth State Routing [pending]
+### Dependencies: None
+### Description: Update main navigation to handle authenticated/unauthenticated states with proper routing
+### Details:
+- Enable auth screens in MainNavigation component
+- Implement session persistence across app restarts
+- Add loading splash screen during auth state check
+- Smooth navigation transitions between auth and main app
+- Update RootStackParamList with ForgotPassword route
+
+## 5. Test Authentication flows and Form Validation [pending]
+### Dependencies: None
+### Description: Comprehensive testing of all authentication screens and workflows
+### Details:
+- Test login flow with valid/invalid credentials
+- Test registration with organization field
+- Test forgot password email workflow
+- Test session persistence across app restarts
+- Test form validation on all required fields
+- Test navigation flows between auth screens
+- Test error handling scenarios
+

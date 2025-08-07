@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Link Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .button {
+            display: inline-block;
+            padding: 15px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Wildlife Watcher Deep Link Tests</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Password Reset Link</h2>
+        <p>This should open the app and navigate to password reset screen:</p>
+        <a href="wildlifewatcher://auth/reset-password?token_hash=test12345&type=recovery" class="button">
+            Test Password Reset Deep Link
+        </a>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Email Confirmation Link</h2>
+        <p>This should open the app and navigate to login with confirmation:</p>
+        <a href="wildlifewatcher://auth/callback?token_hash=test67890&type=signup" class="button">
+            Test Email Confirmation Deep Link
+        </a>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Simple App Open</h2>
+        <p>This should just open the app to home screen:</p>
+        <a href="wildlifewatcher://" class="button">
+            Test Simple App Open
+        </a>
+    </div>
+    
+    <div class="test-section">
+        <h2>JavaScript Test</h2>
+        <p>Click to test via JavaScript:</p>
+        <button onclick="testDeepLink()" class="button">Test via JavaScript</button>
+        <div id="result"></div>
+    </div>
+    
+    <script>
+        function testDeepLink() {
+            const url = 'wildlifewatcher://auth/reset-password?token_hash=js_test_123&type=recovery';
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = `<p>Attempting to open: ${url}</p>`;
+            
+            try {
+                window.location.href = url;
+                resultDiv.innerHTML += '<p>✅ window.location.href called successfully</p>';
+            } catch (error) {
+                resultDiv.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
