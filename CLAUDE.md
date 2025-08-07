@@ -1,39 +1,55 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Wildlife Watcher Mobile App
 
-## Common Development Commands
+The Wildlife Watcher mobile app is a sophisticated React Native application designed to revolutionize wildlife conservation field work. It connects researchers and conservationists to wildlife monitoring camera devices via Bluetooth Low Energy (BLE), enabling remote configuration, firmware updates, and real-time wildlife data collection.
 
-### Running the App
-- `npx expo start` - Start Expo development server
+### What This App Does
+- **Device Management**: Scan, connect, and configure wildlife camera devices using BLE
+- **Firmware Updates**: Over-the-air firmware updates using Nordic DFU protocol
+- **Project Management**: Create and manage wildlife monitoring projects with team collaboration
+- **Field Deployments**: GPS-tracked deployment workflows optimized for offline field conditions  
+- **Maps Integration**: Visualize device deployments and wildlife data on interactive maps
+- **Real-time Monitoring**: Track device status, battery levels, and wildlife detections
+- **Data Collection**: Capture and synchronize wildlife observations and media files
+
+### Expo Development Client Architecture
+
+This app uses **Expo SDK 51** with a **development client build**, NOT Expo Go. This architecture is essential due to our native dependencies:
+
+**Why Development Client:**
+- **BLE Communication**: `react-native-ble-manager` requires native Android/iOS Bluetooth APIs
+- **Firmware Updates**: Nordic DFU library needs native bootloader communication
+- **Maps Integration**: `react-native-maps` requires native Google Maps/MapKit SDKs
+- **Custom Native Modules**: Wildlife camera communication protocols
+
+**EAS Build System:**
+- **EAS CLI** handles both development and production builds for Android/iOS
+- **Cloud Building**: No need for local Xcode/Android Studio for builds
+- **Automated Workflows**: Focus on app development, not build configuration
+- **Development Builds**: Install once on device, then use hot reload for development
+- **Production Builds**: Automated release builds with code signing and distribution
+
+**Developer Experience Benefits:**
+- **Simplified Setup**: No complex native toolchain configuration
+- **Fast Iteration**: Hot reload with native capabilities intact
+- **Team Consistency**: Same build environment for all developers
+- **Automated Updates**: OTA updates for JavaScript changes
+- **Platform Optimization**: Expo handles platform-specific optimizations
+
+This approach allows developers to focus on wildlife monitoring features rather than React Native build complexities while maintaining full access to native device capabilities essential for field research applications.
+
+## Essential Quick Reference
+
+### Common Development Commands
+- `npx expo start` or `npx expo start --dev-client --clear` - Start Expo development server
 - `npx expo run:android` - Build and run on Android device/emulator
-- `npx expo run:ios` - Build and run on iOS device/simulator (when iOS support added)
-
-### Development Commands
-- `npm start` - Start Expo development server (alias for `npx expo start`)
-- `npm run android` - Build and run on Android (alias for `npx expo run:android`)
-- `npm run ios` - Build and run on iOS (alias for `npx expo run:ios`)
-- `npm install` - Install project dependencies
-- `npx expo install` - Install Expo SDK compatible packages
-- `npx expo prebuild` - Generate native directories (if needed)
-- `eas build` - Build app using EAS Build service
-- `npm run validate:deps` - Validate dependency compatibility
-- `npm run deps` - Interactive dependency management CLI
-- `npm run deps:scan` - Scan for dependency issues
-- `npm run supabase:types` - Sync Supabase types (manual process, see src/types/supabase.ts)
-
-### Testing and Quality
 - `npm test` - Run all Jest tests (unit + integration)
-- `npm run test:watch` - Run tests in watch mode
-- `npm run test:coverage` - Run tests with coverage report
-- `npm run test:unit` - Run unit tests only
-- `npm run test:integration` - Run integration tests only
 - `npm run test:e2e` - Run end-to-end tests with Detox
-- `npm run test:e2e:build` - Build app for E2E testing
-- `npm run test:e2e:ios` - Run E2E tests on iOS simulator
-- `npm run test:e2e:android` - Run E2E tests on Android emulator
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
+- `npm run validate:deps` - Validate dependency compatibility
+- `npm run supabase:types` - Sync Supabase types (manual process, see src/types/supabase.ts)
 
 ### Environment Requirements
 - **Node.js**: Version 18+ (as specified in package.json engines)
@@ -41,9 +57,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **EAS CLI**: For cloud builds and deployments
 - **Android Studio**: For Android development and device connections
 
-## Architecture Overview
-
-### Tech Stack
+### Tech Stack Summary
 - **Framework**: Expo SDK 51 with React Native 0.74.6
 - **Backend**: Supabase (PostgreSQL, Auth, Storage, Edge Functions)
 - **Navigation**: React Navigation 6 with native stack navigator
@@ -51,59 +65,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Offline Storage**: Expo SQLite with sync queues
 - **UI Library**: React Native Paper with custom theming
 - **BLE Communication**: react-native-ble-manager for device connectivity
-- **Maps**: react-native-maps for location features
-- **Development**: TypeScript with strict typing conventions
+- **Testing**: Jest + React Native Testing Library + Detox + Custom BDD helpers
 
-### Core Application Structure
-
-#### Provider Hierarchy
-The app uses a nested provider pattern in `src/App.tsx`:
-```
-SafeAreaProvider → ReduxProvider → PaperProvider → NavigationContainer
-→ AndroidPermissionsProvider → AppSetupProvider → BleEngineProvider
-→ ListenToBleEngineProvider → AuthProvider → MainNavigation
-```
-
-**Key Providers:**
-- **AuthProvider**: Supabase authentication state management
-- **BleEngineProvider**: Core BLE functionality and device management
-- **AndroidPermissionsProvider**: Runtime permissions management
-- **AppSetupProvider**: App initialization and configuration
-- **ListenToBleEngineProvider**: BLE event handling and device communication
-
-#### Key Architectural Components
-
-**State Management**: 
-- Redux store configured in `src/redux/index.ts` with slices for devices, authentication, BLE status, location, deployments, and projects
-- Supabase client for API calls and real-time subscriptions in `src/services/supabase/`
-- Offline service for local SQLite storage and sync queues in `src/services/offline/`
-
-**BLE Engine**: 
-- Core BLE functionality in `src/hooks/useBle.ts` and `src/providers/BleEngineProvider.tsx`
-- Device communication parsing in `src/ble/parser.ts`
-- BLE types and interfaces in `src/ble/types.ts`
-
-**Navigation Structure**:
-- Main navigation in `src/navigation/index.tsx` with stack navigator
-- Bottom tabs for primary screens in `src/navigation/BottomTabs.tsx`
-- Screen components in `src/navigation/screens/`
-
-**Custom Components**:
-- UI components prefixed with "WW" in `src/components/ui/`
-- Form components in `src/components/form/`
-- Shared components like navigation and device items in `src/components/`
-
-### Key Features
-- **Device Management**: BLE scanning, connecting, and communication with wildlife cameras
-- **Authentication**: User login/registration system
-- **Project & Deployment Tracking**: Manage wildlife monitoring projects
-- **Maps Integration**: Location-based features for device deployment
-- **Firmware Updates**: Device Firmware Update (DFU) functionality
-- **Real-time Communication**: Terminal-style device interaction
-
-## Development Guidelines
-
-### Code Conventions
+## Code Conventions
 - Prefer `type` over `interface` (as specified in .cursorrules)
 - Use existing UI components (WW-prefixed) for consistency
 - Follow the established provider pattern for new features
@@ -112,113 +76,6 @@ SafeAreaProvider → ReduxProvider → PaperProvider → NavigationContainer
 - Use existing codebase as reference rather than creating new patterns
 - Follow latest TypeScript best practices
 
-### Dependency Management
-This project includes custom dependency validation and management tools:
-- `npm run validate:deps` - Automatically runs after install to check compatibility
-- `npm run deps` - Interactive CLI for dependency management
-- `npm run deps:scan` - Scan for potential dependency conflicts
-- Located in: `scripts/validate-deps.js` and `scripts/deps-cli.js`
-
-### BLE Development
-- Device connections are managed through the BleEngineProvider
-- Use the `useBleActions` hook to access BLE functionality
-- All device communication should go through the established parser system
-
-### State Management
-- Use Redux Toolkit slices for local state management
-- Use Supabase client for API calls and real-time subscriptions
-- Implement offline-first approach with local SQLite and sync queues
-- Follow the existing pattern of typed hooks (`useAppDispatch`, `useAppSelector`)
-- Always save to local storage first, then queue for remote sync
-
-### Testing Guidelines
-
-#### Comprehensive Testing Infrastructure
-The app includes a complete testing setup covering all layers of the application:
-
-**Test Types and Structure:**
-- **Unit Tests**: `src/**/__tests__/*.test.ts(x)` - Test individual functions, services, and components
-- **Integration Tests**: `src/**/__tests__/*.integration.test.tsx` - Test complete user flows and component interactions
-- **BDD Tests**: `src/**/__tests__/*.bdd.test.tsx` - Behavior-driven tests in Given-When-Then format
-- **End-to-End Tests**: `e2e/*.test.js` - Full application testing with Detox
-
-**Test Infrastructure:**
-- **Test Utilities**: Custom helpers in `src/test/utils/testUtils.tsx` for consistent test setup
-- **Mocks**: Comprehensive Supabase and service mocks in `src/test/mocks/`
-- **Fixtures**: Reusable test data in `src/test/fixtures/`
-- **BDD Helpers**: Given-When-Then testing framework in `src/test/helpers/bdd.ts`
-
-**Authentication Testing:**
-- Complete test coverage for authentication system including:
-  - Service function unit tests (`src/services/__tests__/auth.test.ts`)
-  - Hook testing for deep linking (`src/hooks/__tests__/useDeepLinking.test.ts`)
-  - Integration tests for Login/Register screens
-  - BDD tests for user story validation
-  - E2E tests for complete authentication flows
-
-#### Test-Driven Development (TDD) Approach
-- Write tests before implementing new features
-- Use Red-Green-Refactor cycle for development
-- Focus on behavior-driven testing for user-facing features
-- Aim for >80% test coverage on authentication and core features
-
-#### Testing Best Practices
-- Keep tests independent and repeatable
-- Use meaningful test names that describe expected behavior
-- Test both success and failure scenarios
-- Mock external dependencies (Supabase, navigation, storage)
-- Use the custom `renderWithProviders` utility for component tests
-- Follow BDD patterns for user story testing
-
-**Testing Documentation**: Complete testing guide available at `documentation/developer-docs/Testing-Guide.md`
-
-#### Test Structure
-- Tests are located in `__tests__/` directory
-- Use Jest with React Native preset
-- Test files should follow the `.test.tsx` naming convention
-- Integration tests for critical user flows (authentication, device connection)
-- Unit tests for utility functions and hooks
-
-#### Authentication Testing Requirements
-- **Critical Flows**: Login, registration, password reset, session persistence
-- **Testing Environment**: Always use development builds, never Expo Go for auth testing
-- **Deep Link Testing**: Use `adb shell am start` commands for Android deep link simulation
-- **Integration Testing**: Test complete auth flows including navigation state changes
-
-#### BLE Testing Strategy
-- Mock BLE manager for unit tests
-- Use real devices for integration testing
-- Test device connection/disconnection scenarios
-- Validate device communication parsing
-
-### Key Dependencies to Understand
-- **Supabase Client**: `@supabase/supabase-js` for backend integration and real-time features
-- **Expo SQLite**: `expo-sqlite` for offline data storage and sync queues
-- **BLE Nordic DFU**: Custom GitHub dependency for firmware updates
-- **React Native Paper**: Version 5.12.3 for Material Design components
-- **Redux Toolkit**: Version 2.2.1 for state management
-- **React Navigation**: Version 6 native stack for navigation
-- **React Hook Form**: Version 7.54.1 for form handling
-- **NetInfo**: `@react-native-community/netinfo` for network status monitoring
-
-### File Structure Conventions
-- UI components prefixed with "WW" in `src/components/ui/`
-- Redux slices in `src/redux/slices/`
-- Supabase services in `src/services/supabase/`
-- Offline services in `src/services/offline/`
-- Screen components in `src/navigation/screens/`
-- Custom hooks in `src/hooks/`
-- BLE functionality in `src/ble/` and `src/providers/BleEngineProvider.tsx`
-- Database types in `src/types/supabase.ts`
-
-## Development Wisdom
-
-### Debugging and Optimization
-- Debug simple first: unused packages (carrying dead weight in package.json) before architecture changes
-- Focus on error messages before assumptions 
-- The simplest fix is often the right one (Occam's razor!)
-
-# IMPORTANT
 ## MVP2 Development Context
 This app is being developed according to the MVP2 implementation specification focusing on:
 - **Offline-first architecture** with Supabase sync
@@ -232,60 +89,53 @@ Key Documents:
 - `@project-context/development-context/MVP2/User Stories_ Navigation 2.0-Figma-Design-med.pdf` - UI/UX designs
 - `@project-context/development-context/supabase-backend/` - Backend documentation
 
-## Current Implementation Status
+## Implementation Status
 ✅ **Completed:**
 - Expo SDK 51 migration complete
 - EAS Build configuration
 - Core dependencies migrated (expo-file-system, expo-constants, expo-splash-screen)
 - BLE functionality verified with real devices
-- Supabase integration complete and production-ready (authentication, database operations, real-time subscriptions)\n- Comprehensive developer documentation available
+- Supabase integration complete and production-ready (authentication, database operations, real-time subscriptions)
+- Comprehensive authentication system with deep linking
+- Complete testing infrastructure (unit, integration, E2E, BDD)
 
 🚧 **In Progress:**
 - MVP2 feature development per implementation spec
 - Offline-first data architecture implementation
 - Project and deployment management screens
 
+## Critical Development Notes
+
+### Authentication & Deep Linking
+- **Testing Environment**: Authentication flows MUST be tested with development builds (`npx expo run:android`), NOT Expo Go
+- **URL Scheme**: `wildlifewatcher://` for deep linking
+- **Navigation Pattern**: Use conditional rendering based on auth state, not programmatic navigation
+- **Supabase Config**: Mobile apps need `detectSessionInUrl: false` in Supabase client config
+
+### BLE Development
+- Device connections are managed through the BleEngineProvider
+- Use the `useBleActions` hook to access BLE functionality
+- All device communication should go through the established parser system
+
+### Offline-First Development
+All user actions must work offline and sync when connectivity is restored:
+1. Save to local SQLite immediately
+2. Update Redux store
+3. Queue for remote sync
+4. Attempt immediate sync if online
+5. Handle conflicts on reconnection
+
+## App Configuration
+- **Bundle ID**: `com.wildlife.wildlifewatcher` (iOS/Android)
+- **Package Name**: `wildlifewatcher`
+- **Expo SDK**: Version 51
+- **React Native**: Version 0.74.6
+- **Backend**: Supabase with PostgreSQL database
+- **EAS Project ID**: `6cf53a5e-90e1-4987-82c6-5f0337affe97`
+
 ## Task Master AI Instructions
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
 @./.taskmaster/CLAUDE.md
-
-## Migration Configuration Snapshot
-- Noted the migration configuration snapshot in project-context directory
-- Reference file contains details about the Expo migration process and configuration requirements
-- Added references for `@EXPO_ENVIRONMENT_VARIABLES.md` and `@migration-config-snapshot.json` for further investigation and documentation tracking
-
-## Authentication System Documentation
-
-### Core Authentication Architecture
-The app implements a comprehensive authentication system with Supabase integration:
-
-- **AuthProvider**: Context-based authentication state management
-- **Conditional Navigation**: Auth state determines screen rendering (Login/Register vs Main App)
-- **Deep Linking**: Password reset and email verification via custom URL scheme
-- **Session Persistence**: Automatic token refresh and secure session storage
-
-### Key Authentication Components
-- `src/providers/AuthProvider.tsx` - Global authentication context
-- `src/navigation/screens/Login.tsx` - Sign in functionality  
-- `src/navigation/screens/Register.tsx` - User registration
-- `src/navigation/screens/ForgotPassword.tsx` - Password reset flow
-- `src/hooks/useDeepLinking.ts` - Deep link handling
-- `src/services/auth.ts` - Authentication service layer
-
-### Deep Linking Configuration
-- **URL Scheme**: `wildlifewatcher://`
-- **Reset Password**: `wildlifewatcher://forgot-password?access_token=...&refresh_token=...`
-- **Testing**: Must use development builds (Expo Development Client), NOT Expo Go
-
-### Critical Development Notes
-- **Testing Environment**: Authentication flows MUST be tested with development builds (`npx expo run:android`), not Expo Go
-- **Navigation Pattern**: Use conditional rendering based on auth state, not programmatic navigation
-- **Supabase Config**: Mobile apps need `detectSessionInUrl: false` in Supabase client config
-- **URL Parsing**: Always use proper URL constructor, never string manipulation for deep link parameters
-
-### Documentation References
-- **Implementation Guide**: `/documentation/developer-docs/Authentication-Implementation-Guide.md`
-- **Project Learnings**: `/project-context/learnings/authentication-deep-linking-learnings.md`
 
 ## Available MCP Servers
 
@@ -293,104 +143,71 @@ This project has access to three configured MCP servers:
 
 ### 1. Task Master AI (`task-master-ai`)
 - **Purpose**: Project task management and workflow automation
-- **Key Functions**: 
-  - `get_tasks` / `next_task` - Task retrieval and workflow management
-  - `set_task_status` - Update task completion status  
-  - `expand_task` / `update_task` - Task refinement and detail management
-  - `parse_prd` - Generate tasks from Product Requirements Documents
 - **Usage**: Handles MVP2 development task breakdown and progress tracking
 
 ### 2. Supabase MCP (`supabase`)
 - **Purpose**: Database operations and backend integration
-- **Key Functions**:
-  - `list_tables` / `execute_sql` - Database schema and query operations
-  - `apply_migration` - Database schema changes and migrations
-  - `get_logs` / `get_advisors` - Debugging and performance monitoring
 - **Usage**: Manages wildlife monitoring database operations and Supabase backend integration
 
 ### 3. Context7 (`context7`)
 - **Purpose**: Up-to-date library documentation and code examples
-- **Key Functions**:
-  - `resolve-library-id` - Find Context7-compatible library identifiers
-  - `get-library-docs` - Fetch current documentation for React Native, Expo, and other libraries
 - **Usage**: Provides current documentation for Expo, Supabase, and React Native development
 
-## App Configuration Details
+## Documentation Architecture
 
-**Current Configuration:**
-- **Bundle ID**: `com.wildlife.wildlifewatcher` (iOS/Android)
-- **Package Name**: `wildlifewatcher`
-- **Expo SDK**: Version 51
-- **React Native**: Version 0.74.6
-- **Backend**: Supabase with PostgreSQL database
+### Technical Implementation Guides
+Comprehensive technical guides for developers working on the codebase:
 
-**Bundle Identifier Strategy:**
-- Development: `com.wildlife.wildlifewatcher.expo` 
-- Production: `com.wildlife.wildlifewatcher`
-- Automatically determined by NODE_ENV
-- EAS Project ID: `6cf53a5e-90e1-4987-82c6-5f0337affe97`
+- **Application Architecture**: `@documentation/app-technical-guides/App-Architecture-Guide.md` - Complete app architecture, provider hierarchy, BLE system, navigation structure, Redux state management, and component patterns
+- **Authentication System**: `@documentation/app-technical-guides/Authentication-Implementation-Guide.md` - Supabase authentication integration, deep linking, session management, and security patterns
+- **Testing Framework**: `@documentation/app-technical-guides/Testing-Guide.md` - Complete testing infrastructure including unit, integration, E2E, and BDD testing patterns with examples
+- **Backend Integration**: `@documentation/app-technical-guides/Supabase-Integration-Guide.md` - Supabase client setup, database operations, real-time subscriptions, and offline sync patterns
 
-## Supabase Integration Guidelines
+### Developer Onboarding
+Non-technical onboarding and setup guides:
 
-### Database Schema
-- Uses Row Level Security (RLS) for data isolation
-- Project-based multi-tenancy model
-- Offline-first with sync conflict resolution
+- **Getting Started**: `@documentation/developer-docs/Developer-Onboarding-Guide.md` - Complete setup guide for new developers
+- **Environment Setup**: `@documentation/developer-docs/WSL2-Development-Setup-Guide.md` - WSL2 specific development setup
+- **EAS Build System**: `@documentation/developer-docs/EAS-Development-Guide.md` - Expo Application Services build and deployment
 
-#### Type Management
-- Supabase types are manually synced from backend repository
-- Located in: `src/types/supabase.ts`
-- Run `npm run supabase:types` for sync instructions
-- Backend repo: `~/dev/wildlifeai/wildlife-watcher-backend`
+### Backend Documentation
+- **Backend Repository**: `~/dev/wildlifeai/wildlife-watcher-backend` - Supabase backend project
+- **Backend Docs**: `@project-context/development-context/supabase-backend/` - Backend configuration documentation
 
-### Development Patterns
-- Always save to local SQLite first
-- Queue operations when offline
-- Use Supabase client for real-time subscriptions
-- Handle auth state changes through Redux
+## Development Workflow
 
-## Offline-First Development
+### Testing Requirements
+- **Critical Flows**: Always test authentication, BLE connection, and offline sync
+- **Testing Environment**: Use development builds, never Expo Go for auth/BLE testing
+- **Coverage Target**: >80% test coverage on authentication and core features
+- **Testing Approach**: TDD/BDD with Given-When-Then patterns
 
-### Core Principle
-All user actions must work offline and sync when connectivity is restored.
+### Quality Assurance
+- Run `npm run lint` and `npm run type-check` after significant changes
+- Test on real devices for BLE functionality
+- Validate dependency compatibility with `npm run validate:deps`
+- Follow existing patterns and conventions
 
-### Implementation Pattern
-1. Save to local SQLite immediately
-2. Update Redux store
-3. Queue for remote sync
-4. Attempt immediate sync if online
-5. Handle conflicts on reconnection
+### File Structure Conventions
+- UI components prefixed with "WW" in `src/components/ui/`
+- Redux slices in `src/redux/slices/`
+- Supabase services in `src/services/supabase/`
+- Offline services in `src/services/offline/`
+- Screen components in `src/navigation/screens/`
+- Custom hooks in `src/hooks/`
+- BLE functionality in `src/ble/` and `src/providers/BleEngineProvider.tsx`
+- Database types in `src/types/supabase.ts`
 
-### Conflict Resolution
-- Last-write-wins for most fields
-- Deployment status: ended status always wins
-- Project members: merge strategy (union of both lists)
+## Key Dependencies
+- **Supabase Client**: `@supabase/supabase-js` for backend integration and real-time features
+- **Expo SQLite**: `expo-sqlite` for offline data storage and sync queues
+- **BLE Nordic DFU**: Custom GitHub dependency for firmware updates
+- **React Native Paper**: Version 5.12.3 for Material Design components
+- **Redux Toolkit**: Version 2.2.1 for state management
+- **React Navigation**: Version 6 native stack for navigation
+- **React Hook Form**: Version 7.54.1 for form handling
+- **Testing Stack**: Jest + React Native Testing Library + Detox
 
-## Documentation Directories
-- `@documentation/developer-docs/` contains documentation for developers and should be maintained as we develop this codebase\n- **Key Developer Guide**: `@documentation/developer-docs/Supabase-Integration-Guide.md` - Comprehensive backend integration guide
+---
 
-### Backend and Repository Configuration
-
-#### Supabase Backend
-
-##### git repo
-- The new Supabase backend is in a git repo locally in folder `~/dev/wildlifeai/wildlife-watcher-backend`
-- The `supabase` subfolder in the backend repository contains the Supabase database configuration
-
-##### database/backend project-context documents location
-Documents on the Supabase backend can be found in the @project-context/development-context/supabase-backend folder.
-
-**Note**: The README.md contains outdated React Native CLI instructions. Follow the commands in this CLAUDE.md file for current Expo-based workflow.
-
-
-### App MVP2 Documents
-Documents relating to the final state for this app for MVP2 are located in folder `@project-context/development-context/MVP2`.
-
-### Development Priorities
-Focus development on MVP2 features as specified in the implementation spec:
-1. **Authentication & User Management** - Supabase Auth integration
-2. **Project Management** - Create, manage, and share wildlife monitoring projects
-3. **Deployment Workflows** - Start/end deployment flows with offline support
-4. **Device Management** - BLE scanning, connection, and firmware updates
-5. **Maps Integration** - Location-based deployment tracking
-6. **Offline Support** - Local SQLite with background sync
+*For detailed technical implementation information, refer to the comprehensive guides in `@documentation/app-technical-guides/`. For developer onboarding and environment setup, see `@documentation/developer-docs/`.*
