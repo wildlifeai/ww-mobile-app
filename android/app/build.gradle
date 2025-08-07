@@ -193,10 +193,6 @@ dependencies {
     } else {
         implementation jscFlavor
     }
-    
-    // Force compatible androidx.core versions for Android Gradle Plugin 8.2.1
-    implementation("androidx.core:core:1.13.1!!")
-    implementation("androidx.core:core-ktx:1.13.1!!")
 }
 
 if (rnVersion < versionToNumber(0, 75, 0)) {

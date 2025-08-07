@@ -14,7 +14,7 @@
 		96905EF65AED1B983A6B3ABC /* libPods-WildlifeWatcher.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-WildlifeWatcher.a */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		7B7FAD4A092148588A9B4CCD /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79F46E2DB2644014BA1F7577 /* noop-file.swift */; };
+		31A7F090B2E642EA85206B33 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AB5225DE0FA42E5A0C46595 /* noop-file.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,8 +31,8 @@
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-WildlifeWatcher/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		79F46E2DB2644014BA1F7577 /* noop-file.swift */ = {isa = PBXFileReference; name = "noop-file.swift"; path = "WildlifeWatcher/noop-file.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; explicitFileType = undefined; includeInIndex = 0; };
-		E29631DFEF594C66B0B66502 /* WildlifeWatcher-Bridging-Header.h */ = {isa = PBXFileReference; name = "WildlifeWatcher-Bridging-Header.h"; path = "WildlifeWatcher/WildlifeWatcher-Bridging-Header.h"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; explicitFileType = undefined; includeInIndex = 0; };
+		0AB5225DE0FA42E5A0C46595 /* noop-file.swift */ = {isa = PBXFileReference; name = "noop-file.swift"; path = "WildlifeWatcher/noop-file.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; explicitFileType = undefined; includeInIndex = 0; };
+		77F595A609694E788B5C0C59 /* WildlifeWatcher-Bridging-Header.h */ = {isa = PBXFileReference; name = "WildlifeWatcher-Bridging-Header.h"; path = "WildlifeWatcher/WildlifeWatcher-Bridging-Header.h"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,8 +57,8 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				79F46E2DB2644014BA1F7577 /* noop-file.swift */,
-				E29631DFEF594C66B0B66502 /* WildlifeWatcher-Bridging-Header.h */,
+				0AB5225DE0FA42E5A0C46595 /* noop-file.swift */,
+				77F595A609694E788B5C0C59 /* WildlifeWatcher-Bridging-Header.h */,
 			);
 			name = WildlifeWatcher;
 			sourceTree = "<group>";
@@ -198,7 +198,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				BDD410F3B0204CAFB9E8502A /* WildlifeWatcher-Bridging-Header.h in Resources */,
+				935AA742DC974A22AB09CAE6 /* WildlifeWatcher-Bridging-Header.h in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -274,7 +274,7 @@
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
-				7B7FAD4A092148588A9B4CCD /* noop-file.swift in Sources */,
+				31A7F090B2E642EA85206B33 /* noop-file.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

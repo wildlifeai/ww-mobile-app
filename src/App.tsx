@@ -20,6 +20,7 @@ import { BleEngineProvider } from "./providers/BleEngineProvider"
 import store from "./redux"
 import { MainNavigation } from "./navigation"
 import { NavigationContainer } from "@react-navigation/native"
+import { linking } from "./navigation/linking"
 import { ListenToBleEngineProvider } from "./providers/ListenToBleEngineProvider"
 import { PaperProvider } from "react-native-paper"
 import { CombinedDefaultTheme } from "./theme"
@@ -31,7 +32,7 @@ export const App = () => {
 			<Suspense fallback={"Loading..."}>
 				<ReduxProvider store={store}>
 					<PaperProvider theme={CombinedDefaultTheme}>
-						<NavigationContainer theme={CombinedDefaultTheme}>
+						<NavigationContainer theme={CombinedDefaultTheme} linking={linking}>
 							<AndroidPermissionsProvider>
 								<AppSetupProvider>
 									<BleEngineProvider>
