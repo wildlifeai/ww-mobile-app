@@ -23,7 +23,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run supabase:types` - Sync Supabase types (manual process, see src/types/supabase.ts)
 
 ### Testing and Quality
-- `npm test` - Run Jest tests
+- `npm test` - Run all Jest tests (unit + integration)
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Run tests with coverage report
+- `npm run test:unit` - Run unit tests only
+- `npm run test:integration` - Run integration tests only
+- `npm run test:e2e` - Run end-to-end tests with Detox
+- `npm run test:e2e:build` - Build app for E2E testing
+- `npm run test:e2e:ios` - Run E2E tests on iOS simulator
+- `npm run test:e2e:android` - Run E2E tests on Android emulator
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
 
@@ -123,10 +131,65 @@ This project includes custom dependency validation and management tools:
 - Follow the existing pattern of typed hooks (`useAppDispatch`, `useAppSelector`)
 - Always save to local storage first, then queue for remote sync
 
-### Testing
+### Testing Guidelines
+
+#### Comprehensive Testing Infrastructure
+The app includes a complete testing setup covering all layers of the application:
+
+**Test Types and Structure:**
+- **Unit Tests**: `src/**/__tests__/*.test.ts(x)` - Test individual functions, services, and components
+- **Integration Tests**: `src/**/__tests__/*.integration.test.tsx` - Test complete user flows and component interactions
+- **BDD Tests**: `src/**/__tests__/*.bdd.test.tsx` - Behavior-driven tests in Given-When-Then format
+- **End-to-End Tests**: `e2e/*.test.js` - Full application testing with Detox
+
+**Test Infrastructure:**
+- **Test Utilities**: Custom helpers in `src/test/utils/testUtils.tsx` for consistent test setup
+- **Mocks**: Comprehensive Supabase and service mocks in `src/test/mocks/`
+- **Fixtures**: Reusable test data in `src/test/fixtures/`
+- **BDD Helpers**: Given-When-Then testing framework in `src/test/helpers/bdd.ts`
+
+**Authentication Testing:**
+- Complete test coverage for authentication system including:
+  - Service function unit tests (`src/services/__tests__/auth.test.ts`)
+  - Hook testing for deep linking (`src/hooks/__tests__/useDeepLinking.test.ts`)
+  - Integration tests for Login/Register screens
+  - BDD tests for user story validation
+  - E2E tests for complete authentication flows
+
+#### Test-Driven Development (TDD) Approach
+- Write tests before implementing new features
+- Use Red-Green-Refactor cycle for development
+- Focus on behavior-driven testing for user-facing features
+- Aim for >80% test coverage on authentication and core features
+
+#### Testing Best Practices
+- Keep tests independent and repeatable
+- Use meaningful test names that describe expected behavior
+- Test both success and failure scenarios
+- Mock external dependencies (Supabase, navigation, storage)
+- Use the custom `renderWithProviders` utility for component tests
+- Follow BDD patterns for user story testing
+
+**Testing Documentation**: Complete testing guide available at `documentation/developer-docs/Testing-Guide.md`
+
+#### Test Structure
 - Tests are located in `__tests__/` directory
 - Use Jest with React Native preset
 - Test files should follow the `.test.tsx` naming convention
+- Integration tests for critical user flows (authentication, device connection)
+- Unit tests for utility functions and hooks
+
+#### Authentication Testing Requirements
+- **Critical Flows**: Login, registration, password reset, session persistence
+- **Testing Environment**: Always use development builds, never Expo Go for auth testing
+- **Deep Link Testing**: Use `adb shell am start` commands for Android deep link simulation
+- **Integration Testing**: Test complete auth flows including navigation state changes
+
+#### BLE Testing Strategy
+- Mock BLE manager for unit tests
+- Use real devices for integration testing
+- Test device connection/disconnection scenarios
+- Validate device communication parsing
 
 ### Key Dependencies to Understand
 - **Supabase Client**: `@supabase/supabase-js` for backend integration and real-time features
@@ -190,6 +253,39 @@ Key Documents:
 - Noted the migration configuration snapshot in project-context directory
 - Reference file contains details about the Expo migration process and configuration requirements
 - Added references for `@EXPO_ENVIRONMENT_VARIABLES.md` and `@migration-config-snapshot.json` for further investigation and documentation tracking
+
+## Authentication System Documentation
+
+### Core Authentication Architecture
+The app implements a comprehensive authentication system with Supabase integration:
+
+- **AuthProvider**: Context-based authentication state management
+- **Conditional Navigation**: Auth state determines screen rendering (Login/Register vs Main App)
+- **Deep Linking**: Password reset and email verification via custom URL scheme
+- **Session Persistence**: Automatic token refresh and secure session storage
+
+### Key Authentication Components
+- `src/providers/AuthProvider.tsx` - Global authentication context
+- `src/navigation/screens/Login.tsx` - Sign in functionality  
+- `src/navigation/screens/Register.tsx` - User registration
+- `src/navigation/screens/ForgotPassword.tsx` - Password reset flow
+- `src/hooks/useDeepLinking.ts` - Deep link handling
+- `src/services/auth.ts` - Authentication service layer
+
+### Deep Linking Configuration
+- **URL Scheme**: `wildlifewatcher://`
+- **Reset Password**: `wildlifewatcher://forgot-password?access_token=...&refresh_token=...`
+- **Testing**: Must use development builds (Expo Development Client), NOT Expo Go
+
+### Critical Development Notes
+- **Testing Environment**: Authentication flows MUST be tested with development builds (`npx expo run:android`), not Expo Go
+- **Navigation Pattern**: Use conditional rendering based on auth state, not programmatic navigation
+- **Supabase Config**: Mobile apps need `detectSessionInUrl: false` in Supabase client config
+- **URL Parsing**: Always use proper URL constructor, never string manipulation for deep link parameters
+
+### Documentation References
+- **Implementation Guide**: `/documentation/developer-docs/Authentication-Implementation-Guide.md`
+- **Project Learnings**: `/project-context/learnings/authentication-deep-linking-learnings.md`
 
 ## Available MCP Servers
 
