@@ -13,15 +13,17 @@ The Wildlife Watcher mobile app is a sophisticated React Native application desi
 - **Real-time Monitoring**: Track device status, battery levels, and wildlife detections
 - **Data Collection**: Capture and synchronize wildlife observations and media files
 
-### Expo Development Client Architecture
+### Expo Development Client Architecture (NOT Expo Go)
 
-This app uses **Expo SDK 51** with a **development client build**, NOT Expo Go. This architecture is essential due to our native dependencies:
+This app **REQUIRES development client builds** due to native modules and **CANNOT run on Expo Go**:
 
-**Why Development Client:**
-- **BLE Communication**: `react-native-ble-manager` requires native Android/iOS Bluetooth APIs
-- **Firmware Updates**: Nordic DFU library needs native bootloader communication
-- **Maps Integration**: `react-native-maps` requires native Google Maps/MapKit SDKs
-- **Custom Native Modules**: Wildlife camera communication protocols
+**Critical Native Dependencies:**
+- **react-native-ble-manager**: Native Android/iOS Bluetooth APIs
+- **react-native-nordic-dfu**: Custom GitHub fork for firmware updates
+- **react-native-maps**: Native Google Maps/MapKit SDKs
+- **Wildlife camera communication protocols**: Custom BLE implementations
+
+**⚠️ IMPORTANT**: Always use `npx expo run:android` or `npx expo run:ios` - Expo Go will fail to load this app.
 
 **EAS Build System:**
 - **EAS CLI** handles both development and production builds for Android/iOS
@@ -45,10 +47,20 @@ This approach allows developers to focus on wildlife monitoring features rather 
 - `npx expo start` or `npx expo start --dev-client --clear` - Start Expo development server
 - `npx expo run:android` - Build and run on Android device/emulator
 - `npm test` - Run all Jest tests (unit + integration)
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Run tests with coverage report
+- `npm run test:unit` - Run unit tests only
+- `npm run test:integration` - Run integration tests only
 - `npm run test:e2e` - Run end-to-end tests with Detox
+- `npm run test:e2e:build` - Build app for E2E testing
+- `npm run test:e2e:ios` - Run E2E tests on iOS simulator
+- `npm run test:e2e:android` - Run E2E tests on Android emulator
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
 - `npm run validate:deps` - Validate dependency compatibility
+- `npm run deps` - Interactive dependency management CLI
+- `npm run deps:add` - Add dependencies with compatibility check
+- `npm run deps:scan` - Scan for potential conflicts
 - `npm run supabase:types` - Sync Supabase types (manual process, see src/types/supabase.ts)
 
 ### Environment Requirements
@@ -67,14 +79,30 @@ This approach allows developers to focus on wildlife monitoring features rather 
 - **BLE Communication**: react-native-ble-manager for device connectivity
 - **Testing**: Jest + React Native Testing Library + Detox + Custom BDD helpers
 
-## Code Conventions
-- Prefer `type` over `interface` (as specified in .cursorrules)
+## Code Standards & Conventions
+
+### From .cursorrules
+- Always provide full updated answers when making changes
+- Use existing codebase as reference rather than creating new patterns
+- Prefer `type` over `interface` (TypeScript best practice)
+- Follow latest TypeScript best practices
+
+### Project Conventions
 - Use existing UI components (WW-prefixed) for consistency
 - Follow the established provider pattern for new features
 - Implement proper TypeScript typing throughout
-- Always provide full updated answers when making changes
-- Use existing codebase as reference rather than creating new patterns
-- Follow latest TypeScript best practices
+
+## Critical Provider Hierarchy
+
+The app uses a specific nested provider pattern that **must be maintained**:
+
+```
+SafeAreaProvider → ReduxProvider → PaperProvider → NavigationContainer
+→ AndroidPermissionsProvider → AppSetupProvider → BleEngineProvider
+→ ListenToBleEngineProvider → AuthProvider → MainNavigation
+```
+
+**Order is critical** - changing provider order can break BLE functionality, permissions, or authentication.
 
 ## MVP2 Development Context
 This app is being developed according to the MVP2 implementation specification focusing on:
@@ -181,6 +209,22 @@ Non-technical onboarding and setup guides:
 - **Testing Environment**: Use development builds, never Expo Go for auth/BLE testing
 - **Coverage Target**: >80% test coverage on authentication and core features
 - **Testing Approach**: TDD/BDD with Given-When-Then patterns
+
+### BLE Testing Requirements
+- **Real devices required**: BLE functionality cannot be fully mocked
+- **Development builds only**: Never test BLE with Expo Go
+- **Android permissions**: Location and Bluetooth permissions required for BLE scanning
+- **Connection management**: Test device connection/disconnection scenarios
+- **Provider hierarchy**: BLE functionality depends on correct provider order
+
+### Custom Dependency Management
+This project includes automated dependency validation and management:
+- `npm run validate:deps` - Automatically runs after install to check compatibility
+- `npm run deps` - Interactive dependency management CLI
+- `npm run deps:add` - Add dependencies with compatibility check
+- `npm run deps:scan` - Scan for potential dependency conflicts
+- **Location**: `scripts/validate-deps.js` and `scripts/deps-cli.js`
+- **Auto-validation**: Runs on `npm install` via postinstall hook
 
 ### Quality Assurance
 - Run `npm run lint` and `npm run type-check` after significant changes
