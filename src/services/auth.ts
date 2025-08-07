@@ -61,7 +61,9 @@ export const register = async (credentials: RegisterRequest): Promise<AuthRespon
       options: {
         data: {
           username: credentials.username,
+          organization: credentials.organization,
         },
+        emailRedirectTo: 'wildlifewatcher://auth/callback',
       },
     });
 
@@ -204,7 +206,7 @@ export const setupAuthListener = (
 export const resetPassword = async (email: string): Promise<void> => {
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'wildlifewatcher://reset-password',
+      redirectTo: 'wildlifewatcher://auth/reset-password',
     });
 
     if (error) {
@@ -217,7 +219,7 @@ export const resetPassword = async (email: string): Promise<void> => {
 };
 
 /**
- * Update user password
+ * Update user password (requires active session)
  */
 export const updatePassword = async (newPassword: string): Promise<void> => {
   try {
@@ -230,6 +232,35 @@ export const updatePassword = async (newPassword: string): Promise<void> => {
     }
   } catch (error) {
     console.error('Update password error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Reset password using token from email
+ */
+export const updatePasswordWithToken = async (token: string, newPassword: string): Promise<void> => {
+  try {
+    // First verify the OTP token to establish session
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      token_hash: token,
+      type: 'recovery',
+    });
+
+    if (verifyError) {
+      throw new Error(verifyError.message);
+    }
+
+    // Now update the password with the established session
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+  } catch (error) {
+    console.error('Update password with token error:', error);
     throw error;
   }
 };

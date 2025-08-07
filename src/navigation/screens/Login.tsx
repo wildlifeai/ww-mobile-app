@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form"
-import { StyleSheet, View, Image } from "react-native"
-import { Button } from "react-native-paper"
+import { StyleSheet, View, Image, Alert } from "react-native"
+import { Button, Checkbox } from "react-native-paper"
 import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView"
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWTextInput } from "../../components/ui/WWTextInput"
@@ -10,10 +10,12 @@ import { useAppDispatch } from "../../redux"
 import { setCredentials } from "../../redux/slices/authSlice"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { WWText } from "../../components/ui/WWText"
-import Config from "../../utils/environment"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { useState, useEffect } from "react"
+import { TestDeepLink } from "../../components/TestDeepLink"
 
 type FormData = {
-	identifier: string
+	email: string
 	password: string
 }
 
@@ -21,20 +23,61 @@ export const Login = () => {
 	const dispatch = useAppDispatch()
 	const navigation = useAppNavigation()
 	const [login, { isLoading, error }] = useLoginMutation()
+	const [rememberMe, setRememberMe] = useState(false)
 
-	const { control, handleSubmit } = useForm<FormData>({
+	const { control, handleSubmit, setValue } = useForm<FormData>({
 		defaultValues: {
-			identifier: "",
+			email: "",
 			password: "",
 		},
 	})
 
+	// Load saved credentials on component mount
+	useEffect(() => {
+		loadSavedCredentials()
+	}, [])
+
+	const loadSavedCredentials = async () => {
+		try {
+			const savedEmail = await AsyncStorage.getItem("rememberedEmail")
+			const savedRememberMe = await AsyncStorage.getItem("rememberMe")
+			
+			if (savedEmail && savedRememberMe === "true") {
+				setValue("email", savedEmail)
+				setRememberMe(true)
+			}
+		} catch (error) {
+			console.error("Failed to load saved credentials:", error)
+		}
+	}
+
 	const onSubmit = async (data: FormData) => {
 		try {
-			const response = await login(data).unwrap()
+			// Transform email to identifier format for existing API
+			const loginData = {
+				identifier: data.email,
+				password: data.password
+			}
+			
+			const response = await login(loginData).unwrap()
+			
+			// Save credentials if remember me is checked
+			if (rememberMe) {
+				await AsyncStorage.setItem("rememberedEmail", data.email)
+				await AsyncStorage.setItem("rememberMe", "true")
+			} else {
+				await AsyncStorage.removeItem("rememberedEmail")
+				await AsyncStorage.removeItem("rememberMe")
+			}
+			
 			dispatch(setCredentials(response))
 		} catch (err) {
 			console.error("Login failed:", err)
+			Alert.alert(
+				"Login Failed",
+				"Please check your email and password and try again.",
+				[{ text: "OK" }]
+			)
 		}
 	}
 
@@ -52,11 +95,15 @@ export const Login = () => {
 					<View style={styles.form}>
 						<Field
 							control={control}
-							name="identifier"
-							label="Email or Username"
+							name="email"
+							label="Email"
 							required
 							rules={{
-								required: "Email or username is required",
+								required: "Email is required",
+								pattern: {
+									value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+									message: "Please enter a valid email address",
+								},
 							}}
 						>
 							{(field) => (
@@ -65,6 +112,7 @@ export const Login = () => {
 									mode="outlined"
 									textContentType="emailAddress"
 									keyboardType="email-address"
+									autoCapitalize="none"
 								/>
 							)}
 						</Field>
@@ -76,6 +124,10 @@ export const Login = () => {
 							required
 							rules={{
 								required: "Password is required",
+								minLength: {
+									value: 6,
+									message: "Password must be at least 6 characters",
+								},
 							}}
 						>
 							{(field) => (
@@ -83,9 +135,22 @@ export const Login = () => {
 							)}
 						</Field>
 
+						<View style={styles.checkboxContainer}>
+							<Checkbox
+								status={rememberMe ? "checked" : "unchecked"}
+								onPress={() => setRememberMe(!rememberMe)}
+							/>
+							<WWText 
+								style={styles.checkboxLabel}
+								onPress={() => setRememberMe(!rememberMe)}
+							>
+								Remember me
+							</WWText>
+						</View>
+
 						{error && (
 							<WWText style={styles.error}>
-								{(error as any)?.data?.error?.message || JSON.stringify(error)}
+								{(error as any)?.data?.error?.message || "Login failed. Please try again."}
 							</WWText>
 						)}
 
@@ -94,19 +159,31 @@ export const Login = () => {
 							onPress={handleSubmit(onSubmit)}
 							loading={isLoading}
 							style={styles.button}
+							disabled={isLoading}
 						>
 							Login
 						</Button>
 
 						<Button
 							mode="text"
+							onPress={() => navigation.navigate("ForgotPassword")}
+							style={styles.textButton}
+							disabled={isLoading}
+						>
+							Forgot Password?
+						</Button>
+
+						<Button
+							mode="text"
 							onPress={() => navigation.navigate("Register")}
-							style={styles.button}
+							style={styles.textButton}
+							disabled={isLoading}
 						>
 							Don't have an account? Register
 						</Button>
-
-						<WWText style={styles.apiBase}>API: {Config.API_BASE}</WWText>
+						
+						{/* Temporary test component for deep linking */}
+						{__DEV__ && <TestDeepLink />}
 					</View>
 				</View>
 			</WWScreenView>
@@ -134,16 +211,24 @@ const styles = StyleSheet.create({
 		padding: 20,
 		gap: 10,
 	},
+	checkboxContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginTop: 5,
+	},
+	checkboxLabel: {
+		marginLeft: 8,
+		fontSize: 14,
+	},
 	button: {
-		marginTop: 10,
+		marginTop: 15,
+	},
+	textButton: {
+		marginTop: 5,
 	},
 	error: {
 		color: "red",
 		textAlign: "center",
-	},
-	apiBase: {
-		fontSize: 10,
-		textAlign: "center",
-		opacity: 0.5,
+		marginTop: 10,
 	},
 })

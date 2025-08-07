@@ -7,6 +7,7 @@ export type RegisterRequest = {
 	username: string
 	email: string
 	password: string
+	organization?: string
 }
 
 export type AuthResponse = {

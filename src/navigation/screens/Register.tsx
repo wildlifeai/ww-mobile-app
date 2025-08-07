@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form"
-import { StyleSheet, View, Image } from "react-native"
+import { StyleSheet, View, Image, Alert } from "react-native"
 import { Button } from "react-native-paper"
 import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView"
 import { WWScreenView } from "../../components/ui/WWScreenView"
@@ -16,6 +16,7 @@ type FormData = {
 	email: string
 	password: string
 	confirmPassword: string
+	organization: string
 }
 
 export const Register = () => {
@@ -29,6 +30,7 @@ export const Register = () => {
 			email: "",
 			password: "",
 			confirmPassword: "",
+			organization: "",
 		},
 	})
 
@@ -42,20 +44,31 @@ export const Register = () => {
 		}
 
 		try {
-			console.log({
-				username: data.username,
-				email: data.email,
-				password: data.password,
-			})
 			const response = await register({
 				username: data.username,
 				email: data.email,
 				password: data.password,
+				organization: data.organization || undefined,
 			}).unwrap()
+
+			// Handle pending confirmation state
+			if ((response as any).isPendingConfirmation) {
+				Alert.alert(
+					"Registration Successful",
+					"Please check your email and click the confirmation link to activate your account.",
+					[{ text: "OK", onPress: () => navigation.navigate("Login") }]
+				)
+				return
+			}
 
 			dispatch(setCredentials(response))
 		} catch (err) {
 			console.error("Registration failed:", JSON.stringify(err))
+			Alert.alert(
+				"Registration Failed",
+				"Please check your information and try again.",
+				[{ text: "OK" }]
+			)
 		}
 	}
 
@@ -106,6 +119,27 @@ export const Register = () => {
 									mode="outlined"
 									textContentType="emailAddress"
 									keyboardType="email-address"
+									autoCapitalize="none"
+								/>
+							)}
+						</Field>
+
+						<Field
+							control={control}
+							name="organization"
+							label="Organization (Optional)"
+							rules={{
+								maxLength: {
+									value: 100,
+									message: "Organization name must be less than 100 characters",
+								},
+							}}
+						>
+							{(field) => (
+								<WWTextInput
+									{...field}
+									mode="outlined"
+									textContentType="organizationName"
 								/>
 							)}
 						</Field>
@@ -154,6 +188,7 @@ export const Register = () => {
 							onPress={handleSubmit(onSubmit)}
 							loading={isLoading}
 							style={styles.button}
+							disabled={isLoading}
 						>
 							Register
 						</Button>
@@ -161,7 +196,8 @@ export const Register = () => {
 						<Button
 							mode="text"
 							onPress={() => navigation.navigate("Login")}
-							style={styles.button}
+							style={styles.textButton}
+							disabled={isLoading}
 						>
 							Already have an account? Login
 						</Button>
@@ -192,10 +228,14 @@ const styles = StyleSheet.create({
 		gap: 10,
 	},
 	button: {
-		marginTop: 10,
+		marginTop: 15,
+	},
+	textButton: {
+		marginTop: 5,
 	},
 	error: {
 		color: "red",
 		textAlign: "center",
+		marginTop: 10,
 	},
 })

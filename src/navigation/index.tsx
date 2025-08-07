@@ -16,14 +16,16 @@ import { CommunityDiscussion } from "./screens/CommunityDiscussion"
 import { Profile } from "./screens/Profile"
 import { Settings } from "./screens/Settings"
 import { DfuScreen } from "./screens/DfuScreen"
-// import { Login } from "./screens/Login"
-// import { Register } from "./screens/Register"
+import { Login } from "./screens/Login"
+import { Register } from "./screens/Register"
+import { ForgotPassword } from "./screens/ForgotPassword"
 import { AddDeployment } from "./screens/AddDeployment"
 import type { Option } from "../components/ui/WWSelect"
 import { AddProject } from "./screens/AddProject"
 import { BottomTabs } from "./BottomTabs"
 import { DevBuildInfo } from "./screens/DevBuildInfo"
 import { AuthTestScreen } from "../screens/AuthTestScreen"
+import { useDeepLinking } from "../hooks/useDeepLinking"
 
 export interface RootStackParamList extends ParamListBase {
 	CommunityDiscussion: undefined
@@ -36,6 +38,7 @@ export interface RootStackParamList extends ParamListBase {
 	DfuScreen: { deviceId: string }
 	Login: undefined
 	Register: undefined
+	ForgotPassword: undefined
 	AddDeployment: { selectedProject?: Option } | undefined
 	AddProject: undefined
 	DevBuildInfo: undefined
@@ -61,11 +64,14 @@ export const MainNavigation = () => {
 	const { initialized, initialLoad: bleLoading } = useAppSelector(
 		(state) => state.bleLibrary,
 	)
-	// const { token, initialLoad: authLoading } = useAppSelector(
-	// 	(state) => state.authentication,
-	// )
+	const { token, initialLoad: authLoading } = useAppSelector(
+		(state) => state.authentication,
+	)
+	
+	// Initialize deep linking
+	useDeepLinking()
 
-	const appLoading = blLoading || locLoading || bleLoading // || authLoading
+	const appLoading = blLoading || locLoading || bleLoading || authLoading
 
 	useEffect(() => {
 		if (!appLoading) {
@@ -117,12 +123,13 @@ export const MainNavigation = () => {
 						name="BLEProblems"
 						component={BleProblems}
 					/>
+				) : !token ? (
+					<Stack.Group screenOptions={{ headerShown: false }}>
+						<Stack.Screen name="Login" component={Login} />
+						<Stack.Screen name="Register" component={Register} />
+						<Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+					</Stack.Group>
 				) : (
-					// ) : !token ? (
-					// 	<Stack.Group screenOptions={{ headerShown: false }}>
-					// 		<Stack.Screen name="Login" component={Login} />
-					// 		<Stack.Screen name="Register" component={Register} />
-					// 	</Stack.Group>
 					<Stack.Group>
 						<Stack.Screen
 							name="Home"
