@@ -12,6 +12,7 @@ export default ({ config }) => {
     ...config,
     name: 'WildlifeWatcher',
     slug: 'wildlife-watcher-expo',
+    scheme: 'wildlifewatcher',
     version: '0.0.1',
     orientation: 'portrait',
     icon: './assets/icon.png',
