@@ -1,6 +1,6 @@
 # Task ID: 10
 # Title: Core Redux Integration with Supabase
-# Status: pending
+# Status: in-progress
 # Dependencies: 9
 # Priority: high
 # Description: Extend existing Redux architecture with comprehensive Supabase integration including enhanced auth slice, projects slice, deployments slice, and RTK Query API layer
@@ -81,3 +81,49 @@ This task extends the existing Redux Toolkit architecture to provide comprehensi
 
 # Test Strategy:
 Test Redux actions and reducers, verify RTK Query integration, test error handling, validate optimistic updates, test real-time subscriptions
+
+# Subtasks:
+## 1. Enhanced Auth Redux Slice [pending]
+### Dependencies: None
+### Description: Extend existing auth slice with user profile data, session management, and persistence
+### Details:
+- Extend existing `src/store/slices/authSlice.ts`
+- Add user profile data handling beyond basic auth
+- Implement session management with refresh tokens
+- Add auth state persistence with AsyncStorage
+- Handle email confirmation states
+- Integrate with Supabase auth service from Task 8
+
+## 2. Projects Redux Slice [pending]
+### Dependencies: None
+### Description: Create comprehensive projects state management with CRUD operations
+### Details:
+- Create `src/store/slices/projectsSlice.ts`
+- Actions for full CRUD operations (create, read, update, delete)
+- Selectors for project lists, details, and filtered views
+- Loading and error state management
+- Optimistic updates for better UX
+- Integration with offline queue system
+
+## 3. Deployments Redux Slice [pending]
+### Dependencies: None
+### Description: Create deployments state management with status tracking and real-time updates
+### Details:
+- Create `src/store/slices/deploymentsSlice.ts`
+- Separate active/ended deployment states
+- Deployment creation and management actions
+- Status tracking and real-time updates
+- Location-based deployment filtering
+- Device association management
+
+## 4. RTK Query API Integration Layer [pending]
+### Dependencies: None
+### Description: Set up RTK Query integration with Supabase for type-safe API calls
+### Details:
+- Set up RTK Query integration with Supabase client
+- Create `src/store/api/` directory with service endpoints
+- Type-safe API calls using generated Supabase types
+- Implement caching strategies for offline support
+- Error handling and automatic retry logic
+- Real-time subscription management
+

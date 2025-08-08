@@ -725,7 +725,44 @@
           9
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Enhanced Auth Redux Slice",
+            "description": "Extend existing auth slice with user profile data, session management, and persistence",
+            "details": "- Extend existing `src/store/slices/authSlice.ts`\n- Add user profile data handling beyond basic auth\n- Implement session management with refresh tokens\n- Add auth state persistence with AsyncStorage\n- Handle email confirmation states\n- Integrate with Supabase auth service from Task 8",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10
+          },
+          {
+            "id": 2,
+            "title": "Projects Redux Slice",
+            "description": "Create comprehensive projects state management with CRUD operations",
+            "details": "- Create `src/store/slices/projectsSlice.ts`\n- Actions for full CRUD operations (create, read, update, delete)\n- Selectors for project lists, details, and filtered views\n- Loading and error state management\n- Optimistic updates for better UX\n- Integration with offline queue system",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10
+          },
+          {
+            "id": 3,
+            "title": "Deployments Redux Slice",
+            "description": "Create deployments state management with status tracking and real-time updates",
+            "details": "- Create `src/store/slices/deploymentsSlice.ts`\n- Separate active/ended deployment states\n- Deployment creation and management actions\n- Status tracking and real-time updates\n- Location-based deployment filtering\n- Device association management",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10
+          },
+          {
+            "id": 4,
+            "title": "RTK Query API Integration Layer",
+            "description": "Set up RTK Query integration with Supabase for type-safe API calls",
+            "details": "- Set up RTK Query integration with Supabase client\n- Create `src/store/api/` directory with service endpoints\n- Type-safe API calls using generated Supabase types\n- Implement caching strategies for offline support\n- Error handling and automatic retry logic\n- Real-time subscription management",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10
+          }
+        ]
       },
       {
         "id": 11,
