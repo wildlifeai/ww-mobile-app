@@ -731,7 +731,7 @@
             "title": "Enhanced Auth Redux Slice",
             "description": "Extend existing auth slice with user profile data, session management, and persistence",
             "details": "- Extend existing `src/store/slices/authSlice.ts`\n- Add user profile data handling beyond basic auth\n- Implement session management with refresh tokens\n- Add auth state persistence with AsyncStorage\n- Handle email confirmation states\n- Integrate with Supabase auth service from Task 8",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [],
             "parentTaskId": 10
           },
@@ -944,7 +944,7 @@
     ],
     "metadata": {
       "created": "2025-07-27T12:38:05.813Z",
-      "updated": "2025-08-07T01:33:59.833Z",
+      "updated": "2025-08-09T11:24:06.489Z",
       "description": "Tasks for master context"
     }
   }

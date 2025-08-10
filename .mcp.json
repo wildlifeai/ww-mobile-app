@@ -1,30 +1,22 @@
 {
-	"mcpServers": {
-		"task-master-ai": {
-			"type": "stdio",
-			"command": "npx",
-			"args": [
-				"-y",
-				"--package=task-master-ai",
-				"task-master-ai"
-			],
-			"env": {
-				"ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
-				"GOOGLE_API_KEY": "${GOOGLE_API_KEY}"
-			}
-		},
-		"supabase": {
-			"type": "stdio",
-			"command": "npx",
-			"args": [
-				"-y",
-				"@supabase/mcp-server-supabase@latest",
-				"--read-only",
-				"--project-ref=nuhwmubvygxyddkycmpa"
-			],
-			"env": {
-				"SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
-			}
-		}
-	}
+  "mcpServers": {
+    "claude-flow": {
+      "command": "npx",
+      "args": [
+        "claude-flow@alpha",
+        "mcp",
+        "start"
+      ],
+      "type": "stdio"
+    },
+    "ruv-swarm": {
+      "command": "npx",
+      "args": [
+        "ruv-swarm@latest",
+        "mcp",
+        "start"
+      ],
+      "type": "stdio"
+    }
+  }
 }

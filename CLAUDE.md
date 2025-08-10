@@ -1,257 +1,272 @@
-# CLAUDE.md
+# Claude Code Configuration - SPARC Development Environment
 
-## Wildlife Watcher Mobile App
+## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
 
-The Wildlife Watcher mobile app is a sophisticated React Native application designed to revolutionize wildlife conservation field work. It connects researchers and conservationists to wildlife monitoring camera devices via Bluetooth Low Energy (BLE), enabling remote configuration, firmware updates, and real-time wildlife data collection.
+**ABSOLUTE RULES**:
+1. ALL operations MUST be concurrent/parallel in a single message
+2. **NEVER save working files, text/mds and tests to the root folder**
+3. ALWAYS organize files in appropriate subdirectories
 
-### What This App Does
-- **Device Management**: Scan, connect, and configure wildlife camera devices using BLE
-- **Firmware Updates**: Over-the-air firmware updates using Nordic DFU protocol
-- **Project Management**: Create and manage wildlife monitoring projects with team collaboration
-- **Field Deployments**: GPS-tracked deployment workflows optimized for offline field conditions  
-- **Maps Integration**: Visualize device deployments and wildlife data on interactive maps
-- **Real-time Monitoring**: Track device status, battery levels, and wildlife detections
-- **Data Collection**: Capture and synchronize wildlife observations and media files
+### ⚡ GOLDEN RULE: "1 MESSAGE = ALL RELATED OPERATIONS"
 
-### Expo Development Client Architecture (NOT Expo Go)
+**MANDATORY PATTERNS:**
+- **TodoWrite**: ALWAYS batch ALL todos in ONE call (5-10+ todos minimum)
+- **Task tool**: ALWAYS spawn ALL agents in ONE message with full instructions
+- **File operations**: ALWAYS batch ALL reads/writes/edits in ONE message
+- **Bash commands**: ALWAYS batch ALL terminal operations in ONE message
+- **Memory operations**: ALWAYS batch ALL memory store/retrieve in ONE message
 
-This app **REQUIRES development client builds** due to native modules and **CANNOT run on Expo Go**:
+### 📁 File Organization Rules
 
-**Critical Native Dependencies:**
-- **react-native-ble-manager**: Native Android/iOS Bluetooth APIs
-- **react-native-nordic-dfu**: Custom GitHub fork for firmware updates
-- **react-native-maps**: Native Google Maps/MapKit SDKs
-- **Wildlife camera communication protocols**: Custom BLE implementations
+**NEVER save to root folder. Use these directories:**
+- `/src` - Source code files
+- `/tests` - Test files
+- `/docs` - Documentation and markdown files
+- `/config` - Configuration files
+- `/scripts` - Utility scripts
+- `/examples` - Example code
 
-**⚠️ IMPORTANT**: Always use `npx expo run:android` or `npx expo run:ios` - Expo Go will fail to load this app.
+## Project Overview
 
-**EAS Build System:**
-- **EAS CLI** handles both development and production builds for Android/iOS
-- **Cloud Building**: No need for local Xcode/Android Studio for builds
-- **Automated Workflows**: Focus on app development, not build configuration
-- **Development Builds**: Install once on device, then use hot reload for development
-- **Production Builds**: Automated release builds with code signing and distribution
+This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) methodology with Claude-Flow orchestration for systematic Test-Driven Development.
 
-**Developer Experience Benefits:**
-- **Simplified Setup**: No complex native toolchain configuration
-- **Fast Iteration**: Hot reload with native capabilities intact
-- **Team Consistency**: Same build environment for all developers
-- **Automated Updates**: OTA updates for JavaScript changes
-- **Platform Optimization**: Expo handles platform-specific optimizations
+## SPARC Commands
 
-This approach allows developers to focus on wildlife monitoring features rather than React Native build complexities while maintaining full access to native device capabilities essential for field research applications.
+### Core Commands
+- `npx claude-flow sparc modes` - List available modes
+- `npx claude-flow sparc run <mode> "<task>"` - Execute specific mode
+- `npx claude-flow sparc tdd "<feature>"` - Run complete TDD workflow
+- `npx claude-flow sparc info <mode>` - Get mode details
 
-## Essential Quick Reference
+### Batchtools Commands
+- `npx claude-flow sparc batch <modes> "<task>"` - Parallel execution
+- `npx claude-flow sparc pipeline "<task>"` - Full pipeline processing
+- `npx claude-flow sparc concurrent <mode> "<tasks-file>"` - Multi-task processing
 
-### Common Development Commands
-- `npx expo start` or `npx expo start --dev-client --clear` - Start Expo development server
-- `npx expo run:android` - Build and run on Android device/emulator
-- `npm test` - Run all Jest tests (unit + integration)
-- `npm run test:watch` - Run tests in watch mode
-- `npm run test:coverage` - Run tests with coverage report
-- `npm run test:unit` - Run unit tests only
-- `npm run test:integration` - Run integration tests only
-- `npm run test:e2e` - Run end-to-end tests with Detox
-- `npm run test:e2e:build` - Build app for E2E testing
-- `npm run test:e2e:ios` - Run E2E tests on iOS simulator
-- `npm run test:e2e:android` - Run E2E tests on Android emulator
-- `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript type checking
-- `npm run validate:deps` - Validate dependency compatibility
-- `npm run deps` - Interactive dependency management CLI
-- `npm run deps:add` - Add dependencies with compatibility check
-- `npm run deps:scan` - Scan for potential conflicts
-- `npm run supabase:types` - Sync Supabase types (manual process, see src/types/supabase.ts)
+### Build Commands
+- `npm run build` - Build project
+- `npm run test` - Run tests
+- `npm run lint` - Linting
+- `npm run typecheck` - Type checking
 
-### Environment Requirements
-- **Node.js**: Version 18+ (as specified in package.json engines)
-- **Expo CLI**: For development and local builds
-- **EAS CLI**: For cloud builds and deployments
-- **Android Studio**: For Android development and device connections
+## SPARC Workflow Phases
 
-### Tech Stack Summary
-- **Framework**: Expo SDK 51 with React Native 0.74.6
-- **Backend**: Supabase (PostgreSQL, Auth, Storage, Edge Functions)
-- **Navigation**: React Navigation 6 with native stack navigator
-- **State Management**: Redux Toolkit with Supabase integration
-- **Offline Storage**: Expo SQLite with sync queues
-- **UI Library**: React Native Paper with custom theming
-- **BLE Communication**: react-native-ble-manager for device connectivity
-- **Testing**: Jest + React Native Testing Library + Detox + Custom BDD helpers
+1. **Specification** - Requirements analysis (`sparc run spec-pseudocode`)
+2. **Pseudocode** - Algorithm design (`sparc run spec-pseudocode`)
+3. **Architecture** - System design (`sparc run architect`)
+4. **Refinement** - TDD implementation (`sparc tdd`)
+5. **Completion** - Integration (`sparc run integration`)
 
-## Code Standards & Conventions
+## Code Style & Best Practices
 
-### From .cursorrules
-- Always provide full updated answers when making changes
-- Use existing codebase as reference rather than creating new patterns
-- Prefer `type` over `interface` (TypeScript best practice)
-- Follow latest TypeScript best practices
+- **Modular Design**: Files under 500 lines
+- **Environment Safety**: Never hardcode secrets
+- **Test-First**: Write tests before implementation
+- **Clean Architecture**: Separate concerns
+- **Documentation**: Keep updated
 
-### Project Conventions
-- Use existing UI components (WW-prefixed) for consistency
-- Follow the established provider pattern for new features
-- Implement proper TypeScript typing throughout
+## 🚀 Available Agents (54 Total)
 
-## Critical Provider Hierarchy
+### Core Development
+`coder`, `reviewer`, `tester`, `planner`, `researcher`
 
-The app uses a specific nested provider pattern that **must be maintained**:
+### Swarm Coordination
+`hierarchical-coordinator`, `mesh-coordinator`, `adaptive-coordinator`, `collective-intelligence-coordinator`, `swarm-memory-manager`
 
+### Consensus & Distributed
+`byzantine-coordinator`, `raft-manager`, `gossip-coordinator`, `consensus-builder`, `crdt-synchronizer`, `quorum-manager`, `security-manager`
+
+### Performance & Optimization
+`perf-analyzer`, `performance-benchmarker`, `task-orchestrator`, `memory-coordinator`, `smart-agent`
+
+### GitHub & Repository
+`github-modes`, `pr-manager`, `code-review-swarm`, `issue-tracker`, `release-manager`, `workflow-automation`, `project-board-sync`, `repo-architect`, `multi-repo-swarm`
+
+### SPARC Methodology
+`sparc-coord`, `sparc-coder`, `specification`, `pseudocode`, `architecture`, `refinement`
+
+### Specialized Development
+`backend-dev`, `mobile-dev`, `ml-developer`, `cicd-engineer`, `api-docs`, `system-architect`, `code-analyzer`, `base-template-generator`
+
+### Testing & Validation
+`tdd-london-swarm`, `production-validator`
+
+### Migration & Planning
+`migration-planner`, `swarm-init`
+
+## 🎯 Claude Code vs MCP Tools
+
+### Claude Code Handles ALL:
+- File operations (Read, Write, Edit, MultiEdit, Glob, Grep)
+- Code generation and programming
+- Bash commands and system operations
+- Implementation work
+- Project navigation and analysis
+- TodoWrite and task management
+- Git operations
+- Package management
+- Testing and debugging
+
+### MCP Tools ONLY:
+- Coordination and planning
+- Memory management
+- Neural features
+- Performance tracking
+- Swarm orchestration
+- GitHub integration
+
+**KEY**: MCP coordinates, Claude Code executes.
+
+## 🚀 Quick Setup
+
+```bash
+# Add Claude Flow MCP server
+claude mcp add claude-flow npx claude-flow@alpha mcp start
 ```
-SafeAreaProvider → ReduxProvider → PaperProvider → NavigationContainer
-→ AndroidPermissionsProvider → AppSetupProvider → BleEngineProvider
-→ ListenToBleEngineProvider → AuthProvider → MainNavigation
+
+## MCP Tool Categories
+
+### Coordination
+`swarm_init`, `agent_spawn`, `task_orchestrate`
+
+### Monitoring
+`swarm_status`, `agent_list`, `agent_metrics`, `task_status`, `task_results`
+
+### Memory & Neural
+`memory_usage`, `neural_status`, `neural_train`, `neural_patterns`
+
+### GitHub Integration
+`github_swarm`, `repo_analyze`, `pr_enhance`, `issue_triage`, `code_review`
+
+### System
+`benchmark_run`, `features_detect`, `swarm_monitor`
+
+## 📋 Agent Coordination Protocol
+
+### Every Agent MUST:
+
+**1️⃣ BEFORE Work:**
+```bash
+npx claude-flow@alpha hooks pre-task --description "[task]"
+npx claude-flow@alpha hooks session-restore --session-id "swarm-[id]"
 ```
 
-**Order is critical** - changing provider order can break BLE functionality, permissions, or authentication.
+**2️⃣ DURING Work:**
+```bash
+npx claude-flow@alpha hooks post-edit --file "[file]" --memory-key "swarm/[agent]/[step]"
+npx claude-flow@alpha hooks notify --message "[what was done]"
+```
 
-## MVP2 Development Context
-This app is being developed according to the MVP2 implementation specification focusing on:
-- **Offline-first architecture** with Supabase sync
-- **Field deployment workflows** for wildlife cameras
-- **Project-based data organization** with role-based access
-- **Real-time device status** via LoRaWAN integration
-- **Mobile-optimized UI** following Figma designs
+**3️⃣ AFTER Work:**
+```bash
+npx claude-flow@alpha hooks post-task --task-id "[task]"
+npx claude-flow@alpha hooks session-end --export-metrics true
+```
 
-Key Documents:
-- `@project-context/development-context/MVP2/wildlife-watcher-implementation-spec-mvp2-consolidated-20250731.md` - Complete implementation spec
-- `@project-context/development-context/MVP2/User Stories_ Navigation 2.0-Figma-Design-med.pdf` - UI/UX designs
-- `@project-context/development-context/supabase-backend/` - Backend documentation
+## 🎯 Concurrent Execution Examples
 
-## Implementation Status
-✅ **Completed:**
-- Expo SDK 51 migration complete
-- EAS Build configuration
-- Core dependencies migrated (expo-file-system, expo-constants, expo-splash-screen)
-- BLE functionality verified with real devices
-- Supabase integration complete and production-ready (authentication, database operations, real-time subscriptions)
-- Comprehensive authentication system with deep linking
-- Complete testing infrastructure (unit, integration, E2E, BDD)
+### ✅ CORRECT (Single Message):
+```javascript
+[BatchTool]:
+  // Initialize swarm
+  mcp__claude-flow__swarm_init { topology: "mesh", maxAgents: 6 }
+  mcp__claude-flow__agent_spawn { type: "researcher" }
+  mcp__claude-flow__agent_spawn { type: "coder" }
+  mcp__claude-flow__agent_spawn { type: "tester" }
+  
+  // Spawn agents with Task tool
+  Task("Research agent: Analyze requirements...")
+  Task("Coder agent: Implement features...")
+  Task("Tester agent: Create test suite...")
+  
+  // Batch todos
+  TodoWrite { todos: [
+    {id: "1", content: "Research", status: "in_progress", priority: "high"},
+    {id: "2", content: "Design", status: "pending", priority: "high"},
+    {id: "3", content: "Implement", status: "pending", priority: "high"},
+    {id: "4", content: "Test", status: "pending", priority: "medium"},
+    {id: "5", content: "Document", status: "pending", priority: "low"}
+  ]}
+  
+  // File operations
+  Bash "mkdir -p app/{src,tests,docs}"
+  Write "app/src/index.js"
+  Write "app/tests/index.test.js"
+  Write "app/docs/README.md"
+```
 
-🚧 **In Progress:**
-- MVP2 feature development per implementation spec
-- Offline-first data architecture implementation
-- Project and deployment management screens
+### ❌ WRONG (Multiple Messages):
+```javascript
+Message 1: mcp__claude-flow__swarm_init
+Message 2: Task("agent 1")
+Message 3: TodoWrite { todos: [single todo] }
+Message 4: Write "file.js"
+// This breaks parallel coordination!
+```
 
-## Critical Development Notes
+## Performance Benefits
 
-### Authentication & Deep Linking
-- **Testing Environment**: Authentication flows MUST be tested with development builds (`npx expo run:android`), NOT Expo Go
-- **URL Scheme**: `wildlifewatcher://` for deep linking
-- **Navigation Pattern**: Use conditional rendering based on auth state, not programmatic navigation
-- **Supabase Config**: Mobile apps need `detectSessionInUrl: false` in Supabase client config
+- **84.8% SWE-Bench solve rate**
+- **32.3% token reduction**
+- **2.8-4.4x speed improvement**
+- **27+ neural models**
 
-### BLE Development
-- Device connections are managed through the BleEngineProvider
-- Use the `useBleActions` hook to access BLE functionality
-- All device communication should go through the established parser system
+## Hooks Integration
 
-### Offline-First Development
-All user actions must work offline and sync when connectivity is restored:
-1. Save to local SQLite immediately
-2. Update Redux store
-3. Queue for remote sync
-4. Attempt immediate sync if online
-5. Handle conflicts on reconnection
+### Pre-Operation
+- Auto-assign agents by file type
+- Validate commands for safety
+- Prepare resources automatically
+- Optimize topology by complexity
+- Cache searches
 
-## App Configuration
-- **Bundle ID**: `com.wildlife.wildlifewatcher` (iOS/Android)
-- **Package Name**: `wildlifewatcher`
-- **Expo SDK**: Version 51
-- **React Native**: Version 0.74.6
-- **Backend**: Supabase with PostgreSQL database
-- **EAS Project ID**: `6cf53a5e-90e1-4987-82c6-5f0337affe97`
+### Post-Operation
+- Auto-format code
+- Train neural patterns
+- Update memory
+- Analyze performance
+- Track token usage
 
-## Task Master AI Instructions
-**Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
-@./.taskmaster/CLAUDE.md
+### Session Management
+- Generate summaries
+- Persist state
+- Track metrics
+- Restore context
+- Export workflows
 
-## Available MCP Servers
+## Advanced Features (v2.0.0)
 
-This project has access to three configured MCP servers:
+- 🚀 Automatic Topology Selection
+- ⚡ Parallel Execution (2.8-4.4x speed)
+- 🧠 Neural Training
+- 📊 Bottleneck Analysis
+- 🤖 Smart Auto-Spawning
+- 🛡️ Self-Healing Workflows
+- 💾 Cross-Session Memory
+- 🔗 GitHub Integration
 
-### 1. Task Master AI (`task-master-ai`)
-- **Purpose**: Project task management and workflow automation
-- **Usage**: Handles MVP2 development task breakdown and progress tracking
+## Integration Tips
 
-### 2. Supabase MCP (`supabase`)
-- **Purpose**: Database operations and backend integration
-- **Usage**: Manages wildlife monitoring database operations and Supabase backend integration
+1. Start with basic swarm init
+2. Scale agents gradually
+3. Use memory for context
+4. Monitor progress regularly
+5. Train patterns from success
+6. Enable hooks automation
+7. Use GitHub tools first
 
-### 3. Context7 (`context7`)
-- **Purpose**: Up-to-date library documentation and code examples
-- **Usage**: Provides current documentation for Expo, Supabase, and React Native development
+## Support
 
-## Documentation Architecture
-
-### Technical Implementation Guides
-Comprehensive technical guides for developers working on the codebase:
-
-- **Application Architecture**: `@documentation/app-technical-guides/App-Architecture-Guide.md` - Complete app architecture, provider hierarchy, BLE system, navigation structure, Redux state management, and component patterns
-- **Authentication System**: `@documentation/app-technical-guides/Authentication-Implementation-Guide.md` - Supabase authentication integration, deep linking, session management, and security patterns
-- **Testing Framework**: `@documentation/app-technical-guides/Testing-Guide.md` - Complete testing infrastructure including unit, integration, E2E, and BDD testing patterns with examples
-- **Backend Integration**: `@documentation/app-technical-guides/Supabase-Integration-Guide.md` - Supabase client setup, database operations, real-time subscriptions, and offline sync patterns
-
-### Developer Onboarding
-Non-technical onboarding and setup guides:
-
-- **Getting Started**: `@documentation/developer-docs/Developer-Onboarding-Guide.md` - Complete setup guide for new developers
-- **Environment Setup**: `@documentation/developer-docs/WSL2-Development-Setup-Guide.md` - WSL2 specific development setup
-- **EAS Build System**: `@documentation/developer-docs/EAS-Development-Guide.md` - Expo Application Services build and deployment
-
-### Backend Documentation
-- **Backend Repository**: `~/dev/wildlifeai/wildlife-watcher-backend` - Supabase backend project
-- **Backend Docs**: `@project-context/development-context/supabase-backend/` - Backend configuration documentation
-
-## Development Workflow
-
-### Testing Requirements
-- **Critical Flows**: Always test authentication, BLE connection, and offline sync
-- **Testing Environment**: Use development builds, never Expo Go for auth/BLE testing
-- **Coverage Target**: >80% test coverage on authentication and core features
-- **Testing Approach**: TDD/BDD with Given-When-Then patterns
-
-### BLE Testing Requirements
-- **Real devices required**: BLE functionality cannot be fully mocked
-- **Development builds only**: Never test BLE with Expo Go
-- **Android permissions**: Location and Bluetooth permissions required for BLE scanning
-- **Connection management**: Test device connection/disconnection scenarios
-- **Provider hierarchy**: BLE functionality depends on correct provider order
-
-### Custom Dependency Management
-This project includes automated dependency validation and management:
-- `npm run validate:deps` - Automatically runs after install to check compatibility
-- `npm run deps` - Interactive dependency management CLI
-- `npm run deps:add` - Add dependencies with compatibility check
-- `npm run deps:scan` - Scan for potential dependency conflicts
-- **Location**: `scripts/validate-deps.js` and `scripts/deps-cli.js`
-- **Auto-validation**: Runs on `npm install` via postinstall hook
-
-### Quality Assurance
-- Run `npm run lint` and `npm run type-check` after significant changes
-- Test on real devices for BLE functionality
-- Validate dependency compatibility with `npm run validate:deps`
-- Follow existing patterns and conventions
-
-### File Structure Conventions
-- UI components prefixed with "WW" in `src/components/ui/`
-- Redux slices in `src/redux/slices/`
-- Supabase services in `src/services/supabase/`
-- Offline services in `src/services/offline/`
-- Screen components in `src/navigation/screens/`
-- Custom hooks in `src/hooks/`
-- BLE functionality in `src/ble/` and `src/providers/BleEngineProvider.tsx`
-- Database types in `src/types/supabase.ts`
-
-## Key Dependencies
-- **Supabase Client**: `@supabase/supabase-js` for backend integration and real-time features
-- **Expo SQLite**: `expo-sqlite` for offline data storage and sync queues
-- **BLE Nordic DFU**: Custom GitHub dependency for firmware updates
-- **React Native Paper**: Version 5.12.3 for Material Design components
-- **Redux Toolkit**: Version 2.2.1 for state management
-- **React Navigation**: Version 6 native stack for navigation
-- **React Hook Form**: Version 7.54.1 for form handling
-- **Testing Stack**: Jest + React Native Testing Library + Detox
+- Documentation: https://github.com/ruvnet/claude-flow
+- Issues: https://github.com/ruvnet/claude-flow/issues
 
 ---
 
-*For detailed technical implementation information, refer to the comprehensive guides in `@documentation/app-technical-guides/`. For developer onboarding and environment setup, see `@documentation/developer-docs/`.*
+Remember: **Claude Flow coordinates, Claude Code creates!**
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+Never save working files, text/mds and tests to the root folder.
