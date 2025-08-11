@@ -1,8 +1,8 @@
 # Wildlife Watcher MVP2 Documentation Index
 
-**Version**: 1.0  
-**Date**: July 31, 2025  
-**Purpose**: Comprehensive guide to MVP2 development documentation  
+**Version**: 1.1  
+**Date**: August 11, 2025  
+**Purpose**: Comprehensive guide to MVP2 development documentation with enhanced offline capabilities  
 
 ---
 
@@ -14,17 +14,18 @@ This directory contains all documentation for Wildlife Watcher MVP2 development,
 
 ```
 MVP2/
-├── 📄 wildlife-watcher-implementation-spec-mvp2.md     # Main MVP2 specification
-├── 📄 User Stories_ Navigation 2.0-Figma-Design-med.pdf # UI/UX design specifications
-├── 📄 to-do                                            # Development task list
-└── 📁 BLE-WWUS-DFUx/                                   # Communication systems documentation
-    ├── 📄 README.md                                    # BLE/WWUS/DFU overview
-    ├── 📁 analysis/                                    # Technical analysis documents
-    ├── 📁 feedback/                                    # Hardware engineer feedback
-    ├── 📁 initial-cc-analysis/                        # Original analysis (pre-revision)
-    ├── 📁 prompts/                                     # Expert context documents
-    ├── 📁 revised-documents/                           # Updated technical guides
-    └── 📁 spec-and-implementation-plan-DFUx-WWFT/      # WWFT service specifications
+├── 📄 wildlife-watcher-implementation-spec-mvp2-consolidated-20250731.md  # Main MVP2 specification (v1.1)
+├── 📄 Offline Sync & Conflict Resolution Strategy.md                      # NEW: Comprehensive offline sync guide
+├── 📄 User Stories_ Navigation 2.0-Figma-Design-med.pdf                   # UI/UX design specifications
+├── 📄 to-do                                                                # Development task list
+└── 📁 BLE-WWUS-DFUx/                                                       # Communication systems documentation
+    ├── 📄 README.md                                                        # BLE/WWUS/DFU overview
+    ├── 📁 analysis/                                                        # Technical analysis documents
+    ├── 📁 feedback/                                                        # Hardware engineer feedback
+    ├── 📁 initial-cc-analysis/                                            # Original analysis (pre-revision)
+    ├── 📁 prompts/                                                        # Expert context documents
+    ├── 📁 revised-documents/                                               # Updated technical guides
+    └── 📁 spec-and-implementation-plan-DFUx-WWFT/                          # WWFT service specifications
 ```
 
 ---
@@ -32,18 +33,34 @@ MVP2/
 ## 📋 Core Documents
 
 ### 📖 **Primary Implementation Guide**
-**Document**: `wildlife-watcher-implementation-spec-mvp2.md`  
+**Document**: `wildlife-watcher-implementation-spec-mvp2-consolidated-20250731.md`  
 **Purpose**: Complete MVP2 technical specification including architecture, features, and implementation timeline  
 **Audience**: Development team, project managers  
-**Last Updated**: Version 1.0.1 with revision history  
+**Last Updated**: Version 1.1 - August 2025  
 
 **Key Sections**:
+- Glossary of terms and user story mapping (NEW)
 - Technology stack and dependencies
-- Authentication & user management
-- Core features implementation
-- Offline support architecture
-- Supabase integration
-- 4-week implementation timeline
+- Enhanced authentication with password reset via web form
+- WW_ADMIN role and developer menu (NEW)
+- Core features with improved UI specifications
+- Offline support with logical deletes
+- Supabase integration with image storage best practices
+- Production readiness checklist
+
+### 🔄 **Offline Sync & Conflict Resolution Strategy** (NEW)
+**Document**: `Offline Sync & Conflict Resolution Strategy.md`  
+**Purpose**: Comprehensive guide for handling multi-user offline scenarios and sync conflicts  
+**Audience**: Backend developers, mobile developers  
+**Added**: August 2025  
+
+**Key Sections**:
+- Pre-deployment data caching requirements
+- Multi-user offline conflict scenarios
+- Deployment, project, and member conflict resolution
+- LoRaWAN partial connectivity integration
+- Sync status indicators and UI components
+- Best practices for field work preparation
 
 ### 🎨 **Design Specifications**
 **Document**: `User Stories_ Navigation 2.0-Figma-Design-med.pdf`  
@@ -114,10 +131,11 @@ MVP2/
 **Goal**: Get new team member up to speed on MVP2 architecture
 
 **Document Sequence**:
-1. `wildlife-watcher-implementation-spec-mvp2.md` - Overview and architecture
-2. `BLE-WWUS-DFUx/revised-documents/Wildlife-Watcher-Communication-Systems-Technical-Guide.md` - Communication systems
-3. `BLE-WWUS-DFUx/spec-and-implementation-plan-DFUx-WWFT/terms.md` - Technical terminology
-4. `BLE-WWUS-DFUx/analysis/explanation-for-adarsh.md` - Hardware-software interaction
+1. `wildlife-watcher-implementation-spec-mvp2-consolidated-20250731.md` - Overview and architecture (v1.1)
+2. `Offline Sync & Conflict Resolution Strategy.md` - Offline capabilities and sync patterns
+3. `BLE-WWUS-DFUx/revised-documents/Wildlife-Watcher-Communication-Systems-Technical-Guide.md` - Communication systems
+4. `BLE-WWUS-DFUx/spec-and-implementation-plan-DFUx-WWFT/terms.md` - Technical terminology
+5. `BLE-WWUS-DFUx/analysis/explanation-for-adarsh.md` - Hardware-software interaction
 
 ### **Use Case 2: Implementing BLE/WWUS Communication**
 **Goal**: Develop normal device communication features
@@ -125,7 +143,7 @@ MVP2/
 **Document Sequence**:
 1. `BLE-WWUS-DFUx/revised-documents/Wildlife-Watcher-Communication-Systems-Technical-Guide.md` - Section 3: WWUS Protocol
 2. `BLE-WWUS-DFUx/analysis/ble-dfu-libraries-repo-source.md` - Library details
-3. `wildlife-watcher-implementation-spec-mvp2.md` - State management integration
+3. `wildlife-watcher-implementation-spec-mvp2-consolidated-20250731.md` - State management integration
 
 ### **Use Case 3: Implementing Firmware Updates (DFU)**
 **Goal**: Develop device firmware update capability
@@ -155,7 +173,7 @@ MVP2/
 **Goal**: Plan development phases and resource allocation
 
 **Document Sequence**:
-1. `wildlife-watcher-implementation-spec-mvp2.md` - Section 9: Implementation Timeline
+1. `wildlife-watcher-implementation-spec-mvp2-consolidated-20250731.md` - Section 9: Implementation Guidelines
 2. `BLE-WWUS-DFUx/spec-and-implementation-plan-DFUx-WWFT/dfux-wwft-spec-implementation-plan.md` - Section 7: Development Plan
 3. `to-do` - Current task tracking
 
@@ -167,17 +185,50 @@ MVP2/
 2. `BLE-WWUS-DFUx/spec-and-implementation-plan-DFUx-WWFT/dfux-wwft-spec-implementation-plan.md` - Section 3: Technical Feasibility
 3. `BLE-WWUS-DFUx/revised-documents/Wildlife-Watcher-Communication-Systems-Technical-Guide.md` - Section 6.3: Dependencies
 
+### **Use Case 8: Implementing Offline-First Architecture** (NEW)
+**Goal**: Build robust offline capabilities with automatic sync
+
+**Document Sequence**:
+1. `Offline Sync & Conflict Resolution Strategy.md` - Complete offline sync guide
+2. `wildlife-watcher-implementation-spec-mvp2-consolidated-20250731.md` - Section 6: Offline Support Architecture
+3. Implementation of SQLite with logical deletes
+4. Sync status indicators throughout UI
+
+### **Use Case 9: Handling Multi-User Offline Conflicts** (NEW)
+**Goal**: Resolve conflicts when multiple users work offline
+
+**Document Sequence**:
+1. `Offline Sync & Conflict Resolution Strategy.md` - Conflict resolution rules
+2. Understanding deployment conflicts (device can only have one active deployment)
+3. Member list merging strategies (union merge)
+4. Logical delete permanence rules
+
+### **Use Case 10: LoRaWAN Integration for Field Work** (NEW)
+**Goal**: Implement partial connectivity via LoRaWAN
+
+**Document Sequence**:
+1. `Offline Sync & Conflict Resolution Strategy.md` - LoRaWAN integration section
+2. `wildlife-watcher-implementation-spec-mvp2-consolidated-20250731.md` - Section 7.2: Edge Functions
+3. Critical data transmission priorities
+4. Graceful fallback strategies
+
 ---
 
 ## ⭐ Critical Documents
 
 ### **Must-Read for All Developers**
-1. `wildlife-watcher-implementation-spec-mvp2.md` - **Primary specification**
-2. `BLE-WWUS-DFUx/revised-documents/Wildlife-Watcher-Communication-Systems-Technical-Guide.md` - **Communication systems guide**
+1. `wildlife-watcher-implementation-spec-mvp2-consolidated-20250731.md` - **Primary specification (v1.1)**
+2. `Offline Sync & Conflict Resolution Strategy.md` - **Offline sync patterns (NEW)**
+3. `BLE-WWUS-DFUx/revised-documents/Wildlife-Watcher-Communication-Systems-Technical-Guide.md` - **Communication systems guide**
 
 ### **Must-Read for Hardware Integration**
 1. `BLE-WWUS-DFUx/feedback/charles-feedback.md` - **Hardware engineer expertise**
 2. `BLE-WWUS-DFUx/spec-and-implementation-plan-DFUx-WWFT/dfux-wwft-spec-implementation-plan.md` - **WWFT implementation plan**
+
+### **Must-Read for Offline Development**
+1. `Offline Sync & Conflict Resolution Strategy.md` - **Comprehensive offline guide**
+2. Implementation spec Section 6 - **Offline architecture**
+3. LoRaWAN integration patterns - **Partial connectivity**
 
 ### **Reference Documents**
 - `BLE-WWUS-DFUx/spec-and-implementation-plan-DFUx-WWFT/terms.md` - **Technical glossary**
@@ -189,7 +240,8 @@ MVP2/
 
 | Document Category | Status | Last Updated |
 |-------------------|---------|--------------:|
-| **Core MVP2 Spec** | ✅ Current | July 31, 2025 |
+| **Core MVP2 Spec v1.1** | ✅ Current | August 11, 2025 |
+| **Offline Sync Strategy** | ✅ NEW | August 11, 2025 |
 | **BLE/WWUS/DFU Guide** | ✅ Current | July 31, 2025 |
 | **WWFT Specification** | ✅ Current | July 31, 2025 |
 | **Technical Analysis** | ✅ Complete | July 31, 2025 |
@@ -209,8 +261,18 @@ MVP2/
 - Contact development team for clarifications
 - Reference expert feedback for hardware questions
 
+### **Recent Updates (August 2025)**
+- ✅ Implementation spec updated to v1.1 with enhanced features
+- ✅ Added comprehensive Offline Sync & Conflict Resolution Strategy
+- ✅ Introduced WW_ADMIN role and developer menu controls
+- ✅ Enhanced authentication with password reset via web form
+- ✅ Added LoRaWAN integration for partial connectivity
+- ✅ Implemented logical delete patterns across all tables
+- ✅ Added glossary of terms and user story mapping
+
 ---
 
 **Maintained By**: Development Team  
 **Review Cycle**: Monthly or as needed  
+**Last Major Update**: August 11, 2025  
 **Next Review**: [TBD based on development progress]
