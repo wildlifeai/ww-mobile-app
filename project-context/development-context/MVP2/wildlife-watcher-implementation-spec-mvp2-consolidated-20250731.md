@@ -1,9 +1,35 @@
 # Wildlife Watcher Mobile App - MVP Implementation Specification
 
-**Version**: 1.0  
-**Date**: December 2024  
+**Version**: 1.1  
+**Date**: August 2025  
 **Platform**: React Native (Expo SDK 51)  
 **Backend**: Supabase  
+
+---
+
+## Glossary of Terms
+
+- **BLE (Bluetooth Low Energy)**: Wireless communication technology for short-range device connections
+- **DFU (Device Firmware Update)**: Over-the-air firmware update capability via Bluetooth
+- **SQLite**: Local database for offline data storage on mobile devices
+- **LoRaWAN**: Long-range, low-power wireless protocol for IoT devices
+- **FAB (Floating Action Button)**: Material Design UI element that floats above content
+- **RLS (Row Level Security)**: Database security feature that restricts data access per user
+- **Edge Function**: Serverless functions that run close to users for low latency
+
+---
+
+## User Story Mapping
+
+| User Story | Implementation Section | Priority |
+|------------|----------------------|----------|
+| User login and authentication | Section 4.1 | MVP |
+| Start deployment flow | Section 5.3 | MVP |
+| End deployment flow | Section 5.4 | MVP |
+| Project management | Sections 5.5, 5.6 | MVP |
+| Offline field work | Section 6 | MVP |
+| Device management | Section 5.8 | MVP |
+| User roles and permissions | Section 4.2 | MVP |
 
 ---
 
@@ -17,8 +43,8 @@
 6. [Offline Support Architecture](#6-offline-support-architecture)
 7. [Supabase Integration](#7-supabase-integration)
 8. [State Management](#8-state-management)
-9. [Implementation Timeline](#9-implementation-timeline)
-10. [Technical Guidelines](#10-technical-guidelines)
+9. [Implementation Guidelines](#9-implementation-guidelines)
+10. [Production Readiness](#10-production-readiness)
 
 ---
 
@@ -56,7 +82,7 @@
 - react-native-ble-manager 11.3.2
 - react-native-bluetooth-state-manager 1.3.5
 - react-native-nordic-dfu (GitHub fork)
-- react-native-maps 1.14.0
+- react-native-maps 1.14.0 (iOS compatibility to be verified)
 
 // Backend & Storage
 - @supabase/supabase-js 2.39.0
@@ -71,21 +97,19 @@
 ### Completed Migration Tasks
 - ✅ Expo SDK 51 migration complete
 - ✅ EAS Build configuration
-- ✅ Core dependencies migrated:
-  - `react-native-fs` → `expo-file-system`
-  - `react-native-config` → `expo-constants`
-  - `react-native-bootsplash` → `expo-splash-screen`
+- ✅ Core dependencies migrated
 - ✅ BLE functionality verified with real devices
 - ✅ Nordic DFU integration ready
 - ✅ React Navigation setup complete
 - ✅ Redux Toolkit configured
-- ✅ Development environment with Metro bundler
 
-### Existing Features to Preserve
-- BLE device scanning and connection
-- PING/PONG protocol implementation
-- DFU firmware update capability
-- Basic navigation structure
+### Features to Implement (MVP)
+- Authentication flows (login, signup, password reset)
+- Offline-first data synchronization
+- Project and deployment management
+- Device discovery and management
+- User roles and permissions
+- LoRaWAN integration for field data
 
 ---
 
@@ -103,30 +127,24 @@ src/
 │   ├── stacks/            # Stack navigators
 │   └── index.tsx          # Root navigation
 ├── services/              # Business logic & APIs
+│   ├── ai/                # AI model management (future)
 │   ├── auth/              # Authentication service
 │   ├── ble/               # Bluetooth services
 │   ├── dfu/               # Firmware update services
 │   ├── offline/           # Offline & sync services
+│   ├── lorawan/           # LoRaWAN integration
 │   └── supabase/          # Supabase client & API
+│       ├── db/            # Database operations
+│       ├── auth/          # Auth operations
+│       ├── storage/       # File storage
+│       └── edge/          # Edge functions
 ├── store/                 # Redux store
 │   ├── slices/            # Redux slices
 │   └── index.ts           # Store configuration
 ├── types/                 # TypeScript definitions
 ├── utils/                 # Utility functions
-│   ├── constants.ts       # App constants
-│   ├── environment.ts     # Environment config
-│   └── helpers.ts         # Helper functions
 ├── hooks/                 # Custom React hooks
 └── App.tsx               # Root component
-```
-
-### Data Flow Architecture
-```
-User Action → Screen Component → Redux Action → Service Layer → Local Storage/Supabase
-                                                      ↓
-                                              Offline Queue (if no network)
-                                                      ↓
-                                              Background Sync Service
 ```
 
 ---
@@ -145,47 +163,76 @@ interface LoginFormData {
 
 const LoginScreen: React.FC = () => {
   // Implementation requirements:
-  // - Email/password form with react-hook-form
-  // - Form validation (email format, password requirements)
+  // - Email/password form with validation
   // - Loading state during authentication
   // - Error handling with user-friendly messages
   // - Remember me functionality (AsyncStorage)
   // - Navigate to Maps screen on success
   // - Links to Forgot Password and Sign Up
+  // - Social login options (if configured)
 };
 ```
 
-#### Sign Up Screen (Basic Implementation)
+#### Sign Up Screen Implementation
 ```typescript
 // src/navigation/screens/auth/SignUpScreen.tsx
 interface SignUpFormData {
   email: string;
   password: string;
   confirmPassword: string;
-  organization: string;
+  fullName: string;  // Added for user identification
+  organization?: string;  // Optional for future use
 }
 
-// Basic fields only for MVP
-// No profile pictures or complex onboarding
+// Implementation notes:
+// - For users added directly to DB:
+//   - They receive an activation email with temporary password
+//   - On first login, force password change
+// - For self-signup users:
+//   - Standard registration flow
+//   - Email verification required
 ```
 
-#### Forgot Password Screen (Basic Implementation)
+#### Password Reset Implementation
 ```typescript
 // src/navigation/screens/auth/ForgotPasswordScreen.tsx
-// Simple email input and reset link functionality
-// Supabase handles email sending
+// In-app reset request that triggers web form email
+interface PasswordResetData {
+  email: string;
+}
+
+// Web form implementation (separate web app):
+// - Hosted on Supabase or separate domain
+// - Handles actual password reset with token
+// - Mobile app opens web reset link in browser
 ```
 
-### 4.2 User Roles (MVP Scope)
+#### Sign Out Implementation
+```typescript
+// Located in side drawer menu
+// Clears local session, SQLite cache, and returns to login
+// Shows confirmation dialog before signing out
+```
+
+### 4.2 User Roles & Permissions
+
 ```typescript
 enum UserRole {
   PROJECT_ADMIN = 'project_admin',
-  PROJECT_MEMBER = 'project_member'
+  PROJECT_MEMBER = 'project_member',
+  WW_ADMIN = 'ww_admin'  // Special system-wide admin role
 }
 
-// Permissions:
-// PROJECT_ADMIN: Can edit project, add/remove members, delete deployments
-// PROJECT_MEMBER: Can create/end deployments, view project data
+// WW_ADMIN capabilities:
+// - Access developer menu
+// - Grant WW_ADMIN to other users
+// - View all projects (read-only)
+// - Access system diagnostics
+
+// Role checking implementation:
+const hasWWAdminRole = (user: User): boolean => {
+  return user.roles?.includes('ww_admin') || false;
+};
 ```
 
 ---
@@ -194,44 +241,50 @@ enum UserRole {
 
 ### 5.1 Navigation Structure
 
-#### Bottom Tab Navigation
+#### Bottom Tab Navigation with FAB
 ```typescript
 // src/navigation/BottomTabNavigator.tsx
 const TAB_SCREENS = [
-  {
-    name: 'Maps',
-    component: MapsScreen,
-    icon: 'map-marker',
-    label: 'Maps'
-  },
-  {
-    name: 'Projects',
-    component: ProjectsScreen,
-    icon: 'folder',
-    label: 'Projects'
-  },
-  {
-    name: 'Deployments',
-    component: DeploymentsScreen,
-    icon: 'camera',
-    label: 'Deployments'
-  },
-  {
-    name: 'Devices',
-    component: DevicesScreen,
-    icon: 'bluetooth',
-    label: 'Devices'
-  }
+  { name: 'Maps', component: MapsScreen, icon: 'map-marker' },
+  { name: 'Projects', component: ProjectsScreen, icon: 'folder' },
+  { name: 'Deployments', component: DeploymentsScreen, icon: 'camera' },
+  { name: 'Devices', component: DevicesScreen, icon: 'bluetooth' }
 ];
+
+// FAB Configuration:
+// - Visible on Maps screen (Start/End Deployment)
+// - Visible on Projects screen (Add Project)
+// - Hidden on functional screens
+// - Drag-to-show gesture on other screens
 ```
 
-#### Side Drawer Menu
+#### Side Drawer Menu (Always Accessible)
 ```typescript
 // src/navigation/DrawerNavigator.tsx
-// Menu items:
-// - User email display
-// - Sign Out button
-// - App version
+const DrawerContent = () => {
+  return (
+    <>
+      {/* User Section */}
+      <UserProfile showSyncStatus={true} />
+      
+      {/* Main Menu Items */}
+      <DrawerItem label="Profile" onPress={navigateToProfile} />
+      <DrawerItem label="Settings" onPress={navigateToSettings} />
+      
+      {/* Developer Menu - Only for WW_ADMIN or Dev Environment */}
+      {(isDevelopment || hasWWAdminRole) && (
+        <DrawerSection title="Developer Tools">
+          <DrawerItem label="BLE Testing" />
+          <DrawerItem label="DFU Tools" />
+          <DrawerItem label="Sync Diagnostics" />
+        </DrawerSection>
+      )}
+      
+      <DrawerItem label="Sign Out" onPress={handleSignOut} />
+      <AppVersion />
+    </>
+  );
+};
 ```
 
 ### 5.2 Maps Screen (Home)
@@ -241,213 +294,150 @@ const TAB_SCREENS = [
 interface MapsScreenProps {
   // Features to implement:
   // - Display map centered on user location or last deployment
-  // - Show active deployment markers
-  // - Cluster markers when zoomed out
-  // - Floating Action Buttons:
-  //   - Start Deployment (Green) - bottom right
-  //   - End Deployment (Yellow) - bottom right
-  // - Handle offline map tiles (store last viewed area)
+  // - Show active deployment markers with clustering
+  // - Offline map tile caching (last viewed area)
+  // - FAB buttons (context-aware):
+  //   - Start Deployment (Green) - always visible
+  //   - End Deployment (Yellow) - visible when deployments exist
+  
+  // Sync status indicator near user avatar
+  // iOS compatibility check for react-native-maps
 }
 
-// Key functionality:
-// - Request location permissions
-// - Show user's current location
-// - Load deployments from Redux store
-// - Navigate to deployment flows
+// Offline Maps Implementation:
+// - Cache map tiles for viewed areas
+// - Store last 100 MB of map data
+// - Alert user when using cached maps
 ```
 
-### 5.3 Start Deployment Flow
+### 5.3 Start Deployment Flow (Enhanced)
 
-#### Step 1: Project Selection
+#### Step 1: Project Selection (Improved UI)
 ```typescript
 // src/navigation/screens/deployment/start/ProjectSelectionScreen.tsx
 interface ProjectSelectionState {
   selectedProjectId: string | null;
   deploymentName: string;
-  isCreatingNewProject: boolean;
+  searchQuery: string;
 }
 
-// Components:
-// - Dropdown with user's projects
-// - "Add new project" option
-// - Deployment name text input
-// - Continue button (disabled until valid)
-// - Back navigation
+// New implementation with cards instead of dropdown:
+// - Display project cards in scrollable list
+// - Search bar for filtering projects
+// - FAB for "Add new project"
+// - Show project sync status on each card
+// - Deployment name input at top
 ```
 
-#### Step 2: New Project Creation (if selected)
+#### Step 2: New Project Creation
 ```typescript
-// src/navigation/screens/deployment/start/NewProjectScreen.tsx
-interface ProjectFormData {
-  name: string;
-  owner: string; // Auto-filled with current user
-  samplingDesign: string;
-  description: string;
-  website?: string;
-  members: string[]; // Email addresses
-  isPrivate: boolean;
-  usingBait: boolean;
-  monitoringMarked: boolean;
-}
-
-// Form sections:
-// - Basic Information
-// - Project Settings (checkboxes)
-// - Team Members (add by email)
-// - Save & Continue
+// All fields from Figma design captured
+// Members added by email with role selection
+// Sync indicator shows if creating offline
 ```
 
-#### Step 3: Device Discovery
+#### Step 3: Device Discovery (Enhanced)
 ```typescript
-// src/navigation/screens/deployment/start/DeviceDiscoveryScreen.tsx
-interface DeviceDiscoveryState {
-  isScanning: boolean;
-  devices: BLEDevice[];
-  selectedDevice: BLEDevice | null;
-  permissionStatus: 'granted' | 'denied' | 'pending';
+// Device filtering options:
+enum DeviceFilter {
+  ALL = 'all',
+  WW_DEVICES = 'ww_devices',
+  OTHER_DEVICES = 'other',
+  KNOWN_NEARBY = 'known_nearby'  // Based on GPS proximity
 }
 
-// UI Elements:
-// - Permission request card (if needed)
-// - Scanning animation
-// - Device list with signal strength
-// - Connect button for each device
-// - Manual refresh button
+// Permission request card UI implementation
+// Animated scanning indicator
+// Signal strength visualization
 ```
 
 #### Step 4: Deployment Configuration
 ```typescript
-// src/navigation/screens/deployment/start/DeploymentConfigScreen.tsx
 interface DeploymentConfig {
-  device: {
-    id: string;
-    name: string;
-  };
-  location: {
-    latitude: number;
-    longitude: number;
-    address?: string;
-  };
-  captureMethod: 'motion' | 'timelapse';
-  timelapseInterval?: 10 | 30 | 60 | 120; // seconds
+  // ... existing fields ...
+  timelapseInterval?: number; // Default: 30 seconds
+  
+  // Address lookup implementation:
+  // - Use reverse geocoding API
+  // - Update lat/long when address edited
+  // - Update address when map location changed
 }
-
-// Features:
-// - Map showing selected location
-// - Coordinate display and edit
-// - "Use My Location" button
-// - Motion/Timelapse selector
-// - Interval picker (if timelapse)
 ```
 
-#### Step 5: Camera Preview
+#### Step 5 & 6: Camera & Final Setup
 ```typescript
-// src/navigation/screens/deployment/start/CameraPreviewScreen.tsx
-// Show camera snapshot from device
-// "Take Another Snapshot" button
-// "Approve & Continue" button
+// Camera integration:
+// - Support both camera capture and gallery selection
+// - Store images in Supabase storage
+// - Save storage URL in database (not base64)
 ```
 
-#### Step 6: Final Setup
+### 5.4 End Deployment Flow (3 Screens from Figma)
 ```typescript
-// src/navigation/screens/deployment/start/FinalSetupScreen.tsx
-interface FinalSetupData {
-  locationPhoto?: string; // Base64 or URI
-  locationDescription: string;
-}
-
-// Features:
-// - Camera/gallery picker for location photo
-// - Description text area
-// - "Start Deployment" button
-// - Loading state during deployment creation
-```
-
-### 5.4 End Deployment Flow
-
-```typescript
-// src/navigation/screens/deployment/end/EndDeploymentFlow.tsx
-// Simplified flow:
-// 1. Device discovery (reuse component)
-// 2. Show deployment details
-// 3. Confirm end deployment
-// 4. Success/failure screen
+// Screen 1: Device Search
+// Screen 2: List of nearby devices
+// Screen 3: Deployment details with map
+//          - Shows location, lat/long
+//          - End Deployment button
+//          - Success/Failure screen with Home button
 ```
 
 ### 5.5 Projects Screen
 
 ```typescript
-// src/navigation/screens/ProjectsScreen.tsx
-interface ProjectListItem {
-  id: string;
-  name: string;
-  description: string;
-  memberCount: number;
-  activeDeployments: number;
-  totalDeployments: number;
-}
-
-// Features:
-// - Project cards with summary info
-// - Search/filter functionality
-// - Pull to refresh
-// - Navigation to project details
-// - FAB for new project
+// Navigation to filtered deployments after successful creation
+// Search functionality for projects
+// Project cards with sync status indicators
 ```
 
 ### 5.6 Project Details Screen
 
 ```typescript
-// src/navigation/screens/ProjectDetailsScreen.tsx
-// Sections:
-// - Project info (editable for admins)
-// - Members list with roles
-// - Add member functionality (admin only)
-// - Recent deployments
-// - Delete project (admin only)
+// Member Management UI (No Profile Pictures):
+interface MemberListProps {
+  members: Array<{
+    id: string;
+    fullName: string;
+    email: string;
+    role: UserRole;
+  }>;
+}
+
+// Best practice UI for member list:
+// - Compact list with name and role
+// - Tap member to see full details in modal
+// - Search by email or name
+// - Add member by email with role dropdown
+// - Remove member confirmation dialog
 ```
 
 ### 5.7 Deployments Screen
 
 ```typescript
-// src/navigation/screens/DeploymentsScreen.tsx
-// Features:
-// - Tab selector: Active | Ended | All
-// - Deployment cards showing:
-//   - Project name
-//   - Device name
-//   - Battery & SD card indicators
-//   - Last updated timestamp
-// - Pull to refresh
-// - Search functionality
+// Show deployment start and end dates
+// Include last_updated timestamp
+// Filter tabs: Active | Ended | All
 ```
 
 ### 5.8 Devices Screen
 
 ```typescript
-// src/navigation/screens/DevicesScreen.tsx
-// Features:
-// - Scan for nearby devices
-// - Device list with:
-//   - Connection status
-//   - Battery level
-//   - Firmware version
-// - Test camera button (when connected)
-// - Firmware update button
+// Developer features moved to drawer menu
+// Regular features:
+// - Scan for devices
+// - Test camera (non-deployed devices only)
+// - View device info
+// - Battery and firmware display
 ```
 
 ---
 
 ## 6. Offline Support Architecture
 
-### 6.1 Offline Strategy Overview
-
-The app must function completely offline during field deployments, syncing data when connectivity is restored.
-
-### 6.2 Local Database Schema (SQLite)
+### 6.1 Database Schema with Logical Deletes
 
 ```typescript
-// src/services/offline/schema.ts
+// All tables include deleted_at field for logical deletes
 export const OFFLINE_SCHEMA = {
   offline_queue: `
     CREATE TABLE IF NOT EXISTS offline_queue (
@@ -472,6 +462,7 @@ export const OFFLINE_SCHEMA = {
       data TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      deleted_at DATETIME,  -- Logical delete
       synced BOOLEAN DEFAULT 0
     )
   `,
@@ -482,130 +473,44 @@ export const OFFLINE_SCHEMA = {
       data TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      deleted_at DATETIME,  -- Logical delete
       synced BOOLEAN DEFAULT 0
     )
   `
 };
 ```
 
-### 6.3 Offline Service Implementation
+### 6.2 Sync Status Management
 
 ```typescript
-// src/services/offline/OfflineService.ts
-import * as SQLite from 'expo-sqlite';
-import NetInfo from '@react-native-community/netinfo';
-import { v4 as uuidv4 } from 'uuid';
-
-export class OfflineService {
-  private db: SQLite.Database;
-  private syncInProgress: boolean = false;
-  
-  constructor() {
-    this.db = SQLite.openDatabase('wildlife_watcher.db');
-    this.initializeDatabase();
-    this.setupNetworkListener();
-  }
-  
-  // Queue operations when offline
-  async queueOperation(operation: {
-    type: 'CREATE' | 'UPDATE' | 'DELETE';
-    entity: 'project' | 'deployment' | 'device';
-    data: any;
-  }) {
-    const operationId = uuidv4();
-    
-    await this.db.executeSql(
-      `INSERT INTO offline_queue 
-       (operation_id, operation_type, entity_type, entity_id, payload)
-       VALUES (?, ?, ?, ?, ?)`,
-      [operationId, operation.type, operation.entity, 
-       operation.data.id || uuidv4(), JSON.stringify(operation.data)]
-    );
-    
-    return operationId;
-  }
-  
-  // Sync when online
-  async syncPendingOperations() {
-    if (this.syncInProgress) return;
-    
-    this.syncInProgress = true;
-    try {
-      const pendingOps = await this.getPendingOperations();
-      
-      for (const op of pendingOps) {
-        try {
-          await this.syncOperation(op);
-          await this.markSynced(op.id);
-        } catch (error) {
-          await this.handleSyncError(op, error);
-        }
-      }
-    } finally {
-      this.syncInProgress = false;
-    }
-  }
+// UI Components for sync status
+interface SyncStatusIndicator {
+  overall: SyncStatus;      // Near avatar icon
+  project?: ProjectSyncStatus;  // Per project card
 }
-```
 
-### 6.4 Sync Conflict Resolution
-
-```typescript
-// src/services/offline/ConflictResolver.ts
-export class ConflictResolver {
-  // Last-write-wins for most fields
-  resolveDeployment(local: any, remote: any): any {
-    // Deployment status is critical - ended status always wins
-    if (remote.status === 'ended' && local.status === 'active') {
-      return remote;
-    }
-    
-    // Otherwise, most recent update wins
-    return local.updated_at > remote.updated_at ? local : remote;
-  }
-  
-  // Merge strategy for projects
-  resolveProject(local: any, remote: any): any {
-    // Merge member lists (union of both)
-    const mergedMembers = Array.from(new Set([
-      ...local.members,
-      ...remote.members
-    ]));
-    
-    // Take most recent for other fields
-    return {
-      ...remote,
-      ...local,
-      members: mergedMembers,
-      updated_at: new Date().toISOString()
-    };
-  }
-}
+// Visual indicators:
+// - Green check: Synced
+// - Yellow arrow: Syncing
+// - Red exclamation: Error
+// - Gray clock: Pending
 ```
 
 ---
 
 ## 7. Supabase Integration
 
-### 7.1 Database Schema
+### 7.1 Database Schema (Updated)
 
 ```sql
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Remove organization table for now (future-proofed in code)
+-- All tables include deleted_at for logical deletes
 
--- Organizations (simplified for MVP)
-CREATE TABLE organizations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Projects table
 CREATE TABLE projects (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   owner_id UUID REFERENCES auth.users(id) NOT NULL,
-  organization_id UUID REFERENCES organizations(id),
+  -- organization_id UUID,  -- Reserved for future
   sampling_design TEXT,
   description TEXT,
   website TEXT,
@@ -613,180 +518,79 @@ CREATE TABLE projects (
   using_bait BOOLEAN DEFAULT false,
   monitoring_marked BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ  -- Logical delete
 );
 
--- Project members junction table
-CREATE TABLE project_members (
-  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  role TEXT NOT NULL CHECK (role IN ('admin', 'member')),
-  added_at TIMESTAMPTZ DEFAULT NOW(),
-  added_by UUID REFERENCES auth.users(id),
-  PRIMARY KEY (project_id, user_id)
-);
-
--- Devices table
-CREATE TABLE devices (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  bluetooth_id TEXT UNIQUE NOT NULL,
-  name TEXT NOT NULL,
-  firmware_version TEXT,
-  model_type TEXT,
-  last_seen TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Deployments table
-CREATE TABLE deployments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  project_id UUID REFERENCES projects(id) NOT NULL,
-  device_id UUID REFERENCES devices(id) NOT NULL,
-  name TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('active', 'ended')),
-  
-  -- Location data
-  latitude DECIMAL(10, 8) NOT NULL,
-  longitude DECIMAL(11, 8) NOT NULL,
-  address TEXT,
-  location_description TEXT,
-  location_photo_url TEXT,
-  
-  -- Configuration
-  capture_method TEXT NOT NULL CHECK (capture_method IN ('motion', 'timelapse')),
-  timelapse_interval INTEGER,
-  
-  -- Status data
-  battery_level INTEGER,
-  sd_card_usage INTEGER,
-  last_data_received TIMESTAMPTZ,
-  
-  -- Timestamps and user tracking
-  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  started_by UUID REFERENCES auth.users(id) NOT NULL,
-  ended_at TIMESTAMPTZ,
-  ended_by UUID REFERENCES auth.users(id),
-  
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Indexes for performance
-CREATE INDEX idx_deployments_project_id ON deployments(project_id);
-CREATE INDEX idx_deployments_device_id ON deployments(device_id);
-CREATE INDEX idx_deployments_status ON deployments(status);
-CREATE INDEX idx_project_members_user_id ON project_members(user_id);
-
--- Row Level Security (RLS) policies
-ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE deployments ENABLE ROW LEVEL SECURITY;
-
--- Projects: Users can see projects they're members of
-CREATE POLICY "Users can view their projects" ON projects
-  FOR SELECT USING (
-    auth.uid() IN (
-      SELECT user_id FROM project_members WHERE project_id = projects.id
-    ) OR projects.owner_id = auth.uid()
-  );
-
--- Projects: Only admins can update
-CREATE POLICY "Project admins can update" ON projects
-  FOR UPDATE USING (
-    auth.uid() IN (
-      SELECT user_id FROM project_members 
-      WHERE project_id = projects.id AND role = 'admin'
-    ) OR projects.owner_id = auth.uid()
-  );
-
--- Similar policies for other tables...
+-- Add deleted_at to all tables for logical deletes
+-- Create indexes on deleted_at for query performance
+CREATE INDEX idx_projects_deleted_at ON projects(deleted_at);
 ```
 
-### 7.2 Supabase Client Configuration
+### 7.2 Edge Functions
 
-```typescript
-// src/services/supabase/client.ts
-import { createClient } from '@supabase/supabase-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@env';
-
-export const supabase = createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
-  {
-    auth: {
-      storage: AsyncStorage,
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: false
-    }
-  }
-);
-```
-
-### 7.3 Edge Functions
-
-#### LoRaWAN Data Webhook
+#### LoRaWAN Data Webhook (Placeholder)
 ```typescript
 // supabase/functions/lorawan-webhook/index.ts
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+// Mock implementation for testing
+// Will be updated once IoT camera message structure is defined
 
 serve(async (req) => {
   try {
-    // Verify webhook secret
-    const authHeader = req.headers.get('Authorization');
-    if (authHeader !== `Bearer ${Deno.env.get('LORAWAN_WEBHOOK_SECRET')}`) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-    
-    // Parse LoRaWAN payload
+    // Parse LoRaWAN message (structure TBD)
     const payload = await req.json();
-    const {
-      deviceEUI,
-      batteryVoltage,
-      sdCardFreeSpace,
-      timestamp
-    } = payload;
     
-    // Convert values
-    const batteryLevel = voltageToBatteryPercentage(batteryVoltage);
-    const sdCardUsage = calculateSDCardUsage(sdCardFreeSpace);
+    // Expected data from design:
+    // - Device ID
+    // - Battery level
+    // - SD card usage
+    // - GPS coordinates (if available)
+    // - Timestamp
     
-    // Update deployment
-    const { error } = await supabase
-      .from('deployments')
-      .update({
-        battery_level: batteryLevel,
-        sd_card_usage: sdCardUsage,
-        last_data_received: timestamp
-      })
-      .match({
-        device_id: deviceEUI,
-        status: 'active'
-      });
+    // Mock processing for now
+    console.log('LoRaWAN message received:', payload);
+    
+    // Update deployment with received data
+    // Implementation pending IoT camera specs
+    
+    return new Response(JSON.stringify({ success: true }));
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
+});
+```
+
+### 7.3 Image Storage Best Practice
+
+```typescript
+// Best practice: Store images in Supabase Storage, URLs in database
+interface ImageStorage {
+  async uploadImage(image: File | Blob, path: string): Promise<string> {
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('deployment-images')
+      .upload(path, image);
     
     if (error) throw error;
     
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500 }
-    );
+    // Get public URL
+    const { publicURL } = supabase.storage
+      .from('deployment-images')
+      .getPublicUrl(path);
+    
+    // Store URL in database, not base64
+    return publicURL;
   }
-});
+}
 ```
 
 ---
 
 ## 8. State Management
 
-### 8.1 Redux Store Structure
+### 8.1 Redux Store Structure (Updated)
 
 ```typescript
-// src/store/index.ts
 export const store = configureStore({
   reducer: {
     auth: authSlice.reducer,
@@ -794,374 +598,161 @@ export const store = configureStore({
     deployments: deploymentsSlice.reducer,
     devices: devicesSlice.reducer,
     ble: bleSlice.reducer,
-    offline: offlineSlice.reducer
+    offline: offlineSlice.reducer,
+    sync: syncSlice.reducer,  // Added for sync status
+    user: userSlice.reducer    // Added for user profile
   }
 });
-```
-
-### 8.2 Redux Slices
-
-#### Auth Slice
-```typescript
-// src/store/slices/authSlice.ts
-interface AuthState {
-  user: User | null;
-  session: Session | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-}
-
-const authSlice = createSlice({
-  name: 'auth',
-  initialState,
-  reducers: {
-    loginStart: (state) => {
-      state.isLoading = true;
-      state.error = null;
-    },
-    loginSuccess: (state, action) => {
-      state.user = action.payload.user;
-      state.session = action.payload.session;
-      state.isAuthenticated = true;
-      state.isLoading = false;
-    },
-    loginFailure: (state, action) => {
-      state.error = action.payload;
-      state.isLoading = false;
-    },
-    logout: (state) => {
-      state.user = null;
-      state.session = null;
-      state.isAuthenticated = false;
-    }
-  }
-});
-```
-
-#### Projects Slice
-```typescript
-// src/store/slices/projectsSlice.ts
-interface ProjectsState {
-  projects: Project[];
-  selectedProject: Project | null;
-  isLoading: boolean;
-  error: string | null;
-  lastSync: string | null;
-}
-```
-
-#### Deployments Slice
-```typescript
-// src/store/slices/deploymentsSlice.ts
-interface DeploymentsState {
-  deployments: Deployment[];
-  activeDeployments: Deployment[];
-  currentDeployment: Deployment | null;
-  isLoading: boolean;
-  error: string | null;
-}
-```
-
-#### BLE Slice
-```typescript
-// src/store/slices/bleSlice.ts
-interface BleState {
-  isScanning: boolean;
-  devices: BleDevice[];
-  connectedDevice: BleDevice | null;
-  connectionState: 'disconnected' | 'connecting' | 'connected';
-  error: string | null;
-}
-```
-
-#### Offline Slice
-```typescript
-// src/store/slices/offlineSlice.ts
-interface OfflineState {
-  isOnline: boolean;
-  pendingOperations: number;
-  syncStatus: 'idle' | 'syncing' | 'error';
-  lastSyncTime: string | null;
-  syncErrors: SyncError[];
-}
 ```
 
 ---
 
-## 9. Implementation Timeline
+## 9. Implementation Guidelines
 
-### Week 1: Foundation & Authentication
-**Days 1-3: Project Setup & Auth**
-- Complete authentication screens (Login, SignUp, ForgotPassword)
-- Integrate Supabase Auth
-- Setup navigation structure (tabs, drawer)
-- Configure Redux store
-- Implement session persistence
+### 9.1 Development Workflow
 
-**Days 4-5: Offline Infrastructure**
-- Setup SQLite database
-- Create offline service base
-- Implement network monitoring
-- Create sync queue mechanism
+#### Testing Account Configuration
+```typescript
+// Single test account with role switching
+interface TestAccount {
+  email: 'dev@wildlifewatcher.ai';
+  roles: ['project_admin', 'project_member', 'ww_admin'];
+  
+  // Role switcher in developer menu
+  switchRole(role: UserRole): void;
+}
+```
 
-### Week 2: Project Management
-**Days 6-8: Projects CRUD**
-- Projects list screen
-- Project creation form
-- Project details screen
-- Member management
-- Offline support for projects
+#### Feature Grouping for Parallel Development
 
-**Days 9-10: Permissions & Roles**
-- Implement role-based access
-- Project admin features
-- Member invitation flow
+**Foundation Phase (Week 1)**
+- Authentication & user management
+- Navigation structure
+- Offline infrastructure
+- Redux store setup
 
-### Week 3: Deployment Flows
-**Days 11-13: Start Deployment**
-- Project selection screen
-- Device discovery (preserve existing BLE code)
-- Deployment configuration
-- Camera preview
-- Final setup and creation
+**Core Features Phase (Week 2-3)**
+- Projects CRUD (Team A)
+- Deployment flows (Team B)
+- Device management (Team C)
+- Sync services (Team D)
 
-**Days 14-15: End Deployment**
-- Device reconnection
-- Deployment termination
-- Status updates
-- Offline queuing
-
-### Week 4: Devices & Sync
-**Days 16-17: Device Management**
-- Device list and discovery
-- Firmware update integration
-- Camera testing
-
-**Days 18-19: Synchronization**
-- Complete sync service
-- Conflict resolution
-- Error recovery
-- Retry logic
-
-**Day 20: Testing & Polish**
+**Integration Phase (Week 4)**
 - End-to-end testing
-- Performance optimization
-- Bug fixes
-- Documentation
+- Sync conflict resolution
+- LoRaWAN integration
+- Production preparation
+
+### 9.2 Acceptance Criteria Checklist
+
+#### Authentication ✓
+- [ ] User can sign up with email
+- [ ] User can login with credentials
+- [ ] Password reset via web form
+- [ ] Session persistence
+- [ ] Sign out from drawer menu
+
+#### Projects ✓
+- [ ] Create new project
+- [ ] View project list
+- [ ] Search projects
+- [ ] Edit project (admin only)
+- [ ] Add/remove members (admin only)
+- [ ] Offline project creation
+
+#### Deployments ✓
+- [ ] Start deployment flow
+- [ ] Device discovery via BLE
+- [ ] Camera preview
+- [ ] Location selection
+- [ ] End deployment flow
+- [ ] Offline deployment support
+
+#### Sync ✓
+- [ ] Queue operations offline
+- [ ] Auto-sync when online
+- [ ] Conflict resolution
+- [ ] Sync status indicators
+- [ ] Error recovery
 
 ---
 
-## 10. Technical Guidelines
+## 10. Production Readiness
 
-### 10.1 Development Principles
+### 10.1 App Store Requirements
 
-#### Offline-First Pattern
 ```typescript
-// Always follow this pattern for data operations
-async function saveEntity<T>(entity: T, type: EntityType): Promise<T> {
-  try {
-    // 1. Generate ID if new
-    if (!entity.id) {
-      entity.id = generateUUID();
-    }
-    
-    // 2. Save to local SQLite first
-    await localDB.save(type, entity);
-    
-    // 3. Update Redux store immediately
-    dispatch(updateLocalEntity({ type, entity }));
-    
-    // 4. Queue for remote sync
-    const operationId = await offlineService.queueOperation({
-      type: 'CREATE',
-      entity: type,
-      data: entity
-    });
-    
-    // 5. Attempt immediate sync if online
-    if (await NetInfo.fetch().then(state => state.isConnected)) {
-      offlineService.syncOperation(operationId);
-    }
-    
-    return entity;
-  } catch (error) {
-    // Handle errors gracefully
-    dispatch(setError({ type, error: error.message }));
-    throw error;
-  }
-}
+// iOS App Store
+- Privacy policy URL
+- Terms of service URL
+- App screenshots (6.5", 5.5")
+- App icon (1024x1024)
+- Export compliance (encryption)
+
+// Google Play Store
+- Privacy policy URL
+- App screenshots
+- Feature graphic (1024x500)
+- Content rating questionnaire
+- Target API level compliance
 ```
 
-#### Error Handling Strategy
+### 10.2 Production Configuration
+
 ```typescript
-class AppError extends Error {
-  constructor(
-    public code: string,
-    public userMessage: string,
-    public technicalMessage: string,
-    public isRecoverable: boolean = true
-  ) {
-    super(technicalMessage);
+// Environment-specific configs
+const config = {
+  development: {
+    showDevMenu: true,
+    enableLogging: true,
+    mockLoRaWAN: true
+  },
+  production: {
+    showDevMenu: false,
+    enableLogging: false,
+    mockLoRaWAN: false,
+    sentryDSN: process.env.SENTRY_DSN,
+    analyticsId: process.env.ANALYTICS_ID
   }
-}
-
-// Usage
-try {
-  await deploymentService.start(config);
-} catch (error) {
-  if (error instanceof AppError) {
-    if (error.code === 'NETWORK_ERROR') {
-      // Queue for offline
-      showToast('Deployment saved offline');
-    } else if (error.code === 'AUTH_ERROR') {
-      // Re-authenticate
-      navigation.navigate('Login');
-    } else {
-      // Show user-friendly message
-      Alert.alert('Error', error.userMessage);
-    }
-  }
-}
-```
-
-### 10.2 Code Standards
-
-#### TypeScript Usage
-- Strict mode enabled
-- No `any` types
-- Interfaces for all data structures
-- Proper null checking
-
-#### Component Structure
-```typescript
-// Standard functional component pattern
-interface ScreenNameProps {
-  navigation: NavigationProp<RootStackParamList>;
-  route: RouteProp<RootStackParamList, 'ScreenName'>;
-}
-
-export const ScreenName: React.FC<ScreenNameProps> = ({ navigation, route }) => {
-  // Hooks first
-  const dispatch = useAppDispatch();
-  const { data, isLoading } = useAppSelector(selectData);
-  
-  // Local state
-  const [localState, setLocalState] = useState<Type>();
-  
-  // Effects
-  useEffect(() => {
-    // Load data
-  }, []);
-  
-  // Handlers
-  const handleAction = useCallback(() => {
-    // Handle action
-  }, [dependencies]);
-  
-  // Render
-  if (isLoading) return <LoadingScreen />;
-  
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Component JSX */}
-    </SafeAreaView>
-  );
 };
 ```
 
-### 10.3 Performance Guidelines
+### 10.3 Security Checklist
 
-1. **List Optimization**
-   - Use FlatList for all lists
-   - Implement keyExtractor
-   - Use getItemLayout when possible
-   - Lazy load images
-
-2. **Memory Management**
-   - Clear BLE listeners on unmount
-   - Cancel async operations
-   - Limit Redux store size
-   - Implement data pagination
-
-3. **Battery Optimization**
-   - Minimize background operations
-   - Batch network requests
-   - Use efficient location updates
-   - Stop BLE scanning when not needed
-
-### 10.4 Testing Requirements
-
-1. **Unit Tests**
-   - Services and utilities
-   - Redux reducers
-   - Business logic
-
-2. **Integration Tests**
-   - API interactions
-   - Offline/online transitions
-   - Sync operations
-
-3. **Device Testing**
-   - Real device BLE testing
-   - Offline mode testing
-   - Different Android/iOS versions
-
-### 10.5 Security Considerations
-
-1. **Data Protection**
-   - Encrypt sensitive local data
-   - Secure API keys in env files
-   - Implement proper session management
-
-2. **API Security**
-   - Use Supabase RLS policies
-   - Validate all inputs
-   - Implement rate limiting
-
-3. **BLE Security**
-   - Verify device identity
-   - Encrypt sensitive commands
-   - Implement pairing verification
+- [ ] API keys in secure storage
+- [ ] Certificate pinning for API calls
+- [ ] Encrypted local database
+- [ ] Secure BLE pairing
+- [ ] Session timeout handling
+- [ ] Input validation
+- [ ] SQL injection prevention
 
 ---
 
-## Appendix A: Environment Setup
+## Appendix A: Feature Mapping to Figma Screens
 
-### Required Environment Variables
-```bash
-# .env.local
-EXPO_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_ANDROID=AIzaSyD4GgP2HPVqgEOIbOiA1QF6AfTaSBg4vfI
-EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_IOS=your_ios_maps_key
-EXPO_PUBLIC_LORAWAN_WEBHOOK_SECRET=your_webhook_secret
-```
-
-### Dependencies to Add
-```json
-{
-  "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
-    "@react-native-community/netinfo": "^11.3.0",
-    "expo-sqlite": "~13.4.0",
-    "uuid": "^9.0.1",
-    "react-hook-form": "^7.54.1"
-  }
-}
-```
+| Figma Screen | Implementation Section | Status |
+|--------------|----------------------|---------|
+| Login | 4.1 Login Screen | MVP |
+| Sign Up | 4.1 Sign Up Screen | MVP |
+| Maps (Home) | 5.2 Maps Screen | MVP |
+| Start Deployment (1-4) | 5.3 Start Deployment | MVP |
+| End Deployment | 5.4 End Deployment | MVP |
+| Projects List | 5.5 Projects Screen | MVP |
+| Project Details | 5.6 Project Details | MVP |
+| Deployments | 5.7 Deployments | MVP |
+| Devices | 5.8 Devices Screen | MVP |
+| Developer Menu | 5.1 Drawer Menu | MVP |
 
 ---
 
-## Appendix B: BLE Protocol Reference
+## Appendix B: AI Model Integration (Future)
 
-*Note: BLE protocol specification is work in progress. Current implementation includes:*
-- Device scanning and discovery
-- PING/PONG command structure
-- Connection management
-- DFU firmware updates
-
-*Detailed protocol documentation will be provided separately.*
+*Placeholder for AI model management specifications*
+- Model deployment to camera
+- Model version tracking
+- Image processing pipeline
+- Edge AI capabilities
 
 ---
 
