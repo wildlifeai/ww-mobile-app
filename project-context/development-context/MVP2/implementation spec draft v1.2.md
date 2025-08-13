@@ -3132,53 +3132,62 @@ The app supports three distinct user onboarding paths, each designed for differe
 
 **Path 3: WW Admin Provisioning** - System administrators can directly create user accounts for organizational deployments, useful for pre-configuring accounts for field teams or workshop participants.
 
-#### Login Screen Implementation
-```typescript
-// src/navigation/screens/auth/LoginScreen.tsx
-interface LoginFormData {
-  email: string;
-  password: string;
-  rememberMe: boolean;
-}
+#### Login Screen Specification
 
-const LoginScreen: React.FC = () => {
-  // Implementation requirements:
-  // - Email validation (RFC 5322 compliant)
-  // - Password field with show/hide toggle
-  // - Remember me with secure token storage
-  // - Loading overlay during authentication
-  // - Error messages with retry logic
-  // - Navigate to Maps screen on success
-  // - Links to Forgot Password and Sign Up
-  // - Offline mode detection with appropriate messaging
-  
-  // Error handling:
-  // - Network timeout (suggest offline mode)
-  // - Invalid credentials (clear message)
-  // - Account locked (contact admin)
-  // - Email not verified (resend option)
-};
-```
+SCREEN: Login
 
-#### Sign Up Screen Implementation
-```typescript
-// src/navigation/screens/auth/SignUpScreen.tsx
-interface SignUpFormData {
-  email: string;
-  password: string;
-  confirmPassword: string;
-  fullName?: string;  // Optional, defaults to email
-  organization?: string;  // Optional for MVP
-  acceptTerms: boolean;
-}
+Required Fields:
+- Email (text input, email keyboard)
+- Password (secure text input)
+- Remember Me (checkbox, optional)
 
-// Implementation notes:
-// - Password strength indicator
-// - Real-time validation feedback
-// - Terms of service link (opens in browser)
-// - Success leads to email verification notice
-// - Store partial profile locally for later completion
-```
+Validation Rules:
+- Email: RFC 5322 compliant
+- Password: Minimum 8 characters
+- Show validation errors inline
+
+User Actions:
+- Login (primary action)
+- Navigate to Forgot Password
+- Navigate to Sign Up
+- Toggle password visibility
+
+Error Handling:
+- Network timeout → Suggest offline mode
+- Invalid credentials → Clear error message
+- Account locked → Show contact admin
+- Email not verified → Offer resend option
+
+Success Flow:
+- Store session if "Remember Me" checked
+- Navigate to Maps screen
+- Initialize offline sync
+
+#### Sign Up Screen Specification
+
+SCREEN: Sign Up
+
+Required Fields:
+- Email (text input, email keyboard)
+- Password (secure text input)
+- Confirm Password (secure text input)
+- Accept Terms (checkbox, required)
+
+Optional Fields:
+- Full Name (text input, defaults to email)
+- Organization (text input)
+
+Validation Rules:
+- Email: RFC 5322 compliant, unique
+- Password: Min 8 chars, strength indicator
+- Passwords must match
+- Terms must be accepted
+
+Features:
+- Real-time validation feedback
+- Password strength indicator
+- Terms of Service link (opens browser)
+- Success leads to email verification notice
 
 #### Password Reset Implementation
 ```typescript
@@ -3198,84 +3207,64 @@ interface PasswordResetRequest {
 // Success message with app deep link
 ```
 
-#### Sign Out Implementation
-```typescript
-// Located in DrawerNavigator.tsx
-const handleSignOut = async () => {
-  // Show confirmation dialog
-  // Clear local session
-  // Clear SQLite cache (optional - ask user)
-  // Clear Redux store
-  // Navigate to Login
-  // Cancel any pending syncs
-};
-```
+#### Sign Out Flow
+
+FLOW: Sign Out
+
+Steps:
+1. Show confirmation dialog
+2. Clear local session data
+3. Optional: Clear cache (user choice)
+4. Reset Redux store
+5. Cancel pending syncs
+6. Navigate to Login screen
 
 ### 4.2 User Roles & Permissions
 
-#### Role Hierarchy and Capabilities
+ROLE DEFINITIONS:
 
-The role system reflects real-world research team structures while maintaining security boundaries:
+System Roles:
+- WW_ADMIN: System administrator
+- PROJECT_ADMIN: Project leader
+- PROJECT_MEMBER: Field team member
 
-```typescript
-enum UserRole {
-  WW_ADMIN = 'ww_admin',        // System administrators
-  PROJECT_ADMIN = 'project_admin', // Research project leaders
-  PROJECT_MEMBER = 'project_member' // Field team members
-}
+Capability Matrix:
+| Action | WW_ADMIN | PROJECT_ADMIN | PROJECT_MEMBER |
+|--------|----------|---------------|----------------|
+| Access dev menu | ✓ | ✗ | ✗ |
+| Manage all users | ✓ | ✗ | ✗ |
+| View all projects | ✓ (read) | ✗ | ✗ |
+| Edit project | ✗ | ✓ (owned) | ✗ |
+| Manage members | ✗ | ✓ | ✗ |
+| Start deployment | ✓ | ✓ | ✓ |
+| End deployment | ✓ | ✓ | ✓ |
 
-// Role Capabilities Matrix:
-interface RoleCapabilities {
-  'ww_admin': {
-    accessDevMenu: true,
-    manageAllUsers: true,
-    viewAllProjects: true,  // Read-only access
-    configureSystem: true,
-    accessDiagnostics: true
-  },
-  'project_admin': {
-    editProject: true,
-    manageProjectMembers: true,
-    deleteDeployments: true,
-    assignModels: true,
-    startEndDeployments: true
-  },
-  'project_member': {
-    viewProject: true,
-    startEndDeployments: true,
-    testDevices: true
-  }
-}
-
-// Implementation note: Users can have different roles per project
-// Example: User A might be admin for Project 1 but member for Project 2
-```
+Note: Users can have different roles per project
 
 ### 4.3 User Profile Management
 
-#### Profile Fields and Implementation
+SCREEN: Profile
 
-User profiles start minimal and can be enhanced over time, reducing friction for initial adoption:
+Profile Fields:
+- Email (read-only, from auth)
+- Full Name (optional text input)
+- Organization (optional text input)
+- Profile Photo (optional, local storage)
 
-```typescript
-// src/navigation/screens/ProfileScreen.tsx
-interface UserProfile {
-  email: string;           // Immutable, from auth
-  fullName?: string;       // Optional, defaults to email
-  organization?: string;   // Optional for MVP
-  profilePhoto?: string;   // Optional, stored locally for MVP
-  preferences: {
-    offlineMapRadius: number;  // km to cache
-    syncOnCellular: boolean;
-    developerMode: boolean;    // WW_ADMIN only
-  };
-}
+Preferences:
+- Offline map radius (number, km)
+- Sync on cellular (toggle)
+- Developer mode (toggle, WW_ADMIN only)
 
-// Profile Completion Indicator:
-// Shows red dot on drawer menu profile section if incomplete
-// Tapping opens profile screen with fields to complete
-// All fields optional but encouraged through UI hints
-```
+UI Indicators:
+- Red dot on drawer for incomplete profile
+- Progress bar showing profile completion
+- Prompt to complete on first login
+
+Storage:
+- Profile photo stored locally only (MVP)
+- Preferences in AsyncStorage
+- Sync preferences to cloud when online
 
 ---
 
