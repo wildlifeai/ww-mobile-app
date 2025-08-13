@@ -4145,7 +4145,7 @@ const SyncStatusIndicator: React.FC = () => {
 
 ---
 
-## 7. Supabase Integration
+## Section 7: Supabase Integration
 
 ### 7.1 Database Schema
 
@@ -4306,112 +4306,309 @@ CREATE POLICY "WW Admins view all projects" ON projects
   );
 ```
   
-  
-  
-  
-8. State Management
-8.1 Redux Store Architecture
-Comprehensive State Management for Offline-First Operations
-The Redux store serves as the single source of truth for app state, coordinating between local storage, network operations, and UI updates:
-typescript// src/store/index.ts
-import { configureStore } from '@reduxjs/toolkit';
-import { persistStore, persistReducer } from 'redux-persist';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const persistConfig = {
-  key: 'root',
-  storage: AsyncStorage,
-  whitelist: ['auth', 'user', 'offline'],  // Persist these slices
-  blacklist: ['ble']  // Don't persist BLE state
-};
+### 7.2 Supabase Client Configuration
 
-export const store = configureStore({
-  reducer: {
-    auth: authSlice.reducer,
-    user: userSlice.reducer,
-    projects: projectsSlice.reducer,
-    deployments: deploymentsSlice.reducer,
-    devices: devicesSlice.reducer,
-    ble: bleSlice.reducer,
-    offline: offlineSlice.reducer,
-    sync: syncSlice.reducer,
-    ui: uiSlice.reducer,
-    models: modelsSlice.reducer  // AI models
-  },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: ['persist/PERSIST']
-      }
-    }).concat(syncMiddleware, offlineMiddleware)
-});
-8.2 Core Redux Slices
-Auth Slice with Role Management
-typescript// src/store/slices/authSlice.ts
-interface AuthState {
-  user: User | null;
-  session: Session | null;
-  roles: UserRole[];
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
+**Requirements:**
+- Initialize Supabase client with AsyncStorage for React Native persistence
+- Configure auto-refresh tokens for session management
+- Support both anonymous and authenticated operations
+- Include app version in headers for API versioning
+- Environment variables for URL and keys (EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY)
+
+**Technical Specifications:**
+- Use `@supabase/supabase-js` v2.39.0 or later
+- Configure auth storage with AsyncStorage
+- Disable URL detection for mobile environment
+- Implement separate client for admin operations (Edge Functions only)
+
+### 7.3 LoRaWAN Integration
+
+**Context:** LoRaWAN enables cameras to send status updates from locations 10-15km from nearest gateway without cellular coverage. Messages are small (typically <50 bytes) containing battery level, SD card usage, and basic telemetry.
+
+**Edge Function Requirements:**
+- Endpoint: `/functions/v1/lorawan-webhook`
+- Authentication: Bearer token validation against LORAWAN_WEBHOOK_SECRET
+- Store raw messages for audit/debugging
+- Parse device-specific payload format (to be documented by hardware team)
+- Update active deployment status
+- Create alerts for critical conditions (battery <10%, SD >95%)
+
+**Expected LoRaWAN Message Structure:**
+```
+// Placeholder - actual format pending from hardware team
+{
+  deviceEUI: string,      // Device identifier
+  timestamp: ISO8601,     // Message timestamp
+  data: base64,          // Encoded payload
+  rssi: number,          // Signal strength
+  gatewayId: string      // Gateway identifier
 }
+```
 
-const authSlice = createSlice({
-  name: 'auth',
-  initialState,
-  reducers: {
-    setUser: (state, action) => {
-      state.user = action.payload.user;
-      state.roles = action.payload.roles;
-      state.isAuthenticated = true;
-    },
-    signOut: (state) => {
-      return initialState;
+**Data Processing Flow:**
+1. Receive webhook POST request
+2. Validate authentication
+3. Store raw message in `lorawan_messages` table
+4. Decode payload based on device firmware version
+5. Find active deployment for device
+6. Update deployment status (battery, SD card, last_data_received)
+7. Generate alerts if thresholds exceeded
+8. Return success/failure response
+
+### 7.4 Image Storage & CDN Optimization
+
+**Storage Requirements:**
+- Bucket: `deployment-images`
+- Max file size: 5MB (configurable)
+- Thumbnail generation: 200x200px
+- Image compression when over size limit
+- Local caching for offline access
+
+**Image Processing Pipeline:**
+1. Capture/select image
+2. Compress if >5MB using expo-image-manipulator
+3. Generate thumbnail
+4. Upload both to Supabase Storage
+5. Store URLs in database (not base64)
+6. Cache locally for offline viewing
+7. Clean up temporary files
+
+**CDN Considerations:**
+- Use Supabase Storage public URLs (CDN-enabled)
+- Set appropriate cache headers (3600 seconds default)
+- Consider future migration to dedicated CDN if scale requires
+
+### 7.5 Development Test Data
+
+**Test Data Requirements:**
+- Create 3 test users with different roles
+- Generate projects of varying sizes (small: 2-3 cameras, medium: 10-20, large: 50+)
+- Include deployments in different states (active/healthy, active/warning, ended)
+- Simulate LoRaWAN messages with various battery/SD levels
+- Flag all test data with `is_test_data` column for easy cleanup
+
+**Test Scenarios to Cover:**
+1. Single user with multiple projects
+2. Multiple users on same project with different roles
+3. Offline-created data pending sync
+4. Devices with firmware updates available
+5. Deployments with critical alerts
+6. Historical data for reporting
+
+---
+  
+## Section 8: State Management (Specification Focus)
+
+### 8.1 Redux Store Architecture
+
+**Purpose:** Single source of truth for app state, coordinating between local storage, network operations, and UI updates.
+
+**Requirements:**
+- Persist critical slices across app restarts (auth, user, offline queue)
+- Exclude transient state from persistence (BLE connections)
+- Support offline-first operations with optimistic updates
+- Integrate with Redux DevTools in development
+- Type-safe with TypeScript
+
+**Store Structure:**
+```
+SLICES:
+├── auth          [persisted] - User authentication state
+├── user          [persisted] - User profile and preferences  
+├── projects      [cached]    - Project data with sync status
+├── deployments   [cached]    - Deployment data with sync status
+├── devices       [transient] - Device discovery and status
+├── ble           [transient] - Bluetooth connection state
+├── offline       [persisted] - Offline queue and sync status
+├── sync          [transient] - Real-time sync progress
+├── ui            [transient] - UI state (modals, loading)
+└── models        [cached]    - AI models metadata
+```
+
+**Middleware Requirements:**
+- `syncMiddleware`: Intercept actions requiring remote sync
+- `offlineMiddleware`: Queue actions when offline
+- `persistMiddleware`: Handle Redux Persist operations
+
+### 8.2 Core Redux Slices Specifications
+
+#### Auth Slice
+**State Shape:**
+```
+AuthState {
+  user: User | null
+  session: Session | null  
+  roles: UserRole[]
+  isAuthenticated: boolean
+  isLoading: boolean
+  error: string | null
+  lastLoginAt: timestamp
+}
+```
+
+**Key Actions:**
+- `login` - Authenticate user
+- `logout` - Clear session
+- `refreshToken` - Update access token
+- `setRoles` - Update user roles
+- `sessionExpired` - Handle token expiration
+
+#### Projects Slice
+**State Shape:**
+```
+ProjectsState {
+  entities: { [id]: Project }
+  ids: string[]
+  selectedProjectId: string | null
+  syncStatus: { [id]: SyncStatus }
+  lastFetch: timestamp
+  filters: ProjectFilters
+}
+```
+
+**Sync Status Levels:**
+- `synced` - Up to date with server
+- `modified` - Local changes pending
+- `syncing` - Currently synchronizing
+- `conflict` - Requires resolution
+- `error` - Sync failed
+
+#### Deployments Slice
+**State Shape:**
+```
+DeploymentsState {
+  active: { [id]: Deployment }
+  ended: { [id]: Deployment }
+  currentDeploymentId: string | null
+  draft: DeploymentDraft | null
+  syncQueue: string[]
+}
+```
+
+**Deployment Lifecycle States:**
+- `draft` - Being created
+- `pending` - Queued for creation
+- `active` - Currently deployed
+- `ending` - End deployment in progress
+- `ended` - Completed
+- `failed` - Operation failed
+
+#### Offline Slice
+**State Shape:**
+```
+OfflineState {
+  isOnline: boolean
+  isOfflineModeEnabled: boolean
+  queue: {
+    operations: QueuedOperation[]
+    failedOperations: FailedOperation[]
+    retryCount: { [operationId]: number }
+  }
+  cache: {
+    size: number (MB)
+    breakdown: {
+      projects: number
+      deployments: number
+      images: number
+      mapTiles: number
+      firmware: number
     }
   }
-});
-Sync Slice for Status Management
-typescript// src/store/slices/syncSlice.ts
-interface SyncState {
-  overall: 'synced' | 'syncing' | 'pending' | 'error';
+  lastSyncAt: timestamp
+}
+```
+
+**Queue Priority Levels:**
+```
+PRIORITY:
+1000 - Deployment end (critical)
+900  - Deployment start
+800  - Project updates  
+700  - Member changes
+500  - Profile updates
+100  - Telemetry/analytics
+```
+
+#### Sync Slice
+**State Shape:**
+```
+SyncState {
+  overall: 'idle' | 'syncing' | 'error'
   entities: {
-    projects: EntitySyncStatus;
-    deployments: EntitySyncStatus;
-    devices: EntitySyncStatus;
-  };
-  queue: {
-    pending: number;
-    failed: number;
-    processing: string | null;
-  };
-  lastSync: string | null;
-  errors: SyncError[];
+    [entityType]: {
+      pending: number
+      syncing: string[]
+      completed: number
+      failed: string[]
+    }
+  }
+  progress: {
+    current: number
+    total: number
+    message: string
+  }
+  errors: SyncError[]
 }
+```
 
-interface EntitySyncStatus {
-  status: 'synced' | 'syncing' | 'pending' | 'error';
-  lastSync: string | null;
-  pendingCount: number;
-}
-Offline Slice for Queue Management
-typescript// src/store/slices/offlineSlice.ts
-interface OfflineState {
-  isOnline: boolean;
-  isOfflineModeEnabled: boolean;  // User preference
-  cachedData: {
-    projects: number;
-    deployments: number;
-    users: number;
-    mapTiles: number;  // MB cached
-    firmware: string[];  // Version numbers
-    models: string[];    // Model IDs
-  };
-  preparedness: {
-    score: number;  // 0-100
-    checklist: OfflineChecklistItem[];
-  };
-}
+### 8.3 State Management Patterns
 
+#### Optimistic Updates
+**Pattern:** Update UI immediately, queue for sync
+```
+FLOW:
+1. User performs action
+2. Update local state optimistically
+3. Add to offline queue with unique ID
+4. Return success to UI
+5. Background sync when online
+6. Rollback on failure with error message
+```
 
+#### Conflict Resolution
+**Strategy Matrix:**
+```
+CONFLICT RESOLUTION:
+├── Deployment.status: 'ended' always wins
+├── Project.members: Union of both sets
+├── Device.firmware: Server version wins
+├── User.preferences: Local wins
+└── Default: Last-write-wins (timestamp)
+```
+
+#### Cache Management
+**Policies:**
+```
+CACHE POLICIES:
+- Projects: Keep all assigned projects
+- Deployments: Keep 30 days of ended, all active
+- Images: LRU cache, max 100MB
+- Map tiles: Radius-based, max 200MB
+- Firmware: Keep latest + current device versions
+```
+
+### 8.4 Redux Integration Points
+
+**Component Hooks:**
+```
+HOOKS:
+- useAppSelector: Type-safe state selection
+- useAppDispatch: Type-safe action dispatch
+- useOfflineStatus: Connection state monitoring
+- useSyncStatus: Sync progress for entity
+- useOptimistic: Optimistic update helper
+```
+
+**Persistence Configuration:**
+```
+PERSIST CONFIG:
+- Storage: AsyncStorage
+- Whitelist: ['auth', 'user', 'offline']
+- Blacklist: ['ble', 'ui', 'sync']
+- Migrations: Version-based schema updates
+- Throttle: 1000ms write delay
+```
+
+---
 
