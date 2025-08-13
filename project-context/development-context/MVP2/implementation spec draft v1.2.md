@@ -3268,505 +3268,551 @@ Storage:
 
 ---
 
-## 5. Core Features Implementation
+## Section 5: Core Features Specification 
 
 ### 5.1 Navigation Structure
 
 #### Navigation Architecture with Context-Aware FABs
 
+NAVIGATION REQUIREMENTS:
+
 The navigation system combines familiar mobile patterns (bottom tabs, drawer menu) with intelligent floating action buttons that appear based on user context. This design minimizes clicks for common field operations while keeping advanced features accessible but not intrusive.
 
-```typescript
-// src/navigation/BottomTabNavigator.tsx
-const TAB_SCREENS = [
-  { 
-    name: 'Maps', 
-    component: MapsScreen, 
-    icon: 'map-marker',
-    fab: ['startDeployment', 'endDeployment'] // Context-aware FABs
-  },
-  { 
-    name: 'Projects', 
-    component: ProjectsScreen, 
-    icon: 'folder',
-    fab: ['addProject']
-  },
-  { 
-    name: 'Deployments', 
-    component: DeploymentsScreen, 
-    icon: 'camera',
-    fab: null  // No FAB needed
-  },
-  { 
-    name: 'Devices', 
-    component: DevicesScreen, 
-    icon: 'bluetooth',
-    fab: ['scanDevices']
-  }
-];
+**Bottom Tab Configuration:**
 
-// FAB Intelligence:
-// - Start Deployment: Always visible on Maps
-// - End Deployment: Only when active deployments exist
-// - Hide when keyboard open
-// - Drag gesture to show/hide on scroll
-```
+TAB STRUCTURE:
+| Tab | Icon | Component | FAB Actions |
+|-----|------|-----------|-------------|
+| Maps | map-marker | MapsScreen | startDeployment, endDeployment |
+| Projects | folder | ProjectsScreen | addProject |
+| Deployments | camera | DeploymentsScreen | none |
+| Devices | bluetooth | DevicesScreen | scanDevices |
 
-#### Side Drawer Menu Implementation
-```typescript
-// src/navigation/DrawerNavigator.tsx
-const DrawerContent = () => {
-  const { user, syncStatus, hasIncompleteProfile } = useAppState();
-  
-  return (
-    <>
-      <UserSection>
-        <Avatar source={user.profilePhoto} />
-        <Username>{user.fullName || user.email}</Username>
-        <SyncStatusBadge status={syncStatus} />
-        {hasIncompleteProfile && <ProfileCompletionDot />}
-      </UserSection>
-      
-      <DrawerItem label="Profile" onPress={navigateToProfile} />
-      <DrawerItem label="Settings" onPress={navigateToSettings} />
-      <DrawerItem label="Offline Maps" onPress={navigateToOfflineMaps} />
-      
-      {/* Developer Menu - Conditional Rendering */}
-      {shouldShowDevMenu() && (
-        <DrawerSection title="Developer Tools">
-          <DrawerItem label="BLE Diagnostics" />
-          <DrawerItem label="Sync Queue Monitor" />
-          <DrawerItem label="Database Inspector" />
-          <DrawerItem label="Mock LoRaWAN Messages" />
-        </DrawerSection>
-      )}
-      
-      <DrawerItem label="Sign Out" onPress={handleSignOut} />
-      <AppVersion />
-    </>
-  );
-};
+FAB BEHAVIOR RULES:
+- Start Deployment: Always visible on Maps
+- End Deployment: Only when active deployments exist
+- Hide when keyboard is open
+- Support drag gesture to show/hide on scroll
+- Position: bottom-right, above tab bar
 
-// Developer menu logic:
-const shouldShowDevMenu = () => {
-  if (__DEV__) return true;  // Always in development
-  if (user.role === 'ww_admin' && settings.devMenuEnabled) return true;
-  return false;
-};
-```
+**Side Drawer Menu Specification:**
+
+DRAWER SECTIONS:
+
+User Section:
+- Avatar image or placeholder
+- User name or email display
+- Sync status badge
+- Profile completion indicator (red dot if incomplete)
+
+Menu Items:
+- Profile → ProfileScreen
+- Settings → SettingsScreen
+- Offline Maps → OfflineMapsScreen
+- Sign Out → Confirmation → LoginScreen
+
+Developer Tools Section (Conditional):
+- Visibility: Development mode OR WW_ADMIN role
+- BLE Diagnostics → BLEDiagnosticsScreen
+- Sync Queue Monitor → SyncQueueScreen
+- Database Inspector → DatabaseScreen
+- Mock LoRaWAN → MockLoRaWANScreen
+
+Footer:
+- App version display
+- Build number (dev only)
 
 ### 5.2 Maps Screen (Home)
 
 #### The Field Operations Dashboard
 
-The Maps screen serves as mission control, providing immediate access to deployment operations while maintaining spatial context of research activities:
+SCREEN: Maps
 
-```typescript
-// src/navigation/screens/MapsScreen.tsx
-interface MapsScreenState {
-  userLocation: Coordinates | null;
-  deployments: Deployment[];
-  mapRegion: Region;
-  isOffline: boolean;
-  cachedMapBounds: BoundingBox;
-}
+**Purpose:** Mission control providing immediate access to deployment operations while maintaining spatial context of research activities.
 
-const MapsScreen: React.FC = () => {
-  // Core features:
-  // 1. Location-aware map centering
-  // 2. Deployment clustering with smart zoom
-  // 3. Offline tile caching (100MB limit)
-  // 4. Sync status indicator overlay
-  // 5. Context-aware FABs
-  
-  // Offline map strategy:
-  // - Cache viewed areas automatically
-  // - Pre-download option in Settings
-  // - Show offline indicator when using cached tiles
-  // - Graceful degradation for uncached areas
-  
-  return (
-    <MapContainer>
-      <MapView
-        provider={Platform.OS === 'ios' ? PROVIDER_DEFAULT : PROVIDER_GOOGLE}
-        showsUserLocation={true}
-        showsMyLocationButton={true}
-        onRegionChangeComplete={cacheMapTiles}
-      >
-        <DeploymentClusters 
-          deployments={deployments}
-          onPress={showDeploymentDetails}
-        />
-      </MapView>
-      
-      <SyncStatusOverlay position="top-right" />
-      
-      <FABGroup>
-        <FAB
-          icon="plus"
-          label="Start Deployment"
-          color="green"
-          onPress={navigateToStartDeployment}
-        />
-        {hasActiveDeployments && (
-          <FAB
-            icon="stop"
-            label="End Deployment"
-            color="yellow"
-            onPress={navigateToEndDeployment}
-          />
-        )}
-      </FABGroup>
-    </MapContainer>
-  );
-};
-```
+**Core Components:**
+
+Map View Requirements:
+- Provider: Native maps (iOS) or Google Maps (Android)
+- User location display with accuracy circle
+- Location permission request on first use
+- My Location button (system default)
+- Deployment markers with clustering
+- Cache viewed tiles for offline use (100MB limit)
+
+Deployment Markers:
+- Active deployments: Green pins
+- Warning deployments: Yellow pins (low battery/full SD)
+- Ended deployments: Gray pins (optional display)
+- Clustering: Group when >5 markers in proximity
+- Tap marker: Show deployment summary
+- Tap cluster: Zoom to bounds
+
+Sync Status Overlay:
+- Position: Top-right corner
+- States: synced, syncing, pending, error
+- Tap action: Open sync details
+
+FAB Group:
+- Start Deployment (green): Always visible
+- End Deployment (yellow): Conditional on active deployments
+- Position: Bottom-right above tabs
+
+**Data Requirements:**
+- User GPS location
+- Active deployments list with coordinates
+- Offline map tile cache
+- Network connectivity status
+
+**Offline Behavior:**
+- Show cached map tiles
+- Display "Offline Mode" indicator
+- Queue new deployments locally
+- Disable real-time updates
 
 ### 5.3 Start Deployment Flow (Enhanced)
 
 #### Comprehensive Field Deployment Workflow
 
-The start deployment flow guides users through camera setup with intelligent defaults and validation at each step:
+FLOW: Start Deployment (6 steps)
 
-#### Step 1: Project Selection (Redesigned)
-```typescript
-// src/navigation/screens/deployment/start/ProjectSelectionScreen.tsx
-const ProjectSelectionScreen: React.FC = () => {
-  // New card-based UI replacing dropdown:
-  // - Project cards with sync status badges
-  // - Search bar for filtering (useful for users with many projects)
-  // - Each card shows: name, description, member count, deployment count
-  // - FAB for creating new project
-  // - Deployment name input at top (auto-generates suggestion)
-  
-  return (
-    <Screen>
-      <DeploymentNameInput 
-        placeholder="Deployment #[auto-number]"
-        value={deploymentName}
-        onChangeText={setDeploymentName}
-      />
-      
-      <SearchBar 
-        placeholder="Search projects..."
-        onChangeText={filterProjects}
-      />
-      
-      <ProjectList
-        data={filteredProjects}
-        renderItem={({ item }) => (
-          <ProjectCard
-            project={item}
-            syncStatus={item.syncStatus}
-            onPress={() => selectProject(item.id)}
-          />
-        )}
-      />
-      
-      <FAB icon="plus" onPress={navigateToNewProject} />
-    </Screen>
-  );
-};
-```
+#### Step 1: Project Selection
 
-#### Step 2: New Project Creation (If Selected)
-```typescript
-// Comprehensive project setup with team management
-interface NewProjectData {
-  name: string;
-  owner: string;  // Auto-populated with current user
-  samplingDesign: string;
-  description: string;
-  website?: string;
-  members: Array<{ email: string; role: UserRole }>;
-  isPrivate: boolean;
-  usingBait: boolean;
-  monitoringMarked: boolean;
-}
+SCREEN: ProjectSelectionScreen
 
-// Member addition flow:
-// 1. Enter email address
-// 2. System checks if user exists
-// 3. If exists: Add to project
-// 4. If not: Queue invitation email for when online
-// 5. Assign role (defaults to PROJECT_MEMBER)
-```
+**Layout:**
+- Deployment name input (top)
+- Search bar
+- Project cards list (scrollable)
+- FAB for new project
 
-#### Step 3: Device Discovery (Enhanced with Filtering)
-```typescript
-// src/navigation/screens/deployment/start/DeviceDiscoveryScreen.tsx
-enum DeviceFilter {
-  ALL = 'all',
-  WW_DEVICES = 'ww_devices',      // Wildlife Watcher cameras only
-  OTHER_DEVICES = 'other',         // Non-WW BLE devices
-  KNOWN_NEARBY = 'known_nearby'   // GPS proximity-based filtering
-}
+**Project Card Display:**
+- Project name
+- Description (truncated)
+- Member count badge
+- Deployment count (active/total)
+- Sync status indicator
 
-const DeviceDiscoveryScreen: React.FC = () => {
-  // Smart device filtering:
-  // - Prioritize WW cameras at top
-  // - Show signal strength indicators
-  // - Group by device type
-  // - Remember previously connected devices
-  
-  // Permission handling:
-  // - Check BLE permission
-  // - Check location permission (needed for BLE on Android)
-  // - Show educational card if denied
-  // - Provide settings deep link
-};
-```
+**Data Requirements:**
+- User's assigned projects
+- Project sync status
+- Auto-generated deployment name suggestion
+
+**User Actions:**
+- Enter/edit deployment name
+- Search projects by name
+- Select existing project
+- Create new project (FAB)
+
+**Validation:**
+- Deployment name required
+- Project selection required
+
+#### Step 2: New Project Creation (Conditional)
+
+SCREEN: NewProjectScreen
+
+**Form Fields:**
+
+Required:
+- Project name (text)
+- Owner (auto-filled, read-only)
+- Sampling design (text)
+- Description (multi-line text)
+
+Optional:
+- Website (URL)
+- Project photo (image picker)
+
+Settings (Checkboxes):
+- Private project
+- Using bait to attract animals
+- Monitoring marked individuals
+
+Team Members Section:
+- Add member by email
+- Role selection (admin/member)
+- Member list display
+- Remove member action
+
+**Validation Rules:**
+- Project name: Required, unique
+- Valid email for members
+- At least owner as member
+
+**Offline Behavior:**
+- Create project locally
+- Queue for sync
+- Send invitations when online
+
+#### Step 3: Device Discovery
+
+SCREEN: DeviceDiscoveryScreen
+
+**UI Components:**
+- Filter chips (All, WW Devices, Other, Known Nearby)
+- Scanning animation
+- Device list
+- Refresh button
+- Permission request card (if needed)
+
+**Device List Item Display:**
+- Device name
+- Device type icon
+- Signal strength indicator (RSSI bars)
+- Battery level (if available)
+- Connection status
+
+**Device Filtering:**
+- WW_DEVICES: Wildlife Watcher cameras only
+- OTHER_DEVICES: Non-WW BLE devices
+- KNOWN_NEARBY: GPS proximity-based
+- ALL: No filtering
+
+**Permission Requirements:**
+- Bluetooth: Required
+- Location: Required on Android for BLE
+- Show rationale if denied
+- Deep link to settings
+
+**Selection:**
+- Single device selection
+- Auto-connect to selected
+- Show connection progress
+- Handle connection failures
 
 #### Step 4: Deployment Configuration
-```typescript
-interface DeploymentConfig {
-  device: BLEDevice;
-  location: {
-    latitude: number;
-    longitude: number;
-    address?: string;  // Reverse geocoded
-  };
-  captureMethod: 'motion' | 'timelapse';
-  timelapseInterval?: number;  // Default: 30 seconds
-}
 
-// Smart location features:
-// - Auto-detect current location
-// - Allow manual coordinate entry
-// - Address lookup with map update
-// - Offline reverse geocoding fallback
-```
+SCREEN: DeploymentConfigScreen
+
+**Layout Sections:**
+
+Device Info (Read-only):
+- Device name
+- Firmware version
+- Battery level
+
+Location Configuration:
+- Map view with draggable pin
+- Latitude/Longitude inputs
+- Address display (reverse geocoded)
+- "Use My Location" button
+
+Capture Method:
+- Radio selection: Motion Detection / Timelapse
+- If Timelapse: Interval picker (10s, 30s, 60s, 120s, custom)
+
+**Location Features:**
+- Auto-detect current GPS location
+- Manual coordinate entry with validation
+- Address lookup updates coordinates
+- Map interaction updates all fields
+- Offline: Skip address lookup
+
+**Validation:**
+- Valid coordinates required
+- Timelapse requires interval selection
 
 #### Step 5: Camera Preview
-```typescript
-// Live preview from camera before finalizing
-const CameraPreviewScreen: React.FC = () => {
-  // BLE command to trigger snapshot
-  // Display image from camera
-  // "Take Another" button
-  // Image quality validation
-  // Positioning guidance overlay
-};
-```
+
+SCREEN: CameraPreviewScreen
+
+**Functionality:**
+- Send BLE command for snapshot
+- Display received image
+- Image quality indicators
+- Positioning guidance overlay
+
+**UI Elements:**
+- Camera view (main area)
+- "Take Another Snapshot" button
+- "Approve & Continue" button
+- Loading state during capture
+- Error handling for failed capture
+
+**Camera Commands:**
+- Request snapshot via BLE
+- Receive image data
+- Timeout handling (10 seconds)
+- Retry mechanism
 
 #### Step 6: Final Setup
-```typescript
-interface FinalSetupData {
-  locationPhoto?: string;      // Camera placement photo
-  locationDescription: string;  // Site notes
-}
 
-// Photo handling:
-// - Camera capture or gallery selection
-// - Compress if over size limit (configurable, default 5MB)
-// - Queue for upload when online
-// - Store locally for offline access
-```
+SCREEN: FinalSetupScreen
+
+**Components:**
+
+Location Photo Section:
+- Camera button
+- Gallery button
+- Image preview
+- Change photo option
+
+Description Input:
+- Multi-line text field
+- Placeholder: "Describe the deployment location..."
+- Character limit: 500
+
+Action Buttons:
+- "Start Deployment" (primary)
+- "Back" (secondary)
+
+**Photo Handling:**
+- Capture from camera
+- Select from gallery
+- Compress if >5MB
+- Store locally first
+- Queue for upload
+
+**Success Flow:**
+- Create deployment record
+- Send config to device via BLE
+- Show success message
+- Navigate to deployments list
+- Filter by current project
+
+**Failure Handling:**
+- Show error message
+- Offer retry
+- Save draft locally
+- Contact support option
 
 ### 5.4 End Deployment Flow
 
 #### Streamlined Retrieval Process
 
-The end deployment flow is optimized for quick camera retrieval in the field:
+FLOW: End Deployment (3 screens)
 
-```typescript
-// Three-screen flow from Figma:
-// Screen 1: Device discovery (reuses component from start flow)
-// Screen 2: Nearby devices list with deployment info
-// Screen 3: Deployment details with confirmation
+**Screen 1: Device Discovery**
+- Reuse DeviceDiscoveryScreen component
+- Filter to show deployed devices prominently
+- Show deployment info in list items
 
-const EndDeploymentFlow = () => {
-  // Key features:
-  // - Auto-connect to previously paired devices
-  // - Show deployment duration and statistics
-  // - Confirm location matches (prevent wrong camera)
-  // - Success/failure handling with clear next steps
-  
-  // On success:
-  // - Mark deployment as ended
-  // - Queue sync if offline
-  // - Option to immediately start new deployment
-};
-```
+**Screen 2: Deployment Selection**
+
+SCREEN: NearbyDeploymentsScreen
+
+Display for Each Device:
+- Device name
+- Project name
+- Deployment name
+- Start date
+- Duration active
+- Battery/SD status
+
+User Action:
+- Select deployment to end
+
+**Screen 3: Deployment Confirmation**
+
+SCREEN: EndDeploymentScreen
+
+Display Elements:
+- Map showing deployment location
+- Deployment details summary
+- Coordinate verification
+- Duration statistics
+
+Actions:
+- "End Deployment" button (primary)
+- "Cancel" button (secondary)
+
+Success Flow:
+- Update deployment status
+- Disconnect from device
+- Show success message
+- Option: Start new deployment
+- Navigate: Home or Deployments
+
+Failure Handling:
+- Show specific error
+- Retry option
+- Save end attempt locally
+- Manual override option (admin)
 
 ### 5.5 Projects Screen
 
 #### Research Project Management Hub
 
-```typescript
-const ProjectsScreen: React.FC = () => {
-  // Display features:
-  // - Project cards with key metrics
-  // - Sync status per project
-  // - Search and filter capabilities
-  // - Sort by: recent, name, deployment count
-  
-  // Navigation intelligence:
-  // After creating deployment, navigate to:
-  // Deployments screen filtered by that project
-  
-  return (
-    <Screen>
-      <SearchBar />
-      <FilterChips filters={['Active', 'Archived', 'My Projects']} />
-      
-      <ProjectList
-        renderItem={({ item }) => (
-          <ProjectCard
-            name={item.name}
-            description={item.description}
-            memberCount={item.members.length}
-            activeDeployments={item.activeDeployments}
-            totalDeployments={item.totalDeployments}
-            syncStatus={item.syncStatus}
-            onPress={() => navigateToProjectDetails(item.id)}
-          />
-        )}
-      />
-      
-      <FAB icon="plus" onPress={navigateToNewProject} />
-    </Screen>
-  );
-};
-```
+SCREEN: ProjectsScreen
+
+**Layout:**
+- Search bar (top)
+- Filter chips
+- Project cards (scrollable list)
+- FAB: Add Project
+
+**Filter Options:**
+- Active (has active deployments)
+- Archived (no active deployments)
+- My Projects (owned by user)
+
+**Project Card Display:**
+- Project name (bold)
+- Description (2 lines max)
+- Member count with icon
+- Active deployments count
+- Total deployments count
+- Sync status badge
+
+**Sort Options:**
+- Recent activity (default)
+- Alphabetical
+- Deployment count
+- Creation date
+
+**User Actions:**
+- Search by project name
+- Apply filters
+- Sort projects
+- Pull to refresh
+- Tap card → Project Details
+- FAB → New Project
+
+**Navigation Intelligence:**
+After creating deployment:
+- Auto-navigate to Deployments
+- Apply project filter
+- Show success toast
 
 ### 5.6 Project Details Screen
 
 #### Comprehensive Project Information and Team Management
 
-```typescript
-const ProjectDetailsScreen: React.FC = () => {
-  const { isAdmin } = useProjectRole(projectId);
-  
-  return (
-    <ScrollView>
-      <ProjectInfo 
-        editable={isAdmin}
-        onEdit={isAdmin ? handleEdit : undefined}
-      />
-      
-      <Section title="Team Members">
-        <MemberList 
-          members={members}
-          showActions={isAdmin}
-          onAddMember={handleAddMember}
-          onRemoveMember={handleRemoveMember}
-        />
-      </Section>
-      
-      <Section title="Recent Deployments">
-        <DeploymentList 
-          deployments={recentDeployments}
-          limit={5}
-          onViewAll={() => navigateToDeployments(projectId)}
-        />
-      </Section>
-    </ScrollView>
-  );
-};
+SCREEN: ProjectDetailsScreen
 
-// Member management UI (no profile pictures per requirements):
-const MemberListItem = ({ member, isAdmin }) => (
-  <ListItem>
-    <Text>{member.fullName || member.email}</Text>
-    <RoleBadge role={member.role} />
-    {isAdmin && (
-      <Menu>
-        <MenuItem onPress={() => changeRole(member.id)}>Change Role</MenuItem>
-        <MenuItem onPress={() => removeMember(member.id)}>Remove</MenuItem>
-      </Menu>
-    )}
-  </ListItem>
-);
+**Sections:**
 
-// Add member flow:
-// 1. Enter email
-// 2. Select role
-// 3. Check if user exists
-// 4. Send invitation if new
-// 5. Add to project
-```
+Project Information:
+- All project fields (view mode)
+- Edit button (admin only)
+- Sync status indicator
+
+Team Members List:
+- Member name/email
+- Role badge
+- Last active (optional)
+- Actions menu (admin only)
+
+Member List Item Actions (Admin):
+- Change role
+- Remove from project (logical)
+- View member deployments
+
+Add Member Flow (Admin):
+1. Tap "Add Member" button
+2. Enter email address
+3. Select role (default: member)
+4. Check if user exists
+5. If exists: Add immediately
+6. If not: Queue invitation
+7. Show confirmation
+
+Recent Deployments:
+- Last 5 deployments
+- Summary cards
+- "View All" link → filtered deployments
+
+**Permissions:**
+- View: All project members
+- Edit: Project admin only
+- Add/Remove members: Admin only
+- Delete project: Admin only (confirmation required)
 
 ### 5.7 Deployments Screen
 
 #### Mission Control for Active Operations
 
-```typescript
-const DeploymentsScreen: React.FC = () => {
-  const [filter, setFilter] = useState<'active' | 'ended' | 'all'>('active');
-  
-  return (
-    <Screen>
-      <TabSelector 
-        tabs={['Active', 'Ended', 'All']}
-        selected={filter}
-        onSelect={setFilter}
-      />
-      
-      <DeploymentList
-        data={filteredDeployments}
-        renderItem={({ item }) => (
-          <DeploymentCard
-            projectName={item.project.name}
-            deviceName={item.device.name}
-            batteryLevel={item.batteryLevel}  // From LoRaWAN
-            sdCardUsage={item.sdCardUsage}    // From LoRaWAN
-            lastUpdate={item.lastDataReceived}
-            startDate={item.startedAt}
-            endDate={item.endedAt}
-            status={item.status}
-            onPress={() => navigateToDeploymentDetails(item.id)}
-          />
-        )}
-      />
-    </Screen>
-  );
-};
+SCREEN: DeploymentsScreen
 
-// Visual indicators:
-// 🟢 Green: Healthy (battery > 30%, SD < 80%)
-// 🟡 Yellow: Warning (battery 10-30%, SD 80-95%)
-// 🔴 Red: Critical (battery < 10%, SD > 95%)
-```
+**Layout:**
+- Tab selector (Active | Ended | All)
+- Deployments list
+- Empty state messages
+
+**Deployment Card Display:**
+
+Primary Info:
+- Project name
+- Device name
+- Deployment name
+
+Status Indicators:
+- Battery level with icon (color-coded)
+- SD card usage with icon (color-coded)
+- Last update timestamp
+- Status badge (active/ended)
+
+Dates:
+- Started: date/time
+- Ended: date/time (if applicable)
+- Duration (calculated)
+
+**Color Coding:**
+- 🟢 Green: Healthy (battery >30%, SD <80%)
+- 🟡 Yellow: Warning (battery 10-30%, SD 80-95%)
+- 🔴 Red: Critical (battery <10%, SD >95%)
+- ⚪ Gray: No recent data (>7 days)
+
+**Filtering:**
+- By project
+- By status
+- By health
+- Date range
+
+**User Actions:**
+- Switch tabs
+- Pull to refresh
+- Tap card → Deployment Details
+- Long press → Quick actions (end, share)
 
 ### 5.8 Devices Screen
 
 #### Camera Hardware Management Center
 
-```typescript
-const DevicesScreen: React.FC = () => {
-  return (
-    <Screen>
-      <DeviceList
-        ListHeaderComponent={
-          <ScanButton onPress={startScanning} />
-        }
-        data={devices}
-        renderItem={({ item }) => (
-          <DeviceCard
-            name={item.name}
-            connectionStatus={item.status}
-            batteryLevel={item.battery}
-            firmwareVersion={item.firmware}
-            isDeployed={item.deploymentId !== null}
-            onPress={() => handleDevicePress(item)}
-          />
-        )}
-      />
-    </Screen>
-  );
-};
+SCREEN: DevicesScreen
 
-// Device actions (non-deployed only):
-// - Test camera view
-// - Update firmware (if available)
-// - Run diagnostics
+**Layout:**
+- Scan button (header)
+- Device list
+- Empty state for no devices
 
-// Developer menu additions:
-// - Force DFU mode
-// - BLE packet inspector
-// - Mock device simulator
-```
+**Device Card Display:**
+- Device name
+- Connection status icon
+- Battery level (if known)
+- Firmware version
+- Deployment status (deployed/available)
+- Last seen timestamp
+
+**Connection States:**
+- Connected (green)
+- Connecting (yellow pulse)
+- Disconnected (gray)
+- Error (red)
+
+**Actions for Non-Deployed Devices:**
+- Test Camera View
+- Update Firmware (if available)
+- Run Diagnostics
+- View Details
+
+**Actions for Deployed Devices:**
+- View Deployment
+- View Last Data
+- (No modifications allowed)
+
+**Developer Menu Extensions:**
+- Force DFU mode
+- BLE packet inspector
+- Mock device simulator
+- Raw command sender
+
+**Firmware Update Indicator:**
+- Badge on device card
+- Version comparison
+- Update size estimate
+- Changelog preview (optional)
 
 ---
 
