@@ -1,74 +1,3 @@
-Version 1 -3 - same up to s7.1 (partial s7.1 or completed?)
-Version 4, 5, 8 - starts at s8 at the top end at s7.1 per previouse versions (overwirting sections)
-
-
-
-Perfect! I've successfully updated the Wildlife Watcher Mobile App Implementation Specification to version 1.2. The document now includes:
-
-## Key Updates Made:
-
-### ✅ **Comprehensive Enhancements:**
-
-1. **Expanded Glossary** - Added all requested terms including Postgres, Supabase, React, Expo, EAS, Claude Code, MCP, Maestro, CDN, OTA, and domain-specific terms
-
-2. **Enhanced Section Descriptions** - Made them more contextual and relevant to the Wildlife Watcher app context rather than generic
-
-3. **User Management Flow** - Clarified the invitation system with 7-day expiry and password creation (no temp passwords)
-
-4. **LoRaWAN Integration** - Added placeholder implementation with configurable update intervals and clear explanation of BLE vs LoRaWAN usage
-
-5. **Offline Preparation** - Implemented both automatic background sync and explicit preparation flow as requested
-
-6. **Profile Management** - Made fields optional with visual indicators for incomplete profiles
-
-7. **Image Storage** - Detailed CDN optimization with thumbnail generation via Edge Functions
-
-8. **Developer Menu** - Configured for development access and WW_ADMIN production access via admin portal
-
-9. **Test Data Scenarios** - Added comprehensive test data generation for all specified scenarios
-
-10. **Admin Portal Integration** - Referenced as monorepo structure at `/ww-web-portal`
-
-11. **AI Model & Firmware Management** - Added placeholder section with database schema and basic implementation
-
-12. **Testing Strategy** - Detailed Maestro setup with example flows and TDD/BDD approaches
-
-13. **AI Agent Development Guidelines** - New section with Claude Code integration and MCP tools
-
-14. **Security Implementation** - Expanded with detailed code examples and implementation steps
-
-15. **Actions & Clarifications** - Added comprehensive tracking table for human tasks
-
-### 📋 **Document Structure:**
-- **15 main sections** (expanded from 10)
-- **Executive Summary** for quick overview
-- **Clear audience identification** (Product Managers, Developers, AI Agents)
-- **Status indicators** throughout
-- **Comprehensive code examples** with TypeScript
-- **Database schemas** with logical deletes
-- **Clear assumptions** for stakeholder review
-
-### 🎯 **Key Assumptions Documented:**
-- Profile fields optional, stored locally
-- Image storage with CDN and thumbnails
-- LoRaWAN for remote monitoring only
-- 7-day invitation expiry
-- Maestro as primary testing tool
-- Monorepo structure for admin portal
-- Free model included in MVP
-
-The document is now ready for:
-1. **Product Manager review** - to validate against Figma designs
-2. **Developer implementation** - with clear technical specifications
-3. **Claude Code development** - with AI agent guidelines and patterns
-4. **Stakeholder feedback** - on documented assumptions
-
-The specification maintains consistency throughout and provides a complete blueprint for building the Wildlife Watcher Mobile App MVP with all requested features and clarifications incorporated.
-
-
-
-======================= version 1.2 - Chunk 1  ================
-
 # Wildlife Watcher Mobile App - MVP Implementation Specification
 
 **Version**: 1.2  
@@ -277,7 +206,7 @@ wildlife-watcher-mobile-app/
 │   │   │   ├── projects/  # Project management
 │   │   │   └── devices/   # Device management
 │   │   ├── stacks/        # Navigation stacks
-│   │   └── index.tsx      # Root navigation
+│   │   └── index          # Root navigation
 │   ├── services/          # Business logic & APIs
 │   │   ├── ai/           # AI model management
 │   │   ├── auth/         # Authentication service
@@ -289,14 +218,14 @@ wildlife-watcher-mobile-app/
 │   │   └── supabase/     # Supabase client & API
 │   ├── store/            # Redux store
 │   │   ├── slices/       # Feature-specific slices
-│   │   └── index.ts      # Store configuration
+│   │   └── index         # Store configuration
 │   ├── types/            # TypeScript definitions
 │   ├── utils/            # Utility functions
 │   ├── hooks/            # Custom React hooks
 │   ├── config/           # App configuration
-│   │   ├── constants.ts  # App-wide constants
-│   │   └── env.ts        # Environment config
-│   └── App.tsx           # Root component
+│   │   ├── constants     # App-wide constants
+│   │   └── env           # Environment config
+│   └── App               # Root component
 ├── ww-web-portal/         # Admin portal (separate)
 │   ├── admin/            # Admin features
 │   └── public/           # Password reset pages
@@ -321,6 +250,13 @@ User Action → Screen Component → Redux Action → Service Layer → Local SQ
 ```
 
 This architecture ensures that user actions always have immediate feedback (optimistic updates), while maintaining eventual consistency with the cloud database. The offline queue acts as a buffer, storing operations when offline and processing them in order when connectivity returns.
+
+KEY PRINCIPLES:
+- Every operation saves locally first
+- UI updates immediately (optimistic)
+- Queue for remote sync when offline
+- Background sync when connected
+- Conflict resolution on sync
 
 ---
 
@@ -3865,56 +3801,26 @@ The offline system implements several key strategies:
 
 Before heading into the field, users can prepare their devices for offline operation:
 
-```typescript
-// src/navigation/screens/OfflinePrepScreen.tsx
-const OfflinePrepScreen: React.FC = () => {
-  return (
-    <Screen>
-      <PreparationChecklist>
-        {/* Automatic background syncing always active */}
-        <ChecklistItem 
-          title="Projects & Members"
-          status={projectsSynced ? 'synced' : 'syncing'}
-          action="Force Sync"
-        />
-        
-        <ChecklistItem 
-          title="Map Tiles"
-          subtitle="Cache area around planned deployments"
-          status={mapsCached ? 'cached' : 'needs-cache'}
-          action="Download Area"
-        />
-        
-        <ChecklistItem 
-          title="Device Firmware"
-          subtitle="Latest firmware for offline updates"
-          status={firmwareDownloaded ? 'ready' : 'download'}
-          action="Download"
-        />
-        
-        <ChecklistItem 
-          title="AI Models"
-          subtitle="Models assigned to your projects"
-          status={modelsDownloaded ? 'ready' : 'download'}
-          action="Download"
-        />
-        
-        <ChecklistItem 
-          title="Test Device Connection"
-          subtitle="Verify BLE connectivity"
-          status={deviceTested ? 'tested' : 'test'}
-          action="Test Now"
-        />
-      </PreparationChecklist>
-      
-      <OfflineReadinessScore score={calculateReadiness()} />
-    </Screen>
-  );
-};
+OFFLINE PREPARATION SCREEN REQUIREMENTS:
 
-// Background sync constantly maintains fresh data
-// Manual prep screen for explicit verification before field work
-```
+Checklist Items:
+- Projects & Members sync status
+- Map tiles download for deployment areas
+- Device firmware availability
+- AI models download status
+- Device connection test
+
+User Actions:
+- Force sync specific categories
+- Download map areas
+- Test device connectivity
+- View readiness score (0-100%)
+
+Background Processes:
+- Automatic sync when connected
+- Cache frequently accessed data
+- Pre-fetch team member profiles
+
 
 ### 6.3 Local Database Schema
 
@@ -3984,168 +3890,103 @@ export const OFFLINE_SCHEMA = {
 };
 ```
 
-### 6.4 Offline Service Implementation
+### 6.4 Offline Service Specification
 
-```typescript
-// src/services/offline/OfflineService.ts
-export class OfflineService {
-  private db: SQLite.Database;
-  private syncInProgress = false;
-  private syncQueue: PriorityQueue<SyncOperation>;
-  
-  constructor() {
-    this.db = SQLite.openDatabase('wildlife_watcher.db');
-    this.initializeDatabase();
-    this.setupNetworkListener();
-    this.setupBackgroundSync();
-  }
-  
-  async queueOperation(operation: SyncOperation) {
-    // Priority levels:
-    // 1000: Deployment end (critical)
-    // 900: Deployment start
-    // 800: Project updates
-    // 700: Member additions
-    // 500: Profile updates
-    
-    const priority = this.calculatePriority(operation);
-    
-    await this.db.executeSql(
-      `INSERT INTO offline_queue 
-       (operation_id, operation_type, entity_type, entity_id, payload, priority)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [operation.id, operation.type, operation.entity, 
-       operation.entityId, JSON.stringify(operation.data), priority]
-    );
-    
-    // Try immediate sync if online
-    if (await this.isOnline()) {
-      this.triggerSync();
-    }
-  }
-  
-  async syncPendingOperations() {
-    if (this.syncInProgress) return;
-    
-    this.syncInProgress = true;
-    this.updateSyncStatus('syncing');
-    
-    try {
-      // Get operations ordered by priority
-      const operations = await this.getPendingOperations();
-      
-      for (const op of operations) {
-        try {
-          await this.syncOperation(op);
-          await this.markSynced(op.id);
-        } catch (error) {
-          await this.handleSyncError(op, error);
-          
-          // Stop syncing if critical operation fails
-          if (op.priority >= 900) {
-            throw error;
-          }
-        }
-      }
-      
-      this.updateSyncStatus('synced');
-    } catch (error) {
-      this.updateSyncStatus('error', error.message);
-    } finally {
-      this.syncInProgress = false;
-    }
-  }
-}
-```
 
-### 6.5 Conflict Resolution
+Core Methods:
+- initializeDatabase() → void
+- queueOperation(operation) → operationId
+- syncPendingOperations() → SyncResult
+- getPendingOperations() → Operation[]
+- markSynced(operationId) → void
+- handleSyncError(operation, error) → void
+- isOnline() → boolean
+- triggerSync() → void
 
-```typescript
-// src/services/offline/ConflictResolver.ts
-export class ConflictResolver {
-  resolveDeployment(local: Deployment, remote: Deployment): Deployment {
-    // Rule 1: Ended status always wins (prevent orphaned deployments)
-    if (remote.status === 'ended' || local.status === 'ended') {
-      const ended = remote.status === 'ended' ? remote : local;
-      return {
-        ...ended,
-        // Preserve the earliest end time if both ended
-        endedAt: this.earliestDate(local.endedAt, remote.endedAt)
-      };
-    }
-    
-    // Rule 2: Most recent update wins for active deployments
-    return local.updatedAt > remote.updatedAt ? local : remote;
-  }
-  
-  resolveProject(local: Project, remote: Project): Project {
-    // Merge member lists (union of both)
-    const mergedMembers = this.mergeUnique(
-      local.members,
-      remote.members,
-      'userId'
-    );
-    
-    // Merge other fields by last-write-wins
-    const winner = local.updatedAt > remote.updatedAt ? local : remote;
-    
-    return {
-      ...winner,
-      members: mergedMembers,
-      updatedAt: new Date().toISOString()
-    };
-  }
-  
-  resolveUser(local: User, remote: User): User {
-    // Server version wins for auth-related fields
-    // Local version wins for preferences
-    return {
-      ...remote,  // Server auth data
-      preferences: local.preferences,  // Local preferences
-      profilePhoto: local.profilePhoto  // Local photo (stored on device)
-    };
-  }
-}
-```
+Priority Levels:
+- 1000: Deployment end (critical)
+- 900: Deployment start
+- 800: Project updates
+- 700: Member additions
+- 500: Profile updates
 
-### 6.6 Sync Status Management
+Queue Management Rules:
+- Operations processed by priority
+- Critical operations block lower priority
+- Failed operations retry with exponential backoff
+- Max retry count: 3
+- Permanent failure after max retries
 
-```typescript
-// src/components/sync/SyncStatusIndicator.tsx
-interface SyncStatus {
-  overall: 'synced' | 'syncing' | 'pending' | 'error';
-  pendingCount: number;
-  lastSync: Date | null;
-  errorMessage?: string;
-}
+Network Monitoring:
+- Listen for connectivity changes
+- Auto-trigger sync when online
+- Queue operations when offline
+- Update UI sync status indicators
 
-const SyncStatusIndicator: React.FC = () => {
-  const status = useAppSelector(selectSyncStatus);
-  
-  return (
-    <TouchableOpacity onPress={showSyncDetails}>
-      <StatusBadge>
-        {status.overall === 'synced' && <CheckIcon color="green" />}
-        {status.overall === 'syncing' && <SpinningIcon />}
-        {status.overall === 'pending' && <ClockIcon color="gray" />}
-        {status.overall === 'error' && <ExclamationIcon color="red" />}
-        
-        {status.pendingCount > 0 && (
-          <PendingBadge>{status.pendingCount}</PendingBadge>
-        )}
-      </StatusBadge>
-    </TouchableOpacity>
-  );
-};
+### 6.5 Conflict Resolution Specification
 
-// Project-level sync indicators on cards
-// Overall sync status near user avatar
-// Detailed sync view in developer menu
-```
+CONFLICT RESOLUTION RULES:
+
+Deployment Conflicts:
+- Status 'ended' always wins over 'active'
+- Earliest end time preserved if both ended
+- Most recent update wins for active deployments
+
+Project Conflicts:
+- Member lists: Union of both sets (no duplicates)
+- Settings: Last-write-wins based on timestamp
+- Logical deletes: Deleted state wins
+
+User Data Conflicts:
+- Auth data: Server version wins
+- Preferences: Local version wins
+- Profile photo: Local version wins
+
+Resolution Strategy Matrix:
+| Entity Type | Field Type | Resolution Strategy |
+|------------|------------|-------------------|
+| Deployment | status | 'ended' priority |
+| Deployment | data | Latest timestamp |
+| Project | members | Union merge |
+| Project | settings | Last-write-wins |
+| User | auth | Server wins |
+| User | preferences | Local wins |
+| Device | firmware | Server wins |
+
+### 6.6 Sync Status Management Specification
+
+SYNC STATUS INDICATOR REQUIREMENTS:
+
+Visual States:
+- Synced: Green checkmark
+- Syncing: Animated spinner
+- Pending: Gray clock icon
+- Error: Red exclamation
+
+Display Locations:
+- Global: Near user avatar in drawer
+- Project cards: Sync badge
+- Deployment cards: Status indicator
+- Bottom sheet: Detailed sync view
+
+Information Displayed:
+- Overall sync status
+- Pending operation count
+- Last successful sync time
+- Error messages if any
+- Retry option for failures
+
+User Interactions:
+- Tap for detailed sync view
+- Pull to refresh to force sync
+- View sync queue in developer menu
+- Clear failed operations (admin only)
 
 ---
 
 ## Section 7: Supabase Integration
+
+### 7.1 Database Schema
 
 ### 7.1 Database Schema
 
@@ -4305,7 +4146,6 @@ CREATE POLICY "WW Admins view all projects" ON projects
     )
   );
 ```
-  
 
 ### 7.2 Supabase Client Configuration
 
@@ -4397,6 +4237,7 @@ CREATE POLICY "WW Admins view all projects" ON projects
 6. Historical data for reporting
 
 ---
+  
   
 ## Section 8: State Management (Specification Focus)
 
