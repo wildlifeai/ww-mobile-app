@@ -4488,3 +4488,1147 @@ PERSIST CONFIG:
 
 ---
 
+## 9. Implementation Guidelines
+
+### 9.1 Development Workflow for AI-Assisted Implementation
+
+**Purpose:** Define the collaborative development approach using Claude Code, sub-agents, and human developers to build the app efficiently with high quality.
+
+**Requirements:**
+- Support parallel development by multiple Claude Code sub-agents
+- Enable TDD/BDD practices with continuous validation
+- Facilitate human-in-the-loop oversight at key milestones
+- Maintain code quality through automated testing with Maestro
+- Break features into small, testable units for reliability
+
+**Development Workflow Specification:**
+```
+WORKFLOW PHASES:
+1. Feature Decomposition
+   - User story → Functional requirements
+   - Requirements → Technical tasks
+   - Tasks → Sub-agent assignments
+   - Dependencies mapped between tasks
+
+2. Parallel Development Streams
+   - Auth Team: Authentication & user management
+   - Sync Team: Offline & synchronization
+   - UI Team: Screens & navigation
+   - Hardware Team: BLE & device integration
+   - Data Team: Database & state management
+
+3. Testing Gates
+   - Unit tests written before code (TDD)
+   - Integration tests after module completion
+   - E2E tests with Maestro for user flows
+   - Human validation at milestones
+
+4. Integration Points
+   - Daily integration of sub-agent work
+   - Automated conflict resolution
+   - Human review of merged code
+   - Regression testing after integration
+```
+
+**Sub-Agent Task Distribution:**
+```
+AGENT RESPONSIBILITIES:
+Auth Agent:
+- Login, signup, password reset screens
+- Session management
+- Role-based access control
+- User profile management
+
+Sync Agent:
+- Offline queue implementation
+- Conflict resolution logic
+- Background sync service
+- Cache management
+
+BLE Agent:
+- Device discovery service
+- Connection management
+- DFU implementation
+- Camera command protocol
+
+UI Agent:
+- Screen components
+- Navigation structure
+- Form validation
+- Sync status indicators
+
+Data Agent:
+- Redux store setup
+- SQLite schema
+- Supabase integration
+- Migration scripts
+```
+
+### 9.2 Claude Code Integration with MCP Tools
+
+**Context:** Claude Code will use MCP (Model Context Protocol) tools and Claude Flow for orchestrated development workflows.
+
+**MCP Tool Requirements:**
+```
+REQUIRED TOOLS:
+- filesystem: Read/write source files
+- git: Version control operations
+- terminal: Run build and test commands
+- browser: Preview and test app
+- supabase: Database operations
+- expo: Build and deployment
+```
+
+**Claude Flow Configuration:**
+```
+FLOW ORCHESTRATION:
+Teams:
+- name: frontend
+  agents: [ui_agent, auth_agent]
+  focus: User interface and authentication
+  
+- name: backend
+  agents: [data_agent, sync_agent]
+  focus: Data management and sync
+  
+- name: hardware
+  agents: [ble_agent]
+  focus: Device communication
+
+Workflow Stages:
+1. Planning (all teams)
+2. Implementation (parallel)
+3. Integration (sequential)
+4. Testing (parallel)
+5. Validation (human checkpoint)
+```
+
+### 9.3 Code Quality Standards
+
+**Requirements:**
+- TypeScript strict mode for all code
+- Functional React components with hooks
+- Comprehensive error boundaries
+- Consistent code formatting (Prettier)
+- Maximum file size: 300 lines
+- Maximum function complexity: 10
+
+**Code Organization Patterns:**
+```
+PATTERNS:
+Component Structure:
+- One component per file
+- Co-located styles and tests
+- Props interface defined
+- Default props specified
+- Error boundaries implemented
+
+Service Structure:
+- Single responsibility principle
+- Dependency injection
+- Error handling at boundaries
+- Retry logic with exponential backoff
+- Logging for debugging
+
+State Management:
+- Normalized state shape
+- Immutable updates
+- Optimistic updates for UI
+- Rollback on failure
+```
+
+### 9.4 Testing Account Configuration
+
+**Purpose:** Single development account with role switching for comprehensive testing across all user types.
+
+**Test Account Specification:**
+```
+ACCOUNT CONFIG:
+Email: dev@wildlifewatcher.ai
+Roles: ['ww_admin', 'project_admin', 'project_member']
+
+Role Switcher (Dev Menu):
+- Location: Developer tools drawer
+- Options: Toggle between roles
+- Persistence: Saves selection
+- UI Update: Immediate refresh
+
+Test Data Sets:
+- Small project: 2-3 cameras
+- Medium project: 10-20 cameras  
+- Large project: 50+ cameras
+- Mixed permissions scenarios
+```
+
+---
+
+## 10. Production Readiness & Security
+
+### 10.1 Security Implementation Requirements
+
+**Purpose:** Ensure the app meets security best practices for handling sensitive research data and camera access.
+
+**Security Checklist with Implementation Details:**
+
+```
+SECURITY REQUIREMENTS:
+
+□ API Key Management
+  Requirement: All API keys stored securely
+  Implementation:
+  - Store in .env.local (development)
+  - Use EXPO_PUBLIC_ prefix for client variables
+  - Store sensitive keys in Supabase vault
+  - Rotate keys quarterly
+  - Never commit keys to repository
+  Validation: Run secret scanner in CI/CD
+
+□ Certificate Pinning
+  Requirement: Prevent MITM attacks
+  Implementation:
+  - Pin Supabase API certificates
+  - Pin Wildlife.ai certificates
+  - Implement fallback mechanism
+  - Certificate update process
+  Validation: Test with proxy tools
+
+□ Local Database Encryption
+  Requirement: Protect offline data
+  Implementation:
+  - Use expo-sqlite with SQLCipher
+  - Derive key from user password
+  - Encrypt sensitive columns
+  - Clear on logout
+  Validation: Attempt data extraction
+
+□ BLE Security
+  Requirement: Secure device pairing
+  Implementation:
+  - Require pairing confirmation
+  - Encrypt command payloads
+  - Validate device identity
+  - Implement replay protection
+  Validation: BLE sniffer testing
+
+□ Session Management
+  Requirement: Secure user sessions
+  Implementation:
+  - JWT with 1-hour expiry
+  - Refresh tokens (30 days)
+  - Secure token storage
+  - Logout on app background (optional)
+  - Biometric lock option
+  Validation: Token expiry testing
+
+□ Input Validation
+  Requirement: Prevent injection attacks
+  Implementation:
+  - Validate all form inputs
+  - Sanitize before storage
+  - Parameterized queries only
+  - File type validation
+  - Size limits enforced
+  Validation: Penetration testing
+
+□ Network Security
+  Requirement: Secure data transmission
+  Implementation:
+  - HTTPS only (no HTTP)
+  - TLS 1.3 minimum
+  - Certificate validation
+  - No SSL bypass (remove dev code)
+  Validation: Network traffic analysis
+```
+
+### 10.2 App Store Compliance
+
+**Requirements:**
+- iOS: Compliance with App Store Review Guidelines
+- Android: Google Play Policy compliance
+- Privacy policy and terms of service
+- Age rating: 4+ (no objectionable content)
+- Export compliance (encryption declaration)
+
+**Store Requirements Checklist:**
+```
+iOS APP STORE:
+- App icon: 1024x1024px
+- Screenshots: 6.5" and 5.5" devices
+- App description: 4000 characters max
+- Keywords: 100 characters max
+- Privacy policy URL (required)
+- Support URL (required)
+- Copyright information
+
+GOOGLE PLAY:
+- App icon: 512x512px
+- Feature graphic: 1024x500px
+- Screenshots: Phone and tablet
+- Short description: 80 characters
+- Full description: 4000 characters
+- Privacy policy URL (required)
+- Content rating questionnaire
+
+BOTH STORES:
+- Version number strategy
+- Release notes template
+- Beta testing setup
+- Phased rollout plan
+- Crash reporting integration
+- Analytics disclosure
+```
+
+### 10.3 Performance Requirements
+
+**Specifications:**
+```
+PERFORMANCE TARGETS:
+App Launch:
+- Cold start: < 3 seconds
+- Warm start: < 1 second
+- Time to interactive: < 2 seconds
+
+Navigation:
+- Screen transition: < 500ms
+- Tab switch: < 200ms
+- List scrolling: 60fps
+
+Network Operations:
+- API timeout: 30 seconds
+- Retry attempts: 3
+- Exponential backoff: 1s, 2s, 4s
+
+BLE Operations:
+- Device scan: 10 seconds max
+- Connection: < 5 seconds
+- Command timeout: 10 seconds
+
+Memory:
+- Max heap usage: 200MB
+- Image cache: 100MB limit
+- SQLite cache: 50MB limit
+
+Battery:
+- Background drain: < 5%/hour
+- Active use: < 15%/hour
+- Location updates: Adaptive
+```
+
+### 10.4 Production Environment Configuration
+
+**Environment Separation:**
+```
+ENVIRONMENT CONFIG:
+
+Development:
+{
+  name: 'development',
+  apiUrl: 'https://dev-api.wildlife.ai',
+  supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL_DEV,
+  features: {
+    mockData: true,
+    devMenu: true,
+    logging: 'verbose',
+    sourceMap: true
+  }
+}
+
+Staging:
+{
+  name: 'staging',
+  apiUrl: 'https://staging-api.wildlife.ai',
+  supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL_STAGING,
+  features: {
+    mockData: false,
+    devMenu: true,
+    logging: 'warning',
+    sourceMap: true
+  }
+}
+
+Production:
+{
+  name: 'production',
+  apiUrl: 'https://api.wildlife.ai',
+  supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL_PROD,
+  features: {
+    mockData: false,
+    devMenu: false,
+    logging: 'error',
+    sourceMap: false,
+    sentryDSN: process.env.SENTRY_DSN,
+    analyticsId: process.env.ANALYTICS_ID
+  }
+}
+```
+
+---
+
+## 11. Testing Strategy
+
+### 11.1 Comprehensive Testing Approach
+
+**Purpose:** Ensure app reliability through multi-layered testing using Maestro for UI automation and standard tools for unit/integration testing.
+
+**Testing Framework Requirements:**
+```
+TEST INFRASTRUCTURE:
+Unit Testing (Jest):
+- Coverage target: 70% minimum
+- Run on every commit
+- Mock external dependencies
+- Test data factories
+
+Integration Testing:
+- API endpoint validation
+- Database operations
+- Sync workflow testing
+- Error scenario coverage
+
+E2E Testing (Maestro):
+- Complete user journeys
+- Cross-platform validation
+- Offline scenario testing
+- Performance benchmarking
+
+Regression Testing:
+- Automated suite runs
+- Visual regression checks
+- Performance regression
+- Functionality verification
+```
+
+### 11.2 Maestro Test Specifications
+
+**Test Flow Structure:**
+```yaml
+# maestro/login-flow.yaml
+appId: com.wildlife.wildlifewatcher
+---
+- launchApp:
+    clearState: true
+
+# Login Flow
+- assertVisible: "Wildlife Watcher"
+- assertVisible: "Login"
+- tapOn:
+    id: "email-input"
+- inputText: "test@wildlife.ai"
+- tapOn:
+    id: "password-input"  
+- inputText: "TestPass123"
+- tapOn: "Login"
+- assertVisible: "Maps"
+
+# Deployment Flow
+- tapOn: "Start Deployment"
+- assertVisible: "Select Project"
+- tapOn: "Snail Monitoring"
+- tapOn: "Continue"
+- assertVisible: "Searching for devices"
+- waitForAnimationToEnd
+- tapOn: "Wildlife Watcher Camera 1"
+- assertVisible: "Deployment Configuration"
+```
+
+**Critical Test Scenarios:**
+```
+SCENARIO COVERAGE:
+
+Authentication:
+- Successful login
+- Invalid credentials
+- Password reset flow
+- Session expiry handling
+- Biometric authentication
+
+Offline Operations:
+- Start deployment offline
+- Queue multiple operations
+- Sync when online
+- Conflict resolution
+- Cache management
+
+Device Management:
+- BLE discovery
+- Connection failures
+- Firmware update
+- Camera preview
+- Connection timeout
+
+Data Synchronization:
+- Project sync
+- Member sync
+- Deployment sync
+- Image upload
+- LoRaWAN data
+```
+
+### 11.3 Acceptance Criteria Validation
+
+**Automated Acceptance Tests:**
+```
+ACCEPTANCE CRITERIA MAPPING:
+
+User Story: Start Deployment
+Acceptance Tests:
+1. Project selection available
+2. Device discovery works
+3. Configuration saves correctly
+4. Camera preview displays
+5. Deployment creates successfully
+6. Offline queue works
+7. Sync completes when online
+
+Test Implementation:
+- Maestro flow for happy path
+- Unit tests for services
+- Integration tests for API
+- Manual validation checklist
+```
+
+### 11.4 Test Data Management
+
+**Test Data Requirements:**
+```
+TEST DATA SETS:
+
+Users:
+- admin@test.wildlife.ai (WW_ADMIN)
+- project.admin@test.wildlife.ai (PROJECT_ADMIN)
+- member@test.wildlife.ai (PROJECT_MEMBER)
+- offline@test.wildlife.ai (Offline testing)
+
+Projects:
+- small-project (2 devices, 3 members)
+- medium-project (15 devices, 10 members)
+- large-project (50 devices, 25 members)
+
+Devices:
+- Mock WW cameras (BLE simulation)
+- Various firmware versions
+- Different battery levels
+- Multiple connection states
+
+Deployments:
+- Active healthy
+- Active warning (low battery)
+- Active critical (full SD)
+- Recently ended
+- Historical data
+```
+
+---
+
+## 12. AI Agent Development Guidelines
+
+### 12.1 Claude Code Sub-Agent Architecture
+
+**Purpose:** Optimize development efficiency through specialized AI agents working in parallel on different aspects of the application.
+
+**Sub-Agent Specialization:**
+```
+AGENT DEFINITIONS:
+
+Auth Agent:
+Domain: Authentication and user management
+Responsibilities:
+- Login/signup screen implementation
+- Password reset flow
+- Session management
+- Role-based access control
+- Profile management
+Files: src/navigation/screens/auth/*, src/services/auth/*
+
+Sync Agent:
+Domain: Offline synchronization
+Responsibilities:
+- SQLite schema implementation
+- Offline queue management
+- Conflict resolution algorithms
+- Background sync service
+- Cache management strategies
+Files: src/services/offline/*, src/store/slices/offlineSlice.ts
+
+BLE Agent:
+Domain: Bluetooth and hardware
+Responsibilities:
+- Device discovery implementation
+- Connection management
+- DFU firmware updates
+- Camera command protocol
+- Hardware diagnostics
+Files: src/services/ble/*, src/services/dfu/*
+
+UI Agent:
+Domain: User interface components
+Responsibilities:
+- Screen layouts
+- Navigation structure
+- Reusable components
+- Form validation
+- Animation implementation
+Files: src/components/*, src/navigation/*
+
+Data Agent:
+Domain: Data management
+Responsibilities:
+- Redux store configuration
+- Supabase integration
+- Database operations
+- State management
+- Migration scripts
+Files: src/store/*, src/services/supabase/*
+```
+
+### 12.2 Development Coordination
+
+**Parallel Development Strategy:**
+```
+COORDINATION FRAMEWORK:
+
+Communication:
+- Shared context via specification document
+- Interface contracts between modules
+- Mock implementations for dependencies
+- Integration points defined upfront
+
+Task Dependencies:
+Priority 1 (Foundation):
+- Navigation structure (UI Agent)
+- Redux store setup (Data Agent)
+- SQLite schema (Sync Agent)
+
+Priority 2 (Core Features):
+- Authentication flows (Auth Agent)
+- Project management (UI + Data Agents)
+- Device discovery (BLE Agent)
+
+Priority 3 (Integration):
+- Offline sync (Sync Agent)
+- Deployment flows (All agents)
+- Testing implementation (All agents)
+
+Milestone Checkpoints:
+- Week 1: Foundation complete
+- Week 2: Core features functional
+- Week 3: Integration complete
+- Week 4: Testing and polish
+```
+
+### 12.3 Code Generation Standards
+
+**Requirements for AI-Generated Code:**
+```
+CODE STANDARDS:
+
+TypeScript Requirements:
+- Strict mode enabled
+- No 'any' types
+- Interfaces for all data structures
+- Null checks required
+- Exhaustive switch cases
+
+React Patterns:
+- Functional components only
+- Hooks for state management
+- Error boundaries required
+- Memoization where appropriate
+- Proper cleanup in useEffect
+
+Error Handling:
+- Try-catch for async operations
+- User-friendly error messages
+- Fallback UI components
+- Error reporting to Sentry
+- Retry logic with backoff
+
+Documentation:
+- JSDoc for public APIs
+- Inline comments for complex logic
+- README for each module
+- Usage examples included
+- Type definitions exported
+```
+
+### 12.4 Testing Requirements for AI Agents
+
+**Test Generation Requirements:**
+```
+TEST SPECIFICATIONS:
+
+Unit Tests (per component):
+- Happy path coverage
+- Error scenarios
+- Edge cases
+- Mock external dependencies
+- Snapshot tests for UI
+
+Integration Tests (per feature):
+- API integration
+- Database operations
+- State management
+- Cross-component interaction
+
+E2E Tests (Maestro):
+- User journey completion
+- Offline scenarios
+- Error recovery
+- Performance validation
+```
+
+---
+
+## 13. Admin Portal Integration
+
+### 13.1 Wildlife Watcher Admin Portal Specification
+
+**Purpose:** Web-based companion portal for WW Admin users to manage system-wide operations, handle user provisioning, and provide password reset functionality accessible outside the mobile app.
+
+**Portal Architecture:**
+```
+ARCHITECTURE:
+Hosting: Supabase Edge Functions
+Frontend: React-based SPA
+Authentication: Shared Supabase Auth
+Database: Same Supabase instance
+Deployment: Separate from mobile app
+
+URL Structure:
+- Main portal: https://admin.wildlife.ai
+- Password reset: https://admin.wildlife.ai/reset-password
+- User invitation: https://admin.wildlife.ai/invite/[token]
+```
+
+**Core Features:**
+```
+FEATURE SET:
+
+User Management:
+- View all users
+- Add users directly (no temp passwords)
+- Assign/revoke WW_ADMIN role
+- Deactivate accounts
+- Reset passwords
+- Send invitations
+
+Project Overview:
+- View all projects (read-only)
+- See deployment statistics
+- Monitor active deployments
+- View device status
+
+System Administration:
+- Upload firmware files
+- Manage AI models (future)
+- View audit logs
+- System health metrics
+
+Password Reset Form:
+- Mobile-responsive design
+- Token validation
+- Password strength requirements
+- Success redirect to app
+```
+
+### 13.2 Integration with Mobile App
+
+**Shared Resources:**
+```
+INTEGRATION POINTS:
+
+Database:
+- Same Supabase project
+- Shared user tables
+- Common role definitions
+- Unified audit logging
+
+Authentication:
+- Single auth.users table
+- Shared session management
+- Role-based access control
+- Token compatibility
+
+Deep Linking:
+- Password reset: wildlifewatcher://reset-complete
+- Invitation accept: wildlifewatcher://welcome
+- Admin action: wildlifewatcher://admin-action
+
+Data Sync:
+- Real-time user updates
+- Role changes immediate
+- Project modifications reflected
+- Device status synchronized
+```
+
+### 13.3 Implementation Approach
+
+**Development Strategy:**
+```
+IMPLEMENTATION:
+
+Repository Structure:
+Option 1: Subfolder in mobile repo
+- /wildlife-watcher-mobile-app
+- /ww-admin-portal
+- Shared package.json scripts
+- Single deployment pipeline
+
+Option 2: Separate repository (Recommended)
+- Independent versioning
+- Separate CI/CD
+- Clear separation of concerns
+- Different tech stack possible
+
+Technology Stack:
+- React 18 with TypeScript
+- Tailwind CSS for styling
+- Supabase JS client
+- Edge Functions for API
+- Deno for serverless
+
+Deployment:
+- Edge Functions: supabase functions deploy
+- Static assets: Supabase Storage or CDN
+- Environment variables: Supabase secrets
+- Custom domain: admin.wildlife.ai
+```
+
+### 13.4 Security Considerations
+
+**Admin Portal Security:**
+```
+SECURITY MEASURES:
+
+Access Control:
+- WW_ADMIN role required
+- 2FA encouraged
+- Session timeout (30 minutes)
+- IP whitelist option
+
+Audit Logging:
+- All admin actions logged
+- User modifications tracked
+- Login attempts recorded
+- Export capability
+
+Data Protection:
+- HTTPS only
+- CSRF protection
+- XSS prevention
+- SQL injection prevention
+- Rate limiting
+```
+
+---
+
+## 14. AI Model & Firmware Management
+
+### 14.1 AI Model Management (Future Implementation)
+
+**Status:** Placeholder specification for future AI model deployment functionality
+
+**Planned Architecture:**
+```
+FUTURE CAPABILITY:
+
+Model Storage:
+- Supabase Storage bucket
+- Version control system
+- Model metadata database
+- Performance metrics tracking
+
+Model Deployment Flow:
+1. WW Admin uploads model
+2. Model validated and stored
+3. Project Admin assigns to project
+4. Model synced to app offline
+5. Deployed to camera via BLE
+6. Performance data collected
+
+Model Metadata:
+- Model ID and version
+- Species detected
+- Accuracy metrics
+- File size
+- Compatible firmware versions
+- Training dataset info
+```
+
+**Integration Requirements:**
+```
+REQUIREMENTS:
+- Model files up to 50MB
+- Compression for transfer
+- Differential updates
+- Rollback capability
+- A/B testing support
+- Performance monitoring
+```
+
+### 14.2 Firmware Update Management
+
+**Current Implementation Status:**
+```
+FIRMWARE SYSTEM:
+
+Storage:
+- Location: Supabase Storage
+- Format: .zip packages
+- Metadata: Database table
+- Versioning: Semantic (x.y.z)
+
+Update Process:
+1. Check latest version
+2. Download if newer
+3. Verify checksum
+4. Transfer via Nordic DFU
+5. Verify installation
+6. Update device record
+
+Restrictions:
+- No updates during deployment
+- Battery level > 30% required
+- Stable BLE connection needed
+- User confirmation required
+```
+
+**Future Enhancements:**
+```
+PLANNED FEATURES:
+- Differential updates
+- Background downloads
+- Automatic rollback on failure
+- Update scheduling
+- Fleet-wide updates
+- Update analytics
+```
+
+---
+
+## 15. Actions & Clarifications Needed
+
+### 15.1 Human Actions Required
+
+**Design Team Actions:**
+```
+DESIGN DELIVERABLES NEEDED:
+
+Immediate (Blocking):
+□ App icon (1024x1024) for both platforms
+□ Splash screen design (multiple sizes)
+□ Missing screen designs:
+  - Member management UI (add/remove/role change)
+  - User profile screen layout
+  - Sync status detailed view
+  - Developer menu interface
+
+Before Launch:
+□ App Store screenshots (6.5", 5.5")
+□ Google Play feature graphic (1024x500)
+□ Marketing materials
+□ Onboarding tutorial screens (optional)
+```
+
+**Product Manager Actions:**
+```
+DECISIONS REQUIRED:
+
+Critical Path:
+□ Confirm LoRaWAN message format from hardware team
+□ Approve user role permission matrix
+□ Sign off on offline conflict resolution rules
+□ Validate test data scenarios
+
+Before Development:
+□ Prioritize remaining feature gaps
+□ Approve simplified member management flow
+□ Confirm privacy policy content
+□ Review terms of service
+
+Before Launch:
+□ App Store descriptions (both stores)
+□ Version numbering strategy
+□ Phased rollout plan
+□ Success metrics definition
+```
+
+**Development Team Actions:**
+```
+TECHNICAL SETUP:
+
+Immediate:
+□ Create Supabase project
+□ Set up development environment variables
+□ Configure iOS certificates and provisioning
+□ Install Maestro testing framework
+□ Set up Claude Code environment
+
+Week 1:
+□ Implement Edge Functions for LoRaWAN
+□ Set up CI/CD pipeline with EAS
+□ Configure Sentry error tracking
+□ Create development test accounts
+
+Before Testing:
+□ Populate test data in Supabase
+□ Configure staging environment
+□ Set up TestFlight and Play Console
+□ Document API endpoints
+```
+
+**Hardware Team Actions:**
+```
+HARDWARE SPECIFICATIONS:
+
+Required Documentation:
+□ Complete BLE command protocol
+  - Command structure
+  - Response formats
+  - Error codes
+  - Timeout values
+
+□ LoRaWAN payload specification
+  - Message structure
+  - Field definitions
+  - Encoding format
+  - Update frequency
+
+□ Firmware packages
+  - Version changelog
+  - Update procedures
+  - Rollback process
+  - Compatibility matrix
+
+□ Camera capabilities
+  - Snapshot command details
+  - Image format/size
+  - Preview limitations
+  - Configuration options
+```
+
+### 15.2 Technical Clarifications Needed
+
+**Pending Technical Decisions:**
+```
+CLARIFICATION ITEMS:
+
+Image Handling:
+? Maximum image file size allowed
+? Compression quality settings (0.7-0.9)
+? Thumbnail dimensions (200x200 or other)
+? CDN service preference (Supabase or external)
+
+Offline Behavior:
+? Maximum offline cache size (MB)
+? Cache eviction policy (LRU or date-based)
+? Sync retry strategy (exponential backoff parameters)
+? Conflict resolution for edge cases
+
+Performance Limits:
+? Maximum projects per user
+? Maximum deployments per project
+? Maximum members per project
+? Data retention period for ended deployments
+
+Security Policies:
+? Password complexity requirements
+? Session timeout duration
+? Biometric authentication optional or required
+? Certificate pinning enabled or disabled
+
+Analytics (if required):
+? Analytics service (Firebase, Mixpanel, custom)
+? Events to track
+? User privacy settings
+? Data retention policy
+```
+
+### 15.3 Risk Mitigation Items
+
+**Identified Risks:**
+```
+RISK REGISTER:
+
+High Priority:
+- iOS approval delays (app uses Bluetooth)
+  Mitigation: Submit early, prepare detailed review notes
+  
+- LoRaWAN integration untested
+  Mitigation: Mock implementation initially, test with simulator
+
+- Offline sync complexity
+  Mitigation: Incremental implementation, extensive testing
+
+Medium Priority:
+- BLE connection reliability
+  Mitigation: Implement robust retry logic, connection monitoring
+
+- Image storage costs
+  Mitigation: Implement compression, set retention policies
+
+- User adoption challenges
+  Mitigation: Onboarding tutorial, in-app help
+
+Low Priority:
+- Firmware update failures
+  Mitigation: Rollback mechanism, manual recovery option
+
+- Test coverage gaps
+  Mitigation: Continuous test improvement, manual testing
+```
+
+### 15.4 Success Criteria
+
+**MVP Success Metrics:**
+```
+SUCCESS INDICATORS:
+
+Technical:
+- All core features functional
+- Offline mode works reliably
+- Sync completes without data loss
+- BLE connections stable
+- App crash rate < 1%
+
+User Experience:
+- Deployment flow < 5 minutes
+- Successful first-time setup > 90%
+- Sync conflicts resolved automatically > 95%
+- App store rating > 4.0 stars
+
+Business:
+- Ready for field testing
+- Supports 100+ concurrent users
+- Handles 1000+ deployments
+- Scales to multiple projects
+```
+
+### 15.5 Post-MVP Roadmap
+
+**Future Enhancements:**
+```
+ROADMAP ITEMS:
+
+Phase 2 (Post-MVP):
+- AI model deployment
+- Advanced analytics dashboard
+- Multi-language support
+- Tablet optimization
+- Batch operations
+
+Phase 3:
+- Web companion app
+- API for third-party integration
+- Advanced mapping features
+- Social features (team chat)
+- Automated reporting
+
+Phase 4:
+- Machine learning insights
+- Predictive maintenance
+- Fleet management
+- Integration with conservation databases
+- Citizen science features
+```
+
