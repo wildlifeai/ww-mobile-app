@@ -296,29 +296,27 @@ enum UserRole {
   PROJECT_MEMBER = 'project_member' // Field team members
 }
 
-// Capability Matrix:
+// Role Capabilities Matrix:
 interface RoleCapabilities {
   'ww_admin': {
-    accessDevMenu: true,
+    accessDevMenu: 'configurable',  // Individual feature-level control
     manageAllUsers: true,
     viewAllProjects: true,  // Read-only access
     configureSystem: true,
     accessDiagnostics: true,
-    grantWWAdminRole: true
+    manageWWAdminFeatures: true  // Can configure other WW_ADMIN permissions
   },
   'project_admin': {
     editProject: true,
     manageProjectMembers: true,
     deleteDeployments: true,
     assignModels: true,
-    startEndDeployments: true,
-    becomeProjectAdmin: true  // Can create projects and become admin
+    startEndDeployments: true
   },
   'project_member': {
     viewProject: true,
     startEndDeployments: true,
-    testDevices: true,
-    becomeProjectAdmin: true  // Can create new projects
+    testDevices: true
   }
 }
 ```
@@ -329,21 +327,72 @@ interface RoleCapabilities {
 - Only WW Admins can grant WW Admin role to others
 - Project Admins can add members and assign roles within their projects
 
+
+#### 4.2.1 WW Admin Developer Feature Configuration
+
+**Business Context**: WW Admin users serve different functions within wildlife research organizations. A field support administrator helping researchers troubleshoot camera connectivity in remote locations needs different tools than a user management administrator who handles account setup and permissions from an office environment. Similarly, a technical support administrator might need access to diagnostic tools and firmware management, while a project oversight administrator only needs cross-project visibility and sync monitoring.
+Configurable Access Model: Rather than granting blanket access to all developer tools, the app implements granular feature-level permissions for WW Admin users. This ensures each administrator sees only the tools relevant to their specific responsibilities, reducing interface complexity and preventing accidental access to inappropriate system functions.
+
+##### Real-World Scenarios:
+
+- **Field Support Admin**: Needs BLE diagnostics, device firmware management, and sync queue monitoring to help researchers resolve connectivity issues during deployments
+- **User Management Admin**: Requires user administration tools and audit logging but doesn't need technical diagnostic features
+- **System Oversight Admin**: Needs cross-project visibility, sync status monitoring, and system health diagnostics but not device-level tools
+- **Technical Support Admin**: Requires full diagnostic access including database inspection and raw LoRaWAN message viewing for advanced troubleshooting
+
+**Implementation Considerations**: Feature permissions are configured per WW Admin user and can be modified by other WW Admin users with management privileges. The system maintains an audit trail of permission changes and allows environment-based overrides (development environments can enable additional diagnostic tools temporarily). Default configurations provide sensible baseline permissions that can be customized based on organizational needs and individual administrator responsibilities.
+
+
+#### 4.2.2 Business Rationale for Configurable WW Admin Features
+
+**Organizational Scale Considerations:** Wildlife research organizations vary dramatically in size and structure, from small university research groups with 2-3 projects to large conservation organizations managing hundreds of camera deployments across multiple continents. This scale variation means WW Admin roles must adapt to different operational contexts - a single technical administrator in a small organization might need access to all diagnostic tools, while a large organization might have specialized administrators for user management, field support, and technical operations.
+
+**Field Operations Reality:** Wildlife research often involves deployments in remote locations where internet connectivity is limited or nonexistent. Field support administrators need immediate access to diagnostic tools that help researchers resolve camera connectivity, firmware, and deployment issues without waiting for remote technical support. However, these same administrators don't need access to user management or database inspection tools that are primarily office-based functions.
+
+**Security and Compliance Requirements:** Research organizations handling sensitive wildlife location data must maintain strict access controls. Configurable permissions ensure that administrators have access only to the tools necessary for their specific responsibilities, reducing the risk of accidental data exposure or system modifications. This granular control supports organizational compliance requirements and audit trails while maintaining operational efficiency.
+
+**Training and Support Efficiency:** Different WW Admin responsibilities require different skill sets and training levels. User management administrators need to understand account provisioning and role assignment but don't need technical knowledge of BLE protocols or database structures. By showing only relevant tools, the interface reduces training complexity and support burden while minimizing the risk of administrators accidentally accessing unfamiliar system functions.
+
+**Operational Workflow Optimization:** Research teams often have established workflows where specific individuals handle particular aspects of camera management. Project coordinators need project oversight tools, field technicians need device diagnostic capabilities, and IT administrators need system-level access. Configurable features allow the app interface to align with existing organizational structures and workflows rather than forcing organizations to adapt to a one-size-fits-all administrative interface.
+
+**Implementation Benefits:** This approach provides organizations with the flexibility to adapt the app to their specific operational needs while maintaining system security and interface simplicity. Administrators see only the tools they need for their role, reducing interface complexity and improving task efficiency. Organizations can easily adjust administrator capabilities as roles evolve or as team members take on different responsibilities within research projects.
+
+
 ### 4.3 User Profile Management
 
 User profiles start minimal and can be enhanced over time:
 
 ```typescript
+// src/navigation/screens/ProfileScreen.tsx
 interface UserProfile {
   email: string;           // Immutable, from auth
-  fullName?: string;       // Optional, defaults to email prefix
+  fullName?: string;       // Optional, defaults to email
   organization?: string;   // Optional for MVP
   profilePhoto?: string;   // Optional, stored locally for MVP
   preferences: {
     offlineMapRadius: number;  // km to cache, default 10
     syncOnCellular: boolean;   // default true
-    developerMode: boolean;    // WW_ADMIN only
+    wwAdminFeatures?: WWAdminFeatureConfig;  // Only present for WW_ADMIN users
   };
+}
+
+interface WWAdminFeatureConfig {
+  essentialFeatures: {
+    userManagement: boolean;        // Always true - core admin function
+    systemDiagnostics: boolean;     // Always true - system health monitoring
+    projectOverview: boolean;       // Always true - cross-project visibility
+    syncStatusMonitor: boolean;     // Always true - data integrity monitoring
+  };
+  configurableFeatures: {
+    bleAdvancedDiagnostics: boolean;    // Device troubleshooting tools
+    databaseInspector: boolean;         // Direct database access/queries
+    rawLoRaWANViewer: boolean;         // Raw message inspection
+    deviceFirmwareTools: boolean;       // Firmware update management
+    syncQueueManipulation: boolean;     // Manual sync queue control
+    apiEndpointTesting: boolean;        // Direct API testing tools
+  };
+  lastConfiguredBy: string;   // Which admin configured these features
+  lastConfiguredAt: Date;     // When configuration was last changed
 }
 ```
 
@@ -351,6 +400,15 @@ interface UserProfile {
 - Red dot on drawer menu profile section if incomplete
 - Progress indicator showing completion percentage
 - Gentle prompts to complete profile without blocking functionality
+
+**WW Admin Feature Configuration Interface**: For WW Admin users, the profile screen includes an additional "Administrative Features" section that displays their currently enabled developer tools. This section shows which diagnostic and management capabilities are available to them, helping administrators understand their access level and request additional permissions if needed for their role.
+
+The interface clearly distinguishes between essential features (always enabled for all WW Admins) and configurable features (enabled based on individual responsibilities). Essential features include user management, system diagnostics, project overview, and sync monitoring - core capabilities every WW Admin needs regardless of their specific role. Configurable features include specialized tools like BLE diagnostics, database inspection, firmware management, and advanced troubleshooting capabilities.
+
+**User Experience Considerations**: The feature configuration display is read-only for individual administrators - they can see what they have access to but cannot modify their own permissions. This prevents accidental privilege escalation while maintaining transparency about available capabilities. If an administrator needs additional features, they can contact another WW Admin with management privileges or refer to their organization's internal procedures for permission requests.
+
+
+**Implementation Notes**: The configuration is stored as part of the user's preferences but synchronized with the backend to ensure consistency across devices. When a WW Admin's features are modified by another administrator, the changes take effect immediately upon the next app sync, with appropriate notifications to inform the user of capability changes.
 
 ---
 
@@ -405,13 +463,44 @@ const DrawerContent = () => {
       <DrawerItem label="Settings" onPress={navigateToSettings} />
       <DrawerItem label="Offline Preparation" onPress={navigateToOfflinePrep} />
       
-      {/* Developer Menu - Only for WW_ADMIN or Dev Environment */}
-      {shouldShowDevMenu() && (
+      {/* WW Admin Tools - Configurable per user */}
+      {isWWAdmin() && (
+        <DrawerSection title="WW Admin Tools">
+          {/* Essential admin features - always shown */}
+          <DrawerItem label="User Management" onPress={navigateToUserManagement} />
+          <DrawerItem label="System Diagnostics" onPress={navigateToSystemDiagnostics} />
+          <DrawerItem label="Project Overview" onPress={navigateToProjectOverview} />
+          
+          {/* Configurable features - shown based on user permissions */}
+          {hasWWAdminFeature('deviceFirmwareTools') && (
+            <DrawerItem label="Firmware Management" onPress={navigateToFirmwareManagement} />
+          )}
+          {hasWWAdminFeature('bleAdvancedDiagnostics') && (
+            <DrawerItem label="BLE Advanced Diagnostics" onPress={navigateToBLEDiagnostics} />
+          )}
+          {hasWWAdminFeature('syncQueueManipulation') && (
+            <DrawerItem label="Sync Queue Monitor" onPress={navigateToSyncQueue} />
+          )}
+          {hasWWAdminFeature('databaseInspector') && (
+            <DrawerItem label="Database Inspector" onPress={navigateToDatabaseInspector} />
+          )}
+          {hasWWAdminFeature('rawLoRaWANViewer') && (
+            <DrawerItem label="LoRaWAN Message Viewer" onPress={navigateToLoRaWANViewer} />
+          )}
+          {hasWWAdminFeature('apiEndpointTesting') && (
+            <DrawerItem label="API Testing Tools" onPress={navigateToAPITesting} />
+          )}
+        </DrawerSection>
+      )}
+      
+      {/* Developer Tools - Only in development environment */}
+      {isDevelopmentEnvironment() && (
         <DrawerSection title="Developer Tools">
-          <DrawerItem label="BLE Diagnostics" />
-          <DrawerItem label="Sync Queue Monitor" />
-          <DrawerItem label="Database Inspector" />
-          <DrawerItem label="Mock LoRaWAN Messages" />
+          <DrawerItem label="Mock LoRaWAN Generator" onPress={navigateToMockLoRaWAN} />
+          <DrawerItem label="State Debugger" onPress={navigateToStateDebugger} />
+          <DrawerItem label="Network Request Logger" onPress={navigateToNetworkLogger} />
+          <DrawerItem label="Performance Profiler" onPress={navigateToPerformanceProfiler} />
+          <DrawerItem label="Test Data Generator" onPress={navigateToTestDataGenerator} />
         </DrawerSection>
       )}
       
@@ -421,6 +510,19 @@ const DrawerContent = () => {
   );
 };
 ```
+
+##### 5.1.1 Intelligent Menu Adaptation
+
+**Contextual Feature Display**: The drawer menu intelligently adapts its content based on the user's role, configured permissions, and environment. This reduces cognitive load by showing only relevant options while maintaining discoverability of available features.
+
+**WW Admin Tool Organization**: WW Admin users see a dedicated "WW Admin Tools" section that separates administrative functions from general app features. Essential administrative capabilities (user management, system diagnostics, project overview) appear for all WW Admin users, providing consistent access to core administrative functions. Additional specialized tools appear only when specifically enabled for that administrator, ensuring the interface remains clean and focused on their actual responsibilities.
+
+**Environment-Based Tool Separation**: Pure development and debugging tools are completely separated from production administrative features. The "Developer Tools" section only appears in development environments, preventing confusion between operational administrative tools and technical debugging capabilities. This clear separation ensures that production WW Admin users never see development-specific features that could cause system instability or confusion.
+
+**User Experience Flow**: When a WW Admin user opens the drawer, they immediately see their available administrative tools without needing to navigate through irrelevant options. Feature visibility is determined in real-time based on their current permissions, so changes to their administrative capabilities are reflected immediately upon app sync. The menu maintains consistent organization regardless of which specific features are enabled, providing a predictable interface structure.
+
+**Implementation Considerations**: The menu adaptation logic checks user permissions efficiently to avoid performance impacts when opening the drawer. Feature visibility decisions are cached locally but refreshed during sync operations to ensure consistency with backend permission changes. The system gracefully handles permission changes during active sessions, updating menu visibility without requiring app restart.
+
 
 ### 5.2 Maps Screen (Home)
 
