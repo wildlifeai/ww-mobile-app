@@ -267,11 +267,19 @@ User Action → Screen Component → Redux Action → Service Layer → Local SQ
 
 The app supports three distinct user onboarding paths reflecting real-world organizational needs:
 
-**Path 1: Direct Registration** - New users can self-register through the app, creating their account with email and password. This path is ideal for citizen scientists or independent researchers joining the platform.
+**Path 1: Direct Registration** -  New users can self-register through the app, creating their account with email, password, full name, and organization. This path requires complete profile information during registration to ensure proper user identification within research teams. All fields are mandatory to facilitate effective collaboration and project member management from the moment users join the platform.
 
 **Path 2: Project Invitation** - Project admins invite team members by email. Recipients receive a secure link to set their password. If the invitation expires (7 days), users can request a fresh link from their Project Admin or WW Admin.
 
 **Path 3: WW Admin Provisioning** - System administrators can directly create user accounts through the admin portal, useful for pre-configuring accounts for field teams or workshop participants.
+
+#### Registration Requirements
+
+**Mandatory Profile Information**: All registration paths require users to provide their full name and organization during account creation. This ensures that team members can be properly identified in project collaboration and that administrators have complete user information for effective team management.
+
+**Validation Standards**: Full name must contain at least first and last name (minimum two words) and organization must be at least 3 characters to ensure meaningful institutional identification. These requirements apply regardless of the registration path used.
+
+**User Experience Considerations**: While requiring complete information during signup may slightly increase registration time, it eliminates the need for profile completion prompts after registration and ensures all users have identifiable profiles from the start, which is essential for wildlife research team collaboration.
 
 #### Sign Out Implementation
 
@@ -360,14 +368,14 @@ Configurable Access Model: Rather than granting blanket access to all developer 
 
 ### 4.3 User Profile Management
 
-User profiles start minimal and can be enhanced over time:
+User profiles are established with complete core information during registration:
 
 ```typescript
 // src/navigation/screens/ProfileScreen.tsx
 interface UserProfile {
   email: string;           // Immutable, from auth
-  fullName?: string;       // Optional, defaults to email
-  organization?: string;   // Optional for MVP
+  fullName: string;        // Mandatory, provided during registration
+  organization: string;    // Mandatory, provided during registration
   profilePhoto?: string;   // Optional, stored locally for MVP
   preferences: {
     offlineMapRadius: number;  // km to cache, default 10
@@ -397,9 +405,12 @@ interface WWAdminFeatureConfig {
 ```
 
 **Profile Completion Indicators:**
-- Red dot on drawer menu profile section if incomplete
-- Progress indicator showing completion percentage
-- Gentle prompts to complete profile without blocking functionality
+- Profile completeness is established during registration (fullName and organization are mandatory)
+- Optional profile photo indicator shows when image is not yet uploaded
+- Preference synchronization status visible in settings
+- No profile completion prompts needed for core fields
+
+**Profile Management Approach**: Since full name and organization are required during registration, users have complete core profiles from the start. This eliminates the friction of incomplete profile states and ensures proper user identification for team collaboration immediately upon account creation. The profile screen focuses on managing preferences and optional elements like profile photos rather than completing mandatory information.
 
 **WW Admin Feature Configuration Interface**: For WW Admin users, the profile screen includes an additional "Administrative Features" section that displays their currently enabled developer tools. This section shows which diagnostic and management capabilities are available to them, helping administrators understand their access level and request additional permissions if needed for their role.
 
@@ -666,7 +677,7 @@ After successfully creating a deployment, navigate to:
 ```typescript
 const MemberListItem = ({ member, isAdmin, currentUserId }) => (
   <ListItem>
-    <Text variant="bodyLarge">{member.fullName || member.email}</Text>
+    <Text variant="bodyLarge">{member.fullName}</Text>
     <RoleBadge role={member.role} />
     {isAdmin && member.id !== currentUserId && (
       <IconButton 
@@ -682,8 +693,11 @@ const MemberListItem = ({ member, isAdmin, currentUserId }) => (
 1. Enter email address
 2. Select role (admin/member)
 3. Check if user exists
-4. Send invitation if new user
+4. Send invitation if new user (must include fullName and organization requirements)
 5. Add to project immediately
+
+**Invitation Requirements**: When sending invitations to new users, the invitation email must clearly communicate that full name and organization are required during account setup to ensure proper team member identification and collaboration within the research project.
+
 
 ### 5.7 Deployments Screen
 
