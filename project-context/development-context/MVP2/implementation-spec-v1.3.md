@@ -53,6 +53,16 @@ Key MVP deliverables include offline-first deployment workflows, Bluetooth camer
 - **Project Admin**: User who manages a specific research project
 - **WW Admin**: System administrator with special technical access
 
+
+### Reference Documents
+
+- Figma Wireframe & User Stories (combined)  @project-context/development-context/MVP2/User Stories_ Navigation 2.0-Figma-Design-med.pdf - not these are original document and this document has used as a base and enhanced with further items and content to fill out the specification.
+- Supabase Backend Document can be found in @project-context/wildlife-watcher-database-context
+- App Architect document - @project-context/development-context/architecture-review/ARCHITECTURE-REVIEW.md - represent state of App before this specification was created - need to update this as we develop the app further based on this
+
+
+
+
 ---
 
 ## User Story Mapping
