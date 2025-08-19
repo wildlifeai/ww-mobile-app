@@ -21,7 +21,8 @@
 **NEVER save to root folder. Use these directories:**
 - `/src` - Source code files
 - `/tests` - Test files
-- `/docs` - Documentation and markdown files
+- `/project-context` - Documentation and markdown files in relation to app development
+- `/documentation` - Documentation and markdown files for developer reference (technical and reference)
 - `/config` - Configuration files
 - `/scripts` - Utility scripts
 - `/examples` - Example code
