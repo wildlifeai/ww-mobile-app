@@ -28,7 +28,15 @@
 
 ## Project Overview
 
+**Wildlife Watcher Mobile App** - React Native field deployment tool for wildlife camera management with offline-first architecture.
+
 This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) methodology with Claude-Flow orchestration for systematic Test-Driven Development.
+
+### MVP2 Implementation Status
+- **Foundation**: Auth system, Redux store, SQLite offline support
+- **Current Phase**: Parallel development streams (Projects, Deployments, Devices & Maps)
+- **Architecture**: Offline-first with Supabase backend, BLE device communication
+- **Key Features**: 6-step deployment wizard, project management, real-time sync
 
 ## SPARC Commands
 
@@ -45,9 +53,14 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 
 ### Build Commands
 - `npm run build` - Build project
-- `npm run test` - Run tests
+- `npm run test` - Run tests  
 - `npm run lint` - Linting
 - `npm run typecheck` - Type checking
+
+### MVP2 Specific Commands
+- `npx claude-flow@alpha hive-mind init` - Initialize intelligent swarm coordination
+- `npx claude-flow@alpha sparc tdd "feature"` - Run TDD workflow for MVP features
+- `npx claude-flow@alpha task_orchestrate --strategy parallel` - Coordinate parallel development
 
 ## SPARC Workflow Phases
 
@@ -254,6 +267,27 @@ Message 4: Write "file.js"
 5. Train patterns from success
 6. Enable hooks automation
 7. Use GitHub tools first
+
+## 📋 MVP2 Implementation References
+
+### Key Documents
+- **Implementation Spec**: `@project-context/development-context/MVP2/implementation-spec-v1.3.md`
+- **Task Plan**: `@project-context/development-context/MVP2/TASK-RESTRUCTURING-PLAN.md` 
+- **Claude Flow Plan**: `@project-context/development-context/MVP2/claude-flow-implementation-plan.md`
+- **Development TODO**: `@project-context/development-context/MVP2/to-do`
+
+### Development Streams
+- **Foundation Layer**: Tasks 9-11 (Auth, Redux, SQLite) - Sequential execution required
+- **Stream A**: Tasks 12-14 (Project Management) - Auth-Agent + Data-Agent
+- **Stream B**: Tasks 15-17 (Deployment Workflows) - UI-Agent + BLE-Agent  
+- **Stream C**: Tasks 18-20 (Devices & Maps) - BLE-Agent + Sync-Agent
+- **Integration**: Tasks 21-23 (Testing, Optimization, Production) - Quality-Agent + Integration-Agent
+
+### Critical Implementation Notes
+- **Offline-First**: All operations must work without network connectivity
+- **BLE Integration**: Wildlife Watcher camera communication via Bluetooth
+- **Supabase Backend**: RLS policies, Edge Functions, real-time subscriptions
+- **Role-Based Access**: WW Admin configurable features, project admin/member roles
 
 ## Support
 

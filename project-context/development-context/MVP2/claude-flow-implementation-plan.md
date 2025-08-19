@@ -1,5 +1,42 @@
- Based on my analysis of the implementation specification and existing task documentation, here's how I would apply Claude Flow to implement the Wildlife
-  Watcher MVP:
+# Wildlife Watcher MVP2 - Claude Flow Implementation Plan
+
+**Version**: 1.0  
+**Date**: August 2025  
+**Status**: Ready for Implementation  
+
+## Document References
+
+This implementation plan is based on analysis of the following key documents:
+
+### Primary Specification Documents
+- **[Implementation Specification v1.3]** - `@project-context/development-context/MVP2/implementation-spec-v1.3.md`
+  - Comprehensive MVP requirements and technical architecture
+  - User stories, authentication flows, offline architecture
+  - Supabase integration, state management, production readiness
+
+- **[Task Restructuring Plan]** - `@project-context/development-context/MVP2/TASK-RESTRUCTURING-PLAN.md`
+  - Detailed task breakdown (Tasks 9-23) with parallel development streams
+  - Foundation Layer, Stream A (Projects), Stream B (Deployments), Stream C (Devices & Maps)
+  - Resource allocation and timeline estimates
+
+### Supporting Documents
+- **[Development To-Do List]** - `@project-context/development-context/MVP2/to-do`
+  - Critical gaps and missing considerations
+  - BLE/DFU specification requirements
+  - Supabase reconciliation needs
+
+- **[Claude Flow Documentation]** - https://github.com/ruvnet/claude-flow
+  - Agent coordination patterns and SPARC methodology
+  - Performance benefits (84.8% SWE-Bench solve rate, 2.8-4.4x speed improvement)
+
+### Key Alignment Analysis
+This plan aligns the **54 available Claude Flow agents** with the **15 structured tasks** (Tasks 9-23) from the Task Restructuring Plan, incorporating the detailed technical requirements from the Implementation Specification v1.3.
+
+---
+
+## 🌊 Claude Flow Implementation Strategy
+
+Based on analysis of the implementation specification and existing task documentation, here's how to apply Claude Flow to implement the Wildlife Watcher MVP:
 
   🌊 Claude Flow Implementation Strategy
 
@@ -138,10 +175,35 @@
   - Offline Preparation UI: Spec has detailed offline checklist (Section 6.2) not in tasks
 
   🔄 Suggested Task Additions:
-  - Task 13.5: WW Admin configurable features implementation
-  - Task 17.5: LoRaWAN webhook Edge Function development
-  - Task 23.5: Password reset web form (admin portal)
-  - Task 11.5: Offline preparation checklist UI
+  - **Task 13.5**: WW Admin configurable features implementation (Spec Section 4.2.1)
+  - **Task 17.5**: LoRaWAN webhook Edge Function development (Spec Section 7.2)  
+  - **Task 23.5**: Password reset web form (admin portal) (Spec Section 13.2)
+  - **Task 11.5**: Offline preparation checklist UI (Spec Section 6.2)
+
+## Cross-Reference Mapping
+
+### Implementation Spec → Task Alignment
+| Spec Section | Description | Task Reference | Status |
+|--------------|-------------|----------------|---------|
+| 4.1 | Authentication Flow | Task 9 | ✅ Aligned |
+| 4.2.1 | WW Admin Features | Task 13.5 | 🔄 New Task Needed |
+| 5.3-5.4 | Deployment Flows | Tasks 15-17 | ✅ Aligned |
+| 5.5-5.6 | Project Management | Tasks 12-14 | ✅ Aligned |
+| 6.2 | Offline Preparation | Task 11.5 | 🔄 New Task Needed |
+| 7.2 | LoRaWAN Integration | Task 17.5 | 🔄 New Task Needed |
+| 8.0 | State Management | Task 10 | ✅ Aligned |
+| 13.2 | Admin Portal | Task 23.5 | 🔄 New Task Needed |
+
+### Agent → Development Stream Mapping
+| Claude Flow Agent | Primary Stream | Tasks Covered | Spec Sections |
+|-------------------|----------------|---------------|---------------|
+| Auth-Agent | Foundation | Task 9 | 4.1, 4.2, 4.3 |
+| Data-Agent | Foundation + Stream A | Tasks 10, 12-14 | 7.1, 8.0, 5.5-5.6 |
+| Sync-Agent | Foundation + Stream C | Tasks 11, 20 | 6.0, 7.0 |
+| UI-Agent | All Streams | Tasks 9, 12, 15, 18 | 5.1, 5.2 |
+| BLE-Agent | Stream B + C | Tasks 15, 16, 18 | 5.3, 5.4, 5.8 |
+| Quality-Agent | Integration | Task 21 | 11.0 |
+| Integration-Agent | Integration | Tasks 22-23 | 10.0, 12.0 |
 
   🚀 Implementation Recommendation
 
