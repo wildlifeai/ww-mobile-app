@@ -183,7 +183,11 @@ The navigation structure is in place with bottom tabs and drawer menu configured
 
 Several critical user flows need to be built or completed. The member invitation system needs to be created, allowing project admins to add users who may not yet have accounts. This is essential since research teams often span multiple organizations and countries. The offline synchronization infrastructure is planned but not yet implemented - this is crucial for field operations in remote areas.
 
-The start and end deployment flows exist partially but need completion, particularly the project selection improvements (card-based UI instead of dropdown) and camera configuration steps. User profile management needs to be added, initially as optional fields with indicators showing when profiles are incomplete. The LoRaWAN webhook for receiving camera status updates needs to be implemented as an Edge Function, though the exact message format is still being finalized by the hardware team.
+~~The start and end deployment flows exist partially but need completion, particularly the project selection improvements (card-based UI instead of dropdown) and camera configuration steps.~~
+
+User profile management needs to be added, initially as optional fields with indicators showing when profiles are incomplete. 
+
+The LoRaWAN webhook for receiving camera status updates needs to be implemented as an Edge Function, though the exact message format is still being finalized by the hardware team.
 
 Image storage with CDN optimization and thumbnail generation needs to be set up for deployment photos. The admin portal for WW Admin users needs to be implemented as detailed in Section 13.
 
