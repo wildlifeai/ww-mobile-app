@@ -1,10 +1,10 @@
-# Wildlife Watcher Mobile App - MVP Implementation Specification
+# Wildlife Watcher Mobile App - MVP 1 & 2 Implementation Specification (Consolidated Design)
 
-**Version**: 1.4  
+**Version**: 1.4.1  
 **Date**: 26 August 2025  
 **Platform**: React Native (Expo SDK 51)  
 **Backend**: Supabase  
-**Status**: Ready for AI-Assisted Development with Claude Code
+**Status**: Ready for AI-Assisted Development with Claude Code and Claude Flow
 
 ---
 
@@ -69,7 +69,7 @@ Key MVP deliverables include offline-first deployment workflows, Bluetooth camer
 
 | User Story | Implementation Section | Priority | Status |
 |------------|----------------------|----------|---------|
-| User registration and first-time setup | Section 4.1 | MVP | 🟡 Partial |
+| WW Admin user provisioning | Section 4.1 | MVP | ⬜ Planned |
 | User login and authentication | Section 4.1 | MVP | ✅ Complete |
 | Password reset via web form | Section 15.5 | Phase 2 | ⬜ Deferred |
 | Start deployment flow | Section 5.3 | MVP | 🔄 In Progress |
@@ -175,7 +175,7 @@ This is a professional tool designed to scale from small citizen science project
 
 The authentication flow is largely complete, with login functionality working and tested. Users can successfully authenticate against the Supabase backend, and sessions persist appropriately. Web Based password reset functionality has been deferred to Phase 2 to focus on core MVP features (app based reset is in place).
 
-The core Bluetooth infrastructure for camera communication has been thoroughly tested with real Wildlife Watcher devices, successfully implementing the PING/PONG protocol and Nordic DFU firmware updates. The navigation structure is in place with bottom tabs and drawer menu configured. The Maps screen exists but needs the floating action buttons for deployment workflows. Basic Redux store configuration is complete, ready for feature-specific slices to be added as development progresses.
+The core Bluetooth infrastructure for camera communication has been thoroughly tested with real Wildlife Watcher devices. **Note: Current BLE/DFU implementation is placeholder for testing connectivity only (ping/pong and DFU mode). All device interaction features are work-in-progress pending hardware specification finalization.** The navigation structure is in place with bottom tabs and drawer menu configured. The Maps screen exists but needs the floating action buttons for deployment workflows. Basic Redux store configuration is complete, ready for feature-specific slices to be added as development progresses.
 
 ### Features Requiring Implementation
 
@@ -192,7 +192,8 @@ Image storage with CDN optimization and thumbnail generation needs to be set up 
 - ✅ EAS Build configuration working
 - ✅ Development builds on Android tested
 - 🟡 iOS development builds need testing with team devices
-- ✅ BLE functionality verified with real WW cameras
+- ✅ BLE functionality verified with real WW cameras (placeholder implementation)
+- 🔗 Reference iOS POC at ~/dev/wildlifeai/wildlife-watcher-expo-poc
 - 🟡 Password reset deferred to Phase 2 (web-based reset moved from MVP)
 - ⬜ Maestro testing framework needs setup
 - ⬜ Admin portal implementation needed
@@ -243,7 +244,7 @@ wildlife-watcher-mobile-app/
 │   │   ├── constants.ts  # App-wide constants
 │   │   └── env.ts        # Environment config
 │   └── App.tsx           # Root component
-├── ww-admin-portal/       # Admin portal (separate - see Section 13)
+├── [Supabase Repo]/      # Admin portal & Edge Functions (separate repository)
 │   ├── functions/        # Edge Functions
 │   ├── components/       # React components
 │   └── public/           # Static assets
@@ -277,7 +278,7 @@ User Action → Screen Component → Redux Action → Service Layer → Local SQ
 
 The app supports a single, controlled user onboarding path to ensure proper organisational management:
 
-**WW Admin Provisioning Only** - System administrators are the only users who can create new user accounts. WW Admin users add users through the admin portal and assign them to organisations. This controlled approach ensures proper user management and organisational structure from the start.
+**WW Admin Provisioning Only** - System administrators are the only users who can create new user accounts. WW Admin users add users through the admin portal and assign them to organisations. **WW Admin must collect email address when provisioning users.** This controlled approach ensures proper user management and organisational structure from the start.
 
 #### User Provisioning Requirements
 
@@ -313,6 +314,12 @@ enum UserRole {
 
 // Role Capabilities Matrix:
 interface RoleCapabilities {
+  'model_manager': {
+    manageAIModels: true,         // Upload, version, assign models
+    viewProjectModels: true,      // See which models are deployed
+    accessModelMetrics: true,     // Performance and usage statistics
+    organisationLevel: true       // Operates at organisation level
+  },
   'ww_admin': {
     accessDevMenu: 'configurable',  // Individual feature-level control
     manageAllUsers: true,
@@ -346,10 +353,21 @@ interface RoleCapabilities {
 - Users must belong to an organisation to access projects
 
 
-#### 4.2.1 WW Admin Developer Feature Configuration
+#### 4.2.1 Simplified WW Admin Functions for MVP
 
-**Business Context**: WW Admin users serve different functions within wildlife research organizations. A field support administrator helping researchers troubleshoot camera connectivity in remote locations needs different tools than a user management administrator who handles account setup and permissions from an office environment. Similarly, a technical support administrator might need access to diagnostic tools and firmware management, while a project oversight administrator only needs cross-project visibility and sync monitoring.
-Configurable Access Model: Rather than granting blanket access to all developer tools, the app implements granular feature-level permissions for WW Admin users. This ensures each administrator sees only the tools relevant to their specific responsibilities, reducing interface complexity and preventing accidental access to inappropriate system functions.
+**Business Context**: For MVP, WW Admin capabilities are simplified to focus on core system administration without complex feature permissioning. Advanced diagnostic and developer tools are reserved for development environments only.
+
+**MVP WW Admin Functions:**
+- User Management: Add, deactivate, and assign users to organisations
+- BLE/DFU Testing: Basic device connectivity testing with placeholder implementation
+- Developer Menu: Access to testing tools in development environment only
+
+**Removed from MVP:**
+- Database diagnostics and inspection tools
+- LoRaWAN message viewer
+- Cross-project visibility beyond basic overview
+- Manual sync queue manipulation
+- Advanced BLE packet inspection
 
 ##### Real-World Scenarios:
 
@@ -484,33 +502,11 @@ const DrawerContent = () => {
       <DrawerItem label="Settings" onPress={navigateToSettings} />
       <DrawerItem label="Offline Preparation" onPress={navigateToOfflinePrep} />
       
-      {/* WW Admin Tools - Configurable per user */}
+      {/* WW Admin Tools - Simplified for MVP */}
       {isWWAdmin() && (
         <DrawerSection title="WW Admin Tools">
-          {/* Essential admin features - always shown */}
           <DrawerItem label="User Management" onPress={navigateToUserManagement} />
-          <DrawerItem label="System Diagnostics" onPress={navigateToSystemDiagnostics} />
-          <DrawerItem label="Project Overview" onPress={navigateToProjectOverview} />
-          
-          {/* Configurable features - shown based on user permissions */}
-          {hasWWAdminFeature('deviceFirmwareTools') && (
-            <DrawerItem label="Firmware Management" onPress={navigateToFirmwareManagement} />
-          )}
-          {hasWWAdminFeature('bleAdvancedDiagnostics') && (
-            <DrawerItem label="BLE Advanced Diagnostics" onPress={navigateToBLEDiagnostics} />
-          )}
-          {hasWWAdminFeature('syncQueueManipulation') && (
-            <DrawerItem label="Sync Queue Monitor" onPress={navigateToSyncQueue} />
-          )}
-          {hasWWAdminFeature('databaseInspector') && (
-            <DrawerItem label="Database Inspector" onPress={navigateToDatabaseInspector} />
-          )}
-          {hasWWAdminFeature('rawLoRaWANViewer') && (
-            <DrawerItem label="LoRaWAN Message Viewer" onPress={navigateToLoRaWANViewer} />
-          )}
-          {hasWWAdminFeature('apiEndpointTesting') && (
-            <DrawerItem label="API Testing Tools" onPress={navigateToAPITesting} />
-          )}
+          <DrawerItem label="BLE/DFU Testing" onPress={navigateToBLETesting} />
         </DrawerSection>
       )}
       
@@ -579,6 +575,7 @@ The Maps screen serves as mission control, providing immediate access to deploym
 interface NewProjectData {
   name: string;
   owner: string;  // Auto-populated with current user
+  organisation_id: string;  // Linked based on creator's org membership
   samplingDesign: string;
   description: string;
   website?: string;
@@ -589,12 +586,15 @@ interface NewProjectData {
 }
 ```
 
+**Organisation Linking:** Projects are automatically linked to the organisation based on the creator's organisation membership.
+
 **Member Addition Flow:**
-1. Enter email address
-2. System checks if user exists in database and belongs to organisation
-3. If exists and in organisation: Add to project immediately
-4. If not in system: Display error - WW Admin must add user first
-5. Assign role (defaults to PROJECT_MEMBER)
+1. Search by email address or name within organisation context
+2. Select user from search results
+3. Assign role (admin/member)
+4. Add to project
+
+**User Search:** Users can be found by email or name within their organisation context for easier member management.
 
 #### Step 3: Device Discovery (Enhanced with Filtering)
 
@@ -619,7 +619,7 @@ enum DeviceFilter {
 **Simplified Location Features:**
 - Auto-detect current GPS location
 - Manual coordinate entry with validation
-- Basic address display (reverse geocoding deferred to Phase 2)
+- NZ address autocomplete using geocoding service
 - Map interaction updates location fields
 
 **Capture Method Configuration:**
@@ -636,6 +636,11 @@ enum DeviceFilter {
 - Quality indicators and positioning overlay removed for MVP (defer to Phase 2 considearation)
 
 #### Step 6: Final Setup
+
+**BLE Configuration (Placeholder Implementation):**
+- Send basic ping/pong commands for connectivity testing
+- Configure DFU mode for firmware updates
+- **Note: Full camera configuration pending hardware specification**
 
 **Location Documentation:**
 - Camera placement photo (required)
@@ -698,11 +703,10 @@ const MemberListItem = ({ member, isAdmin, currentUserId }) => (
 ```
 
 **Add Member Flow:**
-1. Enter email address
-2. Select role (admin/member)
-3. Check if user exists in system and organisation
-4. If user exists: Add to project immediately
-5. If user doesn't exist: Show error message that WW Admin must add user first
+1. Search by email address or name within organisation context
+2. Select user from search results
+3. Set role (admin/member)
+4. Add to project
 
 **Organisation Requirements**: Users must already be in the system and assigned to an organisation by a WW Admin before they can be added to projects.
 
@@ -844,6 +848,8 @@ class ConflictResolver {
 ## 7. Supabase Integration
 
 ### 7.1 Database Schema
+
+**Note:** This specification references the existing Supabase database configuration located in a separate repository. Detailed database documentation can be found in the existing Supabase project setup.
 
 ```sql
 -- Enable required extensions
@@ -1091,6 +1097,8 @@ serve(async (req) => {
 
 ### 7.3 Image Storage Best Practices
 
+**Note:** Storage configuration details are maintained in the Supabase repository.
+
 **Storage Strategy:**
 - Store images in Supabase Storage (not as base64 in database)
 - Generate thumbnails automatically (200x200px)
@@ -1210,8 +1218,8 @@ interface OfflineState {
 
 ### 9.1 Development Workflow
 
-**AI-Assisted Development with Claude Code:**
-The app will be built using Claude Code with specialized sub-agents working on different features in parallel:
+**AI-Assisted Development with Claude Code and Claude Flow:**
+The app will be built using Claude Code with specialized sub-agents coordinated through Claude Flow for parallel development.
 
 **Sub-Agent Specialization:**
 - **Auth Agent**: Authentication, user management, roles
@@ -1220,10 +1228,10 @@ The app will be built using Claude Code with specialized sub-agents working on d
 - **UI Agent**: Screen components, navigation
 - **Data Agent**: Redux store, database operations
 
-**Development Phases:**
-1. **Foundation** (Week 1): Navigation, Redux, SQLite
-2. **Core Features** (Week 2-3): Authentication, projects, deployments
-3. **Integration** (Week 4): Sync, testing, polish
+**Development Approach:**
+- Task order and dependencies managed for parallel development
+- No fixed time estimates - implementation will be completed in hours/days with Claude Flow
+- Focus on systematic completion of features with proper integration
 
 ### 9.2 Code Quality Standards
 
@@ -1276,6 +1284,13 @@ The app will be built using Claude Code with specialized sub-agents working on d
 - Memory usage: < 200MB peak
 - Battery drain: < 15%/hour active use
 
+**Performance Tracking:**
+- Measure app launch times using React Native Performance Monitor
+- Track memory usage with Flipper integration
+- Monitor BLE operation latency with custom metrics
+- Use Sentry for crash reporting and performance monitoring
+- Battery usage analysis through device analytics
+
 ---
 
 ## 11. Testing Strategy
@@ -1283,7 +1298,7 @@ The app will be built using Claude Code with specialized sub-agents working on d
 ### 11.1 Maestro UI Testing
 
 **Test Framework Setup:**
-Maestro will be used for comprehensive UI automation testing across both platforms.
+Maestro will be used for comprehensive UI automation testing across both platforms. **Note: Actual Wildlife Watcher camera hardware is available for testing BLE connectivity and device interaction flows.**
 
 **Critical Test Flows:**
 ```yaml
@@ -1363,11 +1378,11 @@ Multiple Claude Code sub-agents will work in parallel on different aspects of th
 - Mock implementations for dependencies
 - Integration points defined upfront
 
-**Development Milestones:**
-- Week 1: Foundation complete (navigation, store, auth)
-- Week 2: Core features functional (projects, deployments)
-- Week 3: Integration complete (sync, testing)
-- Week 4: Polish and production prep
+**Development Approach:**
+- Remove traditional week-based breakdowns
+- Implementation will be completed in hours/days with Claude Flow
+- Focus on task order and dependencies for effective parallel development
+- Systematic feature completion with proper integration testing
 
 ---
 
@@ -1464,8 +1479,8 @@ Multiple Claude Code sub-agents will work in parallel on different aspects of th
 ### 15.1 Critical Human Actions Required
 
 **Design Team (Blocking MVP Development):**
-- [ ] Complete app icon design (1024x1024px)
-- [ ] Create splash screen assets
+- [ ] Complete app icon design (1024x1024px) - Use existing assets or create placeholders
+- [ ] Create splash screen assets - Use existing assets or create placeholders
 - [ ] Design missing screens:
   - Organisation management UI for WW Admin
   - Member management UI (add existing users/role change)
@@ -1473,18 +1488,18 @@ Multiple Claude Code sub-agents will work in parallel on different aspects of th
   - Developer menu interface
 
 **Product Manager (Critical Decisions):**
-- [ ] Confirm LoRaWAN message format from hardware team
+- [ ] Mock LoRaWAN implementation for development (actual format pending hardware team)
 - [ ] Approve organisation-based user management approach
 - [ ] Validate offline conflict resolution rules
 - [ ] Sign off on updated user role permission matrix including Model Manager role
 - [ ] Approve Phase 2 feature deferral (user self-registration, profile management, web reset)
 
 **Development Team (Setup Required):**
-- [ ] Create production Supabase project
+- [ ] Note: Supabase project already exists in separate repository
 - [ ] Configure development environment variables
 - [ ] Set up iOS certificates and provisioning profiles
 - [ ] Install and configure Maestro testing framework
-- [ ] Set up Claude Code development environment
+- [ ] Claude Flow environment ready for parallel development
 
 **Hardware Team (Documentation Needed):**
 - [ ] Complete BLE command protocol specification
@@ -1495,11 +1510,11 @@ Multiple Claude Code sub-agents will work in parallel on different aspects of th
 ### 15.2 Technical Clarifications Required
 
 **Pending Decisions:**
-- Maximum image file size and compression settings
-- Offline cache size limits and eviction policies
+- **Image Management**: Make image size/compression configurable with sensible defaults (5MB max, 80% quality)
+- **Cache Management**: Set cache limits configurable with defaults (100MB maps, 50MB images)
 - Session timeout duration and biometric authentication requirements
-- Performance limits (max projects/deployments per user)
-- Analytics service selection and privacy settings
+- **Resource Limits**: Remove or clarify project/deployment limits for MVP
+- **Analytics Service**: Remove or clarify analytics service requirements for MVP
 
 ### 15.3 Risk Mitigation
 
