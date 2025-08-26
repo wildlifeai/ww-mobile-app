@@ -71,7 +71,7 @@ Key MVP deliverables include offline-first deployment workflows, Bluetooth camer
 |------------|----------------------|----------|---------|
 | User registration and first-time setup | Section 4.1 | MVP | 🟡 Partial |
 | User login and authentication | Section 4.1 | MVP | ✅ Complete |
-| Password reset via web form | Section 4.1, 13 | MVP | 🔄 In Progress |
+| Password reset via web form | Section 15.5 | Phase 2 | ⬜ Deferred |
 | Start deployment flow | Section 5.3 | MVP | 🔄 In Progress |
 | End deployment flow | Section 5.4 | MVP | ⬜ Planned |
 | Project creation and management | Sections 5.5, 5.6 | MVP | ⬜ Planned |
@@ -81,7 +81,7 @@ Key MVP deliverables include offline-first deployment workflows, Bluetooth camer
 | Firmware updates | Section 5.8 | MVP | 🟡 Partial |
 | Deployments monitoring | Section 5.7 | MVP | ⬜ Planned |
 | LoRaWAN status updates | Section 7.3 | MVP | ⬜ Planned |
-| User profile management | Section 4.3 | MVP | ⬜ Planned |
+| User profile management | Section 15.5 | Phase 2 | ⬜ Deferred |
 | AI Model management | Section 14 | Future | ⬜ Placeholder |
 
 ---
@@ -173,19 +173,15 @@ This is a professional tool designed to scale from small citizen science project
 
 ### Completed Features
 
-The authentication flow is largely complete, with login functionality working and tested. Users can successfully authenticate against the Supabase backend, and sessions persist appropriately. However, the password reset flow currently opens the app and needs modification to support web-based reset for users accessing the link from other devices - this is critical for teams where password reset emails might be accessed on different devices than the phone with the app.
+The authentication flow is largely complete, with login functionality working and tested. Users can successfully authenticate against the Supabase backend, and sessions persist appropriately. Web Based password reset functionality has been deferred to Phase 2 to focus on core MVP features (app based reset is in place).
 
 The core Bluetooth infrastructure for camera communication has been thoroughly tested with real Wildlife Watcher devices, successfully implementing the PING/PONG protocol and Nordic DFU firmware updates. The navigation structure is in place with bottom tabs and drawer menu configured. The Maps screen exists but needs the floating action buttons for deployment workflows. Basic Redux store configuration is complete, ready for feature-specific slices to be added as development progresses.
 
-The navigation structure is in place with bottom tabs and drawer menu configured. The Maps screen exists but needs the floating action buttons for deployment workflows. Basic Redux store configuration is complete, ready for feature-specific slices to be added as development progresses.
-
 ### Features Requiring Implementation
 
-Several critical user flows need to be built or completed. The member invitation system needs to be created, allowing project admins to add users who may not yet have accounts. This is essential since research teams often span multiple organizations and countries. The offline synchronization infrastructure is planned but not yet implemented - this is crucial for field operations in remote areas.
+Several critical user flows need to be built or completed. The member management system needs to be implemented, allowing project admins to add existing users to projects. Only WW Admin users can add new users to the system and assign them to organisations. The offline synchronization infrastructure is planned but not yet implemented - this is crucial for field operations in remote areas.
 
-~~The start and end deployment flows exist partially but need completion, particularly the project selection improvements (card-based UI instead of dropdown) and camera configuration steps.~~
-
-User profile management needs to be added, initially as optional fields with indicators showing when profiles are incomplete. 
+The start and end deployment flows need completion with simplified UI focusing on core functionality rather than advanced features like cards, search, and filtering which have been moved to Phase 2.
 
 The LoRaWAN webhook for receiving camera status updates needs to be implemented as an Edge Function, though the exact message format is still being finalized by the hardware team.
 
@@ -197,7 +193,7 @@ Image storage with CDN optimization and thumbnail generation needs to be set up 
 - ✅ Development builds on Android tested
 - 🟡 iOS development builds need testing with team devices
 - ✅ BLE functionality verified with real WW cameras
-- 🟡 Password reset needs web form implementation (critical for MVP)
+- 🟡 Password reset deferred to Phase 2 (web-based reset moved from MVP)
 - ⬜ Maestro testing framework needs setup
 - ⬜ Admin portal implementation needed
 
@@ -277,23 +273,19 @@ User Action → Screen Component → Redux Action → Service Layer → Local SQ
 
 ### 4.1 Authentication Flow
 
-#### User Access Patterns
+#### User Access Pattern
 
-The app supports three distinct user onboarding paths reflecting real-world organizational needs:
+The app supports a single, controlled user onboarding path to ensure proper organisational management:
 
-**Path 1: Direct Registration** -  New users can self-register through the app, creating their account with email, password, full name, and organization. This path requires complete profile information during registration to ensure proper user identification within research teams. All fields are mandatory to facilitate effective collaboration and project member management from the moment users join the platform.
+**WW Admin Provisioning Only** - System administrators are the only users who can create new user accounts. WW Admin users add users through the admin portal and assign them to organisations. This controlled approach ensures proper user management and organisational structure from the start.
 
-**Path 2: Project Invitation** - Project admins invite team members by email. Recipients receive a secure link to set their password. If the invitation expires (7 days), users can request a fresh link from their Project Admin or WW Admin.
+#### User Provisioning Requirements
 
-**Path 3: WW Admin Provisioning** - System administrators can directly create user accounts through the admin portal, useful for pre-configuring accounts for field teams or workshop participants.
+**Mandatory Profile Information**: WW Admin users must provide complete user information when creating accounts, including full name and organisation assignment. This ensures that all users have proper identification and organisational context from account creation.
 
-#### Registration Requirements
+**Validation Standards**: Full name must contain at least first and last name (minimum two words) and organisation assignment must be specified. All users must be assigned to an organisation before they can be added to projects.
 
-**Mandatory Profile Information**: All registration paths require users to provide their full name and organization during account creation. This ensures that team members can be properly identified in project collaboration and that administrators have complete user information for effective team management.
-
-**Validation Standards**: Full name must contain at least first and last name (minimum two words) and organization must be at least 3 characters to ensure meaningful institutional identification. These requirements apply regardless of the registration path used.
-
-**User Experience Considerations**: While requiring complete information during signup may slightly increase registration time, it eliminates the need for profile completion prompts after registration and ensures all users have identifiable profiles from the start, which is essential for wildlife research team collaboration.
+**Organisational Structure**: Users belong to organisations first, then can be added to projects within or across organisations. This hierarchical approach ensures proper access control and administrative oversight.
 
 #### Sign Out Implementation
 
@@ -315,7 +307,8 @@ The role system reflects real-world research team structures:
 enum UserRole {
   WW_ADMIN = 'ww_admin',        // System administrators
   PROJECT_ADMIN = 'project_admin', // Research project leaders
-  PROJECT_MEMBER = 'project_member' // Field team members
+  PROJECT_MEMBER = 'project_member', // Field team members
+  MODEL_MANAGER = 'model_manager'   // AI model management (org-level)
 }
 
 // Role Capabilities Matrix:
@@ -347,7 +340,10 @@ interface RoleCapabilities {
 - Users can have different roles per project
 - Any user can create a project and become its admin
 - Only WW Admins can grant WW Admin role to others
-- Project Admins can add members and assign roles within their projects
+- Only WW Admins can add new users to the system
+- Project Admins can add existing users to projects and assign roles
+- Model Manager is an organisation-level role for AI model management
+- Users must belong to an organisation to access projects
 
 
 #### 4.2.1 WW Admin Developer Feature Configuration
@@ -380,9 +376,9 @@ Configurable Access Model: Rather than granting blanket access to all developer 
 **Implementation Benefits:** This approach provides organizations with the flexibility to adapt the app to their specific operational needs while maintaining system security and interface simplicity. Administrators see only the tools they need for their role, reducing interface complexity and improving task efficiency. Organizations can easily adjust administrator capabilities as roles evolve or as team members take on different responsibilities within research projects.
 
 
-### 4.3 User Profile Management
+### 4.3 User Profile Management (Phase 2)
 
-User profiles are established with complete core information during registration:
+User profile management has been moved to Phase 2. For MVP, profiles are established with complete core information during WW Admin provisioning:
 
 ```typescript
 // src/navigation/screens/ProfileScreen.tsx
@@ -390,7 +386,7 @@ interface UserProfile {
   email: string;           // Immutable, from auth
   fullName: string;        // Mandatory, provided during registration
   organization: string;    // Mandatory, provided during registration
-  profilePhoto?: string;   // Optional, stored locally for MVP
+  // Profile photo removed for MVP - moved to Phase 2
   preferences: {
     offlineMapRadius: number;  // km to cache, default 10
     syncOnCellular: boolean;   // default true
@@ -418,13 +414,13 @@ interface WWAdminFeatureConfig {
 }
 ```
 
-**Profile Completion Indicators:**
-- Profile completeness is established during registration (fullName and organization are mandatory)
-- Optional profile photo indicator shows when image is not yet uploaded
+**Profile Information for MVP:**
+- Profile completeness is established during WW Admin provisioning (fullName, email and organisation are mandatory)
 - Preference synchronization status visible in settings
 - No profile completion prompts needed for core fields
+- Profile photos deferred to Phase 2 as well a self service by users to manage their profile
 
-**Profile Management Approach**: Since full name and organization are required during registration, users have complete core profiles from the start. This eliminates the friction of incomplete profile states and ensures proper user identification for team collaboration immediately upon account creation. The profile screen focuses on managing preferences and optional elements like profile photos rather than completing mandatory information.
+**Profile Management Approach**: Since full name and organisation are required during WW Admin provisioning, users have complete core profiles from the start. This eliminates the friction of incomplete profile states and ensures proper user identification for team collaboration immediately upon account creation. For MVP, the profile screen focuses on managing preferences only.
 
 **WW Admin Feature Configuration Interface**: For WW Admin users, the profile screen includes an additional "Administrative Features" section that displays their currently enabled developer tools. This section shows which diagnostic and management capabilities are available to them, helping administrators understand their access level and request additional permissions if needed for their role.
 
@@ -568,14 +564,13 @@ The Maps screen serves as mission control, providing immediate access to deploym
 
 ### 5.3 Start Deployment Flow (Enhanced)
 
-#### Step 1: Project Selection (Redesigned)
+#### Step 1: Project Selection (Simplified)
 
-**New Implementation:**
-- Card-based UI replacing dropdown for better mobile UX
-- Search bar for filtering projects (essential for users with many projects)
-- Each project card shows sync status, member count, deployment statistics
+**MVP Implementation:**
+- Simple dropdown list for project selection
 - FAB for creating new project
 - Auto-generated deployment name with user customization
+- Card-based UI, search, and statistics moved to Phase 2
 
 #### Step 2: New Project Creation (If Selected)
 
@@ -596,9 +591,9 @@ interface NewProjectData {
 
 **Member Addition Flow:**
 1. Enter email address
-2. System checks if user exists in database
-3. If exists: Add to project immediately
-4. If not: Queue invitation email for when online
+2. System checks if user exists in database and belongs to organisation
+3. If exists and in organisation: Add to project immediately
+4. If not in system: Display error - WW Admin must add user first
 5. Assign role (defaults to PROJECT_MEMBER)
 
 #### Step 3: Device Discovery (Enhanced with Filtering)
@@ -621,26 +616,24 @@ enum DeviceFilter {
 
 #### Step 4: Deployment Configuration
 
-**Enhanced Location Features:**
+**Simplified Location Features:**
 - Auto-detect current GPS location
 - Manual coordinate entry with validation
-- Reverse geocoding for address display
-- Map interaction updates all location fields
-- Offline fallback for address lookup
+- Basic address display (reverse geocoding deferred to Phase 2)
+- Map interaction updates location fields
 
 **Capture Method Configuration:**
 - Motion Detection vs Timelapse radio selection
 - Timelapse interval picker with default 30 seconds
-- Smart defaults based on project type
+- Smart defaults removed for MVP
 
 #### Step 5: Camera Preview
 
-**Live Camera Testing:**
-- BLE command to trigger test snapshot
-- Display received image with quality indicators
+**Simplified Camera Testing:**
+- Camera takes photo immediately on screen entry
+- Display received image
 - "Take Another Snapshot" option
-- Image quality validation
-- Positioning guidance overlay
+- Quality indicators and positioning overlay removed for MVP (defer to Phase 2 considearation)
 
 #### Step 6: Final Setup
 
@@ -654,7 +647,7 @@ enum DeviceFilter {
 - Create deployment record locally
 - Send configuration to device via BLE
 - Show success confirmation
-- Navigate to filtered deployments view for project
+- Show home button only (filtered views deferred to Phase 2)
 
 ### 5.4 End Deployment Flow
 
@@ -671,16 +664,16 @@ enum DeviceFilter {
 
 ### 5.5 Projects Screen
 
-**Enhanced Project Management:**
-- Card-based layout with key metrics
-- Search and filter capabilities
-- Sync status per project
-- Pull-to-refresh functionality
+**Simplified Project Management:**
+- Simple dropdown list for project creation
+- Create button only
+- Card-based layout, search, filtering, and metrics moved to Phase 2
+- Pull-to-refresh functionality maintained
 
-**Post-Deployment Navigation Intelligence:**
-After successfully creating a deployment,:
+**Post-Deployment Navigation:**
+After successfully creating a deployment:
 - Show success notification
-- Allow user to  navigate to Deployments screen
+- Show home button only
 
 
 
@@ -707,22 +700,21 @@ const MemberListItem = ({ member, isAdmin, currentUserId }) => (
 **Add Member Flow:**
 1. Enter email address
 2. Select role (admin/member)
-3. Check if user exists
-4. Send invitation if new user (must include fullName and organization requirements)
-5. Add to project immediately
+3. Check if user exists in system and organisation
+4. If user exists: Add to project immediately
+5. If user doesn't exist: Show error message that WW Admin must add user first
 
-**Invitation Requirements**: When sending invitations to new users, the invitation email must clearly communicate that full name and organization are required during account setup to ensure proper team member identification and collaboration within the research project.
+**Organisation Requirements**: Users must already be in the system and assigned to an organisation by a WW Admin before they can be added to projects.
 
 
 ### 5.7 Deployments Screen
 
-**Enhanced Deployment Monitoring:**
-- Tab filtering: Active | Ended | All
-- Status indicators with color coding:
-  - 🟢 Green: Healthy (battery >30%, SD <80%)
-  - 🟡 Yellow: Warning (battery 10-30%, SD 80-95%)
-  - 🔴 Red: Critical (battery <10%, SD >95%)
-  - ⚪ Gray: No recent data (>7 days)
+**Simplified Deployment Monitoring:**
+- Only 2 statuses: Active (green) and Ended (red)
+- No tab filtering for MVP
+- Status indicators simplified:
+  - 🟢 Green: Active deployment
+  - 🔴 Red: Ended deployment
 
 **Deployment Card Information:**
 - Project name and device name
@@ -737,6 +729,9 @@ const MemberListItem = ({ member, isAdmin, currentUserId }) => (
 - Connection status indicators
 - Battery and firmware version display
 - Actions for non-deployed devices only
+- "Check camera view" link for deployed devices
+- Display loaded AI model for deployed devices
+- Show battery and SD card storage status
 
 **Developer Menu Extensions:**
 - Force DFU mode
@@ -855,6 +850,28 @@ class ConflictResolver {
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "postgis";  -- For geospatial queries
 
+-- Organisations table
+CREATE TABLE organisations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID REFERENCES auth.users(id),
+  deleted_at TIMESTAMPTZ  -- Logical delete
+);
+
+-- User organisations relationship
+CREATE TABLE user_organisations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  organisation_id UUID REFERENCES organisations(id) ON DELETE CASCADE,
+  role TEXT CHECK (role IN ('model_manager')),  -- Optional org-level roles
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID REFERENCES auth.users(id),
+  removed_at TIMESTAMPTZ,  -- Logical delete
+  UNIQUE(user_id, organisation_id)
+);
+
 -- User roles table (for WW_ADMIN support)
 CREATE TABLE user_roles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -865,10 +882,11 @@ CREATE TABLE user_roles (
   UNIQUE(user_id, role)
 );
 
--- Projects table with logical deletes
+-- Projects table with logical deletes and organisation relationship
 CREATE TABLE projects (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
+  organisation_id UUID REFERENCES organisations(id) NOT NULL,
   owner_id UUID REFERENCES auth.users(id) NOT NULL,
   sampling_design TEXT,
   description TEXT,
@@ -967,13 +985,27 @@ CREATE TABLE user_invitations (
 );
 
 -- RLS Policies
+ALTER TABLE organisations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_organisations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deployments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
 
--- Users can see projects they're members of
+-- Users can see organisations they belong to
+CREATE POLICY "Users view their organisations" ON organisations
+  FOR SELECT USING (
+    deleted_at IS NULL AND
+    EXISTS (
+      SELECT 1 FROM user_organisations
+      WHERE organisation_id = organisations.id
+      AND user_id = auth.uid()
+      AND removed_at IS NULL
+    )
+  );
+
+-- Users can see projects in their organisations or where they're members
 CREATE POLICY "Users view their projects" ON projects
   FOR SELECT USING (
     deleted_at IS NULL AND (
@@ -981,6 +1013,12 @@ CREATE POLICY "Users view their projects" ON projects
       EXISTS (
         SELECT 1 FROM project_members 
         WHERE project_id = projects.id 
+        AND user_id = auth.uid()
+        AND removed_at IS NULL
+      ) OR
+      EXISTS (
+        SELECT 1 FROM user_organisations
+        WHERE organisation_id = projects.organisation_id
         AND user_id = auth.uid()
         AND removed_at IS NULL
       )
@@ -1429,16 +1467,17 @@ Multiple Claude Code sub-agents will work in parallel on different aspects of th
 - [ ] Complete app icon design (1024x1024px)
 - [ ] Create splash screen assets
 - [ ] Design missing screens:
-  - Member management UI (add/remove/role change)
-  - User profile screen layout
+  - Organisation management UI for WW Admin
+  - Member management UI (add existing users/role change)
   - Sync status detailed view
   - Developer menu interface
 
 **Product Manager (Critical Decisions):**
 - [ ] Confirm LoRaWAN message format from hardware team
-- [ ] Approve simplified member management flow  
+- [ ] Approve organisation-based user management approach
 - [ ] Validate offline conflict resolution rules
-- [ ] Sign off on user role permission matrix
+- [ ] Sign off on updated user role permission matrix including Model Manager role
+- [ ] Approve Phase 2 feature deferral (user self-registration, profile management, web reset)
 
 **Development Team (Setup Required):**
 - [ ] Create production Supabase project
@@ -1484,9 +1523,19 @@ Multiple Claude Code sub-agents will work in parallel on different aspects of th
 - App store rating >4.0 stars
 - Support for 100+ concurrent users
 
-### 15.5 Post-MVP Roadmap
+### 15.5 Phase 2 Features
 
-**Phase 2 Features:**
+**Deferred from MVP:**
+- User self-registration
+- User profile management and profile photos
+- Web-based password reset
+- Advanced UI features (cards, search, filtering for projects/deployments)
+- Quality indicators and positioning overlays for camera preview
+- Smart defaults for deployment configuration
+- Tab filtering for deployments screen
+- Enhanced reverse geocoding and address lookup
+
+**Additional Phase 2 Features:**
 - AI model deployment to cameras
 - Advanced analytics dashboard
 - Multi-language support
