@@ -669,16 +669,35 @@ enum DeviceFilter {
 
 ### 5.5 Projects Screen
 
-**Simplified Project Management:**
-- Simple dropdown list for project creation
-- Create button only
-- Card-based layout, search, filtering, and metrics moved to Phase 2
+**Card-Based Project Display:**
+- Card-based layout showing project summaries with key metrics
+- Each project card displays:
+  - Project name and description
+  - Member count (e.g., "Members: 5")
+  - Active deployments count (e.g., "Active deployments: 3")
+  - Total deployments count (e.g., "All deployments: 3")
+  - Project thumbnail/photo (if available)
+- "Add new project" button for project creation
 - Pull-to-refresh functionality maintained
+- Search and filtering functionality moved to Phase 2
 
-**Post-Deployment Navigation:**
-After successfully creating a deployment:
-- Show success notification
-- Show home button only
+**Project Card Layout:**
+```typescript
+interface ProjectCard {
+  id: string;
+  name: string;
+  description: string;
+  memberCount: number;
+  activeDeployments: number;
+  totalDeployments: number;
+  thumbnailUrl?: string;
+  lastUpdated: Date;
+}
+```
+
+**Navigation:**
+- Tap project card to view project details
+- Project cards only show projects where user is a member or admin
 
 
 
