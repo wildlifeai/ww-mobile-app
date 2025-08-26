@@ -678,10 +678,11 @@ enum DeviceFilter {
 - Pull-to-refresh functionality
 
 **Post-Deployment Navigation Intelligence:**
-After successfully creating a deployment, navigate to:
-- Deployments screen
-- Apply project filter automatically
+After successfully creating a deployment,:
 - Show success notification
+- Allow user to  navigate to Deployments screen
+
+
 
 ### 5.6 Project Details Screen
 
