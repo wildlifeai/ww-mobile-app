@@ -325,12 +325,13 @@ interface RoleCapabilities {
     organisationLevel: true       // Operates at organisation level
   },
   'ww_admin': {
-    accessDevMenu: 'configurable',  // Individual feature-level control
-    manageAllUsers: true,
-    viewAllProjects: true,  // Read-only access
-    configureSystem: true,
-    accessDiagnostics: true,
-    manageWWAdminFeatures: true  // Can configure other WW_ADMIN permissions
+    manageAllUsers: true,  // Core MVP function - user management only
+    // Note: Advanced features moved to Phase 2 for MVP simplification:
+    // - viewAllProjects (cross-project visibility)
+    // - configureSystem (system configuration) 
+    // - accessDiagnostics (system diagnostics)
+    // - manageWWAdminFeatures (configurable permissions)
+    // - accessDevMenu (moved to development environment only)
   },
   'project_admin': {
     editProject: true,
@@ -379,19 +380,19 @@ interface RoleCapabilities {
 **MVP Implementation Notes**: For MVP, WW Admin functionality is limited to core user management only. All diagnostic, testing, and troubleshooting capabilities are moved to developer tools (accessible only in development environments) to maintain simplicity and focus on essential administrative functions.
 
 
-#### 4.2.2 Business Rationale for Configurable WW Admin Features
+#### 4.2.2 Business Rationale for Simplified WW Admin Role (MVP)
 
-**Organizational Scale Considerations:** Wildlife research organizations vary dramatically in size and structure, from small university research groups with 2-3 projects to large conservation organizations managing hundreds of camera deployments across multiple continents. This scale variation means WW Admin roles must adapt to different operational contexts - a single technical administrator in a small organization might need access to all diagnostic tools, while a large organization might have specialized administrators for user management, field support, and technical operations.
+**MVP Focus on User Management:** For MVP, WW Admin functionality is deliberately simplified to focus solely on user account management - the core administrative function required for any research organization to operate. This includes creating user accounts, assigning users to organisations, and managing basic user information.
 
-**Field Operations Reality:** Wildlife research often involves deployments in remote locations where internet connectivity is limited or nonexistent. Field support administrators need immediate access to diagnostic tools that help researchers resolve camera connectivity, firmware, and deployment issues without waiting for remote technical support. However, these same administrators don't need access to user management or database inspection tools that are primarily office-based functions.
+**Organizational Onboarding Priority:** Wildlife research organizations need reliable user provisioning before they can utilize any other system features. By ensuring WW Admin users can effectively manage user accounts and organisational assignments, the MVP provides the foundation for all subsequent research activities without the complexity of advanced administrative tools.
 
-**Security and Compliance Requirements:** Research organizations handling sensitive wildlife location data must maintain strict access controls. Configurable permissions ensure that administrators have access only to the tools necessary for their specific responsibilities, reducing the risk of accidental data exposure or system modifications. This granular control supports organizational compliance requirements and audit trails while maintaining operational efficiency.
+**Simplified Training and Support:** Focusing exclusively on user management reduces training complexity for WW Admin users. Account provisioning and organisational assignment are straightforward administrative tasks that don't require technical expertise, making it easier for organizations to designate appropriate administrators and get started quickly.
 
-**Training and Support Efficiency:** Different WW Admin responsibilities require different skill sets and training levels. User management administrators need to understand account provisioning and role assignment but don't need technical knowledge of BLE protocols or database structures. By showing only relevant tools, the interface reduces training complexity and support burden while minimizing the risk of administrators accidentally accessing unfamiliar system functions.
+**Security Through Simplicity:** A simplified administrative interface reduces the risk of accidental system modifications or data exposure. WW Admin users can focus on their core responsibility - managing user accounts - without access to advanced diagnostic or technical features that could compromise system stability if used incorrectly.
 
-**Operational Workflow Optimization:** Research teams often have established workflows where specific individuals handle particular aspects of camera management. Project coordinators need project oversight tools, field technicians need device diagnostic capabilities, and IT administrators need system-level access. Configurable features allow the app interface to align with existing organizational structures and workflows rather than forcing organizations to adapt to a one-size-fits-all administrative interface.
+**Foundation for Future Growth:** The simplified MVP approach establishes the essential user management infrastructure needed for Phase 2 expansion. Once organizations are successfully onboarding and managing users, advanced administrative features (system diagnostics, project oversight, technical troubleshooting) can be gradually introduced based on actual operational needs and user feedback.
 
-**Implementation Benefits:** This approach provides organizations with the flexibility to adapt the app to their specific operational needs while maintaining system security and interface simplicity. Administrators see only the tools they need for their role, reducing interface complexity and improving task efficiency. Organizations can easily adjust administrator capabilities as roles evolve or as team members take on different responsibilities within research projects.
+**Implementation Benefits:** This focused approach ensures WW Admin users can immediately perform their essential function while maintaining system security and interface simplicity. Organizations can successfully onboard users and begin research activities without waiting for complex administrative feature development, reducing time-to-value for new deployments.
 
 
 ### 4.3 User Profile Management (Phase 2)
@@ -414,19 +415,13 @@ interface UserProfile {
 
 interface WWAdminFeatureConfig {
   essentialFeatures: {
-    userManagement: boolean;        // Always true - core admin function
-    systemDiagnostics: boolean;     // Always true - system health monitoring
-    projectOverview: boolean;       // Always true - cross-project visibility
-    syncStatusMonitor: boolean;     // Always true - data integrity monitoring
+    userManagement: boolean;        // Always true - core admin function (MVP)
   };
-  configurableFeatures: {
-    bleAdvancedDiagnostics: boolean;    // Device troubleshooting tools
-    databaseInspector: boolean;         // Direct database access/queries
-    rawLoRaWANViewer: boolean;         // Raw message inspection
-    deviceFirmwareTools: boolean;       // Firmware update management
-    syncQueueManipulation: boolean;     // Manual sync queue control
-    apiEndpointTesting: boolean;        // Direct API testing tools
-  };
+  // Note: All advanced features moved to Phase 2 for MVP simplification
+  // configurableFeatures will be restored in Phase 2 with:
+  // - systemDiagnostics, projectOverview, syncStatusMonitor
+  // - bleAdvancedDiagnostics, databaseInspector, rawLoRaWANViewer
+  // - deviceFirmwareTools, syncQueueManipulation, apiEndpointTesting
   lastConfiguredBy: string;   // Which admin configured these features
   lastConfiguredAt: Date;     // When configuration was last changed
 }
@@ -442,7 +437,7 @@ interface WWAdminFeatureConfig {
 
 **WW Admin Feature Configuration Interface**: For WW Admin users, the profile screen includes an additional "Administrative Features" section that displays their currently enabled developer tools. This section shows which diagnostic and management capabilities are available to them, helping administrators understand their access level and request additional permissions if needed for their role.
 
-The interface clearly distinguishes between essential features (always enabled for all WW Admins) and configurable features (enabled based on individual responsibilities). Essential features include user management, system diagnostics, project overview, and sync monitoring - core capabilities every WW Admin needs regardless of their specific role. Configurable features include specialized tools like BLE diagnostics, database inspection, firmware management, and advanced troubleshooting capabilities.
+For MVP, the interface is simplified to focus only on essential user management capabilities. Advanced diagnostic features (system diagnostics, project overview, sync monitoring) and specialized tools (BLE diagnostics, database inspection, firmware management) have been moved to Phase 2 to maintain MVP simplicity and focus on core administrative functions.
 
 **User Experience Considerations**: The feature configuration display is read-only for individual administrators - they can see what they have access to but cannot modify their own permissions. This prevents accidental privilege escalation while maintaining transparency about available capabilities. If an administrator needs additional features, they can contact another WW Admin with management privileges or refer to their organization's internal procedures for permission requests.
 
@@ -533,7 +528,7 @@ const DrawerContent = () => {
 
 **Contextual Feature Display**: The drawer menu intelligently adapts its content based on the user's role, configured permissions, and environment. This reduces cognitive load by showing only relevant options while maintaining discoverability of available features.
 
-**WW Admin Tool Organization**: WW Admin users see a dedicated "WW Admin Tools" section that separates administrative functions from general app features. Essential administrative capabilities (user management, system diagnostics, project overview) appear for all WW Admin users, providing consistent access to core administrative functions. Additional specialized tools appear only when specifically enabled for that administrator, ensuring the interface remains clean and focused on their actual responsibilities.
+**WW Admin Tool Organization**: WW Admin users see a dedicated "WW Admin Tools" section that separates administrative functions from general app features. Essential administrative capabilities (user management) appear for all WW Admin users, providing consistent access to core administrative functions. Additional specialized tools appear only when specifically enabled for that administrator, ensuring the interface remains clean and focused on their actual responsibilities.
 
 **Environment-Based Tool Separation**: Pure development and debugging tools are completely separated from production administrative features. The "Developer Tools" section only appears in development environments, preventing confusion between operational administrative tools and technical debugging capabilities. This clear separation ensures that production WW Admin users never see development-specific features that could cause system instability or confusion.
 
@@ -1068,15 +1063,16 @@ CREATE POLICY "Users view their projects" ON projects
     )
   );
 
--- WW Admins can view all projects (read-only)
-CREATE POLICY "WW Admins view all projects" ON projects
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM user_roles
-      WHERE user_id = auth.uid()
-      AND role = 'ww_admin'
-    )
-  );
+-- NOTE: WW Admin cross-project visibility removed from MVP
+-- This policy will be restored in Phase 2 when project overview features are implemented
+-- CREATE POLICY "WW Admins view all projects" ON projects
+--   FOR SELECT USING (
+--     EXISTS (
+--       SELECT 1 FROM user_roles
+--       WHERE user_id = auth.uid()
+--       AND role = 'ww_admin'
+--     )
+--   );
 
 -- Users can only access their own preferences
 CREATE POLICY "Users manage own preferences" ON user_preferences
@@ -1509,15 +1505,15 @@ Multiple Claude Code sub-agents will work in parallel on different aspects of th
 - [ ] Design missing screens:
   - Organisation management UI for WW Admin
   - Member management UI (add existing users/role change)
-  - Sync status detailed view
   - Developer menu interface
+  - Basic sync status indicators (detailed sync monitoring moved to Phase 2)
 
 **Product Manager (Critical Decisions):**
 - [ ] Mock LoRaWAN implementation for development (actual format pending hardware team)
 - [ ] Approve organisation-based user management approach
 - [ ] Validate offline conflict resolution rules
 - [ ] Sign off on updated user role permission matrix including Model Manager role
-- [ ] Approve Phase 2 feature deferral (user self-registration, profile management, web reset)
+- [ ] Approve Phase 2 feature deferral (user self-registration, profile management, web reset, advanced WW Admin features)
 
 **Development Team (Setup Required):**
 - [ ] Note: Supabase project already exists in separate repository
@@ -1574,6 +1570,17 @@ Multiple Claude Code sub-agents will work in parallel on different aspects of th
 - Smart defaults for deployment configuration
 - Tab filtering for deployments screen
 - Enhanced reverse geocoding and address lookup
+
+**Advanced WW Admin Features (Deferred from MVP):**
+- System diagnostics and monitoring
+- Project overview (cross-project visibility for WW Admins)
+- Advanced BLE diagnostics and troubleshooting tools
+- Database inspector for data verification
+- Raw LoRaWAN message viewer and debugging
+- Device firmware management and update tools
+- Sync queue manipulation and conflict resolution
+- API endpoint testing and validation
+- Configurable WW Admin feature permissions management
 
 **Additional Phase 2 Features:**
 - AI model deployment to cameras
