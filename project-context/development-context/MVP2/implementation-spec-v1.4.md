@@ -56,9 +56,10 @@ Key MVP deliverables include offline-first deployment workflows, Bluetooth camer
 
 ### Reference Documents
 
-- Figma Wireframe & User Stories (combined)  @project-context/development-context/MVP2/User Stories_ Navigation 2.0-Figma-Design-med.pdf - not these are original document and this document has used as a base and enhanced with further items and content to fill out the specification.
-- Supabase Backend Document can be found in @project-context/wildlife-watcher-database-context
-- App Architect document - @project-context/development-context/architecture-review/ARCHITECTURE-REVIEW.md - represent state of App before this specification was created - need to update this as we develop the app further based on this
+- **Figma Wireframe & User Stories (combined):** `@project-context/development-context/MVP2/User Stories_ Navigation 2.0-Figma-Design-med.pdf` - Original design document used as base for this specification with additional enhancements
+- **Supabase Backend Repository:** `~/dev/wildlifeai/wildlife-watcher-backend` (separate Git repository with Supabase components in `supabase/` subfolder)
+- **Local Supabase Documentation:** `@project-context/development-context/supabase-backend/` (integration documentation in this repository)
+- **App Architecture Review:** `@project-context/development-context/architecture-review/ARCHITECTURE-REVIEW.md` - Pre-specification architecture state requiring updates based on this document
 
 
 
@@ -244,10 +245,13 @@ wildlife-watcher-mobile-app/
 │   │   ├── constants.ts  # App-wide constants
 │   │   └── env.ts        # Environment config
 │   └── App.tsx           # Root component
-├── [Supabase Repo]/      # Admin portal & Edge Functions (separate repository)
-│   ├── functions/        # Edge Functions
-│   ├── components/       # React components
-│   └── public/           # Static assets
+├── ~/dev/wildlifeai/wildlife-watcher-backend/  # Separate Git repository
+│   ├── supabase/         # Supabase project components
+│   │   ├── functions/    # Edge Functions
+│   │   ├── migrations/   # Database migrations
+│   │   └── config.toml   # Supabase configuration
+│   ├── admin-portal/     # React-based admin portal
+│   └── docs/             # Backend documentation
 ├── tests/                 # Test suites
 │   ├── maestro/          # UI automation tests
 │   └── unit/             # Unit tests
@@ -358,25 +362,21 @@ interface RoleCapabilities {
 **Business Context**: For MVP, WW Admin capabilities are simplified to focus on core system administration without complex feature permissioning. Advanced diagnostic and developer tools are reserved for development environments only.
 
 **MVP WW Admin Functions:**
-- User Management: Add, deactivate, and assign users to organisations
-- BLE/DFU Testing: Basic device connectivity testing with placeholder implementation
-- Developer Menu: Access to testing tools in development environment only
+- User Management: Add, deactivate, and assign users to organisations (core administrative function)
 
 **Removed from MVP:**
+- BLE/DFU testing and diagnostics (moved to developer tools)
 - Database diagnostics and inspection tools
 - LoRaWAN message viewer
 - Cross-project visibility beyond basic overview
 - Manual sync queue manipulation
 - Advanced BLE packet inspection
 
-##### Real-World Scenarios:
+##### Real-World Scenarios (MVP):
 
-- **Field Support Admin**: Needs BLE diagnostics, device firmware management, and sync queue monitoring to help researchers resolve connectivity issues during deployments
-- **User Management Admin**: Requires user administration tools and audit logging but doesn't need technical diagnostic features
-- **System Oversight Admin**: Needs cross-project visibility, sync status monitoring, and system health diagnostics but not device-level tools
-- **Technical Support Admin**: Requires full diagnostic access including database inspection and raw LoRaWAN message viewing for advanced troubleshooting
+- **System Administrator**: Manages user accounts, creates organisations, and assigns users to appropriate organisations. Focuses purely on administrative functions without requiring technical expertise.
 
-**Implementation Considerations**: Feature permissions are configured per WW Admin user and can be modified by other WW Admin users with management privileges. The system maintains an audit trail of permission changes and allows environment-based overrides (development environments can enable additional diagnostic tools temporarily). Default configurations provide sensible baseline permissions that can be customized based on organizational needs and individual administrator responsibilities.
+**MVP Implementation Notes**: For MVP, WW Admin functionality is limited to core user management only. All diagnostic, testing, and troubleshooting capabilities are moved to developer tools (accessible only in development environments) to maintain simplicity and focus on essential administrative functions.
 
 
 #### 4.2.2 Business Rationale for Configurable WW Admin Features
@@ -506,18 +506,19 @@ const DrawerContent = () => {
       {isWWAdmin() && (
         <DrawerSection title="WW Admin Tools">
           <DrawerItem label="User Management" onPress={navigateToUserManagement} />
-          <DrawerItem label="BLE/DFU Testing" onPress={navigateToBLETesting} />
         </DrawerSection>
       )}
       
       {/* Developer Tools - Only in development environment */}
       {isDevelopmentEnvironment() && (
         <DrawerSection title="Developer Tools">
+          <DrawerItem label="BLE/DFU Testing" onPress={navigateToBLETesting} />
           <DrawerItem label="Mock LoRaWAN Generator" onPress={navigateToMockLoRaWAN} />
           <DrawerItem label="State Debugger" onPress={navigateToStateDebugger} />
           <DrawerItem label="Network Request Logger" onPress={navigateToNetworkLogger} />
           <DrawerItem label="Performance Profiler" onPress={navigateToPerformanceProfiler} />
           <DrawerItem label="Test Data Generator" onPress={navigateToTestDataGenerator} />
+          <DrawerItem label="Mock Device Simulator" onPress={navigateToMockDevice} />
         </DrawerSection>
       )}
       
@@ -756,11 +757,11 @@ const MemberListItem = ({ member, isAdmin, currentUserId }) => (
 - Display loaded AI model for deployed devices
 - Show battery and SD card storage status
 
-**Developer Menu Extensions:**
-- Force DFU mode
+**Developer Tools (Development Environment Only):**
+- Force DFU mode testing
 - BLE packet inspector
 - Mock device simulator
-- Raw command testing
+- Raw BLE command testing
 
 ---
 
@@ -868,12 +869,14 @@ class ConflictResolver {
 
 ### 7.1 Database Schema
 
-**Note:** This specification references the existing Supabase database configuration located in a separate repository. Detailed database documentation can be found in the existing Supabase project setup.
+**Repository Structure:** The Supabase backend is maintained in a separate Git repository at `~/dev/wildlifeai/wildlife-watcher-backend` with database schema, migrations, and Edge Functions in the `supabase/` subfolder. Mobile app integration documentation is available locally at `@project-context/development-context/supabase-backend/`.
+
+**Schema Overview:** The specification below reflects the current production schema. For the most up-to-date schema definitions, refer to the backend repository migrations and the TypeScript types at `@project-context/development-context/supabase-backend/supabase.ts`.
 
 ```sql
 -- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "postgis";  -- For geospatial queries
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";      -- Generates UUID primary keys (uuid_generate_v4())
+CREATE EXTENSION IF NOT EXISTS "postgis";        -- For geospatial queries and location data
 
 -- Organisations table
 CREATE TABLE organisations (
@@ -1009,6 +1012,20 @@ CREATE TABLE user_invitations (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- User preferences and WW Admin configuration
+CREATE TABLE user_preferences (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  full_name TEXT NOT NULL,
+  organisation_name TEXT,  -- Denormalized for quick access
+  offline_map_radius INTEGER DEFAULT 10,  -- km to cache
+  sync_on_cellular BOOLEAN DEFAULT true,
+  ww_admin_features JSONB,  -- Only populated for WW Admin users
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
 -- RLS Policies
 ALTER TABLE organisations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_organisations ENABLE ROW LEVEL SECURITY;
@@ -1017,6 +1034,7 @@ ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deployments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
 
 -- Users can see organisations they belong to
 CREATE POLICY "Users view their organisations" ON organisations
@@ -1059,6 +1077,10 @@ CREATE POLICY "WW Admins view all projects" ON projects
       AND role = 'ww_admin'
     )
   );
+
+-- Users can only access their own preferences
+CREATE POLICY "Users manage own preferences" ON user_preferences
+  FOR ALL USING (user_id = auth.uid());
 ```
 
 ### 7.2 LoRaWAN Integration
@@ -1407,9 +1429,9 @@ Multiple Claude Code sub-agents will work in parallel on different aspects of th
 
 ## 13. Admin Portal Integration
 
-### 13.1 Wildlife Watcher Admin Portal
+### 13.1 Wildlife Watcher Admin Portal (MVP)
 
-**Purpose:** Web-based companion portal for WW Admin users to manage system-wide operations and provide password reset functionality accessible outside the mobile app.
+**Purpose:** Web-based companion portal for WW Admin users to perform core user management functions.
 
 **Architecture:**
 - **Hosting**: Supabase Edge Functions
@@ -1417,40 +1439,24 @@ Multiple Claude Code sub-agents will work in parallel on different aspects of th
 - **Authentication**: Shared Supabase Auth
 - **Database**: Same Supabase instance as mobile app
 
-**Core Features:**
-- User management (view, add, deactivate users)
+**MVP Features:**
+- User management (add, deactivate users, assign to organisations)
 - WW Admin role assignment
-- Password reset form (mobile-responsive)
-- Project overview (read-only)
+
+**Deferred from MVP:**
+- Web-based password reset (moved to Phase 2)
+- Project overview and read-only access
 - System administration tools
 
-### 13.2 Password Reset Web Form
+### 13.2 Repository Strategy
 
-**Critical Requirement:** Users need to reset passwords from devices other than their phone.
+**Current Implementation:** Separate backend repository at `~/dev/wildlifeai/wildlife-watcher-backend`
+- **Structure:** Admin portal components in `admin-portal/` subfolder
+- **Supabase Components:** All backend infrastructure in `supabase/` subfolder  
+- **Benefits:** Independent versioning, clear separation of concerns, simplified mobile app repository
+- **Integration:** Mobile app connects via Supabase client with shared database and authentication
 
-**Implementation:**
-- Hosted at: `https://admin.wildlife.ai/reset-password`
-- Mobile-responsive design
-- Token validation with expiry
-- Success redirect with deep link to app
-- Shared with main admin portal infrastructure
-
-**Flow:**
-1. User requests password reset in app
-2. Email sent with web form link
-3. User completes reset on any device
-4. Success message with app deep link
-5. User continues in mobile app
-
-### 13.3 Repository Strategy
-
-**Recommendation:** Separate repository for admin portal
-- Independent versioning and deployment
-- Different technology stack flexibility
-- Clear separation of concerns
-- Simplified mobile app repository
-
-**Alternative:** Subfolder in mobile repo if team prefers unified approach
+**Local Documentation:** Mobile app integration details maintained at `@project-context/development-context/supabase-backend/` for development reference
 
 ---
 
