@@ -1,6 +1,6 @@
 # Wildlife Watcher Mobile App - MVP 1 & 2 Implementation Specification (Consolidated Design)
 
-**Version**: 1.4.1  
+**Version**: 1.4.2  
 **Date**: 26 August 2025  
 **Platform**: React Native (Expo SDK 51)  
 **Backend**: Supabase  
