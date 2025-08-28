@@ -451,11 +451,10 @@ const DrawerContent = () => {
         <DrawerSection title="Developer Tools">
           <DrawerItem label="BLE/DFU Testing" onPress={navigateToBLETesting} />
           <DrawerItem label="Mock LoRaWAN Generator" onPress={navigateToMockLoRaWAN} />
-          <DrawerItem label="State Debugger" onPress={navigateToStateDebugger} />
-          <DrawerItem label="Network Request Logger" onPress={navigateToNetworkLogger} />
-          <DrawerItem label="Performance Profiler" onPress={navigateToPerformanceProfiler} />
-          <DrawerItem label="Test Data Generator" onPress={navigateToTestDataGenerator} />
           <DrawerItem label="Mock Device Simulator" onPress={navigateToMockDevice} />
+          <DrawerItem label="Test Data Generator" onPress={navigateToTestDataGenerator} />
+          <DrawerItem label="State Debugger" onPress={navigateToStateDebugger} />
+          <DrawerItem label="Network Logger" onPress={navigateToNetworkLogger} />
         </DrawerSection>
       )}
       
@@ -466,17 +465,14 @@ const DrawerContent = () => {
 };
 ```
 
-##### 5.1.1 Intelligent Menu Adaptation
+##### 5.1.1 Menu Adaptation
 
-**Contextual Feature Display**: The drawer menu intelligently adapts its content based on the user's role, configured permissions, and environment. This reduces cognitive load by showing only relevant options while maintaining discoverability of available features.
+**Role-Based Display**: The drawer menu shows only relevant options based on user role and environment:
+- Standard users see profile, settings, and offline preparation
+- WW Admin users additionally see "User Management" in the WW Admin Tools section
+- Developer tools appear only in development builds (not production)
 
-**WW Admin Tool Organization**: WW Admin users see a dedicated "WW Admin Tools" section that separates administrative functions from general app features. Essential administrative capabilities (user management) appear for all WW Admin users, providing consistent access to core administrative functions. Additional specialized tools appear only when specifically enabled for that administrator, ensuring the interface remains clean and focused on their actual responsibilities.
-
-**Environment-Based Tool Separation**: Pure development and debugging tools are completely separated from production administrative features. The "Developer Tools" section only appears in development environments, preventing confusion between operational administrative tools and technical debugging capabilities. This clear separation ensures that production WW Admin users never see development-specific features that could cause system instability or confusion.
-
-**User Experience Flow**: When a WW Admin user opens the drawer, they immediately see their available administrative tools without needing to navigate through irrelevant options. Feature visibility is determined in real-time based on their current permissions, so changes to their administrative capabilities are reflected immediately upon app sync. The menu maintains consistent organization regardless of which specific features are enabled, providing a predictable interface structure.
-
-**Implementation Considerations**: The menu adaptation logic checks user permissions efficiently to avoid performance impacts when opening the drawer. Feature visibility decisions are cached locally but refreshed during sync operations to ensure consistency with backend permission changes. The system gracefully handles permission changes during active sessions, updating menu visibility without requiring app restart.
+**Implementation**: Menu visibility is checked efficiently using cached role data, with updates applied on sync without requiring app restart.
 
 
 ### 5.2 Maps Screen (Home)
