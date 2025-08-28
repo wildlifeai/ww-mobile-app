@@ -382,52 +382,9 @@ interface RoleCapabilities {
 
 ### 4.3 User Profile Management (Phase 2)
 
-User profile management has been moved to Phase 2. For MVP, profiles are established with complete core information during WW Admin provisioning:
+**Deferred to Phase 2:** User profile management functionality including self-service profile editing, profile photos, and preference management.
 
-```typescript
-// src/navigation/screens/ProfileScreen.tsx
-interface UserProfile {
-  email: string;           // Immutable, from auth
-  fullName: string;        // Mandatory, provided during registration
-  organization: string;    // Mandatory, provided during registration
-  // Profile photo removed for MVP - moved to Phase 2
-  preferences: {
-    offlineMapRadius: number;  // km to cache, default 10
-    syncOnCellular: boolean;   // default true
-    wwAdminFeatures?: WWAdminFeatureConfig;  // Only present for WW_ADMIN users
-  };
-}
-
-interface WWAdminFeatureConfig {
-  essentialFeatures: {
-    userManagement: boolean;        // Always true - core admin function (MVP)
-  };
-  // Note: All advanced features moved to Phase 2 for MVP simplification
-  // configurableFeatures will be restored in Phase 2 with:
-  // - systemDiagnostics, projectOverview, syncStatusMonitor
-  // - bleAdvancedDiagnostics, databaseInspector, rawLoRaWANViewer
-  // - deviceFirmwareTools, syncQueueManipulation, apiEndpointTesting
-  lastConfiguredBy: string;   // Which admin configured these features
-  lastConfiguredAt: Date;     // When configuration was last changed
-}
-```
-
-**Profile Information for MVP:**
-- Profile completeness is established during WW Admin provisioning (fullName, email and organisation are mandatory)
-- Preference synchronization status visible in settings
-- No profile completion prompts needed for core fields
-- Profile photos deferred to Phase 2 as well a self service by users to manage their profile
-
-**Profile Management Approach**: Since full name and organisation are required during WW Admin provisioning, users have complete core profiles from the start. This eliminates the friction of incomplete profile states and ensures proper user identification for team collaboration immediately upon account creation. For MVP, the profile screen focuses on managing preferences only.
-
-**WW Admin Feature Configuration Interface**: For WW Admin users, the profile screen includes an additional "Administrative Features" section that displays their currently enabled developer tools. This section shows which diagnostic and management capabilities are available to them, helping administrators understand their access level and request additional permissions if needed for their role.
-
-For MVP, the interface is simplified to focus only on essential user management capabilities. Advanced diagnostic features (system diagnostics, project overview, sync monitoring) and specialized tools (BLE diagnostics, database inspection, firmware management) have been moved to Phase 2 to maintain MVP simplicity and focus on core administrative functions.
-
-**User Experience Considerations**: The feature configuration display is read-only for individual administrators - they can see what they have access to but cannot modify their own permissions. This prevents accidental privilege escalation while maintaining transparency about available capabilities. If an administrator needs additional features, they can contact another WW Admin with management privileges or refer to their organization's internal procedures for permission requests.
-
-
-**Implementation Notes**: The configuration is stored as part of the user's preferences but synchronized with the backend to ensure consistency across devices. When a WW Admin's features are modified by another administrator, the changes take effect immediately upon the next app sync, with appropriate notifications to inform the user of capability changes.
+**MVP Approach:** For MVP, user profiles are fully populated during WW Admin provisioning with mandatory fields (full name, email, organisation). Users cannot edit their own profiles in MVP - all changes must go through a WW Admin. This simplifies the MVP by removing profile management UI and validation logic while ensuring complete user identification from account creation.
 
 ---
 
