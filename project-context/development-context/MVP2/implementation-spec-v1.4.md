@@ -846,14 +846,44 @@ class ConflictResolver {
 
 **Repository Structure:** The Supabase backend is maintained in a separate Git repository at `~/dev/wildlifeai/wildlife-watcher-backend` with database schema, migrations, and Edge Functions in the `supabase/` subfolder. Mobile app integration documentation is available locally at `@project-context/development-context/supabase-backend/`.
 
-**Schema Overview:** The specification below reflects the current production schema. For the most up-to-date schema definitions, refer to the backend repository migrations and the TypeScript types at `@project-context/development-context/supabase-backend/supabase.ts`.
+#### 7.1.1 Current Backend Status
+
+**Existing Tables (Already in Production):**
+1. **users** - User account information ✅
+2. **devices** - Wildlife camera devices ✅
+3. **projects** - Wildlife monitoring projects ✅
+4. **deployments** - Camera deployment records ✅
+5. **project_members** - Project membership and roles ✅
+6. **roles** - User role definitions (reference table) ✅
+7. **capture_methods** - Data capture methodology (reference table) ✅
+8. **deployment_statuses** - Deployment status tracking (reference table) ✅
+9. **api_logs** - API logging and monitoring ✅
+10. **log_levels** - Logging level definitions (reference table) ✅
+
+**Tables Requiring Modification:**
+- **deployments**: May need additional fields for location_photo_url, timelapse_interval based on final hardware specs
+- **devices**: May need additional fields for model_type variations once hardware finalized
+
+**New Tables to Create:**
+- **organisations**: Organisation management structure (NEW)
+- **user_organisations**: Many-to-many relationship for users and organisations (NEW)
+- **user_roles**: User role assignments including ww_admin (NEW)
+- **lorawan_messages**: LoRaWAN message storage for camera status updates (NEW)
+- **user_invitations**: Invitation tokens for member management (NEW)
+- **user_preferences**: User preferences and WW Admin configuration storage (NEW)
+
+**Extensions Required:**
+- **uuid-ossp**: Already enabled ✅ (for UUID primary key generation)
+- **postgis**: Needs to be enabled for geospatial queries (location GEOGRAPHY type)
+
+**Schema Overview:** The specification below shows both existing tables (marked in comments) and new tables required for MVP. For the most up-to-date existing schema definitions, refer to the backend repository migrations and the TypeScript types at `@project-context/development-context/supabase-backend/supabase.ts`.
 
 ```sql
 -- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";      -- Generates UUID primary keys (uuid_generate_v4())
-CREATE EXTENSION IF NOT EXISTS "postgis";        -- For geospatial queries and location data
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";      -- EXISTING - Generates UUID primary keys
+CREATE EXTENSION IF NOT EXISTS "postgis";        -- NEW - For geospatial queries and location data
 
--- Organisations table
+-- Organisations table (NEW - Not in current backend)
 CREATE TABLE organisations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL UNIQUE,
@@ -863,7 +893,7 @@ CREATE TABLE organisations (
   deleted_at TIMESTAMPTZ  -- Logical delete
 );
 
--- User organisations relationship
+-- User organisations relationship (NEW - Not in current backend)
 CREATE TABLE user_organisations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -875,7 +905,7 @@ CREATE TABLE user_organisations (
   UNIQUE(user_id, organisation_id)
 );
 
--- User roles table (for WW_ADMIN support)
+-- User roles table (NEW - Replaces simple 'roles' reference table)
 CREATE TABLE user_roles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -885,7 +915,7 @@ CREATE TABLE user_roles (
   UNIQUE(user_id, role)
 );
 
--- Projects table with logical deletes and organisation relationship
+-- Projects table (EXISTING - Need to add organisation_id field)
 CREATE TABLE projects (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
@@ -903,7 +933,7 @@ CREATE TABLE projects (
   version INTEGER DEFAULT 1  -- For optimistic locking
 );
 
--- Project members with roles
+-- Project members with roles (EXISTING)
 CREATE TABLE project_members (
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -914,7 +944,7 @@ CREATE TABLE project_members (
   PRIMARY KEY (project_id, user_id)
 );
 
--- Devices table
+-- Devices table (EXISTING - May need model_type field added)
 CREATE TABLE devices (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   bluetooth_id TEXT UNIQUE NOT NULL,
@@ -927,7 +957,7 @@ CREATE TABLE devices (
   deleted_at TIMESTAMPTZ  -- Logical delete
 );
 
--- Deployments table with comprehensive tracking
+-- Deployments table (EXISTING - Need location_photo_url, timelapse_interval fields)
 CREATE TABLE deployments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id UUID REFERENCES projects(id) NOT NULL,
@@ -963,7 +993,7 @@ CREATE TABLE deployments (
   version INTEGER DEFAULT 1
 );
 
--- LoRaWAN messages storage (new requirement)
+-- LoRaWAN messages storage (NEW - Not in current backend)
 CREATE TABLE lorawan_messages (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   device_eui TEXT NOT NULL,
@@ -974,7 +1004,7 @@ CREATE TABLE lorawan_messages (
   processed_at TIMESTAMPTZ
 );
 
--- User invitations for member management
+-- User invitations for member management (NEW - Not in current backend)
 CREATE TABLE user_invitations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email TEXT NOT NULL,
@@ -987,7 +1017,7 @@ CREATE TABLE user_invitations (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- User preferences and WW Admin configuration
+-- User preferences and WW Admin configuration (NEW - Not in current backend)
 CREATE TABLE user_preferences (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
