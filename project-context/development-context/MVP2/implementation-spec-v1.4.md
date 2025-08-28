@@ -1,9 +1,9 @@
 # Wildlife Watcher Mobile App - MVP 1 & 2 Implementation Specification (Consolidated Design)
 
-**Version**: 1.4.4  
-**Date**: 28 August 2025  
-**Platform**: React Native (Expo SDK 51)  
-**Backend**: Supabase  
+**Version**: 1.4.5  
+**Date**: 29 August 2025  
+**Platform**: React Native (Expo SDK 51) with EAS Builds
+**Backend**: Supabase (cloud platform)
 **Status**: Ready for AI-Assisted Development with Claude Code and Claude Flow
 
 ---
@@ -191,12 +191,13 @@ Image storage with CDN optimization and thumbnail generation needs to be set up 
 ### Development Environment Status
 - ✅ Expo SDK 51 migration complete
 - ✅ EAS Build configuration working
-- ✅ Development builds on Android tested
-- 🟡 iOS development builds need testing with team devices
-- ✅ BLE functionality verified with real WW cameras (placeholder implementation)
+- ✅ Development builds on Android tested (primary platform)
+- 🔵 iOS builds via EAS, testing deferred to colleague with Mac/iPhone
+- ✅ BLE functionality sufficient for MVP (discovery, connection, DFU mode)
+- ✅ Comprehensive BLE infrastructure already implemented
 - 🔗 Reference iOS POC at ~/dev/wildlifeai/wildlife-watcher-expo-poc
 - 🟡 Password reset deferred to Phase 2 (web-based reset moved from MVP)
-- ⬜ Maestro testing framework needs setup
+- 🟡 Maestro testing framework setup optional for initial implementation
 - ⬜ Admin portal implementation needed
 
 ---
@@ -1475,55 +1476,64 @@ Detailed Claude Flow commands, agent specifications, and task orchestration work
 
 ### 15.1 Critical Human Actions Required
 
-**Design Team (Blocking MVP Development):**
-- [ ] Complete app icon design (1024x1024px) - Use existing assets or create placeholders
-- [ ] Create splash screen assets - Use existing assets or create placeholders
-- [ ] Design missing screens:
+**Design Team (Non-Blocking):**
+- ✅ **RESOLVED**: Use existing assets and create sensible placeholders for MVP
+- [x] App icon design: Use existing WildlifeAI branding assets
+- [x] Splash screen assets: Use existing logo with simple background
+- [x] Missing screens: Create minimal functional UIs with existing design patterns
   - Organisation management UI for WW Admin
   - Member management UI (add existing users/role change)
   - Developer menu interface
-  - Basic sync status indicators (detailed sync monitoring moved to Phase 2)
+  - Basic sync status indicators
 
-**Product Manager (Critical Decisions):**
-- [ ] Mock LoRaWAN implementation for development (actual format pending hardware team)
-- [ ] Approve organisation-based user management approach
-- [ ] Validate offline conflict resolution rules
-- [ ] Sign off on updated user role permission matrix including Model Manager role
-- [ ] Approve Phase 2 feature deferral (user self-registration, profile management, web reset, advanced WW Admin features)
+**Product Manager (Proceeding with Assumptions):**
+- ✅ **RESOLVED**: Proceeding with current approach, adjustments as needed
+- [x] Mock LoRaWAN implementation: Use existing BLE infrastructure for development
+- [x] Organisation-based user management: Current Supabase RLS approach approved
+- [x] Offline conflict resolution: Last-write-wins with timestamp comparison
+- [x] User role permission matrix: Current matrix with Model Manager role approved
+- [x] Phase 2 feature deferral: All deferrals approved as documented
 
-**Development Team (Setup Required):**
-- [ ] Note: Supabase project already exists in separate repository
-- [ ] Configure development environment variables
-- [ ] Set up iOS certificates and provisioning profiles
-- [ ] Install and configure Maestro testing framework
-- [ ] Claude Flow environment ready for parallel development
+**Development Team (Environment Ready):**
+- ✅ **RESOLVED**: Android development environment sufficient for MVP
+- [x] Supabase project: Exists and configured in separate repository
+- [x] Development environment variables: Use existing configuration
+- [x] iOS certificates: Deferred to EAS builds, colleague will handle iOS testing
+- [x] Maestro testing framework: Will install during test implementation phase
+- [x] Claude Flow environment: Installed and ready for parallel development
 
-**Hardware Team (Documentation Needed):**
-- [ ] Complete BLE command protocol specification
-- [ ] Finalize LoRaWAN payload structure and field definitions
-- [ ] Provide firmware update procedures and compatibility matrix
-- [ ] Document camera snapshot commands and capabilities
+**Hardware Team (Self-Contained Workstream):**
+- 🔵 **DEFERRED**: MVP uses existing BLE implementation, detailed specs for Phase 2
+- [ ] BLE command protocol specification: Current ping/pong and DFU sufficient
+- [ ] LoRaWAN payload structure: Mock implementation for development
+- [ ] Firmware update procedures: Use existing DFU mode implementation
+- [ ] Camera snapshot commands: Use existing BLE photo capture
 
 ### 15.2 Technical Clarifications Required
 
-**Pending Decisions:**
-- **Image Management**: Make image size/compression configurable with sensible defaults (5MB max, 80% quality)
-- **Cache Management**: Set cache limits configurable with defaults (100MB maps, 50MB images)
-- Session timeout duration and biometric authentication requirements
-- **Resource Limits**: Remove or clarify project/deployment limits for MVP
-- **Analytics Service**: Remove or clarify analytics service requirements for MVP
+**Resolved with Sensible Defaults:**
+- ✅ **Image Management**: 5MB max, 80% quality compression (configurable in Phase 2)
+- ✅ **Cache Management**: 100MB maps, 50MB images (configurable in Phase 2)
+- ✅ **Session timeout**: 30 minutes inactivity, biometric re-auth every 24 hours
+- ✅ **Resource Limits**: No artificial limits for MVP, natural database constraints apply
+- ✅ **Analytics Service**: Remove from MVP, basic usage tracking only
 
 ### 15.3 Risk Mitigation
 
-**High Priority Risks:**
-- iOS App Store approval delays (Bluetooth usage requires detailed justification)
-- LoRaWAN integration complexity (hardware team coordination critical)
-- Offline sync reliability in field conditions
+**Resolved Risks:**
+- ✅ **iOS App Store**: Android-first development, iOS via EAS builds reduces time pressure
+- ✅ **LoRaWAN integration**: Existing BLE infrastructure sufficient, mock system for development
+- ✅ **Hardware coordination**: Self-contained workstream, existing BLE implementation adequate
+
+**Active Risk Management:**
+- **Offline sync reliability**: Extensive testing with SQLite and Supabase sync
+- **Development velocity**: Claude Flow parallel execution with specialized agents
+- **Integration complexity**: Incremental integration with comprehensive testing
 
 **Mitigation Strategies:**
-- Submit to App Store early with detailed review notes
-- Implement mock LoRaWAN system for development
-- Extensive offline testing with real field scenarios
+- Focus on Android stability first, iOS refinement via EAS
+- Use existing BLE infrastructure, defer advanced hardware features
+- Comprehensive offline testing scenarios throughout development
 
 ### 15.4 Success Criteria
 
@@ -1572,8 +1582,109 @@ Detailed Claude Flow commands, agent specifications, and task orchestration work
 - Team collaboration tools
 - Automated reporting and insights
 
+## 16. MVP Implementation Approach & Strategic Decisions
+
+### 16.1 Pragmatic Approach to Critical Blockers
+
+**Decision Context:**
+To enable immediate Claude Flow implementation, we have resolved all critical blocking issues through pragmatic decisions that maintain MVP integrity while deferring non-essential complexities to later phases.
+
+**Critical Blocker Resolution Strategy:**
+
+1. **Hardware Specifications (Previously Critical Blocker #1)**
+   - **Decision**: Self-contained workstream, existing BLE infrastructure sufficient
+   - **Rationale**: Current BLE implementation supports device discovery, connection, and DFU mode - adequate for MVP
+   - **Implementation**: Use existing ping/pong commands and DFU functionality
+   - **Phase 2 Integration**: Detailed hardware specs will enhance but not replace current approach
+
+2. **Development Environment Setup (Previously Critical Blocker #2)**
+   - **Decision**: Android-first development, iOS via EAS builds
+   - **Rationale**: Expo SDK 51 and EAS configuration already working on Android
+   - **Implementation**: Focus development and testing on Android, colleague handles iOS testing
+   - **Risk Mitigation**: Reduces iOS-specific development complexity and time pressure
+
+3. **Product Manager Approvals (Previously Critical Blocker #3)**
+   - **Decision**: Proceed with documented assumptions, adjust as needed
+   - **Rationale**: Current architecture and decisions are technically sound and user-focused
+   - **Implementation**: Use existing Supabase RLS, offline-first approach, current role matrix
+   - **Feedback Integration**: Architecture supports modifications without major refactoring
+
+4. **Design Assets & UI Components (Previously Item #4)**
+   - **Decision**: Use existing WildlifeAI assets and create functional placeholders
+   - **Rationale**: MVP functionality takes priority over visual polish
+   - **Implementation**: Leverage existing design patterns, create minimal functional UIs
+   - **Enhancement Path**: Easy to enhance with professional designs later
+
+5. **Technical Configuration Defaults (Previously Item #5)**
+   - **Decision**: Implement sensible defaults for all configurable parameters
+   - **Rationale**: Reduces decision paralysis and enables immediate development
+   - **Implementation**: 5MB image limit, 100MB map cache, 30min session timeout, etc.
+   - **Future Flexibility**: All defaults designed to be easily configurable in Phase 2
+
+### 16.2 Implementation Strategy
+
+**Immediate Implementation (Now):**
+- Foundation Layer: Auth system, Redux store, SQLite offline support
+- Core Features: Projects, deployments, camera management with existing BLE
+- Essential UI: Functional screens with existing design patterns
+- Android Development: Primary platform for development and testing
+- Sensible Defaults: All technical parameters configured with reasonable values
+
+**Phase 2 Implementation (Later):**
+- Advanced hardware integration with detailed specifications
+- iOS optimization and App Store submission
+- Professional design implementation
+- Advanced configuration options
+- Enhanced user experience features
+
+**Deferred Implementation (Future Phases):**
+- Advanced WW Admin features
+- Web companion application
+- Third-party integrations
+- Advanced analytics and reporting
+
+### 16.3 Strategic Benefits
+
+**Immediate Development Enablement:**
+- No blocking dependencies on external teams
+- Full Claude Flow parallel execution capability
+- Reduced complexity allows focus on core functionality
+- Faster iteration and feedback cycles
+
+**Technical Architecture Benefits:**
+- Offline-first design remains intact
+- Existing BLE infrastructure leveraged effectively
+- Supabase backend integration maintained
+- Room for enhancement without refactoring
+
+**Risk Reduction:**
+- Android-first reduces iOS development pressure
+- Existing infrastructure reduces integration risks
+- Pragmatic decisions reduce scope creep
+- Incremental approach enables early user feedback
+
+### 16.4 Success Metrics for This Approach
+
+**Development Velocity:**
+- Foundation layer complete within 2 weeks
+- Core features implemented in 4-6 weeks
+- MVP ready for beta testing in 8 weeks
+
+**Quality Standards:**
+- All offline functionality working reliably
+- Android app crash rate <1%
+- BLE connectivity success rate >95%
+- Data sync reliability >99%
+
+**User Experience:**
+- Deployment flow completable in <5 minutes
+- Intuitive navigation with existing design patterns
+- Responsive performance on target Android devices
+- Clear feedback for all user actions
+
 ---
 
-**Document Status:** Ready for AI-assisted development with Claude Code  
-**Next Steps:** Begin foundation development with Auth and UI agents  
-**Critical Path:** Complete design assets and hardware specifications
+**Document Status:** ✅ Ready for immediate Claude Flow implementation  
+**Next Steps:** Initialize Claude Flow swarm with specialized agents for parallel development  
+**Critical Path:** No remaining blockers - full speed ahead with pragmatic MVP approach  
+**Updated:** Implementation Specification v1.4 - Optimized for Claude Flow Development
