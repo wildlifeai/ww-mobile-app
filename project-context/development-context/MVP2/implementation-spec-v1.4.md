@@ -1384,53 +1384,18 @@ appId: com.wildlife.wildlifewatcher
 
 ---
 
-## 12. AI Agent Development Guidelines
+## 12. Claude Flow Development Strategy
 
-### 12.1 Claude Code Integration
+### 12.1 Implementation Approach
 
-**Development Strategy:**
-Multiple Claude Code sub-agents will work in parallel on different aspects of the application, coordinated through shared interfaces and clear module boundaries.
+**Claude Flow Coordination:**
+The Wildlife Watcher MVP will be implemented using Claude Flow's hierarchical swarm architecture, coordinating multiple specialized AI agents through a queen-led hive-mind approach. This enables intelligent parallel development with automatic task orchestration, dependency management, and cross-session memory preservation. The implementation follows the SPARC methodology (Specification, Pseudocode, Architecture, Refinement, Completion) with integrated TDD workflows.
 
-**Sub-Agent Responsibilities:**
+**Development Architecture:**
+Development is organized into a sequential Foundation Layer (authentication, Redux integration, offline SQLite infrastructure) followed by three parallel development streams: Project Management, Deployment Workflows, and Device & Maps integration. Claude Flow agents are specialized by domain expertise and coordinate through the MVP-Coordinator using intelligent task orchestration. GitHub workflow automation, performance monitoring, and memory management ensure seamless development coordination across all streams.
 
-**Auth Agent:**
-- Domain: Authentication and user management
-- Files: `src/navigation/screens/auth/*`, `src/services/auth/*`
-- Tasks: Login/signup screens, session management, role verification
-
-**Sync Agent:**
-- Domain: Offline synchronization
-- Files: `src/services/offline/*`, `src/store/slices/offlineSlice.ts`
-- Tasks: SQLite operations, conflict resolution, background sync
-
-**BLE Agent:**
-- Domain: Bluetooth and hardware
-- Files: `src/services/ble/*`, `src/services/dfu/*`
-- Tasks: Device discovery, connection management, firmware updates
-
-**UI Agent:**
-- Domain: User interface components
-- Files: `src/components/*`, `src/navigation/*`
-- Tasks: Screen layouts, form validation, navigation structure
-
-**Data Agent:**
-- Domain: Data management
-- Files: `src/store/*`, `src/services/supabase/*`
-- Tasks: Redux store, database operations, state management
-
-### 12.2 Parallel Development Coordination
-
-**Communication Framework:**
-- Shared context via this specification document
-- Interface contracts between modules
-- Mock implementations for dependencies
-- Integration points defined upfront
-
-**Development Approach:**
-- Remove traditional week-based breakdowns
-- Implementation will be completed in hours/days with Claude Flow
-- Focus on task order and dependencies for effective parallel development
-- Systematic feature completion with proper integration testing
+**Implementation Reference:**
+Detailed Claude Flow commands, agent specifications, and task orchestration workflows are documented in `@project-context/development-context/MVP2/claude-flow-implementation-plan.md`. Current implementation status shows Task 9 (Authentication) complete, Task 10 (Redux) in progress, with Task 11 (Offline Foundation) as the critical blocker for parallel stream activation.
 
 ---
 
