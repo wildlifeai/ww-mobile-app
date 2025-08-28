@@ -377,22 +377,7 @@ interface RoleCapabilities {
 
 - **System Administrator**: Manages user accounts, creates organisations, and assigns users to appropriate organisations. Focuses purely on administrative functions without requiring technical expertise.
 
-**MVP Implementation Notes**: For MVP, WW Admin functionality is limited to core user management only. All diagnostic, testing, and troubleshooting capabilities are moved to developer tools (accessible only in development environments) to maintain simplicity and focus on essential administrative functions.
-
-
-#### 4.2.2 Business Rationale for Simplified WW Admin Role (MVP)
-
-**MVP Focus on User Management:** For MVP, WW Admin functionality is deliberately simplified to focus solely on user account management - the core administrative function required for any research organization to operate. This includes creating user accounts, assigning users to organisations, and managing basic user information.
-
-**Organizational Onboarding Priority:** Wildlife research organizations need reliable user provisioning before they can utilize any other system features. By ensuring WW Admin users can effectively manage user accounts and organisational assignments, the MVP provides the foundation for all subsequent research activities without the complexity of advanced administrative tools.
-
-**Simplified Training and Support:** Focusing exclusively on user management reduces training complexity for WW Admin users. Account provisioning and organisational assignment are straightforward administrative tasks that don't require technical expertise, making it easier for organizations to designate appropriate administrators and get started quickly.
-
-**Security Through Simplicity:** A simplified administrative interface reduces the risk of accidental system modifications or data exposure. WW Admin users can focus on their core responsibility - managing user accounts - without access to advanced diagnostic or technical features that could compromise system stability if used incorrectly.
-
-**Foundation for Future Growth:** The simplified MVP approach establishes the essential user management infrastructure needed for Phase 2 expansion. Once organizations are successfully onboarding and managing users, advanced administrative features (system diagnostics, project oversight, technical troubleshooting) can be gradually introduced based on actual operational needs and user feedback.
-
-**Implementation Benefits:** This focused approach ensures WW Admin users can immediately perform their essential function while maintaining system security and interface simplicity. Organizations can successfully onboard users and begin research activities without waiting for complex administrative feature development, reducing time-to-value for new deployments.
+**MVP Implementation Notes**: For MVP, WW Admin functionality is limited to core user management only. All diagnostic, testing, and troubleshooting capabilities are moved to developer tools (accessible only in development environments) to maintain simplicity and focus on essential administrative functions. This focused approach ensures WW Admin users can immediately perform their essential function while maintaining system security and interface simplicity.
 
 
 ### 4.3 User Profile Management (Phase 2)
