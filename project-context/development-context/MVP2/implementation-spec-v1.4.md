@@ -861,8 +861,9 @@ class ConflictResolver {
 10. **log_levels** - Logging level definitions (reference table) ✅
 
 **Tables Requiring Modification:**
-- **deployments**: May need additional fields for location_photo_url, timelapse_interval based on final hardware specs
+- **deployments**: Already has location photo field (camera_location_image_path), may need timelapse_interval field for timelapse capture method
 - **devices**: May need additional fields for model_type variations once hardware finalized
+- **projects**: Needs organisation_id field added for organisation relationship
 
 **New Tables to Create:**
 - **organisations**: Organisation management structure (NEW)
@@ -873,19 +874,19 @@ class ConflictResolver {
 - **user_preferences**: User preferences and WW Admin configuration storage (NEW)
 
 **Extensions Required:**
-- **uuid-ossp**: Already enabled ✅ (for UUID primary key generation)
-- **postgis**: Needs to be enabled for geospatial queries (location GEOGRAPHY type)
+- **postgis**: Already enabled ✅ (in extensions schema for geospatial queries)
+- **Note**: Uses native `gen_random_uuid()` for UUIDs (PostgreSQL 13+), not uuid-ossp extension
 
 **Schema Overview:** The specification below shows both existing tables (marked in comments) and new tables required for MVP. For the most up-to-date existing schema definitions, refer to the backend repository migrations and the TypeScript types at `@project-context/development-context/supabase-backend/supabase.ts`.
 
 ```sql
--- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";      -- EXISTING - Generates UUID primary keys
-CREATE EXTENSION IF NOT EXISTS "postgis";        -- NEW - For geospatial queries and location data
+-- Extensions (Already enabled in backend)
+-- PostGIS is already enabled in the extensions schema
+-- Uses native gen_random_uuid() for UUIDs (PostgreSQL 13+)
 
 -- Organisations table (NEW - Not in current backend)
 CREATE TABLE organisations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE,
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -895,7 +896,7 @@ CREATE TABLE organisations (
 
 -- User organisations relationship (NEW - Not in current backend)
 CREATE TABLE user_organisations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   organisation_id UUID REFERENCES organisations(id) ON DELETE CASCADE,
   role TEXT CHECK (role IN ('model_manager')),  -- Optional org-level roles
@@ -907,7 +908,7 @@ CREATE TABLE user_organisations (
 
 -- User roles table (NEW - Replaces simple 'roles' reference table)
 CREATE TABLE user_roles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   role TEXT NOT NULL CHECK (role IN ('ww_admin', 'user')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -917,7 +918,7 @@ CREATE TABLE user_roles (
 
 -- Projects table (EXISTING - Need to add organisation_id field)
 CREATE TABLE projects (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   organisation_id UUID REFERENCES organisations(id) NOT NULL,
   owner_id UUID REFERENCES auth.users(id) NOT NULL,
@@ -946,7 +947,7 @@ CREATE TABLE project_members (
 
 -- Devices table (EXISTING - May need model_type field added)
 CREATE TABLE devices (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   bluetooth_id TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   firmware_version TEXT,
@@ -957,9 +958,9 @@ CREATE TABLE devices (
   deleted_at TIMESTAMPTZ  -- Logical delete
 );
 
--- Deployments table (EXISTING - Need location_photo_url, timelapse_interval fields)
+-- Deployments table (EXISTING - May need timelapse_interval field added)
 CREATE TABLE deployments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID REFERENCES projects(id) NOT NULL,
   device_id UUID REFERENCES devices(id) NOT NULL,
   name TEXT NOT NULL,
@@ -995,7 +996,7 @@ CREATE TABLE deployments (
 
 -- LoRaWAN messages storage (NEW - Not in current backend)
 CREATE TABLE lorawan_messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   device_eui TEXT NOT NULL,
   deployment_id UUID REFERENCES deployments(id),
   raw_payload JSONB NOT NULL,  -- Store complete message for debugging
@@ -1006,7 +1007,7 @@ CREATE TABLE lorawan_messages (
 
 -- User invitations for member management (NEW - Not in current backend)
 CREATE TABLE user_invitations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT NOT NULL,
   project_id UUID REFERENCES projects(id),
   role TEXT NOT NULL CHECK (role IN ('project_admin', 'project_member')),
@@ -1019,7 +1020,7 @@ CREATE TABLE user_invitations (
 
 -- User preferences and WW Admin configuration (NEW - Not in current backend)
 CREATE TABLE user_preferences (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
   full_name TEXT NOT NULL,
   organisation_name TEXT,  -- Denormalized for quick access
