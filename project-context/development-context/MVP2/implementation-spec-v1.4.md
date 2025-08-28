@@ -474,6 +474,48 @@ const DrawerContent = () => {
 
 **Implementation**: Menu visibility is checked efficiently using cached role data, with updates applied on sync without requiring app restart.
 
+##### 5.1.2 Developer Tools (Development Environment Only)
+
+**Purpose**: Development and debugging tools accessible only in non-production builds to assist with testing and troubleshooting during development.
+
+**Available Tools**:
+
+1. **BLE/DFU Testing**
+   - Test Bluetooth connectivity with Wildlife Watcher cameras
+   - Validate Device Firmware Update (DFU) protocols
+   - Send ping/pong commands to verify camera communication
+   - Essential for camera integration development
+
+2. **Mock LoRaWAN Generator**
+   - Simulate LoRaWAN messages from cameras in remote locations
+   - Generate test deployment status updates (battery level, SD card usage)
+   - Critical for development while hardware specifications are pending
+   - Test webhook processing and data parsing
+
+3. **Mock Device Simulator**
+   - Simulate Wildlife Watcher cameras without physical hardware
+   - Generate BLE advertisement packets for discovery testing
+   - Respond to configuration commands
+   - Enable end-to-end testing of deployment flows
+
+4. **Test Data Generator**
+   - Populate database with realistic test projects and deployments
+   - Create sample users with various roles and permissions
+   - Generate deployment history and status updates
+   - Speed up development testing cycles
+
+5. **State Debugger**
+   - Inspect Redux store state in real-time
+   - Monitor action dispatches and state changes
+   - Debug offline queue and sync operations
+   - Identify state management issues
+
+6. **Network Logger**
+   - Monitor all Supabase API requests and responses
+   - Track request timing and payload sizes
+   - Debug authentication and RLS policy issues
+   - Analyze sync operation performance
+
 
 ### 5.2 Maps Screen (Home)
 
