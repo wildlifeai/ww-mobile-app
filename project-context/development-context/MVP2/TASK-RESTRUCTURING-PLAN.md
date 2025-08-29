@@ -34,11 +34,11 @@ This document analyzes existing TaskMaster Tasks 9-23 and provides specific modi
 6. **Claude Flow Alignment**: SPARC methodology integration needed
 
 ### Modification Strategy
-- **Add Maestro subtask to Task 9** (since Task 8 is completed)
-- **Enhance Task 10** with user roles and organisation integration
-- **Flexible task renumbering** to accommodate all spec requirements within Tasks 9-23 structure
-- **Integrate LoRaWAN and WW Admin features** across appropriate existing tasks
-- **Add Claude Flow coordination patterns** throughout task structure
+- **Move testing setup to Task 10** as first subtask (Task 9 is DONE, can't add subtasks)
+- **Use TDD/BDD approach** throughout Task 10-23 per CLAUDE.md best practices  
+- **Implement ALL spec v1.4.6 requirements** - organisation system, user roles, LoRaWAN, WW Admin features
+- **Fix critical gap**: Task 10 shows IN-PROGRESS but no Redux store exists yet!
+- **Enable Claude Flow SPARC TDD** methodology throughout implementation
 
 ---
 
@@ -46,102 +46,100 @@ This document analyzes existing TaskMaster Tasks 9-23 and provides specific modi
 
 ## FOUNDATION LAYER MODIFICATIONS
 
-### Task 9: Authentication Screens & Navigation [STATUS: DONE → REQUIRES NEW SUBTASK]
+### Task 9: Authentication Screens & Navigation [STATUS: DONE]
 **Current Status**: ✅ DONE (All 5 subtasks completed)  
-**Required Modifications**: Add Maestro testing framework subtask
+**Required Modifications**: None - Task completed successfully
 
-#### **NEW** 9.6: Maestro Testing Framework Setup
-**Priority**: Critical | **Status**: PENDING (New Addition)
-- Install Maestro testing framework: `npm install @maestro-io/maestro-cli`
+---
+
+### Task 10: Core Redux Integration with Supabase [STATUS: IN-PROGRESS → CRITICAL - NO REDUX STORE EXISTS]
+**Current Status**: 🔄 IN-PROGRESS (but no src/store directory exists yet!)  
+**Required Modifications**: Add testing framework setup as first subtask for TDD, implement all Redux slices with user roles and organisation system per spec v1.4.6
+
+#### **NEW** 10.0: Testing Framework Setup for TDD/BDD (MOVED from Task 9)
+**Priority**: Critical | **Status**: PENDING (Must be first subtask for TDD approach)
+- Check existing testing packages: Jest ✅, Detox ✅, React Testing Library ✅
+- Install Maestro testing framework: `npm install --save-dev maestro`
+- Install Redux testing utilities: `npm install --save-dev @testing-library/react-hooks redux-mock-store`
+- Create test directory structure: `tests/maestro/`, `tests/unit/redux/`
+- Set up Maestro test configuration for React Native
+- Write first TDD tests for auth slice BEFORE implementation
 - Update package.json scripts for Maestro testing
-- Create basic Maestro test configuration
-- Set up Maestro test directory structure: `tests/maestro/`
-- Create initial authentication flow tests in Maestro
-- Integrate Maestro with existing CI/CD pipeline
-- Documentation for Maestro testing patterns
 
 **Testing Dependencies to Add**:
 ```json
 {
   "devDependencies": {
-    "@maestro-io/maestro-cli": "^1.x.x",
-    "maestro-detox-helpers": "^1.x.x"
+    "maestro": "^1.x.x",
+    "@testing-library/react-hooks": "^8.x.x",
+    "redux-mock-store": "^1.x.x"
   },
   "scripts": {
     "test:maestro": "maestro test tests/maestro/",
     "test:maestro:ios": "maestro test tests/maestro/ --platform ios",
-    "test:maestro:android": "maestro test tests/maestro/ --platform android"
+    "test:maestro:android": "maestro test tests/maestro/ --platform android",
+    "test:redux": "jest tests/unit/redux"
   }
 }
 ```
 
-**Acceptance Criteria**:
-- [ ] Maestro framework installed and configured
-- [ ] Basic authentication flow tests written in Maestro
-- [ ] Integration with existing test suite (alongside Detox)
-- [ ] CI/CD pipeline updated for Maestro tests
-- [ ] Team documentation for Maestro usage patterns
-
----
-
-### Task 10: Core Redux Integration with Supabase [STATUS: IN-PROGRESS → REQUIRES ENHANCEMENTS]
-**Current Status**: 🔄 IN-PROGRESS  
-**Required Modifications**: Add user roles, organisation system, and Claude Flow patterns
-
-#### **ENHANCED** 10.1: Enhanced Auth Redux Slice with User Roles
-- Extend existing auth slice for full user management
-- **NEW**: Add user role management (ww_admin, project_admin, project_member)
-- **NEW**: Organisation system integration with user provisioning
-- **NEW**: Role-based permission checking utilities
+#### 10.1: Enhanced Auth Redux Slice with User Roles (TDD Approach - REQUIRED by spec v1.4.6)
+- **TDD**: Write tests for user role management FIRST
+- Create `src/store/store.ts` and `src/store/slices/authSlice.ts`
+- **REQUIRED**: Add user role management (ww_admin, project_admin, project_member) per spec Section 4.2
+- **REQUIRED**: Organisation system integration with user provisioning per spec Section 4.1
+- **REQUIRED**: Role-based permission checking utilities
 - Add user profile data handling
 - Session management with refresh tokens
 - Auth state persistence
 
-#### **ENHANCED** 10.2: Projects Redux Slice with Organisation Integration
+#### 10.2: Projects Redux Slice with Organisation Integration (REQUIRED by spec v1.4.6)
+- **TDD**: Write tests for organisation-scoped projects FIRST
 - Create `src/store/slices/projectsSlice.ts`
 - Actions for CRUD operations
-- **NEW**: Organisation-scoped project management
-- **NEW**: Multi-organisation user support
+- **REQUIRED**: Organisation-scoped project management per spec database schema lines 891-940
+- **REQUIRED**: Multi-organisation user support
 - Selectors for project lists and details
 - Loading and error state management
 
-#### 10.3: Deployments Redux Slice  
+#### 10.3: Deployments Redux Slice (REQUIRED by spec v1.4.6)
+- **TDD**: Write tests for deployment state management FIRST
 - Create `src/store/slices/deploymentsSlice.ts`
 - Active/ended deployment states
 - Deployment creation and management
-- Status tracking and updates
+- **REQUIRED**: Status tracking with LoRaWAN updates per spec Section 7.3
+- **REQUIRED**: Include battery_level and sd_card_usage fields per spec line 84
 
-#### **ENHANCED** 10.4: API Integration Layer with Role-Based Security
+#### 10.4: API Integration Layer with Role-Based Security (REQUIRED by spec v1.4.6)
+- **TDD**: Write tests for role-based API permissions FIRST
 - RTK Query integration with Supabase
 - Type-safe API calls with generated types
-- **NEW**: Role-based API call permissions
-- **NEW**: Organisation context for all API calls
+- **REQUIRED**: Role-based API call permissions per spec Section 4.2
+- **REQUIRED**: Organisation context for all API calls
 - Caching and data synchronization
 - Error handling and retry logic
 
-#### **NEW** 10.5: WW Admin Redux Slice
+#### 10.5: WW Admin Redux Slice (REQUIRED by spec v1.4.6 - MVP)
+- **TDD**: Write tests for WW Admin functionality FIRST
 - Create `src/store/slices/wwAdminSlice.ts`
-- Model management state (species, brands, models)
-- Organisation management and user provisioning
+- **REQUIRED**: User provisioning state management per spec line 73 "WW Admin user provisioning | MVP"
+- **REQUIRED**: Organisation management and user provisioning per spec Section 4.1
 - System configuration and settings
 - Global admin permissions and features
 
-#### **NEW** 10.6: Claude Flow Integration Patterns
-- SPARC methodology state management
-- Agent coordination patterns in Redux
-- Task orchestration state tracking
-- Memory persistence for Claude Flow sessions
-
 **Acceptance Criteria**:
-- [ ] All Redux slices properly integrated
-- [ ] **NEW**: User role system fully functional
-- [ ] **NEW**: Organisation multi-tenancy working
-- [ ] **NEW**: WW Admin features implemented
-- [ ] **NEW**: Claude Flow patterns integrated
+- [ ] **CRITICAL**: Redux store structure created (src/store/ directory doesn't exist yet!)
+- [ ] **REQUIRED**: Maestro testing framework installed and configured
+- [ ] **REQUIRED**: TDD tests written BEFORE each slice implementation
+- [ ] **REQUIRED**: User role system fully functional per spec Section 4.2
+- [ ] **REQUIRED**: Organisation multi-tenancy working per spec Section 4.1  
+- [ ] **REQUIRED**: WW Admin user provisioning implemented (MVP feature per spec line 73)
+- [ ] **REQUIRED**: LoRaWAN status fields integrated per spec line 84
 - [ ] Type-safe operations throughout
 - [ ] Proper caching and state management
 - [ ] Error boundaries and handling
 - [ ] No memory leaks or state inconsistencies
+- [ ] All tests passing with >80% code coverage
 
 ---
 
@@ -715,16 +713,29 @@ This document analyzes existing TaskMaster Tasks 9-23 and provides specific modi
 
 ---
 
-## 🚀 Next Steps
+## 🚀 Next Steps & Claude Flow TDD Execution
 
-1. **✅ APPROVED**: Task restructuring plan approved
-2. **→ CURRENT**: Update TaskMaster with new task structure (Tasks 9-23)
-3. **→ NEXT**: Begin Task 9 implementation (Authentication Screens)
-4. **→ PARALLEL**: Set up development branches for parallel work streams
-5. **→ ONGOING**: Regular integration and testing throughout development
+1. **✅ ANALYSIS COMPLETE**: Spec v1.4.6 requirements correctly identified and integrated
+2. **→ IMMEDIATE**: Execute Task 10.0 - Install Maestro and setup TDD framework
+3. **→ TDD APPROACH**: Use `npx claude-flow sparc tdd` for each subtask implementation
+4. **→ CRITICAL**: Create Redux store structure that doesn't exist yet!
+5. **→ PARALLEL**: After Task 10 complete, execute Tasks 11-23 with Claude Flow agents
+
+### Claude Flow TDD Commands for Task 10:
+```bash
+# Start with testing setup
+npx claude-flow sparc tdd "Task 10.0: Install Maestro testing framework and setup TDD structure"
+
+# Then implement Redux store with TDD
+npx claude-flow sparc tdd "Task 10.1: Create Redux auth slice with user roles system"
+npx claude-flow sparc tdd "Task 10.2: Create projects slice with organisation integration"
+npx claude-flow sparc tdd "Task 10.3: Create deployments slice with LoRaWAN status fields"
+npx claude-flow sparc tdd "Task 10.4: Create API integration layer with role-based permissions"
+npx claude-flow sparc tdd "Task 10.5: Create WW Admin slice for user provisioning"
+```
 
 ---
 
-**Document Status**: ✅ **COMPLETE** - Ready for TaskMaster implementation  
-**Last Updated**: December 6, 2024  
-**Approval**: User approved - proceed with implementation
+**Document Status**: ✅ **COMPLETE** - Correctly aligned with spec v1.4.6 and ready for TDD implementation  
+**Last Updated**: August 29, 2025  
+**Approval**: Ready for Claude Flow SPARC TDD execution - no blocking dependencies
