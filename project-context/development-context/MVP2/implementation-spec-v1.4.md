@@ -869,14 +869,16 @@ class ConflictResolver {
 **New Tables to Create:**
 - **organisations**: Organisation management structure (NEW)
 - **user_organisations**: Many-to-many relationship for users and organisations (NEW)
-- **user_roles**: User role assignments including ww_admin (NEW)
 - **lorawan_messages**: LoRaWAN message storage for camera status updates (NEW)
 - **user_invitations**: Invitation tokens for member management (NEW)
 - **user_preferences**: User preferences and WW Admin configuration storage (NEW)
 
+**Note**: `user_roles` table not needed - existing `roles` and `project_members` tables handle role assignments
+
 **Extensions Required:**
 - **postgis**: Already enabled ✅ (in extensions schema for geospatial queries)
-- **Note**: Uses native `gen_random_uuid()` for UUIDs (PostgreSQL 13+), not uuid-ossp extension
+- **pgtap**: Already enabled ✅ (for database testing)
+- **Note**: Uses native `gen_random_uuid()` for UUIDs (PostgreSQL 13+) - uuid-ossp extension not required
 
 **Schema Overview:** The specification below shows both existing tables (marked in comments) and new tables required for MVP. For the most up-to-date existing schema definitions, refer to the backend repository migrations and the TypeScript types at `@project-context/development-context/supabase-backend/supabase.ts`.
 
@@ -1270,17 +1272,26 @@ interface OfflineState {
 **AI-Assisted Development with Claude Code and Claude Flow:**
 The app will be built using Claude Code with specialized sub-agents coordinated through Claude Flow for parallel development.
 
-**Sub-Agent Specialization:**
-- **Auth Agent**: Authentication, user management, roles
-- **Sync Agent**: Offline synchronization, conflict resolution
-- **BLE Agent**: Bluetooth hardware communication
-- **UI Agent**: Screen components, navigation
-- **Data Agent**: Redux store, database operations
+**Claude Flow Integration:**
+The implementation leverages Claude Flow's comprehensive SPARC modes and agent ecosystem:
+
+**Core SPARC Modes:**
+- **🏗️ Architect**: System design and component architecture
+- **🧠 Auto-Coder**: Implementation of React Native components and services
+- **🧪 Tester (TDD)**: Test-driven development with comprehensive coverage
+- **🔐 Supabase Admin**: Database schema, RLS policies, and backend functions
+- **🔗 System Integrator**: Component integration and system coherence
+
+**Research & Analysis Agents:**
+- **🔍 Researcher**: Technical research and library analysis (e.g., BLE protocol optimization)
+- **📊 Analyst**: Code pattern analysis and performance evaluation
+- **🔬 Code Analyzer**: Advanced code quality and architecture review
 
 **Development Approach:**
-- Task order and dependencies managed for parallel development
-- No fixed time estimates - implementation will be completed in hours/days with Claude Flow
-- Focus on systematic completion of features with proper integration
+- Use `npx claude-flow sparc <mode>` for SPARC methodology tasks
+- Use `npx claude-flow agent spawn <type>` for specialized research and analysis
+- Leverage parallel execution across multiple specialized agents
+- Apply cognitive patterns (divergent, systems, critical) for complex problem solving
 
 ### 9.2 Code Quality Standards
 
@@ -1665,10 +1676,11 @@ To enable immediate Claude Flow implementation, we have resolved all critical bl
 
 ### 16.4 Success Metrics for This Approach
 
-**Development Velocity:**
-- Foundation layer complete within 2 weeks
-- Core features implemented in 4-6 weeks
-- MVP ready for beta testing in 8 weeks
+**Development Velocity (Claude Flow Accelerated):**
+- Foundation layer complete within 2-3 days
+- Core features implemented in 1-2 weeks
+- MVP ready for beta testing in 3-4 weeks
+- Continuous parallel development across all workstreams
 
 **Quality Standards:**
 - All offline functionality working reliably
