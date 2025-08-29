@@ -1,5 +1,8 @@
 # Wildlife Watcher - User Roles Documentation
 
+**Status**: ✅ Aligned with Implementation Spec v1.4.6  
+**Database Implementation**: Existing `roles` and `project_members` tables sufficient (no separate user_roles table needed)
+
 ## Roles Overview
 
 ### Role Hierarchy Diagram

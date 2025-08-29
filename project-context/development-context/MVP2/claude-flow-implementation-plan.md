@@ -1,18 +1,19 @@
 # Wildlife Watcher MVP2 - Claude Flow Implementation Plan
 
-**Version**: 1.0  
-**Date**: August 2025  
-**Status**: Ready for Implementation  
+**Version**: 1.1  
+**Date**: 29 August 2025  
+**Status**: ✅ Aligned with Implementation Spec v1.4.6 - No Blocking Dependencies  
 
 ## Document References
 
 This implementation plan is based on analysis of the following key documents:
 
 ### Primary Specification Documents
-- **[Implementation Specification v1.3]** - `@project-context/development-context/MVP2/implementation-spec-v1.3.md`
-  - Comprehensive MVP requirements and technical architecture
+- **[Implementation Specification v1.4.6]** - `@project-context/development-context/MVP2/implementation-spec-v1.4.md`
+  - Comprehensive MVP requirements and technical architecture  
   - User stories, authentication flows, offline architecture
   - Supabase integration, state management, production readiness
+  - ✅ **Pragmatic blocker resolution** enabling immediate Claude Flow implementation
 
 - **[Task Restructuring Plan]** - `@project-context/development-context/MVP2/TASK-RESTRUCTURING-PLAN.md`
   - Detailed task breakdown (Tasks 9-23) with parallel development streams
@@ -21,16 +22,18 @@ This implementation plan is based on analysis of the following key documents:
 
 ### Supporting Documents
 - **[Development To-Do List]** - `@project-context/development-context/MVP2/to-do`
-  - Critical gaps and missing considerations
-  - BLE/DFU specification requirements
-  - Supabase reconciliation needs
+  - ✅ **Critical gaps resolved** through pragmatic decisions
+  - ✅ **BLE/DFU requirements** - existing implementation sufficient for MVP
+  - ✅ **Supabase reconciliation** - user_roles table removed, existing structure adequate
 
 - **[Claude Flow Documentation]** - https://github.com/ruvnet/claude-flow
   - Agent coordination patterns and SPARC methodology
   - Performance benefits (84.8% SWE-Bench solve rate, 2.8-4.4x speed improvement)
 
 ### Key Alignment Analysis
-This plan aligns the **54 available Claude Flow agents** with the **15 structured tasks** (Tasks 9-23) from the Task Restructuring Plan, incorporating the detailed technical requirements from the Implementation Specification v1.3.
+This plan aligns the **54 available Claude Flow agents** with the **15 structured tasks** (Tasks 9-23) from the Task Restructuring Plan, incorporating the detailed technical requirements from the Implementation Specification v1.4.6.
+
+**✅ Critical Update**: All blocking dependencies resolved through pragmatic decisions - **immediate Claude Flow implementation ready**.
 
 ---
 
@@ -46,15 +49,16 @@ Based on analysis of the implementation specification and existing task document
   npx claude-flow@alpha hive-mind init
   npx claude-flow@alpha swarm_init --topology hierarchical --maxAgents 8 --strategy adaptive
 
-  # Spawn specialized agents for parallel development
+  # Initialize SPARC methodology with research capabilities
   npx claude-flow@alpha agent_spawn --type coordinator --name "MVP-Coordinator"
-  npx claude-flow@alpha agent_spawn --type sparc-coder --name "Auth-Agent"
-  npx claude-flow@alpha agent_spawn --type sparc-coder --name "Sync-Agent"
-  npx claude-flow@alpha agent_spawn --type sparc-coder --name "BLE-Agent"
-  npx claude-flow@alpha agent_spawn --type sparc-coder --name "UI-Agent"
-  npx claude-flow@alpha agent_spawn --type backend-dev --name "Data-Agent"
-  npx claude-flow@alpha agent_spawn --type tester --name "Quality-Agent"
-  npx claude-flow@alpha agent_spawn --type reviewer --name "Integration-Agent"
+  
+  # Core SPARC Modes (built-in, no spawning needed)
+  npx claude-flow sparc modes  # Lists: architect, code, tdd, supabase-admin, integration
+  
+  # Spawn research and analysis agents for optimization
+  npx claude-flow@alpha agent_spawn --type researcher --name "BLE-Protocol-Researcher"
+  npx claude-flow@alpha agent_spawn --type analyst --name "Integration-Analyst"
+  npx claude-flow@alpha agent_spawn --type code-analyzer --name "Quality-Analyzer"
 
   2. SPARC Methodology Implementation
 
@@ -101,15 +105,17 @@ Based on analysis of the implementation specification and existing task document
 
   4. Intelligent Agent Coordination
 
-  Agent Specialization Alignment:
-  - MVP-Coordinator: Orchestrates task dependencies and integration points
-  - Auth-Agent: Handles authentication screens, user management, role systems
-  - Sync-Agent: Implements offline-first architecture, conflict resolution
-  - BLE-Agent: Manages Bluetooth communication, Nordic DFU, device discovery
-  - UI-Agent: Creates React Native screens, navigation, component library
-  - Data-Agent: Implements Redux store, Supabase integration, database operations
-  - Quality-Agent: Runs TDD tests, integration testing, performance validation
-  - Integration-Agent: Handles cross-stream integration and final assembly
+  SPARC Mode Specialization:
+  - **🏗️ Architect**: System design and component architecture
+  - **🧠 Auto-Coder**: React Native components and services implementation
+  - **🧪 Tester (TDD)**: Test-driven development with comprehensive coverage
+  - **🔐 Supabase Admin**: Database schema, RLS policies, backend functions
+  - **🔗 System Integrator**: Component integration and system coherence
+  
+  Research & Analysis Agents:
+  - **BLE-Protocol-Researcher**: BLE optimization, protocol analysis, performance improvements
+  - **Integration-Analyst**: Code pattern analysis, architectural review
+  - **Quality-Analyzer**: Advanced code quality assessment, performance bottlenecks
 
   5. SPARC TDD Implementation
 

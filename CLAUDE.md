@@ -272,7 +272,7 @@ Message 4: Write "file.js"
 ## 📋 MVP2 Implementation References
 
 ### Key Documents
-- **Implementation Spec**: `@project-context/development-context/MVP2/implementation-spec-v1.3.md`
+- **Implementation Spec**: `@project-context/development-context/MVP2/implementation-spec-v1.4.md`
 - **Task Plan**: `@project-context/development-context/MVP2/TASK-RESTRUCTURING-PLAN.md` 
 - **Claude Flow Plan**: `@project-context/development-context/MVP2/claude-flow-implementation-plan.md`
 - **Development TODO**: `@project-context/development-context/MVP2/to-do`
