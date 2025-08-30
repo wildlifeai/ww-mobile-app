@@ -11,32 +11,49 @@ This task ensures the complete Wildlife Watcher MVP2 system works correctly thro
 
 ## Implementation Requirements:
 
-### 21.1: Integration Testing Suite
-- **Complete Workflow Testing**: Test entire user journeys from start to finish:
-  - User registration → Project creation → Deployment workflow → Data sync
-  - Authentication → Device discovery → Deployment management → Project collaboration
-  - Offline operation → Network restoration → Data synchronization → Conflict resolution
-- **Cross-Feature Integration**: Validate interactions between different system components:
-  - Project management ↔ Deployment workflows
-  - BLE device management ↔ Maps integration
-  - Offline sync ↔ Real-time updates
-  - Authentication ↔ Team collaboration features
-- **Data Flow Verification**: Ensure data integrity across all system boundaries
-- **API Integration Testing**: Validate all Supabase API calls and real-time subscriptions
+### 21.1: Enhanced Integration Testing Suite with Organisation Context
+- **NEW**: Maestro TDD framework comprehensive testing implementation
+- **Enhanced Complete Workflow Testing**: Test entire user journeys with organisation and role context:
+  - **NEW**: Organisation setup → User role assignment → Project creation → Deployment workflow → Data sync
+  - **NEW**: WW Admin workflows → Cross-organisation management → Global user provisioning → System oversight
+  - Authentication → Organisation context → Device discovery → Deployment management → Project collaboration
+  - **NEW**: LoRaWAN integration → Webhook coordination → Device status sync → Battery/storage monitoring
+  - Offline operation → Network restoration → Organisation-scoped synchronization → Conflict resolution
+- **Advanced Cross-Feature Integration**: Validate complex system interactions with organisation intelligence:
+  - Project management ↔ Deployment workflows with organisation boundaries
+  - BLE device management ↔ Maps integration ↔ LoRaWAN status coordination
+  - **NEW**: Organisation multi-tenancy ↔ Role-based access control ↔ Data isolation
+  - Offline sync ↔ Real-time updates ↔ Organisation priority handling
+  - **NEW**: WW Admin features ↔ Cross-organisation management ↔ User provisioning
+  - Authentication ↔ Organisation context ↔ Team collaboration features
+- **Comprehensive Data Flow Verification**: Ensure data integrity across organisation boundaries and role contexts
+- **Enhanced API Integration Testing**: Validate all Supabase API calls with organisation and LoRaWAN integration:
+  - Real-time subscriptions with organisation filtering
+  - **NEW**: LoRaWAN webhook integration and device status synchronization
+  - **NEW**: Role-based data access and organisation RLS policy validation
+- **NEW**: Claude Flow SPARC testing methodology integration throughout test suite
 
-### 21.2: Real Device Testing with Wildlife Watcher Hardware
-- **Hardware Compatibility**: Test with actual Wildlife Watcher devices:
-  - BLE device discovery and connection reliability
-  - PING/PONG communication protocol validation
-  - Firmware update process with real DFU files
-  - Battery and storage status monitoring accuracy
-  - Device configuration and settings management
-- **Field Conditions Simulation**: Test under realistic deployment scenarios:
-  - Poor network connectivity and offline operation
-  - Extended battery usage and power management
-  - Environmental conditions (temperature, humidity impact)
-  - Multi-device management and interference testing
-- **Performance Validation**: Real-world performance metrics and benchmarks
+### 21.2: Enhanced Real Device Testing with LoRaWAN Integration
+- **NEW**: Maestro TDD coverage for hardware integration testing
+- **Enhanced Hardware Compatibility**: Test with Wildlife Watcher devices including organisation context:
+  - BLE device discovery with organisation device filtering and role-based access
+  - PING/PONG communication protocol with LoRaWAN backup communication validation
+  - **NEW**: LoRaWAN webhook integration testing with real device status updates
+  - Firmware update process with organisation-approved DFU files and role permissions
+  - **NEW**: Enhanced battery and storage status monitoring with LoRaWAN data accuracy
+  - **NEW**: Organisation device assignment, inventory management, and configuration testing
+  - Device configuration with organisation policy compliance and role-based settings
+- **Advanced Field Conditions Simulation**: Test under realistic deployment scenarios with organisation context:
+  - Poor network connectivity with LoRaWAN backup communication resilience
+  - Extended battery usage with organisation fleet management and predictive analytics
+  - **NEW**: Organisation territory validation and deployment boundary compliance testing
+  - Environmental conditions testing with organisation operational requirements
+  - **NEW**: Multi-organisation device management and cross-organisation interference testing
+  - **NEW**: Role-based device access and permission validation under field conditions
+- **Comprehensive Performance Validation**: Real-world metrics with organisation intelligence:
+  - Performance benchmarks with organisation data partitioning and role filtering
+  - **NEW**: LoRaWAN communication performance and webhook coordination efficiency
+  - **NEW**: Organisation-scoped data synchronization and conflict resolution performance
 
 ### 21.3: Performance Testing & Benchmarks
 - **Application Performance**: Comprehensive performance validation:
@@ -53,22 +70,30 @@ This task ensures the complete Wildlife Watcher MVP2 system works correctly thro
   - Search and filter performance with large datasets
 - **Stress Testing**: System behavior under extreme conditions
 
-### 21.4: Quality Assurance & Validation
-- **Functional Testing**: Verify all features work as specified:
-  - All MVP2 requirements implemented correctly
-  - User workflows complete successfully
-  - Error handling working as designed
-  - Edge cases handled gracefully
-- **Accessibility Testing**: Ensure app meets accessibility standards:
-  - Screen reader compatibility
-  - Color contrast ratios meet WCAG 2.1 AA
-  - Touch targets meet minimum size requirements
-  - Keyboard navigation support
-- **Security Testing**: Validate security measures:
-  - Authentication and authorization working correctly
-  - Data encryption in transit and at rest
-  - No sensitive information leaked in logs
-  - API security and rate limiting effective
+### 21.4: Enhanced Quality Assurance with Organisation Security
+- **NEW**: Maestro TDD comprehensive quality assurance framework
+- **Enhanced Functional Testing**: Verify all features with organisation context:
+  - All MVP2 requirements with organisation multi-tenancy implemented correctly
+  - **NEW**: WW Admin user provisioning and cross-organisation management workflows
+  - **NEW**: LoRaWAN integration and device status synchronization functionality
+  - User workflows complete successfully with role-based access control
+  - **NEW**: Organisation policy compliance and boundary enforcement validation
+  - Error handling working with organisation escalation and role-based messaging
+  - Edge cases handled gracefully across organisation boundaries and role contexts
+- **Comprehensive Accessibility Testing**: Ensure app meets standards with organisation awareness:
+  - Screen reader compatibility with organisation context announcements
+  - Color contrast ratios meet WCAG 2.1 AA with organisation branding considerations
+  - Touch targets meet minimum size requirements across all organisation interfaces
+  - **NEW**: Keyboard navigation support with role-based feature access
+  - **NEW**: Accessibility compliance across WW Admin cross-organisation interfaces
+- **Advanced Security Testing**: Validate comprehensive security measures:
+  - **NEW**: Enhanced authentication and authorization with organisation context and role validation
+  - **NEW**: Organisation data isolation and multi-tenancy security boundary validation
+  - Data encryption in transit and at rest with organisation compliance requirements
+  - **NEW**: LoRaWAN webhook security and device authentication validation
+  - No sensitive information leaked in logs with organisation privacy protection
+  - **NEW**: Role-based API security, organisation RLS policies, and cross-organisation access prevention
+  - **NEW**: WW Admin security controls and system-wide access validation
 
 ## Dependencies:
 - Tasks 12-20: All parallel development streams must be complete
@@ -76,20 +101,24 @@ This task ensures the complete Wildlife Watcher MVP2 system works correctly thro
 - Testing framework setup and test data preparation
 - Performance monitoring tools and benchmarking utilities
 
-## Technical Requirements:
-- **Testing Frameworks**: Jest, Detox, React Native Testing Library
-- **Performance Tools**: Flipper, React DevTools, native profiling tools
-- **Hardware Requirements**: Multiple Wildlife Watcher devices for comprehensive testing
-- **Network Simulation**: Tools to simulate various network conditions
-- **Test Data**: Comprehensive test datasets for various scenarios
+## Enhanced Technical Requirements:
+- **Enhanced Testing Frameworks**: Maestro TDD framework, Jest, Detox, React Native Testing Library with organisation context
+- **Performance Tools**: Flipper, React DevTools, native profiling tools with organisation data partitioning analysis
+- **Hardware Requirements**: Multiple Wildlife Watcher devices with LoRaWAN capability for comprehensive testing
+- **Network Simulation**: Tools to simulate various network conditions including LoRaWAN communication scenarios
+- **Enhanced Test Data**: Comprehensive test datasets with organisation multi-tenancy, role hierarchies, and LoRaWAN device configurations
+- **NEW**: Organisation Setup Tools: Multi-tenant test environment with various organisation configurations
+- **NEW**: LoRaWAN Testing Tools: Webhook simulation, device status mocking, battery/storage analytics testing
+- **NEW**: Role-Based Testing Framework: Automated role permission validation and boundary testing
 
-## Testing Scenarios:
-- **Happy Path**: All features working perfectly with good network/hardware
-- **Error Scenarios**: Network failures, device disconnections, sync conflicts
-- **Edge Cases**: Boundary conditions, unusual user behaviors, system limits
-- **Stress Tests**: High load, many devices, large datasets, poor conditions
-- **Security Tests**: Authentication failures, unauthorized access attempts
-- **Performance Tests**: Load testing, memory leaks, battery drain
+## Enhanced Testing Scenarios:
+- **Happy Path**: All features working perfectly with organisation context, role permissions, and LoRaWAN integration
+- **Organisation Scenarios**: Multi-tenancy data isolation, cross-organisation access prevention, role-based feature access
+- **Enhanced Error Scenarios**: Network failures, device disconnections, LoRaWAN communication issues, organisation boundary violations
+- **Advanced Edge Cases**: Organisation boundary conditions, role permission edge cases, LoRaWAN webhook failures, system limits
+- **Comprehensive Stress Tests**: High load with organisation partitioning, many devices with LoRaWAN coordination, large datasets with role filtering
+- **Enhanced Security Tests**: Organisation data isolation, role-based access control, LoRaWAN security, WW Admin privilege escalation prevention
+- **Performance Tests**: Load testing with organisation scoping, memory leaks across tenants, battery drain with LoRaWAN integration
 
 ## Validation Criteria:
 - **Functional Coverage**: 100% of MVP2 features tested and validated

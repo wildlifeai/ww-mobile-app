@@ -11,34 +11,83 @@ This task completes the offline-first architecture by implementing comprehensive
 
 ## Implementation Requirements:
 
-### 20.1: Complete Sync Service Implementation
-- Extend `src/services/offline/OfflineService.ts` with full synchronization logic
-- **Bidirectional Sync**: Handle both local-to-remote and remote-to-local data flow
-- **Incremental Sync**: Only sync changed data to minimize bandwidth usage
-- **Priority-based Sync**: Critical operations (deployments, device status) sync first
-- **Batch Operations**: Group related operations for efficient network usage
-- **Transaction Management**: Ensure data consistency during sync operations
-- **Dependency Resolution**: Handle data dependencies during sync (projects before deployments)
+### 20.1: Enhanced Complete Sync Service with Organisation Context
+- Extend `src/services/offline/OfflineService.ts` with organisation-aware synchronization logic
+- **NEW**: Maestro TDD implementation for sync service reliability and data integrity
+- **Enhanced Bidirectional Sync**: Organisation-scoped data flow with role-based filtering:
+  - Handle local-to-remote and remote-to-local with organisation data isolation
+  - **NEW**: Role-based sync filtering (ww_admin, project_admin, project_member)
+  - **NEW**: Organisation data boundary enforcement during sync operations
+- **Advanced Incremental Sync**: Intelligent data synchronization:
+  - Only sync changed data with organisation context preservation
+  - **NEW**: LoRaWAN device status sync (battery_level, sd_card_usage) prioritization
+  - **NEW**: Organisation-specific sync intervals and data priority management
+- **Enhanced Priority-based Sync**: Intelligent sync ordering with organisation intelligence:
+  - Critical operations sync first with organisation emergency protocols
+  - **NEW**: LoRaWAN webhook synchronization and device status priority handling
+  - **NEW**: Organisation operational data priority (deployments, device health, user management)
+- **Advanced Batch Operations**: Efficient network usage with organisation coordination:
+  - Group operations by organisation for efficient data transfer
+  - **NEW**: Cross-organisation batch coordination for WW Admin users
+- **Comprehensive Transaction Management**: Data consistency with organisation integrity:
+  - Ensure data consistency across organisation boundaries
+  - **NEW**: Role-based transaction validation and rollback capabilities
+- **Enhanced Dependency Resolution**: Complex data relationship management:
+  - Handle organisation dependencies (organisations → projects → deployments)
+  - **NEW**: User role dependencies and permission synchronization
+- **NEW**: Claude Flow SPARC patterns for sync architecture and conflict resolution
 
-### 20.2: Advanced Conflict Resolution
-- Create `src/services/offline/ConflictResolver.ts` for intelligent conflict handling
-- **Conflict Detection**: Identify data conflicts based on timestamps and versions
-- **Resolution Strategies**:
-  - Last-write-wins for most data types
-  - Merge strategies for project member lists
-  - Deployment status conflicts (ended status always wins)
-  - User-guided resolution for critical conflicts
-- **Data Validation**: Ensure resolved data meets integrity constraints
-- **Conflict Logging**: Track and report conflict resolution for debugging
+### 20.2: Enhanced Advanced Conflict Resolution with Organisation Intelligence
+- Create `src/services/offline/ConflictResolver.ts` with organisation-aware conflict handling
+- **NEW**: Maestro TDD coverage for conflict detection and resolution reliability
+- **Enhanced Conflict Detection**: Multi-dimensional conflict identification:
+  - Identify conflicts with organisation context and role-based validation
+  - **NEW**: LoRaWAN device status conflicts (battery levels, connectivity states)
+  - **NEW**: Organisation policy conflicts and compliance validation
+- **Advanced Resolution Strategies** with organisation intelligence:
+  - **NEW**: Organisation-policy-guided resolution strategies
+  - Last-write-wins with organisation authority validation
+  - **NEW**: Enhanced merge strategies for organisation member lists and role assignments
+  - **NEW**: LoRaWAN device status conflicts (most recent reliable data wins)
+  - Deployment status conflicts with organisation operational priority
+  - **NEW**: WW Admin override capabilities for cross-organisation conflict resolution
+  - User-guided resolution with organisation escalation workflows
+- **Comprehensive Data Validation**: Multi-layer integrity checking:
+  - Ensure resolved data meets organisation policy and compliance constraints
+  - **NEW**: Role-based data validation and permission enforcement
+  - **NEW**: LoRaWAN device configuration and status validation
+- **Advanced Conflict Logging**: Detailed conflict resolution tracking:
+  - Track and report conflicts with organisation context and user roles
+  - **NEW**: Organisation conflict analytics and pattern detection
+  - **NEW**: WW Admin conflict oversight and system-wide conflict monitoring
 
-### 20.3: Sync UI and Status Management
-- Create sync status indicators throughout the app
-- **Global Sync Status**: Persistent indicator showing sync state
-- **Sync Progress**: Real-time progress for ongoing sync operations
-- **Manual Sync Triggers**: User-initiated sync buttons with feedback
-- **Sync History**: Log of recent sync operations and their outcomes
-- **Error Reporting**: Clear error messages for sync failures with suggested actions
-- **Sync Settings**: User preferences for sync frequency and behavior
+### 20.3: Enhanced Sync UI with Organisation and Role Context
+- **NEW**: Maestro TDD implementation for sync UI components and user experience
+- Create comprehensive sync status indicators with organisation awareness throughout the app
+- **Enhanced Global Sync Status**: Organisation-aware sync state management:
+  - Persistent indicator with organisation context and role-based sync status
+  - **NEW**: LoRaWAN device sync status and connectivity indicators
+  - **NEW**: Organisation data sync health and compliance status
+- **Advanced Sync Progress**: Detailed real-time progress with organisation intelligence:
+  - Progress tracking with organisation data partitioning visibility
+  - **NEW**: Role-based progress filtering and permission-aware sync feedback
+  - **NEW**: LoRaWAN webhook sync progress and device status coordination
+- **Enhanced Manual Sync Triggers**: Role-based sync controls:
+  - User-initiated sync with organisation and role permission validation
+  - **NEW**: WW Admin global sync triggers for cross-organisation coordination
+  - **NEW**: Emergency sync protocols for organisation critical operations
+- **Comprehensive Sync History**: Detailed sync operation logging:
+  - Log of sync operations with organisation context and user role information
+  - **NEW**: Organisation sync analytics and performance trend monitoring
+  - **NEW**: LoRaWAN device sync history and connectivity reliability tracking
+- **Advanced Error Reporting**: Organisation-aware error management:
+  - Clear error messages with organisation policy guidance and escalation procedures
+  - **NEW**: Role-based error visibility and resolution capability indication
+  - **NEW**: Organisation compliance error reporting and remediation workflows
+- **Enhanced Sync Settings**: Organisation and role-based configuration:
+  - User preferences within organisation policy boundaries
+  - **NEW**: Organisation-defined sync policies and mandatory settings
+  - **NEW**: Role-based sync configuration access and WW Admin system settings
 
 ### 20.4: Performance Optimization & Background Sync
 - **Efficient Algorithms**: Optimize sync algorithms for speed and battery usage
@@ -55,19 +104,30 @@ This task completes the offline-first architecture by implementing comprehensive
 - Background task management for non-blocking sync
 
 ## Technical Patterns:
-- Follow offline service patterns from API Integration Guide
-- Implement conflict resolution patterns from MVP2 docs
-- Use proper TypeScript typing for all sync operations
-- Follow performance optimization guidelines
-- Use background task patterns for React Native
+- **NEW**: Follow Claude Flow SPARC methodology for offline synchronization architecture
+- Follow offline service patterns from API Integration Guide with organisation multi-tenancy
+- **NEW**: Implement Maestro TDD patterns for all sync operations and conflict resolution
+- Implement conflict resolution patterns with organisation intelligence and role-based validation
+- **NEW**: Implement organisation-scoped data isolation and role-based sync filtering
+- Use proper TypeScript typing for all sync operations with organisation and role extensions
+- **NEW**: Follow role-based access control patterns for sync operations and UI
+- Follow performance optimization guidelines with organisation data partitioning
+- **NEW**: Implement LoRaWAN integration patterns for device status synchronization
+- Use background task patterns for React Native with organisation context preservation
+- **NEW**: Follow WW Admin patterns for cross-organisation sync management and oversight
 
 ## Key Features:
-- **Intelligent Synchronization**: Smart sync algorithms that minimize data transfer
-- **Robust Conflict Resolution**: Handle data conflicts gracefully without data loss
-- **User-Friendly Interface**: Clear sync status and control throughout the app
-- **Performance Optimized**: Fast sync operations that don't impact user experience
-- **Network Resilient**: Handle poor network conditions and intermittent connectivity
-- **Battery Efficient**: Optimize sync operations for mobile device constraints
+- **Enhanced Intelligent Synchronization**: Smart sync algorithms with organisation context and role-based data filtering
+- **Advanced Robust Conflict Resolution**: Handle conflicts gracefully with organisation policies and WW Admin oversight
+- **Organisation-Aware Interface**: Clear sync status with role-based controls and organisation context throughout the app
+- **Multi-Tenancy Support**: Organisation-scoped synchronization with data isolation and compliance
+- **Role-Based Access Control**: WW Admin, project admin, and member permissions for sync operations
+- **LoRaWAN Integration**: Device status synchronization, webhook coordination, and real-time connectivity monitoring
+- **Performance Optimized**: Fast sync operations with organisation data partitioning and role-based filtering
+- **Network Resilient**: Handle poor network conditions with organisation priority protocols
+- **Battery Efficient**: Optimize sync operations with organisation policies and device constraint management
+- **WW Admin Global Management**: Cross-organisation sync coordination and system-wide synchronization oversight
+- **Organisation Analytics**: Sync performance monitoring, compliance reporting, and operational intelligence
 
 ## Synchronization Features:
 - **Delta Sync**: Only sync changes since last successful sync

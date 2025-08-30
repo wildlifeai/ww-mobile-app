@@ -761,6 +761,24 @@
             "status": "pending",
             "dependencies": [],
             "parentTaskId": 10
+          },
+          {
+            "id": 5,
+            "title": "Testing Framework Setup for TDD/BDD",
+            "description": "Install Maestro testing framework and setup TDD structure (MOVED from Task 9). Check existing testing packages (Jest, Detox, React Testing Library), install Maestro testing framework, install Redux testing utilities, create test directory structure, set up Maestro test configuration for React Native, write first TDD tests for auth slice BEFORE implementation, update package.json scripts for Maestro testing",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10
+          },
+          {
+            "id": 6,
+            "title": "WW Admin Redux Slice",
+            "description": "Create WW Admin functionality for user provisioning, organisation management, and global admin features. REQUIRED: User provisioning state management per spec line 73 'WW Admin user provisioning | MVP'. REQUIRED: Organisation management and user provisioning per spec Section 4.1. System configuration and settings. Global admin permissions and features.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10
           }
         ]
       },

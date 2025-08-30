@@ -3,45 +3,68 @@
 # Status: pending
 # Dependencies: 10
 # Priority: high
-# Description: Implement comprehensive offline-first architecture using expo-sqlite with operation queuing, network monitoring, conflict resolution, and background synchronization
+# Description: Implement comprehensive offline-first architecture using expo-sqlite with organisation multi-tenancy, role-based offline sync, operation queuing, network monitoring, conflict resolution, and background synchronization
 # Details:
 FOUNDATION LAYER - Task 11: Offline SQLite Foundation
 
-This task creates the complete offline-first data management system that enables the Wildlife Watcher app to function fully offline during field deployments and sync when connectivity is restored.
+This task creates the complete offline-first data management system that enables the Wildlife Watcher app to function fully offline during field deployments and sync when connectivity is restored, implementing organisation multi-tenancy and role-based data access patterns per Implementation Spec v1.4.6.
 
 ## Implementation Requirements:
 
-### 11.1: SQLite Database Setup
+### **ENHANCED** 11.1: SQLite Database Setup with Multi-Tenancy
 - Initialize expo-sqlite database (`wildlife_watcher.db`)
-- Create comprehensive schema for offline operations:
+- **NEW**: Organisation-scoped database schemas
+- **NEW**: User role-based data access patterns
+- Create schema for offline operations:
   - `offline_queue` table for sync operations
   - `local_deployments` table for offline deployment storage
-  - `local_projects` table for offline project storage
+  - `local_projects` table for offline project storage (organisation-scoped)
   - `local_devices` table for device information cache
-- Implement database migration system for schema updates
-- Set up proper database connection management and cleanup
+  - `local_organisations` table for organisation data
+  - `local_user_roles` table for role-based access control
+- Migration system for schema updates
+- Database connection management
 
-### 11.2: Offline Service Architecture
-- Create `src/services/offline/OfflineService.ts` as main coordinator
-- Implement operation queue system for CREATE/UPDATE/DELETE operations
-- Add network state monitoring using @react-native-community/netinfo
-- Create conflict resolution strategies for data synchronization
-- Implement retry logic for failed sync operations
-- Add operation deduplication to prevent duplicate syncs
+### **ENHANCED** 11.2: Offline Service Architecture with Role-Based Sync
+- Create `src/services/offline/OfflineService.ts` with organisation-aware operations
+- **NEW**: Maestro test-driven implementation for offline service layer
+- Queue system for offline operations with organisation scoping
+- **NEW**: Role-based sync filtering:
+  - `ww_admin`: Global sync across all organisations and data
+  - `project_admin`: Organisation-scoped sync for managed projects
+  - `project_member`: Project-scoped sync for accessible projects only
+- **NEW**: Organisation context for all offline operations and data isolation
+- **NEW**: LoRaWAN status field sync (battery_level, sd_card_usage) with offline caching
+- Network state monitoring with organisation priority handling
+- Conflict resolution strategies with user role validation
+- Retry logic for failed operations with exponential backoff
+- Operation deduplication with organisation-based filtering
+- **NEW**: Claude Flow SPARC integration for offline architecture patterns
 
 ### 11.3: Sync Infrastructure
-- Build background sync service that triggers when network becomes available
-- Implement incremental sync to minimize data transfer
-- Create data integrity validation during sync operations
-- Add sync status indicators for user feedback
-- Implement sync priority system (critical operations first)
-- Handle partial sync failures gracefully
+- Background sync when network available
+- Incremental sync to minimize data transfer
+- Data integrity validation
+- Sync status indicators
+- Sync priority system (critical operations first)
+- Partial sync failure handling
 
-### 11.4: Integration Patterns
-- Create offline-first service layer that automatically queues operations
-- Integrate with Redux slices for seamless state management
-- Add offline indicators throughout the UI
-- Implement optimistic UI updates with rollback capability
+### **NEW** 11.4: WW Admin Offline Features (MVP User Provisioning)
+- **WW Admin User Provisioning**: Offline access to user management across organisations
+- Model management offline sync (species, brands, models) for system configuration
+- Organisation user list caching with role-based filtering
+- **NEW**: User role assignment offline capability (ww_admin, project_admin, project_member)
+- System configuration offline access for WW Admin users
+- Global admin data synchronization with organisation isolation
+- **NEW**: LoRaWAN device configuration offline sync for admin users
+- **NEW**: Cross-organisation analytics and reporting offline access
+- **NEW**: Bulk user operations offline queue (invite, role changes, deactivation)
+
+### 11.5: Integration Patterns
+- Offline-first service layer with automatic queuing
+- Integration with Redux slices for seamless state management
+- Offline indicators throughout UI
+- Optimistic UI updates with rollback capability
 
 ## Dependencies:
 - Task 10: Core Redux Integration (for state management integration)
@@ -50,10 +73,14 @@ This task creates the complete offline-first data management system that enables
 - Supabase client for sync operations
 
 ## Technical Patterns:
-- Follow offline service patterns from API Integration Guide
-- Implement BaseService pattern for consistent error handling
-- Use TypeScript for all database operations and types
-- Follow conflict resolution patterns from MVP2 docs
+- **NEW**: Follow Claude Flow SPARC methodology for offline service architecture
+- Follow offline service patterns from API Integration Guide with organisation scoping
+- **NEW**: Implement Maestro TDD patterns for all offline service operations
+- Implement BaseService pattern for consistent error handling with role validation
+- **NEW**: Use generated Supabase TypeScript types with organisation and user role extensions
+- Follow conflict resolution patterns from MVP2 docs with user role consideration
+- **NEW**: Implement organisation data isolation patterns throughout offline layer
+- **NEW**: Role-based data access patterns (RLS policy enforcement offline)
 
 ## Key Features:
 - **Complete Offline Functionality**: All core operations work without network

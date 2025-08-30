@@ -11,41 +11,73 @@ This task implements the comprehensive deployment management system that enables
 
 ## Implementation Requirements:
 
-### 17.1: Deployments List Screen
-- Create `src/navigation/screens/DeploymentsScreen.tsx`
-- **Tabbed Interface**: Organized tabs for Active / Ended / All deployments
-- **Deployment Cards**: Rich information display for each deployment:
-  - Project name, deployment name, device identifier
-  - Location information with coordinates/address
-  - Duration (for active) or total duration (for ended)
-  - Battery level and SD card usage indicators
-  - Last updated timestamp and connectivity status
-- **Pull-to-Refresh**: Manual refresh to get latest deployment status
-- **Search and Filter**: Find deployments by name, project, location, or status
-- **Performance Optimization**: Efficient list rendering for large datasets
+### 17.1: Enhanced Deployments List Screen with Organisation Context
+- Create `src/navigation/screens/DeploymentsScreen.tsx` following Component Implementation Patterns
+- **NEW**: Maestro TDD implementation for deployments list and filtering
+- **Enhanced Tabbed Interface**: Organised tabs with role-based visibility:
+  - Active / Ended / All deployments with organisation scoping
+  - **NEW**: WW Admin tab for cross-organisation deployment oversight
+- **Enhanced Deployment Cards**: Rich information display with organisation awareness:
+  - Project name, organisation badge, deployment name, device identifier
+  - Location information with coordinates/address and organisation territory indicators
+  - Duration with organisation performance benchmarking
+  - **NEW**: Enhanced LoRaWAN status (battery_level, sd_card_usage, connectivity quality)
+  - Last updated timestamp and comprehensive connectivity status
+  - **NEW**: Role-based action buttons (edit, end, view) with permission validation
+- **Pull-to-Refresh**: Manual refresh with organisation and LoRaWAN status updates
+- **Enhanced Search and Filter**: Advanced filtering capabilities:
+  - Find deployments by name, project, location, organisation, or status
+  - **NEW**: Filter by device status, battery level, storage usage
+  - **NEW**: Role-based filtering (ww_admin sees all, others see scoped deployments)
+- **Performance Optimization**: Efficient list rendering for large datasets with organisation partitioning
+- **NEW**: Claude Flow SPARC patterns for deployment list architecture
 
-### 17.2: Deployment Details Screen
-- Create `src/navigation/screens/DeploymentDetailsScreen.tsx`
-- **Comprehensive Information Display**:
-  - Deployment metadata (name, project, dates, duration)
-  - Device information and current status
-  - Location details with map integration
-  - Configuration details (capture method, settings)
-  - Status history and timeline
-  - Associated files and media
-- **Quick Actions**:
-  - End deployment (if active)
-  - View on map
-  - Share deployment details
-  - Export deployment data
+### 17.2: Enhanced Deployment Details Screen with Organisation Intelligence
+- Create `src/navigation/screens/DeploymentDetailsScreen.tsx` with organisation-aware data display
+- **NEW**: Maestro TDD implementation for deployment details and analytics
+- **Enhanced Comprehensive Information Display**:
+  - Deployment metadata with organisation context (name, project, organisation, dates, duration)
+  - **NEW**: Enhanced device information with LoRaWAN integration:
+    - Current status, battery trends, storage usage patterns
+    - Connectivity quality and transmission logs
+    - Device health metrics and predictive maintenance indicators
+  - Location details with map integration and organisation territory overlay
+  - Configuration details with organisation policy compliance indicators
+  - **NEW**: Enhanced status history with organisation analytics and performance metrics
+  - Associated files and media with organisation storage management
+  - **NEW**: Team member activity and role-based contribution tracking
+- **Enhanced Role-Based Quick Actions**:
+  - End deployment (if active) - with permission validation
+  - View on map with organisation territorial context
+  - Share deployment details with organisation privacy controls
+  - Export deployment data with role-based data access filtering
+  - **NEW**: LoRaWAN device configuration and webhook management (admin only)
+  - **NEW**: Organisation analytics and benchmarking reports
+- **NEW**: WW Admin Global Actions**: Cross-organisation deployment management and system oversight
 
-### 17.3: Real-Time Status Update System
-- **Supabase Real-time Subscriptions**: Live updates for deployment changes
-- **Battery Level Monitoring**: Real-time battery status with low battery alerts
-- **Storage Monitoring**: SD card usage tracking with storage warnings
-- **Connectivity Status**: Device online/offline status indicators
-- **Alert System**: Push notifications for critical status changes
-- **Background Updates**: Status updates without blocking UI interactions
+### 17.3: Enhanced Real-Time Status Update System with LoRaWAN Integration
+- **NEW**: Maestro TDD coverage for real-time update reliability and performance
+- **Enhanced Supabase Real-time Subscriptions**: Live updates with organisation and role filtering:
+  - Deployment changes with organisation context
+  - **NEW**: LoRaWAN webhook integration for device status updates
+  - Role-based subscription filtering for performance optimization
+- **Advanced Battery Level Monitoring**: Comprehensive battery management:
+  - Real-time battery status with predictive analytics
+  - **NEW**: Organisation-defined low battery alert thresholds
+  - Battery degradation tracking and replacement recommendations
+- **Enhanced Storage Monitoring**: Advanced storage management:
+  - SD card usage tracking with organisation storage policies
+  - **NEW**: Predictive storage alerts based on capture patterns
+  - Storage optimization recommendations and cleanup suggestions
+- **Comprehensive Connectivity Status**: Multi-channel connectivity monitoring:
+  - Device online/offline status with BLE and LoRaWAN indicators
+  - **NEW**: Network quality assessment and connectivity trends
+  - Connection reliability scoring for deployment planning
+- **Advanced Alert System**: Intelligent notification management:
+  - Push notifications with organisation and role-based filtering
+  - **NEW**: Escalation workflows for critical issues
+  - Alert aggregation and noise reduction for better user experience
+- **Optimized Background Updates**: Efficient status updates with organisation context preservation
 
 ### 17.4: Status Indicators & Visual Feedback
 - **Status Chips**: Color-coded status indicators (Active, Ended, Issues)
@@ -62,19 +94,28 @@ This task implements the comprehensive deployment management system that enables
 - Maps integration for location display
 
 ## Technical Patterns:
-- Follow Component Implementation Patterns for consistent UI
-- Use FlatList optimization patterns for large deployment lists
-- Implement real-time subscription patterns from API Integration Guide
-- Use StatusChip components for consistent status display
-- Follow performance optimization guidelines
+- **NEW**: Follow Claude Flow SPARC methodology for deployment management architecture
+- Follow Component Implementation Patterns for consistent UI with organisation awareness
+- **NEW**: Implement Maestro TDD patterns for all deployment management components
+- Use FlatList optimization patterns for large deployment lists with organisation partitioning
+- **NEW**: Implement organisation-scoped data filtering and role-based rendering
+- Implement real-time subscription patterns with LoRaWAN webhook integration
+- **NEW**: Follow role-based access control patterns throughout deployment management
+- Use StatusChip components for consistent status display with LoRaWAN status integration
+- **NEW**: Implement WW Admin UI patterns for cross-organisation deployment oversight
+- Follow performance optimization guidelines with organisation and role-based query optimization
 
 ## Key Features:
-- **Comprehensive Overview**: All deployment information in organized views
-- **Real-time Monitoring**: Live status updates without manual refresh
-- **Quick Actions**: Efficient deployment management operations
-- **Performance Optimized**: Smooth operation with large deployment datasets
-- **Visual Status Indicators**: Clear visual feedback for deployment health
-- **Search & Filter**: Easy deployment discovery and organization
+- **Enhanced Comprehensive Overview**: All deployment information with organisation context and role-based visibility
+- **Advanced Real-time Monitoring**: Live status updates with LoRaWAN integration and predictive analytics
+- **Role-Based Quick Actions**: Efficient deployment management with permission validation
+- **Multi-Tenancy Support**: Organisation-scoped deployment management with data isolation
+- **WW Admin Global Management**: Cross-organisation deployment oversight and system intelligence
+- **Performance Optimized**: Smooth operation with large deployment datasets and organisation partitioning
+- **Enhanced Visual Status Indicators**: Comprehensive deployment health with LoRaWAN device metrics
+- **Advanced Search & Filter**: Organisation-aware discovery with role-based filtering and device status
+- **LoRaWAN Integration**: Device monitoring, webhook management, and predictive maintenance
+- **Organisation Analytics**: Deployment performance benchmarking and fleet management insights
 
 ## Real-time Update Features:
 - **Live Battery Monitoring**: Updates as devices report battery status

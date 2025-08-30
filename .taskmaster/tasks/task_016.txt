@@ -11,29 +11,58 @@ This task implements the deployment termination workflow that enables users to p
 
 ## Implementation Requirements:
 
-### 16.1: End Deployment Screen
-- Create `src/navigation/screens/deployment/end/EndDeploymentScreen.tsx`
-- **Active Deployment Selection**: List user's active deployments with filtering
-- **Deployment Information Display**: Show deployment details, duration, location
-- **Device Status Check**: Display current device connectivity and battery status
-- **Termination Confirmation**: Clear confirmation dialog with deployment impact info
-- **Batch Operations**: Option to end multiple deployments simultaneously
+### 16.1: Enhanced End Deployment Screen with Organisation Context
+- Create `src/navigation/screens/deployment/end/EndDeploymentScreen.tsx` following Component Implementation Patterns
+- **NEW**: Maestro TDD implementation for end deployment workflows
+- **Enhanced Active Deployment Selection**: List user's active deployments with organisation and role-based filtering:
+  - `ww_admin`: All active deployments across all organisations
+  - `project_admin`: Active deployments in their organisations
+  - `project_member`: Active deployments they created or have access to
+- **Enhanced Deployment Information Display**: Show comprehensive deployment details with organisation context:
+  - Project name, organisation, deployment name, device identifier
+  - Duration, location with organisation territory validation
+  - **NEW**: LoRaWAN device status (battery_level, sd_card_usage from webhooks)
+  - Team member information and permissions
+- **Device Status Check**: Display current device connectivity, battery status, and LoRaWAN health indicators
+- **Enhanced Termination Confirmation**: Clear confirmation dialog with deployment impact info and organisation policies
+- **Role-Based Batch Operations**: Option to end multiple deployments with permission validation
+- **NEW**: Organisation compliance validation before termination
+- **NEW**: Claude Flow SPARC patterns for deployment termination workflows
 
-### 16.2: Device Reconnection & Communication
-- **Automatic Device Discovery**: Attempt to reconnect to deployment device
-- **Manual Device Selection**: If automatic fails, allow manual device selection
-- **BLE Communication**: Send end deployment command to device
-- **Device Status Retrieval**: Get final status data (battery, storage, logs)
-- **Connection Fallback**: Handle scenarios where device is unreachable
-- **Timeout Handling**: Graceful handling of communication timeouts
+### 16.2: Enhanced Device Reconnection & LoRaWAN Integration
+- **NEW**: Maestro TDD coverage for device communication and LoRaWAN integration
+- **Enhanced Automatic Device Discovery**: Reconnect to deployment device with organisation device filtering
+- **Manual Device Selection**: Manual selection with role-based device access validation
+- **Enhanced BLE Communication**: Send end deployment command with LoRaWAN webhook coordination
+- **Comprehensive Device Status Retrieval**: Get final status data including:
+  - Battery level and usage patterns
+  - SD card usage and remaining storage capacity
+  - LoRaWAN connectivity and transmission logs
+  - Device health metrics and diagnostic information
+- **Connection Fallback**: Handle scenarios where device is unreachable with LoRaWAN backup communication
+- **Timeout Handling**: Graceful handling with organisation-defined timeout policies
+- **NEW**: LoRaWAN webhook deregistration and cleanup
+- **NEW**: Organisation device inventory updates
 
-### 16.3: End Deployment Service Integration
-- Create deployment termination service extending BaseService
-- **Status Update to Supabase**: Mark deployment as ended with timestamp
-- **Final Data Collection**: Retrieve and store final device metrics
-- **Cleanup Operations**: Remove active deployment from local cache
-- **Data Integrity**: Ensure deployment data is preserved correctly
-- **Offline Support**: Queue termination if device is offline
+### 16.3: Enhanced End Deployment Service with Organisation Integration
+- Create deployment termination service extending BaseService with organisation context
+- **NEW**: Maestro TDD coverage for all termination service operations
+- **Enhanced Status Update to Supabase**: Mark deployment as ended with timestamp and organisation data:
+  - Update deployment status with organisation and role context
+  - **NEW**: LoRaWAN webhook deregistration and device status final sync
+  - **NEW**: Organisation analytics and reporting integration
+- **Comprehensive Final Data Collection**: Retrieve and store complete device metrics:
+  - Battery usage analytics and degradation patterns
+  - Storage utilization and data capture statistics
+  - **NEW**: LoRaWAN transmission logs and connectivity reports
+  - Device performance metrics for organisation fleet management
+- **Enhanced Cleanup Operations**: Organisation-aware cleanup procedures:
+  - Remove active deployment from local cache with organisation scoping
+  - **NEW**: Update organisation device availability and inventory
+  - Clean up LoRaWAN webhook registrations and monitoring
+- **Data Integrity**: Ensure deployment data is preserved correctly with organisation compliance
+- **Enhanced Offline Support**: Queue termination with full organisation context preservation
+- **NEW**: Role-based termination approval workflows (if required by organisation)
 
 ### 16.4: Completion & Feedback
 - **Success Confirmation**: Clear feedback that deployment was ended successfully
@@ -49,19 +78,28 @@ This task implements the deployment termination workflow that enables users to p
 - Offline queue system for reliable updates
 
 ## Technical Patterns:
-- Follow Component Implementation Patterns for consistent UI
-- Use LoadingStates pattern for device communication
-- Implement ConfirmationDialog for termination confirmation
-- Follow BaseService pattern for reliable API operations
-- Use proper error handling and user feedback
+- **NEW**: Follow Claude Flow SPARC methodology for deployment termination architecture
+- Follow Component Implementation Patterns for consistent UI with organisation awareness
+- **NEW**: Implement Maestro TDD patterns for all termination components and services
+- Use LoadingStates pattern for device communication with LoRaWAN status integration
+- **NEW**: Implement organisation-scoped data filtering and permission validation
+- Implement ConfirmationDialog for termination confirmation with organisation policy warnings
+- **NEW**: Follow role-based access control patterns throughout termination workflow
+- Follow BaseService pattern for reliable API operations with organisation context
+- **NEW**: Implement LoRaWAN integration patterns for webhook management and device coordination
+- Use proper error handling and user feedback with organisation compliance messaging
 
 ## Key Features:
-- **Streamlined Termination**: Simple process to end active deployments
-- **Device Communication**: Proper communication with field devices
-- **Data Preservation**: Ensure all deployment data is captured and stored
-- **Offline Support**: End deployments even without network connectivity
-- **Batch Operations**: Efficiency features for managing multiple deployments
-- **Error Recovery**: Robust handling of device communication failures
+- **Enhanced Streamlined Termination**: Simple process with organisation context and role-based access
+- **Advanced Device Communication**: BLE and LoRaWAN communication with comprehensive device management
+- **Organisation-Aware Data Preservation**: Ensure all deployment data captured with organisation compliance
+- **Role-Based Access Control**: WW Admin, project admin, and member permissions throughout termination
+- **Multi-Tenancy Support**: Organisation-scoped termination with data isolation
+- **Enhanced Offline Support**: End deployments offline with full organisation context preservation
+- **Advanced Batch Operations**: Role-based efficiency features for managing multiple deployments
+- **LoRaWAN Integration**: Device status monitoring, webhook management, and fleet coordination
+- **Robust Error Recovery**: Comprehensive handling of device communication failures with organisation policies
+- **WW Admin Features**: Cross-organisation deployment termination oversight and system management
 
 ## Workflow Steps:
 1. **Select Deployment** → Choose active deployment to end
