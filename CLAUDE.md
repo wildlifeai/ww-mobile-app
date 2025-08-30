@@ -34,10 +34,13 @@
 This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) methodology with Claude-Flow orchestration for systematic Test-Driven Development.
 
 ### MVP2 Implementation Status
-- **Foundation**: Auth system, Redux store, SQLite offline support
-- **Current Phase**: Parallel development streams (Projects, Deployments, Devices & Maps)
-- **Architecture**: Offline-first with Supabase backend, BLE device communication
-- **Key Features**: 6-step deployment wizard, project management, real-time sync
+- **Foundation**: Auth system (Task 9 ✅), Redux store with user roles (Task 10 🔄), SQLite offline support with multi-tenancy (Task 11 ⏳)
+- **Current Phase**: All tasks updated with Implementation Spec v1.4.6 enhancements in TaskMaster
+- **Architecture**: Offline-first with Supabase backend, BLE + LoRaWAN device communication, organisation multi-tenancy
+- **Key Features**: 6-step deployment wizard, project management, real-time sync, WW Admin user provisioning (MVP)
+- **Enhanced Roles**: ww_admin, project_admin, project_member with full organisation scoping
+- **LoRaWAN Integration**: battery_level, sd_card_usage webhook monitoring throughout all tasks
+- **Testing Framework**: Maestro TDD/BDD integrated in Tasks 10-23 structure
 
 ## SPARC Commands
 
@@ -269,26 +272,56 @@ Message 4: Write "file.js"
 6. Enable hooks automation
 7. Use GitHub tools first
 
+## 📋 Current TaskMaster Status
+
+### Task Completion Status
+- **Tasks 1-8**: ✅ **COMPLETED** - Expo SDK 51 Migration
+- **Task 9**: ✅ **DONE** - Authentication Screens & Navigation 
+- **Task 10**: 🔄 **IN-PROGRESS** - Core Redux Integration with Supabase (Enhanced with spec v1.4.6)
+  - Includes: User roles, organisation multi-tenancy, LoRaWAN integration, WW Admin slice, Maestro testing
+- **Tasks 11-23**: ⏳ **PENDING** - All updated with Implementation Spec v1.4.6 enhancements
+
+### Next Steps
+1. Complete Task 10: Core Redux Integration (currently in-progress)
+2. Execute Foundation Layer Tasks 11 (SQLite with multi-tenancy)
+3. Launch parallel development streams (A, B, C) with enhanced features
+4. Integrate and test with Tasks 21-23
+
 ## 📋 MVP2 Implementation References
 
 ### Key Documents
-- **Implementation Spec**: `@project-context/development-context/MVP2/implementation-spec-v1.4.md`
-- **Task Plan**: `@project-context/development-context/MVP2/TASK-RESTRUCTURING-PLAN.md` 
+- **Implementation Spec**: `@project-context/development-context/MVP2/implementation-spec-v1.4.md` (v1.4.6 - Latest)
+- **Task Plan**: `@project-context/development-context/MVP2/TASK-RESTRUCTURING-PLAN.md` (✅ Implemented in TaskMaster)
 - **Claude Flow Plan**: `@project-context/development-context/MVP2/claude-flow-implementation-plan.md`
 - **Development TODO**: `@project-context/development-context/MVP2/to-do`
+- **TaskMaster Tasks**: All tasks (10-23) updated with full Implementation Spec v1.4.6 enhancements
 
-### Development Streams
-- **Foundation Layer**: Tasks 9-11 (Auth, Redux, SQLite) - Sequential execution required
+### Development Streams (Enhanced with Spec v1.4.6)
+- **Foundation Layer**: Tasks 9-11 (Auth ✅, Redux with roles 🔄, SQLite with multi-tenancy ⏳) - Sequential execution required
+  - Organisation multi-tenancy and role-based data access throughout
+  - WW Admin offline user provisioning features (MVP requirement)
 - **Stream A**: Tasks 12-14 (Project Management) - Auth-Agent + Data-Agent
-- **Stream B**: Tasks 15-17 (Deployment Workflows) - UI-Agent + BLE-Agent  
+  - WW Admin cross-organisation project oversight and user provisioning
+  - Organisation-scoped project CRUD with role-based permissions
+- **Stream B**: Tasks 15-17 (Deployment Workflows) - UI-Agent + BLE-Agent
+  - LoRaWAN device integration throughout deployment lifecycle
+  - Real-time status monitoring with battery/storage tracking
 - **Stream C**: Tasks 18-20 (Devices & Maps) - BLE-Agent + Sync-Agent
+  - Organisation-scoped deployment visualization on maps
+  - Enhanced BLE with LoRaWAN webhook integration
 - **Integration**: Tasks 21-23 (Testing, Optimization, Production) - Quality-Agent + Integration-Agent
+  - Multi-tenancy validation and WW Admin feature testing
+  - Production security with organisation boundaries
 
-### Critical Implementation Notes
+### Critical Implementation Notes (Spec v1.4.6 Requirements)
 - **Offline-First**: All operations must work without network connectivity
+- **Organisation Multi-Tenancy**: Complete data isolation and scoped operations
+- **User Roles System**: ww_admin (global), project_admin (org-scoped), project_member (project-scoped)
 - **BLE Integration**: Wildlife Watcher camera communication via Bluetooth
-- **Supabase Backend**: RLS policies, Edge Functions, real-time subscriptions
-- **Role-Based Access**: WW Admin configurable features, project admin/member roles
+- **LoRaWAN Integration**: Webhook status updates with battery_level and sd_card_usage fields
+- **Supabase Backend**: RLS policies with role validation, Edge Functions, real-time subscriptions
+- **WW Admin Features**: User provisioning across organisations (MVP requirement per spec line 73)
+- **Maestro Testing**: TDD/BDD framework integrated throughout Tasks 10-23
 
 ## Support
 
