@@ -67,28 +67,46 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - `npx claude-flow@alpha task_orchestrate --strategy parallel` - Coordinate parallel development
 
 ### Task Management via SuperClaude
-SuperClaude provides advanced task management capabilities through slash commands available in Claude Code sessions:
+SuperClaude provides comprehensive task management capabilities through slash commands available in Claude Code sessions:
 
 **SuperClaude Task Commands**:
 ```bash
-/task:create [description]    # Create complex feature with auto-breakdown
-/task:status [task-id]       # Check progress & blockers  
-/task:resume [task-id]       # Resume with full context restoration
-/task:update [task-id]       # Add progress notes & discoveries
-/task:complete [task-id]     # Mark done with summary
+# Current Task Focus
+/task:current                 # Show current task status & requirements
+/task:focus 11.3             # Deep dive into OfflineService.ts implementation
+/task:break:11.3             # Smart breakdown into micro-tasks
+
+# Implementation & Testing
+/task:implement:offline      # Execute TDD implementation for offline service
+/task:test:offline           # Run comprehensive test suite
+/task:checkpoint:11.3        # Create implementation checkpoint
+
+# Context Preservation & Recovery
+/task:save:context           # Save current implementation state
+/task:restore:context        # Restore with full context preservation
+/task:resume:11.3            # Resume OfflineService.ts with preserved context
+
+# Progress & Coordination
+/task:status:foundation      # Check Foundation Layer (Tasks 9-11) progress
+/task:ready:streams          # Assess parallel streams readiness (Tasks 12-23)
+/task:swarm:prepare          # Initialize swarm coordination for post-Task 11
+/task:update:progress        # Update project documentation with status
 ```
 
 **Key Features**:
-- ✅ **Smart Breakdown**: Automatic complexity analysis → subtask creation
-- ✅ **Context Preservation**: Working state saved across sessions
-- ✅ **Session Recovery**: Resume from checkpoints with full context
-- ✅ **Progress Tracking**: Automatic updates and blocker detection
-- ✅ **Git Integration**: Branch management and checkpoint system
+- ✅ **Smart Task Breakdown**: Automatic complexity analysis → micro-task creation
+- ✅ **Context Preservation**: Working state saved across sessions with full implementation context
+- ✅ **Session Recovery**: Resume from checkpoints with complete context restoration
+- ✅ **Progress Tracking**: Real-time updates and intelligent blocker detection
+- ✅ **Git Integration**: Branch management and automated checkpoint system
+- ✅ **Swarm Coordination**: Prepare parallel development streams for Tasks 12-23
 
-**Task Reference Files** (Manual backup):
-- Reference task files: `@project-context/development-context/MVP2/tasks/task_001.txt` through `task_023.txt`
-- Complete task structure: `@project-context/development-context/MVP2/tasks/tasks.json`
-- Task progress tracked in documentation and commit messages
+**Task Management System**:
+- **SuperClaude Task Manager**: `@project-context/superclaude-task-management.md` - Complete orchestration system
+- **Context Preservation**: `@project-context/task-context-preservation.json` - Session recovery with implementation state
+- **Swarm Coordination**: `@project-context/swarm-coordination-strategy.md` - 3-stream parallel development strategy
+- **Task Reference Files**: `@project-context/development-context/MVP2/tasks/` - Complete task backup (task_001.txt through task_023.txt)
+- **Task Structure**: `@project-context/development-context/MVP2/tasks/tasks.json` - Complete task hierarchy
 
 ## SPARC Workflow Phases
 
@@ -443,21 +461,31 @@ Message 4: Write "file.js"
 6. Enable hooks automation
 7. Use GitHub tools first
 
-## 📋 Current Task Status (Manual Management)
+## 📋 Current Task Status (SuperClaude Management)
 
 ### Task Completion Status
 - **Tasks 1-8**: ✅ **COMPLETED** - Expo SDK 51 Migration
 - **Task 9**: ✅ **DONE** - Authentication Screens & Navigation 
 - **Task 10**: ✅ **COMPLETED** - Core Redux Integration with Supabase (Enhanced with spec v1.4.6)
   - Includes: User roles, organisation multi-tenancy, LoRaWAN integration, WW Admin slice, Maestro testing
-- **Task 11**: 🔄 **IN-PROGRESS** - Offline SQLite Foundation (Enhanced with Serena MCP integration)
+- **Task 11**: 🔄 **IN-PROGRESS** - Offline SQLite Foundation (28.6% complete - 2/7 subtasks done)
+  - ✅ Subtask 11.1: SQLite Testing Framework 
+  - ✅ Subtask 11.2: SQLite Database Schema
+  - 🔄 **Subtask 11.3**: OfflineService.ts Implementation (CRITICAL BLOCKER for Tasks 12-23)
+  - ⏳ Subtasks 11.4-11.7: Sync, WW Admin, Redux Integration, E2E Testing
 - **Tasks 12-23**: ⏳ **PENDING** - All updated with Implementation Spec v1.4.6 enhancements
 
-### Next Steps
+### Next Steps (SuperClaude Coordinated)
 1. ✅ **Complete Task 10**: Core Redux Integration (6/6 subtasks completed)
-2. 🔄 **Execute Task 11**: SQLite Foundation with Serena MCP enhancement (in-progress)
-3. Launch parallel development streams (A, B, C) with enhanced features after Task 11
-4. Integrate and test with Tasks 21-23
+2. 🔄 **Execute Task 11.3**: OfflineService.ts implementation (CRITICAL PATH BLOCKER)
+   - Use `/task:focus 11.3` for detailed requirements
+   - Use `/task:implement:offline` to start TDD implementation
+3. Complete Task 11.4-11.7 (Sync Infrastructure, WW Admin features, Redux Integration, E2E Testing)
+4. 🚀 **Launch Parallel Development Streams**: After Task 11 completion
+   - **Stream A** (Tasks 12-14): Project Management - Auth-Agent + Data-Agent
+   - **Stream B** (Tasks 15-17): Deployment Workflows - UI-Agent + BLE-Agent  
+   - **Stream C** (Tasks 18-20): Devices & Maps - BLE-Agent + Sync-Agent
+5. **Integration Phase** (Tasks 21-23): Testing, Optimization, Production with Quality-Agent + Integration-Agent
 
 ## 📋 MVP2 Implementation References
 
