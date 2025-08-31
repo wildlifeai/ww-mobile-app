@@ -72,6 +72,14 @@ export const formValidationCases = {
     valid: ['password123', 'ValidPass1!', 'secure-password'],
     invalid: ['', '123', 'short'],
   },
+  username: {
+    valid: ['testuser', 'validusername', 'user123'],
+    invalid: ['', 'ab', 'x'],
+  },
+  organization: {
+    valid: ['WildlifeAI', 'Test Organization', 'Conservation Society'],
+    invalid: ['A'.repeat(101)], // Over 100 characters
+  },
 };
 
 // Auth error messages

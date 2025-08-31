@@ -25,7 +25,7 @@ import {
 } from '../../../setup/fixtures/auth';
 
 // Mock Alert
-jest.spyOn(Alert, 'alert');
+const mockAlert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 // Mock the logo image
 // Logo image is automatically mocked by Jest moduleNameMapper
@@ -42,19 +42,19 @@ describe('Register Screen Integration Tests', () => {
   test('should render registration form correctly', () => {
     renderWithProviders(<Register />, { store });
     
-    expect(screen.getByText('Username')).toBeTruthy();
-    expect(screen.getByText('Email')).toBeTruthy();
+    expect(screen.getByText('Username', { exact: false })).toBeTruthy();
+    expect(screen.getByText('Email', { exact: false })).toBeTruthy();
     expect(screen.getByText('Organization (Optional)')).toBeTruthy();
-    expect(screen.getByText('Password')).toBeTruthy();
-    expect(screen.getByText('Confirm Password')).toBeTruthy();
-    expect(screen.getByText('Register')).toBeTruthy();
-    expect(screen.getByText('Already have an account? Login')).toBeTruthy();
+    expect(screen.getByText('Password', { exact: false })).toBeTruthy();
+    expect(screen.getByText('Confirm Password', { exact: false })).toBeTruthy();
+    expect(screen.getByTestId('register-button')).toBeTruthy();
+    expect(screen.getByTestId('login-navigation-button')).toBeTruthy();
   });
 
   test('should validate all required fields', async () => {
     renderWithProviders(<Register />, { store });
     
-    const registerButton = screen.getByText('Register');
+    const registerButton = screen.getByTestId('register-button');
 
     // Submit empty form
     fireEvent.press(registerButton);
@@ -70,8 +70,8 @@ describe('Register Screen Integration Tests', () => {
   test('should validate username field correctly', async () => {
     renderWithProviders(<Register />, { store });
     
-    const usernameInput = screen.getByLabelText('Username');
-    const registerButton = screen.getByText('Register');
+    const usernameInput = screen.getByTestId('username-input');
+    const registerButton = screen.getByTestId('register-button');
 
     // Test too short username
     fireEvent.changeText(usernameInput, 'ab');
@@ -92,8 +92,8 @@ describe('Register Screen Integration Tests', () => {
   test('should validate email field correctly', async () => {
     renderWithProviders(<Register />, { store });
     
-    const emailInput = screen.getByLabelText('Email');
-    const registerButton = screen.getByText('Register');
+    const emailInput = screen.getByTestId('email-input');
+    const registerButton = screen.getByTestId('register-button');
 
     // Test invalid email formats
     for (const invalidEmail of formValidationCases.email.invalid.slice(1)) { // Skip empty string
@@ -116,8 +116,8 @@ describe('Register Screen Integration Tests', () => {
   test('should validate organization field length', async () => {
     renderWithProviders(<Register />, { store });
     
-    const organizationInput = screen.getByLabelText('Organization (Optional)');
-    const registerButton = screen.getByText('Register');
+    const organizationInput = screen.getByTestId('organization-input');
+    const registerButton = screen.getByTestId('register-button');
 
     // Test too long organization name
     const longOrganization = 'A'.repeat(101);
@@ -139,12 +139,12 @@ describe('Register Screen Integration Tests', () => {
   test('should validate password field correctly', async () => {
     renderWithProviders(<Register />, { store });
     
-    const passwordInput = screen.getByLabelText('Password');
-    const registerButton = screen.getByText('Register');
+    const passwordInput = screen.getByTestId('password-input');
+    const registerButton = screen.getByTestId('register-button');
 
     // Fill other required fields to focus on password validation
-    fireEvent.changeText(screen.getByLabelText('Username'), validRegisterCredentials.username);
-    fireEvent.changeText(screen.getByLabelText('Email'), validRegisterCredentials.email);
+    fireEvent.changeText(screen.getByTestId('username-input'), validRegisterCredentials.username);
+    fireEvent.changeText(screen.getByTestId('email-input'), validRegisterCredentials.email);
 
     // Test password too short
     fireEvent.changeText(passwordInput, '123');
@@ -165,13 +165,13 @@ describe('Register Screen Integration Tests', () => {
   test('should validate password confirmation matching', async () => {
     renderWithProviders(<Register />, { store });
     
-    const passwordInput = screen.getByLabelText('Password');
-    const confirmPasswordInput = screen.getByLabelText('Confirm Password');
-    const registerButton = screen.getByText('Register');
+    const passwordInput = screen.getByTestId('password-input');
+    const confirmPasswordInput = screen.getByTestId('confirm-password-input');
+    const registerButton = screen.getByTestId('register-button');
 
     // Fill valid form data except password confirmation
-    fireEvent.changeText(screen.getByLabelText('Username'), validRegisterCredentials.username);
-    fireEvent.changeText(screen.getByLabelText('Email'), validRegisterCredentials.email);
+    fireEvent.changeText(screen.getByTestId('username-input'), validRegisterCredentials.username);
+    fireEvent.changeText(screen.getByTestId('email-input'), validRegisterCredentials.email);
     fireEvent.changeText(passwordInput, validRegisterCredentials.password);
     fireEvent.changeText(confirmPasswordInput, 'differentpassword');
 
@@ -196,14 +196,14 @@ describe('Register Screen Integration Tests', () => {
     renderWithProviders(<Register />, { store });
     
     // Fill form
-    fireEvent.changeText(screen.getByLabelText('Username'), validRegisterCredentials.username);
-    fireEvent.changeText(screen.getByLabelText('Email'), validRegisterCredentials.email);
-    fireEvent.changeText(screen.getByLabelText('Organization (Optional)'), validRegisterCredentials.organization);
-    fireEvent.changeText(screen.getByLabelText('Password'), validRegisterCredentials.password);
-    fireEvent.changeText(screen.getByLabelText('Confirm Password'), validRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('username-input'), validRegisterCredentials.username);
+    fireEvent.changeText(screen.getByTestId('email-input'), validRegisterCredentials.email);
+    fireEvent.changeText(screen.getByTestId('organization-input'), validRegisterCredentials.organization);
+    fireEvent.changeText(screen.getByTestId('password-input'), validRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('confirm-password-input'), validRegisterCredentials.password);
     
     // Submit form
-    const registerButton = screen.getByText('Register');
+    const registerButton = screen.getByTestId('register-button');
     fireEvent.press(registerButton);
 
     // Should show loading state
@@ -213,7 +213,7 @@ describe('Register Screen Integration Tests', () => {
 
     await waitFor(() => {
       // Check that user was registered and logged in
-      expect(store.getState().auth.user).toEqual(
+      expect(store.getState().authentication.user).toEqual(
         expect.objectContaining({
           email: validRegisterCredentials.email,
           username: validRegisterCredentials.username,
@@ -236,13 +236,13 @@ describe('Register Screen Integration Tests', () => {
     renderWithProviders(<Register />, { store });
     
     // Fill form
-    fireEvent.changeText(screen.getByLabelText('Username'), validRegisterCredentials.username);
-    fireEvent.changeText(screen.getByLabelText('Email'), validRegisterCredentials.email);
-    fireEvent.changeText(screen.getByLabelText('Password'), validRegisterCredentials.password);
-    fireEvent.changeText(screen.getByLabelText('Confirm Password'), validRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('username-input'), validRegisterCredentials.username);
+    fireEvent.changeText(screen.getByTestId('email-input'), validRegisterCredentials.email);
+    fireEvent.changeText(screen.getByTestId('password-input'), validRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('confirm-password-input'), validRegisterCredentials.password);
     
     // Submit form
-    fireEvent.press(screen.getByText('Register'));
+    fireEvent.press(screen.getByTestId('register-button'));
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -253,7 +253,7 @@ describe('Register Screen Integration Tests', () => {
     });
 
     // Should not log user in automatically
-    expect(store.getState().auth.user).toBeNull();
+    expect(store.getState().authentication.user).toBeNull();
   });
 
   test('should handle registration failure with existing email', async () => {
@@ -263,16 +263,16 @@ describe('Register Screen Integration Tests', () => {
     renderWithProviders(<Register />, { store });
     
     // Fill form with existing user data
-    fireEvent.changeText(screen.getByLabelText('Username'), existingUserRegisterCredentials.username);
-    fireEvent.changeText(screen.getByLabelText('Email'), existingUserRegisterCredentials.email);
-    fireEvent.changeText(screen.getByLabelText('Password'), existingUserRegisterCredentials.password);
-    fireEvent.changeText(screen.getByLabelText('Confirm Password'), existingUserRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('username-input'), existingUserRegisterCredentials.username);
+    fireEvent.changeText(screen.getByTestId('email-input'), existingUserRegisterCredentials.email);
+    fireEvent.changeText(screen.getByTestId('password-input'), existingUserRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('confirm-password-input'), existingUserRegisterCredentials.password);
     
     // Submit form
-    fireEvent.press(screen.getByText('Register'));
+    fireEvent.press(screen.getByTestId('register-button'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith(
+      expect(mockAlert).toHaveBeenCalledWith(
         'Registration Failed',
         'Please check your information and try again.',
         [{ text: 'OK' }]
@@ -283,16 +283,16 @@ describe('Register Screen Integration Tests', () => {
   test('should navigate to login screen', () => {
     renderWithProviders(<Register />, { store });
     
-    const loginButton = screen.getByText('Already have an account? Login');
+    const loginButton = screen.getByTestId('login-navigation-button');
     fireEvent.press(loginButton);
     
     // Check navigation was called
-    expect(require('../../../test/utils/testUtils').mockNavigate).toHaveBeenCalledWith('Login');
+    expect(require('../../../setup/utils/testUtils').mockNavigate).toHaveBeenCalledWith('Login');
   });
 
   test('should disable form elements during loading', async () => {
     // Mock a delayed auth response
-    const { mockSupabaseClient } = require('../../../test/mocks/supabase');
+    const { mockSupabaseClient } = require('../../../__mocks__/supabase');
     mockSupabaseClient.auth.signUp.mockImplementation(
       () => new Promise(resolve => setTimeout(() => resolve(mockAuthSuccess()), 1000))
     );
@@ -300,14 +300,14 @@ describe('Register Screen Integration Tests', () => {
     renderWithProviders(<Register />, { store });
     
     // Fill form
-    fireEvent.changeText(screen.getByLabelText('Username'), validRegisterCredentials.username);
-    fireEvent.changeText(screen.getByLabelText('Email'), validRegisterCredentials.email);
-    fireEvent.changeText(screen.getByLabelText('Password'), validRegisterCredentials.password);
-    fireEvent.changeText(screen.getByLabelText('Confirm Password'), validRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('username-input'), validRegisterCredentials.username);
+    fireEvent.changeText(screen.getByTestId('email-input'), validRegisterCredentials.email);
+    fireEvent.changeText(screen.getByTestId('password-input'), validRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('confirm-password-input'), validRegisterCredentials.password);
     
     // Submit form
-    const registerButton = screen.getByText('Register');
-    const loginButton = screen.getByText('Already have an account? Login');
+    const registerButton = screen.getByTestId('register-button');
+    const loginButton = screen.getByTestId('login-navigation-button');
     
     fireEvent.press(registerButton);
 
@@ -324,35 +324,35 @@ describe('Register Screen Integration Tests', () => {
     renderWithProviders(<Register />, { store });
     
     // Fill form without organization
-    fireEvent.changeText(screen.getByLabelText('Username'), validRegisterCredentials.username);
-    fireEvent.changeText(screen.getByLabelText('Email'), validRegisterCredentials.email);
-    fireEvent.changeText(screen.getByLabelText('Password'), validRegisterCredentials.password);
-    fireEvent.changeText(screen.getByLabelText('Confirm Password'), validRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('username-input'), validRegisterCredentials.username);
+    fireEvent.changeText(screen.getByTestId('email-input'), validRegisterCredentials.email);
+    fireEvent.changeText(screen.getByTestId('password-input'), validRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('confirm-password-input'), validRegisterCredentials.password);
     
     // Submit form
-    fireEvent.press(screen.getByText('Register'));
+    fireEvent.press(screen.getByTestId('register-button'));
 
     await waitFor(() => {
       // Should succeed without organization
-      expect(store.getState().auth.user).not.toBeNull();
+      expect(store.getState().authentication.user).not.toBeNull();
     });
   });
 
   test('should trim empty organization field before submission', async () => {
-    const { mockSupabaseClient } = require('../../../test/mocks/supabase');
+    const { mockSupabaseClient } = require('../../../__mocks__/supabase');
     mockAuthSuccess();
     
     renderWithProviders(<Register />, { store });
     
     // Fill form with empty organization
-    fireEvent.changeText(screen.getByLabelText('Username'), validRegisterCredentials.username);
-    fireEvent.changeText(screen.getByLabelText('Email'), validRegisterCredentials.email);
-    fireEvent.changeText(screen.getByLabelText('Organization (Optional)'), '   '); // Only spaces
-    fireEvent.changeText(screen.getByLabelText('Password'), validRegisterCredentials.password);
-    fireEvent.changeText(screen.getByLabelText('Confirm Password'), validRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('username-input'), validRegisterCredentials.username);
+    fireEvent.changeText(screen.getByTestId('email-input'), validRegisterCredentials.email);
+    fireEvent.changeText(screen.getByTestId('organization-input'), '   '); // Only spaces
+    fireEvent.changeText(screen.getByTestId('password-input'), validRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('confirm-password-input'), validRegisterCredentials.password);
     
     // Submit form
-    fireEvent.press(screen.getByText('Register'));
+    fireEvent.press(screen.getByTestId('register-button'));
 
     await waitFor(() => {
       // Check that organization was sent as undefined, not empty string
@@ -373,10 +373,10 @@ describe('Register Screen Integration Tests', () => {
   test('should handle form input properties correctly', () => {
     renderWithProviders(<Register />, { store });
     
-    const emailInput = screen.getByLabelText('Email');
-    const organizationInput = screen.getByLabelText('Organization (Optional)');
-    const passwordInput = screen.getByLabelText('Password');
-    const confirmPasswordInput = screen.getByLabelText('Confirm Password');
+    const emailInput = screen.getByTestId('email-input');
+    const organizationInput = screen.getByTestId('organization-input');
+    const passwordInput = screen.getByTestId('password-input');
+    const confirmPasswordInput = screen.getByTestId('confirm-password-input');
     
     // Test email input properties
     expect(emailInput.props.textContentType).toBe('emailAddress');
@@ -393,7 +393,7 @@ describe('Register Screen Integration Tests', () => {
 
   test('should handle API error messages in UI', async () => {
     // Mock RTK Query error with specific message structure
-    const { mockSupabaseClient } = require('../../../test/mocks/supabase');
+    const { mockSupabaseClient } = require('../../../__mocks__/supabase');
     mockSupabaseClient.auth.signUp.mockRejectedValue({
       data: {
         error: {
@@ -405,16 +405,16 @@ describe('Register Screen Integration Tests', () => {
     renderWithProviders(<Register />, { store });
     
     // Fill valid form
-    fireEvent.changeText(screen.getByLabelText('Username'), validRegisterCredentials.username);
-    fireEvent.changeText(screen.getByLabelText('Email'), validRegisterCredentials.email);
-    fireEvent.changeText(screen.getByLabelText('Password'), validRegisterCredentials.password);
-    fireEvent.changeText(screen.getByLabelText('Confirm Password'), validRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('username-input'), validRegisterCredentials.username);
+    fireEvent.changeText(screen.getByTestId('email-input'), validRegisterCredentials.email);
+    fireEvent.changeText(screen.getByTestId('password-input'), validRegisterCredentials.password);
+    fireEvent.changeText(screen.getByTestId('confirm-password-input'), validRegisterCredentials.password);
     
     // Submit form
-    fireEvent.press(screen.getByText('Register'));
+    fireEvent.press(screen.getByTestId('register-button'));
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith(
+      expect(mockAlert).toHaveBeenCalledWith(
         'Registration Failed',
         'Please check your information and try again.',
         [{ text: 'OK' }]
@@ -425,8 +425,8 @@ describe('Register Screen Integration Tests', () => {
   test('should clear form validation errors when input is corrected', async () => {
     renderWithProviders(<Register />, { store });
     
-    const usernameInput = screen.getByLabelText('Username');
-    const registerButton = screen.getByText('Register');
+    const usernameInput = screen.getByTestId('username-input');
+    const registerButton = screen.getByTestId('register-button');
 
     // Trigger validation error
     fireEvent.changeText(usernameInput, 'a');

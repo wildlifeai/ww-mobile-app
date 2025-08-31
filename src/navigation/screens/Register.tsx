@@ -48,7 +48,7 @@ export const Register = () => {
 				username: data.username,
 				email: data.email,
 				password: data.password,
-				organization: data.organization || undefined,
+				organization: data.organization?.trim() || undefined,
 			}).unwrap()
 
 			// Handle pending confirmation state
@@ -97,7 +97,7 @@ export const Register = () => {
 								},
 							}}
 						>
-							{(field) => <WWTextInput {...field} mode="outlined" />}
+							{(field) => <WWTextInput {...field} testID="username-input" mode="outlined" />}
 						</Field>
 
 						<Field
@@ -116,6 +116,7 @@ export const Register = () => {
 							{(field) => (
 								<WWTextInput
 									{...field}
+									testID="email-input"
 									mode="outlined"
 									textContentType="emailAddress"
 									keyboardType="email-address"
@@ -138,6 +139,7 @@ export const Register = () => {
 							{(field) => (
 								<WWTextInput
 									{...field}
+									testID="organization-input"
 									mode="outlined"
 									textContentType="organizationName"
 								/>
@@ -158,7 +160,7 @@ export const Register = () => {
 							}}
 						>
 							{(field) => (
-								<WWTextInput {...field} mode="outlined" secureTextEntry />
+								<WWTextInput {...field} testID="password-input" mode="outlined" secureTextEntry />
 							)}
 						</Field>
 
@@ -172,7 +174,7 @@ export const Register = () => {
 							}}
 						>
 							{(field) => (
-								<WWTextInput {...field} mode="outlined" secureTextEntry />
+								<WWTextInput {...field} testID="confirm-password-input" mode="outlined" secureTextEntry />
 							)}
 						</Field>
 
@@ -185,6 +187,7 @@ export const Register = () => {
 
 						<Button
 							mode="contained"
+							testID="register-button"
 							onPress={handleSubmit(onSubmit)}
 							loading={isLoading}
 							style={styles.button}
@@ -195,6 +198,7 @@ export const Register = () => {
 
 						<Button
 							mode="text"
+							testID="login-navigation-button"
 							onPress={() => navigation.navigate("Login")}
 							style={styles.textButton}
 							disabled={isLoading}
