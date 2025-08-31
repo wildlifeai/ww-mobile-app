@@ -12,9 +12,11 @@ import authReducer from "./slices/authSlice"
 import projectsReducer from "./slices/projectsSlice"
 import deploymentsReducer from "./slices/deploymentsSlice"
 import wwAdminReducer from "./slices/wwAdminSlice"
+import offlineReducer from "./slices/offlineSlice"
 import { Action, ThunkAction, configureStore } from "@reduxjs/toolkit"
 import { api } from "./api"
 import { enhancedApi } from "./api/enhanced"
+import { offlineMiddleware } from "./middleware/offlineMiddleware"
 
 const store = configureStore({
 	reducer: {
@@ -32,9 +34,28 @@ const store = configureStore({
 		projects: projectsReducer,
 		deployments: deploymentsReducer,
 		wwAdmin: wwAdminReducer,
+		offline: offlineReducer,
 	},
 	middleware: (getDefaultMiddleware) =>
-		getDefaultMiddleware().concat(api.middleware, enhancedApi.middleware),
+		getDefaultMiddleware({
+			serializableCheck: {
+				ignoredActions: [
+					'persist/PERSIST',
+					// Ignore offline service actions with non-serializable data
+					'offline/setNetworkStatus',
+					'offline/addPendingOperation',
+					'offline/setSyncStatus'
+				],
+				ignoredPaths: [
+					// Ignore non-serializable fields in offline state
+					'offline.pendingOperations.timestamp',
+					'offline.unresolvedConflicts.resolved_at',
+					'offline.syncStatus.last_sync_at'
+				],
+			},
+		})
+		.concat(api.middleware, enhancedApi.middleware)
+		.prepend(offlineMiddleware.middleware),
 })
 
 export default store

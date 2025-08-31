@@ -1,0 +1,306 @@
+# Complete Offline Functionality E2E Test
+# Task 11.7: Comprehensive end-to-end testing with organisation scenarios and role-based workflows
+
+appId: com.wildlifeai.wildlifewatcher
+name: "Complete Offline Functionality Test"
+description: "Test complete offline workflows with organisation multi-tenancy, role-based access, LoRaWAN integration, and WW Admin features"
+
+---
+
+# Test 1: Offline Deployment Creation with Role-Based Access
+- runFlow: 
+    file: setup-test-user.yaml
+    env:
+      TEST_USER_ROLE: "project_admin"
+      TEST_ORG_ID: "test-org-1"
+
+- assertVisible: "Welcome to Wildlife Watcher"
+- tapOn: "Start Offline Mode"
+
+# Simulate network disconnection
+- runScript: scripts/disable-network.js
+
+- assertVisible: "Offline Mode Active"
+- assertVisible: "0 pending sync operations"
+
+# Create deployment while offline
+- tapOn: "New Deployment"
+- inputText: 
+    text: "Offline Test Deployment"
+    index: 0
+- tapOn: "Camera Selection"
+- tapOn: "WildCam Pro"
+- tapOn: "Location"
+- inputText:
+    text: "Test Forest Reserve"
+    index: 1
+- tapOn: "Save Deployment"
+
+# Verify offline operation queued
+- assertVisible: "Deployment saved offline"
+- assertVisible: "1 pending sync operation"
+
+---
+
+# Test 2: Organisation Data Sync with Multi-Tenancy
+- runFlow:
+    file: setup-test-user.yaml  
+    env:
+      TEST_USER_ROLE: "project_admin"
+      TEST_ORG_ID: "test-org-2"
+
+# Create data in different organisation
+- tapOn: "New Project" 
+- inputText:
+    text: "Cross-Org Test Project"
+    index: 0
+- tapOn: "Save Project"
+
+- assertVisible: "Project saved offline"
+- assertVisible: "2 pending sync operations"
+
+# Verify organisation isolation
+- tapOn: "Switch Organisation"
+- tapOn: "test-org-1"
+- assertNotVisible: "Cross-Org Test Project"
+- assertVisible: "Offline Test Deployment"
+
+---
+
+# Test 3: Role-Based Offline Access Testing
+- runFlow:
+    file: setup-test-user.yaml
+    env:
+      TEST_USER_ROLE: "project_member"
+      TEST_ORG_ID: "test-org-1"
+
+# Test project member restrictions
+- longPressOn: "Offline Test Deployment"
+- assertNotVisible: "Delete Deployment" # Project members cannot delete
+- assertVisible: "Edit Status" # But can update status
+
+- tapOn: "Edit Status"
+- tapOn: "Active"
+- tapOn: "Update"
+
+- assertVisible: "Status updated offline"
+- assertVisible: "3 pending sync operations"
+
+---
+
+# Test 4: LoRaWAN Device Status Offline Updates
+- tapOn: "Device Management"
+- tapOn: "WildCam Pro - Device 001"
+
+# Update device status while offline
+- tapOn: "Battery Status"
+- inputText:
+    text: "75"
+    index: 0
+- tapOn: "SD Card Usage"
+- inputText:
+    text: "45" 
+    index: 1
+- tapOn: "Device Status"
+- tapOn: "Online"
+- tapOn: "Update Device"
+
+- assertVisible: "Device status updated offline"
+- assertVisible: "4 pending sync operations"
+
+# Verify LoRaWAN webhook simulation
+- tapOn: "Simulate LoRaWAN Update"
+- assertVisible: "Battery: 75%, Storage: 45%"
+- assertVisible: "Last Update: Just now (offline)"
+
+---
+
+# Test 5: WW Admin Offline User Provisioning (MVP Requirement)
+- runFlow:
+    file: setup-test-user.yaml
+    env:
+      TEST_USER_ROLE: "ww_admin"
+      TEST_ORG_ID: "system"
+
+- tapOn: "Admin Panel"
+- assertVisible: "WW Admin Dashboard"
+
+# Cross-organisation user provisioning
+- tapOn: "User Management"
+- tapOn: "Add User"
+- inputText:
+    text: "testuser@wildlife.org"
+    index: 0
+- tapOn: "Organisation"
+- tapOn: "test-org-2"
+- tapOn: "Role"
+- tapOn: "project_admin"
+- tapOn: "Provision User"
+
+- assertVisible: "User provisioned offline"
+- assertVisible: "5 pending sync operations"
+
+# Bulk user operations
+- tapOn: "Bulk Operations"
+- tapOn: "Select All Active Users"
+- tapOn: "Update Role"
+- tapOn: "project_member"
+- tapOn: "Apply to Selected"
+
+- assertVisible: "Bulk operation queued offline"
+- assertVisible: "8 pending sync operations" # 3 users updated
+
+---
+
+# Test 6: Conflict Resolution Workflow
+- runScript: scripts/enable-network.js
+- assertVisible: "Network Connected"
+- assertVisible: "Syncing..."
+
+# Simulate server conflict during sync
+- runScript: scripts/simulate-server-conflict.js
+
+- assertVisible: "Sync Conflicts Detected"
+- assertVisible: "2 conflicts require resolution"
+
+- tapOn: "Review Conflicts"
+- assertVisible: "Deployment Conflict"
+- assertVisible: "Server: Active, Local: Inactive"
+
+- tapOn: "Use Local Version"
+- assertVisible: "Conflict resolved"
+
+- tapOn: "Project Conflict"
+- tapOn: "Use Server Version"
+- assertVisible: "All conflicts resolved"
+
+- tapOn: "Continue Sync"
+- assertVisible: "Sync completed successfully"
+
+---
+
+# Test 7: Network Transition Scenarios
+- runScript: scripts/disable-network.js
+- assertVisible: "Offline Mode Active"
+
+# Create more data offline
+- tapOn: "Quick Actions"
+- tapOn: "Add Camera"
+- inputText:
+    text: "Offline Camera 002"
+    index: 0
+- tapOn: "Save"
+
+# Intermittent connectivity
+- runScript: scripts/enable-network.js
+- wait: 2000
+- runScript: scripts/disable-network.js
+- wait: 1000
+- runScript: scripts/enable-network.js
+
+- assertVisible: "Sync resumed"
+- assertVisible: "All data synchronized"
+- assertVisible: "0 pending operations"
+
+---
+
+# Test 8: Data Integrity Across Organisation Boundaries
+- runFlow:
+    file: setup-test-user.yaml
+    env:
+      TEST_USER_ROLE: "project_admin"
+      TEST_ORG_ID: "test-org-1"
+
+# Verify organisation data isolation maintained
+- tapOn: "Projects"
+- assertNotVisible: "Cross-Org Test Project" # Should not see org-2 data
+- assertVisible: "My Project" # Should see own org data
+
+- tapOn: "Deployments" 
+- assertVisible: "Offline Test Deployment"
+- assertNotVisible: "Other Org Deployment"
+
+# Test role-based data access
+- tapOn: "Analytics"
+- assertVisible: "Organisation Statistics"
+- assertNotVisible: "Global Statistics" # Only WW Admin sees this
+
+---
+
+# Test 9: System Configuration and Model Sync (WW Admin)
+- runFlow:
+    file: setup-test-user.yaml
+    env:
+      TEST_USER_ROLE: "ww_admin"
+      TEST_ORG_ID: "system"
+
+- tapOn: "System Configuration"
+- assertVisible: "Model Management"
+
+- tapOn: "Species Models"
+- tapOn: "Sync All Models"
+- assertVisible: "Species models synced offline"
+
+- tapOn: "Device Brands"
+- tapOn: "Add Brand"
+- inputText:
+    text: "OfflineCam Pro"
+    index: 0
+- tapOn: "Save Brand"
+- assertVisible: "Brand added to offline queue"
+
+- tapOn: "LoRaWAN Configuration"
+- tapOn: "Global Settings"
+- inputText:
+    text: "300"
+    label: "Default Interval (seconds)"
+- tapOn: "Apply to All Devices"
+- assertVisible: "LoRaWAN config queued for all devices"
+
+---
+
+# Test 10: Performance and Storage Validation
+- tapOn: "Settings"
+- tapOn: "Offline Storage"
+- assertVisible: "Storage Usage"
+- assertVisible: "12 operations in queue"
+- assertVisible: "Storage: < 50MB" # Verify efficient storage
+
+- tapOn: "Queue Management"
+- assertVisible: "Retry Queue: 0 items"
+- assertVisible: "Failed Queue: 0 items"
+- assertVisible: "Success Rate: 100%"
+
+# Test queue performance with large dataset
+- runScript: scripts/generate-bulk-offline-data.js
+- assertVisible: "500+ operations queued"
+- assertVisible: "Performance: Good"
+- assertVisible: "Memory usage: Normal"
+
+---
+
+# Final Validation
+- runScript: scripts/enable-network.js
+- tapOn: "Force Full Sync"
+- assertVisible: "Syncing 500+ operations..."
+- wait: 30000 # Allow time for bulk sync
+
+- assertVisible: "Sync completed successfully"
+- assertVisible: "0 pending operations"
+- assertVisible: "0 conflicts"
+- assertVisible: "All data synchronized"
+
+# Verify data integrity after complete sync
+- tapOn: "Data Validation"
+- assertVisible: "All checks passed"
+- assertVisible: "Organisation boundaries maintained"
+- assertVisible: "Role-based access enforced"
+- assertVisible: "LoRaWAN status current"
+- assertVisible: "WW Admin features operational"
+
+---
+
+# Cleanup
+- runScript: scripts/cleanup-test-data.js
+- assertVisible: "Test data cleaned up"
+- assertVisible: "Ready for next test run"

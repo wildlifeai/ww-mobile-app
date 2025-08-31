@@ -18,6 +18,7 @@
     "test:e2e:android": "detox test --configuration android.emu.debug",
     "test:maestro": "maestro test tests/maestro/",
     "test:maestro:auth": "maestro test tests/maestro/auth-workflow.yaml",
+    "test:maestro:offline": "maestro test tests/maestro/offline/complete-offline-workflow.yaml",
     "type-check": "tsc --noEmit",
     "validate:deps": "node scripts/validate-deps.js",
     "deps": "node scripts/deps-cli.js",
