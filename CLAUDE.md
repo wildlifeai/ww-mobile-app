@@ -124,6 +124,81 @@ SuperClaude provides comprehensive task management capabilities through slash co
 - **Clean Architecture**: Separate concerns
 - **Documentation**: Keep updated
 
+## 🚨 STRICT QUALITY CONTROL RULES
+
+### **ABSOLUTE PROHIBITIONS - NEVER ALLOWED:**
+
+#### **1. TEST INTEGRITY - ZERO TOLERANCE:**
+- **❌ NEVER skip, delete, or modify tests without explicit user approval**
+- **❌ NEVER use `.skip()`, `.todo()`, or comment out tests as shortcuts**
+- **❌ NEVER change test expectations to make failing tests pass**
+- **❌ NEVER reduce test coverage or scope without justification**
+
+**✅ REQUIRED ACTIONS FOR TEST ISSUES:**
+1. **Root Cause Analysis**: Identify WHY the test is failing
+2. **Fix Implementation**: Correct the actual code, not the test
+3. **User Consultation**: If test modification is needed, explain WHY and get approval
+4. **Documentation**: Document any test changes with clear justification
+
+#### **2. TDD/BDD METHODOLOGY - MANDATORY:**
+- **✅ ALWAYS write tests BEFORE implementation** (true TDD)
+- **✅ ALWAYS follow Red-Green-Refactor cycle**
+- **✅ ALWAYS ensure tests validate actual business requirements**
+- **✅ ALWAYS implement code to satisfy tests, not modify tests to satisfy code**
+
+#### **3. TYPE SAFETY & CONTRACT VALIDATION:**
+- **✅ ALWAYS verify method signatures before using external services**
+- **✅ ALWAYS check actual interface contracts vs assumed interfaces**
+- **✅ ALWAYS validate database service methods exist before calling them**
+- **✅ ALWAYS use TypeScript strict mode and resolve ALL type errors**
+
+**❌ COMMON MISTAKES TO AVOID:**
+- Assuming method names without checking actual implementation
+- Using placeholder interfaces without verifying real service contracts
+- Ignoring TypeScript errors as "minor issues"
+- Making API calls based on documentation without checking actual methods
+
+#### **4. INTEGRATION VERIFICATION PROTOCOL:**
+**BEFORE writing integration code:**
+1. **Read Actual Service**: Check the real implementation, not assumptions
+2. **Verify Method Names**: Ensure exact spelling and signature matching
+3. **Check Return Types**: Validate expected vs actual return structures
+4. **Mock Correctly**: Ensure test mocks match real service behavior
+
+**EXAMPLE - What Should Have Been Done:**
+```typescript
+// ❌ WRONG - Assumed method names
+await this.databaseService.addOfflineOperation(operation);
+await this.databaseService.getOfflineOperations();
+
+// ✅ CORRECT - Checked actual DatabaseService first
+await this.databaseService.addToOfflineQueue(queueItem);
+await this.databaseService.getPendingQueueItems();
+```
+
+#### **5. ERROR HANDLING - NO SILENT FAILURES:**
+- **✅ ALWAYS address root cause of failures**
+- **✅ ALWAYS provide meaningful error messages**
+- **✅ ALWAYS implement proper retry/recovery mechanisms**
+- **❌ NEVER suppress errors without proper handling**
+- **❌ NEVER use try-catch blocks to hide problems**
+
+#### **6. CODE REVIEW STANDARDS:**
+**MANDATORY SELF-REVIEW CHECKLIST:**
+- [ ] All tests pass without skipping or modification
+- [ ] All TypeScript errors resolved
+- [ ] All method calls verified against actual implementations
+- [ ] All integration points tested with correct interfaces
+- [ ] No hardcoded values or shortcuts
+- [ ] Proper error handling implemented
+- [ ] Documentation updated with changes
+
+### **QUALITY GATES - MUST PASS:**
+1. **Test Gate**: 100% of tests must pass without modifications
+2. **Type Gate**: Zero TypeScript errors allowed
+3. **Integration Gate**: All service calls must use correct method signatures
+4. **TDD Gate**: Implementation must satisfy original test requirements
+
 ## 🚀 Available Agents (54 Total)
 
 ### Core Development
