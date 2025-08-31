@@ -66,11 +66,29 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - `npx claude-flow@alpha sparc tdd "feature"` - Run TDD workflow for MVP features
 - `npx claude-flow@alpha task_orchestrate --strategy parallel` - Coordinate parallel development
 
-### Task Management (Manual via Project Context)
-- Tasks are now managed manually via backup files in `@project-context/development-context/MVP2/tasks/`
-- Reference task files: `task_001.txt` through `task_023.txt` for detailed task information
-- Task progress tracked in project documentation and commit messages
-- Use `@project-context/development-context/MVP2/tasks/tasks.json` for complete task structure
+### Task Management via SuperClaude
+SuperClaude provides advanced task management capabilities through slash commands available in Claude Code sessions:
+
+**SuperClaude Task Commands**:
+```bash
+/task:create [description]    # Create complex feature with auto-breakdown
+/task:status [task-id]       # Check progress & blockers  
+/task:resume [task-id]       # Resume with full context restoration
+/task:update [task-id]       # Add progress notes & discoveries
+/task:complete [task-id]     # Mark done with summary
+```
+
+**Key Features**:
+- ✅ **Smart Breakdown**: Automatic complexity analysis → subtask creation
+- ✅ **Context Preservation**: Working state saved across sessions
+- ✅ **Session Recovery**: Resume from checkpoints with full context
+- ✅ **Progress Tracking**: Automatic updates and blocker detection
+- ✅ **Git Integration**: Branch management and checkpoint system
+
+**Task Reference Files** (Manual backup):
+- Reference task files: `@project-context/development-context/MVP2/tasks/task_001.txt` through `task_023.txt`
+- Complete task structure: `@project-context/development-context/MVP2/tasks/tasks.json`
+- Task progress tracked in documentation and commit messages
 
 ## SPARC Workflow Phases
 
@@ -185,7 +203,114 @@ uvx --from git+https://github.com/oraios/serena serena start-mcp-server
 **Tool Coordination Strategy**:
 - **Claude Code**: Primary for bash commands, git, package management, testing
 - **Serena MCP**: Enhanced for symbolic editing, code analysis, persistent memory
+- **SuperClaude**: Task management, advanced commands, cognitive personas, development methodologies
 - **Combined Power**: Optimal development workflow for complex implementations
+
+## 🎯 SuperClaude Integration Architecture
+
+### 📍 **Where SuperClaude Lives**
+
+SuperClaude is installed in your **home directory**, not globally:
+
+```bash
+~/.claude/                    # This is where everything is
+├── CLAUDE.md                # Main configuration file
+├── shared/                  # YAML templates
+│   ├── superclaude-core.yml
+│   ├── superclaude-mcp.yml
+│   ├── superclaude-personas.yml
+│   └── superclaude-rules.yml
+└── commands/                # Command definitions
+```
+
+### 🔗 **How It Integrates with Claude Code**
+
+SuperClaude works through **configuration injection**:
+
+1. **Not a system-wide installation** - It's just config files in `~/.claude/`
+2. **Claude Code reads from `~/.claude/`** automatically
+3. **No daemon/service running** - It's passive configuration
+4. **No PATH modification needed** - Not an executable
+
+### 🎯 **The Integration Mechanism**
+
+When you type a command like `/build` in Claude Code:
+
+```
+You type: /build --react --magic
+    ↓
+Claude Code checks ~/.claude/
+    ↓
+Finds command definition in ~/.claude/commands/build.md
+    ↓
+Loads configuration from CLAUDE.md
+    ↓
+Applies personas, flags, and rules
+    ↓
+Claude responds with SuperClaude behavior
+```
+
+### 🖥️ **Is It Global?**
+
+**No**, SuperClaude is:
+- ✅ **User-specific**: Only in your user's home directory
+- ✅ **Claude Code-specific**: Only affects Claude Code
+- ❌ **Not system-wide**: Other users won't have it
+- ❌ **Not in PATH**: Can't run from terminal
+- ❌ **Not a binary**: Just text configuration files
+
+### 🔍 **You Can Verify This**
+
+```bash
+# Check what's actually installed
+ls -la ~/.claude/
+
+# It's just text files - you can read them
+cat ~/.claude/CLAUDE.md | head -20
+
+# Nothing in system paths
+which superclaude  # Should return nothing
+echo $PATH | grep -i superclaude  # Should return nothing
+
+# Not a running process
+ps aux | grep -i superclaude  # Should return nothing
+```
+
+### 🛡️ **Security & Privacy**
+
+- **100% local**: No network calls from SuperClaude itself
+- **No telemetry**: Just passive config files
+- **You control it**: Can delete with `rm -rf ~/.claude/`
+- **Transparent**: All configs are readable text files
+
+### 🎮 **How Claude Code "Knows" About It**
+
+Claude Code has a built-in feature to read from `~/.claude/`:
+1. Claude Code starts
+2. Checks if `~/.claude/` exists
+3. If yes, loads configurations
+4. Applies them to Claude's behavior
+
+This is why the installer just copies files - it doesn't need to modify Claude Code itself.
+
+### 🔄 **Updates & Maintenance**
+
+```bash
+# Your SuperClaude is completely self-contained
+cd ~/SuperClaude
+git pull  # Gets updates
+./install.sh --update  # Copies new files to ~/.claude/
+```
+
+### 💡 **Key Points**
+
+1. **SuperClaude = Configuration files in `~/.claude/`**
+2. **Not globally installed** - just in your home directory
+3. **Only affects Claude Code** when it reads from `~/.claude/`
+4. **No system modification** - completely removable
+5. **Works through Claude Code's config loading** feature
+
+Think of it like custom CSS for a website - it doesn't change the browser, it just tells the browser how to display things differently. SuperClaude doesn't change Claude Code, it just gives it different instructions on how to behave.
 
 ## MCP Tool Categories
 
