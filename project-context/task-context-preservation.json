@@ -1,0 +1,127 @@
+{
+  "taskContext": {
+    "currentTask": {
+      "id": "11.3",
+      "title": "Offline Service Architecture with Role-Based Sync",
+      "status": "planned",
+      "phase": "implementation_ready",
+      "priority": "critical_blocker",
+      "estimatedEffort": "6-8 hours",
+      "complexity": "high",
+      "riskLevel": "high"
+    },
+    "dependencies": {
+      "completed": [
+        "11.1 - SQLite Testing Framework",
+        "11.2 - Database Schema with Multi-Tenancy"
+      ],
+      "blockedTasks": [
+        "Tasks 12-23 - ALL parallel streams blocked until completion"
+      ]
+    },
+    "implementation": {
+      "targetFile": "src/services/offline/OfflineService.ts",
+      "testFile": "tests/unit/services/offline/OfflineService.test.ts",
+      "integrationPoints": [
+        "DatabaseService (Task 11.2)",
+        "Redux Store (Task 10)",
+        "@react-native-community/netinfo",
+        "API Service Layer"
+      ],
+      "keyFeatures": [
+        "NetworkMonitor implementation",
+        "Operations queue with organisation scoping",
+        "Role-based sync filtering (ww_admin, project_admin, project_member)",
+        "LoRaWAN status field sync (battery_level, sd_card_usage)",
+        "Retry logic with exponential backoff",
+        "Conflict detection preparation"
+      ]
+    },
+    "currentWork": {
+      "component": "OfflineService.ts",
+      "testsCovered": [],
+      "implementationStatus": "planned",
+      "codeGenerated": false,
+      "testsGenerated": false,
+      "integrationTested": false,
+      "lastCheckpoint": null
+    },
+    "architecture": {
+      "roleBasedSync": {
+        "ww_admin": {
+          "scope": "global",
+          "priority": "highest",
+          "permissions": "full_access",
+          "syncPattern": "all_organisations_all_data"
+        },
+        "project_admin": {
+          "scope": "organisation",
+          "priority": "high", 
+          "permissions": "org_scoped",
+          "syncPattern": "current_organisation_only"
+        },
+        "project_member": {
+          "scope": "project",
+          "priority": "normal",
+          "permissions": "project_scoped", 
+          "syncPattern": "assigned_projects_only"
+        }
+      },
+      "organisationContext": {
+        "dataIsolation": "enforced_at_service_layer",
+        "boundaryValidation": "all_sync_operations",
+        "scopeFiltering": "organisation_aware_operations"
+      },
+      "lorawanIntegration": {
+        "syncFields": ["battery_level", "sd_card_usage"],
+        "cachingStrategy": "offline_device_status_cache",
+        "alertPriority": "critical_device_alerts_first",
+        "managementScope": "organisation_scoped_devices"
+      }
+    },
+    "blockers": [
+      "OfflineService.ts not yet implemented",
+      "NetworkMonitor integration pending",
+      "Role-based sync logic undefined",
+      "Organisation scoping not implemented"
+    ],
+    "nextSteps": [
+      "Create comprehensive test suite (TDD first)",
+      "Implement OfflineService.ts skeleton with interfaces", 
+      "Add NetworkMonitor with @react-native-community/netinfo",
+      "Build operations queue with persistence",
+      "Add role-based filtering logic",
+      "Integrate LoRaWAN status sync",
+      "Test integration with DatabaseService",
+      "Update Redux store integration"
+    ],
+    "sessionNotes": "Task 11.3 is the critical blocker preventing all parallel development streams (Tasks 12-23). Implementation must follow TDD approach established in Tasks 10-11.2. Must include organisation multi-tenancy and role-based access patterns per Implementation Spec v1.4.6.",
+    "swarmReadiness": {
+      "foundationLayer": {
+        "task9": "completed",
+        "task10": "completed", 
+        "task11": "28.6% complete (2/7 subtasks)"
+      },
+      "parallelStreamsBlocked": true,
+      "swarmInitialization": "pending_task_11_completion",
+      "estimatedSwarmReady": "after_task_11.3_completion"
+    }
+  },
+  "recoveryProtocol": {
+    "checkpoints": [],
+    "lastSave": null,
+    "autoSaveEnabled": true,
+    "contextValidated": false
+  },
+  "performance": {
+    "tokenUsageOptimized": true,
+    "concurrentOperationsEnabled": true,
+    "smartBreakdownActive": true
+  },
+  "metadata": {
+    "created": "2025-08-31T16:45:00Z",
+    "lastUpdated": "2025-08-31T16:45:00Z",
+    "version": "1.0.0",
+    "branch": "dev-mvp2-development-claude-flow-test"
+  }
+}
