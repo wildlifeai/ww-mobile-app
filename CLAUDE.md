@@ -35,7 +35,7 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 
 ### MVP2 Implementation Status
 - **Foundation**: Auth system (Task 9 ✅), Redux store with user roles (Task 10 🔄), SQLite offline support with multi-tenancy (Task 11 ⏳)
-- **Current Phase**: All tasks updated with Implementation Spec v1.4.6 enhancements in TaskMaster
+- **Current Phase**: All tasks documented in project context with Implementation Spec v1.4.6 enhancements
 - **Architecture**: Offline-first with Supabase backend, BLE + LoRaWAN device communication, organisation multi-tenancy
 - **Key Features**: 6-step deployment wizard, project management, real-time sync, WW Admin user provisioning (MVP)
 - **Enhanced Roles**: ww_admin, project_admin, project_member with full organisation scoping
@@ -66,13 +66,11 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - `npx claude-flow@alpha sparc tdd "feature"` - Run TDD workflow for MVP features
 - `npx claude-flow@alpha task_orchestrate --strategy parallel` - Coordinate parallel development
 
-### TaskMaster CLI Commands (MCP not available - use CLI)
-- `task-master list` - Show all tasks with status
-- `task-master next` - Get next available task to work on
-- `task-master show <id>` - View detailed task information (e.g., task-master show 10)
-- `task-master set-status --id=<id> --status=done` - Mark task complete
-- `task-master update-subtask --id=<id> --prompt="implementation notes"` - Update task progress
-- `task-master generate` - Update task markdown files from tasks.json
+### Task Management (Manual via Project Context)
+- Tasks are now managed manually via backup files in `@project-context/development-context/MVP2/tasks/`
+- Reference task files: `task_001.txt` through `task_023.txt` for detailed task information
+- Task progress tracked in project documentation and commit messages
+- Use `@project-context/development-context/MVP2/tasks/tasks.json` for complete task structure
 
 ## SPARC Workflow Phases
 
@@ -320,7 +318,7 @@ Message 4: Write "file.js"
 6. Enable hooks automation
 7. Use GitHub tools first
 
-## 📋 Current TaskMaster Status
+## 📋 Current Task Status (Manual Management)
 
 ### Task Completion Status
 - **Tasks 1-8**: ✅ **COMPLETED** - Expo SDK 51 Migration
@@ -340,10 +338,10 @@ Message 4: Write "file.js"
 
 ### Key Documents
 - **Implementation Spec**: `@project-context/development-context/MVP2/implementation-spec-v1.4.md` (v1.4.6 - Latest)
-- **Task Plan**: `@project-context/development-context/MVP2/TASK-RESTRUCTURING-PLAN.md` (✅ Implemented in TaskMaster)
+- **Task Plan**: `@project-context/development-context/MVP2/TASK-RESTRUCTURING-PLAN.md` (✅ Documented in project context)
 - **Claude Flow Plan**: `@project-context/development-context/MVP2/claude-flow-implementation-plan.md`
 - **Development TODO**: `@project-context/development-context/MVP2/to-do`
-- **TaskMaster Tasks**: All tasks (10-23) updated with full Implementation Spec v1.4.6 enhancements
+- **Task Files**: All tasks (1-23) available in `@project-context/development-context/MVP2/tasks/` with full Implementation Spec v1.4.6 enhancements
 
 ### Development Streams (Enhanced with Spec v1.4.6)
 - **Foundation Layer**: Tasks 9-11 (Auth ✅, Redux with roles ✅, SQLite with multi-tenancy 🔄) - Sequential execution required
@@ -389,6 +387,6 @@ NEVER create files unless they're absolutely necessary for achieving your goal.
 ALWAYS prefer editing an existing file to creating a new one.
 NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
 Never save working files, text/mds and tests to the root folder.
-- Ensure you also keep the releavnt tasks and substasks in @.taskmaster/tasks/ updated as we progress implementation work
+- Reference task details in @project-context/development-context/MVP2/tasks/ and update documentation as we progress
 - check in files to git regularly as you implement the app at sensible points as you implement each task/feature/subtask and where releavnt tests pass so that we are using good source control best practice.
 - keep @project-context/learnings/claude-flow-usage-log.md updated as we implemenent and commit features substasks and tasks
