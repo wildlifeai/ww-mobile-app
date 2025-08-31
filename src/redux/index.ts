@@ -9,12 +9,17 @@ import locationStatusReducer from "./slices/locationStatusSlice"
 import logsReducer from "./slices/logsSlice"
 import scanningReducer from "./slices/scanningSlice"
 import authReducer from "./slices/authSlice"
+import projectsReducer from "./slices/projectsSlice"
+import deploymentsReducer from "./slices/deploymentsSlice"
+import wwAdminReducer from "./slices/wwAdminSlice"
 import { Action, ThunkAction, configureStore } from "@reduxjs/toolkit"
 import { api } from "./api"
+import { enhancedApi } from "./api/enhanced"
 
 const store = configureStore({
 	reducer: {
 		[api.reducerPath]: api.reducer,
+		[enhancedApi.reducerPath]: enhancedApi.reducer,
 		devices: devicesReducer,
 		logs: logsReducer,
 		configuration: configurationReducer,
@@ -24,9 +29,12 @@ const store = configureStore({
 		locationStatus: locationStatusReducer,
 		androidPermissions: androidPermissionsReducer,
 		authentication: authReducer,
+		projects: projectsReducer,
+		deployments: deploymentsReducer,
+		wwAdmin: wwAdminReducer,
 	},
 	middleware: (getDefaultMiddleware) =>
-		getDefaultMiddleware().concat(api.middleware),
+		getDefaultMiddleware().concat(api.middleware, enhancedApi.middleware),
 })
 
 export default store
