@@ -109,6 +109,7 @@ export const Login = () => {
 							{(field) => (
 								<WWTextInput
 									{...field}
+									testID="email-input"
 									mode="outlined"
 									textContentType="emailAddress"
 									keyboardType="email-address"
@@ -131,7 +132,7 @@ export const Login = () => {
 							}}
 						>
 							{(field) => (
-								<WWTextInput {...field} mode="outlined" secureTextEntry />
+								<WWTextInput {...field} testID="password-input" mode="outlined" secureTextEntry />
 							)}
 						</Field>
 
@@ -156,6 +157,7 @@ export const Login = () => {
 
 						<Button
 							mode="contained"
+							testID="login-button"
 							onPress={handleSubmit(onSubmit)}
 							loading={isLoading}
 							style={styles.button}
@@ -166,6 +168,7 @@ export const Login = () => {
 
 						<Button
 							mode="text"
+							testID="forgot-password-button"
 							onPress={() => navigation.navigate("ForgotPassword")}
 							style={styles.textButton}
 							disabled={isLoading}
@@ -175,6 +178,7 @@ export const Login = () => {
 
 						<Button
 							mode="text"
+							testID="register-button"
 							onPress={() => navigation.navigate("Register")}
 							style={styles.textButton}
 							disabled={isLoading}
