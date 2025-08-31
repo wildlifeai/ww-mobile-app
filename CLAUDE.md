@@ -347,3 +347,4 @@ ALWAYS prefer editing an existing file to creating a new one.
 NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
 Never save working files, text/mds and tests to the root folder.
 - Ensure you also keep the releavnt tasks and substasks in @.taskmaster/tasks/ updated as we progress implementation work
+- check in files to git regularly as you implement the app at sensible points as you implement each task/feature/subtask and where releavnt tests pass so that we are using good source control best practice.
