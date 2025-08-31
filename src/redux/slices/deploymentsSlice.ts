@@ -97,7 +97,7 @@ const canModifyDeployment = (deployment: Deployment, currentUser: any): boolean 
 };
 
 // Helper function to update LoRaWAN status
-const updateDeviceLoRaWANStatus = (device: DeploymentDevice, status: LoRaWANStatus): DeploymentDevice => {
+const updateDeviceLoRaWANStatusHelper = (device: DeploymentDevice, status: LoRaWANStatus): DeploymentDevice => {
   return {
     ...device,
     lorawan_status: {
@@ -253,7 +253,7 @@ export const deploymentsSlice = createSlice({
       state.deployments.forEach(deployment => {
         const deviceIndex = deployment.devices.findIndex(d => d.id === deviceId);
         if (deviceIndex !== -1) {
-          deployment.devices[deviceIndex] = updateDeviceLoRaWANStatus(
+          deployment.devices[deviceIndex] = updateDeviceLoRaWANStatusHelper(
             deployment.devices[deviceIndex], 
             status
           );
@@ -264,7 +264,7 @@ export const deploymentsSlice = createSlice({
       state.activeDeployments.forEach(deployment => {
         const deviceIndex = deployment.devices.findIndex(d => d.id === deviceId);
         if (deviceIndex !== -1) {
-          deployment.devices[deviceIndex] = updateDeviceLoRaWANStatus(
+          deployment.devices[deviceIndex] = updateDeviceLoRaWANStatusHelper(
             deployment.devices[deviceIndex], 
             status
           );
@@ -275,7 +275,7 @@ export const deploymentsSlice = createSlice({
       if (state.currentDeployment) {
         const deviceIndex = state.currentDeployment.devices.findIndex(d => d.id === deviceId);
         if (deviceIndex !== -1) {
-          state.currentDeployment.devices[deviceIndex] = updateDeviceLoRaWANStatus(
+          state.currentDeployment.devices[deviceIndex] = updateDeviceLoRaWANStatusHelper(
             state.currentDeployment.devices[deviceIndex], 
             status
           );
@@ -296,7 +296,7 @@ export const deploymentsSlice = createSlice({
         state.deployments.forEach(deployment => {
           const deviceIndex = deployment.devices.findIndex(d => d.id === deviceId);
           if (deviceIndex !== -1) {
-            deployment.devices[deviceIndex] = updateDeviceLoRaWANStatus(
+            deployment.devices[deviceIndex] = updateDeviceLoRaWANStatusHelper(
               deployment.devices[deviceIndex], 
               status
             );
