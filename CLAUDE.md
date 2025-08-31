@@ -66,6 +66,14 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - `npx claude-flow@alpha sparc tdd "feature"` - Run TDD workflow for MVP features
 - `npx claude-flow@alpha task_orchestrate --strategy parallel` - Coordinate parallel development
 
+### TaskMaster CLI Commands (MCP not available - use CLI)
+- `task-master list` - Show all tasks with status
+- `task-master next` - Get next available task to work on
+- `task-master show <id>` - View detailed task information (e.g., task-master show 10)
+- `task-master set-status --id=<id> --status=done` - Mark task complete
+- `task-master update-subtask --id=<id> --prompt="implementation notes"` - Update task progress
+- `task-master generate` - Update task markdown files from tasks.json
+
 ## SPARC Workflow Phases
 
 1. **Specification** - Requirements analysis (`sparc run spec-pseudocode`)
@@ -338,3 +346,4 @@ NEVER create files unless they're absolutely necessary for achieving your goal.
 ALWAYS prefer editing an existing file to creating a new one.
 NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
 Never save working files, text/mds and tests to the root folder.
+- Ensure you also keep the releavnt tasks and substasks in @.taskmaster/tasks/ updated as we progress implementation work
