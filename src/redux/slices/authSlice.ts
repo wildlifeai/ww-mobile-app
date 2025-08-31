@@ -1,20 +1,126 @@
 import { PayloadAction, createSlice } from "@reduxjs/toolkit"
 import { storeDataToStorage } from "../../utils/helpers"
-import { AuthResponse } from "../api/auth/types"
 
 export const AUTH_STORAGE_KEY = "auth"
 
-type AuthState = {
-	token?: string
-	user?: AuthResponse["user"]
-	loading: boolean
-	initialLoad: boolean
-	error?: Error
+// Enhanced types for user roles and organisation management
+export type UserRole = 'ww_admin' | 'project_admin' | 'project_member';
+
+export interface UserOrganisation {
+  id: string;
+  name: string;
+  role: UserRole;
 }
+
+export interface UserProfile {
+  first_name?: string;
+  last_name?: string;
+  avatar_url?: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  role: UserRole;
+  organisation_id: string | null; // Default organisation
+  profile?: UserProfile;
+  organisations?: UserOrganisation[];
+}
+
+export interface AuthResponse {
+  jwt: string;
+  user: User;
+  refresh_token?: string;
+}
+
+export interface UserPermissions {
+  canManageUsers: boolean;
+  canAccessAllOrganisations: boolean;
+  canCreateProjects: boolean;
+  canManageProjects: boolean;
+  canDeleteProjects: boolean;
+  canViewProjects: boolean;
+  canManageDeployments: boolean;
+  canViewDeployments: boolean;
+  canManageDevices: boolean;
+  canViewDevices: boolean;
+}
+
+type AuthState = {
+	token?: string;
+	refreshToken?: string;
+	user?: User;
+	currentOrganisation?: UserOrganisation;
+	permissions: UserPermissions;
+	loading: boolean;
+	initialLoad: boolean;
+	sessionPersisted: boolean;
+	error?: string;
+}
+
+// Helper function to calculate permissions based on role and current organisation
+const calculatePermissions = (role: UserRole): UserPermissions => {
+  switch (role) {
+    case 'ww_admin':
+      return {
+        canManageUsers: true,
+        canAccessAllOrganisations: true,
+        canCreateProjects: true,
+        canManageProjects: true,
+        canDeleteProjects: true,
+        canViewProjects: true,
+        canManageDeployments: true,
+        canViewDeployments: true,
+        canManageDevices: true,
+        canViewDevices: true,
+      };
+    case 'project_admin':
+      return {
+        canManageUsers: false,
+        canAccessAllOrganisations: false,
+        canCreateProjects: true,
+        canManageProjects: true,
+        canDeleteProjects: true,
+        canViewProjects: true,
+        canManageDeployments: true,
+        canViewDeployments: true,
+        canManageDevices: true,
+        canViewDevices: true,
+      };
+    case 'project_member':
+      return {
+        canManageUsers: false,
+        canAccessAllOrganisations: false,
+        canCreateProjects: false,
+        canManageProjects: false,
+        canDeleteProjects: false,
+        canViewProjects: true,
+        canManageDeployments: true,
+        canViewDeployments: true,
+        canManageDevices: false,
+        canViewDevices: true,
+      };
+    default:
+      return {
+        canManageUsers: false,
+        canAccessAllOrganisations: false,
+        canCreateProjects: false,
+        canManageProjects: false,
+        canDeleteProjects: false,
+        canViewProjects: false,
+        canManageDeployments: false,
+        canViewDeployments: false,
+        canManageDevices: false,
+        canViewDevices: false,
+      };
+  }
+};
 
 const initialState: AuthState = {
 	loading: false,
 	initialLoad: true,
+	sessionPersisted: false,
+	permissions: {} as UserPermissions,
 }
 
 export const authSlice = createSlice({
@@ -22,28 +128,122 @@ export const authSlice = createSlice({
 	initialState,
 	reducers: {
 		setCredentials: (state, action: PayloadAction<AuthResponse>) => {
-			state.token = action.payload.jwt
-			state.user = action.payload.user
-			state.loading = false
-			state.initialLoad = false
-			storeDataToStorage(AUTH_STORAGE_KEY, action.payload)
+			state.token = action.payload.jwt;
+			state.refreshToken = action.payload.refresh_token;
+			state.user = action.payload.user;
+			state.loading = false;
+			state.initialLoad = false;
+			state.sessionPersisted = true;
+			state.error = undefined;
+
+			// Calculate permissions based on user role
+			state.permissions = calculatePermissions(action.payload.user.role);
+
+			// Set current organisation (default or first available)
+			if (action.payload.user.organisations && action.payload.user.organisations.length > 0) {
+				// Find default organisation or use first one
+				const defaultOrg = action.payload.user.organisations.find(
+					org => org.id === action.payload.user.organisation_id
+				) || action.payload.user.organisations[0];
+				state.currentOrganisation = defaultOrg;
+				
+				// Update permissions based on role in current organisation
+				state.permissions = calculatePermissions(defaultOrg.role);
+			}
+
+			storeDataToStorage(AUTH_STORAGE_KEY, action.payload);
 		},
 		logout: (state) => {
-			state.token = undefined
-			state.user = undefined
-			state.loading = false
-			state.initialLoad = false
-			storeDataToStorage(AUTH_STORAGE_KEY, null)
+			state.token = undefined;
+			state.refreshToken = undefined;
+			state.user = undefined;
+			state.currentOrganisation = undefined;
+			state.permissions = {} as UserPermissions;
+			state.loading = false;
+			state.initialLoad = false;
+			state.sessionPersisted = false;
+			state.error = undefined;
+			storeDataToStorage(AUTH_STORAGE_KEY, null);
 		},
 		setInitialState: (state, action: PayloadAction<AuthResponse | null>) => {
 			if (action.payload) {
-				state.token = action.payload.jwt
-				state.user = action.payload.user
+				state.token = action.payload.jwt;
+				state.refreshToken = action.payload.refresh_token;
+				state.user = action.payload.user;
+				state.permissions = calculatePermissions(action.payload.user.role);
+				state.sessionPersisted = true;
+
+				// Set current organisation
+				if (action.payload.user.organisations && action.payload.user.organisations.length > 0) {
+					const defaultOrg = action.payload.user.organisations.find(
+						org => org.id === action.payload.user.organisation_id
+					) || action.payload.user.organisations[0];
+					state.currentOrganisation = defaultOrg;
+					state.permissions = calculatePermissions(defaultOrg.role);
+				}
 			}
-			state.initialLoad = false
+			state.initialLoad = false;
 		},
+		setUserRole: (state, action: PayloadAction<UserRole>) => {
+			if (state.user) {
+				state.user.role = action.payload;
+				state.permissions = calculatePermissions(action.payload);
+			}
+		},
+		setCurrentOrganisation: (state, action: PayloadAction<string>) => {
+			if (state.user?.organisations) {
+				const org = state.user.organisations.find(o => o.id === action.payload);
+				if (org) {
+					state.currentOrganisation = org;
+					state.permissions = calculatePermissions(org.role);
+					state.error = undefined;
+				} else {
+					state.error = 'Unauthorized organisation access';
+				}
+			}
+		},
+		updateUserProfile: (state, action: PayloadAction<UserProfile>) => {
+			if (state.user) {
+				state.user.profile = {
+					...state.user.profile,
+					...action.payload
+				};
+				// Update storage
+				storeDataToStorage(AUTH_STORAGE_KEY, {
+					jwt: state.token!,
+					user: state.user,
+					refresh_token: state.refreshToken
+				});
+			}
+		},
+		setLoading: (state, action: PayloadAction<boolean>) => {
+			state.loading = action.payload;
+		},
+		setError: (state, action: PayloadAction<string | undefined>) => {
+			state.error = action.payload;
+			state.loading = false;
+		}
 	},
 })
 
-export const { setCredentials, logout, setInitialState } = authSlice.actions
-export default authSlice.reducer
+export const { 
+	setCredentials, 
+	logout, 
+	setInitialState, 
+	setUserRole, 
+	setCurrentOrganisation, 
+	updateUserProfile,
+	setLoading,
+	setError
+} = authSlice.actions;
+
+// Selectors for easy access to auth state
+export const selectCurrentUser = (state: { authentication: AuthState }) => state.authentication.user;
+export const selectUserPermissions = (state: { authentication: AuthState }) => state.authentication.permissions;
+export const selectCurrentOrganisation = (state: { authentication: AuthState }) => state.authentication.currentOrganisation;
+export const selectIsAuthenticated = (state: { authentication: AuthState }) => !!state.authentication.token;
+export const selectIsWWAdmin = (state: { authentication: AuthState }) => state.authentication.user?.role === 'ww_admin';
+export const selectIsProjectAdmin = (state: { authentication: AuthState }) => state.authentication.user?.role === 'project_admin';
+export const selectCanManageUsers = (state: { authentication: AuthState }) => state.authentication.permissions.canManageUsers;
+
+export default authSlice.reducer;
