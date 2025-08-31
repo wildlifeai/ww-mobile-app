@@ -793,7 +793,78 @@
           10
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "SQLite Testing Framework for Offline Operations",
+            "description": "Create comprehensive testing framework for SQLite foundation with organisation multi-tenancy and role-based access validation using Maestro TDD approach",
+            "dependencies": [],
+            "details": "**TDD FIRST**: Create comprehensive test suite for SQLite operations with organisation scoping and role-based access. Test organisation data isolation, user role permissions, offline queue operations, device status caching, and sync mechanisms. Include Maestro E2E tests for offline workflows and organisation boundaries. Test scenarios: multi-tenant data access, role-based sync filtering, LoRaWAN device status offline caching, WW Admin cross-organisation access, conflict resolution with organisation context.",
+            "status": "pending",
+            "testStrategy": "Create unit tests for DatabaseService operations, integration tests for offline service architecture, Maestro E2E tests for offline workflows. Test organisation data isolation, role-based access patterns, LoRaWAN status caching, WW Admin offline features, and sync conflict resolution. Verify database migrations, queue processing, and network transition scenarios.",
+            "parentTaskId": 11
+          },
+          {
+            "id": 2,
+            "title": "SQLite Database Schema with Organisation Multi-Tenancy",
+            "description": "Implement SQLite database schema using expo-sqlite with organisation-scoped tables, role-based access control, and LoRaWAN device integration",
+            "dependencies": [1],
+            "details": "Initialize expo-sqlite database with organisation multi-tenancy support. Create schema: `local_organisations`, `local_user_roles`, `local_projects`, `local_deployments`, `local_devices`, `offline_queue` tables. Implement organisation data isolation, user role validation, LoRaWAN device status fields (battery_level, sd_card_usage), and database migrations. Enable foreign key constraints, WAL mode for performance, and proper indexing for organisation queries.",
+            "status": "pending", 
+            "testStrategy": "Test database initialization, table creation, organisation data isolation, role-based access patterns, LoRaWAN device fields, and migration system. Verify foreign key constraints, indexing performance, and multi-tenant data separation.",
+            "parentTaskId": 11
+          },
+          {
+            "id": 3,
+            "title": "Offline Service Architecture with Role-Based Sync",
+            "description": "Build comprehensive offline service layer with organisation-aware operations, role-based sync filtering, and LoRaWAN status integration",
+            "dependencies": [2],
+            "details": "Create `OfflineService.ts` with organisation context and role-based sync filtering. Implement queue system for offline operations with organisation scoping, network state monitoring, and sync priority management. Role-based sync: ww_admin (global), project_admin (org-scoped), project_member (project-scoped). Include LoRaWAN device status sync, operation deduplication, retry logic with exponential backoff, and organisation data isolation.",
+            "status": "pending",
+            "testStrategy": "Test offline operation queuing, role-based sync filtering, organisation data isolation, LoRaWAN status integration, network state handling, and sync priority management. Verify operation deduplication, retry mechanisms, and role permission enforcement.",
+            "parentTaskId": 11
+          },
+          {
+            "id": 4,
+            "title": "Sync Infrastructure with Conflict Resolution",
+            "description": "Create comprehensive sync infrastructure with intelligent conflict resolution, organisation boundaries, and role-based validation",
+            "dependencies": [3],
+            "details": "Implement bidirectional sync with incremental updates, conflict detection and resolution strategies, and data integrity validation. Handle organisation boundary conflicts, role-based data access conflicts, LoRaWAN device status conflicts, and user-guided resolution. Include sync status indicators, progress tracking, background processing, and recovery mechanisms with organisation context preservation.",
+            "status": "pending",
+            "testStrategy": "Test bidirectional sync operations, conflict detection and resolution, organisation boundary enforcement, role-based validation, LoRaWAN status conflicts, and recovery mechanisms. Verify data integrity, sync progress tracking, and background processing performance.",
+            "parentTaskId": 11
+          },
+          {
+            "id": 5,
+            "title": "WW Admin Offline Features for User Provisioning",
+            "description": "Implement WW Admin offline capabilities including user provisioning, cross-organisation management, and system configuration per MVP requirements",
+            "dependencies": [4],
+            "details": "**MVP REQUIREMENT**: WW Admin user provisioning offline access per spec line 73. Implement offline user management across organisations, role assignment capabilities, system configuration access, model management offline sync, and global admin data synchronization. Include bulk user operations offline queue, cross-organisation analytics offline access, LoRaWAN device configuration for admin users, and organisation user list caching with role filtering.",
+            "status": "pending",
+            "testStrategy": "Test WW Admin offline user provisioning, cross-organisation access, role assignment operations, system configuration offline access, bulk user operations queuing, and global admin data sync. Verify organisation boundaries for WW Admin features and LoRaWAN admin capabilities.",
+            "parentTaskId": 11
+          },
+          {
+            "id": 6,
+            "title": "Integrate Offline Services with Redux Store",
+            "description": "Seamlessly integrate offline service layer with Redux slices, ensuring offline-first patterns with organisation context and role-based state management",
+            "dependencies": [5],
+            "details": "Integrate offline services with Redux store architecture, implement offline indicators throughout UI, enable optimistic UI updates with rollback capability, and ensure organisation context preservation across offline/online transitions. Connect sync status to Redux state, implement role-based offline operations, and integrate LoRaWAN device status with offline caching. Maintain data consistency across organisation boundaries.",
+            "status": "pending",
+            "testStrategy": "Test Redux integration with offline services, offline UI indicators, optimistic updates with rollback, organisation context preservation, role-based state management, LoRaWAN status integration, and data consistency across online/offline transitions.",
+            "parentTaskId": 11
+          },
+          {
+            "id": 7,
+            "title": "Test Complete Offline Functionality with Maestro E2E",
+            "description": "Comprehensive end-to-end testing of complete offline functionality using Maestro framework with organisation scenarios and role-based workflows",
+            "dependencies": [6],
+            "details": "Create comprehensive Maestro E2E test suite covering complete offline workflows with organisation multi-tenancy, role-based access, LoRaWAN integration, and WW Admin features. Test scenarios: offline deployment creation, organisation data sync, role-based offline access, LoRaWAN device status offline updates, WW Admin offline user provisioning, conflict resolution, network transitions, and data integrity across organisation boundaries.",
+            "status": "pending",
+            "testStrategy": "Execute comprehensive Maestro E2E tests for offline workflows, organisation multi-tenancy, role-based access patterns, LoRaWAN integration, WW Admin features, sync conflict resolution, network transition scenarios, and complete data integrity validation across all offline functionality.",
+            "parentTaskId": 11
+          }
+        ]
       },
       {
         "id": 12,
