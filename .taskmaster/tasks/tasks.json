@@ -720,7 +720,7 @@
         "description": "Extend existing Redux architecture with comprehensive Supabase integration including enhanced auth slice with user roles (ww_admin, project_admin, project_member), projects slice with organisation context, deployments slice with LoRaWAN status, WW Admin slice, and RTK Query API layer with role-based permissions",
         "details": "FOUNDATION LAYER - Task 10: Core Redux Integration with Supabase\n\nThis task extends the existing Redux Toolkit architecture to provide comprehensive state management for all MVP2 features with full Supabase backend integration, implementing Implementation Spec v1.4.6 requirements including user roles, organisation multi-tenancy, LoRaWAN integration, and WW Admin features.\n\n## Implementation Requirements:\n\n### **NEW** 10.0: Testing Framework Setup for TDD/BDD (MOVED from Task 9)\n**Priority**: Critical | **Status**: PENDING (Must be first subtask for TDD approach)\n- Check existing testing packages: Jest ✅, Detox ✅, React Testing Library ✅\n- Install Maestro testing framework: `npm install --save-dev maestro`\n- Install Redux testing utilities: `npm install --save-dev @testing-library/react-hooks redux-mock-store`\n- Create test directory structure: `tests/maestro/`, `tests/unit/redux/`\n- Set up Maestro test configuration for React Native\n- Write first TDD tests for auth slice BEFORE implementation\n- Update package.json scripts for Maestro testing\n\n### 10.1: Enhanced Auth Redux Slice with User Roles (TDD Approach - REQUIRED by spec v1.4.6)\n- **TDD**: Write tests for user role management FIRST\n- Create `src/store/store.ts` and `src/store/slices/authSlice.ts`\n- **REQUIRED**: Add user role management (ww_admin, project_admin, project_member) per spec Section 4.2\n- **REQUIRED**: Organisation system integration with user provisioning per spec Section 4.1\n- **REQUIRED**: Role-based permission checking utilities\n- Add user profile data handling\n- Session management with refresh tokens\n- Auth state persistence\n\n### 10.2: Projects Redux Slice with Organisation Integration (REQUIRED by spec v1.4.6)\n- **TDD**: Write tests for organisation-scoped projects FIRST\n- Create `src/store/slices/projectsSlice.ts`\n- Actions for CRUD operations\n- **REQUIRED**: Organisation-scoped project management per spec database schema lines 891-940\n- **REQUIRED**: Multi-organisation user support\n- Selectors for project lists and details\n- Loading and error state management\n\n### 10.3: Deployments Redux Slice (REQUIRED by spec v1.4.6)\n- **TDD**: Write tests for deployment state management FIRST\n- Create `src/store/slices/deploymentsSlice.ts`\n- Active/ended deployment states\n- Deployment creation and management\n- **REQUIRED**: Status tracking with LoRaWAN updates per spec Section 7.3\n- **REQUIRED**: Include battery_level and sd_card_usage fields per spec line 84\n\n### 10.4: API Integration Layer with Role-Based Security (REQUIRED by spec v1.4.6)\n- **TDD**: Write tests for role-based API permissions FIRST\n- RTK Query integration with Supabase\n- Type-safe API calls with generated types\n- **REQUIRED**: Role-based API call permissions per spec Section 4.2\n- **REQUIRED**: Organisation context for all API calls\n- Caching and data synchronization\n- Error handling and retry logic\n\n### **NEW** 10.5: WW Admin Redux Slice (REQUIRED by spec v1.4.6 - MVP)\n- **TDD**: Write tests for WW Admin functionality FIRST\n- Create `src/store/slices/wwAdminSlice.ts`\n- **REQUIRED**: User provisioning state management per spec line 73 \"WW Admin user provisioning | MVP\"\n- **REQUIRED**: Organisation management and user provisioning per spec Section 4.1\n- System configuration and settings\n- Global admin permissions and features\n\n## Acceptance Criteria:\n- [ ] **CRITICAL**: Redux store structure created (src/store/ directory doesn't exist yet!)\n- [ ] **REQUIRED**: Maestro testing framework installed and configured\n- [ ] **REQUIRED**: TDD tests written BEFORE each slice implementation\n- [ ] **REQUIRED**: User role system fully functional per spec Section 4.2\n- [ ] **REQUIRED**: Organisation multi-tenancy working per spec Section 4.1\n- [ ] **REQUIRED**: WW Admin user provisioning implemented (MVP feature per spec line 73)\n- [ ] **REQUIRED**: LoRaWAN status fields integrated per spec line 84\n- [ ] Type-safe operations throughout\n- [ ] Proper caching and state management\n- [ ] Error boundaries and handling\n- [ ] No memory leaks or state inconsistencies\n- [ ] All tests passing with >80% code coverage",
         "testStrategy": "TDD approach with Maestro integration testing, test user role management, verify organisation multi-tenancy, test WW Admin features, validate LoRaWAN integration, test Redux actions and reducers",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           9
         ],
@@ -730,8 +730,8 @@
             "id": 1,
             "title": "Enhanced Auth Redux Slice",
             "description": "Extend existing auth slice with user profile data, session management, and persistence",
-            "details": "- Extend existing `src/store/slices/authSlice.ts`\n- Add user profile data handling beyond basic auth\n- Implement session management with refresh tokens\n- Add auth state persistence with AsyncStorage\n- Handle email confirmation states\n- Integrate with Supabase auth service from Task 8",
-            "status": "in-progress",
+            "details": "- Extend existing `src/store/slices/authSlice.ts`\n- Add user profile data handling beyond basic auth\n- Implement session management with refresh tokens\n- Add auth state persistence with AsyncStorage\n- Handle email confirmation states\n- Integrate with Supabase auth service from Task 8\n<info added on 2025-08-31T03:45:04.913Z>\n- Create `src/store/slices/projectsSlice.ts` to manage project-related state.\n- Implement async thunks for fetching, creating, updating, and deleting projects, interacting with the Supabase `projects` table.\n- Integrate with the enhanced `authSlice` to ensure all project data operations are scoped to the current user's `organisation_id`, enforcing multi-tenancy.\n- Implement Role-Based Access Control (RBAC) within the thunks, checking the user's role from the auth state (`project_admin` vs. `project_member`) to authorize actions like project creation or deletion.\n- Continue the TDD approach by writing tests for all slice functionality, including scenarios for different user roles and organisation contexts, before implementation.\n- Define the slice state to hold an array of projects, loading status, and error information.\n</info added on 2025-08-31T03:45:04.913Z>",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 10
           },
@@ -740,7 +740,7 @@
             "title": "Projects Redux Slice",
             "description": "Create comprehensive projects state management with CRUD operations",
             "details": "- Create `src/store/slices/projectsSlice.ts`\n- Actions for full CRUD operations (create, read, update, delete)\n- Selectors for project lists, details, and filtered views\n- Loading and error state management\n- Optimistic updates for better UX\n- Integration with offline queue system",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 10
           },
@@ -749,7 +749,7 @@
             "title": "Deployments Redux Slice",
             "description": "Create deployments state management with status tracking and real-time updates",
             "details": "- Create `src/store/slices/deploymentsSlice.ts`\n- Separate active/ended deployment states\n- Deployment creation and management actions\n- Status tracking and real-time updates\n- Location-based deployment filtering\n- Device association management",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 10
           },
@@ -758,7 +758,7 @@
             "title": "RTK Query API Integration Layer",
             "description": "Set up RTK Query integration with Supabase for type-safe API calls",
             "details": "- Set up RTK Query integration with Supabase client\n- Create `src/store/api/` directory with service endpoints\n- Type-safe API calls using generated Supabase types\n- Implement caching strategies for offline support\n- Error handling and automatic retry logic\n- Real-time subscription management",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 10
           },
@@ -767,7 +767,7 @@
             "title": "Testing Framework Setup for TDD/BDD",
             "description": "Install Maestro testing framework and setup TDD structure (MOVED from Task 9). Check existing testing packages (Jest, Detox, React Testing Library), install Maestro testing framework, install Redux testing utilities, create test directory structure, set up Maestro test configuration for React Native, write first TDD tests for auth slice BEFORE implementation, update package.json scripts for Maestro testing",
             "details": "**Priority**: Critical | **Status**: PENDING (Must be first subtask for TDD approach)\n- Check existing testing packages: Jest ✅, Detox ✅, React Testing Library ✅\n- Install Maestro testing framework: `npm install --save-dev maestro`\n- Install Redux testing utilities: `npm install --save-dev @testing-library/react-hooks redux-mock-store`\n- Create test directory structure: `tests/maestro/`, `tests/unit/redux/`\n- Set up Maestro test configuration for React Native\n- Write first TDD tests for auth slice BEFORE implementation\n- Update package.json scripts for Maestro testing",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 10
           },
@@ -776,7 +776,7 @@
             "title": "WW Admin Redux Slice",
             "description": "Create WW Admin functionality for user provisioning, organisation management, and global admin features. REQUIRED: User provisioning state management per spec line 73 'WW Admin user provisioning | MVP'. REQUIRED: Organisation management and user provisioning per spec Section 4.1. System configuration and settings. Global admin permissions and features.",
             "details": "- **TDD**: Write tests for WW Admin functionality FIRST\n- Create `src/store/slices/wwAdminSlice.ts`\n- **REQUIRED**: User provisioning state management per spec line 73 \"WW Admin user provisioning | MVP\"\n- **REQUIRED**: Organisation management and user provisioning per spec Section 4.1\n- System configuration and settings\n- Global admin permissions and features\n- Cross-organisation user management capabilities\n- System-wide analytics and reporting features",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 10
           }
@@ -962,7 +962,7 @@
     ],
     "metadata": {
       "created": "2025-07-27T12:38:05.813Z",
-      "updated": "2025-08-09T11:24:06.489Z",
+      "updated": "2025-08-31T03:47:51.590Z",
       "description": "Tasks for master context"
     }
   }
