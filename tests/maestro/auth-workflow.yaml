@@ -1,0 +1,121 @@
+# Maestro E2E Test for Authentication Workflow
+# Task 10 - Enhanced Auth Integration Testing
+
+appId: com.wildlifewatcher.app
+
+---
+# Test: WW Admin Login and Multi-Organisation Access
+- launchApp
+- assertVisible: "Login Screen"
+
+# Test WW Admin Login Flow
+- tapOn: "Email Input"
+- inputText: "admin@wildlifewatcher.com"
+- tapOn: "Password Input" 
+- inputText: "admin123"
+- tapOn: "Login Button"
+
+# Verify WW Admin Dashboard Access
+- assertVisible: "Dashboard"
+- assertVisible: "Admin Panel"
+- assertVisible: "Organisation Selector"
+
+# Test Organisation Switching for WW Admin
+- tapOn: "Organisation Selector"
+- assertVisible: "Organisation 1"
+- assertVisible: "Organisation 2"
+- tapOn: "Organisation 1"
+- assertVisible: "Projects Overview"
+
+# Verify WW Admin Permissions
+- assertVisible: "Create Project"
+- assertVisible: "Manage Users"
+- assertVisible: "System Settings"
+
+---
+# Test: Project Admin Login and Organisation-Scoped Access
+- launchApp
+- tapOn: "Email Input"
+- inputText: "admin@organisation1.com"
+- tapOn: "Password Input"
+- inputText: "projectadmin123"
+- tapOn: "Login Button"
+
+# Verify Project Admin Dashboard
+- assertVisible: "Dashboard"
+- assertNotVisible: "Admin Panel"
+- assertVisible: "Projects Overview"
+
+# Verify Project Admin Permissions
+- assertVisible: "Create Project"
+- assertVisible: "Manage Team"
+- assertNotVisible: "System Settings"
+- assertNotVisible: "Manage Users" # Global user management
+
+---
+# Test: Project Member Login and Limited Access
+- launchApp  
+- tapOn: "Email Input"
+- inputText: "member@organisation1.com"
+- tapOn: "Password Input"
+- inputText: "member123"
+- tapOn: "Login Button"
+
+# Verify Project Member Dashboard
+- assertVisible: "Dashboard"
+- assertNotVisible: "Admin Panel"
+- assertVisible: "My Projects"
+
+# Verify Project Member Permissions (Limited)
+- assertNotVisible: "Create Project"
+- assertNotVisible: "Manage Team"
+- assertVisible: "View Deployments"
+- assertVisible: "Manage My Deployments"
+
+---
+# Test: Role-Based Navigation and Security
+- launchApp
+- tapOn: "Email Input"
+- inputText: "member@organisation1.com" 
+- tapOn: "Password Input"
+- inputText: "member123"
+- tapOn: "Login Button"
+
+# Attempt to access admin features (should fail)
+- tapOn: "Menu"
+- assertNotVisible: "Admin Panel"
+- assertNotVisible: "System Settings"
+- assertNotVisible: "User Management"
+
+# Verify can access allowed features
+- tapOn: "Projects"
+- assertVisible: "My Projects List"
+- tapOn: "Deployments"
+- assertVisible: "My Deployments List"
+
+---
+# Test: Multi-Organisation User Workflow
+- launchApp
+- tapOn: "Email Input"
+- inputText: "multi@example.com"
+- tapOn: "Password Input"
+- inputText: "multi123"
+- tapOn: "Login Button"
+
+# Test organisation switching
+- assertVisible: "Organisation Selector"
+- tapOn: "Organisation Selector"
+- assertVisible: "Primary Org"
+- assertVisible: "Secondary Org"
+
+# Switch to secondary org and verify role change
+- tapOn: "Secondary Org"
+- assertVisible: "Projects Overview"
+# Permissions should change based on role in secondary org
+- assertNotVisible: "Create Project" # Member in secondary org
+- assertVisible: "View Projects"
+
+# Switch back to primary org
+- tapOn: "Organisation Selector"
+- tapOn: "Primary Org"
+- assertVisible: "Create Project" # Admin in primary org
