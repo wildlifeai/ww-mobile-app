@@ -147,7 +147,47 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 ```bash
 # Add Claude Flow MCP server
 claude mcp add claude-flow npx claude-flow@alpha mcp start
+
+# Add Serena MCP server for enhanced development
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env
+uvx --from git+https://github.com/oraios/serena serena start-mcp-server
 ```
+
+## 🎯 Enhanced Development Tools
+
+### Serena MCP Integration (Added 2025-08-31)
+**Status**: ✅ Successfully integrated with 25 advanced coding tools
+
+**Key Capabilities**:
+- **Symbolic Code Analysis**: Understand code structure without reading entire files
+- **Intelligent Editing**: Precise modifications using symbols and regex patterns
+- **Cross-Project Memory**: Persistent knowledge across development sessions
+- **Advanced Search**: Pattern-based code discovery with 20+ language support
+- **Enhanced File Operations**: Semantic understanding for better code management
+
+**Installation**:
+```bash
+# Global uvx installation for cross-project use
+uvx --from git+https://github.com/oraios/serena serena start-mcp-server
+
+# Web dashboard available at: http://127.0.0.1:24282/dashboard/index.html
+# Configuration: /home/adarsh/.serena/serena_config.yml
+```
+
+**Available Serena Tools (25 total)**:
+- File Operations: `read_file`, `create_text_file`, `list_dir`, `find_file`
+- Code Analysis: `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`
+- Intelligent Editing: `replace_symbol_body`, `insert_after_symbol`, `insert_before_symbol`, `replace_regex`
+- Memory Management: `write_memory`, `read_memory`, `list_memories`, `delete_memory`
+- Search & Pattern: `search_for_pattern`
+- Project Management: `activate_project`, `switch_modes`
+- System: `execute_shell_command`, `onboarding`, `prepare_for_new_conversation`
+
+**Tool Coordination Strategy**:
+- **Claude Code**: Primary for bash commands, git, package management, testing
+- **Serena MCP**: Enhanced for symbolic editing, code analysis, persistent memory
+- **Combined Power**: Optimal development workflow for complex implementations
 
 ## MCP Tool Categories
 
@@ -285,14 +325,15 @@ Message 4: Write "file.js"
 ### Task Completion Status
 - **Tasks 1-8**: ✅ **COMPLETED** - Expo SDK 51 Migration
 - **Task 9**: ✅ **DONE** - Authentication Screens & Navigation 
-- **Task 10**: 🔄 **IN-PROGRESS** - Core Redux Integration with Supabase (Enhanced with spec v1.4.6)
+- **Task 10**: ✅ **COMPLETED** - Core Redux Integration with Supabase (Enhanced with spec v1.4.6)
   - Includes: User roles, organisation multi-tenancy, LoRaWAN integration, WW Admin slice, Maestro testing
-- **Tasks 11-23**: ⏳ **PENDING** - All updated with Implementation Spec v1.4.6 enhancements
+- **Task 11**: 🔄 **IN-PROGRESS** - Offline SQLite Foundation (Enhanced with Serena MCP integration)
+- **Tasks 12-23**: ⏳ **PENDING** - All updated with Implementation Spec v1.4.6 enhancements
 
 ### Next Steps
-1. Complete Task 10: Core Redux Integration (currently in-progress)
-2. Execute Foundation Layer Tasks 11 (SQLite with multi-tenancy)
-3. Launch parallel development streams (A, B, C) with enhanced features
+1. ✅ **Complete Task 10**: Core Redux Integration (6/6 subtasks completed)
+2. 🔄 **Execute Task 11**: SQLite Foundation with Serena MCP enhancement (in-progress)
+3. Launch parallel development streams (A, B, C) with enhanced features after Task 11
 4. Integrate and test with Tasks 21-23
 
 ## 📋 MVP2 Implementation References
@@ -305,9 +346,10 @@ Message 4: Write "file.js"
 - **TaskMaster Tasks**: All tasks (10-23) updated with full Implementation Spec v1.4.6 enhancements
 
 ### Development Streams (Enhanced with Spec v1.4.6)
-- **Foundation Layer**: Tasks 9-11 (Auth ✅, Redux with roles 🔄, SQLite with multi-tenancy ⏳) - Sequential execution required
+- **Foundation Layer**: Tasks 9-11 (Auth ✅, Redux with roles ✅, SQLite with multi-tenancy 🔄) - Sequential execution required
   - Organisation multi-tenancy and role-based data access throughout
   - WW Admin offline user provisioning features (MVP requirement)
+  - Enhanced with Serena MCP for intelligent code analysis and editing
 - **Stream A**: Tasks 12-14 (Project Management) - Auth-Agent + Data-Agent
   - WW Admin cross-organisation project oversight and user provisioning
   - Organisation-scoped project CRUD with role-based permissions
@@ -330,6 +372,7 @@ Message 4: Write "file.js"
 - **Supabase Backend**: RLS policies with role validation, Edge Functions, real-time subscriptions
 - **WW Admin Features**: User provisioning across organisations (MVP requirement per spec line 73)
 - **Maestro Testing**: TDD/BDD framework integrated throughout Tasks 10-23
+- **Serena MCP**: Symbolic code analysis and intelligent editing for enhanced development efficiency
 
 ## Support
 
