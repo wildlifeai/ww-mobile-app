@@ -348,3 +348,4 @@ NEVER proactively create documentation files (*.md) or README files. Only create
 Never save working files, text/mds and tests to the root folder.
 - Ensure you also keep the releavnt tasks and substasks in @.taskmaster/tasks/ updated as we progress implementation work
 - check in files to git regularly as you implement the app at sensible points as you implement each task/feature/subtask and where releavnt tests pass so that we are using good source control best practice.
+- keep @project-context/learnings/claude-flow-usage-log.md updated as we implemenent and commit features substasks and tasks
