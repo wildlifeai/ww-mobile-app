@@ -10,7 +10,7 @@ export interface SQLiteDatabase {
 const createMockDatabase = (): SQLiteDatabase => ({
   execAsync: jest.fn(() => Promise.resolve()),
   getAllAsync: jest.fn(() => Promise.resolve([])),
-  getFirstAsync: jest.fn(() => Promise.resolve(null)),
+  getFirstAsync: jest.fn(() => Promise.resolve({ user_version: 0 })),
   runAsync: jest.fn(() => Promise.resolve({ lastInsertRowId: 1, changes: 1 })),
   prepareAsync: jest.fn(() => Promise.resolve({
     executeAsync: jest.fn(() => Promise.resolve()),

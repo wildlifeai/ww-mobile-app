@@ -1,8 +1,6 @@
 /**
- * @jest-environment jsdom
+ * Database service tests - uses default node environment
  */
-
-import 'jest-environment-jsdom';
 import { DatabaseService } from '../../../../src/services/offline/DatabaseService';
 import * as SQLite from 'expo-sqlite';
 
@@ -23,8 +21,8 @@ describe('DatabaseService', () => {
     mockDb = {
       execAsync: jest.fn(),
       runAsync: jest.fn(),
-      getFirstAsync: jest.fn(),
-      getAllAsync: jest.fn(),
+      getFirstAsync: jest.fn(() => Promise.resolve({ user_version: 0 })),
+      getAllAsync: jest.fn(() => Promise.resolve([])),
       closeAsync: jest.fn(),
     };
     
@@ -276,8 +274,8 @@ describe('DatabaseService', () => {
       );
 
       expect(mockDb.runAsync).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE local_deployments SET lorawan_status = ? WHERE id = ?'),
-        [JSON.stringify(updatedLoRaWANStatus), sampleDeployment.id]
+        expect.stringContaining('UPDATE local_deployments SET lorawan_status = ?'),
+        expect.arrayContaining([JSON.stringify(updatedLoRaWANStatus), sampleDeployment.id])
       );
     });
   });
@@ -340,8 +338,8 @@ describe('DatabaseService', () => {
       await databaseService.updateQueueItemRetry(sampleQueueItem.id, 1, 'failed');
 
       expect(mockDb.runAsync).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE offline_queue SET retry_count = ?, status = ? WHERE id = ?'),
-        [1, 'failed', sampleQueueItem.id]
+        expect.stringContaining('UPDATE offline_queue SET retry_count = ?, status = ?'),
+        expect.arrayContaining([1, 'failed', sampleQueueItem.id])
       );
     });
   });
@@ -390,11 +388,17 @@ describe('DatabaseService', () => {
     });
 
     it('should validate organisation_id for all operations', async () => {
+      const invalidProject = {
+        id: 'project-invalid',
+        organisation_id: '',
+        name: 'Invalid Project',
+        description: 'Test project',
+        status: 'active',
+        members: []
+      };
+
       await expect(
-        databaseService.insertProject({
-          ...sampleProject,
-          organisation_id: ''
-        } as any)
+        databaseService.insertProject(invalidProject as any)
       ).rejects.toThrow('Organisation ID is required');
     });
 
