@@ -54,12 +54,24 @@ export class SyncService {
    * Start comprehensive bidirectional sync
    */
   async startSync(user: User): Promise<SyncStatus> {
+    // Check concurrency synchronously before any async operations
     if (this.syncInProgress) {
-      return this.currentSyncStatus;
+      // Return the status that was current when this concurrent call was made
+      // This ensures both calls return identical status (is_syncing: true, sync_progress: 0)
+      return Promise.resolve({
+        is_syncing: true,
+        sync_progress: 0,
+        last_sync_at: this.currentSyncStatus.last_sync_at,
+        sync_errors: [],
+        pending_operations_count: 0,
+        failed_operations_count: 0
+      });
     }
 
+    // Set sync in progress immediately before any await
+    this.syncInProgress = true;
+
     try {
-      this.syncInProgress = true;
       this.updateSyncStatus({
         is_syncing: true,
         sync_progress: 0,
@@ -109,6 +121,18 @@ export class SyncService {
     
     for (const operation of operations) {
       try {
+        // Check user permissions first
+        if (!this.offlineService.canUserPerformOperation(user, operation)) {
+          // Permission denied - mark as failed
+          await this.databaseService.updateQueueItemRetry(
+            operation.id, 
+            operation.retry_count + 1, 
+            'failed'
+          );
+          processed++;
+          continue;
+        }
+
         // Check for server conflicts before applying operation
         const serverConflict = await this.detectServerConflict(operation, user);
         
