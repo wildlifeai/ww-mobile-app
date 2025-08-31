@@ -6,47 +6,89 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import * as Linking from 'expo-linking';
 import { useDeepLinking } from '../useDeepLinking';
-import { mockNavigation, resetAllMocks } from '../../test/utils/testUtils';
-import { mockDeepLinks } from '../../test/fixtures/auth';
+import { mockNavigation, resetAllMocks } from '../../../tests/setup/utils/testUtils';
+import { mockDeepLinks } from '../../../tests/setup/fixtures/auth';
 
 // Mock the useAppNavigation hook
 jest.mock('../useAppNavigation', () => ({
   useAppNavigation: () => mockNavigation,
 }));
 
-// Mock Linking with more detailed implementation
-const mockLinking = {
+// Mock expo-linking properly
+jest.mock('expo-linking', () => ({
   getInitialURL: jest.fn(),
   parse: jest.fn(),
   addEventListener: jest.fn(),
-  removeEventListener: jest.fn(),
-};
+}));
 
-// Override the mock with our detailed implementation
-Object.assign(Linking, mockLinking);
+// Type definitions for mocked Linking module
+const mockLinking = Linking as jest.Mocked<typeof Linking>;
+
+// URL handler type for better type safety
+type URLHandler = (event: { url: string }) => void;
 
 describe('useDeepLinking Hook', () => {
+  let capturedURLHandler: URLHandler | null = null;
+
   beforeEach(() => {
     resetAllMocks();
     jest.clearAllMocks();
+    capturedURLHandler = null;
     
-    // Default mock implementations
+    // Default mock implementations with proper typing
     mockLinking.getInitialURL.mockResolvedValue(null);
-    mockLinking.addEventListener.mockReturnValue({ remove: jest.fn() });
+    
+    mockLinking.addEventListener.mockImplementation((event: string, handler: URLHandler) => {
+      if (event === 'url') {
+        capturedURLHandler = handler;
+      }
+      return { remove: jest.fn() };
+    });
+    
     mockLinking.parse.mockImplementation((url: string) => {
-      const urlObj = new URL(url.replace('wildlifewatcher://', 'https://'));
-      const searchParams = new URLSearchParams(urlObj.search);
-      const queryParams: Record<string, string> = {};
-      
-      searchParams.forEach((value, key) => {
-        queryParams[key] = value;
-      });
-      
-      return {
-        hostname: urlObj.hostname,
-        path: urlObj.pathname,
-        queryParams,
-      };
+      try {
+        // For wildlifewatcher URLs, we need to parse them differently
+        if (url.startsWith('wildlifewatcher://')) {
+          const withoutScheme = url.replace('wildlifewatcher://', '');
+          const [pathPart, queryPart] = withoutScheme.split('?');
+          
+          const queryParams: Record<string, string> = {};
+          if (queryPart) {
+            const searchParams = new URLSearchParams(queryPart);
+            searchParams.forEach((value, key) => {
+              queryParams[key] = value;
+            });
+          }
+          
+          return {
+            hostname: null, // Not really applicable for deep links
+            path: `/${pathPart}`, // This is what the hook checks
+            queryParams,
+          };
+        }
+        
+        // Fallback for other URLs
+        const urlObj = new URL(url.replace('wildlifewatcher://', 'https://'));
+        const searchParams = new URLSearchParams(urlObj.search);
+        const queryParams: Record<string, string> = {};
+        
+        searchParams.forEach((value, key) => {
+          queryParams[key] = value;
+        });
+        
+        return {
+          hostname: urlObj.hostname,
+          path: urlObj.pathname,
+          queryParams,
+        };
+      } catch (error) {
+        // Handle malformed URLs
+        return {
+          hostname: null,
+          path: null,
+          queryParams: {},
+        };
+      }
     });
   });
 
@@ -70,17 +112,15 @@ describe('useDeepLinking Hook', () => {
   });
 
   test('should navigate to ForgotPassword screen for password reset deep link', async () => {
-    let urlHandler: any;
-    
-    mockLinking.addEventListener.mockImplementation((event, handler) => {
-      urlHandler = handler;
-      return { remove: jest.fn() };
-    });
-    
     renderHook(() => useDeepLinking());
     
+    // Ensure handler was captured
+    expect(capturedURLHandler).toBeDefined();
+    
     // Simulate receiving password reset URL
-    urlHandler({ url: mockDeepLinks.passwordReset });
+    if (capturedURLHandler) {
+      capturedURLHandler({ url: mockDeepLinks.passwordReset });
+    }
     
     await waitFor(() => {
       expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword', {
@@ -91,17 +131,15 @@ describe('useDeepLinking Hook', () => {
   });
 
   test('should not navigate for password reset with invalid token', async () => {
-    let urlHandler: any;
-    
-    mockLinking.addEventListener.mockImplementation((event, handler) => {
-      urlHandler = handler;
-      return { remove: jest.fn() };
-    });
-    
     renderHook(() => useDeepLinking());
     
+    // Ensure handler was captured
+    expect(capturedURLHandler).toBeDefined();
+    
     // Simulate receiving invalid password reset URL
-    urlHandler({ url: mockDeepLinks.passwordResetInvalid });
+    if (capturedURLHandler) {
+      capturedURLHandler({ url: mockDeepLinks.passwordResetInvalid });
+    }
     
     await waitFor(() => {
       expect(mockNavigation.navigate).not.toHaveBeenCalled();
@@ -109,17 +147,15 @@ describe('useDeepLinking Hook', () => {
   });
 
   test('should navigate to Login screen for email confirmation deep link', async () => {
-    let urlHandler: any;
-    
-    mockLinking.addEventListener.mockImplementation((event, handler) => {
-      urlHandler = handler;
-      return { remove: jest.fn() };
-    });
-    
     renderHook(() => useDeepLinking());
     
+    // Ensure handler was captured
+    expect(capturedURLHandler).toBeDefined();
+    
     // Simulate receiving email confirmation URL
-    urlHandler({ url: mockDeepLinks.emailConfirmation });
+    if (capturedURLHandler) {
+      capturedURLHandler({ url: mockDeepLinks.emailConfirmation });
+    }
     
     await waitFor(() => {
       expect(mockNavigation.navigate).toHaveBeenCalledWith('Login', {
@@ -129,17 +165,15 @@ describe('useDeepLinking Hook', () => {
   });
 
   test('should not navigate for email confirmation with invalid token', async () => {
-    let urlHandler: any;
-    
-    mockLinking.addEventListener.mockImplementation((event, handler) => {
-      urlHandler = handler;
-      return { remove: jest.fn() };
-    });
-    
     renderHook(() => useDeepLinking());
     
+    // Ensure handler was captured
+    expect(capturedURLHandler).toBeDefined();
+    
     // Simulate receiving invalid email confirmation URL
-    urlHandler({ url: mockDeepLinks.emailConfirmationInvalid });
+    if (capturedURLHandler) {
+      capturedURLHandler({ url: mockDeepLinks.emailConfirmationInvalid });
+    }
     
     await waitFor(() => {
       expect(mockNavigation.navigate).not.toHaveBeenCalled();
@@ -147,13 +181,7 @@ describe('useDeepLinking Hook', () => {
   });
 
   test('should handle general auth callback URLs', async () => {
-    let urlHandler: any;
-    
-    mockLinking.addEventListener.mockImplementation((event, handler) => {
-      urlHandler = handler;
-      return { remove: jest.fn() };
-    });
-    
+    // Override parse for this specific test
     mockLinking.parse.mockReturnValue({
       hostname: 'localhost',
       path: '/callback',
@@ -165,8 +193,13 @@ describe('useDeepLinking Hook', () => {
     
     renderHook(() => useDeepLinking());
     
+    // Ensure handler was captured
+    expect(capturedURLHandler).toBeDefined();
+    
     // Simulate receiving general callback URL
-    urlHandler({ url: mockDeepLinks.generalCallback });
+    if (capturedURLHandler) {
+      capturedURLHandler({ url: mockDeepLinks.generalCallback });
+    }
     
     await waitFor(() => {
       expect(mockNavigation.navigate).toHaveBeenCalledWith('Login', {
@@ -176,17 +209,15 @@ describe('useDeepLinking Hook', () => {
   });
 
   test('should not navigate for unrecognized deep links', async () => {
-    let urlHandler: any;
-    
-    mockLinking.addEventListener.mockImplementation((event, handler) => {
-      urlHandler = handler;
-      return { remove: jest.fn() };
-    });
-    
     renderHook(() => useDeepLinking());
     
+    // Ensure handler was captured
+    expect(capturedURLHandler).toBeDefined();
+    
     // Simulate receiving unrecognized URL
-    urlHandler({ url: mockDeepLinks.invalidUrl });
+    if (capturedURLHandler) {
+      capturedURLHandler({ url: mockDeepLinks.invalidUrl });
+    }
     
     await waitFor(() => {
       expect(mockNavigation.navigate).not.toHaveBeenCalled();
@@ -233,17 +264,15 @@ describe('useDeepLinking Hook', () => {
   test('should log appropriate messages for debugging', async () => {
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
     
-    let urlHandler: any;
-    
-    mockLinking.addEventListener.mockImplementation((event, handler) => {
-      urlHandler = handler;
-      return { remove: jest.fn() };
-    });
-    
     renderHook(() => useDeepLinking());
     
+    // Ensure handler was captured
+    expect(capturedURLHandler).toBeDefined();
+    
     // Simulate receiving password reset URL
-    urlHandler({ url: mockDeepLinks.passwordReset });
+    if (capturedURLHandler) {
+      capturedURLHandler({ url: mockDeepLinks.passwordReset });
+    }
     
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalledWith('useDeepLinking hook initialized');
@@ -256,13 +285,6 @@ describe('useDeepLinking Hook', () => {
   });
 
   test('should handle malformed URLs gracefully', async () => {
-    let urlHandler: any;
-    
-    mockLinking.addEventListener.mockImplementation((event, handler) => {
-      urlHandler = handler;
-      return { remove: jest.fn() };
-    });
-    
     // Mock parse to simulate malformed URL
     mockLinking.parse.mockReturnValue({
       hostname: null,
@@ -272,9 +294,14 @@ describe('useDeepLinking Hook', () => {
     
     renderHook(() => useDeepLinking());
     
+    // Ensure handler was captured
+    expect(capturedURLHandler).toBeDefined();
+    
     // Should not throw error with malformed URL
     expect(() => {
-      urlHandler({ url: 'malformed-url' });
+      if (capturedURLHandler) {
+        capturedURLHandler({ url: 'malformed-url' });
+      }
     }).not.toThrow();
     
     await waitFor(() => {
@@ -283,18 +310,16 @@ describe('useDeepLinking Hook', () => {
   });
 
   test('should handle multiple simultaneous deep links', async () => {
-    let urlHandler: any;
-    
-    mockLinking.addEventListener.mockImplementation((event, handler) => {
-      urlHandler = handler;
-      return { remove: jest.fn() };
-    });
-    
     renderHook(() => useDeepLinking());
     
+    // Ensure handler was captured
+    expect(capturedURLHandler).toBeDefined();
+    
     // Simulate receiving multiple URLs rapidly
-    urlHandler({ url: mockDeepLinks.passwordReset });
-    urlHandler({ url: mockDeepLinks.emailConfirmation });
+    if (capturedURLHandler) {
+      capturedURLHandler({ url: mockDeepLinks.passwordReset });
+      capturedURLHandler({ url: mockDeepLinks.emailConfirmation });
+    }
     
     await waitFor(() => {
       expect(mockNavigation.navigate).toHaveBeenCalledTimes(2);

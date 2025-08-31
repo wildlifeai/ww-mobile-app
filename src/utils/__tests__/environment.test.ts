@@ -5,17 +5,19 @@
 
 import { Config } from '../environment';
 
-// Mock expo-constants
+// Mock expo-constants with test values
 jest.mock('expo-constants', () => ({
-  expoConfig: {
-    extra: {
-      apiBase: 'https://test-api.wildlife.com',
-      googleMapsApiKeyAndroid: 'test-android-key',
-      googleMapsApiKeyIos: 'test-ios-key',
-      bundleIdentifier: 'com.wildlife.wildlifewatcher.expo',
-      isDevelopment: true,
-      eas: {
-        projectId: '6cf53a5e-90e1-4987-82c6-5f0337affe97'
+  default: {
+    expoConfig: {
+      extra: {
+        apiBase: 'https://test-api.wildlife.com',
+        googleMapsApiKeyAndroid: 'test-android-key',
+        googleMapsApiKeyIos: 'test-ios-key',
+        bundleIdentifier: 'com.wildlife.wildlifewatcher.expo',
+        isDevelopment: true,
+        eas: {
+          projectId: '6cf53a5e-90e1-4987-82c6-5f0337affe97'
+        }
       }
     }
   }
