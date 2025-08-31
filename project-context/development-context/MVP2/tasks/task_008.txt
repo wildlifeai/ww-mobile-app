@@ -1,0 +1,91 @@
+# Task ID: 8
+# Title: Supabase Backend Foundation Setup
+# Status: done
+# Dependencies: 5
+# Priority: high
+# Description: Integrate existing Supabase backend with the migrated Expo app, configure mobile app connection, and setup client-side authentication integration
+# Details:
+MAJOR DISCOVERY: The Supabase backend foundation is already extensively developed in the separate wildlife-watcher-backend repository.
+
+Existing Backend Status:
+✅ Database schema fully designed and implemented (users, devices, projects, deployments, etc.)
+✅ RLS policies, functions, triggers, and constraints all implemented
+✅ Development instance running: Dev_Wildlife_Watcher (project ref: nuhwmubvygxyddkycmpa)
+✅ Local development environment configured
+✅ Migration and seeding system established
+
+New Integration Focus:
+1. Configure mobile app to connect to existing Supabase instance
+2. Install and configure @supabase/supabase-js in the Expo app
+3. Set up environment variables for API connection
+4. Test authentication integration between app and backend
+5. Validate API connectivity and data flow
+6. Setup type generation from existing database schema
+
+This discovery significantly accelerates the backend integration timeline.
+
+NOTE: Can execute in parallel with Tasks 6-7 (Phase 2 Stream B - Supabase Foundation)
+
+# Test Strategy:
+Verify Supabase client connects to existing backend successfully, test authentication flow between mobile app and backend, confirm API calls work correctly, validate type generation from database schema, test real-time subscriptions functionality
+
+# Subtasks:
+## 1. Install and Configure Supabase Client SDK [done]
+### Dependencies: None
+### Description: Install @supabase/supabase-js package and create the client configuration with connection to existing backend instance
+### Details:
+Install @supabase/supabase-js@^2.39.0 package. Create a Supabase client singleton in src/services/supabase.ts. Configure with the existing Dev_Wildlife_Watcher instance (project ref: nuhwmubvygxyddkycmpa) using environment variables. Set up proper TypeScript types for the client. Ensure client is properly exported for use throughout the app.
+
+## 2. Setup Environment Variables for Supabase Connection [done]
+### Dependencies: 8.1
+### Description: Configure environment variables for Supabase API URL and anon key in the Expo app using expo-constants
+### Details:
+Create or update .env.local with EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY from the existing backend. Update app.config.js to properly expose these variables through expo-constants. Ensure environment variables are accessible in the app through Constants.expoConfig.extra. Add appropriate .gitignore entries for local environment files.
+<info added on 2025-08-01T09:46:37.004Z>
+Environment variables setup completed successfully:
+
+✅ COMPLETED ACTIONS:
+1. Added Supabase environment variables to .env.local:
+   - EXPO_PUBLIC_SUPABASE_URL="https://nuhwmubvygxyddkycmpa.supabase.co"
+   - EXPO_PUBLIC_SUPABASE_ANON_KEY placeholder (needs actual key from Supabase dashboard)
+   - SUPABASE_SERVICE_ROLE_KEY placeholder (optional, for server-side operations)
+
+2. Updated app.config.js to expose Supabase variables through expo-constants:
+   - Added supabaseUrl and supabaseAnonKey to extra configuration
+   - Variables accessible via Constants.expoConfig.extra
+
+3. Created src/services/supabase.ts with client singleton:
+   - Proper error handling for missing environment variables
+   - Auto-refresh and session persistence enabled
+   - Connection checker helper function included
+   - Debug-friendly configuration export
+
+4. Updated EXPO_ENVIRONMENT_VARIABLES.md documentation:
+   - Added Supabase variables to client-side variables list
+   - Updated configuration examples
+   - Added to required variables list
+
+🔑 ACTION NEEDED:
+User needs to get the actual EXPO_PUBLIC_SUPABASE_ANON_KEY from the Supabase project dashboard (Dev_Wildlife_Watcher project settings > API) and replace the placeholder in .env.local.
+
+Environment variable infrastructure is ready for Supabase integration.
+</info added on 2025-08-01T09:46:37.004Z>
+
+## 3. Generate TypeScript Types from Database Schema [done]
+### Dependencies: 8.1, 8.2
+### Description: Set up automatic type generation from the existing Supabase database schema to ensure type safety
+### Details:
+Install Supabase CLI for type generation. Configure package.json script to generate types from the existing database schema. Run type generation against Dev_Wildlife_Watcher instance. Create src/types/supabase.ts file with generated types. Update tsconfig.json if needed to include type definitions. Document the type generation process for team members.
+
+## 4. Implement Basic Authentication Integration [done]
+### Dependencies: 8.1, 8.2, 8.3
+### Description: Create authentication service layer to connect mobile app auth with existing Supabase Auth system
+### Details:
+Create src/services/auth.ts with login, logout, and session management functions. Implement auth state listeners to sync with Redux auth slice. Add auth persistence using SecureStore or AsyncStorage. Create helper functions for checking auth status. Ensure proper error handling for auth operations. Update existing AuthProvider to use Supabase auth methods.
+
+## 5. Validate API Connectivity and Data Flow [done]
+### Dependencies: 8.1, 8.2, 8.3, 8.4
+### Description: Test end-to-end connectivity between mobile app and Supabase backend with real API calls
+### Details:
+Create test API calls to verify connectivity to main tables (users, devices, projects). Test authenticated API calls with proper RLS policies. Verify real-time subscriptions work for device updates. Test file upload capabilities for images. Validate error handling for network failures. Create a simple debug screen to display connection status and test various API endpoints.
+

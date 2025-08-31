@@ -1,0 +1,165 @@
+# Task ID: 11
+# Title: Offline SQLite Foundation
+# Status: in-progress
+# Dependencies: 10
+# Priority: high
+# Description: Implement comprehensive offline-first architecture using expo-sqlite with organisation multi-tenancy, role-based offline sync, operation queuing, network monitoring, conflict resolution, and background synchronization
+# Details:
+FOUNDATION LAYER - Task 11: Offline SQLite Foundation
+
+This task creates the complete offline-first data management system that enables the Wildlife Watcher app to function fully offline during field deployments and sync when connectivity is restored, implementing organisation multi-tenancy and role-based data access patterns per Implementation Spec v1.4.6.
+
+## Implementation Requirements:
+
+### **ENHANCED** 11.1: SQLite Database Setup with Multi-Tenancy
+- Initialize expo-sqlite database (`wildlife_watcher.db`)
+- **NEW**: Organisation-scoped database schemas
+- **NEW**: User role-based data access patterns
+- Create schema for offline operations:
+  - `offline_queue` table for sync operations
+  - `local_deployments` table for offline deployment storage
+  - `local_projects` table for offline project storage (organisation-scoped)
+  - `local_devices` table for device information cache
+  - `local_organisations` table for organisation data
+  - `local_user_roles` table for role-based access control
+- Migration system for schema updates
+- Database connection management
+
+### **ENHANCED** 11.2: Offline Service Architecture with Role-Based Sync
+- Create `src/services/offline/OfflineService.ts` with organisation-aware operations
+- **NEW**: Maestro test-driven implementation for offline service layer
+- Queue system for offline operations with organisation scoping
+- **NEW**: Role-based sync filtering:
+  - `ww_admin`: Global sync across all organisations and data
+  - `project_admin`: Organisation-scoped sync for managed projects
+  - `project_member`: Project-scoped sync for accessible projects only
+- **NEW**: Organisation context for all offline operations and data isolation
+- **NEW**: LoRaWAN status field sync (battery_level, sd_card_usage) with offline caching
+- Network state monitoring with organisation priority handling
+- Conflict resolution strategies with user role validation
+- Retry logic for failed operations with exponential backoff
+- Operation deduplication with organisation-based filtering
+- **NEW**: Claude Flow SPARC integration for offline architecture patterns
+
+### 11.3: Sync Infrastructure
+- Background sync when network available
+- Incremental sync to minimize data transfer
+- Data integrity validation
+- Sync status indicators
+- Sync priority system (critical operations first)
+- Partial sync failure handling
+
+### **NEW** 11.4: WW Admin Offline Features (MVP User Provisioning)
+- **WW Admin User Provisioning**: Offline access to user management across organisations
+- Model management offline sync (species, brands, models) for system configuration
+- Organisation user list caching with role-based filtering
+- **NEW**: User role assignment offline capability (ww_admin, project_admin, project_member)
+- System configuration offline access for WW Admin users
+- Global admin data synchronization with organisation isolation
+- **NEW**: LoRaWAN device configuration offline sync for admin users
+- **NEW**: Cross-organisation analytics and reporting offline access
+- **NEW**: Bulk user operations offline queue (invite, role changes, deactivation)
+
+### 11.5: Integration Patterns
+- Offline-first service layer with automatic queuing
+- Integration with Redux slices for seamless state management
+- Offline indicators throughout UI
+- Optimistic UI updates with rollback capability
+
+## Dependencies:
+- Task 10: Core Redux Integration (for state management integration)
+- expo-sqlite package (~13.4.0)
+- @react-native-community/netinfo for network monitoring
+- Supabase client for sync operations
+
+## Technical Patterns:
+- **NEW**: Follow Claude Flow SPARC methodology for offline service architecture
+- Follow offline service patterns from API Integration Guide with organisation scoping
+- **NEW**: Implement Maestro TDD patterns for all offline service operations
+- Implement BaseService pattern for consistent error handling with role validation
+- **NEW**: Use generated Supabase TypeScript types with organisation and user role extensions
+- Follow conflict resolution patterns from MVP2 docs with user role consideration
+- **NEW**: Implement organisation data isolation patterns throughout offline layer
+- **NEW**: Role-based data access patterns (RLS policy enforcement offline)
+
+## Key Features:
+- **Complete Offline Functionality**: All core operations work without network
+- **Intelligent Sync**: Only sync changed data, handle conflicts gracefully
+- **Network Resilience**: Automatic retry with exponential backoff
+- **Data Integrity**: Validation and rollback mechanisms
+- **User Experience**: Clear offline/sync status indicators
+
+## Testing Requirements:
+- Unit tests for OfflineService and database operations
+- Integration tests for sync scenarios
+- Test offline/online transition scenarios
+- Test conflict resolution with multiple device changes
+- Test data integrity after various sync failure scenarios
+- Performance tests with large offline operation queues
+
+## Success Criteria:
+- [✅] SQLite database operational with proper schema **COMPLETED**
+- [✅] Comprehensive testing framework implemented **COMPLETED**
+- [ ] Offline operations queued correctly and persistently
+- [ ] Sync system functional with network state changes
+- [ ] No data loss during offline/online transitions
+- [ ] Performance acceptable on low-end devices
+- [ ] Conflict resolution working for simultaneous edits
+- [ ] Background sync operating without blocking UI
+- [ ] Proper error handling and user feedback
+
+## Current Progress: 28.6% (2/7 subtasks completed)
+**Completed:**
+- ✅ Subtask 11.1: SQLite Testing Framework 
+- ✅ Subtask 11.2: SQLite Database Schema
+**In Progress:**
+- 🔄 Subtask 11.3: Offline Service Architecture (planned, not implemented)
+**Pending:**
+- ⏳ Subtasks 11.4-11.7: Sync, WW Admin, Redux Integration, E2E Testing
+
+# Test Strategy:
+Test offline data persistence, verify sync queue processing, test conflict resolution, validate data integrity, test network transition scenarios, test organisation multi-tenancy, test role-based sync filtering, test WW Admin offline features
+
+# Subtasks:
+## 1. SQLite Testing Framework for Offline Operations ✅ [DONE]
+### Dependencies: None
+### Description: Create comprehensive testing framework for SQLite foundation with organisation multi-tenancy and role-based access validation using Maestro TDD approach
+### Details:
+**COMPLETED**: Comprehensive SQLite testing framework implemented with TDD approach. Created unit test suite (`tests/unit/services/offline/DatabaseService.test.ts`) with 90+ test cases covering organisation multi-tenancy, role-based access, LoRaWAN integration, offline queue operations, and WW Admin features. Added Maestro E2E tests (`tests/maestro/offline/database-operations.yaml`) for complete offline workflows. All tests validate organisation data isolation, user role permissions, device status caching, and cross-organisation access patterns.
+
+## 2. SQLite Database Schema with Organisation Multi-Tenancy ✅ [DONE]  
+### Dependencies: 11.1
+### Description: Implement SQLite database schema using expo-sqlite with organisation-scoped tables, role-based access control, and LoRaWAN device integration
+### Details:
+**COMPLETED**: Comprehensive `DatabaseService.ts` created managing all expo-sqlite interactions. Implementation includes full schema with required tables (`local_organisations`, `local_user_roles`, `local_projects`, `local_deployments`, `local_devices`, `offline_queue`). Organisation data isolation and role validation enforced at CRUD operation level. Features version-managed database migration system, WAL mode for performance, enabled foreign key constraints, and indexing for organisation-scoped queries. LoRaWAN status fields (battery_level, sd_card_usage) implemented in deployments table.
+
+## 3. Offline Service Architecture with Role-Based Sync 🔄 [IN-PROGRESS]
+### Dependencies: 11.2  
+### Description: Build comprehensive offline service layer with organisation-aware operations, role-based sync filtering, and LoRaWAN status integration
+### Details:
+**STATUS**: OfflineService.ts architecture planned but implementation not yet started. Remaining work: Create complete OfflineService.ts with NetworkMonitor using `@react-native-community/netinfo`, implement comprehensive offline operations queue with organisation-scoped filtering, build role-based sync logic for all user roles (ww_admin, project_admin, project_member), integrate LoRaWAN device status sync functionality, add retry logic with exponential backoff for queued operations, and prepare service for conflict resolution integration.
+
+## 4. Sync Infrastructure with Conflict Resolution [pending]
+### Dependencies: 11.3
+### Description: Create comprehensive sync infrastructure with intelligent conflict resolution, organisation boundaries, and role-based validation
+### Details:
+Implement bidirectional sync with incremental updates, conflict detection and resolution strategies, and data integrity validation. Handle organisation boundary conflicts, role-based data access conflicts, LoRaWAN device status conflicts, and user-guided resolution. Include sync status indicators, progress tracking, background processing, and recovery mechanisms with organisation context preservation.
+
+## 5. WW Admin Offline Features for User Provisioning [pending]
+### Dependencies: 11.4
+### Description: Implement WW Admin offline capabilities including user provisioning, cross-organisation management, and system configuration per MVP requirements
+### Details:
+**MVP REQUIREMENT**: WW Admin user provisioning offline access per spec line 73. Implement offline user management across organisations, role assignment capabilities, system configuration access, model management offline sync, and global admin data synchronization. Include bulk user operations offline queue, cross-organisation analytics offline access, LoRaWAN device configuration for admin users, and organisation user list caching with role filtering.
+
+## 6. Integrate Offline Services with Redux Store [pending]
+### Dependencies: 11.5
+### Description: Seamlessly integrate offline service layer with Redux slices, ensuring offline-first patterns with organisation context and role-based state management
+### Details:
+Integrate offline services with Redux store architecture, implement offline indicators throughout UI, enable optimistic UI updates with rollback capability, and ensure organisation context preservation across offline/online transitions. Connect sync status to Redux state, implement role-based offline operations, and integrate LoRaWAN device status with offline caching. Maintain data consistency across organisation boundaries.
+
+## 7. Test Complete Offline Functionality with Maestro E2E [pending]
+### Dependencies: 11.6
+### Description: Comprehensive end-to-end testing of complete offline functionality using Maestro framework with organisation scenarios and role-based workflows
+### Details:
+Create comprehensive Maestro E2E test suite covering complete offline workflows with organisation multi-tenancy, role-based access, LoRaWAN integration, and WW Admin features. Test scenarios: offline deployment creation, organisation data sync, role-based offline access, LoRaWAN device status offline updates, WW Admin offline user provisioning, conflict resolution, network transitions, and data integrity across organisation boundaries.
+

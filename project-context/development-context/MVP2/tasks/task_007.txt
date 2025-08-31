@@ -1,0 +1,91 @@
+# Task ID: 7
+# Title: Additional Native Modules Replacement
+# Status: done
+# Dependencies: 5
+# Priority: medium
+# Description: Replace remaining native modules with Expo equivalents for device info, document picker, and geolocation
+# Details:
+1. Replace react-native-device-info with expo-device@~5.9.0
+2. Update all device info API calls to Expo format
+3. Replace react-native-document-picker with expo-document-picker@~11.10.0
+4. Update document picker implementations
+5. Replace @react-native-community/geolocation with expo-location@~16.5.0
+6. Update location permission requests and API calls
+7. Remove old packages after successful replacement
+8. Test each module independently
+
+Note: Can execute in parallel with Tasks 8-9 (Phase 2 Stream A - Security & Dependency Cleanup)
+
+IMPORTANT: Follow MIGRATION-GUIDE.md patterns for module replacement
+
+# Test Strategy:
+Test device info display, verify document picker functionality, confirm location services work correctly, ensure proper permission handling for each module
+
+# Subtasks:
+## 1. Replace react-native-device-info with expo-device [done]
+### Dependencies: None
+### Description: Install expo-device@~5.9.0 and remove react-native-device-info package, following MIGRATION-GUIDE.md patterns for module replacement
+### Details:
+1. Install expo-device: npm install expo-device@~5.9.0
+2. Remove old package: npm uninstall react-native-device-info
+3. Update package-lock.json
+4. Run 'npm run validate:deps' to ensure clean installation
+5. Follow MIGRATION-GUIDE.md Section 3 patterns for dependency replacement
+
+## 2. Update device info API calls to Expo format [done]
+### Dependencies: 7.1
+### Description: Convert all react-native-device-info API calls to use expo-device equivalents throughout the codebase
+### Details:
+1. Global search for 'react-native-device-info' imports and replace with 'expo-device'
+2. Update DeviceInfo.getModel() to Device.modelName
+3. Update DeviceInfo.getSystemVersion() to Device.osVersion
+4. Update DeviceInfo.getUniqueId() to Device.deviceName or appropriate alternative
+5. Update DeviceInfo.getBrand() to Device.brand
+6. Fix TypeScript errors from API changes
+7. Ensure all device info calls follow Expo patterns
+
+## 3. Replace react-native-document-picker with expo-document-picker [done]
+### Dependencies: None
+### Description: Install expo-document-picker@~11.10.0 and remove react-native-document-picker package
+### Details:
+1. Install expo-document-picker: npm install expo-document-picker@~11.10.0
+2. Remove old package: npm uninstall react-native-document-picker
+3. Update package-lock.json
+4. Run 'npm run validate:deps' to ensure clean installation
+5. Follow MIGRATION-GUIDE.md Section 3 patterns for dependency replacement
+
+## 4. Update document picker implementations [done]
+### Dependencies: 7.3
+### Description: Convert all react-native-document-picker API calls to use expo-document-picker equivalents
+### Details:
+1. Global search for 'react-native-document-picker' imports and replace with 'expo-document-picker'
+2. Update DocumentPicker.pick() to DocumentPicker.getDocumentAsync()
+3. Update result handling to match Expo's response format
+4. Update file type filtering to use Expo's mimeTypes parameter
+5. Handle permission requirements for document access
+6. Fix TypeScript errors from API changes
+7. Test document selection and file handling
+
+## 5. Replace @react-native-community/geolocation with expo-location [done]
+### Dependencies: None
+### Description: Install expo-location@~16.5.0 and remove @react-native-community/geolocation package
+### Details:
+1. Install expo-location: npm install expo-location@~16.5.0
+2. Remove old package: npm uninstall @react-native-community/geolocation
+3. Update package-lock.json
+4. Run 'npm run validate:deps' to ensure clean installation
+5. Follow MIGRATION-GUIDE.md Section 3 patterns for dependency replacement
+
+## 6. Update location permission requests and API calls [done]
+### Dependencies: 7.5
+### Description: Convert all geolocation API calls to use expo-location equivalents and update permission handling
+### Details:
+1. Global search for '@react-native-community/geolocation' imports and replace with 'expo-location'
+2. Update Geolocation.getCurrentPosition() to Location.getCurrentPositionAsync()
+3. Update Geolocation.watchPosition() to Location.watchPositionAsync()
+4. Replace permission requests with Location.requestForegroundPermissionsAsync()
+5. Update location options and accuracy settings to Expo format
+6. Handle background location permissions if needed
+7. Fix TypeScript errors from API changes
+8. Test location services and permission flows
+

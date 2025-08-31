@@ -1,0 +1,137 @@
+# Task ID: 13
+# Title: Project Member Management
+# Status: pending
+# Dependencies: 12
+# Priority: high
+# Description: STREAM A: Implement team collaboration features with organisation integration, enhanced role system (ww_admin, project_admin, project_member), WW Admin global user management, email invitations, and admin-only features
+# Details:
+PARALLEL DEVELOPMENT STREAM A - Task 13: Project Member Management
+
+This task implements comprehensive team collaboration capabilities for Wildlife Watcher projects with organisation multi-tenancy, enhanced role system, and WW Admin global user management per Implementation Spec v1.4.6.
+
+## Implementation Requirements:
+
+### 13.1: Member Management UI with Enhanced Roles
+- **NEW**: Maestro TDD implementation for member management components
+- Extend project details screen with member management section
+- Display current project members with:
+  - Profile information (name, email, organisation)
+  - **NEW**: Enhanced role indicators (WW Admin, Project Admin, Project Member)
+  - **NEW**: Organisation affiliation display for multi-org users
+  - Join date and added by information
+  - **NEW**: Last activity and deployment statistics
+  - Actions (remove member, change role) for project admins
+- **NEW**: Role-based member functionality:
+  - `ww_admin`: Can manage all project members across organisations
+  - `project_admin`: Can manage members within their projects
+  - `project_member`: Can view member list only
+- Add member functionality with email input and role assignment
+- **NEW**: Bulk member operations for WW Admin users
+- Confirm removal dialogs with proper warnings and cascading effects
+- Loading states for all member operations with offline support
+- **NEW**: Claude Flow SPARC patterns for member management workflows
+
+### 13.2: Enhanced Permission System Implementation
+- **NEW**: Maestro TDD coverage for all permission validation logic
+- Create comprehensive role-based access control with organisation scoping:
+  - **WW Admin**: Global access - manage users across organisations, system configuration, model management
+  - **Project Admin**: Organisation/project scoped - edit project, add/remove members, delete deployments, change settings, manage LoRaWAN devices
+  - **Project Member**: Project scoped - create/end deployments, view project data, update own deployments
+- **NEW**: Organisation-level permission inheritance and validation
+- Implement UI permission checks with organisation context:
+  - Hide/disable admin-only features for regular members
+  - **NEW**: Show WW Admin features only to ww_admin users
+  - Show appropriate error messages for unauthorized actions
+  - Conditional rendering based on user role and organisation membership
+- **NEW**: LoRaWAN device permissions:
+  - Project admins can configure device settings
+  - Members can view device status only
+- Secure API calls with proper authorization headers and organisation context
+- Backend validation of user permissions before operations with Supabase RLS integration
+
+### 13.3: Enhanced Member Invitation Flow with Organisation Context
+- **NEW**: Maestro TDD coverage for invitation workflows
+- Create email-based member invitation system with organisation awareness:
+  - Validate email addresses before sending invitations
+  - **NEW**: Organisation-scoped invitation validation (prevent cross-org invites)
+  - Store pending invitations in Supabase with organisation and role context
+  - Send invitation emails via Supabase Edge Functions with organisation branding
+  - **NEW**: Role-based invitation permissions (who can invite whom)
+  - Handle invitation acceptance/rejection with organisation onboarding
+- **NEW**: WW Admin bulk invitation capabilities (MVP user provisioning):
+  - Bulk user import via CSV with role assignment
+  - Cross-organisation user transfer workflows
+  - System-wide user provisioning and deactivation
+- Pending invitation management with organisation filtering:
+  - Display pending invitations in member list with organisation context
+  - Allow admins to resend or cancel invitations within their scope
+  - Automatic cleanup of expired invitations
+  - **NEW**: Invitation analytics and tracking for WW Admin
+- Integration with user registration flow for new users with organisation assignment
+
+### 13.4: Member Activity & Permissions Integration
+- Track member activity within projects:
+  - Last active timestamp
+  - Recent deployment activity
+  - Permission change history
+- Implement permission enforcement throughout app:
+  - Navigation restrictions based on role
+  - Feature availability based on permissions
+  - Error handling for permission violations
+- Admin tools and project oversight capabilities
+
+## Dependencies:
+- Task 12: Projects CRUD Operations (for project context)
+- Supabase authentication and user profiles
+- Supabase Edge Functions for email invitations
+- Generated TypeScript types for project members
+
+## Technical Patterns:
+- **NEW**: Follow Claude Flow SPARC methodology for member management architecture
+- Follow Component Implementation Patterns for consistent UI with organisation awareness
+- **NEW**: Implement Maestro TDD patterns for all member management operations
+- Use ConfirmationDialog pattern for destructive actions with role validation
+- **NEW**: Implement organisation-scoped permission validation throughout components
+- Implement proper error handling with user-friendly messages and organisation context
+- Use React Context or Redux for permission state management with organisation state
+- **NEW**: Follow WW Admin UI patterns for global user management features
+- Follow security best practices for role-based access with organisation isolation
+- **NEW**: Implement Supabase RLS policy integration for backend permission validation
+
+## Key Features:
+- **Enhanced Role-Based Access Control**: WW Admin, project admin, member permissions with organisation scoping
+- **WW Admin User Provisioning**: MVP feature for system-wide user management
+- **Organisation Multi-Tenancy**: Member management with data isolation
+- **Email Invitations**: Seamless team member onboarding with organisation context
+- **Bulk Operations**: WW Admin bulk user import and management capabilities
+- **Member Activity Tracking**: Visibility into team engagement with organisation analytics
+- **Admin Tools**: Comprehensive project management capabilities with role validation
+- **Security**: Proper authorization throughout the application with organisation boundaries
+- **LoRaWAN Integration**: Role-based device access and configuration permissions
+
+## Integration Points:
+- Projects screen shows member count and management access
+- Deployment flows respect member permissions
+- Navigation system enforces role-based access
+- All API calls include proper permission validation
+
+## Testing Requirements:
+- Unit tests for permission checking logic
+- Integration tests for member management workflows
+- Test invitation flow end-to-end
+- Test role-based UI rendering and navigation
+- Test security scenarios and unauthorized access attempts
+- Test admin tools and oversight capabilities
+
+## Success Criteria:
+- [ ] Member management fully functional for project admins
+- [ ] Permissions properly enforced throughout application
+- [ ] Invitation system working with email delivery
+- [ ] Role-based UI rendering working correctly
+- [ ] Security measures preventing unauthorized access
+- [ ] Proper error handling and user feedback
+- [ ] Admin tools providing effective project oversight
+- [ ] Smooth team member onboarding experience
+
+# Test Strategy:
+Test role-based permissions, verify invitation workflows, test member management operations, validate security enforcement, test admin features
