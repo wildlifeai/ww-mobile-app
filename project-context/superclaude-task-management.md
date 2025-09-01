@@ -1,16 +1,27 @@
 # SuperClaude Task Management System - Wildlife Watcher MVP2
 
 **Generated**: 2025-08-31 @ 16:45 UTC  
-**Current Phase**: Task 11 - SQLite Foundation (28.6% complete)  
-**Critical Blocker**: Task 11.3 OfflineService.ts implementation  
+**Updated**: 2025-09-01 @ 00:00 UTC  
+**Current Phase**: Task 11 - SQLite Foundation (25% complete - 2/8 subtasks)  
+**CRITICAL PREREQUISITE**: Task 11.8 UUID Alignment & Strapi Removal (blocks 11.3)  
+**Critical Blocker**: Task 11.3 OfflineService.ts implementation (blocked by 11.8)  
 **Branch**: dev-mvp2-development-claude-flow-test
 
 ## 🎯 SuperClaude Task Commands Available
 
 ### Current Task Management
 ```bash
-/task:current                 # Show Task 11.3 current status & requirements
-/task:focus 11.3             # Deep dive into OfflineService.ts implementation
+/task:current                 # Show Task 11.8 current status & requirements
+/task:focus 11.8             # Deep dive into UUID alignment implementation
+/task:break:11.8             # Smart breakdown into 5-phase TDD approach
+/task:uuid:align             # Execute UUID alignment with TDD regression prevention
+/task:strapi:remove          # Remove all Strapi legacy types systematically
+/task:test:types             # Run comprehensive type system validation tests
+```
+
+### Next Task Preparation (Post-11.8)
+```bash
+/task:focus 11.3             # Deep dive into OfflineService.ts implementation (after 11.8)
 /task:break:11.3             # Smart breakdown of OfflineService.ts architecture
 /task:implement:offline      # Execute TDD implementation for offline service layer
 /task:test:offline           # Run comprehensive offline service test suite
@@ -40,12 +51,59 @@
 /task:estimate:completion    # Estimate completion timeline for remaining work
 ```
 
-## 📋 Current Task Analysis: Task 11.3
+## 🚨 CRITICAL PREREQUISITE: Task 11.8
+
+### **ABSOLUTE BLOCKER**: UUID Alignment & Strapi Removal
+
+**Status**: 🔄 IN PROGRESS (Type system alignment required)  
+**Dependencies**: ✅ Task 11.2 (Database Schema) - COMPLETED  
+**Blocks**: Task 11.3 OfflineService.ts AND ALL Tasks 12-23  
+**Urgency**: CRITICAL - All CRUD operations will fail without this fix
+
+### Critical Issues Blocking Development:
+1. **UUID vs Number ID Misalignment**: Auth system converts Supabase UUIDs to numbers
+2. **Strapi Legacy Types**: `src/redux/api/types.ts` contains incompatible types
+3. **SQLite Misalignment**: Database uses strings but not proper UUIDs
+4. **CRUD Operation Failures**: All database operations will break in sync scenarios
+
+### 5-Phase Implementation Plan (TDD Approach):
+
+#### Phase 1: Remove Strapi Legacy Types (2 hours)
+- Create `src/types/app.ts` with Supabase-aligned types
+- Replace all imports from `redux/api/types.ts`
+- Remove legacy Strapi files completely
+- **Testing Gate**: Full test suite + TypeScript compilation
+
+#### Phase 2: Fix Auth UUID Alignment (4 hours) 
+- Update `AuthResponse` type: `id: string` (was number)
+- Remove UUID→number conversion in `transformSupabaseUser()`
+- Update all components using `user.id`
+- **Testing Gate**: Auth flow end-to-end tests
+
+#### Phase 3: SQLite Schema UUID Alignment (6 hours)
+- Install `expo-crypto` for UUID generation
+- Update SQLite schema to use UUID primary keys
+- Implement offline UUID generation for records
+- **Testing Gate**: Offline data + sync compatibility tests
+
+#### Phase 4: Fix CRUD Operations (4 hours)
+- Update all database operations for UUID consistency
+- Fix user/project/deployment operations
+- Ensure LoRaWAN device ID alignment
+- **Testing Gate**: Complete CRUD test suite
+
+#### Phase 5: Redux & API Updates (3 hours)
+- Update all Redux slices to use string IDs
+- Replace custom types with Supabase types
+- Update API layer integration
+- **Testing Gate**: Redux state + API integration tests
+
+## 📋 Next Task Analysis: Task 11.3 (Post-11.8)
 
 ### **CRITICAL BLOCKER**: OfflineService.ts Implementation
 
-**Status**: 🔄 PLANNED (Not yet implemented)  
-**Dependencies**: ✅ Task 11.2 (Database Schema) - COMPLETED  
+**Status**: ⏳ BLOCKED by Task 11.8  
+**Dependencies**: 🔄 Task 11.8 (UUID Alignment) - MUST BE COMPLETED FIRST  
 **Blocks**: ALL Tasks 12-23 (Parallel streams cannot start without offline foundation)
 
 ### Key Requirements for Task 11.3:
@@ -174,10 +232,10 @@ interface TaskContext {
 9. **11.3.9**: Integration testing with DatabaseService
 10. **11.3.10**: Update Redux store integration
 
-### Complexity Analysis
-- **Estimated Effort**: 6-8 hours (Complex architecture task)
+### Complexity Analysis (Post-11.8)
+- **Estimated Effort**: 6-8 hours (Complex architecture task) 
 - **Risk Level**: High (Blocks all parallel development)
-- **Dependencies**: Medium (Requires DatabaseService integration)
+- **Dependencies**: High (Requires Task 11.8 UUID alignment completion)
 - **Testing Requirements**: Comprehensive (Multiple integration points)
 
 ## 🔄 Git Integration Strategy
@@ -187,7 +245,15 @@ interface TaskContext {
 - **Commit Strategy**: Logical feature completion points
 - **Merge Target**: dev-mvp2-development-claude-flow
 
-### Commit Sequence for Task 11.3
+### Commit Sequence for Task 11.8 (Immediate Priority)
+1. `feat(types): create Supabase-aligned types and remove Strapi legacy`
+2. `fix(auth): align AuthResponse with Supabase UUIDs, remove number conversion`
+3. `feat(sqlite): update schema for UUID alignment with expo-crypto`
+4. `fix(crud): update all CRUD operations for UUID consistency`
+5. `feat(redux): replace custom types with Supabase types in all slices`
+6. `docs: update Task 11.8 completion and unblock Task 11.3`
+
+### Commit Sequence for Task 11.3 (Post-11.8)
 1. `feat(offline): add OfflineService architecture and tests`
 2. `feat(offline): implement NetworkMonitor with role-based sync`
 3. `feat(offline): add operations queue with organisation scoping`
@@ -198,9 +264,10 @@ interface TaskContext {
 ## 🎪 Swarm Coordination Readiness
 
 ### Swarm Initialization Criteria
-- ✅ **Foundation Layer Complete**: Tasks 9-10 ✅, Task 11 target completion
-- ✅ **Architecture Stable**: Redux + SQLite + Offline services operational
+- ✅ **Foundation Layer Complete**: Tasks 9-10 ✅, Task 11.8 + 11.3 target completion
+- ✅ **Architecture Stable**: Redux + SQLite + UUID alignment + Offline services operational
 - ✅ **Testing Framework**: TDD patterns established and operational
+- ⏳ **Task 11.8 Complete**: UUID alignment REQUIRED before 11.3
 - ⏳ **Task 11.3 Complete**: REQUIRED before parallel streams
 
 ### Agent Specialization Strategy
@@ -236,8 +303,8 @@ agents:
 ```
 
 ### Coordination Protocol
-1. **Sequential Completion**: Task 11 → Enable parallel streams
-2. **Stream Independence**: A, B, C can run simultaneously post-Task 11
+1. **Sequential Completion**: Task 11.8 (UUID) → Task 11.3 (Offline) → Enable parallel streams
+2. **Stream Independence**: A, B, C can run simultaneously post-Task 11.8 + 11.3
 3. **Integration Dependencies**: Streams A+B+C → Integration phase
 4. **Quality Gates**: Each stream must pass quality validation before integration
 

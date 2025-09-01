@@ -33,14 +33,19 @@
 
 This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) methodology with Claude-Flow orchestration for systematic Test-Driven Development.
 
-### MVP2 Implementation Status
-- **Foundation**: Auth system (Task 9 ✅), Redux store with user roles (Task 10 🔄), SQLite offline support with multi-tenancy (Task 11 ⏳)
-- **Current Phase**: All tasks documented in project context with Implementation Spec v1.4.6 enhancements
+### MVP2 Architecture & Features
 - **Architecture**: Offline-first with Supabase backend, BLE + LoRaWAN device communication, organisation multi-tenancy
 - **Key Features**: 6-step deployment wizard, project management, real-time sync, WW Admin user provisioning (MVP)
-- **Enhanced Roles**: ww_admin, project_admin, project_member with full organisation scoping
-- **LoRaWAN Integration**: battery_level, sd_card_usage webhook monitoring throughout all tasks
-- **Testing Framework**: Maestro TDD/BDD integrated in Tasks 10-23 structure
+- **User Roles**: ww_admin (global), project_admin (org-scoped), project_member (project-scoped)
+- **LoRaWAN Integration**: battery_level, sd_card_usage webhook monitoring
+- **Testing Framework**: Maestro TDD/BDD with comprehensive test coverage
+- **Development Methodology**: SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) with TDD
+
+### Where to Find Task Information
+- **Current Task Status**: Check `@project-context/superclaude-task-management.md`
+- **Task Dependencies**: See `@project-context/task-context-preservation.json`
+- **Development Progress**: Review `@project-context/learnings/claude-flow-usage-log.md`
+- **Task Specifications**: Located in `@project-context/development-context/MVP2/tasks/`
 
 ## SPARC Commands
 
@@ -123,6 +128,41 @@ SuperClaude provides comprehensive task management capabilities through slash co
 - **Test-First**: Write tests before implementation
 - **Clean Architecture**: Separate concerns
 - **Documentation**: Keep updated
+
+## 🔴 CRITICAL: Type System Alignment Rules
+
+### **UUID vs Number ID Alignment (Task 11.8)**
+**ABSOLUTE REQUIREMENTS**:
+- **NEVER convert UUIDs to numbers**: Supabase UUIDs must remain as string types
+- **NO Strapi legacy types**: All `src/redux/api/types.ts` references must be replaced with Supabase types  
+- **SQLite UUID compliance**: All database operations must use UUID strings consistently
+- **CRUD operation validation**: All database sync operations must be tested with UUIDs
+
+### **TDD Regression Prevention Protocol**
+**MANDATORY TESTING GATES**:
+1. **NEVER skip failing tests** - Fix implementation, not test expectations
+2. **Full test suite validation** after each phase - No regressions allowed
+3. **TypeScript errors are blockers** - Zero tolerance for type assertions or `as any` usage
+4. **Testing gate requirements**:
+   - Phase 1: Full test suite + TypeScript compilation
+   - Phase 2: Auth flow end-to-end tests + Login/Register integration  
+   - Phase 3: Offline data creation + sync compatibility tests
+   - Phase 4: Complete CRUD test suite validation
+   - Phase 5: Redux state management + API integration tests
+
+### **Quality Control Standards**
+**ZERO TOLERANCE POLICIES**:
+- **NO test modifications without root cause analysis** - Tests represent business requirements
+- **NO commits without 100% pass rate** - Quality gates cannot be bypassed
+- **NO type assertions or workarounds** - Fix the underlying type issues
+- **NO progression to next phase** - Until current phase testing gate passes completely
+
+### **Breaking Change Management**
+**REQUIRED FOR TASK 11.8**:
+- **Clear Redux persisted state** - Users will need to re-login after UUID alignment
+- **Database migration script** - Existing SQLite data needs UUID conversion
+- **Component updates** - All user.id references must be updated for string types
+- **API layer alignment** - Ensure consistent UUID usage throughout integration points
 
 ## 🚨 STRICT QUALITY CONTROL RULES
 

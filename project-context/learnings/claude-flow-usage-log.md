@@ -1170,3 +1170,169 @@ mockAuthError(); // Configure mocks AFTER render to avoid beforeEach reset
 **Quality Standard**: TDD discipline reinforced with zero-tolerance quality gates  
 **Next Phase**: Scale TestID pattern to all screens, complete Task 11, launch parallel development  
 **Last Updated**: 2025-08-31 @ 23:45 UTC
+
+## 🚨 CRITICAL DISCOVERY: UUID vs Number ID System Misalignment (2025-09-01 @ 00:00 UTC)
+
+**Status**: Task 11.8 🔄 IN PROGRESS - UUID alignment discovered as critical prerequisite  
+**Major Discovery**: UUID vs Number conversion in auth system blocks ALL CRUD operations  
+**Impact**: Task 11.3 OfflineService.ts blocked until UUID alignment complete
+
+### Critical Discovery: Type System Analysis
+
+#### 30. UUID vs Number ID Misalignment - The Foundation Crisis 🚨
+**What We Discovered:**
+- **Auth System Issue**: `transformSupabaseUser()` converts UUIDs to numbers: `parseInt(user.id) || 0`
+- **Strapi Legacy Types**: `src/redux/api/types.ts` contains incompatible legacy types throughout codebase
+- **SQLite Misalignment**: DatabaseService uses string IDs but not proper UUIDs
+- **CRUD Operation Failures**: All database sync operations will fail when UUID/Number mismatch occurs
+
+**When Misalignment Becomes Critical:**
+- **CRUD Operations**: Any database sync between SQLite ↔ Supabase will fail
+- **Offline Sync**: ID mismatches will cause data corruption during sync operations
+- **Role-based Operations**: User permissions fail due to ID type mismatches in database lookups
+- **Multi-tenancy**: Organisation/project relationships break with wrong ID types
+- **LoRaWAN Integration**: Device IDs won't sync properly between offline and online systems
+
+**Root Cause Analysis:**
+```typescript
+// ❌ CRITICAL PROBLEM in src/services/auth.ts:
+const transformSupabaseUser = (user: User, session: Session): AuthResponse => {
+  return {
+    user: {
+      id: parseInt(user.id) || 0, // Supabase UUID → Number conversion BREAKS sync
+      // ... rest of user data
+    }
+  };
+};
+
+// ❌ LEGACY STRAPI TYPES in src/redux/api/types.ts:
+export type User = BaseEntity & {
+  userID: string    // Legacy Strapi structure
+  username: string
+  // ... incompatible with Supabase schema
+}
+
+// ✅ ACTUAL SUPABASE SCHEMA in src/types/supabase.ts:
+users: {
+  Row: {
+    id: string      // UUID string - cannot be converted to number
+    name: string
+    // ... proper Supabase structure
+  }
+}
+```
+
+#### 31. Task Restructuring: Task 11.8 as Critical Prerequisite ✅
+**Strategic Decision:**
+- **BEFORE**: Task 11.3 OfflineService.ts was next priority
+- **AFTER**: Task 11.8 UUID Alignment must be completed FIRST
+- **Reason**: OfflineService will fail catastrophically without proper UUID alignment
+
+**Updated Task Sequence:**
+1. **Task 11.8**: UUID Alignment & Strapi Removal (19 hours, 5 phases)
+2. **Task 11.3**: OfflineService.ts (6-8 hours) - BLOCKED until 11.8 complete
+3. **Tasks 12-23**: Parallel development - BLOCKED until both 11.8 and 11.3 complete
+
+**User's Strategic Decision:**
+- **Option Requested**: "Option A full fix" - Complete removal and alignment
+- **Approach**: TDD with regression testing at each phase
+- **Quality Gate**: No regressions allowed, fix implementation not tests
+
+#### 32. 5-Phase TDD Implementation Strategy ✅
+**Phase-by-Phase Approach with Testing Gates:**
+
+**Phase 1: Remove Strapi Legacy Types (2 hours)**
+- Create `src/types/app.ts` using Supabase `Tables<>` types
+- Replace ALL imports from `redux/api/types.ts`
+- Remove legacy files completely
+- **Testing Gate**: Full test suite pass + TypeScript compilation
+
+**Phase 2: Fix Auth UUID Alignment (4 hours)**
+- Update `AuthResponse`: `id: string` (was number)
+- Remove `parseInt(user.id)` conversion logic
+- Update all components expecting numeric user IDs
+- **Testing Gate**: Auth flow end-to-end tests + Login/Register integration
+
+**Phase 3: SQLite Schema UUID Alignment (6 hours)**
+- Install `expo-crypto` for offline UUID generation
+- Update all SQLite tables to use UUID primary keys (TEXT type)
+- Implement UUID generation for offline record creation
+- **Testing Gate**: Offline data creation + sync compatibility
+
+**Phase 4: Fix CRUD Operations (4 hours)**
+- Update all database operations for string UUID consistency
+- Fix user/project/deployment operations
+- Ensure LoRaWAN device ID alignment
+- **Testing Gate**: Complete CRUD test suite validation
+
+**Phase 5: Redux & API Updates (3 hours)**
+- Update all Redux slices to use string IDs
+- Replace custom types with Supabase types directly
+- Update API layer integration points
+- **Testing Gate**: Redux state management + API integration tests
+
+#### 33. TDD Regression Prevention Protocol 📋
+**Learned from Register Screen Testing Success:**
+
+**Quality Control Standards:**
+- **NEVER skip tests** - they represent business requirements that must be satisfied
+- **Fix implementation, not test expectations** - tests define the contract
+- **Run full test suite after each phase** - catch regressions immediately
+- **User accountability prevents shortcuts** - being challenged maintains standards
+
+**Testing Gates Between Phases:**
+```typescript
+// Before each phase:
+1. Document current test baseline (X/217 tests passing)
+2. Create phase-specific tests (Red phase - tests fail)
+3. Implement changes to satisfy tests (Green phase)
+4. Verify no regressions from baseline (Refactor phase)
+5. Commit only after 100% gate success
+
+// Quality Gates:
+- No progression without 100% test pass rate
+- TypeScript errors are blockers, not warnings  
+- Integration tests must pass before moving to next phase
+```
+
+#### 34. SuperClaude Task Management Integration ✅
+**Updated Task System:**
+- **task-context-preservation.json**: Updated with Task 11.8 as critical prerequisite
+- **superclaude-task-management.md**: Added 5-phase breakdown with TDD approach
+- **Swarm coordination**: Updated to reflect 11.8 → 11.3 dependency
+- **Progress tracking**: Now 25% complete (2/8 subtasks vs previous 28.6% 2/7)
+
+**New SuperClaude Commands:**
+```bash
+/task:uuid:align             # Execute UUID alignment with TDD approach
+/task:strapi:remove          # Systematically remove Strapi legacy types
+/task:test:types             # Comprehensive type system validation
+/task:phase:1-5              # Execute specific phases with testing gates
+```
+
+### Updated Performance Insights:
+- **Task 11.8 Estimated Effort**: 19 hours (very high complexity, critical foundation)
+- **Risk Mitigation**: TDD approach prevents catastrophic regressions
+- **Parallel Development**: Still blocked until both 11.8 AND 11.3 complete
+- **Success Criteria**: 100% test pass rate + zero TypeScript errors + CRUD functionality validated
+
+### Critical Success Factors for Task 11.8:
+1. **TDD Discipline**: Write tests first, implement to satisfy them, never skip tests
+2. **Phase-by-Phase Execution**: Complete one phase fully before starting next
+3. **Regression Prevention**: Full test suite validation between phases
+4. **Type Safety**: Zero tolerance for TypeScript errors or type assertions
+5. **User Accountability**: Report progress and get approval at quality gates
+
+### Next Phase Strategy:
+1. **IMMEDIATE**: Execute Task 11.8 Phase 1 (Remove Strapi types with TDD)
+2. **Sequential**: Complete all 5 phases with testing gates
+3. **THEN**: Resume Task 11.3 OfflineService.ts implementation
+4. **FINALLY**: Initialize parallel development streams for Tasks 12-23
+
+---
+
+**Status**: Task 11.8 🔄 IN PROGRESS - Critical UUID alignment with TDD regression prevention  
+**Critical Discovery**: Type system misalignment blocks ALL future development  
+**SuperClaude System**: ✅ UPDATED with Task 11.8 as critical prerequisite  
+**Next Update**: After Task 11.8 Phase 1 completion with test validation  
+**Last Updated**: 2025-09-01 @ 00:00 UTC

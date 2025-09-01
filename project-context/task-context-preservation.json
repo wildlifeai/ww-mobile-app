@@ -1,10 +1,21 @@
 {
   "taskContext": {
     "currentTask": {
+      "id": "11.8",
+      "title": "UUID Alignment & Strapi Removal (CRITICAL PREREQUISITE)",
+      "status": "in_progress",
+      "phase": "type_system_alignment",
+      "priority": "CRITICAL_PREREQUISITE",
+      "estimatedEffort": "19 hours (5 phases)",
+      "complexity": "very_high",
+      "riskLevel": "critical",
+      "note": "MUST be completed BEFORE Task 11.3 - blocks all CRUD operations and offline sync"
+    },
+    "nextTask": {
       "id": "11.3",
       "title": "Offline Service Architecture with Role-Based Sync",
-      "status": "planned",
-      "phase": "implementation_ready",
+      "status": "blocked_by_11.8",
+      "phase": "awaiting_uuid_alignment",
       "priority": "critical_blocker",
       "estimatedEffort": "6-8 hours",
       "complexity": "high",
@@ -15,8 +26,12 @@
         "11.1 - SQLite Testing Framework",
         "11.2 - Database Schema with Multi-Tenancy"
       ],
+      "inProgress": [
+        "11.8 - UUID Alignment & Strapi Removal (CRITICAL PREREQUISITE)"
+      ],
       "blockedTasks": [
-        "Tasks 12-23 - ALL parallel streams blocked until completion"
+        "11.3 - OfflineService.ts (blocked by 11.8)",
+        "Tasks 12-23 - ALL parallel streams blocked until 11.8 and 11.3 completion"
       ]
     },
     "implementation": {
@@ -80,31 +95,40 @@
       }
     },
     "blockers": [
-      "OfflineService.ts not yet implemented",
+      "UUID vs Number ID misalignment in auth system",
+      "Strapi legacy types throughout codebase",
+      "SQLite schema not using UUIDs",
+      "CRUD operations expecting numeric IDs",
+      "OfflineService.ts blocked by type misalignment",
       "NetworkMonitor integration pending",
       "Role-based sync logic undefined",
       "Organisation scoping not implemented"
     ],
     "nextSteps": [
-      "Create comprehensive test suite (TDD first)",
-      "Implement OfflineService.ts skeleton with interfaces", 
-      "Add NetworkMonitor with @react-native-community/netinfo",
-      "Build operations queue with persistence",
-      "Add role-based filtering logic",
-      "Integrate LoRaWAN status sync",
-      "Test integration with DatabaseService",
-      "Update Redux store integration"
+      "Phase 1: Remove all Strapi legacy types (2 hours)",
+      "Phase 2: Fix Auth UUID alignment (4 hours)",
+      "Phase 3: Update SQLite schema for UUIDs (6 hours)",
+      "Phase 4: Fix all CRUD operations (4 hours)",
+      "Phase 5: Update Redux slices with Supabase types (3 hours)",
+      "Then: Create comprehensive test suite for OfflineService (TDD first)",
+      "Then: Implement OfflineService.ts skeleton with interfaces", 
+      "Then: Add NetworkMonitor with @react-native-community/netinfo",
+      "Then: Build operations queue with persistence",
+      "Then: Add role-based filtering logic",
+      "Then: Integrate LoRaWAN status sync",
+      "Then: Test integration with DatabaseService",
+      "Then: Update Redux store integration"
     ],
-    "sessionNotes": "Task 11.3 is the critical blocker preventing all parallel development streams (Tasks 12-23). Implementation must follow TDD approach established in Tasks 10-11.2. Must include organisation multi-tenancy and role-based access patterns per Implementation Spec v1.4.6.",
+    "sessionNotes": "CRITICAL DISCOVERY: Task 11.8 (UUID Alignment) must be completed BEFORE Task 11.3. UUID vs Number ID misalignment will cause critical failures in offline sync, multi-tenancy, and all CRUD operations. User requested Option A: Full Fix Implementation with TDD approach to prevent regressions. Task 11.3 remains the critical blocker for Tasks 12-23, but is itself blocked by Task 11.8. Implementation must follow TDD approach established in Tasks 10-11.2.",
     "swarmReadiness": {
       "foundationLayer": {
         "task9": "completed",
         "task10": "completed", 
-        "task11": "28.6% complete (2/7 subtasks)"
+        "task11": "25% complete (2/8 subtasks - added 11.8 as critical prerequisite)"
       },
       "parallelStreamsBlocked": true,
       "swarmInitialization": "pending_task_11_completion",
-      "estimatedSwarmReady": "after_task_11.3_completion"
+      "estimatedSwarmReady": "after_task_11.8_and_11.3_completion"
     }
   },
   "recoveryProtocol": {
@@ -120,8 +144,8 @@
   },
   "metadata": {
     "created": "2025-08-31T16:45:00Z",
-    "lastUpdated": "2025-08-31T16:45:00Z",
-    "version": "1.0.0",
+    "lastUpdated": "2025-09-01T00:00:00Z",
+    "version": "1.1.0",
     "branch": "dev-mvp2-development-claude-flow-test"
   }
 }
