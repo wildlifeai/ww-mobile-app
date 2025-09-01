@@ -94,7 +94,7 @@ export const register = async (credentials: RegisterRequest): Promise<AuthRespon
       };
       
       // Add a special flag to indicate this is pending confirmation
-      (pendingAuthResponse as any).isPendingConfirmation = true;
+      pendingAuthResponse.isPendingConfirmation = true;
       return pendingAuthResponse;
     }
 

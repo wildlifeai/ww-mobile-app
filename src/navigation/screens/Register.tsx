@@ -52,7 +52,7 @@ export const Register = () => {
 			}).unwrap()
 
 			// Handle pending confirmation state
-			if ((response as any).isPendingConfirmation) {
+			if (response.isPendingConfirmation) {
 				Alert.alert(
 					"Registration Successful",
 					"Please check your email and click the confirmation link to activate your account.",

@@ -21,4 +21,5 @@ export type AuthResponse = {
 		createdAt: string
 		updatedAt: string
 	}
+	isPendingConfirmation?: boolean // Added for email confirmation flow
 }
