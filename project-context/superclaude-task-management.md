@@ -7,6 +7,30 @@
 **Critical Blocker**: Task 11.3 OfflineService.ts implementation (blocked by 11.8)  
 **Branch**: dev-mvp2-development-claude-flow-test
 
+## 🔴 Task 11.8: UUID vs Number ID Alignment
+
+### Critical Discovery
+**ABSOLUTE REQUIREMENTS**:
+- **NEVER convert UUIDs to numbers**: Supabase UUIDs must remain as string types
+- **NO Strapi legacy types**: All `src/redux/api/types.ts` references must be replaced with Supabase types  
+- **SQLite UUID compliance**: All database operations must use UUID strings consistently
+- **CRUD operation validation**: All database sync operations must be tested with UUIDs
+
+### Breaking Change Management Required
+- **Clear Redux persisted state** - Users will need to re-login after UUID alignment
+- **Database migration script** - Existing SQLite data needs UUID conversion
+- **Component updates** - All user.id references must be updated for string types
+- **API layer alignment** - Ensure consistent UUID usage throughout integration points
+
+### 5-Phase TDD Implementation Plan
+1. **Phase 1**: Remove Strapi Legacy Types (2 hours)
+2. **Phase 2**: Fix Auth UUID Alignment (4 hours)
+3. **Phase 3**: SQLite Schema UUID Alignment (6 hours)
+4. **Phase 4**: Fix CRUD Operations (4 hours)
+5. **Phase 5**: Redux & API Updates (3 hours)
+
+**Total Estimated**: 19 hours (Very High Complexity)
+
 ## 🎯 SuperClaude Task Commands Available
 
 ### Current Task Management
