@@ -1,4 +1,33 @@
-# Wildlife watcher has a Supbase Backend. 
+# Wildlife Watcher Supabase Backend
+
+## Backend Project Location
+
+**Local Supabase Backend Project**: `/home/adarsh/dev/wildlifeai/wildlife-watcher-backend`
+
+This is the complete Supabase project repository with:
+
+### Key Components
+- **Declarative Schema Management**: `/supabase/schemas/public/` with organized SQL files
+  - `/tables/` - Table definitions (users, roles, projects, devices, deployments, etc.)
+  - `/functions/` - Database functions (set_updated_at, has_project_role, sync_geolocation, soft_delete_*)
+  - `/policies/` - Row Level Security policies for each table
+  - `/triggers/` - Database triggers and automation
+  - `/indexes/` - Database indexes for performance
+  - `/constraints/` - Foreign key and check constraints
+
+- **Version Control**: Git-tracked migrations in `/supabase/migrations/`
+  - Migration: `20250609024214_create_mvp1_database.sql`
+
+- **Environment Seeds**: `/supabase/seeds/{local,dev,test,staging}/`
+  - Environment-specific test data and configurations
+
+- **Database Design**: `/dbml/ww_database_ERD.dbml` (source of truth ERD from dbdiagram.io)
+
+- **Deployment**: 
+  - Local setup: `/deployment_scripts/deploy.local.sh`
+  - GitHub Actions: `/.github/workflows/` for cloud deployments
+
+- **SQL Scripts**: `/sql_scripts/` with full schema templates and MVP1 schema 
 
 ## Dev
 - We current Have a Dev instance called Dev_Wildlife_Watcher.
