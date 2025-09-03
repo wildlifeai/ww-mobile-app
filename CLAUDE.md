@@ -244,6 +244,7 @@ The `@project-context/development-context/` contains critical project specificat
 - **Task Files**: `/tasks/` - Individual task specifications (task_001.txt - task_023.txt)
 
 **Supabase Backend** (`/supabase-backend/`):
+- **Backend Project Location**: `/home/adarsh/dev/wildlifeai/wildlife-watcher-backend` (separate Git repository)
 - **Database Info**: `database-information.md` - Schema and structure
 - **Integration Progress**: `supabase-integration-progress.md` - Backend status
 - **Type Definitions**: `supabase.ts` - Generated types
@@ -289,6 +290,48 @@ See `@project-context/superclaude-task-management.md` for:
 
 - Documentation: https://github.com/ruvnet/claude-flow
 - Issues: https://github.com/ruvnet/claude-flow/issues
+
+## 🧬 AI Agentic Development Framework (AADF)
+
+### **Living Framework Documentation**
+**CRITICAL:** This project serves as the primary development laboratory for the **AI Agentic Development Framework (AADF)** - a comprehensive methodology for AI-orchestrated software development.
+
+**Framework Document Locations:** 
+- **Core Framework:** `@project-context/learnings/ai-agentic-development-framework.md`
+- **Philosophical Foundations:** `@project-context/learnings/philosophical-foundations-aadf.md`
+
+### **Framework Maintenance Directive**
+**MANDATORY:** Update the AADF document with ALL discoveries, patterns, optimizations, and learnings encountered during development:
+
+**Update Triggers:**
+- New successful coordination patterns discovered
+- Quality gate refinements and improvements  
+- Tool integration insights and optimizations
+- Performance breakthrough discoveries
+- Template scaffolding pattern improvements
+- Cross-project learning integration opportunities
+
+**Update Categories:**
+- **Behavioral Patterns:** SuperClaude optimization discoveries
+- **Orchestration Insights:** Claude Flow workflow improvements
+- **Tool Coordination:** MCP integration pattern refinements
+- **Quality Standards:** Zero-tolerance gate enhancements
+- **Performance Metrics:** Efficiency measurement improvements
+- **Template Evolution:** Scaffolding pattern discoveries
+- **Philosophical Foundations:** Epistemological and ontological insights
+- **Applied Philosophy:** Practical philosophical applications in development
+
+### **Framework Evolution Responsibility**
+Every developer/session MUST contribute to framework evolution by:
+1. **Documenting New Patterns:** Record successful workflows immediately
+2. **Recording Optimization Insights:** Capture performance improvements
+3. **Updating Quality Standards:** Refine validation gates based on learnings
+4. **Enhancing Tool Integration:** Document MCP coordination discoveries
+5. **Template Pattern Discovery:** Identify reusable scaffolding patterns
+6. **Philosophical Integration:** Document epistemological and ontological insights
+7. **Applied Philosophy:** Record practical philosophical applications in development
+
+**Goal:** Create a comprehensive, battle-tested framework that can be packaged into a `create-aadf-app` equivalent for future projects.
 
 ---
 
