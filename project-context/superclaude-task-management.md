@@ -22,14 +22,18 @@
 - **Component updates** - All user.id references must be updated for string types
 - **API layer alignment** - Ensure consistent UUID usage throughout integration points
 
-### 5-Phase TDD Implementation Plan
-1. **Phase 1**: Remove Strapi Legacy Types (2 hours)
-2. **Phase 2**: Fix Auth UUID Alignment (4 hours)
-3. **Phase 3**: SQLite Schema UUID Alignment (6 hours)
-4. **Phase 4**: Fix CRUD Operations (4 hours)
-5. **Phase 5**: Redux & API Updates (3 hours)
+### 7-Phase Implementation Plan (Updated)
+1. **Phase 0**: Clean up TaskMaster AI commands (0.5 hours) **[NEW]**
+   - Remove `.claude/commands/tm/` folder completely
+   - **STRICT**: Confirm ONLY TaskMaster AI related commands are removed
+   - Do NOT affect other task management systems
+2. **Phase 1**: Remove Strapi Legacy Types (2 hours)
+3. **Phase 2**: Fix Auth UUID Alignment (4 hours)
+4. **Phase 3**: SQLite Schema UUID Alignment (6 hours)
+5. **Phase 4**: Fix CRUD Operations (4 hours)
+6. **Phase 5**: Redux & API Updates (3 hours)
 
-**Total Estimated**: 19 hours (Very High Complexity)
+**Total Estimated**: 19.5 hours (Very High Complexity)
 
 ## 🎯 SuperClaude Task Commands Available
 
@@ -90,7 +94,13 @@
 3. **SQLite Misalignment**: Database uses strings but not proper UUIDs
 4. **CRUD Operation Failures**: All database operations will break in sync scenarios
 
-### 5-Phase Implementation Plan (TDD Approach):
+### 7-Phase Implementation Plan (TDD Approach):
+
+#### Phase 0: Clean up TaskMaster AI Commands (0.5 hours) **[NEW]**
+- Remove entire `.claude/commands/tm/` folder
+- **CRITICAL**: Verify ONLY TaskMaster AI commands are removed
+- Ensure other task management tools remain unaffected
+- Document removal in project context
 
 #### Phase 1: Remove Strapi Legacy Types (2 hours)
 - Create `src/types/app.ts` with Supabase-aligned types
