@@ -72,6 +72,7 @@ Key MVP deliverables include offline-first deployment workflows, Bluetooth camer
 |------------|----------------------|----------|---------|
 | WW Admin user provisioning | Section 4.1 | MVP | ⬜ Planned |
 | User login and authentication | Section 4.1 | MVP | ✅ Complete |
+| Password reset via app | Section 4.1 | MVP | ✅ Complete |
 | Password reset via web form | Section 15.5 | Phase 2 | ⬜ Deferred |
 | Start deployment flow | Section 5.3 | MVP | 🔄 In Progress |
 | End deployment flow | Section 5.4 | MVP | ⬜ Planned |
@@ -174,7 +175,7 @@ This is a professional tool designed to scale from small citizen science project
 
 ### Completed Features
 
-The authentication flow is largely complete, with login functionality working and tested. Users can successfully authenticate against the Supabase backend, and sessions persist appropriately. Web Based password reset functionality has been deferred to Phase 2 to focus on core MVP features (app based reset is in place).
+The authentication flow is largely complete, with login functionality working and tested. Users can successfully authenticate against the Supabase backend, and sessions persist appropriately. Password reset functionality is available through the mobile app (implemented in Task 8). Web-based password reset has been deferred to Phase 2 to focus on core MVP features.
 
 The core Bluetooth infrastructure for camera communication has been thoroughly tested with real Wildlife Watcher devices. **Note: Current BLE/DFU implementation is placeholder for testing connectivity only (ping/pong and DFU mode). All device interaction features are work-in-progress pending hardware specification finalization.** The navigation structure is in place with bottom tabs and drawer menu configured. The Maps screen exists but needs the floating action buttons for deployment workflows. Basic Redux store configuration is complete, ready for feature-specific slices to be added as development progresses.
 
@@ -283,7 +284,7 @@ User Action → Screen Component → Redux Action → Service Layer → Local SQ
 
 The app supports a single, controlled user onboarding path to ensure proper organisational management:
 
-**WW Admin Provisioning Only** - System administrators are the only users who can create new user accounts. WW Admin users add users through the admin portal and assign them to organisations. **WW Admin must collect email address when provisioning users.** This controlled approach ensures proper user management and organisational structure from the start.
+**WW Admin Provisioning Only** - System administrators are the only users who can create new user accounts. WW Admin users add users through the admin portal and assign them to organisations. **WW Admin must provide mandatory fields: full name, email address, and organisation assignment when provisioning users.** This controlled approach ensures proper user management and organisational structure from the start. If a user's invitation link expires, the WW Admin must be notified to resend a new invitation link (no self-service in MVP).
 
 #### User Provisioning Requirements
 
@@ -321,9 +322,10 @@ enum UserRole {
 interface RoleCapabilities {
   'model_manager': {
     manageAIModels: true,         // Upload, version, assign models
-    viewProjectModels: true,      // See which models are deployed
+    viewAllOrgModels: true,       // See all models in their organisation
     accessModelMetrics: true,     // Performance and usage statistics
-    organisationLevel: true       // Operates at organisation level
+    organisationLevel: true,      // Operates at organisation level
+    webInterfaceOnly: true        // No mobile app access in MVP
   },
   'ww_admin': {
     manageAllUsers: true,  // Core MVP function - user management only
@@ -351,12 +353,14 @@ interface RoleCapabilities {
 
 **Key Role Rules:**
 - Users can have different roles per project
-- Any user can create a project and become its admin
-- Only WW Admins can grant WW Admin role to others
-- Only WW Admins can add new users to the system
-- Project Admins can add existing users to projects and assign roles
-- Model Manager is an organisation-level role for AI model management
-- Users must belong to an organisation to access projects
+- Any user belonging to an organisation can create a project and become its admin
+- Only WW Admins can grant system-level roles (WW Admin, Model Manager)
+- Only WW Admins can add new users to the system and assign them to organisations
+- Project Admins can add existing users to projects and assign PROJECT roles (Project Admin, Project Member)
+- Model Manager is an organisation-level role with web-only access (no mobile app in MVP)
+- All users must belong to exactly one organisation (except WW Admins who can be in 1-2 organisations)
+- WW Admins default to wildlife.ai organisation and can be assigned to ONE additional organisation
+- Users can have multiple roles (e.g., a WW Admin can also be a Project Admin if assigned to a project)
 
 
 #### 4.2.1 Simplified WW Admin Functions for MVP
@@ -385,7 +389,7 @@ interface RoleCapabilities {
 
 **Deferred to Phase 2:** User profile management functionality including self-service profile editing, profile photos, and preference management.
 
-**MVP Approach:** For MVP, user profiles are fully populated during WW Admin provisioning with mandatory fields (full name, email, organisation). Users cannot edit their own profiles in MVP - all changes must go through a WW Admin. This simplifies the MVP by removing profile management UI and validation logic while ensuring complete user identification from account creation.
+**MVP Approach:** For MVP, user profiles are fully populated during WW Admin provisioning with mandatory fields (full name, email, organisation assignment). Users have no self-service features - they cannot register, edit profiles, or request new invitation links. All user management must go through a WW Admin. This simplifies the MVP by removing profile management UI and validation logic while ensuring complete user identification from account creation.
 
 ---
 
@@ -873,7 +877,10 @@ class ConflictResolver {
 - **user_invitations**: Invitation tokens for member management (NEW)
 - **user_preferences**: User preferences and WW Admin configuration storage (NEW)
 
-**Note**: `user_roles` table not needed - existing `roles` and `project_members` tables handle role assignments
+**Note**: Three separate tables handle different role scopes:
+- `user_roles` table - system-level roles (ww_admin, model_manager)
+- `project_members` table - project-level roles (project_admin, project_member)  
+- `user_organisations` table - organisation membership
 
 **Extensions Required:**
 - **postgis**: Already enabled ✅ (in extensions schema for geospatial queries)
@@ -902,21 +909,21 @@ CREATE TABLE user_organisations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   organisation_id UUID REFERENCES organisations(id) ON DELETE CASCADE,
-  role TEXT CHECK (role IN ('model_manager')),  -- Optional org-level roles
   created_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID REFERENCES auth.users(id),
   removed_at TIMESTAMPTZ,  -- Logical delete
   UNIQUE(user_id, organisation_id)
 );
 
--- User roles table (NEW - Replaces simple 'roles' reference table)
+-- User roles table (NEW - For system-level roles)
 CREATE TABLE user_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  role TEXT NOT NULL CHECK (role IN ('ww_admin', 'user')),
+  role TEXT NOT NULL CHECK (role IN ('ww_admin', 'model_manager')),
+  organisation_id UUID REFERENCES organisations(id), -- For model_manager role
   created_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID REFERENCES auth.users(id),
-  UNIQUE(user_id, role)
+  UNIQUE(user_id, role, organisation_id)
 );
 
 -- Projects table (EXISTING - Need to add organisation_id field)
@@ -938,6 +945,7 @@ CREATE TABLE projects (
 );
 
 -- Project members with roles (EXISTING)
+-- Project members with roles (EXISTING - Need to modify role handling)
 CREATE TABLE project_members (
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,

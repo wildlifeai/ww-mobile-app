@@ -245,8 +245,11 @@ The `@project-context/development-context/` contains critical project specificat
 
 **Supabase Backend** (`/supabase-backend/`):
 - **Backend Project Location**: `/home/adarsh/dev/wildlifeai/wildlife-watcher-backend` (separate Git repository)
-- **Database Info**: `database-information.md` - Schema and structure
-- **Integration Progress**: `supabase-integration-progress.md` - Backend status
+- **Backend Project Status**: `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md` - Live backend status
+- **Backend Configuration**: `~/wildlife-watcher-backend/CLAUDE.md` - Backend development guide
+- **Database Tasks**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/` - Cross-project task communication
+- **Database Info**: `database-information.md` - Schema and structure (local copy)
+- **Integration Progress**: `supabase-integration-progress.md` - Backend status (local copy)
 - **Type Definitions**: `supabase.ts` - Generated types
 
 ### 📝 Documents to Keep Updated
@@ -271,6 +274,11 @@ The `@project-context/development-context/` contains critical project specificat
    - Update `supabase-integration-progress.md`
    - Document API changes
    - Record migration status
+
+5. **Cross-Project Database Tasks**: When database changes are needed
+   - Create/update task files in `~/wildlife-watcher-backend/project-context/MVP2-Tasks/`
+   - Reference backend project status at `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md`
+   - Follow backend development patterns from `~/wildlife-watcher-backend/CLAUDE.md`
 
 ### Current Task Context
 See `@project-context/superclaude-task-management.md` for:
