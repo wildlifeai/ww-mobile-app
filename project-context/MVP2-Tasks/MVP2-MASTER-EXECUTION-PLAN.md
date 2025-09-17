@@ -65,116 +65,160 @@ graph TD
 
 #### Task 12: Project List & Management Interface
 - **Priority**: HIGH
-- **Agent**: `mobile-dev`
-- **Duration**: 6 hours
+- **Primary Agent**: `mobile-dev` (UI/UX implementation)
+- **Secondary Agent**: `cross-project-coordinator` (Backend API coordination)
+- **Duration**: 6 hours (4 hrs mobile, 2 hrs backend)
 - **Dependencies**: Task 11 (SQLite)
-- **Requirements**:
-  - CRUD operations for projects
+- **Cross-Project Requirements** 🔄:
+  - Backend: Project CRUD API endpoints
+  - Backend: RLS policies for organisation isolation
+  - Backend: Project member management functions
+- **Mobile Requirements**:
+  - Project list UI with pull-to-refresh
+  - Project creation/edit forms
   - Organisation-scoped data filtering
-  - Role-based permissions (ww_admin sees all)
+  - Offline queue integration
 - **Resources**:
   - Context7: React Native List components
   - Existing DatabaseService.ts
   - Redux store integration
+- **Backend Spec Location**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/task-12-backend-spec.md`
 - **Quality Gates**:
   - TypeScript compilation ✓
   - CRUD operations tested ✓
   - Organisation isolation verified ✓
+  - Backend/Mobile sync tested ✓
 
 #### Task 13: User Role Management & Permissions
 - **Priority**: HIGH
-- **Agent**: `backend-architect` + `auth-permissions-agent`
-- **Duration**: 6 hours
+- **Primary Agent**: `cross-project-coordinator` (Backend-heavy task)
+- **Secondary Agent**: `mobile-dev` (UI components)
+- **Duration**: 6 hours (4 hrs backend, 2 hrs mobile)
 - **Dependencies**: Task 12
-- **Requirements**:
-  - Role assignment interface
+- **Cross-Project Requirements** 🔄:
+  - Backend: Role assignment API endpoints
+  - Backend: Permission checking functions
+  - Backend: Organisation role management
+  - Backend: Role change audit logging
+- **Mobile Requirements**:
+  - Role assignment UI
   - Permission visualization
-  - Organisation-aware role management
+  - Role selector components
 - **Resources**:
   - Supabase user_roles table
   - Auth system from Task 10
   - Role-based sync from Task 11.3
+- **Backend Spec Location**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/task-13-backend-spec.md`
 - **Quality Gates**:
   - Role changes persist ✓
   - Permissions enforced ✓
   - Cross-org isolation ✓
+  - Audit trail functional ✓
 
 #### Task 14: Organisation Context Switching
 - **Priority**: MEDIUM
-- **Agent**: `frontend-design-expert`
-- **Duration**: 6 hours
+- **Primary Agent**: `mobile-dev` (Mobile-only implementation)
+- **Agent Rationale**: Pure mobile UI/state management, no backend changes needed
+- **Duration**: 6 hours (all mobile)
 - **Dependencies**: Task 13
 - **Requirements**:
   - Organisation selector UI
-  - Context persistence
+  - Context persistence in Redux
   - Data refresh on switch
+  - Clear current cache on org change
 - **Resources**:
   - Redux organisation slice
   - OfflineService organisation filtering
-  - UI/UX patterns from Context7
+  - Context7: React Native dropdown/selector patterns
 - **Quality Gates**:
   - Context switches cleanly ✓
   - Data isolation maintained ✓
   - UI responsive ✓
+  - Cache properly cleared ✓
 
 ### 🎯 STREAM B: Deployment Workflows (Tasks 15-17)
 **Duration**: 24 hours | **Dependencies**: Task 11 foundation | **Status**: READY TO START
 
 #### Task 15: 6-Step Deployment Wizard UI
 - **Priority**: CRITICAL
-- **Agent**: `mobile-dev` + `frontend-design-expert`
-- **Duration**: 10 hours
+- **Primary Agent**: `mobile-dev` (Complex UI state management)
+- **Secondary Agent**: `cross-project-coordinator` (Deployment API)
+- **Agent Rationale**: Complex wizard requires mobile expertise, backend needs deployment storage
+- **Duration**: 10 hours (8 hrs mobile, 2 hrs backend)
 - **Dependencies**: Task 11
-- **Requirements**:
-  - Multi-step form wizard
+- **Cross-Project Requirements** 🔄:
+  - Backend: Deployment creation/update endpoints
+  - Backend: Draft deployment storage
+  - Backend: Deployment validation rules
+- **Mobile Requirements**:
+  - 6-step form wizard framework
   - State persistence between steps
-  - Validation per step
-  - Progress indication
+  - Progress indication UI
+  - Step validation logic
 - **Resources**:
-  - Context7: React Native form libraries
-  - Redux for wizard state
+  - Context7: React Native form/wizard patterns
+  - Redux for wizard state management
   - Existing deployment types
+- **Backend Spec Location**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/task-15-backend-spec.md`
 - **Quality Gates**:
   - All 6 steps functional ✓
   - State persists on navigation ✓
   - Validation comprehensive ✓
+  - Draft saves work ✓
 
 #### Task 16: Device Configuration & Setup
 - **Priority**: HIGH
-- **Agent**: `backend-architect` + BLE specialist
-- **Duration**: 8 hours
+- **Primary Agent**: `mobile-dev` (BLE implementation)
+- **Secondary Agent**: `cross-project-coordinator` (Device registry)
+- **Agent Rationale**: BLE is mobile-specific, backend needs device tracking
+- **Duration**: 8 hours (6 hrs mobile BLE, 2 hrs backend)
 - **Dependencies**: Task 15
-- **Requirements**:
-  - BLE device discovery
-  - Configuration payload sending
+- **Cross-Project Requirements** 🔄:
+  - Backend: Device registration endpoints
+  - Backend: Configuration template storage
+  - Backend: LoRaWAN device registry
+- **Mobile Requirements**:
+  - BLE device discovery UI
+  - Configuration payload builder
   - LoRaWAN setup interface
+  - BLE connection management
 - **Resources**:
   - react-native-ble-manager
   - Device configuration protocols
-  - LoRaWAN integration docs
+  - Context7: BLE integration patterns
+- **Backend Spec Location**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/task-16-backend-spec.md`
 - **Quality Gates**:
   - BLE connection stable ✓
   - Configuration persists ✓
   - Error handling robust ✓
+  - Device registered in backend ✓
 
 #### Task 17: Field Deployment Validation
 - **Priority**: HIGH
-- **Agent**: `quality-assurance-engineer`
-- **Duration**: 6 hours
+- **Primary Agent**: `mobile-dev` (Mobile-heavy validation)
+- **Secondary Agent**: `cross-project-coordinator` (Validation storage)
+- **Agent Rationale**: Validation UI/logic is mobile, backend stores results
+- **Duration**: 6 hours (4 hrs mobile, 2 hrs backend)
 - **Dependencies**: Task 16
-- **Requirements**:
-  - Deployment checklist
-  - Photo capture/attachment
-  - GPS location validation
+- **Cross-Project Requirements** 🔄:
+  - Backend: Deployment validation endpoints
+  - Backend: Photo storage integration
+  - Backend: GPS validation rules
+- **Mobile Requirements**:
+  - Deployment checklist UI
+  - Photo capture integration
+  - GPS location capture
   - Final confirmation flow
 - **Resources**:
   - expo-camera
   - expo-location
-  - Deployment validation logic
+  - Context7: Camera/location patterns
+- **Backend Spec Location**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/task-17-backend-spec.md`
 - **Quality Gates**:
   - All validations work ✓
-  - Photos attach correctly ✓
+  - Photos upload correctly ✓
   - Location accurate ✓
+  - Backend stores validation ✓
 
 ### 🗺️ STREAM C: Devices & Maps (Tasks 18-20)
 **Duration**: 30 hours | **Dependencies**: Task 11 foundation | **Status**: READY TO START
@@ -296,18 +340,89 @@ graph TD
   - Store compliance ✓
   - Documentation complete ✓
 
-## 👥 Agent Assignment Matrix
+## 👥 Agent Assignment Matrix with Rationale
 
-| Agent | Primary Tasks | Secondary Tasks | Expertise |
-|-------|--------------|-----------------|-----------|
-| `mobile-dev` | 12, 15, 18 | 16, 19 | React Native, Expo |
-| `backend-architect` | 13, 16 | 14 | Supabase, APIs |
-| `frontend-design-expert` | 14, 19 | 15 | UI/UX, Maps |
-| `quality-assurance-engineer` | 17, 21 | 22 | Testing, Validation |
-| BLE specialist | 16, 20 | - | Bluetooth, LoRaWAN |
-| `sync-engine-agent` | 20 | 18 | Data sync, Offline |
-| `performance-optimizer` | 22 | 21 | Optimization |
-| `devops-deployment-architect` | 23 | - | Deployment, CI/CD |
+### Primary Agent Assignments
+
+| Agent | Tasks | Why This Agent | Key Strengths |
+|-------|-------|----------------|---------------|
+| **`mobile-dev`** | 12, 14, 15, 16, 17, 18, 19, 20 | Primary UI/UX implementation | React Native expertise, Expo SDK, component architecture |
+| **`cross-project-coordinator`** | 12, 13, 15, 16, 17, 18, 20 | Backend API coordination | Cross-repo communication, spec creation, dependency management |
+| **`backend-architect`** | Backend specs | Supabase implementation | Database design, API endpoints, RLS policies |
+| **`quality-assurance-engineer`** | 21 | E2E testing | Maestro framework, test coverage, validation |
+| **`performance-optimizer`** | 22 | App optimization | Bundle size, render performance, memory management |
+| **`devops-deployment-architect`** | 23 | Production prep | EAS Build, app store deployment, CI/CD |
+
+### Agent Selection Rationale
+
+#### Mobile-Heavy Tasks (Primary: `mobile-dev`)
+- **Tasks 14, 19**: Pure mobile UI with no backend changes
+- **Tasks 15-17**: Complex UI with minimal backend needs
+- **Tasks 18, 20**: Device/BLE interfaces with backend sync
+
+#### Backend-Heavy Tasks (Primary: `cross-project-coordinator`)
+- **Task 13**: Role management requires significant backend work
+- **Tasks 12, 16**: Balanced mobile/backend split
+
+#### Cross-Project Dependencies
+- **High Backend**: Tasks 13 (roles), 16 (device registry)
+- **Medium Backend**: Tasks 12 (projects), 15 (deployments), 17 (validation)
+- **Low/No Backend**: Tasks 14 (org switch), 19 (maps)
+
+### Coordination Strategy
+
+1. **Sequential Backend Work**: Create all backend specs first
+2. **Parallel Mobile Development**: Launch UI work while backend builds
+3. **Integration Points**: Sync at task completion for testing
+
+## 🔄 Cross-Project Execution Protocol
+
+### Backend Specification Process
+1. **Spec Creation** (Mobile repo):
+   - `cross-project-coordinator` creates detailed backend spec
+   - Spec includes: endpoints, RLS policies, functions, migrations
+   - Location: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/task-XX-backend-spec.md`
+
+2. **Backend Implementation** (Backend repo):
+   - Separate VS Code instance executes spec
+   - Creates migrations, functions, API endpoints
+   - Updates backend PROJECT-STATUS.md
+
+3. **Integration Confirmation** (Cross-repo):
+   - Backend confirms completion via status file
+   - Mobile app integrates with new endpoints
+   - End-to-end testing validates integration
+
+### Cross-Project Task Dependencies
+
+| Mobile Task | Backend Requirements | Blocking? | Backend Priority |
+|-------------|---------------------|-----------|------------------|
+| Task 12 | Project CRUD APIs | Partial | HIGH |
+| Task 13 | Role management APIs | Yes | CRITICAL |
+| Task 14 | None (mobile only) | No | - |
+| Task 15 | Deployment APIs | Partial | HIGH |
+| Task 16 | Device registry | Yes | HIGH |
+| Task 17 | Validation storage | Partial | MEDIUM |
+| Task 18 | Device query APIs | Partial | MEDIUM |
+| Task 19 | None (mobile only) | No | - |
+| Task 20 | Sync endpoints | Yes | HIGH |
+
+### Optimized Execution Sequence
+
+#### Phase 1: Backend Specs (Day 1)
+- Create ALL backend specs upfront
+- Prioritize blocking dependencies
+- Bundle related migrations
+
+#### Phase 2: Parallel Execution (Days 2-15)
+- Backend: Implement APIs in priority order
+- Mobile: Start non-blocking UI work
+- Sync at integration points
+
+#### Phase 3: Integration (Days 16-20)
+- Test mobile-backend integration
+- Resolve any API mismatches
+- Performance optimization
 
 ## 📅 Timeline & Milestones
 
