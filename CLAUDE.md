@@ -6,6 +6,7 @@
 1. ALL operations MUST be concurrent/parallel in a single message
 2. **NEVER save working files, text/mds and tests to the root folder**
 3. ALWAYS organize files in appropriate subdirectories
+4. **MANDATORY**: Follow Evidence-Based Development - verify all assumptions with Context7 research FIRST
 
 ### ⚡ GOLDEN RULE: "1 MESSAGE = ALL RELATED OPERATIONS"
 
@@ -119,6 +120,8 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 2. **Type Gate**: Zero TypeScript errors allowed
 3. **Integration Gate**: All service calls must use correct method signatures
 4. **TDD Gate**: Implementation must satisfy original test requirements
+5. **Evidence Gate**: All implementation decisions backed by Context7 research (NEW)
+6. **UUID Consistency Gate**: All UUID handling must maintain string types throughout (CRITICAL for Task 11.8)
 
 
 ## 📚 Reference Documentation
@@ -151,28 +154,35 @@ See `@project-context/command-examples.md` for:
 - MCP tool categories
 - Performance benefits
 
-## 🎯 Claude Code vs MCP Tools
+## 🎯 Tool Selection Hierarchy (Evidence-Based)
 
-### Claude Code Handles ALL:
+### 1. Context7 MCP - MANDATORY FIRST (Research Phase)
+**ALWAYS use BEFORE implementation** - Proven 10x efficiency improvement
+- Documentation research and vendor-specific patterns
+- Eliminates false solution paths and assumption-based debugging
+- **Evidence**: Backend achieved 15-minute solutions vs 2.5-hour debugging
+
+### 2. Claude Code - PRIMARY EXECUTION
 - File operations (Read, Write, Edit, MultiEdit, Glob, Grep)
 - Code generation and programming
 - Bash commands and system operations
-- Implementation work
-- Project navigation and analysis
+- Implementation work and testing
 - TodoWrite and task management
-- Git operations
-- Package management
-- Testing and debugging
+- Git operations and package management
 
-### MCP Tools ONLY:
-- Coordination and planning
-- Memory management
-- Neural features
-- Performance tracking
-- Swarm orchestration
-- GitHub integration
+### 3. Specialized Task Agents - DOMAIN EXPERTISE
+- `mobile-dev` - React Native/Expo development
+- `supabase-schema-architect` - Database schema management
+- `quality-assurance-engineer` - Testing strategy
+- **Use when**: Domain-specific expertise required
 
-**KEY**: MCP coordinates, Claude Code executes.
+### 4. MCP Tools - COORDINATION ONLY
+- Planning and orchestration
+- Memory management and persistence
+- Performance tracking and metrics
+- GitHub integration and workflows
+
+**PROVEN WORKFLOW**: Context7 Research → Claude Code Implementation → Specialized Agents → MCP Coordination
 
 ## 🚀 Quick Setup
 
@@ -188,12 +198,24 @@ uvx --from git+https://github.com/oraios/serena serena start-mcp-server
 
 ## 📦 MCP Tools Available
 
-### Context7 - Library Documentation
-**When to use**: Need up-to-date documentation for any library/framework
+### Context7 - Library Documentation (MANDATORY FIRST STEP)
+**When to use**: ALWAYS before ANY implementation - verified 10x efficiency improvement
 - `mcp__context7__resolve-library-id` - Find library ID from name
 - `mcp__context7__get-library-docs` - Fetch comprehensive docs with examples
 
-**Example**: Getting React Native or Expo documentation during implementation
+**Evidence-Based Pattern**:
+```javascript
+// MANDATORY: Research BEFORE implementation
+// Backend Success: 2.5 hours → 15 minutes debugging via Context7
+mcp__context7__resolve-library-id({ libraryName: "react-native-sqlite" })
+mcp__context7__get-library-docs({
+  context7CompatibleLibraryID: "/resolved/library",
+  topic: "uuid-handling",
+  tokens: 15000
+})
+```
+
+**Example**: Getting React Native, Expo, or SQLite documentation - PROVEN to eliminate false solution paths
 
 ### IDE Integration
 **When to use**: Need TypeScript/linting diagnostics or run code in notebooks
@@ -282,10 +304,18 @@ The `@project-context/development-context/` contains critical project specificat
 
 ### Current Task Context
 See `@project-context/superclaude-task-management.md` for:
-- Current task status (Task 11.8 UUID alignment)
+- Current task status (Task 11.8 UUID alignment - CRITICAL BLOCKER)
 - Critical blockers and dependencies
 - Development stream coordination
 - Progress tracking
+
+### Task 11.8 Critical Requirements (ABSOLUTE BLOCKER)
+- **NEVER convert UUIDs to numbers** - Must remain string types throughout
+- **Remove all Strapi legacy types** from `src/redux/api/types.ts`
+- **SQLite UUID compliance** - All database operations use UUID strings
+- **Breaking change management** - Users must re-login after UUID alignment
+- **Estimated effort**: 19.5 hours across 7 phases (Very High Complexity)
+- **Impact**: Blocks ALL subsequent development (Tasks 11.3 and 12-23)
 
 ## Important Instructions
 
@@ -341,6 +371,42 @@ Every developer/session MUST contribute to framework evolution by:
 
 **Goal:** Create a comprehensive, battle-tested framework that can be packaged into a `create-aadf-app` equivalent for future projects.
 
+## 🔗 Cross-Project Integration Insights (Backend Learnings)
+
+### **Reality-First Testing Methodology (CRITICAL LEARNING)**
+**DISCOVERED**: Backend spent 2+ days building elaborate test infrastructure instead of testing real user behavior
+**IMPACT**: False security alerts and massive time waste vs feature delivery
+
+### **MANDATORY TESTING PRIORITY ORDER:**
+1. **User Journey Tests FIRST** (Real API + Real Auth + Real Database)
+2. **Integration Tests SECOND** (Feature-Level Validation)
+3. **Unit Tests LAST** (Only Complex Business Logic)
+
+### **Mobile App Application:**
+- Task 11.3 OfflineService.ts: Test with **real Supabase sync operations**
+- Avoid elaborate SQLite mocking - use real database operations
+- **Red Flag**: If test setup time > implementation time = WRONG approach
+
+### **Database Schema Consistency (UUID Critical)**
+**Backend Confirmed**: Supabase UUIDs must remain string types throughout entire system
+**Mobile Requirements**:
+- SQLite must handle UUID strings consistently (Task 11.8)
+- No number conversion anywhere in the data flow
+- Database sync operations must maintain UUID string integrity
+- **Breaking Change**: Users must re-login after Task 11.8 completion
+
+### **Evidence-Based Development Results (Context7 Success)**
+**Backend Measured Results**:
+- **Debugging Efficiency**: 10x improvement (2.5 hours → 15 minutes)
+- **False Solution Elimination**: 100% (avoided 4 major debugging paths)
+- **Documentation Access**: 38,009+ vendor-specific code snippets vs 0 general sources
+- **Solution Quality**: Official patterns vs custom workarounds
+
+### **Cross-Project Coordination Status**
+**Backend**: 98% deployment ready (Phase 2 AADF complete)
+**Mobile**: Task 11.8 UUID alignment required before proceeding
+**Integration**: Backend ready for mobile app development continuation
+
 ---
 
-Remember: **Claude Flow coordinates, Claude Code creates!**
+Remember: **Evidence-Based Research → Specialized Implementation → Quality Validation!**
