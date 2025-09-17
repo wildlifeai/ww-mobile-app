@@ -1,0 +1,137 @@
+{
+  "metadata": {
+    "created": "2025-09-18T10:45:00Z",
+    "updated": "2025-09-18T10:45:00Z",
+    "phase": "parallel_execution",
+    "foundation_complete": true
+  },
+  "streams": {
+    "A": {
+      "name": "Project Management",
+      "tasks": [12, 13, 14],
+      "status": "active",
+      "agents": {
+        "primary": "data-agent",
+        "secondary": "auth-agent"
+      },
+      "current_task": 12,
+      "progress": 0,
+      "estimated_hours": 18,
+      "dependencies_satisfied": true,
+      "blockers": [],
+      "shared_types": [
+        "/src/types/offline.ts",
+        "/src/types/api.types.ts"
+      ]
+    },
+    "B": {
+      "name": "Deployment Workflows",
+      "tasks": [15, 16, 17],
+      "status": "active",
+      "agents": {
+        "primary": "ui-agent",
+        "secondary": "sync-agent"
+      },
+      "current_task": 15,
+      "progress": 0,
+      "estimated_hours": 24,
+      "dependencies_satisfied": true,
+      "blockers": [],
+      "shared_types": [
+        "/src/types/deployment.types.ts",
+        "/src/types/wizard.types.ts"
+      ]
+    },
+    "C": {
+      "name": "Devices & Maps",
+      "tasks": [18, 19, 20],
+      "status": "active",
+      "agents": {
+        "primary": "ble-agent",
+        "secondary": "map-agent"
+      },
+      "current_task": 18,
+      "progress": 0,
+      "estimated_hours": 30,
+      "dependencies_satisfied": true,
+      "blockers": [],
+      "shared_types": [
+        "/src/types/device.types.ts",
+        "/src/types/map.types.ts"
+      ]
+    }
+  },
+  "quality_gates": {
+    "type_safety": {
+      "status": "active",
+      "threshold": "zero_errors",
+      "current": "passing"
+    },
+    "test_coverage": {
+      "status": "active",
+      "threshold": 80,
+      "current": 0
+    },
+    "integration": {
+      "status": "pending",
+      "threshold": "all_e2e_passing",
+      "current": "not_started"
+    },
+    "performance": {
+      "status": "pending",
+      "threshold": "3s_load_time",
+      "current": "not_measured"
+    },
+    "memory": {
+      "status": "pending",
+      "threshold": "no_leaks",
+      "current": "not_tested"
+    }
+  },
+  "sync_points": [
+    {
+      "type": "daily",
+      "time": "end_of_day",
+      "action": "merge_and_test"
+    },
+    {
+      "type": "milestone",
+      "trigger": "task_complete",
+      "action": "integration_check"
+    },
+    {
+      "type": "blocker",
+      "trigger": "immediate",
+      "action": "coordination_meeting"
+    }
+  ],
+  "risk_register": [
+    {
+      "stream": "C",
+      "risk": "BLE communication complexity",
+      "probability": "high",
+      "impact": "high",
+      "mitigation": "Early firmware API validation, mock mode fallback"
+    },
+    {
+      "stream": "C",
+      "risk": "Map performance with many markers",
+      "probability": "medium",
+      "impact": "medium",
+      "mitigation": "Clustering implementation, lazy loading"
+    },
+    {
+      "stream": "B",
+      "risk": "6-step wizard state management",
+      "probability": "medium",
+      "impact": "high",
+      "mitigation": "Proven wizard library, extensive testing"
+    }
+  ],
+  "knowledge_transfer": {
+    "shared_patterns": "/project-context/learnings/",
+    "type_definitions": "/src/types/",
+    "test_patterns": "/tests/patterns/",
+    "api_contracts": "/src/types/api.types.ts"
+  }
+}
