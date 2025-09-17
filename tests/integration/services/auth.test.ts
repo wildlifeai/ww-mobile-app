@@ -58,7 +58,7 @@ describe('Authentication Service', () => {
       expect(result).toMatchObject({
         jwt: expect.any(String),
         user: {
-          id: expect.any(Number),
+          id: expect.any(String),
           username: expect.any(String),
           email: validLoginCredentials.identifier,
           confirmed: true,
