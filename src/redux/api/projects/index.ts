@@ -6,8 +6,7 @@ import {
 	ProjectUpdate,
 	HttpMethod,
 	ApiResponse,
-	StrapiRequest,
-} from "../types"
+} from "../../types/api.types"
 
 export const projectsApi = api.injectEndpoints({
 	endpoints: (builder) => ({
@@ -42,7 +41,7 @@ export const projectsApi = api.injectEndpoints({
 			query: (body) => ({
 				url: API_URLS.PROJECTS,
 				method: HttpMethod.POST,
-				body,
+				body: { data: body },
 			}),
 			transformResponse: (response: ApiResponse<Project>) => response.data,
 			invalidatesTags: [{ type: "Project", id: "LIST" }],

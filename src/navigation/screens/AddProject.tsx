@@ -6,7 +6,7 @@ import { Field } from "../../components/form/Field"
 import { WWButton } from "../../components/ui/WWButton"
 import { useCreateProjectMutation } from "../../redux/api/projects"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
-import { ProjectCreate } from "../../redux/api/types"
+import { ProjectCreate } from "../../types/api.types"
 
 type FormData = ProjectCreate
 

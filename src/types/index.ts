@@ -10,7 +10,7 @@ export * from './supabase';
 export * from './offline';
 
 // API types
-export * from '../redux/api/types';
+export * from './api.types';
 
 // Navigation types
 export * from '../navigation/types';

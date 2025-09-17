@@ -26,12 +26,12 @@ export const useAppDrawer = () => useContext(DrawerContext)
 export const AppDrawer = ({ children }: PropsWithChildren<unknown>) => {
 	const [isOpen, setIsOpen] = useState(false)
 	const { appPadding, spacing } = useExtendedTheme()
-	const { auth } = useAppSelector((state) => state.authentication)
+	const { token } = useAppSelector((state) => state.authentication)
 	const { top } = useSafeAreaInsets()
 
 	return (
 		<Drawer
-			swipeEnabled={!!auth?.accessToken}
+			swipeEnabled={!!token}
 			open={isOpen}
 			onOpen={() => setIsOpen(true)}
 			onClose={() => setIsOpen(false)}

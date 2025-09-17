@@ -1,7 +1,7 @@
 import { memo } from "react"
 import { StyleSheet, TouchableOpacity, View } from "react-native"
 import { WWText } from "./ui/WWText"
-import { Deployment } from "../redux/api/types"
+import { Deployment } from "../types/api.types"
 
 type Props = {
 	deployment: Deployment
@@ -11,11 +11,11 @@ type Props = {
 export const DeploymentCard = memo<Props>(({ deployment, onPress }) => {
 	const getStatusColor = () => {
 		// Not started = white, Active = green, Ended = red
-		if (!deployment.deploymentStart) return "#FFFFFF"
+		if (!deployment.deployment_start) return "#FFFFFF"
 		const now = new Date()
-		const start = new Date(deployment.deploymentStart)
-		const end = deployment.deploymentEnd
-			? new Date(deployment.deploymentEnd)
+		const start = new Date(deployment.deployment_start)
+		const end = deployment.deployment_end
+			? new Date(deployment.deployment_end)
 			: null
 
 		if (now < start) return "#FFFFFF" // Not started
@@ -24,11 +24,11 @@ export const DeploymentCard = memo<Props>(({ deployment, onPress }) => {
 	}
 
 	const getStatusText = () => {
-		if (!deployment.deploymentStart) return "Not started"
+		if (!deployment.deployment_start) return "Not started"
 		const now = new Date()
-		const start = new Date(deployment.deploymentStart)
-		const end = deployment.deploymentEnd
-			? new Date(deployment.deploymentEnd)
+		const start = new Date(deployment.deployment_start)
+		const end = deployment.deployment_end
+			? new Date(deployment.deployment_end)
 			: null
 
 		if (now < start) return "Not started"
@@ -47,7 +47,7 @@ export const DeploymentCard = memo<Props>(({ deployment, onPress }) => {
 			<View style={styles.content}>
 				<View style={styles.header}>
 					<WWText variant="titleMedium">
-						{deployment.locationName ||
+						{deployment.location_name ||
 							`Deployment #${deployment.id.slice(-4)}`}
 					</WWText>
 					<View
@@ -57,7 +57,7 @@ export const DeploymentCard = memo<Props>(({ deployment, onPress }) => {
 				<WWText variant="bodyMedium" style={styles.date}>
 					{getStatusText()}
 				</WWText>
-				{deployment.deviceID && (
+				{deployment.device_id && (
 					<View style={styles.stats}>
 						<View style={styles.stat}>
 							<WWText variant="bodySmall">512 mb</WWText>

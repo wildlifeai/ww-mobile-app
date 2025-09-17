@@ -6,8 +6,7 @@ import {
 	DeploymentCreate,
 	DeploymentUpdate,
 	HttpMethod,
-	StrapiRequest,
-} from "../types"
+} from "../../types/api.types"
 
 export const deploymentsApi = api.injectEndpoints({
 	endpoints: (builder) => ({
@@ -45,7 +44,7 @@ export const deploymentsApi = api.injectEndpoints({
 			query: (body) => ({
 				url: API_URLS.DEPLOYMENTS,
 				method: HttpMethod.POST,
-				body,
+				body: { data: body },
 			}),
 			transformResponse: (response: ApiResponse<Deployment>) => response.data,
 			invalidatesTags: [{ type: "Deployment", id: "LIST" }],

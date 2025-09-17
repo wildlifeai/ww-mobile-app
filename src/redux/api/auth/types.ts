@@ -13,7 +13,7 @@ export type RegisterRequest = {
 export type AuthResponse = {
 	jwt: string
 	user: {
-		id: number
+		id: string
 		username: string
 		email: string
 		confirmed: boolean

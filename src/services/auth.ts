@@ -14,7 +14,7 @@ const transformSupabaseUser = (user: User, session: Session): AuthResponse => {
   return {
     jwt: session.access_token,
     user: {
-      id: parseInt(user.id) || 0, // Supabase uses UUID, existing app expects number
+      id: user.id, // Keep UUID as string
       username: user.user_metadata?.username || user.email?.split('@')[0] || '',
       email: user.email || '',
       confirmed: user.email_confirmed_at !== null,
@@ -83,7 +83,7 @@ export const register = async (credentials: RegisterRequest): Promise<AuthRespon
       const pendingAuthResponse: AuthResponse = {
         jwt: '', // No JWT until confirmed
         user: {
-          id: parseInt(data.user.id.replace(/-/g, '').slice(0, 8), 16) || 0, // Convert UUID to number-like ID
+          id: data.user.id, // Keep UUID as string
           username: credentials.username,
           email: credentials.email,
           confirmed: false,
