@@ -6,6 +6,7 @@ import {
 	ProjectUpdate,
 	HttpMethod,
 	ApiResponse,
+	StrapiRequest
 } from "../../types/api.types"
 
 export const projectsApi = api.injectEndpoints({

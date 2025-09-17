@@ -377,6 +377,49 @@ export class DatabaseService {
     }));
   }
 
+  async updateProject(id: string, project: Partial<DatabaseProject>): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (project.name !== undefined) {
+      updates.push('name = ?');
+      values.push(project.name);
+    }
+    if (project.description !== undefined) {
+      updates.push('description = ?');
+      values.push(project.description);
+    }
+    if (project.status !== undefined) {
+      updates.push('status = ?');
+      values.push(project.status);
+    }
+    if (project.members !== undefined) {
+      updates.push('members = ?');
+      values.push(JSON.stringify(project.members));
+    }
+
+    if (updates.length === 0) return; // No updates
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+
+    await this.db.runAsync(
+      `UPDATE local_projects SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+  }
+
+  async deleteProject(id: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    await this.db.runAsync(
+      'DELETE FROM local_projects WHERE id = ?',
+      [id]
+    );
+  }
+
   // Deployment Management with LoRaWAN Integration
   async insertDeployment(deployment: DatabaseDeployment): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
@@ -423,6 +466,53 @@ export class DatabaseService {
       created_at: result.created_at,
       updated_at: result.updated_at
     }));
+  }
+
+  async updateDeployment(id: string, deployment: Partial<DatabaseDeployment>): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (deployment.project_id !== undefined) {
+      updates.push('project_id = ?');
+      values.push(deployment.project_id);
+    }
+    if (deployment.device_id !== undefined) {
+      updates.push('device_id = ?');
+      values.push(deployment.device_id);
+    }
+    if (deployment.location !== undefined) {
+      updates.push('location = ?');
+      values.push(JSON.stringify(deployment.location));
+    }
+    if (deployment.status !== undefined) {
+      updates.push('status = ?');
+      values.push(deployment.status);
+    }
+    if (deployment.lorawan_status !== undefined) {
+      updates.push('lorawan_status = ?');
+      values.push(JSON.stringify(deployment.lorawan_status));
+    }
+
+    if (updates.length === 0) return; // No updates
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+
+    await this.db.runAsync(
+      `UPDATE local_deployments SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+  }
+
+  async deleteDeployment(id: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    await this.db.runAsync(
+      'DELETE FROM local_deployments WHERE id = ?',
+      [id]
+    );
   }
 
   // Offline Queue Management

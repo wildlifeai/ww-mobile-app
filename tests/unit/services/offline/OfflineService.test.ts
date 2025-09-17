@@ -13,6 +13,16 @@ jest.mock('expo-sqlite', () => ({
 
 // Mock dependencies
 jest.mock('../../../../src/services/offline/DatabaseService');
+jest.mock('../../../../src/services/offline/OfflineApiService', () => ({
+  OfflineApiService: {
+    createProject: jest.fn().mockResolvedValue({ id: 'project-1', name: 'Test Project' }),
+    updateProject: jest.fn().mockResolvedValue({ id: 'project-1', name: 'Updated Project' }),
+    deleteProject: jest.fn().mockResolvedValue(undefined),
+    createDeployment: jest.fn().mockResolvedValue({ id: 'deployment-1', project_id: 'project-1' }),
+    updateDeployment: jest.fn().mockResolvedValue({ id: 'deployment-1', project_id: 'project-1' }),
+    deleteDeployment: jest.fn().mockResolvedValue(undefined),
+  }
+}));
 jest.mock('@react-native-community/netinfo', () => ({
   fetch: jest.fn(() => Promise.resolve({
     isConnected: true,

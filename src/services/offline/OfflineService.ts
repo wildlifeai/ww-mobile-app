@@ -1,14 +1,21 @@
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { DatabaseService } from './DatabaseService';
-import { 
-  UserRole, 
-  OfflineOperation, 
-  NetworkStatus, 
-  OfflineOperationType, 
+import {
+  UserRole,
+  OfflineOperation,
+  NetworkStatus,
+  OfflineOperationType,
   LoRaWANStatus,
   User,
-  ConflictResolution 
+  ConflictResolution
 } from '../../types/offline';
+import { OfflineApiService } from './OfflineApiService';
+import {
+  ProjectCreate,
+  ProjectUpdate,
+  DeploymentCreate,
+  DeploymentUpdate
+} from '../../types/api.types';
 
 /**
  * OfflineService - Comprehensive offline-first service layer with organisation-aware operations
@@ -390,38 +397,187 @@ export class OfflineService {
 
   // Operation execution methods
   private async executeCreateProject(operation: OfflineOperation): Promise<void> {
-    // TODO: Implement actual API call to create project
-    console.log('Executing CREATE_PROJECT:', operation.data);
+    try {
+      const projectData = operation.data as ProjectCreate;
+
+      // Execute API call through OfflineApiService
+      const result = await OfflineApiService.createProject(projectData);
+
+      console.log('CREATE_PROJECT successful:', result.id);
+
+      // Update local database with server response
+      const dbProject = {
+        id: result.id,
+        organisation_id: operation.organisation_id,
+        name: result.name || projectData.name,
+        description: result.description || projectData.description || '',
+        status: result.status || 'active',
+        members: result.members || []
+      };
+
+      await this.databaseService.insertProject(dbProject);
+
+    } catch (error) {
+      console.error('Failed to execute CREATE_PROJECT:', error);
+      throw error; // Re-throw to trigger retry logic
+    }
   }
 
   private async executeUpdateProject(operation: OfflineOperation): Promise<void> {
-    // TODO: Implement actual API call to update project
-    console.log('Executing UPDATE_PROJECT:', operation.data);
+    try {
+      const { id, ...updateData } = operation.data as ProjectUpdate & { id: string };
+
+      // Execute API call through OfflineApiService
+      const result = await OfflineApiService.updateProject(id, updateData);
+
+      console.log('UPDATE_PROJECT successful:', result.id);
+
+      // Update local database with server response
+      const dbProject = {
+        id: result.id,
+        organisation_id: operation.organisation_id,
+        name: result.name || updateData.name,
+        description: result.description || updateData.description || '',
+        status: result.status || updateData.status || 'active',
+        members: result.members || updateData.members || []
+      };
+
+      await this.databaseService.updateProject(id, dbProject);
+
+    } catch (error) {
+      console.error('Failed to execute UPDATE_PROJECT:', error);
+      throw error;
+    }
   }
 
   private async executeDeleteProject(operation: OfflineOperation): Promise<void> {
-    // TODO: Implement actual API call to delete project
-    console.log('Executing DELETE_PROJECT:', operation.data);
+    try {
+      const { id } = operation.data as { id: string };
+
+      // Execute API call through OfflineApiService
+      await OfflineApiService.deleteProject(id);
+
+      console.log('DELETE_PROJECT successful:', id);
+
+      // Remove from local database
+      await this.databaseService.deleteProject(id);
+
+    } catch (error) {
+      console.error('Failed to execute DELETE_PROJECT:', error);
+      throw error;
+    }
   }
 
   private async executeCreateDeployment(operation: OfflineOperation): Promise<void> {
-    // TODO: Implement actual API call to create deployment
-    console.log('Executing CREATE_DEPLOYMENT:', operation.data);
+    try {
+      const deploymentData = operation.data as DeploymentCreate;
+
+      // Execute API call through OfflineApiService
+      const result = await OfflineApiService.createDeployment(deploymentData);
+
+      console.log('CREATE_DEPLOYMENT successful:', result.id);
+
+      // Update local database with server response
+      const dbDeployment = {
+        id: result.id,
+        project_id: result.project_id || deploymentData.project_id,
+        organisation_id: operation.organisation_id,
+        device_id: result.device_id || deploymentData.device_id,
+        location: result.location || deploymentData.location || { lat: 0, lng: 0 },
+        status: result.status || 'active',
+        lorawan_status: result.lorawan_status || {
+          battery_level: 100,
+          sd_card_usage: 0,
+          device_status: 'offline'
+        }
+      };
+
+      await this.databaseService.insertDeployment(dbDeployment);
+
+    } catch (error) {
+      console.error('Failed to execute CREATE_DEPLOYMENT:', error);
+      throw error;
+    }
   }
 
   private async executeUpdateDeployment(operation: OfflineOperation): Promise<void> {
-    // TODO: Implement actual API call to update deployment
-    console.log('Executing UPDATE_DEPLOYMENT:', operation.data);
+    try {
+      const { id, ...updateData } = operation.data as DeploymentUpdate & { id: string };
+
+      // Execute API call through OfflineApiService
+      const result = await OfflineApiService.updateDeployment(id, updateData);
+
+      console.log('UPDATE_DEPLOYMENT successful:', result.id);
+
+      // Update local database with server response
+      const dbDeployment = {
+        id: result.id,
+        project_id: result.project_id || updateData.project_id,
+        organisation_id: operation.organisation_id,
+        device_id: result.device_id || updateData.device_id,
+        location: result.location || updateData.location || { lat: 0, lng: 0 },
+        status: result.status || updateData.status || 'active',
+        lorawan_status: result.lorawan_status || updateData.lorawan_status || {
+          battery_level: 100,
+          sd_card_usage: 0,
+          device_status: 'offline'
+        }
+      };
+
+      await this.databaseService.updateDeployment(id, dbDeployment);
+
+    } catch (error) {
+      console.error('Failed to execute UPDATE_DEPLOYMENT:', error);
+      throw error;
+    }
   }
 
   private async executeDeleteDeployment(operation: OfflineOperation): Promise<void> {
-    // TODO: Implement actual API call to delete deployment
-    console.log('Executing DELETE_DEPLOYMENT:', operation.data);
+    try {
+      const { id } = operation.data as { id: string };
+
+      // Execute API call through OfflineApiService
+      await OfflineApiService.deleteDeployment(id);
+
+      console.log('DELETE_DEPLOYMENT successful:', id);
+
+      // Remove from local database
+      await this.databaseService.deleteDeployment(id);
+
+    } catch (error) {
+      console.error('Failed to execute DELETE_DEPLOYMENT:', error);
+      throw error;
+    }
   }
 
   private async executeUpdateDeviceLoRaWANStatus(operation: OfflineOperation): Promise<void> {
-    // TODO: Implement actual API call to update device LoRaWAN status
-    console.log('Executing UPDATE_DEVICE_LORAWAN_STATUS:', operation.data);
+    try {
+      const { device_id, status, deployment_id } = operation.data as {
+        device_id: string;
+        status: LoRaWANStatus;
+        deployment_id?: string;
+      };
+
+      // If we have a deployment_id, update the deployment with LoRaWAN status
+      if (deployment_id) {
+        await OfflineApiService.updateDeployment(deployment_id, {
+          lorawan_status: status
+        });
+
+        console.log('UPDATE_DEVICE_LORAWAN_STATUS successful:', device_id);
+
+        // Update local database
+        await this.databaseService.updateDeploymentLoRaWANStatus(deployment_id, status);
+      } else {
+        // Direct device status update - implement based on your device API
+        console.log('Updating device LoRaWAN status directly:', device_id, status);
+        // TODO: Implement direct device API call when available
+      }
+
+    } catch (error) {
+      console.error('Failed to execute UPDATE_DEVICE_LORAWAN_STATUS:', error);
+      throw error;
+    }
   }
 
   /**

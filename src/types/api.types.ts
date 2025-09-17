@@ -48,6 +48,11 @@ export type Device = Tables<'devices'>
 export type DeviceCreate = TablesInsert<'devices'>
 export type DeviceUpdate = TablesUpdate<'devices'>
 
+// Legacy Strapi compatibility wrapper (transitional)
+export interface StrapiRequest<T> {
+  data: T
+}
+
 export type Organisation = Tables<'organisations'>
 export type OrganisationCreate = TablesInsert<'organisations'>
 export type OrganisationUpdate = TablesUpdate<'organisations'>
