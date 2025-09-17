@@ -302,6 +302,17 @@ The `@project-context/development-context/` contains critical project specificat
    - Reference backend project status at `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md`
    - Follow backend development patterns from `~/wildlife-watcher-backend/CLAUDE.md`
 
+6. **📊 METRICS TRACKING (CRITICAL)**: `@project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+   - **MANDATORY**: Record actual vs estimated hours for EVERY task
+   - **Track Start/End Times**: Capture precise durations for accuracy
+   - **Categorize Work Type**: UI, Backend, Testing, Debugging, Documentation
+   - **Update Daily**: Activity logs and velocity metrics
+   - **Variance Analysis**: Document why tasks took more/less time than estimated
+   - **Technology Time**: Track hours spent on each technology/framework
+   - **AI Agent Efficiency**: Record time saved using agents/MCP tools
+   - **Blockers & Solutions**: Document what caused delays and how resolved
+   - This data is CRITICAL for understanding real development velocity and improving future estimates
+
 ### Current Task Context
 See `@project-context/superclaude-task-management.md` for:
 - Current task status (Task 11.8 UUID alignment - CRITICAL BLOCKER)
