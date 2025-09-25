@@ -1,8 +1,13 @@
 # 🎯 MVP2 Cross-Repository Progress Dashboard
 
-**Version**: 1.0.0  
-**Created**: 2025-09-25  
-**Framework**: Built on TaskMaster Dashboard Architecture  
+**🚨 MOVED**: Dashboard files have been moved to their proper location:
+- **New Location**: `/project-context/development-context/taskmaster-ai-dashboard/`
+- **Startup Script**: Use `./start-dashboard.sh` in the taskmaster-ai-dashboard folder
+- **Full Integration**: TaskMaster + MVP2 unified dashboard now available
+
+**Version**: 1.0.0
+**Created**: 2025-09-25
+**Framework**: Built on TaskMaster Dashboard Architecture
 **Purpose**: Real-time tracking of Wildlife Watcher MVP2 development across mobile app and backend repositories
 
 ## 🚀 Quick Start
