@@ -61,7 +61,143 @@
             display: none;
         }
 
-        /* Rest of the CSS from enhanced version... */
+        /* Tab Navigation Styles */
+        .tab-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .tab-nav {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .tab-nav button {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-nav button.active {
+            color: #495057;
+            background: white;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-nav button:hover:not(.active) {
+            background: rgba(102, 126, 234, 0.1);
+            color: #495057;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tab-icon {
+            margin-right: 8px;
+        }
+
+        /* Wildlife Watcher Branding */
+        .wildlife-brand {
+            background: linear-gradient(135deg, #2d5a27 0%, #5a8a3a 100%);
+        }
+
+        /* Document viewer styles */
+        .document-viewer {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .document-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            background: white;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .document-item:hover {
+            background: #f1f3f5;
+        }
+
+        .document-content {
+            display: none;
+            margin-top: 10px;
+            padding: 15px;
+            background: #fff;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .document-content.expanded {
+            display: block;
+        }
+
+        /* Activity log styles */
+        .activity-log {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #e9ecef;
+            margin-bottom: 8px;
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: #6c757d;
+            margin-right: 15px;
+            min-width: 100px;
+        }
+
+        .activity-message {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .activity-type-update { color: #007bff; }
+        .activity-type-complete { color: #28a745; }
+        .activity-type-error { color: #dc3545; }
+        .activity-type-info { color: #6c757d; }
         .controls {
             display: flex;
             gap: 15px;
@@ -368,14 +504,14 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
+        <div class="header wildlife-brand">
             <div class="live-status">
                 <div class="status-indicator" id="statusIndicator"></div>
                 <span id="connectionStatus">Connecting to TaskMaster...</span>
-                <span id="lastUpdate" style="margin-left: auto; font-size: 12px; color: #7f8c8d;"></span>
+                <span id="lastUpdate" style="margin-left: auto; font-size: 12px; color: rgba(255,255,255,0.8);"></span>
             </div>
-            <h1>🚀 TaskMaster AI Live Dashboard</h1>
-            <p>Live-connected task management for Wildlife Watcher Expo migration</p>
+            <h1 style="color: white;">🦅 Wildlife Watcher - TaskMaster AI Dashboard</h1>
+            <p style="color: rgba(255,255,255,0.9);">Live task management for Wildlife Watcher MVP2 Development</p>
         </div>
 
         <div class="error-banner" id="errorBanner">
@@ -391,11 +527,65 @@
             <!-- Controls will be shown after data loads -->
         </div>
 
-        <div class="dashboard-content" id="dashboardContent">
+        <!-- Tab Navigation -->
+        <div class="tab-container" style="display: none;" id="tabContainer">
+            <nav class="tab-nav">
+                <button class="tab-button active" data-tab="overview">
+                    <span class="tab-icon">📊</span> Overview
+                </button>
+                <button class="tab-button" data-tab="gantt">
+                    <span class="tab-icon">📈</span> Gantt Chart
+                </button>
+                <button class="tab-button" data-tab="kanban">
+                    <span class="tab-icon">📋</span> Kanban Board
+                </button>
+                <button class="tab-button" data-tab="documents">
+                    <span class="tab-icon">📄</span> Documents
+                </button>
+                <button class="tab-button" data-tab="activity">
+                    <span class="tab-icon">📝</span> Activity Log
+                </button>
+            </nav>
+
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <div id="overviewStats"></div>
+                <div id="overviewCharts"></div>
+            </div>
+
+            <!-- Gantt Chart Tab -->
+            <div id="gantt" class="tab-content">
+                <div id="ganttContent"></div>
+            </div>
+
+            <!-- Kanban Board Tab -->
+            <div id="kanban" class="tab-content">
+                <div id="kanbanContent"></div>
+            </div>
+
+            <!-- Documents Tab -->
+            <div id="documents" class="tab-content">
+                <h3>📄 Project Documents</h3>
+                <div class="document-viewer">
+                    <div id="documentList">Loading documents...</div>
+                </div>
+            </div>
+
+            <!-- Activity Log Tab -->
+            <div id="activity" class="tab-content">
+                <h3>📝 Activity Log</h3>
+                <div class="activity-log">
+                    <div id="activityLog">Loading activity...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Screen -->
+        <div class="dashboard-content" id="loadingContent">
             <div class="loading">
-                <h3>Connecting to TaskMaster AI...</h3>
-                <p>Please ensure TaskMaster is initialized in this project directory.</p>
-                <p>The dashboard will automatically load tasks from <code>.taskmaster/tasks/tasks.json</code></p>
+                <h3>Connecting to Wildlife Watcher TaskMaster...</h3>
+                <p>Loading MVP2 tasks and TaskMaster data...</p>
+                <p>The dashboard will automatically load tasks from both sources.</p>
             </div>
         </div>
     </div>
@@ -481,6 +671,9 @@
                 this.taskData = { tasks: [] };
                 this.filteredTasks = [];
                 this.currentView = 'gantt';
+                this.currentTab = 'overview';
+                this.activityLog = [];
+                this.documents = [];
                 this.isConnected = false;
                 this.retryCount = 0;
                 this.maxRetries = 5;
@@ -491,9 +684,11 @@
             async init() {
                 this.updateConnectionStatus('Connecting...', false);
                 this.initializePeopleManagement();
+                this.setupTabNavigation();
                 await this.loadTasks();
                 this.setupFileWatcher();
                 this.setupEventListeners();
+                this.logActivity('Dashboard initialized', 'info');
             }
 
             async loadTasks() {
@@ -516,10 +711,19 @@
                         this.hideError();
                         this.renderDashboard();
                         this.updateLastUpdate();
+                        this.logActivity(`Loaded ${this.taskData.tasks?.length || 0} tasks`, 'info');
+
+                        // Check for MVP2 vs TaskMaster tasks
+                        const mvp2Count = this.taskData.tasks?.filter(t => t.source === 'mvp2').length || 0;
+                        const tmCount = this.taskData.tasks?.length - mvp2Count || 0;
+                        if (mvp2Count > 0) {
+                            this.logActivity(`MVP2 tasks: ${mvp2Count}, TaskMaster: ${tmCount}`, 'info');
+                        }
                     } else {
                         throw new Error('Could not load tasks.json');
                     }
                 } catch (error) {
+                    this.logActivity(`Error loading tasks: ${error.message}`, 'error');
                     this.handleConnectionError(error);
                 }
             }
@@ -633,6 +837,7 @@
                 this.applyFilters();
                 
                 this.showToast('Dashboard refreshed!', 'success');
+                this.logActivity('Manual refresh completed', 'info');
             }
 
             updateConnectionStatus(message, connected) {
@@ -677,6 +882,10 @@
             }
 
             renderDashboard() {
+                // Hide loading screen and show tabs
+                document.getElementById('loadingContent').style.display = 'none';
+                document.getElementById('tabContainer').style.display = 'block';
+
                 // Show controls
                 document.getElementById('controls').style.display = 'flex';
                 
@@ -996,7 +1205,13 @@
 
                 ganttHTML += `</div>`;
 
-                document.getElementById('dashboardContent').innerHTML = ganttHTML + this.getGanttStyles();
+                const targetContainer = this.currentTab === 'gantt' ?
+                    document.getElementById('ganttContent') :
+                    document.getElementById('dashboardContent');
+
+                if (targetContainer) {
+                    targetContainer.innerHTML = ganttHTML + this.getGanttStyles();
+                }
             }
 
             calculateTimeSlot(task) {
@@ -1311,6 +1526,14 @@
                     </div>
                     ${this.getKanbanStyles()}
                 `;
+
+                const targetContainer = this.currentTab === 'kanban' ?
+                    document.getElementById('kanbanContent') :
+                    document.getElementById('dashboardContent');
+
+                if (targetContainer) {
+                    targetContainer.innerHTML = kanbanHTML;
+                }
             }
 
             getFilteredTasksByStatus() {
@@ -2046,6 +2269,194 @@
                         this.closeTaskModal();
                     }
                 });
+            }
+
+            // Tab Navigation Methods
+            setupTabNavigation() {
+                const tabButtons = document.querySelectorAll('.tab-button');
+                tabButtons.forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const tab = e.target.closest('button').dataset.tab;
+                        this.switchTab(tab);
+                    });
+                });
+            }
+
+            switchTab(tabName) {
+                this.currentTab = tabName;
+
+                // Update button states
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+                // Update content visibility
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(tabName).classList.add('active');
+
+                // Load tab-specific content
+                this.loadTabContent(tabName);
+                this.logActivity(`Switched to ${tabName} tab`, 'info');
+            }
+
+            loadTabContent(tabName) {
+                switch (tabName) {
+                    case 'overview':
+                        this.renderOverviewTab();
+                        break;
+                    case 'gantt':
+                        document.getElementById('ganttContent').innerHTML = '';
+                        this.renderGanttView();
+                        break;
+                    case 'kanban':
+                        document.getElementById('kanbanContent').innerHTML = '';
+                        this.renderKanbanView();
+                        break;
+                    case 'documents':
+                        this.renderDocumentsTab();
+                        break;
+                    case 'activity':
+                        this.renderActivityTab();
+                        break;
+                }
+            }
+
+            renderOverviewTab() {
+                const stats = this.calculateStats();
+
+                document.getElementById('overviewStats').innerHTML = `
+                    <div class="stats-grid">
+                        ${this.generateStatsHTML(stats)}
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <div class="controls" style="display: flex;">
+                            ${document.getElementById('controls').innerHTML}
+                        </div>
+                    </div>
+                `;
+            }
+
+            calculateStats() {
+                const mvp2Tasks = this.taskData.tasks.filter(t => t.source === 'mvp2');
+                const taskmasterTasks = this.taskData.tasks.filter(t => t.source !== 'mvp2');
+
+                return {
+                    total: this.filteredTasks.length,
+                    mvp2Tasks: mvp2Tasks.length,
+                    taskmasterTasks: taskmasterTasks.length,
+                    pending: this.filteredTasks.filter(t => t.status === 'pending').length,
+                    inProgress: this.filteredTasks.filter(t => t.status === 'in-progress').length,
+                    done: this.filteredTasks.filter(t => t.status === 'done').length,
+                    high: this.filteredTasks.filter(t => t.priority === 'high').length,
+                    foundationPhase: this.filteredTasks.filter(t => t.phase === 'Foundation').length,
+                    corePhase: this.filteredTasks.filter(t => t.phase === 'Core Features').length,
+                    advancedPhase: this.filteredTasks.filter(t => t.phase === 'Advanced Features').length,
+                    completionRate: this.filteredTasks.length > 0 ?
+                        Math.round((this.filteredTasks.filter(t => t.status === 'done').length / this.filteredTasks.length) * 100) : 0
+                };
+            }
+
+            generateStatsHTML(stats) {
+                return `
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.total}</div>
+                        <div class="stat-label">Total Tasks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.completionRate}%</div>
+                        <div class="stat-label">Completion Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.mvp2Tasks}</div>
+                        <div class="stat-label">MVP2 Tasks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.pending}</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.inProgress}</div>
+                        <div class="stat-label">In Progress</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.high}</div>
+                        <div class="stat-label">High Priority</div>
+                    </div>
+                `;
+            }
+
+            renderDocumentsTab() {
+                const documents = [
+                    { name: 'MVP2-MASTER-EXECUTION-PLAN.md', path: 'project-context/MVP2-Tasks/', type: 'Plan' },
+                    { name: 'MVP2-METRICS-TRACKER.md', path: 'project-context/MVP2-Tasks/', type: 'Metrics' },
+                    { name: 'implementation-spec-v1.4.md', path: 'project-context/development-context/MVP2/', type: 'Spec' },
+                    { name: 'TASK-RESTRUCTURING-PLAN.md', path: 'project-context/development-context/MVP2/', type: 'Plan' },
+                    { name: 'claude-flow-implementation-plan.md', path: 'project-context/development-context/MVP2/', type: 'Plan' }
+                ];
+
+                const docsHTML = documents.map(doc => `
+                    <div class="document-item" onclick="dashboard.toggleDocument('${doc.name}')">
+                        <div>
+                            <strong>📄 ${doc.name}</strong>
+                            <div style="font-size: 12px; color: #6c757d;">${doc.path} • ${doc.type}</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 12px; color: #007bff;">Click to view</span>
+                        </div>
+                    </div>
+                    <div class="document-content" id="doc-${doc.name}">
+                        Loading content...
+                    </div>
+                `).join('');
+
+                document.getElementById('documentList').innerHTML = docsHTML;
+            }
+
+            toggleDocument(docName) {
+                const contentEl = document.getElementById(`doc-${docName}`);
+                const isExpanded = contentEl.classList.contains('expanded');
+
+                // Close all other documents
+                document.querySelectorAll('.document-content').forEach(el => el.classList.remove('expanded'));
+
+                if (!isExpanded) {
+                    contentEl.classList.add('expanded');
+                    // Load content (placeholder for now)
+                    contentEl.innerHTML = `Document content for ${docName} would be loaded here...\\n\\nThis feature connects to the actual document files in the project structure.`;
+                    this.logActivity(`Opened document: ${docName}`, 'info');
+                }
+            }
+
+            renderActivityTab() {
+                const activityHTML = this.activityLog.map(item => `
+                    <div class="activity-item">
+                        <div class="activity-time">${item.time}</div>
+                        <div class="activity-message activity-type-${item.type}">
+                            ${item.message}
+                        </div>
+                    </div>
+                `).reverse().join('');
+
+                document.getElementById('activityLog').innerHTML = activityHTML ||
+                    '<div style="text-align: center; color: #6c757d; padding: 20px;">No activity logged yet.</div>';
+            }
+
+            logActivity(message, type = 'info') {
+                this.activityLog.push({
+                    message,
+                    type,
+                    time: new Date().toLocaleTimeString(),
+                    timestamp: Date.now()
+                });
+
+                // Keep only last 100 entries
+                if (this.activityLog.length > 100) {
+                    this.activityLog = this.activityLog.slice(-100);
+                }
+
+                // Update activity tab if it's currently visible
+                if (this.currentTab === 'activity') {
+                    this.renderActivityTab();
+                }
             }
         }
 
