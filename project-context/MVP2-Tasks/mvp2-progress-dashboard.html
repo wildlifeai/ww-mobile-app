@@ -745,63 +745,8 @@
             </div>
         </div>
 
-        <!-- Metrics Overview -->
-        <div class="metrics-grid" id="metricsGrid">
-            <div class="loading">
-                <div class="loading-spinner"></div>
-                <p>Loading MVP2 metrics...</p>
-            </div>
-        </div>
-
-        <!-- Cross-Repository Status -->
-        <div class="repo-status-grid" id="repoStatusGrid" style="display: none;">
-            <!-- Dynamic content will be loaded here -->
-        </div>
-
-        <!-- Stream Progress -->
-        <div class="streams-container" id="streamsContainer" style="display: none;">
-            <div class="streams-header">
-                <h2>🏗️ Development Streams Progress</h2>
-                <div class="methodology-badge">Hybrid Incremental-Stream Approach</div>
-                <p>Sequential execution with validation gates • Human oversight coordination</p>
-            </div>
-            <div class="streams-grid" id="streamsGrid">
-                <!-- Dynamic content will be loaded here -->
-            </div>
-        </div>
-
-        <!-- EAS Build Pipeline -->
-        <div class="eas-pipeline" id="easPipeline" style="display: none;">
-            <div class="eas-header">
-                <h2>📱 EAS Build Pipeline Status</h2>
-                <p>Device Testing Milestones • Quality Validation Gates</p>
-            </div>
-            <div class="eas-builds-grid" id="easBuildsGrid">
-                <!-- Dynamic content will be loaded here -->
-            </div>
-        </div>
-
-        <!-- Agent Activity Monitor -->
-        <div class="agents-container" id="agentsContainer" style="display: none;">
-            <div class="streams-header">
-                <h2>🤖 AI Agent Activity Monitor</h2>
-                <p>Real-time agent assignments and task coordination</p>
-            </div>
-            <div class="agents-grid" id="agentsGrid">
-                <!-- Dynamic content will be loaded here -->
-            </div>
-        </div>
-
-        <!-- Quality Gates -->
-        <div class="quality-gates" id="qualityGates" style="display: none;">
-            <div class="streams-header">
-                <h2>✅ Quality Gates Status</h2>
-                <p>AADF Framework Validation • Zero-Tolerance Standards</p>
-            </div>
-            <div class="gates-grid" id="gatesGrid">
-                <!-- Dynamic content will be loaded here -->
-            </div>
-        </div>
+        <!-- Notification Container -->
+        <div id="notificationContainer"></div>
     </div>
 
     <!-- Task Detail Modal -->
@@ -817,7 +762,7 @@
         </div>
     </div>
 
-    <script src="mvp2-dashboard-api.js"></script>
+    <script src="mvp2-dashboard-api-enhanced.js"></script>
     <script>
         // Initialize dashboard
         const dashboard = new MVP2Dashboard();
@@ -832,7 +777,7 @@
 
         // Close modal on background click
         window.addEventListener('click', (e) => {
-            const modal = document.getElementById('taskModal');
+            const modal = document.getElementById('dynamicModal');
             if (e.target === modal) {
                 dashboard.closeModal();
             }
@@ -842,6 +787,27 @@
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 dashboard.closeModal();
+            }
+        });
+
+        // Tab navigation with keyboard
+        window.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                const tabMap = {
+                    '1': 'overview',
+                    '2': 'streams',
+                    '3': 'tasks',
+                    '4': 'agents',
+                    '5': 'metrics',
+                    '6': 'activity',
+                    '7': 'documents',
+                    '8': 'settings'
+                };
+
+                if (tabMap[e.key]) {
+                    e.preventDefault();
+                    dashboard.switchTab(tabMap[e.key]);
+                }
             }
         });
     </script>

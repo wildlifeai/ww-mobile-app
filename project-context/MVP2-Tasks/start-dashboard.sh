@@ -44,11 +44,11 @@ if ! command -v node &> /dev/null; then
     exit 1
 fi
 
-# Check Node.js version
+# Check Node.js version (simplified check)
 NODE_VERSION=$(node -v | sed 's/v//')
-REQUIRED_VERSION="18.0.0"
+MAJOR_VERSION=$(echo $NODE_VERSION | cut -d. -f1)
 
-if ! node -e "process.exit(process.version.slice(1).split('.').map(x=>parseInt(x)).reduce((a,b,i)=>a+(b<<(8*(2-i))),0) >= ${REQUIRED_VERSION//./}.split('.').map(x=>parseInt(x)).reduce((a,b,i)=>a+(b<<(8*(2-i))),0) ? 0 : 1)"; then
+if [ "$MAJOR_VERSION" -lt 18 ]; then
     print_error "Node.js version $NODE_VERSION is too old. Please install Node.js 18+ to continue."
     exit 1
 fi
