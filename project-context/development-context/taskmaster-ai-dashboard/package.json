@@ -1,7 +1,7 @@
 {
-  "name": "taskmaster-dashboard",
-  "version": "1.0.0",
-  "description": "Live dashboard for TaskMaster AI task management",
+  "name": "wildlife-watcher-taskmaster-dashboard",
+  "version": "2.0.0",
+  "description": "Wildlife Watcher MVP2 TaskMaster AI Dashboard with real-time task integration",
   "main": "taskmaster-api-server.js",
   "scripts": {
     "start": "node taskmaster-api-server.js",
@@ -17,11 +17,15 @@
     "nodemon": "^3.0.1"
   },
   "keywords": [
+    "wildlife-watcher",
+    "mvp2",
     "taskmaster",
     "dashboard",
     "task-management",
-    "project-management"
+    "project-management",
+    "react-native",
+    "expo"
   ],
-  "author": "TaskMaster AI Integration",
+  "author": "Wildlife Watcher Development Team",
   "license": "MIT"
 }
