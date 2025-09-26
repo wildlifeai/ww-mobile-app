@@ -54,6 +54,7 @@ project-progress-tracker/
 │   ├── DASHBOARD-FEATURE-ANALYSIS.md         # Enhancement roadmap & status
 │   ├── STREAMS-TAB-ENHANCEMENT-PLAN.md       # ✅ COMPLETED: Streams tab real data integration
 │   ├── TASKS-TAB-HIERARCHICAL-ENHANCEMENT-PLAN.md # ✅ COMPLETED: Tasks tab hierarchical structure
+│   ├── METRICS-TAB-ANALYSIS-AND-ENHANCEMENT-PLAN.md # 📊 NEXT: Metrics tab analysis & implementation plan
 │   └── DASHBOARD-CONTEXT-PROMPT.md           # This context file
 │
 ├── 📦 node_modules/                          # Dependencies (Express, CORS, etc.)
@@ -179,13 +180,32 @@ project-progress-tracker/
 - **Phase 2**: ✅ Hierarchical UI Implementation completed
 - **Phase 3**: ⏳ Development Orchestration Features (future enhancement)
 
+### 🚀 **Next Planned Enhancement: Metrics Tab** 📊
+
+#### **Current Priority: Metrics Tab Enhancement**
+- **Status**: 📋 **ANALYSIS COMPLETE** - Ready for implementation planning
+- **Analysis Document**: `METRICS-TAB-ANALYSIS-AND-ENHANCEMENT-PLAN.md`
+- **Current State**: Basic metrics display with limited real data integration
+- **Enhancement Opportunity**: High impact improvements with rich data sources available
+
+**🔍 Key Findings from Analysis:**
+- **Working**: Task completion rate (39% real-time), export functionality, clean UI
+- **Missing**: Real velocity calculation, `/api/metrics` endpoint, time tracking integration
+- **Data Source**: Rich time tracking data available in `MVP2-METRICS-TRACKER.md` (not integrated)
+- **Impact Potential**: High - can provide actionable development insights
+
+**📈 Planned Enhancements:**
+1. **Real Data Integration**: Connect velocity metrics to actual tracker data
+2. **Backend API**: Create `/api/metrics` endpoint for dynamic data serving
+3. **Interactive Features**: Time range filters, drill-down capabilities
+4. **Advanced Analytics**: Predictive completion, bottleneck detection
+
 ### 🚀 **Future Enhancement Opportunities**
 
-**Available Actions:**
+**Available Actions (After Metrics Enhancement):**
 - 🔄 Missing features restoration (Kanban, Gantt, Activity Feed)
 - ⚡ Phase 3 Orchestration Features (parallel execution planning)
 - 🎯 Smart recommendations engine
-- 📊 Advanced analytics dashboard
 - 🎨 Further UI/UX modernization
 
 **Dashboard is now production-ready with comprehensive task management capabilities!**
