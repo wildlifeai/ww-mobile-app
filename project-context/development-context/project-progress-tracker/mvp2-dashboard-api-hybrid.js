@@ -1258,6 +1258,32 @@ class MVP2DashboardAPI {
     }
 
     setupTooltipEvents() {
+        // CRITICAL FIX: Hide all tooltips by default and setup proper hover events
+        document.querySelectorAll('.tooltip-content').forEach(tooltip => {
+            tooltip.style.display = 'none';
+            tooltip.style.visibility = 'hidden';
+            tooltip.style.opacity = '0';
+        });
+
+        // Add proper hover functionality to all info icons
+        document.querySelectorAll('.tooltip-info-icon').forEach(icon => {
+            const tooltip = icon.nextElementSibling;
+            if (tooltip && tooltip.classList.contains('tooltip-content')) {
+                // Add hover events
+                icon.addEventListener('mouseenter', () => {
+                    tooltip.style.display = 'block';
+                    tooltip.style.visibility = 'visible';
+                    tooltip.style.opacity = '1';
+                });
+
+                icon.addEventListener('mouseleave', () => {
+                    tooltip.style.display = 'none';
+                    tooltip.style.visibility = 'hidden';
+                    tooltip.style.opacity = '0';
+                });
+            }
+        });
+
         // Handle mobile touch events for tooltips
         if ('ontouchstart' in window) {
             document.addEventListener('touchstart', (e) => {

@@ -276,6 +276,7 @@
         }
 
         .tooltip-content {
+            display: none; /* FIXED: Hidden by default */
             visibility: hidden;
             opacity: 0;
             position: absolute;
@@ -313,7 +314,8 @@
             border-color: #2c3e50 transparent transparent transparent;
         }
 
-        .tooltip-container:hover .tooltip-content {
+        .tooltip-info-icon:hover + .tooltip-content {
+            display: block; /* FIXED: Show only on info icon hover */
             visibility: visible;
             opacity: 1;
             transform: translateX(-50%) translateY(0);
@@ -333,7 +335,8 @@
                 transform: translateX(0) translateY(-8px);
             }
 
-            .tooltip-container:hover .tooltip-content.tooltip-left {
+            .tooltip-info-icon:hover + .tooltip-content.tooltip-left {
+                display: block; /* FIXED: Show only on info icon hover for mobile */
                 transform: translateX(0) translateY(0);
             }
         }
@@ -368,6 +371,7 @@
 
         /* Mobile tooltip active state */
         .tooltip-content.tooltip-mobile-active {
+            display: block !important; /* FIXED: Show when mobile active */
             visibility: visible !important;
             opacity: 1 !important;
             transform: translateX(-50%) translateY(0) !important;
@@ -2691,14 +2695,9 @@
                                 <div class="tooltip-content">
                                     <div class="tooltip-header">🧠 Agent Efficiency</div>
                                     <div class="tooltip-separator"></div>
-                                    <div class="tooltip-section"><strong>📖 What:</strong> AI-assisted development effectiveness vs manual work</div>
-                                    <div class="tooltip-section"><strong>🔢 Current:</strong> <span class="tooltip-value">73%</span> (Excellent)</div>
-                                    <div class="tooltip-section"><strong>📈 How:</strong> Discovery(6%) + Debug(40%) + Coordination(17%) + Quality(10%)</div>
-                                    <div class="tooltip-section"><strong>💡 Why:</strong> Measures development velocity improvements through AI collaboration</div>
-                                    <div class="tooltip-section"><strong>🚨 Threshold:</strong> <50% = Ineffective, 50-70% = Good, >70% = Excellent</div>
-                                    <div class="tooltip-section"><strong>📚 Reference:</strong> COMPREHENSIVE-TASK-RISK-ANALYSIS.md</div>
+                                    <div class="tooltip-section">AI-assisted development effectiveness measurement</div>
                                     <div class="tooltip-separator"></div>
-                                    <div class="tooltip-section" style="font-style: italic; color: #bdc3c7;">💬 Click for detailed breakdown</div>
+                                    <div class="tooltip-section" style="font-style: italic; color: #3498db; text-align: center; margin-top: 10px;">💬 Click for detailed breakdown</div>
                                 </div>
                             </span>
                         </div>
