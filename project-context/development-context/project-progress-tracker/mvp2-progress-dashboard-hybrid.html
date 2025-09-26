@@ -1143,6 +1143,291 @@
         .view-toggle button:hover:not(.active) {
             color: var(--primary-color);
         }
+
+        /* Hierarchical Task Tree Styles */
+        .task-tree {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .tree-node {
+            margin-bottom: 8px;
+            border-left: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tree-node.feature-level {
+            border-left: 4px solid var(--primary-color);
+            background: linear-gradient(90deg, rgba(102, 126, 234, 0.1) 0%, transparent 100%);
+        }
+
+        .tree-node.stream-level {
+            border-left: 3px solid var(--info-color);
+            background: linear-gradient(90deg, rgba(52, 152, 219, 0.08) 0%, transparent 100%);
+            margin-left: 20px;
+        }
+
+        .tree-node.task-level {
+            border-left: 2px solid var(--border-color);
+            margin-left: 40px;
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.02) 0%, transparent 100%);
+        }
+
+        .tree-node.subtask-level {
+            margin-left: 60px;
+            border-left: 1px solid #ddd;
+        }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .node-header:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(2px);
+        }
+
+        .node-toggle {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--border-color);
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+            transition: all 0.2s ease;
+        }
+
+        .node-toggle.expanded {
+            background: var(--primary-color);
+            color: white;
+            transform: rotate(90deg);
+        }
+
+        .node-toggle.no-children {
+            visibility: hidden;
+        }
+
+        .node-icon {
+            margin-right: 8px;
+            font-size: 1.1em;
+        }
+
+        .node-title {
+            font-weight: 600;
+            margin-right: 10px;
+            flex-grow: 1;
+        }
+
+        .feature-level .node-title {
+            font-size: 1.1em;
+            color: var(--primary-color);
+        }
+
+        .stream-level .node-title {
+            font-size: 1.0em;
+            color: var(--info-color);
+        }
+
+        .task-level .node-title {
+            font-size: 0.95em;
+            color: #333;
+        }
+
+        .subtask-level .node-title {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .node-badges {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-badge.completed {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .status-badge.in_progress {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .status-badge.pending {
+            background: var(--border-color);
+            color: #666;
+        }
+
+        .status-badge.blocked {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .progress-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 500;
+            background: var(--info-color);
+            color: white;
+        }
+
+        .agent-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: 500;
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .hours-badge {
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7em;
+            background: #f8f9fa;
+            color: #495057;
+            border: 1px solid #dee2e6;
+        }
+
+        .dependency-badge {
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7em;
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .node-children {
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .node-children.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        .node-children.expanded {
+            max-height: 2000px;
+            opacity: 1;
+        }
+
+        .task-details {
+            margin-top: 8px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #666;
+            border-left: 3px solid var(--info-color);
+        }
+
+        .task-features {
+            margin-top: 8px;
+        }
+
+        .task-features ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #666;
+            font-size: 0.85em;
+        }
+
+        .task-features li {
+            margin-bottom: 4px;
+        }
+
+        /* Agent workload cards */
+        .agent-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .agent-card h4 {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .agent-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            font-size: 0.9em;
+        }
+
+        .agent-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .agent-stat strong {
+            font-size: 1.1em;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tree-node {
+            animation: fadeInUp 0.3s ease;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .tree-node.stream-level {
+                margin-left: 10px;
+            }
+
+            .tree-node.task-level {
+                margin-left: 20px;
+            }
+
+            .tree-node.subtask-level {
+                margin-left: 30px;
+            }
+
+            .node-badges {
+                flex-wrap: wrap;
+            }
+        }
     </style>
 </head>
 
@@ -1388,60 +1673,86 @@
                 </div>
             </div>
 
-            <!-- Tasks Tab -->
+            <!-- Enhanced Hierarchical Tasks Tab -->
             <div class="tab-content" id="tasks">
                 <div class="text-center mb-20">
-                    <h2>📋 Task Management</h2>
-                    <div style="margin: 20px 0; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                        <input type="text" id="taskSearch" placeholder="Search tasks..."
+                    <h2>🌳 Hierarchical Task Management</h2>
+                    <p style="color: #666; margin: 10px 0;">Feature → Stream → Task → Subtask structure with dependencies</p>
+
+                    <!-- Enhanced Task Controls -->
+                    <div style="margin: 20px 0; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; background: white; padding: 15px; border-radius: 8px; box-shadow: var(--shadow);">
+                        <input type="text" id="taskSearchHierarchical" placeholder="Search tasks and features..."
                             style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; width: 250px;"
-                            oninput="dashboard.filterTasks()">
+                            oninput="hierarchicalTasks.filterTasks()">
+
+                        <!-- View Controls -->
                         <label style="display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="filterMobile" checked onchange="dashboard.filterTasks()"> Mobile
+                            <input type="checkbox" id="expandAll" onchange="hierarchicalTasks.toggleExpandAll()"> Expand All
                         </label>
                         <label style="display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="filterBackend" checked onchange="dashboard.filterTasks()">
-                            Backend
+                            <input type="checkbox" id="showSubtasks" checked onchange="hierarchicalTasks.toggleSubtasks()"> Show Subtasks
                         </label>
                         <label style="display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="filterActive" onchange="dashboard.filterTasks()"> Active
+                            <input type="checkbox" id="showDependencies" onchange="hierarchicalTasks.toggleDependencies()"> Show Dependencies
                         </label>
-                        <label style="display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="filterPending" onchange="dashboard.filterTasks()"> Pending
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="filterCompleted" onchange="dashboard.filterTasks()"> Completed
-                        </label>
+
+                        <!-- Status Filters -->
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span style="font-weight: 500;">Filter by Status:</span>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="filterCompleted" checked onchange="hierarchicalTasks.filterTasks()"> Completed
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="filterInProgress" checked onchange="hierarchicalTasks.filterTasks()"> In Progress
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="filterPending" checked onchange="hierarchicalTasks.filterTasks()"> Pending
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="filterBlocked" checked onchange="hierarchicalTasks.filterTasks()"> Blocked
+                            </label>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Mobile App Tasks Section -->
-                <div class="task-section"
-                    style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow);">
-                    <h3
-                        style="color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-                        📱 Mobile App Tasks
-                        <span
-                            style="background: var(--info-color); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75em;">ACTIVE</span>
-                    </h3>
-                    <div id="mobileTasksGrid" class="tasks-grid"
-                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
-                        <!-- Mobile tasks populated by JavaScript -->
+                <!-- Task Summary Cards -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="summary-card" style="background: linear-gradient(45deg, var(--success-color), #27ae60); color: white; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; font-weight: bold;" id="totalTasksCount">-</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Total Tasks</div>
+                    </div>
+                    <div class="summary-card" style="background: linear-gradient(45deg, var(--info-color), #2980b9); color: white; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; font-weight: bold;" id="completedTasksCount">-</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Completed</div>
+                    </div>
+                    <div class="summary-card" style="background: linear-gradient(45deg, var(--warning-color), #d68910); color: white; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; font-weight: bold;" id="inProgressTasksCount">-</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">In Progress</div>
+                    </div>
+                    <div class="summary-card" style="background: linear-gradient(45deg, var(--danger-color), #c0392b); color: white; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; font-weight: bold;" id="blockedTasksCount">-</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Blocked</div>
                     </div>
                 </div>
 
-                <!-- Backend Tasks Section -->
-                <div class="task-section"
-                    style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow);">
-                    <h3
-                        style="color: var(--success-color); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-                        ⚡ Backend Tasks
-                        <span
-                            style="background: var(--success-color); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75em;">COMPLETE</span>
+                <!-- Agent Workload Overview -->
+                <div id="agentWorkloadSection" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow);">
+                    <h3 style="color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                        🤖 Agent Workload Distribution
                     </h3>
-                    <div id="backendTasksGrid" class="tasks-grid"
-                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
-                        <!-- Backend tasks populated by JavaScript -->
+                    <div id="agentWorkloadGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                        <!-- Agent workload cards populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Hierarchical Task Tree -->
+                <div id="hierarchicalTaskTree" style="background: white; border-radius: 12px; padding: 20px; box-shadow: var(--shadow);">
+                    <h3 style="color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                        🌳 Task Hierarchy
+                        <span id="treeLoadingIndicator" style="background: var(--info-color); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75em;">LOADING...</span>
+                    </h3>
+                    <div id="taskTreeContainer">
+                        <!-- Hierarchical task tree populated by JavaScript -->
                     </div>
                 </div>
             </div>
@@ -1750,6 +2061,359 @@
 
         window.addEventListener('resize', handleResize);
         handleResize(); // Initial check
+
+        // Hierarchical Task Management System
+        const hierarchicalTasks = {
+            data: null,
+            expandedNodes: new Set(),
+            filteredData: null,
+
+            async init() {
+                console.log('🌳 Initializing Hierarchical Task System...');
+                this.setupEventListeners();
+                await this.loadData();
+            },
+
+            setupEventListeners() {
+                // Tasks tab activation
+                const tasksTab = document.querySelector('[data-tab="tasks"]');
+                if (tasksTab) {
+                    tasksTab.addEventListener('click', () => {
+                        setTimeout(() => this.loadData(), 100);
+                    });
+                }
+            },
+
+            async loadData() {
+                try {
+                    console.log('📡 Loading hierarchical task data...');
+                    const response = await fetch('/api/tasks/hierarchical');
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    this.data = await response.json();
+                    console.log('✅ Hierarchical task data loaded:', this.data.summary);
+
+                    this.updateSummaryCards();
+                    this.renderAgentWorkload();
+                    this.renderTaskTree();
+                    this.hideLoadingIndicator();
+
+                } catch (error) {
+                    console.error('❌ Error loading hierarchical tasks:', error);
+                    this.showError(error.message);
+                }
+            },
+
+            updateSummaryCards() {
+                const summary = this.data.summary;
+
+                document.getElementById('totalTasksCount').textContent = summary.totalTasks;
+                document.getElementById('completedTasksCount').textContent = summary.completedTasks;
+                document.getElementById('inProgressTasksCount').textContent = summary.inProgressTasks;
+                document.getElementById('blockedTasksCount').textContent = summary.blockedTasks;
+            },
+
+            renderAgentWorkload() {
+                const container = document.getElementById('agentWorkloadGrid');
+                if (!container) return;
+
+                const workloadHTML = Object.entries(this.data.agentWorkload).map(([agent, stats]) => {
+                    const completionRate = stats.assigned > 0 ? Math.round((stats.completed / stats.assigned) * 100) : 0;
+                    return `
+                        <div class="agent-card">
+                            <h4>🤖 ${agent.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</h4>
+                            <div class="agent-stats">
+                                <div class="agent-stat">
+                                    <span>Assigned</span>
+                                    <strong>${stats.assigned}</strong>
+                                </div>
+                                <div class="agent-stat">
+                                    <span>Completed</span>
+                                    <strong>${stats.completed}</strong>
+                                </div>
+                                <div class="agent-stat">
+                                    <span>In Progress</span>
+                                    <strong>${stats.inProgress}</strong>
+                                </div>
+                                <div class="agent-stat">
+                                    <span>Completion Rate</span>
+                                    <strong>${completionRate}%</strong>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = workloadHTML;
+            },
+
+            renderTaskTree() {
+                const container = document.getElementById('taskTreeContainer');
+                if (!container || !this.data.hierarchy) return;
+
+                const treeHTML = Object.entries(this.data.hierarchy).map(([featureKey, feature]) => {
+                    return this.renderFeatureNode(featureKey, feature);
+                }).join('');
+
+                container.innerHTML = `<div class="task-tree">${treeHTML}</div>`;
+            },
+
+            renderFeatureNode(featureKey, feature) {
+                const nodeId = `feature-${featureKey}`;
+                const isExpanded = this.expandedNodes.has(nodeId);
+                const hasChildren = Object.keys(feature.streams).length > 0;
+
+                const progressIcon = this.getProgressIcon(feature.progress);
+                const statusBadge = this.getStatusBadge(feature.status);
+
+                const streamsHTML = Object.entries(feature.streams).map(([streamKey, stream]) => {
+                    return this.renderStreamNode(featureKey, streamKey, stream);
+                }).join('');
+
+                return `
+                    <div class="tree-node feature-level" data-node-id="${nodeId}">
+                        <div class="node-header" onclick="hierarchicalTasks.toggleNode('${nodeId}')">
+                            <div class="node-toggle ${isExpanded ? 'expanded' : ''} ${!hasChildren ? 'no-children' : ''}">
+                                ${hasChildren ? '▶' : ''}
+                            </div>
+                            <span class="node-icon">${progressIcon}</span>
+                            <span class="node-title">${feature.name}</span>
+                            <div class="node-badges">
+                                ${statusBadge}
+                                <span class="progress-badge">${feature.progress}%</span>
+                                <span class="hours-badge">${feature.estimatedHours}h</span>
+                                <span class="dependency-badge">${feature.totalTasks} tasks</span>
+                            </div>
+                        </div>
+                        <div class="node-children ${isExpanded ? 'expanded' : 'collapsed'}">
+                            ${streamsHTML}
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderStreamNode(featureKey, streamKey, stream) {
+                const nodeId = `stream-${featureKey}-${streamKey}`;
+                const isExpanded = this.expandedNodes.has(nodeId);
+                const hasChildren = stream.tasks.length > 0;
+
+                const progressIcon = this.getProgressIcon(stream.progress);
+                const statusBadge = this.getStatusBadge(stream.status);
+
+                const tasksHTML = stream.tasks.map(task => {
+                    return this.renderTaskNode(task);
+                }).join('');
+
+                return `
+                    <div class="tree-node stream-level" data-node-id="${nodeId}">
+                        <div class="node-header" onclick="hierarchicalTasks.toggleNode('${nodeId}')">
+                            <div class="node-toggle ${isExpanded ? 'expanded' : ''} ${!hasChildren ? 'no-children' : ''}">
+                                ${hasChildren ? '▶' : ''}
+                            </div>
+                            <span class="node-icon">${progressIcon}</span>
+                            <span class="node-title">${stream.name}</span>
+                            <div class="node-badges">
+                                ${statusBadge}
+                                <span class="progress-badge">${stream.progress}%</span>
+                                <span class="hours-badge">${stream.estimatedHours}h</span>
+                            </div>
+                        </div>
+                        <div class="node-children ${isExpanded ? 'expanded' : 'collapsed'}">
+                            ${tasksHTML}
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderTaskNode(task) {
+                const nodeId = `task-${task.id}`;
+                const isExpanded = this.expandedNodes.has(nodeId);
+                const hasChildren = task.subtasks.length > 0 || task.keyFeatures.length > 0;
+
+                const progressIcon = this.getTaskIcon(task);
+                const statusBadge = this.getStatusBadge(task.status);
+                const agentBadge = task.agent ? `<span class="agent-badge">${task.agent}</span>` : '';
+                const hoursBadge = task.estimatedHours > 0 ? `<span class="hours-badge">${task.estimatedHours}h</span>` : '';
+
+                // Build dependency info
+                const dependencies = this.data.dependencies[task.id];
+                const depBadges = [];
+
+                if (dependencies && dependencies.dependencies.length > 0) {
+                    depBadges.push(`<span class="dependency-badge">📎 ${dependencies.dependencies.length} deps</span>`);
+                }
+
+                if (dependencies && dependencies.blocked) {
+                    depBadges.push(`<span class="status-badge blocked">🚫 blocked</span>`);
+                }
+
+                const subtasksHTML = hasChildren ? task.subtasks.map(subtask => {
+                    return this.renderSubtaskNode(subtask);
+                }).join('') : '';
+
+                const featuresHTML = task.keyFeatures.length > 0 ? `
+                    <div class="task-features">
+                        <strong>Key Features:</strong>
+                        <ul>
+                            ${task.keyFeatures.map(feature => `<li>${feature}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : '';
+
+                const taskDetails = (task.description || featuresHTML) ? `
+                    <div class="task-details">
+                        ${task.description ? `<p>${task.description}</p>` : ''}
+                        ${featuresHTML}
+                    </div>
+                ` : '';
+
+                return `
+                    <div class="tree-node task-level" data-node-id="${nodeId}">
+                        <div class="node-header" onclick="hierarchicalTasks.toggleNode('${nodeId}')">
+                            <div class="node-toggle ${isExpanded ? 'expanded' : ''} ${!hasChildren ? 'no-children' : ''}">
+                                ${hasChildren ? '▶' : ''}
+                            </div>
+                            <span class="node-icon">${progressIcon}</span>
+                            <span class="node-title">Task ${task.id}: ${task.title}</span>
+                            <div class="node-badges">
+                                ${statusBadge}
+                                ${agentBadge}
+                                ${hoursBadge}
+                                ${depBadges.join('')}
+                            </div>
+                        </div>
+                        ${isExpanded && taskDetails ? taskDetails : ''}
+                        <div class="node-children ${isExpanded ? 'expanded' : 'collapsed'}">
+                            ${subtasksHTML}
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderSubtaskNode(subtask) {
+                return `
+                    <div class="tree-node subtask-level">
+                        <div class="node-header">
+                            <div class="node-toggle no-children"></div>
+                            <span class="node-icon">📋</span>
+                            <span class="node-title">${subtask.title || subtask}</span>
+                            <div class="node-badges">
+                                ${subtask.estimatedHours ? `<span class="hours-badge">${subtask.estimatedHours}h</span>` : ''}
+                                ${subtask.agent ? `<span class="agent-badge">${subtask.agent}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            toggleNode(nodeId) {
+                if (this.expandedNodes.has(nodeId)) {
+                    this.expandedNodes.delete(nodeId);
+                } else {
+                    this.expandedNodes.add(nodeId);
+                }
+                this.renderTaskTree();
+            },
+
+            toggleExpandAll() {
+                const checkbox = document.getElementById('expandAll');
+                if (checkbox.checked) {
+                    // Expand all nodes
+                    document.querySelectorAll('.tree-node').forEach(node => {
+                        const nodeId = node.dataset.nodeId;
+                        if (nodeId) this.expandedNodes.add(nodeId);
+                    });
+                } else {
+                    // Collapse all nodes
+                    this.expandedNodes.clear();
+                }
+                this.renderTaskTree();
+            },
+
+            toggleSubtasks() {
+                // This would control subtask visibility
+                this.renderTaskTree();
+            },
+
+            toggleDependencies() {
+                // This would add/remove dependency visualization
+                this.renderTaskTree();
+            },
+
+            filterTasks() {
+                const searchTerm = document.getElementById('taskSearchHierarchical')?.value.toLowerCase() || '';
+                const showCompleted = document.getElementById('filterCompleted')?.checked ?? true;
+                const showInProgress = document.getElementById('filterInProgress')?.checked ?? true;
+                const showPending = document.getElementById('filterPending')?.checked ?? true;
+                const showBlocked = document.getElementById('filterBlocked')?.checked ?? true;
+
+                // This would implement filtering logic
+                // For now, just re-render
+                this.renderTaskTree();
+            },
+
+            getProgressIcon(progress) {
+                if (progress === 100) return '✅';
+                if (progress >= 75) return '🟢';
+                if (progress >= 50) return '🟡';
+                if (progress >= 25) return '🟠';
+                if (progress > 0) return '🔴';
+                return '⚪';
+            },
+
+            getTaskIcon(task) {
+                if (task.status === 'completed' || task.status === 'done') return '✅';
+                if (task.status === 'in_progress' || task.status === 'active') return '🔄';
+                if (this.data.dependencies[task.id]?.blocked) return '🚫';
+                return '📋';
+            },
+
+            getStatusBadge(status) {
+                const statusMap = {
+                    'completed': { class: 'completed', text: 'Done' },
+                    'done': { class: 'completed', text: 'Done' },
+                    'in_progress': { class: 'in_progress', text: 'Active' },
+                    'active': { class: 'in_progress', text: 'Active' },
+                    'pending': { class: 'pending', text: 'Pending' },
+                    'blocked': { class: 'blocked', text: 'Blocked' }
+                };
+
+                const statusInfo = statusMap[status] || { class: 'pending', text: status };
+                return `<span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>`;
+            },
+
+            hideLoadingIndicator() {
+                const indicator = document.getElementById('treeLoadingIndicator');
+                if (indicator) {
+                    indicator.style.display = 'none';
+                }
+            },
+
+            showError(message) {
+                const container = document.getElementById('taskTreeContainer');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--danger-color);">
+                            <h3>❌ Error Loading Tasks</h3>
+                            <p>${message}</p>
+                            <button onclick="hierarchicalTasks.loadData()"
+                                    style="padding: 8px 16px; margin-top: 10px; border: none; background: var(--primary-color); color: white; border-radius: 4px; cursor: pointer;">
+                                Retry
+                            </button>
+                        </div>
+                    `;
+                }
+                this.hideLoadingIndicator();
+            }
+        };
+
+        // Initialize hierarchical tasks system
+        document.addEventListener('DOMContentLoaded', () => {
+            hierarchicalTasks.init();
+        });
     </script>
 </body>
 
