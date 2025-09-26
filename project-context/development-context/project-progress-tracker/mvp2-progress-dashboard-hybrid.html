@@ -1617,6 +1617,283 @@
             height: 12px;
             border-radius: 2px;
         }
+
+        /* Stream Velocity Visualization Styles */
+        .stream-velocity-card {
+            grid-column: 1 / -1;
+        }
+
+        .stream-velocity-container {
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stream-comparison-section {
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+
+        .stream-comparison-section h3 {
+            color: var(--dark-bg);
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+
+        .stream-velocity-chart {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+        }
+
+        .stream-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .stream-bar:hover {
+            background-color: #f8f9fa;
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .stream-bar.foundation {
+            border-left-color: var(--success-color);
+        }
+
+        .stream-bar.stream-a {
+            border-left-color: var(--info-color);
+        }
+
+        .stream-bar.stream-b {
+            border-left-color: var(--warning-color);
+        }
+
+        .stream-bar.stream-c {
+            border-left-color: var(--danger-color);
+        }
+
+        .stream-bar.integration {
+            border-left-color: var(--secondary-color);
+        }
+
+        .stream-info {
+            flex: 1;
+            margin-right: 15px;
+        }
+
+        .stream-name {
+            font-weight: bold;
+            color: var(--dark-bg);
+            margin-bottom: 4px;
+        }
+
+        .stream-tasks {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .stream-progress-container {
+            flex: 2;
+            margin-right: 15px;
+        }
+
+        .stream-progress {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .stream-progress-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.6s ease-in-out;
+        }
+
+        .stream-progress-bar.foundation {
+            background: linear-gradient(90deg, var(--success-color), #20c997);
+        }
+
+        .stream-progress-bar.stream-a {
+            background: linear-gradient(90deg, var(--info-color), #0ea5e9);
+        }
+
+        .stream-progress-bar.stream-b {
+            background: linear-gradient(90deg, var(--warning-color), #f59e0b);
+        }
+
+        .stream-progress-bar.stream-c {
+            background: linear-gradient(90deg, var(--danger-color), #f87171);
+        }
+
+        .stream-progress-bar.integration {
+            background: linear-gradient(90deg, var(--secondary-color), #8b5cf6);
+        }
+
+        .stream-progress-text {
+            font-size: 0.8em;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stream-status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-badge.active {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .status-badge.ready {
+            background: var(--info-color);
+            color: white;
+        }
+
+        .status-badge.waiting {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .status-badge.blocked {
+            background: #dee2e6;
+            color: #666;
+        }
+
+        .velocity-indicator {
+            font-size: 1.2em;
+            margin-left: 5px;
+        }
+
+        .velocity-indicator.up {
+            color: var(--success-color);
+        }
+
+        .velocity-indicator.steady {
+            color: var(--info-color);
+        }
+
+        .velocity-indicator.down {
+            color: var(--danger-color);
+        }
+
+        /* Mini velocity display for the card */
+        .stream-velocity-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .velocity-item {
+            text-align: center;
+            padding: 10px;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+
+        .velocity-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .velocity-label {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        /* Modal styles for stream details */
+        .stream-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .stream-modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            margin: 20px;
+        }
+
+        .stream-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .close-btn:hover {
+            color: var(--danger-color);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .stream-velocity-summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .stream-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .stream-progress-container {
+                width: 100%;
+                margin: 10px 0;
+            }
+
+            .stream-status-indicator {
+                align-self: flex-end;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stream-velocity-summary {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 
@@ -2066,10 +2343,11 @@
                     <p style="color: #666;">Performance tracking and development velocity</p>
                 </div>
                 <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-label">⏱️ Development Velocity</div>
-                        <div class="metric-number" id="velocityMetric">8.2</div>
-                        <div class="metric-trend positive">+12% this week</div>
+                    <div class="metric-card stream-velocity-card">
+                        <div class="metric-label">🚀 Stream Velocity</div>
+                        <div class="stream-velocity-container" id="streamVelocityContainer">
+                            <div class="loading">Loading stream data...</div>
+                        </div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-label">🎯 Task Completion Rate</div>
@@ -2085,6 +2363,14 @@
                         <div class="metric-label">🔄 Integration Health</div>
                         <div class="metric-number" id="integrationHealth">95%</div>
                         <div class="metric-trend positive">All systems go</div>
+                    </div>
+                </div>
+
+                <!-- Stream Comparison Chart -->
+                <div class="stream-comparison-section">
+                    <h3>📊 Development Streams Progress</h3>
+                    <div class="stream-velocity-chart" id="streamVelocityChart">
+                        <div class="loading">Loading stream visualization...</div>
                     </div>
                 </div>
                 <div class="activity-feed" style="margin-top: 30px;">

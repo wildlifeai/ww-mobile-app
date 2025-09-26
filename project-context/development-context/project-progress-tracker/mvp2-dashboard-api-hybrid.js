@@ -420,18 +420,190 @@ class MVP2DashboardAPI {
         this.updateProjectStatus();
     }
 
-    renderMetricsTab() {
-        // Update metrics dynamically
+    async renderMetricsTab() {
+        // Update basic metrics dynamically
         const totalTasks = this.data.mvp2Tasks.length;
         const completedTasks = this.data.mvp2Tasks.filter(t => t.status === 'done').length;
         const activeTasks = this.data.mvp2Tasks.filter(t => t.status === 'active').length;
         const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-        // Update metric values if elements exist
-        this.updateElement('velocityMetric', '8.2');
+        // Update existing metric values
         this.updateElement('completionRate', completionRate + '%');
         this.updateElement('qualityScore', '9.1');
         this.updateElement('integrationHealth', '95%');
+
+        // Render stream velocity visualization
+        await this.renderStreamVelocity();
+    }
+
+    async renderStreamVelocity() {
+        const streamVelocityContainer = document.getElementById('streamVelocityContainer');
+        const streamVelocityChart = document.getElementById('streamVelocityChart');
+
+        if (!streamVelocityContainer || !streamVelocityChart) return;
+
+        try {
+            // Fetch stream data
+            const response = await fetch(`${this.baseURL}/api/streams`);
+            if (!response.ok) throw new Error('Failed to fetch streams data');
+
+            const streamsData = await response.json();
+            const streams = streamsData.streams || [];
+
+            // Store streams data for modal access
+            this.lastStreamsData = streamsData;
+
+            // Render velocity summary card
+            this.renderVelocitySummary(streamVelocityContainer, streams, streamsData.summary);
+
+            // Render detailed stream chart
+            this.renderStreamChart(streamVelocityChart, streams);
+
+        } catch (error) {
+            console.error('Error rendering stream velocity:', error);
+            streamVelocityContainer.innerHTML = '<div class="error">Failed to load stream data</div>';
+            streamVelocityChart.innerHTML = '<div class="error">Failed to load stream visualization</div>';
+        }
+    }
+
+    renderVelocitySummary(container, streams, summary) {
+        const activeStreams = streams.filter(s => s.status === 'in_progress').length;
+        const readyStreams = streams.filter(s => s.status === 'ready_to_launch').length;
+        const overallVelocity = summary ? (summary.total_progress / 10).toFixed(1) : '8.2';
+
+        container.innerHTML = `
+            <div class="stream-velocity-summary">
+                <div class="velocity-item">
+                    <div class="velocity-value" style="color: var(--success-color);">${overallVelocity}</div>
+                    <div class="velocity-label">Overall Velocity</div>
+                </div>
+                <div class="velocity-item">
+                    <div class="velocity-value" style="color: var(--info-color);">${activeStreams}</div>
+                    <div class="velocity-label">Active Streams</div>
+                </div>
+                <div class="velocity-item">
+                    <div class="velocity-value" style="color: var(--warning-color);">${readyStreams}</div>
+                    <div class="velocity-label">Ready to Launch</div>
+                </div>
+                <div class="velocity-item">
+                    <div class="velocity-value" style="color: var(--secondary-color);">${summary?.completed_tasks || 9}/${summary?.total_tasks || 23}</div>
+                    <div class="velocity-label">Tasks Complete</div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderStreamChart(container, streams) {
+        const streamBars = streams.map(stream => {
+            const statusClass = this.getStreamStatusClass(stream.status);
+            const statusLabel = this.getStreamStatusLabel(stream.status);
+            const velocityTrend = this.getVelocityTrend(stream);
+
+            return `
+                <div class="stream-bar ${stream.id}" onclick="window.dashboardAPI.showStreamModal('${stream.id}')" data-stream-id="${stream.id}">
+                    <div class="stream-info">
+                        <div class="stream-name">${stream.name}</div>
+                        <div class="stream-tasks">${stream.completed_tasks}/${stream.total_tasks} tasks</div>
+                    </div>
+                    <div class="stream-progress-container">
+                        <div class="stream-progress">
+                            <div class="stream-progress-bar ${stream.id}" style="width: ${stream.progress}%"></div>
+                        </div>
+                        <div class="stream-progress-text">
+                            <span>${stream.progress}% complete</span>
+                            <span>${stream.estimated_hours}h estimated</span>
+                        </div>
+                    </div>
+                    <div class="stream-status-indicator">
+                        <div class="status-badge ${statusClass}">${statusLabel}</div>
+                        <div class="velocity-indicator ${velocityTrend.direction}">${velocityTrend.icon}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = streamBars;
+    }
+
+    getStreamStatusClass(status) {
+        const statusMap = {
+            'in_progress': 'active',
+            'ready_to_launch': 'ready',
+            'awaiting_stream_a': 'waiting',
+            'awaiting_stream_b': 'waiting',
+            'awaiting_all_streams': 'blocked',
+            'completed': 'active'
+        };
+        return statusMap[status] || 'blocked';
+    }
+
+    getStreamStatusLabel(status) {
+        const labelMap = {
+            'in_progress': 'Active',
+            'ready_to_launch': 'Ready',
+            'awaiting_stream_a': 'Waiting',
+            'awaiting_stream_b': 'Waiting',
+            'awaiting_all_streams': 'Blocked',
+            'completed': 'Done'
+        };
+        return labelMap[status] || 'Pending';
+    }
+
+    getVelocityTrend(stream) {
+        // Simple velocity trend based on progress and status
+        if (stream.status === 'in_progress' && stream.progress > 50) {
+            return { direction: 'up', icon: '↗️' };
+        } else if (stream.status === 'ready_to_launch') {
+            return { direction: 'steady', icon: '➡️' };
+        } else if (stream.progress === 0) {
+            return { direction: 'steady', icon: '⏸️' };
+        } else {
+            return { direction: 'up', icon: '📈' };
+        }
+    }
+
+    showStreamModal(streamId) {
+        // Find the stream data
+        const stream = this.lastStreamsData?.streams?.find(s => s.id === streamId);
+        if (!stream) return;
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'stream-modal';
+        modal.innerHTML = `
+            <div class="stream-modal-content">
+                <div class="stream-modal-header">
+                    <h3>${stream.name}</h3>
+                    <button class="close-btn" onclick="this.closest('.stream-modal').remove()">✕</button>
+                </div>
+                <div class="stream-modal-body">
+                    <div style="margin-bottom: 20px;">
+                        <strong>Status:</strong> ${this.getStreamStatusLabel(stream.status)}<br>
+                        <strong>Progress:</strong> ${stream.progress}% (${stream.completed_tasks}/${stream.total_tasks} tasks)<br>
+                        <strong>Estimated Hours:</strong> ${stream.estimated_hours}h
+                    </div>
+                    <h4>Tasks:</h4>
+                    <div class="task-list">
+                        ${stream.tasks.map(task => `
+                            <div class="task-item" style="padding: 8px; border-left: 3px solid ${task.status === 'done' ? 'var(--success-color)' : task.status === 'in-progress' ? 'var(--warning-color)' : '#ccc'}; margin-bottom: 8px;">
+                                <strong>${task.title}</strong><br>
+                                <small>Status: ${task.status} | Priority: ${task.priority}</small>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add to body and show
+        document.body.appendChild(modal);
+
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
     }
 
     updateProjectStatus() {
