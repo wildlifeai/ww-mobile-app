@@ -1943,28 +1943,57 @@
             color: var(--danger-color);
         }
 
-        /* Mini velocity display for the card */
+        /* Mini velocity display for the card - Compact Layout */
         .stream-velocity-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .velocity-primary {
+            text-align: center;
+            padding: 8px;
+            border-radius: 6px;
+            background: #f8f9fa;
+            border-left: 3px solid var(--accent-color);
+        }
+
+        .velocity-secondary {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-top: 4px;
         }
 
         .velocity-item {
             text-align: center;
-            padding: 10px;
-            border-radius: 6px;
-            background: #f8f9fa;
+            padding: 6px 4px;
+            border-radius: 4px;
+            background: #f1f3f4;
+            font-size: 0.85em;
         }
 
-        .velocity-value {
-            font-size: 1.5em;
+        .velocity-primary .velocity-value {
+            font-size: 1.8em;
             font-weight: bold;
             margin-bottom: 2px;
+            color: var(--success-color);
         }
 
-        .velocity-label {
-            font-size: 0.8em;
+        .velocity-primary .velocity-label {
+            font-size: 0.9em;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .velocity-item .velocity-value {
+            font-size: 1em;
+            font-weight: bold;
+            margin-bottom: 1px;
+        }
+
+        .velocity-item .velocity-label {
+            font-size: 0.7em;
             color: #666;
         }
 
@@ -2075,7 +2104,7 @@
 
         /* Responsive design */
         @media (max-width: 768px) {
-            .stream-velocity-summary {
+            .velocity-secondary {
                 grid-template-columns: repeat(2, 1fr);
             }
 
@@ -2095,7 +2124,7 @@
         }
 
         @media (max-width: 480px) {
-            .stream-velocity-summary {
+            .velocity-secondary {
                 grid-template-columns: 1fr;
             }
         }

@@ -747,25 +747,27 @@ class MVP2DashboardAPI {
     renderVelocitySummary(container, streams, summary) {
         const activeStreams = streams.filter(s => s.status === 'in_progress').length;
         const readyStreams = streams.filter(s => s.status === 'ready_to_launch').length;
-        const overallVelocity = summary ? (summary.total_progress / 10).toFixed(1) : '8.2';
+        const overallVelocity = summary ? (summary.total_progress / 10).toFixed(1) : '3.9';
 
         container.innerHTML = `
             <div class="stream-velocity-summary">
-                <div class="velocity-item">
-                    <div class="velocity-value" style="color: var(--success-color);">${overallVelocity}</div>
-                    <div class="velocity-label">Overall Velocity</div>
+                <div class="velocity-primary">
+                    <div class="velocity-value">${overallVelocity}</div>
+                    <div class="velocity-label">Stream Velocity</div>
                 </div>
-                <div class="velocity-item">
-                    <div class="velocity-value" style="color: var(--info-color);">${activeStreams}</div>
-                    <div class="velocity-label">Active Streams</div>
-                </div>
-                <div class="velocity-item">
-                    <div class="velocity-value" style="color: var(--warning-color);">${readyStreams}</div>
-                    <div class="velocity-label">Ready to Launch</div>
-                </div>
-                <div class="velocity-item">
-                    <div class="velocity-value" style="color: var(--secondary-color);">${summary?.completed_tasks || 9}/${summary?.total_tasks || 23}</div>
-                    <div class="velocity-label">Tasks Complete</div>
+                <div class="velocity-secondary">
+                    <div class="velocity-item">
+                        <div class="velocity-value">${activeStreams}</div>
+                        <div class="velocity-label">Active</div>
+                    </div>
+                    <div class="velocity-item">
+                        <div class="velocity-value">${readyStreams}</div>
+                        <div class="velocity-label">Ready</div>
+                    </div>
+                    <div class="velocity-item">
+                        <div class="velocity-value">${summary?.completed_tasks || 9}/${summary?.total_tasks || 23}</div>
+                        <div class="velocity-label">Tasks</div>
+                    </div>
                 </div>
             </div>
         `;
