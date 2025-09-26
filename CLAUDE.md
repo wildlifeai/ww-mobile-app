@@ -265,6 +265,13 @@ The `@project-context/development-context/` contains critical project specificat
 - **Testing Requirements**: `TESTING-REQUIREMENTS.md` - Test coverage specs
 - **Task Files**: `/tasks/` - Individual task specifications (task_001.txt - task_023.txt)
 
+**Project Progress Tracker Dashboard** (`/project-progress-tracker/`):
+- **Dashboard Location**: `@project-context/development-context/project-progress-tracker/`
+- **Purpose**: Production-ready web dashboard for MVP2 development tracking
+- **Access**: http://localhost:3333 (run `./start.sh` from dashboard directory)
+- **Features**: Real-time task progress, development streams monitoring, cross-project coordination
+- **Context Prompt**: `DASHBOARD-CONTEXT-PROMPT.md` - Complete dashboard documentation
+
 **Supabase Backend** (`/supabase-backend/`):
 - **Backend Project Location**: `/home/adarsh/dev/wildlifeai/wildlife-watcher-backend` (separate Git repository)
 - **Backend Project Status**: `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md` - Live backend status
