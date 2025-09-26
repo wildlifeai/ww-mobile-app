@@ -545,7 +545,7 @@ class MVP2DashboardAPI {
                 <div class="setting-card">
                     <h3>📊 Data Source</h3>
                     <div class="data-sources">
-                        <div>TaskMaster: ${this.data.combinedTasks.length} tasks</div>
+                        <div>Combined: ${this.data.combinedTasks.length} tasks</div>
                         <div>MVP2: ${this.data.mvp2Tasks.length} tasks</div>
                     </div>
                 </div>

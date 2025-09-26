@@ -1,11 +1,11 @@
 {
-  "name": "wildlife-watcher-taskmaster-dashboard",
+  "name": "wildlife-watcher-project-progress-tracker",
   "version": "2.0.0",
-  "description": "Wildlife Watcher MVP2 TaskMaster AI Dashboard with real-time task integration",
-  "main": "taskmaster-api-server.js",
+  "description": "Wildlife Watcher MVP2 Project Progress Tracker with real-time task integration",
+  "main": "dashboard-server.js",
   "scripts": {
-    "start": "node taskmaster-api-server.js",
-    "dev": "nodemon taskmaster-api-server.js",
+    "start": "node dashboard-server.js",
+    "dev": "nodemon dashboard-server.js",
     "dashboard": "npm start && open http://localhost:3333"
   },
   "dependencies": {
@@ -19,7 +19,7 @@
   "keywords": [
     "wildlife-watcher",
     "mvp2",
-    "taskmaster",
+    "project-progress-tracker",
     "dashboard",
     "task-management",
     "project-management",
