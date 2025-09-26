@@ -49,9 +49,11 @@ class MVP2DashboardAPI {
             let apiDataLoaded = false;
 
             try {
-                const [tasksResponse, mvp2Response] = await Promise.all([
+                // Fetch all data in parallel including real streams API
+                const [tasksResponse, mvp2Response, streamsResponse] = await Promise.all([
                     fetch(`${this.baseURL}/api/tasks`),
-                    fetch(`${this.baseURL}/api/tasks/mvp2`)
+                    fetch(`${this.baseURL}/api/tasks/mvp2`),
+                    fetch(`${this.baseURL}/api/streams`)
                 ]);
 
                 if (tasksResponse.ok) {
@@ -63,18 +65,29 @@ class MVP2DashboardAPI {
                 if (mvp2Response.ok) {
                     const mvp2Data = await mvp2Response.json();
                     this.data.mvp2Tasks = mvp2Data.tasks || [];
-                    this.data.streams = mvp2Data.streams || {};
                     this.data.metrics = mvp2Data.metrics || {};
                     apiDataLoaded = true;
                 }
+
+                // Use real streams data from the working API
+                if (streamsResponse.ok) {
+                    const streamsData = await streamsResponse.json();
+                    this.data.streams = streamsData.streams || {};
+                    console.log('✅ Loaded real streams data:', Object.keys(this.data.streams).length, 'streams');
+                    apiDataLoaded = true;
+                } else {
+                    console.warn('❌ Streams API failed, status:', streamsResponse.status);
+                }
             } catch (apiError) {
-                console.log('API not available, using mock data');
+                console.log('API not available, using mock data:', apiError);
             }
 
             // Use mock data if API is not available
             if (!apiDataLoaded) {
                 this.loadMockData();
                 this.addActivity('Using mock data - API not available', 'info');
+            } else {
+                this.addActivity('✅ Loaded real MVP2 streams data', 'success');
             }
 
             // Generate activity log
@@ -282,27 +295,70 @@ class MVP2DashboardAPI {
         const container = document.getElementById('streamsGrid');
         if (!container) return;
 
-        const streamsHTML = Object.entries(this.data.streams).map(([id, stream]) => `
-            <div class="stream-card">
-                <div class="stream-header">
-                    <h3>${stream.title || id}</h3>
-                    <span class="stream-status ${stream.status}">${stream.status}</span>
-                </div>
-                <div class="stream-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${stream.progress || 0}%"></div>
-                    </div>
-                    <span class="progress-text">${stream.progress || 0}%</span>
-                </div>
-                <div class="stream-stats">
-                    <span>Tasks: ${stream.task_count || 0}</span>
-                    <span>Completed: ${stream.completed_tasks || 0}</span>
-                    <span>Active: ${stream.active_tasks || 0}</span>
-                </div>
-            </div>
-        `).join('');
+        // Handle both array (real API) and object (mock data) formats
+        const streams = Array.isArray(this.data.streams) ? this.data.streams : Object.values(this.data.streams);
 
-        container.innerHTML = streamsHTML || '<div class="empty-state">No streams data available</div>';
+        if (!streams || streams.length === 0) {
+            container.innerHTML = '<div class="empty-state">No streams data available</div>';
+            return;
+        }
+
+        const streamsHTML = streams.map(stream => {
+            const statusClass = this.getStreamStatusClass(stream.status);
+            const progressColor = this.getProgressColor(stream.progress);
+
+            return `
+                <div class="stream-card" data-stream-id="${stream.id}">
+                    <div class="stream-header">
+                        <h3>${stream.name || stream.title || stream.id}</h3>
+                        <span class="stream-status ${statusClass}">${stream.status}</span>
+                    </div>
+                    <div class="stream-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${stream.progress || 0}%; background: ${progressColor}"></div>
+                        </div>
+                        <span class="progress-text">${stream.progress || 0}%</span>
+                    </div>
+                    <div class="stream-stats">
+                        <span><strong>${stream.completed_tasks || 0}/${stream.total_tasks || 0}</strong> tasks</span>
+                        <span>${stream.in_progress_tasks || 0} active</span>
+                        <span>${stream.estimated_hours || 0}h estimated</span>
+                    </div>
+                    <div class="stream-details">
+                        <small>Next: ${this.getNextTask(stream.tasks)}</small>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = streamsHTML;
+        console.log('✅ Rendered', streams.length, 'streams with real data');
+    }
+
+    getStreamStatusClass(status) {
+        const statusMap = {
+            'completed': 'success',
+            'in_progress': 'primary',
+            'ready_to_launch': 'warning',
+            'awaiting_stream_a': 'secondary',
+            'awaiting_stream_b': 'secondary',
+            'awaiting_all_streams': 'secondary',
+            'nearing_completion': 'info'
+        };
+        return statusMap[status] || 'secondary';
+    }
+
+    getProgressColor(progress) {
+        if (progress >= 80) return 'var(--success-color)';
+        if (progress >= 50) return 'var(--warning-color)';
+        if (progress > 0) return 'var(--info-color)';
+        return '#ddd';
+    }
+
+    getNextTask(tasks) {
+        if (!tasks || !Array.isArray(tasks)) return 'No tasks available';
+        const nextTask = tasks.find(task => task.status === 'pending' || task.status === 'in_progress');
+        return nextTask ? nextTask.title : 'All tasks complete';
     }
 
     renderTasksTab() {

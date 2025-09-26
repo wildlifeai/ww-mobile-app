@@ -159,6 +159,202 @@ function loadMetrics() {
   };
 }
 
+// Enhanced task parsing for streams
+function parseTaskForStreams(filePath, fileName) {
+  const content = safeFileRead(filePath);
+  if (!content) return null;
+
+  const task = {
+    id: fileName.replace('.txt', ''),
+    title: 'Unknown Task',
+    status: 'pending',
+    priority: 'medium',
+    stream: 'foundation',
+    description: '',
+    progress: 0,
+    estimated_hours: 0
+  };
+
+  const lines = content.split('\n');
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('# Title:')) {
+      task.title = trimmed.replace('# Title:', '').trim();
+    } else if (trimmed.startsWith('# Status:')) {
+      task.status = trimmed.replace('# Status:', '').trim().toLowerCase();
+    } else if (trimmed.startsWith('# Priority:')) {
+      task.priority = trimmed.replace('# Priority:', '').trim().toLowerCase();
+    }
+  }
+
+  // Determine progress based on status
+  switch (task.status) {
+    case 'done':
+    case 'completed':
+      task.progress = 100;
+      break;
+    case 'in_progress':
+    case 'active':
+      task.progress = 50;
+      break;
+    case 'blocked':
+      task.progress = 25;
+      break;
+    default:
+      task.progress = 0;
+  }
+
+  // Assign stream based on task ID
+  const taskNum = parseInt(task.id.replace('task_', ''));
+  if (taskNum >= 1 && taskNum <= 11) {
+    task.stream = 'foundation';
+  } else if (taskNum >= 12 && taskNum <= 14) {
+    task.stream = 'stream_a';
+  } else if (taskNum >= 15 && taskNum <= 17) {
+    task.stream = 'stream_b';
+  } else if (taskNum >= 18 && taskNum <= 20) {
+    task.stream = 'stream_c';
+  } else if (taskNum >= 21 && taskNum <= 23) {
+    task.stream = 'integration';
+  }
+
+  return task;
+}
+
+// Load and parse all tasks for stream analysis
+function loadTasksForStreams() {
+  try {
+    if (!fs.existsSync(CONFIG.tasksDir)) {
+      console.warn(`Tasks directory not found: ${CONFIG.tasksDir}`);
+      return [];
+    }
+
+    const taskFiles = fs.readdirSync(CONFIG.tasksDir)
+      .filter(file => file.startsWith('task_') && file.endsWith('.txt') && !file.includes('maestro'))
+      .sort();
+
+    const tasks = [];
+    for (const file of taskFiles) {
+      const task = parseTaskForStreams(path.join(CONFIG.tasksDir, file), file);
+      if (task) tasks.push(task);
+    }
+
+    console.log(`Loaded ${tasks.length} tasks for stream analysis`);
+    return tasks;
+  } catch (error) {
+    console.error('Error loading tasks for streams:', error);
+    return [];
+  }
+}
+
+// Calculate stream progress and metrics
+function calculateStreamMetrics(tasks) {
+  const streamGroups = {
+    foundation: { name: 'Foundation Layer', tasks: [], estimated_hours: 40, status: 'in_progress' },
+    stream_a: { name: 'Stream A: Project Management', tasks: [], estimated_hours: 18, status: 'ready_to_launch' },
+    stream_b: { name: 'Stream B: Deployment Workflows', tasks: [], estimated_hours: 24, status: 'awaiting_stream_a' },
+    stream_c: { name: 'Stream C: Devices & Maps', tasks: [], estimated_hours: 30, status: 'awaiting_stream_b' },
+    integration: { name: 'Integration Phase', tasks: [], estimated_hours: 16, status: 'awaiting_all_streams' }
+  };
+
+  // Group tasks by stream
+  tasks.forEach(task => {
+    if (streamGroups[task.stream]) {
+      streamGroups[task.stream].tasks.push(task);
+    }
+  });
+
+  // Calculate progress for each stream
+  const streams = Object.keys(streamGroups).map(streamId => {
+    const stream = streamGroups[streamId];
+    const streamTasks = stream.tasks;
+
+    let totalProgress = 0;
+    let completedTasks = 0;
+    let inProgressTasks = 0;
+
+    streamTasks.forEach(task => {
+      totalProgress += task.progress;
+      if (task.progress === 100) completedTasks++;
+      else if (task.progress > 0) inProgressTasks++;
+    });
+
+    const overallProgress = streamTasks.length > 0 ? Math.round(totalProgress / streamTasks.length) : 0;
+
+    // Determine stream status based on progress and dependencies
+    let status = stream.status;
+    if (overallProgress === 100) {
+      status = 'completed';
+    } else if (overallProgress > 0 && overallProgress < 100) {
+      status = 'in_progress';
+    } else if (streamId === 'foundation') {
+      status = overallProgress > 50 ? 'nearing_completion' : 'in_progress';
+    }
+
+    return {
+      id: streamId,
+      name: stream.name,
+      status: status,
+      progress: overallProgress,
+      completed_tasks: completedTasks,
+      total_tasks: streamTasks.length,
+      in_progress_tasks: inProgressTasks,
+      estimated_hours: stream.estimated_hours,
+      tasks: streamTasks.sort((a, b) => {
+        const aNum = parseInt(a.id.replace('task_', ''));
+        const bNum = parseInt(b.id.replace('task_', ''));
+        return aNum - bNum;
+      })
+    };
+  });
+
+  return streams;
+}
+
+// Parse execution plan for additional context
+function parseExecutionPlan() {
+  const planFile = path.join(CONFIG.mobileAppRoot, 'project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md');
+  const content = safeFileRead(planFile);
+
+  if (!content) {
+    return {
+      last_updated: new Date().toISOString(),
+      total_estimated_hours: 88,
+      projected_completion_days: 20,
+      methodology: 'AADF Framework with Evidence-Based Development'
+    };
+  }
+
+  const planData = {
+    last_updated: new Date().toISOString(),
+    total_estimated_hours: 88,
+    projected_completion_days: 20,
+    methodology: 'AADF Framework with Evidence-Based Development'
+  };
+
+  // Extract key metrics from plan
+  const lines = content.split('\n');
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed.includes('Timeline**:') && trimmed.includes('working days')) {
+      const match = trimmed.match(/(\d+)\s+working days/);
+      if (match) {
+        planData.projected_completion_days = parseInt(match[1]);
+      }
+    }
+    if (trimmed.includes('Updated:') || trimmed.includes('Generated:')) {
+      const dateMatch = trimmed.match(/\d{4}-\d{2}-\d{2}/);
+      if (dateMatch) {
+        planData.last_updated = new Date(dateMatch[0]).toISOString();
+      }
+    }
+  });
+
+  return planData;
+}
+
 // API Endpoints
 app.get('/api/health', (req, res) => {
   res.json({
@@ -167,6 +363,58 @@ app.get('/api/health', (req, res) => {
     version: '1.0.0',
     server: 'MVP2 Dashboard'
   });
+});
+
+app.get('/api/streams', (req, res) => {
+  console.log('📊 /api/streams endpoint called');
+
+  try {
+    // Load and parse all tasks
+    const tasks = loadTasksForStreams();
+    console.log(`Parsed ${tasks.length} tasks for stream analysis`);
+
+    // Calculate stream metrics
+    const streams = calculateStreamMetrics(tasks);
+    console.log(`Calculated metrics for ${streams.length} streams`);
+
+    // Get execution plan context
+    const planData = parseExecutionPlan();
+
+    // Calculate overall progress
+    const totalTasks = streams.reduce((sum, stream) => sum + stream.total_tasks, 0);
+    const completedTasks = streams.reduce((sum, stream) => sum + stream.completed_tasks, 0);
+    const totalProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    // Prepare response
+    const response = {
+      streams: streams,
+      summary: {
+        total_tasks: totalTasks,
+        completed_tasks: completedTasks,
+        total_progress: totalProgress,
+        active_streams: streams.filter(s => s.status === 'in_progress').length,
+        next_milestone: streams.find(s => s.status === 'ready_to_launch')?.name || 'Integration Phase'
+      },
+      execution_plan: planData,
+      last_modified: new Date().toISOString(),
+      data_sources: {
+        tasks_dir: CONFIG.tasksDir,
+        execution_plan: `${CONFIG.mobileAppRoot}/project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md`,
+        metrics_file: CONFIG.metricsFile
+      }
+    };
+
+    console.log(`✅ Successfully generated streams data - ${streams.length} streams, ${totalTasks} tasks, ${totalProgress}% complete`);
+
+    res.json(response);
+  } catch (error) {
+    console.error('❌ Error generating streams data:', error);
+    res.status(500).json({
+      error: 'Failed to generate streams data',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 app.get('/api/tasks', (req, res) => {
@@ -240,7 +488,8 @@ const server = app.listen(PORT, () => {
   console.log(`🔍 Health Check: http://localhost:${PORT}/api/health`);
   console.log(`📋 Tasks API: http://localhost:${PORT}/api/tasks`);
   console.log(`📈 Overview API: http://localhost:${PORT}/api/overview`);
-  console.log(`✅ Production ready - Serving full dashboard`);
+  console.log(`🌊 Streams API: http://localhost:${PORT}/api/streams`);
+  console.log(`✅ Production ready - Serving full dashboard with real data`);
   console.log(`🛑 Press Ctrl+C to stop`);
   console.log(``);
 });
