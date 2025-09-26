@@ -17,7 +17,7 @@
 - **Bash commands**: ALWAYS batch ALL terminal operations in ONE message
 - **Memory operations**: ALWAYS batch ALL memory store/retrieve in ONE message
 
-### 📁 File Organization Rules
+### File Organization Rules
 
 **NEVER save to root folder. Use these directories:**
 - `/src` - Source code files
@@ -154,7 +154,7 @@ See `@project-context/command-examples.md` for:
 - MCP tool categories
 - Performance benefits
 
-## 🎯 Tool Selection Hierarchy (Evidence-Based)
+## Tool Selection Hierarchy (Evidence-Based)
 
 ### 1. Context7 MCP - MANDATORY FIRST (Research Phase)
 **ALWAYS use BEFORE implementation** - Proven 10x efficiency improvement
@@ -184,7 +184,7 @@ See `@project-context/command-examples.md` for:
 
 **PROVEN WORKFLOW**: Context7 Research → Claude Code Implementation → Specialized Agents → MCP Coordination
 
-## 🚀 Quick Setup
+## Quick Setup
 
 ```bash
 # Add Claude Flow MCP server
@@ -196,7 +196,7 @@ source $HOME/.local/bin/env
 uvx --from git+https://github.com/oraios/serena serena start-mcp-server
 ```
 
-## 📦 MCP Tools Available
+## MCP Tools Available
 
 ### Context7 - Library Documentation (MANDATORY FIRST STEP)
 **When to use**: ALWAYS before ANY implementation - verified 10x efficiency improvement
@@ -251,19 +251,20 @@ mcp__context7__get-library-docs({
 - **Serena**: Advanced code analysis and memory
 - **Combined**: Optimal workflow for complex implementations
 
-## 📋 Project Context & Documentation
+## Project Context & Documentation
 
 ### Development Context
 The `@project-context/development-context/` contains critical project specifications:
 
 **MVP2 Documentation** (`/MVP2/`):
-- **Implementation Spec**: `implementation-spec-v1.4.md` - Core MVP2 requirements
-- **Task Plan**: `TASK-RESTRUCTURING-PLAN.md` - 23-task breakdown
-- **Claude Flow Plan**: `claude-flow-implementation-plan.md` - Development methodology
-- **API Guide**: `API-INTEGRATION-GUIDE.md` - Supabase integration patterns
+- **Primary Specification**: `implementation-spec-v1.4.md` - **AUTHORITATIVE SOURCE** for all MVP2 requirements, architecture, and cross-project coordination
+- **User Roles Specification**: `Wildlife Watcher App - User Roles & Permissions Specification.md` - 4-tier RBAC system definitions
+- **Task Breakdown**: `TASK-RESTRUCTURING-PLAN.md` - 23-task implementation structure
+- **Current Execution Strategy**: `MVP2-MASTER-EXECUTION-PLAN.md` - Live development methodology (check for latest approach)
+- **Testing Requirements**: `TESTING-REQUIREMENTS.md` - Test coverage specifications
+- **API Integration**: `API-INTEGRATION-GUIDE.md` - Supabase integration patterns
 - **Component Patterns**: `COMPONENT-IMPLEMENTATION-PATTERNS.md` - UI/UX standards
-- **Testing Requirements**: `TESTING-REQUIREMENTS.md` - Test coverage specs
-- **Task Files**: `/tasks/` - Individual task specifications (task_001.txt - task_023.txt)
+- **Task Specifications**: `/tasks/` - Individual task details (task_001.txt - task_023.txt)
 
 **Project Progress Tracker Dashboard** (`/project-progress-tracker/`):
 - **Dashboard Location**: `@project-context/development-context/project-progress-tracker/`
@@ -273,15 +274,14 @@ The `@project-context/development-context/` contains critical project specificat
 - **Context Prompt**: `DASHBOARD-CONTEXT-PROMPT.md` - Complete dashboard documentation
 
 **Supabase Backend** (`/supabase-backend/`):
-- **Backend Project Location**: `/home/adarsh/dev/wildlifeai/wildlife-watcher-backend` (separate Git repository)
-- **Backend Project Status**: `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md` - Live backend status
-- **Backend Configuration**: `~/wildlife-watcher-backend/CLAUDE.md` - Backend development guide
-- **Database Tasks**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/` - Cross-project task communication
-- **Database Info**: `database-information.md` - Schema and structure (local copy)
-- **Integration Progress**: `supabase-integration-progress.md` - Backend status (local copy)
-- **Type Definitions**: `supabase.ts` - Generated types
+- **Source Repository**: `~/dev/wildlifeai/wildlife-watcher-backend` (**separate Git repository**)
+- **Integration Architecture**: See `implementation-spec-v1.4.md` for backend coordination requirements
+- **Live Backend Status**: `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md`
+- **Cross-Project Tasks**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/` - Task communication
+- **Local Integration Docs**: `@project-context/development-context/supabase-backend/` - Reference documentation
+- **Generated Types**: `supabase.ts` - TypeScript definitions
 
-### 📝 Documents to Keep Updated
+### Documents to Keep Updated
 
 **ALWAYS UPDATE** these documents as you work:
 1. **Task Progress**: `@project-context/superclaude-task-management.md`
@@ -320,96 +320,74 @@ The `@project-context/development-context/` contains critical project specificat
    - **Blockers & Solutions**: Document what caused delays and how resolved
    - This data is CRITICAL for understanding real development velocity and improving future estimates
 
-### 🎯 MVP2 Development Roadmap & Current Status
+### MVP2 Development Information Sources
 
-#### Primary Execution Plan
-**`@project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md`** - FOLLOW THIS PLAN
-- Complete task breakdown with dependencies and execution order
-- 3 Parallel Streams ready to launch (Project Management, Deployment, Devices & Maps)
-- Agent assignments and resource allocation for each task
-- 20-day realistic timeline with quality gates
-- Next immediate tasks: Complete Task 11.4-11.7, then launch parallel streams
+#### Current Status & Progress
+- **Live Dashboard**: Project Progress Tracker at http://localhost:3333
+- **Execution Strategy**: `@project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md` (**check for current methodology**)
+- **Progress Tracking**: `@project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+- **Task Details**: Individual specs in `@project-context/development-context/MVP2/tasks/`
 
-#### Current Status (September 17, 2025)
-- **Foundation Layer**: 50% COMPLETE ✅
-  - Tasks 1-10: DONE (Expo migration, Auth, Redux)
-  - Task 11.8: DONE (UUID alignment completed)
-  - Task 11.3: DONE (OfflineService.ts discovered complete)
-  - Task 11.4-11.7: PENDING (8-12 hours remaining)
-- **Parallel Streams**: READY TO LAUNCH
-- **Estimated Completion**: 20 working days from stream launch
+#### Information Hierarchy
+| Document | Authority Level | Purpose |
+|----------|----------------|----------|
+| `implementation-spec-v1.4.md` | **PRIMARY SOURCE** | All requirements & architecture |
+| `MVP2-MASTER-EXECUTION-PLAN.md` | **CURRENT STRATEGY** | Live execution methodology |
+| Project Progress Tracker | **REAL-TIME STATUS** | Live progress monitoring |
+| `MVP2-METRICS-TRACKER.md` |**TIME TRACKING** | Velocity & variance analysis |
 
-### 📂 Task Tracking Documents
+### Task Information Sources
 
-1. **`@project-context/superclaude-task-management.md`**
-   - Legacy task tracker with SuperClaude commands
-   - Contains Task 11 detailed breakdown
-   - Historical context and decisions
+| Document | Purpose | When to Use |
+|----------|---------|-------------|
+| `MVP2-MASTER-EXECUTION-PLAN.md` | **Primary execution strategy** | Before starting any work |
+| `MVP2-METRICS-TRACKER.md` | **Time tracking & velocity** | Start/end of tasks |
+| `development-context/MVP2/tasks/` | **Individual task specs** | During implementation |
+| Project Progress Tracker | **Live status dashboard** | Continuous monitoring |
+| `superclaude-task-management.md` | Legacy task context | Historical reference |
+| `task-context-preservation.json` | Session state backup | Recovery purposes |
 
-2. **`@project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md`** ⭐ PRIMARY
-   - **THIS IS THE MAIN PLAN TO FOLLOW**
-   - Complete task list (Tasks 12-23) with dependencies
-   - Stream assignments (A, B, C) and parallel execution strategy
-   - Agent allocations and quality gates
-   - Timeline and milestones
+### Ready to Work Resources
 
-3. **`@project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`** 📊 CRITICAL
-   - Track actual vs estimated hours for EVERY task
-   - Work category analysis (UI, Backend, Testing, etc.)
-   - Variance tracking and efficiency metrics
-   - Daily activity logs
-   - **MUST UPDATE after each task/work session**
+✅ **Requirements**: `implementation-spec-v1.4.md` defines complete architecture
+✅ **Current Strategy**: `MVP2-MASTER-EXECUTION-PLAN.md` shows live methodology
+✅ **Live Monitoring**: Project Progress Tracker provides real-time status
+✅ **Task Specifications**: All 23 tasks documented in `/tasks/` directory
+✅ **Quality Standards**: Defined in current execution strategy document
 
-4. **`@project-context/development-context/MVP2/tasks/`**
-   - Individual task specification files (task_001.txt through task_023.txt)
-   - Detailed requirements for each task
-   - Testing strategies and acceptance criteria
+### Current Actions (Always Check Live Sources)
 
-5. **`@project-context/task-context-preservation.json`**
-   - Session state preservation
-   - Implementation context between sessions
-   - Decision history
+- **What's Next**: Check Project Progress Tracker dashboard for current priorities
+- **Execution Strategy**: Consult `MVP2-MASTER-EXECUTION-PLAN.md` for latest methodology
+- **Task Details**: Review specific task files in `development-context/MVP2/tasks/`
+- **Track Progress**: Update `MVP2-METRICS-TRACKER.md` with time spent
 
-### 🚀 Ready to Work Checklist
+### Cross-Project Coordination
 
-✅ **Execution Plan Ready**: MVP2-MASTER-EXECUTION-PLAN.md defines all work
-✅ **Metrics Tracking Ready**: MVP2-METRICS-TRACKER.md for time tracking
-✅ **Task Specifications Available**: All 23 tasks documented
-✅ **Agent Assignments Done**: Each task has assigned agent type
-✅ **Dependencies Mapped**: Clear execution order defined
-✅ **Quality Gates Defined**: Success criteria for each phase
+| Information Source | Purpose | Authority Level |
+|-------------------|---------|----------------|
+| `implementation-spec-v1.4.md` | **Backend integration requirements** | **PRIMARY** |
+| Project Progress Tracker | **Cross-project status dashboard** | 📊 Real-time |
+| `~/wildlife-watcher-backend/project-context/` | **Backend project status** | ✅ Live status |
 
-### 📋 Next Immediate Actions (In Order)
+### Development Protocol
 
-1. **Complete Task 11.4-11.7** (8-12 hours)
-   - Conflict resolution, advanced sync, performance, testing
-   - Non-blocking but good to complete foundation
+**Before Any Task**:
+1. **Check Current Status**: View Project Progress Tracker dashboard
+2. **Review Strategy**: Consult `MVP2-MASTER-EXECUTION-PLAN.md` for current methodology
+3. **Get Requirements**: Check `implementation-spec-v1.4.md` and specific task file
+4. **Start Tracking**: Note start time in `MVP2-METRICS-TRACKER.md`
 
-2. **Launch Parallel Streams** (Begin simultaneously)
-   - Stream A: Tasks 12-14 (Project Management) - 18 hours
-   - Stream B: Tasks 15-17 (Deployment Workflows) - 24 hours
-   - Stream C: Tasks 18-20 (Devices & Maps) - 30 hours
+**During Development**:
+- Follow current execution strategy (incremental/parallel/hybrid)
+- Track time and document any blockers
+- Adhere to quality gates defined in execution plan
 
-3. **Integration Phase** (After streams complete)
-   - Tasks 21-23: Testing, Optimization, Production Prep - 16 hours
-
-### ⚡ Development Protocol
-
-1. **Before Starting Any Task**:
-   - Check MVP2-MASTER-EXECUTION-PLAN.md for requirements
-   - Note start time in MVP2-METRICS-TRACKER.md
-   - Review task specification file in development-context/MVP2/tasks/
-
-2. **During Development**:
-   - Track actual time spent
-   - Note any blockers or issues
-   - Document decisions made
-
-3. **After Completing Task**:
-   - Update MVP2-METRICS-TRACKER.md with actual hours
-   - Mark complete in execution plan
-   - Commit code with descriptive message
-   - Update variance analysis if significantly different from estimate
+**After Task Completion**:
+- Update metrics tracker with actual time spent
+- Monitor progress via dashboard
+- Commit with descriptive messages
+- Check cross-project coordination status if applicable
 
 ## Important Instructions
 
@@ -423,7 +401,7 @@ The `@project-context/development-context/` contains critical project specificat
 - Documentation: https://github.com/ruvnet/claude-flow
 - Issues: https://github.com/ruvnet/claude-flow/issues
 
-## 🧬 AI Agentic Development Framework (AADF)
+## AI Agentic Development Framework (AADF)
 
 ### **Living Framework Documentation**
 **CRITICAL:** This project serves as the primary development laboratory for the **AI Agentic Development Framework (AADF)** - a comprehensive methodology for AI-orchestrated software development.
@@ -465,7 +443,7 @@ Every developer/session MUST contribute to framework evolution by:
 
 **Goal:** Create a comprehensive, battle-tested framework that can be packaged into a `create-aadf-app` equivalent for future projects.
 
-## 🔗 Cross-Project Integration Insights (Backend Learnings)
+## Cross-Project Integration Insights (Backend Learnings)
 
 ### **Reality-First Testing Methodology (CRITICAL LEARNING)**
 **DISCOVERED**: Backend spent 2+ days building elaborate test infrastructure instead of testing real user behavior
