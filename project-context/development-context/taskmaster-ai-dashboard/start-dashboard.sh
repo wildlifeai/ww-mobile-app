@@ -23,15 +23,16 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-# Kill any existing processes on port 3333
+# Kill any existing processes on ports 3333 and 8888
 echo "🧹 Cleaning up existing processes..."
-lsof -ti:3333 | xargs kill -9 2>/dev/null || echo "   No processes to clean up"
+lsof -ti:3333 | xargs kill -9 2>/dev/null || true
+lsof -ti:8888 | xargs kill -9 2>/dev/null || echo "   No processes to clean up"
 
 # Start the dashboard server
 echo ""
 echo "🚀 Starting Wildlife Watcher MVP2 Dashboard..."
-echo "📊 Dashboard will be available at: http://localhost:3333"
-echo "🔗 API endpoints: http://localhost:3333/api/tasks"
+echo "📊 Dashboard will be available at: http://localhost:8888"
+echo "🔗 API endpoints: http://localhost:8888/api/tasks"
 echo ""
 echo "✅ Features:"
 echo "   📱 Mobile App progress tracking"
@@ -42,5 +43,5 @@ echo ""
 echo "Press Ctrl+C to stop the dashboard"
 echo ""
 
-# Start the server (uses the working taskmaster-api-server.js with updated UI)
-node taskmaster-api-server.js
+# Start the clean MVP2 server (no TaskMaster dependencies)
+node mvp2-dashboard-server.js
