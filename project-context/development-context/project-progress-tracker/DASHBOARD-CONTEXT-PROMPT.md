@@ -46,10 +46,12 @@ I have a progress tracking dashboard for my Wildlife Watcher MVP2 project locate
      - `/api/metrics` endpoint with comprehensive real data calculations
      - Interactive metric modals and trend indicators
 
-### 🚀 **NEXT PRIORITY: Metrics Tab Enhancement - Phase 3** 📊
+<!--  -->### 🚀 **CURRENT TASK: Metrics Tab Enhancement - Phase 3** 📊
 
-**Current Task:** Enhance the Metrics tab - specific enhancements to be advised
+**Current Task:** UX/UI Optimization & Content Architecture Enhancement
 **Priority Level:** HIGH - Building on successful Phase 2 completion
+**Status:** ✅ **PLANNING COMPLETE** → Ready for Implementation
+**Implementation Plan:** `METRICS-TAB-PHASE3-ENHANCEMENT-PLAN.md`
 
 **Background Context:**
 - Phase 2 successfully replaced all fake metrics with real, evidence-based calculations
@@ -57,7 +59,15 @@ I have a progress tracking dashboard for my Wildlife Watcher MVP2 project locate
 - API endpoint `/api/metrics` performing excellently (1-15ms response times)
 - Strong foundation in place for advanced features
 
-**Enhancement Objectives:** To be advised by user
+**Phase 3 Enhancement Objectives:**
+1. **Add Contextual Help System** - Hover tooltips explaining each metric
+2. **Optimize Layout Efficiency** - Horizontal grid replacing inefficient vertical stack
+3. **Remove Content Redundancy** - Replace streams progress with Stream Velocity Metrics
+4. **Relocate Misplaced Content** - Move Recent Activity to Overview tab
+5. **Improve Information Architecture** - Pure metrics focus in Metrics tab
+
+**Estimated Duration:** 6-8 hours
+**Execution Strategy:** Dependency-aware parallel execution with safety gates
 
 ### 🚀 Future Enhancement Opportunities (Lower Priority)
 - **Parallel Execution Planning**: Visual task coordination interface
@@ -78,7 +88,8 @@ project-progress-tracker/
 │   ├── DASHBOARD-FEATURE-ANALYSIS.md         # Enhancement roadmap & status
 │   ├── STREAMS-TAB-ENHANCEMENT-PLAN.md       # ✅ COMPLETED: Streams tab real data integration
 │   ├── TASKS-TAB-HIERARCHICAL-ENHANCEMENT-PLAN.md # ✅ COMPLETED: Tasks tab hierarchical structure
-│   ├── METRICS-TAB-ANALYSIS-AND-ENHANCEMENT-PLAN.md # ✅ COMPLETED: Real metrics implementation
+│   ├── METRICS-TAB-ANALYSIS-AND-ENHANCEMENT-PLAN.md # ✅ COMPLETED: Phase 2 real metrics implementation
+│   ├── METRICS-TAB-PHASE3-ENHANCEMENT-PLAN.md # 🚀 CURRENT: Phase 3 UX/UI optimization & architecture
 │   ├── DASHBOARD-CONTEXT-PROMPT.md           # This context file
 │   ├── API-METRICS-INTEGRATION-GUIDE.md      # Metrics API integration documentation
 │   ├── COMPREHENSIVE-TASK-RISK-ANALYSIS.md   # Risk analysis for timeline forecasting
@@ -134,7 +145,8 @@ project-progress-tracker/
 - `start.sh` - Simple startup script
 - `README.md` - Complete feature documentation
 - `DASHBOARD-FEATURE-ANALYSIS.md` - Current enhancement roadmap
-- `METRICS-TAB-ANALYSIS-AND-ENHANCEMENT-PLAN.md` - Completed metrics implementation
+- `METRICS-TAB-ANALYSIS-AND-ENHANCEMENT-PLAN.md` - Completed Phase 2 metrics implementation
+- `METRICS-TAB-PHASE3-ENHANCEMENT-PLAN.md` - **CURRENT** Phase 3 UX/UI optimization plan
 - `testing-infrastructure-analysis.md` - Test quality data source
 
 **Core Features Working:**
