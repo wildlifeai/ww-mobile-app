@@ -1,4 +1,4 @@
-# TaskMaster AI Dashboard - Context Prompt Template
+# Project Progress Tracker Dashboard - Context Prompt Template
 
 ## Quick Start Command
 ```bash

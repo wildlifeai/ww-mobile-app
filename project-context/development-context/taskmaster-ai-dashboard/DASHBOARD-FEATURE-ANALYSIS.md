@@ -60,7 +60,7 @@
 | **Documents** | 📚 | 🔧 **PENDING VERIFICATION** | Document viewer | Unknown |
 | **Settings** | ⚙️ | 🔧 **PENDING VERIFICATION** | Configuration options | Unknown |
 
-### **🔍 Legacy TaskMaster Dashboard Tabs (5 tabs)**
+### **🔍 Legacy Project Progress Tracker Tabs (5 tabs)**
 | Tab | Icon | Status | In MVP2? | Action Needed |
 |-----|------|--------|---------|---------------|
 | **Overview** | 📊 | ✅ Working | ✅ Yes (Better) | None |
