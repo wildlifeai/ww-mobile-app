@@ -3,7 +3,7 @@
 ## Quick Start Command
 ```bash
 # Copy this entire prompt for new Claude conversations:
-cat /home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/taskmaster-ai-dashboard/DASHBOARD-CONTEXT-PROMPT.md
+cat /home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/project-progress-tracker/DASHBOARD-CONTEXT-PROMPT.md
 ```
 
 ---
@@ -11,7 +11,7 @@ cat /home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/deve
 ## Project Context for Claude
 
 I have a progress tracking dashboard for my Wildlife Watcher MVP2 project located at:
-`@project-context/development-context/taskmaster-ai-dashboard/`
+`@project-context/development-context/project-progress-tracker/`
 
 ### Current App Status
 - **Running at**: http://localhost:3333
@@ -32,7 +32,7 @@ I have a progress tracking dashboard for my Wildlife Watcher MVP2 project locate
 
 ### 📁 Complete Folder Structure
 ```
-taskmaster-ai-dashboard/
+project-progress-tracker/
 ├── 📋 PRODUCTION FILES (Main Directory)
 │   ├── dashboard-server.js                    # Single production server (Node.js/Express)
 │   ├── mvp2-progress-dashboard-hybrid.html    # Full dashboard UI (63KB)
