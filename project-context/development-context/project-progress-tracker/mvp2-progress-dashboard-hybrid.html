@@ -1968,6 +1968,66 @@
             color: #666;
         }
 
+        /* Stream Velocity Analytics - Phase 3 Enhancement */
+        .stream-velocity-analytics {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+
+        .stream-velocity-analytics h3 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .velocity-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .velocity-metric-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            border-left: 3px solid var(--accent-color);
+            transition: all 0.3s ease;
+        }
+
+        .velocity-metric-card:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .velocity-metric-card .velocity-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .velocity-metric-card .velocity-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 4px;
+        }
+
+        .velocity-metric-card .velocity-indicator,
+        .velocity-metric-card .velocity-trend,
+        .velocity-metric-card .velocity-status {
+            font-size: 0.8em;
+            color: #28a745;
+            font-weight: 500;
+        }
+
         /* Modal styles for stream details */
         .stream-modal {
             position: fixed;
@@ -2412,6 +2472,47 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Recent Development Activity (Relocated from Metrics Tab) -->
+                    <div class="activity-feed" style="margin-top: 30px;">
+                        <div class="activity-header">
+                            <h3>📈 Recent Development Activity</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="doc-btn" onclick="dashboard.refreshMetrics()">🔄 Refresh</button>
+                                <button class="doc-btn" onclick="dashboard.exportMetrics()">📤 Export</button>
+                            </div>
+                        </div>
+                        <div class="activity-list">
+                            <div id="overviewActivity">
+                                <div class="activity-item">
+                                    <div class="activity-icon commit">📝</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">Task 11.8 Completed - UUID Consistency</div>
+                                        <div class="activity-description">Database alignment and type safety improvements
+                                        </div>
+                                        <div class="activity-time">2 hours ago</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-icon task">✅</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">Foundation Layer Progress</div>
+                                        <div class="activity-description">Authentication and offline services complete</div>
+                                        <div class="activity-time">4 hours ago</div>
+                                    </div>
+                                </div>
+                                <div class="activity-item">
+                                    <div class="activity-icon build">🔧</div>
+                                    <div class="activity-content">
+                                        <div class="activity-title">Backend Deployment Verified</div>
+                                        <div class="activity-description">Production environment ready for mobile
+                                            integration</div>
+                                        <div class="activity-time">6 hours ago</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2734,45 +2835,6 @@
                             <div class="velocity-label">⚡ Velocity Trend</div>
                             <div class="velocity-value" id="velocityTrend">3.9 t/day</div>
                             <div class="velocity-trend">↗️ Accelerating</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="activity-feed" style="margin-top: 30px;">
-                    <div class="activity-header">
-                        <h3>📈 Recent Development Activity</h3>
-                        <div style="display: flex; gap: 10px;">
-                            <button class="doc-btn" onclick="dashboard.refreshMetrics()">🔄 Refresh</button>
-                            <button class="doc-btn" onclick="dashboard.exportMetrics()">📤 Export</button>
-                        </div>
-                    </div>
-                    <div class="activity-list">
-                        <div id="metricsActivity">
-                            <div class="activity-item">
-                                <div class="activity-icon commit">📝</div>
-                                <div class="activity-content">
-                                    <div class="activity-title">Task 11.8 Completed - UUID Consistency</div>
-                                    <div class="activity-description">Database alignment and type safety improvements
-                                    </div>
-                                    <div class="activity-time">2 hours ago</div>
-                                </div>
-                            </div>
-                            <div class="activity-item">
-                                <div class="activity-icon task">✅</div>
-                                <div class="activity-content">
-                                    <div class="activity-title">Foundation Layer Progress</div>
-                                    <div class="activity-description">Authentication and offline services complete</div>
-                                    <div class="activity-time">4 hours ago</div>
-                                </div>
-                            </div>
-                            <div class="activity-item">
-                                <div class="activity-icon build">🔧</div>
-                                <div class="activity-content">
-                                    <div class="activity-title">Backend Deployment Verified</div>
-                                    <div class="activity-description">Production environment ready for mobile
-                                        integration</div>
-                                    <div class="activity-time">6 hours ago</div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
