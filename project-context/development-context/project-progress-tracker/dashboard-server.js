@@ -43,7 +43,189 @@ function safeFileRead(filePath, defaultValue = null) {
   }
 }
 
-// Parse MVP2 task files
+// Enhanced hierarchical task parser for MVP2 tasks
+function parseHierarchicalTaskFile(filePath) {
+  const content = safeFileRead(filePath);
+  if (!content) return null;
+
+  const fileName = path.basename(filePath, '.txt');
+  const taskNumber = parseInt(fileName.replace('task_', '').replace(/[^\d]/g, ''));
+
+  const task = {
+    id: fileName.replace('task_', ''),
+    taskNumber: taskNumber,
+    title: 'Unknown Task',
+    status: 'pending',
+    priority: 'medium',
+    dependencies: [],
+    description: '',
+    subtasks: [],
+    // Hierarchical structure fields
+    feature: determineFeature(taskNumber),
+    stream: determineStream(taskNumber),
+    estimatedHours: 0,
+    actualHours: null,
+    projectType: 'mobile', // default
+    agent: null,
+    complexity: 'medium',
+    parallelizable: false,
+    // Cross-project integration
+    mobileComponent: null,
+    backendComponent: null,
+    integrationPoints: [],
+    // Development metadata
+    testStrategy: null,
+    successCriteria: [],
+    keyFeatures: []
+  };
+
+  const lines = content.split('\n');
+  let currentSection = '';
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Parse header information
+    if (trimmed.startsWith('# Title:')) {
+      task.title = trimmed.replace('# Title:', '').trim();
+    } else if (trimmed.startsWith('# Status:')) {
+      task.status = trimmed.replace('# Status:', '').trim().toLowerCase();
+    } else if (trimmed.startsWith('# Priority:')) {
+      task.priority = trimmed.replace('# Priority:', '').trim().toLowerCase();
+    } else if (trimmed.startsWith('# Dependencies:')) {
+      const deps = trimmed.replace('# Dependencies:', '').trim();
+      task.dependencies = deps ? deps.split(',').map(d => d.trim()) : [];
+    } else if (trimmed.startsWith('# Description:')) {
+      task.description = trimmed.replace('# Description:', '').trim();
+    }
+
+    // Parse implementation requirements as subtasks
+    else if (trimmed.startsWith('###') && trimmed.includes(':')) {
+      const subtaskTitle = trimmed.replace(/^#{1,4}\s*/, '').trim();
+      task.subtasks.push({
+        id: `${task.id}.${task.subtasks.length + 1}`,
+        title: subtaskTitle,
+        type: 'implementation',
+        estimatedHours: extractHours(subtaskTitle),
+        agent: extractAgent(subtaskTitle)
+      });
+    }
+
+    // Parse success criteria
+    else if (trimmed.startsWith('- [ ]')) {
+      const criteria = trimmed.replace('- [ ]', '').trim();
+      task.successCriteria.push(criteria);
+    }
+
+    // Extract estimated hours from various patterns
+    else if (trimmed.includes('hours') || trimmed.includes('Duration')) {
+      const hours = extractHours(trimmed);
+      if (hours > 0 && task.estimatedHours === 0) {
+        task.estimatedHours = hours;
+      }
+    }
+
+    // Extract agent assignments
+    else if (trimmed.includes('Agent:') || trimmed.includes('Primary Agent:')) {
+      const agent = extractAgent(trimmed);
+      if (agent && !task.agent) {
+        task.agent = agent;
+      }
+    }
+
+    // Determine project type from content
+    if (trimmed.includes('mobile') && !trimmed.includes('backend')) {
+      task.projectType = 'mobile';
+    } else if (trimmed.includes('backend') && !trimmed.includes('mobile')) {
+      task.projectType = 'backend';
+    } else if (trimmed.includes('mobile') && trimmed.includes('backend')) {
+      task.projectType = 'integration';
+    }
+
+    // Extract key features
+    if (trimmed.startsWith('## Key Features:') || trimmed.startsWith('### Key Features:')) {
+      currentSection = 'features';
+    } else if (currentSection === 'features' && trimmed.startsWith('- ')) {
+      task.keyFeatures.push(trimmed.substring(2));
+    }
+  }
+
+  // Set default agent if not found
+  if (!task.agent) {
+    task.agent = task.projectType === 'backend' ? 'backend-architect' : 'mobile-dev';
+  }
+
+  return task;
+}
+
+// Helper function to determine feature level based on task number
+function determineFeature(taskNumber) {
+  if (taskNumber >= 1 && taskNumber <= 11) {
+    return 'Foundation';
+  } else if (taskNumber >= 12 && taskNumber <= 14) {
+    return 'Stream A';
+  } else if (taskNumber >= 15 && taskNumber <= 17) {
+    return 'Stream B';
+  } else if (taskNumber >= 18 && taskNumber <= 20) {
+    return 'Stream C';
+  } else if (taskNumber >= 21 && taskNumber <= 23) {
+    return 'Integration';
+  }
+  return 'Unknown';
+}
+
+// Helper function to determine stream based on task number
+function determineStream(taskNumber) {
+  if (taskNumber >= 1 && taskNumber <= 11) {
+    return 'Foundation Layer';
+  } else if (taskNumber >= 12 && taskNumber <= 14) {
+    return 'Project Management';
+  } else if (taskNumber >= 15 && taskNumber <= 17) {
+    return 'Deployment Workflows';
+  } else if (taskNumber >= 18 && taskNumber <= 20) {
+    return 'Devices & Maps';
+  } else if (taskNumber >= 21 && taskNumber <= 23) {
+    return 'Testing & Production';
+  }
+  return 'Unknown';
+}
+
+// Helper function to extract estimated hours from text
+function extractHours(text) {
+  const hourPatterns = [
+    /(\d+)\s*hours?/i,
+    /(\d+)\s*hrs?/i,
+    /Duration.*?(\d+)\s*hours?/i,
+    /(\d+)h/i
+  ];
+
+  for (const pattern of hourPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return parseInt(match[1]);
+    }
+  }
+  return 0;
+}
+
+// Helper function to extract agent from text
+function extractAgent(text) {
+  const agentPatterns = [
+    /Agent:\s*`([^`]+)`/i,
+    /Primary Agent.*?`([^`]+)`/i,
+    /Agent:\s*([a-z-]+)/i
+  ];
+
+  for (const pattern of agentPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return match[1];
+    }
+  }
+  return null;
+}
+
+// Legacy parseTaskFile function for backward compatibility
 function parseTaskFile(filePath) {
   const content = safeFileRead(filePath);
   if (!content) return null;
@@ -87,7 +269,40 @@ function parseTaskFile(filePath) {
   return task;
 }
 
-// Load all MVP2 tasks
+// Load all MVP2 tasks using hierarchical parser
+function loadHierarchicalMVP2Tasks() {
+  try {
+    if (!fs.existsSync(CONFIG.tasksDir)) {
+      console.warn(`Tasks directory not found: ${CONFIG.tasksDir}`);
+      return [];
+    }
+
+    const taskFiles = fs.readdirSync(CONFIG.tasksDir)
+      .filter(file => file.startsWith('task_') && file.endsWith('.txt') && !file.includes('maestro'))
+      .sort((a, b) => {
+        const aNum = parseInt(a.replace('task_', '').replace(/[^\d]/g, ''));
+        const bNum = parseInt(b.replace('task_', '').replace(/[^\d]/g, ''));
+        return aNum - bNum;
+      });
+
+    const tasks = [];
+    for (const file of taskFiles) {
+      const task = parseHierarchicalTaskFile(path.join(CONFIG.tasksDir, file));
+      if (task) {
+        tasks.push(task);
+        console.log(`Parsed task ${task.id}: ${task.title} (${task.feature} - ${task.stream})`);
+      }
+    }
+
+    console.log(`Loaded ${tasks.length} hierarchical MVP2 tasks`);
+    return tasks;
+  } catch (error) {
+    console.error('Error loading hierarchical MVP2 tasks:', error);
+    return [];
+  }
+}
+
+// Legacy function for backward compatibility
 function loadMVP2Tasks() {
   try {
     if (!fs.existsSync(CONFIG.tasksDir)) {
@@ -111,6 +326,129 @@ function loadMVP2Tasks() {
     console.error('Error loading MVP2 tasks:', error);
     return [];
   }
+}
+
+// Generate hierarchical task structure
+function generateHierarchicalStructure(tasks) {
+  const hierarchy = {};
+
+  // Group tasks by feature and stream
+  tasks.forEach(task => {
+    const feature = task.feature;
+    const stream = task.stream;
+
+    if (!hierarchy[feature]) {
+      hierarchy[feature] = {
+        name: feature,
+        streams: {},
+        totalTasks: 0,
+        completedTasks: 0,
+        estimatedHours: 0,
+        status: 'pending'
+      };
+    }
+
+    if (!hierarchy[feature].streams[stream]) {
+      hierarchy[feature].streams[stream] = {
+        name: stream,
+        tasks: [],
+        totalTasks: 0,
+        completedTasks: 0,
+        estimatedHours: 0,
+        status: 'pending'
+      };
+    }
+
+    // Add task to stream
+    hierarchy[feature].streams[stream].tasks.push(task);
+    hierarchy[feature].streams[stream].totalTasks++;
+    hierarchy[feature].streams[stream].estimatedHours += task.estimatedHours || 0;
+
+    // Update feature totals
+    hierarchy[feature].totalTasks++;
+    hierarchy[feature].estimatedHours += task.estimatedHours || 0;
+
+    // Update completion counts
+    if (task.status === 'completed' || task.status === 'done') {
+      hierarchy[feature].streams[stream].completedTasks++;
+      hierarchy[feature].completedTasks++;
+    }
+  });
+
+  // Calculate progress and status for each stream and feature
+  Object.keys(hierarchy).forEach(featureKey => {
+    const feature = hierarchy[featureKey];
+
+    Object.keys(feature.streams).forEach(streamKey => {
+      const stream = feature.streams[streamKey];
+      const progress = stream.totalTasks > 0 ? (stream.completedTasks / stream.totalTasks) * 100 : 0;
+
+      if (progress === 100) {
+        stream.status = 'completed';
+      } else if (progress > 0) {
+        stream.status = 'in_progress';
+      } else {
+        stream.status = 'pending';
+      }
+
+      stream.progress = Math.round(progress);
+    });
+
+    // Calculate feature-level progress
+    const featureProgress = feature.totalTasks > 0 ? (feature.completedTasks / feature.totalTasks) * 100 : 0;
+
+    if (featureProgress === 100) {
+      feature.status = 'completed';
+    } else if (featureProgress > 0) {
+      feature.status = 'in_progress';
+    } else {
+      feature.status = 'pending';
+    }
+
+    feature.progress = Math.round(featureProgress);
+  });
+
+  return hierarchy;
+}
+
+// Build dependency graph for tasks
+function buildDependencyGraph(tasks) {
+  const dependencyGraph = {};
+
+  tasks.forEach(task => {
+    dependencyGraph[task.id] = {
+      task: task,
+      dependencies: [],
+      dependents: [],
+      blocked: false,
+      canStart: true
+    };
+  });
+
+  // Build dependency relationships
+  tasks.forEach(task => {
+    if (task.dependencies && task.dependencies.length > 0) {
+      task.dependencies.forEach(depId => {
+        const cleanDepId = depId.toString().trim();
+
+        // Find matching task
+        const dependency = tasks.find(t => t.id === cleanDepId || t.taskNumber.toString() === cleanDepId);
+
+        if (dependency && dependencyGraph[dependency.id]) {
+          dependencyGraph[task.id].dependencies.push(dependency.id);
+          dependencyGraph[dependency.id].dependents.push(task.id);
+
+          // Check if task is blocked
+          if (dependency.status !== 'completed' && dependency.status !== 'done') {
+            dependencyGraph[task.id].blocked = true;
+            dependencyGraph[task.id].canStart = false;
+          }
+        }
+      });
+    }
+  });
+
+  return dependencyGraph;
 }
 
 // Load backend status
@@ -411,6 +749,82 @@ app.get('/api/streams', (req, res) => {
     console.error('❌ Error generating streams data:', error);
     res.status(500).json({
       error: 'Failed to generate streams data',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// New hierarchical tasks API endpoint
+app.get('/api/tasks/hierarchical', (req, res) => {
+  console.log('📋 /api/tasks/hierarchical endpoint called');
+
+  try {
+    // Load hierarchical tasks
+    const tasks = loadHierarchicalMVP2Tasks();
+    console.log(`Loaded ${tasks.length} hierarchical tasks`);
+
+    // Generate hierarchical structure
+    const hierarchy = generateHierarchicalStructure(tasks);
+    console.log(`Generated hierarchy with ${Object.keys(hierarchy).length} features`);
+
+    // Build dependency graph
+    const dependencies = buildDependencyGraph(tasks);
+    console.log(`Built dependency graph for ${Object.keys(dependencies).length} tasks`);
+
+    // Calculate summary metrics
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === 'completed' || t.status === 'done').length;
+    const inProgressTasks = tasks.filter(t => t.status === 'in_progress' || t.status === 'active').length;
+    const blockedTasks = Object.values(dependencies).filter(d => d.blocked).length;
+    const totalProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    // Get agent assignments
+    const agentWorkload = {};
+    tasks.forEach(task => {
+      const agent = task.agent || 'unassigned';
+      if (!agentWorkload[agent]) {
+        agentWorkload[agent] = {
+          assigned: 0,
+          completed: 0,
+          inProgress: 0,
+          pending: 0
+        };
+      }
+      agentWorkload[agent].assigned++;
+      if (task.status === 'completed' || task.status === 'done') {
+        agentWorkload[agent].completed++;
+      } else if (task.status === 'in_progress' || task.status === 'active') {
+        agentWorkload[agent].inProgress++;
+      } else {
+        agentWorkload[agent].pending++;
+      }
+    });
+
+    const response = {
+      tasks: tasks,
+      hierarchy: hierarchy,
+      dependencies: dependencies,
+      summary: {
+        totalTasks,
+        completedTasks,
+        inProgressTasks,
+        blockedTasks,
+        totalProgress,
+        features: Object.keys(hierarchy).length,
+        streams: Object.values(hierarchy).reduce((sum, feature) => sum + Object.keys(feature.streams).length, 0)
+      },
+      agentWorkload: agentWorkload,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log(`✅ Hierarchical tasks response generated: ${totalTasks} tasks, ${totalProgress}% complete`);
+    res.json(response);
+
+  } catch (error) {
+    console.error('❌ Error loading hierarchical tasks:', error);
+    res.status(500).json({
+      error: 'Failed to load hierarchical tasks',
       message: error.message,
       timestamp: new Date().toISOString()
     });
