@@ -573,6 +573,9 @@ class MVP2DashboardAPI {
         const indicator = document.querySelector('.status-indicator');
         const connectionStatus = document.getElementById('connectionStatus');
         const lastUpdate = document.getElementById('lastUpdate');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const refreshIcon = document.getElementById('refreshIcon');
+        const refreshText = document.getElementById('refreshText');
 
         if (indicator) {
             indicator.classList.add('refreshing');
@@ -583,12 +586,25 @@ class MVP2DashboardAPI {
         if (lastUpdate) {
             lastUpdate.textContent = 'Updating data...';
         }
+        if (refreshBtn) {
+            refreshBtn.classList.add('refreshing');
+            refreshBtn.disabled = true;
+        }
+        if (refreshIcon) {
+            refreshIcon.textContent = '⏳';
+        }
+        if (refreshText) {
+            refreshText.textContent = 'Refreshing...';
+        }
     }
 
     hideRefreshIndicator() {
         const indicator = document.querySelector('.status-indicator');
         const connectionStatus = document.getElementById('connectionStatus');
         const lastUpdate = document.getElementById('lastUpdate');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const refreshIcon = document.getElementById('refreshIcon');
+        const refreshText = document.getElementById('refreshText');
 
         if (indicator) {
             indicator.classList.remove('refreshing');
@@ -600,6 +616,16 @@ class MVP2DashboardAPI {
         if (lastUpdate) {
             const now = new Date().toLocaleTimeString();
             lastUpdate.textContent = `Updated ${now}`;
+        }
+        if (refreshBtn) {
+            refreshBtn.classList.remove('refreshing');
+            refreshBtn.disabled = false;
+        }
+        if (refreshIcon) {
+            refreshIcon.textContent = '🔄';
+        }
+        if (refreshText) {
+            refreshText.textContent = 'Refresh';
         }
     }
 
@@ -621,7 +647,7 @@ class MVP2DashboardAPI {
 
     setupEventListeners() {
         // Manual refresh button
-        const refreshBtn = document.getElementById('refresh-btn');
+        const refreshBtn = document.getElementById('refreshBtn');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.refreshAllData());
         }
