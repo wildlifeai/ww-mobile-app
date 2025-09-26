@@ -1428,6 +1428,195 @@
                 flex-wrap: wrap;
             }
         }
+
+        /* Dependency Visualization */
+        .dependency-container {
+            position: relative;
+            margin: 15px 0;
+        }
+
+        .dependency-visualization {
+            position: relative;
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #e0e6ed;
+        }
+
+        .dependency-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .dependency-graph {
+            position: relative;
+            min-height: 200px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e0e6ed;
+            overflow: hidden;
+        }
+
+        .dependency-node {
+            position: absolute;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 500;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .dependency-node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 15;
+        }
+
+        .dependency-node.completed {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .dependency-node.blocked {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        .dependency-node.pending {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        .dependency-node.in_progress {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        .dependency-line {
+            position: absolute;
+            background: #667eea;
+            height: 2px;
+            z-index: 5;
+            transition: all 0.3s ease;
+        }
+
+        .dependency-line.blocked-connection {
+            background: #dc3545;
+            animation: pulse 2s infinite;
+            height: 3px;
+        }
+
+        .dependency-arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 8px solid #667eea;
+            z-index: 6;
+        }
+
+        .dependency-arrow.blocked-arrow {
+            border-bottom-color: #dc3545;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .dependency-summary {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+
+        .dependency-stat {
+            text-align: center;
+        }
+
+        .dependency-stat-number {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .dependency-stat-label {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 2px;
+        }
+
+        .dependency-toggle {
+            background: none;
+            border: 1px solid #667eea;
+            color: #667eea;
+            padding: 6px 14px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .dependency-toggle:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .dependency-toggle.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .dependency-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .dependency-legend {
+            display: flex;
+            gap: 15px;
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 10px;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
     </style>
 </head>
 
@@ -1753,6 +1942,51 @@
                     </h3>
                     <div id="taskTreeContainer">
                         <!-- Hierarchical task tree populated by JavaScript -->
+                    </div>
+
+                    <!-- Dependency Visualization Container -->
+                    <div class="dependency-container" style="margin-top: 25px;">
+                        <div class="dependency-visualization">
+                            <div class="dependency-header">
+                                🔗 Task Dependencies & Relationships
+                                <div class="dependency-controls" style="margin-left: auto; margin-bottom: 0;">
+                                    <button id="dependencyToggle" class="dependency-toggle">Show Dependencies</button>
+                                </div>
+                            </div>
+
+                            <div id="dependencyContent" style="display: none;">
+                                <div class="dependency-graph" id="dependencyGraph">
+                                    <!-- Dependency visualization populated by JavaScript -->
+                                </div>
+
+                                <div class="dependency-legend">
+                                    <div class="legend-item">
+                                        <div class="legend-color" style="background: #28a745;"></div>
+                                        <span>Completed</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color" style="background: #17a2b8;"></div>
+                                        <span>In Progress</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color" style="background: #ffc107;"></div>
+                                        <span>Pending</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color" style="background: #dc3545;"></div>
+                                        <span>Blocked</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color" style="background: #dc3545; animation: pulse 2s infinite;"></div>
+                                        <span>Blocking Connection</span>
+                                    </div>
+                                </div>
+
+                                <div class="dependency-summary" id="dependencySummary">
+                                    <!-- Dependency summary populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2082,6 +2316,13 @@
                         setTimeout(() => this.loadData(), 100);
                     });
                 }
+
+                // Dependency toggle
+                document.addEventListener('click', (e) => {
+                    if (e.target.id === 'dependencyToggle') {
+                        this.toggleDependencyVisualization();
+                    }
+                });
             },
 
             async loadData() {
@@ -2407,6 +2648,202 @@
                     `;
                 }
                 this.hideLoadingIndicator();
+            },
+
+            // Dependency Visualization Methods
+            toggleDependencyVisualization() {
+                const toggle = document.getElementById('dependencyToggle');
+                const content = document.getElementById('dependencyContent');
+
+                if (!toggle || !content) return;
+
+                if (content.style.display === 'none') {
+                    content.style.display = 'block';
+                    toggle.textContent = 'Hide Dependencies';
+                    toggle.classList.add('active');
+                    this.renderDependencyVisualization();
+                } else {
+                    content.style.display = 'none';
+                    toggle.textContent = 'Show Dependencies';
+                    toggle.classList.remove('active');
+                }
+            },
+
+            renderDependencyVisualization() {
+                if (!this.data || !this.data.dependencies) {
+                    console.warn('No dependency data available');
+                    return;
+                }
+
+                console.log('🔗 Rendering dependency visualization...');
+
+                this.renderDependencyGraph();
+                this.renderDependencySummary();
+            },
+
+            renderDependencyGraph() {
+                const graph = document.getElementById('dependencyGraph');
+                if (!graph) return;
+
+                // Get all tasks with dependencies
+                const tasksWithDeps = Object.entries(this.data.dependencies)
+                    .filter(([taskId, deps]) => deps.depends_on && deps.depends_on.length > 0)
+                    .map(([taskId, deps]) => ({
+                        taskId,
+                        deps: deps.depends_on,
+                        blocked: deps.blocked || false
+                    }));
+
+                if (tasksWithDeps.length === 0) {
+                    graph.innerHTML = '<div style="text-align: center; padding: 40px; color: #6c757d;">No task dependencies found</div>';
+                    return;
+                }
+
+                // Create layout for dependency nodes
+                const layout = this.calculateDependencyLayout(tasksWithDeps);
+
+                let graphHTML = '';
+
+                // Render dependency lines first (so they appear behind nodes)
+                tasksWithDeps.forEach(({ taskId, deps, blocked }) => {
+                    deps.forEach(depId => {
+                        const fromPos = layout[depId];
+                        const toPos = layout[taskId];
+
+                        if (fromPos && toPos) {
+                            graphHTML += this.createDependencyLine(fromPos, toPos, blocked);
+                        }
+                    });
+                });
+
+                // Render nodes
+                Object.entries(layout).forEach(([taskId, pos]) => {
+                    const task = this.findTaskById(taskId);
+                    if (task) {
+                        const isBlocked = this.data.dependencies[taskId]?.blocked || false;
+                        graphHTML += this.createDependencyNode(task, pos, isBlocked);
+                    }
+                });
+
+                graph.innerHTML = graphHTML;
+            },
+
+            calculateDependencyLayout(tasksWithDeps) {
+                // Simple grid layout for now - can be enhanced with force-directed layout later
+                const layout = {};
+                const graphWidth = 600;
+                const graphHeight = 200;
+                const nodeWidth = 120;
+                const nodeHeight = 40;
+
+                // Get all unique task IDs involved in dependencies
+                const allTaskIds = new Set();
+                tasksWithDeps.forEach(({ taskId, deps }) => {
+                    allTaskIds.add(taskId);
+                    deps.forEach(dep => allTaskIds.add(dep));
+                });
+
+                const taskIds = Array.from(allTaskIds);
+                const cols = Math.min(6, taskIds.length);
+                const rows = Math.ceil(taskIds.length / cols);
+
+                taskIds.forEach((taskId, index) => {
+                    const col = index % cols;
+                    const row = Math.floor(index / cols);
+
+                    layout[taskId] = {
+                        x: (col * (graphWidth / cols)) + (nodeWidth / 2),
+                        y: (row * (graphHeight / rows)) + (nodeHeight / 2),
+                        width: nodeWidth,
+                        height: nodeHeight
+                    };
+                });
+
+                return layout;
+            },
+
+            createDependencyLine(fromPos, toPos, blocked) {
+                const dx = toPos.x - fromPos.x;
+                const dy = toPos.y - fromPos.y;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+                const startX = fromPos.x + (fromPos.width / 2);
+                const startY = fromPos.y;
+
+                const lineClass = blocked ? 'dependency-line blocked-connection' : 'dependency-line';
+                const arrowClass = blocked ? 'dependency-arrow blocked-arrow' : 'dependency-arrow';
+
+                return `
+                    <div class="${lineClass}" style="
+                        left: ${startX}px;
+                        top: ${startY}px;
+                        width: ${length - 20}px;
+                        transform: rotate(${angle}deg);
+                        transform-origin: 0 50%;
+                    "></div>
+                    <div class="${arrowClass}" style="
+                        left: ${toPos.x - 6}px;
+                        top: ${toPos.y - 8}px;
+                    "></div>
+                `;
+            },
+
+            createDependencyNode(task, pos, isBlocked) {
+                const statusClass = task.status === 'completed' ? 'completed' :
+                                  task.status === 'in_progress' ? 'in_progress' :
+                                  isBlocked ? 'blocked' : 'pending';
+
+                return `
+                    <div class="dependency-node ${statusClass}" style="
+                        left: ${pos.x - pos.width/2}px;
+                        top: ${pos.y - pos.height/2}px;
+                        width: ${pos.width}px;
+                        height: ${pos.height}px;
+                    " title="${task.title}">
+                        Task ${task.id}
+                        <div style="font-size: 10px; opacity: 0.8;">${task.status}</div>
+                    </div>
+                `;
+            },
+
+            renderDependencySummary() {
+                const summaryContainer = document.getElementById('dependencySummary');
+                if (!summaryContainer) return;
+
+                const deps = this.data.dependencies;
+                const totalDeps = Object.keys(deps).length;
+                const blockedCount = Object.values(deps).filter(d => d.blocked).length;
+                const completedDeps = Object.entries(deps).filter(([taskId, dep]) => {
+                    const task = this.findTaskById(taskId);
+                    return task && task.status === 'completed';
+                }).length;
+
+                summaryContainer.innerHTML = `
+                    <div class="dependency-stat">
+                        <div class="dependency-stat-number">${totalDeps}</div>
+                        <div class="dependency-stat-label">Total Dependencies</div>
+                    </div>
+                    <div class="dependency-stat">
+                        <div class="dependency-stat-number" style="color: #dc3545;">${blockedCount}</div>
+                        <div class="dependency-stat-label">Blocked Tasks</div>
+                    </div>
+                    <div class="dependency-stat">
+                        <div class="dependency-stat-number" style="color: #28a745;">${completedDeps}</div>
+                        <div class="dependency-stat-label">Completed</div>
+                    </div>
+                    <div class="dependency-stat">
+                        <div class="dependency-stat-number" style="color: #17a2b8;">${Math.round((completedDeps / totalDeps) * 100)}%</div>
+                        <div class="dependency-stat-label">Progress</div>
+                    </div>
+                `;
+            },
+
+            findTaskById(taskId) {
+                // Search through all tasks in the hierarchy
+                if (!this.data.tasks) return null;
+
+                return this.data.tasks.find(task => task.id === taskId);
             }
         };
 
