@@ -664,31 +664,83 @@ class MVP2DashboardAPI {
 
     async renderStreamVelocity() {
         const streamVelocityContainer = document.getElementById('streamVelocityContainer');
-        const streamVelocityChart = document.getElementById('streamVelocityChart');
 
-        if (!streamVelocityContainer || !streamVelocityChart) return;
+        // Also update the Stream Velocity Analytics section
+        const streamUtilization = document.getElementById('streamUtilization');
+        const averageProgress = document.getElementById('averageProgress');
+        const criticalPath = document.getElementById('criticalPath');
+        const velocityTrend = document.getElementById('velocityTrend');
+
+        if (!streamVelocityContainer) {
+            console.warn('Stream velocity container not found');
+            return;
+        }
 
         try {
-            // Fetch stream data
-            const response = await fetch(`${this.baseURL}/api/streams`);
-            if (!response.ok) throw new Error('Failed to fetch streams data');
+            // Fetch metrics data that includes streamVelocity
+            const metricsResponse = await fetch(`${this.baseURL}/api/metrics`);
+            if (!metricsResponse.ok) throw new Error('Failed to fetch metrics data');
 
-            const streamsData = await response.json();
+            const metricsData = await metricsResponse.json();
+            const streamVelocityData = metricsData.streamVelocity;
+
+            // Also fetch streams data for detailed view
+            const streamsResponse = await fetch(`${this.baseURL}/api/streams`);
+            if (!streamsResponse.ok) throw new Error('Failed to fetch streams data');
+
+            const streamsData = await streamsResponse.json();
             const streams = streamsData.streams || [];
 
             // Store streams data for modal access
             this.lastStreamsData = streamsData;
 
-            // Render velocity summary card
+            // Render velocity summary card in the metrics grid
             this.renderVelocitySummary(streamVelocityContainer, streams, streamsData.summary);
 
-            // Render detailed stream chart
-            this.renderStreamChart(streamVelocityChart, streams);
+            // Update the Stream Velocity Analytics section if present
+            if (streamVelocityData && streamVelocityData.analytics) {
+                const analytics = streamVelocityData.analytics;
+
+                if (streamUtilization) {
+                    streamUtilization.innerHTML = `${analytics.totalActiveStreams}/${analytics.totalStreams} Active`;
+                    const utilizationIndicator = streamUtilization.nextElementSibling;
+                    if (utilizationIndicator) {
+                        utilizationIndicator.textContent = `${streamVelocityData.streamUtilization}% Capacity`;
+                    }
+                }
+
+                if (averageProgress) {
+                    averageProgress.innerHTML = `${streamVelocityData.averageStreamProgress.toFixed(1)}%`;
+                    const progressTrend = averageProgress.nextElementSibling;
+                    if (progressTrend) {
+                        progressTrend.innerHTML = `${analytics.velocityTrendEmoji} ${streamVelocityData.streamVelocityTrend}`;
+                    }
+                }
+
+                if (criticalPath) {
+                    criticalPath.innerHTML = streamVelocityData.criticalPathStream.replace('Layer', '');
+                    const pathStatus = criticalPath.nextElementSibling;
+                    if (pathStatus) {
+                        pathStatus.textContent = `${analytics.foundationLayerProgress}% Complete`;
+                    }
+                }
+
+                if (velocityTrend) {
+                    // Calculate velocity based on completed tasks and days
+                    const tasksPerDay = (metricsData.context.completedTasks / 10).toFixed(1); // Assuming 10 days of work
+                    velocityTrend.innerHTML = `${tasksPerDay} t/day`;
+                    const trendIndicator = velocityTrend.nextElementSibling;
+                    if (trendIndicator) {
+                        trendIndicator.innerHTML = `${analytics.velocityTrendEmoji} Accelerating`;
+                    }
+                }
+            }
 
         } catch (error) {
             console.error('Error rendering stream velocity:', error);
-            streamVelocityContainer.innerHTML = '<div class="error">Failed to load stream data</div>';
-            streamVelocityChart.innerHTML = '<div class="error">Failed to load stream visualization</div>';
+            if (streamVelocityContainer) {
+                streamVelocityContainer.innerHTML = '<div class="error">Failed to load stream data</div>';
+            }
         }
     }
 
