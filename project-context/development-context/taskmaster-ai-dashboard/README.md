@@ -1,46 +1,107 @@
-# 🦅 Wildlife Watcher MVP2 Development Dashboard
+# 🦅 Wildlife Watcher MVP2 Dashboard
 
-A clean, professional development monitoring dashboard for cross-project progress tracking.
+**Production-ready dashboard for MVP2 development tracking**
 
-## ✅ Features
-
-- **📱 Mobile App Progress**: Track React Native development across 23 tasks
-- **⚡ Backend Integration**: Monitor Supabase backend deployment status
-- **🚀 Stream Organization**: Foundation → Stream A/B/C development flow
-- **🏗️ Cross-Project Coordination**: Mobile + Backend status in one view
-- **📊 Real-time Updates**: Live progress tracking and metrics
-- **📚 Document Access**: Quick links to execution plans and status files
-
-## 🚀 Quick Start
+## ⚡ Quick Start
 
 ```bash
 # Start the dashboard
-./start-dashboard.sh
+./start.sh
 
 # Access at: http://localhost:3333
 ```
 
-## 📂 Core Files
+**That's it!** ✨
 
-- **`start-dashboard.sh`** - Main startup script (recommended)
-- **`mvp2-progress-dashboard-hybrid.html`** - Dashboard UI
-- **`mvp2-dashboard-api-hybrid.js`** - Frontend API integration
-- **`taskmaster-api-server.js`** - Backend server
-- **`package.json`** - Node.js dependencies
+## 📊 What You Get
 
-## 📁 Archive Structure
+- **📱 Mobile App Progress**: Track all 23 MVP2 tasks across development streams
+- **⚡ Backend Integration**: Monitor backend deployment and readiness status
+- **🚀 Development Streams**: Foundation → Stream A/B/C organization
+- **📈 Real-time Metrics**: Task completion, velocity, time tracking
+- **📚 Document Access**: Quick links to execution plans and status files
+- **⚙️ Settings Panel**: Configure refresh rates, notifications, themes
 
-- **`archive/docs/`** - Legacy documentation and analysis
-- **`archive/legacy-code/`** - Old dashboard implementations
-- **`archive/scripts/`** - Alternative startup scripts and configs
+## 🎯 Dashboard Features
+
+### ✅ Tabs Available
+- **📊 Overview** - Executive summary and current status
+- **🚀 Streams** - Development stream progress (Foundation/A/B/C)
+- **📋 Tasks** - Full task list with filters and search
+- **🏗️ Projects** - Cross-project coordination (Mobile + Backend)
+- **📈 Metrics** - Time tracking and velocity analysis
+- **📚 Documents** - Project document viewer
+- **⚙️ Settings** - Dashboard configuration
+
+### 🔧 Interactive Elements
+- **🔄 Refresh Button** - Manual data refresh with visual feedback
+- **🟢 Connection Status** - Live API status indicator
+- **🕒 Last Updated** - Real-time timestamp display
+- **⌨️ Keyboard Shortcuts** - Ctrl+1-7 for tab switching, F5 for refresh
+
+## 🗂️ File Structure
+
+### **Production Files** (Main Directory)
+```
+dashboard-server.js                 # Single production server
+start.sh                           # Simple startup script
+mvp2-progress-dashboard-hybrid.html # Full dashboard UI
+mvp2-dashboard-api-hybrid.js       # Frontend JavaScript
+package.json                       # Dependencies
+README.md                          # This file
+DASHBOARD-FEATURE-ANALYSIS.md      # Feature tracking
+```
+
+### **Archive** (Reference Only)
+```
+archive/
+├── docs/           # Old documentation and analysis
+├── legacy-code/    # Old dashboard implementations
+└── scripts/        # Alternative startup methods
+```
+
+## 📊 Data Sources
+
+The dashboard automatically loads data from:
+
+- **📱 Mobile Tasks**: `project-context/development-context/MVP2/tasks/*.txt`
+- **📊 Metrics**: `project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+- **⚡ Backend Status**: `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md`
+
+## 🔧 Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start in development mode
+node dashboard-server.js
+
+# Check API health
+curl http://localhost:3333/api/health
+```
+
+## 🌐 API Endpoints
+
+- `GET /` - Dashboard UI
+- `GET /api/health` - Server health check
+- `GET /api/tasks` - All MVP2 tasks
+- `GET /api/overview` - Executive summary with mobile + backend status
 
 ## 🎯 Current Status
 
-- **Mobile App**: 65% complete, Foundation Layer done
-- **Backend**: 98% complete, Production ready
-- **Integration**: Auth ✅, Database ✅, APIs ✅, Real-time ⏳
+- **✅ Production Ready** - Clean, single-purpose dashboard
+- **✅ Full Feature Set** - All tabs functional with real data
+- **✅ Cross-Project** - Mobile app + backend coordination
+- **✅ Real-time Updates** - Live data refresh and status indicators
+
+## 📋 Next Steps
+
+See `DASHBOARD-FEATURE-ANALYSIS.md` for:
+- Missing features to restore (Gantt, Kanban, Activity)
+- Enhancement roadmap
+- Testing checklist
 
 ---
 
-**Dashboard URL**: http://localhost:3333
-**Status**: Production Ready ✅
+**Access**: http://localhost:3333 • **Start**: `./start.sh` • **Status**: Production Ready ✅
