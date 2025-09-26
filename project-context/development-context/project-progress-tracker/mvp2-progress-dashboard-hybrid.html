@@ -235,6 +235,16 @@
             transform: translateY(-3px);
         }
 
+        .metric-card.clickable {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .metric-card.clickable:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow), 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
         .metric-card::before {
             content: '';
             position: absolute;
@@ -1894,6 +1904,153 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Agent Efficiency Breakdown Modal Styles */
+        .agent-efficiency-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .agent-efficiency-modal.show {
+            display: block;
+        }
+
+        .agent-efficiency-modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease-out;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 15px;
+        }
+
+        .modal-title {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .modal-close {
+            font-size: 2em;
+            cursor: pointer;
+            color: #95a5a6;
+            transition: color 0.3s ease;
+        }
+
+        .modal-close:hover {
+            color: #e74c3c;
+        }
+
+        .efficiency-breakdown-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .efficiency-component {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .component-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .component-title {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .component-score {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .component-weight {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-bottom: 8px;
+        }
+
+        .component-description {
+            margin-bottom: 8px;
+            color: #34495e;
+        }
+
+        .component-evidence {
+            font-size: 0.9em;
+            color: #27ae60;
+            font-style: italic;
+        }
+
+        .recommendations-section {
+            margin-top: 30px;
+        }
+
+        .recommendations-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .recommendation-item {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .recommendation-priority {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .priority-critical { background: #e74c3c; color: white; }
+        .priority-high { background: #f39c12; color: white; }
+        .priority-medium { background: #3498db; color: white; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
     </style>
 </head>
 
@@ -2359,10 +2516,10 @@
                         <div class="metric-number" id="qualityScore">9.1</div>
                         <div class="metric-trend positive">Excellent</div>
                     </div>
-                    <div class="metric-card">
-                        <div class="metric-label">🔄 Integration Health</div>
+                    <div class="metric-card clickable" onclick="dashboard.showAgentEfficiencyBreakdown()" title="Click for detailed breakdown">
+                        <div class="metric-label">🧠 Agent Efficiency</div>
                         <div class="metric-number" id="integrationHealth">95%</div>
-                        <div class="metric-trend positive">All systems go</div>
+                        <div class="metric-trend positive" id="integrationHealthTrend">All systems go</div>
                     </div>
                 </div>
 
@@ -3138,6 +3295,22 @@
             hierarchicalTasks.init();
         });
     </script>
+
+    <!-- Agent Efficiency Breakdown Modal -->
+    <div id="agentEfficiencyModal" class="agent-efficiency-modal" onclick="if(event.target === this) dashboard.hideAgentEfficiencyBreakdown()">
+        <div class="agent-efficiency-modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">🧠 Agent Efficiency Breakdown</h2>
+                <span class="modal-close" onclick="dashboard.hideAgentEfficiencyBreakdown()">&times;</span>
+            </div>
+
+            <div id="agentEfficiencyContent">
+                <!-- Dynamic content will be loaded here -->
+                <div class="loading">Loading agent efficiency breakdown...</div>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
