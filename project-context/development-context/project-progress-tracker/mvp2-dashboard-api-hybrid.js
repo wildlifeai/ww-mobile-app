@@ -23,6 +23,7 @@ class MVP2DashboardAPI {
     async init() {
         await this.loadInitialData();
         this.setupEventListeners();
+        this.initializeTooltips();
         this.startPeriodicUpdates();
     }
 
@@ -430,6 +431,9 @@ class MVP2DashboardAPI {
         // Update existing metric values
         this.updateElement('completionRate', completionRate + '%');
 
+        // Update tooltip content with live data (Task 3A.2)
+        this.updateTaskCompletionTooltip();
+
         // Update Code Quality Score with real Test Quality Score (Task P2.1)
         await this.updateTestQualityScore();
 
@@ -464,6 +468,9 @@ class MVP2DashboardAPI {
 
                 // Store agent efficiency data for modal access
                 this.lastAgentEfficiencyData = agentEfficiency;
+
+                // Update tooltip content with live data (Task 3A.2)
+                this.updateAgentEfficiencyTooltip();
 
             } else {
                 console.warn('⚠️ Agent efficiency data not available, falling back to 85%');
@@ -503,6 +510,9 @@ class MVP2DashboardAPI {
 
                 // Store test quality data for modal access
                 this.lastTestQualityData = testQuality;
+
+                // Update tooltip content with live data (Task 3A.2)
+                this.updateTestQualityTooltip();
 
             } else {
                 console.warn('⚠️ Test quality data not available, falling back to 2.5');
@@ -1232,6 +1242,135 @@ class MVP2DashboardAPI {
             // Add filtering logic here if needed
             card.style.display = show ? 'block' : 'none';
         });
+    }
+
+    // Tooltip System Methods (Task 3A.2)
+    initializeTooltips() {
+        console.log('🔧 Initializing tooltip system...');
+
+        // Add event listeners for tooltip functionality
+        this.setupTooltipEvents();
+
+        // Update tooltip content with live data
+        this.updateTooltipContent();
+
+        console.log('✅ Tooltip system initialized');
+    }
+
+    setupTooltipEvents() {
+        // Handle mobile touch events for tooltips
+        if ('ontouchstart' in window) {
+            document.addEventListener('touchstart', (e) => {
+                const tooltipIcon = e.target.closest('.tooltip-info-icon');
+                if (tooltipIcon) {
+                    e.preventDefault();
+                    this.toggleMobileTooltip(tooltipIcon);
+                } else {
+                    // Hide all visible tooltips when touching elsewhere
+                    this.hideAllMobileTooltips();
+                }
+            });
+        }
+
+        // Add click prevention for tooltip icons to avoid triggering parent click handlers
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tooltip-info-icon')) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+        });
+
+        // Handle keyboard accessibility
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.hideAllMobileTooltips();
+            }
+        });
+    }
+
+    toggleMobileTooltip(iconElement) {
+        const tooltip = iconElement.nextElementSibling;
+        if (tooltip && tooltip.classList.contains('tooltip-content')) {
+            // Hide all other tooltips first
+            this.hideAllMobileTooltips();
+
+            // Toggle current tooltip
+            tooltip.classList.toggle('tooltip-mobile-active');
+
+            // Position tooltip for mobile
+            this.positionMobileTooltip(tooltip);
+        }
+    }
+
+    hideAllMobileTooltips() {
+        document.querySelectorAll('.tooltip-content.tooltip-mobile-active').forEach(tooltip => {
+            tooltip.classList.remove('tooltip-mobile-active');
+        });
+    }
+
+    positionMobileTooltip(tooltipElement) {
+        // Add mobile-specific positioning class
+        const rect = tooltipElement.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+
+        if (rect.right > viewportWidth - 20) {
+            tooltipElement.classList.add('tooltip-left');
+        } else {
+            tooltipElement.classList.remove('tooltip-left');
+        }
+    }
+
+    updateTooltipContent() {
+        // Update Task Completion Rate tooltip with live data
+        this.updateTaskCompletionTooltip();
+
+        // Update Test Quality tooltip with live data
+        this.updateTestQualityTooltip();
+
+        // Update Agent Efficiency tooltip with live data
+        this.updateAgentEfficiencyTooltip();
+
+        // Update Stream Velocity tooltip with live data
+        this.updateStreamVelocityTooltip();
+    }
+
+    updateTaskCompletionTooltip() {
+        const completionRate = Math.round((this.data.mvp2Tasks.filter(t => t.status === 'done').length / this.data.mvp2Tasks.length) * 100);
+        const tooltipValue = document.querySelector('#completionRate').closest('.metric-card').querySelector('.tooltip-value');
+        if (tooltipValue) {
+            tooltipValue.textContent = `${completionRate}%`;
+        }
+    }
+
+    updateTestQualityTooltip() {
+        // Use the live test quality data if available
+        const testQuality = this.lastTestQualityData;
+        if (testQuality) {
+            const tooltipValue = document.querySelector('#qualityScore').closest('.metric-card').querySelector('.tooltip-value');
+            if (tooltipValue) {
+                tooltipValue.textContent = `${testQuality.scoreFormatted}/10.0`;
+            }
+        }
+    }
+
+    updateAgentEfficiencyTooltip() {
+        // Use the live agent efficiency data if available
+        const agentEfficiency = this.lastAgentEfficiencyData;
+        if (agentEfficiency) {
+            const tooltipValue = document.querySelector('#integrationHealth').closest('.metric-card').querySelector('.tooltip-value');
+            if (tooltipValue) {
+                tooltipValue.textContent = `${agentEfficiency.scoreFormatted}`;
+            }
+        }
+    }
+
+    updateStreamVelocityTooltip() {
+        // Calculate stream velocity based on current data
+        const activeStreams = Object.values(this.data.streams).filter(s => s.progress > 0).length;
+        const tooltipValue = document.querySelector('.stream-velocity-card .tooltip-value');
+        if (tooltipValue) {
+            tooltipValue.textContent = activeStreams > 0 ? `${activeStreams} streams active` : 'Calculating...';
+        }
     }
 
     // Modal and UI helper methods

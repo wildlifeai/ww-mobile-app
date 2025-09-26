@@ -251,6 +251,132 @@
             top: 0;
             left: 0;
             right: 0;
+
+        /* Tooltip System Styles */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip-info-icon {
+            display: inline-block;
+            margin-left: 8px;
+            color: #999;
+            font-size: 0.9em;
+            cursor: help;
+            user-select: none;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+
+        .tooltip-info-icon:hover {
+            opacity: 1;
+            color: var(--primary-color);
+            transform: scale(1.1);
+        }
+
+        .tooltip-content {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            z-index: 1000;
+            background: #2c3e50;
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            line-height: 1.4;
+            max-width: 320px;
+            width: max-content;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+
+            /* Positioning */
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-8px);
+            margin-bottom: 8px;
+
+            /* Animation */
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .tooltip-content::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -8px;
+            border-width: 8px;
+            border-style: solid;
+            border-color: #2c3e50 transparent transparent transparent;
+        }
+
+        .tooltip-container:hover .tooltip-content {
+            visibility: visible;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+
+        /* Responsive positioning for mobile */
+        @media (max-width: 768px) {
+            .tooltip-content {
+                max-width: 280px;
+                font-size: 0.8em;
+                padding: 14px;
+            }
+
+            .tooltip-content.tooltip-left {
+                left: 0;
+                transform: translateX(0) translateY(-8px);
+            }
+
+            .tooltip-container:hover .tooltip-content.tooltip-left {
+                transform: translateX(0) translateY(0);
+            }
+        }
+
+        /* Tooltip content structure styles */
+        .tooltip-content .tooltip-header {
+            font-weight: 600;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .tooltip-content .tooltip-section {
+            margin: 6px 0;
+        }
+
+        .tooltip-content .tooltip-section strong {
+            display: inline-block;
+            min-width: 80px;
+            color: #3498db;
+        }
+
+        .tooltip-content .tooltip-value {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+
+        .tooltip-content .tooltip-separator {
+            margin: 8px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Mobile tooltip active state */
+        .tooltip-content.tooltip-mobile-active {
+            visibility: visible !important;
+            opacity: 1 !important;
+            transform: translateX(-50%) translateY(0) !important;
+            pointer-events: auto !important;
+        }
+
+        .tooltip-content.tooltip-mobile-active.tooltip-left {
+            transform: translateX(0) translateY(0) !important;
+        }
             height: 3px;
             background: var(--info-color);
         }
@@ -2501,23 +2627,81 @@
                 </div>
                 <div class="metrics-grid">
                     <div class="metric-card stream-velocity-card">
-                        <div class="metric-label">🚀 Stream Velocity</div>
+                        <div class="metric-label">🚀 Stream Velocity
+                            <span class="tooltip-container">
+                                <span class="tooltip-info-icon">ℹ️</span>
+                                <div class="tooltip-content">
+                                    <div class="tooltip-header">🚀 Stream Velocity</div>
+                                    <div class="tooltip-separator"></div>
+                                    <div class="tooltip-section"><strong>📖 What:</strong> Development stream progress comparison across parallel workstreams</div>
+                                    <div class="tooltip-section"><strong>🔢 Current:</strong> <span class="tooltip-value">Multiple streams active</span></div>
+                                    <div class="tooltip-section"><strong>📈 How:</strong> Tasks completed per day × complexity weighting × coordination efficiency</div>
+                                    <div class="tooltip-section"><strong>💡 Why:</strong> Identifies bottlenecks and balances workload across development streams</div>
+                                    <div class="tooltip-section"><strong>🚨 Threshold:</strong> <3.0 tasks/day = Slow, 3.0-6.0 = Good, >6.0 = Excellent</div>
+                                    <div class="tooltip-section"><strong>📚 Reference:</strong> Development stream coordination patterns</div>
+                                </div>
+                            </span>
+                        </div>
                         <div class="stream-velocity-container" id="streamVelocityContainer">
                             <div class="loading">Loading stream data...</div>
                         </div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-label">🎯 Task Completion Rate</div>
+                        <div class="metric-label">🎯 Task Completion Rate
+                            <span class="tooltip-container">
+                                <span class="tooltip-info-icon">ℹ️</span>
+                                <div class="tooltip-content">
+                                    <div class="tooltip-header">🎯 Task Completion Rate</div>
+                                    <div class="tooltip-separator"></div>
+                                    <div class="tooltip-section"><strong>📖 What:</strong> Percentage of planned MVP2 tasks successfully completed</div>
+                                    <div class="tooltip-section"><strong>🔢 Current:</strong> <span class="tooltip-value">87%</span> (Above target)</div>
+                                    <div class="tooltip-section"><strong>📈 How:</strong> (Completed Tasks ÷ Total Tasks) × 100</div>
+                                    <div class="tooltip-section"><strong>💡 Why:</strong> Tracks overall project progress and milestone achievement</div>
+                                    <div class="tooltip-section"><strong>🚨 Threshold:</strong> <70% = Behind, 70-85% = On track, >85% = Ahead</div>
+                                    <div class="tooltip-section"><strong>📚 Reference:</strong> MVP2-METRICS-TRACKER.md</div>
+                                </div>
+                            </span>
+                        </div>
                         <div class="metric-number" id="completionRate">87%</div>
                         <div class="metric-trend positive">Above target</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-label">⚡ Code Quality Score</div>
+                        <div class="metric-label">🧪 Test Quality Score
+                            <span class="tooltip-container">
+                                <span class="tooltip-info-icon">ℹ️</span>
+                                <div class="tooltip-content">
+                                    <div class="tooltip-header">🧪 Test Quality Score</div>
+                                    <div class="tooltip-separator"></div>
+                                    <div class="tooltip-section"><strong>📖 What:</strong> Comprehensive testing infrastructure maturity assessment</div>
+                                    <div class="tooltip-section"><strong>🔢 Current:</strong> <span class="tooltip-value">2.7/10.0</span> (Needs improvement)</div>
+                                    <div class="tooltip-section"><strong>📈 How:</strong> Module coverage(55%) + Implementation(1%) + Coverage(24%) + Pass rate(1%)</div>
+                                    <div class="tooltip-section"><strong>💡 Why:</strong> Identifies testing gaps before production deployment</div>
+                                    <div class="tooltip-section"><strong>🚨 Threshold:</strong> <3.0 = Critical, 3.0-6.0 = Needs improvement, >6.0 = Good</div>
+                                    <div class="tooltip-section"><strong>📚 Reference:</strong> testing-infrastructure-analysis.md</div>
+                                </div>
+                            </span>
+                        </div>
                         <div class="metric-number" id="qualityScore">9.1</div>
                         <div class="metric-trend positive">Excellent</div>
                     </div>
                     <div class="metric-card clickable" onclick="dashboard.showAgentEfficiencyBreakdown()" title="Click for detailed breakdown">
-                        <div class="metric-label">🧠 Agent Efficiency</div>
+                        <div class="metric-label">🧠 Agent Efficiency
+                            <span class="tooltip-container">
+                                <span class="tooltip-info-icon">ℹ️</span>
+                                <div class="tooltip-content">
+                                    <div class="tooltip-header">🧠 Agent Efficiency</div>
+                                    <div class="tooltip-separator"></div>
+                                    <div class="tooltip-section"><strong>📖 What:</strong> AI-assisted development effectiveness vs manual work</div>
+                                    <div class="tooltip-section"><strong>🔢 Current:</strong> <span class="tooltip-value">73%</span> (Excellent)</div>
+                                    <div class="tooltip-section"><strong>📈 How:</strong> Discovery(6%) + Debug(40%) + Coordination(17%) + Quality(10%)</div>
+                                    <div class="tooltip-section"><strong>💡 Why:</strong> Measures development velocity improvements through AI collaboration</div>
+                                    <div class="tooltip-section"><strong>🚨 Threshold:</strong> <50% = Ineffective, 50-70% = Good, >70% = Excellent</div>
+                                    <div class="tooltip-section"><strong>📚 Reference:</strong> COMPREHENSIVE-TASK-RISK-ANALYSIS.md</div>
+                                    <div class="tooltip-separator"></div>
+                                    <div class="tooltip-section" style="font-style: italic; color: #bdc3c7;">💬 Click for detailed breakdown</div>
+                                </div>
+                            </span>
+                        </div>
                         <div class="metric-number" id="integrationHealth">95%</div>
                         <div class="metric-trend positive" id="integrationHealthTrend">All systems go</div>
                     </div>
