@@ -2307,6 +2307,63 @@ app.get('/', (req, res) => {
   }
 });
 
+// Document serving endpoint
+app.get('/api/document/:docType', (req, res) => {
+  console.log(`📚 /api/document/${req.params.docType} endpoint called`);
+
+  try {
+    const { docType } = req.params;
+    let filePath = '';
+
+    // Map document types to actual file paths
+    switch (docType) {
+      case 'execution-plan':
+        filePath = path.join(__dirname, '../../MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md');
+        break;
+      case 'metrics-tracker':
+        filePath = path.join(__dirname, '../../MVP2-Tasks/MVP2-METRICS-TRACKER.md');
+        break;
+      case 'task-management':
+        filePath = path.join(__dirname, '../../superclaude-task-management.md');
+        break;
+      case 'backend-status':
+        filePath = path.join(__dirname, '../../cross-project-coordination-reference.md');
+        break;
+      case 'implementation-spec':
+        filePath = path.join(__dirname, '../MVP2/implementation-spec-v1.4.md');
+        break;
+      case 'testing-requirements':
+        filePath = path.join(__dirname, '../MVP2/TESTING-REQUIREMENTS.md');
+        break;
+      case 'api-integration':
+        filePath = path.join(__dirname, '../MVP2/API-INTEGRATION-GUIDE.md');
+        break;
+      case 'dashboard-context':
+        filePath = path.join(__dirname, './DASHBOARD-CONTEXT-PROMPT.md');
+        break;
+      case 'aadf-framework':
+        filePath = path.join(__dirname, '../../learnings/ai-agentic-development-framework.md');
+        break;
+      default:
+        return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Check if file exists and read it
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf8');
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.send(content);
+      console.log(`✅ Document served: ${docType}`);
+    } else {
+      console.log(`❌ Document not found: ${filePath}`);
+      res.status(404).json({ error: 'Document file not found' });
+    }
+  } catch (error) {
+    console.error(`❌ Error serving document: ${error.message}`);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Serve static assets (CSS, JS, images)
 app.use(express.static(__dirname));
 
@@ -2321,6 +2378,7 @@ const server = app.listen(PORT, () => {
   console.log(`📈 Overview API: http://localhost:${PORT}/api/overview`);
   console.log(`🌊 Streams API: http://localhost:${PORT}/api/streams`);
   console.log(`📊 Real Metrics API: http://localhost:${PORT}/api/metrics`);
+  console.log(`📚 Documents API: http://localhost:${PORT}/api/document/{type}`);
   console.log(`✅ Production ready - Serving full dashboard with REAL progress data`);
   console.log(`🛑 Press Ctrl+C to stop`);
   console.log(``);
