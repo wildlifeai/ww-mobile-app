@@ -1709,9 +1709,105 @@ class MVP2DashboardAPI {
         console.log('exportMetrics called - to be implemented');
     }
 
-    loadDocument(docType) {
+    async loadDocument(docType) {
         console.log('loadDocument called:', docType);
-        // TODO: Implement document loading
+
+        try {
+            // Show loading state
+            const documentViewer = document.getElementById('documentViewer');
+            const loadingDiv = documentViewer.querySelector('.loading');
+
+            if (loadingDiv) {
+                loadingDiv.innerHTML = `
+                    <div class="loading-spinner"></div>
+                    <p>Loading ${docType}...</p>
+                `;
+            }
+
+            // Fetch document content from server
+            const response = await fetch(`/api/document/${docType}`);
+
+            if (!response.ok) {
+                throw new Error(`Failed to load document: ${response.status}`);
+            }
+
+            const content = await response.text();
+
+            // Display document content with proper markdown styling
+            documentViewer.innerHTML = `
+                <div class="document-content-display">
+                    <div class="document-header-bar">
+                        <h4>📚 ${this.getDocumentTitle(docType)}</h4>
+                        <button class="close-document-btn" onclick="dashboard.closeDocument()">✕</button>
+                    </div>
+                    <div class="document-body">
+                        <pre class="document-text">${this.escapeHtml(content)}</pre>
+                    </div>
+                </div>
+            `;
+
+            // Update active button state
+            document.querySelectorAll('.doc-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            const targetBtn = document.querySelector(`[data-doc="${docType}"]`);
+            if (targetBtn) {
+                targetBtn.classList.add('active');
+            }
+
+            console.log(`✅ Document loaded: ${docType}`);
+
+        } catch (error) {
+            console.error('Error loading document:', error);
+
+            const documentViewer = document.getElementById('documentViewer');
+            documentViewer.innerHTML = `
+                <div class="error-display">
+                    <div class="error-icon">❌</div>
+                    <h4>Error Loading Document</h4>
+                    <p>${error.message}</p>
+                    <button onclick="dashboard.closeDocument()" class="retry-btn">Close</button>
+                </div>
+            `;
+        }
+    }
+
+    getDocumentTitle(docType) {
+        const titles = {
+            'execution-plan': 'MVP2 Master Execution Plan',
+            'metrics-tracker': 'Metrics Tracker & Velocity',
+            'task-management': 'Task Management System',
+            'backend-status': 'Backend Integration Status',
+            'implementation-spec': 'Implementation Specification v1.4',
+            'testing-requirements': 'Testing Requirements',
+            'api-integration': 'API Integration Guide',
+            'dashboard-context': 'Dashboard Context & Usage',
+            'aadf-framework': 'AI Agentic Development Framework'
+        };
+        return titles[docType] || docType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    closeDocument() {
+        const documentViewer = document.getElementById('documentViewer');
+        if (documentViewer) {
+            documentViewer.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Select a document to view...</p>
+                </div>
+            `;
+        }
+
+        // Reset active button state
+        document.querySelectorAll('.doc-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     toggleSetting(setting) {
