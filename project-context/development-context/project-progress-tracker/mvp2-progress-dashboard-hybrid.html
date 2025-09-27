@@ -844,6 +844,105 @@
             color: #555;
         }
 
+        /* Document Display Components */
+        .document-content-display {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .document-header-bar {
+            background: var(--primary-color);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .document-header-bar h4 {
+            margin: 0;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .close-document-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .close-document-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .document-body {
+            flex: 1;
+            overflow-y: auto;
+            background: #fafafa;
+        }
+
+        .document-text {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            background: #fafafa;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .error-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .error-display h4 {
+            margin: 0 0 10px 0;
+            color: var(--danger-color);
+        }
+
+        .retry-btn {
+            margin-top: 20px;
+            padding: 8px 16px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .retry-btn:hover {
+            background: var(--primary-dark);
+        }
+
         /* Settings Panel */
         .settings-grid {
             display: grid;
@@ -2875,14 +2974,24 @@
                     <div class="document-header">
                         <h3>📚 Project Documents</h3>
                         <div class="document-nav">
-                            <button class="doc-btn active" data-doc="execution-plan"
-                                onclick="dashboard.loadDocument('execution-plan')">Execution Plan</button>
+                            <button class="doc-btn" data-doc="execution-plan"
+                                onclick="dashboard.loadDocument('execution-plan')">📋 Execution Plan</button>
                             <button class="doc-btn" data-doc="metrics-tracker"
-                                onclick="dashboard.loadDocument('metrics-tracker')">Metrics Tracker</button>
+                                onclick="dashboard.loadDocument('metrics-tracker')">📊 Metrics Tracker</button>
                             <button class="doc-btn" data-doc="task-management"
-                                onclick="dashboard.loadDocument('task-management')">Task Management</button>
+                                onclick="dashboard.loadDocument('task-management')">📝 Task Management</button>
                             <button class="doc-btn" data-doc="backend-status"
-                                onclick="dashboard.loadDocument('backend-status')">Backend Status</button>
+                                onclick="dashboard.loadDocument('backend-status')">🔗 Backend Status</button>
+                            <button class="doc-btn" data-doc="implementation-spec"
+                                onclick="dashboard.loadDocument('implementation-spec')">📄 Implementation Spec</button>
+                            <button class="doc-btn" data-doc="testing-requirements"
+                                onclick="dashboard.loadDocument('testing-requirements')">🧪 Testing Requirements</button>
+                            <button class="doc-btn" data-doc="api-integration"
+                                onclick="dashboard.loadDocument('api-integration')">🔌 API Integration</button>
+                            <button class="doc-btn" data-doc="dashboard-context"
+                                onclick="dashboard.loadDocument('dashboard-context')">📚 Dashboard Context</button>
+                            <button class="doc-btn" data-doc="aadf-framework"
+                                onclick="dashboard.loadDocument('aadf-framework')">🤖 AADF Framework</button>
                         </div>
                     </div>
                     <div class="document-content" id="documentViewer">
