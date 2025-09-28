@@ -63,6 +63,9 @@ yarn-error.log
 # Bundle artifact
 *.jsbundle
 
+# Build outputs
+/build/
+
 # Ruby / CocoaPods
 **/Pods/
 /ios/ipa/
@@ -74,6 +77,9 @@ yarn-error.log
 
 # testing
 /coverage
+
+# Expo
+.expo/
 project-context/ww-app-migration-plan/BUNDLE-IDENTIFIER-STRATEGY.md:Zone.Identifier
 project-context/ww-app-migration-plan/dev-decision-action-priorities.md:Zone.Identifier
 project-context/ww-app-migration-plan/dev-to-prod-checklist.md:Zone.Identifier
