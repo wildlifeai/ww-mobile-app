@@ -1,5 +1,6 @@
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { DatabaseService } from './DatabaseService';
+import { ConflictResolutionService, getConflictResolutionService } from './ConflictResolutionService';
 import {
   UserRole,
   OfflineOperation,
@@ -30,6 +31,7 @@ import {
  */
 export class OfflineService {
   private databaseService: DatabaseService;
+  private conflictResolutionService: ConflictResolutionService;
   private networkStatus: NetworkStatus;
   private networkUnsubscribe?: () => void;
   private initialized = false;
@@ -41,6 +43,7 @@ export class OfflineService {
 
   constructor() {
     this.databaseService = new DatabaseService();
+    this.conflictResolutionService = getConflictResolutionService(this.databaseService);
     this.networkStatus = {
       isConnected: false,
       type: 'none'
@@ -339,6 +342,7 @@ export class OfflineService {
 
   /**
    * Detect potential conflicts between server and local data
+   * @deprecated Use conflictResolutionService.detectConflicts instead
    */
   detectPotentialConflict(serverData: any, localData: any): boolean {
     if (!serverData.updated_at || !localData.updated_at) {
@@ -354,6 +358,7 @@ export class OfflineService {
 
   /**
    * Prepare conflict data for resolution
+   * @deprecated Use conflictResolutionService.detectConflicts instead
    */
   prepareConflictResolution(serverData: any, localData: any): ConflictResolution {
     return {
@@ -363,6 +368,102 @@ export class OfflineService {
       conflict_type: 'data_modification',
       needs_user_resolution: true
     };
+  }
+
+  /**
+   * Sync with conflict resolution support
+   */
+  async syncWithConflictResolution(user: User, operationType: string, serverData: any, localData: any): Promise<any> {
+    try {
+      // Detect conflicts using the advanced conflict resolution service
+      const conflicts = await this.conflictResolutionService.detectConflicts(
+        serverData,
+        localData,
+        operationType,
+        user
+      );
+
+      if (conflicts.length === 0) {
+        // No conflicts, return server data
+        return serverData;
+      }
+
+      // Resolve conflicts
+      const resolvedData = await this.conflictResolutionService.resolveConflicts(conflicts);
+
+      // Return the first resolved item (there should only be one for a single data sync)
+      return resolvedData[0] || serverData;
+
+    } catch (error) {
+      console.error('Failed to resolve conflicts:', error);
+      // Fallback to server wins strategy
+      return serverData;
+    }
+  }
+
+  /**
+   * Get pending conflicts that need user resolution
+   */
+  async getPendingConflicts(): Promise<ConflictResolution[]> {
+    try {
+      return await this.databaseService.getPendingConflicts();
+    } catch (error) {
+      console.error('Failed to get pending conflicts:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Resolve a specific conflict with user choice
+   */
+  async resolveConflictWithUserChoice(
+    conflictId: string,
+    strategy: 'server_wins' | 'local_wins' | 'merge'
+  ): Promise<boolean> {
+    try {
+      // Get the conflict
+      const conflicts = await this.conflictResolutionService.getConflictHistory(conflictId);
+
+      if (conflicts.length === 0) {
+        console.warn(`Conflict ${conflictId} not found`);
+        return false;
+      }
+
+      const conflict = conflicts[0];
+
+      // Create a new conflict resolution with user's choice
+      const conflictResolution: ConflictResolution = {
+        id: conflict.id,
+        server_version: conflict.server_data,
+        local_version: conflict.local_data,
+        conflict_type: conflict.conflict_type,
+        needs_user_resolution: false,
+        resolution_strategy: strategy,
+        resolved_at: new Date()
+      };
+
+      // Resolve using the specified strategy
+      await this.conflictResolutionService.resolveConflicts([conflictResolution], strategy);
+
+      return true;
+    } catch (error) {
+      console.error('Failed to resolve conflict with user choice:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get conflict resolution history for debugging
+   */
+  async getConflictHistory(entityId?: string): Promise<any[]> {
+    return await this.conflictResolutionService.getConflictHistory(entityId);
+  }
+
+  /**
+   * Clean up old resolved conflicts
+   */
+  async cleanupOldConflicts(daysOld: number = 30): Promise<void> {
+    return await this.conflictResolutionService.cleanupOldConflicts(daysOld);
   }
 
   /**

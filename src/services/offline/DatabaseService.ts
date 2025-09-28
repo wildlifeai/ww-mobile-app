@@ -251,6 +251,21 @@ export class DatabaseService {
       );
     `);
 
+    // Conflict resolutions table for audit trail
+    await this.db.execAsync(`
+      CREATE TABLE IF NOT EXISTS conflict_resolutions (
+        id TEXT PRIMARY KEY,
+        conflict_type TEXT CHECK(conflict_type IN ('data_modification', 'deletion_conflict', 'permission_conflict', 'organisation_boundary_conflict')) NOT NULL,
+        resolution_strategy TEXT CHECK(resolution_strategy IN ('server_wins', 'local_wins', 'merge', 'user_choice')),
+        resolved_at DATETIME,
+        server_data TEXT NOT NULL,
+        local_data TEXT NOT NULL,
+        needs_user_resolution BOOLEAN DEFAULT FALSE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Create indexes for better query performance
     await this.db.execAsync(`
       CREATE INDEX IF NOT EXISTS idx_user_roles_org ON local_user_roles (organisation_id);
@@ -262,6 +277,8 @@ export class DatabaseService {
       CREATE INDEX IF NOT EXISTS idx_queue_status ON offline_queue (status);
       CREATE INDEX IF NOT EXISTS idx_queue_priority ON offline_queue (priority);
       CREATE INDEX IF NOT EXISTS idx_queue_org ON offline_queue (organisation_id);
+      CREATE INDEX IF NOT EXISTS idx_conflicts_type ON conflict_resolutions (conflict_type);
+      CREATE INDEX IF NOT EXISTS idx_conflicts_resolved ON conflict_resolutions (resolved_at);
     `);
   }
 
@@ -594,6 +611,83 @@ export class DatabaseService {
       status: result.status,
       created_at: result.created_at,
       updated_at: result.updated_at
+    }));
+  }
+
+  // Conflict Resolution Management
+  async storeConflictResolution(resolution: {
+    id: string;
+    conflict_type: string;
+    resolution_strategy?: string;
+    resolved_at?: Date;
+    server_data: string;
+    local_data: string;
+    needs_user_resolution: boolean;
+  }): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    await this.db.runAsync(
+      'INSERT OR REPLACE INTO conflict_resolutions (id, conflict_type, resolution_strategy, resolved_at, server_data, local_data, needs_user_resolution) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [
+        resolution.id,
+        resolution.conflict_type,
+        resolution.resolution_strategy || null,
+        resolution.resolved_at?.toISOString() || null,
+        resolution.server_data,
+        resolution.local_data,
+        resolution.needs_user_resolution
+      ]
+    );
+  }
+
+  async getConflictHistory(entityId?: string): Promise<any[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    let query = 'SELECT * FROM conflict_resolutions ORDER BY created_at DESC';
+    let params: any[] = [];
+
+    if (entityId) {
+      query = 'SELECT * FROM conflict_resolutions WHERE id = ? ORDER BY created_at DESC';
+      params = [entityId];
+    }
+
+    const results = await this.db.getAllAsync(query, params) as any[];
+
+    return results.map(result => ({
+      id: result.id,
+      conflict_type: result.conflict_type,
+      resolution_strategy: result.resolution_strategy,
+      resolved_at: result.resolved_at,
+      server_data: JSON.parse(result.server_data),
+      local_data: JSON.parse(result.local_data),
+      needs_user_resolution: result.needs_user_resolution,
+      created_at: result.created_at,
+      updated_at: result.updated_at
+    }));
+  }
+
+  async cleanupOldConflicts(cutoffDate: Date): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    await this.db.runAsync(
+      'DELETE FROM conflict_resolutions WHERE created_at < ? AND resolved_at IS NOT NULL',
+      [cutoffDate.toISOString()]
+    );
+  }
+
+  async getPendingConflicts(): Promise<any[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const results = await this.db.getAllAsync(
+      'SELECT * FROM conflict_resolutions WHERE needs_user_resolution = TRUE AND resolved_at IS NULL ORDER BY created_at DESC'
+    ) as any[];
+
+    return results.map(result => ({
+      id: result.id,
+      conflict_type: result.conflict_type,
+      server_data: JSON.parse(result.server_data),
+      local_data: JSON.parse(result.local_data),
+      created_at: result.created_at
     }));
   }
 }
