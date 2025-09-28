@@ -183,6 +183,8 @@ eas build --platform android --local --profile preview
 
 # With custom output directory
 eas build --platform android --local --output ./build/app.apk
+
+eas build --platform android --local --profile preview --output ./build/android/wildlife-watcher-preview.apk
 ```
 
 **Process**:
@@ -376,6 +378,31 @@ npm install -g eas-cli@latest
 # Or set environment variable:
 export ANDROID_NDK_HOME=/path/to/android-ndk
 ```
+
+#### 6. Build Exits with Non-Zero Code
+
+**Error**: "exited with non-zero code: 1" after long build process
+**Common Causes**:
+- Gradle configuration conflicts
+- Native module compilation issues
+- Memory or disk space problems
+
+**Solutions**:
+1. **Clean prebuild approach**:
+   ```bash
+   npx expo prebuild --platform android --clean
+   eas build --platform android --local --profile preview
+   ```
+
+2. **Alternative: Use development profile**:
+   ```bash
+   eas build --platform android --local --profile development
+   ```
+
+3. **Try cloud build as fallback**:
+   ```bash
+   eas build --platform android --profile preview
+   ```
 
 ### Build Preparation Checklist
 
