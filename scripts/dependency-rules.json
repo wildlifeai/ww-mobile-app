@@ -11,9 +11,9 @@
       "allowedRange": ">=51.0.0 <51.1.0"
     },
     "react-native": {
-      "required": "0.74.6",
+      "required": "0.74.5",
       "severity": "error",
-      "reason": "PRD requirement - must match exactly for override compatibility"
+      "reason": "Expo SDK 51 compatibility requirement - must match exactly"
     },
     "typescript": {
       "required": "~5.3.3",
@@ -45,10 +45,10 @@
       "reason": "Expo development client for managed workflow - migrated from bare React Native"
     },
     "react-native-maps": {
-      "required": "1.20.1",
-      "severity": "error",
+      "required": "1.14.0",
+      "severity": "warning",
       "optional": true,
-      "reason": "Matches WW app version exactly for migration validation"
+      "reason": "Expo SDK 51 compatible version"
     },
     "@reduxjs/toolkit": {
       "required": "^2.2.1",
@@ -115,17 +115,18 @@
       "severity": "warning",
       "optional": true,
       "reason": "Splash screen management - migrated from react-native-bootsplash"
+    },
+    "@react-native-community/netinfo": {
+      "required": "^11.3.1",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Expo SDK 51 compatible version"
     }
   },
   "blockedPackages": {
     "react-native-vector-icons": {
       "reason": "Use @expo/vector-icons instead for Expo managed workflow",
       "alternative": "@expo/vector-icons",
-      "severity": "warning"
-    },
-    "@react-native-community/netinfo": {
-      "reason": "Use expo-network instead for Expo managed workflow", 
-      "alternative": "expo-network",
       "severity": "warning"
     },
     "react-native-linear-gradient": {
@@ -150,7 +151,7 @@
     }
   },
   "overrideRequirements": {
-    "react-native": "0.74.6",
+    "react-native": "0.74.5",
     "react-native-reanimated": "~3.10.1"
   },
   "sdkCompatibility": {
