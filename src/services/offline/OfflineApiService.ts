@@ -9,6 +9,7 @@ import {
   DeploymentCreate,
   DeploymentUpdate
 } from '../../types/api.types';
+import { UserRole } from '../../types/offline';
 
 /**
  * Offline API Service - Handles API calls for offline operations
@@ -86,4 +87,27 @@ export class OfflineApiService {
       deploymentsApi.endpoints.deleteDeployment.initiate(id)
     ).unwrap();
   }
+
+  /**
+   * Get project via API (for conflict resolution)
+   */
+  static async getProject(id: string): Promise<Project> {
+    const result = await store.dispatch(
+      projectsApi.endpoints.getProject.initiate(id)
+    ).unwrap();
+
+    return result;
+  }
+
+  /**
+   * Get deployment via API (for conflict resolution)
+   */
+  static async getDeployment(id: string): Promise<Deployment> {
+    const result = await store.dispatch(
+      deploymentsApi.endpoints.getDeployment.initiate(id)
+    ).unwrap();
+
+    return result;
+  }
+
 }

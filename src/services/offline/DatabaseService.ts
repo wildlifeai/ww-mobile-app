@@ -690,6 +690,114 @@ export class DatabaseService {
       created_at: result.created_at
     }));
   }
+
+  // Advanced Sync Operations Database Methods (Task 11.5)
+
+  async getQueueItemsSince(organisationId: string, timestamp?: string): Promise<any[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    let query = 'SELECT * FROM offline_queue WHERE organisation_id = ?';
+    const params = [organisationId];
+
+    if (timestamp) {
+      query += ' AND timestamp > ?';
+      params.push(timestamp);
+    }
+
+    query += ' ORDER BY timestamp ASC';
+
+    return await this.db.getAllAsync(query, params) as any[];
+  }
+
+  async getQueueItemsByTypeAndPriority(
+    organisationId: string,
+    operationTypes: string[],
+    priority: string
+  ): Promise<any[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const placeholders = operationTypes.map(() => '?').join(',');
+    const query = `
+      SELECT * FROM offline_queue
+      WHERE organisation_id = ?
+        AND type IN (${placeholders})
+        AND priority = ?
+        AND status = 'pending'
+      ORDER BY timestamp ASC
+    `;
+
+    const params = [organisationId, ...operationTypes, priority];
+
+    return await this.db.getAllAsync(query, params) as any[];
+  }
+
+  async updateOrganisation(id: string, organisation: Partial<DatabaseOrganisation>): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const fields = [];
+    const values = [];
+
+    if (organisation.name) {
+      fields.push('name = ?');
+      values.push(organisation.name);
+    }
+
+    if (organisation.settings) {
+      fields.push('settings = ?');
+      values.push(JSON.stringify(organisation.settings));
+    }
+
+    fields.push('updated_at = ?');
+    values.push(new Date().toISOString());
+
+    values.push(id);
+
+    await this.db.runAsync(
+      `UPDATE local_organisations SET ${fields.join(', ')} WHERE id = ?`,
+      values
+    );
+  }
+
+  async updateUserRole(userId: string, userRole: Partial<DatabaseUserRole>): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const fields = [];
+    const values = [];
+
+    if (userRole.role) {
+      fields.push('role = ?');
+      values.push(userRole.role);
+    }
+
+    if (userRole.organisation_id) {
+      fields.push('organisation_id = ?');
+      values.push(userRole.organisation_id);
+    }
+
+    if (userRole.permissions) {
+      fields.push('permissions = ?');
+      values.push(JSON.stringify(userRole.permissions));
+    }
+
+    fields.push('updated_at = ?');
+    values.push(new Date().toISOString());
+
+    values.push(userId);
+
+    await this.db.runAsync(
+      `UPDATE local_user_roles SET ${fields.join(', ')} WHERE user_id = ?`,
+      values
+    );
+  }
+
+  async deleteUserRole(userId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    await this.db.runAsync(
+      'DELETE FROM local_user_roles WHERE user_id = ?',
+      [userId]
+    );
+  }
 }
 
 // Singleton instance

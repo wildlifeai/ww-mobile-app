@@ -298,7 +298,7 @@ export class OfflineService {
       'CREATE_DEPLOYMENT',
       'UPDATE_DEPLOYMENT',
       'DELETE_DEPLOYMENT',
-      'UPDATE_DEVICE_LORAWAN_STATUS'
+      'UPDATE_DEVICE_LORAWAN_STATUS',
     ];
     return allowedOperations.includes(operationType);
   }
@@ -678,6 +678,215 @@ export class OfflineService {
     } catch (error) {
       console.error('Failed to execute UPDATE_DEVICE_LORAWAN_STATUS:', error);
       throw error;
+    }
+  }
+
+
+  // Advanced Sync Operations (Task 11.5 Requirements)
+
+  /**
+   * Batch sync operations for efficient data transfer
+   */
+  async batchSyncOperations(operations: OfflineOperation[], batchSize: number = 10): Promise<{ successful: number; failed: number }> {
+    if (!this.networkStatus.isConnected) {
+      throw new Error('Network connection required for batch sync');
+    }
+
+    let successful = 0;
+    let failed = 0;
+
+    // Process operations in batches to avoid overwhelming the server
+    for (let i = 0; i < operations.length; i += batchSize) {
+      const batch = operations.slice(i, i + batchSize);
+
+      // Execute batch operations in parallel
+      const batchPromises = batch.map(async (operation) => {
+        try {
+          await this.executeOperation(operation);
+          successful++;
+        } catch (error) {
+          console.error(`Batch operation failed: ${operation.id}`, error);
+          failed++;
+        }
+      });
+
+      await Promise.allSettled(batchPromises);
+
+      // Small delay between batches to prevent server overload
+      if (i + batchSize < operations.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    return { successful, failed };
+  }
+
+  /**
+   * Incremental sync based on timestamps
+   */
+  async incrementalSync(user: User, lastSyncTimestamp?: Date): Promise<{ synced: number; conflicts: number }> {
+    if (!this.networkStatus.isConnected) {
+      throw new Error('Network connection required for incremental sync');
+    }
+
+    try {
+      // Get operations modified since last sync
+      const operations = await this.getOperationsSince(user, lastSyncTimestamp);
+
+      let synced = 0;
+      let conflicts = 0;
+
+      for (const operation of operations) {
+        try {
+          // Check for conflicts before executing
+          const hasConflicts = await this.checkForConflicts(operation);
+
+          if (hasConflicts) {
+            conflicts++;
+            // Handle conflict through conflict resolution service
+            await this.handleOperationConflict(operation, user);
+          } else {
+            await this.executeOperation(operation);
+            synced++;
+          }
+        } catch (error) {
+          console.error(`Incremental sync failed for operation ${operation.id}:`, error);
+        }
+      }
+
+      return { synced, conflicts };
+    } catch (error) {
+      console.error('Incremental sync failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Selective sync based on operation types and user preferences
+   */
+  async selectiveSync(user: User, operationTypes: OfflineOperationType[], priority: 'low' | 'normal' | 'high' | 'critical' = 'normal'): Promise<number> {
+    if (!this.networkStatus.isConnected) {
+      throw new Error('Network connection required for selective sync');
+    }
+
+    try {
+      // Get operations matching the specified types and priority
+      const operations = await this.getOperationsByTypeAndPriority(user, operationTypes, priority);
+
+      let syncedCount = 0;
+
+      for (const operation of operations) {
+        try {
+          await this.executeOperation(operation);
+          syncedCount++;
+        } catch (error) {
+          console.error(`Selective sync failed for operation ${operation.id}:`, error);
+        }
+      }
+
+      return syncedCount;
+    } catch (error) {
+      console.error('Selective sync failed:', error);
+      throw error;
+    }
+  }
+
+  // Helper methods for advanced sync operations
+
+  private async getOperationsSince(user: User, timestamp?: Date): Promise<OfflineOperation[]> {
+    const queueItems = await this.databaseService.getQueueItemsSince(
+      user.organisation_id,
+      timestamp?.toISOString()
+    );
+
+    return queueItems.map(item => ({
+      id: item.id,
+      type: item.type,
+      data: JSON.parse(item.data),
+      user_id: item.user_id,
+      organisation_id: item.organisation_id,
+      timestamp: new Date(item.timestamp),
+      retry_count: item.retry_count
+    }));
+  }
+
+  private async getOperationsByTypeAndPriority(
+    user: User,
+    operationTypes: OfflineOperationType[],
+    priority: string
+  ): Promise<OfflineOperation[]> {
+    const queueItems = await this.databaseService.getQueueItemsByTypeAndPriority(
+      user.organisation_id,
+      operationTypes,
+      priority
+    );
+
+    return queueItems.map(item => ({
+      id: item.id,
+      type: item.type,
+      data: JSON.parse(item.data),
+      user_id: item.user_id,
+      organisation_id: item.organisation_id,
+      timestamp: new Date(item.timestamp),
+      retry_count: item.retry_count
+    }));
+  }
+
+  private async checkForConflicts(operation: OfflineOperation): Promise<boolean> {
+    // Basic conflict detection - can be enhanced based on operation type
+    try {
+      // For data modification operations, check if server data has changed
+      if (['UPDATE_PROJECT', 'UPDATE_DEPLOYMENT'].includes(operation.type)) {
+        // This would typically involve fetching current server state
+        // and comparing with local operation data
+        return false; // Simplified for now
+      }
+      return false;
+    } catch (error) {
+      console.error('Conflict check failed:', error);
+      return true; // Assume conflict on error for safety
+    }
+  }
+
+  private async handleOperationConflict(operation: OfflineOperation, user: User): Promise<void> {
+    try {
+      // Use the conflict resolution service to handle the conflict
+      const serverData = await this.fetchServerData(operation);
+      const localData = operation.data;
+
+      const conflicts = await this.conflictResolutionService.detectConflicts(
+        serverData,
+        localData,
+        operation.type,
+        user
+      );
+
+      if (conflicts.length > 0) {
+        // For now, resolve with server wins strategy
+        // In production, this could trigger UI for user choice
+        await this.conflictResolutionService.resolveConflicts(conflicts, 'server_wins');
+      }
+    } catch (error) {
+      console.error('Failed to handle operation conflict:', error);
+      throw error;
+    }
+  }
+
+  private async fetchServerData(operation: OfflineOperation): Promise<any> {
+    // Fetch current server state based on operation type
+    // This is a simplified implementation - would need proper API calls
+    try {
+      switch (operation.type) {
+        case 'UPDATE_PROJECT':
+          return await OfflineApiService.getProject(operation.data.id);
+        case 'UPDATE_DEPLOYMENT':
+          return await OfflineApiService.getDeployment(operation.data.id);
+        default:
+          return null;
+      }
+    } catch (error) {
+      console.error('Failed to fetch server data:', error);
+      return null;
     }
   }
 
