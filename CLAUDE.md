@@ -482,3 +482,4 @@ Every developer/session MUST contribute to framework evolution by:
 ---
 
 Remember: **Evidence-Based Research → Specialized Implementation → Quality Validation!**
+- Whenever we start a new MVP2 task or  subtask, plpease check the @project-context/development-context/MVP2/implementation-spec-v1.4.md , associates tasks in the @project-context/development-context/MVP2/tasks/ file and the Master execution plan. Flag any inconsistencies between the document for the user and ask for clarification form the user. I want understand what the task/sub-task is building and it is aligned with the latess thinking spec the specification with the chnages based on the @project-context/development-context/MVP2/Wildlife Watcher App - User Roles & Permissions Specification.md and project-context/development-context/MVP2/Wildlife Watcher Admin Portal Implementation Specification.md specifications.
