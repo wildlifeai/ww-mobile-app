@@ -228,4 +228,33 @@
 
 ---
 
-**NEXT STEP**: Update the main execution plan with these corrections immediately before starting any tasks.
+## 🔧 **WW ADMIN CORRECTIONS INTEGRATION**
+
+### **CRITICAL ADDITION: WW Admin Task Corrections**
+
+**Priority**: URGENT - BLOCKING Task 11.X completion
+**Dependencies**: Must be completed before parallel development streams
+
+A comprehensive WW Admin corrections plan has been created that must be executed before the main MVP2 task execution begins. This addresses critical architectural misalignments in the current codebase.
+
+**📋 Full Execution Plan**: See [`WW-ADMIN-CORRECTIONS-EXECUTION-PLAN.md`](./WW-ADMIN-CORRECTIONS-EXECUTION-PLAN.md)
+
+**Key Issues Requiring Immediate Correction**:
+- Redux `wwAdminSlice.ts` contains user management operations (should be web-portal only)
+- Multiple task files reference incorrect WW Admin capabilities
+- Test suites validate wrong architectural boundaries
+
+**Execution Strategy**:
+1. **Phase 1**: Critical Redux corrections (45-60 min, single agent)
+2. **Phase 2**: Parallel validation (45 min, three agents)
+3. **Phase 3**: Task file corrections (60 min, single agent)
+4. **Phase 4**: Final validation (30 min, sequential)
+
+**Integration with Main Plan**:
+- Complete WW Admin corrections FIRST
+- Then proceed with main MVP2 execution plan
+- Use corrected agent assignments from this document
+
+---
+
+**NEXT STEP**: Execute WW Admin corrections plan, then update the main execution plan with these corrections immediately before starting MVP2 tasks.
