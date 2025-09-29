@@ -6,37 +6,31 @@
 
 ---
 
-## 🎯 Execution Prompt for Claude
+## 🚀 **EXECUTION PLAN - OPTIMIZED FOR EFFICIENCY**
 
-When starting work on these corrections, use this prompt:
+**⚡ IMMEDIATE ACTION**: Use the detailed execution plan for systematic corrections.
+
+### **📋 Detailed Execution Plan Available**
+**Full Strategic Plan**: [`@project-context/MVP2-Tasks/WW-ADMIN-CORRECTIONS-EXECUTION-PLAN.md`](../../MVP2-Tasks/WW-ADMIN-CORRECTIONS-EXECUTION-PLAN.md)
+
+**Key Features of Execution Plan**:
+- ✅ **Optimized for clean context windows** - Full clear between phases
+- ✅ **Dependency-based sequencing** - Critical path identified
+- ✅ **Maximum parallel execution** - 3 agents working simultaneously where possible
+- ✅ **Phase-based approach** - 4 focused sessions (4.5 hours total)
+- ✅ **Agent specialization** - Right expert for each phase
+
+### **Quick Reference Execution Strategy**:
+1. **Phase 1** (45-60 min): Critical Redux corrections (`mobile-dev`)
+2. **Phase 2** (45 min): Parallel validation - Database + Tests + Docs (3 agents)
+3. **Phase 3** (60 min): Task file corrections (`docs-maintainer`)
+4. **Phase 4** (30 min): Final validation (`tester` + `docs-maintainer`)
+
+### **Legacy Execution Prompt** (Use detailed plan instead):
+~~Use this prompt~~ → **DEPRECATED**: Use detailed execution plan above for better results
 
 ```
-I need to review and correct WW Admin implementations and task files for the Wildlife Watcher MVP2.
-
-CONTEXT:
-- Tasks 10 and 11 are ALREADY PARTIALLY IMPLEMENTED
-- Task 10: Redux integration is complete
-- Task 11: Subtasks 11.1-11.5 are complete, working on 11.6
-- WW Admin user management operations are WEB PORTAL ONLY
-- WW Admin mobile app permissions are LIMITED to:
-  1. Read-only project visibility across all organisations
-  2. WW Admin Tools menu (redirects to web portal)
-- WW Admins belong to wildlife.ai organisation only
-- If WW Admin needs deployment access, it's through OTHER roles (project_admin/project_member)
-
-STEPS:
-1. FIRST: Review already-implemented code from Tasks 10 and 11.1-11.5
-2. SECOND: Identify and fix any WW Admin misalignments in the code
-3. THIRD: Update task documentation files to reflect corrected requirements
-4. FINALLY: Continue with remaining task file corrections
-
-For EACH task, BEFORE making changes:
-1. Review the task and all subtasks
-2. Check what's already implemented vs what's documented
-3. Confirm the understanding of what needs to be corrected
-4. Ask for user confirmation if any ambiguity exists
-5. Update the task with agreed corrections
-6. Mark the task as completed in this tracking document
+REPLACED BY DETAILED EXECUTION PLAN - See link above
 ```
 
 ---
