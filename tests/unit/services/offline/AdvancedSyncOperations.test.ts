@@ -26,9 +26,7 @@ describe('Advanced Sync Operations (Task 11.5)', () => {
       getQueueItemsByTypeAndPriority: jest.fn().mockResolvedValue([]),
       insertOrganisation: jest.fn().mockResolvedValue(undefined),
       updateOrganisation: jest.fn().mockResolvedValue(undefined),
-      insertUserRole: jest.fn().mockResolvedValue(undefined),
-      updateUserRole: jest.fn().mockResolvedValue(undefined),
-      deleteUserRole: jest.fn().mockResolvedValue(undefined),
+      // User management operations removed - web portal exclusive
       insertProject: jest.fn().mockResolvedValue(undefined),
       updateProject: jest.fn().mockResolvedValue(undefined),
       deleteProject: jest.fn().mockResolvedValue(undefined),
@@ -59,9 +57,10 @@ describe('Advanced Sync Operations (Task 11.5)', () => {
     };
   });
 
-  describe('WW Admin User Management Operations', () => {
-    it('should handle CREATE_ORGANISATION operation for ww_admin', async () => {
-      // Set network as connected
+  describe('WW Admin Read-Only Operations (Updated Architecture)', () => {
+    it('should handle CREATE_ORGANISATION operation for system-level operations', async () => {
+      // Note: Organisation creation moved to web portal
+      // This test represents data sync from web portal operations
       offlineService.setNetworkStatus({ isConnected: true, type: 'wifi' });
 
       const operation: OfflineOperation = {
@@ -69,7 +68,8 @@ describe('Advanced Sync Operations (Task 11.5)', () => {
         type: 'CREATE_ORGANISATION',
         data: {
           name: 'New Organisation',
-          settings: { timezone: 'UTC', currency: 'USD' }
+          settings: { timezone: 'UTC', currency: 'USD' },
+          sync_source: 'web_portal' // Data originates from web portal
         },
         user_id: wwAdminUser.id,
         organisation_id: wwAdminUser.organisation_id,
@@ -83,14 +83,15 @@ describe('Advanced Sync Operations (Task 11.5)', () => {
       expect(mockDatabaseService.insertOrganisation).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'New Organisation',
-          settings: { timezone: 'UTC', currency: 'USD' }
+          settings: { timezone: 'UTC', currency: 'USD' },
+          sync_source: 'web_portal'
         })
       );
       expect(mockDatabaseService.markQueueItemCompleted).toHaveBeenCalledWith(operation.id);
     });
 
-    it('should handle CREATE_USER operation for project_admin', async () => {
-      // Set network as connected
+    it('should NOT support CREATE_USER operations in mobile app', async () => {
+      // User creation is web portal exclusive - mobile app should not handle these operations
       offlineService.setNetworkStatus({ isConnected: true, type: 'wifi' });
 
       const operation: OfflineOperation = {
@@ -107,20 +108,16 @@ describe('Advanced Sync Operations (Task 11.5)', () => {
         retry_count: 0
       };
 
+      // Operation should be rejected or handled differently in updated architecture
       const result = await offlineService.executeOperation(operation);
 
-      expect(result).toBe(true);
-      expect(mockDatabaseService.insertUserRole).toHaveBeenCalledWith(
-        expect.objectContaining({
-          role: 'project_member',
-          organisation_id: 'org-1',
-          assigned_by: testUser.id
-        })
-      );
+      // Expect operation to fail or be queued for web portal handling
+      expect(result).toBe(false);
+      expect(mockDatabaseService.insertUserRole).not.toHaveBeenCalled();
     });
 
-    it('should handle UPDATE_USER operation with role change', async () => {
-      // Set network as connected
+    it('should NOT support UPDATE_USER role operations in mobile app', async () => {
+      // Role updates are web portal exclusive
       offlineService.setNetworkStatus({ isConnected: true, type: 'wifi' });
 
       const operation: OfflineOperation = {
@@ -139,19 +136,13 @@ describe('Advanced Sync Operations (Task 11.5)', () => {
 
       const result = await offlineService.executeOperation(operation);
 
-      expect(result).toBe(true);
-      expect(mockDatabaseService.updateUserRole).toHaveBeenCalledWith(
-        'user-2',
-        expect.objectContaining({
-          role: 'project_admin',
-          organisation_id: 'org-1',
-          assigned_by: testUser.id
-        })
-      );
+      // Operation should be rejected in mobile app
+      expect(result).toBe(false);
+      // User role operations no longer exist in mobile DatabaseService
     });
 
-    it('should handle DELETE_USER operation', async () => {
-      // Set network as connected
+    it('should NOT support DELETE_USER operations in mobile app', async () => {
+      // User deletion is web portal exclusive
       offlineService.setNetworkStatus({ isConnected: true, type: 'wifi' });
 
       const operation: OfflineOperation = {
@@ -166,8 +157,9 @@ describe('Advanced Sync Operations (Task 11.5)', () => {
 
       const result = await offlineService.executeOperation(operation);
 
-      expect(result).toBe(true);
-      expect(mockDatabaseService.deleteUserRole).toHaveBeenCalledWith('user-to-delete');
+      // Operation should be rejected in mobile app
+      expect(result).toBe(false);
+      // User deletion operations no longer exist in mobile DatabaseService
     });
   });
 
@@ -337,14 +329,14 @@ describe('Advanced Sync Operations (Task 11.5)', () => {
 
       const syncedCount = await offlineService.selectiveSync(
         testUser,
-        ['CREATE_PROJECT', 'CREATE_USER'],
+        ['CREATE_PROJECT', 'UPDATE_PROJECT'], // Removed CREATE_USER - not supported in mobile
         'high'
       );
 
       expect(syncedCount).toBe(2);
       expect(mockDatabaseService.getQueueItemsByTypeAndPriority).toHaveBeenCalledWith(
         testUser.organisation_id,
-        ['CREATE_PROJECT', 'CREATE_USER'],
+        ['CREATE_PROJECT', 'UPDATE_PROJECT'], // Removed CREATE_USER - not supported in mobile
         'high'
       );
     });
@@ -408,8 +400,8 @@ describe('Advanced Sync Operations (Task 11.5)', () => {
     it('should allow project_admin to perform user management within their organisation', () => {
       const operation: OfflineOperation = {
         id: 'op-1',
-        type: 'CREATE_USER',
-        data: { email: 'user@example.com', role: 'project_member' },
+        type: 'CREATE_PROJECT', // Changed from CREATE_USER to CREATE_PROJECT
+        data: { name: 'Test Project', organisation_id: 'org-1' },
         user_id: testUser.id,
         organisation_id: testUser.organisation_id,
         timestamp: new Date(),
@@ -429,8 +421,8 @@ describe('Advanced Sync Operations (Task 11.5)', () => {
 
       const operation: OfflineOperation = {
         id: 'op-1',
-        type: 'CREATE_USER',
-        data: { email: 'user@example.com', role: 'project_member' },
+        type: 'CREATE_PROJECT', // Changed from CREATE_USER to CREATE_PROJECT
+        data: { name: 'Test Project', organisation_id: 'org-1' },
         user_id: projectMember.id,
         organisation_id: projectMember.organisation_id,
         timestamp: new Date(),

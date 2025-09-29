@@ -36,7 +36,7 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 
 ### MVP2 Architecture & Features
 - **Architecture**: Offline-first with Supabase backend, BLE + LoRaWAN device communication, organisation multi-tenancy
-- **Key Features**: 6-step deployment wizard, project management, real-time sync, WW Admin user provisioning (MVP)
+- **Key Features**: 6-step deployment wizard, project management, real-time sync, WW Admin read-only access + web portal navigation (MVP)
 - **User Roles**: ww_admin (global), project_admin (org-scoped), project_member (project-scoped)
 - **LoRaWAN Integration**: battery_level, sd_card_usage webhook monitoring
 - **Testing Framework**: Maestro TDD/BDD with comprehensive test coverage

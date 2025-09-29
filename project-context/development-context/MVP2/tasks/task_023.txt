@@ -55,7 +55,7 @@ This task ensures the Wildlife Watcher MVP2 application is fully prepared for pr
   - **NEW**: Backup and disaster recovery with organisation data isolation and compliance requirements
   - **NEW**: Team onboarding with organisation setup and role-based access procedures
   - **NEW**: Security incident response with organisation boundaries and multi-tenant isolation procedures
-  - **NEW**: WW Admin documentation for cross-organisation management and system oversight
+  - **NEW**: WW Admin documentation for read-only cross-organisation access and web portal
 
 ### 23.3: Enhanced Deployment with Organisation Intelligence
 - **NEW**: Maestro TDD production deployment validation and configuration testing
@@ -77,7 +77,7 @@ This task ensures the Wildlife Watcher MVP2 application is fully prepared for pr
   - **NEW**: Performance monitoring with organisation data partitioning and role-based alerting
   - **NEW**: Error tracking with organisation context and role-based crash reporting
   - **NEW**: A/B testing infrastructure with organisation-scoped experiments and role-based feature testing
-  - **NEW**: WW Admin monitoring tools for cross-organisation system oversight and analytics
+  - **NEW**: WW Admin monitoring tools for read-only cross-organisation visibility and analytics
 
 ### 23.4: Enhanced Final Validation with Organisation Readiness
 - **NEW**: Maestro TDD final validation and production readiness comprehensive testing
@@ -99,7 +99,7 @@ This task ensures the Wildlife Watcher MVP2 application is fully prepared for pr
   - **NEW**: User communication strategy for organisation migration and role-based onboarding
   - **NEW**: Support team preparation for organisation troubleshooting and multi-tenant issue resolution
   - **NEW**: Post-launch monitoring with organisation metrics and role-based performance tracking
-  - **NEW**: WW Admin launch preparation for cross-organisation system management and oversight
+  - **NEW**: WW Admin launch preparation for read-only cross-organisation access and web portal
 
 ## Dependencies:
 - Task 22: Performance Optimization & Polish (for final production-ready state)

@@ -18,10 +18,10 @@ The Wildlife Watcher (WW) mobile app implements a hierarchical role-based access
 **Default Organization**: wildlife.ai
 
 **Core Responsibilities**:
-- System-wide user management
-- Organization management
-- System-level role assignment (WW Admin and Model Manager only)
-- System configuration and monitoring
+- System-wide user management (web portal only)
+- Organization management (web portal only)
+- System-level role assignment (WW Admin and Model Manager only - web portal only)
+- System configuration and monitoring (web portal only)
 
 **Key Characteristics**:
 - WW Admins default to the wildlife.ai organization
@@ -29,13 +29,17 @@ The Wildlife Watcher (WW) mobile app implements a hierarchical role-based access
 - When acting purely as WW Admin, no project access is required
 - When assigned to another organization, subject to the capabilities of their assigned roles in that organization
 
-**Capabilities**:
-- Create, read, update, delete (CRUD) users across the system
-- CRUD organizations
-- Assign users to organizations
-- Assign system-level roles to users (Model Manager, WW Admin only - NOT project roles)
-- Send login notifications to newly created users
-- Access system logs and diagnostics
+**Capabilities (Web Portal Exclusive)**:
+- Create, read, update, delete (CRUD) users across the system (web portal only)
+- CRUD organizations (web portal only)
+- Assign users to organizations (web portal only)
+- Assign system-level roles to users (Model Manager, WW Admin only - NOT project roles) (web portal only)
+- Send login notifications to newly created users (web portal only)
+- Access system logs and diagnostics (web portal only)
+
+**Mobile App Capabilities (Limited)**:
+- Read-only project visibility across all organizations
+- Navigate to web portal for administrative functions
 
 **Note**: Project roles (Project Admin, Project Member) are assigned by Project Admins, not WW Admins
 

@@ -101,7 +101,7 @@ This task completes the project management system by providing comprehensive pro
 ## Key Features:
 - **Comprehensive Project Overview**: All project information with organisation context and role-based visibility
 - **Enhanced Administrative Control**: Full project lifecycle management with organisation governance
-- **WW Admin Global Management**: MVP user provisioning with cross-organisation project oversight
+- **WW Admin Global Visibility**: Read-only project overview across organisations
 - **Advanced Data Export & Analytics**: Insights and reporting with organisation intelligence and LoRaWAN data
 - **Multi-Tenancy Support**: Organisation-scoped operations with data isolation
 - **Enhanced Team Collaboration**: Integration with member management and role-based permissions

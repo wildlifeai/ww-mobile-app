@@ -54,7 +54,7 @@ This task focuses on final performance optimization and user experience polish t
   - **NEW**: Contextual help with role-based feature access and organisation policy guidance
   - **NEW**: Organisation-aware navigation patterns and role-based user flow optimization
   - **NEW**: Enhanced search and filter with organisation scoping and role-based result filtering
-  - **NEW**: WW Admin UI polish for cross-organisation management interfaces
+  - **NEW**: WW Admin UI polish for read-only cross-organisation interfaces
 
 ### 22.3: Enhanced Accessibility with Organisation Context
 - **NEW**: Maestro TDD accessibility validation and compliance testing
@@ -75,7 +75,7 @@ This task focuses on final performance optimization and user experience polish t
   - **NEW**: Keyboard navigation support with organisation context and role-based feature access
   - **NEW**: Voice control compatibility with organisation terminology and role-based commands
   - **NEW**: Switch control support with organisation workflow optimization for users with motor impairments
-  - **NEW**: WW Admin accessibility enhancements for cross-organisation management interfaces
+  - **NEW**: WW Admin accessibility enhancements for read-only cross-organisation interfaces
 
 ### 22.4: Production Readiness Polish
 - **Error Handling Enhancement**:

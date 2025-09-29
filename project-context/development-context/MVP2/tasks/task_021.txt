@@ -15,7 +15,7 @@ This task ensures the complete Wildlife Watcher MVP2 system works correctly thro
 - **NEW**: Maestro TDD framework comprehensive testing implementation
 - **Enhanced Complete Workflow Testing**: Test entire user journeys with organisation and role context:
   - **NEW**: Organisation setup → User role assignment → Project creation → Deployment workflow → Data sync
-  - **NEW**: WW Admin workflows → Cross-organisation management → Global user provisioning → System oversight
+  - **NEW**: WW Admin workflows → Cross-organisation visibility → Web portal navigation → System oversight
   - Authentication → Organisation context → Device discovery → Deployment management → Project collaboration
   - **NEW**: LoRaWAN integration → Webhook coordination → Device status sync → Battery/storage monitoring
   - Offline operation → Network restoration → Organisation-scoped synchronization → Conflict resolution
@@ -24,7 +24,7 @@ This task ensures the complete Wildlife Watcher MVP2 system works correctly thro
   - BLE device management ↔ Maps integration ↔ LoRaWAN status coordination
   - **NEW**: Organisation multi-tenancy ↔ Role-based access control ↔ Data isolation
   - Offline sync ↔ Real-time updates ↔ Organisation priority handling
-  - **NEW**: WW Admin features ↔ Cross-organisation management ↔ User provisioning
+  - **NEW**: WW Admin features ↔ Cross-organisation visibility ↔ Web portal navigation
   - Authentication ↔ Organisation context ↔ Team collaboration features
 - **Comprehensive Data Flow Verification**: Ensure data integrity across organisation boundaries and role contexts
 - **Enhanced API Integration Testing**: Validate all Supabase API calls with organisation and LoRaWAN integration:
@@ -74,7 +74,7 @@ This task ensures the complete Wildlife Watcher MVP2 system works correctly thro
 - **NEW**: Maestro TDD comprehensive quality assurance framework
 - **Enhanced Functional Testing**: Verify all features with organisation context:
   - All MVP2 requirements with organisation multi-tenancy implemented correctly
-  - **NEW**: WW Admin user provisioning and cross-organisation management workflows
+  - **NEW**: WW Admin read-only access verification and web portal navigation
   - **NEW**: LoRaWAN integration and device status synchronization functionality
   - User workflows complete successfully with role-based access control
   - **NEW**: Organisation policy compliance and boundary enforcement validation

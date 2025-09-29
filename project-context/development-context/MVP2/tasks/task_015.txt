@@ -15,7 +15,7 @@ This task implements the complete deployment creation workflow with organisation
 - Create `src/navigation/screens/deployment/start/ProjectSelectionScreen.tsx` following Component Implementation Patterns
 - **NEW**: Maestro TDD implementation for project selection workflow
 - **Enhanced Project Dropdown**: Display user's accessible projects with organisation filtering and role-based visibility:
-  - `ww_admin`: All projects across all organisations
+  - `ww_admin`: Read-only view of all projects (no deployment operations unless via other role)
   - `project_admin`: Projects within their organisations they administer
   - `project_member`: Projects they're members of
 - **NEW**: Organisation Context Display: Show current organisation and allow switching for multi-org users

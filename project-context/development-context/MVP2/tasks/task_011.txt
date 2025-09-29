@@ -120,7 +120,7 @@ This task creates the complete offline-first data management system that enables
 - ⏳ Subtasks 11.6-11.7: Performance Optimization, E2E Testing
 
 # Test Strategy:
-Test offline data persistence, verify sync queue processing, test conflict resolution, validate data integrity, test network transition scenarios, test organisation multi-tenancy, test role-based sync filtering, test WW Admin read-only project visibility (no offline user management)
+Test offline data persistence, verify sync queue processing, test conflict resolution, validate data integrity, test network transition scenarios, test organisation multi-tenancy, test role-based sync filtering, test read-only project visibility for WW Admin role
 
 # Subtasks:
 ## 1. SQLite Testing Framework for Offline Operations ✅ [DONE]
@@ -170,7 +170,7 @@ Test offline data persistence, verify sync queue processing, test conflict resol
 
 **Actions Required**:
 1. Scan codebase for WW Admin user management implementations
-2. Refactor Redux slices to remove user provisioning state/actions
+2. Refactor Redux slices to replace user provisioning with read-only project visibility state/actions
 3. Update database service to enforce read-only patterns for WW Admin
 4. Remove user management conflict resolution scenarios
 5. Update test suites to reflect architectural reality
@@ -193,5 +193,5 @@ Integrate offline services with Redux store architecture, implement offline indi
 ### Dependencies: 11.6
 ### Description: Comprehensive end-to-end testing of complete offline functionality using Maestro framework with organisation scenarios and role-based workflows
 ### Details:
-Create comprehensive Maestro E2E test suite covering complete offline workflows with organisation multi-tenancy, role-based access, LoRaWAN integration, and corrected WW Admin features. Test scenarios: offline deployment creation, organisation data sync, role-based offline access, LoRaWAN device status offline updates, WW Admin read-only project visibility (no user provisioning), conflict resolution, network transitions, and data integrity across organisation boundaries.
+Create comprehensive Maestro E2E test suite covering complete offline workflows with organisation multi-tenancy, role-based access, LoRaWAN integration, and corrected WW Admin features. Test scenarios: offline deployment creation, organisation data sync, role-based offline access, LoRaWAN device status offline updates, WW Admin read-only project access, conflict resolution, network transitions, and data integrity across organisation boundaries.
 

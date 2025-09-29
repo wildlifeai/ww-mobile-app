@@ -107,7 +107,7 @@ This task builds upon the existing BLE functionality from the migration to provi
 - Implement proper error handling and user feedback with organisation escalation workflows
 - **NEW**: Implement LoRaWAN webhook integration patterns for device coordination
 - Use background task management for firmware updates with organisation scheduling
-- **NEW**: Follow WW Admin patterns for cross-organisation device fleet management
+- **NEW**: Follow WW Admin patterns for read-only cross-organisation device visibility
 
 ## Key Features:
 - **Enhanced Comprehensive Device Management**: Full lifecycle management with organisation context and role-based access
@@ -118,7 +118,7 @@ This task builds upon the existing BLE functionality from the migration to provi
 - **Role-Based Access Control**: WW Admin, project admin, and member permissions for device operations
 - **LoRaWAN Integration**: Device monitoring, webhook management, and dual-channel communication
 - **Enhanced Persistent Storage**: Device information with organisation context and role permissions
-- **WW Admin Global Management**: Cross-organisation device fleet oversight and system coordination
+- **WW Admin Global Management**: Read-only cross-organisation device visibility and web portal access
 - **Organisation Analytics**: Device performance benchmarking and fleet health monitoring
 
 ## BLE Enhancement Features:

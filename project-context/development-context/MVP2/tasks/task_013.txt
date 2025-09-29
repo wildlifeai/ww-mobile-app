@@ -58,10 +58,10 @@ This task implements comprehensive team collaboration capabilities for Wildlife 
   - Send invitation emails via Supabase Edge Functions with organisation branding
   - **NEW**: Role-based invitation permissions (who can invite whom)
   - Handle invitation acceptance/rejection with organisation onboarding
-- **NEW**: WW Admin bulk invitation capabilities (MVP user provisioning):
-  - Bulk user import via CSV with role assignment
-  - Cross-organisation user transfer workflows
-  - System-wide user provisioning and deactivation
+- **NEW**: WW Admin tools redirect to web portal:
+  - Bulk invitations handled through web portal only
+  - Cross-organisation user management via web interface
+  - System-wide user operations restricted to web portal
 - Pending invitation management with organisation filtering:
   - Display pending invitations in member list with organisation context
   - Allow admins to resend or cancel invitations within their scope
@@ -100,10 +100,10 @@ This task implements comprehensive team collaboration capabilities for Wildlife 
 
 ## Key Features:
 - **Enhanced Role-Based Access Control**: WW Admin, project admin, member permissions with organisation scoping
-- **WW Admin User Provisioning**: MVP feature for system-wide user management
+- **WW Admin Portal Access**: Web portal for system-wide user management
 - **Organisation Multi-Tenancy**: Member management with data isolation
 - **Email Invitations**: Seamless team member onboarding with organisation context
-- **Bulk Operations**: WW Admin bulk user import and management capabilities
+- **Portal Integration**: WW Admin web portal integration for bulk operations
 - **Member Activity Tracking**: Visibility into team engagement with organisation analytics
 - **Admin Tools**: Comprehensive project management capabilities with role validation
 - **Security**: Proper authorization throughout the application with organisation boundaries

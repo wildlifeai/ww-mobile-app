@@ -16,7 +16,7 @@ This task implements the comprehensive deployment management system that enables
 - **NEW**: Maestro TDD implementation for deployments list and filtering
 - **Enhanced Tabbed Interface**: Organised tabs with role-based visibility:
   - Active / Ended / All deployments with organisation scoping
-  - **NEW**: WW Admin tab for cross-organisation deployment oversight
+  - **NEW**: WW Admin tab for read-only cross-organisation deployment visibility
 - **Enhanced Deployment Cards**: Rich information display with organisation awareness:
   - Project name, organisation badge, deployment name, device identifier
   - Location information with coordinates/address and organisation territory indicators
@@ -53,7 +53,7 @@ This task implements the comprehensive deployment management system that enables
   - Export deployment data with role-based data access filtering
   - **NEW**: LoRaWAN device configuration and webhook management (admin only)
   - **NEW**: Organisation analytics and benchmarking reports
-- **NEW**: WW Admin Global Actions**: Cross-organisation deployment management and system oversight
+- **NEW**: WW Admin Global Actions**: Read-only cross-organisation deployment overview and web portal navigation
 
 ### 17.3: Enhanced Real-Time Status Update System with LoRaWAN Integration
 - **NEW**: Maestro TDD coverage for real-time update reliability and performance
@@ -110,7 +110,7 @@ This task implements the comprehensive deployment management system that enables
 - **Advanced Real-time Monitoring**: Live status updates with LoRaWAN integration and predictive analytics
 - **Role-Based Quick Actions**: Efficient deployment management with permission validation
 - **Multi-Tenancy Support**: Organisation-scoped deployment management with data isolation
-- **WW Admin Global Management**: Cross-organisation deployment oversight and system intelligence
+- **WW Admin Global Management**: Read-only cross-organisation deployment visibility and web portal access
 - **Performance Optimized**: Smooth operation with large deployment datasets and organisation partitioning
 - **Enhanced Visual Status Indicators**: Comprehensive deployment health with LoRaWAN device metrics
 - **Advanced Search & Filter**: Organisation-aware discovery with role-based filtering and device status

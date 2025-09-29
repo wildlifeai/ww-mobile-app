@@ -1,40 +1,43 @@
 import { DatabaseService } from './DatabaseService';
 import { OfflineService } from './OfflineService';
-import { 
-  User, 
-  Organisation, 
-  OfflineOperation, 
-  LoRaWANStatus,
-  UserRole 
+import {
+  User,
+  Organisation
 } from '../../types/offline';
 
+// Import types from wwAdminSlice for consistency
+import { Project } from '../../redux/slices/wwAdminSlice';
+
 /**
- * WWAdminOfflineService - WW Admin offline capabilities for user provisioning and cross-organisation management
- * 
- * MVP REQUIREMENT: WW Admin user provisioning offline access per spec line 73
- * 
+ * WWAdminOfflineService - WW Admin offline capabilities for web-portal exclusive architecture
+ *
+ * MVP ARCHITECTURE: Read-only project visibility + web portal navigation
+ *
  * Features:
- * - Offline user management across organisations
- * - Role assignment capabilities (ww_admin, project_admin, project_member)
- * - System configuration offline access
- * - Model management offline sync (species, brands, models)
- * - Global admin data synchronization with organisation isolation
- * - LoRaWAN device configuration offline sync for admin users
- * - Cross-organisation analytics and reporting offline access
- * - Bulk user operations offline queue (invite, role changes, deactivation)
+ * - Cross-organisation project visibility (read-only)
+ * - Organisation data caching for offline viewing
+ * - Web portal URL management
+ * - Project data synchronization for admin overview
+ *
+ * Removed from MVP (Web Portal Exclusive):
+ * - User management operations (moved to web portal)
+ * - Role assignment operations (web portal only)
+ * - System configuration management (web portal only)
+ * - Bulk operations (web portal only)
  */
 export class WWAdminOfflineService {
   private databaseService: DatabaseService;
   private offlineService: OfflineService;
-  
-  // Cache for cross-organisation data
+
+  // Cache for read-only cross-organisation data
   private organisationsCache: Map<string, Organisation> = new Map();
-  private usersCache: Map<string, User[]> = new Map(); // Org ID -> Users
-  private systemConfigCache: Map<string, any> = new Map();
+  private projectsCache: Map<string, Project[]> = new Map(); // Org ID -> Projects
+  private webPortalUrl: string = 'https://admin.wildlifewatcher.com';
 
   constructor() {
     this.databaseService = new DatabaseService();
     this.offlineService = new OfflineService();
+    this.webPortalUrl = process.env.EXPO_PUBLIC_WW_ADMIN_PORTAL_URL || 'https://admin.wildlifewatcher.com';
   }
 
   /**
@@ -43,284 +46,134 @@ export class WWAdminOfflineService {
   async initialize(): Promise<void> {
     await this.databaseService.initializeDatabase();
     await this.offlineService.initialize();
-    
-    // Load cached data
+
+    // Load cached data for read-only access
     await this.loadOrganisationsCache();
-    await this.loadSystemConfigCache();
+    await this.loadProjectsCache();
   }
 
   /**
-   * Provision user across organisations (MVP requirement)
-   */
-  async provisionUser(adminUser: User, targetUser: Partial<User>, targetOrganisationId: string): Promise<void> {
-    if (!this.validateWWAdminAccess(adminUser)) {
-      throw new Error('Unauthorized: Only WW Admins can provision users across organisations');
-    }
-
-    const provisionOperation: OfflineOperation = {
-      id: `provision-user-${Date.now()}`,
-      type: 'CREATE_USER',
-      data: {
-        user: targetUser,
-        organisation_id: targetOrganisationId,
-        provisioned_by: adminUser.id,
-        provision_type: 'cross_organisation'
-      },
-      user_id: adminUser.id,
-      organisation_id: targetOrganisationId,
-      timestamp: new Date(),
-      retry_count: 0
-    };
-
-    // Queue for sync when online
-    await this.offlineService.queueOperation(provisionOperation);
-
-    // Cache locally for immediate access
-    await this.cacheUserLocally(targetUser as User, targetOrganisationId);
-  }
-
-  /**
-   * Assign role to user across organisations
-   */
-  async assignUserRole(adminUser: User, targetUserId: string, newRole: UserRole, organisationId: string): Promise<void> {
-    if (!this.validateWWAdminAccess(adminUser)) {
-      throw new Error('Unauthorized: Only WW Admins can assign roles across organisations');
-    }
-
-    const roleAssignOperation: OfflineOperation = {
-      id: `assign-role-${targetUserId}-${Date.now()}`,
-      type: 'UPDATE_USER',
-      data: {
-        user_id: targetUserId,
-        role: newRole,
-        organisation_id: organisationId,
-        assigned_by: adminUser.id
-      },
-      user_id: adminUser.id,
-      organisation_id: organisationId,
-      timestamp: new Date(),
-      retry_count: 0
-    };
-
-    await this.offlineService.queueOperation(roleAssignOperation);
-
-    // Update local cache
-    await this.updateUserRoleCache(targetUserId, newRole, organisationId);
-  }
-
-  /**
-   * Get all organisations for cross-organisation management
+   * Get all organisations for cross-organisation project visibility
    */
   async getAllOrganisations(adminUser: User): Promise<Organisation[]> {
     if (!this.validateWWAdminAccess(adminUser)) {
-      throw new Error('Unauthorized: Only WW Admins can access all organisations');
+      throw new Error('Unauthorized: Only WW Admins can access cross-organisation data');
     }
 
-    // Return cached organisations
+    // Return cached organisations for read-only access
     return Array.from(this.organisationsCache.values());
   }
 
   /**
-   * Get users by organisation for admin management
+   * Get projects by organisation for read-only visibility
    */
-  async getUsersByOrganisation(adminUser: User, organisationId: string): Promise<User[]> {
+  async getProjectsByOrganisation(adminUser: User, organisationId: string): Promise<Project[]> {
     if (!this.validateWWAdminAccess(adminUser)) {
-      throw new Error('Unauthorized: Only WW Admins can access cross-organisation users');
+      throw new Error('Unauthorized: Only WW Admins can access cross-organisation projects');
     }
 
     // Check cache first
-    if (this.usersCache.has(organisationId)) {
-      return this.usersCache.get(organisationId)!;
+    if (this.projectsCache.has(organisationId)) {
+      return this.projectsCache.get(organisationId)!;
     }
 
     // Load from database if not in cache
-    const users = await this.loadUsersFromDatabase(organisationId);
-    this.usersCache.set(organisationId, users);
-    return users;
+    const projects = await this.loadProjectsFromDatabase(organisationId);
+    this.projectsCache.set(organisationId, projects);
+    return projects;
   }
 
   /**
-   * Bulk user operations for efficient management
+   * Get all projects across organisations for admin overview
    */
-  async bulkUserOperations(adminUser: User, operations: Array<{
-    type: 'invite' | 'role_change' | 'deactivate' | 'reactivate';
-    userId?: string;
-    organisationId: string;
-    data: any;
-  }>): Promise<void> {
+  async getAllProjects(adminUser: User): Promise<Project[]> {
     if (!this.validateWWAdminAccess(adminUser)) {
-      throw new Error('Unauthorized: Only WW Admins can perform bulk user operations');
+      throw new Error('Unauthorized: Only WW Admins can access all projects');
     }
 
-    for (const operation of operations) {
-      const bulkOperation: OfflineOperation = {
-        id: `bulk-${operation.type}-${Date.now()}-${Math.random()}`,
-        type: this.mapBulkOperationType(operation.type),
-        data: {
-          ...operation.data,
-          bulk_operation: true,
-          operation_type: operation.type,
-          target_user_id: operation.userId,
-          performed_by: adminUser.id
-        },
-        user_id: adminUser.id,
-        organisation_id: operation.organisationId,
-        timestamp: new Date(),
-        retry_count: 0
-      };
-
-      await this.offlineService.queueOperation(bulkOperation);
+    const allProjects: Project[] = [];
+    for (const projects of this.projectsCache.values()) {
+      allProjects.push(...projects);
     }
+    return allProjects;
   }
 
   /**
-   * Configure LoRaWAN devices offline for admin users
+   * Navigate to web portal for user management
    */
-  async configureLoRaWANDevice(adminUser: User, deviceId: string, config: {
-    organisation_id: string;
-    device_settings: any;
-    webhook_config?: any;
-  }): Promise<void> {
-    if (!this.validateWWAdminAccess(adminUser)) {
-      throw new Error('Unauthorized: Only WW Admins can configure LoRaWAN devices globally');
-    }
-
-    const configOperation: OfflineOperation = {
-      id: `lorawan-config-${deviceId}-${Date.now()}`,
-      type: 'UPDATE_DEVICE_LORAWAN_STATUS',
-      data: {
-        device_id: deviceId,
-        configuration: config.device_settings,
-        webhook_config: config.webhook_config,
-        configured_by: adminUser.id,
-        configuration_type: 'admin_global'
-      },
-      user_id: adminUser.id,
-      organisation_id: config.organisation_id,
-      timestamp: new Date(),
-      retry_count: 0
-    };
-
-    await this.offlineService.queueOperation(configOperation);
+  getWebPortalUrl(): string {
+    return this.webPortalUrl;
   }
 
   /**
-   * Access cross-organisation analytics offline
+   * Set web portal URL configuration
    */
-  async getCrossOrganisationAnalytics(adminUser: User): Promise<{
+  setWebPortalUrl(url: string): void {
+    this.webPortalUrl = url;
+  }
+
+  /**
+   * Get cached project statistics for admin overview
+   */
+  async getProjectStatistics(adminUser: User): Promise<{
     total_organisations: number;
-    total_users: number;
     total_projects: number;
-    total_deployments: number;
-    device_status_summary: Record<string, number>;
-    role_distribution: Record<UserRole, number>;
+    projects_by_status: Record<string, number>;
+    recent_projects: Project[];
   }> {
     if (!this.validateWWAdminAccess(adminUser)) {
-      throw new Error('Unauthorized: Only WW Admins can access cross-organisation analytics');
+      throw new Error('Unauthorized: Only WW Admins can access project statistics');
     }
 
-    // Calculate analytics from cached data
-    const analytics = {
+    const allProjects = await this.getAllProjects(adminUser);
+
+    // Calculate statistics from cached data
+    const statistics = {
       total_organisations: this.organisationsCache.size,
-      total_users: 0,
-      total_projects: 0,
-      total_deployments: 0,
-      device_status_summary: {} as Record<string, number>,
-      role_distribution: {
-        ww_admin: 0,
-        project_admin: 0,
-        project_member: 0
-      } as Record<UserRole, number>
+      total_projects: allProjects.length,
+      projects_by_status: {} as Record<string, number>,
+      recent_projects: allProjects
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 10)
     };
 
-    // Aggregate user statistics
-    for (const users of this.usersCache.values()) {
-      analytics.total_users += users.length;
-      for (const user of users) {
-        analytics.role_distribution[user.role]++;
-      }
-    }
+    // Count projects by status (using is_private as example status)
+    statistics.projects_by_status = {
+      public: allProjects.filter(p => !p.is_private).length,
+      private: allProjects.filter(p => p.is_private).length
+    };
 
-    // Get project and deployment counts from database
-    for (const orgId of this.organisationsCache.keys()) {
-      const projects = await this.databaseService.getProjectsByOrganisation(orgId);
-      const deployments = await this.databaseService.getDeploymentsByOrganisation(orgId);
-      
-      analytics.total_projects += projects.length;
-      analytics.total_deployments += deployments.length;
-    }
-
-    return analytics;
+    return statistics;
   }
 
   /**
-   * Manage system configuration offline
+   * Refresh project data for a specific organisation
    */
-  async updateSystemConfiguration(adminUser: User, configKey: string, configValue: any): Promise<void> {
+  async refreshOrganisationProjects(adminUser: User, organisationId: string): Promise<void> {
     if (!this.validateWWAdminAccess(adminUser)) {
-      throw new Error('Unauthorized: Only WW Admins can modify system configuration');
+      throw new Error('Unauthorized: Only WW Admins can refresh organisation data');
     }
 
-    const configOperation: OfflineOperation = {
-      id: `system-config-${configKey}-${Date.now()}`,
-      type: 'UPDATE_ORGANISATION', // Using as system config update
-      data: {
-        config_key: configKey,
-        config_value: configValue,
-        config_type: 'system_global',
-        updated_by: adminUser.id
-      },
-      user_id: adminUser.id,
-      organisation_id: 'system', // Special org for system-wide config
-      timestamp: new Date(),
-      retry_count: 0
-    };
-
-    await this.offlineService.queueOperation(configOperation);
-    
-    // Update local cache
-    this.systemConfigCache.set(configKey, configValue);
+    // Clear cache and reload
+    this.projectsCache.delete(organisationId);
+    await this.getProjectsByOrganisation(adminUser, organisationId);
   }
 
   /**
-   * Get system configuration
+   * Clear all cached data and refresh
    */
-  async getSystemConfiguration(adminUser: User, configKey?: string): Promise<any> {
+  async refreshAllData(adminUser: User): Promise<void> {
     if (!this.validateWWAdminAccess(adminUser)) {
-      throw new Error('Unauthorized: Only WW Admins can access system configuration');
+      throw new Error('Unauthorized: Only WW Admins can refresh data');
     }
 
-    if (configKey) {
-      return this.systemConfigCache.get(configKey);
-    }
+    // Clear all caches
+    this.organisationsCache.clear();
+    this.projectsCache.clear();
 
-    // Return all system configuration
-    return Object.fromEntries(this.systemConfigCache);
-  }
-
-  /**
-   * Model management offline sync (species, brands, models)
-   */
-  async syncModelData(adminUser: User, modelType: 'species' | 'brands' | 'device_models'): Promise<void> {
-    if (!this.validateWWAdminAccess(adminUser)) {
-      throw new Error('Unauthorized: Only WW Admins can sync model data');
-    }
-
-    const syncOperation: OfflineOperation = {
-      id: `model-sync-${modelType}-${Date.now()}`,
-      type: 'CREATE_ORGANISATION', // Using as model sync operation
-      data: {
-        model_type: modelType,
-        sync_type: 'full_refresh',
-        requested_by: adminUser.id
-      },
-      user_id: adminUser.id,
-      organisation_id: 'system',
-      timestamp: new Date(),
-      retry_count: 0
-    };
-
-    await this.offlineService.queueOperation(syncOperation);
+    // Reload fresh data
+    await this.loadOrganisationsCache();
+    await this.loadProjectsCache();
   }
 
   /**
@@ -331,23 +184,7 @@ export class WWAdminOfflineService {
   }
 
   /**
-   * Map bulk operation type to offline operation type
-   */
-  private mapBulkOperationType(type: string): any {
-    switch (type) {
-      case 'invite':
-        return 'CREATE_USER';
-      case 'role_change':
-      case 'deactivate':
-      case 'reactivate':
-        return 'UPDATE_USER';
-      default:
-        return 'UPDATE_USER';
-    }
-  }
-
-  /**
-   * Load organisations cache
+   * Load organisations cache from database
    */
   private async loadOrganisationsCache(): Promise<void> {
     try {
@@ -356,65 +193,38 @@ export class WWAdminOfflineService {
       // for (const org of orgs) {
       //   this.organisationsCache.set(org.id, org);
       // }
-      console.log('Loading organisations cache...');
+      console.log('Loading organisations cache for read-only access...');
     } catch (error) {
       console.error('Failed to load organisations cache:', error);
     }
   }
 
   /**
-   * Load system config cache
+   * Load projects cache from database
    */
-  private async loadSystemConfigCache(): Promise<void> {
+  private async loadProjectsCache(): Promise<void> {
     try {
       // TODO: Load from database - placeholder implementation
-      console.log('Loading system config cache...');
+      // for (const orgId of this.organisationsCache.keys()) {
+      //   const projects = await this.databaseService.getProjectsByOrganisation(orgId);
+      //   this.projectsCache.set(orgId, projects);
+      // }
+      console.log('Loading projects cache for read-only access...');
     } catch (error) {
-      console.error('Failed to load system config cache:', error);
+      console.error('Failed to load projects cache:', error);
     }
   }
 
   /**
-   * Cache user locally
+   * Load projects from database for specific organisation
    */
-  private async cacheUserLocally(user: User, organisationId: string): Promise<void> {
-    if (!this.usersCache.has(organisationId)) {
-      this.usersCache.set(organisationId, []);
-    }
-    
-    const users = this.usersCache.get(organisationId)!;
-    const existingIndex = users.findIndex(u => u.id === user.id);
-    
-    if (existingIndex >= 0) {
-      users[existingIndex] = user;
-    } else {
-      users.push(user);
-    }
-  }
-
-  /**
-   * Update user role in cache
-   */
-  private async updateUserRoleCache(userId: string, newRole: UserRole, organisationId: string): Promise<void> {
-    const users = this.usersCache.get(organisationId);
-    if (users) {
-      const userIndex = users.findIndex(u => u.id === userId);
-      if (userIndex >= 0) {
-        users[userIndex].role = newRole;
-      }
-    }
-  }
-
-  /**
-   * Load users from database
-   */
-  private async loadUsersFromDatabase(organisationId: string): Promise<User[]> {
+  private async loadProjectsFromDatabase(organisationId: string): Promise<Project[]> {
     try {
       // TODO: Implement actual database query
-      console.log(`Loading users for organisation ${organisationId} from database`);
+      console.log(`Loading projects for organisation ${organisationId} from database`);
       return [];
     } catch (error) {
-      console.error('Failed to load users from database:', error);
+      console.error('Failed to load projects from database:', error);
       return [];
     }
   }
@@ -424,8 +234,7 @@ export class WWAdminOfflineService {
    */
   async destroy(): Promise<void> {
     this.organisationsCache.clear();
-    this.usersCache.clear();
-    this.systemConfigCache.clear();
+    this.projectsCache.clear();
     await this.offlineService.destroy();
   }
 }

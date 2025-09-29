@@ -102,7 +102,7 @@ This task builds upon the basic Maps functionality from the migration to create 
 - Use MapView best practices for performance optimization with organisation data partitioning
 - **NEW**: Implement LoRaWAN integration patterns for real-time marker updates
 - Follow offline caching patterns for map tiles with organisation territory prioritization
-- **NEW**: Follow WW Admin patterns for cross-organisation maps management
+- **NEW**: Follow WW Admin patterns for read-only cross-organisation maps visibility
 
 ## Key Features:
 - **Enhanced Central Map Hub**: Primary interface with organisation context and role-based deployment management
@@ -113,7 +113,7 @@ This task builds upon the basic Maps functionality from the migration to create 
 - **Organisation Location Intelligence**: Smart location services with territory validation and compliance management
 - **LoRaWAN Integration**: Real-time device status, connectivity monitoring, and webhook coordination
 - **Performance Optimized**: Smooth map interaction with organisation data partitioning and role-based filtering
-- **WW Admin Global Management**: Cross-organisation deployment oversight and territorial intelligence
+- **WW Admin Global Management**: Read-only cross-organisation deployment visibility and web portal access
 - **Integration Ready**: Seamless integration with organisation-aware deployment workflows and territory management
 
 ## Map Visualization Features:

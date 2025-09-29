@@ -3,7 +3,7 @@
 # Status: pending
 # Dependencies: 11
 # Priority: high
-# Description: STREAM A: Implement comprehensive project management with organisation scoping, WW Admin features, LoRaWAN integration, including projects list screen, new project creation, project service layer, and RTK Query integration with offline support
+# Description: STREAM A: Implement comprehensive project management with organisation scoping, WW Admin read-only visibility, LoRaWAN integration, including projects list screen, new project creation, project service layer, and RTK Query integration with offline support
 # Details:
 PARALLEL DEVELOPMENT STREAM A - Task 12: Projects CRUD Operations
 
@@ -16,7 +16,7 @@ This task implements the complete project management system for Wildlife Watcher
 - **NEW**: Maestro TDD implementation for project screen components
 - Project cards with summary information and role-based visibility
 - **NEW**: Organisation filtering for multi-org users with dropdown selection
-- **NEW**: WW Admin view (all projects across all organisations) - MVP user provisioning feature
+- **NEW**: WW Admin view (all projects across all organisations) - read-only visibility only
 - **NEW**: Role-based project access:
   - `ww_admin`: View all projects across all organisations
   - `project_admin`: View organisation projects they administer 
@@ -50,9 +50,8 @@ This task implements the complete project management system for Wildlife Watcher
   - `addProjectMember()` with role assignment (project_admin, project_member)
   - `removeProjectMember()` with permission validation
   - `getProjectMembers()` with profile information and role display
-- **NEW**: WW Admin operations (MVP user provisioning):
-  - `getAllProjectsAdmin()` - cross-organisation project access
-  - `transferProjectOwnership()` - organisation admin features
+- **NEW**: WW Admin operations (read-only only):
+  - `getAllProjectsAdmin()` - cross-organisation project access (read-only)
 - **NEW**: LoRaWAN integration operations:
   - `getProjectDeviceStatus()` - device battery and storage status
   - `syncProjectDevices()` - webhook integration support
@@ -89,7 +88,7 @@ This task implements the complete project management system for Wildlife Watcher
 ## Key Features:
 - **Comprehensive Project Management**: Full CRUD with team collaboration and organisation multi-tenancy
 - **Role-Based Access Control**: WW Admin, project admin, and member permissions throughout
-- **WW Admin User Provisioning**: MVP feature for cross-organisation user management
+- **WW Admin Read-Only Access**: Cross-organisation project visibility
 - **Organisation Multi-Tenancy**: Data isolation and scoped operations
 - **Offline-First**: Projects can be created and managed offline with organisation context
 - **Real-time Updates**: Changes sync across team members with role validation

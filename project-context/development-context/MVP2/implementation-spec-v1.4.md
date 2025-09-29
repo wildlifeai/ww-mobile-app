@@ -284,15 +284,15 @@ User Action → Screen Component → Redux Action → Service Layer → Local SQ
 
 The app supports a single, controlled user onboarding path to ensure proper organisational management:
 
-**WW Admin Provisioning Only** - System administrators are the only users who can create new user accounts. WW Admin users add users through the admin portal and assign them to organisations. **WW Admin must provide mandatory fields: full name, email address, and organisation assignment when provisioning users.** This controlled approach ensures proper user management and organisational structure from the start. If a user's invitation link expires, the WW Admin must be notified to resend a new invitation link (no self-service in MVP).
+**WW Admin Provisioning Only (Web Portal Exclusive)** - System administrators are the only users who can create new user accounts, but this capability is **exclusively available through the web portal, not the mobile app**. WW Admin users add users through the web admin portal and assign them to organisations. **WW Admin must provide mandatory fields: full name, email address, and organisation assignment when provisioning users.** This controlled approach ensures proper user management and organisational structure from the start. If a user's invitation link expires, the WW Admin must be notified to resend a new invitation link (no self-service in MVP).
 
 #### User Provisioning Requirements
 
-**Mandatory Profile Information**: WW Admin users must provide complete user information when creating accounts, including full name and organisation assignment. This ensures that all users have proper identification and organisational context from account creation.
+**Mandatory Profile Information (Web Portal Only)**: WW Admin users must provide complete user information when creating accounts through the web portal, including full name and organisation assignment. This ensures that all users have proper identification and organisational context from account creation. **The mobile app contains no user provisioning capabilities.**
 
-**Validation Standards**: Full name must contain at least first and last name (minimum two words) and organisation assignment must be specified. All users must be assigned to an organisation before they can be added to projects.
+**Validation Standards**: Full name must contain at least first and last name (minimum two words) and organisation assignment must be specified. All users must be assigned to an organisation before they can be added to projects. **All validation occurs in the web portal interface.**
 
-**Organisational Structure**: Users belong to organisations first, then can be added to projects within or across organisations. This hierarchical approach ensures proper access control and administrative oversight.
+**Organisational Structure**: Users belong to organisations first, then can be added to projects within or across organisations. This hierarchical approach ensures proper access control and administrative oversight. **Organisation assignment is managed exclusively through the web portal.**
 
 #### Sign Out Implementation
 
@@ -328,13 +328,14 @@ interface RoleCapabilities {
     webInterfaceOnly: true        // No mobile app access in MVP
   },
   'ww_admin': {
-    manageAllUsers: true,  // Core MVP function - user management only
-    // Note: Advanced features moved to Phase 2 for MVP simplification:
-    // - viewAllProjects (cross-project visibility)
-    // - configureSystem (system configuration) 
-    // - accessDiagnostics (system diagnostics)
-    // - manageWWAdminFeatures (configurable permissions)
-    // - accessDevMenu (moved to development environment only)
+    viewAllProjects: true,     // Read-only project visibility across organisations
+    accessWebPortal: true,     // Navigate to web portal for user management
+    // Note: User management capabilities are WEB PORTAL EXCLUSIVE:
+    // - manageAllUsers (web portal only - not in mobile app)
+    // - configureSystem (web portal only)
+    // - accessDiagnostics (web portal only)
+    // - manageWWAdminFeatures (web portal only)
+    // - accessDevMenu (development environment only)
   },
   'project_admin': {
     editProject: true,
@@ -378,9 +379,12 @@ interface RoleCapabilities {
 **MVP WW Admin Mobile Functions:**
 - Read-only project visibility across all organisations
 - Access to WW Admin Tools menu (redirects to web portal for user management)
+- **No user management capabilities in mobile app** - all user provisioning handled via web portal
 
 **MVP WW Admin Web Portal Functions:**
-- User Management: Add, deactivate, and assign users to organisations (via web portal only)
+- User Management: Add, deactivate, and assign users to organisations (web portal exclusive)
+- User provisioning: Create new user accounts with mandatory full name, email, and organisation assignment
+- Organisation assignment: Assign users to appropriate organisations
 
 **Removed from MVP:**
 - BLE/DFU testing and diagnostics (moved to developer tools)
@@ -394,7 +398,7 @@ interface RoleCapabilities {
 
 - **System Administrator**: Manages user accounts, creates organisations, and assigns users to appropriate organisations. Focuses purely on administrative functions without requiring technical expertise.
 
-**MVP Implementation Notes**: For MVP, WW Admin functionality in the mobile app is limited to read-only project visibility and menu access that redirects to the web portal. All user management, diagnostic, testing, and troubleshooting capabilities are handled through the web portal or developer tools (accessible only in development environments). This separation ensures WW Admin users can view project status in the field while maintaining security by keeping administrative functions web-only.
+**MVP Implementation Notes**: For MVP, WW Admin functionality in the mobile app is strictly limited to read-only project visibility and menu access that redirects to the web portal. **The mobile app contains no user management operations** - all user provisioning, account creation, and administrative functions are handled exclusively through the web portal or developer tools (accessible only in development environments). This architectural separation ensures WW Admin users can view project status in the field while maintaining security by keeping all administrative functions web-only.
 
 
 ### 4.3 User Profile Management (Phase 2)
@@ -456,10 +460,10 @@ const DrawerContent = () => {
       <DrawerItem label="Settings" onPress={navigateToSettings} />
       <DrawerItem label="Offline Preparation" onPress={navigateToOfflinePrep} />
       
-      {/* WW Admin Tools - Web Portal Only */}
+      {/* WW Admin Tools - Web Portal Navigation Only */}
       {isWWAdmin() && (
         <DrawerSection title="WW Admin Tools">
-          <DrawerItem label="User Management" onPress={navigateToWebPortal} />
+          <DrawerItem label="Web Portal (User Management)" onPress={navigateToWebPortal} />
         </DrawerSection>
       )}
       
@@ -486,7 +490,7 @@ const DrawerContent = () => {
 
 **Role-Based Display**: The drawer menu shows only relevant options based on user role and environment:
 - Standard users see profile, settings, and offline preparation
-- WW Admin users additionally see "User Management" in the WW Admin Tools section (redirects to web portal)
+- WW Admin users additionally see "Web Portal (User Management)" in the WW Admin Tools section (launches web portal - no mobile user management)
 - Developer tools appear only in development builds (not production)
 
 **Implementation**: Menu visibility is checked efficiently using cached role data, with updates applied on sync without requiring app restart.
@@ -720,7 +724,7 @@ const MemberListItem = ({ member, isAdmin, currentUserId }) => (
 3. Set role (admin/member)
 4. Add to project
 
-**Organisation Requirements**: Users must already be in the system and assigned to an organisation by a WW Admin before they can be added to projects.
+**Organisation Requirements**: Users must already be in the system and assigned to an organisation by a WW Admin through the web portal before they can be added to projects.
 
 
 ### 5.7 Deployments Screen

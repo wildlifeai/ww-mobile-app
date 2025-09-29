@@ -74,7 +74,7 @@ This task completes the offline-first architecture by implementing comprehensive
   - **NEW**: LoRaWAN webhook sync progress and device status coordination
 - **Enhanced Manual Sync Triggers**: Role-based sync controls:
   - User-initiated sync with organisation and role permission validation
-  - **NEW**: WW Admin global sync triggers for cross-organisation coordination
+  - **NEW**: WW Admin read-only sync status for cross-organisation visibility
   - **NEW**: Emergency sync protocols for organisation critical operations
 - **Comprehensive Sync History**: Detailed sync operation logging:
   - Log of sync operations with organisation context and user role information
@@ -114,7 +114,7 @@ This task completes the offline-first architecture by implementing comprehensive
 - Follow performance optimization guidelines with organisation data partitioning
 - **NEW**: Implement LoRaWAN integration patterns for device status synchronization
 - Use background task patterns for React Native with organisation context preservation
-- **NEW**: Follow WW Admin patterns for cross-organisation sync management and oversight
+- **NEW**: Follow WW Admin patterns for read-only cross-organisation sync status
 
 ## Key Features:
 - **Enhanced Intelligent Synchronization**: Smart sync algorithms with organisation context and role-based data filtering
@@ -126,7 +126,7 @@ This task completes the offline-first architecture by implementing comprehensive
 - **Performance Optimized**: Fast sync operations with organisation data partitioning and role-based filtering
 - **Network Resilient**: Handle poor network conditions with organisation priority protocols
 - **Battery Efficient**: Optimize sync operations with organisation policies and device constraint management
-- **WW Admin Global Management**: Cross-organisation sync coordination and system-wide synchronization oversight
+- **WW Admin Global Management**: Read-only cross-organisation sync status and web portal access
 - **Organisation Analytics**: Sync performance monitoring, compliance reporting, and operational intelligence
 
 ## Synchronization Features:

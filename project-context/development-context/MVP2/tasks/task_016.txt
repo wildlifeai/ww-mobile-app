@@ -15,7 +15,7 @@ This task implements the deployment termination workflow that enables users to p
 - Create `src/navigation/screens/deployment/end/EndDeploymentScreen.tsx` following Component Implementation Patterns
 - **NEW**: Maestro TDD implementation for end deployment workflows
 - **Enhanced Active Deployment Selection**: List user's active deployments with organisation and role-based filtering:
-  - `ww_admin`: All active deployments across all organisations
+  - `ww_admin`: Read-only view of deployments across organisations (via project roles)
   - `project_admin`: Active deployments in their organisations
   - `project_member`: Active deployments they created or have access to
 - **Enhanced Deployment Information Display**: Show comprehensive deployment details with organisation context:
@@ -99,7 +99,7 @@ This task implements the deployment termination workflow that enables users to p
 - **Advanced Batch Operations**: Role-based efficiency features for managing multiple deployments
 - **LoRaWAN Integration**: Device status monitoring, webhook management, and fleet coordination
 - **Robust Error Recovery**: Comprehensive handling of device communication failures with organisation policies
-- **WW Admin Features**: Cross-organisation deployment termination oversight and system management
+- **WW Admin Features**: Read-only cross-organisation deployment visibility via project roles
 
 ## Workflow Steps:
 1. **Select Deployment** → Choose active deployment to end

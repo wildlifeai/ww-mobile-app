@@ -758,46 +758,8 @@ export class DatabaseService {
     );
   }
 
-  async updateUserRole(userId: string, userRole: Partial<DatabaseUserRole>): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-
-    const fields = [];
-    const values = [];
-
-    if (userRole.role) {
-      fields.push('role = ?');
-      values.push(userRole.role);
-    }
-
-    if (userRole.organisation_id) {
-      fields.push('organisation_id = ?');
-      values.push(userRole.organisation_id);
-    }
-
-    if (userRole.permissions) {
-      fields.push('permissions = ?');
-      values.push(JSON.stringify(userRole.permissions));
-    }
-
-    fields.push('updated_at = ?');
-    values.push(new Date().toISOString());
-
-    values.push(userId);
-
-    await this.db.runAsync(
-      `UPDATE local_user_roles SET ${fields.join(', ')} WHERE user_id = ?`,
-      values
-    );
-  }
-
-  async deleteUserRole(userId: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-
-    await this.db.runAsync(
-      'DELETE FROM local_user_roles WHERE user_id = ?',
-      [userId]
-    );
-  }
+  // NOTE: User role management methods removed to comply with WW Admin read-only + web portal architecture
+  // User management operations are exclusively handled through the web portal
 }
 
 // Singleton instance
