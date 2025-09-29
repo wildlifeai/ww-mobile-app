@@ -1,6 +1,6 @@
 # Task ID: 10
 # Title: Core Redux Integration with Supabase
-# Status: in-progress
+# Status: done
 # Dependencies: 9
 # Priority: high
 # Description: Extend existing Redux architecture with comprehensive Supabase integration including enhanced auth slice with user roles (ww_admin, project_admin, project_member), projects slice with organisation context, deployments slice with LoRaWAN status, WW Admin slice, and RTK Query API layer with role-based permissions

@@ -1434,6 +1434,7 @@
         .tree-node.subtask-level {
             margin-left: 60px;
             border-left: 1px solid #ddd;
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.01) 0%, transparent 100%);
         }
 
         .node-header {
@@ -1557,6 +1558,21 @@
             font-weight: 500;
             background: var(--secondary-color);
             color: white;
+        }
+
+        .expand-badge {
+            background: #f8f9fa;
+            color: #666;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7em;
+            border: 1px solid #e9ecef;
+            cursor: pointer;
+        }
+
+        .expand-badge:hover {
+            background: #e9ecef;
+            color: #495057;
         }
 
         .hours-badge {
@@ -2487,15 +2503,16 @@
                                     style="font-size: 0.9em; color: #666; margin-bottom: 10px; font-weight: 600;">📱
                                     Mobile App Progress</div>
                                 <div class="metric-value"
-                                    style="font-size: 2.2em; font-weight: bold; color: var(--primary-color); margin-bottom: 5px;">
-                                    65%</div>
+                                    style="font-size: 2.2em; font-weight: bold; color: var(--primary-color); margin-bottom: 5px;"
+                                    id="overviewMobileProgress">--</div>
                                 <div class="metric-subtitle"
-                                    style="font-size: 0.85em; color: #888; margin-bottom: 10px;">Foundation Layer
-                                    Complete</div>
+                                    style="font-size: 0.85em; color: #888; margin-bottom: 10px;"
+                                    id="overviewMobileStatus">Loading...</div>
                                 <div class="progress-bar"
                                     style="background: #f0f0f0; height: 8px; border-radius: 4px; overflow: hidden;">
                                     <div class="progress-fill"
-                                        style="background: linear-gradient(90deg, var(--primary-color), var(--secondary-color)); height: 100%; width: 65%; transition: width 0.3s ease;">
+                                        style="background: linear-gradient(90deg, var(--primary-color), var(--secondary-color)); height: 100%; width: 0%; transition: width 0.3s ease;"
+                                        id="overviewMobileProgressBar">
                                     </div>
                                 </div>
                             </div>
@@ -2506,14 +2523,16 @@
                                     style="font-size: 0.9em; color: #666; margin-bottom: 10px; font-weight: 600;">⚡
                                     Backend Status</div>
                                 <div class="metric-value"
-                                    style="font-size: 2.2em; font-weight: bold; color: var(--success-color); margin-bottom: 5px;">
-                                    98%</div>
+                                    style="font-size: 2.2em; font-weight: bold; color: var(--success-color); margin-bottom: 5px;"
+                                    id="overviewBackendProgress">--</div>
                                 <div class="metric-subtitle"
-                                    style="font-size: 0.85em; color: #888; margin-bottom: 10px;">Production Ready</div>
+                                    style="font-size: 0.85em; color: #888; margin-bottom: 10px;"
+                                    id="overviewBackendStatus">Loading...</div>
                                 <div class="progress-bar"
                                     style="background: #f0f0f0; height: 8px; border-radius: 4px; overflow: hidden;">
                                     <div class="progress-fill"
-                                        style="background: var(--success-color); height: 100%; width: 98%; transition: width 0.3s ease;">
+                                        style="background: var(--success-color); height: 100%; width: 0%; transition: width 0.3s ease;"
+                                        id="overviewBackendProgressBar">
                                     </div>
                                 </div>
                             </div>
@@ -2525,13 +2544,12 @@
                                     Current Sprint</div>
                                 <div class="metric-value"
                                     style="font-size: 1.6em; font-weight: bold; color: var(--warning-color); margin-bottom: 5px;">
-                                    Stream A</div>
+                                    Foundation Layer</div>
                                 <div class="metric-subtitle"
-                                    style="font-size: 0.85em; color: #888; margin-bottom: 10px;">Project Management
+                                    style="font-size: 0.85em; color: #888; margin-bottom: 10px;">Offline SQLite Foundation
                                 </div>
                                 <div class="task-status"
-                                    style="font-size: 0.8em; color: var(--info-color); font-weight: 600;">⏳ Ready to
-                                    Launch</div>
+                                    style="font-size: 0.8em; color: var(--info-color); font-weight: 600;">🚧 In Progress</div>
                             </div>
 
                             <div class="metric-card"
@@ -2640,10 +2658,10 @@
                                 <div class="activity-item">
                                     <div class="activity-icon commit">📝</div>
                                     <div class="activity-content">
-                                        <div class="activity-title">Task 11.8 Completed - UUID Consistency</div>
-                                        <div class="activity-description">Database alignment and type safety improvements
+                                        <div class="activity-title">Task 010 Completed - Redux Integration</div>
+                                        <div class="activity-description">Core Redux Integration with Supabase completed successfully
                                         </div>
-                                        <div class="activity-time">2 hours ago</div>
+                                        <div class="activity-time">Recently completed</div>
                                     </div>
                                 </div>
                                 <div class="activity-item">
@@ -2828,14 +2846,13 @@
                         </div>
                         <div class="project-progress">
                             <div class="progress-enhanced">
-                                <div class="progress-fill-enhanced" style="width: 65%"></div>
-                                <div class="progress-text-enhanced">65%</div>
+                                <div class="progress-fill-enhanced" style="width: 0%" id="projectMobileProgressBar"></div>
+                                <div class="progress-text-enhanced" id="projectMobileProgressText">--</div>
                             </div>
                         </div>
                         <div class="project-info">
-                            <p><strong>Current Task:</strong> <span id="mobileCurrentTask">Foundation Layer
-                                    Completion</span></p>
-                            <p><strong>Next Task:</strong> <span id="mobileNextTask">Stream A: Project Management</span>
+                            <p><strong>Current Task:</strong> <span id="mobileCurrentTask">Loading...</span></p>
+                            <p><strong>Next Task:</strong> <span id="mobileNextTask">Task 012: Projects CRUD Operations</span>
                             </p>
                             <p><strong>Location:</strong> /home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app</p>
                         </div>
@@ -2847,13 +2864,13 @@
                         </div>
                         <div class="project-progress">
                             <div class="progress-enhanced">
-                                <div class="progress-fill-enhanced" style="width: 98%"></div>
-                                <div class="progress-text-enhanced">98%</div>
+                                <div class="progress-fill-enhanced" style="width: 0%" id="projectBackendProgressBar"></div>
+                                <div class="progress-text-enhanced" id="projectBackendProgressText">--</div>
                             </div>
                         </div>
                         <div class="project-info">
-                            <p><strong>Status:</strong> <span id="backendStatus">Production Ready</span></p>
-                            <p><strong>Database:</strong> <span id="databaseStatus">Schema Complete</span></p>
+                            <p><strong>Status:</strong> <span id="backendStatus">Loading...</span></p>
+                            <p><strong>Database:</strong> <span id="databaseStatus">Loading...</span></p>
                             <p><strong>Location:</strong> /home/adarsh/dev/wildlifeai/wildlife-watcher-backend</p>
                         </div>
                     </div>
@@ -3410,17 +3427,67 @@
             },
 
             renderSubtaskNode(subtask) {
+                // Parse subtask content for better display
+                const subtaskText = subtask.title || subtask;
+                let displayTitle = subtaskText;
+                let subtaskType = '📋';
+                let isExpandable = false;
+
+                // Determine subtask type and format for better readability
+                if (subtaskText.startsWith('Dependencies:')) {
+                    subtaskType = '🔗';
+                    displayTitle = subtaskText.replace('Dependencies:', 'Deps:').trim();
+                    if (displayTitle.length > 50) {
+                        displayTitle = displayTitle.substring(0, 47) + '...';
+                    }
+                } else if (subtaskText.startsWith('Description:')) {
+                    subtaskType = '📄';
+                    displayTitle = subtaskText.replace('Description:', '').trim();
+                    if (displayTitle.length > 80) {
+                        displayTitle = displayTitle.substring(0, 77) + '...';
+                        isExpandable = true;
+                    }
+                } else if (subtaskText.startsWith('Details:')) {
+                    subtaskType = '🔍';
+                    displayTitle = 'Implementation Details';
+                    isExpandable = true;
+                } else if (subtaskText.includes('**') && subtaskText.includes(':')) {
+                    // This is a structured subtask like "**ENHANCED** 11.1: SQLite Database Setup"
+                    subtaskType = '⚡';
+                    // Extract the main title part
+                    const titleMatch = subtaskText.match(/\*\*(.*?)\*\*\s*(.*?)(?:\s*\[|$)/);
+                    if (titleMatch) {
+                        const priority = titleMatch[1];
+                        const title = titleMatch[2];
+                        displayTitle = `${priority}: ${title}`;
+                        if (displayTitle.length > 70) {
+                            displayTitle = displayTitle.substring(0, 67) + '...';
+                        }
+                    }
+                }
+
+                // Generate expandable node ID if needed
+                const nodeId = `subtask-${Math.random().toString(36).substr(2, 9)}`;
+
                 return `
-                    <div class="tree-node subtask-level">
-                        <div class="node-header">
-                            <div class="node-toggle no-children"></div>
-                            <span class="node-icon">📋</span>
-                            <span class="node-title">${subtask.title || subtask}</span>
+                    <div class="tree-node subtask-level" data-node-id="${nodeId}">
+                        <div class="node-header" ${isExpandable ? `onclick="hierarchicalTasks.toggleSubtaskDetails('${nodeId}')"` : ''}>
+                            <div class="node-toggle ${isExpandable ? '' : 'no-children'}">
+                                ${isExpandable ? '▶' : ''}
+                            </div>
+                            <span class="node-icon">${subtaskType}</span>
+                            <span class="node-title" style="cursor: ${isExpandable ? 'pointer' : 'default'};">${displayTitle}</span>
                             <div class="node-badges">
                                 ${subtask.estimatedHours ? `<span class="hours-badge">${subtask.estimatedHours}h</span>` : ''}
                                 ${subtask.agent ? `<span class="agent-badge">${subtask.agent}</span>` : ''}
+                                ${isExpandable ? '<span class="expand-badge">📖</span>' : ''}
                             </div>
                         </div>
+                        ${isExpandable ? `
+                            <div class="subtask-details" id="details-${nodeId}" style="display: none; margin-left: 30px; padding: 10px; background: #f8f9fa; border-radius: 6px; margin-top: 5px; font-size: 0.9em; line-height: 1.4; color: #555;">
+                                ${subtaskText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             },
@@ -3432,6 +3499,21 @@
                     this.expandedNodes.add(nodeId);
                 }
                 this.renderTaskTree();
+            },
+
+            toggleSubtaskDetails(nodeId) {
+                const detailsElement = document.getElementById(`details-${nodeId}`);
+                const toggleElement = document.querySelector(`[data-node-id="${nodeId}"] .node-toggle`);
+
+                if (detailsElement) {
+                    const isVisible = detailsElement.style.display !== 'none';
+                    detailsElement.style.display = isVisible ? 'none' : 'block';
+
+                    if (toggleElement) {
+                        toggleElement.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(90deg)';
+                        toggleElement.style.transition = 'transform 0.2s ease';
+                    }
+                }
             },
 
             toggleExpandAll() {

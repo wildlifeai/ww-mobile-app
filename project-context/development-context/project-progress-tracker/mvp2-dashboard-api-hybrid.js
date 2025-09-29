@@ -237,7 +237,8 @@ class MVP2DashboardAPI {
     }
 
     renderAllTabs() {
-        // Overview tab content is now in HTML, no need to render
+        // Update overview detailed view with API data
+        this.updateOverviewDetailedView();
         this.renderStreamsTab();
         this.renderTasksTab();
         this.renderProjectsTab();
@@ -1553,10 +1554,19 @@ class MVP2DashboardAPI {
                 }
             };
 
-            const streamsData = streams.data?.streams || [
-                { name: 'Stream A: Project Management', progress: 0, completed: 0, total: 4 },
+            // Convert streams API data to the format expected by the frontend
+            const streamsApiData = streams.streams || [];
+            const streamsData = streamsApiData.length > 0 ? streamsApiData.map(stream => ({
+                name: stream.name,
+                progress: stream.progress || 0,
+                completed: stream.completed_tasks || 0,
+                total: stream.total_tasks || 0
+            })) : [
+                { name: 'Foundation Layer', progress: 91, completed: 10, total: 11 },
+                { name: 'Stream A: Project Management', progress: 0, completed: 0, total: 3 },
                 { name: 'Stream B: Deployment Workflows', progress: 0, completed: 0, total: 3 },
-                { name: 'Stream C: Devices & Maps', progress: 0, completed: 0, total: 3 }
+                { name: 'Stream C: Devices & Maps', progress: 0, completed: 0, total: 3 },
+                { name: 'Integration Phase', progress: 0, completed: 0, total: 3 }
             ];
 
             const metricsData = metrics.data || {
@@ -1830,6 +1840,134 @@ class MVP2DashboardAPI {
         if (modal) {
             modal.style.display = 'none';
         }
+    }
+
+    /**
+     * Update Overview Detailed View with dynamic data from API
+     * This eliminates hardcoded values and ensures data consistency
+     */
+    async updateOverviewDetailedView() {
+        try {
+            // Fetch fresh overview data from unified API
+            const response = await fetch(`${this.baseURL}/api/overview`);
+            if (!response.ok) {
+                throw new Error(`Overview API failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Update mobile app progress metrics
+            const mobileProgress = data.mobile?.progress || 0;
+            const currentTask = data.mobile?.currentTask;
+            const foundationProgress = data.mobile?.foundationLayerProgress || 0;
+
+            // Update detailed view mobile metrics
+            const mobileProgressEl = document.getElementById('overviewMobileProgress');
+            const mobileStatusEl = document.getElementById('overviewMobileStatus');
+            const mobileProgressBarEl = document.getElementById('overviewMobileProgressBar');
+
+            if (mobileProgressEl) mobileProgressEl.textContent = `${mobileProgress}%`;
+            if (mobileStatusEl) {
+                if (foundationProgress > 0) {
+                    mobileStatusEl.textContent = `Foundation Layer ${foundationProgress}% Complete`;
+                } else if (currentTask) {
+                    mobileStatusEl.textContent = currentTask.title || 'In Progress';
+                } else {
+                    mobileStatusEl.textContent = 'Development Active';
+                }
+            }
+            if (mobileProgressBarEl) {
+                mobileProgressBarEl.style.width = `${mobileProgress}%`;
+            }
+
+            // Update backend status metrics
+            const backendReadiness = data.backend?.readiness || 0;
+            const backendStatus = data.backend?.status || 'Unknown';
+
+            // Update detailed view backend metrics
+            const backendProgressEl = document.getElementById('overviewBackendProgress');
+            const backendStatusEl = document.getElementById('overviewBackendStatus');
+            const backendProgressBarEl = document.getElementById('overviewBackendProgressBar');
+
+            if (backendProgressEl) backendProgressEl.textContent = `${backendReadiness}%`;
+            if (backendStatusEl) backendStatusEl.textContent = backendStatus;
+            if (backendProgressBarEl) {
+                backendProgressBarEl.style.width = `${backendReadiness}%`;
+            }
+
+            // Update project status section
+            const projectMobileProgressBar = document.getElementById('projectMobileProgressBar');
+            const projectMobileProgressText = document.getElementById('projectMobileProgressText');
+            const mobileCurrentTaskEl = document.getElementById('mobileCurrentTask');
+
+            if (projectMobileProgressBar) {
+                projectMobileProgressBar.style.width = `${mobileProgress}%`;
+            }
+            if (projectMobileProgressText) {
+                projectMobileProgressText.textContent = `${mobileProgress}%`;
+            }
+            if (mobileCurrentTaskEl) {
+                mobileCurrentTaskEl.textContent = currentTask ?
+                    (currentTask.title || 'In Progress') :
+                    (data.mobile?.activeTasks > 0 ? 'Multiple Tasks Active' : 'No Active Tasks');
+            }
+
+            // Update project backend section
+            const projectBackendProgressBar = document.getElementById('projectBackendProgressBar');
+            const projectBackendProgressText = document.getElementById('projectBackendProgressText');
+            const backendStatusEl2 = document.getElementById('backendStatus');
+            const databaseStatusEl = document.getElementById('databaseStatus');
+
+            if (projectBackendProgressBar) {
+                projectBackendProgressBar.style.width = `${backendReadiness}%`;
+            }
+            if (projectBackendProgressText) {
+                projectBackendProgressText.textContent = `${backendReadiness}%`;
+            }
+            if (backendStatusEl2) {
+                backendStatusEl2.textContent = backendStatus;
+            }
+            if (databaseStatusEl) {
+                databaseStatusEl.textContent = backendReadiness >= 90 ?
+                    'Schema Complete' : 'In Development';
+            }
+
+            console.log('✅ Overview detailed view updated with API data');
+
+        } catch (error) {
+            console.error('❌ Failed to update overview detailed view:', error);
+            // Set fallback values to prevent empty displays
+            this.setOverviewFallbackValues();
+        }
+    }
+
+    /**
+     * Set fallback values when API fails to ensure UI doesn't break
+     */
+    setOverviewFallbackValues() {
+        const elements = [
+            { id: 'overviewMobileProgress', value: '--' },
+            { id: 'overviewMobileStatus', value: 'API Unavailable' },
+            { id: 'overviewBackendProgress', value: '--' },
+            { id: 'overviewBackendStatus', value: 'API Unavailable' },
+            { id: 'projectMobileProgressText', value: '--' },
+            { id: 'projectBackendProgressText', value: '--' },
+            { id: 'mobileCurrentTask', value: 'Data Unavailable' },
+            { id: 'backendStatus', value: 'API Unavailable' },
+            { id: 'databaseStatus', value: 'Unknown' }
+        ];
+
+        elements.forEach(({ id, value }) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        });
+
+        // Reset progress bars
+        ['overviewMobileProgressBar', 'overviewBackendProgressBar',
+         'projectMobileProgressBar', 'projectBackendProgressBar'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.width = '0%';
+        });
     }
 }
 
