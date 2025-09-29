@@ -358,17 +358,29 @@ interface RoleCapabilities {
 - Only WW Admins can add new users to the system and assign them to organisations
 - Project Admins can add existing users to projects and assign PROJECT roles (Project Admin, Project Member)
 - Model Manager is an organisation-level role with web-only access (no mobile app in MVP)
-- All users must belong to exactly one organisation (except WW Admins who can be in 1-2 organisations)
+
+**WW Admin Users:**
 - WW Admins default to wildlife.ai organisation and can be assigned to ONE additional organisation
-- Users can have multiple roles (e.g., a WW Admin can also be a Project Admin if assigned to a project)
+- Where a WW Admin is assigned to another organisation, they can hold other organisation or project roles (Project Admin, Project Member, Model Manager, Firmware Manager)
+- If there are multiple projects in an organisation, the WW Admin can hold different roles across the projects (Project Admin on some, Project Member on others)
+
+**Non-WW Admin Users:**
+- Users who are not WW Admins can only belong to one organisation
+- They can hold Organisation roles and/or Project roles
+- They can belong to multiple projects within that organisation
+- They can hold different roles across projects
 
 
 #### 4.2.1 Simplified WW Admin Functions for MVP
 
 **Business Context**: For MVP, WW Admin capabilities are simplified to focus on core system administration without complex feature permissioning. Advanced diagnostic and developer tools are reserved for development environments only.
 
-**MVP WW Admin Functions:**
-- User Management: Add, deactivate, and assign users to organisations (core administrative function)
+**MVP WW Admin Mobile Functions:**
+- Read-only project visibility across all organisations
+- Access to WW Admin Tools menu (redirects to web portal for user management)
+
+**MVP WW Admin Web Portal Functions:**
+- User Management: Add, deactivate, and assign users to organisations (via web portal only)
 
 **Removed from MVP:**
 - BLE/DFU testing and diagnostics (moved to developer tools)
@@ -382,7 +394,7 @@ interface RoleCapabilities {
 
 - **System Administrator**: Manages user accounts, creates organisations, and assigns users to appropriate organisations. Focuses purely on administrative functions without requiring technical expertise.
 
-**MVP Implementation Notes**: For MVP, WW Admin functionality is limited to core user management only. All diagnostic, testing, and troubleshooting capabilities are moved to developer tools (accessible only in development environments) to maintain simplicity and focus on essential administrative functions. This focused approach ensures WW Admin users can immediately perform their essential function while maintaining system security and interface simplicity.
+**MVP Implementation Notes**: For MVP, WW Admin functionality in the mobile app is limited to read-only project visibility and menu access that redirects to the web portal. All user management, diagnostic, testing, and troubleshooting capabilities are handled through the web portal or developer tools (accessible only in development environments). This separation ensures WW Admin users can view project status in the field while maintaining security by keeping administrative functions web-only.
 
 
 ### 4.3 User Profile Management (Phase 2)
@@ -444,10 +456,10 @@ const DrawerContent = () => {
       <DrawerItem label="Settings" onPress={navigateToSettings} />
       <DrawerItem label="Offline Preparation" onPress={navigateToOfflinePrep} />
       
-      {/* WW Admin Tools - Simplified for MVP */}
+      {/* WW Admin Tools - Web Portal Only */}
       {isWWAdmin() && (
         <DrawerSection title="WW Admin Tools">
-          <DrawerItem label="User Management" onPress={navigateToUserManagement} />
+          <DrawerItem label="User Management" onPress={navigateToWebPortal} />
         </DrawerSection>
       )}
       
@@ -474,7 +486,7 @@ const DrawerContent = () => {
 
 **Role-Based Display**: The drawer menu shows only relevant options based on user role and environment:
 - Standard users see profile, settings, and offline preparation
-- WW Admin users additionally see "User Management" in the WW Admin Tools section
+- WW Admin users additionally see "User Management" in the WW Admin Tools section (redirects to web portal)
 - Developer tools appear only in development builds (not production)
 
 **Implementation**: Menu visibility is checked efficiently using cached role data, with updates applied on sync without requiring app restart.
@@ -1085,16 +1097,15 @@ CREATE POLICY "Users view their projects" ON projects
     )
   );
 
--- NOTE: WW Admin cross-project visibility removed from MVP
--- This policy will be restored in Phase 2 when project overview features are implemented
--- CREATE POLICY "WW Admins view all projects" ON projects
---   FOR SELECT USING (
---     EXISTS (
---       SELECT 1 FROM user_roles
---       WHERE user_id = auth.uid()
---       AND role = 'ww_admin'
---     )
---   );
+-- WW Admin read-only project visibility across all organisations
+CREATE POLICY "WW Admins view all projects" ON projects
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM user_roles
+      WHERE user_id = auth.uid()
+      AND role = 'ww_admin'
+    )
+  );
 
 -- Users can only access their own preferences
 CREATE POLICY "Users manage own preferences" ON user_preferences
