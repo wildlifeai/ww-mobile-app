@@ -17,6 +17,19 @@
         "start"
       ],
       "type": "stdio"
+    },
+    "supabase": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase",
+        "--read-only",
+        "--project-ref=nuhwmubvygxyddkycmpa"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_1d2620bcbd4eefa2d0d1be2ac325f7a6d2f60343"
+      }
     }
   }
 }
