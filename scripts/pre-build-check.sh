@@ -113,12 +113,14 @@ process.exit(allPresent ? 0 : 1);
 print_check "4/8" "Validating critical import paths..."
 IMPORT_CHECK_PASSED=true
 
-# Check the fixed projects API import
-if grep -q 'from "../../../types/api.types"' src/redux/api/projects/index.ts 2>/dev/null; then
-    print_pass "projects API import path correct (../../../types/api.types)"
-else
-    print_fail "projects API import path incorrect or missing"
+# Check ALL api.types imports in src/redux/api subdirectories
+INCORRECT_IMPORTS=$(grep -r 'from "\.\.\/\.\.\/types\/api\.types"' src/redux/api/ 2>/dev/null | wc -l)
+if [ "$INCORRECT_IMPORTS" -gt 0 ]; then
+    print_fail "Found $INCORRECT_IMPORTS incorrect import path(s) - should be ../../../types/api.types"
+    grep -r 'from "\.\.\/\.\.\/types\/api\.types"' src/redux/api/ 2>/dev/null | sed 's/^/    /'
     IMPORT_CHECK_PASSED=false
+else
+    print_pass "All api.types imports use correct path (../../../)"
 fi
 
 # Verify target file exists

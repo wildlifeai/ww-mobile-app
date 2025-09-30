@@ -7,7 +7,7 @@ import {
 	DeploymentUpdate,
 	HttpMethod,
 	StrapiRequest
-} from "../../types/api.types"
+} from "../../../types/api.types"
 
 export const deploymentsApi = api.injectEndpoints({
 	endpoints: (builder) => ({
