@@ -7,7 +7,7 @@ import {
 	HttpMethod,
 	ApiResponse,
 	StrapiRequest
-} from "../../types/api.types"
+} from "../../../types/api.types"
 
 export const projectsApi = api.injectEndpoints({
 	endpoints: (builder) => ({
