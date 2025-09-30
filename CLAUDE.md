@@ -257,7 +257,7 @@ mcp__context7__get-library-docs({
 The `@project-context/development-context/` contains critical project specifications:
 
 **MVP2 Documentation** (`/MVP2/`):
-- **Primary Specification**: `implementation-spec-v1.4.md` - **AUTHORITATIVE SOURCE** for all MVP2 requirements, architecture, and cross-project coordination
+- **Primary Specification**: `implementation-spec-v1.4.md` - **AUTHORITATIVE SOURCE** for all MVP2 requirements, architecture, and cross-project coordination (17.5k tokens - read when needed)
 - **User Roles Specification**: `Wildlife Watcher App - User Roles & Permissions Specification.md` - 4-tier RBAC system definitions
 - **Task Breakdown**: `TASK-RESTRUCTURING-PLAN.md` - 23-task implementation structure
 - **Current Execution Strategy**: `MVP2-MASTER-EXECUTION-PLAN.md` - Live development methodology (check for latest approach)
@@ -265,6 +265,8 @@ The `@project-context/development-context/` contains critical project specificat
 - **API Integration**: `API-INTEGRATION-GUIDE.md` - Supabase integration patterns
 - **Component Patterns**: `COMPONENT-IMPLEMENTATION-PATTERNS.md` - UI/UX standards
 - **Task Specifications**: `/tasks/` - Individual task details (task_001.txt - task_023.txt)
+
+**Note**: Implementation spec is in `.claudeignore` to save context. Read `@project-context/development-context/MVP2/implementation-spec-v1.4.md` when starting new tasks or need architecture details.
 
 **Project Progress Tracker Dashboard** (`/project-progress-tracker/`):
 - **Dashboard Location**: `@project-context/development-context/project-progress-tracker/`
@@ -275,7 +277,7 @@ The `@project-context/development-context/` contains critical project specificat
 
 **Supabase Backend** (`/supabase-backend/`):
 - **Source Repository**: `~/dev/wildlifeai/wildlife-watcher-backend` (**separate Git repository**)
-- **Integration Architecture**: See `implementation-spec-v1.4.md` for backend coordination requirements
+- **Integration Architecture**: Read `@project-context/development-context/MVP2/implementation-spec-v1.4.md` for backend coordination requirements
 - **Live Backend Status**: `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md`
 - **Cross-Project Tasks**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/` - Task communication
 - **Local Integration Docs**: `@project-context/development-context/supabase-backend/` - Reference documentation
@@ -331,7 +333,7 @@ The `@project-context/development-context/` contains critical project specificat
 #### Information Hierarchy
 | Document | Authority Level | Purpose |
 |----------|----------------|----------|
-| `implementation-spec-v1.4.md` | **PRIMARY SOURCE** | All requirements & architecture |
+| `implementation-spec-v1.4.md` | **PRIMARY SOURCE** | All requirements & architecture (read when needed) |
 | `MVP2-MASTER-EXECUTION-PLAN.md` | **CURRENT STRATEGY** | Live execution methodology |
 | Project Progress Tracker | **REAL-TIME STATUS** | Live progress monitoring |
 | `MVP2-METRICS-TRACKER.md` |**TIME TRACKING** | Velocity & variance analysis |
@@ -349,7 +351,7 @@ The `@project-context/development-context/` contains critical project specificat
 
 ### Ready to Work Resources
 
-✅ **Requirements**: `implementation-spec-v1.4.md` defines complete architecture
+✅ **Requirements**: Read `@project-context/development-context/MVP2/implementation-spec-v1.4.md` for complete architecture
 ✅ **Current Strategy**: `MVP2-MASTER-EXECUTION-PLAN.md` shows live methodology
 ✅ **Live Monitoring**: Project Progress Tracker provides real-time status
 ✅ **Task Specifications**: All 23 tasks documented in `/tasks/` directory
@@ -366,7 +368,7 @@ The `@project-context/development-context/` contains critical project specificat
 
 | Information Source | Purpose | Authority Level |
 |-------------------|---------|----------------|
-| `implementation-spec-v1.4.md` | **Backend integration requirements** | **PRIMARY** |
+| `implementation-spec-v1.4.md` | **Backend integration requirements** | **PRIMARY** (read when needed) |
 | Project Progress Tracker | **Cross-project status dashboard** | 📊 Real-time |
 | `~/wildlife-watcher-backend/project-context/` | **Backend project status** | ✅ Live status |
 
@@ -375,7 +377,7 @@ The `@project-context/development-context/` contains critical project specificat
 **Before Any Task**:
 1. **Check Current Status**: View Project Progress Tracker dashboard
 2. **Review Strategy**: Consult `MVP2-MASTER-EXECUTION-PLAN.md` for current methodology
-3. **Get Requirements**: Check `implementation-spec-v1.4.md` and specific task file
+3. **Get Requirements**: Read `@project-context/development-context/MVP2/implementation-spec-v1.4.md` and specific task file
 4. **Start Tracking**: Note start time in `MVP2-METRICS-TRACKER.md`
 
 **During Development**:
@@ -482,4 +484,16 @@ Every developer/session MUST contribute to framework evolution by:
 ---
 
 Remember: **Evidence-Based Research → Specialized Implementation → Quality Validation!**
-- Whenever we start a new MVP2 task or  subtask, plpease check the @project-context/development-context/MVP2/implementation-spec-v1.4.md , associates tasks in the @project-context/development-context/MVP2/tasks/ file and the Master execution plan. Flag any inconsistencies between the document for the user and ask for clarification form the user. I want understand what the task/sub-task is building and it is aligned with the latess thinking spec the specification with the chnages based on the @project-context/development-context/MVP2/Wildlife Watcher App - User Roles & Permissions Specification.md and project-context/development-context/MVP2/Wildlife Watcher Admin Portal Implementation Specification.md specifications.
+
+## Task Alignment Protocol
+
+**Before starting ANY MVP2 task or subtask:**
+1. **Read Implementation Spec**: `@project-context/development-context/MVP2/implementation-spec-v1.4.md`
+2. **Read Task File**: Corresponding file in `@project-context/development-context/MVP2/tasks/`
+3. **Check Master Plan**: `@project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md`
+4. **Verify Alignment**: Cross-reference with:
+   - `Wildlife Watcher App - User Roles & Permissions Specification.md`
+   - `Wildlife Watcher Admin Portal Implementation Specification.md`
+5. **Flag Inconsistencies**: Report any discrepancies to user for clarification
+
+This ensures the task/subtask aligns with latest specifications and architecture decisions.
