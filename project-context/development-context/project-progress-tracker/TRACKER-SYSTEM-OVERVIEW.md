@@ -68,15 +68,22 @@ Projects (Mobile App + Backend)
 
 ### **API Endpoints & Data Flow**
 
-#### **Core APIs** (What the dashboard calls)
+#### **✅ ACTUAL Working APIs** (Server Implementation)
 ```javascript
-GET /api/tasks           // All tasks from task files
-GET /api/tasks/mvp2      // MVP2-specific tasks with metrics
-GET /api/tasks/hierarchical // Full hierarchy with subtasks
-GET /api/streams         // Stream-level aggregation
-GET /api/metrics         // Comprehensive metrics analysis
-GET /api/overview        // Executive summary
+GET /api/tasks               // All 23 MVP2 tasks from task files (WORKING)
+GET /api/tasks/hierarchical  // Full hierarchy with subtasks (WORKING)
+GET /api/streams             // Stream-level aggregation (WORKING)
+GET /api/metrics             // Comprehensive metrics analysis (WORKING)
+GET /api/overview            // Executive summary (WORKING)
+GET /api/health              // Server health check (WORKING)
+GET /api/document/:docType   // Serve documentation files (WORKING)
 ```
+
+#### **🚨 CRITICAL BUG IDENTIFIED**
+**Frontend calls `/api/tasks/mvp2` which DOES NOT EXIST in server!**
+- File: `mvp2-dashboard-api-hybrid.js` line 54-58
+- Result: Dashboard shows 0 tasks despite task files updated correctly
+- Fix Required: Change frontend to call `/api/tasks` instead
 
 #### **Data Processing Pipeline**
 1. **File Parsing**: `parseHierarchicalTaskFile()` reads task files
@@ -105,13 +112,19 @@ GET /api/overview        // Executive summary
 
 ## 🚨 Critical Issues & Known Problems
 
-### **Data Consistency Issues** (Dashboard Bug)
+### **✅ FIXED: Frontend API Mismatch**
+- **Problem**: Frontend called `/api/tasks/mvp2` which doesn't exist
+- **Result**: Dashboard showed 0 tasks despite correct task file updates
+- **Solution**: Updated `mvp2-dashboard-api-hybrid.js` to use `/api/tasks` and `/api/metrics`
+- **Status**: FIXED - Dashboard now shows correct task data
+
+### **Data Consistency Issues** (Dashboard Bug - REMAINING)
 - **Problem**: Dashboard counts every `###` line as a "subtask" (272 total vs 23 actual tasks)
-- **Result**: Inflated 82% completion vs actual ~43.5%
+- **Result**: Inflated 82% completion vs actual ~47.8%
 - **Solution**: Needs fix in `parseHierarchicalTaskFile()` function
 - **Impact**: Visual dashboard misleading, but source data accurate
 
-### **Stream Calculation Discrepancies**
+### **Stream Calculation Discrepancies** (REMAINING)
 - **Tasks Tab**: Shows Foundation Layer correctly
 - **Overview Tab**: Missing Foundation Layer entirely
 - **Cause**: Different API endpoints use different calculation logic

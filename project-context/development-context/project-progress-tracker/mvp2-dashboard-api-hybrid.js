@@ -51,22 +51,23 @@ class MVP2DashboardAPI {
 
             try {
                 // Fetch all data in parallel including real streams API
-                const [tasksResponse, mvp2Response, streamsResponse] = await Promise.all([
+                // FIX: Removed non-existent /api/tasks/mvp2 endpoint - using /api/tasks for all data
+                const [tasksResponse, metricsResponse, streamsResponse] = await Promise.all([
                     fetch(`${this.baseURL}/api/tasks`),
-                    fetch(`${this.baseURL}/api/tasks/mvp2`),
+                    fetch(`${this.baseURL}/api/metrics`),
                     fetch(`${this.baseURL}/api/streams`)
                 ]);
 
                 if (tasksResponse.ok) {
                     const tasksData = await tasksResponse.json();
                     this.data.combinedTasks = tasksData.tasks || [];
+                    this.data.mvp2Tasks = tasksData.tasks || []; // Use same data for mvp2Tasks
                     apiDataLoaded = true;
                 }
 
-                if (mvp2Response.ok) {
-                    const mvp2Data = await mvp2Response.json();
-                    this.data.mvp2Tasks = mvp2Data.tasks || [];
-                    this.data.metrics = mvp2Data.metrics || {};
+                if (metricsResponse.ok) {
+                    const metricsData = await metricsResponse.json();
+                    this.data.metrics = metricsData || {};
                     apiDataLoaded = true;
                 }
 
