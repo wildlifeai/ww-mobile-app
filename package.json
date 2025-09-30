@@ -6,6 +6,7 @@
     "android": "npx expo run:android",
     "ios": "npx expo run:ios",
     "start": "npx expo start",
+    "prebuild:check": "bash scripts/pre-build-check.sh",
     "lint": "eslint .",
     "test": "jest",
     "test:watch": "jest --watch",
