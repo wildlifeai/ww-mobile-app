@@ -54,8 +54,7 @@ const store = configureStore({
 				],
 			},
 		})
-		.concat(api.middleware, enhancedApi.middleware)
-		.prepend(offlineMiddleware.middleware),
+		.concat(api.middleware, enhancedApi.middleware, offlineMiddleware.middleware),
 })
 
 export default store
