@@ -187,12 +187,40 @@ eas build --platform android --local --output ./build/app.apk
 eas build --platform android --local --profile preview --output ./build/android/wildlife-watcher-preview.apk
 ```
 
+**Environment Variables for Local Builds**:
+
+⚠️ **CRITICAL**: Environment variables must be defined in `eas.json` for local builds, NOT just in `.env.local`.
+
+Local EAS builds read environment variables from `eas.json` at build time and bake them into the app bundle. Variables in `.env.local` are only used during development with `expo start`.
+
+**Required variables in `eas.json`**:
+```json
+{
+  "build": {
+    "preview": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://your-project.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "your-anon-key",
+        "GOOGLE_MAPS_API_KEY_ANDROID": "your-maps-key"
+      }
+    }
+  }
+}
+```
+
+**Why this is necessary**:
+- `app.config.js` reads `process.env` during build time
+- Environment variables become part of the compiled app bundle
+- The app accesses them via `Constants.expoConfig.extra` at runtime
+- Rebuilding is required after changing environment variables in `eas.json`
+
 **Process**:
-1. Checks dependencies locally
-2. Bundles JavaScript code
-3. Generates native code
-4. Creates APK file
-5. Outputs to project directory
+1. Reads environment variables from `eas.json`
+2. Checks dependencies locally
+3. Bundles JavaScript code with baked-in config
+4. Generates native code
+5. Creates APK file
+6. Outputs to project directory
 
 ### Method 2: Cloud Build
 
@@ -311,6 +339,7 @@ eas build:download --fingerprint <HASH>
 
 | Issue | Solution |
 |-------|----------|
+| "Missing Supabase configuration" on startup | Add env vars to `eas.json`, rebuild app (see details below) |
 | "App not installed" error | Enable "Install unknown apps", check available storage |
 | Build fails locally | Install required dependencies: `npm install` |
 | EAS build queued too long | Use `--local` flag for immediate build |
@@ -320,7 +349,46 @@ eas build:download --fingerprint <HASH>
 
 ### Specific Build Errors & Fixes
 
-#### 1. Gradle Build Error: "compileSdkVersion is not specified"
+#### 1. Runtime Error: "Missing Supabase configuration"
+
+**Error Message**:
+```
+Missing Supabase configuration. Please check your environment variables:
+- EXPO_PUBLIC_SUPABASE_URL
+- EXPO_PUBLIC_SUPABASE_ANON_KEY
+These should be set in .env.local and exposed through app.config.js
+```
+
+**Root Cause**:
+The app was built without the Supabase environment variables. Even though they're in `.env.local`, local EAS builds don't read from that file.
+
+**Solution**:
+Add environment variables to `eas.json` in the build profile you're using:
+
+```json
+{
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "NODE_ENV": "development",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nuhwmubvygxyddkycmpa.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "your-anon-key",
+        "GOOGLE_MAPS_API_KEY_ANDROID": "your-maps-key"
+      }
+    }
+  }
+}
+```
+
+**Important**: After updating `eas.json`, you **must rebuild** the app. Environment variables are baked into the app bundle at build time and cannot be changed at runtime.
+
+```bash
+# Rebuild with updated environment variables
+eas build --platform android --local --profile preview --output ./build/android/wildlife-watcher-preview.apk
+```
+
+#### 2. Gradle Build Error: "compileSdkVersion is not specified"
 
 **Error Message**:
 ```
