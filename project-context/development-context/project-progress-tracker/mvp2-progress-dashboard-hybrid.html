@@ -2776,6 +2776,15 @@
             animation: loading-shimmer 1.5s infinite;
         }
 
+        /* Hide old hierarchical task system (replaced by new Tasks tab) */
+        #tasksMainContent,
+        #tasksMetricsPanel,
+        #taskSearchHierarchical,
+        #currentFocusPanel,
+        .old-task-layout {
+            display: none !important;
+        }
+
         @keyframes loading-shimmer {
             0% { background-position: 200% 0; }
             100% { background-position: -200% 0; }
@@ -3305,8 +3314,8 @@
                         </div>
                     </div>
 
-                    <!-- RIGHT CONTENT: Task Hierarchy (75%) -->
-                    <div id="tasksMainContent" style="width: 75%; display: flex; flex-direction: column;">
+                    <!-- RIGHT CONTENT: Task Hierarchy (75%) - HIDDEN (replaced by new Tasks tab) -->
+                    <div id="tasksMainContent" style="width: 75%; display: none; flex-direction: column;">
 
                         <!-- Breadcrumb Navigation -->
                         <div id="tasksBreadcrumb" style="background: white; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; box-shadow: var(--shadow); font-size: 0.9em;">
