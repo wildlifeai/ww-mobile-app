@@ -2415,6 +2415,371 @@
             from { transform: translateY(-50px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
+
+        /* ========================================
+           ENHANCED TASKS TAB STYLES
+           ======================================== */
+
+        /* Tasks Tab Main Layout Enhancement */
+        #tasks {
+            padding: 20px !important;
+            min-height: calc(100vh - 200px);
+        }
+
+        /* Sidebar Styles */
+        #tasksSidebar {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        #tasksSidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #tasksSidebar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+
+        #tasksSidebar::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 3px;
+        }
+
+        /* Metrics Panel Enhancement */
+        #tasksMetricsPanel {
+            border-left: 3px solid var(--primary-color);
+            transition: all 0.3s ease;
+        }
+
+        #tasksMetricsPanel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Controls Panel Enhancement */
+        .tasks-controls-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: var(--shadow);
+            border-left: 3px solid var(--info-color);
+            transition: all 0.3s ease;
+        }
+
+        .tasks-controls-panel:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Search Input Enhancement */
+        #taskSearchHierarchical {
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            padding: 10px 12px;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        #taskSearchHierarchical:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            outline: none;
+        }
+
+        /* Filter Checkboxes Enhancement */
+        .filter-checkboxes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .filter-checkboxes label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85em;
+            color: #555;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .filter-checkboxes label:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--primary-color);
+        }
+
+        .filter-checkboxes input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--primary-color);
+        }
+
+        /* Action Buttons Enhancement */
+        .sidebar-action-btn {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--primary-color);
+            background: transparent;
+            color: var(--primary-color);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-action-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .sidebar-action-btn.focus-mode {
+            background: var(--warning-color);
+            border-color: var(--warning-color);
+            color: white;
+        }
+
+        .sidebar-action-btn.focus-mode:hover {
+            background: #e67e22;
+            border-color: #e67e22;
+        }
+
+        /* Main Content Area Enhancement */
+        #tasksMainContent {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        /* Breadcrumb Enhancement */
+        #tasksBreadcrumb {
+            background: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 500;
+        }
+
+        #tasksBreadcrumb .breadcrumb-info {
+            color: #6c757d;
+            font-size: 0.85em;
+        }
+
+        /* Task Tree Enhancement */
+        .task-tree {
+            padding: 0;
+            max-height: calc(100vh - 350px);
+            overflow-y: auto;
+        }
+
+        .task-tree::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .task-tree::-webkit-scrollbar-track {
+            background: #f1f3f4;
+        }
+
+        .task-tree::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        /* Feature/Stream/Task Item Enhancements */
+        .feature-item, .stream-item, .task-item {
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .feature-item:hover {
+            border-left-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.02);
+        }
+
+        .stream-item:hover {
+            border-left-color: var(--info-color);
+            background: rgba(52, 152, 219, 0.02);
+        }
+
+        .task-item:hover {
+            border-left-color: var(--success-color);
+            background: rgba(39, 174, 96, 0.02);
+        }
+
+        /* Status Badge Enhancements */
+        .status-badge {
+            font-weight: 600;
+            font-size: 0.75em;
+            padding: 4px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.status-completed {
+            background: var(--success-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+        }
+
+        .status-badge.status-in-progress {
+            background: var(--info-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .status-badge.status-pending {
+            background: var(--warning-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+        }
+
+        .status-badge.status-blocked {
+            background: var(--danger-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        /* Progress Bar Enhancements */
+        .progress-info {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .progress-bar {
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.6s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Details Panel Enhancement */
+        #subtaskDetailsPanel {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+            border-left: 3px solid var(--primary-color);
+        }
+
+        #subtaskDetailsPanel h3 {
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+
+        #subtaskDetailsPanel .close-btn {
+            background: rgba(231, 76, 60, 0.1);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        #subtaskDetailsPanel .close-btn:hover {
+            background: var(--danger-color);
+            color: white;
+            transform: rotate(90deg);
+        }
+
+        /* Responsive Design Enhancements */
+        @media (max-width: 1200px) {
+            #tasks > div {
+                flex-direction: column !important;
+                height: auto !important;
+            }
+
+            #tasksSidebar, #tasksMainContent {
+                width: 100% !important;
+                margin-bottom: 20px;
+            }
+
+            .filter-checkboxes {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #tasks {
+                padding: 10px !important;
+            }
+
+            .filter-checkboxes {
+                grid-template-columns: 1fr;
+            }
+
+            #subtaskDetailsPanel {
+                width: 100% !important;
+                right: -100% !important;
+            }
+        }
+
+        /* Focus Mode Enhancements */
+        .focus-mode-active {
+            border: 2px solid var(--warning-color) !important;
+            background: rgba(243, 156, 18, 0.05) !important;
+        }
+
+        .focus-mode-indicator {
+            position: fixed;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            background: var(--warning-color);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.8em;
+            font-weight: bold;
+            z-index: 999;
+            animation: pulse 2s infinite;
+        }
+
+        /* Loading States */
+        .loading-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading-shimmer 1.5s infinite;
+        }
+
+        @keyframes loading-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
     </style>
 </head>
 
@@ -2703,131 +3068,334 @@
                 </div>
             </div>
 
-            <!-- Enhanced Hierarchical Tasks Tab -->
+            <!-- Redesigned Tasks Tab - Three Panel Layout -->
             <div class="tab-content" id="tasks">
+                <!-- Header -->
                 <div class="text-center mb-20">
-                    <h2>🌳 Hierarchical Task Management</h2>
-                    <p style="color: #666; margin: 10px 0;">Feature → Stream → Task → Subtask structure with dependencies</p>
+                    <h2>🌳 Task Management & Implementation Review</h2>
+                    <p style="color: #666; margin: 10px 0;">Navigation Tree → Task Selection → Detailed View</p>
+                </div>
 
-                    <!-- Enhanced Task Controls -->
-                    <div style="margin: 20px 0; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; background: white; padding: 15px; border-radius: 8px; box-shadow: var(--shadow);">
-                        <input type="text" id="taskSearchHierarchical" placeholder="Search tasks and features..."
-                            style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; width: 250px;"
-                            oninput="hierarchicalTasks.filterTasks()">
+                <!-- Three Panel Layout: Navigation (20%) + Task List (40%) + Details (40%) -->
+                <div style="display: flex; gap: 15px; height: calc(100vh - 200px);">
 
-                        <!-- View Controls -->
-                        <label style="display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="expandAll" onchange="hierarchicalTasks.toggleExpandAll()"> Expand All
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="showSubtasks" checked onchange="hierarchicalTasks.toggleSubtasks()"> Show Subtasks
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" id="showDependencies" onchange="hierarchicalTasks.toggleDependencies()"> Show Dependencies
-                        </label>
+                    <!-- LEFT PANEL: Navigation Tree (20%) -->
+                    <div id="navigationPanel" style="width: 20%; background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;">
+                        <div style="padding: 15px; border-bottom: 1px solid #eee; background: #f8f9fa;">
+                            <h3 style="margin: 0; font-size: 0.9em; color: var(--primary-color);">🌳 Navigation</h3>
+                        </div>
+                        <div style="padding: 10px; height: calc(100% - 60px); overflow-y: auto;">
+                            <!-- Compact Filter Controls -->
+                            <div style="margin-bottom: 15px;">
+                                <input type="text" id="taskSearchHierarchical" placeholder="Search..."
+                                    style="width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.8em; box-sizing: border-box;"
+                                    oninput="tasksRedesigned.filterTasks()">
 
-                        <!-- Status Filters -->
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <span style="font-weight: 500;">Filter by Status:</span>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="filterCompleted" checked onchange="hierarchicalTasks.filterTasks()"> Completed
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="filterInProgress" checked onchange="hierarchicalTasks.filterTasks()"> In Progress
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="filterPending" checked onchange="hierarchicalTasks.filterTasks()"> Pending
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="filterBlocked" checked onchange="hierarchicalTasks.filterTasks()"> Blocked
-                            </label>
+                                <!-- Status Filters - Exclusive Selection -->
+                                <div style="margin-top: 8px; font-size: 0.75em;">
+                                    <div style="font-weight: 500; margin-bottom: 4px;">Status:</div>
+                                    <label style="display: block; margin-bottom: 2px;">
+                                        <input type="radio" name="statusFilter" value="all" checked onchange="tasksRedesigned.filterTasks()"> All
+                                    </label>
+                                    <label style="display: block; margin-bottom: 2px;">
+                                        <input type="radio" name="statusFilter" value="completed" onchange="tasksRedesigned.filterTasks()"> Completed
+                                    </label>
+                                    <label style="display: block; margin-bottom: 2px;">
+                                        <input type="radio" name="statusFilter" value="in-progress" onchange="tasksRedesigned.filterTasks()"> In Progress
+                                    </label>
+                                    <label style="display: block; margin-bottom: 2px;">
+                                        <input type="radio" name="statusFilter" value="pending" onchange="tasksRedesigned.filterTasks()"> Pending
+                                    </label>
+                                    <label style="display: block;">
+                                        <input type="radio" name="statusFilter" value="blocked" onchange="tasksRedesigned.filterTasks()"> Blocked
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Compact Navigation Tree -->
+                            <div id="navigationTree" style="font-size: 0.8em;">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MIDDLE PANEL: Task List (40%) -->
+                    <div id="taskListPanel" style="width: 40%; background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;">
+                        <div style="padding: 15px; border-bottom: 1px solid #eee; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0; font-size: 0.9em; color: var(--primary-color);">📋 Task Selection</h3>
+                            <div style="font-size: 0.75em; color: #666;">
+                                <span id="visibleTaskCount">-</span> tasks
+                            </div>
+                        </div>
+                        <div id="taskList" style="height: calc(100% - 60px); overflow-y: auto; padding: 10px;">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- RIGHT PANEL: Task Details (40%) -->
+                    <div id="taskDetailsPanel" style="width: 40%; background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;">
+                        <div style="padding: 15px; border-bottom: 1px solid #eee; background: #f8f9fa;">
+                            <h3 style="margin: 0; font-size: 0.9em; color: var(--primary-color);">📋 Task Details</h3>
+                        </div>
+                        <div id="taskDetailsContent" style="height: calc(100% - 60px); overflow-y: auto; padding: 20px;">
+                            <div style="text-align: center; color: #666; padding: 40px 20px;">
+                                <div style="font-size: 2em; margin-bottom: 10px;">📋</div>
+                                <div>Select a task from the list to view details</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Projects Tab -->
+            <div class="tab-content" id="projects">
+                <div class="text-center mb-20">
+                    <h2>🏗️ Cross-Project Status</h2>
+                    <p style="color: #666;">Mobile App and Backend coordination overview</p>
+                </div>
+                <div class="repo-status-grid">
+                    <div class="repo-card">
+                        <div class="repo-header">
+                            <div class="repo-title">📱 Mobile App (React Native)</div>
+                            <div class="repo-status-badge active">ACTIVE</div>
+                        </div>
+                        <div class="project-progress">
+                            <div class="progress-enhanced">
+                                <div class="progress-fill-enhanced" style="width: 0%" id="projectMobileProgressBar"></div>
+                                <div class="progress-text-enhanced" id="projectMobileProgressText">--</div>
+                            </div>
+                        </div>
+                        <div class="project-info">
+                            <p><strong>Current Task:</strong> <span id="mobileCurrentTask">Loading...</span></p>
+                            <p><strong>Next Task:</strong> <span id="mobileNextTask">Task 012: Projects CRUD Operations</span>
+                            </p>
+                            <p><strong>Location:</strong> /home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app</p>
+                        </div>
+                    </div>
+                    <div class="repo-card">
+                        <div class="repo-header">
+                            <div class="repo-title">⚡ Backend (Supabase)</div>
+                            <div class="repo-status-badge ready">DEPLOYED</div>
+                        </div>
+                        <div class="project-progress">
+                            <div class="progress-enhanced">
+                                <div class="progress-fill-enhanced" style="width: 0%" id="projectBackendProgressBar"></div>
+                                <div class="progress-text-enhanced" id="projectBackendProgressText">--</div>
+                            </div>
+                        </div>
+                        <div class="project-info">
+                            <p><strong>Status:</strong> <span id="backendStatus">Loading...</span></p>
+                            <p><strong>Database:</strong> <span id="databaseStatus">Loading...</span></p>
+                            <p><strong>Location:</strong> /home/adarsh/dev/wildlifeai/wildlife-watcher-backend</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="coordination-info"
+                    style="background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow); margin-top: 20px;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 15px;">🔗 Integration Status</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <div>
+                            <strong>🔐 Authentication:</strong>
+                            <span style="color: var(--success-color);">✅ Integrated</span>
+                        </div>
+                        <div>
+                            <strong>🗄️ Database Sync:</strong>
+                            <span style="color: var(--success-color);">✅ Ready</span>
+                        </div>
+                        <div>
+                            <strong>📡 API Endpoints:</strong>
+                            <span style="color: var(--success-color);">✅ Available</span>
+                        </div>
+                        <div>
+                            <strong>🔄 Real-time:</strong>
+                            <span style="color: var(--warning-color);">⏳ Pending</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Task Summary Cards -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
-                    <div class="summary-card" style="background: linear-gradient(45deg, var(--success-color), #27ae60); color: white; padding: 15px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 2em; font-weight: bold;" id="totalTasksCount">-</div>
-                        <div style="font-size: 0.9em; opacity: 0.9;">Total Tasks</div>
-                    </div>
-                    <div class="summary-card" style="background: linear-gradient(45deg, var(--info-color), #2980b9); color: white; padding: 15px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 2em; font-weight: bold;" id="completedTasksCount">-</div>
-                        <div style="font-size: 0.9em; opacity: 0.9;">Completed</div>
-                    </div>
-                    <div class="summary-card" style="background: linear-gradient(45deg, var(--warning-color), #d68910); color: white; padding: 15px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 2em; font-weight: bold;" id="inProgressTasksCount">-</div>
-                        <div style="font-size: 0.9em; opacity: 0.9;">In Progress</div>
-                    </div>
-                    <div class="summary-card" style="background: linear-gradient(45deg, var(--danger-color), #c0392b); color: white; padding: 15px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 2em; font-weight: bold;" id="blockedTasksCount">-</div>
-                        <div style="font-size: 0.9em; opacity: 0.9;">Blocked</div>
-                    </div>
-                </div>
-
-                <!-- Agent Workload Overview -->
-                <div id="agentWorkloadSection" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow);">
-                    <h3 style="color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-                        🤖 Agent Workload Distribution
-                    </h3>
-                    <div id="agentWorkloadGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
-                        <!-- Agent workload cards populated by JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Hierarchical Task Tree -->
-                <div id="hierarchicalTaskTree" style="background: white; border-radius: 12px; padding: 20px; box-shadow: var(--shadow);">
-                    <h3 style="color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-                        🌳 Task Hierarchy
-                        <span id="treeLoadingIndicator" style="background: var(--info-color); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75em;">LOADING...</span>
-                    </h3>
-                    <div id="taskTreeContainer">
-                        <!-- Hierarchical task tree populated by JavaScript -->
-                    </div>
-
-                    <!-- Dependency Visualization Container -->
-                    <div class="dependency-container" style="margin-top: 25px;">
-                        <div class="dependency-visualization">
-                            <div class="dependency-header">
-                                🔗 Task Dependencies & Relationships
-                                <div class="dependency-controls" style="margin-left: auto; margin-bottom: 0;">
-                                    <button id="dependencyToggle" class="dependency-toggle">Show Dependencies</button>
-                                </div>
+                        <!-- Collapsible Metrics Panel -->
+                        <div id="tasksMetricsPanel" style="background: white; border-radius: 12px; padding: 15px; box-shadow: var(--shadow);">
+                            <div style="display: flex; align-items: center; justify-content: between; margin-bottom: 15px; cursor: pointer;" onclick="hierarchicalTasks.toggleMetricsPanel()">
+                                <h3 style="color: var(--primary-color); margin: 0; font-size: 1em;">📊 Task Metrics</h3>
+                                <span id="metricsToggleIcon" style="margin-left: auto; font-size: 0.8em;">▼</span>
                             </div>
-
-                            <div id="dependencyContent" style="display: none;">
-                                <div class="dependency-graph" id="dependencyGraph">
-                                    <!-- Dependency visualization populated by JavaScript -->
-                                </div>
-
-                                <div class="dependency-legend">
-                                    <div class="legend-item">
-                                        <div class="legend-color" style="background: #28a745;"></div>
-                                        <span>Completed</span>
+                            <div id="metricsContent">
+                                <!-- Task Summary Cards - Compact Vertical Layout -->
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <div class="summary-card-compact" style="background: linear-gradient(45deg, var(--success-color), #27ae60); color: white; padding: 8px 12px; border-radius: 6px; text-align: center; font-size: 0.85em;">
+                                        <div style="font-size: 1.4em; font-weight: bold;" id="totalTasksCount">-</div>
+                                        <div style="opacity: 0.9;">Total Tasks</div>
                                     </div>
-                                    <div class="legend-item">
-                                        <div class="legend-color" style="background: #17a2b8;"></div>
-                                        <span>In Progress</span>
+                                    <div class="summary-card-compact" style="background: linear-gradient(45deg, var(--info-color), #2980b9); color: white; padding: 8px 12px; border-radius: 6px; text-align: center; font-size: 0.85em;">
+                                        <div style="font-size: 1.4em; font-weight: bold;" id="completedTasksCount">-</div>
+                                        <div style="opacity: 0.9;">Completed</div>
                                     </div>
-                                    <div class="legend-item">
-                                        <div class="legend-color" style="background: #ffc107;"></div>
-                                        <span>Pending</span>
+                                    <div class="summary-card-compact" style="background: linear-gradient(45deg, var(--warning-color), #d68910); color: white; padding: 8px 12px; border-radius: 6px; text-align: center; font-size: 0.85em;">
+                                        <div style="font-size: 1.4em; font-weight: bold;" id="inProgressTasksCount">-</div>
+                                        <div style="opacity: 0.9;">In Progress</div>
                                     </div>
-                                    <div class="legend-item">
-                                        <div class="legend-color" style="background: #dc3545;"></div>
-                                        <span>Blocked</span>
+                                    <div class="summary-card-compact" style="background: linear-gradient(45deg, var(--danger-color), #c0392b); color: white; padding: 8px 12px; border-radius: 6px; text-align: center; font-size: 0.85em;">
+                                        <div style="font-size: 1.4em; font-weight: bold;" id="blockedTasksCount">-</div>
+                                        <div style="opacity: 0.9;">Blocked</div>
                                     </div>
-                                    <div class="legend-item">
-                                        <div class="legend-color" style="background: #dc3545; animation: pulse 2s infinite;"></div>
-                                        <span>Blocking Connection</span>
-                                    </div>
-                                </div>
-
-                                <div class="dependency-summary" id="dependencySummary">
-                                    <!-- Dependency summary populated by JavaScript -->
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Agent Workload Overview - Compact -->
+                        <div id="agentWorkloadSection" style="background: white; border-radius: 12px; padding: 15px; box-shadow: var(--shadow);">
+                            <div style="display: flex; align-items: center; justify-content: between; margin-bottom: 15px; cursor: pointer;" onclick="hierarchicalTasks.toggleWorkloadPanel()">
+                                <h3 style="color: var(--primary-color); margin: 0; font-size: 1em;">🤖 Agent Workload</h3>
+                                <span id="workloadToggleIcon" style="margin-left: auto; font-size: 0.8em;">▼</span>
+                            </div>
+                            <div id="agentWorkloadGrid" style="display: grid; grid-template-columns: 1fr; gap: 8px; font-size: 0.85em;">
+                                <!-- Agent workload cards populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Filter Controls -->
+                        <div style="background: white; border-radius: 12px; padding: 15px; box-shadow: var(--shadow);">
+                            <h3 style="color: var(--primary-color); margin: 0 0 15px 0; font-size: 1em;">🔍 Filters & Views</h3>
+
+                            <!-- Search -->
+                            <input type="text" id="taskSearchHierarchical" placeholder="Search tasks..."
+                                style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 12px; font-size: 0.9em; box-sizing: border-box;"
+                                oninput="hierarchicalTasks.filterTasks()">
+
+                            <!-- View Controls -->
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9em; margin-bottom: 4px;">
+                                    <input type="checkbox" id="expandAll" onchange="hierarchicalTasks.toggleExpandAll()"> Expand All
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9em; margin-bottom: 4px;">
+                                    <input type="checkbox" id="showSubtasks" checked onchange="hierarchicalTasks.toggleSubtasks()"> Show Subtasks
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9em;">
+                                    <input type="checkbox" id="showDependencies" onchange="hierarchicalTasks.toggleDependencies()"> Show Dependencies
+                                </label>
+                            </div>
+
+                            <!-- Status Filters -->
+                            <div>
+                                <div style="font-weight: 500; margin-bottom: 8px; font-size: 0.9em;">Status Filters:</div>
+                                <label style="display: flex; align-items: center; gap: 5px; font-size: 0.85em; margin-bottom: 4px;">
+                                    <input type="checkbox" id="filterCompleted" checked onchange="hierarchicalTasks.filterTasks()"> Completed
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 5px; font-size: 0.85em; margin-bottom: 4px;">
+                                    <input type="checkbox" id="filterInProgress" checked onchange="hierarchicalTasks.filterTasks()"> In Progress
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 5px; font-size: 0.85em; margin-bottom: 4px;">
+                                    <input type="checkbox" id="filterPending" checked onchange="hierarchicalTasks.filterTasks()"> Pending
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 5px; font-size: 0.85em;">
+                                    <input type="checkbox" id="filterBlocked" checked onchange="hierarchicalTasks.filterTasks()"> Blocked
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Current Focus Panel -->
+                        <div id="currentFocusPanel" style="background: white; border-radius: 12px; padding: 15px; box-shadow: var(--shadow);">
+                            <h3 style="color: var(--primary-color); margin: 0 0 15px 0; font-size: 1em;">🎯 Current Focus</h3>
+                            <div id="currentFocusContent" style="font-size: 0.85em;">
+                                <div id="activeTasksSummary">Loading active tasks...</div>
+                                <div id="nextTaskSuggestion" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid var(--info-color);">
+                                    <strong>Next Suggested:</strong> <span id="nextTaskText">Analyzing...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT CONTENT: Task Hierarchy (75%) -->
+                    <div id="tasksMainContent" style="width: 75%; display: flex; flex-direction: column;">
+
+                        <!-- Breadcrumb Navigation -->
+                        <div id="tasksBreadcrumb" style="background: white; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; box-shadow: var(--shadow); font-size: 0.9em;">
+                            <span style="color: #666;">📍 Navigation:</span>
+                            <span id="breadcrumbPath">All Tasks</span>
+                            <div id="filterStatus" style="float: right; color: var(--info-color);">
+                                <span id="visibleCount">-</span> of <span id="totalCount">-</span> tasks visible
+                            </div>
+                        </div>
+
+                        <!-- Hierarchical Task Tree - Main Content Area -->
+                        <div id="hierarchicalTaskTree" style="background: white; border-radius: 12px; padding: 20px; box-shadow: var(--shadow); flex: 1; overflow-y: auto;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                                <h3 style="color: var(--primary-color); margin: 0; display: flex; align-items: center; gap: 10px;">
+                                    🌳 Task Hierarchy
+                                    <span id="treeLoadingIndicator" style="background: var(--info-color); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75em;">LOADING...</span>
+                                </h3>
+
+                                <!-- Quick Action Buttons -->
+                                <div style="display: flex; gap: 8px;">
+                                    <button onclick="hierarchicalTasks.enterFocusMode()" style="padding: 6px 12px; border: none; background: var(--warning-color); color: white; border-radius: 4px; cursor: pointer; font-size: 0.85em;">
+                                        🎯 Focus Mode
+                                    </button>
+                                    <button onclick="hierarchicalTasks.showFilteredOnly()" style="padding: 6px 12px; border: none; background: var(--info-color); color: white; border-radius: 4px; cursor: pointer; font-size: 0.85em;">
+                                        🔍 Filtered View
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="taskTreeContainer">
+                                <!-- Hierarchical task tree populated by JavaScript -->
+                            </div>
+
+                            <!-- Dependency Visualization Container -->
+                            <div class="dependency-container" style="margin-top: 25px;">
+                                <div class="dependency-visualization">
+                                    <div class="dependency-header">
+                                        🔗 Task Dependencies & Relationships
+                                        <div class="dependency-controls" style="margin-left: auto; margin-bottom: 0;">
+                                            <button id="dependencyToggle" class="dependency-toggle">Show Dependencies</button>
+                                        </div>
+                                    </div>
+
+                                    <div id="dependencyContent" style="display: none;">
+                                        <div class="dependency-graph" id="dependencyGraph">
+                                            <!-- Dependency visualization populated by JavaScript -->
+                                        </div>
+
+                                        <div class="dependency-legend">
+                                            <div class="legend-item">
+                                                <div class="legend-color" style="background: #28a745;"></div>
+                                                <span>Completed</span>
+                                            </div>
+                                            <div class="legend-item">
+                                                <div class="legend-color" style="background: #17a2b8;"></div>
+                                                <span>In Progress</span>
+                                            </div>
+                                            <div class="legend-item">
+                                                <div class="legend-color" style="background: #ffc107;"></div>
+                                                <span>Pending</span>
+                                            </div>
+                                            <div class="legend-item">
+                                                <div class="legend-color" style="background: #dc3545;"></div>
+                                                <span>Blocked</span>
+                                            </div>
+                                            <div class="legend-item">
+                                                <div class="legend-color" style="background: #dc3545; animation: pulse 2s infinite;"></div>
+                                                <span>Blocking Connection</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="dependency-summary" id="dependencySummary">
+                                            <!-- Dependency summary populated by JavaScript -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subtask Details Panel (Initially Hidden) -->
+                <div id="subtaskDetailsPanel" style="position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; background: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 1000; transition: right 0.3s ease; padding: 20px; overflow-y: auto;">
+                    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                        <h3 style="margin: 0; color: var(--primary-color);">📋 Task Details</h3>
+                        <button onclick="hierarchicalTasks.closeDetailsPanel()" style="border: none; background: none; font-size: 1.5em; cursor: pointer; color: #666;">&times;</button>
+                    </div>
+                    <div id="subtaskDetailsContent">
+                        <!-- Content populated by JavaScript -->
                     </div>
                 </div>
             </div>
@@ -3285,13 +3853,20 @@
 
             renderTaskTree() {
                 const container = document.getElementById('taskTreeContainer');
-                if (!container || !this.data.hierarchy) return;
+                if (!container) return;
 
-                const treeHTML = Object.entries(this.data.hierarchy).map(([featureKey, feature]) => {
+                // Use filtered data if available, otherwise use original data
+                const dataToRender = this.filteredData || this.data;
+                if (!dataToRender || !dataToRender.hierarchy) {
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">No tasks match the current filters</div>';
+                    return;
+                }
+
+                const treeHTML = Object.entries(dataToRender.hierarchy).map(([featureKey, feature]) => {
                     return this.renderFeatureNode(featureKey, feature);
                 }).join('');
 
-                container.innerHTML = `<div class="task-tree">${treeHTML}</div>`;
+                container.innerHTML = `<div class="task-tree">${treeHTML || '<div style="text-align: center; padding: 40px; color: #666;">No tasks match the current filters</div>'}</div>`;
             },
 
             renderFeatureNode(featureKey, feature) {
@@ -3548,9 +4123,396 @@
                 const showPending = document.getElementById('filterPending')?.checked ?? true;
                 const showBlocked = document.getElementById('filterBlocked')?.checked ?? true;
 
-                // This would implement filtering logic
-                // For now, just re-render
+                console.log('🔍 Applying smart hierarchical filtering...', {
+                    searchTerm,
+                    showCompleted,
+                    showInProgress,
+                    showPending,
+                    showBlocked
+                });
+
+                // Create filtered data structure
+                this.filteredData = this.createFilteredHierarchy({
+                    searchTerm,
+                    showCompleted,
+                    showInProgress,
+                    showPending,
+                    showBlocked
+                });
+
+                // Re-render with filtered data
                 this.renderTaskTree();
+
+                // Update filter status
+                this.updateFilterStatus();
+            },
+
+            createFilteredHierarchy(filters) {
+                if (!this.data || !this.data.hierarchy) return null;
+
+                const filteredHierarchy = {};
+                let visibleTaskCount = 0;
+                let totalTaskCount = 0;
+
+                Object.entries(this.data.hierarchy).forEach(([featureKey, feature]) => {
+                    const filteredFeature = this.filterFeature(feature, filters);
+                    if (filteredFeature) {
+                        filteredHierarchy[featureKey] = filteredFeature;
+                        visibleTaskCount += this.countVisibleTasks(filteredFeature);
+                    }
+                    totalTaskCount += this.countAllTasks(feature);
+                });
+
+                return {
+                    hierarchy: filteredHierarchy,
+                    summary: this.data.summary,
+                    dependencies: this.data.dependencies,
+                    agentWorkload: this.data.agentWorkload,
+                    visibleCount: visibleTaskCount,
+                    totalCount: totalTaskCount
+                };
+            },
+
+            filterFeature(feature, filters) {
+                const filteredStreams = {};
+                let hasVisibleContent = false;
+
+                // Check if feature itself matches search term
+                const featureMatches = this.matchesSearch(feature.name, filters.searchTerm);
+
+                Object.entries(feature.streams).forEach(([streamKey, stream]) => {
+                    const filteredStream = this.filterStream(stream, filters);
+                    if (filteredStream) {
+                        filteredStreams[streamKey] = filteredStream;
+                        hasVisibleContent = true;
+                    }
+                });
+
+                // Show feature if it has visible streams or if it matches search
+                if (hasVisibleContent || featureMatches) {
+                    return {
+                        ...feature,
+                        streams: filteredStreams
+                    };
+                }
+
+                return null;
+            },
+
+            filterStream(stream, filters) {
+                const filteredTasks = [];
+                let hasVisibleContent = false;
+
+                // Check if stream itself matches search term
+                const streamMatches = this.matchesSearch(stream.name, filters.searchTerm);
+
+                stream.tasks.forEach(task => {
+                    const filteredTask = this.filterTask(task, filters);
+                    if (filteredTask) {
+                        filteredTasks.push(filteredTask);
+                        hasVisibleContent = true;
+                    }
+                });
+
+                // Show stream if it has visible tasks or if it matches search
+                if (hasVisibleContent || streamMatches) {
+                    return {
+                        ...stream,
+                        tasks: filteredTasks
+                    };
+                }
+
+                return null;
+            },
+
+            filterTask(task, filters) {
+                // Check status filter
+                const statusVisible = this.checkStatusFilter(task.status, filters);
+
+                // Check search term
+                const searchMatches = this.matchesSearch(task.title, filters.searchTerm) ||
+                                     this.matchesSearch(task.description, filters.searchTerm) ||
+                                     this.matchesSearch(task.id, filters.searchTerm);
+
+                // Filter subtasks
+                const filteredSubtasks = task.subtasks ?
+                    task.subtasks.filter(subtask =>
+                        this.checkStatusFilter(subtask.status, filters) &&
+                        (this.matchesSearch(subtask.title, filters.searchTerm) ||
+                         this.matchesSearch(subtask.description, filters.searchTerm) ||
+                         !filters.searchTerm)
+                    ) : [];
+
+                // Show task if:
+                // 1. Task itself matches filters, OR
+                // 2. Any subtask matches filters, OR
+                // 3. Search term matches
+                const taskVisible = (statusVisible && (!filters.searchTerm || searchMatches)) ||
+                                   filteredSubtasks.length > 0 ||
+                                   searchMatches;
+
+                if (taskVisible) {
+                    return {
+                        ...task,
+                        subtasks: filteredSubtasks.length > 0 ? filteredSubtasks : task.subtasks
+                    };
+                }
+
+                return null;
+            },
+
+            checkStatusFilter(status, filters) {
+                switch (status?.toLowerCase()) {
+                    case 'completed':
+                    case 'done':
+                        return filters.showCompleted;
+                    case 'in_progress':
+                    case 'active':
+                        return filters.showInProgress;
+                    case 'pending':
+                        return filters.showPending;
+                    case 'blocked':
+                        return filters.showBlocked;
+                    default:
+                        return true; // Show unknown statuses by default
+                }
+            },
+
+            matchesSearch(text, searchTerm) {
+                if (!searchTerm) return true;
+                return text?.toLowerCase().includes(searchTerm) || false;
+            },
+
+            countVisibleTasks(feature) {
+                let count = 0;
+                Object.values(feature.streams).forEach(stream => {
+                    count += stream.tasks?.length || 0;
+                });
+                return count;
+            },
+
+            countAllTasks(feature) {
+                let count = 0;
+                Object.values(feature.streams).forEach(stream => {
+                    count += stream.tasks?.length || 0;
+                });
+                return count;
+            },
+
+            updateFilterStatus() {
+                const visibleCount = this.filteredData?.visibleCount || 0;
+                const totalCount = this.filteredData?.totalCount || 0;
+
+                const visibleEl = document.getElementById('visibleCount');
+                const totalEl = document.getElementById('totalCount');
+
+                if (visibleEl) visibleEl.textContent = visibleCount;
+                if (totalEl) totalEl.textContent = totalCount;
+
+                // Update breadcrumb
+                const breadcrumb = document.getElementById('breadcrumbPath');
+                if (breadcrumb) {
+                    const searchTerm = document.getElementById('taskSearchHierarchical')?.value;
+                    if (searchTerm) {
+                        breadcrumb.textContent = `Search: "${searchTerm}"`;
+                    } else {
+                        breadcrumb.textContent = 'All Tasks';
+                    }
+                }
+            },
+
+            // Panel toggle methods for the new sidebar layout
+            toggleMetricsPanel() {
+                const content = document.getElementById('metricsContent');
+                const icon = document.getElementById('metricsToggleIcon');
+                if (content && icon) {
+                    const isVisible = content.style.display !== 'none';
+                    content.style.display = isVisible ? 'none' : 'block';
+                    icon.textContent = isVisible ? '▶' : '▼';
+                }
+            },
+
+            toggleWorkloadPanel() {
+                const content = document.getElementById('agentWorkloadGrid');
+                const icon = document.getElementById('workloadToggleIcon');
+                if (content && icon) {
+                    const isVisible = content.style.display !== 'none';
+                    content.style.display = isVisible ? 'none' : 'block';
+                    icon.textContent = isVisible ? '▶' : '▼';
+                }
+            },
+
+            // Implementation review features
+            enterFocusMode() {
+                console.log('🎯 Entering Focus Mode - showing only in-progress and pending tasks');
+
+                // Set filters to show only active work
+                document.getElementById('filterCompleted').checked = false;
+                document.getElementById('filterInProgress').checked = true;
+                document.getElementById('filterPending').checked = true;
+                document.getElementById('filterBlocked').checked = true;
+
+                // Clear search to focus on status only
+                document.getElementById('taskSearchHierarchical').value = '';
+
+                // Apply filters
+                this.filterTasks();
+
+                // Update breadcrumb
+                const breadcrumb = document.getElementById('breadcrumbPath');
+                if (breadcrumb) {
+                    breadcrumb.textContent = '🎯 Focus Mode: Active Work Only';
+                }
+
+                // Auto-expand all visible nodes for better overview
+                document.getElementById('expandAll').checked = true;
+                this.toggleExpandAll();
+            },
+
+            showFilteredOnly() {
+                console.log('🔍 Showing filtered view based on current selection');
+
+                // Update active tasks summary
+                this.updateCurrentFocus();
+
+                // Show filter status
+                const breadcrumb = document.getElementById('breadcrumbPath');
+                if (breadcrumb) {
+                    breadcrumb.textContent = '🔍 Filtered View';
+                }
+            },
+
+            updateCurrentFocus() {
+                const activeSummary = document.getElementById('activeTasksSummary');
+                const nextTask = document.getElementById('nextTaskText');
+
+                if (!this.data) return;
+
+                // Find active tasks across all streams
+                const activeTasks = [];
+                const pendingTasks = [];
+
+                if (this.data.hierarchy) {
+                    Object.values(this.data.hierarchy).forEach(feature => {
+                        Object.values(feature.streams).forEach(stream => {
+                            stream.tasks?.forEach(task => {
+                                if (task.status === 'in_progress' || task.status === 'active') {
+                                    activeTasks.push(task);
+                                } else if (task.status === 'pending') {
+                                    pendingTasks.push(task);
+                                }
+                            });
+                        });
+                    });
+                }
+
+                if (activeSummary) {
+                    if (activeTasks.length > 0) {
+                        activeSummary.innerHTML = `
+                            <div style="font-weight: 600; margin-bottom: 8px;">Active Tasks: ${activeTasks.length}</div>
+                            ${activeTasks.slice(0, 3).map(task =>
+                                `<div style="margin-bottom: 4px; font-size: 0.8em;">• Task ${task.id}: ${task.title}</div>`
+                            ).join('')}
+                            ${activeTasks.length > 3 ? `<div style="font-size: 0.8em; color: #666;">+ ${activeTasks.length - 3} more...</div>` : ''}
+                        `;
+                    } else {
+                        activeSummary.textContent = 'No active tasks';
+                    }
+                }
+
+                if (nextTask) {
+                    if (pendingTasks.length > 0) {
+                        const nextPending = pendingTasks[0];
+                        nextTask.textContent = `Task ${nextPending.id}: ${nextPending.title}`;
+                    } else {
+                        nextTask.textContent = 'No pending tasks';
+                    }
+                }
+            },
+
+            // Enhanced subtask details panel
+            showTaskDetails(taskId, taskData) {
+                const panel = document.getElementById('subtaskDetailsPanel');
+                const content = document.getElementById('subtaskDetailsContent');
+
+                if (!panel || !content || !taskData) return;
+
+                content.innerHTML = `
+                    <div class="task-details-header">
+                        <h4 style="margin: 0 0 10px 0; color: var(--primary-color);">Task ${taskData.id}: ${taskData.title}</h4>
+                        <div class="task-status" style="margin-bottom: 15px;">
+                            <span class="status-badge ${taskData.status}">${taskData.status}</span>
+                            <span style="margin-left: 10px; font-size: 0.9em; color: #666;">${taskData.estimated_hours || 0}h estimated</span>
+                        </div>
+                    </div>
+
+                    <div class="task-description" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid var(--info-color);">
+                        <h5 style="margin: 0 0 8px 0; color: #333;">Description:</h5>
+                        <p style="margin: 0; line-height: 1.5;">${taskData.description || 'No description available'}</p>
+                    </div>
+
+                    ${taskData.subtasks && taskData.subtasks.length > 0 ? `
+                        <div class="subtasks-section">
+                            <h5 style="margin: 0 0 10px 0; color: #333;">Subtasks (${taskData.subtasks.length}):</h5>
+                            ${taskData.subtasks.map(subtask => `
+                                <div class="subtask-item" style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 4px; border-left: 2px solid ${this.getStatusColor(subtask.status)};">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                        <strong style="font-size: 0.9em;">${subtask.title}</strong>
+                                        <span class="status-badge ${subtask.status}" style="font-size: 0.7em;">${subtask.status}</span>
+                                    </div>
+                                    ${subtask.description ? `<p style="margin: 0; font-size: 0.85em; color: #666;">${subtask.description}</p>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '<p style="color: #666; font-style: italic;">No subtasks defined</p>'}
+
+                    <div class="task-actions" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+                        <button onclick="hierarchicalTasks.markTaskComplete('${taskId}')" style="padding: 8px 16px; margin-right: 10px; border: none; background: var(--success-color); color: white; border-radius: 4px; cursor: pointer;">
+                            Mark Complete
+                        </button>
+                        <button onclick="hierarchicalTasks.editTaskStatus('${taskId}')" style="padding: 8px 16px; border: 1px solid var(--border-color); background: white; color: #333; border-radius: 4px; cursor: pointer;">
+                            Change Status
+                        </button>
+                    </div>
+                `;
+
+                // Show the panel
+                panel.style.right = '0';
+            },
+
+            closeDetailsPanel() {
+                const panel = document.getElementById('subtaskDetailsPanel');
+                if (panel) {
+                    panel.style.right = '-400px';
+                }
+            },
+
+            markTaskComplete(taskId) {
+                console.log(`Marking task ${taskId} as complete - this would update the backend`);
+                // This would integrate with the task update API
+                this.closeDetailsPanel();
+            },
+
+            editTaskStatus(taskId) {
+                console.log(`Opening status editor for task ${taskId}`);
+                // This would show a status selection modal
+            },
+
+            getStatusColor(status) {
+                switch(status?.toLowerCase()) {
+                    case 'completed':
+                    case 'done':
+                        return 'var(--success-color)';
+                    case 'in_progress':
+                    case 'active':
+                        return 'var(--info-color)';
+                    case 'pending':
+                        return 'var(--warning-color)';
+                    case 'blocked':
+                        return 'var(--danger-color)';
+                    default:
+                        return '#ccc';
+                }
             },
 
             getProgressIcon(progress) {
@@ -3804,7 +4766,390 @@
             }
         };
 
-        // Initialize hierarchical tasks system
+        // ========================================
+        // REDESIGNED TASKS TAB SYSTEM
+        // ========================================
+
+        window.tasksRedesigned = {
+            data: null,
+            filteredTasks: [],
+            selectedTask: null,
+
+            async init() {
+                console.log('🔄 Initializing Redesigned Tasks System...');
+                await this.loadData();
+                // Initialize filteredTasks with all tasks by calling filterTasks
+                this.filterTasks();
+            },
+
+            async loadData() {
+                try {
+                    const response = await fetch('/api/tasks/hierarchical');
+                    this.data = await response.json();
+                    console.log('✅ Loaded task data:', this.data);
+                } catch (error) {
+                    console.error('❌ Error loading task data:', error);
+                }
+            },
+
+            // FIXED FILTER LOGIC - Shows ONLY selected statuses
+            filterTasks() {
+                const searchTerm = document.getElementById('taskSearchHierarchical')?.value.toLowerCase() || '';
+                const selectedStatus = document.querySelector('input[name="statusFilter"]:checked')?.value || 'all';
+
+                if (!this.data) return;
+
+                console.log('🔍 Filtering with:', { searchTerm, selectedStatus });
+                console.log('🔍 Data structure:', Object.keys(this.data));
+
+                // Get all tasks from the hierarchical data structure
+                const allTasks = [];
+
+                // Check if this.data.tasks is a flat array (new structure) or hierarchical (old structure)
+                if (Array.isArray(this.data.tasks)) {
+                    // New flat structure - each task has its own properties
+                    this.data.tasks.forEach(task => {
+                        // Add the main task
+                        const taskWithContext = {
+                            ...task,
+                            streamName: task.stream || 'Unknown Stream',
+                            featureName: task.feature || 'Unknown Feature',
+                            id: task.id || task.title
+                        };
+                        allTasks.push(taskWithContext);
+
+                        // Add subtasks if they exist
+                        if (task.subtasks && Array.isArray(task.subtasks)) {
+                            task.subtasks.forEach(subtask => {
+                                allTasks.push({
+                                    ...subtask,
+                                    isSubtask: true,
+                                    parentTask: task.title,
+                                    streamName: task.stream || 'Unknown Stream',
+                                    featureName: task.feature || 'Unknown Feature',
+                                    id: subtask.id || `${task.id}-${subtask.title}`
+                                });
+                            });
+                        }
+                    });
+                } else if (this.data.hierarchy) {
+                    // If there's a hierarchy object, use that instead
+                    Object.keys(this.data.hierarchy).forEach(featureName => {
+                        const feature = this.data.hierarchy[featureName];
+                        Object.keys(feature).forEach(streamName => {
+                            const stream = feature[streamName];
+                            if (Array.isArray(stream)) {
+                                stream.forEach(task => {
+                                    const taskWithContext = {
+                                        ...task,
+                                        streamName: streamName,
+                                        featureName: featureName,
+                                        id: task.id || task.title
+                                    };
+                                    allTasks.push(taskWithContext);
+
+                                    // Add subtasks
+                                    if (task.subtasks && Array.isArray(task.subtasks)) {
+                                        task.subtasks.forEach(subtask => {
+                                            allTasks.push({
+                                                ...subtask,
+                                                isSubtask: true,
+                                                parentTask: task.title,
+                                                streamName: streamName,
+                                                featureName: featureName,
+                                                id: subtask.id || `${task.id}-${subtask.title}`
+                                            });
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    });
+                }
+
+                console.log(`📊 Extracted ${allTasks.length} total tasks from data`);
+
+                // Filter by status (EXCLUSIVE - only show selected status)
+                let filteredByStatus = allTasks;
+                if (selectedStatus !== 'all') {
+                    filteredByStatus = allTasks.filter(task => {
+                        return task.status === selectedStatus;
+                    });
+                }
+
+                // Filter by search term
+                this.filteredTasks = filteredByStatus.filter(task => {
+                    if (!searchTerm) return true;
+
+                    return (
+                        task.title?.toLowerCase().includes(searchTerm) ||
+                        task.description?.toLowerCase().includes(searchTerm) ||
+                        task.streamName?.toLowerCase().includes(searchTerm) ||
+                        task.featureName?.toLowerCase().includes(searchTerm) ||
+                        task.parentTask?.toLowerCase().includes(searchTerm)
+                    );
+                });
+
+                console.log(`✅ Filtered ${this.filteredTasks.length} tasks from ${allTasks.length} total`);
+
+                this.renderNavigationTree();
+                this.renderTaskList();
+                this.updateTaskCount();
+            },
+
+            renderNavigationTree() {
+                const container = document.getElementById('navigationTree');
+                if (!container || !this.data) return;
+
+                const selectedStatus = document.querySelector('input[name="statusFilter"]:checked')?.value || 'all';
+
+                let html = '<div style="font-size: 0.75em; color: #666; margin-bottom: 10px;">';
+                html += `📊 ${this.filteredTasks.length} tasks`;
+                if (selectedStatus !== 'all') {
+                    html += ` (${selectedStatus})`;
+                }
+                html += '</div>';
+
+                // Build navigation tree structure
+                const treeStructure = {};
+                this.filteredTasks.forEach(task => {
+                    if (!treeStructure[task.featureName]) {
+                        treeStructure[task.featureName] = {};
+                    }
+                    if (!treeStructure[task.featureName][task.streamName]) {
+                        treeStructure[task.featureName][task.streamName] = [];
+                    }
+                    if (!task.isSubtask) {
+                        treeStructure[task.featureName][task.streamName].push(task);
+                    }
+                });
+
+                // Render tree
+                Object.keys(treeStructure).forEach(featureName => {
+                    html += `<div style="margin-bottom: 8px;">`;
+                    html += `<div style="font-weight: bold; color: var(--primary-color); font-size: 0.75em; margin-bottom: 3px;">📂 ${featureName}</div>`;
+
+                    Object.keys(treeStructure[featureName]).forEach(streamName => {
+                        const taskCount = treeStructure[featureName][streamName].length;
+                        html += `<div style="margin-left: 10px; margin-bottom: 3px;">`;
+                        html += `<div style="color: #666; font-size: 0.7em;">🔄 ${streamName} (${taskCount})</div>`;
+                        html += `</div>`;
+                    });
+
+                    html += `</div>`;
+                });
+
+                container.innerHTML = html;
+            },
+
+            renderTaskList() {
+                const container = document.getElementById('taskList');
+                if (!container) return;
+
+                if (this.filteredTasks.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; color: #666; padding: 40px 20px;">
+                            <div style="font-size: 2em; margin-bottom: 10px;">🔍</div>
+                            <div>No tasks match the current filter</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                this.filteredTasks.forEach(task => {
+                    const isSelected = this.selectedTask?.id === task.id;
+                    const statusColor = this.getStatusColor(task.status);
+
+                    html += `
+                        <div onclick="tasksRedesigned.selectTask('${task.id}')"
+                             style="padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; border: 1px solid #eee; transition: all 0.2s ease; ${isSelected ? 'background: #f0f8ff; border-color: var(--primary-color);' : 'background: white;'}"
+                             onmouseover="this.style.background='#f8f9fa'"
+                             onmouseout="this.style.background='${isSelected ? '#f0f8ff' : 'white'}'">
+
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                                <div style="font-weight: 500; font-size: 0.9em; color: #333; flex: 1;">
+                                    ${task.isSubtask ? '└ ' : ''}${task.title || `Task ${task.id}`}
+                                </div>
+                                <div style="background: ${statusColor}; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7em; font-weight: bold; text-transform: uppercase; margin-left: 8px;">
+                                    ${task.status}
+                                </div>
+                            </div>
+
+                            <div style="font-size: 0.75em; color: #666; margin-bottom: 4px;">
+                                📂 ${task.featureName} → 🔄 ${task.streamName}
+                                ${task.isSubtask ? ` → 📋 ${task.parentTask}` : ''}
+                            </div>
+
+                            ${task.description ? `
+                                <div style="font-size: 0.8em; color: #555; line-height: 1.3; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                    ${task.description}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+            },
+
+            selectTask(taskId) {
+                this.selectedTask = this.filteredTasks.find(task => task.id === taskId);
+                console.log('🎯 Selected task:', this.selectedTask);
+                this.renderTaskList(); // Re-render to show selection
+                this.renderTaskDetails();
+            },
+
+            renderTaskDetails() {
+                const container = document.getElementById('taskDetailsContent');
+                if (!container) return;
+
+                if (!this.selectedTask) {
+                    container.innerHTML = `
+                        <div style="text-align: center; color: #666; padding: 40px 20px;">
+                            <div style="font-size: 2em; margin-bottom: 10px;">📋</div>
+                            <div>Select a task from the list to view details</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const task = this.selectedTask;
+                const statusColor = this.getStatusColor(task.status);
+
+                let html = `
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 10px 0; color: var(--primary-color); display: flex; align-items: center; gap: 10px;">
+                            ${task.isSubtask ? '📝 Subtask:' : '📋 Task:'} ${task.title || `Task ${task.id}`}
+                            <span style="background: ${statusColor}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.7em; font-weight: bold; text-transform: uppercase;">
+                                ${task.status}
+                            </span>
+                        </h4>
+
+                        <div style="font-size: 0.85em; color: #666; margin-bottom: 15px;">
+                            📂 ${task.featureName} → 🔄 ${task.streamName}
+                            ${task.isSubtask ? ` → 📋 ${task.parentTask}` : ''}
+                        </div>
+                    </div>
+
+                    ${task.description ? `
+                        <div style="margin-bottom: 20px;">
+                            <h5 style="margin: 0 0 8px 0; color: #333;">📖 Description</h5>
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; line-height: 1.5; font-size: 0.9em; color: #555;">
+                                ${task.description}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${task.priority ? `
+                        <div style="margin-bottom: 15px;">
+                            <h5 style="margin: 0 0 8px 0; color: #333;">⚡ Priority</h5>
+                            <span style="background: ${this.getPriorityColor(task.priority)}; color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.8em; font-weight: bold;">
+                                ${task.priority.toUpperCase()}
+                            </span>
+                        </div>
+                    ` : ''}
+
+                    ${task.progress ? `
+                        <div style="margin-bottom: 15px;">
+                            <h5 style="margin: 0 0 8px 0; color: #333;">📊 Progress</h5>
+                            <div style="background: #e9ecef; border-radius: 10px; overflow: hidden; height: 8px;">
+                                <div style="background: var(--success-color); height: 100%; width: ${task.progress}%; transition: width 0.3s ease;"></div>
+                            </div>
+                            <div style="font-size: 0.8em; color: #666; margin-top: 4px;">${task.progress}% complete</div>
+                        </div>
+                    ` : ''}
+
+                    ${task.dependencies && task.dependencies.length > 0 ? `
+                        <div style="margin-bottom: 15px;">
+                            <h5 style="margin: 0 0 8px 0; color: #333;">🔗 Dependencies</h5>
+                            <div style="font-size: 0.85em;">
+                                ${task.dependencies.map(dep => `
+                                    <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 6px 8px; margin-bottom: 4px;">
+                                        📋 Task ${dep}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+
+                container.innerHTML = html;
+            },
+
+            updateTaskCount() {
+                const counter = document.getElementById('visibleTaskCount');
+                if (counter) {
+                    counter.textContent = this.filteredTasks.length;
+                }
+            },
+
+            getStatusColor(status) {
+                const colors = {
+                    'completed': '#27ae60',
+                    'in-progress': '#3498db',
+                    'pending': '#f39c12',
+                    'blocked': '#e74c3c'
+                };
+                return colors[status] || '#6c757d';
+            },
+
+            getPriorityColor(priority) {
+                const colors = {
+                    'critical': '#e74c3c',
+                    'high': '#f39c12',
+                    'medium': '#3498db',
+                    'low': '#6c757d'
+                };
+                return colors[priority] || '#6c757d';
+            }
+        };
+
+        // Initialize redesigned tasks system when Tasks tab is shown
+        function initializeTasksOnTabSwitch() {
+            const tasksTabVisible = document.getElementById('tasks')?.style.display !== 'none';
+            if (tasksTabVisible && window.tasksRedesigned && !window.tasksRedesigned.data) {
+                console.log('🔄 Initializing tasksRedesigned for Tasks tab...');
+                window.tasksRedesigned.init();
+            }
+        }
+
+        // Enhanced tab switching function
+        function enhancedShowTab(tabName) {
+            // Hide all tabs
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.style.display = 'none');
+
+            // Show selected tab
+            const selectedTab = document.getElementById(tabName);
+            if (selectedTab) {
+                selectedTab.style.display = 'block';
+            }
+
+            // Update active tab button
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+
+            // Initialize tasks system when Tasks tab is shown
+            if (tabName === 'tasks') {
+                setTimeout(initializeTasksOnTabSwitch, 100);
+            }
+        }
+
+        // Override dashboard.switchTab if it exists
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.dashboard) {
+                window.dashboard.switchTab = enhancedShowTab;
+            } else {
+                window.dashboard = { switchTab: enhancedShowTab };
+            }
+        });
+
+        // Initialize hierarchical tasks system (legacy)
         document.addEventListener('DOMContentLoaded', () => {
             hierarchicalTasks.init();
         });
