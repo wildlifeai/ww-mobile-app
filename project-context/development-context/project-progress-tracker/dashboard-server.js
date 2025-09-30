@@ -2610,7 +2610,7 @@ function calculateUnifiedStreamMetrics(tasks) {
       const subtaskCount = task.subtasks ? task.subtasks.length : 0;
       totalSubtasks += subtaskCount;
 
-      if (task.status === 'done') {
+      if (task.status === 'done' || task.status === 'completed') {
         // All subtasks completed
         completedSubtasks += subtaskCount;
       } else if (task.status === 'in-progress') {
