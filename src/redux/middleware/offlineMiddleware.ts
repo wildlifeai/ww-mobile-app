@@ -178,7 +178,7 @@ offlineMiddleware.startListening({
 
 // Listen for manual sync requests
 offlineMiddleware.startListening({
-  actionCreator: { type: 'offline/triggerManualSync' } as any,
+  predicate: (action) => action.type === 'offline/triggerManualSync',
   effect: async (action, listenerApi) => {
     const state = listenerApi.getState() as any;
     const currentUser = state.authentication?.user as User;
