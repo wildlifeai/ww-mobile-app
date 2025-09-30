@@ -4,7 +4,8 @@
 # Performs static checks before EAS build to catch common issues early
 # Usage: ./scripts/pre-build-check.sh
 
-set -e  # Exit on first error
+# Don't exit on errors - we want to collect all failures
+set +e
 
 # Colors for output
 RED='\033[0;31m'
