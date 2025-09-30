@@ -9,7 +9,9 @@ import {
 	adaptNavigationTheme,
 	useTheme,
 } from "react-native-paper"
-import merge from "deepmerge"
+// Fix for React Native - deepmerge has non-standard exports
+const deepmergeModule = require("deepmerge");
+const merge = deepmergeModule.default || deepmergeModule;
 
 const { LightTheme, DarkTheme } = adaptNavigationTheme({
 	reactNavigationLight: NavigationDefaultTheme,
