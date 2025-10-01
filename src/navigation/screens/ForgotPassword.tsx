@@ -89,16 +89,17 @@ export const ForgotPassword = () => {
 			Alert.alert("Error", "Passwords do not match")
 			return
 		}
-		
+
 		const token = route.params?.token
+		const refreshToken = route.params?.refreshToken
 		if (!token) {
 			Alert.alert("Error", "Reset token is missing. Please request a new password reset.")
 			return
 		}
-		
+
 		setIsLoading(true)
 		try {
-			await updatePasswordWithToken(token, data.password)
+			await updatePasswordWithToken(token, data.password, refreshToken)
 			Alert.alert(
 				"Password Updated",
 				"Your password has been successfully updated. Welcome back!",

@@ -238,17 +238,39 @@ export const updatePassword = async (newPassword: string): Promise<void> => {
 
 /**
  * Reset password using token from email
+ * @param token - Can be either token_hash (from email query param) or access_token (from URL fragment)
+ * @param newPassword - The new password to set
+ * @param refreshToken - Optional refresh token from URL fragment
  */
-export const updatePasswordWithToken = async (token: string, newPassword: string): Promise<void> => {
+export const updatePasswordWithToken = async (
+  token: string,
+  newPassword: string,
+  refreshToken?: string
+): Promise<void> => {
   try {
-    // First verify the OTP token to establish session
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      token_hash: token,
-      type: 'recovery',
-    });
+    // If we have both access_token and refresh_token from URL fragment,
+    // set the session directly (Supabase already validated via redirect)
+    if (refreshToken) {
+      console.log('Setting session from access_token and refresh_token');
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: token,
+        refresh_token: refreshToken,
+      });
 
-    if (verifyError) {
-      throw new Error(verifyError.message);
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+    } else {
+      // Legacy path: verify OTP token_hash from email
+      console.log('Verifying OTP with token_hash');
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash: token,
+        type: 'recovery',
+      });
+
+      if (verifyError) {
+        throw new Error(verifyError.message);
+      }
     }
 
     // Now update the password with the established session
@@ -259,6 +281,8 @@ export const updatePasswordWithToken = async (token: string, newPassword: string
     if (updateError) {
       throw new Error(updateError.message);
     }
+
+    console.log('Password updated successfully');
   } catch (error) {
     console.error('Update password with token error:', error);
     throw error;
