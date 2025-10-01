@@ -29,6 +29,7 @@ MVP2/
 │   ├── admin-portal-spec.md               # Web admin portal specification
 │   ├── figma-design.pdf                   # UI/UX design specifications
 │   ├── test-cases-kk-sept2025.csv         # Test cases matrix
+│   ├── app-features-analysis.md           # Feature analysis and requirements
 │   │
 │   ├── 📁 hardware/                        # BLE/device specifications
 │   │   └── BLE-WWUS-DFUx/                 # Complete hardware communication docs
@@ -41,7 +42,9 @@ MVP2/
 │   │       └── spec-and-implementation-plan-DFUx-WWFT/  # WWFT service
 │   │
 │   └── 📁 revisions/                       # Spec corrections and revisions
-│       └── WW-Admin-Task-Corrections-Phase-3B.md
+│       ├── WW-Admin-Task-Corrections-Phase-3B.md
+│       ├── WW-ADMIN-DOCUMENTATION-REVIEW-REPORT.md
+│       └── MVP2-SPEC-COMPLIANCE-AUDIT.md
 │
 ├── 📁 implementation/                      # All implementation work
 │   │
@@ -49,18 +52,21 @@ MVP2/
 │   │   ├── api-integration-guide.md       # Supabase integration patterns
 │   │   ├── component-patterns.md          # UI component patterns
 │   │   ├── testing-requirements.md        # Testing strategy
+│   │   ├── testing-standards.md           # Testing methodology and standards
 │   │   └── task-restructuring-plan.md     # 23-task breakdown
 │   │
 │   ├── 📁 planning/                        # Planning & strategy documents
 │   │   ├── claude-flow-implementation-plan.md  # Main implementation plan
 │   │   ├── claude-flow-review.md          # Implementation plan review
-│   │   └── ww-admin-corrections-plan.md   # WW Admin corrections strategy
+│   │   ├── ww-admin-corrections-plan.md   # WW Admin corrections strategy
+│   │   └── MVP2-TASK-ORCHESTRATION-ANALYSIS.md  # Task orchestration analysis
 │   │
 │   └── 📁 tasks/                           # Individual task specifications
 │       ├── task_001.txt through task_023.txt  # All 23 tasks
 │       ├── task_014_maestro_installation.txt  # Maestro E2E setup
 │       └── docs/
-│           └── DEVELOPMENT-EXECUTION-PLAN.md
+│           ├── DEVELOPMENT-EXECUTION-PLAN.md
+│           └── TASK-11-COMPLETION-SUMMARY.md
 │
 └── 📁 archive/                             # Obsolete/historical documents
     ├── Offline Sync & Conflict Resolution Strategy.md
@@ -68,6 +74,10 @@ MVP2/
     ├── implementation spec draft v1.2.md
     ├── kk-review-v1.3.md                  # v1.3 review notes
     ├── to-do.md                           # Old task tracking
+    ├── superclaude-task-management.md     # Legacy task management (superseded)
+    ├── task-context-preservation.json     # Legacy state backup (superseded)
+    ├── parallel-streams-context.json      # Legacy execution state (superseded)
+    ├── ARCHIVE-NOTE-STATE-FILES.md        # Explanation of archived state files
     └── wildlife-watcher-implementation-spec-mvp2-consolidated-20250731.md
 ```
 

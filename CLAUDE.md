@@ -43,10 +43,11 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - **Development Methodology**: SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) with TDD
 
 ### Where to Find Task Information
-- **Current Task Status**: Check `@project-context/superclaude-task-management.md`
-- **Task Dependencies**: See `@project-context/task-context-preservation.json`
+- **Current Task Status**: Check `@project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md` or live dashboard at http://localhost:3333
+- **Current Strategy**: See `@project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md`
 - **Development Progress**: Review `@project-context/learnings/claude-flow-usage-log.md`
 - **Task Specifications**: Located in `@project-context/development-context/MVP2/implementation/tasks/`
+- **Archived State Files**: See `@project-context/development-context/MVP2/archive/` for legacy tracking files
 
 ## SPARC Commands
 
@@ -127,7 +128,7 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 ## 📚 Reference Documentation
 
 ### Testing & Quality Control
-See `@project-context/testing-standards.md` for:
+See `@project-context/development-context/MVP2/implementation/guides/testing-standards.md` for:
 - Comprehensive testing methodology
 - TestID patterns and conventions
 - Test structure and organization
@@ -286,20 +287,16 @@ The `@project-context/development-context/` contains critical project specificat
 ### Documents to Keep Updated
 
 **ALWAYS UPDATE** these documents as you work:
-1. **Task Progress**: `@project-context/superclaude-task-management.md`
-   - Mark tasks as completed
-   - Update blockers and dependencies
-   - Record implementation decisions
+1. **Metrics Tracker**: `@project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+   - Record actual vs estimated hours for every task
+   - Track start/end times for accuracy
+   - Update completion status and variance analysis
+   - Document blockers and solutions
 
 2. **Learning Log**: `@project-context/learnings/claude-flow-usage-log.md`
    - Document patterns discovered
    - Record problem solutions
    - Capture best practices
-
-3. **Task Context**: `@project-context/task-context-preservation.json`
-   - Save implementation state
-   - Preserve decision context
-   - Enable session recovery
 
 4. **Integration Progress**: When working on backend
    - Update `supabase-integration-progress.md`
@@ -346,8 +343,7 @@ The `@project-context/development-context/` contains critical project specificat
 | `MVP2-METRICS-TRACKER.md` | **Time tracking & velocity** | Start/end of tasks |
 | `development-context/MVP2/implementation/tasks/` | **Individual task specs** | During implementation |
 | Project Progress Tracker | **Live status dashboard** | Continuous monitoring |
-| `superclaude-task-management.md` | Legacy task context | Historical reference |
-| `task-context-preservation.json` | Session state backup | Recovery purposes |
+| Archived state files | Legacy context (see MVP2/archive/) | Historical reference only |
 
 ### Ready to Work Resources
 
