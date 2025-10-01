@@ -46,7 +46,7 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - **Current Task Status**: Check `@project-context/superclaude-task-management.md`
 - **Task Dependencies**: See `@project-context/task-context-preservation.json`
 - **Development Progress**: Review `@project-context/learnings/claude-flow-usage-log.md`
-- **Task Specifications**: Located in `@project-context/development-context/MVP2/tasks/`
+- **Task Specifications**: Located in `@project-context/development-context/MVP2/implementation/tasks/`
 
 ## SPARC Commands
 
@@ -258,13 +258,13 @@ The `@project-context/development-context/` contains critical project specificat
 
 **MVP2 Documentation** (`/MVP2/`):
 - **Primary Specification**: `implementation-spec-v1.4.md` - **AUTHORITATIVE SOURCE** for all MVP2 requirements, architecture, and cross-project coordination (17.5k tokens - read when needed)
-- **User Roles Specification**: `Wildlife Watcher App - User Roles & Permissions Specification.md` - 4-tier RBAC system definitions
-- **Task Breakdown**: `TASK-RESTRUCTURING-PLAN.md` - 23-task implementation structure
+- **User Roles Specification**: `specifications/user-roles-permissions.md` - 4-tier RBAC system definitions
+- **Task Breakdown**: `implementation/guides/task-restructuring-plan.md` - 23-task implementation structure
 - **Current Execution Strategy**: `MVP2-MASTER-EXECUTION-PLAN.md` - Live development methodology (check for latest approach)
-- **Testing Requirements**: `TESTING-REQUIREMENTS.md` - Test coverage specifications
-- **API Integration**: `API-INTEGRATION-GUIDE.md` - Supabase integration patterns
-- **Component Patterns**: `COMPONENT-IMPLEMENTATION-PATTERNS.md` - UI/UX standards
-- **Task Specifications**: `/tasks/` - Individual task details (task_001.txt - task_023.txt)
+- **Testing Requirements**: `implementation/guides/testing-requirements.md` - Test coverage specifications
+- **API Integration**: `implementation/guides/api-integration-guide.md` - Supabase integration patterns
+- **Component Patterns**: `implementation/guides/component-patterns.md` - UI/UX standards
+- **Task Specifications**: `implementation/tasks/` - Individual task details (task_001.txt - task_023.txt)
 
 **Note**: Implementation spec is in `.claudeignore` to save context. Read `@project-context/development-context/MVP2/implementation-spec-v1.4.md` when starting new tasks or need architecture details.
 
@@ -344,7 +344,7 @@ The `@project-context/development-context/` contains critical project specificat
 |----------|---------|-------------|
 | `MVP2-MASTER-EXECUTION-PLAN.md` | **Primary execution strategy** | Before starting any work |
 | `MVP2-METRICS-TRACKER.md` | **Time tracking & velocity** | Start/end of tasks |
-| `development-context/MVP2/tasks/` | **Individual task specs** | During implementation |
+| `development-context/MVP2/implementation/tasks/` | **Individual task specs** | During implementation |
 | Project Progress Tracker | **Live status dashboard** | Continuous monitoring |
 | `superclaude-task-management.md` | Legacy task context | Historical reference |
 | `task-context-preservation.json` | Session state backup | Recovery purposes |
@@ -361,7 +361,7 @@ The `@project-context/development-context/` contains critical project specificat
 
 - **What's Next**: Check Project Progress Tracker dashboard for current priorities
 - **Execution Strategy**: Consult `MVP2-MASTER-EXECUTION-PLAN.md` for latest methodology
-- **Task Details**: Review specific task files in `development-context/MVP2/tasks/`
+- **Task Details**: Review specific task files in `development-context/MVP2/implementation/tasks/`
 - **Track Progress**: Update `MVP2-METRICS-TRACKER.md` with time spent
 
 ### Cross-Project Coordination
@@ -393,7 +393,7 @@ The `@project-context/development-context/` contains critical project specificat
 
 ## Important Instructions
 
-- Reference task details in `@project-context/development-context/MVP2/tasks/` before implementation
+- Reference task details in `@project-context/development-context/MVP2/implementation/tasks/` before implementation
 - Check in files to git regularly at sensible points (after each subtask completion)
 - Update progress documentation after completing each task/feature/subtask
 - Preserve implementation context for session recovery
@@ -489,11 +489,11 @@ Remember: **Evidence-Based Research → Specialized Implementation → Quality V
 
 **Before starting ANY MVP2 task or subtask:**
 1. **Read Implementation Spec**: `@project-context/development-context/MVP2/implementation-spec-v1.4.md`
-2. **Read Task File**: Corresponding file in `@project-context/development-context/MVP2/tasks/`
+2. **Read Task File**: Corresponding file in `@project-context/development-context/MVP2/implementation/tasks/`
 3. **Check Master Plan**: `@project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md`
 4. **Verify Alignment**: Cross-reference with:
-   - `Wildlife Watcher App - User Roles & Permissions Specification.md`
-   - `Wildlife Watcher Admin Portal Implementation Specification.md`
+   - `specifications/user-roles-permissions.md`
+   - `specifications/admin-portal-spec.md`
 5. **Flag Inconsistencies**: Report any discrepancies to user for clarification
 
 This ensures the task/subtask aligns with latest specifications and architecture decisions.
