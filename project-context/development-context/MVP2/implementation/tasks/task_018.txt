@@ -1,0 +1,157 @@
+# Task ID: 18
+# Title: Device Management & BLE Integration
+# Status: pending
+# Dependencies: 11
+# Priority: high
+# Description: STREAM C: Enhance existing BLE functionality with device management screen, firmware updates, connection reliability, and device information persistence
+# Details:
+PARALLEL DEVELOPMENT STREAM C - Task 18: Device Management & BLE Integration
+
+This task builds upon the existing BLE functionality from the migration to provide comprehensive device management capabilities for Wildlife Watcher hardware.
+
+## Implementation Requirements:
+
+### 18.1: Enhanced Devices Screen with Organisation Context
+- Create `src/navigation/screens/DevicesScreen.tsx` following Component Implementation Patterns
+- **NEW**: Maestro TDD implementation for device management workflows
+- **Enhanced Device Discovery and Scanning**: BLE scanning with organisation-aware device filtering:
+  - Scan for organisation-registered devices with priority
+  - **NEW**: Role-based device discovery (ww_admin sees all, others see assigned devices)
+- **Comprehensive Device List Display**: Show all discovered and paired devices with organisation context:
+  - Device name, Bluetooth ID, organisation assignment, signal strength
+  - **NEW**: Enhanced connection status with LoRaWAN connectivity indicators
+  - Last seen timestamp, device type, and organisation device category
+  - **NEW**: Enhanced battery level with predictive analytics and LoRaWAN data
+  - Firmware version with organisation update policy compliance
+  - **NEW**: Deployment association status with project and organisation context
+  - **NEW**: Device ownership and role-based access indicators
+- **Role-Based Connection Management**: Connect/disconnect with permission validation and organisation policies
+- **Enhanced Device Actions**: Comprehensive device management with role validation:
+  - Test camera, check status, update firmware (admin permissions)
+  - **NEW**: LoRaWAN configuration and webhook management
+  - **NEW**: Device assignment and organisation transfer (WW Admin)
+- **Organisation-Aware Persistent Storage**: Remember devices with organisation and role context
+- **NEW**: Claude Flow SPARC patterns for device management architecture
+
+### 18.2: Enhanced BLE Service with LoRaWAN Integration
+- **NEW**: Maestro TDD coverage for enhanced BLE service reliability
+- Extend existing BLE functionality with organisation-aware device management
+- **Enhanced Connection Reliability**: Robust connection management with organisation policies:
+  - Automatic reconnection with organisation device priority handling
+  - **NEW**: Connection quality monitoring with LoRaWAN backup communication
+  - Connection timeout handling with organisation-defined policies
+  - Multiple device connection support with role-based connection limits
+  - **NEW**: Organisation device pool management and connection queuing
+- **Advanced Device Command Handling**: Enhanced communication with LoRaWAN integration:
+  - Extended communication protocol support for organisation device configurations
+  - **NEW**: LoRaWAN webhook coordination for device status synchronization
+  - Command queuing and retry logic with organisation compliance
+- **Comprehensive Status Monitoring**: Multi-channel device status with organisation intelligence:
+  - Real-time device status updates via BLE and LoRaWAN
+  - **NEW**: Predictive maintenance alerts based on organisation fleet data
+  - Device health analytics and performance trend monitoring
+- **Enhanced Error Recovery**: Organisation-aware error handling and recovery:
+  - Comprehensive error handling with organisation policy compliance
+  - **NEW**: Escalation workflows for device failures affecting organisation operations
+  - Recovery mechanisms with organisation device replacement procedures
+
+### 18.3: Enhanced Nordic DFU Integration with Organisation Management
+- **NEW**: Maestro TDD implementation for firmware update reliability
+- **Enhanced Firmware Update Workflow**: Organisation-managed firmware updates:
+  - Complete integration with react-native-nordic-dfu
+  - **NEW**: Organisation-approved firmware version management
+  - **NEW**: Role-based firmware update permissions (admin-only operations)
+- **Advanced Update Progress Tracking**: Comprehensive progress reporting:
+  - Real-time progress with organisation fleet update coordination
+  - **NEW**: Batch update progress tracking for organisation device fleets
+- **Organisation Version Management**: Enterprise firmware lifecycle management:
+  - Track device firmware versions across organisation device inventory
+  - **NEW**: Organisation-approved firmware update availability and testing
+  - **NEW**: Version rollback capabilities for organisation compliance
+- **Robust Error Handling**: Organisation-aware error management:
+  - Comprehensive error handling with organisation escalation procedures
+  - **NEW**: Organisation device recovery and replacement workflows
+- **Enhanced Update Notifications**: Intelligent notification system:
+  - Alert users based on organisation update policies and role permissions
+  - **NEW**: Organisation-wide firmware security alerts and mandatory updates
+- **Advanced Batch Updates**: Efficient organisation fleet management:
+  - Support updating multiple devices with organisation priority scheduling
+  - **NEW**: Organisation device maintenance windows and update coordination
+  - **NEW**: WW Admin cross-organisation firmware management capabilities
+
+### 18.4: Device Information & Persistence
+- **Device Database**: Store device information in local SQLite database
+- **Device Profiles**: Maintain persistent device profiles with:
+  - Connection history and reliability statistics
+  - Battery usage patterns and trends
+  - Deployment history and associations
+  - Custom device names and notes
+  - Calibration data and settings
+- **Sync with Supabase**: Sync device information across user's devices
+- **Device Analytics**: Track device performance and usage statistics
+
+## Dependencies:
+- Task 11: Offline SQLite Foundation (for device information persistence)
+- Existing BLE functionality from migration (react-native-ble-manager)
+- Nordic DFU functionality (react-native-nordic-dfu)
+- Device information models in Supabase
+
+## Technical Patterns:
+- **NEW**: Follow Claude Flow SPARC methodology for device management architecture
+- Follow Component Implementation Patterns for consistent UI with organisation awareness
+- **NEW**: Implement Maestro TDD patterns for all device management components and services
+- Use DeviceListItem component pattern with role-based rendering and organisation context
+- **NEW**: Implement organisation-scoped device filtering and permission validation
+- Extend existing BLE service architecture with LoRaWAN integration
+- **NEW**: Follow role-based access control patterns for device operations
+- Implement proper error handling and user feedback with organisation escalation workflows
+- **NEW**: Implement LoRaWAN webhook integration patterns for device coordination
+- Use background task management for firmware updates with organisation scheduling
+- **NEW**: Follow WW Admin patterns for read-only cross-organisation device visibility
+
+## Key Features:
+- **Enhanced Comprehensive Device Management**: Full lifecycle management with organisation context and role-based access
+- **Advanced BLE Reliability**: Robust connection management with LoRaWAN backup and organisation policies
+- **Organisation Firmware Management**: Enterprise firmware updates with approval workflows and batch coordination
+- **Device Intelligence**: Learning device patterns with organisation fleet analytics and predictive insights
+- **Multi-Tenancy Device Support**: Efficiently manage devices across organisations with data isolation
+- **Role-Based Access Control**: WW Admin, project admin, and member permissions for device operations
+- **LoRaWAN Integration**: Device monitoring, webhook management, and dual-channel communication
+- **Enhanced Persistent Storage**: Device information with organisation context and role permissions
+- **WW Admin Global Management**: Read-only cross-organisation device visibility and web portal access
+- **Organisation Analytics**: Device performance benchmarking and fleet health monitoring
+
+## BLE Enhancement Features:
+- **Auto-reconnection**: Automatically reconnect to previously paired devices
+- **Signal Quality Monitoring**: Track and report connection quality metrics
+- **Command Queue**: Queue BLE commands when device is temporarily unavailable
+- **Device Discovery**: Enhanced scanning with device type detection
+- **Battery Monitoring**: Real-time battery level tracking and alerts
+
+## Integration Points:
+- Deployment workflows use device management for device selection
+- Maps screen shows device locations and status
+- Real-time updates reflect device status changes
+- Device information syncs with Supabase for cross-device access
+
+## Testing Requirements:
+- Integration tests with real Wildlife Watcher hardware
+- Unit tests for BLE service enhancements
+- Test firmware update process end-to-end
+- Test device persistence and sync functionality
+- Test connection reliability and error recovery
+- Test multi-device management scenarios
+- Performance tests with multiple simultaneous connections
+
+## Success Criteria:
+- [ ] Device management screen fully operational with discovery and connection
+- [ ] BLE communication stable and reliable with enhanced error handling
+- [ ] Firmware updates working correctly with progress feedback
+- [ ] Device information persisted and synced across app instances
+- [ ] Multi-device support working without conflicts
+- [ ] Integration with existing BLE infrastructure seamless
+- [ ] Performance acceptable with multiple connected devices
+- [ ] User experience intuitive for device management tasks
+
+# Test Strategy:
+Test device discovery and connection, verify firmware updates, test BLE reliability improvements, validate device persistence, test multi-device scenarios

@@ -1,0 +1,73 @@
+# Task ID: 6
+# Title: Security Cleanup and Firebase Removal
+# Status: done
+# Dependencies: 5
+# Priority: high
+# Description: Remove all Firebase dependencies, eliminate dangerous SSL bypass code, update Android native files for security compliance
+# Details:
+1. Remove all @react-native-firebase/* packages
+2. Delete android/app/src/main/java/.../IgnoreSSLFactory.java
+3. Update MainActivity.kt to remove SSL factory imports and usage
+4. Clean up AndroidManifest.xml Firebase references
+5. Remove google-services.json
+6. Update android/build.gradle to remove Firebase plugins
+7. Clear Firebase initialization code from JS
+8. Test build still works without Firebase
+
+IMPORTANT: Follow MIGRATION-IMPACT-ANALYSIS.md for security issues to address.
+
+Note: Can execute in parallel with Tasks 8-9 (Phase 2 Stream A - Security & Dependency Cleanup)
+Reference document: MIGRATION-IMPACT-ANALYSIS.md - Security vulnerabilities section
+
+# Test Strategy:
+Verify no Firebase imports remain in codebase, confirm SSL bypass code completely removed, ensure Android build succeeds, test app functionality without Firebase dependencies. Verify all security issues from MIGRATION-IMPACT-ANALYSIS.md are resolved
+
+# Subtasks:
+## 1. Remove Firebase Packages from Dependencies [done]
+### Dependencies: None
+### Description: Uninstall all @react-native-firebase/* packages and related Firebase dependencies from package.json
+### Details:
+Execute npm uninstall for all Firebase packages including @react-native-firebase/app, @react-native-firebase/analytics, @react-native-firebase/crashlytics, @react-native-firebase/messaging, @react-native-firebase/remote-config, and any other Firebase-related packages. Update package-lock.json after removal.
+
+## 2. Remove SSL Bypass Security Vulnerability [done]
+### Dependencies: None
+### Description: Delete the dangerous IgnoreSSLFactory.java file and all associated SSL bypass code
+### Details:
+Navigate to android/app/src/main/java/com/wildlife/wildlifewatcher/ and permanently delete IgnoreSSLFactory.java. This file contains insecure SSL certificate validation bypass code that violates security best practices and must be completely removed.
+
+## 3. Update MainActivity.kt to Remove SSL Factory References [done]
+### Dependencies: 6.2
+### Description: Clean up MainActivity.kt by removing all SSL factory imports and usage code
+### Details:
+Edit android/app/src/main/java/com/wildlife/wildlifewatcher/MainActivity.kt to remove any imports of IgnoreSSLFactory and related SSL bypass code. Remove any instantiation or usage of the SSL factory. Ensure the file compiles correctly after changes.
+
+## 4. Clean AndroidManifest.xml Firebase References [done]
+### Dependencies: 6.1
+### Description: Remove all Firebase-related configurations and permissions from AndroidManifest.xml
+### Details:
+Edit android/app/src/main/AndroidManifest.xml to remove Firebase services, receivers, metadata entries, and any Firebase-specific permissions. This includes removing Firebase Cloud Messaging services, analytics receivers, and any Firebase configuration metadata.
+
+## 5. Remove google-services.json Configuration File [done]
+### Dependencies: 6.1
+### Description: Delete the Firebase configuration file from the Android project
+### Details:
+Remove android/app/google-services.json file which contains Firebase project configuration. Also check for any google-services.json files in other locations within the Android project structure.
+
+## 6. Update Android Build Configuration [done]
+### Dependencies: 6.5
+### Description: Remove Firebase and Google Services plugins from Android Gradle files
+### Details:
+Edit android/build.gradle to remove the Google Services classpath dependency. Edit android/app/build.gradle to remove the apply plugin: 'com.google.gms.google-services' line and any Firebase-related dependencies. Clean up any Firebase performance or crashlytics plugin applications.
+
+## 7. Remove Firebase Initialization from JavaScript Code [done]
+### Dependencies: 6.1
+### Description: Clean up all Firebase initialization and usage code from the JavaScript/TypeScript codebase
+### Details:
+Search the entire src/ directory for Firebase imports, initialization code, and usage. Remove any Firebase.initializeApp() calls, Firebase analytics tracking, crash reporting, remote config fetches, and push notification handling related to Firebase. Update any components or services that depended on Firebase functionality.
+
+## 8. Validate Security Compliance and Test Build [done]
+### Dependencies: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7
+### Description: Perform comprehensive security validation and test the application build without Firebase
+### Details:
+Run a complete Android build to ensure the app compiles and runs without Firebase dependencies. Verify all security vulnerabilities mentioned in MIGRATION-IMPACT-ANALYSIS.md are addressed. Test core app functionality to ensure no features are broken by Firebase removal. Document any functionality that needs replacement.
+

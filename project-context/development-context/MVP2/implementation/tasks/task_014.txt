@@ -1,0 +1,139 @@
+# Task ID: 14
+# Title: Project Details & Administration
+# Status: pending
+# Dependencies: 13
+# Priority: medium
+# Description: STREAM A: Complete project management with LoRaWAN management, model integration, WW Admin features, detailed project information screen, administrative tools, data export capabilities, and project lifecycle management
+# Details:
+PARALLEL DEVELOPMENT STREAM A - Task 14: Project Details & Administration
+
+This task completes the project management system by providing comprehensive project details and administrative capabilities for Wildlife Watcher projects.
+
+## Implementation Requirements:
+
+### 14.1: Project Details Screen with Organisation Context
+- Create `src/navigation/screens/ProjectDetailsScreen.tsx` following Component Implementation Patterns
+- **NEW**: Maestro TDD implementation for project details components
+- Comprehensive project information display with organisation awareness:
+  - **Header Section**: Project name, description, creation date, owner info, organisation badge
+  - **NEW**: Organisation Context Bar (multi-org users) with organisation switching capability
+  - **Project Settings**: Sampling design, website, privacy settings, organisation policies
+  - **Project Statistics**: Total deployments, active deployments, team size, LoRaWAN device count
+  - **NEW**: Device Status Overview: Battery levels, SD card usage from LoRaWAN webhooks
+  - **Member Section**: Team members with enhanced roles (WW Admin, Project Admin, Project Member)
+  - **Activity Feed**: Recent project activities and updates with organisation context
+  - **Deployment History**: List of recent deployments with status and device information
+- **NEW**: Role-based editable fields:
+  - **WW Admin**: All project settings, organisation transfer, system configuration
+  - **Project Admin**: Project description, sampling design, website URL, member management
+  - **Project Member**: View-only access with deployment creation capability
+- Privacy settings (private/public toggle) with organisation visibility rules
+- Project settings (bait usage, monitoring marked) with organisation defaults
+- Real-time updates using Supabase subscriptions with organisation and role filtering
+
+### 14.2: Enhanced Project Administration Tools with Organisation Scoping
+- **NEW**: Maestro TDD coverage for all administration operations
+- **Project Settings Management** with organisation context:
+  - Update project metadata and configuration with organisation policy validation
+  - Change project privacy and access settings within organisation boundaries
+  - Modify project-specific settings (bait, monitoring) with organisation defaults
+  - **NEW**: LoRaWAN device configuration and webhook management
+- **Enhanced Data Management** with role-based access:
+  - **WW Admin**: Export data across organisations, system-wide analytics
+  - **Project Admin**: Export project data (deployments, member activity) within organisation
+  - Generate project reports (deployment success rates, team performance, device utilization)
+  - **NEW**: LoRaWAN data export (battery trends, storage usage analytics)
+  - Data cleanup and archival tools with organisation compliance requirements
+- **Project Lifecycle Management** with organisation governance:
+  - Archive inactive projects (preserves data, removes from active lists) with organisation approval
+  - Delete projects (admin only, with confirmation and cascading cleanup) respecting organisation policies
+  - **NEW**: Transfer project ownership between admins within same organisation
+  - **NEW**: WW Admin cross-organisation project transfer capabilities
+- **NEW**: WW Admin Global Administration (MVP User Provisioning):
+  - Bulk project operations across organisations
+  - System-wide project analytics and reporting
+  - Organisation-level project policy management
+
+### 14.3: Enhanced Analytics and Reporting with Organisation Intelligence
+- **NEW**: Maestro TDD coverage for analytics components and data integrity
+- **Project Analytics Dashboard** with multi-dimensional insights:
+  - Deployment success metrics with organisation benchmarking
+  - Team member activity statistics with role-based performance tracking
+  - **NEW**: LoRaWAN device usage patterns (battery life, storage utilization, connectivity)
+  - Location-based deployment insights with organisation territory mapping
+  - **NEW**: Cross-project analytics for project admins managing multiple projects
+- **WW Admin Global Analytics** (MVP feature):
+  - Organisation-wide performance comparisons
+  - System utilization metrics and capacity planning
+  - User adoption and engagement analytics across organisations
+  - **NEW**: LoRaWAN fleet health monitoring and predictive maintenance
+- **Enhanced Export Capabilities** with role-based data access:
+  - CSV export of deployment data with organisation and role filtering
+  - PDF project summary reports with organisation branding
+  - JSON data export for external analysis with data anonymization options
+  - **NEW**: LoRaWAN device data export with battery and storage trend analysis
+  - Integration with external analytics tools via organisation-approved APIs
+
+### 14.4: Advanced Features
+- **Project Templates**: Save project configurations as templates for future use
+- **Bulk Operations**: Manage multiple deployments simultaneously
+- **Integration Points**: Connect with external wildlife monitoring systems
+- **Audit Trail**: Track all project modifications and administrative actions
+
+## Dependencies:
+- Task 13: Project Member Management (for member integration)
+- **Task 14.5 (Maestro Installation)**: See `task_014_maestro_installation.txt` for E2E testing framework setup - recommended to complete before Task 14 implementation for TDD approach
+- Supabase real-time subscriptions
+- File export capabilities using expo-file-system
+- Chart/visualization libraries for analytics
+
+## Technical Patterns:
+- **NEW**: Follow Claude Flow SPARC methodology for project administration architecture
+- Follow ScreenLayout pattern for consistent screen structure with organisation context
+- **NEW**: Implement Maestro TDD patterns for all project administration features
+- Use TabView for organizing different sections of project details with role-based tab visibility
+- **NEW**: Implement organisation-aware data filtering and scoping throughout components
+- Implement proper permission checks for administrative features with organisation validation
+- **NEW**: Follow WW Admin UI patterns for cross-organisation management interfaces
+- Use confirmation dialogs for destructive actions with organisation policy warnings
+- Follow data export patterns from MVP2 specifications with organisation compliance integration
+- **NEW**: Implement LoRaWAN data visualization patterns for device status and analytics
+
+## Key Features:
+- **Comprehensive Project Overview**: All project information with organisation context and role-based visibility
+- **Enhanced Administrative Control**: Full project lifecycle management with organisation governance
+- **WW Admin Global Visibility**: Read-only project overview across organisations
+- **Advanced Data Export & Analytics**: Insights and reporting with organisation intelligence and LoRaWAN data
+- **Multi-Tenancy Support**: Organisation-scoped operations with data isolation
+- **Enhanced Team Collaboration**: Integration with member management and role-based permissions
+- **Real-time Updates**: Live project information and activity feeds with organisation and role filtering
+- **LoRaWAN Integration**: Device status monitoring, battery analytics, and webhook management
+- **Role-Based Access Control**: WW Admin, project admin, and member permissions throughout interface
+
+## Integration Points:
+- Projects list navigates to project details
+- Member management is integrated within project details
+- Deployment workflows reference project settings
+- Maps screen can filter by specific projects
+- Analytics integrate with deployment and device data
+
+## Testing Requirements:
+- Unit tests for all administrative operations
+- Integration tests for project details screen
+- Test data export functionality with various formats
+- Test permission-based feature access
+- Test project lifecycle operations (archive, delete, transfer)
+- Test analytics accuracy and performance
+
+## Success Criteria:
+- [ ] Project details screen comprehensive and intuitive
+- [ ] Administrative functions working properly for authorized users
+- [ ] Data export functionality generating correct formats
+- [ ] Project lifecycle management working with proper safeguards
+- [ ] Analytics providing accurate and useful insights
+- [ ] Real-time updates functioning correctly
+- [ ] Permission enforcement for all administrative features
+- [ ] User-friendly interface with proper error handling
+
+# Test Strategy:
+Test project details display, verify admin permissions, test data export formats, validate lifecycle operations, test analytics accuracy

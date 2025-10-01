@@ -1,0 +1,165 @@
+# Task ID: 14.5 (Insert between 14 and 15)
+# Title: Maestro E2E Testing Framework Installation & Setup
+# Status: pending
+# Dependencies: 14 (Foundation layer complete)
+# Priority: high
+# Description: Install and configure Maestro E2E testing framework for comprehensive testing of UI workflows, auth flows, offline sync, and organisation multi-tenancy features
+# Details:
+
+## 🎯 **OPTIMAL TIMING FOR MAESTRO INSTALLATION**
+
+**Insert between Task 14 and Task 15** - Perfect timing because:
+
+✅ **Foundation Complete**: Core offline SQLite foundation (Task 11) ready
+✅ **Auth System Stable**: User authentication and role management functional (Task 10)
+✅ **UI Foundation Ready**: Basic UI components and navigation established
+✅ **Before Complex Workflows**: Install before deployment wizard (Task 15+) implementation
+✅ **Parallel Stream Support**: Enables TDD for upcoming parallel development streams
+
+---
+
+## **Implementation Requirements:**
+
+### 14.5.1: WSL2 Maestro Installation with Java Setup
+**Automated Installation Approach (Recommended)**
+
+```bash
+# Execute pre-built installation script
+./install-maestro-wsl2.sh
+
+# This script handles:
+# - Java 17+ installation verification
+# - Maestro CLI installation via official script
+# - PATH configuration for WSL2
+# - Installation verification
+# - WSL2-specific setup notes
+```
+
+**Manual Installation Steps (Alternative)**
+```bash
+# 1. Verify/Install Java 17+
+java -version
+# If < 17: sudo apt update && sudo apt install openjdk-17-jdk
+
+# 2. Install Maestro CLI
+curl -Ls "https://get.maestro.mobile.dev" | bash
+
+# 3. Configure PATH
+echo 'export PATH="$HOME/.maestro/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# 4. Verify Installation
+maestro --version
+```
+
+### 14.5.2: Maestro Test Environment Configuration
+- **Device Setup**: Configure Android emulator or physical device connection
+- **WSL2 Considerations**: Set up ADB bridge between WSL2 and Windows if needed
+- **App Build**: Ensure development build is available for testing
+- **Test Data**: Configure test users and organisations in Supabase Dev instance
+
+### 14.5.3: Validate Existing Maestro Test Suite
+**Auth Workflow Validation** (`tests/maestro/auth-workflow.yaml`)
+```bash
+# Run comprehensive auth flow test
+npm run test:maestro:auth
+
+# Expected test coverage:
+# ✅ WW Admin login and organisation switching
+# ✅ Project Admin organisation-scoped access
+# ✅ Project Member limited permissions
+# ✅ Multi-organisation user role switching
+# ✅ Role-based navigation and security
+```
+
+**Offline Workflow Validation** (`tests/maestro/offline/`)
+```bash
+# Run complete offline workflow test
+npm run test:maestro:offline
+
+# Expected test coverage:
+# ✅ Offline deployment creation
+# ✅ SQLite data persistence
+# ✅ Network transition handling
+# ✅ Sync conflict resolution
+```
+
+### 14.5.4: Enhanced Test Framework Integration
+- **CI/CD Preparation**: Configure Maestro for future automated testing pipelines
+- **Test Data Management**: Set up consistent test data for reliable E2E testing
+- **Performance Baseline**: Establish performance benchmarks for future regression testing
+- **Cross-Platform Setup**: Prepare for both Android and iOS testing (iOS when available)
+
+---
+
+## **📚 Context7 Reference Documentation**
+
+**Maestro Library ID**: `/mobile-dev-inc/maestro`
+**Documentation Coverage**: 53 code snippets, Trust Score: 8.9
+**Key Resources**:
+- Installation and setup patterns
+- YAML workflow syntax and best practices
+- Device connection and WSL2 considerations
+- Advanced testing patterns and automation
+- Performance testing and optimization validation
+
+**Access comprehensive Maestro documentation**:
+```bash
+# Future reference for advanced patterns
+# Context7 MCP: /mobile-dev-inc/maestro
+# Topics: "WSL2 setup", "auth testing", "offline workflows"
+```
+
+---
+
+## **🎯 Strategic Value & Dependencies**
+
+### **Enables Upcoming Tasks (15-23)**
+- **Task 15+**: TDD approach for deployment wizard workflows
+- **Task 18+**: Device management and BLE integration validation
+- **Task 20+**: Comprehensive offline sync testing
+- **Task 22**: Performance optimization validation
+- **Task 23**: Production readiness and security validation
+
+### **Parallel Development Stream Support**
+**Stream A (Core Features)**: Auth workflow validation
+**Stream B (Deployment)**: 6-step wizard E2E testing
+**Stream C (Device/Sync)**: Offline sync and device management testing
+
+### **Quality Gates Integration**
+- **Development**: Immediate feedback on UI workflow changes
+- **Integration**: Comprehensive cross-feature validation
+- **Pre-Production**: Full regression testing before release
+
+---
+
+## **⏰ Time Investment**
+
+**Estimated Duration**: 1-2 hours
+**Complexity**: Low-Medium (WSL2 setup considerations)
+**ROI**: High (Enables comprehensive testing for all subsequent tasks)
+
+**Breakdown**:
+- Installation & Setup: 30-60 minutes
+- Test Validation: 15-30 minutes
+- Documentation & Integration: 15-30 minutes
+
+---
+
+## **✅ Success Criteria**
+
+1. **✅ Maestro CLI installed** and accessible via `maestro --version`
+2. **✅ Auth workflow tests pass** against real Supabase Dev instance
+3. **✅ Offline workflow tests execute** successfully
+4. **✅ WSL2 environment configured** for consistent testing
+5. **✅ Test data and device setup** ready for development workflow
+6. **✅ Integration with npm scripts** functional (`npm run test:maestro:*`)
+
+---
+
+## **🚀 Post-Installation Benefits**
+
+**Immediate**: Comprehensive auth and offline workflow validation
+**Short-term**: TDD support for Tasks 15-18 development
+**Long-term**: Production readiness validation and regression testing
+**Strategic**: Foundation for CI/CD integration and automated quality gates
