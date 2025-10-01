@@ -61,7 +61,7 @@ The dashboard reads from **3 primary sources**:
 ---
 
 ### 2. **Individual Task Files** (Secondary Source)
-**Location**: `project-context/development-context/MVP2/tasks/task_*.txt`
+**Location**: `project-context/development-context/MVP2/implementation/tasks/task_*.txt`
 
 **What it reads**:
 - Task status from file headers
@@ -111,7 +111,7 @@ Update documentation files **immediately** after:
 #### **Step 1: Update Task Files** (If they exist)
 ```bash
 # Edit task file header
-vim project-context/development-context/MVP2/tasks/task_012.txt
+vim project-context/development-context/MVP2/implementation/tasks/task_012.txt
 
 # Change status line:
 # Status: pending  → in-progress  → completed
@@ -317,7 +317,7 @@ grep "Completion Rate" project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md
 grep "Current Phase" project-context/superclaude-task-management.md
 
 # Check task file status (if exists)
-grep "# Status:" project-context/development-context/MVP2/tasks/task_012.txt
+grep "# Status:" project-context/development-context/MVP2/implementation/tasks/task_012.txt
 
 # Verify dashboard server is running
 curl -s http://localhost:3333 | grep "Wildlife Watcher"
@@ -412,10 +412,11 @@ wildlife-watcher-mobile-app/
 │   │   └── MVP2-MASTER-EXECUTION-PLAN.md    ← Executive summary
 │   └── development-context/
 │       ├── MVP2/
-│       │   └── tasks/
-│       │       ├── task_012.txt              ← Individual task files
-│       │       ├── task_013.txt
-│       │       └── ...
+│       │   └── implementation/
+│       │       └── tasks/
+│       │           ├── task_012.txt          ← Individual task files
+│       │           ├── task_013.txt
+│       │           └── ...
 │       └── project-progress-tracker/
 │           ├── dashboard-server.js           ← Dashboard backend
 │           ├── mvp2-progress-dashboard-hybrid.html
@@ -448,7 +449,7 @@ open http://localhost:3333
 vim project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md
 
 # Edit current task file
-vim project-context/development-context/MVP2/tasks/task_012.txt
+vim project-context/development-context/MVP2/implementation/tasks/task_012.txt
 
 # Restart dashboard server
 pkill -f dashboard-server && ./start.sh

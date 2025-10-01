@@ -24,7 +24,7 @@ app.use(express.json());
 const CONFIG = {
   mobileAppRoot: '/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app',
   backendRoot: '/home/adarsh/dev/wildlifeai/wildlife-watcher-backend',
-  tasksDir: '/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/MVP2/tasks',
+  tasksDir: '/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/MVP2/implementation/tasks',
   metricsFile: '/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md',
   backendStatusFile: '/home/adarsh/dev/wildlifeai/wildlife-watcher-backend/project-context/PROJECT-STATUS.md'
 };
