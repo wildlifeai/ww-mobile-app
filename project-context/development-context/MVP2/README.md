@@ -48,6 +48,13 @@ MVP2/
 │
 ├── 📁 implementation/                      # All implementation work
 │   │
+│   ├── 📁 execution/                       # Active execution planning
+│   │   ├── MVP2-MASTER-EXECUTION-PLAN.md          # ⭐ PRIMARY STRATEGY
+│   │   ├── MVP2-METRICS-TRACKER.md                # Live time tracking
+│   │   ├── MVP2-EXECUTION-PLAN-REVIEW-PROMPT.md  # Execution plan review template
+│   │   ├── MVP2-TASK-CRITERIA-ENHANCEMENT.md     # Quality standards
+│   │   └── CROSS-PROJECT-ORCHESTRATION-GUIDE.md  # Backend coordination
+│   │
 │   ├── 📁 guides/                          # Developer implementation guides
 │   │   ├── api-integration-guide.md       # Supabase integration patterns
 │   │   ├── component-patterns.md          # UI component patterns
@@ -78,6 +85,12 @@ MVP2/
     ├── task-context-preservation.json     # Legacy state backup (superseded)
     ├── parallel-streams-context.json      # Legacy execution state (superseded)
     ├── ARCHIVE-NOTE-STATE-FILES.md        # Explanation of archived state files
+    ├── MVP2-MASTER-EXECUTION-PLAN copy.md # Duplicate execution plan (archived)
+    ├── WW-ADMIN-CORRECTIONS-EXECUTION-PLAN.md  # Historical corrections (Sept 2025)
+    ├── CPT-2025-09-29-001-backend-alignment-assessment.md  # Backend assessment
+    ├── CPT-2025-09-17-001-backend-mobile-coordination-status.md  # Initial coordination
+    ├── MVP2-Dashboard-Redesign-Guide.md   # Dashboard enhancement plan
+    ├── SERVER-UPGRADE-SUMMARY.md          # Dashboard server upgrade notes
     └── wildlife-watcher-implementation-spec-mvp2-consolidated-20250731.md
 ```
 
@@ -142,14 +155,16 @@ MVP2/
 3. `specifications/revisions/WW-Admin-Task-Corrections-Phase-3B.md` - Latest corrections
 4. `implementation/planning/ww-admin-corrections-plan.md` - Implementation strategy
 
-### **Use Case 7: Project Planning**
+### **Use Case 7: Project Planning & Execution**
 
-**Goal**: Plan development approach and timeline
+**Goal**: Plan development approach, track progress, and manage execution
 
 **Document Sequence**:
-1. `implementation/planning/claude-flow-implementation-plan.md` - Main strategy
-2. `implementation/guides/task-restructuring-plan.md` - Task breakdown
-3. `implementation/tasks/` - Individual task details
+1. `implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md` - ⭐ PRIMARY STRATEGY
+2. `implementation/execution/MVP2-METRICS-TRACKER.md` - Live time tracking
+3. `implementation/planning/claude-flow-implementation-plan.md` - Implementation planning
+4. `implementation/guides/task-restructuring-plan.md` - Task breakdown
+5. `implementation/tasks/` - Individual task details
 
 ---
 
@@ -157,8 +172,9 @@ MVP2/
 
 ### **Must-Read for All Developers**
 1. **`implementation-spec-v1.4.md`** - Primary specification (69KB)
-2. **`implementation/guides/component-patterns.md`** - UI implementation patterns
-3. **`implementation/guides/api-integration-guide.md`** - Supabase integration
+2. **`implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md`** - Current execution strategy
+3. **`implementation/guides/component-patterns.md`** - UI implementation patterns
+4. **`implementation/guides/api-integration-guide.md`** - Supabase integration
 
 ### **Must-Read for Hardware Integration**
 1. **`specifications/hardware/BLE-WWUS-DFUx/revised-documents/Wildlife-Watcher-Communication-Systems-Technical-Guide.md`** - Communication systems

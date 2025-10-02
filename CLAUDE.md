@@ -43,8 +43,8 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - **Development Methodology**: SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) with TDD
 
 ### Where to Find Task Information
-- **Current Task Status**: Check `@project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md` or live dashboard at http://localhost:3333
-- **Current Strategy**: See `@project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md`
+- **Current Task Status**: Check `@project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md` or live dashboard at http://localhost:3333
+- **Current Strategy**: See `@project-context/development-context/MVP2/implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md`
 - **Development Progress**: Review `@project-context/learnings/claude-flow-usage-log.md`
 - **Task Specifications**: Located in `@project-context/development-context/MVP2/implementation/tasks/`
 - **Archived State Files**: See `@project-context/development-context/MVP2/archive/` for legacy tracking files
@@ -287,7 +287,7 @@ The `@project-context/development-context/` contains critical project specificat
 ### Documents to Keep Updated
 
 **ALWAYS UPDATE** these documents as you work:
-1. **Metrics Tracker**: `@project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+1. **Metrics Tracker**: `@project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
    - Record actual vs estimated hours for every task
    - Track start/end times for accuracy
    - Update completion status and variance analysis
@@ -323,9 +323,9 @@ The `@project-context/development-context/` contains critical project specificat
 
 #### Current Status & Progress
 - **Live Dashboard**: Project Progress Tracker at http://localhost:3333
-- **Execution Strategy**: `@project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md` (**check for current methodology**)
-- **Progress Tracking**: `@project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
-- **Task Details**: Individual specs in `@project-context/development-context/MVP2/tasks/`
+- **Execution Strategy**: `@project-context/development-context/MVP2/implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md` (**check for current methodology**)
+- **Progress Tracking**: `@project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
+- **Task Details**: Individual specs in `@project-context/development-context/MVP2/implementation/tasks/`
 
 #### Information Hierarchy
 | Document | Authority Level | Purpose |
@@ -339,26 +339,26 @@ The `@project-context/development-context/` contains critical project specificat
 
 | Document | Purpose | When to Use |
 |----------|---------|-------------|
-| `MVP2-MASTER-EXECUTION-PLAN.md` | **Primary execution strategy** | Before starting any work |
-| `MVP2-METRICS-TRACKER.md` | **Time tracking & velocity** | Start/end of tasks |
-| `development-context/MVP2/implementation/tasks/` | **Individual task specs** | During implementation |
+| `implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md` | **Primary execution strategy** | Before starting any work |
+| `implementation/execution/MVP2-METRICS-TRACKER.md` | **Time tracking & velocity** | Start/end of tasks |
+| `implementation/tasks/` | **Individual task specs** | During implementation |
 | Project Progress Tracker | **Live status dashboard** | Continuous monitoring |
 | Archived state files | Legacy context (see MVP2/archive/) | Historical reference only |
 
 ### Ready to Work Resources
 
 ✅ **Requirements**: Read `@project-context/development-context/MVP2/implementation-spec-v1.4.md` for complete architecture
-✅ **Current Strategy**: `MVP2-MASTER-EXECUTION-PLAN.md` shows live methodology
+✅ **Current Strategy**: `implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md` shows live methodology
 ✅ **Live Monitoring**: Project Progress Tracker provides real-time status
-✅ **Task Specifications**: All 23 tasks documented in `/tasks/` directory
+✅ **Task Specifications**: All 23 tasks documented in `implementation/tasks/` directory
 ✅ **Quality Standards**: Defined in current execution strategy document
 
 ### Current Actions (Always Check Live Sources)
 
 - **What's Next**: Check Project Progress Tracker dashboard for current priorities
-- **Execution Strategy**: Consult `MVP2-MASTER-EXECUTION-PLAN.md` for latest methodology
-- **Task Details**: Review specific task files in `development-context/MVP2/implementation/tasks/`
-- **Track Progress**: Update `MVP2-METRICS-TRACKER.md` with time spent
+- **Execution Strategy**: Consult `implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md` for latest methodology
+- **Task Details**: Review specific task files in `implementation/tasks/`
+- **Track Progress**: Update `implementation/execution/MVP2-METRICS-TRACKER.md` with time spent
 
 ### Cross-Project Coordination
 
