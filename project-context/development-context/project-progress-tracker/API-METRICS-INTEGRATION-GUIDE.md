@@ -119,7 +119,7 @@ time curl -s http://localhost:3333/api/metrics > /dev/null
 ## 📈 Data Sources
 
 ### Primary Source
-- **File**: `/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+- **File**: `/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
 - **Update Frequency**: Real-time with 1-minute cache
 - **Parse Time**: ~2-5ms per request
 

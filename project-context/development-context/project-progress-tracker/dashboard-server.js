@@ -25,7 +25,7 @@ const CONFIG = {
   mobileAppRoot: '/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app',
   backendRoot: '/home/adarsh/dev/wildlifeai/wildlife-watcher-backend',
   tasksDir: '/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/MVP2/implementation/tasks',
-  metricsFile: '/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md',
+  metricsFile: '/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md',
   backendStatusFile: '/home/adarsh/dev/wildlifeai/wildlife-watcher-backend/project-context/PROJECT-STATUS.md'
 };
 
@@ -1115,7 +1115,7 @@ function calculateStreamMetrics(tasks) {
 
 // Parse execution plan for additional context
 function parseExecutionPlan() {
-  const planFile = path.join(CONFIG.mobileAppRoot, 'project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md');
+  const planFile = path.join(CONFIG.mobileAppRoot, 'project-context/development-context/MVP2/implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md');
   const content = safeFileRead(planFile);
 
   if (!content) {
@@ -2159,7 +2159,7 @@ app.get('/api/streams', (req, res) => {
       last_modified: new Date().toISOString(),
       data_sources: {
         tasks_dir: CONFIG.tasksDir,
-        execution_plan: `${CONFIG.mobileAppRoot}/project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md`,
+        execution_plan: `${CONFIG.mobileAppRoot}/project-context/development-context/MVP2/implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md`,
         metrics_file: CONFIG.metricsFile
       }
     };

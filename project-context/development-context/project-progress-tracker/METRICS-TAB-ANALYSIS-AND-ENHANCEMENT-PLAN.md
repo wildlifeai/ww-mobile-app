@@ -825,7 +825,7 @@ Ready to execute: "Launch Phase 1 metrics enhancement with parallel agent coordi
 - **HTML Implementation**: `mvp2-progress-dashboard-hybrid.html` (Lines 2062-2129)
 - **JavaScript Logic**: `mvp2-dashboard-api-hybrid.js` (Lines 423-435, 798-819)
 - **Server Implementation**: `dashboard-server.js` (API endpoints)
-- **Data Source**: `@project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+- **Data Source**: `@project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
 
 ### Related Documentation
 - **Dashboard Context**: `DASHBOARD-CONTEXT-PROMPT.md`

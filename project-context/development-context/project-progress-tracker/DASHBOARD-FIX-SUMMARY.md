@@ -162,7 +162,7 @@ Per `TRACKER-SYSTEM-OVERVIEW.md`, the dashboard reads from:
    - Update Method: Edit task file header directly
 
 2. **Metrics Tracker** (Time & variance):
-   - Location: `/project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+   - Location: `/project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
    - Purpose: Track actual vs estimated hours, velocity, variance
    - Update Method: Manual table updates
 
@@ -201,7 +201,7 @@ Real-time display at http://localhost:3333
 
 2. **Update Metrics Tracker**:
    ```markdown
-   # Edit: project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md
+   # Edit: project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md
    | 11 | Offline SQLite Foundation | 8 hrs | ~8 hrs | 0 hrs | 2025-09-30 | Complete |
    ```
 

@@ -56,7 +56,7 @@ Projects (Mobile App + Backend)
 - `done` - Completed
 
 #### **Metrics Tracker** - Time & Variance Analysis
-**Location**: `/project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+**Location**: `/project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
 
 **Update Sections**:
 - Overall progress percentages

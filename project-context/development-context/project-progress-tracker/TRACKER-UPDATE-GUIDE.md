@@ -39,7 +39,7 @@ The Project Progress Tracker is a real-time web dashboard that monitors MVP2 dev
 The dashboard reads from **3 primary sources**:
 
 ### 1. **MVP2-METRICS-TRACKER.md** (Primary Source)
-**Location**: `project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+**Location**: `project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
 
 **What it tracks**:
 - Overall completion rate
@@ -119,7 +119,7 @@ vim project-context/development-context/MVP2/implementation/tasks/task_012.txt
 
 #### **Step 2: Update MVP2-METRICS-TRACKER.md**
 ```bash
-vim project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md
+vim project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md
 ```
 
 **What to update**:
@@ -169,7 +169,7 @@ vim project-context/superclaude-task-management.md
 
 #### **Step 4: Update MVP2-MASTER-EXECUTION-PLAN.md**
 ```bash
-vim project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md
+vim project-context/development-context/MVP2/implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md
 ```
 
 **What to update**:
@@ -311,7 +311,7 @@ Before considering an update complete, verify:
 
 ```bash
 # Check metrics file completion rate
-grep "Completion Rate" project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md
+grep "Completion Rate" project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md
 
 # Check current phase
 grep "Current Phase" project-context/superclaude-task-management.md
@@ -374,7 +374,7 @@ Example: (-0.5 / 6) × 100 = -8.3% (8.3% under)
 
 **Solutions**:
 1. Wait full 60 seconds for cache expiration
-2. Check file path is correct: `project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+2. Check file path is correct: `project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
 3. Verify file has no syntax errors (valid Markdown)
 4. Restart dashboard server: `pkill -f dashboard-server && ./start.sh`
 
@@ -405,14 +405,13 @@ Example: (-0.5 / 6) × 100 = -8.3% (8.3% under)
 ```
 wildlife-watcher-mobile-app/
 ├── project-context/
-│   ├── MVP2-Tasks/
-│   │   └── MVP2-METRICS-TRACKER.md          ← Primary source
 │   ├── superclaude-task-management.md       ← Current phase
-│   ├── MVP2-Tasks/
-│   │   └── MVP2-MASTER-EXECUTION-PLAN.md    ← Executive summary
 │   └── development-context/
 │       ├── MVP2/
 │       │   └── implementation/
+│       │       ├── execution/
+│       │       │   ├── MVP2-METRICS-TRACKER.md        ← Primary source
+│       │       │   └── MVP2-MASTER-EXECUTION-PLAN.md  ← Executive summary
 │       │       └── tasks/
 │       │           ├── task_012.txt          ← Individual task files
 │       │           ├── task_013.txt
@@ -429,9 +428,9 @@ wildlife-watcher-mobile-app/
 ## 🔗 Related Documentation
 
 - **Dashboard Context**: `DASHBOARD-CONTEXT-PROMPT.md`
-- **Metrics Tracker**: `../../MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+- **Metrics Tracker**: `../MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
 - **Task Management**: `../../superclaude-task-management.md`
-- **Execution Plan**: `../../MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md`
+- **Execution Plan**: `../MVP2/implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md`
 
 ---
 
@@ -446,7 +445,7 @@ cd project-context/development-context/project-progress-tracker
 open http://localhost:3333
 
 # Edit metrics file
-vim project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md
+vim project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md
 
 # Edit current task file
 vim project-context/development-context/MVP2/implementation/tasks/task_012.txt

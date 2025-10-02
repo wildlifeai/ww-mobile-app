@@ -227,9 +227,9 @@ interface BackendTaskComponent {
 ### **Real Data Sources**
 
 **Primary Data Sources:**
-- **MVP2 Task Files**: `/project-context/development-context/MVP2/tasks/*.txt`
-- **Execution Plan**: `/project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md`
-- **Metrics Tracker**: `/project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+- **MVP2 Task Files**: `/project-context/development-context/MVP2/implementation/tasks/*.txt`
+- **Execution Plan**: `/project-context/development-context/MVP2/implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md`
+- **Metrics Tracker**: `/project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
 - **Backend Status**: `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md`
 - **Implementation Spec**: `/project-context/development-context/MVP2/implementation-spec-v1.4.md`
 

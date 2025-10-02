@@ -65,7 +65,7 @@ archive/
 The dashboard automatically loads data from:
 
 - **📱 Mobile Tasks**: `project-context/development-context/MVP2/tasks/*.txt`
-- **📊 Metrics**: `project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
+- **📊 Metrics**: `project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
 - **⚡ Backend Status**: `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md`
 
 ## 🔧 Development
