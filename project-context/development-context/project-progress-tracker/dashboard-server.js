@@ -2369,10 +2369,10 @@ app.get('/api/document/:docType', (req, res) => {
     // Map document types to actual file paths
     switch (docType) {
       case 'execution-plan':
-        filePath = path.join(__dirname, '../../MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md');
+        filePath = path.join(__dirname, '../MVP2/implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md');
         break;
       case 'metrics-tracker':
-        filePath = path.join(__dirname, '../../MVP2-Tasks/MVP2-METRICS-TRACKER.md');
+        filePath = path.join(__dirname, '../MVP2/implementation/execution/MVP2-METRICS-TRACKER.md');
         break;
       case 'task-management':
         filePath = path.join(__dirname, '../../superclaude-task-management.md');
