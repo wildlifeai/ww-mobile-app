@@ -72,6 +72,7 @@ export class OfflineService {
     // Get initial network state
     const initialState = await NetInfo.fetch();
     this.updateNetworkStatus(initialState);
+    console.log('📡 Initial network state:', this.networkStatus);
 
     // Listen for network changes
     this.networkUnsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
@@ -79,11 +80,22 @@ export class OfflineService {
       this.updateNetworkStatus(state);
       const isNowOnline = this.networkStatus.isConnected;
 
+      console.log('📡 ============ NETWORK STATE CHANGE ============');
+      console.log('📡 Was offline:', wasOffline);
+      console.log('📡 Is now online:', isNowOnline);
+      console.log('📡 Network type:', this.networkStatus.type);
+
       // Trigger sync when coming online
       if (wasOffline && isNowOnline) {
+        console.log('📡 🔄 TRANSITIONING FROM OFFLINE → ONLINE');
+        console.log('📡 Triggering automatic sync...');
         this.syncPendingOperations().catch(error => {
-          console.error('Failed to sync pending operations:', error);
+          console.error('📡 ❌ Failed to sync pending operations:', error);
         });
+      } else if (!wasOffline && !isNowOnline) {
+        console.log('📡 📴 TRANSITIONING FROM ONLINE → OFFLINE');
+      } else {
+        console.log('📡 ℹ️ Network state change but no offline/online transition');
       }
     });
   }
@@ -117,13 +129,21 @@ export class OfflineService {
    * If online, attempt immediate execution
    */
   async queueOperation(operation: OfflineOperation): Promise<void> {
+    console.log(`📤 Queue operation called: ${operation.type} (id: ${operation.id})`);
+    console.log(`📤 Network status: ${this.networkStatus.isConnected ? 'ONLINE' : 'OFFLINE'}`);
+
     if (this.networkStatus.isConnected) {
       // Attempt immediate execution if online
+      console.log('📤 Attempting immediate execution (online)...');
       try {
         const success = await this.executeOperation(operation);
-        if (success) return; // Operation completed successfully
+        if (success) {
+          console.log('📤 ✅ Operation completed successfully, not queuing');
+          return; // Operation completed successfully
+        }
+        console.log('📤 ⚠️ Operation failed, will queue for retry');
       } catch (error) {
-        console.warn('Failed to execute operation immediately, queuing for retry:', error);
+        console.warn('📤 ❌ Failed to execute operation immediately, queuing for retry:', error);
       }
     }
 
@@ -139,57 +159,78 @@ export class OfflineService {
       max_retries: 3,  // Default max retries
       status: 'pending'
     };
+
+    console.log('📤 Adding to offline queue:', {
+      id: queueItem.id,
+      type: queueItem.operation_type,
+      org_id: queueItem.organisation_id
+    });
+
     await this.databaseService.addToOfflineQueue(queueItem);
+    console.log('📤 ✅ Successfully added to queue');
   }
 
   /**
    * Execute a single offline operation
    */
   async executeOperation(operation: OfflineOperation): Promise<boolean> {
+    console.log(`⚙️ Executing operation ${operation.id} (type: ${operation.type})`);
+
     try {
       switch (operation.type) {
         case 'CREATE_PROJECT':
+          console.log('⚙️ Calling executeCreateProject...');
           await this.executeCreateProject(operation);
           break;
         case 'UPDATE_PROJECT':
+          console.log('⚙️ Calling executeUpdateProject...');
           await this.executeUpdateProject(operation);
           break;
         case 'DELETE_PROJECT':
+          console.log('⚙️ Calling executeDeleteProject...');
           await this.executeDeleteProject(operation);
           break;
         case 'CREATE_DEPLOYMENT':
+          console.log('⚙️ Calling executeCreateDeployment...');
           await this.executeCreateDeployment(operation);
           break;
         case 'UPDATE_DEPLOYMENT':
+          console.log('⚙️ Calling executeUpdateDeployment...');
           await this.executeUpdateDeployment(operation);
           break;
         case 'DELETE_DEPLOYMENT':
+          console.log('⚙️ Calling executeDeleteDeployment...');
           await this.executeDeleteDeployment(operation);
           break;
         case 'UPDATE_DEVICE_LORAWAN_STATUS':
+          console.log('⚙️ Calling executeUpdateDeviceLoRaWANStatus...');
           await this.executeUpdateDeviceLoRaWANStatus(operation);
           break;
         default:
-          console.warn(`Unknown operation type: ${operation.type}`);
+          console.warn(`⚙️ ❌ Unknown operation type: ${operation.type}`);
           return false;
       }
 
       // Remove successful operation from queue
+      console.log(`⚙️ ✅ Operation ${operation.id} completed, removing from queue`);
       await this.databaseService.markQueueItemCompleted(operation.id);
       return true;
     } catch (error) {
-      console.error(`Failed to execute operation ${operation.id}:`, error);
-      
+      console.error(`⚙️ ❌ Failed to execute operation ${operation.id}:`, error);
+
       // Update retry count and requeue if within limits
       if (this.shouldRetryOperation(operation)) {
+        console.log(`⚙️ ⏱️ Updating retry count for operation ${operation.id} (retry ${operation.retry_count + 1})`);
         // Update retry count in queue
         await this.databaseService.updateQueueItemRetry(
-          operation.id, 
-          operation.retry_count + 1, 
+          operation.id,
+          operation.retry_count + 1,
           'pending'
         );
+      } else {
+        console.log(`⚙️ ❌ Max retries exceeded for operation ${operation.id}`);
       }
-      
+
       return false;
     }
   }
@@ -198,26 +239,65 @@ export class OfflineService {
    * Sync all pending operations based on user role
    */
   async syncPendingOperations(user?: User): Promise<void> {
-    if (!this.networkStatus.isConnected) return;
+    console.log('🔄 ============ SYNC PENDING OPERATIONS START ============');
+    console.log('🔄 Network connected:', this.networkStatus.isConnected);
+    console.log('🔄 User role:', user?.role || 'NO USER');
+
+    if (!this.networkStatus.isConnected) {
+      console.log('🔄 ❌ Sync aborted - network not connected');
+      return;
+    }
 
     try {
       const operations = await this.getOperationsForSync(user);
-      
+      console.log(`🔄 Found ${operations.length} operations to sync`);
+
+      if (operations.length === 0) {
+        console.log('🔄 ✅ No operations to sync - queue is empty');
+        return;
+      }
+
+      console.log('🔄 Operations to process:', operations.map(op => ({
+        id: op.id,
+        type: op.type,
+        retry_count: op.retry_count,
+        organisation_id: op.organisation_id
+      })));
+
+      let processedCount = 0;
+      let skippedCount = 0;
+      let failedCount = 0;
+
       for (const operation of operations) {
+        console.log(`🔄 Processing operation ${operation.id} (type: ${operation.type})`);
+
         if (user && !this.canUserPerformOperation(user, operation)) {
-          console.warn(`User ${user.id} cannot perform operation ${operation.id}, skipping`);
+          console.warn(`🔄 ⚠️ User ${user.id} cannot perform operation ${operation.id}, skipping`);
+          skippedCount++;
           continue;
         }
 
         // Check if operation needs retry delay
         if (!this.isOperationReadyForRetry(operation)) {
+          console.log(`🔄 ⏱️ Operation ${operation.id} not ready for retry yet`);
+          skippedCount++;
           continue;
         }
 
-        await this.executeOperation(operation);
+        const success = await this.executeOperation(operation);
+        if (success) {
+          console.log(`🔄 ✅ Operation ${operation.id} executed successfully`);
+          processedCount++;
+        } else {
+          console.log(`🔄 ❌ Operation ${operation.id} failed`);
+          failedCount++;
+        }
       }
+
+      console.log('🔄 ============ SYNC PENDING OPERATIONS COMPLETE ============');
+      console.log(`🔄 Processed: ${processedCount}, Skipped: ${skippedCount}, Failed: ${failedCount}`);
     } catch (error) {
-      console.error('Failed to sync pending operations:', error);
+      console.error('🔄 ❌ Failed to sync pending operations:', error);
     }
   }
 
