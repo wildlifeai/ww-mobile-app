@@ -394,6 +394,34 @@ export class DatabaseService {
     }));
   }
 
+  /**
+   * Get single project by ID from local database
+   * Added for Phase 4 offline-first support in ProjectDetailsScreen
+   */
+  async getProjectById(projectId: string): Promise<DatabaseProject | null> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const result = await this.db.getFirstAsync(
+      'SELECT * FROM local_projects WHERE id = ?',
+      [projectId]
+    ) as any;
+
+    if (!result) {
+      return null;
+    }
+
+    return {
+      id: result.id,
+      organisation_id: result.organisation_id,
+      name: result.name,
+      description: result.description,
+      status: result.status,
+      members: JSON.parse(result.members),
+      created_at: result.created_at,
+      updated_at: result.updated_at
+    };
+  }
+
   async updateProject(id: string, project: Partial<DatabaseProject>): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
