@@ -508,16 +508,15 @@ export class OfflineService {
       console.log('CREATE_PROJECT successful:', result.id);
 
       // Update local database with server response
+      // Note: Project already exists locally (created optimistically), so UPDATE not INSERT
       const dbProject = {
-        id: result.id,
-        organisation_id: operation.organisation_id,
         name: result.name || projectData.name,
         description: result.description || projectData.description || '',
         status: result.status || 'active',
         members: result.members || []
       };
 
-      await this.databaseService.insertProject(dbProject);
+      await this.databaseService.updateProject(result.id, dbProject);
 
     } catch (error) {
       console.error('Failed to execute CREATE_PROJECT:', error);
