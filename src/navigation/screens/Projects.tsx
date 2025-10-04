@@ -56,10 +56,10 @@ export const Projects = () => {
   // Navigation handlers
   const handleProjectPress = useCallback(
     (projectId: string) => {
-      // TODO: Navigate to project details when implemented
-      console.log('Navigate to project:', projectId);
+      console.log('🎯 Projects - Navigating to ProjectDetailsScreen:', projectId);
+      navigation.navigate('ProjectDetailsScreen', { projectId });
     },
-    []
+    [navigation]
   );
 
   const handleCreateProject = useCallback(() => {

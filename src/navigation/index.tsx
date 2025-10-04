@@ -23,6 +23,7 @@ import { AddDeployment } from "./screens/AddDeployment"
 import type { Option } from "../components/ui/WWSelect"
 import { AddProject } from "./screens/AddProject"
 import { NewProjectScreen } from "./screens/NewProjectScreen"
+import { ProjectDetailsScreen } from "./screens/ProjectDetailsScreen"
 import { BottomTabs } from "./BottomTabs"
 import { DevBuildInfo } from "./screens/DevBuildInfo"
 import { AuthTestScreen } from "../screens/AuthTestScreen"
@@ -43,6 +44,7 @@ export interface RootStackParamList extends ParamListBase {
 	AddDeployment: { selectedProject?: Option } | undefined
 	AddProject: undefined
 	NewProjectScreen: undefined
+	ProjectDetailsScreen: { projectId: string }
 	DevBuildInfo: undefined
 	AuthTestScreen: undefined
 }
@@ -182,6 +184,11 @@ export const MainNavigation = () => {
 							name="NewProjectScreen"
 							component={NewProjectScreen}
 							options={{ title: "Create Project" }}
+						/>
+						<Stack.Screen
+							name="ProjectDetailsScreen"
+							component={ProjectDetailsScreen}
+							options={{ title: "Project Details" }}
 						/>
 						{__DEV__ && (
 							<>
