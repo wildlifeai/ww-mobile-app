@@ -131,26 +131,90 @@ class ProjectService {
 
   /**
    * Get single project by ID with full details
+   * OFFLINE-FIRST: Reads from local database, triggers background sync
    *
-   * Note: Using type assertion until views are added to Supabase types
+   * Phase 4 Fix (Bug #7): Changed to read from local SQLite database instead of
+   * direct Supabase query. This ensures projects work offline even if not viewed online first.
    */
   async getProjectById(projectId: string): Promise<ProjectWithDetails | null> {
-    const { data, error } = await (supabase as any)
-      .from('projects_with_stats')
-      .select('*')
-      .eq('id', projectId)
-      .single();
+    try {
+      console.log('📂 Reading project from local database:', projectId);
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        // Not found
+      // STEP 1: Read from local database (ALWAYS, even offline)
+      const localProject = await this.db.getProjectById(projectId);
+
+      if (!localProject) {
+        console.log('❌ Project not found in local database:', projectId);
         return null;
       }
-      console.error('Failed to fetch project:', error);
-      throw new Error(`Failed to fetch project: ${error.message}`);
+
+      console.log('✅ Found project in local database:', localProject.name);
+
+      // STEP 2: Trigger background sync if online (don't wait for it)
+      this.backgroundSyncSingleProject(projectId).catch(error => {
+        console.warn('⚠️ Background sync failed (non-blocking):', error);
+      });
+
+      // STEP 3: Convert DatabaseProject to ProjectWithDetails
+      return this.mapDatabaseProjectToDetails(localProject);
+
+    } catch (error) {
+      console.error('❌ Failed to fetch project from local database:', error);
+      throw new Error(`Failed to fetch project: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Background sync: Fetch single project from Supabase and update local database
+   * Non-blocking, runs in background
+   */
+  private async backgroundSyncSingleProject(projectId: string): Promise<void> {
+    // Check if we're online
+    const networkStatus = this.offlineService.getNetworkStatus();
+    if (!networkStatus.isConnected) {
+      console.log('📡 Offline - skipping background sync');
+      return;
     }
 
-    return data as ProjectWithDetails | null;
+    console.log('🔄 Starting background sync for project:', projectId);
+
+    try {
+      // Fetch from Supabase (RLS filters by user's org)
+      const { data, error } = await (supabase as any)
+        .from('projects_with_stats')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      if (!error && data) {
+        console.log('🔄 Synced project from Supabase:', data.name);
+
+        // Update local database
+        const dbProject: DatabaseProject = {
+          id: data.id,
+          organisation_id: data.organisation_id,
+          name: data.name,
+          description: data.description || '',
+          status: data.deleted_at ? 'inactive' : 'active',
+          members: [], // TODO: Sync members separately
+        };
+
+        try {
+          // Try to update first, if not found insert
+          await this.db.updateProject(data.id, dbProject);
+          console.log('✅ Project updated in local database');
+        } catch (updateError) {
+          // If update fails (project doesn't exist), insert it
+          await this.db.insertProject(dbProject);
+          console.log('✅ Project inserted into local database');
+        }
+      } else {
+        console.warn('⚠️ Background sync failed:', error);
+      }
+    } catch (error) {
+      console.error('❌ Background sync error:', error);
+      // Don't throw - background sync failures are non-blocking
+    }
   }
 
   /**
