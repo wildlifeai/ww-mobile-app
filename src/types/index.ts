@@ -9,6 +9,9 @@ export * from './supabase';
 // Offline service types
 export * from './offline';
 
+// Project types
+export * from './project';
+
 // API types
 export * from './api.types';
 

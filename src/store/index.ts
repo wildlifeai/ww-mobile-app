@@ -11,6 +11,9 @@ import syncReducer from './slices/syncSlice';
 import offlineReducer from './slices/offlineSlice';
 import networkReducer from './slices/networkSlice';
 
+// Import API slices
+import { projectsApi } from './api/projectsApi';
+
 // Import middleware
 import { offlineSyncMiddleware } from './middleware/offlineSyncMiddleware';
 
@@ -22,9 +25,10 @@ export const store = configureStore({
     sync: syncReducer,
     offline: offlineReducer,
     network: networkReducer,
+    // RTK Query API slices
+    [projectsApi.reducerPath]: projectsApi.reducer,
     // Future slices:
     // auth: authReducer,
-    // projects: projectsReducer,
     // deployments: deploymentsReducer,
     // devices: devicesReducer,
   },
@@ -36,7 +40,9 @@ export const store = configureStore({
         // Ignore these field paths in state
         ignoredPaths: ['offline.queue.operations'],
       },
-    }).prepend(offlineSyncMiddleware.middleware),
+    })
+    .concat(projectsApi.middleware)
+    .prepend(offlineSyncMiddleware.middleware),
 });
 
 // Export types for TypeScript
