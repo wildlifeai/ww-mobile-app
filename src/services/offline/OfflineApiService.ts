@@ -79,12 +79,14 @@ export class OfflineApiService {
 
   /**
    * Delete project via Supabase (sync operation)
+   * Uses soft delete by setting deleted_at timestamp
    * Invalidates RTK Query cache after successful deletion
    */
   static async deleteProject(id: string): Promise<void> {
+    // Soft delete: set deleted_at timestamp instead of hard delete
     const { error } = await supabase
       .from('projects')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
 
     if (error) {
