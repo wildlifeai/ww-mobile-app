@@ -22,6 +22,7 @@ import { ForgotPassword } from "./screens/ForgotPassword"
 import { AddDeployment } from "./screens/AddDeployment"
 import type { Option } from "../components/ui/WWSelect"
 import { AddProject } from "./screens/AddProject"
+import { NewProjectScreen } from "./screens/NewProjectScreen"
 import { BottomTabs } from "./BottomTabs"
 import { DevBuildInfo } from "./screens/DevBuildInfo"
 import { AuthTestScreen } from "../screens/AuthTestScreen"
@@ -41,6 +42,7 @@ export interface RootStackParamList extends ParamListBase {
 	ForgotPassword: undefined
 	AddDeployment: { selectedProject?: Option } | undefined
 	AddProject: undefined
+	NewProjectScreen: undefined
 	DevBuildInfo: undefined
 	AuthTestScreen: undefined
 }
@@ -175,6 +177,11 @@ export const MainNavigation = () => {
 							name="AddProject"
 							component={AddProject}
 							options={{ title: "New project details" }}
+						/>
+						<Stack.Screen
+							name="NewProjectScreen"
+							component={NewProjectScreen}
+							options={{ title: "Create Project" }}
 						/>
 						{__DEV__ && (
 							<>

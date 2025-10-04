@@ -64,12 +64,18 @@ export const NewProjectScreen = () => {
   });
 
   const onSubmit = async (data: ProjectFormData) => {
+    console.log('🔍 NewProjectScreen - onSubmit called');
+    console.log('  currentOrganisation:', currentOrganisation);
+    console.log('  currentOrganisation?.id:', currentOrganisation?.id);
+
     if (!currentOrganisation?.id) {
+      console.error('❌ No organisation selected');
       setErrorMessage('No organisation selected. Please select an organisation first.');
       setShowError(true);
       return;
     }
 
+    console.log('✅ Organisation check passed, creating project...');
     try {
       const input: CreateProjectInput = {
         name: data.name.trim(),
@@ -206,20 +212,20 @@ export const NewProjectScreen = () => {
                 <View style={styles.radioOptions}>
                   <WWCheckbox
                     label="Private (Only project members)"
-                    checked={value === 'private'}
-                    onPress={() => onChange('private')}
+                    value={value === 'private'}
+                    onChange={() => onChange('private')}
                     testID="privacy-private"
                   />
                   <WWCheckbox
                     label="Internal (Organisation members)"
-                    checked={value === 'internal'}
-                    onPress={() => onChange('internal')}
+                    value={value === 'internal'}
+                    onChange={() => onChange('internal')}
                     testID="privacy-internal"
                   />
                   <WWCheckbox
                     label="Public (Everyone)"
-                    checked={value === 'public'}
-                    onPress={() => onChange('public')}
+                    value={value === 'public'}
+                    onChange={() => onChange('public')}
                     testID="privacy-public"
                   />
                 </View>
@@ -234,8 +240,8 @@ export const NewProjectScreen = () => {
             render={({ field: { value, onChange } }) => (
               <WWCheckbox
                 label="Using Bait"
-                checked={value}
-                onPress={() => onChange(!value)}
+                value={value}
+                onChange={onChange}
                 testID="is-baited-checkbox"
               />
             )}
@@ -247,8 +253,8 @@ export const NewProjectScreen = () => {
             render={({ field: { value, onChange } }) => (
               <WWCheckbox
                 label="Monitoring Marked Individuals"
-                checked={value}
-                onPress={() => onChange(!value)}
+                value={value}
+                onChange={onChange}
                 testID="is-monitoring-marked-checkbox"
               />
             )}

@@ -63,7 +63,8 @@ export const Projects = () => {
   );
 
   const handleCreateProject = useCallback(() => {
-    navigation.navigate('AddProject');
+    console.log('🎯 Projects - Navigating to NewProjectScreen');
+    navigation.navigate('NewProjectScreen');
   }, [navigation]);
 
   // FlatList optimization
