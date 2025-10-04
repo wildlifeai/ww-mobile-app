@@ -354,8 +354,9 @@ class ProjectService {
 
       // STEP 2: Queue sync operation
       console.log('📤 Queuing project deletion for sync...');
+      const queueId = `delete-project-${projectId}-${Date.now()}`;
       await this.offlineService.queueOperation({
-        id: `delete-project-${projectId}-${Date.now()}`,
+        id: queueId,
         type: 'DELETE_PROJECT',
         data: { id: projectId },
         user_id: currentUserId,
@@ -364,9 +365,17 @@ class ProjectService {
         retry_count: 0,
       });
 
-      console.log('✅ Project deletion queued for sync');
+      console.log('✅ Project deletion queued for sync, queue ID:', queueId);
+
+      // Check queue status
+      const pendingOps = await this.db.getPendingQueueItems();
+      console.log('📊 Pending queue items:', pendingOps.length);
+      console.log('📊 Delete operations in queue:', pendingOps.filter(op => op.operation_type === 'DELETE_PROJECT').length);
 
       // STEP 3: Trigger background sync if online (don't wait)
+      const networkStatus = this.offlineService.getNetworkStatus();
+      console.log('📡 Network status before sync:', networkStatus);
+
       this.backgroundSyncPendingOperations().catch(error => {
         console.warn('⚠️ Background sync failed (non-blocking):', error);
       });
