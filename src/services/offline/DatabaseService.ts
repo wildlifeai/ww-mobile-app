@@ -234,6 +234,7 @@ export class DatabaseService {
     `);
 
     // Offline queue table for sync operations
+    // NOTE: Foreign key to local_organisations removed - we use Supabase as source of truth
     await this.db.execAsync(`
       CREATE TABLE IF NOT EXISTS offline_queue (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -246,8 +247,7 @@ export class DatabaseService {
         max_retries INTEGER DEFAULT 3,
         status TEXT CHECK(status IN ('pending', 'processing', 'completed', 'failed')) DEFAULT 'pending',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (organisation_id) REFERENCES local_organisations (id)
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
