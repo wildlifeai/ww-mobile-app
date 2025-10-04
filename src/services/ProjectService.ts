@@ -49,21 +49,20 @@ class ProjectService {
    * 1. Always read from local SQLite database
    * 2. Trigger background sync if online
    * 3. Return local data immediately for instant UI
+   *
+   * @param organisationId - Current organisation ID from Redux state
    */
-  async getUserProjects(): Promise<ProjectWithDetails[]> {
+  async getUserProjects(organisationId: string): Promise<ProjectWithDetails[]> {
     try {
-      // Get current user's organisation ID
-      const currentOrgId = await this.getCurrentOrganisationId();
-
-      console.log('📂 Reading projects from local database for org:', currentOrgId);
+      console.log('📂 Reading projects from local database for org:', organisationId);
 
       // STEP 1: Read from local database (ALWAYS, even offline)
-      const localProjects = await this.db.getProjectsByOrganisation(currentOrgId);
+      const localProjects = await this.db.getProjectsByOrganisation(organisationId);
 
       console.log(`✅ Found ${localProjects.length} projects in local database`);
 
       // STEP 2: Trigger background sync if online (don't wait for it)
-      this.backgroundSyncProjects(currentOrgId).catch(error => {
+      this.backgroundSyncProjects(organisationId).catch(error => {
         console.warn('⚠️ Background sync failed (non-blocking):', error);
       });
 
@@ -400,17 +399,6 @@ class ProjectService {
     return session?.user?.id || 'mock-user-id';
   }
 
-  /**
-   * Get current user's organisation ID
-   */
-  private async getCurrentOrganisationId(): Promise<string> {
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id || 'mock-user-id';
-
-    // Get user's current organisation from user metadata or profile
-    // For now, use a mock implementation - TODO: Implement proper org lookup
-    return session?.user?.user_metadata?.organisation_id || 'mock-org-id';
-  }
 
   /**
    * Trigger background sync of pending operations

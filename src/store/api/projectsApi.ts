@@ -31,13 +31,27 @@ export const projectsApi = createApi({
     // Get all projects for organisation (RLS auto-filters by user's org)
     // PHASE 3: Now reads from local database (works offline automatically)
     getProjects: builder.query<ProjectWithDetails[], void>({
-      queryFn: async () => {
+      queryFn: async (_arg, { getState }) => {
         console.log('📂 RTK Query - getProjects (offline-first)');
 
         try {
+          // Get current organisation ID from Redux state
+          const state = getState() as RootState;
+          const currentOrgId = state.authentication?.currentOrganisation?.id;
+
+          if (!currentOrgId) {
+            console.error('❌ No current organisation ID in state');
+            return {
+              error: {
+                status: 'CUSTOM_ERROR',
+                error: 'No current organisation selected'
+              }
+            };
+          }
+
           // ProjectService now ALWAYS reads from local database
           // Background sync happens automatically if online
-          const data = await ProjectService.getUserProjects();
+          const data = await ProjectService.getUserProjects(currentOrgId);
           console.log(`✅ RTK Query - Retrieved ${data.length} projects from local database`);
           return { data };
         } catch (error) {
