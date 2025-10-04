@@ -1,13 +1,46 @@
 import { AuthError, AuthResponse as SupabaseAuthResponse, Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { AuthResponse, LoginRequest, RegisterRequest } from '../redux/api/auth/types';
+import { getDatabaseService } from './offline/DatabaseService';
 
 /**
  * Supabase Authentication Service
- * 
+ *
  * This service provides authentication functionality using Supabase Auth
  * and integrates with the existing Redux auth slice structure.
  */
+
+/**
+ * Sync user's organisations to local SQLite database
+ * This ensures foreign key constraints are satisfied for offline operations
+ */
+const syncOrganisationsToLocal = async (organisations: { id: string; name: string }[]) => {
+  try {
+    const dbService = getDatabaseService();
+    await dbService.initializeDatabase();
+
+    for (const org of organisations) {
+      // Check if organisation already exists
+      const existingOrg = await dbService.getOrganisationById(org.id);
+
+      if (!existingOrg) {
+        // Insert organisation with default settings
+        await dbService.insertOrganisation({
+          id: org.id,
+          name: org.name,
+          settings: {
+            timezone: 'UTC',
+            currency: 'USD'
+          }
+        });
+        console.log(`✅ Synced organisation to local database: ${org.name}`);
+      }
+    }
+  } catch (error) {
+    console.error('⚠️ Failed to sync organisations to local database:', error);
+    // Don't throw - this is non-critical for login, but log the error
+  }
+};
 
 /**
  * Fetch user's organisations and role information from database
@@ -90,6 +123,12 @@ const fetchUserOrganisations = async (userId: string) => {
     const organisationId = userOrgs[0].organisation_id;
 
     console.log('✅ Fetched user organisations:', { organisations, role, organisationId });
+
+    // Sync organisations to local database (non-blocking)
+    syncOrganisationsToLocal(organisations).catch(err => {
+      console.warn('⚠️ Organisation sync failed (non-blocking):', err);
+    });
+
     return { organisations, role, organisationId };
   } catch (error) {
     console.error('Exception fetching user organisations:', error);
