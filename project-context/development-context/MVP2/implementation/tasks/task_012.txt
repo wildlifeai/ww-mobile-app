@@ -4,6 +4,12 @@
 # Dependencies: 11
 # Priority: high
 # Description: STREAM A: Implement comprehensive project management with organisation scoping, WW Admin read-only visibility, LoRaWAN integration, including projects list screen, new project creation, project service layer, and RTK Query integration with offline support
+#
+# 📚 DETAILED IMPLEMENTATION DOCUMENTATION:
+# - Implementation Spec: task_012_implementation_spec.md (requirements & clarifications)
+# - Execution Plan: task_012_execution_plan.md (dependency graph & parallel execution)
+# - Backend Coordination: task_012_backend_spec.md (cross-repo API specifications)
+#
 # Details:
 PARALLEL DEVELOPMENT STREAM A - Task 12: Projects CRUD Operations
 
