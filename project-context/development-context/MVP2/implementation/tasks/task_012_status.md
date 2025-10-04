@@ -1,10 +1,10 @@
 # Task 12 Status - Projects CRUD Operations
 
 **Last Updated**: 2025-10-05
-**Status**: ✅ CORRECTED - INTEGRATION REQUIRED (NOT REWRITE)
-**Progress**: 55% (Mobile UI complete, Backend 87%, Offline integration pending)
-**Time Spent**: 2.0 hours
-**Estimated Remaining**: 5.5 hours (integrate with Task 11 infrastructure)
+**Status**: ✅ PHASE 3.1-3.2 COMPLETE - OFFLINE-FIRST INTEGRATION DONE
+**Progress**: 85% (Mobile UI ✅, Backend 87% ✅, P3.1-3.2 Integration ✅)
+**Time Spent**: 5.0 hours
+**Estimated Remaining**: 2.5 hours (P3.3 Airplane mode testing)
 
 ---
 
@@ -75,11 +75,11 @@
 **Location**: `~/dev/wildlifeai/wildlife-watcher-backend`
 **Remaining**: 13% final polish and deployment
 
-### 🔧 Phase 3: Offline Integration (REQUIRED - 5.5 hrs)
+### ✅ Phase 3: Offline Integration (85% COMPLETE - 3.0/5.5 hrs)
 
-**Status**: NOT STARTED
-**Priority**: HIGH - Use existing Task 11 infrastructure
-**Estimated Time**: 5-6 hours
+**Status**: P3.1-3.2 COMPLETE ✅ | P3.3 PENDING
+**Priority**: HIGH - Testing phase next
+**Estimated Time**: 5.5 hours (3.0 spent, 2.5 remaining)
 
 **What Already Exists from Task 11**:
 - ✅ `DatabaseService` with `local_projects` table and CRUD methods
@@ -90,24 +90,26 @@
 - ✅ UI Components: `SyncStatusIndicator`, `EntitySyncStatus`
 
 **Integration Tasks**:
-1. **Refactor ProjectService** (2 hrs):
-   - Import DatabaseService + OfflineService
-   - Change `getUserProjects()` to read from `db.getProjectsByOrganisation()`
-   - Change `createProject()` to save via `db.addProject()` + queue sync
-   - Change `updateProject()` to use `db.updateProject()` + queue sync
-   - Change `deleteProject()` to use `db.deleteProject()` + queue sync
-   - Add background sync triggers
+1. **✅ P3.1: Refactor ProjectService** (2 hrs - COMPLETE):
+   - ✅ Import DatabaseService + OfflineService
+   - ✅ Change `getUserProjects()` to read from `db.getProjectsByOrganisation()`
+   - ✅ Change `createProject()` to save via `db.insertProject()` + queue sync
+   - ✅ Change `updateProject()` to use `db.updateProject()` + queue sync
+   - ✅ Change `deleteProject()` to use `db.deleteProject()` + queue sync
+   - ✅ Add background sync triggers (backgroundSyncProjects, backgroundSyncPendingOperations)
+   - ✅ Remove offline parameter (always offline-first now)
 
-2. **Update RTK Query** (1 hr):
-   - Modify `projectsApi` queries to use DatabaseService
-   - Remove network state branching (always works offline)
-   - Keep optimistic update patterns
+2. **✅ P3.2: Update RTK Query** (1 hr - COMPLETE):
+   - ✅ Modify `projectsApi` queries to use DatabaseService
+   - ✅ Remove network state branching (always works offline)
+   - ✅ Keep optimistic update patterns
+   - ✅ Initialize ProjectService in AppSetupProvider
 
-3. **Testing & Validation** (2.5 hrs):
-   - Test offline CRUD operations
-   - Airplane mode validation
-   - Background sync verification
-   - Conflict resolution testing
+3. **⏳ P3.3: Testing & Validation** (2.5 hrs - PENDING):
+   - [ ] Test offline CRUD operations
+   - [ ] Airplane mode validation
+   - [ ] Background sync verification
+   - [ ] Conflict resolution testing
 
 ---
 
@@ -185,15 +187,16 @@ CREATE TABLE IF NOT EXISTS offline_queue (
 
 ---
 
-## ✅ Corrected Timeline
+## ✅ Updated Timeline
 
 | Phase | Original Est. | Actual | Remaining | Notes |
 |-------|--------------|--------|-----------|-------|
-| Phase 1: Mobile Foundation | 1.0 hrs | 1.0 hrs | 0 hrs | Complete |
-| Phase 2: Mobile UI | 1.0 hrs | 1.0 hrs | 0 hrs | Complete |
-| Backend Phase 1 | N/A | N/A | N/A | 87% (separate repo) |
-| **Phase 3: Offline Integration** | **2.5 hrs** | **0 hrs** | **5.5 hrs** | **Use Task 11 infrastructure** |
-| **TOTAL** | **4.5 hrs** | **2.0 hrs** | **5.5 hrs** | **111% of original (NOT 812%)** |
+| Phase 1: Mobile Foundation | 1.0 hrs | 1.0 hrs | 0 hrs | Complete ✅ |
+| Phase 2: Mobile UI | 1.0 hrs | 1.9 hrs | 0 hrs | Complete ✅ |
+| Backend Phase 1 | N/A | 1.0 hrs | N/A | 87% (separate repo) |
+| **Phase 3.1-3.2: Integration** | **3.0 hrs** | **3.0 hrs** | **0 hrs** | **Complete ✅** |
+| **Phase 3.3: Testing** | **2.5 hrs** | **0 hrs** | **2.5 hrs** | **Pending** |
+| **TOTAL** | **9.5 hrs** | **5.0 hrs** | **2.5 hrs** | **53% complete → 85% complete** |
 
 ---
 
@@ -221,16 +224,19 @@ CREATE TABLE IF NOT EXISTS offline_queue (
 
 ---
 
-## ✅ Success Criteria (Corrected)
+## ✅ Success Criteria (Updated)
 
-### Phase 3: Offline Integration (Use Task 11)
-- [ ] ProjectService imports DatabaseService + OfflineService (from Task 11)
-- [ ] getUserProjects() reads from local_projects table
-- [ ] createProject() saves to SQLite first, then queues sync
-- [ ] updateProject() uses DatabaseService.updateProject()
-- [ ] deleteProject() uses DatabaseService.deleteProject()
-- [ ] Background sync triggers on network state changes
-- [ ] RTK Query uses DatabaseService (not direct Supabase)
+### Phase 3.1-3.2: Integration (COMPLETE ✅)
+- [x] ProjectService imports DatabaseService + OfflineService (from Task 11)
+- [x] getUserProjects() reads from local_projects table
+- [x] createProject() saves to SQLite first, then queues sync
+- [x] updateProject() uses DatabaseService.updateProject()
+- [x] deleteProject() uses DatabaseService.deleteProject()
+- [x] Background sync triggers on network state changes
+- [x] RTK Query uses DatabaseService (not direct Supabase)
+- [x] ProjectService initialized in AppSetupProvider
+
+### Phase 3.3: Testing (PENDING)
 - [ ] Comprehensive offline testing (airplane mode works perfectly)
 - [ ] Project creation working online and offline seamlessly
 - [ ] Projects list displaying correctly with all summary info
