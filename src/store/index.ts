@@ -17,6 +17,9 @@ import { projectsApi } from './api/projectsApi';
 // Import middleware
 import { offlineSyncMiddleware } from './middleware/offlineSyncMiddleware';
 
+// Import OfflineApiService for cache invalidation setup
+import { OfflineApiService } from '../services/offline/OfflineApiService';
+
 /**
  * Configure Redux store with offline-first architecture
  */
@@ -43,6 +46,12 @@ export const store = configureStore({
     })
     .concat(projectsApi.middleware)
     .prepend(offlineSyncMiddleware.middleware),
+});
+
+// Setup cache invalidation callback for OfflineApiService
+// This allows background sync operations to invalidate RTK Query cache
+OfflineApiService.setCacheInvalidator((tags) => {
+  store.dispatch(projectsApi.util.invalidateTags(tags));
 });
 
 // Export types for TypeScript

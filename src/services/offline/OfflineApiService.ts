@@ -1,6 +1,4 @@
-import { store } from '../../redux';
-import { projectsApi } from '../../redux/api/projects';
-import { deploymentsApi } from '../../redux/api/deployments';
+import { supabase } from '../supabase';
 import {
   Project,
   ProjectCreate,
@@ -9,105 +7,195 @@ import {
   DeploymentCreate,
   DeploymentUpdate
 } from '../../types/api.types';
-import { UserRole } from '../../types/offline';
 
 /**
- * Offline API Service - Handles API calls for offline operations
- * Separated to avoid circular dependencies in testing
+ * Offline API Service - Handles API calls for offline sync operations
+ *
+ * Architecture Decision (confirmed by system-architect + mobile-dev agents):
+ * - Uses Supabase client directly (NOT RTK Query) to avoid circular dependencies
+ * - RTK Query is for online operations (UI-driven)
+ * - OfflineApiService is for background sync operations (system-driven)
+ * - Cache invalidation callback injected to update RTK Query after sync
  */
+
+// Cache invalidation callback type
+type CacheInvalidator = (tags: { type: string; id?: string }[]) => void;
+
 export class OfflineApiService {
+  private static cacheInvalidator?: CacheInvalidator;
+
   /**
-   * Create project via API
+   * Set cache invalidation callback (called from Redux store setup)
+   */
+  static setCacheInvalidator(invalidator: CacheInvalidator): void {
+    this.cacheInvalidator = invalidator;
+  }
+
+  /**
+   * Create project via Supabase (sync operation)
+   * Invalidates RTK Query cache after successful creation
    */
   static async createProject(projectData: ProjectCreate): Promise<Project> {
-    const result = await store.dispatch(
-      projectsApi.endpoints.createProject.initiate({
-        data: projectData
-      })
-    ).unwrap();
+    const { data, error } = await supabase
+      .from('projects')
+      .insert([projectData])
+      .select()
+      .single();
 
-    return result;
+    if (error) {
+      throw new Error(`Failed to create project: ${error.message}`);
+    }
+
+    // Invalidate RTK Query cache to trigger UI refresh
+    this.cacheInvalidator?.([
+      { type: 'Project', id: data.id },
+      { type: 'Project', id: 'LIST' }
+    ]);
+
+    return data;
   }
 
   /**
-   * Update project via API
+   * Update project via Supabase (sync operation)
+   * Invalidates RTK Query cache after successful update
    */
   static async updateProject(id: string, updateData: ProjectUpdate): Promise<Project> {
-    const result = await store.dispatch(
-      projectsApi.endpoints.updateProject.initiate({
-        id,
-        body: updateData
-      })
-    ).unwrap();
+    const { data, error } = await supabase
+      .from('projects')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
 
-    return result;
+    if (error) {
+      throw new Error(`Failed to update project: ${error.message}`);
+    }
+
+    // Invalidate specific project cache
+    this.cacheInvalidator?.([{ type: 'Project', id }]);
+
+    return data;
   }
 
   /**
-   * Delete project via API
+   * Delete project via Supabase (sync operation)
+   * Invalidates RTK Query cache after successful deletion
    */
   static async deleteProject(id: string): Promise<void> {
-    await store.dispatch(
-      projectsApi.endpoints.deleteProject.initiate(id)
-    ).unwrap();
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(`Failed to delete project: ${error.message}`);
+    }
+
+    // Invalidate project cache (removed item)
+    this.cacheInvalidator?.([
+      { type: 'Project', id },
+      { type: 'Project', id: 'LIST' }
+    ]);
   }
 
   /**
-   * Create deployment via API
+   * Create deployment via Supabase (sync operation)
+   * Invalidates RTK Query cache after successful creation
    */
   static async createDeployment(deploymentData: DeploymentCreate): Promise<Deployment> {
-    const result = await store.dispatch(
-      deploymentsApi.endpoints.createDeployment.initiate({
-        data: deploymentData
-      })
-    ).unwrap();
+    const { data, error } = await supabase
+      .from('deployments')
+      .insert([deploymentData])
+      .select()
+      .single();
 
-    return result;
+    if (error) {
+      throw new Error(`Failed to create deployment: ${error.message}`);
+    }
+
+    // Invalidate deployment cache
+    this.cacheInvalidator?.([
+      { type: 'Deployment', id: data.id },
+      { type: 'Deployment', id: 'LIST' }
+    ]);
+
+    return data;
   }
 
   /**
-   * Update deployment via API
+   * Update deployment via Supabase (sync operation)
+   * Invalidates RTK Query cache after successful update
    */
   static async updateDeployment(id: string, updateData: DeploymentUpdate): Promise<Deployment> {
-    const result = await store.dispatch(
-      deploymentsApi.endpoints.updateDeployment.initiate({
-        id,
-        body: updateData
-      })
-    ).unwrap();
+    const { data, error } = await supabase
+      .from('deployments')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
 
-    return result;
+    if (error) {
+      throw new Error(`Failed to update deployment: ${error.message}`);
+    }
+
+    // Invalidate specific deployment cache
+    this.cacheInvalidator?.([{ type: 'Deployment', id }]);
+
+    return data;
   }
 
   /**
-   * Delete deployment via API
+   * Delete deployment via Supabase (sync operation)
+   * Invalidates RTK Query cache after successful deletion
    */
   static async deleteDeployment(id: string): Promise<void> {
-    await store.dispatch(
-      deploymentsApi.endpoints.deleteDeployment.initiate(id)
-    ).unwrap();
+    const { error } = await supabase
+      .from('deployments')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(`Failed to delete deployment: ${error.message}`);
+    }
+
+    // Invalidate deployment cache
+    this.cacheInvalidator?.([
+      { type: 'Deployment', id },
+      { type: 'Deployment', id: 'LIST' }
+    ]);
   }
 
   /**
-   * Get project via API (for conflict resolution)
+   * Get project via Supabase (for conflict resolution)
    */
   static async getProject(id: string): Promise<Project> {
-    const result = await store.dispatch(
-      projectsApi.endpoints.getProject.initiate(id)
-    ).unwrap();
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    return result;
+    if (error) {
+      throw new Error(`Failed to get project: ${error.message}`);
+    }
+
+    return data;
   }
 
   /**
-   * Get deployment via API (for conflict resolution)
+   * Get deployment via Supabase (for conflict resolution)
    */
   static async getDeployment(id: string): Promise<Deployment> {
-    const result = await store.dispatch(
-      deploymentsApi.endpoints.getDeployment.initiate(id)
-    ).unwrap();
+    const { data, error } = await supabase
+      .from('deployments')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    return result;
+    if (error) {
+      throw new Error(`Failed to get deployment: ${error.message}`);
+    }
+
+    return data;
   }
-
 }
