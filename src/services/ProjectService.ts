@@ -1,14 +1,16 @@
 /**
  * ProjectService - Project management service layer
  *
- * Phase 2 (Real Supabase Integration):
- * - Real Supabase queries with RLS enforcement
- * - Offline queue integration via OfflineService
+ * Phase 3 (Offline-First Integration with Task 11):
+ * - DatabaseService integration for local-first architecture
+ * - OfflineService for queue management and sync
  * - Organisation-scoped operations
- * - Backend API integration (Task 12)
+ * - Background sync when network is available
+ * - RLS enforcement via Supabase backend
  */
 
 import { supabase } from './supabase';
+import { DatabaseService } from './offline/DatabaseService';
 import { OfflineService } from './offline/OfflineService';
 import type {
   Project,
@@ -17,29 +19,115 @@ import type {
   CreateProjectInput,
   LoRaWANDeviceStatus
 } from '../types/project';
+import type { DatabaseProject } from './offline/DatabaseService';
 
 class ProjectService {
   private readonly TABLE_NAME = 'projects';
+  private db: DatabaseService;
+  private offlineService: OfflineService;
+
+  constructor() {
+    this.db = new DatabaseService();
+    this.offlineService = new OfflineService();
+  }
+
+  /**
+   * Initialize database and offline service
+   * Must be called before using the service
+   */
+  async initialize(): Promise<void> {
+    await this.db.initializeDatabase();
+    await this.offlineService.initialize();
+  }
 
   /**
    * Get all projects for current user's organisation
-   * Uses projects_with_stats view for computed fields
-   * RLS automatically filters by user's organisation membership
+   * OFFLINE-FIRST: Reads from local database, triggers background sync
+   * RLS automatically filters by user's organisation membership during sync
    *
-   * Note: Using type assertion until views are added to Supabase types
+   * Phase 3 Integration:
+   * 1. Always read from local SQLite database
+   * 2. Trigger background sync if online
+   * 3. Return local data immediately for instant UI
    */
   async getUserProjects(): Promise<ProjectWithDetails[]> {
-    const { data, error } = await (supabase as any)
-      .from('projects_with_stats')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      // Get current user's organisation ID
+      const currentOrgId = await this.getCurrentOrganisationId();
 
-    if (error) {
-      console.error('Failed to fetch projects:', error);
-      throw new Error(`Failed to fetch projects: ${error.message}`);
+      console.log('📂 Reading projects from local database for org:', currentOrgId);
+
+      // STEP 1: Read from local database (ALWAYS, even offline)
+      const localProjects = await this.db.getProjectsByOrganisation(currentOrgId);
+
+      console.log(`✅ Found ${localProjects.length} projects in local database`);
+
+      // STEP 2: Trigger background sync if online (don't wait for it)
+      this.backgroundSyncProjects(currentOrgId).catch(error => {
+        console.warn('⚠️ Background sync failed (non-blocking):', error);
+      });
+
+      // STEP 3: Convert DatabaseProject to ProjectWithDetails
+      return localProjects.map(this.mapDatabaseProjectToDetails);
+
+    } catch (error) {
+      console.error('❌ Failed to fetch projects from local database:', error);
+      throw new Error(`Failed to fetch projects: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Background sync: Fetch from Supabase and update local database
+   * Non-blocking, runs in background
+   */
+  private async backgroundSyncProjects(organisationId: string): Promise<void> {
+    // Check if we're online
+    const networkStatus = this.offlineService.getNetworkStatus();
+    if (!networkStatus.isConnected) {
+      console.log('📡 Offline - skipping background sync');
+      return;
     }
 
-    return (data || []) as ProjectWithDetails[];
+    console.log('🔄 Starting background sync for projects...');
+
+    try {
+      // Fetch from Supabase (RLS filters by user's org)
+      const { data: viewData, error: viewError } = await (supabase as any)
+        .from('projects_with_stats')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!viewError && viewData) {
+        console.log(`🔄 Synced ${viewData.length} projects from Supabase`);
+
+        // Update local database
+        for (const project of viewData) {
+          const dbProject: DatabaseProject = {
+            id: project.id,
+            organisation_id: project.organisation_id,
+            name: project.name,
+            description: project.description || '',
+            status: project.deleted_at ? 'inactive' : 'active',
+            members: [], // TODO: Sync members separately
+          };
+
+          try {
+            // Try to update first, if not found insert
+            await this.db.updateProject(project.id, dbProject);
+          } catch (updateError) {
+            // If update fails (project doesn't exist), insert it
+            await this.db.insertProject(dbProject);
+          }
+        }
+
+        console.log('✅ Background sync complete');
+      } else {
+        console.warn('⚠️ Background sync failed:', viewError);
+      }
+    } catch (error) {
+      console.error('❌ Background sync error:', error);
+      // Don't throw - background sync failures are non-blocking
+    }
   }
 
   /**
@@ -67,85 +155,103 @@ class ProjectService {
   }
 
   /**
-   * Create new project (online and offline support)
-   * Integrates with offline queue for resilient operations
+   * Create new project
+   * OFFLINE-FIRST: Always saves locally first, then queues for sync
+   * No more offline parameter - always works offline-first
+   *
+   * Phase 3 Integration:
+   * 1. Save to local SQLite database immediately
+   * 2. Queue sync operation for background processing
+   * 3. Trigger immediate sync if online
    */
-  async createProject(input: CreateProjectInput, offline: boolean = false): Promise<Project> {
+  async createProject(input: CreateProjectInput): Promise<Project> {
     const currentUserId = await this.getCurrentUserId();
 
-    // If offline, queue operation and return temporary project
-    if (offline) {
-      const tempProject: Project = {
-        id: this.generateUUID(),
-        name: input.name,
-        description: input.description || null,
-        organisation_id: input.organisation_id,
-        owner_id: currentUserId,
-        created_by: currentUserId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        deleted_at: null,
-        privacy_level: input.privacy_level || 'public',
-        project_image: null,
-        end_date: null,
-        is_private: input.privacy_level === 'private',
-        is_baited: input.is_baited || false,
-        is_monitoring_marked_individual: input.is_monitoring_marked_individual || false,
-        sampling_design: input.sampling_design || null,
-        website: input.website || null,
+    const newProject: Project = {
+      id: this.generateUUID(),
+      name: input.name,
+      description: input.description || null,
+      organisation_id: input.organisation_id,
+      owner_id: currentUserId,
+      created_by: currentUserId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+      privacy_level: input.privacy_level || 'public',
+      project_image: null,
+      end_date: null,
+      is_private: input.privacy_level === 'private',
+      is_baited: input.is_baited || false,
+      is_monitoring_marked_individual: input.is_monitoring_marked_individual || false,
+      sampling_design: input.sampling_design || null,
+      website: input.website || null,
+    };
+
+    try {
+      console.log('💾 Saving project to local database:', newProject.id);
+
+      // STEP 1: Save to local SQLite database
+      const dbProject: DatabaseProject = {
+        id: newProject.id,
+        organisation_id: newProject.organisation_id,
+        name: newProject.name,
+        description: newProject.description || '',
+        status: 'active',
+        members: [], // Will be populated later
       };
 
-      // Queue for offline sync
-      const offlineService = new OfflineService();
-      await offlineService.queueOperation({
-        id: `create-project-${tempProject.id}`,
+      await this.db.insertProject(dbProject);
+      console.log('✅ Project saved locally');
+
+      // STEP 2: Queue sync operation
+      console.log('📤 Queuing project for sync...');
+      await this.offlineService.queueOperation({
+        id: `create-project-${newProject.id}`,
         type: 'CREATE_PROJECT',
-        data: tempProject,
+        data: newProject,
         user_id: currentUserId,
         organisation_id: input.organisation_id,
         timestamp: new Date(),
         retry_count: 0,
       });
 
-      return tempProject;
+      console.log('✅ Project queued for sync');
+
+      // STEP 3: Trigger background sync if online (don't wait)
+      this.backgroundSyncPendingOperations().catch(error => {
+        console.warn('⚠️ Background sync failed (non-blocking):', error);
+      });
+
+      return newProject;
+    } catch (error) {
+      console.error('❌ Failed to create project:', error);
+      throw new Error(`Failed to create project: ${error instanceof Error ? error.message : String(error)}`);
     }
-
-    // Online: Direct Supabase insert
-    const { data, error } = await supabase
-      .from('projects')
-      .insert({
-        name: input.name,
-        description: input.description,
-        organisation_id: input.organisation_id,
-        owner_id: currentUserId,
-        privacy_level: input.privacy_level || 'public',
-        is_baited: input.is_baited || false,
-        is_monitoring_marked_individual: input.is_monitoring_marked_individual || false,
-        sampling_design: input.sampling_design || null,
-        website: input.website || null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Failed to create project:', error);
-      throw new Error(`Failed to create project: ${error.message}`);
-    }
-
-    return data;
   }
 
   /**
    * Update existing project
+   * OFFLINE-FIRST: Updates local database first, then queues for sync
    */
-  async updateProject(projectId: string, updates: Partial<Project>, offline: boolean = false): Promise<Project> {
-    // If offline, queue operation
-    if (offline) {
+  async updateProject(projectId: string, updates: Partial<Project>): Promise<Project> {
+    try {
       const currentUserId = await this.getCurrentUserId();
-      const offlineService = new OfflineService();
 
-      await offlineService.queueOperation({
-        id: `update-project-${projectId}`,
+      console.log('💾 Updating project in local database:', projectId);
+
+      // STEP 1: Update local database
+      const dbUpdates: Partial<DatabaseProject> = {};
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.description !== undefined) dbUpdates.description = updates.description || '';
+      if (updates.deleted_at !== undefined) dbUpdates.status = updates.deleted_at ? 'inactive' : 'active';
+
+      await this.db.updateProject(projectId, dbUpdates);
+      console.log('✅ Project updated locally');
+
+      // STEP 2: Queue sync operation
+      console.log('📤 Queuing project update for sync...');
+      await this.offlineService.queueOperation({
+        id: `update-project-${projectId}-${Date.now()}`,
         type: 'UPDATE_PROJECT',
         data: { id: projectId, ...updates },
         user_id: currentUserId,
@@ -154,57 +260,56 @@ class ProjectService {
         retry_count: 0,
       });
 
+      console.log('✅ Project update queued for sync');
+
+      // STEP 3: Trigger background sync if online (don't wait)
+      this.backgroundSyncPendingOperations().catch(error => {
+        console.warn('⚠️ Background sync failed (non-blocking):', error);
+      });
+
       // Return optimistic update
       return { id: projectId, ...updates } as Project;
+    } catch (error) {
+      console.error('❌ Failed to update project:', error);
+      throw new Error(`Failed to update project: ${error instanceof Error ? error.message : String(error)}`);
     }
-
-    // Online: Direct Supabase update
-    const { data, error } = await supabase
-      .from('projects')
-      .update(updates)
-      .eq('id', projectId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Failed to update project:', error);
-      throw new Error(`Failed to update project: ${error.message}`);
-    }
-
-    return data;
   }
 
   /**
    * Delete project (soft delete)
+   * OFFLINE-FIRST: Deletes from local database first, then queues for sync
    */
-  async deleteProject(projectId: string, offline: boolean = false): Promise<void> {
-    // If offline, queue operation
-    if (offline) {
+  async deleteProject(projectId: string): Promise<void> {
+    try {
       const currentUserId = await this.getCurrentUserId();
-      const offlineService = new OfflineService();
 
-      await offlineService.queueOperation({
-        id: `delete-project-${projectId}`,
+      console.log('💾 Deleting project from local database:', projectId);
+
+      // STEP 1: Delete from local database
+      await this.db.deleteProject(projectId);
+      console.log('✅ Project deleted locally');
+
+      // STEP 2: Queue sync operation
+      console.log('📤 Queuing project deletion for sync...');
+      await this.offlineService.queueOperation({
+        id: `delete-project-${projectId}-${Date.now()}`,
         type: 'DELETE_PROJECT',
         data: { id: projectId },
         user_id: currentUserId,
-        organisation_id: '',
+        organisation_id: '', // Will be validated by backend RLS
         timestamp: new Date(),
         retry_count: 0,
       });
 
-      return;
-    }
+      console.log('✅ Project deletion queued for sync');
 
-    // Online: Direct Supabase soft delete
-    const { error } = await supabase
-      .from('projects')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', projectId);
-
-    if (error) {
-      console.error('Failed to delete project:', error);
-      throw new Error(`Failed to delete project: ${error.message}`);
+      // STEP 3: Trigger background sync if online (don't wait)
+      this.backgroundSyncPendingOperations().catch(error => {
+        console.warn('⚠️ Background sync failed (non-blocking):', error);
+      });
+    } catch (error) {
+      console.error('❌ Failed to delete project:', error);
+      throw new Error(`Failed to delete project: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -296,7 +401,71 @@ class ProjectService {
   }
 
   /**
-   * Generate UUID (mock implementation)
+   * Get current user's organisation ID
+   */
+  private async getCurrentOrganisationId(): Promise<string> {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id || 'mock-user-id';
+
+    // Get user's current organisation from user metadata or profile
+    // For now, use a mock implementation - TODO: Implement proper org lookup
+    return session?.user?.user_metadata?.organisation_id || 'mock-org-id';
+  }
+
+  /**
+   * Trigger background sync of pending operations
+   * Non-blocking, runs in background
+   */
+  private async backgroundSyncPendingOperations(): Promise<void> {
+    // Check if we're online
+    const networkStatus = this.offlineService.getNetworkStatus();
+    if (!networkStatus.isConnected) {
+      console.log('📡 Offline - skipping background sync');
+      return;
+    }
+
+    console.log('🔄 Starting background sync of pending operations...');
+
+    try {
+      await this.offlineService.syncPendingOperations();
+      console.log('✅ Background sync complete');
+    } catch (error) {
+      console.error('❌ Background sync error:', error);
+      // Don't throw - background sync failures are non-blocking
+    }
+  }
+
+  /**
+   * Map DatabaseProject to ProjectWithDetails
+   */
+  private mapDatabaseProjectToDetails = (dbProject: DatabaseProject): ProjectWithDetails => {
+    return {
+      id: dbProject.id,
+      name: dbProject.name,
+      description: dbProject.description || null,
+      organisation_id: dbProject.organisation_id,
+      owner_id: '', // Not stored in local DB
+      created_by: '', // Not stored in local DB
+      created_at: dbProject.created_at || new Date().toISOString(),
+      updated_at: dbProject.updated_at || new Date().toISOString(),
+      deleted_at: dbProject.status === 'inactive' ? new Date().toISOString() : null,
+      privacy_level: 'public', // Not stored in local DB
+      project_image: null,
+      end_date: null,
+      is_private: false,
+      is_baited: false,
+      is_monitoring_marked_individual: false,
+      sampling_design: null,
+      website: null,
+      // Computed fields (will be populated during background sync)
+      deployment_count: 0,
+      device_count: 0,
+      member_count: dbProject.members?.length || 0,
+    };
+  };
+
+  /**
+   * Generate UUID (RFC4122 compliant)
    */
   private generateUUID(): string {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {

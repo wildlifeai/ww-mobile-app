@@ -14,6 +14,9 @@ import Toast, {
 import { useBluetoothStatus } from "../hooks/useBluetoothStatus"
 import { useLocationStatus } from "../hooks/useLocationStatus"
 import { useSetupBLELibrary } from "../hooks/useSetupBLELibrary"
+import { useAppDispatch } from "../redux"
+import { initializeNetworkMonitoring } from "../store/middleware/offlineSyncMiddleware"
+import ProjectService from "../services/ProjectService"
 
 interface ExtendedToastConfigParams extends ToastConfigParams<any> {
 	numberOfLines?: number
@@ -28,9 +31,33 @@ interface ExtendedToastConfigParams extends ToastConfigParams<any> {
  * VSS servers are pulled via ICMP (ping).
  */
 export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
+	const dispatch = useAppDispatch()
+
 	useSetupBLELibrary()
 	useBluetoothStatus()
 	useLocationStatus()
+
+	// Initialize network monitoring for offline support
+	React.useEffect(() => {
+		console.log('🌐 Initializing network monitoring...')
+		const unsubscribe = initializeNetworkMonitoring(dispatch)
+		return () => {
+			console.log('🌐 Cleaning up network monitoring')
+			unsubscribe()
+		}
+	}, [dispatch])
+
+	// Initialize ProjectService with DatabaseService and OfflineService
+	React.useEffect(() => {
+		console.log('📦 Initializing ProjectService...')
+		ProjectService.initialize()
+			.then(() => {
+				console.log('✅ ProjectService initialized successfully')
+			})
+			.catch((error) => {
+				console.error('❌ Failed to initialize ProjectService:', error)
+			})
+	}, [])
 
 	return (
 		<>
