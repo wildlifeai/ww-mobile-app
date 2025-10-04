@@ -1,8 +1,9 @@
 # Task 12: Projects CRUD Operations - Execution Plan
 
-**Version**: 1.0
+**Version**: 2.0
 **Created**: 2025-10-04
-**Execution Model**: Parallel Cross-Repo Development
+**Updated**: 2025-10-04 (Added Supabase specialists + coordination layer)
+**Execution Model**: Parallel Cross-Repo Development with AI Orchestration
 **Estimated Total Time**: 4.5 hours (with parallelization)
 
 ---
@@ -10,12 +11,20 @@
 ## 🎯 Executive Summary
 
 This execution plan maximizes development velocity through:
+- **AI-orchestrated coordination** via `ai-project-orchestrator` for overall task management
+- **Cross-repo synchronization** via `cross-project-coordinator` for backend/mobile alignment
+- **Supabase specialist agents** for database, RLS, and migration expertise
 - **Parallel execution** across mobile and backend repos
 - **Clear dependency management** with critical path identification
-- **Cross-repo coordination** protocols and handoffs
 - **Smart sequencing** to minimize blocking dependencies
 
-**Key Insight**: Backend and mobile foundation work can happen **simultaneously**, merging at integration points for 25% time savings.
+**Key Insight**: Backend and mobile foundation work can happen **simultaneously**, with professional-grade orchestration ensuring seamless handoffs and 25% time savings.
+
+**New in v2.0**:
+- ✅ Supabase-specialized agents (postgres-function-architect, supabase-rls-security, supabase-migration-architect)
+- ✅ Dual coordination layer (project orchestrator + cross-repo coordinator)
+- ✅ Progressive agent spawning strategy
+- ✅ Agent coordination workflow with context passing
 
 ---
 
@@ -84,6 +93,233 @@ graph TB
 
 ---
 
+## 🤖 AI Agent Coordination Layer
+
+### Orchestration Architecture
+
+```mermaid
+graph TB
+    subgraph "Coordination Layer"
+        O[ai-project-orchestrator<br/>Overall Task Management]
+        C[cross-project-coordinator<br/>Backend ↔ Mobile Sync]
+    end
+
+    subgraph "Backend Specialists"
+        B1[supabase-rls-security +<br/>quality-assurance-engineer]
+        B2[postgres-function-architect]
+        B3[postgres-function-architect]
+        B4[supabase-migration-architect]
+        B5[api-docs]
+    end
+
+    subgraph "Mobile Specialists"
+        M1[mobile-dev]
+        M2[mobile-dev]
+        M3[mobile-dev]
+        M4[mobile-dev]
+    end
+
+    subgraph "Integration & Quality"
+        I1[mobile-dev]
+        I2[quality-assurance-engineer]
+        I3[frontend-design-expert]
+        I4[frontend-design-expert]
+        I5[frontend-design-expert]
+        Q1[quality-assurance-engineer]
+        Q2[perf-analyzer]
+        Q3[docs-maintainer]
+    end
+
+    O --> C
+    O --> B1
+    O --> M1
+    C --> B1
+    C --> B2
+    C --> B3
+    C --> B4
+    C --> B5
+```
+
+### Agent Responsibilities
+
+#### **`ai-project-orchestrator`** (Continuous)
+**Role**: Overall Task 12 project manager
+**Duration**: Entire task lifecycle (~20 min overhead)
+
+**Responsibilities**:
+- Spawn and coordinate all sub-agents at correct times
+- Monitor progress against 4.5-hour timeline
+- Make go/no-go decisions at checkpoint gates
+- Adjust resource allocation if delays occur
+- Synthesize agent outputs into cohesive deliverables
+- Report status to user at key milestones
+
+**Active During**:
+- Pre-execution planning
+- Phase transitions (checkpoint gates)
+- Blocker resolution
+- Post-execution synthesis
+
+---
+
+#### **`cross-project-coordinator`** (Continuous)
+**Role**: Backend ↔ Mobile synchronization specialist
+**Duration**: Entire task lifecycle (~15 min overhead)
+
+**Responsibilities**:
+- Relay `task_012_backend_spec.md` to backend repo
+- Monitor backend API implementation progress
+- Validate backend deployment at 60-min checkpoint
+- Confirm mobile foundation ready for integration
+- Track cross-repo dependencies and blockers
+- Update status in both PROJECT-STATUS.md files
+
+**Active During**:
+- Spec relay (pre-execution)
+- Backend deployment validation (60-min checkpoint)
+- Integration monitoring (Phase 2)
+- Status synchronization (continuous)
+
+---
+
+### Agent Assignment Matrix
+
+| Phase | Task | Primary Agent | Support Agent | Coordinator | Rationale |
+|-------|------|---------------|---------------|-------------|-----------|
+| **Setup** | Planning | `ai-project-orchestrator` | - | - | Overall orchestration |
+| | Spec Relay | `cross-project-coordinator` | - | `ai-project-orchestrator` | Backend coordination |
+| **Backend** | B1: Test APIs | `supabase-rls-security` | `quality-assurance-engineer` | `cross-project-coordinator` | RLS policy testing specialist |
+| | B2: Gap Analysis | `postgres-function-architect` | - | `cross-project-coordinator` | Postgres function expert |
+| | B3: Implement Logic | `postgres-function-architect` | - | `cross-project-coordinator` | PL/pgSQL specialist |
+| | B4: Deploy | `supabase-migration-architect` | - | `cross-project-coordinator` | Migration specialist |
+| | B5: Documentation | `api-docs` | - | `cross-project-coordinator` | API docs specialist |
+| **Mobile** | M1: Types | `mobile-dev` | - | `ai-project-orchestrator` | TypeScript/RN expert |
+| | M2: Service Shell | `mobile-dev` | - | `ai-project-orchestrator` | Service layer (continuous) |
+| | M3: RTK Query | `mobile-dev` | - | `ai-project-orchestrator` | State management (continuous) |
+| | M4: Mock LoRaWAN | `mobile-dev` | - | `ai-project-orchestrator` | Quick mock (continuous) |
+| **Checkpoint** | Handoff (60min) | `cross-project-coordinator` | - | `ai-project-orchestrator` | Backend→Mobile validation |
+| **Integration** | I1: Integration | `mobile-dev` | - | `cross-project-coordinator` | API integration |
+| | I2: Tests | `quality-assurance-engineer` | - | `ai-project-orchestrator` | Integration testing |
+| | I3: ProjectsScreen | `frontend-design-expert` | - | `ai-project-orchestrator` | UI/UX specialist |
+| | I4: NewProjectScreen | `frontend-design-expert` | - | `ai-project-orchestrator` | Form UX (continuous) |
+| | I5: Org Switcher | `frontend-design-expert` | - | `ai-project-orchestrator` | Navigation (continuous) |
+| **Quality** | Q1: E2E Tests | `quality-assurance-engineer` | - | `ai-project-orchestrator` | E2E specialist |
+| | Q2: Performance | `perf-analyzer` | - | `ai-project-orchestrator` | Performance optimization |
+| | Q3: Documentation | `docs-maintainer` | - | `ai-project-orchestrator` | Project docs |
+| **Completion** | Synthesis | `ai-project-orchestrator` | - | - | Final deliverable |
+
+---
+
+### Progressive Agent Spawning Strategy
+
+**Why Progressive**: Better resource management, clearer context, lower overhead
+
+#### **Pre-Execution** (Setup)
+```bash
+# Spawn orchestration layer
+1. ai-project-orchestrator (overall management)
+   └─ spawns: cross-project-coordinator (backend sync)
+```
+
+#### **Phase 1 Launch** (0 min mark)
+```bash
+# Backend track
+cross-project-coordinator spawns:
+  ├─ supabase-rls-security (B1: Test APIs)
+  └─ quality-assurance-engineer (B1: Support)
+
+# Mobile track
+ai-project-orchestrator spawns:
+  └─ mobile-dev (M1-M4: Foundation)
+```
+
+#### **Backend Sequential Spawning** (As needed)
+```bash
+# After B1 completes (30 min)
+cross-project-coordinator spawns:
+  └─ postgres-function-architect (B2: Gap analysis)
+
+# After B2 completes (45 min)
+# postgres-function-architect continues (B3: Implementation)
+
+# After B3 completes (90 min)
+cross-project-coordinator spawns:
+  └─ supabase-migration-architect (B4: Deploy)
+
+# After B4 completes (105 min)
+cross-project-coordinator spawns:
+  └─ api-docs (B5: Documentation)
+```
+
+#### **Checkpoint 1** (60 min mark)
+```bash
+cross-project-coordinator:
+  ├─ Validates backend deployment
+  ├─ Confirms mobile foundation ready
+  └─ Approves Phase 2 launch
+
+# If approved, ai-project-orchestrator triggers Phase 2
+```
+
+#### **Phase 2 Launch** (60 min mark)
+```bash
+# Mobile integration (mobile-dev continues from Phase 1)
+ai-project-orchestrator:
+  └─ mobile-dev continues (I1: Integration)
+
+# After I1 completes (90 min)
+ai-project-orchestrator spawns:
+  └─ quality-assurance-engineer (I2: Integration tests)
+
+# After I2 completes (120 min)
+ai-project-orchestrator spawns:
+  └─ frontend-design-expert (I3-I5: UI)
+```
+
+#### **Phase 3 Launch** (210 min mark)
+```bash
+ai-project-orchestrator spawns:
+  ├─ quality-assurance-engineer (Q1: E2E)
+  ├─ perf-analyzer (Q2: Performance)
+  └─ docs-maintainer (Q3: Documentation)
+```
+
+#### **Completion** (270 min mark)
+```bash
+ai-project-orchestrator:
+  ├─ Collects all agent outputs
+  ├─ Synthesizes deliverables
+  ├─ Updates metrics tracker
+  └─ Generates completion report
+```
+
+---
+
+### Agent Context Passing Protocol
+
+**Context Inheritance Pattern**:
+```
+ai-project-orchestrator
+  ├─ Has: Full task context from all 3 spec documents
+  ├─ Passes to sub-agents: Relevant spec sections
+  └─ Receives from sub-agents: Completion status + outputs
+
+cross-project-coordinator
+  ├─ Has: Backend spec, mobile requirements
+  ├─ Passes to backend agents: API requirements, RLS needs
+  └─ Receives from backend agents: Deployment status, API docs
+```
+
+**Sub-Agent Context Sources**:
+1. **Orchestrator handoff** - Task requirements from orchestrator
+2. **Spec documents** - Reference task_012_*.md files
+3. **Previous agent outputs** - Build on predecessor work
+4. **Live environment** - Backend dev instance, mobile codebase
+
+**No Explicit Prompts Needed**: Agents infer context from comprehensive specs ✅
+
+---
+
 ## ⚡ Parallel Execution Strategy
 
 ### Phase 1: Foundation (0-60 min) - **PARALLEL**
@@ -92,31 +328,31 @@ graph TB
 ```bash
 cd ~/dev/wildlifeai/wildlife-watcher-backend
 
-[0-30min] B1: Test Existing Project APIs
+[0-30min] B1: Test Existing Project APIs (Agent: supabase-rls-security)
   ├─ Write integration tests for project CRUD
   ├─ Test RLS policies with different user roles
   ├─ Verify org isolation enforcement
   └─ Document API behavior and gaps
 
-[30-45min] B2: Gap Analysis
+[30-45min] B2: Gap Analysis (Agent: postgres-function-architect)
   ├─ Identify missing business logic functions
   ├─ Document required member management APIs
   ├─ List needed computed fields
   └─ Create backend implementation spec
 
-[45-90min] B3: Implement Business Logic
+[45-90min] B3: Implement Business Logic (Agent: postgres-function-architect)
   ├─ Add org membership limit validation
   ├─ Create member management functions
   ├─ Add computed field queries
   └─ Write unit tests for new functions
 
-[90-105min] B4: Deploy to Dev
+[90-105min] B4: Deploy to Dev (Agent: supabase-migration-architect)
   ├─ Run migrations
   ├─ Verify deployment
   ├─ Test APIs in dev environment
   └─ Monitor logs for errors
 
-[105-120min] B5: API Documentation
+[105-120min] B5: API Documentation (Agent: api-docs)
   ├─ Document all endpoints
   ├─ Provide request/response examples
   ├─ Create Postman collection
@@ -127,27 +363,27 @@ cd ~/dev/wildlifeai/wildlife-watcher-backend
 ```bash
 cd ~/dev/wildlifeai/wildlife-watcher-mobile-app
 
-[0-20min] M1: Type Definitions
+[0-20min] M1: Type Definitions (Agent: react-native-expo-architect)
   ├─ Create Project interface
   ├─ Create Organisation interface
   ├─ Create ProjectMember interface
   ├─ Create LoRaWANDeviceStatus interface
   └─ Export from types/index.ts
 
-[20-40min] M2: ProjectService Shell
+[20-40min] M2: ProjectService Shell (Agent: mobile-dev)
   ├─ Create ProjectService class extending BaseService
   ├─ Implement CRUD methods with mock data
   ├─ Add offline queue integration points
   └─ Write service layer tests (with mocks)
 
-[40-60min] M3: RTK Query Setup
+[40-60min] M3: RTK Query Setup (Agent: mobile-dev)
   ├─ Create projectsApi.ts
   ├─ Define query and mutation endpoints
   ├─ Setup tag-based invalidation
   ├─ Configure optimistic updates
   └─ Use mock responses for now
 
-[40-55min] M4: Mock LoRaWAN Service (Parallel with M3)
+[40-55min] M4: Mock LoRaWAN Service (Agent: mobile-dev - Parallel with M3)
   ├─ Create MockLoRaWANService class
   ├─ Generate realistic device status data
   ├─ Integrate with ProjectService
@@ -167,21 +403,21 @@ Mobile: Foundation ready ✅
 
 **Mobile Track** (Requires Backend Ready):
 ```bash
-[60-90min] I1: Service Integration
+[60-90min] I1: Service Integration (Agent: mobile-dev)
   ├─ Replace mock API calls with real Supabase queries
   ├─ Update ProjectService to use deployed APIs
   ├─ Configure RTK Query base URLs
   ├─ Test connection to dev environment
   └─ Verify RLS policies working from mobile
 
-[90-120min] I2: Integration Tests
+[90-120min] I2: Integration Tests (Agent: quality-assurance-engineer)
   ├─ Write tests against live backend
   ├─ Test org isolation enforcement
   ├─ Test role-based access control
   ├─ Test offline queue and sync
   └─ Validate computed fields
 
-[120-165min] I3: ProjectsScreen UI
+[120-165min] I3: ProjectsScreen UI (Agent: frontend-design-expert)
   ├─ Build FlatList with project cards
   ├─ Add search and filter UI
   ├─ Implement pull-to-refresh
@@ -189,14 +425,14 @@ Mobile: Foundation ready ✅
   ├─ Handle loading and error states
   └─ Test with 100+ projects
 
-[165-195min] I4: NewProjectScreen UI
+[165-195min] I4: NewProjectScreen UI (Agent: frontend-design-expert)
   ├─ Create form with react-hook-form
   ├─ Add validation rules
   ├─ Implement offline creation
   ├─ Add success/error feedback
   └─ Test form submission flow
 
-[195-210min] I5: Organisation Switcher UI
+[195-210min] I5: Organisation Switcher UI (Agent: react-native-expo-architect)
   ├─ Add side menu option
   ├─ Show only for WW Admin with 2+ orgs
   ├─ Implement cache clearing on switch
@@ -206,7 +442,7 @@ Mobile: Foundation ready ✅
 
 **Backend Track** (Monitoring in Parallel):
 ```bash
-[105-150min] Backend Monitoring
+[105-150min] Backend Monitoring (Agent: supabase-rls-security)
   ├─ Monitor API logs in dev environment
   ├─ Watch for errors or performance issues
   ├─ Adjust RLS policies if integration issues
@@ -220,21 +456,21 @@ Mobile: Foundation ready ✅
 
 **Mobile Track**:
 ```bash
-[210-240min] Q1: E2E Tests (if Maestro working)
+[210-240min] Q1: E2E Tests (Agent: quality-assurance-engineer - if Maestro working)
   ├─ Test complete project creation flow
   ├─ Test org switching for WW Admin
   ├─ Test offline creation and sync
   ├─ Test role-based permissions
   └─ Document any Maestro issues for later
 
-[240-260min] Q2: Performance Optimization
+[240-260min] Q2: Performance Optimization (Agent: react-native-expo-architect)
   ├─ Optimize FlatList rendering (virtualization)
   ├─ Add proper memoization to components
   ├─ Implement caching strategies
   ├─ Test with large datasets
   └─ Profile memory usage
 
-[260-270min] Q3: Documentation
+[260-270min] Q3: Documentation (Agent: docs-maintainer)
   ├─ Update component usage docs
   ├─ Document ProjectService API
   ├─ Add LoRaWAN integration notes
