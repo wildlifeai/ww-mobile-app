@@ -250,11 +250,11 @@ export class OfflineService {
     // Convert queue items to operations
     return queueItems.map(item => ({
       id: item.id,
-      type: item.type,
-      data: JSON.parse(item.data),
+      type: item.operation_type, // Fix: Database uses 'operation_type' not 'type'
+      data: typeof item.data === 'string' ? JSON.parse(item.data) : item.data,
       user_id: item.user_id,
       organisation_id: item.organisation_id,
-      timestamp: new Date(item.timestamp),
+      timestamp: new Date(item.created_at || item.timestamp),
       retry_count: item.retry_count
     }));
   }
