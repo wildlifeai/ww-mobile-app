@@ -1,19 +1,15 @@
 /**
  * ProjectService - Project management service layer
  *
- * Phase 1 (Mock Implementation):
- * - Provides shell CRUD methods with mock data
- * - Establishes service patterns and interfaces
- * - Prepares for Phase 2 Supabase integration
- *
- * Phase 2 TODO:
- * - Replace mock data with real Supabase queries
- * - Add offline queue integration via OfflineService
- * - Implement optimistic updates
- * - Add conflict resolution
+ * Phase 2 (Real Supabase Integration):
+ * - Real Supabase queries with RLS enforcement
+ * - Offline queue integration via OfflineService
+ * - Organisation-scoped operations
+ * - Backend API integration (Task 12)
  */
 
 import { supabase } from './supabase';
+import { OfflineService } from './offline/OfflineService';
 import type {
   Project,
   ProjectWithDetails,
@@ -27,149 +23,266 @@ class ProjectService {
 
   /**
    * Get all projects for current user's organisation
-   * @param organisationId - Current user's organisation ID
-   * @returns Projects with computed summary data
+   * Uses projects_with_stats view for computed fields
+   * RLS automatically filters by user's organisation membership
+   *
+   * Note: Using type assertion until views are added to Supabase types
    */
-  async getUserProjects(organisationId: string): Promise<ProjectWithDetails[]> {
-    // MOCK IMPLEMENTATION - Replace in Phase 2
-    return this.mockProjects.filter(p => p.organisation_id === organisationId);
+  async getUserProjects(): Promise<ProjectWithDetails[]> {
+    const { data, error } = await (supabase as any)
+      .from('projects_with_stats')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Failed to fetch projects:', error);
+      throw new Error(`Failed to fetch projects: ${error.message}`);
+    }
+
+    return (data || []) as ProjectWithDetails[];
   }
 
   /**
    * Get single project by ID with full details
+   *
+   * Note: Using type assertion until views are added to Supabase types
    */
   async getProjectById(projectId: string): Promise<ProjectWithDetails | null> {
-    // MOCK IMPLEMENTATION
-    return this.mockProjects.find(p => p.id === projectId) || null;
+    const { data, error } = await (supabase as any)
+      .from('projects_with_stats')
+      .select('*')
+      .eq('id', projectId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // Not found
+        return null;
+      }
+      console.error('Failed to fetch project:', error);
+      throw new Error(`Failed to fetch project: ${error.message}`);
+    }
+
+    return data as ProjectWithDetails | null;
   }
 
   /**
    * Create new project (online and offline support)
+   * Integrates with offline queue for resilient operations
    */
-  async createProject(input: CreateProjectInput): Promise<Project> {
-    // MOCK IMPLEMENTATION - Phase 2 will add:
-    // 1. Offline queue integration
-    // 2. Real Supabase insert
-    // 3. Optimistic updates
+  async createProject(input: CreateProjectInput, offline: boolean = false): Promise<Project> {
     const currentUserId = await this.getCurrentUserId();
 
-    const newProject: Project = {
-      id: this.generateUUID(),
-      ...input,
-      owner_id: currentUserId,
-      created_by: currentUserId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      deleted_at: null,
-      privacy_level: input.privacy_level || 'public',
-      project_image: null,
-      end_date: null,
-      is_private: input.privacy_level === 'private',
-      is_baited: input.is_baited || false,
-      is_monitoring_marked_individual: input.is_monitoring_marked_individual || false,
-      sampling_design: input.sampling_design || null,
-      website: input.website || null,
-    };
+    // If offline, queue operation and return temporary project
+    if (offline) {
+      const tempProject: Project = {
+        id: this.generateUUID(),
+        name: input.name,
+        description: input.description || null,
+        organisation_id: input.organisation_id,
+        owner_id: currentUserId,
+        created_by: currentUserId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deleted_at: null,
+        privacy_level: input.privacy_level || 'public',
+        project_image: null,
+        end_date: null,
+        is_private: input.privacy_level === 'private',
+        is_baited: input.is_baited || false,
+        is_monitoring_marked_individual: input.is_monitoring_marked_individual || false,
+        sampling_design: input.sampling_design || null,
+        website: input.website || null,
+      };
 
-    // Add to mock data
-    this.mockProjects.push(newProject);
+      // Queue for offline sync
+      const offlineService = new OfflineService();
+      await offlineService.queueOperation({
+        id: `create-project-${tempProject.id}`,
+        type: 'CREATE_PROJECT',
+        data: tempProject,
+        user_id: currentUserId,
+        organisation_id: input.organisation_id,
+        timestamp: new Date(),
+        retry_count: 0,
+      });
 
-    return newProject;
+      return tempProject;
+    }
+
+    // Online: Direct Supabase insert
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({
+        name: input.name,
+        description: input.description,
+        organisation_id: input.organisation_id,
+        owner_id: currentUserId,
+        privacy_level: input.privacy_level || 'public',
+        is_baited: input.is_baited || false,
+        is_monitoring_marked_individual: input.is_monitoring_marked_individual || false,
+        sampling_design: input.sampling_design || null,
+        website: input.website || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Failed to create project:', error);
+      throw new Error(`Failed to create project: ${error.message}`);
+    }
+
+    return data;
   }
 
   /**
    * Update existing project
    */
-  async updateProject(projectId: string, updates: Partial<Project>): Promise<Project> {
-    // MOCK IMPLEMENTATION
-    const projectIndex = this.mockProjects.findIndex(p => p.id === projectId);
+  async updateProject(projectId: string, updates: Partial<Project>, offline: boolean = false): Promise<Project> {
+    // If offline, queue operation
+    if (offline) {
+      const currentUserId = await this.getCurrentUserId();
+      const offlineService = new OfflineService();
 
-    if (projectIndex === -1) {
-      throw new Error(`Project ${projectId} not found`);
+      await offlineService.queueOperation({
+        id: `update-project-${projectId}`,
+        type: 'UPDATE_PROJECT',
+        data: { id: projectId, ...updates },
+        user_id: currentUserId,
+        organisation_id: updates.organisation_id || '',
+        timestamp: new Date(),
+        retry_count: 0,
+      });
+
+      // Return optimistic update
+      return { id: projectId, ...updates } as Project;
     }
 
-    const updatedProject = {
-      ...this.mockProjects[projectIndex],
-      ...updates,
-      updated_at: new Date().toISOString(),
-    };
+    // Online: Direct Supabase update
+    const { data, error } = await supabase
+      .from('projects')
+      .update(updates)
+      .eq('id', projectId)
+      .select()
+      .single();
 
-    this.mockProjects[projectIndex] = updatedProject;
+    if (error) {
+      console.error('Failed to update project:', error);
+      throw new Error(`Failed to update project: ${error.message}`);
+    }
 
-    return updatedProject;
+    return data;
   }
 
   /**
    * Delete project (soft delete)
    */
-  async deleteProject(projectId: string): Promise<void> {
-    // MOCK IMPLEMENTATION - Soft delete
-    const projectIndex = this.mockProjects.findIndex(p => p.id === projectId);
+  async deleteProject(projectId: string, offline: boolean = false): Promise<void> {
+    // If offline, queue operation
+    if (offline) {
+      const currentUserId = await this.getCurrentUserId();
+      const offlineService = new OfflineService();
 
-    if (projectIndex === -1) {
-      throw new Error(`Project ${projectId} not found`);
+      await offlineService.queueOperation({
+        id: `delete-project-${projectId}`,
+        type: 'DELETE_PROJECT',
+        data: { id: projectId },
+        user_id: currentUserId,
+        organisation_id: '',
+        timestamp: new Date(),
+        retry_count: 0,
+      });
+
+      return;
     }
 
-    this.mockProjects[projectIndex] = {
-      ...this.mockProjects[projectIndex],
-      deleted_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    // Online: Direct Supabase soft delete
+    const { error } = await supabase
+      .from('projects')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', projectId);
+
+    if (error) {
+      console.error('Failed to delete project:', error);
+      throw new Error(`Failed to delete project: ${error.message}`);
+    }
   }
 
   /**
    * Get project members with user profiles
+   * Uses RPC function from backend for optimized query
+   *
+   * Note: Using type assertion until RPC functions are added to Supabase types
    */
   async getProjectMembers(projectId: string): Promise<ProjectMemberWithProfile[]> {
-    // MOCK IMPLEMENTATION
-    return this.mockMembers.filter(m => m.project_id === projectId);
+    const { data, error } = await (supabase as any)
+      .rpc('get_project_members', { p_project_id: projectId });
+
+    if (error) {
+      console.error('Failed to fetch project members:', error);
+      throw new Error(`Failed to fetch project members: ${error.message}`);
+    }
+
+    // Transform RPC result to match interface
+    const members = Array.isArray(data) ? data : [];
+    return members.map((member: any) => ({
+      project_id: projectId,
+      user_id: member.user_id,
+      role_id: member.role_id,
+      created_at: member.added_at,
+      updated_at: member.added_at,
+      deleted_at: null,
+      user_profile: {
+        name: member.user_name,
+      },
+      role: {
+        value: member.role_value,
+        description: member.role_value === 'project_admin' ? 'Project Administrator' : 'Project Member',
+      },
+    }));
   }
 
   /**
    * Add member to project
+   * Uses RPC function for org validation and idempotent insert
+   *
+   * Note: Using type assertion until RPC functions are added to Supabase types
    */
   async addProjectMember(projectId: string, userId: string, roleId: number): Promise<void> {
-    // MOCK IMPLEMENTATION - Phase 2 adds:
-    // 1. Verify user in same org
-    // 2. Check permissions
-    // 3. Insert to project_members table
-    const newMember: ProjectMemberWithProfile = {
-      project_id: projectId,
-      user_id: userId,
-      role_id: roleId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      deleted_at: null,
-      user_profile: {
-        name: 'Mock User'
-      },
-      role: {
-        value: 'project_member',
-        description: 'Project Member'
-      }
-    };
+    const { error } = await (supabase as any).rpc('add_project_member', {
+      p_project_id: projectId,
+      p_user_id: userId,
+      p_role_id: roleId,
+    });
 
-    this.mockMembers.push(newMember);
+    if (error) {
+      console.error('Failed to add project member:', error);
+
+      // Check for org validation error
+      if (error.message.includes('same organisation')) {
+        throw new Error('User must belong to the same organisation as the project');
+      }
+
+      throw new Error(`Failed to add project member: ${error.message}`);
+    }
   }
 
   /**
-   * Remove member from project
+   * Remove member from project (soft delete)
+   * Uses RPC function for consistent soft delete behavior
+   *
+   * Note: Using type assertion until RPC functions are added to Supabase types
    */
   async removeProjectMember(projectId: string, userId: string): Promise<void> {
-    // MOCK IMPLEMENTATION - Soft delete
-    const memberIndex = this.mockMembers.findIndex(
-      m => m.project_id === projectId && m.user_id === userId
-    );
+    const { error } = await (supabase as any).rpc('remove_project_member', {
+      p_project_id: projectId,
+      p_user_id: userId,
+    });
 
-    if (memberIndex === -1) {
-      throw new Error(`Member not found in project ${projectId}`);
+    if (error) {
+      console.error('Failed to remove project member:', error);
+      throw new Error(`Failed to remove project member: ${error.message}`);
     }
-
-    this.mockMembers[memberIndex] = {
-      ...this.mockMembers[memberIndex],
-      deleted_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
   }
 
   // PRIVATE HELPER METHODS
@@ -193,114 +306,6 @@ class ProjectService {
     });
   }
 
-  // MOCK DATA (remove in Phase 2)
-  private mockProjects: ProjectWithDetails[] = [
-    {
-      id: '550e8400-e29b-41d4-a716-446655440001',
-      name: 'Wildlife Survey 2025',
-      description: 'Annual wildlife population survey in national parks',
-      organisation_id: 'org-1',
-      owner_id: 'user-1',
-      created_by: 'user-1',
-      privacy_level: 'public',
-      is_private: false,
-      is_baited: false,
-      is_monitoring_marked_individual: false,
-      sampling_design: 'Random grid sampling with 500m spacing',
-      created_at: '2025-01-01T00:00:00Z',
-      updated_at: '2025-01-01T00:00:00Z',
-      deleted_at: null,
-      project_image: null,
-      website: 'https://wildlifesurvey2025.example.com',
-      end_date: '2025-12-31T23:59:59Z',
-      member_count: 5,
-      deployment_count: 12,
-      lorawan_device_count: 8,
-      battery_level: 85,
-      sd_card_usage: 42,
-    },
-    {
-      id: '550e8400-e29b-41d4-a716-446655440002',
-      name: 'Tiger Monitoring Project',
-      description: 'Long-term monitoring of tiger populations',
-      organisation_id: 'org-1',
-      owner_id: 'user-2',
-      created_by: 'user-2',
-      privacy_level: 'private',
-      is_private: true,
-      is_baited: true,
-      is_monitoring_marked_individual: true,
-      sampling_design: 'Targeted monitoring of known territories',
-      created_at: '2024-06-15T00:00:00Z',
-      updated_at: '2025-01-15T00:00:00Z',
-      deleted_at: null,
-      project_image: null,
-      website: null,
-      end_date: null,
-      member_count: 3,
-      deployment_count: 8,
-      lorawan_device_count: 6,
-      battery_level: 72,
-      sd_card_usage: 68,
-    },
-    {
-      id: '550e8400-e29b-41d4-a716-446655440003',
-      name: 'Bird Migration Study',
-      description: 'Tracking migratory bird patterns through camera traps',
-      organisation_id: 'org-1',
-      owner_id: 'user-1',
-      created_by: 'user-1',
-      privacy_level: 'internal',
-      is_private: false,
-      is_baited: false,
-      is_monitoring_marked_individual: false,
-      sampling_design: 'Linear transect sampling along migration routes',
-      created_at: '2024-09-01T00:00:00Z',
-      updated_at: '2025-01-10T00:00:00Z',
-      deleted_at: null,
-      project_image: null,
-      website: null,
-      end_date: '2025-05-31T23:59:59Z',
-      member_count: 7,
-      deployment_count: 15,
-      lorawan_device_count: 12,
-      battery_level: 91,
-      sd_card_usage: 35,
-    }
-  ];
-
-  private mockMembers: ProjectMemberWithProfile[] = [
-    {
-      project_id: '550e8400-e29b-41d4-a716-446655440001',
-      user_id: 'user-1',
-      role_id: 3,
-      created_at: '2025-01-01T00:00:00Z',
-      updated_at: '2025-01-01T00:00:00Z',
-      deleted_at: null,
-      user_profile: {
-        name: 'John Smith'
-      },
-      role: {
-        value: 'project_admin',
-        description: 'Project Administrator'
-      }
-    },
-    {
-      project_id: '550e8400-e29b-41d4-a716-446655440001',
-      user_id: 'user-2',
-      role_id: 4,
-      created_at: '2025-01-02T00:00:00Z',
-      updated_at: '2025-01-02T00:00:00Z',
-      deleted_at: null,
-      user_profile: {
-        name: 'Sarah Johnson'
-      },
-      role: {
-        value: 'project_member',
-        description: 'Project Member'
-      }
-    }
-  ];
 }
 
 export default new ProjectService();

@@ -1,5 +1,9 @@
 # Task 12 Kickoff Prompt - Projects CRUD Operations
 
+**IMPORTANT**: Before executing, check current status:
+- Read `@project-context/development-context/MVP2/implementation/tasks/TASK-12-STATUS.md` for progress
+- If Mobile Phase 1 is complete, proceed to backend coordination or Phase 2
+
 ## 🎯 Primary Objective
 
 Execute **Task 12: Projects CRUD Operations** for Wildlife Watcher MVP2 mobile app using the comprehensive execution plan with AI agent coordination.

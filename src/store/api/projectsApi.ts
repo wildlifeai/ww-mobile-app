@@ -25,11 +25,11 @@ export const projectsApi = createApi({
   baseQuery: fakeBaseQuery(),
   tagTypes: ['Projects', 'ProjectMembers'],
   endpoints: (builder) => ({
-    // Get all projects for organisation
-    getProjects: builder.query<ProjectWithDetails[], string>({
-      queryFn: async (organisationId) => {
+    // Get all projects for organisation (RLS auto-filters by user's org)
+    getProjects: builder.query<ProjectWithDetails[], void>({
+      queryFn: async () => {
         try {
-          const data = await ProjectService.getUserProjects(organisationId);
+          const data = await ProjectService.getUserProjects();
           return { data };
         } catch (error) {
           return {
