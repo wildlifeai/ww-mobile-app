@@ -1,10 +1,12 @@
 import { StyleSheet, View } from "react-native"
-import { Button } from "react-native-paper"
+import { Button, Divider } from "react-native-paper"
 import { useAppNavigation } from "../hooks/useAppNavigation"
 import { useExtendedTheme } from "../theme"
 import { Dispatch } from "react"
 import { useAppDispatch } from "../redux"
 import { logout } from "../redux/slices/authSlice"
+import { OrgSwitcher } from "./OrgSwitcher"
+import { useUserOrganisations } from "../hooks/useUserOrganisations"
 
 type Props = {
 	drawerControls: Dispatch<React.SetStateAction<boolean>>
@@ -14,6 +16,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 	const navigation = useAppNavigation()
 	const dispatch = useAppDispatch()
 	const { spacing, colors, appPadding } = useExtendedTheme()
+	const { canSwitchOrganisations } = useUserOrganisations()
 
 	const goTo = (link: string) => {
 		navigation.navigate(link)
@@ -27,6 +30,14 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 
 	return (
 		<View style={[styles.list, { marginVertical: appPadding }]}>
+			{/* Organisation Switcher (WW Admin or multi-org users only) */}
+			{canSwitchOrganisations && (
+				<>
+					<OrgSwitcher />
+					<Divider style={{ marginVertical: spacing }} />
+				</>
+			)}
+
 			<Button
 				textColor={colors.onBackground}
 				style={[{ margin: spacing }, styles.link]}
