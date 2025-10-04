@@ -13,15 +13,18 @@ import projectsReducer from "./slices/projectsSlice"
 import deploymentsReducer from "./slices/deploymentsSlice"
 import wwAdminReducer from "./slices/wwAdminSlice"
 import offlineReducer from "./slices/offlineSlice"
+import networkReducer from "../store/slices/networkSlice"
 import { Action, ThunkAction, configureStore } from "@reduxjs/toolkit"
 import { api } from "./api"
 import { enhancedApi } from "./api/enhanced"
+import { projectsApi } from "../store/api/projectsApi"
 import { offlineMiddleware } from "./middleware/offlineMiddleware"
 
 const store = configureStore({
 	reducer: {
 		[api.reducerPath]: api.reducer,
 		[enhancedApi.reducerPath]: enhancedApi.reducer,
+		[projectsApi.reducerPath]: projectsApi.reducer,
 		devices: devicesReducer,
 		logs: logsReducer,
 		configuration: configurationReducer,
@@ -35,6 +38,7 @@ const store = configureStore({
 		deployments: deploymentsReducer,
 		wwAdmin: wwAdminReducer,
 		offline: offlineReducer,
+		network: networkReducer,
 	},
 	middleware: (getDefaultMiddleware) =>
 		getDefaultMiddleware({
@@ -54,7 +58,7 @@ const store = configureStore({
 				],
 			},
 		})
-		.concat(api.middleware, enhancedApi.middleware, offlineMiddleware.middleware),
+		.concat(api.middleware, enhancedApi.middleware, projectsApi.middleware, offlineMiddleware.middleware),
 })
 
 export default store

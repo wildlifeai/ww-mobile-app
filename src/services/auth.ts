@@ -9,8 +9,100 @@ import { AuthResponse, LoginRequest, RegisterRequest } from '../redux/api/auth/t
  * and integrates with the existing Redux auth slice structure.
  */
 
+/**
+ * Fetch user's organisations and role information from database
+ * This queries the user_organisations table to get all organisations the user belongs to
+ */
+const fetchUserOrganisations = async (userId: string) => {
+  try {
+    // Step 1: Get user_organisations (simple link table)
+    const { data: userOrgs, error: userOrgsError } = await supabase
+      .from('user_organisations')
+      .select('organisation_id')
+      .eq('user_id', userId);
+
+    if (userOrgsError) {
+      console.error('Error fetching user_organisations:', userOrgsError);
+      return { organisations: [], role: 'project_member' as const, organisationId: null };
+    }
+
+    if (!userOrgs || userOrgs.length === 0) {
+      console.warn('No organisations found for user:', userId);
+      return { organisations: [], role: 'project_member' as const, organisationId: null };
+    }
+
+    // Step 2: Get organisation details
+    const orgIds = userOrgs.map(uo => uo.organisation_id);
+    const { data: orgs, error: orgsError } = await supabase
+      .from('organisations')
+      .select('id, name, slug')
+      .in('id', orgIds);
+
+    if (orgsError) {
+      console.error('Error fetching organisations:', orgsError);
+      return { organisations: [], role: 'project_member' as const, organisationId: null };
+    }
+
+    // Step 3: Get user roles for each organisation
+    // user_roles has: user_id, role, scope_type, scope_id
+    // For org-level roles: scope_type='organisation', scope_id=org_id
+    // For system-level roles: scope_type='system', scope_id=null (ww_admin)
+    const { data: userRoles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('role, scope_type, scope_id')
+      .eq('user_id', userId)
+      .eq('is_active', true);
+
+    if (rolesError) {
+      console.error('Error fetching user_roles:', rolesError);
+      return { organisations: [], role: 'project_member' as const, organisationId: null };
+    }
+
+    // Step 4: Combine the data
+    const organisations = userOrgs.map(uo => {
+      const org = orgs?.find(o => o.id === uo.organisation_id);
+
+      // Find role for this organisation (organisation-scoped or system-wide)
+      const orgRole = userRoles?.find(
+        r => r.scope_type === 'organisation' && r.scope_id === uo.organisation_id
+      );
+      const systemRole = userRoles?.find(r => r.scope_type === 'system');
+
+      // System ww_admin role takes precedence over org-specific roles
+      const role = systemRole?.role || orgRole?.role || 'project_member';
+
+      return {
+        id: org?.id || '',
+        name: org?.name || '',
+        role: role as 'ww_admin' | 'project_admin' | 'project_member',
+      };
+    });
+
+    // Get highest privilege role (ww_admin > project_admin > project_member)
+    const allRoles = organisations.map(o => o.role);
+    const role = allRoles.includes('ww_admin')
+      ? 'ww_admin'
+      : allRoles.includes('project_admin')
+      ? 'project_admin'
+      : 'project_member';
+
+    // Get default organisation (first one for now)
+    const organisationId = userOrgs[0].organisation_id;
+
+    console.log('✅ Fetched user organisations:', { organisations, role, organisationId });
+    return { organisations, role, organisationId };
+  } catch (error) {
+    console.error('Exception fetching user organisations:', error);
+    return { organisations: [], role: 'project_member' as const, organisationId: null };
+  }
+};
+
 // Transform Supabase User to match existing app AuthResponse format
-const transformSupabaseUser = (user: User, session: Session): AuthResponse => {
+// Now includes organisation data from database
+const transformSupabaseUser = async (user: User, session: Session): Promise<AuthResponse> => {
+  // Fetch user's organisations from database
+  const { organisations, role, organisationId } = await fetchUserOrganisations(user.id);
+
   return {
     jwt: session.access_token,
     user: {
@@ -21,6 +113,9 @@ const transformSupabaseUser = (user: User, session: Session): AuthResponse => {
       blocked: false, // Supabase doesn't have blocked status
       createdAt: user.created_at,
       updatedAt: user.updated_at || user.created_at,
+      role, // User's highest privilege role
+      organisation_id: organisationId, // Default organisation
+      organisations, // All organisations user belongs to
     },
   };
 };
@@ -43,7 +138,7 @@ export const login = async (credentials: LoginRequest): Promise<AuthResponse> =>
       throw new Error('Login failed: No user or session data returned');
     }
 
-    return transformSupabaseUser(data.user, data.session);
+    return await transformSupabaseUser(data.user, data.session);
   } catch (error) {
     console.error('Login error:', error);
     throw error;
@@ -98,7 +193,7 @@ export const register = async (credentials: RegisterRequest): Promise<AuthRespon
       return pendingAuthResponse;
     }
 
-    return transformSupabaseUser(data.user, data.session);
+    return await transformSupabaseUser(data.user, data.session);
   } catch (error) {
     console.error('Registration error:', error);
     throw error;
@@ -184,9 +279,9 @@ export const setupAuthListener = (
   const { data: { subscription } } = supabase.auth.onAuthStateChange(
     async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email);
-      
+
       if (session && session.user) {
-        const authResponse = transformSupabaseUser(session.user, session);
+        const authResponse = await transformSupabaseUser(session.user, session);
         onAuthStateChange(authResponse);
       } else {
         onAuthStateChange(null);

@@ -76,6 +76,8 @@ export default ({ config }) => {
       // Supabase configuration
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      // Debug: Log the URL being used
+      _supabaseUrlDebug: `Loading Supabase URL: ${process.env.EXPO_PUBLIC_SUPABASE_URL || 'NOT SET'}`,
       // Bundle identifier info for runtime access
       bundleIdentifier: bundleId,
       isDevelopment

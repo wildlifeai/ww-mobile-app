@@ -130,12 +130,13 @@ export class OfflineService {
     // Queue operation for offline processing or retry
     const queueItem: any = {
       id: operation.id,
-      type: operation.type,
+      operation_type: operation.type,  // Map 'type' to 'operation_type' for database
       data: JSON.stringify(operation.data),
       user_id: operation.user_id,
       organisation_id: operation.organisation_id,
-      timestamp: operation.timestamp,
+      priority: 'medium',  // Default priority
       retry_count: operation.retry_count,
+      max_retries: 3,  // Default max retries
       status: 'pending'
     };
     await this.databaseService.addToOfflineQueue(queueItem);

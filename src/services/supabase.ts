@@ -7,6 +7,12 @@ import type { Database } from '../types/supabase';
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl;
 const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey;
 
+// Debug logging
+console.log('🔧 Supabase Configuration:');
+console.log('  URL:', supabaseUrl);
+console.log('  Has Anon Key:', !!supabaseAnonKey);
+console.log('  Debug:', Constants.expoConfig?.extra?._supabaseUrlDebug);
+
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
     'Missing Supabase configuration. Please check your environment variables:\n' +
