@@ -1,8 +1,10 @@
 # Task 12 Kickoff Prompt - Projects CRUD Operations
 
-**IMPORTANT**: Before executing, check current status:
-- Read `@project-context/development-context/MVP2/implementation/tasks/TASK-12-STATUS.md` for progress
-- If Mobile Phase 1 is complete, proceed to backend coordination or Phase 2
+**🚨 CRITICAL UPDATE**: Offline-first architectural gap discovered. Before executing:
+- Read `@project-context/development-context/MVP2/implementation/analysis/OFFLINE-IMPLEMENTATION-ANALYSIS.md`
+- Read `@project-context/development-context/MVP2/implementation/tasks/task_012_offline_first_rewrite.md`
+- Current implementation is CLOUD-FIRST (violates MVP2 Spec Section 6.1)
+- **MANDATORY**: Complete 32-hour offline-first rewrite before proceeding with original plan
 
 ## 🎯 Primary Objective
 
@@ -10,39 +12,57 @@ Execute **Task 12: Projects CRUD Operations** for Wildlife Watcher MVP2 mobile a
 
 ## 📋 Context Documents (Read These First)
 
-**MANDATORY READING ORDER:**
-1. `@project-context/development-context/MVP2/implementation/tasks/task_012.txt` - Task overview
-2. `@project-context/development-context/MVP2/implementation/tasks/task_012_implementation_spec.md` - Detailed requirements (650 lines)
-3. `@project-context/development-context/MVP2/implementation/tasks/task_012_execution_plan.md` - v2.0 execution strategy with agent assignments (800+ lines)
-4. `@project-context/development-context/MVP2/implementation/tasks/task_012_backend_spec.md` - Backend coordination requirements (450 lines)
+**MANDATORY READING ORDER (UPDATED):**
+1. `@project-context/development-context/MVP2/implementation/analysis/OFFLINE-IMPLEMENTATION-ANALYSIS.md` - **READ FIRST** - Architectural gap analysis
+2. `@project-context/development-context/MVP2/implementation/tasks/task_012_offline_first_rewrite.md` - **32-hour rewrite plan**
+3. `@project-context/development-context/MVP2/implementation/tasks/task_012.txt` - Task overview (UPDATED with rewrite scope)
+4. `@project-context/development-context/MVP2/implementation/tasks/task_012_implementation_spec.md` - Detailed requirements (650 lines)
+5. `@project-context/development-context/MVP2/implementation/tasks/task_012_execution_plan.md` - v2.0 execution strategy (NOW SUPERSEDED by offline-first rewrite)
+6. `@project-context/development-context/MVP2/implementation/tasks/task_012_backend_spec.md` - Backend coordination requirements (450 lines)
 
 ## 🚀 Execution Instructions
 
-### Step 1: Initialize AI Project Orchestrator
+### Step 1: Acknowledge Architectural Change
 
-Spawn the **ai-project-orchestrator** agent with this prompt:
+**STOP**: Original execution plan is INVALID due to architectural mismatch.
+
+**What Happened:**
+- Current implementation: Cloud-first (Supabase as primary store)
+- MVP2 Spec Section 6.1: Offline-first required ("core requirement, not optional")
+- Discovery: Testing revealed projects stored in Supabase only, SQLite only used as sync buffer
+- Impact: App fails offline instead of working seamlessly
+
+**New Execution Strategy:**
+1. **Complete offline-first rewrite FIRST** (32 hours / 4 days)
+2. **Then** proceed with original integration plan
+
+### Step 2: Initialize Offline-First Rewrite
+
+Spawn the **ai-project-orchestrator** agent with this updated prompt:
 
 ```
-Initialize Task 12 (Projects CRUD Operations) execution using the comprehensive execution plan.
+Initialize Task 12 Phase 3A: Offline-First Architecture Rewrite
 
-Read these specifications:
-- task_012_implementation_spec.md (requirements & clarifications)
-- task_012_execution_plan.md (v2.0 with Supabase specialists)
-- task_012_backend_spec.md (cross-repo API specs)
+Read these critical documents:
+- OFFLINE-IMPLEMENTATION-ANALYSIS.md (architectural gap discovery)
+- task_012_offline_first_rewrite.md (32-hour implementation plan)
+- task_012_implementation_spec.md (original requirements still apply)
 
 Your responsibilities:
-1. Spawn all agents according to the Progressive Agent Spawning Strategy (Section 3.3)
-2. Coordinate parallel execution across Backend and Mobile tracks
-3. Monitor progress and handle handoffs at 60-min, 120-min, 210-min checkpoints
-4. Update MVP2-METRICS-TRACKER.md with actual vs estimated hours
-5. Ensure cross-project-coordinator relays specs between repos
+1. Execute 5-phase offline-first rewrite (LocalProjectsService, SyncService, ConflictResolver)
+2. Coordinate mobile-dev, supabase-schema-architect, and quality-assurance-engineer agents
+3. Replace RTK Query with local-first hooks (useLocalProjects)
+4. Implement background sync with conflict resolution per Spec Section 6.4
+5. Update MVP2-METRICS-TRACKER.md with 32-hour rewrite allocation
 
-Follow the execution plan exactly:
-- Phase 1 (0-60min): Backend + Mobile foundation in parallel
-- Phase 2 (60-210min): Integration with live backend
-- Phase 3 (210-270min): Quality & polish
+Follow the offline-first rewrite plan:
+- Phase 1 (8hrs): Local Storage Foundation
+- Phase 2 (8hrs): Background Sync System
+- Phase 3 (4hrs): UI Integration
+- Phase 4 (4hrs): Sync Status UI
+- Phase 5 (8hrs): Testing & Validation
 
-Start by spawning the cross-project-coordinator and Phase 1 agents.
+Start by spawning mobile-dev agent for Phase 1.
 ```
 
 ### Step 2: Verify Pre-Execution Checklist
@@ -147,8 +167,19 @@ Track all progress in MVP2-METRICS-TRACKER.md with actual hours.
 
 ---
 
-**Estimated Total Time:** 4.5 hours (270 minutes) with 25% parallel efficiency savings
+**🔴 UPDATED ESTIMATES:**
 
-**Target Completion:** Single development session with 3 coordination checkpoints
+**Offline-First Rewrite (Phase 3A):** 32 hours (4 days)
+- Phase 1: Local Storage Foundation - 8 hrs
+- Phase 2: Background Sync System - 8 hrs
+- Phase 3: UI Integration - 4 hrs
+- Phase 4: Sync Status UI - 4 hrs
+- Phase 5: Testing & Validation - 8 hrs
 
-**Post-Completion:** Commit all changes, update metrics tracker, create handoff notes for Task 13
+**Original Integration (Phase 3B):** 4.5 hours (after rewrite complete)
+
+**New Total Estimate:** 36.5 hours
+
+**Target Completion:** 4-5 development sessions with comprehensive testing
+
+**Post-Completion:** Commit all changes, update metrics tracker, validate offline-first works in field conditions, create handoff notes for Task 13

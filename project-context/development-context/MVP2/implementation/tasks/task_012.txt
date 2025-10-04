@@ -5,21 +5,36 @@
 # Dependencies: 11
 # Priority: high
 # Actual Hours: 2.0
-# Estimated Hours: 4.5
-# Description: STREAM A: Implement comprehensive project management with organisation scoping, WW Admin read-only visibility, LoRaWAN integration, including projects list screen, new project creation, project service layer, and RTK Query integration with offline support
+# Estimated Hours: 9.5
+# Description: STREAM A: Implement comprehensive project management with organisation scoping, WW Admin read-only visibility, LoRaWAN integration, including projects list screen, new project creation, project service layer, and integration with Task 11 offline-first infrastructure
 #
 # 📚 DETAILED IMPLEMENTATION DOCUMENTATION:
-# - Current Status: TASK-12-STATUS.md (progress tracking & context recovery)
+#
+# ⭐ START HERE FOR PHASE 3:
+# - Quick Start: TASK-12-QUICK-START.md (30-second summary + immediate next steps)
+# - Integration Path: TASK-12-INTEGRATION-PATH.md (5-6 hour step-by-step checklist)
+# - Current Status: task_012_status.md (progress tracking & context recovery)
+#
+# 📊 CORRECTED ANALYSIS:
+# - Offline Reality Check: ../analysis/OFFLINE-INTEGRATION-REALITY.md (use existing Task 11 infrastructure)
+#
+# ❌ OBSOLETE (DO NOT USE):
+# - ../analysis/OFFLINE-IMPLEMENTATION-ANALYSIS.md (superseded - assumed missing infrastructure)
+# - task_012_offline_first_rewrite.md (cancelled - 32-hour plan was incorrect)
+#
+# 📖 ORIGINAL SPECS (Still Valid):
 # - Implementation Spec: task_012_implementation_spec.md (requirements & clarifications)
-# - Execution Plan: task_012_execution_plan.md (dependency graph & parallel execution)
+# - Execution Plan: task_012_execution_plan.md (dependency graph - Phase 1-2 complete)
 # - Backend Coordination: task_012_backend_spec.md (cross-repo API specifications)
 # - Schema Docs: task_012_schema_relationships.md (auth.users architecture understanding)
 #
-# 🎯 CURRENT PHASE: Mobile Phase 2 COMPLETE (2.0/4.5 hrs) | Ready for Integration
+# ✅ CORRECTED DISCOVERY: Task 11 offline infrastructure exists - needs integration (NOT rewrite)
+# 🎯 CURRENT PHASE: Mobile Phase 2 UI Complete | Integration with Task 11 Required
 # ✅ Phase 1: Type definitions, service layer, RTK Query, mock LoRaWAN
 # ✅ Phase 2: UI Screens (Projects, NewProject, OrgSwitcher) - Part I3-I5 COMPLETE
-# ⏳ Backend Phase 1 complete - ready for Phase 3 integration testing
-# 📋 See TASK-12-STATUS.md for detailed progress and next steps
+# ⏳ Backend Phase 1 complete (87%)
+# 🔧 Phase 3: Integrate with DatabaseService + OfflineService (5-6 hrs) - Use existing infrastructure
+# 📋 See OFFLINE-INTEGRATION-REALITY.md for integration approach
 #
 # Details:
 PARALLEL DEVELOPMENT STREAM A - Task 12: Projects CRUD Operations
@@ -107,7 +122,12 @@ This task implements the complete project management system for Wildlife Watcher
 - **Role-Based Access Control**: WW Admin, project admin, and member permissions throughout
 - **WW Admin Read-Only Access**: Cross-organisation project visibility
 - **Organisation Multi-Tenancy**: Data isolation and scoped operations
-- **Offline-First**: Projects can be created and managed offline with organisation context
+- **✅ TRUE OFFLINE-FIRST** (INTEGRATION with Task 11):
+  - Use existing DatabaseService (`local_projects` table)
+  - Use existing OfflineService (queue + sync)
+  - Use existing ConflictResolutionService
+  - Integrate with Redux offline slices (syncSlice, offlineSlice, networkSlice)
+  - See OFFLINE-INTEGRATION-REALITY.md for integration guide
 - **Real-time Updates**: Changes sync across team members with role validation
 - **Search & Filter**: Easy project discovery and organization with organisation scoping
 - **Team Management**: Add/remove members with role-based permissions (admin/member)
@@ -122,14 +142,24 @@ This task implements the complete project management system for Wildlife Watcher
 - Test error scenarios and edge cases
 
 ## Success Criteria:
+
+### Phase 3: Offline Integration (5-6 hours) - Use Task 11 Infrastructure
+- [ ] ProjectService imports DatabaseService + OfflineService
+- [ ] getUserProjects() reads from local_projects table
+- [ ] createProject() saves to SQLite first, then queues sync
+- [ ] updateProject() uses DatabaseService.updateProject()
+- [ ] deleteProject() uses DatabaseService.deleteProject()
+- [ ] Background sync triggers on network state changes
+- [ ] RTK Query uses DatabaseService (not direct Supabase)
+- [ ] Comprehensive offline testing (airplane mode validation)
 - [ ] Project creation working online and offline
 - [ ] Projects list displaying correctly with all summary info
 - [ ] Search and filtering functional and performant
 - [ ] Team member management working with proper permissions
 - [ ] Proper error handling and user feedback
 - [ ] Smooth navigation and user experience
-- [ ] RTK Query integration with optimistic updates
-- [ ] Offline support with reliable sync
+- [ ] Background sync with conflict resolution
+- [ ] Offline support with reliable sync and data persistence
 
 # Test Strategy:
 Test project CRUD operations, verify offline functionality, test search/filter performance, validate team member management, test error scenarios
