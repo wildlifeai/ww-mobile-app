@@ -38,10 +38,21 @@ export const MapScreen: React.FC = () => {
   const [initialLoad, setInitialLoad] = useState(true);
 
   /**
+   * Debug logging
+   */
+  useEffect(() => {
+    console.log('[MapScreen] Permission status:', permissions.foreground);
+    console.log('[MapScreen] Location loading:', locationLoading);
+    console.log('[MapScreen] Has location:', !!location);
+    console.log('[MapScreen] Error:', locationError);
+  }, [permissions.foreground, locationLoading, location, locationError]);
+
+  /**
    * Center map on user location when available
    */
   useEffect(() => {
     if (location && initialLoad) {
+      console.log('[MapScreen] Centering on user location:', location);
       resetToUserLocation(location);
       setInitialLoad(false);
     }
@@ -70,36 +81,31 @@ export const MapScreen: React.FC = () => {
   };
 
   /**
-   * Show permission prompt if needed
+   * Show map with permission prompt overlay if needed
+   * CHANGED: Always show map, overlay permission prompt
    */
-  if (permissions.foreground !== 'granted') {
-    return (
-      <View style={styles.container}>
-        <BasicMapView
-          region={region}
-          onRegionChangeComplete={setRegion}
-          mapType={mapType}
-          config={{ showsUserLocation: false }} // Hide until granted
-          mapRef={mapRef}
-        />
-        <LocationPermissionPrompt
-          status={permissions.foreground}
-          onRequestPermission={requestPermissions}
-          canAskAgain={permissions.canAskAgain}
-        />
-      </View>
-    );
-  }
+  const showPermissionPrompt = permissions.foreground !== 'granted';
+  const showMapUserLocation = permissions.foreground === 'granted';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Map View */}
+      {/* Map View - ALWAYS SHOWN */}
       <BasicMapView
         region={region}
         onRegionChangeComplete={setRegion}
         mapType={mapType}
         mapRef={mapRef}
+        config={{ showsUserLocation: showMapUserLocation }}
       />
+
+      {/* Permission Prompt Overlay */}
+      {showPermissionPrompt && (
+        <LocationPermissionPrompt
+          status={permissions.foreground}
+          onRequestPermission={requestPermissions}
+          canAskAgain={permissions.canAskAgain}
+        />
+      )}
 
       {/* Map Controls */}
       <MapControls

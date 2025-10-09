@@ -43,6 +43,15 @@ export const BasicMapView: React.FC<BasicMapViewProps> = ({
   const finalConfig = { ...DEFAULT_CONFIG, ...config };
 
   /**
+   * Debug logging for map initialization
+   */
+  useEffect(() => {
+    console.log('[BasicMapView] Initializing with region:', region);
+    console.log('[BasicMapView] Map type:', mapType);
+    console.log('[BasicMapView] Config:', finalConfig);
+  }, []);
+
+  /**
    * Handle region change with gesture detection
    * Prevents infinite loops from programmatic updates
    */
@@ -53,6 +62,7 @@ export const BasicMapView: React.FC<BasicMapViewProps> = ({
     // Only trigger callback for user gestures (not programmatic changes)
     if (gesture && !gesture.isGesture) return;
 
+    console.log('[BasicMapView] Region changed:', newRegion);
     onRegionChangeComplete?.(newRegion);
   };
 
