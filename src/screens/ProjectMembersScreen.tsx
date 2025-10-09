@@ -414,66 +414,80 @@ export const ProjectMembersScreen: React.FC = () => {
 
       {/* Add Member Dialog */}
       <Portal>
-        <Dialog visible={showAddMemberDialog} onDismiss={() => setShowAddMemberDialog(false)}>
+        <Dialog visible={showAddMemberDialog} onDismiss={() => setShowAddMemberDialog(false)} style={styles.dialog}>
           <Dialog.Title>Add Project Member</Dialog.Title>
-          <Dialog.Content>
-            <Text variant="bodySmall" style={{ marginBottom: 8, color: '#666' }}>
-              Search and select a user from your organization:
-            </Text>
-            <Searchbar
-              placeholder="Search by name or email..."
-              onChangeText={setSearchQuery}
-              value={searchQuery}
-              style={{ marginBottom: 16, elevation: 2 }}
-              testID="member-search-bar"
-            />
+          <Dialog.Content style={styles.dialogContent}>
+            {/* Search Section with Light Background */}
+            <View style={styles.searchSection}>
+              <Text variant="bodySmall" style={styles.searchLabel}>
+                Search and select a user from your organization:
+              </Text>
+              <Searchbar
+                placeholder="Search by name or email..."
+                onChangeText={setSearchQuery}
+                value={searchQuery}
+                style={styles.searchBar}
+                inputStyle={{ fontSize: 14 }}
+                testID="member-search-bar"
+              />
+            </View>
 
-            <ScrollView style={{ maxHeight: 300 }}>
+            {/* Compact User List */}
+            <ScrollView style={styles.userList} showsVerticalScrollIndicator={true}>
               {filteredAvailableUsers.length === 0 ? (
-                <Text style={{ textAlign: 'center', color: '#666', padding: 16 }}>
-                  {searchQuery ? 'No users found' : 'No available users to add'}
-                </Text>
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>
+                    {searchQuery ? 'No users found' : 'No available users to add'}
+                  </Text>
+                </View>
               ) : (
                 filteredAvailableUsers.map((user) => (
-                  <Card
+                  <View
                     key={user.id}
-                    style={{
-                      marginBottom: 8,
-                      backgroundColor: selectedUserId === user.id ? '#E3F2FD' : '#fff',
-                    }}
-                    onPress={() => setSelectedUserId(user.id)}
+                    style={[
+                      styles.userItem,
+                      selectedUserId === user.id && styles.userItemSelected,
+                    ]}
                   >
-                    <Card.Content>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <RadioButton
-                          value={user.id}
-                          status={selectedUserId === user.id ? 'checked' : 'unchecked'}
-                          onPress={() => setSelectedUserId(user.id)}
-                        />
-                        <View style={{ flex: 1, marginLeft: 8 }}>
-                          <Text variant="titleSmall">{user.name}</Text>
-                          <Text variant="bodySmall" style={{ color: '#666' }}>
-                            {user.email}
-                          </Text>
-                        </View>
-                      </View>
-                    </Card.Content>
-                  </Card>
+                    <RadioButton
+                      value={user.id}
+                      status={selectedUserId === user.id ? 'checked' : 'unchecked'}
+                      onPress={() => setSelectedUserId(user.id)}
+                    />
+                    <View style={styles.userItemContent} onTouchEnd={() => setSelectedUserId(user.id)}>
+                      <Text variant="bodyMedium" style={styles.userName}>{user.name}</Text>
+                      <Text variant="bodySmall" style={styles.userEmail}>{user.email}</Text>
+                    </View>
+                  </View>
                 ))
               )}
             </ScrollView>
 
+            {/* Role Selection */}
             {selectedUserId && (
-              <View style={{ marginTop: 16 }}>
-                <Text variant="titleSmall" style={{ marginBottom: 8 }}>
+              <View style={styles.roleSection}>
+                <Divider style={{ marginBottom: 12 }} />
+                <Text variant="titleSmall" style={styles.roleSectionTitle}>
                   Assign Role:
                 </Text>
                 <RadioButton.Group
                   onValueChange={(value) => setSelectedUserRole(value as ProjectRole)}
                   value={selectedUserRole}
                 >
-                  <RadioButton.Item label="Project Member" value="project_member" />
-                  <RadioButton.Item label="Project Admin" value="project_admin" />
+                  <View style={styles.roleOptions}>
+                    <RadioButton.Item
+                      label="Project Member"
+                      value="project_member"
+                      style={styles.roleOption}
+                      labelStyle={{ fontSize: 14 }}
+                    />
+                    <RadioButton.Item
+                      label="Project Admin"
+                      value="project_admin"
+                      style={styles.roleOption}
+                      labelStyle={{ fontSize: 14 }}
+                    />
+                  </View>
                 </RadioButton.Group>
               </View>
             )}
@@ -623,5 +637,78 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     marginTop: 8,
+  },
+  // Add Member Dialog Styles
+  dialog: {
+    maxHeight: '85%',
+  },
+  dialogContent: {
+    paddingHorizontal: 0,
+    paddingTop: 0,
+  },
+  searchSection: {
+    backgroundColor: '#F5F5F5',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    marginHorizontal: 24,
+  },
+  searchLabel: {
+    color: '#666',
+    marginBottom: 8,
+  },
+  searchBar: {
+    elevation: 0,
+    backgroundColor: '#FFFFFF',
+  },
+  userList: {
+    maxHeight: 300,
+    paddingHorizontal: 24,
+  },
+  emptyState: {
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 14,
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  userItemSelected: {
+    backgroundColor: '#E3F2FD',
+  },
+  userItemContent: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  userName: {
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  userEmail: {
+    color: '#666',
+    fontSize: 13,
+  },
+  roleSection: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+  },
+  roleSectionTitle: {
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  roleOptions: {
+    gap: 0,
+  },
+  roleOption: {
+    paddingVertical: 4,
   },
 });
