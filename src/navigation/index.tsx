@@ -24,6 +24,7 @@ import type { Option } from "../components/ui/WWSelect"
 import { AddProject } from "./screens/AddProject"
 import { NewProjectScreen } from "./screens/NewProjectScreen"
 import { ProjectDetailsScreen } from "./screens/ProjectDetailsScreen"
+import { ProjectMembersScreen } from "../screens/ProjectMembersScreen"
 import { BottomTabs } from "./BottomTabs"
 import { DevBuildInfo } from "./screens/DevBuildInfo"
 import { AuthTestScreen } from "../screens/AuthTestScreen"
@@ -45,6 +46,7 @@ export interface RootStackParamList extends ParamListBase {
 	AddProject: undefined
 	NewProjectScreen: undefined
 	ProjectDetailsScreen: { projectId: string }
+	ProjectMembersScreen: { projectId: string; projectName: string }
 	DevBuildInfo: undefined
 	AuthTestScreen: undefined
 }
@@ -189,6 +191,11 @@ export const MainNavigation = () => {
 							name="ProjectDetailsScreen"
 							component={ProjectDetailsScreen}
 							options={{ title: "Project Details" }}
+						/>
+						<Stack.Screen
+							name="ProjectMembersScreen"
+							component={ProjectMembersScreen}
+							options={{ title: "Project Members" }}
 						/>
 						{__DEV__ && (
 							<>

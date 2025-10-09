@@ -512,14 +512,16 @@ export const ProjectDetailsScreen = () => {
                 </Text>
                 <Button
                   mode="text"
-                  icon="plus"
+                  icon="account-multiple"
                   onPress={() => {
-                    // TODO: Implement add member modal
-                    Alert.alert('Add Member', 'Member management UI coming soon');
+                    navigation.navigate('ProjectMembersScreen', {
+                      projectId: project.id,
+                      projectName: project.name,
+                    });
                   }}
-                  testID="add-member-button"
+                  testID="manage-members-button"
                 >
-                  Add
+                  Manage
                 </Button>
               </View>
 
