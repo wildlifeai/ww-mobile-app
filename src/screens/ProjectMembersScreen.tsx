@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   userList: {
-    maxHeight: 300,
+    maxHeight: 200,
     paddingHorizontal: 24,
   },
   emptyState: {
