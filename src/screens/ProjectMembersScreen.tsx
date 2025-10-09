@@ -499,11 +499,12 @@ export const ProjectMembersScreen: React.FC = () => {
           <View style={styles.searchContainer}>
             <Searchbar
               placeholder="Search members"
+              placeholderTextColor="#666666"
               onChangeText={setSearchQuery}
               value={searchQuery}
               style={styles.searchBarFull}
               inputStyle={styles.searchInput}
-              theme={{ colors: { onSurfaceVariant: '#000000' } }}
+              theme={{ colors: { onSurfaceVariant: '#000000', onSurface: '#000000' } }}
               testID="member-search-bar"
             />
           </View>
