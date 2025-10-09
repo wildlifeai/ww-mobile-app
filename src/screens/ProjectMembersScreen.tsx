@@ -417,11 +417,15 @@ export const ProjectMembersScreen: React.FC = () => {
         <Dialog visible={showAddMemberDialog} onDismiss={() => setShowAddMemberDialog(false)}>
           <Dialog.Title>Add Project Member</Dialog.Title>
           <Dialog.Content>
+            <Text variant="bodySmall" style={{ marginBottom: 8, color: '#666' }}>
+              Search and select a user from your organization:
+            </Text>
             <Searchbar
-              placeholder="Search users..."
+              placeholder="Search by name or email..."
               onChangeText={setSearchQuery}
               value={searchQuery}
-              style={{ marginBottom: 16 }}
+              style={{ marginBottom: 16, elevation: 2 }}
+              testID="member-search-bar"
             />
 
             <ScrollView style={{ maxHeight: 300 }}>
