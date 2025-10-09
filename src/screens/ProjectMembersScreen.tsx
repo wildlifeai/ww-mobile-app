@@ -179,6 +179,16 @@ export const ProjectMembersScreen: React.FC = () => {
     );
   };
 
+  const toggleSelectAll = () => {
+    if (selectedUserIds.length === filteredAvailableUsers.length) {
+      // Deselect all
+      setSelectedUserIds([]);
+    } else {
+      // Select all filtered users
+      setSelectedUserIds(filteredAvailableUsers.map(u => u.id));
+    }
+  };
+
   const handleChangeRole = async () => {
     if (!selectedMember) return;
 
@@ -444,7 +454,7 @@ export const ProjectMembersScreen: React.FC = () => {
             </Button>
           </Appbar.Header>
 
-          {/* Role Selection with Segmented Buttons */}
+          {/* Role Selection with Segmented Buttons - GREEN THEME */}
           <View style={styles.roleSelectionSection}>
             <Text variant="titleMedium" style={styles.roleLabel}>
               Adding as:
@@ -457,13 +467,28 @@ export const ProjectMembersScreen: React.FC = () => {
                   value: 'project_member',
                   label: 'Member',
                   icon: 'account',
+                  style: { borderColor: '#4CAF50' },
+                  labelStyle: { color: selectedUserRole === 'project_member' ? '#FFFFFF' : '#000000' },
+                  uncheckedColor: '#000000',
+                  checkedColor: '#FFFFFF',
                 },
                 {
                   value: 'project_admin',
                   label: 'Admin',
                   icon: 'shield-account',
+                  style: { borderColor: '#4CAF50' },
+                  labelStyle: { color: selectedUserRole === 'project_admin' ? '#FFFFFF' : '#000000' },
+                  uncheckedColor: '#000000',
+                  checkedColor: '#FFFFFF',
                 },
               ]}
+              theme={{
+                colors: {
+                  secondaryContainer: '#4CAF50',
+                  onSecondaryContainer: '#FFFFFF',
+                  outline: '#4CAF50',
+                }
+              }}
               style={styles.segmentedButtons}
             />
           </View>
@@ -481,23 +506,33 @@ export const ProjectMembersScreen: React.FC = () => {
             />
           </View>
 
-          {/* Selected Count */}
-          {selectedUserIds.length > 0 && (
-            <View style={styles.selectionBanner}>
-              <Text variant="bodyMedium" style={styles.selectionText}>
-                {selectedUserIds.length} {selectedUserIds.length === 1 ? 'user' : 'users'} selected
-              </Text>
-              <Button
-                mode="text"
-                onPress={() => setSelectedUserIds([])}
-                compact
+          {/* Select All Header */}
+          {filteredAvailableUsers.length > 0 && (
+            <View style={styles.selectAllContainer}>
+              <Checkbox
+                status={
+                  selectedUserIds.length === 0
+                    ? 'unchecked'
+                    : selectedUserIds.length === filteredAvailableUsers.length
+                    ? 'checked'
+                    : 'indeterminate'
+                }
+                onPress={toggleSelectAll}
+                color="#4CAF50"
+              />
+              <Text
+                variant="bodyMedium"
+                style={styles.selectAllText}
+                onPress={toggleSelectAll}
               >
-                Clear
-              </Button>
+                {selectedUserIds.length === filteredAvailableUsers.length
+                  ? 'Deselect All'
+                  : 'Select All'}
+              </Text>
             </View>
           )}
 
-          {/* User List */}
+          {/* User List - NO BACKGROUND CHANGES */}
           <ScrollView style={styles.fullUserList}>
             {filteredAvailableUsers.length === 0 ? (
               <View style={styles.emptyStateFull}>
@@ -511,14 +546,12 @@ export const ProjectMembersScreen: React.FC = () => {
                 return (
                   <View
                     key={user.id}
-                    style={[
-                      styles.userItemFull,
-                      isSelected && styles.userItemSelected,
-                    ]}
+                    style={styles.userItemFull}
                   >
                     <Checkbox
                       status={isSelected ? 'checked' : 'unchecked'}
                       onPress={() => toggleUserSelection(user.id)}
+                      color="#4CAF50"
                     />
                     <View
                       style={styles.userItemContent}
@@ -786,6 +819,20 @@ const styles = StyleSheet.create({
   searchBarFull: {
     elevation: 2,
     backgroundColor: '#FFFFFF',
+  },
+  selectAllContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F9F9F9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  selectAllText: {
+    marginLeft: 8,
+    fontWeight: '600',
+    color: '#000',
   },
   selectionBanner: {
     flexDirection: 'row',
