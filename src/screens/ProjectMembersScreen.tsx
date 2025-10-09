@@ -13,7 +13,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, RefreshControl, Alert, Modal, SafeAreaView } from 'react-native';
 import {
   Card,
   Text,
@@ -29,6 +29,8 @@ import {
   ActivityIndicator,
   Searchbar,
   Checkbox,
+  Appbar,
+  SegmentedButtons,
 } from 'react-native-paper';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 
@@ -419,102 +421,119 @@ export const ProjectMembersScreen: React.FC = () => {
         })}
       </ScrollView>
 
-      {/* Add Member Dialog */}
-      <Portal>
-        <Dialog visible={showAddMemberDialog} onDismiss={() => setShowAddMemberDialog(false)} style={styles.dialog}>
-          <Dialog.Title>Add Project Members</Dialog.Title>
-          <Dialog.Content style={styles.dialogContent}>
-            {/* Role Selection FIRST */}
-            <View style={styles.roleSelectionTop}>
-              <Text variant="titleSmall" style={styles.roleTopLabel}>
-                Adding as:
-              </Text>
-              <RadioButton.Group
-                onValueChange={(value) => setSelectedUserRole(value as ProjectRole)}
-                value={selectedUserRole}
-              >
-                <View style={styles.roleOptionsHorizontal}>
-                  <RadioButton.Item
-                    label="Project Member"
-                    value="project_member"
-                    style={styles.roleOptionCompact}
-                    labelStyle={{ fontSize: 14 }}
-                  />
-                  <RadioButton.Item
-                    label="Project Admin"
-                    value="project_admin"
-                    style={styles.roleOptionCompact}
-                    labelStyle={{ fontSize: 14 }}
-                  />
-                </View>
-              </RadioButton.Group>
-            </View>
-
-            <Divider style={{ marginVertical: 12 }} />
-
-            {/* Search Section */}
-            <View style={styles.searchSection}>
-              <Searchbar
-                placeholder="Search members"
-                onChangeText={setSearchQuery}
-                value={searchQuery}
-                style={styles.searchBar}
-                inputStyle={styles.searchInput}
-                placeholderTextColor="#999"
-                testID="member-search-bar"
-              />
-            </View>
-
-            {/* User List with Checkboxes */}
-            <ScrollView style={styles.userList} showsVerticalScrollIndicator={true}>
-              {filteredAvailableUsers.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyText}>
-                    {searchQuery ? 'No users found' : 'No available users to add'}
-                  </Text>
-                </View>
-              ) : (
-                filteredAvailableUsers.map((user) => {
-                  const isSelected = selectedUserIds.includes(user.id);
-                  return (
-                    <View
-                      key={user.id}
-                      style={[
-                        styles.userItem,
-                        isSelected && styles.userItemSelected,
-                      ]}
-                    >
-                      <Checkbox
-                        status={isSelected ? 'checked' : 'unchecked'}
-                        onPress={() => toggleUserSelection(user.id)}
-                      />
-                      <View
-                        style={styles.userItemContent}
-                        onTouchEnd={() => toggleUserSelection(user.id)}
-                      >
-                        <Text variant="bodyMedium" style={styles.userName}>{user.name}</Text>
-                        <Text variant="bodySmall" style={styles.userEmail}>{user.email}</Text>
-                      </View>
-                    </View>
-                  );
-                })
-              )}
-            </ScrollView>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setShowAddMemberDialog(false)}>Cancel</Button>
+      {/* Add Member Full-Screen Modal */}
+      <Modal
+        visible={showAddMemberDialog}
+        animationType="slide"
+        onRequestClose={() => setShowAddMemberDialog(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          {/* Header with back button */}
+          <Appbar.Header>
+            <Appbar.BackAction onPress={() => setShowAddMemberDialog(false)} />
+            <Appbar.Content title="Add Members" />
             <Button
               onPress={handleAddMembers}
               disabled={selectedUserIds.length === 0}
               mode="contained"
+              style={styles.headerButton}
             >
               {selectedUserIds.length === 0
-                ? 'Add Members'
-                : `Add ${selectedUserIds.length} Member${selectedUserIds.length > 1 ? 's' : ''}`}
+                ? 'Add'
+                : `Add ${selectedUserIds.length}`}
             </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+          </Appbar.Header>
+
+          {/* Role Selection with Segmented Buttons */}
+          <View style={styles.roleSelectionSection}>
+            <Text variant="titleMedium" style={styles.roleLabel}>
+              Adding as:
+            </Text>
+            <SegmentedButtons
+              value={selectedUserRole}
+              onValueChange={(value) => setSelectedUserRole(value as ProjectRole)}
+              buttons={[
+                {
+                  value: 'project_member',
+                  label: 'Member',
+                  icon: 'account',
+                },
+                {
+                  value: 'project_admin',
+                  label: 'Admin',
+                  icon: 'shield-account',
+                },
+              ]}
+              style={styles.segmentedButtons}
+            />
+          </View>
+
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <Searchbar
+              placeholder="Search members"
+              onChangeText={setSearchQuery}
+              value={searchQuery}
+              style={styles.searchBarFull}
+              inputStyle={styles.searchInput}
+              placeholderTextColor="#999"
+              testID="member-search-bar"
+            />
+          </View>
+
+          {/* Selected Count */}
+          {selectedUserIds.length > 0 && (
+            <View style={styles.selectionBanner}>
+              <Text variant="bodyMedium" style={styles.selectionText}>
+                {selectedUserIds.length} {selectedUserIds.length === 1 ? 'user' : 'users'} selected
+              </Text>
+              <Button
+                mode="text"
+                onPress={() => setSelectedUserIds([])}
+                compact
+              >
+                Clear
+              </Button>
+            </View>
+          )}
+
+          {/* User List */}
+          <ScrollView style={styles.fullUserList}>
+            {filteredAvailableUsers.length === 0 ? (
+              <View style={styles.emptyStateFull}>
+                <Text style={styles.emptyText}>
+                  {searchQuery ? 'No users found' : 'No available users to add'}
+                </Text>
+              </View>
+            ) : (
+              filteredAvailableUsers.map((user) => {
+                const isSelected = selectedUserIds.includes(user.id);
+                return (
+                  <View
+                    key={user.id}
+                    style={[
+                      styles.userItemFull,
+                      isSelected && styles.userItemSelected,
+                    ]}
+                  >
+                    <Checkbox
+                      status={isSelected ? 'checked' : 'unchecked'}
+                      onPress={() => toggleUserSelection(user.id)}
+                    />
+                    <View
+                      style={styles.userItemContent}
+                      onTouchEnd={() => toggleUserSelection(user.id)}
+                    >
+                      <Text variant="bodyLarge" style={styles.userNameFull}>{user.name}</Text>
+                      <Text variant="bodyMedium" style={styles.userEmailFull}>{user.email}</Text>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       {/* Change Role Dialog */}
       <Portal>
@@ -737,5 +756,73 @@ const styles = StyleSheet.create({
   },
   roleOption: {
     paddingVertical: 4,
+  },
+  // Full-Screen Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  headerButton: {
+    marginRight: 8,
+  },
+  roleSelectionSection: {
+    padding: 16,
+    backgroundColor: '#F5F5F5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  roleLabel: {
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#000',
+  },
+  segmentedButtons: {
+    backgroundColor: '#FFFFFF',
+  },
+  searchContainer: {
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  searchBarFull: {
+    elevation: 2,
+    backgroundColor: '#FFFFFF',
+  },
+  selectionBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#E3F2FD',
+    borderBottomWidth: 1,
+    borderBottomColor: '#90CAF9',
+  },
+  selectionText: {
+    fontWeight: '600',
+    color: '#1976D2',
+  },
+  fullUserList: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  emptyStateFull: {
+    paddingVertical: 48,
+    alignItems: 'center',
+  },
+  userItemFull: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  userNameFull: {
+    fontWeight: '500',
+    marginBottom: 4,
+    color: '#000',
+  },
+  userEmailFull: {
+    color: '#666',
   },
 });
