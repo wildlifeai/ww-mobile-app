@@ -136,11 +136,32 @@ export const ProjectMembersScreen: React.FC = () => {
 
       await mockApiResponses.addMember(selectedUserId, selectedUserRole);
 
+      // Find the user to add from available users
+      const userToAdd = availableUsers.find(u => u.id === selectedUserId);
+      if (userToAdd) {
+        // Create new member object
+        const newMember: ProjectMember = {
+          id: userToAdd.id,
+          name: userToAdd.name,
+          email: userToAdd.email,
+          role: selectedUserRole,
+          granted_at: new Date().toISOString(),
+          granted_by: mockCurrentUser.id,
+          granted_by_name: mockCurrentUser.name,
+        };
+
+        // Update members list
+        setMembers(prevMembers => [...prevMembers, newMember]);
+
+        // Remove from available users
+        setAvailableUsers(prevUsers => prevUsers.filter(u => u.id !== selectedUserId));
+      }
+
       Alert.alert('Success', 'Member added successfully');
       setShowAddMemberDialog(false);
       setSelectedUserId(null);
       setSelectedUserRole('project_member');
-      await loadMembers();
+      setSearchQuery(''); // Clear search
     } catch (error) {
       console.error('Error adding member:', error);
       Alert.alert('Error', 'Failed to add member');
@@ -164,10 +185,18 @@ export const ProjectMembersScreen: React.FC = () => {
 
       await mockApiResponses.updateRole(selectedMember.id, selectedRole);
 
+      // Update member's role in local state
+      setMembers(prevMembers =>
+        prevMembers.map(m =>
+          m.id === selectedMember.id
+            ? { ...m, role: selectedRole }
+            : m
+        )
+      );
+
       Alert.alert('Success', 'Role updated successfully');
       setShowRoleChangeDialog(false);
       setSelectedMember(null);
-      await loadMembers();
     } catch (error) {
       console.error('Error changing role:', error);
       Alert.alert('Error', 'Failed to update role');
@@ -199,10 +228,22 @@ export const ProjectMembersScreen: React.FC = () => {
 
       await mockApiResponses.removeMember(selectedMember.id);
 
+      // Remove member from local state
+      setMembers(prevMembers => prevMembers.filter(m => m.id !== selectedMember.id));
+
+      // Add back to available users (convert from ProjectMember to OrganizationUser)
+      const removedUser: OrganizationUser = {
+        id: selectedMember.id,
+        name: selectedMember.name,
+        email: selectedMember.email,
+        roles: [], // Empty roles for removed user
+        is_in_project: false,
+      };
+      setAvailableUsers(prevUsers => [...prevUsers, removedUser]);
+
       Alert.alert('Success', 'Member removed successfully');
       setShowRemoveDialog(false);
       setSelectedMember(null);
-      await loadMembers();
     } catch (error) {
       console.error('Error removing member:', error);
       Alert.alert('Error', 'Failed to remove member');
