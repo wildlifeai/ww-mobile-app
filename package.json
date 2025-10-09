@@ -48,6 +48,7 @@
     "expo-file-system": "~17.0.1",
     "expo-linking": "~6.3.1",
     "expo-localization": "~15.0.3",
+    "expo-location": "^19.0.7",
     "expo-splash-screen": "~0.27.7",
     "expo-sqlite": "~14.0.6",
     "lodash.isempty": "^4.4.0",

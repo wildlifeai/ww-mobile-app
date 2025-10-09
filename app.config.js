@@ -28,9 +28,12 @@ export default ({ config }) => {
     ios: {
       bundleIdentifier: bundleId,
       config: {
-        usesNonExemptEncryption: false
+        usesNonExemptEncryption: false,
+        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY_IOS
       },
       infoPlist: {
+        NSLocationWhenInUseUsageDescription: 'Wildlife Watcher needs access to your location to show your current position on the map and help you navigate to deployment sites.',
+        NSLocationAlwaysAndWhenInUseUsageDescription: 'Wildlife Watcher needs access to your location to track deployments and provide navigation even when the app is in the background.',
         CFBundleURLTypes: [
           {
             CFBundleURLName: 'wildlife-auth',
@@ -84,6 +87,15 @@ export default ({ config }) => {
     },
     plugins: [
       'expo-splash-screen',
+      'react-native-maps',
+      [
+        'expo-location',
+        {
+          locationAlwaysAndWhenInUsePermission: 'Wildlife Watcher needs access to your location to show your current position on the map and help you navigate to deployment sites.',
+          locationWhenInUsePermission: 'Wildlife Watcher needs access to your location to show your current position and camera deployment locations on the map.',
+          isAndroidBackgroundLocationEnabled: false
+        }
+      ],
       [
         'expo-build-properties',
         {
