@@ -87,7 +87,6 @@ export default ({ config }) => {
     },
     plugins: [
       'expo-splash-screen',
-      'react-native-maps',
       [
         'expo-location',
         {

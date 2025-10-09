@@ -85,9 +85,9 @@ yarn global add eas-cli
 - **Version**: 6.3.10
 - **Primary Use**: Development server and local testing
 - **Key Commands**:
-  - `expo start` - Start development server
-  - `expo run:android` - Build and run on Android (requires Android SDK)
-  - `expo prebuild` - Generate native Android/iOS folders
+  - `npx expo start` - Start development server
+  - `npx expo run:android` - Build and run on Android (requires Android SDK)
+  - `npx expo prebuild` - Generate native Android/iOS folders
 
 ### EAS CLI
 **Purpose**: Cloud builds, app submission, and credentials management
