@@ -439,7 +439,7 @@ export const ProjectMembersScreen: React.FC = () => {
         animationType="slide"
         onRequestClose={() => setShowAddMemberDialog(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
           {/* Header with back button */}
           <Appbar.Header>
             <Appbar.BackAction onPress={() => setShowAddMemberDialog(false)} />
@@ -807,7 +807,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   searchBarFull: {
-    elevation: 1,
+    elevation: 2,
+    backgroundColor: '#FFFFFF',
   },
   selectAllContainer: {
     flexDirection: 'row',
