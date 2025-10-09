@@ -470,8 +470,8 @@ export const ProjectMembersScreen: React.FC = () => {
                   label: 'Member',
                   icon: 'account',
                   style: { borderColor: '#4CAF50' },
-                  labelStyle: { color: selectedUserRole === 'project_member' ? '#FFFFFF' : '#000000' },
-                  uncheckedColor: '#000000',
+                  labelStyle: { color: '#FFFFFF' },
+                  uncheckedColor: '#FFFFFF',
                   checkedColor: '#FFFFFF',
                 },
                 {
@@ -479,8 +479,8 @@ export const ProjectMembersScreen: React.FC = () => {
                   label: 'Admin',
                   icon: 'shield-account',
                   style: { borderColor: '#4CAF50' },
-                  labelStyle: { color: selectedUserRole === 'project_admin' ? '#FFFFFF' : '#000000' },
-                  uncheckedColor: '#000000',
+                  labelStyle: { color: '#FFFFFF' },
+                  uncheckedColor: '#FFFFFF',
                   checkedColor: '#FFFFFF',
                 },
               ]}
@@ -503,6 +503,7 @@ export const ProjectMembersScreen: React.FC = () => {
               value={searchQuery}
               style={styles.searchBarFull}
               inputStyle={styles.searchInput}
+              theme={{ colors: { onSurfaceVariant: '#000000' } }}
               testID="member-search-bar"
             />
           </View>
@@ -717,6 +718,7 @@ const styles = StyleSheet.create({
   searchInput: {
     fontSize: 14,
     color: '#000000',
+    minHeight: 0,
   },
   roleSelectionTop: {
     paddingHorizontal: 24,
