@@ -28,6 +28,7 @@ import {
   RadioButton,
   ActivityIndicator,
   Searchbar,
+  Checkbox,
 } from 'react-native-paper';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 
@@ -76,7 +77,7 @@ export const ProjectMembersScreen: React.FC = () => {
 
   // Add member dialog state
   const [availableUsers, setAvailableUsers] = useState<OrganizationUser[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedUserRole, setSelectedUserRole] = useState<ProjectRole>('project_member');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -118,56 +119,62 @@ export const ProjectMembersScreen: React.FC = () => {
     setRefreshing(false);
   };
 
-  const handleAddMember = async () => {
-    if (!selectedUserId) {
-      Alert.alert('Error', 'Please select a user to add');
+  const handleAddMembers = async () => {
+    if (selectedUserIds.length === 0) {
+      Alert.alert('Error', 'Please select at least one user to add');
       return;
     }
 
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const result = await addProjectMember({
-      //   project_id: projectId,
-      //   user_id: selectedUserId,
-      //   role: selectedUserRole,
-      //   granted_by: mockCurrentUser.id,
-      // });
+      // Add all selected users with the chosen role
+      const newMembers: ProjectMember[] = [];
 
-      await mockApiResponses.addMember(selectedUserId, selectedUserRole);
+      for (const userId of selectedUserIds) {
+        await mockApiResponses.addMember(userId, selectedUserRole);
 
-      // Find the user to add from available users
-      const userToAdd = availableUsers.find(u => u.id === selectedUserId);
-      if (userToAdd) {
-        // Create new member object
-        const newMember: ProjectMember = {
-          id: userToAdd.id,
-          name: userToAdd.name,
-          email: userToAdd.email,
-          role: selectedUserRole,
-          granted_at: new Date().toISOString(),
-          granted_by: mockCurrentUser.id,
-          granted_by_name: mockCurrentUser.name,
-        };
-
-        // Update members list
-        setMembers(prevMembers => [...prevMembers, newMember]);
-
-        // Remove from available users
-        setAvailableUsers(prevUsers => prevUsers.filter(u => u.id !== selectedUserId));
+        const userToAdd = availableUsers.find(u => u.id === userId);
+        if (userToAdd) {
+          newMembers.push({
+            id: userToAdd.id,
+            name: userToAdd.name,
+            email: userToAdd.email,
+            role: selectedUserRole,
+            granted_at: new Date().toISOString(),
+            granted_by: mockCurrentUser.id,
+            granted_by_name: mockCurrentUser.name,
+          });
+        }
       }
 
-      Alert.alert('Success', 'Member added successfully');
+      // Update members list
+      setMembers(prevMembers => [...prevMembers, ...newMembers]);
+
+      // Remove from available users
+      setAvailableUsers(prevUsers =>
+        prevUsers.filter(u => !selectedUserIds.includes(u.id))
+      );
+
+      const count = selectedUserIds.length;
+      Alert.alert('Success', `${count} ${count === 1 ? 'member' : 'members'} added successfully`);
       setShowAddMemberDialog(false);
-      setSelectedUserId(null);
+      setSelectedUserIds([]);
       setSelectedUserRole('project_member');
-      setSearchQuery(''); // Clear search
+      setSearchQuery('');
     } catch (error) {
-      console.error('Error adding member:', error);
-      Alert.alert('Error', 'Failed to add member');
+      console.error('Error adding members:', error);
+      Alert.alert('Error', 'Failed to add members');
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUserIds(prev =>
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
   };
 
   const handleChangeRole = async () => {
@@ -415,21 +422,50 @@ export const ProjectMembersScreen: React.FC = () => {
       {/* Add Member Dialog */}
       <Portal>
         <Dialog visible={showAddMemberDialog} onDismiss={() => setShowAddMemberDialog(false)} style={styles.dialog}>
-          <Dialog.Title>Add Project Member</Dialog.Title>
+          <Dialog.Title>Add Project Members</Dialog.Title>
           <Dialog.Content style={styles.dialogContent}>
-            {/* Search Section with Light Background */}
+            {/* Role Selection FIRST */}
+            <View style={styles.roleSelectionTop}>
+              <Text variant="titleSmall" style={styles.roleTopLabel}>
+                Adding as:
+              </Text>
+              <RadioButton.Group
+                onValueChange={(value) => setSelectedUserRole(value as ProjectRole)}
+                value={selectedUserRole}
+              >
+                <View style={styles.roleOptionsHorizontal}>
+                  <RadioButton.Item
+                    label="Project Member"
+                    value="project_member"
+                    style={styles.roleOptionCompact}
+                    labelStyle={{ fontSize: 14 }}
+                  />
+                  <RadioButton.Item
+                    label="Project Admin"
+                    value="project_admin"
+                    style={styles.roleOptionCompact}
+                    labelStyle={{ fontSize: 14 }}
+                  />
+                </View>
+              </RadioButton.Group>
+            </View>
+
+            <Divider style={{ marginVertical: 12 }} />
+
+            {/* Search Section */}
             <View style={styles.searchSection}>
               <Searchbar
                 placeholder="Search members"
                 onChangeText={setSearchQuery}
                 value={searchQuery}
                 style={styles.searchBar}
-                inputStyle={{ fontSize: 14 }}
+                inputStyle={styles.searchInput}
+                placeholderTextColor="#999"
                 testID="member-search-bar"
               />
             </View>
 
-            {/* Compact User List */}
+            {/* User List with Checkboxes */}
             <ScrollView style={styles.userList} showsVerticalScrollIndicator={true}>
               {filteredAvailableUsers.length === 0 ? (
                 <View style={styles.emptyState}>
@@ -438,65 +474,43 @@ export const ProjectMembersScreen: React.FC = () => {
                   </Text>
                 </View>
               ) : (
-                filteredAvailableUsers.map((user) => (
-                  <View
-                    key={user.id}
-                    style={[
-                      styles.userItem,
-                      selectedUserId === user.id && styles.userItemSelected,
-                    ]}
-                  >
-                    <RadioButton
-                      value={user.id}
-                      status={selectedUserId === user.id ? 'checked' : 'unchecked'}
-                      onPress={() => setSelectedUserId(user.id)}
-                    />
-                    <View style={styles.userItemContent} onTouchEnd={() => setSelectedUserId(user.id)}>
-                      <Text variant="bodyMedium" style={styles.userName}>{user.name}</Text>
-                      <Text variant="bodySmall" style={styles.userEmail}>{user.email}</Text>
+                filteredAvailableUsers.map((user) => {
+                  const isSelected = selectedUserIds.includes(user.id);
+                  return (
+                    <View
+                      key={user.id}
+                      style={[
+                        styles.userItem,
+                        isSelected && styles.userItemSelected,
+                      ]}
+                    >
+                      <Checkbox
+                        status={isSelected ? 'checked' : 'unchecked'}
+                        onPress={() => toggleUserSelection(user.id)}
+                      />
+                      <View
+                        style={styles.userItemContent}
+                        onTouchEnd={() => toggleUserSelection(user.id)}
+                      >
+                        <Text variant="bodyMedium" style={styles.userName}>{user.name}</Text>
+                        <Text variant="bodySmall" style={styles.userEmail}>{user.email}</Text>
+                      </View>
                     </View>
-                  </View>
-                ))
+                  );
+                })
               )}
             </ScrollView>
-
-            {/* Role Selection */}
-            {selectedUserId && (
-              <View style={styles.roleSection}>
-                <Divider style={{ marginBottom: 12 }} />
-                <Text variant="titleSmall" style={styles.roleSectionTitle}>
-                  Assign Role:
-                </Text>
-                <RadioButton.Group
-                  onValueChange={(value) => setSelectedUserRole(value as ProjectRole)}
-                  value={selectedUserRole}
-                >
-                  <View style={styles.roleOptions}>
-                    <RadioButton.Item
-                      label="Project Member"
-                      value="project_member"
-                      style={styles.roleOption}
-                      labelStyle={{ fontSize: 14 }}
-                    />
-                    <RadioButton.Item
-                      label="Project Admin"
-                      value="project_admin"
-                      style={styles.roleOption}
-                      labelStyle={{ fontSize: 14 }}
-                    />
-                  </View>
-                </RadioButton.Group>
-              </View>
-            )}
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setShowAddMemberDialog(false)}>Cancel</Button>
             <Button
-              onPress={handleAddMember}
-              disabled={!selectedUserId}
+              onPress={handleAddMembers}
+              disabled={selectedUserIds.length === 0}
               mode="contained"
             >
-              Add Member
+              {selectedUserIds.length === 0
+                ? 'Add Members'
+                : `Add ${selectedUserIds.length} Member${selectedUserIds.length > 1 ? 's' : ''}`}
             </Button>
           </Dialog.Actions>
         </Dialog>
@@ -653,6 +667,26 @@ const styles = StyleSheet.create({
   searchBar: {
     elevation: 0,
     backgroundColor: '#FFFFFF',
+  },
+  searchInput: {
+    fontSize: 14,
+    color: '#000000',
+  },
+  roleSelectionTop: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+  },
+  roleTopLabel: {
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  roleOptionsHorizontal: {
+    flexDirection: 'row',
+    gap: 0,
+  },
+  roleOptionCompact: {
+    flex: 1,
+    paddingVertical: 0,
   },
   userList: {
     maxHeight: 200,
