@@ -39,7 +39,11 @@ export const useLocation = (): UseLocationReturn => {
    * Check current permission status on mount
    */
   useEffect(() => {
-    checkPermissions();
+    const initializeLocation = async () => {
+      await checkPermissions();
+    };
+
+    initializeLocation();
 
     // Cleanup subscription on unmount
     return () => {
@@ -48,6 +52,16 @@ export const useLocation = (): UseLocationReturn => {
       }
     };
   }, []);
+
+  /**
+   * Auto-fetch location when permission becomes granted
+   */
+  useEffect(() => {
+    if (permissions.foreground === 'granted' && !location && !loading) {
+      console.log('[useLocation] Permission granted, auto-fetching location...');
+      getCurrentLocation();
+    }
+  }, [permissions.foreground, location, loading, getCurrentLocation]);
 
   /**
    * Check current permission status
