@@ -31,6 +31,7 @@ import {
   Checkbox,
   Appbar,
   SegmentedButtons,
+  useTheme,
 } from 'react-native-paper';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 
@@ -62,6 +63,7 @@ type RouteParams = {
 export const ProjectMembersScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: RouteParams['params'] }, 'params'>>();
   const navigation = useNavigation();
+  const theme = useTheme();
 
   const { projectId, projectName } = route.params || {};
 
@@ -315,10 +317,10 @@ export const ProjectMembersScreen: React.FC = () => {
         <Text variant="headlineSmall" style={styles.headerTitle}>
           Project Members
         </Text>
-        <Text variant="bodyMedium" style={styles.headerSubtitle}>
+        <Text variant="bodyMedium" style={[styles.headerSubtitle, { color: theme.colors.onSurfaceVariant }]}>
           {projectName}
         </Text>
-        <Text variant="bodySmall" style={{ color: '#666', marginTop: 4 }}>
+        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
           {members.length} {members.length === 1 ? 'member' : 'members'}
         </Text>
       </View>
@@ -364,8 +366,8 @@ export const ProjectMembersScreen: React.FC = () => {
 
                   {/* Member Info */}
                   <View style={styles.memberInfo}>
-                    <Text variant="titleMedium">{member.name}</Text>
-                    <Text variant="bodySmall" style={{ color: '#666' }}>
+                    <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>{member.name}</Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                       {member.email}
                     </Text>
                     <Chip
@@ -411,7 +413,7 @@ export const ProjectMembersScreen: React.FC = () => {
                             leadingIcon="account-remove"
                             onPress={() => handleMenuRemove(member)}
                             title="Remove from Project"
-                            titleStyle={{ color: '#F44336' }}
+                            titleStyle={{ color: theme.colors.error }}
                           />
                         </>
                       )}
@@ -501,7 +503,6 @@ export const ProjectMembersScreen: React.FC = () => {
               value={searchQuery}
               style={styles.searchBarFull}
               inputStyle={styles.searchInput}
-              placeholderTextColor="#999"
               testID="member-search-bar"
             />
           </View>
@@ -557,8 +558,8 @@ export const ProjectMembersScreen: React.FC = () => {
                       style={styles.userItemContent}
                       onTouchEnd={() => toggleUserSelection(user.id)}
                     >
-                      <Text variant="bodyLarge" style={styles.userNameFull}>{user.name}</Text>
-                      <Text variant="bodyMedium" style={styles.userEmailFull}>{user.email}</Text>
+                      <Text variant="bodyLarge" style={[styles.userNameFull, { color: theme.colors.onSurface }]}>{user.name}</Text>
+                      <Text variant="bodyMedium" style={[styles.userEmailFull, { color: theme.colors.onSurfaceVariant }]}>{user.email}</Text>
                     </View>
                   </View>
                 );
@@ -580,7 +581,7 @@ export const ProjectMembersScreen: React.FC = () => {
                 </Text>
                 <View style={styles.roleCompare}>
                   <View>
-                    <Text variant="bodySmall" style={{ color: '#666' }}>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                       Current:
                     </Text>
                     <Chip style={{ marginTop: 4 }}>
@@ -589,7 +590,7 @@ export const ProjectMembersScreen: React.FC = () => {
                   </View>
                   <IconButton icon="arrow-right" />
                   <View>
-                    <Text variant="bodySmall" style={{ color: '#666' }}>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                       New:
                     </Text>
                     <Chip
@@ -602,7 +603,7 @@ export const ProjectMembersScreen: React.FC = () => {
                     </Chip>
                   </View>
                 </View>
-                <Text variant="bodySmall" style={{ marginTop: 16, color: '#666' }}>
+                <Text variant="bodySmall" style={{ marginTop: 16, color: theme.colors.onSurfaceVariant }}>
                   {getRoleDescription(selectedRole)}
                 </Text>
               </>
@@ -629,7 +630,7 @@ export const ProjectMembersScreen: React.FC = () => {
                   <Text style={{ fontWeight: 'bold' }}>{selectedMember.name}</Text> from this
                   project?
                 </Text>
-                <Text variant="bodySmall" style={{ marginTop: 16, color: '#F44336' }}>
+                <Text variant="bodySmall" style={{ marginTop: 16, color: theme.colors.error }}>
                   This action cannot be undone. They will lose access to all project resources.
                 </Text>
               </>
@@ -637,7 +638,7 @@ export const ProjectMembersScreen: React.FC = () => {
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setShowRemoveDialog(false)}>Cancel</Button>
-            <Button onPress={handleRemoveMember} mode="contained" buttonColor="#F44336">
+            <Button onPress={handleRemoveMember} mode="contained" buttonColor={theme.colors.error}>
               Remove
             </Button>
           </Dialog.Actions>
@@ -650,7 +651,6 @@ export const ProjectMembersScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   loadingContainer: {
     flex: 1,
@@ -659,22 +659,16 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   headerTitle: {
     fontWeight: 'bold',
   },
   headerSubtitle: {
-    color: '#666',
     marginTop: 4,
   },
   actionButtonContainer: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   addButton: {
     borderRadius: 8,
@@ -793,46 +787,37 @@ const styles = StyleSheet.create({
   // Full-Screen Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   headerButton: {
     marginRight: 8,
   },
   roleSelectionSection: {
-    padding: 16,
-    backgroundColor: '#F5F5F5',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   roleLabel: {
     fontWeight: '600',
     marginBottom: 12,
-    color: '#000',
   },
   segmentedButtons: {
-    backgroundColor: '#FFFFFF',
   },
   searchContainer: {
-    padding: 16,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   searchBarFull: {
-    elevation: 2,
-    backgroundColor: '#FFFFFF',
+    elevation: 1,
   },
   selectAllContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#F9F9F9',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    paddingVertical: 8,
   },
   selectAllText: {
     marginLeft: 8,
     fontWeight: '600',
-    color: '#000',
   },
   selectionBanner: {
     flexDirection: 'row',
@@ -840,17 +825,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#E3F2FD',
-    borderBottomWidth: 1,
-    borderBottomColor: '#90CAF9',
   },
   selectionText: {
     fontWeight: '600',
-    color: '#1976D2',
   },
   fullUserList: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   emptyStateFull: {
     paddingVertical: 48,
@@ -859,17 +839,13 @@ const styles = StyleSheet.create({
   userItemFull: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   userNameFull: {
     fontWeight: '500',
     marginBottom: 4,
-    color: '#000',
   },
   userEmailFull: {
-    color: '#666',
   },
 });
