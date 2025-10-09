@@ -419,11 +419,8 @@ export const ProjectMembersScreen: React.FC = () => {
           <Dialog.Content style={styles.dialogContent}>
             {/* Search Section with Light Background */}
             <View style={styles.searchSection}>
-              <Text variant="bodySmall" style={styles.searchLabel}>
-                Search and select a user from your organization:
-              </Text>
               <Searchbar
-                placeholder="Search by name or email..."
+                placeholder="Search members"
                 onChangeText={setSearchQuery}
                 value={searchQuery}
                 style={styles.searchBar}
@@ -652,10 +649,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 16,
     marginHorizontal: 24,
-  },
-  searchLabel: {
-    color: '#666',
-    marginBottom: 8,
   },
   searchBar: {
     elevation: 0,
