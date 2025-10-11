@@ -35,21 +35,41 @@ import {
 } from 'react-native-paper';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 
-// Mock data (will be replaced with real service calls)
+// UI Helper Functions
+const getRoleBadgeColor = (role: ProjectRole): string => {
+  switch (role) {
+    case 'project_admin': return '#4CAF50';
+    case 'project_member': return '#2196F3';
+    default: return '#9E9E9E';
+  }
+};
+
+const getRoleDisplayName = (role: ProjectRole): string => {
+  switch (role) {
+    case 'project_admin': return 'Admin';
+    case 'project_member': return 'Member';
+    default: return role;
+  }
+};
+
+const getRoleDescription = (role: ProjectRole): string => {
+  switch (role) {
+    case 'project_admin': return 'Can manage project, members, and deployments';
+    case 'project_member': return 'Can create and manage deployments';
+    default: return '';
+  }
+};
+
+// Real service imports
 import {
-  mockProjectMembers,
-  mockOrganizationUsers,
-  mockCurrentUser,
-  getRoleBadgeColor,
-  getRoleDisplayName,
-  getRoleDescription,
-  canAddMembers,
-  canRemoveMembers,
-  canChangeRoles,
-  canRemoveSpecificMember,
-  getAvailableUsers,
-  mockApiResponses,
-} from '../mocks/projectMembers';
+  getProjectMembers,
+  getOrganizationUsers,
+  addProjectMember,
+  updateProjectMemberRole,
+  removeProjectMember,
+} from '../services/ProjectMemberService';
+import { useAppSelector } from '../redux';
+import { selectCurrentUser, selectCurrentOrganisation } from '../redux/slices/authSlice';
 
 import type { ProjectMember, ProjectRole, OrganizationUser } from '../services/ProjectMemberService';
 
@@ -67,8 +87,12 @@ export const ProjectMembersScreen: React.FC = () => {
 
   const { projectId, projectName } = route.params || {};
 
+  // Redux selectors
+  const user = useAppSelector(selectCurrentUser);
+  const currentOrg = useAppSelector(selectCurrentOrganisation);
+
   // State
-  const [members, setMembers] = useState<ProjectMember[]>(mockProjectMembers);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -89,8 +113,7 @@ export const ProjectMembersScreen: React.FC = () => {
   const [menuVisible, setMenuVisible] = useState<{ [key: string]: boolean }>({});
 
   // Permission checks
-  const currentUserRole = mockCurrentUser.role;
-  const canManageMembers = canAddMembers(currentUserRole);
+  const canManageMembers = user && (user.role === 'project_admin' || user.role === 'ww_admin');
 
   // Load data
   useEffect(() => {
@@ -98,19 +121,33 @@ export const ProjectMembersScreen: React.FC = () => {
   }, [projectId]);
 
   const loadMembers = async () => {
+    if (!user || !currentOrg) {
+      console.error('❌ Missing user or organization context');
+      Alert.alert('Error', 'User authentication required');
+      return;
+    }
+
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const members = await getProjectMembers(projectId, mockCurrentUser.id);
-      await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate API delay
-      setMembers(mockProjectMembers);
+      console.log('📋 Loading members for project:', projectId);
 
-      // Load available users for adding
-      const allUsers = mockOrganizationUsers;
-      const available = getAvailableUsers(allUsers, mockProjectMembers);
+      // Load project members
+      const members = await getProjectMembers(projectId, user.id);
+      setMembers(members);
+      console.log(`✅ Loaded ${members.length} project members`);
+
+      // Load available users from organization
+      const orgUsers = await getOrganizationUsers(currentOrg.id, user.id);
+
+      // Filter out users already in project
+      const available = orgUsers.filter(
+        orgUser => !members.some(m => m.id === orgUser.id)
+      );
       setAvailableUsers(available);
+      console.log(`✅ Loaded ${available.length} available users`);
+
     } catch (error) {
-      console.error('Error loading members:', error);
+      console.error('❌ Error loading members:', error);
       Alert.alert('Error', 'Failed to load project members');
     } finally {
       setLoading(false);
@@ -129,44 +166,50 @@ export const ProjectMembersScreen: React.FC = () => {
       return;
     }
 
+    if (!user) {
+      Alert.alert('Error', 'User authentication required');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Add all selected users with the chosen role
-      const newMembers: ProjectMember[] = [];
+      console.log(`➕ Adding ${selectedUserIds.length} members...`);
 
-      for (const userId of selectedUserIds) {
-        await mockApiResponses.addMember(userId, selectedUserRole);
-
-        const userToAdd = availableUsers.find(u => u.id === userId);
-        if (userToAdd) {
-          newMembers.push({
-            id: userToAdd.id,
-            name: userToAdd.name,
-            email: userToAdd.email,
+      // Add all selected users
+      const results = await Promise.all(
+        selectedUserIds.map(userId =>
+          addProjectMember({
+            project_id: projectId,
+            user_id: userId,
             role: selectedUserRole,
-            granted_at: new Date().toISOString(),
-            granted_by: mockCurrentUser.id,
-            granted_by_name: mockCurrentUser.name,
-          });
-        }
-      }
-
-      // Update members list
-      setMembers(prevMembers => [...prevMembers, ...newMembers]);
-
-      // Remove from available users
-      setAvailableUsers(prevUsers =>
-        prevUsers.filter(u => !selectedUserIds.includes(u.id))
+            granted_by: user.id,
+          })
+        )
       );
 
-      const count = selectedUserIds.length;
-      Alert.alert('Success', `${count} ${count === 1 ? 'member' : 'members'} added successfully`);
+      // Check for failures
+      const failures = results.filter(r => !r.success);
+      if (failures.length > 0) {
+        console.error('❌ Some members failed to add:', failures);
+        Alert.alert('Warning', `${failures.length} members could not be added`);
+      }
+
+      // Refresh member list
+      await loadMembers();
+
+      const successCount = results.length - failures.length;
+      if (successCount > 0) {
+        Alert.alert('Success', `${successCount} ${successCount === 1 ? 'member' : 'members'} added successfully`);
+      }
+
+      // Reset form
       setShowAddMemberDialog(false);
       setSelectedUserIds([]);
       setSelectedUserRole('project_member');
       setSearchQuery('');
+
     } catch (error) {
-      console.error('Error adding members:', error);
+      console.error('❌ Error adding members:', error);
       Alert.alert('Error', 'Failed to add members');
     } finally {
       setLoading(false);
@@ -192,34 +235,33 @@ export const ProjectMembersScreen: React.FC = () => {
   };
 
   const handleChangeRole = async () => {
-    if (!selectedMember) return;
+    if (!selectedMember || !user) return;
 
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const result = await updateProjectMemberRole({
-      //   project_id: projectId,
-      //   user_id: selectedMember.id,
-      //   new_role: selectedRole,
-      //   updated_by: mockCurrentUser.id,
-      // });
+      console.log(`🔄 Changing role for ${selectedMember.name}...`);
 
-      await mockApiResponses.updateRole(selectedMember.id, selectedRole);
+      const result = await updateProjectMemberRole({
+        project_id: projectId,
+        user_id: selectedMember.id,
+        new_role: selectedRole,
+        updated_by: user.id,
+      });
 
-      // Update member's role in local state
-      setMembers(prevMembers =>
-        prevMembers.map(m =>
-          m.id === selectedMember.id
-            ? { ...m, role: selectedRole }
-            : m
-        )
-      );
+      if (!result.success) {
+        Alert.alert('Error', result.error || 'Failed to update role');
+        return;
+      }
+
+      // Refresh member list
+      await loadMembers();
 
       Alert.alert('Success', 'Role updated successfully');
       setShowRoleChangeDialog(false);
       setSelectedMember(null);
+
     } catch (error) {
-      console.error('Error changing role:', error);
+      console.error('❌ Error changing role:', error);
       Alert.alert('Error', 'Failed to update role');
     } finally {
       setLoading(false);
@@ -227,7 +269,7 @@ export const ProjectMembersScreen: React.FC = () => {
   };
 
   const handleRemoveMember = async () => {
-    if (!selectedMember) return;
+    if (!selectedMember || !user) return;
 
     // Check if this is the last admin
     const adminCount = members.filter((m) => m.role === 'project_admin').length;
@@ -240,33 +282,28 @@ export const ProjectMembersScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const result = await removeProjectMember({
-      //   project_id: projectId,
-      //   user_id: selectedMember.id,
-      //   removed_by: mockCurrentUser.id,
-      // });
+      console.log(`➖ Removing member ${selectedMember.name}...`);
 
-      await mockApiResponses.removeMember(selectedMember.id);
+      const result = await removeProjectMember({
+        project_id: projectId,
+        user_id: selectedMember.id,
+        removed_by: user.id,
+      });
 
-      // Remove member from local state
-      setMembers(prevMembers => prevMembers.filter(m => m.id !== selectedMember.id));
+      if (!result.success) {
+        Alert.alert('Error', result.error || 'Failed to remove member');
+        return;
+      }
 
-      // Add back to available users (convert from ProjectMember to OrganizationUser)
-      const removedUser: OrganizationUser = {
-        id: selectedMember.id,
-        name: selectedMember.name,
-        email: selectedMember.email,
-        roles: [], // Empty roles for removed user
-        is_in_project: false,
-      };
-      setAvailableUsers(prevUsers => [...prevUsers, removedUser]);
+      // Refresh member list
+      await loadMembers();
 
       Alert.alert('Success', 'Member removed successfully');
       setShowRemoveDialog(false);
       setSelectedMember(null);
+
     } catch (error) {
-      console.error('Error removing member:', error);
+      console.error('❌ Error removing member:', error);
       Alert.alert('Error', 'Failed to remove member');
     } finally {
       setLoading(false);
@@ -347,7 +384,7 @@ export const ProjectMembersScreen: React.FC = () => {
         {members.map((member) => {
           const adminCount = members.filter((m) => m.role === 'project_admin').length;
           const isLastAdmin = member.role === 'project_admin' && adminCount === 1;
-          const canRemove = canRemoveSpecificMember(currentUserRole, member.role, isLastAdmin);
+          const canRemove = !isLastAdmin;
 
           return (
             <Card key={member.id} style={styles.memberCard}>
@@ -395,17 +432,15 @@ export const ProjectMembersScreen: React.FC = () => {
                         />
                       }
                     >
-                      {canChangeRoles(currentUserRole) && (
-                        <Menu.Item
-                          leadingIcon="account-convert"
-                          onPress={() => handleMenuChangeRole(member)}
-                          title={
-                            member.role === 'project_admin'
-                              ? 'Change to Member'
-                              : 'Promote to Admin'
-                          }
-                        />
-                      )}
+                      <Menu.Item
+                        leadingIcon="account-convert"
+                        onPress={() => handleMenuChangeRole(member)}
+                        title={
+                          member.role === 'project_admin'
+                            ? 'Change to Member'
+                            : 'Promote to Admin'
+                        }
+                      />
                       {canRemove && (
                         <>
                           <Divider />
