@@ -1,3 +1,5 @@
+// ARCHIVED: Store consolidated into src/redux/index.ts
+// This file is no longer active - all imports should use src/redux instead
 /**
  * Redux Store Configuration
  * Configures the Redux store with offline-first middleware and state persistence

@@ -1,280 +1,299 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { 
-  SyncStatus, 
-  NetworkStatus, 
-  ConflictResolution, 
-  OfflineOperation 
-} from '../../types/offline';
+/**
+ * Offline Slice - Manages offline operation queue and processing
+ *
+ * Features:
+ * - Operation queue management
+ * - Priority-based operation ordering
+ * - Retry logic with exponential backoff
+ * - Operation deduplication
+ * - Organisation-scoped operations
+ */
 
-// State interface for offline functionality
-export interface OfflineState {
-  // Network status
-  networkStatus: NetworkStatus;
-  
-  // Sync status and progress
-  syncStatus: SyncStatus;
-  
-  // Offline indicators
-  isOfflineMode: boolean;
-  hasOfflineData: boolean;
-  
-  // Pending operations queue
-  pendingOperations: OfflineOperation[];
-  
-  // Conflict resolution
-  unresolvedConflicts: ConflictResolution[];
-  
-  // UI state
-  showOfflineIndicator: boolean;
-  showSyncProgress: boolean;
-  
-  // Error handling
-  lastError?: string;
-  
-  // Service initialization
-  servicesInitialized: boolean;
-}
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { DatabaseService } from '../../services/offline/DatabaseService';
+import { OfflineService } from '../../services/offline/OfflineService';
+import { OfflineOperation, OfflineOperationType } from '../../types/offline';
+import { RootState } from '../index';
+import {
+  markEntityPending,
+  markEntitySyncing,
+  markEntitySynced,
+  markEntityError,
+} from './syncSlice';
 
-// Initial state
-const initialState: OfflineState = {
-  networkStatus: {
-    isConnected: false,
-    type: 'none'
-  },
-  syncStatus: {
-    is_syncing: false,
-    pending_operations_count: 0,
-    failed_operations_count: 0,
-    sync_progress: 0,
-    sync_errors: []
-  },
-  isOfflineMode: true,
-  hasOfflineData: false,
-  pendingOperations: [],
-  unresolvedConflicts: [],
-  showOfflineIndicator: true,
-  showSyncProgress: false,
-  servicesInitialized: false
+// Operation priority levels
+export const OPERATION_PRIORITY = {
+  CRITICAL: 1000, // Deployment end
+  HIGH: 900, // Deployment start
+  MEDIUM: 800, // Project updates
+  LOW: 500, // Profile updates
 };
 
-// Offline slice
+export interface OfflineState {
+  queue: {
+    operations: OfflineOperation[];
+    processing: boolean;
+    lastProcessed: string | null;
+  };
+  stats: {
+    totalQueued: number;
+    totalProcessed: number;
+    totalFailed: number;
+  };
+}
+
+const initialState: OfflineState = {
+  queue: {
+    operations: [],
+    processing: false,
+    lastProcessed: null,
+  },
+  stats: {
+    totalQueued: 0,
+    totalProcessed: 0,
+    totalFailed: 0,
+  },
+};
+
+// Database service instance
+let databaseService: DatabaseService;
+let offlineService: OfflineService;
+
+// Initialize services
+const initializeServices = () => {
+  if (!databaseService) {
+    databaseService = new DatabaseService();
+  }
+  if (!offlineService) {
+    offlineService = new OfflineService();
+  }
+};
+
+/**
+ * Queue an offline operation for later sync
+ */
+export const queueOfflineOperation = createAsyncThunk(
+  'offline/queueOperation',
+  async (
+    operation: {
+      type: OfflineOperationType;
+      entityType: string;
+      entityId: string;
+      data: any;
+      userId: string;
+      organisationId: string;
+      priority?: number;
+    },
+    { dispatch, rejectWithValue }
+  ) => {
+    try {
+      initializeServices();
+
+      const offlineOp: OfflineOperation = {
+        id: `${operation.type}_${operation.entityId}_${Date.now()}`,
+        type: operation.type,
+        data: operation.data,
+        user_id: operation.userId,
+        organisation_id: operation.organisationId,
+        timestamp: new Date(),
+        retry_count: 0,
+        metadata: {
+          entityType: operation.entityType,
+          entityId: operation.entityId,
+          priority: operation.priority || OPERATION_PRIORITY.MEDIUM,
+        },
+      };
+
+      // Save to SQLite queue
+      await databaseService.queueOperation(offlineOp);
+
+      // Mark entity as pending sync
+      dispatch(
+        markEntityPending({
+          entityType: operation.entityType as any,
+          entityId: operation.entityId,
+        })
+      );
+
+      return offlineOp;
+    } catch (error: any) {
+      return rejectWithValue({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Process pending operations in the queue
+ */
+export const processOfflineQueue = createAsyncThunk(
+  'offline/processQueue',
+  async (_, { dispatch, getState, rejectWithValue }) => {
+    try {
+      initializeServices();
+
+      const state = getState() as RootState;
+      if (!state.network.isOnline || state.network.offlineModeEnabled) {
+        return { processed: 0, message: 'Network unavailable' };
+      }
+
+      // Get pending operations from database
+      const operations = await databaseService.getPendingOperations();
+
+      if (operations.length === 0) {
+        return { processed: 0, message: 'No pending operations' };
+      }
+
+      let processedCount = 0;
+      let failedCount = 0;
+
+      // Process operations in batches of 10
+      const BATCH_SIZE = 10;
+      const batch = operations.slice(0, BATCH_SIZE);
+
+      for (const operation of batch) {
+        const entityType = operation.metadata?.entityType;
+        const entityId = operation.metadata?.entityId;
+
+        // Mark as syncing
+        if (entityType && entityId) {
+          dispatch(
+            markEntitySyncing({
+              entityType: entityType as any,
+              entityId,
+            })
+          );
+        }
+
+        try {
+          // Process operation through OfflineService
+          await offlineService.syncOperation(operation);
+
+          // Mark as processed
+          await databaseService.markOperationProcessed(operation.id);
+
+          // Update sync status
+          if (entityType && entityId) {
+            dispatch(
+              markEntitySynced({
+                entityType: entityType as any,
+                entityId,
+              })
+            );
+          }
+
+          processedCount++;
+        } catch (error: any) {
+          // Increment retry count
+          const newRetryCount = operation.retry_count + 1;
+
+          if (newRetryCount >= 5) {
+            // Max retries reached, mark as failed
+            await databaseService.markOperationFailed(operation.id, error.message);
+            failedCount++;
+
+            if (entityType && entityId) {
+              dispatch(
+                markEntityError({
+                  entityType: entityType as any,
+                  entityId,
+                  error: error.message,
+                })
+              );
+            }
+          } else {
+            // Update retry count
+            await databaseService.incrementRetryCount(operation.id);
+          }
+        }
+      }
+
+      return {
+        processed: processedCount,
+        failed: failedCount,
+        remaining: operations.length - batch.length,
+      };
+    } catch (error: any) {
+      return rejectWithValue({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Load queue status from database
+ */
+export const loadQueueStatus = createAsyncThunk(
+  'offline/loadQueueStatus',
+  async (_, { rejectWithValue }) => {
+    try {
+      initializeServices();
+      const operations = await databaseService.getPendingOperations();
+      return {
+        operations,
+        count: operations.length,
+      };
+    } catch (error: any) {
+      return rejectWithValue({ error: error.message });
+    }
+  }
+);
+
 const offlineSlice = createSlice({
   name: 'offline',
   initialState,
   reducers: {
-    // Network status management
-    setNetworkStatus: (state, action: PayloadAction<NetworkStatus>) => {
-      const wasOffline = !state.networkStatus.isConnected;
-      state.networkStatus = action.payload;
-      state.isOfflineMode = !action.payload.isConnected;
-      
-      // Show sync progress when coming online
-      if (wasOffline && action.payload.isConnected && state.pendingOperations.length > 0) {
-        state.showSyncProgress = true;
-      }
-      
-      // Update offline indicator visibility
-      state.showOfflineIndicator = !action.payload.isConnected;
-    },
-
-    // Sync status management
-    setSyncStatus: (state, action: PayloadAction<SyncStatus>) => {
-      state.syncStatus = action.payload;
-      state.showSyncProgress = action.payload.is_syncing;
-      
-      // Hide sync progress when complete
-      if (!action.payload.is_syncing && action.payload.sync_progress === 1.0) {
-        state.showSyncProgress = false;
-      }
-    },
-
-    updateSyncProgress: (state, action: PayloadAction<number>) => {
-      state.syncStatus.sync_progress = action.payload;
-    },
-
-    // Offline operations management
-    setPendingOperations: (state, action: PayloadAction<OfflineOperation[]>) => {
-      state.pendingOperations = action.payload;
-      state.hasOfflineData = action.payload.length > 0;
-      state.syncStatus.pending_operations_count = action.payload.length;
-    },
-
-    addPendingOperation: (state, action: PayloadAction<OfflineOperation>) => {
-      state.pendingOperations.push(action.payload);
-      state.hasOfflineData = true;
-      state.syncStatus.pending_operations_count = state.pendingOperations.length;
-    },
-
-    removePendingOperation: (state, action: PayloadAction<string>) => {
-      state.pendingOperations = state.pendingOperations.filter(op => op.id !== action.payload);
-      state.hasOfflineData = state.pendingOperations.length > 0;
-      state.syncStatus.pending_operations_count = state.pendingOperations.length;
-    },
-
-    // Conflict resolution management
-    setUnresolvedConflicts: (state, action: PayloadAction<ConflictResolution[]>) => {
-      state.unresolvedConflicts = action.payload;
-    },
-
-    addConflict: (state, action: PayloadAction<ConflictResolution>) => {
-      state.unresolvedConflicts.push(action.payload);
-    },
-
-    removeConflict: (state, action: PayloadAction<string>) => {
-      state.unresolvedConflicts = state.unresolvedConflicts.filter(
-        conflict => conflict.id !== action.payload
+    // Clear processed operations
+    clearProcessedOperations: (state) => {
+      state.queue.operations = state.queue.operations.filter(
+        (op) => op.retry_count < 5
       );
-    },
-
-    resolveConflict: (state, action: PayloadAction<{
-      id: string;
-      resolution: 'server_wins' | 'local_wins' | 'merge';
-    }>) => {
-      const conflict = state.unresolvedConflicts.find(c => c.id === action.payload.id);
-      if (conflict) {
-        conflict.resolution_strategy = action.payload.resolution;
-        conflict.needs_user_resolution = false;
-        conflict.resolved_at = new Date();
-      }
-    },
-
-    // UI state management
-    setOfflineIndicatorVisibility: (state, action: PayloadAction<boolean>) => {
-      state.showOfflineIndicator = action.payload;
-    },
-
-    setSyncProgressVisibility: (state, action: PayloadAction<boolean>) => {
-      state.showSyncProgress = action.payload;
-    },
-
-    // Error handling
-    setOfflineError: (state, action: PayloadAction<string>) => {
-      state.lastError = action.payload;
-      state.syncStatus.sync_errors = [...(state.syncStatus.sync_errors || []), action.payload];
-    },
-
-    clearOfflineError: (state) => {
-      state.lastError = undefined;
-    },
-
-    clearSyncErrors: (state) => {
-      state.syncStatus.sync_errors = [];
-    },
-
-    // Service initialization
-    setServicesInitialized: (state, action: PayloadAction<boolean>) => {
-      state.servicesInitialized = action.payload;
-    },
-
-    // Optimistic UI updates
-    enableOptimisticMode: (state) => {
-      state.isOfflineMode = false; // Temporarily show as online for optimistic updates
-    },
-
-    disableOptimisticMode: (state) => {
-      state.isOfflineMode = !state.networkStatus.isConnected;
     },
 
     // Reset offline state
     resetOfflineState: (state) => {
-      Object.assign(state, initialState);
-    }
-  }
+      return initialState;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Queue operation
+      .addCase(queueOfflineOperation.fulfilled, (state, action) => {
+        state.queue.operations.push(action.payload);
+        state.stats.totalQueued++;
+      })
+      .addCase(queueOfflineOperation.rejected, (state, action) => {
+        console.error('Failed to queue operation:', action.payload);
+      })
+
+      // Process queue
+      .addCase(processOfflineQueue.pending, (state) => {
+        state.queue.processing = true;
+      })
+      .addCase(processOfflineQueue.fulfilled, (state, action) => {
+        state.queue.processing = false;
+        state.queue.lastProcessed = new Date().toISOString();
+        state.stats.totalProcessed += action.payload.processed || 0;
+        state.stats.totalFailed += action.payload.failed || 0;
+      })
+      .addCase(processOfflineQueue.rejected, (state, action) => {
+        state.queue.processing = false;
+        console.error('Failed to process queue:', action.payload);
+      })
+
+      // Load queue status
+      .addCase(loadQueueStatus.fulfilled, (state, action) => {
+        state.queue.operations = action.payload.operations;
+      });
+  },
 });
 
-// Action creators
-export const {
-  setNetworkStatus,
-  setSyncStatus,
-  updateSyncProgress,
-  setPendingOperations,
-  addPendingOperation,
-  removePendingOperation,
-  setUnresolvedConflicts,
-  addConflict,
-  removeConflict,
-  resolveConflict,
-  setOfflineIndicatorVisibility,
-  setSyncProgressVisibility,
-  setOfflineError,
-  clearOfflineError,
-  clearSyncErrors,
-  setServicesInitialized,
-  enableOptimisticMode,
-  disableOptimisticMode,
-  resetOfflineState
-} = offlineSlice.actions;
+// Export actions
+export const { clearProcessedOperations, resetOfflineState } = offlineSlice.actions;
 
-// Selectors for easy access to offline state
-export const selectNetworkStatus = (state: { offline: OfflineState }) => 
-  state.offline.networkStatus;
-
-export const selectIsOnline = (state: { offline: OfflineState }) => 
-  state.offline.networkStatus.isConnected;
-
-export const selectIsOffline = (state: { offline: OfflineState }) => 
-  state.offline.isOfflineMode;
-
-export const selectSyncStatus = (state: { offline: OfflineState }) => 
-  state.offline.syncStatus;
-
-export const selectIsSyncing = (state: { offline: OfflineState }) => 
-  state.offline.syncStatus.is_syncing;
-
-export const selectSyncProgress = (state: { offline: OfflineState }) => 
-  state.offline.syncStatus.sync_progress;
-
-export const selectPendingOperationsCount = (state: { offline: OfflineState }) => 
-  state.offline.syncStatus.pending_operations_count;
-
-export const selectHasOfflineData = (state: { offline: OfflineState }) => 
-  state.offline.hasOfflineData;
-
-export const selectPendingOperations = (state: { offline: OfflineState }) => 
-  state.offline.pendingOperations;
-
-export const selectUnresolvedConflicts = (state: { offline: OfflineState }) => 
-  state.offline.unresolvedConflicts;
-
-export const selectHasUnresolvedConflicts = (state: { offline: OfflineState }) => 
-  state.offline.unresolvedConflicts.length > 0;
-
-export const selectShowOfflineIndicator = (state: { offline: OfflineState }) => 
-  state.offline.showOfflineIndicator;
-
-export const selectShowSyncProgress = (state: { offline: OfflineState }) => 
-  state.offline.showSyncProgress;
-
-export const selectOfflineError = (state: { offline: OfflineState }) => 
-  state.offline.lastError;
-
-export const selectSyncErrors = (state: { offline: OfflineState }) => 
-  state.offline.syncStatus.sync_errors;
-
-export const selectServicesInitialized = (state: { offline: OfflineState }) => 
-  state.offline.servicesInitialized;
-
-// Organization-specific selectors
-export const selectPendingOperationsByOrg = (organisationId: string) =>
-  (state: { offline: OfflineState }) =>
-    state.offline.pendingOperations.filter(op => op.organisation_id === organisationId);
-
-export const selectConflictsByOrg = (organisationId: string) =>
-  (state: { offline: OfflineState }) =>
-    state.offline.unresolvedConflicts.filter(conflict => {
-      const localVersion = conflict.local_version;
-      return localVersion?.organisation_id === organisationId;
-    });
-
-// User role-based selectors
-export const selectCanUserSync = (userRole: string) =>
-  (state: { offline: OfflineState }) => {
-    // All users can sync their own data
-    return state.offline.servicesInitialized && state.offline.networkStatus.isConnected;
-  };
-
-export const selectUserOperations = (userId: string) =>
-  (state: { offline: OfflineState }) =>
-    state.offline.pendingOperations.filter(op => op.user_id === userId);
+// Selectors
+export const selectQueueOperations = (state: RootState) => state.offline.queue.operations;
+export const selectIsProcessing = (state: RootState) => state.offline.queue.processing;
+export const selectQueueStats = (state: RootState) => state.offline.stats;
+export const selectPendingCount = (state: RootState) =>
+  state.offline.queue.operations.filter((op) => op.retry_count < 5).length;
 
 export default offlineSlice.reducer;

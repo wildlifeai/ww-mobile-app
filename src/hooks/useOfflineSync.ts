@@ -6,7 +6,7 @@
  */
 
 import { useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '../store';
+import { useAppDispatch, useAppSelector } from '../redux';
 import {
   queueOfflineOperation,
   processOfflineQueue,
@@ -15,13 +15,13 @@ import {
   selectQueueStats,
   selectPendingCount,
   OPERATION_PRIORITY,
-} from '../store/slices/offlineSlice';
+} from '../redux/slices/offlineSlice';
 import {
   selectOverallSyncStatus,
   selectQueueStatus,
   selectEntitySyncStatus,
-} from '../store/slices/syncSlice';
-import { selectIsOnline, selectCanSync } from '../store/slices/networkSlice';
+} from '../redux/slices/syncSlice';
+import { selectIsOnline, selectCanSync } from '../redux/slices/networkSlice';
 import { OfflineOperationType } from '../types/offline';
 
 export const useOfflineSync = () => {

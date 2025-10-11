@@ -1,5 +1,42 @@
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
 
+// Auth context for passing authentication state to reducers
+export interface AuthContext {
+  currentOrgId: string | null;
+  userRole: 'ww_admin' | 'project_admin' | 'project_member';
+  userId: string;
+}
+
+// Action payload types with auth context
+export interface SetProjectsPayload {
+  projects: Project[];
+  authContext: AuthContext;
+}
+
+export interface CreateProjectPayload {
+  project: Project;
+  authContext: AuthContext;
+}
+
+export interface UpdateProjectPayload {
+  id: string;
+  updates: Partial<Project>;
+  authContext: AuthContext;
+}
+
+export interface DeleteProjectPayload {
+  id: string;
+  authContext: AuthContext;
+}
+
+export interface ProjectMemberPayload {
+  projectId: string;
+  member?: ProjectMember;
+  memberId?: string;
+  updates?: Partial<ProjectMember>;
+  authContext: AuthContext;
+}
+
 // Types for project management with organisation integration
 export interface ProjectMember {
   id: string;
@@ -45,21 +82,24 @@ const validateProject = (project: Project): string | null => {
 };
 
 // Helper function to check if user has permission to modify project
-const canModifyProject = (project: Project, currentUser: any): boolean => {
+const canModifyProject = (
+  project: Project,
+  authContext: AuthContext
+): boolean => {
   // WW Admin can modify any project
-  if (currentUser?.role === 'ww_admin') return true;
-  
+  if (authContext.userRole === 'ww_admin') return true;
+
   // Project creator can modify
-  if (project.created_by === currentUser?.id) return true;
-  
+  if (project.created_by === authContext.userId) return true;
+
   // Project admin member can modify
-  const userMember = project.members.find(m => m.user_id === currentUser?.id);
+  const userMember = project.members.find(m => m.user_id === authContext.userId);
   if (userMember && userMember.role === 'project_admin') return true;
-  
+
   // Organisation admin can modify projects in their org
-  if (currentUser?.role === 'project_admin' && 
-      project.organisation_id === currentUser?.organisation_id) return true;
-  
+  if (authContext.userRole === 'project_admin' &&
+      project.organisation_id === authContext.currentOrgId) return true;
+
   return false;
 };
 
@@ -67,104 +107,100 @@ export const projectsSlice = createSlice({
   name: "projects",
   initialState,
   reducers: {
-    setProjects: (state, action: PayloadAction<Project[]>) => {
-      // Filter projects by current organisation for security
-      const currentOrgId = (state as any).authentication?.currentOrganisation?.id;
-      const userRole = (state as any).authentication?.user?.role;
-      
-      if (userRole === 'ww_admin') {
-        // WW Admin can see all projects
-        state.projects = action.payload;
+    setProjects: (state, action: PayloadAction<SetProjectsPayload>) => {
+      const { projects, authContext } = action.payload;
+
+      // Apply org filtering based on role
+      if (authContext.userRole === 'ww_admin') {
+        state.projects = projects;
       } else {
-        // Filter by current organisation
-        state.projects = action.payload.filter(p => p.organisation_id === currentOrgId);
+        state.projects = projects.filter(
+          p => p.organisation_id === authContext.currentOrgId
+        );
       }
-      
+
       state.loading = false;
       state.error = undefined;
     },
     
-    createProject: (state, action: PayloadAction<Project>) => {
-      const project = action.payload;
+    createProject: (state, action: PayloadAction<CreateProjectPayload>) => {
+      const { project, authContext } = action.payload;
       const validationError = validateProject(project);
-      
+
       if (validationError) {
         state.error = validationError;
         return;
       }
-      
-      // Check organisation scope
-      const currentOrgId = (state as any).authentication?.currentOrganisation?.id;
-      const userRole = (state as any).authentication?.user?.role;
-      
-      if (userRole !== 'ww_admin' && project.organisation_id !== currentOrgId) {
+
+      // Check organisation scope using passed context
+      if (authContext.userRole !== 'ww_admin' &&
+          project.organisation_id !== authContext.currentOrgId) {
         state.error = 'Cannot create project in different organisation';
         return;
       }
-      
+
       state.projects.push(project);
       state.error = undefined;
     },
     
-    updateProject: (state, action: PayloadAction<{id: string, updates: Partial<Project>}>) => {
-      const { id, updates } = action.payload;
+    updateProject: (state, action: PayloadAction<UpdateProjectPayload>) => {
+      const { id, updates, authContext } = action.payload;
       const projectIndex = state.projects.findIndex(p => p.id === id);
-      
+
       if (projectIndex === -1) {
         state.error = 'Project not found';
         return;
       }
-      
+
       const project = state.projects[projectIndex];
-      const currentUser = (state as any).authentication?.user;
-      
-      if (!canModifyProject(project, currentUser)) {
+
+      // Use helper with auth context passed as parameter
+      if (!canModifyProject(project, authContext)) {
         state.error = 'Insufficient permissions to update project';
         return;
       }
-      
-      // Validate updates
-      const updatedProject = { ...project, ...updates, updated_at: new Date().toISOString() };
+
+      const updatedProject = {
+        ...project,
+        ...updates,
+        updated_at: new Date().toISOString()
+      };
+
       const validationError = validateProject(updatedProject);
-      
       if (validationError) {
         state.error = validationError;
         return;
       }
-      
+
       state.projects[projectIndex] = updatedProject;
-      
-      // Update current project if it's the one being updated
+
       if (state.currentProject?.id === id) {
         state.currentProject = updatedProject;
       }
-      
+
       state.error = undefined;
     },
     
-    deleteProject: (state, action: PayloadAction<string>) => {
-      const projectId = action.payload;
-      const project = state.projects.find(p => p.id === projectId);
-      
+    deleteProject: (state, action: PayloadAction<DeleteProjectPayload>) => {
+      const { id, authContext } = action.payload;
+      const project = state.projects.find(p => p.id === id);
+
       if (!project) {
         state.error = 'Project not found';
         return;
       }
-      
-      const currentUser = (state as any).authentication?.user;
-      
-      if (!canModifyProject(project, currentUser)) {
+
+      if (!canModifyProject(project, authContext)) {
         state.error = 'Insufficient permissions to delete project';
         return;
       }
-      
-      state.projects = state.projects.filter(p => p.id !== projectId);
-      
-      // Clear current project if it was deleted
-      if (state.currentProject?.id === projectId) {
+
+      state.projects = state.projects.filter(p => p.id !== id);
+
+      if (state.currentProject?.id === id) {
         state.currentProject = undefined;
       }
-      
+
       state.error = undefined;
     },
     
@@ -180,98 +216,106 @@ export const projectsSlice = createSlice({
       }
     },
     
-    addProjectMember: (state, action: PayloadAction<{projectId: string, member: ProjectMember}>) => {
-      const { projectId, member } = action.payload;
+    addProjectMember: (state, action: PayloadAction<ProjectMemberPayload>) => {
+      const { projectId, member, authContext } = action.payload;
+
+      if (!member) {
+        state.error = 'Member data is required';
+        return;
+      }
+
       const project = state.projects.find(p => p.id === projectId);
-      
+
       if (!project) {
         state.error = 'Project not found';
         return;
       }
-      
-      const currentUser = (state as any).authentication?.user;
-      
-      if (!canModifyProject(project, currentUser)) {
+
+      if (!canModifyProject(project, authContext)) {
         state.error = 'Insufficient permissions to add member';
         return;
       }
-      
+
       // Check if member already exists
       const existingMember = project.members.find(m => m.user_id === member.user_id);
       if (existingMember) {
         state.error = 'User is already a member of this project';
         return;
       }
-      
+
       project.members.push(member);
-      
+
       // Update current project if it's the one being modified
       if (state.currentProject?.id === projectId) {
         state.currentProject.members = project.members;
       }
-      
+
       state.error = undefined;
     },
     
-    removeProjectMember: (state, action: PayloadAction<{projectId: string, memberId: string}>) => {
-      const { projectId, memberId } = action.payload;
+    removeProjectMember: (state, action: PayloadAction<ProjectMemberPayload>) => {
+      const { projectId, memberId, authContext } = action.payload;
+
+      if (!memberId) {
+        state.error = 'Member ID is required';
+        return;
+      }
+
       const project = state.projects.find(p => p.id === projectId);
-      
+
       if (!project) {
         state.error = 'Project not found';
         return;
       }
-      
-      const currentUser = (state as any).authentication?.user;
-      
-      if (!canModifyProject(project, currentUser)) {
+
+      if (!canModifyProject(project, authContext)) {
         state.error = 'Insufficient permissions to remove member';
         return;
       }
-      
+
       project.members = project.members.filter(m => m.id !== memberId);
-      
+
       // Update current project if it's the one being modified
       if (state.currentProject?.id === projectId) {
         state.currentProject.members = project.members;
       }
-      
+
       state.error = undefined;
     },
     
-    updateProjectMember: (state, action: PayloadAction<{
-      projectId: string, 
-      memberId: string, 
-      updates: Partial<ProjectMember>
-    }>) => {
-      const { projectId, memberId, updates } = action.payload;
+    updateProjectMember: (state, action: PayloadAction<ProjectMemberPayload>) => {
+      const { projectId, memberId, updates, authContext } = action.payload;
+
+      if (!memberId || !updates) {
+        state.error = 'Member ID and updates are required';
+        return;
+      }
+
       const project = state.projects.find(p => p.id === projectId);
-      
+
       if (!project) {
         state.error = 'Project not found';
         return;
       }
-      
-      const currentUser = (state as any).authentication?.user;
-      
-      if (!canModifyProject(project, currentUser)) {
+
+      if (!canModifyProject(project, authContext)) {
         state.error = 'Insufficient permissions to update member';
         return;
       }
-      
+
       const memberIndex = project.members.findIndex(m => m.id === memberId);
       if (memberIndex === -1) {
         state.error = 'Member not found';
         return;
       }
-      
+
       project.members[memberIndex] = { ...project.members[memberIndex], ...updates };
-      
+
       // Update current project if it's the one being modified
       if (state.currentProject?.id === projectId) {
         state.currentProject.members = project.members;
       }
-      
+
       state.error = undefined;
     },
     

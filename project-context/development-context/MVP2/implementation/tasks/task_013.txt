@@ -84,6 +84,10 @@ This task implements comprehensive team collaboration capabilities for Wildlife 
 
 ## Dependencies:
 - Task 12: Projects CRUD Operations (for project context)
+- **CRITICAL**: Redux Architecture Fix (see `guides/REDUX-FIX-LEAN-EXECUTION.md`)
+  - Store consolidation required before integration
+  - Auth context pattern implementation
+  - Fixes critical state access bugs blocking member management
 - Supabase authentication and user profiles
 - Supabase Edge Functions for email invitations
 - Generated TypeScript types for project members

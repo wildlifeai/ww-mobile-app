@@ -1,5 +1,45 @@
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
 
+// Auth context interface for action payloads
+export interface AuthContext {
+  currentOrgId: string | null;
+  userRole: 'ww_admin' | 'project_admin' | 'project_member';
+  userId: string;
+}
+
+export interface SetDeploymentsPayload {
+  deployments: Deployment[];
+  authContext: AuthContext;
+}
+
+export interface CreateDeploymentPayload {
+  deployment: Deployment;
+  authContext: AuthContext;
+}
+
+export interface UpdateDeploymentPayload {
+  id: string;
+  updates: Partial<Deployment>;
+  authContext: AuthContext;
+}
+
+export interface DeleteDeploymentPayload {
+  id: string;
+  authContext: AuthContext;
+}
+
+export interface AddDevicePayload {
+  deploymentId: string;
+  device: DeploymentDevice;
+  authContext: AuthContext;
+}
+
+export interface RemoveDevicePayload {
+  deploymentId: string;
+  deviceId: string;
+  authContext: AuthContext;
+}
+
 // Types for deployment management with LoRaWAN integration
 export interface LoRaWANStatus {
   battery_level: number; // 0-100 percentage
@@ -79,20 +119,20 @@ const validateDeployment = (deployment: Deployment): string | null => {
 };
 
 // Helper function to check if user has permission to modify deployment
-const canModifyDeployment = (deployment: Deployment, currentUser: any): boolean => {
+const canModifyDeployment = (deployment: Deployment, authContext: AuthContext): boolean => {
   // WW Admin can modify any deployment
-  if (currentUser?.role === 'ww_admin') return true;
-  
+  if (authContext.userRole === 'ww_admin') return true;
+
   // Deployment creator can modify
-  if (deployment.created_by === currentUser?.id) return true;
-  
+  if (deployment.created_by === authContext.userId) return true;
+
   // Project admin can modify deployments in their projects
-  if (currentUser?.role === 'project_admin' && 
-      deployment.organisation_id === currentUser?.organisation_id) return true;
-  
+  if (authContext.userRole === 'project_admin' &&
+      deployment.organisation_id === authContext.currentOrgId) return true;
+
   // Project members can modify their own deployments
-  if (deployment.created_by === currentUser?.id) return true;
-  
+  if (deployment.created_by === authContext.userId) return true;
+
   return false;
 };
 
@@ -112,121 +152,114 @@ export const deploymentsSlice = createSlice({
   name: "deployments",
   initialState,
   reducers: {
-    setDeployments: (state, action: PayloadAction<Deployment[]>) => {
+    setDeployments: (state, action: PayloadAction<SetDeploymentsPayload>) => {
+      const { deployments, authContext } = action.payload;
+
       // Filter deployments by current organisation for security
-      const currentOrgId = (state as any).authentication?.currentOrganisation?.id;
-      const userRole = (state as any).authentication?.user?.role;
-      
-      if (userRole === 'ww_admin') {
+      if (authContext.userRole === 'ww_admin') {
         // WW Admin can see all deployments
-        state.deployments = action.payload;
+        state.deployments = deployments;
       } else {
         // Filter by current organisation
-        state.deployments = action.payload.filter(d => d.organisation_id === currentOrgId);
+        state.deployments = deployments.filter(d => d.organisation_id === authContext.currentOrgId);
       }
-      
+
       // Update active deployments
       state.activeDeployments = state.deployments.filter(d => d.status === 'active');
-      
+
       state.loading = false;
       state.error = undefined;
     },
     
-    createDeployment: (state, action: PayloadAction<Deployment>) => {
-      const deployment = action.payload;
+    createDeployment: (state, action: PayloadAction<CreateDeploymentPayload>) => {
+      const { deployment, authContext } = action.payload;
       const validationError = validateDeployment(deployment);
-      
+
       if (validationError) {
         state.error = validationError;
         return;
       }
-      
+
       // Check organisation scope
-      const currentOrgId = (state as any).authentication?.currentOrganisation?.id;
-      const userRole = (state as any).authentication?.user?.role;
-      
-      if (userRole !== 'ww_admin' && deployment.organisation_id !== currentOrgId) {
+      if (authContext.userRole !== 'ww_admin' && deployment.organisation_id !== authContext.currentOrgId) {
         state.error = 'Cannot create deployment in different organisation';
         return;
       }
-      
+
       state.deployments.push(deployment);
-      
+
       // Add to active deployments if status is active
       if (deployment.status === 'active') {
         state.activeDeployments.push(deployment);
       }
-      
+
       state.error = undefined;
     },
     
-    updateDeployment: (state, action: PayloadAction<{id: string, updates: Partial<Deployment>}>) => {
-      const { id, updates } = action.payload;
+    updateDeployment: (state, action: PayloadAction<UpdateDeploymentPayload>) => {
+      const { id, updates, authContext } = action.payload;
       const deploymentIndex = state.deployments.findIndex(d => d.id === id);
-      
+
       if (deploymentIndex === -1) {
         state.error = 'Deployment not found';
         return;
       }
-      
+
       const deployment = state.deployments[deploymentIndex];
-      const currentUser = (state as any).authentication?.user;
-      
-      if (!canModifyDeployment(deployment, currentUser)) {
+
+      if (!canModifyDeployment(deployment, authContext)) {
         state.error = 'Insufficient permissions to update deployment';
         return;
       }
-      
+
       // Validate updates
-      const updatedDeployment = { 
-        ...deployment, 
-        ...updates, 
-        updated_at: new Date().toISOString() 
+      const updatedDeployment = {
+        ...deployment,
+        ...updates,
+        updated_at: new Date().toISOString()
       };
       const validationError = validateDeployment(updatedDeployment);
-      
+
       if (validationError) {
         state.error = validationError;
         return;
       }
-      
+
       state.deployments[deploymentIndex] = updatedDeployment;
-      
+
       // Update active deployments list
       state.activeDeployments = state.deployments.filter(d => d.status === 'active');
-      
+
       // Update current deployment if it's the one being updated
       if (state.currentDeployment?.id === id) {
         state.currentDeployment = updatedDeployment;
       }
-      
+
       state.error = undefined;
     },
     
-    deleteDeployment: (state, action: PayloadAction<string>) => {
-      const deploymentId = action.payload;
-      const deployment = state.deployments.find(d => d.id === deploymentId);
-      
+    deleteDeployment: (state, action: PayloadAction<DeleteDeploymentPayload>) => {
+      const { id, authContext } = action.payload;
+      const deployment = state.deployments.find(d => d.id === id);
+
       if (!deployment) {
         state.error = 'Deployment not found';
         return;
       }
-      
-      const currentUser = (state as any).authentication?.user;
-      
-      if (!canModifyDeployment(deployment, currentUser)) {
+
+      if (!canModifyDeployment(deployment, authContext)) {
         state.error = 'Insufficient permissions to delete deployment';
         return;
       }
-      
-      state.deployments = state.deployments.filter(d => d.id !== deploymentId);
-      state.activeDeployments = state.activeDeployments.filter(d => d.id !== deploymentId);
-      
+
+      state.deployments = state.deployments.filter(d => d.id !== id);
+      state.activeDeployments = state.activeDeployments.filter(d => d.id !== id);
+
       // Clear current deployment if it was deleted
-      if (state.currentDeployment?.id === deploymentId) {
+      if (state.currentDeployment?.id === id) {
         state.currentDeployment = undefined;
       }
-      
+
       state.error = undefined;
     },
     
@@ -312,71 +345,61 @@ export const deploymentsSlice = createSlice({
       state.lastStatusUpdate = new Date().toISOString();
     },
     
-    addDeviceToDeployment: (state, action: PayloadAction<{
-      deploymentId: string,
-      device: DeploymentDevice
-    }>) => {
-      const { deploymentId, device } = action.payload;
+    addDeviceToDeployment: (state, action: PayloadAction<AddDevicePayload>) => {
+      const { deploymentId, device, authContext } = action.payload;
       const deployment = state.deployments.find(d => d.id === deploymentId);
-      
+
       if (!deployment) {
         state.error = 'Deployment not found';
         return;
       }
-      
-      const currentUser = (state as any).authentication?.user;
-      
-      if (!canModifyDeployment(deployment, currentUser)) {
+
+      if (!canModifyDeployment(deployment, authContext)) {
         state.error = 'Insufficient permissions to add device';
         return;
       }
-      
+
       // Check if device already exists
       const existingDevice = deployment.devices.find(d => d.id === device.id);
       if (existingDevice) {
         state.error = 'Device already exists in deployment';
         return;
       }
-      
+
       deployment.devices.push(device);
-      
+
       // Update current deployment if it's the one being modified
       if (state.currentDeployment?.id === deploymentId) {
         state.currentDeployment.devices = deployment.devices;
       }
-      
+
       state.error = undefined;
     },
     
-    removeDeviceFromDeployment: (state, action: PayloadAction<{
-      deploymentId: string,
-      deviceId: string
-    }>) => {
-      const { deploymentId, deviceId } = action.payload;
+    removeDeviceFromDeployment: (state, action: PayloadAction<RemoveDevicePayload>) => {
+      const { deploymentId, deviceId, authContext } = action.payload;
       const deployment = state.deployments.find(d => d.id === deploymentId);
-      
+
       if (!deployment) {
         state.error = 'Deployment not found';
         return;
       }
-      
-      const currentUser = (state as any).authentication?.user;
-      
-      if (!canModifyDeployment(deployment, currentUser)) {
+
+      if (!canModifyDeployment(deployment, authContext)) {
         state.error = 'Insufficient permissions to remove device';
         return;
       }
-      
+
       deployment.devices = deployment.devices.filter(d => d.id !== deviceId);
-      
+
       // Update current deployment if it's the one being modified
       if (state.currentDeployment?.id === deploymentId) {
         state.currentDeployment.devices = deployment.devices;
       }
-      
+
       // Clear device status updates
       delete state.deviceStatusUpdates[deviceId];
-      
+
       state.error = undefined;
     },
     

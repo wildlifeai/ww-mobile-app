@@ -7,8 +7,8 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { useAppSelector } from '../../store';
-import { selectEntitySyncStatus } from '../../store/slices/syncSlice';
+import { useAppSelector } from '../../redux';
+import { selectEntitySyncStatus } from '../../redux/slices/syncSlice';
 
 interface EntitySyncStatusProps {
   entityType: 'projects' | 'deployments' | 'devices' | 'organisations';
