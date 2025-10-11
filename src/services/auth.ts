@@ -184,7 +184,12 @@ const fetchUserOrganisations = async (userId: string) => {
 
     return { organisations, role, organisationId };
   } catch (error) {
-    console.error('Exception fetching user organisations:', error);
+    console.error('❌ Exception in fetchUserOrganisations:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      error: error,
+      stack: error instanceof Error ? error.stack : undefined,
+      userId: userId
+    });
     return { organisations: [], role: 'project_member' as const, organisationId: null };
   }
 };
@@ -217,22 +222,40 @@ const transformSupabaseUser = async (user: User, session: Session): Promise<Auth
  */
 export const login = async (credentials: LoginRequest): Promise<AuthResponse> => {
   try {
+    console.log('🔐 Auth Service: Starting login for:', credentials.identifier);
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email: credentials.identifier, // Assume identifier is email
       password: credentials.password,
     });
 
     if (error) {
+      console.error('❌ Supabase Auth Error:', {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+        code: (error as any).code,
+        details: error
+      });
       throw new Error(error.message);
     }
 
     if (!data.user || !data.session) {
+      console.error('❌ No user or session returned from Supabase');
       throw new Error('Login failed: No user or session data returned');
     }
 
-    return await transformSupabaseUser(data.user, data.session);
+    console.log('✅ Supabase auth successful, transforming user data...');
+    const authResponse = await transformSupabaseUser(data.user, data.session);
+    console.log('✅ Login complete for:', data.user.email);
+
+    return authResponse;
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ Login error (final catch):', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      error: error,
+      stack: error instanceof Error ? error.stack : undefined
+    });
     throw error;
   }
 };

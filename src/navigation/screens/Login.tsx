@@ -72,10 +72,28 @@ export const Login = () => {
 			
 			dispatch(setCredentials(response))
 		} catch (err) {
-			console.error("Login failed:", err)
+			console.error("❌ Login failed - Full error details:", {
+				message: err instanceof Error ? err.message : 'Unknown error',
+				errorObject: err,
+				stack: err instanceof Error ? err.stack : undefined
+			})
+
+			// Extract detailed error message
+			let errorMessage = "Please check your email and password and try again."
+			if (err && typeof err === 'object') {
+				const anyErr = err as any
+				if (anyErr.data?.error) {
+					errorMessage = anyErr.data.error
+				} else if (anyErr.error) {
+					errorMessage = anyErr.error
+				} else if (err instanceof Error) {
+					errorMessage = err.message
+				}
+			}
+
 			Alert.alert(
 				"Login Failed",
-				"Please check your email and password and try again.",
+				errorMessage,
 				[{ text: "OK" }]
 			)
 		}
