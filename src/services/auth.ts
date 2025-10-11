@@ -48,38 +48,84 @@ const syncOrganisationsToLocal = async (organisations: { id: string; name: strin
  */
 const fetchUserOrganisations = async (userId: string) => {
   try {
+    // 🔍 DEBUG: Verify JWT session first (as suggested by backend team)
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    console.log('🔍 JWT DEBUG:', {
+      hasSession: !!session,
+      userId: session?.user?.id,
+      email: session?.user?.email,
+      hasToken: !!session?.access_token,
+      tokenLength: session?.access_token?.length,
+      sessionError: sessionError?.message,
+      paramUserId: userId,
+      userIdMatch: session?.user?.id === userId
+    });
+
+    if (!session || !session.user) {
+      console.error('❌ No active session - JWT token missing or expired');
+      return { organisations: [], role: 'project_member' as const, organisationId: null };
+    }
+
+    if (session.user.id !== userId) {
+      console.error('⚠️ User ID mismatch:', {
+        tokenUserId: session.user.id,
+        paramUserId: userId
+      });
+    }
+
     // Step 1: Get user_organisations (simple link table)
+    console.log('📋 Querying user_organisations for userId:', userId);
     const { data: userOrgs, error: userOrgsError } = await supabase
       .from('user_organisations')
       .select('organisation_id')
       .eq('user_id', userId);
 
     if (userOrgsError) {
-      console.error('Error fetching user_organisations:', userOrgsError);
+      console.error('❌ Error fetching user_organisations:', {
+        message: userOrgsError.message,
+        details: userOrgsError.details,
+        hint: userOrgsError.hint,
+        code: userOrgsError.code
+      });
       return { organisations: [], role: 'project_member' as const, organisationId: null };
     }
 
     if (!userOrgs || userOrgs.length === 0) {
-      console.warn('No organisations found for user:', userId);
+      console.warn('⚠️ No organisations found for user:', userId);
+      console.warn('   Backend team confirmed 8 user-org links exist. This may be:');
+      console.warn('   1. JWT token issue (check above DEBUG output)');
+      console.warn('   2. RLS policy blocking access');
+      console.warn('   3. Wrong Supabase URL/project');
       return { organisations: [], role: 'project_member' as const, organisationId: null };
     }
 
+    console.log('✅ Found', userOrgs.length, 'user_organisation links');
+
     // Step 2: Get organisation details
     const orgIds = userOrgs.map(uo => uo.organisation_id);
+    console.log('📋 Querying organisations table for IDs:', orgIds);
     const { data: orgs, error: orgsError } = await supabase
       .from('organisations')
       .select('id, name, slug')
       .in('id', orgIds);
 
     if (orgsError) {
-      console.error('Error fetching organisations:', orgsError);
+      console.error('❌ Error fetching organisations:', {
+        message: orgsError.message,
+        details: orgsError.details,
+        hint: orgsError.hint,
+        code: orgsError.code
+      });
       return { organisations: [], role: 'project_member' as const, organisationId: null };
     }
+
+    console.log('✅ Found', orgs?.length || 0, 'organisations');
 
     // Step 3: Get user roles for each organisation
     // user_roles has: user_id, role, scope_type, scope_id
     // For org-level roles: scope_type='organisation', scope_id=org_id
     // For system-level roles: scope_type='system', scope_id=null (ww_admin)
+    console.log('📋 Querying user_roles for userId:', userId);
     const { data: userRoles, error: rolesError } = await supabase
       .from('user_roles')
       .select('role, scope_type, scope_id')
@@ -87,9 +133,16 @@ const fetchUserOrganisations = async (userId: string) => {
       .eq('is_active', true);
 
     if (rolesError) {
-      console.error('Error fetching user_roles:', rolesError);
+      console.error('❌ Error fetching user_roles:', {
+        message: rolesError.message,
+        details: rolesError.details,
+        hint: rolesError.hint,
+        code: rolesError.code
+      });
       return { organisations: [], role: 'project_member' as const, organisationId: null };
     }
+
+    console.log('✅ Found', userRoles?.length || 0, 'user roles');
 
     // Step 4: Combine the data
     const organisations = userOrgs.map(uo => {
