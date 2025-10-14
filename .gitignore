@@ -163,3 +163,8 @@ project-context/stuff.md
 
 # Playwright testing artifacts
 .playwright-mcp/
+
+# Serena MCP memory files
+.serena/
+
+project-context/presentations
