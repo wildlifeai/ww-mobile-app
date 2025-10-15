@@ -13,7 +13,7 @@
  * - Navigation to project details and new project creation
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { FlatList, StyleSheet, View, ListRenderItemInfo, RefreshControl } from 'react-native';
 import { Searchbar, FAB, ActivityIndicator, Text, useTheme, Button } from 'react-native-paper';
 import { useGetProjectsQuery } from '../../store/api/projectsApi';
@@ -22,6 +22,7 @@ import { WWScreenView } from '../../components/ui/WWScreenView';
 import { OfflineIndicator } from '../../components/ui/OfflineIndicator';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import type { ProjectWithDetails } from '../../types/project';
+import ProjectService from '../../services/ProjectService';
 
 export const Projects = () => {
   const navigation = useAppNavigation();
@@ -35,6 +36,25 @@ export const Projects = () => {
     error,
     refetch,
   } = useGetProjectsQuery();
+
+  // Temporarily disable sync callback to stop infinite loop
+  // TODO: Fix the root cause - projects not filtered by organisation during sync
+  useEffect(() => {
+    console.log('🔧 Projects Screen - Sync callback DISABLED (preventing infinite loop)');
+    ProjectService.setOnSyncComplete(undefined as any);
+  }, []);
+
+  // 🔍 DEBUG: Log projects data whenever it changes
+  useEffect(() => {
+    console.log('🔍 Projects Screen - Data changed:', {
+      projects: projects?.length || 0,
+      projectsData: projects?.map(p => ({ id: p.id, name: p.name })) || [],
+      isLoading,
+      isFetching,
+      hasError: !!error,
+      error: error ? JSON.stringify(error) : null
+    });
+  }, [projects, isLoading, isFetching, error]);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');

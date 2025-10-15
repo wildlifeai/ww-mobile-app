@@ -25,10 +25,19 @@ class ProjectService {
   private readonly TABLE_NAME = 'projects';
   private db: DatabaseService;
   private offlineService: OfflineService;
+  private onSyncComplete?: () => void;
 
   constructor() {
     this.db = new DatabaseService();
     this.offlineService = new OfflineService();
+  }
+
+  /**
+   * Set callback to be called when background sync completes
+   * Used to invalidate RTK Query cache and trigger UI refresh
+   */
+  setOnSyncComplete(callback: () => void) {
+    this.onSyncComplete = callback;
   }
 
   /**
@@ -79,7 +88,15 @@ class ProjectService {
    * Background sync: Fetch from Supabase and update local database
    * Non-blocking, runs in background
    */
+  private syncInProgress = false;
+
   private async backgroundSyncProjects(organisationId: string): Promise<void> {
+    // Prevent infinite loop - only one sync at a time
+    if (this.syncInProgress) {
+      console.log('🔄 Sync already in progress, skipping...');
+      return;
+    }
+
     // Check if we're online
     const networkStatus = this.offlineService.getNetworkStatus();
     if (!networkStatus.isConnected) {
@@ -87,6 +104,7 @@ class ProjectService {
       return;
     }
 
+    this.syncInProgress = true;
     console.log('🔄 Starting background sync for projects...');
 
     try {
@@ -98,6 +116,10 @@ class ProjectService {
 
       if (!viewError && viewData) {
         console.log(`🔄 Synced ${viewData.length} projects from Supabase`);
+        console.log('📊 Projects by organisation:');
+        viewData.forEach((p: any) => {
+          console.log(`   - ${p.name}: org_id=${p.organisation_id}`);
+        });
 
         // Update local database
         for (const project of viewData) {
@@ -110,22 +132,37 @@ class ProjectService {
             members: [], // TODO: Sync members separately
           };
 
-          try {
-            // Try to update first, if not found insert
+          console.log(`💾 Saving project "${project.name}" with org_id=${project.organisation_id}`);
+
+          // Check if project exists first
+          const existingProject = await this.db.getProjectById(project.id);
+
+          if (existingProject) {
+            // Update existing project
             await this.db.updateProject(project.id, dbProject);
-          } catch (updateError) {
-            // If update fails (project doesn't exist), insert it
+            console.log(`   ✅ Updated in database`);
+          } else {
+            // Insert new project
             await this.db.insertProject(dbProject);
+            console.log(`   ✅ Inserted into database`);
           }
         }
 
         console.log('✅ Background sync complete');
+
+        // Trigger cache invalidation callback if registered
+        if (this.onSyncComplete) {
+          console.log('🔄 Triggering RTK Query cache invalidation');
+          this.onSyncComplete();
+        }
       } else {
         console.warn('⚠️ Background sync failed:', viewError);
       }
     } catch (error) {
       console.error('❌ Background sync error:', error);
       // Don't throw - background sync failures are non-blocking
+    } finally {
+      this.syncInProgress = false;
     }
   }
 

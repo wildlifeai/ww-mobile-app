@@ -377,10 +377,21 @@ export class DatabaseService {
   async getProjectsByOrganisation(organisationId: string): Promise<DatabaseProject[]> {
     if (!this.db) throw new Error('Database not initialized');
 
+    // DEBUG: Check ALL projects first
+    const allProjects = await this.db.getAllAsync(
+      'SELECT id, organisation_id, name FROM local_projects'
+    ) as any[];
+    console.log(`🔍 DatabaseService - Total projects in database: ${allProjects.length}`);
+    allProjects.forEach((p: any) => {
+      console.log(`   - ${p.name}: org_id=${p.organisation_id}`);
+    });
+
+    console.log(`🔍 DatabaseService - Querying for org_id: ${organisationId}`);
     const results = await this.db.getAllAsync(
       'SELECT * FROM local_projects WHERE organisation_id = ?',
       [organisationId]
     ) as any[];
+    console.log(`🔍 DatabaseService - Found ${results.length} projects for this org`);
 
     return results.map(result => ({
       id: result.id,

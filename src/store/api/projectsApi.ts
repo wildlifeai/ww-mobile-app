@@ -32,15 +32,23 @@ export const projectsApi = createApi({
     // PHASE 3: Now reads from local database (works offline automatically)
     getProjects: builder.query<ProjectWithDetails[], void>({
       queryFn: async (_arg, { getState }) => {
-        console.log('📂 RTK Query - getProjects (offline-first)');
+        console.log('📂 RTK Query - getProjects (offline-first) - STARTING');
 
         try {
           // Get current organisation ID from Redux state
           const state = getState() as RootState;
+          console.log('🔍 RTK Query - Redux state check:', {
+            hasAuth: !!state.authentication,
+            hasCurrentOrg: !!state.authentication?.currentOrganisation,
+            currentOrgId: state.authentication?.currentOrganisation?.id,
+            currentOrgName: state.authentication?.currentOrganisation?.name
+          });
+
           const currentOrgId = state.authentication?.currentOrganisation?.id;
 
           if (!currentOrgId) {
             console.error('❌ No current organisation ID in state');
+            console.error('   Full authentication state:', JSON.stringify(state.authentication, null, 2));
             return {
               error: {
                 status: 'CUSTOM_ERROR',
@@ -49,13 +57,19 @@ export const projectsApi = createApi({
             };
           }
 
+          console.log('📂 RTK Query - Calling ProjectService.getUserProjects with orgId:', currentOrgId);
           // ProjectService now ALWAYS reads from local database
           // Background sync happens automatically if online
           const data = await ProjectService.getUserProjects(currentOrgId);
           console.log(`✅ RTK Query - Retrieved ${data.length} projects from local database`);
+          console.log('   Project names:', data.map(p => p.name));
           return { data };
         } catch (error) {
-          console.error('❌ getProjects failed:', error);
+          console.error('❌ RTK Query - getProjects failed:', error);
+          console.error('   Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown',
+            stack: error instanceof Error ? error.stack : undefined
+          });
           return {
             error: {
               status: 'CUSTOM_ERROR',
