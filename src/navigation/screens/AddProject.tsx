@@ -4,35 +4,31 @@ import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWTextInput } from "../../components/ui/WWTextInput"
 import { Field } from "../../components/form/Field"
 import { WWButton } from "../../components/ui/WWButton"
-import { useCreateProjectMutation } from "../../redux/api/projects"
+import { useCreateProjectMutation } from "../../store/api/projectsApi"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
-import { ProjectCreate } from "../../types/api.types"
+import { CreateProjectInput } from "../../types/project"
 
-type FormData = ProjectCreate
+type FormData = CreateProjectInput
 
 export const AddProject = () => {
 	const navigation = useAppNavigation()
 	const [createProject, { isLoading }] = useCreateProjectMutation()
 	const { control, handleSubmit } = useForm<FormData>({
 		defaultValues: {
-			title: "",
-			acronym: "",
+			name: "",
 			description: "",
-			samplingDesign: "",
-			captureMethod: "",
-			individualAnimals: 0,
-			observationLevel: "",
-			projectTeam: "{}",
-			projectPrivacy: "",
+			organisation_id: "", // Will need to be set from auth context
+			privacy_level: "private",
+			is_baited: false,
 		},
 	})
 
 	const onSubmit = async (data: FormData) => {
 		try {
-			const project = await createProject({ data }).unwrap()
+			const project = await createProject(data).unwrap()
 			navigation.navigate("AddDeployment", {
 				selectedProject: {
-					label: project.title,
+					label: project.name,
 					value: project.id,
 				},
 			})
@@ -47,54 +43,18 @@ export const AddProject = () => {
 				<View style={styles.form}>
 					<Field
 						control={control}
-						name="title"
-						label="Project title"
+						name="name"
+						label="Project name"
 						required
 						rules={{
-							required: "Project title is required",
+							required: "Project name is required",
 						}}
 					>
 						{(field) => (
 							<WWTextInput
 								{...field}
 								mode="outlined"
-								placeholder="Enter project title"
-							/>
-						)}
-					</Field>
-
-					<Field
-						control={control}
-						name="acronym"
-						label="Acronym"
-						required
-						rules={{
-							required: "Acronym is required",
-						}}
-					>
-						{(field) => (
-							<WWTextInput
-								{...field}
-								mode="outlined"
-								placeholder="Enter acronym"
-							/>
-						)}
-					</Field>
-
-					<Field
-						control={control}
-						name="samplingDesign"
-						label="Sampling design"
-						required
-						rules={{
-							required: "Sampling design is required",
-						}}
-					>
-						{(field) => (
-							<WWTextInput
-								{...field}
-								mode="outlined"
-								placeholder="Enter sampling design"
+								placeholder="Enter project name"
 							/>
 						)}
 					</Field>
@@ -103,97 +63,14 @@ export const AddProject = () => {
 						control={control}
 						name="description"
 						label="Description"
-						required
-						rules={{
-							required: "Description is required",
-						}}
 					>
 						{(field) => (
 							<WWTextInput
 								{...field}
 								mode="outlined"
-								placeholder="Enter description"
+								placeholder="Enter description (optional)"
 								multiline
 								numberOfLines={4}
-							/>
-						)}
-					</Field>
-
-					<Field
-						control={control}
-						name="captureMethod"
-						label="Capture method"
-						required
-						rules={{
-							required: "Capture method is required",
-						}}
-					>
-						{(field) => (
-							<WWTextInput
-								{...field}
-								mode="outlined"
-								placeholder="Enter capture method"
-							/>
-						)}
-					</Field>
-
-					<Field
-						control={control}
-						name="individualAnimals"
-						label="Number of individual animals"
-						required
-						rules={{
-							required: "Number of individual animals is required",
-							min: {
-								value: 0,
-								message: "Must be 0 or greater",
-							},
-						}}
-					>
-						{(field) => (
-							<WWTextInput
-								{...field}
-								mode="outlined"
-								placeholder="Enter number of individual animals"
-								keyboardType="numeric"
-								value={field.value.toString()}
-								onChangeText={(value) => field.onChange(parseInt(value) || 0)}
-							/>
-						)}
-					</Field>
-
-					<Field
-						control={control}
-						name="observationLevel"
-						label="Observation level"
-						required
-						rules={{
-							required: "Observation level is required",
-						}}
-					>
-						{(field) => (
-							<WWTextInput
-								{...field}
-								mode="outlined"
-								placeholder="Enter observation level"
-							/>
-						)}
-					</Field>
-
-					<Field
-						control={control}
-						name="projectPrivacy"
-						label="Project privacy"
-						required
-						rules={{
-							required: "Project privacy is required",
-						}}
-					>
-						{(field) => (
-							<WWTextInput
-								{...field}
-								mode="outlined"
-								placeholder="Enter project privacy"
 							/>
 						)}
 					</Field>

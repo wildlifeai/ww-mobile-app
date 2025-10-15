@@ -8,7 +8,7 @@ import { WWButton } from "../../components/ui/WWButton"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { useRoute, useFocusEffect } from "@react-navigation/native"
 import { AppParams } from ".."
-import { useGetProjectsQuery } from "../../redux/api/projects"
+import { useGetProjectsQuery } from "../../store/api/projectsApi"
 import { useCallback } from "react"
 
 type FormData = {
@@ -64,7 +64,7 @@ export const AddDeployment = () => {
 								options={[
 									{ label: "Add project", value: "add" },
 									...(projects?.map((project) => ({
-										label: project.title,
+										label: project.name,
 										value: project.id,
 									})) || []),
 								]}
