@@ -106,7 +106,8 @@ The app has five distinct user types, each with specific capabilities:
 - Register new cameras to projects
 - Test camera connections via Bluetooth
 - Update camera firmware
-- View projects they are assigned to. Depending on the organization's visibility settings, they may also see all other projects within the organization.
+- View and contribute to their assigned projects.
+- View other projects in their organization or publicly, based on those projects' visibility settings (contribution requires project membership).
 - Sync fieldwork data when online
 
 **Real-World Example**:
@@ -140,12 +141,13 @@ The app has five distinct user types, each with specific capabilities:
 **What they do**: Acts as a member of a larger research organization, available to be assigned to specific projects. This is the default role for any user added to an organization.
 
 **Capabilities**:
-- View all projects within their organization in Project Member capacity.
+- View projects within their organization that are set to "Visible for project and organization members".
 - Can be invited by a Project Admin or organisation Admin to become a Project Admin.
 - Can create a new project at any time, automatically becoming its Project Admin.
+- **Important**: This role grants visibility only. To create deployments or perform other actions within a project, a user must be explicitly added as a Project Member or Project Admin to that specific project.
 
 **Real-World Example**:
-*Sarah is a member of the Kea Conservation Trust. When she logs in, she can see a list of all projects the Trust is running. She can add deployments to any project within the organisation but is not a project admin until a Project Admin or Organisation Admin, like Dr. Chen, adds her to the "Kea Nest Monitoring" project.*
+*Sarah is a member of the Kea Conservation Trust. When she logs in, she can see a list of all projects the Trust is running that are marked as visible to the organization. She cannot add deployments to these projects until a Project Admin, like Dr. Chen, adds her to the "Kea Nest Monitoring" project as a Project Member.*
 
 **Current Status**: ✅ Complete (Core architecture)
 
@@ -230,6 +232,7 @@ Organization: Serengeti Conservation Trust
 
 1. **Project Member**: Belong to at least one organisation (the "General" organization as default) and can belong to multiple organizations and projects.
    - Example: Sarah_serengeti belongs to the "Serengeti Conservation Trust" organization. She is a member of the "Lion Tracking" project, which has its visibility set to "Visible only for project members". She can see and contribute to this project. The "Elephant Migration" project, also in her organization, has its visibility set to "Visible for project and organization members", so she can see it but can not contribute to it.
+   - **Contribution (e.g., creating deployments) is strictly limited to projects where the user is an explicit Project Member or Project Admin.**
    - Needs to be invited to become a regular user via email for different organizations and projects but she can create her own project, becoming the admin project.
 
 2. **Project Admins**: Lead individual research projects.
@@ -237,11 +240,11 @@ Organization: Serengeti Conservation Trust
    - They have full control within their projects, including managing team members (adding/removing/changing roles) and project settings.
    - They control the project's visibility, choosing from:
      - **Visible only for project members**: Only users explicitly added to the project can see it.
-     - **Visible for project and organization members**: All members of the project's organization can see the project.
-     - **Publicly visible**: Anyone on the platform can view the project.
+     - **Visible for project and organization members**: All members of the project's organization can see the project, but only Project Members can contribute.
+     - **Publicly visible**: Anyone on the platform can view the project, but only Project Members can contribute.
 
 3. **Organisation member**: This is the default status for any user belonging to an organization.
-   - It grants visibility to any project within the organization that has its visibility set to "Visible for project and organization members".
+   - It grants read-only visibility to any project within the organization that has its visibility set to "Visible for project and organization members" or "Publicly visible".
    - It enables users to select organisation-specific AI detection models.
    
 
