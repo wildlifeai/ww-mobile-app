@@ -96,7 +96,7 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 
 ### User Roles Explained
 
-The app has four distinct user types, each with specific capabilities:
+The app has five distinct user types, each with specific capabilities:
 
 #### 1. Project Member
 **What they do**: Hands-on fieldwork with cameras
@@ -106,7 +106,7 @@ The app has four distinct user types, each with specific capabilities:
 - Register new cameras to projects
 - Test camera connections via Bluetooth
 - Update camera firmware
-- View their assigned projects only
+- View projects they are assigned to. Depending on the organization's visibility settings, they may also see all projects within the organization.
 - Sync fieldwork data when online
 
 **Real-World Example**:
@@ -136,15 +136,17 @@ The app has four distinct user types, each with specific capabilities:
 
 ---
 #### 3. Organisation Member
-**What they do**: TBC
+**What they do**: Acts as a member of a larger research organization, available to be assigned to specific projects. This is the default role for any user added to an organization.
 
 **Capabilities**:
-- TBC
+- View all projects within their organization in Project Member capacity.
+- Can be invited by a Project Admin or organisation Admin to become a Project Admin.
+- Can create a new project at any time, automatically becoming its Project Admin.
 
 **Real-World Example**:
-*Sarah is a member of the kea conservation trust. She can see all the projects associated with the organisation but only can add deployments or modify the project details of those she has been added by the project manager. TBC*
+*Sarah is a member of the Kea Conservation Trust. When she logs in, she can see a list of all projects the Trust is running. She can add deployments to any project within the organisation but is not a project admin until a Project Admin or Organisation Admin, like Dr. Chen, adds her to the "Kea Nest Monitoring" project.*
 
-**Current Status**: TBC
+**Current Status**: ✅ Complete (Core architecture)
 
 ---
 
@@ -159,7 +161,7 @@ The app has four distinct user types, each with specific capabilities:
 - Works via web interface (not mobile app in MVP)
 
 **Real-World Example**:
-*Alex is the GM of a conservation organisation and collaborates with machine learning specialists who develops custom animal detection models. When his team creates an improved snow leopard detection model, he uploads it through the web portal, making it available for all snow leopard projects in his organization to use.*
+*Alex is the GM of the kea conservation trust and collaborates with machine learning specialists who develops custom bird detection models. When his team creates an improved kea bird detection model, he uploads it through the web portal, making it available for all projects in his organization to use.*
 
 **Current Status**: ⏳ Pending (Future implementation, web portal)
 
@@ -224,15 +226,17 @@ Organization: Serengeti Conservation Trust
 
 ### Organization Structure Rules
 
-1. **Project Member**: Belong to the "General" organization and can belong to multiple organizations but not "Admin".
-   - Example: Sarah_serengeti belongs "General" and "Serengeti Conservation Trust" organizations. She can see all the projects within the "Serengeti Conservation Trust" organisation and any additional project she has been invited to but not all the projects within the "General" organisation.
-   - Needs to be invited to become a regular user via email for different organizations and project but she can create her own project, becoming the admin project.
+1. **Project Member**: Belong to at least one organisation (the "General" organization as default) and can belong to multiple organizations and projects.
+   - Example: Sarah_serengeti belongs "General" and "Serengeti Conservation Trust" organizations. She can see all the projects within the "Serengeti Conservation Trust" organization because the organization admin has set the project visibilty field as "Visible within organisation", add deployments to any of the projects within the organisation and any additional project she has been invited to but she cannot see or interact with all the projects within the "General" organisation because the the project visibilty field of "General" is set as "Visible within project".
+   - Needs to be invited to become a regular user via email for different organizations and projects but she can create her own project, becoming the admin project.
 
 2. **Project Admins**: Lead individual research projects.
    - Any user can become a Project Admin by creating a new project.
    - They have full control within their projects, including managing team members (adding/removing/changing roles) and project settings.
 
-3. **Organisation member**: TBC
+3. **Organisation member**: This is the default status for any user belonging to an organization.
+   - It provides project member roles to all projects within that organization if the project visibility field within the organisation is set to "within organisation".
+   
 
 4. **Organisation Administrators**: Manage organization-level resources, primarily AI models.
    - They use the web portal to upload, version, and manage the AI detection models available to projects within their organization.
@@ -253,7 +257,7 @@ Organization: Serengeti Conservation Trust
 ### Authentication & Account Management
 
 #### 1.1 User Login
-**Description**: Secure login using email/username and password. ALso, using the google/facebook account.
+**Description**: Secure login using email/username and password.
 
 **Current State**: ✅ COMPLETE
 - Email/password authentication
@@ -285,22 +289,23 @@ Organization: Serengeti Conservation Trust
 
 ---
 
-#### 1.3 User Invitation System
-**Description**: WW Admins invite new users via email
+#### 1.3 User Sign Up
+**Description**: New users can sign up for an account directly within the mobile app. This allows anyone to join the platform, create their own projects, and get started with wildlife monitoring.
 
-**Current State**: ⏳ PENDING (Web Portal)
-- Secure invitation tokens
-- Time-limited links (7 days)
-- New user sets password on first login
-- Resend invitation option for expired links
+**Current State**: ⏳ PENDING (New Feature)
 
-**Intended State**: Web portal implementation
-- WW Admins create users via admin.wildlifewatcher.ai
-- System sends invitation emails automatically
-- Users complete registration via link
+**User-Side (Sign Up Flow)**:
+- User selects "Sign Up" on the login screen.
+- Enters their full name, username, email, and a password.
+- After verifying their email, their account is created.
+- New users are automatically added to the "General" organization.
+- Upon first login, they can create a new project or wait to be invited to an existing one.
+- Users can create their own organisations and assign projects to the organisations they are organisation admin.
 
-**Implementation**: Future (web portal)
-**Source**: admin-portal-spec.md, user-roles-permissions.md
+**Intended State**: A seamless, self-service sign-up flow available to all new users directly in the mobile app.
+
+**Implementation**: New feature for mobile app
+**Source**: This change represents a significant shift from the original invitation-only model. The `implementation-spec-v1.4.md` and `user-roles-permissions.md` will require updates to reflect this new public-facing user onboarding process.
 
 ---
 
@@ -961,8 +966,9 @@ The app uses a hierarchical permission system (like organizational charts):
 
 **Organizations** (Your research institution)
 - Organization name and contact information
-- Settings and configurations
+- Project visibility setting (`Visible within project`, `Visible within organization`, `Visible outside organization` )
 - Membership lists
+- Other settings and configurations
 - *Example record*: "Serengeti Conservation Trust" with 23 team members
 
 **Users** (Team members and administrators)
