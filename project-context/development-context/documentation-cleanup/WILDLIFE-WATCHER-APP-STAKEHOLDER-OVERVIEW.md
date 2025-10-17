@@ -96,7 +96,7 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 
 ### User Roles Explained
 
-The app has four distinct user types, each with specific capabilities:
+The app has five distinct user types, each with specific capabilities:
 
 #### 1. Project Member
 **What they do**: Hands-on fieldwork with cameras
@@ -136,15 +136,17 @@ The app has four distinct user types, each with specific capabilities:
 
 ---
 #### 3. Organisation Member
-**What they do**: TBC
+**What they do**: Acts as a member of a larger research organization, available to be assigned to specific projects. This is the default role for any user added to an organization.
 
 **Capabilities**:
-- TBC
+- View all projects within their organization in Project Member capacity.
+- Can be invited by a Project Admin or organisation Admin to become a Project Admin.
+- Can create a new project at any time, automatically becoming its Project Admin.
 
 **Real-World Example**:
-*Sarah is a member of the kea conservation trust. She can see all the projects associated with the organisation but only can add deployments or modify the project details of those she has been added by the project manager. TBC*
+*Sarah is a member of the Kea Conservation Trust. When she logs in, she can see a list of all projects the Trust is running. She can add deployments to any project within the organisation but is not a project admin until a Project Admin or Organisation Admin, like Dr. Chen, adds her to the "Kea Nest Monitoring" project.*
 
-**Current Status**: TBC
+**Current Status**: ✅ Complete (Core architecture)
 
 ---
 
@@ -159,7 +161,7 @@ The app has four distinct user types, each with specific capabilities:
 - Works via web interface (not mobile app in MVP)
 
 **Real-World Example**:
-*Alex is the GM of a conservation organisation and collaborates with machine learning specialists who develops custom animal detection models. When his team creates an improved snow leopard detection model, he uploads it through the web portal, making it available for all snow leopard projects in his organization to use.*
+*Alex is the GM of the kea conservation trust and collaborates with machine learning specialists who develops custom bird detection models. When his team creates an improved kea bird detection model, he uploads it through the web portal, making it available for all projects in his organization to use.*
 
 **Current Status**: ⏳ Pending (Future implementation, web portal)
 
@@ -224,26 +226,33 @@ Organization: Serengeti Conservation Trust
 
 ### Organization Structure Rules
 
-1. **Project Member**: Belong to the "General" organization and can belong to multiple organizations but not "Admin".
-   - Example: Sarah_serengeti belongs "General" and "Serengeti Conservation Trust" organizations. She can see all the projects within the "Serengeti Conservation Trust" organisation and any additional project she has been invited to but not all the projects within the "General" organisation.
-   - Needs to be invited to become a regular user via email for different organizations and project but she can create her own project, becoming the admin project.
+1. **Project Visibility Control**: Each organization has a `project_visibility` setting that controls how projects are viewed by its members. This is managed by Organisation Administrators via the web portal.
+   - **Visible within project**: Users can only see projects they are explicitly added to. This is the most restrictive setting, ideal for organizations with many independent research groups.
+   - **Visible within organisation**: All members of the organization can see and contribute to all projects within that organization. This is ideal for collaborative, open-team environments.
+   - **Visible outside organisation**: Projects can be made public for cross-organization collaboration or citizen science initiatives (Future Phase).
 
-2. **Project Admins**: Lead individual research projects.
+2. **Project Member**: Belong to at least one organisation (the "General" organization as default) and can belong to multiple organizations and projects.
+   - Example: Sarah_serengeti belongs "General" and "Serengeti Conservation Trust" organizations. She can see all the projects within the "Serengeti Conservation Trust" organization because the organization admin has set the project visibilty field as "Visible within organisation", add deployments to any of the projects within the organisation and any additional project she has been invited to but she cannot see or interact with all the projects within the "General" organisation because the the project visibilty field of "General" is set as "Visible within project".
+   - Needs to be invited to become a regular user via email for different organizations and projects but she can create her own project, becoming the admin project.
+
+3. **Project Admins**: Lead individual research projects.
    - Any user can become a Project Admin by creating a new project.
    - They have full control within their projects, including managing team members (adding/removing/changing roles) and project settings.
 
-3. **Organisation member**: TBC
+4. **Organisation member**: This is the default status for any user belonging to an organization.
+   - It provides project member roles to all projects within that organization if the project visibility field within the organisation is set to "within organisation".
+   
 
-4. **Organisation Administrators**: Manage organization-level resources, primarily AI models.
+5. **Organisation Administrators**: Manage organization-level resources, primarily AI models.
    - They use the web portal to upload, version, and manage the AI detection models available to projects within their organization.
    - This role operates at the organization level and has Admin role access to all the projects within the organisation.
 
-5. **WW Admins (System Administrators)**: Have system-wide responsibilities and access.
+6. **WW Admins (System Administrators)**: Have system-wide responsibilities and access.
    - They belong to a special "Admin" organization, giving them read-only visibility across all projects in the mobile app for support purposes.
    - All user and organization management is performed exclusively through the secure web portal, not the mobile app.
    - A WW Admin can be assigned to one additional organization, where they can act as a regular Project Admin or Project Member.
 
-6. **Multiple Roles**: Users can have multiple roles within their organization.
+7. **Multiple Roles**: Users can have multiple roles within their organization.
    - Example: Dr. Chen could be both Project Admin AND Model Manager
 
 ---
@@ -253,7 +262,7 @@ Organization: Serengeti Conservation Trust
 ### Authentication & Account Management
 
 #### 1.1 User Login
-**Description**: Secure login using email/username and password. ALso, using the google/facebook account.
+**Description**: Secure login using email/username and password. Also, using the google/facebook account.
 
 **Current State**: ✅ COMPLETE
 - Email/password authentication

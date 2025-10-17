@@ -106,7 +106,7 @@ The app has five distinct user types, each with specific capabilities:
 - Register new cameras to projects
 - Test camera connections via Bluetooth
 - Update camera firmware
-- View projects they are assigned to. Depending on the organization's visibility settings, they may also see all projects within the organization.
+- View their assigned projects only
 - Sync fieldwork data when online
 
 **Real-World Example**:
@@ -257,7 +257,7 @@ Organization: Serengeti Conservation Trust
 ### Authentication & Account Management
 
 #### 1.1 User Login
-**Description**: Secure login using email/username and password.
+**Description**: Secure login using email/username and password. Also, using the google/facebook account.
 
 **Current State**: ✅ COMPLETE
 - Email/password authentication
@@ -289,23 +289,22 @@ Organization: Serengeti Conservation Trust
 
 ---
 
-#### 1.3 User Sign Up
-**Description**: New users can sign up for an account directly within the mobile app. This allows anyone to join the platform, create their own projects, and get started with wildlife monitoring.
+#### 1.3 User Invitation System
+**Description**: WW Admins invite new users via email
 
-**Current State**: ⏳ PENDING (New Feature)
+**Current State**: ⏳ PENDING (Web Portal)
+- Secure invitation tokens
+- Time-limited links (7 days)
+- New user sets password on first login
+- Resend invitation option for expired links
 
-**User-Side (Sign Up Flow)**:
-- User selects "Sign Up" on the login screen.
-- Enters their full name, username, email, and a password.
-- After verifying their email, their account is created.
-- New users are automatically added to the "General" organization.
-- Upon first login, they can create a new project or wait to be invited to an existing one.
-- Users can create their own organisations and assign projects to the organisations they are organisation admin.
+**Intended State**: Web portal implementation
+- WW Admins create users via admin.wildlifewatcher.ai
+- System sends invitation emails automatically
+- Users complete registration via link
 
-**Intended State**: A seamless, self-service sign-up flow available to all new users directly in the mobile app.
-
-**Implementation**: New feature for mobile app
-**Source**: This change represents a significant shift from the original invitation-only model. The `implementation-spec-v1.4.md` and `user-roles-permissions.md` will require updates to reflect this new public-facing user onboarding process.
+**Implementation**: Future (web portal)
+**Source**: admin-portal-spec.md, user-roles-permissions.md
 
 ---
 
@@ -966,7 +965,7 @@ The app uses a hierarchical permission system (like organizational charts):
 
 **Organizations** (Your research institution)
 - Organization name and contact information
-- Project visibility setting (`Visible within project`, `Visible within organization`, `Visible outside organization` )
+- Project visibility setting (`Visible within project`, `Visible within organisation`)
 - Membership lists
 - Other settings and configurations
 - *Example record*: "Serengeti Conservation Trust" with 23 team members
