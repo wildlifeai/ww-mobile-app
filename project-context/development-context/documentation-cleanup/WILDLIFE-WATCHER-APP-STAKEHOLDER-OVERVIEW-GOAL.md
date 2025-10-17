@@ -54,19 +54,22 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 
 ### Mobile App Features
 
-**For Field Researchers (Project Members)**:
+**For Project Members**:
+- Test and prepare cameras before field deployments
 - Start/end camera deployments in 6 easy steps
-- Register and test cameras via Bluetooth
-- Update camera firmware remotely
 - Work completely offline in remote locations
 - View all your project deployments on a map
 
-**For Project Managers (Project Admins)**:
-- Create and manage research projects
+**For Project Admins**:
 - Invite team members and assign roles
 - Track deployment status across field sites
 - Select AI models for camera detection
 - Monitor team activities
+
+**For Organisation Administrators**:
+- Create and manage research projects
+- Invite team members and assign roles
+- Upload new AI models for camera detection (via web portal)
 
 **For System Administrators (WW Admin)**:
 - View all projects across organizations (read-only in app)
@@ -75,14 +78,14 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 
 ### Web Portal Features
 
-**For WW Administrators**:
+**For System Administrators (WW Admin)**:
 - Create and manage user accounts
 - Assign users to organizations
-- Manage system-level roles (WW Admin, Model Manager)
+- Manage system-level roles (WW Admin, Organisation Administrators)
 - System-wide configuration
 - Password reset forms for users
 
-**For Model Managers**:
+**For Organisation Administrators**:
 - Upload new AI detection models
 - Version and update existing models
 - Manage model availability for organizations
@@ -93,9 +96,9 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 
 ### User Roles Explained
 
-The app has four distinct user types, each with specific capabilities:
+The app has five distinct user types, each with specific capabilities:
 
-#### 1. Project Member (Field Researcher)
+#### 1. Project Member
 **What they do**: Hands-on fieldwork with cameras
 
 **Capabilities**:
@@ -103,19 +106,17 @@ The app has four distinct user types, each with specific capabilities:
 - Register new cameras to projects
 - Test camera connections via Bluetooth
 - Update camera firmware
-- Deploy AI models to cameras
-- View their assigned projects only
+- View projects they are assigned to. Depending on the organization's visibility settings, they may also see all other projects within the organization.
 - Sync fieldwork data when online
-- Create new projects (becoming Project Admin)
 
 **Real-World Example**:
-*Sarah is a field researcher working on a predator monitoring study. She uses the app to deploy cameras at bait stations, tests each camera connection, and records deployment details—all while miles from any internet connection. When she returns to her vehicle with cell service, the app automatically syncs her work to the cloud.*
+*Sarah is a field researcher working on a predator monitoring study. She uses the app to test the cameras from the comfort of her office before heading out to the field. Sarah confirms that the cameras have the latest firmware, are associated with a project, full batteries and SD card space, and the flash lights and camera works as expected (e.g. field of view is not obstructed and camera doesn't take under/overexposed photos). She then goes to the field to deploy the cameras at bait stations. She turns the camera on, connects to it via the mobile app, previews the field of view of the camera, updates the location and other deployment-specific information (e.g. type of bait, angle of the camera,...) and start the deployment using the app. The records deployment are stored locally in her phone as there is no internet connection. When she returns to her vehicle with cell service, the app automatically syncs her work to the cloud.*
 
 **Current Status**: ✅ Core features complete (Tasks 11-13)
 
 ---
 
-#### 2. Project Admin (Project Manager)
+#### 2. Project Admin
 **What they do**: Manage research projects and teams
 
 **Capabilities**:
@@ -125,6 +126,7 @@ The app has four distinct user types, each with specific capabilities:
 - Add/remove team members
 - Assign Project Admin or Project Member roles
 - Select which AI models to use
+- Manage project visibility settings
 - Delete deployments if needed
 - Archive completed projects
 
@@ -134,9 +136,23 @@ The app has four distinct user types, each with specific capabilities:
 **Current Status**: 🔄 In progress (Tasks 12-14, Tasks 12-13 complete)
 
 ---
+#### 3. Organisation Member
+**What they do**: Acts as a member of a larger research organization, available to be assigned to specific projects. This is the default role for any user added to an organization.
 
-#### 3. Model Manager (AI Specialist)
-**What they do**: Manage AI detection models
+**Capabilities**:
+- View all projects within their organization in Project Member capacity.
+- Can be invited by a Project Admin or organisation Admin to become a Project Admin.
+- Can create a new project at any time, automatically becoming its Project Admin.
+
+**Real-World Example**:
+*Sarah is a member of the Kea Conservation Trust. When she logs in, she can see a list of all projects the Trust is running. She can add deployments to any project within the organisation but is not a project admin until a Project Admin or Organisation Admin, like Dr. Chen, adds her to the "Kea Nest Monitoring" project.*
+
+**Current Status**: ✅ Complete (Core architecture)
+
+---
+
+#### 4. Organisation Administrators
+**What they do**: Manage projects and AI detection models
 
 **Capabilities**:
 - Upload new AI models to organization
@@ -146,13 +162,13 @@ The app has four distinct user types, each with specific capabilities:
 - Works via web interface (not mobile app in MVP)
 
 **Real-World Example**:
-*Alex is a machine learning specialist who develops custom animal detection models. When his team creates an improved snow leopard detection model, he uploads it through the web portal, making it available for all snow leopard projects in his organization to use.*
+*Alex is the GM of the kea conservation trust and collaborates with machine learning specialists who develops custom bird detection models. When his team creates an improved kea bird detection model, he uploads it through the web portal, making it available for all projects in his organization to use.*
 
 **Current Status**: ⏳ Pending (Future implementation, web portal)
 
 ---
 
-#### 4. WW Admin (System Administrator)
+#### 5. WW Admin (System Administrator)
 **What they do**: System-wide management and support
 
 **Mobile App Capabilities** (Limited):
@@ -172,7 +188,7 @@ The app has four distinct user types, each with specific capabilities:
 **Important Note**: WW Admins CANNOT assign project roles (Project Admin/Project Member). Only Project Admins can assign project roles within their projects.
 
 **Real-World Example**:
-*Jordan is the Wildlife.ai system administrator. When a new conservation organization joins, he creates their organization account, sets up their initial admin user, and assigns them a Model Manager. If a Project Admin within that organization needs a password reset, Jordan can handle it through the web portal. However, the Project Admin manages their own team assignments.*
+*Jordan is the Wildlife.ai system administrator. When a new conservation organization wants to join, he creates their organization account, and assigns their initial admin user. If a Project Admin within that organization needs a password reset, or a project member reports an issue with a deployment, Jordan can handle it through the web portal.*
 
 **Current Status**: ✅ Mobile read-only complete, ⏳ Web portal planned
 
@@ -188,8 +204,8 @@ Organization: Serengeti Conservation Trust
 ├─ WW Admin (via web portal)
 │  └─ Creates organization, adds initial users
 │
-├─ Model Manager (via web portal)
-│  └─ Uploads "Lion Detection v2.3" AI model
+├─ Organisation Administrator (via web portal)
+│  └─ Creates projects, assigns project admins and uploads "Lion Detection v2.3" AI model
 │
 ├─ Project: "Lion Population 2025"
 │  │
@@ -209,20 +225,41 @@ Organization: Serengeti Conservation Trust
    └─ Project Members: Alex, Jamie
 ```
 
+
 ### Organization Structure Rules
 
-1. **Regular Users**: Belong to ONE organization only
-   - Example: Sarah@serengeti.org can only access Serengeti organization projects
-   - Need separate email for different organizations (MVP limitation)
+1. **Project Member**: Belong to at least one organisation (the "General" organization as default) and can belong to multiple organizations and projects.
+   - Example: Sarah_serengeti belongs to the "Serengeti Conservation Trust" organization. She is a member of the "Lion Tracking" project, which has its visibility set to "Visible only for project members". She can see and contribute to this project. The "Elephant Migration" project, also in her organization, has its visibility set to "Visible for project and organization members", so she can see it but can not contribute to it.
+   - Needs to be invited to become a regular user via email for different organizations and projects but she can create her own project, becoming the admin project.
 
-2. **WW Admins**: Belong to Wildlife.ai organization
-   - Can be assigned to ONE additional organization
-   - When assigned to another org, subject to normal project roles
+2. **Project Admins**: Lead individual research projects.
+   - Any user can become a Project Admin by creating a new project.
+   - They have full control within their projects, including managing team members (adding/removing/changing roles) and project settings.
+   - They control the project's visibility, choosing from:
+     - **Visible only for project members**: Only users explicitly added to the project can see it.
+     - **Visible for project and organization members**: All members of the project's organization can see the project.
+     - **Publicly visible**: Anyone on the platform can view the project.
 
-3. **Multiple Roles**: Users can have multiple roles within their organization
-   - Example: Dr. Chen could be both Project Admin AND Model Manager
+3. **Organisation member**: This is the default status for any user belonging to an organization.
+   - It grants visibility to any project within the organization that has its visibility set to "Visible for project and organization members".
+   - It enables users to select organisation-specific AI detection models.
+   
+
+4. **Organisation Administrators**: Manage organization-level resources, primarily AI models.
+   - They use the web portal to upload, version, and manage the AI detection models available to projects within their organization.
+   - This role operates at the organization level and has Admin role access to all the projects within the organisation.
+
+5. **WW Admins (System Administrators)**: Have system-wide responsibilities and access.
+   - They belong to a special "Admin" organization, giving them CRUD capabilities for all organizations and projects. CRUD actions can only be performed exclusively through the secure web portal, not the mobile app.
+   - WW Admins can be assigned to additional organizations or projects as any other user.
+
+6. **Multiple Roles**: Users can have multiple roles within their organization.
+   - Example: Dr. Chen could be both Project Admin AND Project member of different projects within the same organization.
 
 ---
+
+---
+
 
 ## Complete Feature Inventory
 
@@ -949,7 +986,7 @@ The app uses a hierarchical permission system (like organizational charts):
 
 **Projects** (Research initiatives)
 - Project name, description, goals
-- Privacy settings (public/private)
+- Visibility: "Visible only for project members" (default), "Visible for project and organization members", or "Publicly visible"
 - Creation date, last update, project owner
 - Organization link (automatic isolation)
 - *Example record*: "Lion Population Study 2025" - 5 team members, 12 active deployments
