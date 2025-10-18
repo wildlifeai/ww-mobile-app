@@ -2,7 +2,7 @@
 ## Product Overview for Stakeholders
 
 **Document Version**: 1.1
-**Date**: January 17, 2025
+**Date**: October 18, 2025
 **Status**: MVP2 Development - 60.9% Complete
 **Purpose**: Non-technical stakeholder reference for features, progress, and decisions
 **Update**: Added backend database architecture and security information
@@ -510,7 +510,7 @@ Organization: Serengeti Conservation Trust
 **Description**: Mark a camera deployment as finished
 
 **Current State**: ⏳ PENDING (Task 17)
-- Select active deployment
+- Select an active deployment from a list or map
 - Set end date/time
 - Add end notes (optional)
 - Deployment marked as "Ended"
@@ -522,6 +522,7 @@ Organization: Serengeti Conservation Trust
 **Implementation**: Task 17 - Field Validation & End Deployment
 **Estimated**: 6 hours
 **Source**: implementation-spec-v1.4.md Section 5.4
+**Technical Details**: See `project-context/development-context/MVP2/specifications/end-deployment-workflow.md` for a detailed breakdown of this feature.
 
 ---
 
@@ -584,17 +585,17 @@ Organization: Serengeti Conservation Trust
 
 ---
 
-### Device Management
+### Device Management & Preparation
 
-#### 5.1 Register New Camera
-**Description**: Add a camera device to the system
+#### 5.1 View Deployed Devices
+**Description**: The main view of the "Devices" screen lists all cameras that are actively deployed in projects the user is a member of. This gives field staff a quick overview of their active hardware.
 
 **Current State**: ⏳ PENDING (Task 18)
-- Scan QR code on camera (preferred)
-- Manual entry of device ID
-- Camera name/nickname
-- Camera becomes available for deployments
-- Works offline
+- Device ID, name, and status
+- The project it's deployed in
+- Last connection date
+- Battery level (if LoRaWAN enabled)
+- SD card usage (if LoRaWAN enabled)
 
 **Intended State**: Same as planned
 
@@ -604,60 +605,33 @@ Organization: Serengeti Conservation Trust
 
 ---
 
-#### 5.2 Test Camera Connection
-**Description**: Verify Bluetooth connection to camera
+#### 5.2 Prepare and Test Nearby Devices
+**Description**: A prominent button allows users to scan for nearby, non-deployed cameras to prepare them for fieldwork. This opens a "Camera Workbench" screen where a user can see and manage all aspects of a single camera before deployment.
+
+**User Capabilities**:
+- **View Camera Status**: See battery level, SD card storage, and firmware version.
+- **Test Camera**: Take a test photo to ensure the camera's view is clear.
+- **Manage Project Association**: Assign the camera to a specific project. The app includes safeguards to prevent associating a camera with a project the user doesn't have access to.
+- **Update Firmware**: If a newer firmware version is available, the user can update the camera directly from the app.
+- **Configure AI Model**: Project Admins can change the AI detection model loaded on the camera.
+- **Name Device**: Give the camera a custom name for easy identification.
 
 **Current State**: 🟡 PARTIAL (BLE infrastructure exists)
 - Scan for nearby cameras via Bluetooth
 - Connect to selected camera
-- Verify communication
+- Test camera's live view to check for obstructions
 - Connection status indicator
 - Signal strength display
 
-**Intended State**: Same as current + deployment integration
+**Intended State**: Fully functional workbench screen integrating all preparation steps.
 
 **Implementation**: Task 20 - BLE Communication & Sync
-**Note**: BLE manager exists, needs deployment workflow integration
+**Note**: BLE manager exists, needs UI workflow integration.
 **Source**: implementation-spec-v1.4.md Section 5.8
+**Technical Details**: See `project-context\development-context\documentation-cleanup\device-preparation-workflow.md` for a detailed breakdown of this feature.
 
 ---
 
-#### 5.3 Update Camera Firmware
-**Description**: Install new firmware on camera remotely
-
-**Current State**: 🟡 PARTIAL (DFU library integrated)
-- Connect to camera via Bluetooth
-- Check current firmware version
-- Download latest firmware
-- Install via DFU (Device Firmware Update)
-- Progress indicator during update
-- Verification after update
-
-**Intended State**: Same as current + UI integration
-
-**Implementation**: Task 20 - BLE Communication & Sync
-**Note**: DFU capability exists, needs UI workflow
-**Source**: implementation-spec-v1.4.md Section 5.8
-
----
-
-#### 5.4 View Registered Devices
-**Description**: List all cameras in the system
-
-**Current State**: ⏳ PENDING (Task 18)
-- All registered cameras
-- Filter by: Available, In Use, All
-- Device ID, name, status
-- Last connection date
-- Battery level (if LoRaWAN enabled)
-- SD card usage (if LoRaWAN enabled)
-
-**Intended State**: Same as planned
-
-**Implementation**: Task 18 - Deployment & Device Management
-**Source**: implementation-spec-v1.4.md Section 5.8
-
----
 
 ### AI Model Management
 
