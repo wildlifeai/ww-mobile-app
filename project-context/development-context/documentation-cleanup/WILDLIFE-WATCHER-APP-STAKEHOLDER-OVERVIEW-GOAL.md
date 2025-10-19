@@ -46,7 +46,7 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 
 **Key Benefits**:
 
-- ✅ **Prepare Cameras from Anywhere**: Test camera functions, check battery and SD card status, and update firmware from your office to ensure every device is field-ready, preventing wasted trips.
+- ✅ **Prepare Cameras before going to the field**: Test camera functions, check battery and SD card status, and update firmware from your office to ensure every device is field-ready, preventing wasted trips.
 - ✅ **Error-Proof Deployments**: A step-by-step wizard guides you through setup, capturing all critical data correctly and reducing field errors.
 - ✅ **Perfect Camera Placement**: Use a live camera preview to perfectly frame your shot and location information with photos of the setup for easy retrieval.
 - ✅ **Work Anywhere, Sync Later**: Complete all tasks in remote locations without an internet connection. Data syncs to the cloud automatically when connectivity returns.
@@ -492,8 +492,10 @@ Organization: Serengeti Conservation Trust
 **Current State**: ⏳ PENDING (Task 15)
 - **Step 1: Device Selection & Pairing**: Select an available camera from a list of nearby Bluetooth devices.
 - **Step 2: Connectivity Setup**: Choose to enable LoRaWAN for remote status updates or operate in an offline-only mode. Includes an option to test signal reception.
-- **Step 3: Camera View & Adjustment**: Use a live photo preview from the camera to physically adjust its position and field of view until satisfied.
+- **Step 3: Camera View & Adjustment**: Use a test photo preview from the camera to physically adjust its position and field of view until satisfied.
+- **Data Management**: Photos taken during this step are for temporary preview only and must be deleted from the app and the device's SD card to conserve space.
 - **Step 4: Location**: Set the deployment's GPS coordinates on a map, name the site, and take a photo of the deployed camera *with the phone* to help with later retrieval.
+**Data Management**: Photos taken during this step are stored in the mobile phone so that they can be displayed at a later time for finding the Wildlife Watcher.
 - **Step 5: Deployment Details**: Configure the deployment name, project, start time, and capture method (Motion Detection vs. Time-lapse).
 - **Step 6: Confirmation & Submit**: Review a summary of all entered information and submit to finalize the deployment, which configures the camera and saves the record.
 
@@ -614,7 +616,7 @@ Organization: Serengeti Conservation Trust
 
 **User Capabilities**:
 - **View Camera Status**: See battery level, SD card storage, and firmware version.
-- **Test Camera**: Take a test photo to ensure the camera's view is clear.
+- **Test Camera**: Take a test photo to ensure the camera's view is clear and preview it.
 - **Manage Project Association**: Assign the camera to a specific project. The app includes safeguards to prevent associating a camera with a project the user doesn't have access to.
 - **Update Firmware**: If a newer firmware version is available, the user can update the camera directly from the app.
 - **Configure AI Model**: Project Admins can change the AI detection model loaded on the camera.
@@ -623,7 +625,7 @@ Organization: Serengeti Conservation Trust
 **Current State**: 🟡 PARTIAL (BLE infrastructure exists)
 - Scan for nearby cameras via Bluetooth
 - Connect to selected camera
-- Test camera's live view to check for obstructions
+- Take a test photo to check for obstructions
 - Connection status indicator
 - Signal strength display
 

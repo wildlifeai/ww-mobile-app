@@ -32,13 +32,13 @@ This workflow is initiated from the "Devices" screen by tapping a button to scan
 2.  **App Behavior**:
     *   The app attempts to connect to the selected device over BLE using the **WWUS** (Wildlife Watcher UART Service).
     *   A loading indicator is shown.
-    *   Upon successful connection, the app navigates to the "Camera Workbench" screen.
+    *   Upon successful connection, the app navigates to the **Camera Workbench** screen.
 
 ---
 
 ## 3. The Camera Workbench Screen
 
-When a user connects to a nearby, non-deployed device, they are presented with the Camera Workbench screen containing the following fields and controls.
+When a user connects to a nearby, non-deployed device, they are presented with the **Camera Workbench** screen containing the following fields and controls.
 
 ### 3.1. Project Association
 
@@ -83,7 +83,7 @@ When a user connects to a nearby, non-deployed device, they are presented with t
 *   **Interaction**:
     *   The app will query the Supabase `firmware` repository to get the latest available version.
     *   If the installed version matches the latest, the UI will display a "Latest version installed" message.
-    *   If a newer version is available, the UI will display "Update available to v1.5.0" and enable an **"Update Firmware"** button, which initiates the DFU process.
+    *   If a newer version is available, the UI will display "Update available to v1.5.0" and enable an **"Update Firmware"** button, which initiates the DFU process after checking the battery level and deployment status.
     *   If there is no internet connection, the app will display a warning: "Offline: Unable to check for firmware updates." The update button will be disabled.
 *   **Workflow**: The DFU process is detailed in the Device Firmware Update Workflow document.
 

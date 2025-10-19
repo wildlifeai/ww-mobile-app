@@ -28,6 +28,7 @@ The DFU process is initiated from the "Prepare and Test Nearby Devices" screen. 
 
 3.  **Safety Pre-Checks**:
     *   Before starting the transfer, the app performs a series of automated checks by communicating with the camera over BLE:
+    *   Before starting the transfer, the app performs a series of automated checks by communicating with the camera via **WWUS**:
         *   **Battery Level**: Must be > 30%. If not, the app displays a warning: "Battery too low. Please charge the device to at least 30% before updating."
         *   **Deployment Status**: The device must **not** be part of an active deployment. If it is, the update is blocked.
         *   **BLE Connection**: A stable BLE connection is required.
@@ -43,8 +44,10 @@ The DFU process is initiated from the "Prepare and Test Nearby Devices" screen. 
 This process is handled by the `react-native-nordic-dfu` library.
 
 1.  **Initiation**: Upon user confirmation, the app sends a command to the camera to enter DFU mode. The camera will restart into a special bootloader mode and begin advertising a new DFU-specific BLE service.
+1.  **Initiation**: Upon user confirmation, the app sends a command to the camera via **WWUS** to enter DFU mode. The camera will restart into a special bootloader mode and begin advertising a new DFU-specific BLE service.
 
 2.  **Connection**: The app disconnects from the standard camera service and reconnects to the new DFU service.
+2.  **Connection**: The app disconnects from the **WWUS** and reconnects to the new DFU service.
 
 3.  **File Transfer**: The app begins transferring the firmware `.zip` package to the camera in chunks.
     *   **UI Feedback**: The screen must display a clear progress indicator throughout this process, showing:
@@ -58,7 +61,7 @@ This process is handled by the `react-native-nordic-dfu` library.
 
 ## 4. Post-Update
 
-1.  **Reconnection**: The app waits for the camera to restart and begin advertising its standard BLE service. It then automatically reconnects.
+1.  **Reconnection**: The app waits for the camera to restart and begin advertising its **WWUS**. It then automatically reconnects.
 
 2.  **Verification**: After reconnecting, the app reads the firmware version from the camera again to confirm that the new version is installed.
 

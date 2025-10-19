@@ -41,7 +41,7 @@ The workflow is designed to be simple and efficient for field use.
         1.  The local `deployment` record is updated with the `end_date`, `end_time`, and `notes`. Its status is changed to "Ended".
         2.  The update operation is added to the `offline_queue` for syncing.
         3.  The associated `device`'s status is updated to "available" locally.
-        4.  The app attempts to connect to the camera via BLE to send a "power down" or "session end" command (if supported by hardware). This is a non-critical step; the workflow succeeds even if the device is not reachable.
+        4.  The app attempts to connect to the camera via **WWUS** to send a "power down" or "session end" command (if supported by hardware). This is a non-critical step; the workflow succeeds even if the device is not reachable.
         5.  The user is shown a "Deployment Ended Successfully" screen which displays a summary of the device's final state:
             *   Deployment Start Date
             *   Final Battery Status

@@ -37,12 +37,12 @@ The user progresses through six distinct steps. They can navigate back to previo
 ### Step 3: Camera View & Adjustment
 
 *   **Interface**:
-    *   A photo preview from the connected camera.
-    *   A "Take Photo" button to capture a new image.
+    *   A test photo preview from the connected camera.
+    *   A "Take Test Photo" button to capture a new image.
 *   **Logic**:
     *   This step allows the user to physically adjust the camera's position and field of view.
-    *   The user can take multiple photos until they are satisfied with the camera's placement. Once happy, they proceed to the next step.
-    *   **Note**: Photo files captured during this step are for live preview only and should be stored temporarily. They must be deleted from the app's local storage and device sd card after the user navigates away from this screen to conserve space.
+    *   The user can take multiple test photos until they are satisfied with the camera's placement. Once happy, they proceed to the next step.
+    *   **Note**: Photo files captured during this step are for test photos only and should be stored temporarily. They must be deleted from the app's local storage and device sd card after the user navigates away from this screen to conserve space.
 
 ### Step 4: Location
 
@@ -71,9 +71,11 @@ The user progresses through six distinct steps. They can navigate back to previo
     *   **Motion Sensitivity**: A slider or choice (e.g., Low, Medium, High).
 *   **Logic**:
     *   The user must select a project to proceed.
+    *   **Project Pre-selection**: If the device was configured for a specific project in the "Prepare and Test" workflow, that project will be pre-selected here. Any project-specific settings (like the AI Model) are already configured on the camera.
+    *   **Project Change**: If the user selects a different project, the app will update all project-related settings on the camera in the final step of this wizard.
     *   All fields are required.
     *   The UI adapts based on the capture method selected. The `Time-lapse Interval` is only shown if "Time-lapse" was chosen.
-    *   These settings will be sent to the camera via BLE in the final step.
+    *   These settings will be sent to the camera via **WWUS** in the final step.
 
 ### Step 6: Confirmation & Submit
 
@@ -86,8 +88,8 @@ The user progresses through six distinct steps. They can navigate back to previo
         1.  A `deployment` record is created in the local SQLite database.
         2.  The record is added to the `offline_queue` for syncing.
         3.  The selected `device`'s status is updated to "in-use" locally.
-        4.  The app sends the final configuration (sampling design, etc.) to the camera via BLE.
-        5.  Upon successful BLE communication, the user is shown a "Deployment Successful" screen and navigated away.
-        6.  If BLE communication fails, the user is notified, and the local deployment record is marked as "pending hardware config" to be retried later.
+        4.  The app sends the final configuration (sampling design, etc.) to the camera via **WWUS**.
+        5.  Upon successful **WWUS** communication, the user is shown a "Deployment Successful" screen and navigated away.
+        6.  If **WWUS** communication fails, the user is notified, and the local deployment record is marked as "pending hardware config" to be retried later.
 
 ---
