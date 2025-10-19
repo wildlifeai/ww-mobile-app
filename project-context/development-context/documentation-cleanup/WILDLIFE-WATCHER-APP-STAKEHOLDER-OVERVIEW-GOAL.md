@@ -326,6 +326,25 @@ Organization: Serengeti Conservation Trust
 
 ---
 
+#### 1.4 User Profile & Settings
+**Description**: Manage your profile and control how the app uses data.
+
+**Current State**: ⏳ PENDING
+- Users can access their profile screen.
+- The profile screen will allow users to configure data synchronization settings.
+
+**Intended State**: Fully functional user settings.
+- **Profile Information**: View user's full name, email, and organizations.
+- **Sync preferences**:
+   - **Sync on Wi-Fi only**: Prevent uploads over cellular data to save costs.
+   - **Ask before syncing**: The app will prompt for confirmation before starting a large (>50MB) data upload.
+   - **Automatic sync**: The default behavior, where the app syncs automatically whenever an internet connection is available.
+
+**Implementation**: To be scheduled (Phase 2)
+**Source**: implementation-spec-v1.4.md Section 4.3 (deferred)
+
+---
+
 ### Project Management
 
 #### 2.1 Create New Project
@@ -691,6 +710,7 @@ Organization: Serengeti Conservation Trust
 - User authentication data cached
 - Organization information cached
 - Project member lists cached
+- **Deployment Photos**: To help find cameras, a photo of the setup is taken with the user's phone. A low-resolution preview is stored locally for offline viewing, minimizing storage space. The full-quality photo is uploaded to the cloud and can be downloaded on demand when an internet connection is available.
 
 **Intended State**: Same as current
 
@@ -702,11 +722,12 @@ Organization: Serengeti Conservation Trust
 ---
 
 #### 7.2 Automatic Background Sync
-**Description**: Sync local changes to cloud when internet returns
+**Description**: Sync local changes to the cloud based on user-defined settings.
 
 **Current State**: ✅ COMPLETE (Task 11.6-11.7)
 - Redux-offline middleware active
 - Background sync queue
+- User-configurable: Supports auto-sync, ask before sync, and Wi-Fi only sync.
 - Automatic retry on connection
 - Optimistic UI updates
 - Rollback on server errors
@@ -820,7 +841,7 @@ Organization: Serengeti Conservation Trust
 - Battery percentage stored
 - Low battery alerts
 - Historical battery data
-- Display in device list
+- Display in device and deployment list
 
 **Intended State**: Same as planned
 
@@ -837,7 +858,7 @@ Organization: Serengeti Conservation Trust
 - Storage percentage stored
 - Full card alerts
 - Historical storage data
-- Display in device list
+- Display in device and deployment list
 
 **Intended State**: Same as planned
 
@@ -874,7 +895,7 @@ Organization: Serengeti Conservation Trust
 Field research data is valuable and sensitive—camera locations, deployment details, project information, and team coordination. This data needs to be secure, well-organized, and accessible only to authorized team members.
 
 **Our Solution:**
-Multi-layered security architecture with organization-based access control, backed by professional-grade database technology used by Fortune 500 companies.
+Multi-layered security architecture with organization-based access control, backed by professional-grade database technology.
 
 ---
 
@@ -906,11 +927,11 @@ The app uses a hierarchical permission system (like organizational charts):
 - **Data Access**: Read-only visibility, but can only edit data in organizations they belong to
 - **Example**: Wildlife.ai support staff helping troubleshoot issues
 
-#### 2. Model Manager (Organization Level)
-- **Access**: Manages AI detection models for their organization
-- **Capabilities**: Upload/update/delete models, make models available to projects
-- **Data Access**: Can view all projects in their organization (to understand model usage)
-- **Example**: Machine learning specialists maintaining detection algorithms
+#### 2. Organisation Administrator (Organization Level)
+- **Access**: Manages users, projects, and AI models for their organization
+- **Capabilities**: Add/remove users, create projects, manage AI models (via web portal)
+- **Data Access**: Administrative access to all projects within their organization
+- **Example**: Alex from the Kea Conservation Trust, who onboards new researchers and manages the organization's resources.
 
 #### 3. Project Admin (Project Level)
 - **Access**: Full control over projects they create or are assigned to
@@ -978,8 +999,8 @@ The app uses a hierarchical permission system (like organizational charts):
 - Deployment name, start/end dates
 - GPS coordinates with professional mapping (PostGIS)
 - Sampling design (motion detection vs timelapse)
-- Bait station information (if applicable)
 - Link to project, device, and creator
+- **Setup Photo**: A photo of the deployed camera setup, taken with the user's phone to help with retrieval.
 - *Example record*: "Water Hole #3" - Active since Jan 10, 2025, GPS: -2.3333, 34.8333
 
 **Devices** (Physical camera equipment)
@@ -987,6 +1008,7 @@ The app uses a hierarchical permission system (like organizational charts):
 - Current status (available, in use, maintenance)
 - Last connection date
 - Battery level and SD card usage (via LoRaWAN)
+- LoRaWAN Details: Secure registration keys for sending remote status updates.
 - *Example record*: "Camera WW-00123 (Acacia Station)" - Battery 87%, SD Card 42% full
 
 **Project Members** (Team assignments)
@@ -1051,7 +1073,7 @@ The app uses a hierarchical permission system (like organizational charts):
 #### When you create a project:
 - **Stored in**: `projects` table
 - **Linked to**: Your organization automatically (via organization_id)
-- **Security**: Only your org members can see it (RLS enforced)
+- **Security**: Visibility is controlled by the Project Admin (project members, organization members, or public) and enforced by RLS.
 - **Tracked**: Creation date, last update, creator name
 - **Offline**: Saved locally first, synced to cloud when online
 
