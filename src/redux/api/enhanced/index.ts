@@ -6,6 +6,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { RootState } from '../..';
 import { supabase } from '../../../services/supabase';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 // Enhanced API types with role-based security
 export interface APIResponse<T> {
@@ -339,7 +340,7 @@ export const enhancedApi = createApi({
                 table,
                 filter: organisation_id ? `organisation_id=eq.${organisation_id}` : undefined
               },
-              (payload) => {
+              (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
                 // This will trigger cache invalidation
                 console.log('Realtime update:', payload);
               }

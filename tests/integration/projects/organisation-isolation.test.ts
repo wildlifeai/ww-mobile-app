@@ -21,6 +21,7 @@
 import ProjectService from '../../../src/services/ProjectService';
 import { DatabaseService } from '../../../src/services/offline/DatabaseService';
 import type { CreateProjectInput } from '../../../src/types/project';
+import type { Tables } from '../../../src/types/supabase';
 
 // Mock different user contexts
 const MOCK_USERS = {
@@ -159,8 +160,8 @@ describe('Task 12 - Phase 3.3: Organisation Isolation Security Tests', () => {
 
       // ASSERT: Should only see org1 projects
       expect(visibleProjects.length).toBe(2);
-      expect(visibleProjects.every(p => p.organisation_id === 'org-wildlife-ai')).toBe(true);
-      expect(visibleProjects.some(p => p.id === 'proj-org2-001')).toBe(false);
+      expect(visibleProjects.every((p: Tables<'projects'>) => p.organisation_id === 'org-wildlife-ai')).toBe(true);
+      expect(visibleProjects.some((p: Tables<'projects'>) => p.id === 'proj-org2-001')).toBe(false);
 
       console.log('✅ TEST PASSED: Organisation isolation enforced for standard user');
     });
@@ -242,7 +243,7 @@ describe('Task 12 - Phase 3.3: Organisation Isolation Security Tests', () => {
       // ASSERT: Should see ONLY projects from their 2 assigned orgs
       expect(visibleProjects.length).toBe(2);
 
-      const orgIds = new Set(visibleProjects.map(p => p.organisation_id));
+      const orgIds = new Set(visibleProjects.map((p: Tables<'projects'>) => p.organisation_id));
       expect(orgIds.has('org-wildlife-ai')).toBe(true);
       expect(orgIds.has('org-conservation-trust')).toBe(true);
       expect(orgIds.has('org-unrelated')).toBe(false); // Should NOT see unrelated org
@@ -496,8 +497,8 @@ describe('Task 12 - Phase 3.3: Organisation Isolation Security Tests', () => {
       expect(org2Projects[0].id).toBe('proj-org2');
 
       // Verify no cross-contamination
-      const org1Ids = new Set(org1Projects.map(p => p.id));
-      const org2Ids = new Set(org2Projects.map(p => p.id));
+      const org1Ids = new Set(org1Projects.map((p: Tables<'projects'>) => p.id));
+      const org2Ids = new Set(org2Projects.map((p: Tables<'projects'>) => p.id));
 
       expect(org1Ids.has('proj-org2')).toBe(false);
       expect(org2Ids.has('proj-org1')).toBe(false);

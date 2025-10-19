@@ -55,8 +55,9 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 ### Mobile App Features
 
 **For Project Members**:
-- Test and prepare cameras before field deployments
-- Start/end camera deployments in 6 easy steps
+- Test and prepare cameras before field deployments (pre deployment checklist process as per Device Management Feature in later section)
+- Start camera deployments in 6 easy steps as per Deployment Process
+- End Deployment in ? steps [TODO: confirm/update number of steps]
 - Work completely offline in remote locations
 - View all your project deployments on a map
 

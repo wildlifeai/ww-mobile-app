@@ -21,6 +21,8 @@ import ProjectService from '../../../src/services/ProjectService';
 import { DatabaseService } from '../../../src/services/offline/DatabaseService';
 import { OfflineService } from '../../../src/services/offline/OfflineService';
 import type { CreateProjectInput } from '../../../src/types/project';
+import type { OfflineOperation } from '../../../src/types/offline';
+import type { Tables } from '../../../src/types/supabase';
 
 // Mock network status
 let mockNetworkStatus = {
@@ -141,7 +143,7 @@ describe('Task 12 - Phase 3.3: Airplane Mode Testing', () => {
       // Verify offline queue has pending operation
       const queueStatus = await offlineService.getQueueStatus();
       expect(queueStatus.pendingCount).toBeGreaterThan(0);
-      expect(queueStatus.operations.some(op => op.entity_type === 'projects')).toBe(true);
+      expect(queueStatus.operations.some((op: OfflineOperation) => op.entity_type === 'projects')).toBe(true);
 
       console.log('✅ TEST PASSED: Project created locally with sync_status=pending');
     });
@@ -174,7 +176,7 @@ describe('Task 12 - Phase 3.3: Airplane Mode Testing', () => {
 
       // ASSERT: Project should be synced
       const projects = await projectService.getUserProjects();
-      const syncedProject = projects.find(p => p.id === offlineProject.id);
+      const syncedProject = projects.find((p: Tables<'projects'>) => p.id === offlineProject.id);
 
       expect(syncedProject).toBeDefined();
       // Note: In real scenario, sync_status would update to 'synced' after successful backend sync
@@ -273,12 +275,12 @@ describe('Task 12 - Phase 3.3: Airplane Mode Testing', () => {
 
       // Verify in local database
       const projects = await projectService.getUserProjects();
-      const localProject = projects.find(p => p.id === project.id);
+      const localProject = projects.find((p: Tables<'projects'>) => p.id === project.id);
       expect(localProject?.name).toBe('Updated Offline Name');
 
       // Verify update queued
       const queueStatus = await offlineService.getQueueStatus();
-      expect(queueStatus.operations.some(op =>
+      expect(queueStatus.operations.some((op: OfflineOperation) =>
         op.entity_id === project.id && op.operation_type === 'UPDATE'
       )).toBe(true);
 
@@ -321,7 +323,7 @@ describe('Task 12 - Phase 3.3: Airplane Mode Testing', () => {
       // ASSERT: Conflict should be resolved
       // Strategy: Last-write-wins (offline edit should take precedence due to timestamp)
       const projects = await projectService.getUserProjects();
-      const resolvedProject = projects.find(p => p.id === project.id);
+      const resolvedProject = projects.find((p: Tables<'projects'>) => p.id === project.id);
 
       expect(resolvedProject).toBeDefined();
       // Verify offline changes were preserved

@@ -443,7 +443,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
       const state = store.getState().wwAdmin;
 
       // Projects should match Project interface
-      state.visibleProjects.forEach(project => {
+      state.visibleProjects.forEach((project: Project) => {
         expect(project).toEqual(expect.objectContaining({
           id: expect.any(String),
           name: expect.any(String),

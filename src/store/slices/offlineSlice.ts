@@ -294,6 +294,6 @@ export const selectQueueOperations = (state: RootState) => state.offline.queue.o
 export const selectIsProcessing = (state: RootState) => state.offline.queue.processing;
 export const selectQueueStats = (state: RootState) => state.offline.stats;
 export const selectPendingCount = (state: RootState) =>
-  state.offline.queue.operations.filter((op) => op.retry_count < 5).length;
+  state.offline.queue.operations.filter((op: OfflineOperation) => op.retry_count < 5).length;
 
 export default offlineSlice.reducer;

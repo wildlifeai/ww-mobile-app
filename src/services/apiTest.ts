@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 import { userOperations, deviceOperations, projectOperations, referenceData } from './database';
+import type { RealtimePostgresChangesPayload, REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
+import type { Tables } from '../types/supabase';
 
 /**
  * API Test Functions
@@ -94,13 +96,13 @@ export const testRealTimeSubscription = async (): Promise<boolean> => {
       
       const channel = supabase
         .channel('api-test-channel')
-        .on('postgres_changes', 
+        .on('postgres_changes',
           { event: '*', schema: 'public', table: 'devices' },
-          (payload) => {
+          (payload: RealtimePostgresChangesPayload<Tables<'devices'>>) => {
             console.log('Real-time update received:', payload);
           }
         )
-        .subscribe((status) => {
+        .subscribe((status: `${REALTIME_SUBSCRIBE_STATES}`) => {
           if (status === 'SUBSCRIBED') {
             subscriptionEstablished = true;
             console.log('✅ Real-time subscription test passed');
