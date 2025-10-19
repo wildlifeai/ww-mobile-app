@@ -117,9 +117,11 @@ TypeScript Error Remediation - Wildlife Watcher Mobile App
   ✅ Identified canonical AuthResponse structure for Supabase SDK
 
   **Solution Implemented**:
-  1. **Type Unification**:
-     - Renamed legacy Strapi `AuthResponse` → `LegacyAuthResponse` in api/auth/types.ts
-     - Made authSlice.ts `AuthResponse` canonical for Supabase MVP2
+  1. **Complete Strapi Removal** (Commit: a51a580):
+     - Removed all legacy Strapi code and types from codebase
+     - Deleted `StrapiRequest<T>` wrapper type from 3 locations
+     - Fixed createDeployment API to use Supabase directly (no double-wrapping)
+     - Made authSlice.ts `AuthResponse` the single source of truth
      - Re-exported canonical types from api/auth/types.ts for backward compatibility
 
   2. **Enhanced AuthResponse**:
