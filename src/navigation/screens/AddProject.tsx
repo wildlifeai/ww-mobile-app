@@ -4,7 +4,7 @@ import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWTextInput } from "../../components/ui/WWTextInput"
 import { Field } from "../../components/form/Field"
 import { WWButton } from "../../components/ui/WWButton"
-import { useCreateProjectMutation } from "../../store/api/projectsApi"
+import { useCreateProjectMutation } from "../../redux/api/projectsApi"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { CreateProjectInput } from "../../types/project"
 

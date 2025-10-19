@@ -15,7 +15,7 @@ import { useBluetoothStatus } from "../hooks/useBluetoothStatus"
 import { useLocationStatus } from "../hooks/useLocationStatus"
 import { useSetupBLELibrary } from "../hooks/useSetupBLELibrary"
 import { useAppDispatch } from "../redux"
-import { initializeNetworkMonitoring } from "../store/middleware/offlineSyncMiddleware"
+import { initializeNetworkMonitoring } from "../redux/middleware/offlineSyncMiddleware"
 import ProjectService from "../services/ProjectService"
 
 interface ExtendedToastConfigParams extends ToastConfigParams<any> {

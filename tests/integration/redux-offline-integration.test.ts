@@ -4,9 +4,9 @@
  */
 
 import { configureStore } from '@reduxjs/toolkit';
-import syncReducer, { markEntityPending, markEntitySynced } from '../../src/store/slices/syncSlice';
-import networkReducer, { networkOnline, networkOffline } from '../../src/store/slices/networkSlice';
-import offlineReducer, { queueOfflineOperation } from '../../src/store/slices/offlineSlice';
+import syncReducer, { markEntityPending, markEntitySynced } from '../../src/redux/slices/syncSlice';
+import networkReducer, { networkOnline, networkOffline } from '../../src/redux/slices/networkSlice';
+import offlineReducer, { queueOfflineOperation } from '../../src/redux/slices/offlineSlice';
 
 // Mock dependencies
 jest.mock('@react-native-community/netinfo');

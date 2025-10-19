@@ -33,7 +33,7 @@ import {
   useDeleteProjectMutation,
   useGetProjectMembersQuery,
   useRemoveProjectMemberMutation
-} from '../../store/api/projectsApi';
+} from '../../redux/api/projectsApi';
 import { WWScreenView } from '../../components/ui/WWScreenView';
 import { WWTextInput } from '../../components/ui/WWTextInput';
 import { WWButton } from '../../components/ui/WWButton';

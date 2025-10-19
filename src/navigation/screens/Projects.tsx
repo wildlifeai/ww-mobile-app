@@ -16,7 +16,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { FlatList, StyleSheet, View, ListRenderItemInfo, RefreshControl } from 'react-native';
 import { Searchbar, FAB, ActivityIndicator, Text, useTheme, Button } from 'react-native-paper';
-import { useGetProjectsQuery } from '../../store/api/projectsApi';
+import { useGetProjectsQuery } from '../../redux/api/projectsApi';
 import { ProjectCard } from '../../components/ProjectCard';
 import { WWScreenView } from '../../components/ui/WWScreenView';
 import { OfflineIndicator } from '../../components/ui/OfflineIndicator';

@@ -17,7 +17,7 @@ import {
   setCurrentOrganisation,
   UserOrganisation,
 } from '../redux/slices/authSlice';
-import { projectsApi } from '../store/api/projectsApi';
+import { projectsApi } from '../redux/api/projectsApi';
 
 export const useUserOrganisations = () => {
   const dispatch = useAppDispatch();

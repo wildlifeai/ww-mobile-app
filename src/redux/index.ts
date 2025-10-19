@@ -18,7 +18,7 @@ import networkReducer from "./slices/networkSlice"
 import { Action, ThunkAction, configureStore } from "@reduxjs/toolkit"
 import { api } from "./api"
 import { enhancedApi } from "./api/enhanced"
-import { projectsApi } from "../store/api/projectsApi"
+import { projectsApi } from "./api/projectsApi"
 // import { offlineMiddleware } from "./middleware/offlineMiddleware" // OLD - Replaced by offlineSyncMiddleware
 import { offlineSyncMiddleware } from "./middleware/offlineSyncMiddleware"
 

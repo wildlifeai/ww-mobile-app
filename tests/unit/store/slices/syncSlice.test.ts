@@ -15,7 +15,7 @@ import syncReducer, {
   selectOverallSyncStatus,
   selectQueueStatus,
   SyncState,
-} from '../../../../src/store/slices/syncSlice';
+} from '../../../../src/redux/slices/syncSlice';
 
 describe('syncSlice', () => {
   let initialState: SyncState;
