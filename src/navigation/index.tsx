@@ -39,9 +39,9 @@ export interface RootStackParamList extends ParamListBase {
 	DeviceNavigator: { deviceId: string }
 	Terminal: { deviceId: string }
 	DfuScreen: { deviceId: string }
-	Login: undefined
+	Login: { confirmed?: boolean } | undefined
 	Register: undefined
-	ForgotPassword: undefined
+	ForgotPassword: { token?: string; refreshToken?: string; mode?: string } | undefined
 	AddDeployment: { selectedProject?: Option } | undefined
 	AddProject: undefined
 	NewProjectScreen: undefined

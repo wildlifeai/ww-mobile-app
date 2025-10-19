@@ -31,6 +31,7 @@ export interface AuthResponse {
   jwt: string;
   user: User;
   refresh_token?: string;
+  isPendingConfirmation?: boolean; // For email confirmation flow
 }
 
 export interface UserPermissions {

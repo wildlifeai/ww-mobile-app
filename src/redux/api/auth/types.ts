@@ -10,7 +10,8 @@ export type RegisterRequest = {
 	organization?: string
 }
 
-export type AuthResponse = {
+// Legacy Strapi AuthResponse - deprecated, use AuthResponse from authSlice instead
+export type LegacyAuthResponse = {
 	jwt: string
 	user: {
 		id: string
@@ -23,3 +24,6 @@ export type AuthResponse = {
 	}
 	isPendingConfirmation?: boolean // Added for email confirmation flow
 }
+
+// Re-export the canonical AuthResponse from authSlice for Supabase MVP2
+export type { AuthResponse, User, UserRole, UserOrganisation, UserProfile } from "../../slices/authSlice"
