@@ -27,10 +27,10 @@
 ### The Problem We're Solving
 
 Wildlife researchers need to deploy camera traps in remote field locations to monitor animals. This traditionally requires:
-- Carrying laptops or paper forms into the field
-- Manually configuring complex camera settings
+- Carrying tablets or paper forms into the field
+- Manually configuring camera settings
 - Waiting until returning to the office to upload data
-- Managing teams across multiple field sites
+- Manually managing teams across multiple field sites
 - Coordinating multiple research projects simultaneously
 
 **These challenges lead to**:
@@ -45,20 +45,21 @@ Wildlife researchers need to deploy camera traps in remote field locations to mo
 Wildlife Watcher is a **mobile field app** that enables researchers to manage wildlife camera deployments entirely from their smartphones, even without internet connectivity.
 
 **Key Benefits**:
-- ✅ **Work Offline**: Complete all tasks in remote locations without internet
-- ✅ **Simple Setup**: Guide researchers through camera deployment step-by-step
-- ✅ **Team Collaboration**: Multiple team members can work on shared projects
-- ✅ **Instant Connectivity**: Connect to cameras via Bluetooth for configuration
-- ✅ **Automatic Sync**: All data syncs to the cloud when internet returns
-- ✅ **Equipment Tracking**: Know which cameras are where at all times
+
+- ✅ **Prepare Cameras from Anywhere**: Test camera functions, check battery and SD card status, and update firmware from your office to ensure every device is field-ready, preventing wasted trips.
+- ✅ **Error-Proof Deployments**: A step-by-step wizard guides you through setup, capturing all critical data correctly and reducing field errors.
+- ✅ **Perfect Camera Placement**: Use a live camera preview to perfectly frame your shot and location information with photos of the setup for easy retrieval.
+- ✅ **Work Anywhere, Sync Later**: Complete all tasks in remote locations without an internet connection. Data syncs to the cloud automatically when connectivity returns.
+- ✅ **Remote Camera Health Monitoring**: Receive crucial in-field updates on battery life and SD card space via LoRaWAN to prevent failed deployments.
+- ✅ **Secure Team Collaboration**: Work with your team in a secure, isolated organization. Robust permissions ensure data is only seen by authorized users.
+
 
 ### Mobile App Features
-
 **For Project Members**:
 - Test and prepare cameras before field deployments
 - Start/end camera deployments in 6 easy steps
 - Work completely offline in remote locations
-- View all your project deployments on a map
+- View all your project deployments on a list or a map
 
 **For Project Admins**:
 - Invite team members and assign roles
@@ -69,7 +70,7 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 **For Organisation Administrators**:
 - Create and manage research projects
 - Invite team members and assign roles
-- Upload new AI models for camera detection (via web portal)
+- Upload and manage AI models for the organization (via web portal)
 
 **For System Administrators (WW Admin)**:
 - View all projects across organizations (read-only in app)
@@ -81,7 +82,7 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 **For System Administrators (WW Admin)**:
 - Create and manage user accounts
 - Assign users to organizations
-- Manage system-level roles (WW Admin, Organisation Administrators)
+- Manage system-level roles (WW Admin, Organisation Administrator)
 - System-wide configuration
 - Password reset forms for users
 
@@ -97,23 +98,23 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 ### User Roles Explained
 
 The app has five distinct user types, each with specific capabilities:
-
+ 
 #### 1. Project Member
 **What they do**: Hands-on fieldwork with cameras
 
 **Capabilities**:
-- Start and end camera deployments
-- Register new cameras to projects
-- Test camera connections via Bluetooth
+- Start and end camera deployments within the project
+- Test and prepare cameras before field deployments via Bluetooth
 - Update camera firmware
+- Create, read, and update their own deployments
 - View and contribute to their assigned projects.
 - View other projects in their organization or publicly, based on those projects' visibility settings (contribution requires project membership).
 - Sync fieldwork data when online
 
 **Real-World Example**:
-*Sarah is a field researcher working on a predator monitoring study. She uses the app to test the cameras from the comfort of her office before heading out to the field. Sarah confirms that the cameras have the latest firmware, are associated with a project, full batteries and SD card space, and the flash lights and camera works as expected (e.g. field of view is not obstructed and camera doesn't take under/overexposed photos). She then goes to the field to deploy the cameras at bait stations. She turns the camera on, connects to it via the mobile app, previews the field of view of the camera, updates the location and other deployment-specific information (e.g. type of bait, angle of the camera,...) and start the deployment using the app. The records deployment are stored locally in her phone as there is no internet connection. When she returns to her vehicle with cell service, the app automatically syncs her work to the cloud.*
+*Sarah is a field researcher working on a predator monitoring study. She uses the app to test and prepare 20 cameras from the comfort of her office before heading out to the field. Sarah confirms that the cameras have the latest firmware,  full batteries and SD card space. The cameras are also associated with the predator monitoring project, and the flash lights and camera works as expected (e.g. field of view is not obstructed and camera doesn't take under/overexposed photos). She then goes to the field to deploy the cameras at bait stations. She turns the camera on, connects to it via the mobile app, enables remote updates via lorawan, previews the field of view of the camera, records the location and other deployment-specific information (e.g. type of bait, angle of the camera,...) and start the deployment using the app. The records deployment are stored locally in her phone as there is no internet connection. When she returns to her vehicle with cell service, the app automatically syncs her work to the cloud.*
 
-**Current Status**: ✅ Core features complete (Tasks 11-13)
+**Current Status**: ✅ Core features complete
 
 ---
 
@@ -122,49 +123,48 @@ The app has five distinct user types, each with specific capabilities:
 
 **Capabilities**:
 - Everything a Project Member can do, PLUS:
-- Create new research projects
 - Edit project details
 - Add/remove team members
 - Assign Project Admin or Project Member roles
-- Select which AI models to use
-- Manage project visibility settings
-- Delete deployments if needed
-- Archive completed projects
+- Select which AI models the deployments use
+- Manage the project's visibility settings
+- CRUD operations for deployments
+- Archive the project
 
 **Real-World Example**:
-*Dr. Chen leads a multi-year bird population study with 5 field assistants. He creates the project in the app, invites his team members, assigns them to different field sites, and selects the bird detection AI model. He can see all deployments across sites and monitor team progress in real-time.*
+*Dr. Chen leads a multi-year kiwi bird population study with five field assistants. He creates the project in the app, invites the assistans as team members, sets deployments and project visibilty as "Visible for project and organization members", and selects the kiwi bird detection AI model. He can see all deployments across sites and monitor team progress in real-time.*
 
 **Current Status**: 🔄 In progress (Tasks 12-14, Tasks 12-13 complete)
-
+ 
 ---
-#### 3. Organisation Member
+#### 3. Organisation Member (Default Status)
 **What they do**: Acts as a member of a larger research organization, available to be assigned to specific projects. This is the default role for any user added to an organization.
 
 **Capabilities**:
 - View projects within their organization that are set to "Visible for project and organization members".
-- Can be invited by a Project Admin or organisation Admin to become a Project Admin.
+- Can be invited by a Project Admin or organisation Admin to become a Project Member or Project Admin.
 - Can create a new project at any time, automatically becoming its Project Admin.
 - **Important**: This role grants visibility only. To create deployments or perform other actions within a project, a user must be explicitly added as a Project Member or Project Admin to that specific project.
 
 **Real-World Example**:
-*Sarah is a member of the Kea Conservation Trust. When she logs in, she can see a list of all projects the Trust is running that are marked as visible to the organization. She cannot add deployments to these projects until a Project Admin, like Dr. Chen, adds her to the "Kea Nest Monitoring" project as a Project Member.*
+*Sarah is a member of the Kiwi Conservation Trust. When she logs in, she can see a list of all projects the Trust is running that are marked as visible to the organization. She cannot add deployments to these projects until a Project Admin, like Dr. Chen, adds her to the "kiwi bird population" project as a Project Member.*
 
 **Current Status**: ✅ Complete (Core architecture)
 
 ---
 
-#### 4. Organisation Administrators
-**What they do**: Manage projects and AI detection models
+#### 4. Organisation Administrator
+**What they do**: Manage users, projects, and AI models at an organization level.
 
 **Capabilities**:
-- Upload new AI models to organization
-- Update and version existing models
-- Remove outdated models
-- Manage which models are available
-- Works via web interface (not mobile app in MVP)
+- Create new projects within their organization.
+- Add/remove users from the organization.
+- Manage AI detection models for the organization (upload, version, delete).
+- Has administrative access to all projects within their organization.
+- Most capabilities are handled via the web portal.
 
 **Real-World Example**:
-*Alex is the GM of the kea conservation trust and collaborates with machine learning specialists who develops custom bird detection models. When his team creates an improved kea bird detection model, he uploads it through the web portal, making it available for all projects in his organization to use.*
+*Alex is the administrator for the Kea Conservation Trust. He onboards new researchers by adding them to the Trust's organization via the web portal. He also collaborates with machine learning specialists to upload and manage the custom bird detection models that all projects in the Trust can use.*
 
 **Current Status**: ⏳ Pending (Future implementation, web portal)
 
@@ -187,10 +187,8 @@ The app has five distinct user types, each with specific capabilities:
 - System configuration and monitoring
 - Access system logs
 
-**Important Note**: WW Admins CANNOT assign project roles (Project Admin/Project Member). Only Project Admins can assign project roles within their projects.
-
 **Real-World Example**:
-*Jordan is the Wildlife.ai system administrator. When a new conservation organization wants to join, he creates their organization account, and assigns their initial admin user. If a Project Admin within that organization needs a password reset, or a project member reports an issue with a deployment, Jordan can handle it through the web portal.*
+*Jordan is the Wildlife.ai system administrator. When a new conservation organization wants to join, he creates their organization account, and assigns their initial organisation admin user. If a Project Admin within that organization needs a password reset, or a project member reports an issue with a deployment, Jordan can handle it through the web portal.*
 
 **Current Status**: ✅ Mobile read-only complete, ⏳ Web portal planned
 
@@ -205,7 +203,7 @@ Organization: Serengeti Conservation Trust
 │
 ├─ WW Admin (via web portal)
 │  └─ Creates organization, adds initial users
-│
+│ 
 ├─ Organisation Administrator (via web portal)
 │  └─ Creates projects, assigns project admins and uploads "Lion Detection v2.3" AI model
 │
