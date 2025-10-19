@@ -1,7 +1,7 @@
 # Wildlife Watcher Mobile App
 ## Product Overview for Stakeholders
 
-**Document Version**: 1.1
+**Document Version**: 1.2
 **Date**: October 18, 2025
 **Status**: MVP2 Development - 60.9% Complete
 **Purpose**: Non-technical stakeholder reference for features, progress, and decisions
@@ -55,6 +55,7 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 
 
 ### Mobile App Features
+
 **For Project Members**:
 - Test and prepare cameras before field deployments
 - Start/end camera deployments in 6 easy steps
@@ -182,7 +183,7 @@ The app has five distinct user types, each with specific capabilities:
 - Create and manage user accounts
 - Create and manage organizations
 - Assign users to organizations
-- Assign system-level roles (WW Admin, Model Manager)
+- Assign system-level roles (WW Admin, Organisation Administrator)
 - Send login invitations to new users
 - System configuration and monitoring
 - Access system logs
@@ -225,7 +226,6 @@ Organization: Serengeti Conservation Trust
    └─ Project Members: Alex, Jamie
 ```
 
-
 ### Organization Structure Rules
 
 1. **Project Member**: Belong to at least one organisation (the "General" organization as default) and can belong to multiple organizations and projects.
@@ -259,8 +259,18 @@ Organization: Serengeti Conservation Trust
 
 ---
 
----
+### Project & Data Visibility Rules
 
+1.  **Creating Projects**: Any user within an organization can create a new project, and by doing so, they automatically become the Project Admin for that project.
+
+2.  **Contributing to Projects**: To create or edit deployments, a user must be explicitly added to a project's team as either a Project Member or a Project Admin. Being a member of the organization is not enough to contribute.
+
+3.  **Project Visibility Settings**: Project Admins control who can see their project:
+    - **Visible only for project members**: The default and most secure setting. Only users on the project team can see it.
+    - **Visible for project and organization members**: Anyone in the same organization can see the project exists, but they cannot contribute unless they are on the project team.
+    - **Publicly visible**: Anyone on the platform can view the project, but only team members can contribute.
+
+---
 
 ## Complete Feature Inventory
 
@@ -299,22 +309,20 @@ Organization: Serengeti Conservation Trust
 
 ---
 
-#### 1.3 User Invitation System
-**Description**: WW Admins invite new users via email
+#### 1.3 User Signup (Self-Registration)
+**Description**: Allow anyone to create a new Wildlife Watcher account directly from the mobile app.
 
-**Current State**: ⏳ PENDING (Web Portal)
-- Secure invitation tokens
-- Time-limited links (7 days)
-- New user sets password on first login
-- Resend invitation option for expired links
+**Current State**: ⏳ PENDING
+- A "Sign Up" button on the login screen will lead to a registration form.
+- Users will provide their email and create a password.
+- Email verification will be required to activate the account.
 
-**Intended State**: Web portal implementation
-- WW Admins create users via admin.wildlifewatcher.ai
-- System sends invitation emails automatically
-- Users complete registration via link
+**Intended State**: Fully functional self-registration flow.
+- Upon signup, users are placed in a "General" organization by default.
+- They can then create their own projects or be invited to join existing ones.
 
-**Implementation**: Future (web portal)
-**Source**: admin-portal-spec.md, user-roles-permissions.md
+**Implementation**: To be scheduled.
+**Source**: implementation-spec-v1.2.md Section 4.1
 
 ---
 
@@ -340,7 +348,7 @@ Organization: Serengeti Conservation Trust
 ---
 
 #### 2.2 View Projects List
-**Description**: See all projects you're assigned to
+**Description**: See all projects you're assigned to (or set to be visible)
 
 **Current State**: ✅ COMPLETE (Task 12)
 - Card-based layout showing project cards
@@ -363,8 +371,7 @@ Organization: Serengeti Conservation Trust
 **Description**: See detailed information about a specific project
 
 **Current State**: ✅ COMPLETE (Task 12 Phase 4)
-- Project name, description, organization
-- Creation and update timestamps
+- Project name, description, organization and visibilty
 - "Manage Members" button
 - "Start New Deployment" button
 - Deployment list view
@@ -382,8 +389,7 @@ Organization: Serengeti Conservation Trust
 **Description**: Update project information (Project Admin only)
 
 **Current State**: ⏳ PENDING (Task 14)
-- Edit project name
-- Edit project description
+- Edit project name, description and visibility
 - Update project settings
 - Only Project Admin can edit
 
@@ -398,8 +404,8 @@ Organization: Serengeti Conservation Trust
 **Description**: Remove completed or mistaken projects
 
 **Current State**: ⏳ PENDING
-- Delete empty projects (no deployments/members)
-- Archive projects with deployments
+- Only projects with no deployments can be deleted
+- Projects with deployments can be archived if the deployments are not active.
 - Only Project Admin can delete/archive
 
 **Intended State**: Same as planned
@@ -433,9 +439,9 @@ Organization: Serengeti Conservation Trust
 **Description**: Invite team members to join project
 
 **Current State**: ✅ UI COMPLETE, ⚠️ INTEGRATION PENDING (Task 13)
-- Search users by email within organization
+- Invite users by email. If the email address is not already registered the invitation can not be send (e.g. only registered users can receive invitations to join a project) 
 - Assign role (Project Admin or Project Member)
-- Send invitation notification
+- Send invitation notification via email
 - Only Project Admin can add members
 
 **Intended State**: Same as current (awaiting backend integration)
@@ -481,14 +487,15 @@ Organization: Serengeti Conservation Trust
 
 #### 4.1 Start Deployment Wizard (6 Steps)
 **Description**: Guided process to deploy a camera in the field
+**Workflow Philosophy**: The wizard is designed to get the physical camera setup right first (pairing, connectivity, and field of view) before asking the user for metadata. This ensures the most critical, in-field tasks are prioritized.
 
 **Current State**: ⏳ PENDING (Task 15)
-- **Step 1**: Deployment Details (name, start date/time, project)
-- **Step 2**: Location (GPS coordinates, map selection, site name)
-- **Step 3**: Sampling Design (motion/timelapse, settings)
-- **Step 4**: Bait Station (optional: type, install date, refresh date)
-- **Step 5**: Device Selection (pick camera from registered devices)
-- **Step 6**: Confirmation & Submit
+- **Step 1: Device Selection & Pairing**: Select an available camera from a list of nearby Bluetooth devices.
+- **Step 2: Connectivity Setup**: Choose to enable LoRaWAN for remote status updates or operate in an offline-only mode. Includes an option to test signal reception.
+- **Step 3: Camera View & Adjustment**: Use a live photo preview from the camera to physically adjust its position and field of view until satisfied.
+- **Step 4: Location**: Set the deployment's GPS coordinates on a map, name the site, and take a photo of the deployed camera *with the phone* to help with later retrieval.
+- **Step 5: Deployment Details**: Configure the deployment name, project, start time, and capture method (Motion Detection vs. Time-lapse).
+- **Step 6: Confirmation & Submit**: Review a summary of all entered information and submit to finalize the deployment, which configures the camera and saves the record.
 
 **Intended State**: Same as planned
 - Works completely offline
@@ -496,31 +503,31 @@ Organization: Serengeti Conservation Trust
 - Manual coordinate entry option
 - Progress indicator shows current step
 - Can go back to edit previous steps
-- Submit saves locally, syncs when online
+- Final submission saves the record locally, adds it to the sync queue, and sends the configuration to the camera via BLE.
 
 **Implementation**: Task 15 - Deployment Workflow (6-step wizard)
 **Estimated**: 10 hours
-**Source**: implementation-spec-v1.4.md Section 5.3
+**Source**: start-deployment-workflow.md
 
 ---
 
 #### 4.2 End Deployment
 **Description**: Mark a camera deployment as finished
+**Workflow Philosophy**: A simple and efficient process for field use, ensuring the user is ending the correct deployment and capturing final notes before retrieving the hardware.
 
-**Current State**: ⏳ PENDING (Task 17)
-- Select an active deployment from a list or map
-- Set end date/time
-- Add end notes (optional)
-- Deployment marked as "Ended"
-- Camera becomes available for new deployment
-- Works offline
+**Current State**: ⏳ PENDING (Task 16)
+- **Initiation**: User can start the flow from a "End Deployment" button in the Map Screen or the Deployments List.
+- **Confirmation**: A confirmation screen shows key details (Name, Project, Device, Duration) to prevent ending the wrong deployment, especially when cameras are close together.
+- **Finalization**: User confirms the end date/time (pre-filled to current time) and can add optional notes about the retrieval (e.g., "SD card full," "Device damaged by animal").
+- **Submission**: Tapping 'Confirm' updates the deployment status to "Ended", makes the camera "available" again, and queues the changes for sync. An optional "power down" command is sent to the camera if it's reachable.
+- **Success**: A final screen summarizes the device's state (e.g., final battery, SD card space) before navigating the user back.
+- Works completely offline.
 
 **Intended State**: Same as planned
 
-**Implementation**: Task 17 - Field Validation & End Deployment
+**Implementation**: Task 16 - End Deployment Flow
 **Estimated**: 6 hours
-**Source**: implementation-spec-v1.4.md Section 5.4
-**Technical Details**: See `project-context/development-context/MVP2/specifications/end-deployment-workflow.md` for a detailed breakdown of this feature.
+**Source**: end-deployment-workflow.md
 
 ---
 
@@ -529,9 +536,9 @@ Organization: Serengeti Conservation Trust
 
 **Current State**: ⏳ PENDING (Task 15+)
 - Filter: Active, Ended, All
-- Sort by: Date, Name, Status
+- Sort by: Date, Name, Status, Project
 - Card view with key info
-- Status indicators (Active, Ended, Syncing)
+- Status indicators (Active, Ended)
 - Offline viewing supported
 
 **Intended State**: Same as planned
@@ -548,8 +555,7 @@ Organization: Serengeti Conservation Trust
 - All deployment details from wizard
 - GPS coordinates with map view
 - Sampling design settings
-- Bait station info (if applicable)
-- Camera device information
+- Camera device information with battery status and sd card information if deployment active and connected to lorawan 
 - Edit button (before ending)
 
 **Intended State**: Same as planned
@@ -629,7 +635,6 @@ Organization: Serengeti Conservation Trust
 **Technical Details**: See `project-context\development-context\documentation-cleanup\device-preparation-workflow.md` for a detailed breakdown of this feature.
 
 ---
-
 
 ### AI Model Management
 
