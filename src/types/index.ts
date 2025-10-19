@@ -9,8 +9,21 @@ export * from './supabase';
 // Offline service types
 export * from './offline';
 
-// Project types
-export * from './project';
+// Project types - explicit re-exports to avoid conflicts
+export type {
+  Project as ProjectFromProjectTypes,
+  ProjectInsert,
+  ProjectUpdate,
+  ProjectMember,
+  Organisation as OrganisationFromProjectTypes,
+  UserOrganisation,
+  UserRole as UserRoleFromProjectTypes,
+  UserProfile,
+  ProjectWithDetails,
+  ProjectMemberWithProfile,
+  CreateProjectInput,
+  LoRaWANDeviceStatus
+} from './project';
 
 // API types
 export * from './api.types';

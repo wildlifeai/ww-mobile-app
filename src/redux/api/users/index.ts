@@ -12,7 +12,7 @@ export const usersApi = api.injectEndpoints({
 			providesTags: (_result) =>
 				_result
 					? [
-							..._result.map(({ _id }) => ({ type: "User" as const, id: _id })),
+							..._result.map(({ id }) => ({ type: "User" as const, id: id })),
 							{ type: "User", id: "LIST" },
 					  ]
 					: [{ type: "User", id: "LIST" }],

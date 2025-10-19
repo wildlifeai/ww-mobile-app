@@ -591,9 +591,8 @@ export class OfflineService {
       // Note: Project already exists locally (created optimistically), so UPDATE not INSERT
       const dbProject = {
         name: result.name || projectData.name,
-        description: result.description || projectData.description || '',
-        status: result.status || 'active',
-        members: result.members || []
+        description: result.description || projectData.description || ''
+        // Note: 'status' and 'members' are not properties in database types - removed
       };
 
       await this.databaseService.updateProject(result.id, dbProject);
@@ -618,9 +617,8 @@ export class OfflineService {
         id: result.id,
         organisation_id: operation.organisation_id,
         name: result.name || updateData.name,
-        description: result.description || updateData.description || '',
-        status: result.status || updateData.status || 'active',
-        members: result.members || updateData.members || []
+        description: result.description || updateData.description || ''
+        // Note: 'status' and 'members' are not properties in database types - removed
       };
 
       await this.databaseService.updateProject(id, dbProject);
@@ -664,13 +662,8 @@ export class OfflineService {
         project_id: result.project_id || deploymentData.project_id,
         organisation_id: operation.organisation_id,
         device_id: result.device_id || deploymentData.device_id,
-        location: result.location || deploymentData.location || { lat: 0, lng: 0 },
-        status: result.status || 'active',
-        lorawan_status: result.lorawan_status || {
-          battery_level: 100,
-          sd_card_usage: 0,
-          device_status: 'offline'
-        }
+        location: result.location || deploymentData.location || { lat: 0, lng: 0 }
+        // Note: 'status' and 'lorawan_status' are not properties in Supabase database types - removed
       };
 
       await this.databaseService.insertDeployment(dbDeployment);
@@ -696,13 +689,8 @@ export class OfflineService {
         project_id: result.project_id || updateData.project_id,
         organisation_id: operation.organisation_id,
         device_id: result.device_id || updateData.device_id,
-        location: result.location || updateData.location || { lat: 0, lng: 0 },
-        status: result.status || updateData.status || 'active',
-        lorawan_status: result.lorawan_status || updateData.lorawan_status || {
-          battery_level: 100,
-          sd_card_usage: 0,
-          device_status: 'offline'
-        }
+        location: result.location || updateData.location || { lat: 0, lng: 0 }
+        // Note: 'status' and 'lorawan_status' are not properties in Supabase database types - removed
       };
 
       await this.databaseService.updateDeployment(id, dbDeployment);

@@ -83,7 +83,7 @@ export const ProjectDetailsScreen = () => {
       name: project?.name || '',
       description: project?.description || '',
       sampling_design: project?.sampling_design || '',
-      privacy_level: project?.privacy_level || 'private',
+      privacy_level: (project?.privacy_level || 'private') as 'public' | 'internal' | 'private',
       is_baited: project?.is_baited || false,
       is_monitoring_marked_individual: project?.is_monitoring_marked_individual || false,
       website: project?.website || '',
@@ -97,7 +97,7 @@ export const ProjectDetailsScreen = () => {
         name: project.name,
         description: project.description || '',
         sampling_design: project.sampling_design || '',
-        privacy_level: project.privacy_level || 'private',
+        privacy_level: (project.privacy_level || 'private') as 'public' | 'internal' | 'private',
         is_baited: project.is_baited || false,
         is_monitoring_marked_individual: project.is_monitoring_marked_individual || false,
         website: project.website || '',
@@ -532,7 +532,7 @@ export const ProjectDetailsScreen = () => {
               ) : members && members.length > 0 ? (
                 <View style={styles.membersList}>
                   {members.map((member) => (
-                    <View key={member.user_id} style={styles.memberRow}>
+                    <View key={`member-${member.user_id}`} style={styles.memberRow}>
                       <View style={styles.memberInfo}>
                         <WWIcon source="account-circle" size={40} color={theme.colors.onSurfaceVariant} />
                         <View style={styles.memberDetails}>
