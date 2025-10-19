@@ -22,7 +22,7 @@ export interface Project {
   deployment_count?: number;
 }
 
-interface WWAdminState {
+export interface WWAdminState {
   // Cross-organisation project visibility (read-only)
   visibleProjects: Project[];
   currentOrganisation?: Organisation;

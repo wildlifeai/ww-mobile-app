@@ -24,7 +24,8 @@ import wwAdminReducer, {
   selectPrivateProjects,
   selectPublicProjects,
   Project,
-  Organisation
+  Organisation,
+  WWAdminState
 } from '../../../src/redux/slices/wwAdminSlice';
 
 /**
@@ -109,6 +110,10 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     }
   ];
 
+  type RootState = {
+    wwAdmin: WWAdminState;
+  };
+
   beforeEach(() => {
     store = configureStore({
       reducer: {
@@ -119,7 +124,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
 
   describe('Initial State', () => {
     it('should return the initial state', () => {
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state).toEqual({
         visibleProjects: [],
@@ -134,7 +139,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     });
 
     it('should have a valid default web portal URL', () => {
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.webPortalUrl).toBeDefined();
       expect(typeof state.webPortalUrl).toBe('string');
@@ -146,7 +151,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     it('should initialize WW Admin permissions for valid WW Admin user', () => {
       store.dispatch(initializeWWAdmin(mockWWAdmin));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.adminPermissions).toEqual({
         canViewAllProjects: true,
@@ -158,7 +163,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     it('should deny permissions for non-WW Admin user', () => {
       store.dispatch(initializeWWAdmin(mockProjectAdmin));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.adminPermissions).toEqual({
         canViewAllProjects: false,
@@ -170,7 +175,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     it('should handle undefined user gracefully', () => {
       store.dispatch(initializeWWAdmin(undefined));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.adminPermissions).toEqual({
         canViewAllProjects: false,
@@ -187,7 +192,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
 
       store.dispatch(setAdminPermissions(permissions));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.adminPermissions).toEqual(permissions);
     });
@@ -202,7 +207,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     it('should set visible projects for WW Admin user', () => {
       store.dispatch(setVisibleProjects(mockProjects));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.visibleProjects).toEqual(mockProjects);
       expect(state.isLoading).toBe(false);
@@ -218,7 +223,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
 
       store.dispatch(setVisibleProjects(mockProjects));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.visibleProjects).toEqual([]);
       expect(state.error).toBe('Insufficient permissions to view all projects');
@@ -227,7 +232,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     it('should set current organisation', () => {
       store.dispatch(setCurrentOrganisation(mockOrganisation));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.currentOrganisation).toEqual(mockOrganisation);
       expect(state.error).toBeNull();
@@ -243,7 +248,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     it('should handle navigation to web portal for authorized user', () => {
       store.dispatch(navigateToWebPortal());
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.error).toBeNull();
       // Navigation action would be handled by middleware/thunk in real app
@@ -258,7 +263,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
 
       store.dispatch(navigateToWebPortal());
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.error).toBe('Insufficient permissions to access web portal');
     });
@@ -268,7 +273,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
 
       store.dispatch(setWebPortalUrl(customUrl));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.webPortalUrl).toBe(customUrl);
     });
@@ -278,7 +283,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     it('should handle loading state', () => {
       store.dispatch(setLoading(true));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.isLoading).toBe(true);
     });
@@ -288,7 +293,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
 
       store.dispatch(setError(errorMessage));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.error).toBe(errorMessage);
       expect(state.isLoading).toBe(false);
@@ -301,7 +306,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
       // Clear error
       store.dispatch(clearError());
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.error).toBeNull();
     });
@@ -314,7 +319,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
       // Set projects should clear loading
       store.dispatch(setVisibleProjects(mockProjects));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       expect(state.isLoading).toBe(false);
     });
@@ -329,21 +334,21 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     });
 
     it('should select visible projects', () => {
-      const state = store.getState();
+      const state = store.getState() as { wwAdmin: WWAdminState };
       const visibleProjects = selectVisibleProjects(state);
 
       expect(visibleProjects).toEqual(mockProjects);
     });
 
     it('should select current organisation', () => {
-      const state = store.getState();
+      const state = store.getState() as { wwAdmin: WWAdminState };
       const currentOrg = selectCurrentOrganisation(state);
 
       expect(currentOrg).toEqual(mockOrganisation);
     });
 
     it('should select web portal URL', () => {
-      const state = store.getState();
+      const state = store.getState() as { wwAdmin: WWAdminState };
       const webPortalUrl = selectWebPortalUrl(state);
 
       expect(webPortalUrl).toBeDefined();
@@ -351,7 +356,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     });
 
     it('should select WW Admin permissions', () => {
-      const state = store.getState();
+      const state = store.getState() as { wwAdmin: WWAdminState };
       const permissions = selectWWAdminPermissions(state);
 
       expect(permissions).toEqual({
@@ -363,7 +368,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     it('should select loading state', () => {
       store.dispatch(setLoading(true));
 
-      const state = store.getState();
+      const state = store.getState() as { wwAdmin: WWAdminState };
       const isLoading = selectWWAdminLoading(state);
 
       expect(isLoading).toBe(true);
@@ -373,7 +378,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
       const errorMessage = 'Test error';
       store.dispatch(setError(errorMessage));
 
-      const state = store.getState();
+      const state = store.getState() as { wwAdmin: WWAdminState };
       const error = selectWWAdminError(state);
 
       expect(error).toBe(errorMessage);
@@ -388,7 +393,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     });
 
     it('should select projects by organisation', () => {
-      const state = store.getState();
+      const state = store.getState() as { wwAdmin: WWAdminState };
       const org1Projects = selectProjectsByOrganisation('org-1')(state);
 
       expect(org1Projects).toHaveLength(2);
@@ -397,7 +402,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     });
 
     it('should select private projects only', () => {
-      const state = store.getState();
+      const state = store.getState() as { wwAdmin: WWAdminState };
       const privateProjects = selectPrivateProjects(state);
 
       expect(privateProjects).toHaveLength(1);
@@ -406,7 +411,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     });
 
     it('should select public projects only', () => {
-      const state = store.getState();
+      const state = store.getState() as { wwAdmin: WWAdminState };
       const publicProjects = selectPublicProjects(state);
 
       expect(publicProjects).toHaveLength(2);
@@ -415,7 +420,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     });
 
     it('should return empty array for non-existent organisation', () => {
-      const state = store.getState();
+      const state = store.getState() as { wwAdmin: WWAdminState };
       const nonExistentOrgProjects = selectProjectsByOrganisation('org-999')(state);
 
       expect(nonExistentOrgProjects).toEqual([]);
@@ -424,7 +429,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
 
   describe('Integration with Service Layer', () => {
     it('should support data structures expected by WWAdminOfflineService', () => {
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       // Web portal URL should be accessible for service layer
       expect(typeof state.webPortalUrl).toBe('string');
@@ -440,7 +445,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
       store.dispatch(initializeWWAdmin(mockWWAdmin));
       store.dispatch(setVisibleProjects(mockProjects));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       // Projects should match Project interface
       state.visibleProjects.forEach((project: Project) => {
@@ -483,7 +488,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
     });
 
     it('should redirect complex operations to web portal', () => {
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
 
       // Web portal URL should be configured for complex operations
       expect(state.webPortalUrl).toBeDefined();
@@ -496,7 +501,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
       store.dispatch(initializeWWAdmin(mockWWAdmin));
       store.dispatch(setVisibleProjects([]));
 
-      const state = store.getState();
+      const state = store.getState() as { wwAdmin: WWAdminState };
       const visibleProjects = selectVisibleProjects(state);
       const privateProjects = selectPrivateProjects(state);
       const publicProjects = selectPublicProjects(state);
@@ -520,7 +525,7 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
       // Should not throw error
       store.dispatch(setVisibleProjects(malformedProjects));
 
-      const state = store.getState().wwAdmin;
+      const state: WWAdminState = (store.getState() as { wwAdmin: WWAdminState }).wwAdmin;
       expect(state.visibleProjects).toEqual(malformedProjects);
     });
 
@@ -533,12 +538,12 @@ describe('wwAdminSlice - Read-Only + Web Portal Architecture', () => {
       store.dispatch(setCurrentOrganisation(mockOrganisation));
       store.dispatch(clearError());
 
-      const state = store.getState().wwAdmin;
+      const state = store.getState() as { wwAdmin: WWAdminState };
 
-      expect(state.visibleProjects).toEqual(mockProjects);
-      expect(state.currentOrganisation).toEqual(mockOrganisation);
-      expect(state.isLoading).toBe(false); // Should be cleared by setVisibleProjects
-      expect(state.error).toBeNull();
+      expect(state.wwAdmin.visibleProjects).toEqual(mockProjects);
+      expect(state.wwAdmin.currentOrganisation).toEqual(mockOrganisation);
+      expect(state.wwAdmin.isLoading).toBe(false); // Should be cleared by setVisibleProjects
+      expect(state.wwAdmin.error).toBeNull();
     });
   });
 });

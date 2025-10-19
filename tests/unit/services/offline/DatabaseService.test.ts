@@ -1,7 +1,7 @@
 /**
  * Database service tests - uses default node environment
  */
-import { DatabaseService } from '../../../../src/services/offline/DatabaseService';
+import { DatabaseService, DatabaseProject, DatabaseDeployment, OfflineQueueItem } from '../../../../src/services/offline/DatabaseService';
 import * as SQLite from 'expo-sqlite';
 
 // Mock expo-sqlite
@@ -183,12 +183,12 @@ describe('DatabaseService', () => {
   });
 
   describe('Project Data with Organisation Scoping', () => {
-    const sampleProject = {
+    const sampleProject: DatabaseProject = {
       id: 'project-789',
       organisation_id: 'org-123',
       name: 'Wildlife Survey 2025',
       description: 'Annual wildlife population survey',
-      status: 'active',
+      status: 'active' as const,
       members: ['user-456', 'user-789']
     };
 
@@ -224,13 +224,13 @@ describe('DatabaseService', () => {
   });
 
   describe('Deployment Data with LoRaWAN Integration', () => {
-    const sampleDeployment = {
+    const sampleDeployment: DatabaseDeployment = {
       id: 'deployment-456',
       project_id: 'project-789',
       organisation_id: 'org-123',
       device_id: 'device-123',
       location: { lat: 40.7128, lng: -74.0060 },
-      status: 'active',
+      status: 'active' as const,
       lorawan_status: {
         battery_level: 85,
         sd_card_usage: 45,
@@ -281,16 +281,16 @@ describe('DatabaseService', () => {
   });
 
   describe('Offline Queue System', () => {
-    const sampleQueueItem = {
+    const sampleQueueItem: OfflineQueueItem = {
       id: 'queue-123',
       operation_type: 'create_project',
       data: { name: 'New Project', organisation_id: 'org-123' },
       organisation_id: 'org-123',
       user_id: 'user-456',
-      priority: 'high',
+      priority: 'high' as const,
       retry_count: 0,
       max_retries: 3,
-      status: 'pending'
+      status: 'pending' as const
     };
 
     it('should add operation to offline queue', async () => {

@@ -50,14 +50,14 @@ describe('WWAdminOfflineService - Read-Only + Web Portal Architecture', () => {
     {
       id: 'org-1',
       name: 'Organisation One',
-      description: 'First test org',
+      settings: { description: 'First test org' },
       created_at: new Date('2024-01-01T00:00:00Z'),
       updated_at: new Date('2024-01-01T00:00:00Z')
     },
     {
       id: 'org-2',
       name: 'Organisation Two',
-      description: 'Second test org',
+      settings: { description: 'Second test org' },
       created_at: new Date('2024-01-02T00:00:00Z'),
       updated_at: new Date('2024-01-02T00:00:00Z')
     }

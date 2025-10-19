@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 import { OfflineService } from '../../../../src/services/offline/OfflineService';
-import { DatabaseService } from '../../../../src/services/offline/DatabaseService';
+import { DatabaseService, OfflineQueueItem } from '../../../../src/services/offline/DatabaseService';
 import NetInfo from '@react-native-community/netinfo';
 import { UserRole, OfflineOperation, NetworkStatus, OfflineOperationType, LoRaWANStatus } from '../../../../src/types/offline';
 
@@ -297,16 +297,17 @@ describe('OfflineService', () => {
     });
 
     it('should sync LoRaWAN status when coming online', async () => {
-      const mockQueueItems = [
+      const mockQueueItems: OfflineQueueItem[] = [
         {
           id: 'op-6',
-          type: 'UPDATE_DEVICE_LORAWAN_STATUS',
+          operation_type: 'UPDATE_DEVICE_LORAWAN_STATUS',
           data: JSON.stringify({ device_id: 'device-3', status: { battery_level: 60 } }),
           user_id: 'user-1',
           organisation_id: 'org-1',
-          timestamp: new Date().toISOString(),
+          priority: 'medium' as const,
           retry_count: 0,
-          status: 'pending'
+          max_retries: 3,
+          status: 'pending' as const
         }
       ];
 
