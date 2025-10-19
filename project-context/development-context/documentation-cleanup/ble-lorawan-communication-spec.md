@@ -18,6 +18,24 @@ The Wildlife Watcher camera hardware (WW500 series) contains two main processors
 
 The two processors communicate internally over an I2C bus. The mobile app only ever talks directly to the **BLE Processor**.
 
+### 1.1. Command & Control Flow
+
+The mobile app sends text-based commands to the BLE Processor via the WWUS service. The BLE processor is responsible for interpreting these commands.
+
+1.  **Direct Commands**: Some commands (like checking the BLE processor's version or battery status) are handled directly by the BLE Processor.
+2.  **Proxied Commands**: Commands intended for the AI Processor (e.g., taking a photo, checking the SD card) are prefixed with `"AI "`. The BLE Processor strips this prefix and forwards the rest of the command to the AI Processor over the internal I2C bus.
+
+The AI Processor executes the command and sends a response back to the BLE Processor, which then relays it to the mobile app.
+
+```mermaid
+graph TD
+    A[Mobile App] -- WWUS Command --> B(BLE Processor);
+    B -- Direct Command --> B;
+    B -- "AI Command" --> C{AI Processor};
+    C -- I2C Response --> B;
+    B -- WWUS Response --> A;
+```
+
 ---
 
 ## 2. Bluetooth Low Energy (BLE) Services
@@ -38,6 +56,31 @@ This is the service used for **99% of interactions**, such as checking battery, 
 **Command Example**:
 To check the battery, the app sends the string `"battery\n"` to the Write characteristic. The camera responds with something like `"Battery = 85%\n"` on the Read characteristic.
 
+#### 2.1.1. How to Take and Display a Test Photo
+
+This is a multi-step process involving both processors and demonstrating the proxied command architecture.
+
+1.  **App Action**: The user taps the "Take Test Photo" button in the app.
+2.  **App Sends Command**: The app sends the command string `"AI snap\n"` to the BLE Processor via the WWUS Write characteristic.
+3.  **BLE Processor Proxies**: The BLE Processor sees the `"AI "` prefix, strips it, and sends the command `"snap"` to the AI Processor over I2C.
+4.  **AI Processor Acts**: The AI Processor instructs the camera module to take a picture and save it to a temporary file on the SD card (e.g., `temp_pic.jpg`).
+5.  **AI Processor Responds**: The AI Processor sends a response back to the BLE Processor, like `"File created: temp_pic.jpg"`. The BLE processor forwards this to the app.
+6.  **App Requests File**: The app receives the confirmation and filename. It then sends a new command: `"AI read temp_pic.jpg\n"`.
+7.  **File Transfer**: The AI Processor reads the JPEG file from the SD card and sends it to the BLE Processor in chunks of 244 bytes. The BLE Processor forwards each chunk to the app. The app must reassemble these chunks into a complete file.
+8.  **App Displays Image**: Once the file transfer is complete, the app displays the reassembled JPEG image to the user.
+9.  **Cleanup**: The app should send a final command like `"AI rm temp_pic.jpg\n"` to delete the temporary photo from the SD card to conserve space.
+
+#### 2.1.2. How to Share Mobile App Data with the Camera
+
+To share information like the current time or GPS coordinates from the phone to the camera, the app will use a similar command structure.
+
+*   **Example (Set Time)**: The app can get the current UTC time and send it as a command:
+    `"AI set_time 2025-10-18T10:00:00Z\n"`
+*   **Example (Set Location)**: The app can get the current GPS coordinates and send them:
+    `"AI set_gps -34.9285,138.6007\n"`
+
+The AI Processor will parse these strings and update its internal state or use the information when creating EXIF metadata for photos.
+
 ### 2.2. DFU (Device Firmware Update) - BLE Processor Updates
 
 This service is **only** used to update the firmware of the **BLE Processor (nRF52832)** itself. It cannot be used for anything else.
@@ -45,6 +88,7 @@ This service is **only** used to update the firmware of the **BLE Processor (nRF
 *   **When it's active**: Only after the camera has been put into DFU mode.
 *   **Purpose**: Transferring a binary firmware file (`.zip`).
 *   **Service UUID**: `00001530-1212-efde-1523-785feabcd123` (Nordic DFU Service)
+*   **Storage**: The firmware update is for the **BLE Processor's internal flash memory**, not the SD card. The `.zip` file is transferred directly from the mobile app to the BLE Processor's bootloader.
 
 **Workflow**:
 1.  **In WWUS mode**, send the `"dfu"` command.
@@ -103,6 +147,38 @@ The backend is responsible for parsing the LoRaWAN payload. The mobile app will 
 - **Display "Last Seen"**: Show the `last_seen` timestamp to indicate when the camera last reported in.
 - **Handle Stale Data**: If `last_seen` is old (e.g., > 48 hours), display a warning icon indicating the camera may be offline or having issues.
 - **No Direct Communication**: The app never tries to communicate with the camera via LoRaWAN. All data comes from the synchronized backend.
+
+### 3.1. Device Provisioning and Registration
+
+For a camera to use LoRaWAN, it must first be registered with a LoRaWAN Network Server (LNS), such as The Things Network (TTN) or a private Chirpstack instance. This is a one-time setup process that should be performed during the "Prepare and Test Nearby Devices" workflow in the office, not in the field.
+
+The process is orchestrated by the mobile app but brokered by the Wildlife Watcher backend.
+
+1.  **App Initiates Registration**: From the "Camera Workbench" screen, the user taps a "Register for LoRaWAN" button.
+2.  **Backend Creates Device on LNS**: The app sends a request to the Wildlife Watcher backend. The backend then makes an API call to the LNS to register the camera's unique hardware ID (DevEUI).
+3.  **Backend Receives Keys**: The LNS generates and returns a set of security keys (e.g., AppKey) for the device.
+4.  **Backend Stores Keys**: The backend securely stores these keys and associates them with the device record in the database.
+5.  **App Receives Keys**: The backend sends the necessary keys back to the mobile app.
+6.  **App Provisions Camera**: The mobile app connects to the camera via BLE (using the WWUS service) and sends a special command to program the security keys into the camera's secure storage.
+    *   **Example Command**: `"AI set_lora_keys <DevEUI> <AppKey> ...\n"`
+7.  **Confirmation**: The camera confirms the keys are saved, and the app updates the UI to show the device is "Registered" for LoRaWAN.
+
+Once registered, the device is capable of joining the LoRaWAN network and sending status updates whenever it is configured to do so during a deployment.
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Backend
+    participant LNS
+    participant Camera
+    App->>Backend: Request LoRaWAN Registration for Device
+    Backend->>LNS: Register Device (via API)
+    LNS-->>Backend: Return Security Keys
+    Backend-->>App: Send Keys to App
+    App->>Camera: Send "set_lora_keys" command (via BLE)
+    Camera-->>App: Confirm Keys Saved
+    App->>App: Update UI to "Registered"
+```
 
 ---
 

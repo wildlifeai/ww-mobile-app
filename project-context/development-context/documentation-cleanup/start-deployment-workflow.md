@@ -32,7 +32,8 @@ The user progresses through six distinct steps. They can navigate back to previo
 *   **Logic**:
     *   If the user selects "No Connectivity", the camera will be configured to not use its LoRaWAN module, and the user proceeds to the next step.
     *   If "Enable LoRaWAN Connectivity" is selected, the user needs to tap "Test Reception" to test the signal. Tapping "Test Reception" sends a command to the camera to transmit a test signal, and the app displays the signal strength (RSSI, SNR). This helps the user find an optimal physical location for the camera.
-    *   The user can proceed without testing, but a small warning will appear: "Without testing, the device may not be able to send status updates from the field. Proceed anyway?"
+    *   The "Test Reception" button will be disabled if the device has not been registered for LoRaWAN during the "Prepare and Test" workflow. A message will prompt the user to complete that step first.
+    *   The user can proceed without testing, but a small warning will appear if they do: "Without testing, the device may not be able to send status updates from the field. Proceed anyway?"
 
 ### Step 3: Camera View & Adjustment
 

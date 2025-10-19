@@ -619,6 +619,7 @@ Organization: Serengeti Conservation Trust
 - **Test Camera**: Take a test photo to ensure the camera's view is clear and preview it.
 - **Manage Project Association**: Assign the camera to a specific project. The app includes safeguards to prevent associating a camera with a project the user doesn't have access to.
 - **Update Firmware**: If a newer firmware version is available, the user can update the camera directly from the app.
+- **Enable Remote Updates**: A one-time registration of the device to the LoRaWAN network, allowing it to send health updates from the field.
 - **Configure AI Model**: Project Admins can change the AI detection model loaded on the camera.
 - **Name Device**: Give the camera a custom name for easy identification.
 
