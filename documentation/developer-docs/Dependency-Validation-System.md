@@ -29,26 +29,90 @@ Think of it as a **quality gate** that prevents dependency-related build failure
 
 ## Why Does It Exist?
 
-### The Problem
+### The Real Problem: BLE/DFU Library Lock-In
 
-During the **Expo SDK 51 migration**, the Wildlife Watcher mobile app faced several challenges:
+Wildlife Watcher's **core functionality depends on specific BLE and DFU (Device Firmware Update) libraries** that are version-locked and dictate the entire dependency chain:
 
-1. **Expo SDK 51 Compatibility**: Required specific versions of packages to work correctly
-   - `react-native: 0.74.5` (exact version required)
-   - `expo: ~51.0.0` (but we're using 51.0.39)
-   - `typescript: ~5.3.3` (compatibility requirement)
+**The Critical Constraint:**
+```
+BLE/DFU Libraries (Hardware Interface)
+    ↓
+react-native-ble-manager@11.3.2
+react-native-bluetooth-state-manager@1.3.5
+react-native-nordic-dfu (custom fork)
+    ↓
+Require React Native 0.74.5 (exact version)
+    ↓
+React Native 0.74.5 is compatible with Expo SDK 51
+    ↓
+Therefore: We MUST use Expo SDK 51
+```
 
-2. **Native Module Transitions**: Moving from bare React Native to Expo managed workflow required replacing packages:
-   - `react-native-fs` → `expo-file-system`
-   - `react-native-config` → `expo-constants`
-   - `react-native-bootsplash` → `expo-splash-screen`
-   - `react-native-vector-icons` → `@expo/vector-icons`
+**We didn't choose Expo SDK 51 first** - we were **forced to use it** because:
 
-3. **Known Deviations**: Some packages needed different versions than recommended:
-   - **expo**: PRD specified `51.0.0` but we use `51.0.39` (compatible patch)
-   - Reason: Bug fixes and stability improvements in patch version
+1. **Hardware Requirements**: Wildlife Watcher cameras use **Bluetooth Low Energy (BLE)** for device communication and **Nordic DFU** for firmware updates
+2. **Library Compatibility**: The BLE/DFU libraries require **React Native 0.74.5 exactly**
+3. **Expo Constraint**: Expo SDK 51 is the Expo version that supports React Native 0.74.5
+4. **Migration Goal**: Move from bare React Native to Expo managed workflow while **preserving BLE/DFU functionality**
 
-4. **Manual Validation Was Painful**: Running `expo-doctor` after every dependency change took time and provided inconsistent guidance
+### Why Not Upgrade to Latest Expo?
+
+**We can't upgrade to Expo SDK 52+ because:**
+- Expo SDK 52 requires React Native 0.76.x
+- React Native 0.76.x is **not compatible** with our BLE/DFU libraries (v11.3.2)
+- Upgrading would **break hardware communication** - the app's primary purpose
+
+### The Validation System's Purpose
+
+This system exists to **protect the BLE/DFU dependency chain** by:
+
+1. **Version Locking**: Prevents accidental upgrades that break BLE/DFU
+   - `react-native: 0.74.5` - **MUST NOT CHANGE** (BLE dependency)
+   - `react-native-ble-manager: 11.3.2` - **MUST NOT CHANGE** (hardware interface)
+   - `react-native-bluetooth-state-manager: 1.3.5` - **MUST NOT CHANGE** (BLE state)
+
+2. **Expo Constraint Enforcement**: Keeps us on Expo SDK 51
+   - `expo: ~51.0.0` - Only Expo version compatible with RN 0.74.5
+   - `expo-dev-client: ~4.0.29` - SDK 51 compatible dev client
+
+3. **Package Migration Guards**: Prevents reverting to incompatible packages
+   - **Blocks** `react-native-fs` → **Must use** `expo-file-system`
+   - **Blocks** `react-native-config` → **Must use** `expo-constants`
+   - **Blocks** `react-native-bootsplash` → **Must use** `expo-splash-screen`
+   - **Blocks** `react-native-vector-icons` → **Must use** `@expo/vector-icons`
+
+4. **Dependency Cascade Protection**: Ensures transitive dependencies don't break constraints
+   - Package overrides enforce versions throughout dependency tree
+   - Prevents sub-dependencies from pulling in incompatible versions
+
+### The Migration Challenge
+
+**Starting Point**: Bare React Native app with BLE/DFU functionality
+**Goal**: Move to Expo managed workflow for easier builds and updates
+**Constraint**: **Cannot break BLE/DFU libraries** - they're non-negotiable
+
+**The Dilemma**:
+- Latest Expo = Better features, easier maintenance
+- BUT: Latest Expo requires newer React Native
+- AND: Newer React Native breaks BLE/DFU libraries
+- THEREFORE: Must stay on Expo SDK 51 until BLE/DFU libraries are updated
+
+### What This System Prevents
+
+**Without this validation system, developers might:**
+
+❌ Run `npm update` and accidentally upgrade React Native → **BLE stops working**
+❌ Install newer Expo packages → **Build fails with version conflicts**
+❌ Re-add `react-native-fs` during troubleshooting → **Incompatible with Expo managed workflow**
+❌ Update transitive dependencies → **Cascade breaks BLE compatibility**
+
+**With this validation system:**
+
+✅ Catches breaking changes **before builds fail** (seconds vs 15 minutes)
+✅ Documents **why** each version is locked (future developers understand constraints)
+✅ Provides **clear error messages** with actionable fixes
+✅ Tracks **intentional deviations** (e.g., expo@51.0.39 vs 51.0.0)
+✅ Prevents **package migration reversals** (can't go back to react-native-fs)
 
 ### The Solution
 
@@ -253,20 +317,29 @@ Is this package optional? (y/N): N
 
 ### Severity Levels
 
-#### `error` - Blocks Installation
-- **Use when**: Package version is critical for app functionality
-- **Example**: `react-native: 0.74.5` (Expo SDK 51 requires exact version)
+#### `error` - Blocks Installation (Critical BLE/DFU Chain)
+- **Use when**: Package version is critical for BLE/DFU hardware functionality
+- **Examples**:
+  - `react-native: 0.74.5` - **BLE libraries require this exact version**
+  - `typescript: ~5.3.3` - Required for React Native 0.74.5 compatibility
 - **Behavior**: Validation fails (exit code 1) if version doesn't match
+- **Why**: Breaking these versions means **hardware stops working**
 
-#### `warning` - Shows Warning
-- **Use when**: Package should meet requirement but isn't critical
-- **Example**: `react-native-reanimated: ~3.10.1` (recommended but not required)
+#### `warning` - Shows Warning (Supporting Packages)
+- **Use when**: Package should meet requirement but isn't part of BLE/DFU chain
+- **Examples**:
+  - `react-native-ble-manager: 11.3.2` - Hardware interface (critical but marked warning during migration)
+  - `react-native-reanimated: ~3.10.1` - UI animations (important but not hardware-critical)
 - **Behavior**: Warning shown but validation passes
+- **Why**: Allows flexibility during migration while still tracking requirements
 
-#### `info` - Informational Only
-- **Use when**: Tracking optional packages for awareness
-- **Example**: `expo-localization: ~15.0.3` (nice to have)
+#### `info` - Informational Only (Optional Features)
+- **Use when**: Tracking optional packages not required for core BLE/DFU functionality
+- **Examples**:
+  - `expo-localization: ~15.0.3` - Language support (nice to have)
+  - Development tools and optional features
 - **Behavior**: Information shown, no validation failure
+- **Why**: Awareness without enforcement
 
 ### Known Deviations Pattern
 
@@ -590,37 +663,46 @@ DEBUG=validate-deps node scripts/validate-deps.js
 
 ## Best Practices
 
-### 1. Document All Rules
+### 1. Document All Rules (Especially BLE/DFU Chain)
 
-**Always provide a `reason` field**:
+**Always provide a `reason` field that explains the BLE/DFU dependency chain**:
 
 ```json
 {
   "react-native": {
     "required": "0.74.5",
     "severity": "error",
-    "reason": "Expo SDK 51 compatibility requirement - must match exactly"
+    "reason": "Required by react-native-ble-manager@11.3.2 - BLE hardware communication depends on this exact version"
+  },
+  "react-native-ble-manager": {
+    "required": "11.3.2",
+    "severity": "warning",
+    "reason": "Native module for BLE device communication - dictates React Native 0.74.5 requirement"
   }
 }
 ```
 
-**Why**: Future developers (including you) need to understand why constraints exist.
+**Why**: Future developers need to understand:
+- **What** the constraint is
+- **Why** it exists (BLE/DFU hardware dependency)
+- **What breaks** if changed (hardware stops working)
 
-### 2. Use Appropriate Severity Levels
+### 2. Use Severity Based on BLE/DFU Dependency Chain
 
-**Error** - Critical for app functionality:
-- Expo SDK core packages
-- React Native version
-- Native module compatibility
+**Error** - Part of the critical BLE/DFU chain:
+- `react-native: 0.74.5` - **Required by BLE libraries**
+- `typescript: ~5.3.3` - Required for React Native 0.74.5
+- Core Expo SDK packages that must match React Native 0.74.5
 
-**Warning** - Recommended but not critical:
-- UI library versions
-- Optional native modules
-- Performance optimizations
+**Warning** - BLE/DFU libraries and supporting packages:
+- `react-native-ble-manager: 11.3.2` - **The root constraint** (hardware interface)
+- `react-native-bluetooth-state-manager: 1.3.5` - BLE state management
+- `react-native-nordic-dfu` - Firmware update capability
+- Supporting libraries for navigation, UI, state management
 
-**Info** - Awareness only:
+**Info** - Optional features unrelated to BLE/DFU:
 - Development tools
-- Optional features
+- Optional UI enhancements
 - Nice-to-have packages
 
 ### 3. Track Known Deviations
@@ -894,27 +976,58 @@ Potential improvements to consider:
 
 ## Summary
 
-The **Package Version Dependency Validation System** provides:
+The **Package Version Dependency Validation System** is a **BLE/DFU hardware protection system** that:
 
+### Primary Purpose
+**Protects the critical BLE/DFU dependency chain** that enables Wildlife Watcher's core hardware communication functionality.
+
+### The Protected Chain
+```
+BLE/DFU Libraries (react-native-ble-manager@11.3.2)
+    ↓ (requires exact version)
+React Native 0.74.5
+    ↓ (compatible with)
+Expo SDK 51
+    ↓ (ecosystem)
+All other dependencies
+```
+
+### What It Does
+✅ **Prevents hardware-breaking upgrades** - Stops accidental React Native updates
 ✅ **Fast validation** (seconds vs minutes of build time)
-✅ **Clear feedback** (actionable error messages)
-✅ **Documentation** (why each rule exists)
-✅ **Flexibility** (severity levels, known deviations)
-✅ **Automation** (CI/CD integration)
-✅ **Maintainability** (interactive CLI for rule management)
+✅ **Clear feedback** (explains BLE/DFU dependency chain)
+✅ **Documentation** (why each constraint exists)
+✅ **Package migration guards** (prevents reverting to bare RN packages)
+✅ **CI/CD integration** (automated enforcement)
+✅ **Interactive management** (easy rule updates)
 
-**Key Files**:
-- `scripts/validate-deps.js` - Validation engine
-- `scripts/manage-dependency-rules.js` - Rule management CLI
-- `scripts/dependency-rules.json` - Configuration
+### Key Files
+- `scripts/validate-deps.js` - Validation engine (365 lines)
+- `scripts/manage-dependency-rules.js` - Rule management CLI (445 lines)
+- `scripts/dependency-rules.json` - **The critical configuration** (defines BLE/DFU chain)
 - `scripts/README.md` - Quick reference
 
-**Key Commands**:
-- `npm run validate:deps` - Run validation
+### Key Commands
+- `npm run validate:deps` - **Run validation (use before any npm install)**
 - `npm run deps` - Manage rules interactively
 - `npm run prebuild:check` - Pre-build validation
 
-**Remember**: The goal is to catch dependency issues **before** they cause build failures, saving time and reducing frustration during development.
+### Critical Understanding
+
+**This is NOT about following Expo best practices.**
+
+**This IS about protecting hardware functionality.**
+
+The system exists because:
+1. Wildlife Watcher **requires** specific BLE/DFU libraries for hardware communication
+2. Those libraries **dictate** React Native 0.74.5 (exact version)
+3. React Native 0.74.5 **forces** Expo SDK 51 (only compatible Expo version)
+4. **We cannot upgrade** until BLE/DFU libraries support newer React Native versions
+
+**Remember**:
+- The goal is **NOT** to stay on latest Expo
+- The goal **IS** to keep hardware working while using Expo managed workflow
+- Breaking the BLE/DFU chain = **cameras stop communicating** = app is useless
 
 ---
 
