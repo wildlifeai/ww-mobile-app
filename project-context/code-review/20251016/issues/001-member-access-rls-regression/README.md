@@ -57,6 +57,18 @@
 - **`CROSS-PROJECT-COORDINATION-COMPLETE.md`** - Final coordination status
 - **`COORDINATOR-EXECUTIVE-SUMMARY.md`** - High-level coordination overview
 
+### Deep Dive Analysis
+- **`DELIVERABLE-RLS-ERROR-ANALYSIS.md`** - Comprehensive RLS policy investigation
+  - Multi-tenant isolation security controls analysis
+  - Authorization chain breakdown
+  - Database verification requirements
+
+- **`rls-member-fetch-error-analysis.md`** - Member fetch error technical analysis
+  - Detailed error code investigation
+  - Function call stack trace
+
+- **`QUICK-FIX-GUIDE.md`** - Implementation fix instructions
+
 ### Quick Fixes
 - **`QUICK-FIX-ProjectMembersScreen.md`** - Secondary frontend fix (import pattern)
 
@@ -83,8 +95,9 @@
 - Diagnostic: `~/wildlife-watcher-backend/scripts/diagnose-member-access-issue.sql`
 - Fix: `~/wildlife-watcher-backend/scripts/fix-ww-admin-member-access.sql`
 
-### Mobile App Investigation Folder
-- Additional analysis: `/project-context/investigation/`
+### Mobile App Code Review
+- Status reports: `/project-context/code-review/20251016/03-status-reports/`
+- Analysis documents: `/project-context/code-review/20251016/02-analysis/`
 
 ---
 
