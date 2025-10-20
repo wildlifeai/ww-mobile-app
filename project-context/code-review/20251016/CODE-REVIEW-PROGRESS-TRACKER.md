@@ -43,15 +43,39 @@
 
 ---
 
-## 🔴 BLOCKED TASKS (Waiting on Others)
+## 🎉 UNBLOCKED - BACKEND FIX COMPLETE!
 
-### Backend RLS Fix (External Dependency)
-- **Issue**: ww_admin can't view project members
-- **Blocking**: Member management testing
-- **Backend Task**: Created in `~/wildlife-watcher-backend/project-context/MVP2-Tasks/CPT-2025-10-20-001-RLS-MEMBER-ACCESS-FIX.md`
-- **Backend Team Status**: 🔄 In Progress
-- **Estimated Backend Time**: 5 minutes (SQL scripts ready)
-- **Mobile Team Action**: ⏸️ WAIT - Nothing to do until backend completes
+### Backend RLS Fix - COMPLETE ✅
+- **Issue**: ww_admin/project_admin can't view project members
+- **Root Cause**: Missing role hierarchy logic in `has_project_role()` database function
+- **Backend Fix**: ✅ **COMPLETE** - Role hierarchy implemented
+  - `project_admin` now inherits all `project_member` permissions
+  - Higher roles inherit lower role permissions
+- **Backend Testing**: ✅ All scenarios passing
+  - Jane Manager (project_admin) ✅ Can view members
+  - WW Admin ✅ Can view members
+  - Sarah Member (project_member) ✅ Can view members
+  - Cross-tenant isolation ✅ Working
+- **Mobile Team Action**: ⏳ **WAIT** for backend dev cloud deployment notification
+- **Mobile Testing**: 15-20 minutes (when dev cloud ready)
+- **Mobile App Code**: ✅ No changes needed - already correct!
+
+### 🔍 NEW ACTION ITEM - UUID Investigation (High Priority)
+
+**Discovered During Backend Testing**:
+- Backend found mobile app logs showing **non-existent project UUIDs**
+- Database has: `c0000000-0000-0000-0000-000000000001`, `c0000000-0000-0000-0000-000000000002`
+- Mobile logs showed: `a29a92ab-9c6e-4b85-835d-9df4d17c86de`, `12cc5145-7616-45ea-9be3-6fd74051c5c5` ❌
+
+**Impact**: Error 42501 may be "data not found" (wrong UUID) not "no permission"
+
+**Tasks**:
+1. Add logging before `getProjectMembers()` API calls
+2. Verify project UUID source (Redux state? AsyncStorage? API?)
+3. Compare against database UUIDs
+4. Check JWT token user ID
+
+**See**: `issues/001-member-access-rls-regression/BACKEND-FIX-COMPLETE.md` for details
 
 ---
 
