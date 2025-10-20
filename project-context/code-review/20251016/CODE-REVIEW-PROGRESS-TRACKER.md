@@ -58,7 +58,25 @@
   - Cross-tenant isolation ✅ Working
 - **Mobile Team Action**: ⏳ **WAIT** for backend dev cloud deployment notification
 - **Mobile Testing**: 15-20 minutes (when dev cloud ready)
-- **Mobile App Code**: ✅ No changes needed - already correct!
+- **Mobile App Bugs**: ✅ **FIXED** (2 issues found during testing)
+  - **Commit**: `56694e2` - Fixed React key warning + import error
+
+### 🐛 Mobile App Bugs Fixed (While Waiting for Backend)
+**Found during testing with backend error logs** - Fixed before backend deployment:
+
+#### Bug 1: React Key Warning ✅ FIXED
+- **Error**: `Encountered two children with same key, 'member-undefined'`
+- **Location**: ProjectDetailsScreen.tsx line 535
+- **Cause**: `member.user_id` was undefined, creating duplicate keys
+- **Fix**: Changed `key={member-${member.user_id}}` to `key={member.user_id || member-${index}}`
+- **Impact**: Prevents React rendering errors
+
+#### Bug 2: getProjectById Import Error ✅ FIXED
+- **Error**: `getProjectById is not a function (it is undefined)`
+- **Location**: ProjectMembersScreen.tsx line 152
+- **Cause**: Tried to destructure `getProjectById` from ProjectService (class instance, not named exports)
+- **Fix**: Changed to `const ProjectService = (await import(...)).default; ProjectService.getProjectById()`
+- **Impact**: Member adding functionality now works
 
 ### 🔍 NEW ACTION ITEM - UUID Investigation (High Priority)
 
