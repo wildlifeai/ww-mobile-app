@@ -56,10 +56,11 @@
   - WW Admin ✅ Can view members
   - Sarah Member (project_member) ✅ Can view members
   - Cross-tenant isolation ✅ Working
-- **Mobile Team Action**: ⏳ **WAIT** for backend dev cloud deployment notification
-- **Mobile Testing**: 15-20 minutes (when dev cloud ready)
+- **Mobile Team Action**: ⏳ **WAIT** for backend to deploy missing functions
+- **Mobile Testing**: ✅ **PARTIAL** - Viewing works, Adding blocked
 - **Mobile App Bugs**: ✅ **FIXED** (2 issues found during testing)
   - **Commit**: `56694e2` - Fixed React key warning + import error
+- **Backend Status**: 🟡 **INCOMPLETE** - has_project_role deployed, has_system_role missing
 
 ### 🐛 Mobile App Bugs Fixed (While Waiting for Backend)
 **Found during testing with backend error logs** - Fixed before backend deployment:
