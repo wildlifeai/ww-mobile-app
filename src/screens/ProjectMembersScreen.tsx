@@ -149,8 +149,8 @@ export const ProjectMembersScreen: React.FC = () => {
       }
 
       // Get project to find its organisation_id
-      const { getProjectById } = await import('../services/ProjectService');
-      const project = await getProjectById(projectId);
+      const ProjectService = (await import('../services/ProjectService')).default;
+      const project = await ProjectService.getProjectById(projectId);
 
       if (!project?.organisation_id) {
         console.error('❌ Project has no organisation_id');

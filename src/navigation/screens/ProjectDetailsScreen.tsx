@@ -531,8 +531,8 @@ export const ProjectDetailsScreen = () => {
                 <ActivityIndicator size="small" />
               ) : members && members.length > 0 ? (
                 <View style={styles.membersList}>
-                  {members.map((member) => (
-                    <View key={`member-${member.user_id}`} style={styles.memberRow}>
+                  {members.map((member, index) => (
+                    <View key={member.user_id || `member-${index}`} style={styles.memberRow}>
                       <View style={styles.memberInfo}>
                         <WWIcon source="account-circle" size={40} color={theme.colors.onSurfaceVariant} />
                         <View style={styles.memberDetails}>
