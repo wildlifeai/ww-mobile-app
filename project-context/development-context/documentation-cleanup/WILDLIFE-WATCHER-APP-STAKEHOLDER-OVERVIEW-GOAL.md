@@ -208,10 +208,12 @@ Organization: Serengeti Conservation Trust
 ├─ Organisation Administrator (via web portal)
 │  └─ Creates projects, assigns project admins and uploads "Lion Detection v2.3" AI model
 │
+│  
 ├─ Project: "Lion Population 2025"
 │  │
 │  ├─ Project Admin: Dr. Chen
 │  │  ├─ Creates project
+│  │  ├─ Creates the project
 │  │  ├─ Invites 3 field assistants as Project Members
 │  │  ├─ Assigns "Lion Detection v2.3" model
 │  │  └─ Monitors team deployment progress
@@ -236,10 +238,11 @@ Organization: Serengeti Conservation Trust
 2. **Project Admins**: Lead individual research projects.
    - Any user can become a Project Admin by creating a new project.
    - They have full control within their projects, including managing team members (adding/removing/changing roles) and project settings.
-   - They control the project's visibility, choosing from:
-     - **Visible only for project members**: Only users explicitly added to the project can see it.
-     - **Visible for project and organization members**: All members of the project's organization can see the project, but only Project Members can contribute.
-     - **Publicly visible**: Anyone on the platform can view the project, but only Project Members can contribute.
+   - **Future Enhancement**: They will control the project's visibility, choosing from:
+     - **Visible only for project members**
+     - **Visible for project and organization members**
+     - **Publicly visible**
+   - **Beta Version Note**: For the initial release, all projects will be set to "Visible only for project members" by default. This setting will not be visible or editable in the mobile app.
 
 3. **Organisation member**: This is the default status for any user belonging to an organization.
    - It grants read-only visibility to any project within the organization that has its visibility set to "Visible for project and organization members" or "Publicly visible".
@@ -265,10 +268,8 @@ Organization: Serengeti Conservation Trust
 
 2.  **Contributing to Projects**: To create or edit deployments, a user must be explicitly added to a project's team as either a Project Member or a Project Admin. Being a member of the organization is not enough to contribute.
 
-3.  **Project Visibility Settings**: Project Admins control who can see their project:
-    - **Visible only for project members**: The default and most secure setting. Only users on the project team can see it.
-    - **Visible for project and organization members**: Anyone in the same organization can see the project exists, but they cannot contribute unless they are on the project team.
-    - **Publicly visible**: Anyone on the platform can view the project, but only team members can contribute.
+3.  **Project Visibility Settings (Future Enhancement)**: Project Admins will control who can see their project.
+    - **Beta Version Note**: For the beta release, all projects are created with the default visibility of "Visible only for project members". The ability for Project Admins to change this setting will be introduced in a future update.
 
 ---
 
@@ -990,7 +991,8 @@ The app uses a hierarchical permission system (like organizational charts):
 
 **Projects** (Research initiatives)
 - Project name, description, goals
-- Visibility: "Visible only for project members" (default), "Visible for project and organization members", or "Publicly visible"
+- **Beta Version Note**: Visibility is set to "Visible only for project members" by default in the backend.
+- **Future Enhancement**: Project Admins will be able to set visibility to "Visible for project and organization members" or "Publicly visible".
 - Creation date, last update, project owner
 - Organization link (automatic isolation)
 - *Example record*: "Lion Population Study 2025" - 5 team members, 12 active deployments
@@ -1073,7 +1075,7 @@ The app uses a hierarchical permission system (like organizational charts):
 #### When you create a project:
 - **Stored in**: `projects` table
 - **Linked to**: Your organization automatically (via organization_id)
-- **Security**: Visibility is controlled by the Project Admin (project members, organization members, or public) and enforced by RLS.
+- **Security**: For the beta version, visibility is defaulted to "Visible only for project members". In the future, this will be controlled by the Project Admin and enforced by RLS.
 - **Tracked**: Creation date, last update, creator name
 - **Offline**: Saved locally first, synced to cloud when online
 
