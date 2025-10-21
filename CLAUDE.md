@@ -84,6 +84,10 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - **Clean Architecture**: Separate concerns
 - **Documentation**: Keep updated
 
+## ⚡ CRITICAL: Backend-Mobile Type Sync
+
+**MANDATORY WORKFLOW**: After ANY backend schema changes (migrations, functions, tables, views), IMMEDIATELY regenerate mobile types with `npm run types:local` before writing ANY mobile code. Pre-commit hook will block commits if types are stale. Prevents runtime function signature mismatches and type errors. See `@project-context/learnings/local-dev-sync-workflow.md` for complete workflow and `@project-context/learnings/supabase-type-consistency-strategy.md` for production automation.
+
 ## 🔴 CRITICAL: Quality Control Standards
 
 ### **MANDATORY DISCOVERY PHASE - NO EXCEPTIONS:**
@@ -123,6 +127,7 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 4. **TDD Gate**: Implementation must satisfy original test requirements
 5. **Evidence Gate**: All implementation decisions backed by Context7 research (NEW)
 6. **UUID Consistency Gate**: All UUID handling must maintain string types throughout (CRITICAL for Task 11.8)
+7. **Backend Sync Gate**: After ANY backend schema changes, ALWAYS regenerate types with `npm run types:local` before writing mobile code (CRITICAL - see `@project-context/learnings/local-dev-sync-workflow.md`)
 
 
 ## 📚 Reference Documentation
