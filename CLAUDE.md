@@ -86,31 +86,50 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 
 ## ⚡ CRITICAL: Backend-Mobile Type Sync
 
-**MANDATORY WORKFLOW**: After ANY backend schema changes (migrations, functions, tables, views), IMMEDIATELY regenerate mobile types with `npm run types:local` before writing ANY mobile code. Pre-commit hook will block commits if types are stale. Prevents runtime function signature mismatches and type errors.
+**MANDATORY WORKFLOW**: After ANY backend schema changes, regenerate mobile types with `npm run types:local` (3 sec). Git pre-commit hooks **BLOCK stale commits** - cannot bypass. Prevents runtime function signature mismatches.
 
-**Type Sync Commands** (run from mobile repo):
+### Daily Flow
+
+**After Backend Schema Changes**:
 ```bash
-npm run types:local         # Generate types from backend's local Supabase
-npm run types:check-local   # Validate types are current (< 5 seconds)
-npm run validate:local      # Full pre-commit validation workflow
+# Mobile repo - ONE command (3 seconds):
+npm run types:local         # Generate from backend's local Supabase
+# Git hook prevents commit if you forget ✅
 ```
 
-**Backend Type Commands** (run from backend repo):
+**Before Any Commit**:
 ```bash
-npm run db:types:check      # Check if backend types are stale
-npm run db:types:update     # Update backend reference types
+npm run types:check-local   # Verify current (3 sec)
+npm run validate:local      # Full validation (30 sec) - types + TypeScript + tests
 ```
 
-**Backend Reference Types**: Backend maintains authoritative types at `~/dev/wildlifeai/wildlife-watcher-backend/project-context/database.types.ts` for cross-validation. Backend has automated git pre-commit hooks that block commits with stale types.
+**Backend Commands** (from backend repo):
+```bash
+npm run db:types:update     # After schema changes (3 sec)
+# Backend git hook also blocks stale commits ✅
+```
 
-**Cross-Repo Coordination**: Backend team updates `database.types.ts` → Mobile team regenerates `supabase.ts` from same Supabase instance → Both type files should match exactly.
+### Automated Safety Nets
 
-**Implementation Note**: Commands run Supabase CLI from backend repo (where `supabase/config.toml` exists), output to mobile repo. Mobile repo doesn't need Supabase project configuration.
+1. **Git Hooks**: BLOCK commits with stale types (cannot forget)
+2. **TypeScript**: Shows errors immediately if types don't match reality
+3. **Pre-commit Validation**: Types + TypeScript + Tests must pass
+4. **Cross-Validation**: Backend `database.types.ts` ↔ Mobile `supabase.ts` should match
 
-**Docs**:
-- **Mobile**: `@documentation/developer-docs/Backend-Mobile-Type-Synchronization-Guide.md` (comprehensive guide), `@project-context/learnings/local-dev-sync-workflow.md` (workflow), `@project-context/learnings/type-sync-workflow-test-results.md` (test results)
-- **Backend**: `~/wildlife-watcher-backend/project-context/documentation/QUICK-REFERENCE-TYPE-AUTOMATION.md` (backend automation)
-- **Production**: `@project-context/learnings/supabase-type-consistency-strategy.md` (CI/CD automation)
+### Key Files
+
+- **Mobile Types**: `src/types/supabase.ts` (generated, committed)
+- **Backend Reference**: `~/wildlife-watcher-backend/project-context/database.types.ts` (cross-validation)
+- **Both from**: Same local Supabase instance (localhost:54321)
+
+### Documentation
+
+- **Learning**: `@documentation/developer-docs/Backend-Mobile-Type-Synchronization-Guide.md` (comprehensive)
+- **Workflow**: `@project-context/learnings/local-dev-sync-workflow.md` (daily use)
+- **Comparison**: `@project-context/learnings/backend-mobile-type-sync-comparison.md` (systems)
+- **Backend**: `~/wildlife-watcher-backend/.../QUICK-REFERENCE-TYPE-AUTOMATION.md`
+
+**Bottom Line**: Run `npm run types:local` after backend changes. Git hook prevents you from forgetting. Takes 3 seconds. ✅
 
 ## 🔴 CRITICAL: Quality Control Standards
 
