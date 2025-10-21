@@ -95,11 +95,22 @@ npm run types:check-local   # Validate types are current (< 5 seconds)
 npm run validate:local      # Full pre-commit validation workflow
 ```
 
-**Backend Reference Types**: Backend maintains authoritative types at `~/dev/wildlifeai/wildlife-watcher-backend/project-context/database.types.ts` for cross-validation.
+**Backend Type Commands** (run from backend repo):
+```bash
+npm run db:types:check      # Check if backend types are stale
+npm run db:types:update     # Update backend reference types
+```
+
+**Backend Reference Types**: Backend maintains authoritative types at `~/dev/wildlifeai/wildlife-watcher-backend/project-context/database.types.ts` for cross-validation. Backend has automated git pre-commit hooks that block commits with stale types.
+
+**Cross-Repo Coordination**: Backend team updates `database.types.ts` → Mobile team regenerates `supabase.ts` from same Supabase instance → Both type files should match exactly.
 
 **Implementation Note**: Commands run Supabase CLI from backend repo (where `supabase/config.toml` exists), output to mobile repo. Mobile repo doesn't need Supabase project configuration.
 
-**Docs**: See `@project-context/learnings/local-dev-sync-workflow.md` (workflow) and `@project-context/learnings/supabase-type-consistency-strategy.md` (production automation). Test results: `@project-context/learnings/type-sync-workflow-test-results.md`
+**Docs**:
+- **Mobile**: `@documentation/developer-docs/Backend-Mobile-Type-Synchronization-Guide.md` (comprehensive guide), `@project-context/learnings/local-dev-sync-workflow.md` (workflow), `@project-context/learnings/type-sync-workflow-test-results.md` (test results)
+- **Backend**: `~/wildlife-watcher-backend/project-context/documentation/QUICK-REFERENCE-TYPE-AUTOMATION.md` (backend automation)
+- **Production**: `@project-context/learnings/supabase-type-consistency-strategy.md` (CI/CD automation)
 
 ## 🔴 CRITICAL: Quality Control Standards
 
@@ -303,6 +314,7 @@ The `@project-context/development-context/` contains critical project specificat
 - **Generated Types**:
   - Mobile: `src/types/supabase.ts` - Generated from backend's local Supabase
   - Backend Reference: `~/wildlife-watcher-backend/project-context/database.types.ts` - Authoritative type reference for cross-validation
+- **Backend Type Automation**: Backend has automated type sync with git pre-commit hooks that block stale types. See `~/wildlife-watcher-backend/project-context/documentation/QUICK-REFERENCE-TYPE-AUTOMATION.md` for backend workflow. Backend commands: `npm run db:types:check`, `npm run db:types:update`
 
 ### Documents to Keep Updated
 
