@@ -25,6 +25,9 @@
     "deps": "node scripts/deps-cli.js",
     "deps:add": "node scripts/deps-cli.js add",
     "deps:scan": "node scripts/deps-cli.js scan",
+    "types:local": "supabase gen types typescript --local > src/types/supabase.ts",
+    "types:check-local": "./scripts/check-types-local.sh",
+    "validate:local": "./scripts/test-integration-local.sh",
     "supabase:types": "echo 'Types are manually synced from backend repository. See src/types/supabase.ts'",
     "postinstall": "npm run validate:deps"
   },
