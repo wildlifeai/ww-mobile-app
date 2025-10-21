@@ -5,8 +5,9 @@ set -e
 
 echo "🔍 Checking if types are current with local Supabase..."
 
-# Generate fresh types from local Supabase
-npx supabase gen types typescript --local > .types-check.ts 2>/dev/null
+# Generate fresh types from local Supabase (run from backend repo)
+cd ~/dev/wildlifeai/wildlife-watcher-backend && npx supabase gen types typescript --local > ~/dev/wildlifeai/wildlife-watcher-mobile-app/.types-check.ts 2>/dev/null
+cd ~/dev/wildlifeai/wildlife-watcher-mobile-app
 
 # Compare with committed types
 if ! diff -q src/types/supabase.ts .types-check.ts > /dev/null 2>&1; then
