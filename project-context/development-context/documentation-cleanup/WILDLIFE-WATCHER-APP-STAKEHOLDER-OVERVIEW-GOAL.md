@@ -142,7 +142,7 @@ The app has five distinct user types, each with specific capabilities:
 **What they do**: Acts as a member of a larger research organization, available to be assigned to specific projects. This is the default role for any user added to an organization.
 
 **Capabilities**:
-- View projects within their organization that are set to "Visible for project and organization members".
+- **Beta Version Note**: For the initial release, all projects will be set to "Visible only for project members" by default. The ability for users to see other projects within their organization, or public projects, will be part of a future update when visibility settings are enabled.
 - Can be invited by a Project Admin or organisation Admin to become a Project Member or Project Admin.
 - Can create a new project at any time, automatically becoming its Project Admin.
 - **Important**: This role grants visibility only. To create deployments or perform other actions within a project, a user must be explicitly added as a Project Member or Project Admin to that specific project.
