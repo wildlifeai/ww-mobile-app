@@ -35,6 +35,10 @@ supabase db reset
 cd ~/dev/wildlifeai/wildlife-watcher-mobile-app
 npm run types:local
 
+# OPTIONAL: Cross-validate against backend reference types
+# Backend maintains authoritative types at:
+# ~/dev/wildlifeai/wildlife-watcher-backend/project-context/database.types.ts
+
 # Commit BOTH repos together
 cd ~/dev/wildlifeai/wildlife-watcher-backend
 git add supabase/migrations/
@@ -751,7 +755,7 @@ rm .types-check.ts
 **Trade-offs Accepted**:
 
 - ✅ Simple, easy to understand
-- ✅ Fast feedback loop
+- ✅ Fast feedback loop (< 5 seconds)
 - ✅ No cloud dependencies
 - ✅ Works offline
 - ❌ Manual trigger (but takes 2 seconds)
@@ -759,9 +763,42 @@ rm .types-check.ts
 
 ---
 
+## 🔍 Cross-Validation with Backend Reference Types
+
+**Backend Maintains Authoritative Types**: `~/dev/wildlifeai/wildlife-watcher-backend/project-context/database.types.ts`
+
+**When to Cross-Validate**:
+- Debugging type mismatches between mobile and backend
+- Verifying complex type changes (nested objects, enums)
+- After major schema migrations
+- When mobile generated types look suspicious
+
+**How to Compare**:
+```bash
+# Quick diff check
+diff ~/dev/wildlifeai/wildlife-watcher-backend/project-context/database.types.ts \
+     ~/dev/wildlifeai/wildlife-watcher-mobile-app/src/types/supabase.ts
+
+# Or use any diff tool
+code --diff \
+  ~/dev/wildlifeai/wildlife-watcher-backend/project-context/database.types.ts \
+  ~/dev/wildlifeai/wildlife-watcher-mobile-app/src/types/supabase.ts
+```
+
+**Note**: Both files are generated from same Supabase instance, so they should be identical. Any differences indicate:
+1. Mobile types weren't regenerated after backend change
+2. Backend reference types weren't regenerated after migration
+3. Different Supabase instances being used (backend not on `localhost:54321`)
+
+---
+
 **Created**: 2025-10-21
-**Status**: 🟢 Production-ready for local development
+**Updated**: 2025-10-21 (added backend reference types validation)
+**Status**: 🟢 Production-ready for local development - Validated and tested
 **Time to Setup**: 10 minutes
 **Daily Overhead**: ~30 seconds per backend change
+**Type Sync Speed**: < 5 seconds
+
+**Test Results**: See `@project-context/learnings/type-sync-workflow-test-results.md` for complete validation
 
 **Next**: Combine this local workflow with production GitHub Actions from `supabase-type-consistency-strategy.md` for full coverage.

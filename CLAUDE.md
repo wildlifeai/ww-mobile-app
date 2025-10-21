@@ -86,7 +86,20 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 
 ## ⚡ CRITICAL: Backend-Mobile Type Sync
 
-**MANDATORY WORKFLOW**: After ANY backend schema changes (migrations, functions, tables, views), IMMEDIATELY regenerate mobile types with `npm run types:local` before writing ANY mobile code. Pre-commit hook will block commits if types are stale. Prevents runtime function signature mismatches and type errors. See `@project-context/learnings/local-dev-sync-workflow.md` for complete workflow and `@project-context/learnings/supabase-type-consistency-strategy.md` for production automation.
+**MANDATORY WORKFLOW**: After ANY backend schema changes (migrations, functions, tables, views), IMMEDIATELY regenerate mobile types with `npm run types:local` before writing ANY mobile code. Pre-commit hook will block commits if types are stale. Prevents runtime function signature mismatches and type errors.
+
+**Type Sync Commands** (run from mobile repo):
+```bash
+npm run types:local         # Generate types from backend's local Supabase
+npm run types:check-local   # Validate types are current (< 5 seconds)
+npm run validate:local      # Full pre-commit validation workflow
+```
+
+**Backend Reference Types**: Backend maintains authoritative types at `~/dev/wildlifeai/wildlife-watcher-backend/project-context/database.types.ts` for cross-validation.
+
+**Implementation Note**: Commands run Supabase CLI from backend repo (where `supabase/config.toml` exists), output to mobile repo. Mobile repo doesn't need Supabase project configuration.
+
+**Docs**: See `@project-context/learnings/local-dev-sync-workflow.md` (workflow) and `@project-context/learnings/supabase-type-consistency-strategy.md` (production automation). Test results: `@project-context/learnings/type-sync-workflow-test-results.md`
 
 ## 🔴 CRITICAL: Quality Control Standards
 
@@ -127,7 +140,7 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 4. **TDD Gate**: Implementation must satisfy original test requirements
 5. **Evidence Gate**: All implementation decisions backed by Context7 research (NEW)
 6. **UUID Consistency Gate**: All UUID handling must maintain string types throughout (CRITICAL for Task 11.8)
-7. **Backend Sync Gate**: After ANY backend schema changes, ALWAYS regenerate types with `npm run types:local` before writing mobile code (CRITICAL - see `@project-context/learnings/local-dev-sync-workflow.md`)
+7. **Backend Sync Gate**: After ANY backend schema changes, ALWAYS regenerate types with `npm run types:local` and validate with `npm run types:check-local` before writing mobile code. Cross-validate against backend's `database.types.ts` if needed (CRITICAL - see `@project-context/learnings/local-dev-sync-workflow.md`)
 
 
 ## 📚 Reference Documentation
@@ -287,7 +300,9 @@ The `@project-context/development-context/` contains critical project specificat
 - **Live Backend Status**: `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md`
 - **Cross-Project Tasks**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/` - Task communication
 - **Local Integration Docs**: `@project-context/development-context/supabase-backend/` - Reference documentation
-- **Generated Types**: `supabase.ts` - TypeScript definitions
+- **Generated Types**:
+  - Mobile: `src/types/supabase.ts` - Generated from backend's local Supabase
+  - Backend Reference: `~/wildlife-watcher-backend/project-context/database.types.ts` - Authoritative type reference for cross-validation
 
 ### Documents to Keep Updated
 
