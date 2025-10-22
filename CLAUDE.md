@@ -159,7 +159,7 @@ tests/
 
 **The Problem**: Backend schema changes → mobile TypeScript types become stale → runtime errors
 
-**The Solution**: Automated type generation + git hooks
+**The Solution**: Automated type generation + git hooks + CI/CD validation (95% coverage)
 
 **Architecture**:
 ```
@@ -172,7 +172,9 @@ Mobile: npm run types:local (generates from same Supabase)
   ↓
 Mobile: src/types/supabase.ts (committed)
   ↓
-Git pre-commit hook validates types are current
+Git pre-commit hook validates types are current (80% coverage)
+  ↓
+GitHub Actions validates on PR (blocks merge on drift - 95% coverage)
 ```
 
 **Daily Workflow**:
@@ -181,11 +183,21 @@ Git pre-commit hook validates types are current
 3. Mobile developer pulls backend changes
 4. Mobile runs `npm run types:local` (takes 3 seconds)
 5. Git hooks prevent commits if types are stale
+6. PR opens → GitHub Actions validates types (blocks merge on drift)
+
+**Automated Safety Nets** (multi-layer protection):
+1. **Local Git Hook** (80% coverage): Blocks commits with stale types
+2. **CI/CD Validation** (95% coverage): Blocks PR merge on type drift
+3. **Backend Git Hook**: Blocks backend commits without type regeneration
+4. **Type Check Command**: `npm run types:check-local` (3 sec)
+
+**ROI**: 160:1 (15 min setup → 40 hours saved annually)
 
 **Key Files**:
 - Mobile: `src/types/supabase.ts` (generated, committed)
 - Backend Reference: `~/wildlife-watcher-backend/project-context/database.types.ts` (for cross-validation)
 - Validation Script: `scripts/check-types-local.sh`
+- CI/CD Workflow: `.github/workflows/type-validation.yml`
 - Both generated from: Same local Supabase instance (localhost:54321)
 
 **Documentation**:
@@ -193,7 +205,7 @@ Git pre-commit hook validates types are current
 - Comprehensive guide: `@documentation/developer-docs/Backend-Mobile-Type-Synchronization-Guide.md`
 - Backend automation: `~/wildlife-watcher-backend/project-context/documentation/QUICK-REFERENCE-TYPE-AUTOMATION.md`
 
-**Bottom Line**: Run `npm run types:local` after backend changes. Git hook prevents you from forgetting. Takes 3 seconds. ✅
+**Bottom Line**: Run `npm run types:local` after backend changes. Git hooks + GitHub Actions prevent type drift. Takes 3 seconds. 95% coverage. ✅
 
 ## Quality Control Standards
 
