@@ -1,12 +1,14 @@
-# Claude Code Configuration - SPARC Development Environment
+# CLAUDE.md
 
-## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## 🚨 CRITICAL: Concurrent Execution & File Management
 
 **ABSOLUTE RULES**:
 1. ALL operations MUST be concurrent/parallel in a single message
 2. **NEVER save working files, text/mds and tests to the root folder**
 3. ALWAYS organize files in appropriate subdirectories
-4. **MANDATORY**: Follow Evidence-Based Development - verify all assumptions with Context7 research FIRST
+4. **MANDATORY**: Follow Evidence-Based Development - verify assumptions with Context7 research FIRST
 
 ### ⚡ GOLDEN RULE: "1 MESSAGE = ALL RELATED OPERATIONS"
 
@@ -17,7 +19,7 @@
 - **Bash commands**: ALWAYS batch ALL terminal operations in ONE message
 - **Memory operations**: ALWAYS batch ALL memory store/retrieve in ONE message
 
-### File Organization Rules
+### File Organization
 
 **NEVER save to root folder. Use these directories:**
 - `/src` - Source code files
@@ -32,148 +34,416 @@
 
 **Wildlife Watcher Mobile App** - React Native field deployment tool for wildlife camera management with offline-first architecture.
 
-This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) methodology with Claude-Flow orchestration for systematic Test-Driven Development.
-
-### MVP2 Architecture & Features
-- **Architecture**: Offline-first with Supabase backend, BLE + LoRaWAN device communication, organisation multi-tenancy
-- **Key Features**: 6-step deployment wizard, project management, real-time sync, WW Admin read-only access + web portal navigation (MVP)
+- **Tech Stack**: Expo SDK 51, React Native 0.74.5, TypeScript, Redux Toolkit, Supabase
+- **Architecture**: Offline-first with local SQLite sync, BLE + LoRaWAN device communication, organisation multi-tenancy
+- **Key Features**: 6-step deployment wizard, project management, real-time sync, WW Admin access
 - **User Roles**: ww_admin (global), project_admin (org-scoped), project_member (project-scoped)
-- **LoRaWAN Integration**: battery_level, sd_card_usage webhook monitoring
-- **Testing Framework**: Maestro TDD/BDD with comprehensive test coverage
-- **Development Methodology**: SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) with TDD
+- **Testing**: Jest (unit/integration), Maestro (E2E/BDD), Detox
+- **Development**: SPARC methodology with TDD/BDD practices
 
-### Where to Find Task Information
-- **Current Task Status**: Check `@project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md` or live dashboard at http://localhost:3333
-- **Current Strategy**: See `@project-context/development-context/MVP2/implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md`
-- **Development Progress**: Review `@project-context/learnings/claude-flow-usage-log.md`
-- **Task Specifications**: Located in `@project-context/development-context/MVP2/implementation/tasks/`
-- **Archived State Files**: See `@project-context/development-context/MVP2/archive/` for legacy tracking files
+## Essential Commands
 
-## SPARC Commands
-
-### Core Commands
-- `npx claude-flow sparc modes` - List available modes
-- `npx claude-flow sparc run <mode> "<task>"` - Execute specific mode
-- `npx claude-flow sparc tdd "<feature>"` - Run complete TDD workflow
-- `npx claude-flow sparc info <mode>` - Get mode details
-
-### Build Commands
-- `npm run build` - Build project
-- `npm run test` - Run tests  
-- `npm run lint` - Linting
-- `npm run typecheck` - Type checking
-
-### MVP2 Specific Commands
-- `npx claude-flow@alpha hive-mind init` - Initialize intelligent swarm coordination
-- `npx claude-flow@alpha sparc tdd "feature"` - Run TDD workflow for MVP features
-- `npx claude-flow@alpha task_orchestrate --strategy parallel` - Coordinate parallel development
-
-## SPARC Workflow Phases
-
-1. **Specification** - Requirements analysis
-2. **Pseudocode** - Algorithm design
-3. **Architecture** - System design
-4. **Refinement** - TDD implementation
-5. **Completion** - Integration
-
-## Code Style & Best Practices
-
-- **Modular Design**: Files under 500 lines
-- **Environment Safety**: Never hardcode secrets
-- **Test-First**: Write tests before implementation
-- **Clean Architecture**: Separate concerns
-- **Documentation**: Keep updated
-
-## ⚡ CRITICAL: Backend-Mobile Type Sync
-
-**MANDATORY WORKFLOW**: After ANY backend schema changes, regenerate mobile types with `npm run types:local` (3 sec). Git pre-commit hooks **BLOCK stale commits** - cannot bypass. Prevents runtime function signature mismatches.
-
-### Daily Flow
-
-**After Backend Schema Changes**:
+### Development
 ```bash
-# Mobile repo - ONE command (3 seconds):
-npm run types:local         # Generate from backend's local Supabase
-# Git hook prevents commit if you forget ✅
+npm start                    # Start Expo dev server
+npm run android             # Run on Android device/emulator
+npm run ios                 # Run on iOS simulator (macOS only)
 ```
 
-**Before Any Commit**:
+### Testing
 ```bash
-npm run types:check-local   # Verify current (3 sec)
-npm run validate:local      # Full validation (30 sec) - types + TypeScript + tests
+npm test                    # Run Jest unit/integration tests
+npm run test:unit           # Unit tests only
+npm run test:integration    # Integration tests only
+npm run test:maestro        # Run all Maestro E2E tests
+npm run test:maestro:auth   # Auth workflow tests
+npm run test:maestro:offline # Offline workflow tests
+npm run type-check          # TypeScript type checking
 ```
 
-**Backend Commands** (from backend repo):
+### Type Synchronization (CRITICAL)
 ```bash
-npm run db:types:update     # After schema changes (3 sec)
-# Backend git hook also blocks stale commits ✅
+npm run types:local         # Generate types from local Supabase (3 sec)
+npm run types:check-local   # Verify types are current (3 sec)
+npm run validate:local      # Full validation: types + TypeScript + tests (30 sec)
 ```
 
-### Automated Safety Nets
+**MANDATORY**: After ANY backend schema changes, run `npm run types:local` before coding. Git pre-commit hooks **BLOCK commits** with stale types.
 
-1. **Git Hooks**: BLOCK commits with stale types (cannot forget)
-2. **TypeScript**: Shows errors immediately if types don't match reality
-3. **Pre-commit Validation**: Types + TypeScript + Tests must pass
-4. **Cross-Validation**: Backend `database.types.ts` ↔ Mobile `supabase.ts` should match
+### Build & Deploy
+```bash
+npm run lint                # ESLint
+npm run prebuild:check      # Pre-build validation script
+eas build --profile development   # Dev build via EAS
+eas build --profile production    # Production build
+```
 
-### Key Files
+### Dependencies
+```bash
+npm run validate:deps       # Validate dependency compatibility
+npm run deps                # Interactive dependency management CLI
+npm run deps:scan           # Scan for dependency issues
+```
 
-- **Mobile Types**: `src/types/supabase.ts` (generated, committed)
-- **Backend Reference**: `~/wildlife-watcher-backend/project-context/database.types.ts` (cross-validation)
-- **Both from**: Same local Supabase instance (localhost:54321)
+## Architecture Overview
 
-### Documentation
+### Directory Structure
+```
+src/
+├── services/          # Business logic & integrations
+│   ├── offline/      # OfflineService, SyncService, DatabaseService, ConflictResolution
+│   ├── supabase.ts   # Supabase client
+│   ├── auth.ts       # Authentication
+│   ├── database.ts   # SQLite operations
+│   └── ProjectService.ts, ProjectMemberService.ts, DfuService.ts
+├── redux/            # Redux Toolkit state
+│   ├── slices/      # auth, projects, offline, sync, deployments, devices, etc.
+│   ├── api/         # RTK Query endpoints (auth, deployments, projects, users)
+│   └── middleware/  # offlineSyncMiddleware
+├── types/
+│   └── supabase.ts  # Generated types (DO NOT EDIT - regenerate from backend)
+├── navigation/      # React Navigation setup (index.tsx, BottomTabs.tsx)
+├── screens/         # Screen components
+├── components/      # Reusable UI components
+├── features/        # Feature-specific modules (e.g., maps)
+├── hooks/           # Custom React hooks
+├── utils/           # Utility functions
+├── providers/       # React context providers
+└── App.tsx          # Root component
 
-- **Learning**: `@documentation/developer-docs/Backend-Mobile-Type-Synchronization-Guide.md` (comprehensive)
-- **Workflow**: `@project-context/learnings/local-dev-sync-workflow.md` (daily use)
-- **Comparison**: `@project-context/learnings/backend-mobile-type-sync-comparison.md` (systems)
-- **Backend**: `~/wildlife-watcher-backend/.../QUICK-REFERENCE-TYPE-AUTOMATION.md`
+tests/
+├── unit/            # Jest unit tests
+├── integration/     # Jest integration tests
+└── maestro/         # E2E test flows (.yaml)
+```
+
+### Key Architectural Patterns
+
+#### Offline-First Architecture
+**Pattern**: Local SQLite → Queue → Sync → Supabase
+
+- **Local-first**: All data operations hit SQLite first
+- **Background sync**: SyncService handles bi-directional Supabase sync
+- **Conflict resolution**: Last-write-wins with manual override capability
+- **Queue-based**: Offline operations queued and replayed when online
+
+**Key Services** (read when implementing):
+- `services/offline/OfflineService.ts` - Main coordinator for offline operations
+- `services/offline/DatabaseService.ts` - SQLite CRUD operations, schema management
+- `services/offline/SyncService.ts` - Sync queue, conflict detection, retry logic
+- `redux/middleware/offlineSyncMiddleware.ts` - Redux middleware intercepting network actions
+
+#### State Management (Redux Toolkit)
+- **Slices**: Domain-specific state in `redux/slices/` (auth, projects, devices, deployments, offline, sync)
+- **RTK Query**: API endpoints with automatic caching in `redux/api/`
+- **Middleware**: Custom offline sync middleware bridges online/offline worlds
+
+#### Authentication & Authorization
+- **Supabase Auth**: Email/password authentication
+- **Role-Based Access Control (RBAC)**: 4-tier system
+  - `ww_admin` - Global admin (Wildlife.ai staff)
+  - `project_admin` - Organisation-scoped admin
+  - `project_member` - Project-scoped member
+  - Anonymous users (limited access)
+- **Type Safety**: Generated Supabase types in `src/types/supabase.ts`
+- **See**: `@project-context/development-context/MVP2/specifications/user-roles-permissions.md` for complete RBAC details
+
+#### Testing Strategy
+1. **Unit Tests** (Jest): Services, utilities, Redux slices - co-located in `__tests__/` or `.test.ts` files
+2. **Integration Tests** (Jest): Component + service integration in `tests/integration/`
+3. **E2E Tests** (Maestro): Real user workflows in `tests/maestro/` (.yaml files)
+4. **TDD/BDD**: Write tests before implementation (Red-Green-Refactor)
+5. **See**: `@project-context/development-context/MVP2/implementation/guides/testing-standards.md` for comprehensive methodology
+
+## Type Synchronization Critical Path
+
+**The Problem**: Backend schema changes → mobile TypeScript types become stale → runtime errors
+
+**The Solution**: Automated type generation + git hooks
+
+**Architecture**:
+```
+Backend Repo (Supabase Local)
+  ↓ npx supabase gen types
+  ↓
+Backend: project-context/database.types.ts (committed)
+  ↓
+Mobile: npm run types:local (generates from same Supabase)
+  ↓
+Mobile: src/types/supabase.ts (committed)
+  ↓
+Git pre-commit hook validates types are current
+```
+
+**Daily Workflow**:
+1. Backend developer makes schema change
+2. Backend runs `npm run db:types:update`
+3. Mobile developer pulls backend changes
+4. Mobile runs `npm run types:local` (takes 3 seconds)
+5. Git hooks prevent commits if types are stale
+
+**Key Files**:
+- Mobile: `src/types/supabase.ts` (generated, committed)
+- Backend Reference: `~/wildlife-watcher-backend/project-context/database.types.ts` (for cross-validation)
+- Validation Script: `scripts/check-types-local.sh`
+- Both generated from: Same local Supabase instance (localhost:54321)
+
+**Documentation**:
+- Daily workflow: `@project-context/learnings/local-dev-sync-workflow.md`
+- Comprehensive guide: `@documentation/developer-docs/Backend-Mobile-Type-Synchronization-Guide.md`
+- Backend automation: `~/wildlife-watcher-backend/project-context/documentation/QUICK-REFERENCE-TYPE-AUTOMATION.md`
 
 **Bottom Line**: Run `npm run types:local` after backend changes. Git hook prevents you from forgetting. Takes 3 seconds. ✅
 
-## 🔴 CRITICAL: Quality Control Standards
+## Quality Control Standards
 
-### **MANDATORY DISCOVERY PHASE - NO EXCEPTIONS:**
-- **✅ ALWAYS read `/src/types/` directory FIRST before ANY test or code**
-- **✅ ALWAYS use `Read` tool to examine actual interfaces and types**
-- **✅ ALWAYS use `Grep` tool to verify method signatures in existing services**
-- **✅ ALWAYS check actual implementations vs assumptions**
+### Discovery Phase (MANDATORY BEFORE CODING)
+1. **Read type definitions** in `/src/types/` FIRST before ANY test or code
+2. **Use Read tool** to examine actual interfaces and implementations
+3. **Use Grep tool** to verify method signatures in existing services
+4. **Never assume** interface names, method signatures, or existing types - always verify actual code structure
 
-**❌ DISCOVERY PHASE VIOLATIONS - ZERO TOLERANCE:**
-- **❌ NEVER assume interface names or method signatures**
-- **❌ NEVER create types that already exist in codebase**
-- **❌ NEVER write tests without reading actual service implementations**
-- **❌ NEVER import types without verifying they exist and are correct**
+### Test Integrity (ZERO TOLERANCE)
+- **Never skip, delete, or modify tests** without explicit user approval
+- **Never use** `.skip()`, `.todo()`, or comment out tests as shortcuts
+- **Never change test expectations** to make failing tests pass
+- **Never reduce test coverage** or scope without justification
+- **Follow TDD**: Write tests BEFORE implementation (Red-Green-Refactor cycle)
 
-### **TEST INTEGRITY - ZERO TOLERANCE:**
-- **❌ NEVER skip, delete, or modify tests without explicit user approval**
-- **❌ NEVER use `.skip()`, `.todo()`, or comment out tests as shortcuts**
-- **❌ NEVER change test expectations to make failing tests pass**
-- **❌ NEVER reduce test coverage or scope without justification**
-
-### **TDD/BDD METHODOLOGY - MANDATORY:**
-- **✅ ALWAYS write tests BEFORE implementation** (true TDD)
-- **✅ ALWAYS follow Red-Green-Refactor cycle**
-- **✅ ALWAYS ensure tests validate actual business requirements**
-- **✅ ALWAYS implement code to satisfy tests, not modify tests to satisfy code**
-
-### **TYPE SAFETY & CONTRACT VALIDATION:**
-- **✅ ALWAYS verify method signatures before using external services**
-- **✅ ALWAYS check actual interface contracts vs assumed interfaces**
-- **✅ ALWAYS validate database service methods exist before calling them**
-- **✅ ALWAYS use TypeScript strict mode and resolve ALL type errors**
-
-### **QUALITY GATES - MUST PASS:**
+### Quality Gates (MUST PASS)
 1. **Test Gate**: 100% of tests must pass without modifications
-2. **Type Gate**: Zero TypeScript errors allowed
+2. **Type Gate**: Zero TypeScript errors (`npm run type-check`)
 3. **Integration Gate**: All service calls must use correct method signatures
 4. **TDD Gate**: Implementation must satisfy original test requirements
-5. **Evidence Gate**: All implementation decisions backed by Context7 research (NEW)
-6. **UUID Consistency Gate**: All UUID handling must maintain string types throughout (CRITICAL for Task 11.8)
-7. **Backend Sync Gate**: After ANY backend schema changes, ALWAYS regenerate types with `npm run types:local` and validate with `npm run types:check-local` before writing mobile code. Cross-validate against backend's `database.types.ts` if needed (CRITICAL - see `@project-context/learnings/local-dev-sync-workflow.md`)
+5. **Evidence Gate**: All implementation decisions backed by Context7 research FIRST
+6. **UUID Consistency Gate**: All UUID handling must maintain string types throughout
+7. **Backend Sync Gate**: Types regenerated after ANY backend schema changes
 
+## MCP Tools & When to Use Them
 
-## 📚 Reference Documentation
+### Context7 - Library Documentation (MANDATORY FIRST STEP)
+**When to use**: ALWAYS before ANY implementation - verified 10x efficiency improvement
+
+- `mcp__context7__resolve-library-id` - Find library ID from name
+- `mcp__context7__get-library-docs` - Fetch comprehensive docs with examples
+
+**Evidence-Based Pattern**:
+```javascript
+// MANDATORY: Research BEFORE implementation
+// Backend Success: 2.5 hours → 15 minutes debugging via Context7
+mcp__context7__resolve-library-id({ libraryName: "react-native-sqlite" })
+mcp__context7__get-library-docs({
+  context7CompatibleLibraryID: "/resolved/library",
+  topic: "uuid-handling",
+  tokens: 15000
+})
+```
+
+**Example**: Getting React Native, Expo, SQLite documentation - PROVEN to eliminate false solution paths
+
+### Supabase MCP - Database & Backend
+**When to use**: Managing Supabase database, migrations, and edge functions
+
+- `mcp__supabase__list_tables`, `mcp__supabase__execute_sql` - Database operations
+- `mcp__supabase__list_migrations`, `mcp__supabase__apply_migration` - Schema management
+- `mcp__supabase__generate_typescript_types` - Generate types from schema
+- `mcp__supabase__search_docs` - Search Supabase documentation
+
+### Serena MCP - Enhanced Development
+**When to use**: Complex code analysis and intelligent editing
+
+- **Symbolic Code Analysis** - Understand structure without reading entire files
+- **Intelligent Editing** - Precise modifications using symbols and regex
+- **Cross-Project Memory** - Persistent knowledge across sessions
+- **Advanced Search** - Pattern-based code discovery
+
+### IDE Integration
+**When to use**: Need TypeScript/linting diagnostics or run code in notebooks
+
+- `mcp__ide__getDiagnostics` - Get VS Code language diagnostics
+- `mcp__ide__executeCode` - Execute Python in Jupyter notebooks
+
+### Playwright Browser Automation
+**When to use**: Testing web interfaces or browser-based interactions
+
+- `mcp__playwright__browser_*` - Full browser control (navigate, click, snapshot, etc.)
+
+### Tool Coordination Strategy
+1. **Context7**: MANDATORY FIRST - Library documentation and vendor-specific patterns
+2. **Claude Code**: PRIMARY - File operations, coding, testing, git, npm
+3. **Specialized Agents**: Domain expertise (mobile-dev, quality-assurance-engineer, supabase-schema-architect)
+4. **MCP Tools**: Coordination, memory, metrics, GitHub integration
+
+**PROVEN WORKFLOW**: Context7 Research → Claude Code Implementation → Specialized Agents → MCP Coordination
+
+## AI Agentic Development Framework (AADF)
+
+### Living Framework Documentation
+**CRITICAL**: This project serves as the primary development laboratory for the **AI Agentic Development Framework (AADF)** - a comprehensive methodology for AI-orchestrated software development.
+
+**Framework Document Locations**:
+- **Core Framework**: `@project-context/learnings/ai-agentic-development-framework.md`
+- **Philosophical Foundations**: `@project-context/learnings/philosophical-foundations-aadf.md`
+
+### Framework Maintenance Directive (MANDATORY)
+Update the AADF document with ALL discoveries, patterns, optimizations, and learnings encountered during development:
+
+**Update Triggers**:
+- New successful coordination patterns discovered
+- Quality gate refinements and improvements
+- Tool integration insights and optimizations
+- Performance breakthrough discoveries
+- Template scaffolding pattern improvements
+- Cross-project learning integration opportunities
+
+**Update Categories**:
+- **Behavioral Patterns**: SuperClaude optimization discoveries
+- **Orchestration Insights**: Claude Flow workflow improvements
+- **Tool Coordination**: MCP integration pattern refinements
+- **Quality Standards**: Zero-tolerance gate enhancements
+- **Performance Metrics**: Efficiency measurement improvements
+- **Template Evolution**: Scaffolding pattern discoveries
+- **Philosophical Foundations**: Epistemological and ontological insights
+- **Applied Philosophy**: Practical philosophical applications in development
+
+### Framework Evolution Responsibility
+Every developer/session MUST contribute to framework evolution by:
+1. **Documenting New Patterns**: Record successful workflows immediately
+2. **Recording Optimization Insights**: Capture performance improvements
+3. **Updating Quality Standards**: Refine validation gates based on learnings
+4. **Enhancing Tool Integration**: Document MCP coordination discoveries
+5. **Template Pattern Discovery**: Identify reusable scaffolding patterns
+6. **Philosophical Integration**: Document epistemological and ontological insights
+7. **Applied Philosophy**: Record practical philosophical applications in development
+
+**Goal**: Create a comprehensive, battle-tested framework that can be packaged into a `create-aadf-app` equivalent for future projects.
+
+## Cross-Project Integration Insights (Backend Learnings)
+
+### Reality-First Testing Methodology (CRITICAL LEARNING)
+**DISCOVERED**: Backend spent 2+ days building elaborate test infrastructure instead of testing real user behavior
+**IMPACT**: False security alerts and massive time waste vs feature delivery
+
+**MANDATORY TESTING PRIORITY ORDER**:
+1. **User Journey Tests FIRST** (Real API + Real Auth + Real Database)
+2. **Integration Tests SECOND** (Feature-Level Validation)
+3. **Unit Tests LAST** (Only Complex Business Logic)
+
+**Mobile App Application**:
+- Task 11.3 OfflineService.ts: Test with **real Supabase sync operations**
+- Avoid elaborate SQLite mocking - use real database operations
+- **Red Flag**: If test setup time > implementation time = WRONG approach
+
+### Database Schema Consistency (UUID Critical)
+**Backend Confirmed**: Supabase UUIDs must remain string types throughout entire system
+
+**Mobile Requirements**:
+- SQLite must handle UUID strings consistently (Task 11.8)
+- No number conversion anywhere in the data flow
+- Database sync operations must maintain UUID string integrity
+- **Breaking Change**: Users must re-login after Task 11.8 completion
+
+### Evidence-Based Development Results (Context7 Success)
+**Backend Measured Results**:
+- **Debugging Efficiency**: 10x improvement (2.5 hours → 15 minutes)
+- **False Solution Elimination**: 100% (avoided 4 major debugging paths)
+- **Documentation Access**: 38,009+ vendor-specific code snippets vs 0 general sources
+- **Solution Quality**: Official patterns vs custom workarounds
+
+### Cross-Project Coordination Status
+- **Backend**: 98% deployment ready (Phase 2 AADF complete)
+- **Mobile**: Task 11.8 UUID alignment required before proceeding
+- **Integration**: Backend ready for mobile app development continuation
+
+## MVP2 Development Context
+
+### Current Task Status
+- **Live Dashboard**: http://localhost:3333 (run `./start.sh` in `@project-context/development-context/project-progress-tracker/`)
+- **Master Plan**: `@project-context/development-context/MVP2/implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md`
+- **Metrics Tracker**: `@project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
+- **Task Specifications**: `@project-context/development-context/MVP2/implementation/tasks/task_*.txt`
+
+### Primary Documentation
+- **Implementation Spec**: `@project-context/development-context/MVP2/implementation-spec-v1.4.md` (17.5k tokens - read when needed, in `.claudeignore`)
+- **User Roles**: `@project-context/development-context/MVP2/specifications/user-roles-permissions.md` (4-tier RBAC)
+- **Testing Standards**: `@project-context/development-context/MVP2/implementation/guides/testing-standards.md`
+- **API Integration**: `@project-context/development-context/MVP2/implementation/guides/api-integration-guide.md`
+- **Component Patterns**: `@project-context/development-context/MVP2/implementation/guides/component-patterns.md`
+
+### Backend Integration
+- **Backend Repo**: `~/dev/wildlifeai/wildlife-watcher-backend` (separate Git repository)
+- **Backend Status**: `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md`
+- **Cross-Project Tasks**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/`
+- **Backend Type Automation**: Backend has automated type sync with git pre-commit hooks. See `~/wildlife-watcher-backend/project-context/documentation/QUICK-REFERENCE-TYPE-AUTOMATION.md`
+
+## Development Workflow
+
+### Before Starting Any Task
+1. **Check Current Status**: View Project Progress Tracker dashboard (http://localhost:3333)
+2. **Review Strategy**: Consult `MVP2-MASTER-EXECUTION-PLAN.md` for current methodology
+3. **Get Requirements**: Read `implementation-spec-v1.4.md` and specific task file
+4. **Verify Types**: Run `npm run types:check-local` if backend schema changed
+5. **Start Tracking**: Note start time in `MVP2-METRICS-TRACKER.md`
+
+### During Development
+- **Research FIRST**: Use Context7 for library documentation (proven 10x efficiency)
+- **Write tests BEFORE code**: Follow TDD (Red-Green-Refactor)
+- **Track time**: Document blockers and actual hours in metrics tracker
+- **Follow current execution strategy**: Incremental/parallel/hybrid per master plan
+- **Adhere to quality gates**: Defined in execution plan
+
+### After Task Completion
+- **Update metrics tracker**: Record actual time spent vs estimates
+- **Monitor progress**: Check dashboard for status
+- **Commit regularly**: At sensible points (subtask completion) with descriptive messages
+- **Check cross-project status**: If applicable
+
+### Important Development Instructions
+- Reference task details in `@project-context/development-context/MVP2/implementation/tasks/` before implementation
+- Check in files to git regularly at sensible points (after each subtask completion)
+- Update progress documentation after completing each task/feature/subtask
+- Preserve implementation context for session recovery
+
+## Documents to Keep Updated
+
+**ALWAYS UPDATE** these documents as you work:
+
+1. **Metrics Tracker**: `@project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
+   - Record actual vs estimated hours for every task
+   - Track start/end times for accuracy
+   - Update completion status and variance analysis
+   - Document blockers and solutions
+
+2. **Learning Log**: `@project-context/learnings/claude-flow-usage-log.md`
+   - Document patterns discovered
+   - Record problem solutions
+   - Capture best practices
+   - Track development progress and velocity
+
+3. **Integration Progress**: When working on backend
+   - Update `supabase-integration-progress.md`
+   - Document API changes
+   - Record migration status
+
+4. **Cross-Project Database Tasks**: When database changes are needed
+   - Create/update task files in `~/wildlife-watcher-backend/project-context/MVP2-Tasks/`
+   - Reference backend project status at `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md`
+   - Follow backend development patterns from `~/wildlife-watcher-backend/CLAUDE.md`
+
+## Task Alignment Protocol
+
+**Before starting ANY MVP2 task or subtask**:
+1. **Read Implementation Spec**: `@project-context/development-context/MVP2/implementation-spec-v1.4.md`
+2. **Read Task File**: Corresponding file in `@project-context/development-context/MVP2/implementation/tasks/`
+3. **Check Master Plan**: `@project-context/development-context/MVP2/implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md`
+4. **Verify Alignment**: Cross-reference with:
+   - `specifications/user-roles-permissions.md`
+   - `specifications/admin-portal-spec.md`
+5. **Flag Inconsistencies**: Report any discrepancies to user for clarification
+
+This ensures the task/subtask aligns with latest specifications and architecture decisions.
+
+## Reference Documentation
 
 ### Testing & Quality Control
 See `@project-context/development-context/MVP2/implementation/guides/testing-standards.md` for:
@@ -203,35 +473,27 @@ See `@project-context/command-examples.md` for:
 - MCP tool categories
 - Performance benefits
 
-## Tool Selection Hierarchy (Evidence-Based)
+## Environment Configuration
 
-### 1. Context7 MCP - MANDATORY FIRST (Research Phase)
-**ALWAYS use BEFORE implementation** - Proven 10x efficiency improvement
-- Documentation research and vendor-specific patterns
-- Eliminates false solution paths and assumption-based debugging
-- **Evidence**: Backend achieved 15-minute solutions vs 2.5-hour debugging
+**Key Files**:
+- `.env.local` - Local environment variables (gitignored)
+- `.env.example` - Template for required variables
+- `app.config.js` - Expo configuration (dynamic based on NODE_ENV)
 
-### 2. Claude Code - PRIMARY EXECUTION
-- File operations (Read, Write, Edit, MultiEdit, Glob, Grep)
-- Code generation and programming
-- Bash commands and system operations
-- Implementation work and testing
-- TodoWrite and task management
-- Git operations and package management
+**Required Environment Variables**:
+- `EXPO_PUBLIC_SUPABASE_URL` - Supabase project URL
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
+- `GOOGLE_MAPS_API_KEY_ANDROID` - Google Maps for Android
+- `GOOGLE_MAPS_API_KEY_IOS` - Google Maps for iOS
 
-### 3. Specialized Task Agents - DOMAIN EXPERTISE
-- `mobile-dev` - React Native/Expo development
-- `supabase-schema-architect` - Database schema management
-- `quality-assurance-engineer` - Testing strategy
-- **Use when**: Domain-specific expertise required
+## Code Style & Best Practices
 
-### 4. MCP Tools - COORDINATION ONLY
-- Planning and orchestration
-- Memory management and persistence
-- Performance tracking and metrics
-- GitHub integration and workflows
-
-**PROVEN WORKFLOW**: Context7 Research → Claude Code Implementation → Specialized Agents → MCP Coordination
+- **TypeScript**: Strict mode, prefer types over interfaces (per `.cursorrules`)
+- **Modular Design**: Files under 500 lines
+- **Environment Safety**: Never hardcode secrets
+- **Clean Architecture**: Separate concerns
+- **Test-First**: Write tests before implementation
+- **Documentation**: Update as you code
 
 ## Quick Setup
 
@@ -245,302 +507,9 @@ source $HOME/.local/bin/env
 uvx --from git+https://github.com/oraios/serena serena start-mcp-server
 ```
 
-## MCP Tools Available
-
-### Context7 - Library Documentation (MANDATORY FIRST STEP)
-**When to use**: ALWAYS before ANY implementation - verified 10x efficiency improvement
-- `mcp__context7__resolve-library-id` - Find library ID from name
-- `mcp__context7__get-library-docs` - Fetch comprehensive docs with examples
-
-**Evidence-Based Pattern**:
-```javascript
-// MANDATORY: Research BEFORE implementation
-// Backend Success: 2.5 hours → 15 minutes debugging via Context7
-mcp__context7__resolve-library-id({ libraryName: "react-native-sqlite" })
-mcp__context7__get-library-docs({
-  context7CompatibleLibraryID: "/resolved/library",
-  topic: "uuid-handling",
-  tokens: 15000
-})
-```
-
-**Example**: Getting React Native, Expo, or SQLite documentation - PROVEN to eliminate false solution paths
-
-### IDE Integration
-**When to use**: Need TypeScript/linting diagnostics or run code in notebooks
-- `mcp__ide__getDiagnostics` - Get VS Code language diagnostics
-- `mcp__ide__executeCode` - Execute Python in Jupyter notebooks
-
-### Playwright Browser Automation
-**When to use**: Testing web interfaces or browser-based interactions
-- `mcp__playwright__browser_*` - Full browser control (navigate, click, snapshot, etc.)
-- Useful for E2E testing of web components or documentation sites
-
-### Supabase MCP - Database & Backend
-**When to use**: Managing Supabase database, migrations, and edge functions
-- `mcp__supabase__list_tables`, `mcp__supabase__execute_sql` - Database operations
-- `mcp__supabase__list_migrations`, `mcp__supabase__apply_migration` - Schema management
-- `mcp__supabase__list_edge_functions`, `mcp__supabase__deploy_edge_function` - Serverless functions
-- `mcp__supabase__generate_typescript_types` - Generate types from schema
-- `mcp__supabase__search_docs` - Search Supabase documentation
-
-### Serena MCP - Enhanced Development
-**When to use**: Complex code analysis and intelligent editing
-- **Symbolic Code Analysis** - Understand structure without reading entire files
-- **Intelligent Editing** - Precise modifications using symbols and regex
-- **Cross-Project Memory** - Persistent knowledge across sessions
-- **Advanced Search** - Pattern-based code discovery
-- **Enhanced File Operations** - Semantic understanding
-
-### Tool Coordination Strategy
-- **Claude Code**: Primary for file ops, bash, git, npm, testing
-- **Context7**: Library documentation and examples
-- **IDE MCP**: TypeScript validation and diagnostics
-- **Playwright**: Browser automation and web testing
-- **Serena**: Advanced code analysis and memory
-- **Combined**: Optimal workflow for complex implementations
-
-## Project Context & Documentation
-
-### Development Context
-The `@project-context/development-context/` contains critical project specifications:
-
-**MVP2 Documentation** (`/MVP2/`):
-- **Primary Specification**: `implementation-spec-v1.4.md` - **AUTHORITATIVE SOURCE** for all MVP2 requirements, architecture, and cross-project coordination (17.5k tokens - read when needed)
-- **User Roles Specification**: `specifications/user-roles-permissions.md` - 4-tier RBAC system definitions
-- **Task Breakdown**: `implementation/guides/task-restructuring-plan.md` - 23-task implementation structure
-- **Current Execution Strategy**: `MVP2-MASTER-EXECUTION-PLAN.md` - Live development methodology (check for latest approach)
-- **Testing Requirements**: `implementation/guides/testing-requirements.md` - Test coverage specifications
-- **API Integration**: `implementation/guides/api-integration-guide.md` - Supabase integration patterns
-- **Component Patterns**: `implementation/guides/component-patterns.md` - UI/UX standards
-- **Task Specifications**: `implementation/tasks/` - Individual task details (task_001.txt - task_023.txt)
-
-**Note**: Implementation spec is in `.claudeignore` to save context. Read `@project-context/development-context/MVP2/implementation-spec-v1.4.md` when starting new tasks or need architecture details.
-
-**Project Progress Tracker Dashboard** (`/project-progress-tracker/`):
-- **Dashboard Location**: `@project-context/development-context/project-progress-tracker/`
-- **Purpose**: Production-ready web dashboard for MVP2 development tracking
-- **Access**: http://localhost:3333 (run `./start.sh` from dashboard directory)
-- **Features**: Real-time task progress, development streams monitoring, cross-project coordination
-- **Context Prompt**: `DASHBOARD-CONTEXT-PROMPT.md` - Complete dashboard documentation
-
-**Supabase Backend** (`/supabase-backend/`):
-- **Source Repository**: `~/dev/wildlifeai/wildlife-watcher-backend` (**separate Git repository**)
-- **Integration Architecture**: Read `@project-context/development-context/MVP2/implementation-spec-v1.4.md` for backend coordination requirements
-- **Live Backend Status**: `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md`
-- **Cross-Project Tasks**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/` - Task communication
-- **Local Integration Docs**: `@project-context/development-context/supabase-backend/` - Reference documentation
-- **Generated Types**:
-  - Mobile: `src/types/supabase.ts` - Generated from backend's local Supabase
-  - Backend Reference: `~/wildlife-watcher-backend/project-context/database.types.ts` - Authoritative type reference for cross-validation
-- **Backend Type Automation**: Backend has automated type sync with git pre-commit hooks that block stale types. See `~/wildlife-watcher-backend/project-context/documentation/QUICK-REFERENCE-TYPE-AUTOMATION.md` for backend workflow. Backend commands: `npm run db:types:check`, `npm run db:types:update`
-
-### Documents to Keep Updated
-
-**ALWAYS UPDATE** these documents as you work:
-1. **Metrics Tracker**: `@project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
-   - Record actual vs estimated hours for every task
-   - Track start/end times for accuracy
-   - Update completion status and variance analysis
-   - Document blockers and solutions
-
-2. **Learning Log**: `@project-context/learnings/claude-flow-usage-log.md`
-   - Document patterns discovered
-   - Record problem solutions
-   - Capture best practices
-
-4. **Integration Progress**: When working on backend
-   - Update `supabase-integration-progress.md`
-   - Document API changes
-   - Record migration status
-
-5. **Cross-Project Database Tasks**: When database changes are needed
-   - Create/update task files in `~/wildlife-watcher-backend/project-context/MVP2-Tasks/`
-   - Reference backend project status at `~/wildlife-watcher-backend/project-context/PROJECT-STATUS.md`
-   - Follow backend development patterns from `~/wildlife-watcher-backend/CLAUDE.md`
-
-6. **📊 METRICS TRACKING (CRITICAL)**: `@project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md`
-   - **MANDATORY**: Record actual vs estimated hours for EVERY task
-   - **Track Start/End Times**: Capture precise durations for accuracy
-   - **Categorize Work Type**: UI, Backend, Testing, Debugging, Documentation
-   - **Update Daily**: Activity logs and velocity metrics
-   - **Variance Analysis**: Document why tasks took more/less time than estimated
-   - **Technology Time**: Track hours spent on each technology/framework
-   - **AI Agent Efficiency**: Record time saved using agents/MCP tools
-   - **Blockers & Solutions**: Document what caused delays and how resolved
-   - This data is CRITICAL for understanding real development velocity and improving future estimates
-
-### MVP2 Development Information Sources
-
-#### Current Status & Progress
-- **Live Dashboard**: Project Progress Tracker at http://localhost:3333
-- **Execution Strategy**: `@project-context/development-context/MVP2/implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md` (**check for current methodology**)
-- **Progress Tracking**: `@project-context/development-context/MVP2/implementation/execution/MVP2-METRICS-TRACKER.md`
-- **Task Details**: Individual specs in `@project-context/development-context/MVP2/implementation/tasks/`
-
-#### Information Hierarchy
-| Document | Authority Level | Purpose |
-|----------|----------------|----------|
-| `implementation-spec-v1.4.md` | **PRIMARY SOURCE** | All requirements & architecture (read when needed) |
-| `MVP2-MASTER-EXECUTION-PLAN.md` | **CURRENT STRATEGY** | Live execution methodology |
-| Project Progress Tracker | **REAL-TIME STATUS** | Live progress monitoring |
-| `MVP2-METRICS-TRACKER.md` |**TIME TRACKING** | Velocity & variance analysis |
-
-### Task Information Sources
-
-| Document | Purpose | When to Use |
-|----------|---------|-------------|
-| `implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md` | **Primary execution strategy** | Before starting any work |
-| `implementation/execution/MVP2-METRICS-TRACKER.md` | **Time tracking & velocity** | Start/end of tasks |
-| `implementation/tasks/` | **Individual task specs** | During implementation |
-| Project Progress Tracker | **Live status dashboard** | Continuous monitoring |
-| Archived state files | Legacy context (see MVP2/archive/) | Historical reference only |
-
-### Ready to Work Resources
-
-✅ **Requirements**: Read `@project-context/development-context/MVP2/implementation-spec-v1.4.md` for complete architecture
-✅ **Current Strategy**: `implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md` shows live methodology
-✅ **Live Monitoring**: Project Progress Tracker provides real-time status
-✅ **Task Specifications**: All 23 tasks documented in `implementation/tasks/` directory
-✅ **Quality Standards**: Defined in current execution strategy document
-
-### Current Actions (Always Check Live Sources)
-
-- **What's Next**: Check Project Progress Tracker dashboard for current priorities
-- **Execution Strategy**: Consult `implementation/execution/MVP2-MASTER-EXECUTION-PLAN.md` for latest methodology
-- **Task Details**: Review specific task files in `implementation/tasks/`
-- **Track Progress**: Update `implementation/execution/MVP2-METRICS-TRACKER.md` with time spent
-
-### Cross-Project Coordination
-
-| Information Source | Purpose | Authority Level |
-|-------------------|---------|----------------|
-| `implementation-spec-v1.4.md` | **Backend integration requirements** | **PRIMARY** (read when needed) |
-| Project Progress Tracker | **Cross-project status dashboard** | 📊 Real-time |
-| `~/wildlife-watcher-backend/project-context/` | **Backend project status** | ✅ Live status |
-
-### Development Protocol
-
-**Before Any Task**:
-1. **Check Current Status**: View Project Progress Tracker dashboard
-2. **Review Strategy**: Consult `MVP2-MASTER-EXECUTION-PLAN.md` for current methodology
-3. **Get Requirements**: Read `@project-context/development-context/MVP2/implementation-spec-v1.4.md` and specific task file
-4. **Start Tracking**: Note start time in `MVP2-METRICS-TRACKER.md`
-
-**During Development**:
-- Follow current execution strategy (incremental/parallel/hybrid)
-- Track time and document any blockers
-- Adhere to quality gates defined in execution plan
-
-**After Task Completion**:
-- Update metrics tracker with actual time spent
-- Monitor progress via dashboard
-- Commit with descriptive messages
-- Check cross-project coordination status if applicable
-
-## Important Instructions
-
-- Reference task details in `@project-context/development-context/MVP2/implementation/tasks/` before implementation
-- Check in files to git regularly at sensible points (after each subtask completion)
-- Update progress documentation after completing each task/feature/subtask
-- Preserve implementation context for session recovery
-
 ## Support
 
-- Documentation: https://github.com/ruvnet/claude-flow
-- Issues: https://github.com/ruvnet/claude-flow/issues
-
-## AI Agentic Development Framework (AADF)
-
-### **Living Framework Documentation**
-**CRITICAL:** This project serves as the primary development laboratory for the **AI Agentic Development Framework (AADF)** - a comprehensive methodology for AI-orchestrated software development.
-
-**Framework Document Locations:** 
-- **Core Framework:** `@project-context/learnings/ai-agentic-development-framework.md`
-- **Philosophical Foundations:** `@project-context/learnings/philosophical-foundations-aadf.md`
-
-### **Framework Maintenance Directive**
-**MANDATORY:** Update the AADF document with ALL discoveries, patterns, optimizations, and learnings encountered during development:
-
-**Update Triggers:**
-- New successful coordination patterns discovered
-- Quality gate refinements and improvements  
-- Tool integration insights and optimizations
-- Performance breakthrough discoveries
-- Template scaffolding pattern improvements
-- Cross-project learning integration opportunities
-
-**Update Categories:**
-- **Behavioral Patterns:** SuperClaude optimization discoveries
-- **Orchestration Insights:** Claude Flow workflow improvements
-- **Tool Coordination:** MCP integration pattern refinements
-- **Quality Standards:** Zero-tolerance gate enhancements
-- **Performance Metrics:** Efficiency measurement improvements
-- **Template Evolution:** Scaffolding pattern discoveries
-- **Philosophical Foundations:** Epistemological and ontological insights
-- **Applied Philosophy:** Practical philosophical applications in development
-
-### **Framework Evolution Responsibility**
-Every developer/session MUST contribute to framework evolution by:
-1. **Documenting New Patterns:** Record successful workflows immediately
-2. **Recording Optimization Insights:** Capture performance improvements
-3. **Updating Quality Standards:** Refine validation gates based on learnings
-4. **Enhancing Tool Integration:** Document MCP coordination discoveries
-5. **Template Pattern Discovery:** Identify reusable scaffolding patterns
-6. **Philosophical Integration:** Document epistemological and ontological insights
-7. **Applied Philosophy:** Record practical philosophical applications in development
-
-**Goal:** Create a comprehensive, battle-tested framework that can be packaged into a `create-aadf-app` equivalent for future projects.
-
-## Cross-Project Integration Insights (Backend Learnings)
-
-### **Reality-First Testing Methodology (CRITICAL LEARNING)**
-**DISCOVERED**: Backend spent 2+ days building elaborate test infrastructure instead of testing real user behavior
-**IMPACT**: False security alerts and massive time waste vs feature delivery
-
-### **MANDATORY TESTING PRIORITY ORDER:**
-1. **User Journey Tests FIRST** (Real API + Real Auth + Real Database)
-2. **Integration Tests SECOND** (Feature-Level Validation)
-3. **Unit Tests LAST** (Only Complex Business Logic)
-
-### **Mobile App Application:**
-- Task 11.3 OfflineService.ts: Test with **real Supabase sync operations**
-- Avoid elaborate SQLite mocking - use real database operations
-- **Red Flag**: If test setup time > implementation time = WRONG approach
-
-### **Database Schema Consistency (UUID Critical)**
-**Backend Confirmed**: Supabase UUIDs must remain string types throughout entire system
-**Mobile Requirements**:
-- SQLite must handle UUID strings consistently (Task 11.8)
-- No number conversion anywhere in the data flow
-- Database sync operations must maintain UUID string integrity
-- **Breaking Change**: Users must re-login after Task 11.8 completion
-
-### **Evidence-Based Development Results (Context7 Success)**
-**Backend Measured Results**:
-- **Debugging Efficiency**: 10x improvement (2.5 hours → 15 minutes)
-- **False Solution Elimination**: 100% (avoided 4 major debugging paths)
-- **Documentation Access**: 38,009+ vendor-specific code snippets vs 0 general sources
-- **Solution Quality**: Official patterns vs custom workarounds
-
-### **Cross-Project Coordination Status**
-**Backend**: 98% deployment ready (Phase 2 AADF complete)
-**Mobile**: Task 11.8 UUID alignment required before proceeding
-**Integration**: Backend ready for mobile app development continuation
-
----
-
-Remember: **Evidence-Based Research → Specialized Implementation → Quality Validation!**
-
-## Task Alignment Protocol
-
-**Before starting ANY MVP2 task or subtask:**
-1. **Read Implementation Spec**: `@project-context/development-context/MVP2/implementation-spec-v1.4.md`
-2. **Read Task File**: Corresponding file in `@project-context/development-context/MVP2/implementation/tasks/`
-3. **Check Master Plan**: `@project-context/MVP2-Tasks/MVP2-MASTER-EXECUTION-PLAN.md`
-4. **Verify Alignment**: Cross-reference with:
-   - `specifications/user-roles-permissions.md`
-   - `specifications/admin-portal-spec.md`
-5. **Flag Inconsistencies**: Report any discrepancies to user for clarification
-
-This ensures the task/subtask aligns with latest specifications and architecture decisions.
+- **Documentation**: https://github.com/ruvnet/claude-flow
+- **Issues**: https://github.com/ruvnet/claude-flow/issues
+- **Project Repository**: https://github.com/wildlifeai/wildlife-watcher-mobile-app
+- **Project Overview**: https://www.youtube.com/watch?v=Ima3n2EYfeE
