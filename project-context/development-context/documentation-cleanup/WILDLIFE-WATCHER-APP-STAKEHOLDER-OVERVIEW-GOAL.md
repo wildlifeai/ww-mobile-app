@@ -109,7 +109,7 @@ The app has five distinct user types, each with specific capabilities:
 - Start and end camera deployments within the project
 - Test and prepare cameras before field deployments via Bluetooth
 - Update camera firmware
-- Create, read, and update their own deployments
+- Create, read, and end their own deployments
 - View and contribute to their assigned projects.
 - View other projects in their organization or publicly, based on those projects' visibility settings (contribution requires project membership).
 - Sync fieldwork data when online
@@ -130,8 +130,8 @@ The app has five distinct user types, each with specific capabilities:
 - Add/remove team members
 - Assign Project Admin or Project Member roles
 - Select which AI models the deployments use
-- Manage the project's visibility settings
-- CRUD operations for deployments
+- Manage the project's visibility settings (Future Enhancement)
+- Create, read, and end deployments within their projects.
 - Archive the project
 
 **Real-World Example**:
@@ -581,8 +581,8 @@ Organization: Serengeti Conservation Trust
 - All deployment details from wizard
 - GPS coordinates with map view
 - Sampling design settings
-- Camera device information with battery status and sd card information if deployment active and connected to lorawan 
-- Edit button (before ending)
+- Camera device information with battery status and sd card information if deployment active and connected to lorawan
+- "End Deployment" button for active deployments.
 
 **Intended State**: Same as planned
 
