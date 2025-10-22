@@ -109,7 +109,7 @@ The app has five distinct user types, each with specific capabilities:
 - Start and end camera deployments within the project
 - Test and prepare cameras before field deployments via Bluetooth
 - Update camera firmware
-- Create, read, and end their own deployments
+- Create, read, and end any deployment within their assigned projects.
 - View and contribute to their assigned projects.
 - View other projects in their organization or publicly, based on those projects' visibility settings (contribution requires project membership).
 - Sync fieldwork data when online
@@ -131,7 +131,7 @@ The app has five distinct user types, each with specific capabilities:
 - Assign Project Admin or Project Member roles
 - Select which AI models the deployments use
 - Manage the project's visibility settings (Future Enhancement)
-- Create, read, and end deployments within their projects.
+- Create, read, and end any deployment within their projects.
 - Archive the project
 
 **Real-World Example**:
