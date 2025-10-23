@@ -132,7 +132,7 @@ The app has five distinct user types, each with specific capabilities:
 - Select which AI models the deployments use
 - Manage the project's visibility settings (Future Enhancement)
 - Create, read, and end any deployment within their projects.
-- Archive the project
+- Archive the project (Future Enhancement)
 
 **Real-World Example**:
 *Dr. Chen leads a multi-year kiwi bird population study with five field assistants. He creates the project in the app, invites the assistans as team members, sets deployments and project visibilty as "Visible for project and organization members", and selects the kiwi bird detection AI model. He can see all deployments across sites and monitor team progress in real-time.*
@@ -427,10 +427,11 @@ Organization: Serengeti Conservation Trust
 #### 2.5 Archive/Delete Projects
 **Description**: Remove completed or mistaken projects
 
-**Current State**: ⏳ PENDING
+**Current State**: ⏳ PENDING (Future Enhancement)
 - Only projects with no deployments can be deleted
 - Projects with deployments can be archived if the deployments are not active.
 - Only Project Admin can delete/archive
+- **Beta Version Note**: Archiving will not be available in the beta. All projects a user is a member of will be visible in their projects list.
 
 **Intended State**: Same as planned
 
