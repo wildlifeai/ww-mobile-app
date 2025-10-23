@@ -673,16 +673,15 @@ Organization: Serengeti Conservation Trust
 #### 6.1 Select Project AI Model
 **Description**: Choose which AI model the project uses (Project Admin)
 
-**Current State**: ⏳ PENDING (Future Enhancement)
-- **Beta Version Note**: A default "predator model" will be available on all camera devices. There will be no ability to change or manage models in the beta.
-- **Future Enhancement**:
-    - View available models in organization.
-    - See model details (name, version, detection types).
-    - Assign a specific model to a project.
+**Current State**: ⏳ PENDING
+- View available models in organization.
+- See model details (name, version, detection types).
+- Assign a specific model to a project.
+- One model per project.
 
-**Intended State**: Future implementation will allow model selection.
+**Intended State**: Same as planned.
 
-**Implementation**: To be scheduled.
+**Implementation**: Task 14 or later
 **Source**: implementation-spec-v1.4.md Section 14, user-roles-permissions.md
 
 ---
