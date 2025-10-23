@@ -524,8 +524,8 @@ Organization: Serengeti Conservation Trust
 - **Step 3: Camera View & Adjustment**: Use a test photo preview from the camera to physically adjust its position and field of view until satisfied.
 - **Data Management**: Photos taken during this step are for temporary preview only and must be deleted from the app and the device's SD card to conserve space.
 - **Step 4: Location**: Set the deployment's GPS coordinates on a map, name the site, and take a photo of the deployed camera *with the phone* to help with later retrieval.
-**Data Management**: Photos taken during this step are stored in the mobile phone so that they can be displayed at a later time for finding the Wildlife Watcher.
-- **Step 5: Deployment Details**: Configure the deployment name, project, start time, and capture method (Motion Detection vs. Time-lapse).
+- **Data Management**: Photos taken during this step are stored in the mobile phone so that they can be displayed at a later time for finding the Wildlife Watcher.
+- **Step 5: Deployment Details**: Configure the deployment name, project, start time, and capture method, including an option to enable/disable the ML model for LoRaWAN notifications.
 - **Step 6: Confirmation & Submit**: Review a summary of all entered information and submit to finalize the deployment, which configures the camera and saves the record.
 
 **Intended State**: Same as planned

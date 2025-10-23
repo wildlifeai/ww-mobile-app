@@ -70,11 +70,13 @@ The user progresses through six distinct steps. They can navigate back to previo
     *   **Capture Method**: A choice (radio buttons) between "Motion Detection" and "Time-lapse".
     *   **Time-lapse Interval**: If "Time-lapse" is selected, a dropdown or picker appears for setting the interval (e.g., 30s, 1min, 5min, 1hr).
     *   **Motion Sensitivity**: A slider or choice (e.g., Low, Medium, High).
+    *   **Enable ML Model & Notifications**: A toggle switch, enabled by default.
 *   **Logic**:
     *   The user must select a project to proceed.
     *   **Project Pre-selection**: If the device was configured for a specific project in the "Prepare and Test" workflow, that project will be pre-selected here. Any project-specific settings (like the AI Model) are already configured on the camera.
     *   **Project Change**: If the user selects a different project, the app will update all project-related settings on the camera in the final step of this wizard.
     *   All fields are required.
+    *   **AI Model**: The user can manually enable or disable the ML model for the deployment. The model used is the one assigned to the selected project. Enabling the ML model also enables LoRaWAN notifications for the deployment.
     *   The UI adapts based on the capture method selected. The `Time-lapse Interval` is only shown if "Time-lapse" was chosen.
     *   These settings will be sent to the camera via **WWUS** in the final step.
 
