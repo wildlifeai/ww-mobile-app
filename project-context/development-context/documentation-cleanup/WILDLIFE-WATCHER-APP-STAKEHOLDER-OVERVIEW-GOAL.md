@@ -144,10 +144,11 @@ The app has five distinct user types, each with specific capabilities:
 **What they do**: Acts as a member of a larger research organization, available to be assigned to specific projects. This is the default role for any user added to an organization.
 
 **Capabilities**:
-- **Beta Version Note**: For the initial release, all projects will be set to "Visible only for project members" by default. The ability for users to see other projects within their organization, or public projects, will be part of a future update when visibility settings are enabled.
 - Can be invited by a Project Admin or organisation Admin to become a Project Member or Project Admin.
 - Can create a new project at any time, automatically becoming its Project Admin.
 - **Important**: This role grants visibility only. To create deployments or perform other actions within a project, a user must be explicitly added as a Project Member or Project Admin to that specific project.
+- **Beta Version Note**: For the initial release, all projects will be set to "Visible only for project members" by default.
+- **Future Enhancement**: The ability for users to see other projects within their organization, or public projects, will be part of a future update when visibility settings are enabled.
 
 **Real-World Example**:
 *Sarah is a member of the Kiwi Conservation Trust. When she logs in, she can see a list of all projects the Trust is running that are marked as visible to the organization. She cannot add deployments to these projects until a Project Admin, like Dr. Chen, adds her to the "kiwi bird population" project as a Project Member.*
@@ -233,10 +234,13 @@ Organization: Serengeti Conservation Trust
 
 ### Organization Structure Rules
 
-1. **Project Member**: Belong to at least one organisation (the "General" organization as default) and can belong to multiple organizations and projects.
-   - Example: Sarah_serengeti belongs to the "Serengeti Conservation Trust" organization. She is a member of the "Lion Tracking" project, which has its visibility set to "Visible only for project members". She can see and contribute to this project. The "Elephant Migration" project, also in her organization, has its visibility set to "Visible for project and organization members", so she can see it but can not contribute to it.
+1. **Project Member**:
    - **Contribution (e.g., creating deployments) is strictly limited to projects where the user is an explicit Project Member or Project Admin.**
-   - Needs to be invited to become a regular user via email for different organizations and projects but she can create her own project, becoming the admin project.
+   - Can be invited via email to join projects. They can also create their own new project, automatically becoming its Project Admin.
+   - For the beta, a user belongs to one organization (the "General" organization by default).
+   - **Future Enhancement**: Users will be able to belong to multiple organizations and view different types of projects available to their organizations or the public.
+   - **Beta Example**: Sarah_serengeti belongs to the General organization. She is a member of the "Lion Tracking" project. She can see and contribute to this project.
+   - **Future Enhancement Example**: Sarah_serengeti belongs to the "Serengeti Conservation Trust" organization. She is a member of the "Lion Tracking" project, which has its visibility set to "Visible only for project members". She can see and contribute to this project. The "Elephant Migration" project, also in her organization, has its visibility set to "Visible for project and organization members", so she can see it but cannot contribute to it.
 
 2. **Project Admins**: Lead individual research projects.
    - Any user can become a Project Admin by creating a new project.
@@ -248,18 +252,18 @@ Organization: Serengeti Conservation Trust
    - **Beta Version Note**: For the initial release, all projects will be set to "Visible only for project members" by default. This setting will not be visible or editable in the mobile app.
 
 3. **Organisation member**: This is the default status for any user belonging to an organization.
-   - It grants read-only visibility to any project within the organization that has its visibility set to "Visible for project and organization members" or "Publicly visible".
    - It enables users to select organisation-specific AI detection models.
+   - **Future Enhancement**: It will grant read-only visibility to any project within the organization that has its visibility set to "Visible for project and organization members" or "Publicly visible".
    
 
-4. **Organisation Administrators (Future Enhancement)**: Manage organization-level resources, primarily AI models.
-   - They will use the web portal to upload, version, and manage the AI detection models available to projects within their organization.
+4. **Organisation Administrators**: Manage organization-level resources.
    - This role will operate at the organization level and have Admin role access to all the projects within the organisation.
+   - **Future Enhancement**: They will use the web portal to upload, version, and manage the AI detection models available to projects within their organization.
 
 5. **WW Admins (System Administrators)**: Have system-wide responsibilities.
    - They belong to a special "Admin" organization.
-   - **Future Enhancement**: They will have CRUD capabilities for all organizations and projects, performed exclusively through the secure web portal, not the mobile app.
    - WW Admins can be assigned to additional organizations or projects as any other user.
+   - **Future Enhancement**: They will have CRUD capabilities for all organizations and projects, performed exclusively through the secure web portal, not the mobile app.
 
 6. **Multiple Roles**: Users can have multiple roles within their organization.
    - Example: Dr. Chen could be both Project Admin AND Project member of different projects within the same organization.
