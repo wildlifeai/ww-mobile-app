@@ -135,7 +135,7 @@ The app has five distinct user types, each with specific capabilities:
 - Archive the project (Future Enhancement)
 
 **Real-World Example**:
-*Dr. Chen leads a multi-year kiwi bird population study with five field assistants. He creates the project in the app, invites the assistans as team members, sets deployments and project visibilty as "Visible for project and organization members", and selects the kiwi bird detection AI model. He can see all deployments across sites and monitor team progress in real-time.*
+*Dr. Chen leads a multi-year kiwi bird population study with five field assistants. He creates the project in the app, invites the assistants as team members, sets deployments and project visibilty as "Visible for project and organization members", and selects the kiwi bird detection AI model. He can see all deployments across sites and monitor team progress in real-time.*
 
 **Current Status**: 🔄 In progress (Tasks 12-14, Tasks 12-13 complete)
  
