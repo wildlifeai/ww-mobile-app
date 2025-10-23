@@ -115,7 +115,7 @@ The app has five distinct user types, each with specific capabilities:
 - Sync fieldwork data when online
 
 **Real-World Example**:
-*Sarah is a field researcher working on a predator monitoring study. She uses the app to test and prepare 20 cameras from the comfort of her office before heading out to the field. Sarah confirms that the cameras have the latest firmware,  full batteries and SD card space. The cameras are also associated with the predator monitoring project, and the flash lights and camera works as expected (e.g. field of view is not obstructed and camera doesn't take under/overexposed photos). She then goes to the field to deploy the cameras at bait stations. She turns the camera on, connects to it via the mobile app, enables remote updates via lorawan, previews the field of view of the camera, records the location and other deployment-specific information (e.g. type of bait, angle of the camera,...) and start the deployment using the app. The records deployment are stored locally in her phone as there is no internet connection. When she returns to her vehicle with cell service, the app automatically syncs her work to the cloud.*
+*Sarah is a field researcher working on a predator monitoring study. She uses the app to test and prepare 20 cameras from the comfort of her office. Sarah confirms that the cameras have the latest firmware, full batteries, and SD card space. She also completes the one-time LoRaWAN registration for each camera so they can send remote updates from the field. She verifies that the cameras are associated with the predator monitoring project and that the flash and camera work as expected (e.g., the field of view is not obstructed and the camera doesn't take under/overexposed photos). She then goes to the field to deploy the cameras at bait stations. She turns the camera on, connects to it via the mobile app, enables remote updates via lorawan, and checks the LoRaWAN signal strength to ensure good reception. She then previews the field of view of the camera, records the location and other deployment-specific information (e.g. type of bait, angle of the camera,...) and start the deployment using the app. The deployment records are stored locally in her phone as there is no internet connection. When she returns to her vehicle with cell service, the app automatically syncs her work to the cloud because she has the "sync to cloud when available" option selected.*
 
 **Current Status**: ✅ Core features complete
 
@@ -269,9 +269,9 @@ Organization: Serengeti Conservation Trust
 ### Project & Data Visibility Rules
 
 1.  **Creating Projects**: Any user within an organization can create a new project, and by doing so, they automatically become the Project Admin for that project.
-
-2.  **Contributing to Projects**: To create or edit deployments, a user must be explicitly added to a project's team as either a Project Member or a Project Admin. Being a member of the organization is not enough to contribute.
-
+ 
+2.  **Contributing to Projects**: To create or end deployments, a user must be explicitly added to a project's team as either a Project Member or a Project Admin. Being a member of the organization is not enough to contribute.
+ 
 3.  **Project Visibility Settings (Future Enhancement)**: Project Admins will control who can see their project.
     - **Beta Version Note**: For the beta release, all projects are created with the default visibility of "Visible only for project members". The ability for Project Admins to change this setting will be introduced in a future update.
 
