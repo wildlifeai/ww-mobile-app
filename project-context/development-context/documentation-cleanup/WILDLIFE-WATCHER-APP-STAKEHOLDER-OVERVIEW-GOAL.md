@@ -1,8 +1,8 @@
 # Wildlife Watcher Mobile App
 ## Product Overview for Stakeholders
 
-**Document Version**: 1.1
-**Date**: January 17, 2025
+**Document Version**: 1.2
+**Date**: October 20, 2025
 **Status**: MVP2 Development - 60.9% Complete
 **Purpose**: Non-technical stakeholder reference for features, progress, and decisions
 **Update**: Added backend database architecture and security information
@@ -27,10 +27,10 @@
 ### The Problem We're Solving
 
 Wildlife researchers need to deploy camera traps in remote field locations to monitor animals. This traditionally requires:
-- Carrying laptops or paper forms into the field
-- Manually configuring complex camera settings
+- Carrying tablets or paper forms into the field
+- Manually configuring camera settings
 - Waiting until returning to the office to upload data
-- Managing teams across multiple field sites
+- Manually managing teams across multiple field sites
 - Coordinating multiple research projects simultaneously
 
 **These challenges lead to**:
@@ -45,12 +45,14 @@ Wildlife researchers need to deploy camera traps in remote field locations to mo
 Wildlife Watcher is a **mobile field app** that enables researchers to manage wildlife camera deployments entirely from their smartphones, even without internet connectivity.
 
 **Key Benefits**:
-- ✅ **Work Offline**: Complete all tasks in remote locations without internet
-- ✅ **Simple Setup**: Guide researchers through camera deployment step-by-step
-- ✅ **Team Collaboration**: Multiple team members can work on shared projects
-- ✅ **Instant Connectivity**: Connect to cameras via Bluetooth for configuration
-- ✅ **Automatic Sync**: All data syncs to the cloud when internet returns
-- ✅ **Equipment Tracking**: Know which cameras are where at all times
+
+- ✅ **Prepare Cameras before going to the field**: Test camera functions, check battery and SD card status, and update firmware from your office to ensure every device is field-ready, preventing wasted trips.
+- ✅ **Error-Proof Deployments**: A step-by-step wizard guides you through setup, capturing all critical data correctly and reducing field errors.
+- ✅ **Perfect Camera Placement**: Use a live camera preview to perfectly frame your shot and location information with photos of the setup for easy retrieval.
+- ✅ **Work Anywhere, Sync Later**: Complete all tasks in remote locations without an internet connection. Data syncs to the cloud automatically when connectivity returns.
+- ✅ **Remote Camera Health Monitoring**: Receive crucial in-field updates on battery life and SD card space via LoRaWAN to prevent failed deployments.
+- ✅ **Secure Team Collaboration**: Work with your team in a secure, isolated organization. Robust permissions ensure data is only seen by authorized users.
+
 
 ### Mobile App Features
 
@@ -58,7 +60,7 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 - Test and prepare cameras before field deployments
 - Start/end camera deployments in 6 easy steps
 - Work completely offline in remote locations
-- View all your project deployments on a map
+- View all your project deployments on a list or a map
 
 **For Project Admins**:
 - Invite team members and assign roles
@@ -68,20 +70,22 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 
 **For Organisation Administrators**:
 - Create and manage research projects
+- **Future Enhancement (via Web Portal)**:
 - Invite team members and assign roles
-- Upload new AI models for camera detection (via web portal)
+- Upload and manage AI models for the organization
 
 **For System Administrators (WW Admin)**:
 - View all projects across organizations (read-only in app)
-- Manage users and organizations (via web portal)
-- System monitoring and configuration (via web portal)
+- **Future Enhancement (via Web Portal)**:
+- Manage users and organizations
+- System monitoring and configuration
 
-### Web Portal Features
+### Web Portal Features (Future Enhancement)
 
 **For System Administrators (WW Admin)**:
 - Create and manage user accounts
 - Assign users to organizations
-- Manage system-level roles (WW Admin, Organisation Administrators)
+- Manage system-level roles (WW Admin, Organisation Administrator)
 - System-wide configuration
 - Password reset forms for users
 
@@ -97,22 +101,23 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 ### User Roles Explained
 
 The app has five distinct user types, each with specific capabilities:
-
+ 
 #### 1. Project Member
 **What they do**: Hands-on fieldwork with cameras
 
 **Capabilities**:
-- Start and end camera deployments
-- Register new cameras to projects
-- Test camera connections via Bluetooth
+- Start and end camera deployments within the project
+- Test and prepare cameras before field deployments via Bluetooth
 - Update camera firmware
-- View projects they are assigned to. Depending on the organization's visibility settings, they may also see all projects within the organization.
+- Create, read, and end any deployment within their assigned projects.
+- View and contribute to their assigned projects.
+- View other projects in their organization or publicly, based on those projects' visibility settings (contribution requires project membership).
 - Sync fieldwork data when online
 
 **Real-World Example**:
-*Sarah is a field researcher working on a predator monitoring study. She uses the app to test the cameras from the comfort of her office before heading out to the field. Sarah confirms that the cameras have the latest firmware, are associated with a project, full batteries and SD card space, and the flash lights and camera works as expected (e.g. field of view is not obstructed and camera doesn't take under/overexposed photos). She then goes to the field to deploy the cameras at bait stations. She turns the camera on, connects to it via the mobile app, previews the field of view of the camera, updates the location and other deployment-specific information (e.g. type of bait, angle of the camera,...) and start the deployment using the app. The records deployment are stored locally in her phone as there is no internet connection. When she returns to her vehicle with cell service, the app automatically syncs her work to the cloud.*
+*Sarah is a field researcher working on a predator monitoring study. She uses the app to test and prepare 20 cameras from the comfort of her office. Sarah confirms that the cameras have the latest firmware, full batteries, and SD card space. She also completes the one-time LoRaWAN registration for each camera so they can send remote updates from the field. She verifies that the cameras are associated with the predator monitoring project and that the flash and camera work as expected (e.g., the field of view is not obstructed and the camera doesn't take under/overexposed photos). She then goes to the field to deploy the cameras at bait stations. She turns the camera on, connects to it via the mobile app, enables remote updates via lorawan, and checks the LoRaWAN signal strength to ensure good reception. She then previews the field of view of the camera, records the location and other deployment-specific information (e.g. type of bait, angle of the camera,...) and start the deployment using the app. The deployment records are stored locally in her phone as there is no internet connection. When she returns to her vehicle with cell service, the app automatically syncs her work to the cloud because she has the "sync to cloud when available" option selected.*
 
-**Current Status**: ✅ Core features complete (Tasks 11-13)
+**Current Status**: ✅ Core features complete
 
 ---
 
@@ -121,49 +126,52 @@ The app has five distinct user types, each with specific capabilities:
 
 **Capabilities**:
 - Everything a Project Member can do, PLUS:
-- Create new research projects
 - Edit project details
 - Add/remove team members
 - Assign Project Admin or Project Member roles
-- Select which AI models to use
-- Delete deployments if needed
-- Archive completed projects
+- Select which AI models the deployments use
+- Manage the project's visibility settings (Future Enhancement)
+- Create, read, and end any deployment within their projects.
+- Archive the project (Future Enhancement)
 
 **Real-World Example**:
-*Dr. Chen leads a multi-year bird population study with 5 field assistants. He creates the project in the app, invites his team members, assigns them to different field sites, and selects the bird detection AI model. He can see all deployments across sites and monitor team progress in real-time.*
+*Dr. Chen leads a multi-year kiwi bird population study with five field assistants. He creates the project in the app, invites the assistants as team members, sets deployments and project visibilty as "Visible for project and organization members", and selects the kiwi bird detection AI model. He can see all deployments across sites and monitor team progress in real-time.*
 
 **Current Status**: 🔄 In progress (Tasks 12-14, Tasks 12-13 complete)
-
+ 
 ---
-#### 3. Organisation Member
+#### 3. Organisation Member (Default Status)
 **What they do**: Acts as a member of a larger research organization, available to be assigned to specific projects. This is the default role for any user added to an organization.
 
 **Capabilities**:
-- View all projects within their organization in Project Member capacity.
-- Can be invited by a Project Admin or organisation Admin to become a Project Admin.
+- Can be invited by a Project Admin or organisation Admin to become a Project Member or Project Admin.
 - Can create a new project at any time, automatically becoming its Project Admin.
+- **Important**: This role grants visibility only. To create deployments or perform other actions within a project, a user must be explicitly added as a Project Member or Project Admin to that specific project.
+- **Beta Version Note**: For the initial release, all projects will be set to "Visible only for project members" by default.
+- **Future Enhancement**: The ability for users to see other projects within their organization, or public projects, will be part of a future update when visibility settings are enabled.
 
 **Real-World Example**:
-*Sarah is a member of the Kea Conservation Trust. When she logs in, she can see a list of all projects the Trust is running. She can add deployments to any project within the organisation but is not a project admin until a Project Admin or Organisation Admin, like Dr. Chen, adds her to the "Kea Nest Monitoring" project.*
+*Sarah is a member of the Kiwi Conservation Trust. When she logs in, she can see a list of all projects the Trust is running that are marked as visible to the organization. She cannot add deployments to these projects until a Project Admin, like Dr. Chen, adds her to the "kiwi bird population" project as a Project Member.*
 
 **Current Status**: ✅ Complete (Core architecture)
 
 ---
 
-#### 4. Organisation Administrators
-**What they do**: Manage projects and AI detection models
+#### 4. Organisation Administrator
+**What they do**: Manage projects. Future enhancements for this role will include managing users and AI models at an organization level.
 
 **Capabilities**:
-- Upload new AI models to organization
-- Update and version existing models
-- Remove outdated models
-- Manage which models are available
-- Works via web interface (not mobile app in MVP)
+- Create new projects within their organization.
 
-**Real-World Example**:
-*Alex is the GM of the kea conservation trust and collaborates with machine learning specialists who develops custom bird detection models. When his team creates an improved kea bird detection model, he uploads it through the web portal, making it available for all projects in his organization to use.*
+**Future Enhancement (via Web Portal)**:
+- Add/remove users from the organization.
+- Manage AI detection models for the organization (upload, version, delete).
+- Has administrative access to all projects within their organization.
 
-**Current Status**: ⏳ Pending (Future implementation, web portal)
+**Real-World Example (Future)**:
+*Alex will be the administrator for the Kea Conservation Trust. He will onboard new researchers by adding them to the Trust's organization via the web portal. He will also collaborate with machine learning specialists to upload and manage the custom bird detection models that all projects in the Trust can use.*
+
+**Current Status**: ⏳ PENDING (Future Enhancement)
 
 ---
 
@@ -174,22 +182,20 @@ The app has five distinct user types, each with specific capabilities:
 - View all projects across all organizations (read-only)
 - Navigate to web portal for administrative tasks
 - No direct editing or management in mobile app
+ 
+**Web Portal Capabilities (Future Enhancement)**:
+- Create and manage user accounts.
+- Create and manage organizations.
+- Assign users to organizations.
+- Assign system-level roles (WW Admin, Organisation Administrator).
+- Send login invitations to new users.
+- System configuration and monitoring.
+- Access system logs.
 
-**Web Portal Capabilities** (Full):
-- Create and manage user accounts
-- Create and manage organizations
-- Assign users to organizations
-- Assign system-level roles (WW Admin, Model Manager)
-- Send login invitations to new users
-- System configuration and monitoring
-- Access system logs
+**Real-World Example (Future)**:
+*Jordan is the Wildlife.ai system administrator. When a new conservation organization wants to join, he will create their organization account and assign their initial organisation admin user via the web portal. If a user needs a password reset or reports an issue, Jordan will be able to handle it through the web portal.*
 
-**Important Note**: WW Admins CANNOT assign project roles (Project Admin/Project Member). Only Project Admins can assign project roles within their projects.
-
-**Real-World Example**:
-*Jordan is the Wildlife.ai system administrator. When a new conservation organization wants to join, he creates their organization account, and assigns their initial admin user. If a Project Admin within that organization needs a password reset, or a project member reports an issue with a deployment, Jordan can handle it through the web portal.*
-
-**Current Status**: ✅ Mobile read-only complete, ⏳ Web portal planned
+**Current Status**: ✅ Mobile read-only complete, ⏳ Web portal is a Future Enhancement.
 
 **Key Architectural Change**: Originally planned with full CRUD capabilities in mobile app, corrected in September 2025 to read-only mobile + web portal management to prevent security issues and maintain proper separation of concerns.
 
@@ -202,14 +208,16 @@ Organization: Serengeti Conservation Trust
 │
 ├─ WW Admin (via web portal)
 │  └─ Creates organization, adds initial users
-│
-├─ Organisation Administrator (via web portal)
+│ 
+├─ Organisation Administrator (via web portal - Future Enhancement)
 │  └─ Creates projects, assigns project admins and uploads "Lion Detection v2.3" AI model
 │
+│  
 ├─ Project: "Lion Population 2025"
 │  │
 │  ├─ Project Admin: Dr. Chen
 │  │  ├─ Creates project
+│  │  ├─ Creates the project
 │  │  ├─ Invites 3 field assistants as Project Members
 │  │  ├─ Assigns "Lion Detection v2.3" model
 │  │  └─ Monitors team deployment progress
@@ -226,29 +234,50 @@ Organization: Serengeti Conservation Trust
 
 ### Organization Structure Rules
 
-1. **Project Member**: Belong to at least one organisation (the "General" organization as default) and can belong to multiple organizations and projects.
-   - Example: Sarah_serengeti belongs "General" and "Serengeti Conservation Trust" organizations. She can see all the projects within the "Serengeti Conservation Trust" organization because the organization admin has set the project visibilty field as "Visible within organisation", add deployments to any of the projects within the organisation and any additional project she has been invited to but she cannot see or interact with all the projects within the "General" organisation because the the project visibilty field of "General" is set as "Visible within project".
-   - Needs to be invited to become a regular user via email for different organizations and projects but she can create her own project, becoming the admin project.
+1. **Project Member**:
+   - **Contribution (e.g., creating deployments) is strictly limited to projects where the user is an explicit Project Member or Project Admin.**
+   - Can be invited via email to join projects. They can also create their own new project, automatically becoming its Project Admin.
+   - For the beta, a user belongs to one organization (the "General" organization by default).
+   - **Future Enhancement**: Users will be able to belong to multiple organizations and view different types of projects available to their organizations or the public.
+   - **Beta Example**: Sarah_serengeti belongs to the General organization. She is a member of the "Lion Tracking" project. She can see and contribute to this project.
+   - **Future Enhancement Example**: Sarah_serengeti belongs to the "Serengeti Conservation Trust" organization. She is a member of the "Lion Tracking" project, which has its visibility set to "Visible only for project members". She can see and contribute to this project. The "Elephant Migration" project, also in her organization, has its visibility set to "Visible for project and organization members", so she can see it but cannot contribute to it.
 
 2. **Project Admins**: Lead individual research projects.
    - Any user can become a Project Admin by creating a new project.
    - They have full control within their projects, including managing team members (adding/removing/changing roles) and project settings.
+   - **Future Enhancement**: They will control the project's visibility, choosing from:
+     - **Visible only for project members**
+     - **Visible for project and organization members**
+     - **Publicly visible**
+   - **Beta Version Note**: For the initial release, all projects will be set to "Visible only for project members" by default. This setting will not be visible or editable in the mobile app.
 
 3. **Organisation member**: This is the default status for any user belonging to an organization.
-   - It provides project member roles to all projects within that organization if the project visibility field within the organisation is set to "within organisation".
+   - It enables users to select organisation-specific AI detection models.
+   - **Future Enhancement**: It will grant read-only visibility to any project within the organization that has its visibility set to "Visible for project and organization members" or "Publicly visible".
    
 
-4. **Organisation Administrators**: Manage organization-level resources, primarily AI models.
-   - They use the web portal to upload, version, and manage the AI detection models available to projects within their organization.
-   - This role operates at the organization level and has Admin role access to all the projects within the organisation.
+4. **Organisation Administrators**: Manage organization-level resources.
+   - This role will operate at the organization level and have Admin role access to all the projects within the organisation.
+   - **Future Enhancement**: They will use the web portal to upload, version, and manage the AI detection models available to projects within their organization.
 
-5. **WW Admins (System Administrators)**: Have system-wide responsibilities and access.
-   - They belong to a special "Admin" organization, giving them read-only visibility across all projects in the mobile app for support purposes.
-   - All user and organization management is performed exclusively through the secure web portal, not the mobile app.
-   - A WW Admin can be assigned to one additional organization, where they can act as a regular Project Admin or Project Member.
+5. **WW Admins (System Administrators)**: Have system-wide responsibilities.
+   - They belong to a special "Admin" organization.
+   - WW Admins can be assigned to additional organizations or projects as any other user.
+   - **Future Enhancement**: They will have CRUD capabilities for all organizations and projects, performed exclusively through the secure web portal, not the mobile app.
 
 6. **Multiple Roles**: Users can have multiple roles within their organization.
-   - Example: Dr. Chen could be both Project Admin AND Model Manager
+   - Example: Dr. Chen could be both Project Admin AND Project member of different projects within the same organization.
+
+---
+
+### Project & Data Visibility Rules
+
+1.  **Creating Projects**: Any user within an organization can create a new project, and by doing so, they automatically become the Project Admin for that project.
+ 
+2.  **Contributing to Projects**: To create or end deployments, a user must be explicitly added to a project's team as either a Project Member or a Project Admin. Being a member of the organization is not enough to contribute.
+ 
+3.  **Project Visibility Settings (Future Enhancement)**: Project Admins will control who can see their project.
+    - **Beta Version Note**: For the beta release, all projects are created with the default visibility of "Visible only for project members". The ability for Project Admins to change this setting will be introduced in a future update.
 
 ---
 
@@ -257,7 +286,7 @@ Organization: Serengeti Conservation Trust
 ### Authentication & Account Management
 
 #### 1.1 User Login
-**Description**: Secure login using email/username and password.
+**Description**: Secure login using email and password
 
 **Current State**: ✅ COMPLETE
 - Email/password authentication
@@ -289,23 +318,39 @@ Organization: Serengeti Conservation Trust
 
 ---
 
-#### 1.3 User Sign Up
-**Description**: New users can sign up for an account directly within the mobile app. This allows anyone to join the platform, create their own projects, and get started with wildlife monitoring.
+#### 1.3 User Signup (Self-Registration)
+**Description**: Allow anyone to create a new Wildlife Watcher account directly from the mobile app.
 
-**Current State**: ⏳ PENDING (New Feature)
+**Current State**: ⏳ PENDING
+- A "Sign Up" button on the login screen will lead to a registration form.
+- Users will provide their email and create a password.
+- Email verification will be required to activate the account.
 
-**User-Side (Sign Up Flow)**:
-- User selects "Sign Up" on the login screen.
-- Enters their full name, username, email, and a password.
-- After verifying their email, their account is created.
-- New users are automatically added to the "General" organization.
-- Upon first login, they can create a new project or wait to be invited to an existing one.
-- Users can create their own organisations and assign projects to the organisations they are organisation admin.
+**Intended State**: Fully functional self-registration flow.
+- Upon signup, users are placed in a "General" organization by default.
+- They can then create their own projects or be invited to join existing ones.
 
-**Intended State**: A seamless, self-service sign-up flow available to all new users directly in the mobile app.
+**Implementation**: To be scheduled.
+**Source**: implementation-spec-v1.2.md Section 4.1
 
-**Implementation**: New feature for mobile app
-**Source**: This change represents a significant shift from the original invitation-only model. The `implementation-spec-v1.4.md` and `user-roles-permissions.md` will require updates to reflect this new public-facing user onboarding process.
+---
+
+#### 1.4 User Profile & Settings
+**Description**: Manage your profile and control how the app uses data.
+
+**Current State**: ⏳ PENDING
+- Users can access their profile screen.
+- The profile screen will allow users to configure data synchronization settings.
+
+**Intended State**: Fully functional user settings.
+- **Profile Information**: View user's full name, email, and organizations.
+- **Sync preferences**:
+   - **Sync on Wi-Fi only**: Prevent uploads over cellular data to save costs.
+   - **Ask before syncing**: The app will prompt for confirmation before starting a large (>50MB) data upload.
+   - **Automatic sync**: The default behavior, where the app syncs automatically whenever an internet connection is available.
+
+**Implementation**: To be scheduled (Phase 2)
+**Source**: implementation-spec-v1.4.md Section 4.3 (deferred)
 
 ---
 
@@ -331,7 +376,7 @@ Organization: Serengeti Conservation Trust
 ---
 
 #### 2.2 View Projects List
-**Description**: See all projects you're assigned to
+**Description**: See all projects you're assigned to (or set to be visible)
 
 **Current State**: ✅ COMPLETE (Task 12)
 - Card-based layout showing project cards
@@ -354,8 +399,7 @@ Organization: Serengeti Conservation Trust
 **Description**: See detailed information about a specific project
 
 **Current State**: ✅ COMPLETE (Task 12 Phase 4)
-- Project name, description, organization
-- Creation and update timestamps
+- Project name, description, organization and visibilty
 - "Manage Members" button
 - "Start New Deployment" button
 - Deployment list view
@@ -373,8 +417,7 @@ Organization: Serengeti Conservation Trust
 **Description**: Update project information (Project Admin only)
 
 **Current State**: ⏳ PENDING (Task 14)
-- Edit project name
-- Edit project description
+- Edit project name, description and visibility
 - Update project settings
 - Only Project Admin can edit
 
@@ -388,10 +431,11 @@ Organization: Serengeti Conservation Trust
 #### 2.5 Archive/Delete Projects
 **Description**: Remove completed or mistaken projects
 
-**Current State**: ⏳ PENDING
-- Delete empty projects (no deployments/members)
-- Archive projects with deployments
+**Current State**: ⏳ PENDING (Future Enhancement)
+- Only projects with no deployments can be deleted
+- Projects with deployments can be archived if the deployments are not active.
 - Only Project Admin can delete/archive
+- **Beta Version Note**: Archiving will not be available in the beta. All projects a user is a member of will be visible in their projects list.
 
 **Intended State**: Same as planned
 
@@ -424,9 +468,9 @@ Organization: Serengeti Conservation Trust
 **Description**: Invite team members to join project
 
 **Current State**: ✅ UI COMPLETE, ⚠️ INTEGRATION PENDING (Task 13)
-- Search users by email within organization
+- Invite users by email. If the email address is not already registered the invitation can not be send (e.g. only registered users can receive invitations to join a project) 
 - Assign role (Project Admin or Project Member)
-- Send invitation notification
+- Send invitation notification via email
 - Only Project Admin can add members
 
 **Intended State**: Same as current (awaiting backend integration)
@@ -472,14 +516,17 @@ Organization: Serengeti Conservation Trust
 
 #### 4.1 Start Deployment Wizard (6 Steps)
 **Description**: Guided process to deploy a camera in the field
+**Workflow Philosophy**: The wizard is designed to get the physical camera setup right first (pairing, connectivity, and field of view) before asking the user for metadata. This ensures the most critical, in-field tasks are prioritized.
 
 **Current State**: ⏳ PENDING (Task 15)
-- **Step 1**: Deployment Details (name, start date/time, project)
-- **Step 2**: Location (GPS coordinates, map selection, site name)
-- **Step 3**: Sampling Design (motion/timelapse, settings)
-- **Step 4**: Bait Station (optional: type, install date, refresh date)
-- **Step 5**: Device Selection (pick camera from registered devices)
-- **Step 6**: Confirmation & Submit
+- **Step 1: Device Selection & Pairing**: Select an available camera from a list of nearby Bluetooth devices.
+- **Step 2: Connectivity Setup**: Choose to enable LoRaWAN for remote status updates or operate in an offline-only mode. Includes an option to test signal reception.
+- **Step 3: Camera View & Adjustment**: Use a test photo preview from the camera to physically adjust its position and field of view until satisfied.
+- **Data Management**: Photos taken during this step are for temporary preview only and must be deleted from the app and the device's SD card to conserve space.
+- **Step 4: Location**: Set the deployment's GPS coordinates on a map, name the site, and take a photo of the deployed camera *with the phone* to help with later retrieval.
+- **Data Management**: Photos taken during this step are stored in the mobile phone so that they can be displayed at a later time for finding the Wildlife Watcher.
+- **Step 5: Deployment Details**: Configure the deployment name, project, start time, and capture method. Users can enable the on-device ML model for local animal detection. If LoRaWAN is disabled, a warning clarifies that detection alerts will not be sent remotely.
+- **Step 6: Confirmation & Submit**: Review a summary of all entered information and submit to finalize the deployment, which configures the camera and saves the record.
 
 **Intended State**: Same as planned
 - Works completely offline
@@ -487,30 +534,31 @@ Organization: Serengeti Conservation Trust
 - Manual coordinate entry option
 - Progress indicator shows current step
 - Can go back to edit previous steps
-- Submit saves locally, syncs when online
+- Final submission saves the record locally, adds it to the sync queue, and sends the configuration to the camera via BLE.
 
 **Implementation**: Task 15 - Deployment Workflow (6-step wizard)
 **Estimated**: 10 hours
-**Source**: implementation-spec-v1.4.md Section 5.3
+**Source**: start-deployment-workflow.md
 
 ---
 
 #### 4.2 End Deployment
 **Description**: Mark a camera deployment as finished
+**Workflow Philosophy**: A simple and efficient process for field use, ensuring the user is ending the correct deployment and capturing final notes before retrieving the hardware.
 
-**Current State**: ⏳ PENDING (Task 17)
-- Select active deployment
-- Set end date/time
-- Add end notes (optional)
-- Deployment marked as "Ended"
-- Camera becomes available for new deployment
-- Works offline
+**Current State**: ⏳ PENDING (Task 16)
+- **Initiation**: User can start the flow from a "End Deployment" button in the Map Screen or the Deployments List.
+- **Confirmation**: A confirmation screen shows key details (Name, Project, Device, Duration) to prevent ending the wrong deployment, especially when cameras are close together.
+- **Finalization**: User confirms the end date/time (pre-filled to current time) and can add optional notes about the retrieval (e.g., "SD card full," "Device damaged by animal").
+- **Submission**: Tapping 'Confirm' updates the deployment status to "Ended", makes the camera "available" again, and queues the changes for sync. An optional "power down" command is sent to the camera if it's reachable.
+- **Success**: A final screen summarizes the device's state (e.g., final battery, SD card space) before navigating the user back.
+- Works completely offline.
 
 **Intended State**: Same as planned
 
-**Implementation**: Task 17 - Field Validation & End Deployment
+**Implementation**: Task 16 - End Deployment Flow
 **Estimated**: 6 hours
-**Source**: implementation-spec-v1.4.md Section 5.4
+**Source**: end-deployment-workflow.md
 
 ---
 
@@ -519,9 +567,9 @@ Organization: Serengeti Conservation Trust
 
 **Current State**: ⏳ PENDING (Task 15+)
 - Filter: Active, Ended, All
-- Sort by: Date, Name, Status
+- Sort by: Date, Name, Status, Project
 - Card view with key info
-- Status indicators (Active, Ended, Syncing)
+- Status indicators (Active, Ended)
 - Offline viewing supported
 
 **Intended State**: Same as planned
@@ -538,9 +586,8 @@ Organization: Serengeti Conservation Trust
 - All deployment details from wizard
 - GPS coordinates with map view
 - Sampling design settings
-- Bait station info (if applicable)
-- Camera device information
-- Edit button (before ending)
+- Camera device information with battery status and sd card information if deployment active and connected to lorawan
+- "End Deployment" button for active deployments.
 
 **Intended State**: Same as planned
 
@@ -573,17 +620,17 @@ Organization: Serengeti Conservation Trust
 
 ---
 
-### Device Management
+### Device Management & Preparation
 
-#### 5.1 Register New Camera
-**Description**: Add a camera device to the system
+#### 5.1 View Deployed Devices
+**Description**: The main view of the "Devices" screen lists all cameras that are actively deployed in projects the user is a member of. This gives field staff a quick overview of their active hardware.
 
 **Current State**: ⏳ PENDING (Task 18)
-- Scan QR code on camera (preferred)
-- Manual entry of device ID
-- Camera name/nickname
-- Camera becomes available for deployments
-- Works offline
+- Device ID, name, and status
+- The project it's deployed in
+- Last connection date
+- Battery level (if LoRaWAN enabled)
+- SD card usage (if LoRaWAN enabled)
 
 **Intended State**: Same as planned
 
@@ -593,58 +640,31 @@ Organization: Serengeti Conservation Trust
 
 ---
 
-#### 5.2 Test Camera Connection
-**Description**: Verify Bluetooth connection to camera
+#### 5.2 Prepare and Test Nearby Devices
+**Description**: A prominent button allows users to scan for nearby, non-deployed cameras to prepare them for fieldwork. This opens a "Camera Workbench" screen where a user can see and manage all aspects of a single camera before deployment.
+
+**User Capabilities**:
+- **View Camera Status**: See battery level, SD card storage, and firmware version.
+- **Test Camera**: Take a test photo to ensure the camera's view is clear and preview it.
+- **Manage Project Association**: Assign the camera to a specific project. The app includes safeguards to prevent associating a camera with a project the user doesn't have access to.
+- **Update Firmware**: If a newer firmware version is available, the user can update the camera directly from the app.
+- **Enable Remote Updates**: A one-time registration of the device to the LoRaWAN network, allowing it to send health updates from the field.
+- **Configure AI Model**: Project Admins can change the AI detection model loaded on the camera.
+- **Name Device**: Give the camera a custom name for easy identification.
 
 **Current State**: 🟡 PARTIAL (BLE infrastructure exists)
 - Scan for nearby cameras via Bluetooth
 - Connect to selected camera
-- Verify communication
+- Take a test photo to check for obstructions
 - Connection status indicator
 - Signal strength display
 
-**Intended State**: Same as current + deployment integration
+**Intended State**: Fully functional workbench screen integrating all preparation steps.
 
 **Implementation**: Task 20 - BLE Communication & Sync
-**Note**: BLE manager exists, needs deployment workflow integration
+**Note**: BLE manager exists, needs UI workflow integration.
 **Source**: implementation-spec-v1.4.md Section 5.8
-
----
-
-#### 5.3 Update Camera Firmware
-**Description**: Install new firmware on camera remotely
-
-**Current State**: 🟡 PARTIAL (DFU library integrated)
-- Connect to camera via Bluetooth
-- Check current firmware version
-- Download latest firmware
-- Install via DFU (Device Firmware Update)
-- Progress indicator during update
-- Verification after update
-
-**Intended State**: Same as current + UI integration
-
-**Implementation**: Task 20 - BLE Communication & Sync
-**Note**: DFU capability exists, needs UI workflow
-**Source**: implementation-spec-v1.4.md Section 5.8
-
----
-
-#### 5.4 View Registered Devices
-**Description**: List all cameras in the system
-
-**Current State**: ⏳ PENDING (Task 18)
-- All registered cameras
-- Filter by: Available, In Use, All
-- Device ID, name, status
-- Last connection date
-- Battery level (if LoRaWAN enabled)
-- SD card usage (if LoRaWAN enabled)
-
-**Intended State**: Same as planned
-
-**Implementation**: Task 18 - Deployment & Device Management
-**Source**: implementation-spec-v1.4.md Section 5.8
+**Technical Details**: See `project-context\development-context\documentation-cleanup\device-preparation-workflow.md` for a detailed breakdown of this feature.
 
 ---
 
@@ -653,24 +673,23 @@ Organization: Serengeti Conservation Trust
 #### 6.1 Select Project AI Model
 **Description**: Choose which AI model the project uses (Project Admin)
 
-**Current State**: ⏳ PENDING (Future)
-- View available models in organization
-- Model details (name, version, detection types)
-- Assign model to project
-- One model per project
-- Model automatically deploys to cameras
+**Current State**: ⏳ PENDING
+- View available models in organization.
+- See model details (name, version, detection types).
+- Assign a specific model to a project.
+- One model per project.
 
-**Intended State**: Same as planned
+**Intended State**: Same as planned.
 
-**Implementation**: Task 14 or later (Model Management)
+**Implementation**: Task 14 or later
 **Source**: implementation-spec-v1.4.md Section 14, user-roles-permissions.md
 
 ---
 
-#### 6.2 Upload/Manage Models (Model Manager)
-**Description**: Add new AI models to organization (via web portal)
+#### 6.2 Upload/Manage Models (Organisation Administrator)
+**Description**: Add new AI models to an organization.
 
-**Current State**: ⏳ PENDING (Web Portal)
+**Current State**: ⏳ PENDING (Future Enhancement via Web Portal)
 - Upload model file
 - Set model name and version
 - Specify detection capabilities
@@ -678,13 +697,13 @@ Organization: Serengeti Conservation Trust
 - Update existing models
 - Delete outdated models
 
-**Intended State**: Web portal implementation
-- Model Managers access via web
-- Mobile app only displays/assigns models
-- File size limits enforced
-- Version tracking
+**Intended State**: Web portal implementation.
+- Organisation Administrators will access this feature via the web portal.
+- The mobile app will only display and allow assignment of available models.
+- File size limits will be enforced.
+- Version tracking will be supported.
 
-**Implementation**: Future (web portal)
+**Implementation**: Future Enhancement (Web Portal)
 **Source**: admin-portal-spec.md, user-roles-permissions.md
 
 ---
@@ -700,6 +719,7 @@ Organization: Serengeti Conservation Trust
 - User authentication data cached
 - Organization information cached
 - Project member lists cached
+- **Deployment Photos**: To help find cameras, a photo of the setup is taken with the user's phone. A low-resolution preview is stored locally for offline viewing, minimizing storage space. The full-quality photo is uploaded to the cloud and can be downloaded on demand when an internet connection is available.
 
 **Intended State**: Same as current
 
@@ -711,11 +731,12 @@ Organization: Serengeti Conservation Trust
 ---
 
 #### 7.2 Automatic Background Sync
-**Description**: Sync local changes to cloud when internet returns
+**Description**: Sync local changes to the cloud based on user-defined settings.
 
 **Current State**: ✅ COMPLETE (Task 11.6-11.7)
 - Redux-offline middleware active
 - Background sync queue
+- User-configurable: Supports auto-sync, ask before sync, and Wi-Fi only sync.
 - Automatic retry on connection
 - Optimistic UI updates
 - Rollback on server errors
@@ -769,20 +790,20 @@ Organization: Serengeti Conservation Trust
 
 #### 8.1 Create Organization
 **Description**: Set up new organization in system (web portal)
-
-**Current State**: ⏳ PENDING (Web Portal)
+- 
+**Current State**: ⏳ PENDING (Future Enhancement via Web Portal)
 - Organization name
 - Contact information
 - Assign initial admin user
 - Configure organization settings
 
-**Intended State**: Web portal exclusive
-- WW Admin creates via admin.wildlifewatcher.ai
-- Form validation
-- Unique organization names
-- Audit logging
+**Intended State**: This will be a web portal exclusive feature.
+- WW Admins will create organizations via admin.wildlifewatcher.ai.
+- The form will include validation.
+- Organization names will be unique.
+- All creation actions will be logged for auditing.
 
-**Implementation**: Future (web portal)
+**Implementation**: Future Enhancement (Web Portal)
 **Source**: admin-portal-spec.md, user-roles-permissions.md
 
 ---
@@ -790,15 +811,15 @@ Organization: Serengeti Conservation Trust
 #### 8.2 Manage Organizations
 **Description**: Edit or delete organizations (web portal)
 
-**Current State**: ⏳ PENDING (Web Portal)
+**Current State**: ⏳ PENDING (Future Enhancement via Web Portal)
 - Update organization details
 - View organization statistics
 - Deactivate organizations
 - Cannot delete orgs with active projects
 
-**Intended State**: Web portal exclusive
+**Intended State**: This will be a web portal exclusive feature.
 
-**Implementation**: Future (web portal)
+**Implementation**: Future Enhancement (Web Portal)
 **Source**: admin-portal-spec.md
 
 ---
@@ -829,7 +850,7 @@ Organization: Serengeti Conservation Trust
 - Battery percentage stored
 - Low battery alerts
 - Historical battery data
-- Display in device list
+- Display in device and deployment list
 
 **Intended State**: Same as planned
 
@@ -846,7 +867,7 @@ Organization: Serengeti Conservation Trust
 - Storage percentage stored
 - Full card alerts
 - Historical storage data
-- Display in device list
+- Display in device and deployment list
 
 **Intended State**: Same as planned
 
@@ -883,7 +904,7 @@ Organization: Serengeti Conservation Trust
 Field research data is valuable and sensitive—camera locations, deployment details, project information, and team coordination. This data needs to be secure, well-organized, and accessible only to authorized team members.
 
 **Our Solution:**
-Multi-layered security architecture with organization-based access control, backed by professional-grade database technology used by Fortune 500 companies.
+Multi-layered security architecture with organization-based access control, backed by professional-grade database technology.
 
 ---
 
@@ -915,15 +936,15 @@ The app uses a hierarchical permission system (like organizational charts):
 - **Data Access**: Read-only visibility, but can only edit data in organizations they belong to
 - **Example**: Wildlife.ai support staff helping troubleshoot issues
 
-#### 2. Model Manager (Organization Level)
-- **Access**: Manages AI detection models for their organization
-- **Capabilities**: Upload/update/delete models, make models available to projects
-- **Data Access**: Can view all projects in their organization (to understand model usage)
-- **Example**: Machine learning specialists maintaining detection algorithms
+#### 2. Organisation Administrator (Organization Level)
+- **Access**: Manages users, projects, and AI models for their organization
+- **Capabilities (Future Enhancement via Web Portal)**: Add/remove users, create projects, manage AI models.
+- **Data Access**: Administrative access to all projects within their organization
+- **Example**: Alex from the Kea Conservation Trust, who onboards new researchers and manages the organization's resources.
 
 #### 3. Project Admin (Project Level)
 - **Access**: Full control over projects they create or are assigned to
-- **Capabilities**: Create projects, manage team, assign models, configure deployments
+- **Capabilities**: Create projects, manage team, assign models (future), configure deployments
 - **Data Access**: All data within their projects, team member information
 - **Example**: Research project leaders coordinating field teams
 
@@ -966,9 +987,8 @@ The app uses a hierarchical permission system (like organizational charts):
 
 **Organizations** (Your research institution)
 - Organization name and contact information
-- Project visibility setting (`Visible within project`, `Visible within organization`, `Visible outside organization` )
+- Settings and configurations
 - Membership lists
-- Other settings and configurations
 - *Example record*: "Serengeti Conservation Trust" with 23 team members
 
 **Users** (Team members and administrators)
@@ -979,7 +999,8 @@ The app uses a hierarchical permission system (like organizational charts):
 
 **Projects** (Research initiatives)
 - Project name, description, goals
-- Privacy settings (public/private)
+- **Beta Version Note**: Visibility is set to "Visible only for project members" by default in the backend.
+- **Future Enhancement**: Project Admins will be able to set visibility to "Visible for project and organization members" or "Publicly visible".
 - Creation date, last update, project owner
 - Organization link (automatic isolation)
 - *Example record*: "Lion Population Study 2025" - 5 team members, 12 active deployments
@@ -988,8 +1009,8 @@ The app uses a hierarchical permission system (like organizational charts):
 - Deployment name, start/end dates
 - GPS coordinates with professional mapping (PostGIS)
 - Sampling design (motion detection vs timelapse)
-- Bait station information (if applicable)
 - Link to project, device, and creator
+- **Setup Photo**: A photo of the deployed camera setup, taken with the user's phone to help with retrieval.
 - *Example record*: "Water Hole #3" - Active since Jan 10, 2025, GPS: -2.3333, 34.8333
 
 **Devices** (Physical camera equipment)
@@ -997,6 +1018,7 @@ The app uses a hierarchical permission system (like organizational charts):
 - Current status (available, in use, maintenance)
 - Last connection date
 - Battery level and SD card usage (via LoRaWAN)
+- LoRaWAN Details: Secure registration keys for sending remote status updates.
 - *Example record*: "Camera WW-00123 (Acacia Station)" - Battery 87%, SD Card 42% full
 
 **Project Members** (Team assignments)
@@ -1061,7 +1083,7 @@ The app uses a hierarchical permission system (like organizational charts):
 #### When you create a project:
 - **Stored in**: `projects` table
 - **Linked to**: Your organization automatically (via organization_id)
-- **Security**: Only your org members can see it (RLS enforced)
+- **Security (Beta)**: Visibility is defaulted to "Visible only for project members". **(Future)** This will be controlled by the Project Admin and enforced by RLS.
 - **Tracked**: Creation date, last update, creator name
 - **Offline**: Saved locally first, synced to cloud when online
 
@@ -1684,17 +1706,17 @@ Contains: Supabase migrations, Edge Functions, RLS policies, test suites
 
 ### Web Portal Development (Future Phase)
 
-**Estimated**: Separate project timeline
+**Status**: ⏳ PENDING (Future Enhancement)
 
-**Core Features**:
-- WW Admin user management
-- Organization CRUD operations
-- Model Manager upload interface
-- Password reset forms
-- System monitoring dashboard
+**Core Features (Planned)**:
+- WW Admin user management.
+- Organization creation, reading, updating, and deletion (CRUD) operations.
+- Organisation Administrator interface for uploading and managing AI models.
+- Password reset forms for users.
+- System monitoring dashboard.
 
-**Technology**: Supabase Edge Functions + React admin portal
-**Deployment**: admin.wildlifewatcher.ai
+**Technology**: Supabase Edge Functions + React admin portal.
+**Deployment**: admin.wildlifewatcher.ai.
 
 **Source**: admin-portal-spec.md
 
