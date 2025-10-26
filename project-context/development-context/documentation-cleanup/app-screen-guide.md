@@ -197,8 +197,7 @@ This multi-step wizard guides the user through setting up a new camera in the fi
 *   **Step 5: Deployment Details**
     *   **What the user sees**: The progress bar shows the user is on the final step. This screen is a form where the user enters the final details for the deployment. The user will see fields for:
         *   **Deployment Name**: A text field, pre-filled with a suggestion like "Deployment #123".
-        *   **Capture Method**: A choice between "Motion Detection" and "Time-lapse".
-        *   **Motion Sensitivity** or **Time-lapse Interval**: Depending on the user's choice above, the user will see either a slider to set sensitivity (Low, Medium, High) or a field to set the time between photos (30s, 1min, 5min).
+        *   **AI Model**: A field showing the project's default AI model. Tapping it allows the user to select a different model for this specific deployment. User only sees the models available for the project.
     *   **What the buttons do**:
         *   **Back**: Allows the user to go back and make changes to any of the previous steps.
         *   **Submit Deployment**: This is the final button. Tapping it saves the deployment record to the user's app, sends the final configuration settings to the camera, and then shows a "Deployment Successful" message before taking the user to the **Deployment Details Screen**.
@@ -262,6 +261,12 @@ This screen is a multi-purpose hub for viewing, creating, and editing a research
 *   **What the user sees**:
     *   A title like "Project Details" (when viewing) or "New Project" (when creating).
     *   Fields for "Project Name" and "Project Description". These are editable when creating or editing, and view-only otherwise.
+    *   A toggle switch for **"Is Baited?"** to indicate if bait is used in the project.
+    *   A section for **"Sampling Design"** where the user must select at least one method from a list of choices (e.g., simpleRandom, systematicRandom, clusteredRandom, experimental, targeted, opportunistic). 
+    *   When creating or editing, the user will also see settings for the project's default **Capture Method**:
+        *   A choice between "Motion Detection" and "Time-lapse".
+        *   If "Motion Detection" is selected, a slider for **Motion Sensitivity** (Low, Medium, High) appears.
+        *   If "Time-lapse" is selected, a field for **Time-lapse Interval** (e.g., 30s, 1min, 5min) appears.
     *   When viewing an existing project, the user will also see:
         *   A list of all deployments associated with this project.
         *   A list of all team members working on this project.
@@ -272,6 +277,7 @@ This screen is a multi-purpose hub for viewing, creating, and editing a research
 *   **What the buttons do**:
     *   **Save Project**: When creating or editing a project, this button saves the user's changes. If the user is creating a new project, the user automatically becomes its Project Admin, and the screen transitions to the standard "view" mode for the user's new project.
     *   **Edit Project**: If the user is a Project Admin viewing an existing project, this button will appear. Tapping it makes the "Project Name" and "Project Description" fields editable and replaces the "Edit" button with a "Save Project" button.
+    *   **sampling design**: An information icon can be selected next to the sampling design to display the definitions of each option based on Wearn & Glover-Kapfer (2017) and used in camtrapdp, which is available at https://camtrap-dp.tdwg.org/metadata/#project.samplingDesign.
     *   **Manage Members**: When viewing a project as a Project Admin, this button takes the user to a separate screen where the user can add or remove team members and change their roles.
     *   **Start New Deployment**: A shortcut to start a new deployment that is automatically assigned to this project.
     *   **Cancel/Back**: A back arrow in the header lets the user return to the **Projects Screen** without saving changes.
@@ -341,8 +347,8 @@ This screen provides a simple way for users to send feedback, bug reports, or su
 This screen displays the user's personal account information. The user gets here by tapping "Profile" from the **[Side Drawer Menu](#5-side-drawer-menu)**.
 
 *   **What the user sees**:
-    *   The user's full name.
-    *   The user's email address.
+    *   Editable fields for "First Name" and "Last Name".
+    *   A read-only field for the user's "Email Address".
     *   The organization(s) the user belongs to.
     *   The user's role(s) within the app (e.g., Project Admin, Project Member).
 
