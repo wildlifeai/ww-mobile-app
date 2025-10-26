@@ -16,7 +16,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View, ScrollView } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { Text, useTheme, Snackbar } from 'react-native-paper';
-import { useCreateProjectMutation } from '../../store/api/projectsApi';
+import { useCreateProjectMutation } from '../../redux/api/projectsApi';
 import { WWScreenView } from '../../components/ui/WWScreenView';
 import { WWTextInput } from '../../components/ui/WWTextInput';
 import { WWButton } from '../../components/ui/WWButton';

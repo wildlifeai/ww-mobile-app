@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Alert } from 'react-native';
 import { Button, Card, Text, Chip, ActivityIndicator } from 'react-native-paper';
 import { supabase } from '../services/supabase';
+import type { RealtimePostgresChangesPayload, REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import type { Tables } from '../types/supabase';
 
@@ -154,16 +155,16 @@ export const SupabaseConnectivityTest: React.FC = () => {
         // Set up subscription to devices table
         const channel = supabase
           .channel('connectivity-test')
-          .on('postgres_changes', 
+          .on('postgres_changes',
             { event: '*', schema: 'public', table: 'devices' },
-            (payload) => {
+            (payload: RealtimePostgresChangesPayload<Tables<'devices'>>) => {
               console.log('Real-time update received:', payload);
               clearTimeout(timeoutId);
               channel.unsubscribe();
               resolve();
             }
           )
-          .subscribe((status) => {
+          .subscribe((status: `${REALTIME_SUBSCRIBE_STATES}`) => {
             if (status === 'SUBSCRIBED') {
               // Subscription established successfully
               console.log('Real-time subscription established');

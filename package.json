@@ -25,6 +25,9 @@
     "deps": "node scripts/deps-cli.js",
     "deps:add": "node scripts/deps-cli.js add",
     "deps:scan": "node scripts/deps-cli.js scan",
+    "types:local": "cd ~/dev/wildlifeai/wildlife-watcher-backend && npx supabase gen types typescript --local > ~/dev/wildlifeai/wildlife-watcher-mobile-app/src/types/supabase.ts",
+    "types:check-local": "./scripts/check-types-local.sh",
+    "validate:local": "./scripts/test-integration-local.sh",
     "supabase:types": "echo 'Types are manually synced from backend repository. See src/types/supabase.ts'",
     "postinstall": "npm run validate:deps"
   },
@@ -85,6 +88,7 @@
     "@testing-library/react-native": "^12.4.3",
     "@types/jest": "^30.0.0",
     "@types/react": "~18.2.79",
+    "@types/react-native-vector-icons": "^6.4.18",
     "@types/react-test-renderer": "^18.0.0",
     "babel-jest": "^29.6.3",
     "detox": "^20.19.3",

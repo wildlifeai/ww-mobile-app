@@ -13,6 +13,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { networkOnline, networkOffline } from '../slices/networkSlice';
 import { processOfflineQueue, loadQueueStatus } from '../slices/offlineSlice';
 import { RootState } from '../index';
+import type { OfflineOperation } from '../../types/offline';
 
 export const offlineSyncMiddleware = createListenerMiddleware();
 
@@ -81,7 +82,7 @@ offlineSyncMiddleware.startListening({
 
           // Check if there are pending operations
           const pendingCount = state.offline.queue.operations.filter(
-            (op) => op.retry_count < 5
+            (op: OfflineOperation) => op.retry_count < 5
           ).length;
 
           if (pendingCount === 0) {
@@ -131,7 +132,7 @@ offlineSyncMiddleware.startListening({
         return (
           !state.network.isOnline ||
           state.network.offlineModeEnabled ||
-          state.offline.queue.operations.filter((op) => op.retry_count < 5).length === 0
+          state.offline.queue.operations.filter((op: OfflineOperation) => op.retry_count < 5).length === 0
         );
       }
     );
@@ -153,7 +154,7 @@ offlineSyncMiddleware.startListening({
     console.log('🔴 Network offline - sync paused');
     const state = listenerApi.getState() as RootState;
     const pendingCount = state.offline.queue.operations.filter(
-      (op) => op.retry_count < 5
+      (op: OfflineOperation) => op.retry_count < 5
     ).length;
 
     if (pendingCount > 0) {

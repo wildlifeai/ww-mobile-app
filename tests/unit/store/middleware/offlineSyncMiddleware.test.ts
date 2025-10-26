@@ -4,10 +4,10 @@
  */
 
 import { configureStore } from '@reduxjs/toolkit';
-import { offlineSyncMiddleware } from '../../../../src/store/middleware/offlineSyncMiddleware';
-import networkReducer, { networkOnline, networkOffline } from '../../../../src/store/slices/networkSlice';
-import offlineReducer from '../../../../src/store/slices/offlineSlice';
-import syncReducer from '../../../../src/store/slices/syncSlice';
+import { offlineSyncMiddleware } from '../../../../src/redux/middleware/offlineSyncMiddleware';
+import networkReducer, { networkOnline, networkOffline } from '../../../../src/redux/slices/networkSlice';
+import offlineReducer from '../../../../src/redux/slices/offlineSlice';
+import syncReducer from '../../../../src/redux/slices/syncSlice';
 
 // Mock NetInfo
 jest.mock('@react-native-community/netinfo', () => ({

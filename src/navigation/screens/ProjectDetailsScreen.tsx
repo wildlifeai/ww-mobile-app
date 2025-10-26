@@ -33,7 +33,7 @@ import {
   useDeleteProjectMutation,
   useGetProjectMembersQuery,
   useRemoveProjectMemberMutation
-} from '../../store/api/projectsApi';
+} from '../../redux/api/projectsApi';
 import { WWScreenView } from '../../components/ui/WWScreenView';
 import { WWTextInput } from '../../components/ui/WWTextInput';
 import { WWButton } from '../../components/ui/WWButton';
@@ -83,7 +83,7 @@ export const ProjectDetailsScreen = () => {
       name: project?.name || '',
       description: project?.description || '',
       sampling_design: project?.sampling_design || '',
-      privacy_level: project?.privacy_level || 'private',
+      privacy_level: (project?.privacy_level || 'private') as 'public' | 'internal' | 'private',
       is_baited: project?.is_baited || false,
       is_monitoring_marked_individual: project?.is_monitoring_marked_individual || false,
       website: project?.website || '',
@@ -97,7 +97,7 @@ export const ProjectDetailsScreen = () => {
         name: project.name,
         description: project.description || '',
         sampling_design: project.sampling_design || '',
-        privacy_level: project.privacy_level || 'private',
+        privacy_level: (project.privacy_level || 'private') as 'public' | 'internal' | 'private',
         is_baited: project.is_baited || false,
         is_monitoring_marked_individual: project.is_monitoring_marked_individual || false,
         website: project.website || '',
@@ -531,8 +531,8 @@ export const ProjectDetailsScreen = () => {
                 <ActivityIndicator size="small" />
               ) : members && members.length > 0 ? (
                 <View style={styles.membersList}>
-                  {members.map((member) => (
-                    <View key={member.user_id} style={styles.memberRow}>
+                  {members.map((member, index) => (
+                    <View key={member.user_id || `member-${index}`} style={styles.memberRow}>
                       <View style={styles.memberInfo}>
                         <WWIcon source="account-circle" size={40} color={theme.colors.onSurfaceVariant} />
                         <View style={styles.memberDetails}>

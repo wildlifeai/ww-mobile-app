@@ -16,6 +16,7 @@ import {
   updatePasswordWithToken,
   getCurrentUser,
 } from '../../../src/services/auth';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 import {
   mockSupabaseClient,
@@ -311,9 +312,9 @@ describe('Authentication Service', () => {
 
     test('should call callback with auth response when session exists', async () => {
       const mockCallback = jest.fn();
-      let authStateChangeCallback: any;
-      
-      mockSupabaseClient.auth.onAuthStateChange.mockImplementation((callback) => {
+      let authStateChangeCallback: ((event: AuthChangeEvent, session: Session | null) => void) | undefined;
+
+      mockSupabaseClient.auth.onAuthStateChange.mockImplementation((callback: (event: AuthChangeEvent, session: Session | null) => void) => {
         authStateChangeCallback = callback;
         return { data: { subscription: { unsubscribe: jest.fn() } } };
       });
@@ -335,9 +336,9 @@ describe('Authentication Service', () => {
 
     test('should call callback with null when no session', async () => {
       const mockCallback = jest.fn();
-      let authStateChangeCallback: any;
-      
-      mockSupabaseClient.auth.onAuthStateChange.mockImplementation((callback) => {
+      let authStateChangeCallback: ((event: AuthChangeEvent, session: Session | null) => void) | undefined;
+
+      mockSupabaseClient.auth.onAuthStateChange.mockImplementation((callback: (event: AuthChangeEvent, session: Session | null) => void) => {
         authStateChangeCallback = callback;
         return { data: { subscription: { unsubscribe: jest.fn() } } };
       });

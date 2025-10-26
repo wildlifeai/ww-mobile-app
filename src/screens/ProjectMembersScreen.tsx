@@ -121,8 +121,8 @@ export const ProjectMembersScreen: React.FC = () => {
   }, [projectId]);
 
   const loadMembers = async () => {
-    if (!user || !currentOrg) {
-      console.error('❌ Missing user or organization context');
+    if (!user) {
+      console.error('❌ Missing user context');
       Alert.alert('Error', 'User authentication required');
       return;
     }
@@ -131,13 +131,34 @@ export const ProjectMembersScreen: React.FC = () => {
     try {
       console.log('📋 Loading members for project:', projectId);
 
-      // Load project members
-      const members = await getProjectMembers(projectId, user.id);
-      setMembers(members);
-      console.log(`✅ Loaded ${members.length} project members`);
+      // Load project members (with authorization handling)
+      let members: ProjectMember[] = [];
+      try {
+        members = await getProjectMembers(projectId, user.id);
+        setMembers(members);
+        console.log(`✅ Loaded ${members.length} project members`);
+      } catch (error: any) {
+        if (error?.message?.includes('Unauthorized')) {
+          // User not authorized to view members - show empty list
+          console.log('⚠️ User not authorized to view project members');
+          setMembers([]);
+          setAvailableUsers([]);
+          return;
+        }
+        throw error; // Re-throw other errors
+      }
 
-      // Load available users from organization
-      const orgUsers = await getOrganizationUsers(currentOrg.id, user.id);
+      // Get project to find its organisation_id
+      const ProjectService = (await import('../services/ProjectService')).default;
+      const project = await ProjectService.getProjectById(projectId);
+
+      if (!project?.organisation_id) {
+        console.error('❌ Project has no organisation_id');
+        return;
+      }
+
+      // Load available users from PROJECT'S organization (not current user's org!)
+      const orgUsers = await getOrganizationUsers(project.organisation_id, user.id);
 
       // Filter out users already in project
       const available = orgUsers.filter(

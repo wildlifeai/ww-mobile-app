@@ -1,7 +1,8 @@
-import { AuthError, AuthResponse as SupabaseAuthResponse, Session, User } from '@supabase/supabase-js';
+import { AuthError, AuthResponse as SupabaseAuthResponse, Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { AuthResponse, LoginRequest, RegisterRequest } from '../redux/api/auth/types';
 import { getDatabaseService } from './offline/DatabaseService';
+import type { Tables } from '../types/supabase';
 
 /**
  * Supabase Authentication Service
@@ -102,7 +103,7 @@ const fetchUserOrganisations = async (userId: string) => {
     console.log('✅ Found', userOrgs.length, 'user_organisation links');
 
     // Step 2: Get organisation details
-    const orgIds = userOrgs.map(uo => uo.organisation_id);
+    const orgIds = userOrgs.map((uo: Tables<'user_organisations'>) => uo.organisation_id);
     console.log('📋 Querying organisations table for IDs:', orgIds);
     const { data: orgs, error: orgsError } = await supabase
       .from('organisations')
@@ -145,14 +146,14 @@ const fetchUserOrganisations = async (userId: string) => {
     console.log('✅ Found', userRoles?.length || 0, 'user roles');
 
     // Step 4: Combine the data
-    const organisations = userOrgs.map(uo => {
-      const org = orgs?.find(o => o.id === uo.organisation_id);
+    const organisations = userOrgs.map((uo: Tables<'user_organisations'>) => {
+      const org = orgs?.find((o: Tables<'organisations'>) => o.id === uo.organisation_id);
 
       // Find role for this organisation (organisation-scoped or system-wide)
       const orgRole = userRoles?.find(
-        r => r.scope_type === 'organisation' && r.scope_id === uo.organisation_id
+        (r: Tables<'user_roles'>) => r.scope_type === 'organisation' && r.scope_id === uo.organisation_id
       );
-      const systemRole = userRoles?.find(r => r.scope_type === 'system');
+      const systemRole = userRoles?.find((r: Tables<'user_roles'>) => r.scope_type === 'system');
 
       // System ww_admin role takes precedence over org-specific roles
       const role = systemRole?.role || orgRole?.role || 'project_member';
@@ -165,7 +166,7 @@ const fetchUserOrganisations = async (userId: string) => {
     });
 
     // Get highest privilege role (ww_admin > project_admin > project_member)
-    const allRoles = organisations.map(o => o.role);
+    const allRoles = organisations.map((o: { id: string; name: string; role: 'ww_admin' | 'project_admin' | 'project_member' }) => o.role);
     const role = allRoles.includes('ww_admin')
       ? 'ww_admin'
       : allRoles.includes('project_admin')
@@ -392,7 +393,7 @@ export const setupAuthListener = (
   onAuthStateChange: (authResponse: AuthResponse | null) => void
 ): (() => void) => {
   const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    async (event, session) => {
+    async (event: AuthChangeEvent, session: Session | null) => {
       console.log('Auth state changed:', event, session?.user?.email);
 
       if (session && session.user) {

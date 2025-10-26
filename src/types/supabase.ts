@@ -34,6 +34,177 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          target_project_id: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          target_project_id?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          target_project_id?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["admin_user_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["target_user_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_project_id_fkey"
+            columns: ["target_project_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["target_project_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_project_id_fkey"
+            columns: ["target_project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_project_id_fkey"
+            columns: ["target_project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_project_id_fkey"
+            columns: ["target_project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_project_id_fkey"
+            columns: ["target_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_project_id_fkey"
+            columns: ["target_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["admin_user_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["target_user_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_logs: {
         Row: {
           api_endpoint: string | null
@@ -73,8 +244,22 @@ export type Database = {
             foreignKeyName: "fk_api_logs_deployment"
             columns: ["deployment_id"]
             isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "fk_api_logs_deployment"
+            columns: ["deployment_id"]
+            isOneToOne: false
             referencedRelation: "deployments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_api_logs_device"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["device_id"]
           },
           {
             foreignKeyName: "fk_api_logs_device"
@@ -94,7 +279,42 @@ export type Database = {
             foreignKeyName: "fk_api_logs_project"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["target_project_id"]
+          },
+          {
+            foreignKeyName: "fk_api_logs_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "fk_api_logs_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "fk_api_logs_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "fk_api_logs_project"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_api_logs_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
         ]
@@ -239,6 +459,13 @@ export type Database = {
             foreignKeyName: "fk_deployments_device"
             columns: ["device_id"]
             isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["device_id"]
+          },
+          {
+            foreignKeyName: "fk_deployments_device"
+            columns: ["device_id"]
+            isOneToOne: false
             referencedRelation: "devices"
             referencedColumns: ["id"]
           },
@@ -246,7 +473,42 @@ export type Database = {
             foreignKeyName: "fk_deployments_project"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["target_project_id"]
+          },
+          {
+            foreignKeyName: "fk_deployments_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "fk_deployments_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "fk_deployments_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "fk_deployments_project"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_deployments_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
         ]
@@ -374,7 +636,42 @@ export type Database = {
             foreignKeyName: "fk_project_members_project"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["target_project_id"]
+          },
+          {
+            foreignKeyName: "fk_project_members_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "fk_project_members_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "fk_project_members_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "fk_project_members_project"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_project_members_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
           {
@@ -388,7 +685,42 @@ export type Database = {
             foreignKeyName: "project_members_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["target_project_id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
           {
@@ -463,8 +795,50 @@ export type Database = {
             foreignKeyName: "projects_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["organisation_id"]
           },
         ]
       }
@@ -525,8 +899,50 @@ export type Database = {
             foreignKeyName: "user_organisations_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "user_organisations_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "user_organisations_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "user_organisations_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_organisations_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_organisations_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "user_organisations_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["organisation_id"]
           },
         ]
       }
@@ -601,36 +1017,425 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      admin_activity_log: {
+        Row: {
+          action: string | null
+          action_timestamp: string | null
+          admin_email: string | null
+          admin_name: string | null
+          admin_user_id: string | null
+          log_id: string | null
+          metadata: Json | null
+          metadata_org_id: string | null
+          organisation_id: string | null
+          organisation_name: string | null
+          role_affected: string | null
+          target_project_id: string | null
+          target_project_name: string | null
+          target_user_email: string | null
+          target_user_id: string | null
+          target_user_name: string | null
+        }
+        Relationships: []
+      }
+      deployment_overview: {
+        Row: {
+          created_at: string | null
+          created_by_email: string | null
+          created_by_name: string | null
+          deleted_at: string | null
+          deployment_comments: string | null
+          deployment_end: string | null
+          deployment_id: string | null
+          deployment_name: string | null
+          deployment_photos: Json | null
+          deployment_start: string | null
+          deployment_status: string | null
+          device_firmware: string | null
+          device_id: string | null
+          device_model: string | null
+          device_ref_identifier: string | null
+          geolocation: unknown | null
+          latitude: number | null
+          location_name: string | null
+          longitude: number | null
+          organisation_id: string | null
+          organisation_name: string | null
+          project_id: string | null
+          project_name: string | null
+          status_description: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      organisation_members_detailed: {
+        Row: {
+          is_ww_admin: boolean | null
+          member_since: string | null
+          membership_updated: string | null
+          organisation_id: string | null
+          organisation_name: string | null
+          organisation_roles: string[] | null
+          organisation_slug: string | null
+          project_count: number | null
+          project_roles: string[] | null
+          user_email: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Relationships: []
+      }
+      organisation_summary: {
+        Row: {
+          active_deployment_count: number | null
+          active_device_count: number | null
+          active_member_count: number | null
+          active_project_count: number | null
+          created_at: string | null
+          created_by_email: string | null
+          created_by_name: string | null
+          deleted_at: string | null
+          id: string | null
+          is_active: boolean | null
+          last_deployment_created: string | null
+          last_project_created: string | null
+          metadata: Json | null
+          model_manager_count: number | null
+          name: string | null
+          org_project_admin_count: number | null
+          slug: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      project_members_detailed: {
+        Row: {
+          granted_by_email: string | null
+          granted_by_name: string | null
+          is_ww_admin: boolean | null
+          organisation_id: string | null
+          organisation_name: string | null
+          organisation_roles: string[] | null
+          organisation_slug: string | null
+          project_id: string | null
+          project_name: string | null
+          project_role: string | null
+          role_granted_at: string | null
+          role_is_active: boolean | null
+          user_email: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Relationships: []
+      }
+      project_summary: {
+        Row: {
+          active_deployment_count: number | null
+          admin_count: number | null
+          api_log_count: number | null
+          created_at: string | null
+          created_by_email: string | null
+          created_by_name: string | null
+          deleted_at: string | null
+          deployment_count: number | null
+          description: string | null
+          device_count: number | null
+          last_api_activity: string | null
+          last_deployment_created: string | null
+          last_deployment_updated: string | null
+          member_count: number | null
+          organisation_id: string | null
+          organisation_name: string | null
+          organisation_slug: string | null
+          project_id: string | null
+          project_name: string | null
+          total_members: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      projects_with_stats: {
+        Row: {
+          battery_level: number | null
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          deployment_count: number | null
+          description: string | null
+          end_date: string | null
+          id: string | null
+          is_baited: boolean | null
+          is_monitoring_marked_individual: boolean | null
+          is_private: boolean | null
+          lorawan_device_count: number | null
+          member_count: number | null
+          name: string | null
+          organisation_id: string | null
+          owner_id: string | null
+          privacy_level: string | null
+          project_image: string | null
+          sampling_design: string | null
+          sd_card_usage: number | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          battery_level?: never
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deployment_count?: never
+          description?: string | null
+          end_date?: string | null
+          id?: string | null
+          is_baited?: boolean | null
+          is_monitoring_marked_individual?: boolean | null
+          is_private?: boolean | null
+          lorawan_device_count?: never
+          member_count?: never
+          name?: string | null
+          organisation_id?: string | null
+          owner_id?: string | null
+          privacy_level?: string | null
+          project_image?: string | null
+          sampling_design?: string | null
+          sd_card_usage?: never
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          battery_level?: never
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deployment_count?: never
+          description?: string | null
+          end_date?: string | null
+          id?: string | null
+          is_baited?: boolean | null
+          is_monitoring_marked_individual?: boolean | null
+          is_private?: boolean | null
+          lorawan_device_count?: never
+          member_count?: never
+          name?: string | null
+          organisation_id?: string | null
+          owner_id?: string | null
+          privacy_level?: string | null
+          project_image?: string | null
+          sampling_design?: string | null
+          sd_card_usage?: never
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["organisation_id"]
+          },
+        ]
+      }
+      recent_activity_summary: {
+        Row: {
+          activity_timestamp: string | null
+          activity_type: string | null
+          details: Json | null
+          entity_name: string | null
+          entity_type: string | null
+          organisation_name: string | null
+          project_name: string | null
+        }
+        Relationships: []
+      }
+      user_access_summary: {
+        Row: {
+          highest_privilege: string | null
+          last_org_joined: string | null
+          last_role_granted: string | null
+          organisation_count: number | null
+          organisation_role_count: number | null
+          organisations: string[] | null
+          project_count: number | null
+          project_role_count: number | null
+          system_role: string | null
+          user_created_at: string | null
+          user_email: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Relationships: []
+      }
+      user_roles_detailed: {
+        Row: {
+          deleted_at: string | null
+          expires_at: string | null
+          granted_at: string | null
+          granted_by_email: string | null
+          granted_by_name: string | null
+          is_active: boolean | null
+          organisation_slug: string | null
+          role: string | null
+          role_id: string | null
+          scope_id: string | null
+          scope_name: string | null
+          scope_type: string | null
+          user_email: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      add_project_member: {
+        Args: {
+          p_granted_by: string
+          p_project_id: string
+          p_role: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       get_current_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_organisation_report: {
+        Args: {
+          p_include_inactive?: boolean
+          p_organisation_id?: string
+          p_organisation_slug?: string
+        }
+        Returns: {
+          created_at: string
+          deployment_count: number
+          device_count: number
+          is_active: boolean
+          member_count: number
+          members: Json
+          organisation_id: string
+          organisation_name: string
+          organisation_slug: string
+          project_count: number
+          projects: Json
+        }[]
+      }
+      get_organisation_users: {
+        Args: { p_organisation_id: string; p_requesting_user_id?: string }
+        Returns: {
+          email: string
+          id: string
+          is_in_project: boolean
+          name: string
+          roles: Json
+        }[]
+      }
+      get_project_health_report: {
+        Args: { p_organisation_id?: string }
+        Returns: {
+          active_deployment_count: number
+          deployment_count: number
+          has_admin: boolean
+          health_score: number
+          issues: Json
+          last_activity: string
+          member_count: number
+          organisation_name: string
+          project_id: string
+          project_name: string
+        }[]
+      }
+      get_project_members: {
+        Args: { p_project_id: string; p_requesting_user_id?: string }
+        Returns: {
+          email: string
+          granted_at: string
+          granted_by: string
+          granted_by_name: string
+          id: string
+          name: string
+          role: string
+        }[]
+      }
+      get_user_access_report: {
+        Args: { p_user_email?: string; p_user_id?: string }
+        Returns: {
+          organisations: Json
+          projects: Json
+          system_role: string
+          total_permissions: number
+          user_email: string
+          user_id: string
+          user_name: string
+        }[]
+      }
       get_user_organisation: {
-        Args: { organisation_id: string; user_id: string }
+        Args: { organisation_id?: string; user_id?: string }
         Returns: string
       }
       has_organisation_role: {
         Args: {
-          organisation_id: string
-          required_role: string
-          user_id: string
+          organisation_id?: string
+          required_role?: string
+          user_id?: string
         }
         Returns: boolean
       }
       has_project_role: {
-        Args: { p_project_id: string; p_role: string }
-        Returns: boolean
-      }
-      has_project_role_mvp2: {
-        Args: { project_id: string; required_role: string; user_id: string }
+        Args: { project_id?: string; required_role?: string; user_id?: string }
         Returns: boolean
       }
       has_system_role: {
-        Args: { required_role: string; user_id: string }
+        Args: { required_role?: string; user_id?: string }
         Returns: boolean
+      }
+      remove_project_member: {
+        Args: { p_project_id: string; p_removed_by: string; p_user_id: string }
+        Returns: Json
       }
       soft_delete_deployment: {
         Args: { p_id: string }
@@ -647,6 +1452,15 @@ export type Database = {
       soft_remove_project_member: {
         Args: { p_project_id: string; p_user_id: string }
         Returns: undefined
+      }
+      update_project_member_role: {
+        Args: {
+          p_new_role: string
+          p_project_id: string
+          p_updated_by: string
+          p_user_id: string
+        }
+        Returns: Json
       }
     }
     Enums: {
