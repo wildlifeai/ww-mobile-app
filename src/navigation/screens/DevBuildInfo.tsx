@@ -1,18 +1,34 @@
-import React from "react"
-import { ScrollView, StyleSheet, View, NativeModules } from "react-native"
-import { Surface, List, Divider, Chip } from "react-native-paper"
+import React, { useState } from "react"
+import { ScrollView, StyleSheet, View, NativeModules, Alert } from "react-native"
+import { Surface, List, Divider, Chip, Button } from "react-native-paper"
 import { WWText } from "../../components/ui/WWText"
 import { useExtendedTheme } from "../../theme"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { getReadableVersion, getBuildNumber, getBundleId, getVersion } from "react-native-device-info"
 import Constants from "expo-constants"
 import { Platform } from "react-native"
+import { resetDatabaseForDev, clearDatabaseDataForDev, getDatabaseStatus } from "../../utils/devDatabaseReset"
 
 export const DevBuildInfo = () => {
 	const { appPadding, spacing } = useExtendedTheme()
 	const { top } = useSafeAreaInsets()
+	const [isResetting, setIsResetting] = useState(false)
+	const [dbStatus, setDbStatus] = useState<{ version: number; supabaseUrl: string } | null>(null)
 
 	const isDevelopment = __DEV__
+
+	// Load database status on mount
+	React.useEffect(() => {
+		const loadDbStatus = async () => {
+			try {
+				const status = await getDatabaseStatus()
+				setDbStatus({ version: status.version, supabaseUrl: status.supabaseUrl })
+			} catch (error) {
+				console.error('Failed to load database status:', error)
+			}
+		}
+		loadDbStatus()
+	}, [])
 	const expoSdkVersion = Constants.expoConfig?.sdkVersion || "Unknown"
 	const bundleId = getBundleId()
 	const appVersion = getVersion()
@@ -35,13 +51,68 @@ export const DevBuildInfo = () => {
 	// Check if module is detected via NativeModules or exists in package.json
 	const checkModule = (nativeCheck: boolean, packageName: string) => {
 		if (nativeCheck) return { status: 'loaded', source: 'native' }
-		
+
 		// Check package.json as fallback
 		const packageJson = require('../../../package.json')
 		if (packageJson.dependencies?.[packageName]) {
 			return { status: 'package', source: 'package.json', version: packageJson.dependencies[packageName] }
 		}
 		return { status: 'missing', source: 'none' }
+	}
+
+	// Handle database reset
+	const handleDatabaseReset = () => {
+		Alert.alert(
+			"Reset Database",
+			"This will delete ALL local data and recreate the database schema. You'll need to re-authenticate.\n\nAre you sure?",
+			[
+				{ text: "Cancel", style: "cancel" },
+				{
+					text: "Reset",
+					style: "destructive",
+					onPress: async () => {
+						setIsResetting(true)
+						try {
+							await resetDatabaseForDev()
+							Alert.alert("Success", "Database reset complete. Please restart the app.")
+							// Refresh database status
+							const status = await getDatabaseStatus()
+							setDbStatus({ version: status.version, supabaseUrl: status.supabaseUrl })
+						} catch (error) {
+							Alert.alert("Error", `Failed to reset database: ${error instanceof Error ? error.message : 'Unknown error'}`)
+						} finally {
+							setIsResetting(false)
+						}
+					}
+				}
+			]
+		)
+	}
+
+	// Handle database clear
+	const handleDatabaseClear = () => {
+		Alert.alert(
+			"Clear Database Data",
+			"This will delete ALL local data but keep the database schema. You'll need to re-authenticate.\n\nAre you sure?",
+			[
+				{ text: "Cancel", style: "cancel" },
+				{
+					text: "Clear",
+					style: "destructive",
+					onPress: async () => {
+						setIsResetting(true)
+						try {
+							await clearDatabaseDataForDev()
+							Alert.alert("Success", "Database cleared. Please restart the app.")
+						} catch (error) {
+							Alert.alert("Error", `Failed to clear database: ${error instanceof Error ? error.message : 'Unknown error'}`)
+						} finally {
+							setIsResetting(false)
+						}
+					}
+				}
+			]
+		)
 	}
 
 	// Key native modules we care about - checking multiple possible names
@@ -179,6 +250,52 @@ export const DevBuildInfo = () => {
 							</View>
 						)
 					})}
+				</View>
+
+				<Divider style={{ marginVertical: spacing }} />
+
+				<List.Section>
+					<List.Subheader>Database (Dev Tools)</List.Subheader>
+					<List.Item
+						title="Database Version"
+						description={dbStatus ? `v${dbStatus.version}` : 'Loading...'}
+						left={(props) => <List.Icon {...props} icon="database" />}
+					/>
+					<List.Item
+						title="Supabase Instance"
+						description={dbStatus?.supabaseUrl ? (
+							dbStatus.supabaseUrl.includes('localhost') ? 'Local' :
+							dbStatus.supabaseUrl.includes('supabase.co') ? 'Cloud Dev' :
+							'Unknown'
+						) : 'Loading...'}
+						left={(props) => <List.Icon {...props} icon="cloud" />}
+					/>
+				</List.Section>
+
+				<View style={{ paddingHorizontal: spacing * 2, gap: spacing }}>
+					<Button
+						mode="outlined"
+						onPress={handleDatabaseClear}
+						disabled={isResetting}
+						icon="delete-sweep"
+						buttonColor="transparent"
+						textColor="#ff9800"
+					>
+						Clear Database Data
+					</Button>
+					<Button
+						mode="outlined"
+						onPress={handleDatabaseReset}
+						disabled={isResetting}
+						icon="database-refresh"
+						buttonColor="transparent"
+						textColor="#f44336"
+					>
+						Reset Database (Full)
+					</Button>
+					<WWText variant="bodySmall" style={{ textAlign: "center", opacity: 0.7, paddingTop: spacing }}>
+						⚠️ Dev Only: These actions will delete all local data
+					</WWText>
 				</View>
 
 				<Divider style={{ marginVertical: spacing }} />
