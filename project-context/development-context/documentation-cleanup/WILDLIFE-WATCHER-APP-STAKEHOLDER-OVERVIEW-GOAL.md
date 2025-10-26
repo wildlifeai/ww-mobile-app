@@ -58,21 +58,21 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 
 **For Project Members**:
 - Test and prepare cameras before field deployments
-- Start/end camera deployments in 6 easy steps
+- Start/end camera deployments in 4-5 easy steps
 - Work completely offline in remote locations
 - View all your project deployments on a list or a map
 
 **For Project Admins**:
 - Invite team members and assign roles
 - Track deployment status across field sites
-- Select AI models for camera detection
+- Select which AI model a project uses from a list of available models
 - Monitor team activities
 
 **For Organisation Administrators**:
 - Create and manage research projects
 - **Future Enhancement (via Web Portal)**:
 - Invite team members and assign roles
-- Upload and manage AI models for the organization
+- Upload and manage the AI models available to the organization
 
 **For System Administrators (WW Admin)**:
 - View all projects across organizations (read-only in app)
@@ -85,7 +85,7 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 **For System Administrators (WW Admin)**:
 - Create and manage user accounts
 - Assign users to organizations
-- Manage system-level roles (WW Admin, Organisation Administrator)
+- Manage system-level roles (WW Admin, Organisation Administrator) 
 - System-wide configuration
 - Password reset forms for users
 
@@ -128,7 +128,7 @@ The app has five distinct user types, each with specific capabilities:
 - Everything a Project Member can do, PLUS:
 - Edit project details
 - Add/remove team members
-- Assign Project Admin or Project Member roles
+- Assign Project Admin or Project Member roles 
 - Select which AI models the deployments use
 - Manage the project's visibility settings (Future Enhancement)
 - Create, read, and end any deployment within their projects.
@@ -165,7 +165,7 @@ The app has five distinct user types, each with specific capabilities:
 
 **Future Enhancement (via Web Portal)**:
 - Add/remove users from the organization.
-- Manage AI detection models for the organization (upload, version, delete).
+- Upload, version, and manage the AI detection models available to the organization.
 - Has administrative access to all projects within their organization.
 
 **Real-World Example (Future)**:
@@ -352,6 +352,21 @@ Organization: Serengeti Conservation Trust
 **Implementation**: To be scheduled (Phase 2)
 **Source**: implementation-spec-v1.4.md Section 4.3 (deferred)
 
+#### 1.5 In-App Feedback
+**Description**: Submit feedback, bug reports, or suggestions to Wildlife Watcher team
+
+**Current State**: ✅ COMPLETE
+- Accessible from side drawer menu
+- Large text area for message
+- Sends to nominated support email
+- Confirmation message on success
+- Error handling with retry option
+
+**Intended State**: Same as current
+
+**Implementation**: Part of core app features
+**Source**: app-screen-guide.md Section 4 - Feedback Screen
+
 ---
 
 ### Project Management
@@ -513,8 +528,36 @@ Organization: Serengeti Conservation Trust
 ---
 
 ### Camera Deployments
+### 4.0 Camera Preparation Workflow (Pre-Deployment)
+**Description**: 2-step process for checking and configuring cameras before field deployment
 
-#### 4.1 Start Deployment Wizard (6 Steps)
+**Workflow Philosophy**: Ensure cameras are field-ready before deployment to prevent wasted trips
+
+**Current State**: ⏳ PENDING (Task 20)
+- **Step 1: Device Selection**: Scan for nearby available cameras via Bluetooth
+- **Step 2: Camera Workbench**: Comprehensive device preparation screen including:
+  - Edit device name
+  - View device ID (read-only)
+  - Associate camera with a project
+  - Check battery level and SD card space
+  - View/update firmware version
+  - View installed AI model (matches project default)
+  - Test camera function with preview photo
+  - Register for LoRaWAN remote updates (one-time per device)
+  - Deregister from LoRaWAN if needed
+
+**Data Management**:
+- Test photos deleted after preview to conserve storage
+- Device configuration synced when online
+
+**User Flow**: Accessible from Devices Screen or triggered automatically during Start Deployment if device unprepared
+
+**Intended State**: Same as planned
+
+**Implementation**: Task 20 - BLE Communication & Sync
+**Source**: app-screen-guide.md Section 3 - Prepare and Test (Camera Workbench)
+
+#### 4.1 Start Deployment Wizard (4-5 Steps)
 **Description**: Guided process to deploy a camera in the field
 **Workflow Philosophy**: The wizard is designed to get the physical camera setup right first (pairing, connectivity, and field of view) before asking the user for metadata. This ensures the most critical, in-field tasks are prioritized.
 
@@ -536,7 +579,7 @@ Organization: Serengeti Conservation Trust
 - Can go back to edit previous steps
 - Final submission saves the record locally, adds it to the sync queue, and sends the configuration to the camera via BLE.
 
-**Implementation**: Task 15 - Deployment Workflow (6-step wizard)
+**Implementation**: Task 15 - Deployment Workflow (4-5-step wizard)
 **Estimated**: 10 hours
 **Source**: start-deployment-workflow.md
 
@@ -618,11 +661,58 @@ Organization: Serengeti Conservation Trust
 **Blocker**: Google Cloud Console setup required
 **Source**: implementation-spec-v1.4.md Section 5.7
 
+### Data Management Policies
+
+#### Photo Storage Strategy
+
+**Test Photos (Camera Preview)**:
+- **Purpose**: Verify camera function and clear lens before deployment
+- **Taken With**: Wildlife Watcher camera (via BLE command)
+- **Storage**: Temporary preview only
+- **Deletion Policy**: Automatically deleted from app and camera SD card after viewing to conserve space
+- **Rationale**: Preview photos serve no long-term purpose and waste storage
+
+**Deployment Setup Photos**:
+- **Purpose**: Document camera location and hiding spot for retrieval
+- **Taken With**: User's phone camera
+- **Storage**: 
+  - Low-resolution preview stored locally for offline viewing
+  - Full-resolution uploaded to cloud when online
+  - Can be downloaded on-demand when needed
+- **Deletion Policy**: Retained for life of deployment, deleted when deployment archived
+- **Rationale**: Critical for finding cameras in field, must persist
+
+**Detection Event Photos** (Future Enhancement):
+- **Purpose**: Animal identification evidence from AI model
+- **Taken With**: Wildlife Watcher camera (automatic trigger)
+- **Storage**: SD card only, synced to cloud periodically
+- **Deletion Policy**: Retained according to project settings
+- **Rationale**: Primary research data, must be preserved
+
 ---
 
 ### Device Management & Preparation
 
-#### 5.1 View Deployed Devices
+#### 5.1 Device Status Lifecycle
+**Description**: Cameras exist in one of three states
+
+**Device States**:
+- **Available**: Not deployed, ready for preparation or deployment. Devices enter this state after deployment ends or after Camera Workbench preparation.
+- **Deployed**: Currently part of an active deployment in the field
+- **In Preparation**: Connected to user's phone in Camera Workbench (temporary state)
+
+**Status Transitions**:
+- Available → In Preparation (via "Prepare and Test" button)
+- In Preparation → Available (via "Finish Preparation" button)
+- Available → Deployed (via Start Deployment wizard)
+- Deployed → Available (via End Deployment flow)
+
+**Current State**: ✅ COMPLETE (data model exists)
+**Source**: app-screen-guide.md Section 4 - Device Details Screen
+
+---
+
+#### 5.2 View Deployed Devices
 **Description**: The main view of the "Devices" screen lists all cameras that are actively deployed in projects the user is a member of. This gives field staff a quick overview of their active hardware.
 
 **Current State**: ⏳ PENDING (Task 18)
@@ -640,7 +730,7 @@ Organization: Serengeti Conservation Trust
 
 ---
 
-#### 5.2 Prepare and Test Nearby Devices
+#### 5.3 Prepare and Test Nearby Devices
 **Description**: A prominent button allows users to scan for nearby, non-deployed cameras to prepare them for fieldwork. This opens a "Camera Workbench" screen where a user can see and manage all aspects of a single camera before deployment.
 
 **User Capabilities**:
@@ -648,7 +738,7 @@ Organization: Serengeti Conservation Trust
 - **Test Camera**: Take a test photo to ensure the camera's view is clear and preview it.
 - **Manage Project Association**: Assign the camera to a specific project. The app includes safeguards to prevent associating a camera with a project the user doesn't have access to.
 - **Update Firmware**: If a newer firmware version is available, the user can update the camera directly from the app.
-- **Enable Remote Updates**: A one-time registration of the device to the LoRaWAN network, allowing it to send health updates from the field.
+- **Enable Remote Updates**: A one-time, per-device registration to a LoRaWAN network. Once a device is registered to a network, it can send health updates from the field for any deployment using that network.
 - **Configure AI Model**: Project Admins can change the AI detection model loaded on the camera.
 - **Name Device**: Give the camera a custom name for easy identification.
 
@@ -669,9 +759,9 @@ Organization: Serengeti Conservation Trust
 ---
 
 ### AI Model Management
-
-#### 6.1 Select Project AI Model
-**Description**: Choose which AI model the project uses (Project Admin)
+ 
+#### 6.1 Select Project AI Model (Project Admin)
+**Description**: From within the mobile app, a Project Admin can select which of the organization's available AI models will be used for all deployments within that specific project.
 
 **Current State**: ⏳ PENDING
 - View available models in organization.
@@ -685,9 +775,9 @@ Organization: Serengeti Conservation Trust
 **Source**: implementation-spec-v1.4.md Section 14, user-roles-permissions.md
 
 ---
-
-#### 6.2 Upload/Manage Models (Organisation Administrator)
-**Description**: Add new AI models to an organization.
+ 
+#### 6.2 Upload & Manage Models (Organisation Administrator)
+**Description**: Via the web portal, an Organisation Administrator can upload new AI model files, manage their versions, and decide which models are available for Project Admins to select from.
 
 **Current State**: ⏳ PENDING (Future Enhancement via Web Portal)
 - Upload model file
@@ -1595,6 +1685,33 @@ Contains: Supabase migrations, Edge Functions, RLS policies, test suites
 
 **Source**: MVP2-METRICS-TRACKER.md Task 11.8 section
 
+## Navigation Structure
+
+### Bottom Tab Bar
+The primary navigation for the app, always visible after login:
+- **Maps**: Home screen, deployment overview, start/end deployment buttons
+- **Projects**: Project list, create new project
+- **Deployments**: Deployment list with filters (All/Active/Ended)
+- **Devices**: Device list, prepare and test button
+
+### Side Drawer Menu
+Accessible via hamburger icon (top-left), provides:
+- **Profile**: View account information (read-only)
+- **Settings**: Configure sync preferences
+- **Feedback**: Submit bug reports and suggestions
+- **Sign Out**: Secure logout
+- **App Version**: Display current version number
+- **Sync Status Indicator**: Shows synced/syncing/offline/error states
+
+### Screen Transitions
+Key navigation flows:
+- Tapping project card → Project Details Screen
+- Tapping deployment card → Deployment Details Screen
+- Tapping device card → Device Details Screen
+- Start Deployment button → 4-5 step wizard (full-screen takeover)
+- End Deployment button → 2-step confirmation flow
+- Prepare and Test → 2-step Camera Workbench flow
+
 ---
 
 ## What's Coming Next
@@ -1613,7 +1730,7 @@ Contains: Supabase migrations, Edge Functions, RLS policies, test suites
 
 ---
 
-#### 2. Task 15: 6-Step Deployment Wizard
+#### 2. Task 15: 4-5-Step Deployment Wizard
 **Estimated**: 10 hours
 **What It Enables**:
 - Complete deployment workflow
