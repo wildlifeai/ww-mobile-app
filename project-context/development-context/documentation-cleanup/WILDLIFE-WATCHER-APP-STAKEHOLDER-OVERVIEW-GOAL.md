@@ -2,10 +2,9 @@
 ## Product Overview for Stakeholders
 
 **Document Version**: 1.2
-**Date**: October 20, 2025
+**Date**: October 27, 2025
 **Status**: MVP2 Development - 60.9% Complete
 **Purpose**: Non-technical stakeholder reference for features, progress, and decisions
-**Update**: Added backend database architecture and security information
 
 ---
 
@@ -68,39 +67,13 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 - Select which AI model a project uses from a list of available models
 - Monitor team activities
 
-**For Organisation Administrators**:
-- Create and manage research projects
-- **Future Enhancement (via Web Portal)**:
-- Invite team members and assign roles
-- Upload and manage the AI models available to the organization
-
-**For System Administrators (WW Admin)**:
-- View all projects across organizations (read-only in app)
-- **Future Enhancement (via Web Portal)**:
-- Manage users and organizations
-- System monitoring and configuration
-
-### Web Portal Features (Future Enhancement)
-
-**For System Administrators (WW Admin)**:
-- Create and manage user accounts
-- Assign users to organizations
-- Manage system-level roles (WW Admin, Organisation Administrator) 
-- System-wide configuration
-- Password reset forms for users
-
-**For Organisation Administrators**:
-- Upload new AI detection models
-- Version and update existing models
-- Manage model availability for organizations
-
 ---
 
 ## Who Uses the App?
 
 ### User Roles Explained
 
-The app has five distinct user types, each with specific capabilities:
+The app has three distinct user types, each with specific capabilities:
  
 #### 1. Project Member
 **What they do**: Hands-on fieldwork with cameras
@@ -154,50 +127,6 @@ The app has five distinct user types, each with specific capabilities:
 *Sarah is a member of the Kiwi Conservation Trust. When she logs in, she can see a list of all projects the Trust is running that are marked as visible to the organization. She cannot add deployments to these projects until a Project Admin, like Dr. Chen, adds her to the "kiwi bird population" project as a Project Member.*
 
 **Current Status**: ✅ Complete (Core architecture)
-
----
-
-#### 4. Organisation Administrator
-**What they do**: Manage projects. Future enhancements for this role will include managing users and AI models at an organization level.
-
-**Capabilities**:
-- Create new projects within their organization.
-
-**Future Enhancement (via Web Portal)**:
-- Add/remove users from the organization.
-- Upload, version, and manage the AI detection models available to the organization.
-- Has administrative access to all projects within their organization.
-
-**Real-World Example (Future)**:
-*Alex will be the administrator for the Kea Conservation Trust. He will onboard new researchers by adding them to the Trust's organization via the web portal. He will also collaborate with machine learning specialists to upload and manage the custom bird detection models that all projects in the Trust can use.*
-
-**Current Status**: ⏳ PENDING (Future Enhancement)
-
----
-
-#### 5. WW Admin (System Administrator)
-**What they do**: System-wide management and support
-
-**Mobile App Capabilities** (Limited):
-- View all projects across all organizations (read-only)
-- Navigate to web portal for administrative tasks
-- No direct editing or management in mobile app
- 
-**Web Portal Capabilities (Future Enhancement)**:
-- Create and manage user accounts.
-- Create and manage organizations.
-- Assign users to organizations.
-- Assign system-level roles (WW Admin, Organisation Administrator).
-- Send login invitations to new users.
-- System configuration and monitoring.
-- Access system logs.
-
-**Real-World Example (Future)**:
-*Jordan is the Wildlife.ai system administrator. When a new conservation organization wants to join, he will create their organization account and assign their initial organisation admin user via the web portal. If a user needs a password reset or reports an issue, Jordan will be able to handle it through the web portal.*
-
-**Current Status**: ✅ Mobile read-only complete, ⏳ Web portal is a Future Enhancement.
-
-**Key Architectural Change**: Originally planned with full CRUD capabilities in mobile app, corrected in September 2025 to read-only mobile + web portal management to prevent security issues and maintain proper separation of concerns.
 
 ---
 
@@ -2145,6 +2074,65 @@ Key navigation flows:
 ├─ admin-portal-spec.md
 └─ Compliance audit findings
 ```
+## Future Enhancements 
+### Web Portal Features
+
+**For System Administrators (WW Admin)**:
+- Create and manage user accounts
+- Assign users to organizations
+- Manage system-level roles (WW Admin, Organisation Administrator) 
+- System-wide configuration
+- Password reset forms for users
+
+**For Organisation Administrators**:
+- Upload new AI detection models
+- Version and update existing models
+- Manage model availability for organizations
+
+### User roles
+to expand from three to five. The two extra roles and their capabilties are:
+
+#### 4. Organisation Administrator
+**What they do**: Manage projects. Future enhancements for this role will include managing users and AI models at an organization level.
+
+**Capabilities**:
+- Create new projects within their organization.
+
+**Future Enhancement (via Web Portal)**:
+- Add/remove users from the organization.
+- Upload, version, and manage the AI detection models available to the organization.
+- Has administrative access to all projects within their organization.
+
+**Real-World Example (Future)**:
+*Alex will be the administrator for the Kea Conservation Trust. He will onboard new researchers by adding them to the Trust's organization via the web portal. He will also collaborate with machine learning specialists to upload and manage the custom bird detection models that all projects in the Trust can use.*
+
+**Current Status**: ⏳ PENDING (Future Enhancement)
+
+---
+
+#### 5. WW Admin (System Administrator)
+**What they do**: System-wide management and support
+
+**Mobile App Capabilities** (Limited):
+- View all projects across all organizations (read-only)
+- Navigate to web portal for administrative tasks
+- No direct editing or management in mobile app
+ 
+**Web Portal Capabilities (Future Enhancement)**:
+- Create and manage user accounts.
+- Create and manage organizations.
+- Assign users to organizations.
+- Assign system-level roles (WW Admin, Organisation Administrator).
+- Send login invitations to new users.
+- System configuration and monitoring.
+- Access system logs.
+
+**Real-World Example (Future)**:
+*Jordan is the Wildlife.ai system administrator. When a new conservation organization wants to join, he will create their organization account and assign their initial organisation admin user via the web portal. If a user needs a password reset or reports an issue, Jordan will be able to handle it through the web portal.*
+
+**Current Status**: ✅ Mobile read-only complete, ⏳ Web portal is a Future Enhancement.
+
+**Key Architectural Change**: Originally planned with full CRUD capabilities in mobile app, corrected in September 2025 to read-only mobile + web portal management to prevent security issues and maintain proper separation of concerns.
 
 ---
 
