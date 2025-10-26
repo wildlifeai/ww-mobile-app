@@ -799,6 +799,97 @@ export class DatabaseService {
 
   // NOTE: User role management methods removed to comply with WW Admin read-only + web portal architecture
   // User management operations are exclusively handled through the web portal
+
+  /**
+   * DEV ONLY: Reset database - drops all tables and recreates them
+   * USE WITH CAUTION: This will delete all local data
+   * Only available in development mode with dev Supabase instances
+   * @throws Error if not in development mode
+   */
+  async resetDatabase(): Promise<void> {
+    // Safety check: Only allow in development mode
+    if (!__DEV__) {
+      throw new Error('Database reset is only available in development mode');
+    }
+
+    // Additional safety check: Ensure we're not in production environment
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+    const isProduction = supabaseUrl.includes('production') ||
+                        (!supabaseUrl.includes('localhost') &&
+                         !supabaseUrl.includes('supabase.co'));
+
+    if (isProduction) {
+      throw new Error('Database reset is not allowed in production environment');
+    }
+
+    if (!this.db) throw new Error('Database not initialized');
+
+    console.warn('⚠️  DEV MODE: Resetting database - dropping all tables...');
+
+    // Drop all tables in reverse order (to handle foreign key constraints)
+    await this.db.execAsync('DROP TABLE IF EXISTS conflict_resolutions;');
+    await this.db.execAsync('DROP TABLE IF EXISTS offline_queue;');
+    await this.db.execAsync('DROP TABLE IF EXISTS local_deployments;');
+    await this.db.execAsync('DROP TABLE IF EXISTS local_devices;');
+    await this.db.execAsync('DROP TABLE IF EXISTS local_projects;');
+    await this.db.execAsync('DROP TABLE IF EXISTS local_user_roles;');
+    await this.db.execAsync('DROP TABLE IF EXISTS local_organisations;');
+
+    console.log('✅ All tables dropped');
+
+    // Reset database version
+    await this.db.runAsync('PRAGMA user_version = 0');
+
+    console.log('🔄 Recreating tables...');
+
+    // Recreate tables
+    await this.createTables();
+
+    // Set version
+    await this.setDatabaseVersion(this.DATABASE_VERSION);
+
+    console.log('✅ Database reset complete - all tables recreated');
+    console.log('ℹ️  Database is now empty and ready for fresh sync');
+  }
+
+  /**
+   * DEV ONLY: Clear all data from tables without dropping them
+   * Preserves schema and indexes
+   * Only available in development mode with dev Supabase instances
+   * @throws Error if not in development mode
+   */
+  async clearAllData(): Promise<void> {
+    // Safety check: Only allow in development mode
+    if (!__DEV__) {
+      throw new Error('Database clear is only available in development mode');
+    }
+
+    // Additional safety check: Ensure we're not in production environment
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+    const isProduction = supabaseUrl.includes('production') ||
+                        (!supabaseUrl.includes('localhost') &&
+                         !supabaseUrl.includes('supabase.co'));
+
+    if (isProduction) {
+      throw new Error('Database clear is not allowed in production environment');
+    }
+
+    if (!this.db) throw new Error('Database not initialized');
+
+    console.warn('⚠️  DEV MODE: Clearing all data from database...');
+
+    // Clear data in reverse order (to handle foreign key constraints)
+    await this.db.execAsync('DELETE FROM conflict_resolutions;');
+    await this.db.execAsync('DELETE FROM offline_queue;');
+    await this.db.execAsync('DELETE FROM local_deployments;');
+    await this.db.execAsync('DELETE FROM local_devices;');
+    await this.db.execAsync('DELETE FROM local_projects;');
+    await this.db.execAsync('DELETE FROM local_user_roles;');
+    await this.db.execAsync('DELETE FROM local_organisations;');
+
+    console.log('✅ All data cleared from database');
+    console.log('ℹ️  Schema and indexes preserved, ready for fresh sync');
+  }
 }
 
 // Singleton instance
