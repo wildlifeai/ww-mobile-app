@@ -90,7 +90,7 @@ The app has three distinct user types, each with specific capabilities:
 **Real-World Example**:
 *Sarah is a field researcher working on a predator monitoring study. She uses the app to test and prepare 20 cameras from the comfort of her office. Sarah confirms that the cameras have the latest firmware, full batteries, and SD card space. She also completes the one-time LoRaWAN registration for each camera so they can send remote updates from the field. She verifies that the cameras are associated with the predator monitoring project and that the flash and camera work as expected (e.g., the field of view is not obstructed and the camera doesn't take under/overexposed photos). She then goes to the field to deploy the cameras at bait stations. She turns the camera on, connects to it via the mobile app, enables remote updates via lorawan, and checks the LoRaWAN signal strength to ensure good reception. She then previews the field of view of the camera, records the location and other deployment-specific information (e.g. type of bait, angle of the camera,...) and start the deployment using the app. The deployment records are stored locally in her phone as there is no internet connection. When she returns to her vehicle with cell service, the app automatically syncs her work to the cloud because she has the "sync to cloud when available" option selected.*
 
-**Current Status**: ✅ Core features complete
+**Current Status**: TBC by AL
 
 ---
 
@@ -103,14 +103,12 @@ The app has three distinct user types, each with specific capabilities:
 - Add/remove team members
 - Assign Project Admin or Project Member roles 
 - Select which AI models the deployments use
-- Manage the project's visibility settings (Future Enhancement)
 - Create, read, and end any deployment within their projects.
-- Archive the project (Future Enhancement)
 
 **Real-World Example**:
 *Dr. Chen leads a multi-year kiwi bird population study with five field assistants. He creates the project in the app, invites the assistants as team members, sets deployments and project visibilty as "Visible for project and organization members", and selects the kiwi bird detection AI model. He can see all deployments across sites and monitor team progress in real-time.*
 
-**Current Status**: 🔄 In progress (Tasks 12-14, Tasks 12-13 complete)
+**Current Status**: TBC by AL
  
 ---
 #### 3. Organisation Member (Default Status)
@@ -120,40 +118,30 @@ The app has three distinct user types, each with specific capabilities:
 - Can be invited by a Project Admin or organisation Admin to become a Project Member or Project Admin.
 - Can create a new project at any time, automatically becoming its Project Admin.
 - **Important**: This role grants visibility only. To create deployments or perform other actions within a project, a user must be explicitly added as a Project Member or Project Admin to that specific project.
-- **Beta Version Note**: For the initial release, all projects will be set to "Visible only for project members" by default.
-- **Future Enhancement**: The ability for users to see other projects within their organization, or public projects, will be part of a future update when visibility settings are enabled.
 
 **Real-World Example**:
 *Sarah is a member of the Kiwi Conservation Trust. When she logs in, she can see a list of all projects the Trust is running that are marked as visible to the organization. She cannot add deployments to these projects until a Project Admin, like Dr. Chen, adds her to the "kiwi bird population" project as a Project Member.*
 
-**Current Status**: ✅ Complete (Core architecture)
+**Current Status**: TBC by AL
 
 ---
 
 ### How Roles Work Together
 
 ```
-Organization: Serengeti Conservation Trust
+Organization: General
 │
-├─ WW Admin (via web portal)
-│  └─ Creates organization, adds initial users
-│ 
-├─ Organisation Administrator (via web portal - Future Enhancement)
-│  └─ Creates projects, assigns project admins and uploads "Lion Detection v2.3" AI model
-│
-│  
 ├─ Project: "Lion Population 2025"
 │  │
 │  ├─ Project Admin: Dr. Chen
-│  │  ├─ Creates project
 │  │  ├─ Creates the project
 │  │  ├─ Invites 3 field assistants as Project Members
 │  │  ├─ Assigns "Lion Detection v2.3" model
 │  │  └─ Monitors team deployment progress
 │  │
 │  └─ Project Members: Sarah, Mike, Lisa
+│     ├─ Prepare camera for deployments
 │     ├─ Deploy cameras at field sites
-│     ├─ Test camera connections
 │     └─ Sync data when online
 │
 └─ Project: "Elephant Migration Study"
@@ -162,53 +150,13 @@ Organization: Serengeti Conservation Trust
 ```
 
 ### Organization Structure Rules
+For the beta release, the organizational structure is simple to focus on core project collaboration.
 
-1. **Project Member**:
-   - **Contribution (e.g., creating deployments) is strictly limited to projects where the user is an explicit Project Member or Project Admin.**
-   - Can be invited via email to join projects. They can also create their own new project, automatically becoming its Project Admin.
-   - For the beta, a user belongs to one organization (the "General" organization by default).
-   - **Future Enhancement**: Users will be able to belong to multiple organizations and view different types of projects available to their organizations or the public.
-   - **Beta Example**: Sarah_serengeti belongs to the General organization. She is a member of the "Lion Tracking" project. She can see and contribute to this project.
-   - **Future Enhancement Example**: Sarah_serengeti belongs to the "Serengeti Conservation Trust" organization. She is a member of the "Lion Tracking" project, which has its visibility set to "Visible only for project members". She can see and contribute to this project. The "Elephant Migration" project, also in her organization, has its visibility set to "Visible for project and organization members", so she can see it but cannot contribute to it.
+1.  **Single "General" Organization**: All users belong to a single, default organization called "General". There is no concept of separate organizations in the beta.
+2.  **Anyone Can Create a Project**: Any user can create a new project at any time. By doing so, they automatically become the **Project Admin** for that project.
+3.  **Project-Based Contribution**: To contribute to a project (e.g., create deployments), a user must be explicitly added to that project's team as either a **Project Member** or a **Project Admin**.
+4.  **Multiple Roles**: A user can have different roles across different projects. For example, Dr. Chen can be the Project Admin of the "Lion Population 2025" project and a Project Member of the "Elephant Migration Study".
 
-2. **Project Admins**: Lead individual research projects.
-   - Any user can become a Project Admin by creating a new project.
-   - They have full control within their projects, including managing team members (adding/removing/changing roles) and project settings.
-   - **Future Enhancement**: They will control the project's visibility, choosing from:
-     - **Visible only for project members**
-     - **Visible for project and organization members**
-     - **Publicly visible**
-   - **Beta Version Note**: For the initial release, all projects will be set to "Visible only for project members" by default. This setting will not be visible or editable in the mobile app.
-
-3. **Organisation member**: This is the default status for any user belonging to an organization.
-   - It enables users to select organisation-specific AI detection models.
-   - **Future Enhancement**: It will grant read-only visibility to any project within the organization that has its visibility set to "Visible for project and organization members" or "Publicly visible".
-   
-
-4. **Organisation Administrators**: Manage organization-level resources.
-   - This role will operate at the organization level and have Admin role access to all the projects within the organisation.
-   - **Future Enhancement**: They will use the web portal to upload, version, and manage the AI detection models available to projects within their organization.
-
-5. **WW Admins (System Administrators)**: Have system-wide responsibilities.
-   - They belong to a special "Admin" organization.
-   - WW Admins can be assigned to additional organizations or projects as any other user.
-   - **Future Enhancement**: They will have CRUD capabilities for all organizations and projects, performed exclusively through the secure web portal, not the mobile app.
-
-6. **Multiple Roles**: Users can have multiple roles within their organization.
-   - Example: Dr. Chen could be both Project Admin AND Project member of different projects within the same organization.
-
----
-
-### Project & Data Visibility Rules
-
-1.  **Creating Projects**: Any user within an organization can create a new project, and by doing so, they automatically become the Project Admin for that project.
- 
-2.  **Contributing to Projects**: To create or end deployments, a user must be explicitly added to a project's team as either a Project Member or a Project Admin. Being a member of the organization is not enough to contribute.
- 
-3.  **Project Visibility Settings (Future Enhancement)**: Project Admins will control who can see their project.
-    - **Beta Version Note**: For the beta release, all projects are created with the default visibility of "Visible only for project members". The ability for Project Admins to change this setting will be introduced in a future update.
-
----
 
 ## Complete Feature Inventory
 
@@ -217,7 +165,7 @@ Organization: Serengeti Conservation Trust
 #### 1.1 User Login
 **Description**: Secure login using email and password
 
-**Current State**: ✅ COMPLETE
+**Current State**: TBC by AL
 - Email/password authentication
 - Secure token management
 - Auto-remember last logged-in user
@@ -234,7 +182,7 @@ Organization: Serengeti Conservation Trust
 #### 1.2 Password Reset (In-App)
 **Description**: Reset forgotten password without leaving the app
 
-**Current State**: ✅ COMPLETE
+**Current State**: TBC by AL
 - "Forgot Password?" link on login screen
 - Email verification code sent
 - Secure password reset flow
@@ -245,46 +193,10 @@ Organization: Serengeti Conservation Trust
 **Implementation**: Task 10 - Auth System
 **Source**: implementation-spec-v1.4.md Section 4.1
 
----
-
-#### 1.3 User Signup (Self-Registration)
-**Description**: Allow anyone to create a new Wildlife Watcher account directly from the mobile app.
-
-**Current State**: ⏳ PENDING
-- A "Sign Up" button on the login screen will lead to a registration form.
-- Users will provide their email and create a password.
-- Email verification will be required to activate the account.
-
-**Intended State**: Fully functional self-registration flow.
-- Upon signup, users are placed in a "General" organization by default.
-- They can then create their own projects or be invited to join existing ones.
-
-**Implementation**: To be scheduled.
-**Source**: implementation-spec-v1.2.md Section 4.1
-
----
-
-#### 1.4 User Profile & Settings
-**Description**: Manage your profile and control how the app uses data.
-
-**Current State**: ⏳ PENDING
-- Users can access their profile screen.
-- The profile screen will allow users to configure data synchronization settings.
-
-**Intended State**: Fully functional user settings.
-- **Profile Information**: View user's full name, email, and organizations.
-- **Sync preferences**:
-   - **Sync on Wi-Fi only**: Prevent uploads over cellular data to save costs.
-   - **Ask before syncing**: The app will prompt for confirmation before starting a large (>50MB) data upload.
-   - **Automatic sync**: The default behavior, where the app syncs automatically whenever an internet connection is available.
-
-**Implementation**: To be scheduled (Phase 2)
-**Source**: implementation-spec-v1.4.md Section 4.3 (deferred)
-
 #### 1.5 In-App Feedback
 **Description**: Submit feedback, bug reports, or suggestions to Wildlife Watcher team
 
-**Current State**: ✅ COMPLETE
+**Current State**: TBC by AL
 - Accessible from side drawer menu
 - Large text area for message
 - Sends to nominated support email
@@ -303,7 +215,7 @@ Organization: Serengeti Conservation Trust
 #### 2.1 Create New Project
 **Description**: Start a new research project with team collaboration
 
-**Current State**: ✅ COMPLETE (Task 12)
+**Current State**: TBC by AL
 - Simple project creation form
 - Project name and description
 - Creator becomes Project Admin automatically
@@ -313,7 +225,7 @@ Organization: Serengeti Conservation Trust
 **Intended State**: Same as current
 
 **Implementation**: Task 12 - Projects CRUD Operations
-**Status**: 100% complete (11.9/15.0 hrs, 20% faster than estimated)
+**Status**: TBC by AL
 **Source**: implementation-spec-v1.4.md Section 5.5
 **Completion**: October 9, 2025
 
@@ -322,7 +234,7 @@ Organization: Serengeti Conservation Trust
 #### 2.2 View Projects List
 **Description**: See all projects you're assigned to (or set to be visible)
 
-**Current State**: ✅ COMPLETE (Task 12)
+**Current State**: TBC by AL
 - Card-based layout showing project cards
 - Project name and description visible
 - Creation date displayed
@@ -342,7 +254,7 @@ Organization: Serengeti Conservation Trust
 #### 2.3 View Project Details
 **Description**: See detailed information about a specific project
 
-**Current State**: ✅ COMPLETE (Task 12 Phase 4)
+**Current State**: TBC by AL
 - Project name, description, organization and visibilty
 - "Manage Members" button
 - "Start New Deployment" button
@@ -352,7 +264,7 @@ Organization: Serengeti Conservation Trust
 **Intended State**: Same as current (discovered already implemented!)
 
 **Implementation**: Task 12 Phase 4 - Project Details Screen
-**Status**: Found complete during verification (saved 3.0 hrs)
+**Status**: TBC by AL
 **Source**: implementation-spec-v1.4.md Section 5.5
 
 ---
@@ -360,7 +272,7 @@ Organization: Serengeti Conservation Trust
 #### 2.4 Edit Project Details
 **Description**: Update project information (Project Admin only)
 
-**Current State**: ⏳ PENDING (Task 14)
+**Current State**: TBC by AL
 - Edit project name, description and visibility
 - Update project settings
 - Only Project Admin can edit
@@ -372,28 +284,12 @@ Organization: Serengeti Conservation Trust
 
 ---
 
-#### 2.5 Archive/Delete Projects
-**Description**: Remove completed or mistaken projects
-
-**Current State**: ⏳ PENDING (Future Enhancement)
-- Only projects with no deployments can be deleted
-- Projects with deployments can be archived if the deployments are not active.
-- Only Project Admin can delete/archive
-- **Beta Version Note**: Archiving will not be available in the beta. All projects a user is a member of will be visible in their projects list.
-
-**Intended State**: Same as planned
-
-**Implementation**: Task 14 or later
-**Source**: implementation-spec-v1.4.md Section 5.5, user-roles-permissions.md Section 5.2
-
----
-
 ### Team Management
 
 #### 3.1 View Project Members
 **Description**: See who's on the project team
 
-**Current State**: ✅ COMPLETE (Task 13)
+**Current State**: TBC by AL
 - List all project members
 - Show member name and email
 - Display user role (Project Admin/Member)
@@ -402,7 +298,7 @@ Organization: Serengeti Conservation Trust
 **Intended State**: Same as current
 
 **Implementation**: Task 13 - Project Member Management
-**Status**: 100% complete (10.25/12-15 hrs, 31.7% faster than estimated)
+**Status**: TBC by AL
 **Source**: implementation-spec-v1.4.md Section 5.6
 **Completion**: January 11, 2025
 
@@ -411,7 +307,7 @@ Organization: Serengeti Conservation Trust
 #### 3.2 Add Project Members
 **Description**: Invite team members to join project
 
-**Current State**: ✅ UI COMPLETE, ⚠️ INTEGRATION PENDING (Task 13)
+**Current State**: TBC by AL
 - Invite users by email. If the email address is not already registered the invitation can not be send (e.g. only registered users can receive invitations to join a project) 
 - Assign role (Project Admin or Project Member)
 - Send invitation notification via email
@@ -420,7 +316,7 @@ Organization: Serengeti Conservation Trust
 **Intended State**: Same as current (awaiting backend integration)
 
 **Implementation**: Task 13 - Project Member Management
-**Status**: UI 100% complete, backend integration ready
+**Status**: TBC by AL
 **Source**: implementation-spec-v1.4.md Section 5.6
 
 ---
@@ -428,7 +324,7 @@ Organization: Serengeti Conservation Trust
 #### 3.3 Remove Project Members
 **Description**: Remove team members from project
 
-**Current State**: ✅ UI COMPLETE, ⚠️ INTEGRATION PENDING (Task 13)
+**Current State**: TBC by AL
 - Remove button for each member
 - Confirmation dialog before removal
 - Cannot remove yourself
@@ -444,7 +340,7 @@ Organization: Serengeti Conservation Trust
 #### 3.4 Change Member Roles
 **Description**: Promote members to admin or demote admins
 
-**Current State**: ✅ UI COMPLETE, ⚠️ INTEGRATION PENDING (Task 13)
+**Current State**: TBC by AL
 - Change between Project Admin and Project Member
 - Real-time role updates
 - Only Project Admin can change roles
@@ -462,7 +358,7 @@ Organization: Serengeti Conservation Trust
 
 **Workflow Philosophy**: Ensure cameras are field-ready before deployment to prevent wasted trips
 
-**Current State**: ⏳ PENDING (Task 20)
+**Current State**: TBC by AL
 - **Step 1: Device Selection**: Scan for nearby available cameras via Bluetooth
 - **Step 2: Camera Workbench**: Comprehensive device preparation screen including:
   - Edit device name
@@ -490,7 +386,7 @@ Organization: Serengeti Conservation Trust
 **Description**: Guided process to deploy a camera in the field
 **Workflow Philosophy**: The wizard is designed to get the physical camera setup right first (pairing, connectivity, and field of view) before asking the user for metadata. This ensures the most critical, in-field tasks are prioritized.
 
-**Current State**: ⏳ PENDING (Task 15)
+**Current State**: TBC by AL
 - **Step 1: Device Selection & Pairing**: Select an available camera from a list of nearby Bluetooth devices.
 - **Step 2: Connectivity Setup**: Choose to enable LoRaWAN for remote status updates or operate in an offline-only mode. Includes an option to test signal reception.
 - **Step 3: Camera View & Adjustment**: Use a test photo preview from the camera to physically adjust its position and field of view until satisfied.
@@ -518,7 +414,7 @@ Organization: Serengeti Conservation Trust
 **Description**: Mark a camera deployment as finished
 **Workflow Philosophy**: A simple and efficient process for field use, ensuring the user is ending the correct deployment and capturing final notes before retrieving the hardware.
 
-**Current State**: ⏳ PENDING (Task 16)
+**Current State**: TBC by AL
 - **Initiation**: User can start the flow from a "End Deployment" button in the Map Screen or the Deployments List.
 - **Confirmation**: A confirmation screen shows key details (Name, Project, Device, Duration) to prevent ending the wrong deployment, especially when cameras are close together.
 - **Finalization**: User confirms the end date/time (pre-filled to current time) and can add optional notes about the retrieval (e.g., "SD card full," "Device damaged by animal").
@@ -537,7 +433,7 @@ Organization: Serengeti Conservation Trust
 #### 4.3 View Deployments List
 **Description**: See all deployments in a project
 
-**Current State**: ⏳ PENDING (Task 15+)
+**Current State**: TBC by AL
 - Filter: Active, Ended, All
 - Sort by: Date, Name, Status, Project
 - Card view with key info
@@ -554,7 +450,7 @@ Organization: Serengeti Conservation Trust
 #### 4.4 View Deployment Details
 **Description**: See complete deployment information
 
-**Current State**: ⏳ PENDING
+**Current State**: TBC by AL
 - All deployment details from wizard
 - GPS coordinates with map view
 - Sampling design settings
@@ -571,7 +467,7 @@ Organization: Serengeti Conservation Trust
 #### 4.5 Map View of Deployments
 **Description**: Visual map showing deployment locations
 
-**Current State**: 🟡 45% COMPLETE (Task 19 pre-work)
+**Current State**: TBC by AL
 - Google Maps integration complete
 - Location permission handling (iOS/Android)
 - Map controls (zoom, center, map type switch)
@@ -586,7 +482,7 @@ Organization: Serengeti Conservation Trust
 - Works with offline cached locations
 
 **Implementation**: Task 19 - Map Visualization
-**Status**: 45% complete (4.0 hrs pre-work, 6.5 hrs remaining)
+**Status**: TBC by AL
 **Blocker**: Google Cloud Console setup required
 **Source**: implementation-spec-v1.4.md Section 5.7
 
@@ -636,7 +532,7 @@ Organization: Serengeti Conservation Trust
 - Available → Deployed (via Start Deployment wizard)
 - Deployed → Available (via End Deployment flow)
 
-**Current State**: ✅ COMPLETE (data model exists)
+**Current State**: TBC by AL
 **Source**: app-screen-guide.md Section 4 - Device Details Screen
 
 ---
@@ -644,7 +540,7 @@ Organization: Serengeti Conservation Trust
 #### 5.2 View Deployed Devices
 **Description**: The main view of the "Devices" screen lists all cameras that are actively deployed in projects the user is a member of. This gives field staff a quick overview of their active hardware.
 
-**Current State**: ⏳ PENDING (Task 18)
+**Current State**: TBC by AL
 - Device ID, name, and status
 - The project it's deployed in
 - Last connection date
@@ -671,7 +567,7 @@ Organization: Serengeti Conservation Trust
 - **Configure AI Model**: Project Admins can change the AI detection model loaded on the camera.
 - **Name Device**: Give the camera a custom name for easy identification.
 
-**Current State**: 🟡 PARTIAL (BLE infrastructure exists)
+**Current State**: TBC by AL
 - Scan for nearby cameras via Bluetooth
 - Connect to selected camera
 - Take a test photo to check for obstructions
@@ -692,7 +588,7 @@ Organization: Serengeti Conservation Trust
 #### 6.1 Select Project AI Model (Project Admin)
 **Description**: From within the mobile app, a Project Admin can select which of the organization's available AI models will be used for all deployments within that specific project.
 
-**Current State**: ⏳ PENDING
+**Current State**: TBC by AL
 - View available models in organization.
 - See model details (name, version, detection types).
 - Assign a specific model to a project.
@@ -704,35 +600,13 @@ Organization: Serengeti Conservation Trust
 **Source**: implementation-spec-v1.4.md Section 14, user-roles-permissions.md
 
 ---
- 
-#### 6.2 Upload & Manage Models (Organisation Administrator)
-**Description**: Via the web portal, an Organisation Administrator can upload new AI model files, manage their versions, and decide which models are available for Project Admins to select from.
-
-**Current State**: ⏳ PENDING (Future Enhancement via Web Portal)
-- Upload model file
-- Set model name and version
-- Specify detection capabilities
-- Make available to organization
-- Update existing models
-- Delete outdated models
-
-**Intended State**: Web portal implementation.
-- Organisation Administrators will access this feature via the web portal.
-- The mobile app will only display and allow assignment of available models.
-- File size limits will be enforced.
-- Version tracking will be supported.
-
-**Implementation**: Future Enhancement (Web Portal)
-**Source**: admin-portal-spec.md, user-roles-permissions.md
-
----
 
 ### Offline Capabilities
 
 #### 7.1 Offline Data Storage
 **Description**: Local database for working without internet
 
-**Current State**: ✅ COMPLETE (Task 11)
+**Current State**: TBC by AL
 - SQLite database on device
 - Stores projects, deployments, devices
 - User authentication data cached
@@ -743,7 +617,7 @@ Organization: Serengeti Conservation Trust
 **Intended State**: Same as current
 
 **Implementation**: Task 11 - Offline SQLite Foundation
-**Status**: 100% complete (8.0/8.0 hrs, perfect estimation)
+**Status**: TBC by AL
 **Source**: implementation-spec-v1.4.md Section 6
 **Completion**: September 30, 2025
 
@@ -752,7 +626,7 @@ Organization: Serengeti Conservation Trust
 #### 7.2 Automatic Background Sync
 **Description**: Sync local changes to the cloud based on user-defined settings.
 
-**Current State**: ✅ COMPLETE (Task 11.6-11.7)
+**Current State**: TBC by AL
 - Redux-offline middleware active
 - Background sync queue
 - User-configurable: Supports auto-sync, ask before sync, and Wi-Fi only sync.
@@ -764,7 +638,7 @@ Organization: Serengeti Conservation Trust
 **Intended State**: Same as current
 
 **Implementation**: Task 11 - Offline SQLite Foundation
-**Status**: Production-ready with comprehensive error handling
+**Status**: TBC by AL
 **Source**: implementation-spec-v1.4.md Section 6
 
 ---
@@ -772,7 +646,7 @@ Organization: Serengeti Conservation Trust
 #### 7.3 Sync Status Indicators
 **Description**: Visual feedback about sync state
 
-**Current State**: ✅ COMPLETE (Task 11.7)
+**Current State**: TBC by AL
 - Sync status indicator in UI
 - "Synced" / "Syncing" / "Offline" states
 - Last sync timestamp
@@ -789,7 +663,7 @@ Organization: Serengeti Conservation Trust
 #### 7.4 Conflict Resolution
 **Description**: Handle when offline changes conflict with server
 
-**Current State**: 🟡 PARTIAL (Basic in Task 11)
+**Current State**: TBC by AL
 - Server wins strategy (MVP)
 - User notified of conflicts
 - Local changes preserved in history
@@ -803,68 +677,13 @@ Organization: Serengeti Conservation Trust
 **Implementation**: Task 11 (basic), Task 21 (enhanced)
 **Source**: implementation-spec-v1.4.md Section 6
 
----
-
-### Organization Management (WW Admin)
-
-#### 8.1 Create Organization
-**Description**: Set up new organization in system (web portal)
-- 
-**Current State**: ⏳ PENDING (Future Enhancement via Web Portal)
-- Organization name
-- Contact information
-- Assign initial admin user
-- Configure organization settings
-
-**Intended State**: This will be a web portal exclusive feature.
-- WW Admins will create organizations via admin.wildlifewatcher.ai.
-- The form will include validation.
-- Organization names will be unique.
-- All creation actions will be logged for auditing.
-
-**Implementation**: Future Enhancement (Web Portal)
-**Source**: admin-portal-spec.md, user-roles-permissions.md
-
----
-
-#### 8.2 Manage Organizations
-**Description**: Edit or delete organizations (web portal)
-
-**Current State**: ⏳ PENDING (Future Enhancement via Web Portal)
-- Update organization details
-- View organization statistics
-- Deactivate organizations
-- Cannot delete orgs with active projects
-
-**Intended State**: This will be a web portal exclusive feature.
-
-**Implementation**: Future Enhancement (Web Portal)
-**Source**: admin-portal-spec.md
-
----
-
-#### 8.3 View All Projects (Mobile - WW Admin)
-**Description**: Read-only view of all projects system-wide
-
-**Current State**: ✅ COMPLETE (September 2025 corrections)
-- WW Admin can see all projects
-- Read-only access (no editing)
-- Navigate to web portal for admin actions
-- Organization filtering
-
-**Intended State**: Same as current (architectural correction applied)
-
-**Implementation**: WW Admin corrections (September 29, 2025)
-**Source**: specifications/revisions/WW-Admin-Task-Corrections-Phase-3B.md
-
----
 
 ### LoRaWAN Integration
 
 #### 9.1 Battery Level Monitoring
 **Description**: Receive camera battery status via LoRaWAN
 
-**Current State**: ⏳ PENDING (Task 20+)
+**Current State**: TBC by AL
 - Webhook receives battery level updates
 - Battery percentage stored
 - Low battery alerts
@@ -881,7 +700,7 @@ Organization: Serengeti Conservation Trust
 #### 9.2 SD Card Usage Monitoring
 **Description**: Track camera storage capacity via LoRaWAN
 
-**Current State**: ⏳ PENDING (Task 20+)
+**Current State**: TBC by AL
 - Webhook receives SD card usage
 - Storage percentage stored
 - Full card alerts
@@ -900,7 +719,7 @@ Organization: Serengeti Conservation Trust
 #### 10.1 Developer Menu
 **Description**: Special debugging tools (development builds only)
 
-**Current State**: ✅ COMPLETE (Task 10)
+**Current State**: TBC by AL
 - Hidden menu (long-press Wildlife Watcher logo 5x)
 - Only visible in development builds
 - Automatically hidden in production
@@ -943,34 +762,14 @@ Think of it like apartment buildings with secure key card access:
 **Real-World Example:**
 *When Dr. Chen logs in from Serengeti Conservation Trust, the system automatically shows only projects, deployments, and team members from Serengeti—even though thousands of other deployments exist in the database from other organizations worldwide.*
 
----
 
-### 4-Tier Security System
+### 2-Tier Security System (Beta Version)
 
-The app uses a hierarchical permission system (like organizational charts):
+For the beta, the app uses a simple, project-focused permission system:
 
-#### 1. WW Admin (System Level)
-- **Access**: Can view all projects across all organizations (read-only in mobile app)
-- **Capabilities**: Manages user accounts, creates organizations (via web portal)
-- **Data Access**: Read-only visibility, but can only edit data in organizations they belong to
-- **Example**: Wildlife.ai support staff helping troubleshoot issues
+#### 1. Project Admin (Project Level)
 
-#### 2. Organisation Administrator (Organization Level)
-- **Access**: Manages users, projects, and AI models for their organization
-- **Capabilities (Future Enhancement via Web Portal)**: Add/remove users, create projects, manage AI models.
-- **Data Access**: Administrative access to all projects within their organization
-- **Example**: Alex from the Kea Conservation Trust, who onboards new researchers and manages the organization's resources.
-
-#### 3. Project Admin (Project Level)
-- **Access**: Full control over projects they create or are assigned to
-- **Capabilities**: Create projects, manage team, assign models (future), configure deployments
-- **Data Access**: All data within their projects, team member information
-- **Example**: Research project leaders coordinating field teams
-
-#### 4. Project Member (Project Level)
-- **Access**: Assigned projects only
-- **Capabilities**: Deploy cameras, record field data, sync information
-- **Data Access**: Projects they're assigned to, deployments they create
+#### 2. Project Member (Project Level)
 - **Example**: Field researchers conducting camera trap surveys
 
 ---
@@ -992,7 +791,7 @@ The app uses a hierarchical permission system (like organizational charts):
 - ✅ **Role-based permissions**: Your role determines what you can create/edit/delete
 - ✅ **Immutable audit trail**: Admin actions cannot be edited or deleted
 
-**Security Status:**
+**Security Status**: TBC by AL
 - **Overall Score**: 90/100 - Excellent
 - **Coverage**: 71% of tables (10/14) with comprehensive RLS policies
 - **Remaining Work**: 4 lookup tables need policies (1-2 hours to complete)
@@ -1003,23 +802,16 @@ The app uses a hierarchical permission system (like organizational charts):
 ### What Data We Store
 
 #### Core Business Information
-
-**Organizations** (Your research institution)
-- Organization name and contact information
-- Settings and configurations
-- Membership lists
-- *Example record*: "Serengeti Conservation Trust" with 23 team members
+**Organizations** (Beta: "General" Organization)
+- For the beta, all users and projects belong to a single "General" organization.
+- *Future*: Will store details for multiple research institutions like "Serengeti Conservation Trust".
 
 **Users** (Team members and administrators)
-- Names, emails, authentication credentials (encrypted)
-- Organization membership
-- Role assignments with optional expiration dates
-- *Example record*: "Dr. Chen (dr.chen@serengeti.org), Project Admin, Serengeti Conservation Trust"
+- **Beta**: All users belong to the "General" organization.
+- *Future*: Will support membership in multiple organizations.
+- *Example record*: "Dr. Chen (dr.chen@wildlife.app), Project Admin"
 
 **Projects** (Research initiatives)
-- Project name, description, goals
-- **Beta Version Note**: Visibility is set to "Visible only for project members" by default in the backend.
-- **Future Enhancement**: Project Admins will be able to set visibility to "Visible for project and organization members" or "Publicly visible".
 - Creation date, last update, project owner
 - Organization link (automatic isolation)
 - *Example record*: "Lion Population Study 2025" - 5 team members, 12 active deployments
@@ -1044,13 +836,10 @@ The app uses a hierarchical permission system (like organizational charts):
 - User-to-project relationships
 - Role within project (Admin or Member)
 - Assignment date
-- *Note*: May be replaced by unified user_roles system (design review pending)
 
 #### Reference Data (Configuration Options)
-
-**Roles** (4 system roles)
-- WW Admin, Model Manager, Project Admin, Project Member
-- Role descriptions and capabilities
+**Roles** (2 system roles for Beta)
+- Project Admin, Project Member
 
 **Capture Methods** (Camera operation modes)
 - Activity Detection (motion-triggered)
@@ -1100,11 +889,7 @@ The app uses a hierarchical permission system (like organizational charts):
 ### How Features Connect to Database
 
 #### When you create a project:
-- **Stored in**: `projects` table
-- **Linked to**: Your organization automatically (via organization_id)
-- **Security (Beta)**: Visibility is defaulted to "Visible only for project members". **(Future)** This will be controlled by the Project Admin and enforced by RLS.
-- **Tracked**: Creation date, last update, creator name
-- **Offline**: Saved locally first, synced to cloud when online
+- **Linked to**: The "General" organization automatically (via organization_id).
 
 #### When you deploy a camera:
 - **Stored in**: `deployments` table
@@ -1199,7 +984,7 @@ Data Available to Team (Real-Time)
 
 ### Backend Development Status
 
-**Overall Progress:** 98% Complete ✅
+**Overall Progress**: TBC by AL
 
 **What's Working:**
 - ✅ 14 database tables with proper relationships
@@ -1218,7 +1003,7 @@ Data Available to Team (Real-Time)
 - 🔄 **4 test fixes** (edge case scenarios, non-blocking)
 - 🔄 **Auth configuration tuning** (OTP expiry, password protection) - OPTIONAL
 
-**Production Readiness:**
+**Production Readiness**: TBC by AL
 - **Security Score**: 90/100 - Excellent
 - **Functionality**: 98/100 - Feature complete
 - **Critical Path**: 2-3 hours security hardening REQUIRED before launch
@@ -1236,27 +1021,16 @@ Contains: Supabase migrations, Edge Functions, RLS policies, test suites
 
 **Critical (Production Blockers):**
 1. ✅ **4 Lookup Tables Missing RLS** ⚠️ HIGH PRIORITY
-   - **Risk**: Reference data publicly accessible without authentication
+   - **Risk**: TBC by AL
    - **Fix**: Enable RLS with read-only policies
    - **Time**: 1-2 hours
-   - **Status**: Identified, ready to implement
+   - **Status**: TBC by AL
 
 2. 🟡 **12 Functions Missing Injection Protection** ⚠️ MEDIUM PRIORITY
-   - **Risk**: Potential schema injection attack vectors
+   - **Risk**: TBC by AL
    - **Fix**: Add `SET search_path` to all database functions
    - **Time**: 1-2 hours
-   - **Status**: Non-blocking, recommended before production
-
-**Design Decisions Needing Validation:**
-- **project_members table**: Still needed or replaced by user_roles? (legacy question)
-- **WW Admin scoping**: Should they have true global access or org-scoped? (currently org-scoped)
-- **Data retention policy**: When to hard-delete soft-deleted records? (compliance question)
-
-#### Planned Enhancements (Phase 2)
-
-**Features Not in MVP:**
-- 🔄 **User profile management**: Edit own name, email, preferences
-- 🔄 **Advanced role customization**: Custom permission sets per organization
+   - **Status**: TBC by AL
 - 🔄 **Cross-organization collaboration**: Share deployments between orgs (controlled)
 - 🔄 **Enhanced audit trail visualization**: Dashboard for compliance officers
 - 🔄 **Automated reporting**: Scheduled exports, data summaries
@@ -1320,7 +1094,7 @@ Contains: Supabase migrations, Edge Functions, RLS policies, test suites
 
 ### Overall Status
 - **Total Tasks**: 23 planned
-- **Completed**: 14 tasks (60.9%)
+- **Completed**: TBC by AL
 - **In Progress**: 0 tasks (Task 14 ready to start)
 - **Remaining**: 9 tasks (39.1%)
 - **Projected Completion**: ~8 working days remaining
@@ -1332,7 +1106,7 @@ Contains: Supabase migrations, Edge Functions, RLS policies, test suites
 #### Stream A: Project Management (Tasks 12-14)
 **Focus**: Project CRUD, team management, organization switching
 
-**Status**: 66.7% complete (2/3 tasks)
+**Status**: TBC by AL
 
 | Task | Feature | Status | Hours | Completion |
 |------|---------|--------|-------|------------|
@@ -1347,7 +1121,7 @@ Contains: Supabase migrations, Edge Functions, RLS policies, test suites
 #### Stream B: Deployment Workflows (Tasks 15-17)
 **Focus**: 6-step deployment wizard, field validation
 
-**Status**: 0% complete (0/3 tasks)
+**Status**: TBC by AL
 
 | Task | Feature | Status | Hours | Notes |
 |------|---------|--------|-------|-------|
@@ -1362,7 +1136,7 @@ Contains: Supabase migrations, Edge Functions, RLS policies, test suites
 #### Stream C: Devices & Maps (Tasks 18-20)
 **Focus**: Device management, map visualization, BLE sync
 
-**Status**: 0% complete (0/3 tasks, but 45% of Task 19 pre-built)
+**Status**: TBC by AL
 
 | Task | Feature | Status | Hours | Notes |
 |------|---------|--------|-------|-------|
@@ -1378,7 +1152,7 @@ Contains: Supabase migrations, Edge Functions, RLS policies, test suites
 #### Integration Phase (Tasks 21-23)
 **Focus**: E2E testing, performance, production prep
 
-**Status**: 0% complete (0/3 tasks)
+**Status**: TBC by AL
 
 | Task | Feature | Status | Hours |
 |------|---------|--------|-------|
@@ -1393,7 +1167,7 @@ Contains: Supabase migrations, Edge Functions, RLS policies, test suites
 ### Foundation Work (Tasks 1-11)
 **Focus**: App setup, auth, offline infrastructure
 
-**Status**: ✅ 100% complete (11/11 tasks)
+**Status**: TBC by AL
 
 **Key Achievements**:
 - Expo migration complete
@@ -1411,7 +1185,7 @@ Contains: Supabase migrations, Edge Functions, RLS policies, test suites
 
 | Metric | Value | Performance |
 |--------|-------|-------------|
-| **Estimation Accuracy** | 87.5% | ✅ Excellent |
+| **Estimation Accuracy** | TBC by AL | ✅ Excellent |
 | **Average Variance** | -17.2% (faster) | ✅ Ahead of schedule |
 | **Tasks Ahead of Estimate** | 100% | ✅ All completed tasks |
 | **Time Saved** | ~13 hours | ✅ Strong efficiency |
@@ -1603,7 +1377,7 @@ Contains: Supabase migrations, Edge Functions, RLS policies, test suites
 - Sync operations maintain string type
 - Backend confirmed: string UUIDs in Postgres
 
-**Impact**: Breaking change requiring re-authentication
+**Impact**: TBC by AL
 - Users must re-login after UUID alignment (Task 11.8)
 - Ensured before wide deployment
 - Prevents data corruption
@@ -1709,7 +1483,7 @@ Key navigation flows:
 
 #### 6. Task 19: Map Visualization (Resume)
 **Estimated**: 6.5 hours remaining (45% complete)
-**Blocker**: Google Cloud Console configuration
+**Blocker**: TBC by AL
 **What It Enables**:
 - Visual deployment locations
 - Interactive map interface
@@ -1750,24 +1524,6 @@ Key navigation flows:
 
 ---
 
-### Web Portal Development (Future Phase)
-
-**Status**: ⏳ PENDING (Future Enhancement)
-
-**Core Features (Planned)**:
-- WW Admin user management.
-- Organization creation, reading, updating, and deletion (CRUD) operations.
-- Organisation Administrator interface for uploading and managing AI models.
-- Password reset forms for users.
-- System monitoring dashboard.
-
-**Technology**: Supabase Edge Functions + React admin portal.
-**Deployment**: admin.wildlifewatcher.ai.
-
-**Source**: admin-portal-spec.md
-
----
-
 ## Timeline & Milestones
 
 ### Historical Milestones Achieved
@@ -1792,7 +1548,7 @@ Key navigation flows:
 
 #### Phase 3: Offline Infrastructure (September 2025)
 ✅ **Completed**: Task 11 (September 30, 2025)
-- SQLite database setup
+- **Status**: TBC by AL
 - Redux-offline middleware
 - Sync status indicators
 - Background sync implementation
@@ -1824,7 +1580,7 @@ Key navigation flows:
 
 #### Phase 5: Architectural Corrections (September 2025)
 ✅ **Completed**: September 29, 2025
-- WW Admin role clarification (50+ corrections)
+- **Status**: TBC by AL
 - Documentation alignment across 25 files
 - Compliance audit (65/100 score established)
 - Mobile read-only + web portal architecture confirmed
@@ -1836,7 +1592,7 @@ Key navigation flows:
 
 ### Current Status (January 2025)
 
-**Overall Progress**: 60.9% complete (14/23 tasks)
+**Overall Progress**: TBC by AL
 **Current Phase**: Stream A completion → Stream B startup
 **Next Immediate**: Task 14 (Organisation Switching)
 **Development Velocity**: 1.3 tasks/day (accelerating)
@@ -1889,7 +1645,7 @@ Key navigation flows:
 
 ### Target Release Date
 
-**Projected MVP Completion**: ~8 working days from current state (January 2025)
+**Projected MVP Completion**: TBC by AL
 **Risk-Adjusted**: +10% buffer = 9 days
 **Best Case**: 6 days (if velocity maintains)
 **Conservative**: 10 days (if blockers arise)
@@ -1901,20 +1657,6 @@ Key navigation flows:
 - ✅ No critical bugs
 - ✅ Backend integration validated
 - ✅ App store guidelines compliant
-
----
-
-### Web Portal Timeline (Separate Track)
-
-**Start**: After MVP mobile completion
-**Estimated**: 3-4 weeks additional development
-**Deployment**: Supabase Edge Functions
-
-**Phases**:
-1. Week 1: User management + authentication
-2. Week 2: Organization CRUD + role assignment
-3. Week 3: Model Manager interface
-4. Week 4: Testing + production deployment
 
 ---
 
@@ -2130,7 +1872,7 @@ to expand from three to five. The two extra roles and their capabilties are:
 **Real-World Example (Future)**:
 *Jordan is the Wildlife.ai system administrator. When a new conservation organization wants to join, he will create their organization account and assign their initial organisation admin user via the web portal. If a user needs a password reset or reports an issue, Jordan will be able to handle it through the web portal.*
 
-**Current Status**: ✅ Mobile read-only complete, ⏳ Web portal is a Future Enhancement.
+**Current Status**: TBC by AL
 
 **Key Architectural Change**: Originally planned with full CRUD capabilities in mobile app, corrected in September 2025 to read-only mobile + web portal management to prevent security issues and maintain proper separation of concerns.
 
