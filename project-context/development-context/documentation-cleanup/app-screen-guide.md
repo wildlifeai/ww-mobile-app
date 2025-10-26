@@ -170,18 +170,18 @@ This multi-step wizard guides the user through setting up a new camera in the fi
         *   A signal strength icon (like Wi-Fi bars) showing how strong the connection is.
     *   If no devices are found, a message "No devices found" is displayed, along with a link labelled **"I can't find my device"**.
     *   **What the buttons do**:
-        *   **Camera in the list**: Tapping on a camera from the list shows a loading indicator while the app attempts to connect. If the connection fails, an error message with a "Retry" button will appear. If successful, the app checks the camera's status. If the device has not been prepared or is not associated with a project, the user will be redirected to the **[Prepare and Test (Camera Workbench)](#prepare-and-test-camera-workbench)** flow first. After the user finishes preparing the device, the user will be returned to the wizard to continue the deployment. If the device is ready and registered for LoRaWAN, the user will proceed to **Step 2: Connectivity Setup**. If the device is ready but *not* registered for LoRaWAN, the user will skip Step 2 and go directly to **Step 3: Camera View & Adjustment**.
+        *   **Camera in the list**: Tapping on a camera from the list shows a loading indicator while the app attempts to connect. If the connection fails, an error message with a "Retry" button will appear. If device is associated with a project the user isn't member of the app does not connect to the device and displays a message: "To use this device with its current project, ask the Project Admin to add you as a member.". If successful, the app checks the camera's status. If the device has not been prepared or is not associated with a project, the user will be redirected to the **[Prepare and Test (Camera Workbench)](#prepare-and-test-camera-workbench)** flow first. After the user finishes preparing the device, the user will be returned to the wizard to continue the deployment. If the device is ready and registered for LoRaWAN, the user will proceed to **Step 2: Connectivity Setup**. If the device is ready but *not* registered for LoRaWAN, the user will skip Step 2 and go directly to **Step 3: Camera View & Adjustment**.
         *   **Refresh/Scan Again**: A button that lets the user re-scan for nearby cameras if the user doesn't see the one the user is looking for.
         *   **Cancel**: This button lets the user exit the wizard and go back to the screen the user came from (usually the Maps screen).
         *   **I can't find my device**: Tpping this link shows a pop-up or a message with instructions: "To make your camera discoverable, press the button on the Wildlife Watcher until the blue Bluetooth icon lights up."
 *   **Step 2: Connectivity Setup**
-    *   **What the user sees**: This step is only shown if the user's camera is set up for LoRaWAN remote updates. The progress bar shows the user is on **"Step 2 of 5"**. The name of the associated project is displayed at the top of the screen.The screen has a visual indicator (like signal bars) showing the current signal strength and the lorawan network name.
+    *   **What the user sees**: This step is only shown if the camera has been registered to LoRaWAN in the camera workbench. The progress bar shows the user is on **"Step 2 of 5"**. The name of the associated project (selected in the camera workbench) is displayed at the top of the screen. The screen has a visual indicator (like signal bars) showing the current signal strength and the lorawan network name.
     *   **What the buttons do**:
         *   **Test Signal**: Tapping this button makes the camera send a test signal. The signal strength indicator will update, helping the user find the best physical spot for the camera to ensure it can send updates.
         *   **Back**: Takes the user back to Step 1: Device Selection.
         *   **Next**: Takes the user to Step 3: Camera View & Adjustment.
 *   **Step 3: Camera View & Adjustment**
-    *   **What the user sees**: The progress bar shows the user's current step (either **"Step 2 of 4"** or **"Step 3 of 5"**). If the user's camera is not set up for LoRaWAN remote updates, the name of the associated project is displayed at the top of the screen. Below that, the screen displays a large image, which is the last test photo taken by the camera. The first time a user sees this screen there is no photo displayed. If the user skipped the Connectivity step, a small message appears here reminding the user that remote updates will not be available.
+    *   **What the user sees**: The progress bar shows the user's current step (either **"Step 2 of 4"** or **"Step 3 of 5"**). If the camera has not been registered to LoRaWAN in the camera workbench, the name of the associated project is displayed at the top of the screen along with a message reminding the user that remote updates will not be available. Below that, the screen displays a large image. The first time a user sees this screen there is no photo displayed. Test photos are deleted from the app and camera SD card to conserve space.
     *   **What the buttons do**:
         *   **Take Test Photo**: Tapping this button commands the camera to take a new picture, which then appears on the screen. This allows the user to physically adjust the camera's position and take new photos until the user is happy with the framing and field of view.
         *   **Back**: Takes the user to the previous step.
@@ -192,15 +192,20 @@ This multi-step wizard guides the user through setting up a new camera in the fi
         *   **Use My Current Location**: Tapping this button re-acquires the user's phone's current GPS coordinates and updates the Latitude and Longitude fields. The user can also drag the pin on the map to set the location manually.
         *   **Add Photo of Deployed Camera**: This button opens the user's *phone's* camera, allowing the user to take pictures of the camera in its final, hidden position from different angles. These photos are saved with the deployment record to make the camera easier to find when the user returns to retrieve it. The user can take multiple photos.
         *   **Photo Thumbnails**: Tapping on a photo thumbnail will open it in a full-screen view. In this view, the user can choose to delete the photo, which will trigger a confirmation pop-up ("Are you sure you want to delete this photo?") to prevent accidental deletion.
+        *   **Deployment Notes**: An optional free-text area for notes (e.g., "Under a big tree close to the radio tower," "10 meters north of the stream crossing").
         *   **Back**: Takes the user to the previous step.
         *   **Next**: Takes the user to Step 5: Deployment Details.
 *   **Step 5: Deployment Details**
     *   **What the user sees**: The progress bar shows the user is on the final step. This screen is a form where the user enters the final details for the deployment. The user will see fields for:
         *   **Deployment Name**: A text field, pre-filled with a suggestion like "Deployment #123".
-        *   **AI Model**: A field showing the project's default AI model. Tapping it allows the user to select a different model for this specific deployment. User only sees the models available for the project.
+        *   **AI Model**: A read-only field displaying the project's default AI model. This cannot be changed during deployment - only Project Admins can modify the AI model in the Project Details screen.
     *   **What the buttons do**:
         *   **Back**: Allows the user to go back and make changes to any of the previous steps.
         *   **Submit Deployment**: This is the final button. Tapping it saves the deployment record to the user's app, sends the final configuration settings to the camera, and then shows a "Deployment Successful" message before taking the user to the **Deployment Details Screen**.
+    *   **Notes**:
+        *   **Project specific details**: Capture method, sampling design, bait use, and AI model selection are all configured at the project level by Project Admins - they cannot be changed during deployment.
+        *   **ML model**: The Wildlife Watcher will run the AI model assigned to the project by the Project Admin. This model is loaded onto the camera during the Prepare and Test workflow. If the animal identification model is present but LoRaWAN is disabled, the classifications will be stored locally on the camera and no remote alerts will be sent.
+    
 
 ### End Deployment Flow
 
@@ -209,7 +214,7 @@ This 2-step wizard guides the user through retrieving a camera from the field an
 *   **Step 1: Device Selection**
     *   **What the user sees**: This screen is identical to the first step of the **Start Deployment Wizard**. It takes over the full screen and shows a list of nearby Wildlife Watcher cameras that the app detects via Bluetooth.
     *   **What the buttons do**:
-        *   **Camera in the list**: Tapping on a camera from the list selects it and attempts to connect. The app then verifies that this camera is part of an active deployment.
+        *   **Camera in the list**: Tapping on a camera from the list selects it and attempts to connect. The app then verifies that this camera is part of an active deployment that the user is a member of. If not, the app does not connect to the device and displays a message: "To use this device with its current project, ask the Project Admin to add you as a member.". 
         *   **Refresh/Scan Again**: A button that lets the user re-scan for nearby cameras.
         *   **Cancel**: This button lets the user exit the wizard and go back to the screen the user came from.
         *   **I can't find my device**: Tapping this link shows a pop-up with instructions on how to make the camera discoverable.
@@ -226,7 +231,7 @@ This is a 2-step process for checking and configuring a camera *before* the user
 *   **Step 1: Device Selection**
     *   **What the user sees**: This screen is identical to the first step of the **Start Deployment Wizard**. It takes over the full screen and shows a list of nearby Wildlife Watcher cameras that the app detects via Bluetooth.
     *   **What the buttons do**:
-        *   **Camera in the list**: Tapping on a camera from the list selects it and attempts to connect. Upon successful connection, the user is taken to the **Step 2: Camera Workbench**.
+        *   **Camera in the list**: Tapping on a camera from the list selects it and attempts to connect. The app then verifies that this camera is not part of an active deployment and connects to it. If not, the app does not connect to the device and displays a message: "To prepare and test this device stop the active deployment this camera is associated with.". Upon successful connection, the user is taken to the **Step 2: Camera Workbench**.
         *   **Refresh/Scan Again**: A button that lets the user re-scan for nearby cameras.
         *   **Cancel**: This button lets the user exit the flow and go back to the screen the user came from.
         *   **I can't find my device**: Tapping this link shows a pop-up with instructions on how to make the camera discoverable.
@@ -238,14 +243,14 @@ This is a 2-step process for checking and configuring a camera *before* the user
         *   The currently associated **Project**. Tapping this allows the user to assign the camera to a project.
         *   The camera's **Battery Level** and **SD Card Space**.
         *   The installed **Firmware Version**. If an update is available, a notification will appear.
-        *   The installed **AI Model**. The app checks if this is the latest model available for the project. If an update is available, a notification will appear.
+        *   The installed **AI Model** (read-only). The app checks if this matches the project's default model and if the latest version is available. If an update is available, a notification will appear. Only Project Admins can change which AI model is used - this is set at the project level.
         *   The **LoRaWAN Status** (e.g., "Not Registered" or "Registered").
         *   If registered, the name of the **LoRaWAN Network** it is registered to.
     *   **What the buttons do**:
         *   **Project Association**: Tapping the "Project" field opens a list of the user's projects, allowing the user to assign the camera to one. A camera must be associated with a project before it can be deployed.
-        *   **Check Camera View**: Tapping this takes a test photo and displays it, so the user can confirm the lens is clear and the camera is working correctly.
-        *   **Update Firmware**: This button appears if a newer firmware version is available. Tapping it starts the update process.
-        *   **Update AI Model**: This button appears if a newer AI model is available for the project. Tapping it starts the process of sending the new model file to the camera.
+        *   **Check Camera View**: Tapping this takes a test photo and displays it, so the user can confirm the lens is clear and the camera is working correctly. Test photos are deleted from the app and camera SD card to conserve space.
+        *   **Update Firmware**: This button appears if a newer firmware version is available. Tapping it starts the update process. If the app doesn't have internet access display a message: "Offline: Unable to check for firmware updates".
+        *   **Update AI Model**: This button appears if the camera's installed model doesn't match the project's default AI model, or if a newer version of the project's default model is available. Tapping it starts the process of sending the project's AI model file to the camera. If the app doesn't have internet access, display a message: "Offline: Unable to check for latest model". Note: This updates the camera to use the project's assigned model - only Project Admins can change which model the project uses from the project details screen.
         *   **Register for Remote Updates**: If the LoRaWAN status is "Not Registered," this button will be visible. Tapping it takes the user to the **[LoRaWAN Registration Screen](#lorawan-registration-screen)** to begin the one-time setup for the project's network.
         *   **Deregister Device**: If the LoRaWAN status is "Registered," this button will be visible instead. Tapping it will show a confirmation pop-up. Confirming will remove the device from its current LoRaWAN network, allowing it to be registered to a new one. This is useful when moving a camera between projects that use different networks.
         *   **Finish Preparation**: This button saves any changes the user has made (like the device name or project association), disconnects from the camera, and takes the user back to the screen the user came from. If the user came from the Start Deployment Wizard, the user will be returned to the wizard to continue the deployment.
@@ -267,6 +272,8 @@ This screen is a multi-purpose hub for viewing, creating, and editing a research
         *   A choice between "Motion Detection" and "Time-lapse".
         *   If "Motion Detection" is selected, a slider for **Motion Sensitivity** (Low, Medium, High) appears.
         *   If "Time-lapse" is selected, a field for **Time-lapse Interval** (e.g., 30s, 1min, 5min) appears.
+    *   When creating or editing (Project Admin only), the user will also see:
+        *   **Default AI Model**: A dropdown to select which AI model all deployments in this project will use. This appears only for users with Project Admin role.
     *   When viewing an existing project, the user will also see:
         *   A list of all deployments associated with this project.
         *   A list of all team members working on this project.
@@ -278,6 +285,7 @@ This screen is a multi-purpose hub for viewing, creating, and editing a research
     *   **Save Project**: When creating or editing a project, this button saves the user's changes. If the user is creating a new project, the user automatically becomes its Project Admin, and the screen transitions to the standard "view" mode for the user's new project.
     *   **Edit Project**: If the user is a Project Admin viewing an existing project, this button will appear. Tapping it makes the "Project Name" and "Project Description" fields editable and replaces the "Edit" button with a "Save Project" button.
     *   **sampling design**: An information icon can be selected next to the sampling design to display the definitions of each option based on Wearn & Glover-Kapfer (2017) and used in camtrapdp, which is available at https://camtrap-dp.tdwg.org/metadata/#project.samplingDesign.
+    *   **Default AI Model Selector**: (Project Admin only) Opens a list of available AI models for the organization. The selected model will be used by all cameras deployed in this project. Project Members cannot change this setting.
     *   **Manage Members**: When viewing a project as a Project Admin, this button takes the user to a separate screen where the user can add or remove team members and change their roles.
     *   **Start New Deployment**: A shortcut to start a new deployment that is automatically assigned to this project.
     *   **Cancel/Back**: A back arrow in the header lets the user return to the **Projects Screen** without saving changes.
