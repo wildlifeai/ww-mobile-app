@@ -26,6 +26,7 @@
     -   [Deployment Details Screen](#deployment-details-screen)
     -   [Device Details Screen](#device-details-screen)
     -   [LoRaWAN Registration Screen](#lorawan-registration-screen)
+    -   [Notifications Screen](#notifications-screen)
     -   [Feedback Screen](#feedback-screen)
     -   [Profile Screen](#profile-screen)
     -   [Settings Screen](#settings-screen)
@@ -104,6 +105,7 @@ This is the user's command center for all field operations. It gives the user a 
     *   A floating **blue** button in the bottom-right corner of the map labeled **"Start Deployment"**.
     *   A floating **orange** button in the bottom-right corner of the map labeled **"End Deployment"** (this only appears if the user has active deployments).
     *   A button to re-center the map on the user's current location.
+    *   Zoom in/out controls.
     *   A "Layers" icon in the top-right corner of the map.
 
 *   **What the buttons do**:
@@ -205,7 +207,6 @@ This multi-step wizard guides the user through setting up a new camera in the fi
     *   **Notes**:
         *   **Project specific details**: Capture method, sampling design, bait use, and AI model selection are all configured at the project level by Project Admins - they cannot be changed during deployment.
         *   **ML model**: The Wildlife Watcher will run the AI model assigned to the project by the Project Admin. This model is loaded onto the camera during the Prepare and Test workflow. If the animal identification model is present but LoRaWAN is disabled, the classifications will be stored locally on the camera and no remote alerts will be sent.
-    
 
 ### End Deployment Flow
 
@@ -282,12 +283,11 @@ This screen is a multi-purpose hub for viewing, creating, and editing a research
     *   **Project Member**: Can view project details and deployments. Their primary role is to contribute to the project by starting and ending camera deployments in the field.
 
 *   **What the buttons do**:
-    *   **Save Project**: When creating or editing a project, this button saves the user's changes. If the user is creating a new project, the user automatically becomes its Project Admin, and the screen transitions to the standard "view" mode for the user's new project.
+    *   **Save Project**: When creating or editing a project, this button saves the user's changes. If the user is creating a new project, they automatically become its Project Admin, and the screen transitions to the standard "view" mode for their new project.
     *   **Edit Project**: If the user is a Project Admin viewing an existing project, this button will appear. Tapping it makes the "Project Name" and "Project Description" fields editable and replaces the "Edit" button with a "Save Project" button.
     *   **sampling design**: An information icon can be selected next to the sampling design to display the definitions of each option based on Wearn & Glover-Kapfer (2017) and used in camtrapdp, which is available at https://camtrap-dp.tdwg.org/metadata/#project.samplingDesign.
     *   **Default AI Model Selector**: (Project Admin only) Opens a list of available AI models for the organization. The selected model will be used by all cameras deployed in this project. Project Members cannot change this setting.
-    *   **Manage Members**: When viewing a project as a Project Admin, this button takes the user to a separate screen where the user can add or remove team members and change their roles.
-    *   **Start New Deployment**: A shortcut to start a new deployment that is automatically assigned to this project.
+    *   **Manage Members**: When viewing a project as a Project Admin, this button takes the user to a separate screen where they can add or remove team members and change their roles. The Admin can search for and add any **existing user** from within their organization. New users cannot be invited via email.
     *   **Cancel/Back**: A back arrow in the header lets the user return to the **Projects Screen** without saving changes.
 
 ### Deployment Details Screen
@@ -337,6 +337,27 @@ This screen guides the user through the one-time process of registering the user
     *   **Start Registration**: Tapping this button begins the automated registration process. The app communicates with the backend server, which in turn registers the device with the LoRaWAN network and gets the necessary security keys. The app then sends these keys to the camera.
     *   **Cancel/Back**: A back arrow in the header lets the user return to the **Camera Workbench** without registering the device.
 
+
+### Notifications Screen
+
+This screen acts as a notification center where users can view and respond to pending invitations to join projects.
+
+*   **What the user sees**:
+    *   A title like "Project Invitations".
+    *   A list of invitation "cards". If there are no pending invitations, a message like "You have no pending invitations" is displayed.
+    *   Each card shows:
+        *   The **Project Name** the user has been invited to.
+        *   The name of the **Project Admin** who sent the invitation.
+        *   The **Role** the user will have in the project (e.g., "Project Member").
+    *   Two buttons on each card: "Accept" and "Decline".
+
+*   **What the buttons do**:
+    *   **Accept**: Tapping this button adds the user to the project with the specified role. The invitation is removed from the list, and the user is taken to the **Project Details Screen** for their new project.
+    *   **Decline**: Tapping this button brings up a confirmation pop-up ("Are you sure you want to decline this invitation?"). If confirmed, the invitation is permanently removed from the list.
+    *   **Cancel/Back**: A back arrow in the header lets the user return to the previous screen without taking any action.
+
+---
+
 ### Feedback Screen
 
 This screen provides a simple way for users to send feedback, bug reports, or suggestions directly to the Wildlife Watcher support team.
@@ -356,12 +377,13 @@ This screen displays the user's personal account information. The user gets here
 
 *   **What the user sees**:
     *   Editable fields for "First Name" and "Last Name".
-    *   A read-only field for the user's "Email Address".
+    *   A read-only field for the user's "Email Address". 
     *   The organization(s) the user belongs to.
-    *   The user's role(s) within the app (e.g., Project Admin, Project Member).
+    *   A "Reset Password" button.
 
 *   **What the buttons do**:
     *   This screen is for viewing information only. To change the user's details, the user would need to contact a system administrator.
+    *   **Reset Password**: Tapping this button will initiate the same password reset flow as the "Forgot Password?" link on the login screen, sending a secure reset link to the user's email.
 
 ### Settings Screen
 
@@ -385,6 +407,7 @@ This menu slides out from the left side of the screen when the user taps the "ha
     *   The user's user profile name and a sync status indicator. This icon shows if the user's data is fully synced (green check), currently syncing (spinning arrows), pending upload (gray clock), or has encountered an error (red exclamation).
     *   A "Profile" link.
     *   A "Settings" link.
+    *   An "Invitations" link, with a badge showing the number of pending invitations.
     *   A "Feedback to the WW team" link.
     *   A "Sign Out" button.
     *   The app's version number at the bottom (e.g., "v1.0.0").
@@ -392,6 +415,7 @@ This menu slides out from the left side of the screen when the user taps the "ha
 *   **What the buttons do**:
     *   **Profile**: Takes the user to the **[Profile Screen](#profile-screen)** to view the user's user information.
     *   **Settings**: Takes the user to the **[Settings Screen](#settings-screen)** where the user can control app preferences, like how and when it syncs data.
+    *   **Invitations**: Takes the user to the **[Invitations Screen](#invitations-screen)** to manage pending project invitations.
     *   **Feedback to the WW team**: Tapping this link opens the **[Feedback Screen](#feedback-screen)**.
     *   **Sign Out**: Securely logs the user out of the app and returns the user to the **Login Screen**.
 

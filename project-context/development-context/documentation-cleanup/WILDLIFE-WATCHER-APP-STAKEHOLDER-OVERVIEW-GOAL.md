@@ -149,13 +149,13 @@ Organization: General
    └─ Project Members: Alex, Jamie
 ```
 
-### Organization Structure Rules
-For the beta release, the organizational structure is simple to focus on core project collaboration.
+### Organization Structure Rules (Partially implemented)
+For the mvp2 release, the organizational structure is simple to focus on core project collaboration.
 
-1.  **Single "General" Organization**: All users belong to a single, default organization called "General". There is no concept of separate organizations in the beta.
-2.  **Anyone Can Create a Project**: Any user can create a new project at any time. By doing so, they automatically become the **Project Admin** for that project.
-3.  **Project-Based Contribution**: To contribute to a project (e.g., create deployments), a user must be explicitly added to that project's team as either a **Project Member** or a **Project Admin**.
-4.  **Multiple Roles**: A user can have different roles across different projects. For example, Dr. Chen can be the Project Admin of the "Lion Population 2025" project and a Project Member of the "Elephant Migration Study".
+1.  **Single "General" Organization**: All users belong to a single, default organization called "General". There is no concept of separate organizations in the mvp2. **(To be implemented)**
+2.  **Anyone Can Create a Project**: Any user can create a new project at any time. By doing so, they automatically become the **Project Admin** for that project. **(Implemented)**
+3.  **Project-Based Contribution**: To contribute to a project (e.g., create deployments), a user must be explicitly added to that project's team as either a **Project Member** or a **Project Admin**. **(Implemented but requires fixing, error fetching project members, to update with the invitations feature)**
+4.  **Multiple Roles**: A user can have different roles across different projects. For example, Dr. Chen can be the Project Admin of the "Lion Population 2025" project and a Project Member of the "Elephant Migration Study". **(Implemented)**
 
 
 ## Complete Feature Inventory
@@ -165,62 +165,229 @@ For the beta release, the organizational structure is simple to focus on core pr
 #### 1.1 User Login
 **Description**: Secure login using email and password
 
-**Current State**: TBC by AL
-- Email/password authentication
-- Secure token management
-- Auto-remember last logged-in user
-- Session persistence
-- Logout functionality
+**Current State**: Implemented
+- Email and password fields. **Implemented**
+- "Remember me" checkbox for session persistence. **Implemented**
+- "Sign In" button to access the app.**Implemented**
+- Links to "Forgot Password?" and "Sign Up".**Implemented**
 
 **Intended State**: Same as current (no changes needed)
 
 **Implementation**: Task 10 - Auth System
-**Source**: implementation-spec-v1.4.md Section 4.1
+**Source**: implementation-spec-v1.4.md Section 4.1 
 
 ---
 
 #### 1.2 Password Reset (In-App)
 **Description**: Reset forgotten password without leaving the app
 
-**Current State**: TBC by AL
-- "Forgot Password?" link on login screen
-- Email verification code sent
-- Secure password reset flow
-- User remains in-app
+**Current State**: Partial (update password submission doesn't go thorugh)
+- "Forgot Password?" link on the login screen navigates to this feature. **Implemented**
+- User enters their email address to receive a secure reset link. **Implemented**
+- A confirmation message is shown after the email is sent. **Not working**
 
 **Intended State**: Same as current (working as designed)
 
 **Implementation**: Task 10 - Auth System
 **Source**: implementation-spec-v1.4.md Section 4.1
 
-#### 1.5 In-App Feedback
-**Description**: Submit feedback, bug reports, or suggestions to Wildlife Watcher team
+#### 1.3 User Creation (Self-Registration)
+**Description**: Allow new users to create an account directly from the mobile app.
 
-**Current State**: TBC by AL
-- Accessible from side drawer menu
-- Large text area for message
-- Sends to nominated support email
-- Confirmation message on success
-- Error handling with retry option
+**Current State**: Partial (registration works but no email verification)
+- "Sign Up" link on the login screen navigates to this feature. **Implemented**
+- Registration form requires first and last name, email, password, and password confirmation. **Partially Implemented (new requirement)**
+- Requires email verification to activate the account. **Not working**
+- After signup, the user is informed to check their email and is returned to the login screen. **Not working**
+- The user is automatically assigned to the general organisation. **Not implemented (new requirement)**
 
-**Intended State**: Same as current
+**Intended State**: Requirements updated.
 
 **Implementation**: Part of core app features
+**Source**: app-screen-guide.md Section 1 - Sign Up Screen
+
+
+---
+
+### Main Navigation
+
+#### 2.1 Bottom Tab Bar
+**Description**: The primary navigation method, allowing users to switch between the app's main sections.
+
+**Current State**: Implemented
+- Always visible at the bottom of the screen after login.**Implemented**
+- Contains four tabs: Maps, Projects, Deployments, and Devices.**Implemented**
+- Tapping a tab switches to the corresponding screen.**Implemented**
+
+**Intended State**: Same as current.
+
+**Implementation**: Part of core app navigation.
+**Source**: app-screen-guide.md Section 2 - Main Navigation (Bottom Tabs)
+
+---
+
+#### 2.2 Header Bar & Side Drawer Menu
+**Description**: Provides access to secondary features and user settings via a slide-out menu.
+
+**Current State**: Partial implemented
+- A "hamburger" menu icon on the left opens the Side Drawer Menu. **Implemented**
+- Remove the "Wildlife Watcher" name displayed at the top and the user avatar icon logo. **Not Implemented (New requirement)**
+- The Side Drawer contains a user avatar with the user name displayed on the side and links to Notifications, Profile, Settings, Feedback, and Sign Out. **Partially implemented (requires feedback and remove community discussion)**
+
+
+**Intended State**: Requirements updated.
+
+**Implementation**: Part of core app navigation.
+**Source**: app-screen-guide.md Section 5 - Side Drawer Menu
+
+---
+
+#### 2.3 Profile Screen
+**Description**: Displays the user's personal account information.
+
+**Current State**: Not implemented (new feature)
+- A read-only field for the user's "First Name", "Last Name" and "Email Address".  **Not Implemented (New requirement)**
+- The organization(s) the user belongs to.  **Not Implemented (New requirement)**
+- A reset password option.  **Not Implemented (New requirement, reuse existing implementation from authentification process, where possible)**
+
+**Intended State**: Fully implemented as described.
+
+**Implementation**: To be scheduled.
+**Source**: app-screen-guide.md Section 4 - Profile Screen
+
+---
+
+#### 2.4 Settings Screen
+**Description**: Allows the user to customize app behavior, particularly for data synchronization.
+
+**Current State**: Not implemented (new feature)
+- A "Data Synchronization" section with options. **Not Implemented (New requirement)**
+- **Sync on Wi-Fi only**: A switch to prevent uploads over cellular data. **Not Implemented (New requirement)**
+- **Ask before syncing**: A switch to prompt for confirmation before large data uploads. **Not Implemented (New requirement)**
+- **Automatic sync**: The default behavior. **Not Implemented (New requirement)**
+
+**Intended State**: Fully implemented as described.
+
+**Implementation**: To be scheduled.
+**Source**: app-screen-guide.md Section 4 - Settings Screen
+
+---
+
+#### 2.5 Feedback Screen
+**Description**: Provides a simple way for users to send feedback, bug reports, or suggestions.
+
+**Current State**: Not implemented (new feature)
+- A title like "Send Feedback". **Not Implemented (New requirement)**
+- A large, multi-line text box for the message. **Not Implemented (New requirement)**
+- A "Send" button that provides confirmation or error messages. **Not Implemented (New requirement)**
+- A "Cancel/Back" button. **Not Implemented (New requirement)**
+
+**Intended State**: Fully implemented as described.
+
+**Implementation**: To be scheduled.
 **Source**: app-screen-guide.md Section 4 - Feedback Screen
+
+---
+
+#### 2.6 Notifications Screen
+**Description**: Acts as a notification center for users to view and respond to pending project invitations.
+
+**Current State**: Partially implemented (new feature)
+- A list of invitation "cards" showing project name, inviting admin, and assigned role. **Not Implemented (New requirement)**
+- "Accept" and "Decline" buttons on each card. **Not Implemented (New requirement)**
+- A message is displayed if there are no pending invitations. **Not Implemented (New requirement)**
+
+**Intended State**: Fully implemented as described.
+
+**Implementation**: To be scheduled.
+**Source**: app-screen-guide.md Section 4 - Invitations Screen
+
+---
+
+#### 2.7 Maps Screen (Home)
+**Description**: The user's command center for field operations, providing a map-based view of all deployments.
+
+**Current State**: Partially implemented (the map doesn't load)
+- Displays a map with color-coded pins for camera deployments. **Not Implemented (New requirement)**
+- Tapping a pin shows a summary with an option to view full details. **Not Implemented (New requirement)**
+- Floating Action Buttons (FABs) to "Start Deployment" and "End Deployment". **Not Implemented (New requirement)**
+- A "Layers" icon to filter deployments on the map. **Not Implemented (New requirement)**
+- Remove the S S H option. **Not Implemented (New requirement)** 
+
+**Intended State**: New requirements added
+
+**Implementation**: Task 19 - Map Visualization.
+**Source**: app-screen-guide.md Section 2 - Maps Screen (Home)
+
+---
+
+#### 2.8 Projects Screen
+**Description**: A digital filing cabinet for managing all research projects.
+
+**Current State**: Partial implemented (issues with users not belonging to an organisation can't see or create the project)
+- Displays a list of project "cards" with summary information. **Implemented**
+- The information includes project title, description, stats for members and number of deployment are displayed **Implemented but need to check if working**
+- A search bar to find projects. **Implemented**
+- A floating "+" button to create a new project. **Implemented**
+- Tapping a card navigates to the Project Details Screen. **Implemented**
+
+
+**Intended State**: Same as current.
+
+**Implementation**: Task 12 - Projects CRUD Operations.
+**Source**: app-screen-guide.md Section 2 - Projects Screen
+
+---
+
+#### 2.9 Deployments Screen
+**Description**: Provides a detailed list of every camera deployment the user has access to, across all their projects.
+
+**Current State**: Partial implemented (issues with users not belonging to an organisation can't see or create the project)
+- Filter buttons at the top for "All", "Active", and "Ended" deployments. **Not Implemented (New requirement)**
+- A list of deployment "cards" showing key info like project name, camera name, and status. **TBC**
+- Cards are color-coded to show their status (e.g., green for healthy, red for ended). **TBC**
+- A floating "+" button provides a shortcut to start a new deployment. **Implemented**
+- Remove the Scan button and "Deployments" title. **Not Implemented (New requirement)**
+
+**Intended State**: Same as current.
+
+**Implementation**: To be scheduled.
+**Source**: app-screen-guide.md Section 2 - Deployments Screen
+
+---
+
+#### 2.10 Devices Screen
+**Description**: The hardware management center, where users can see the status of their cameras and prepare them for fieldwork.
+
+**Current State**: Not Implemented
+- A list of all cameras associated with the user's projects, showing their name and status ("Deployed" or "Available"). **Not Implemented**
+- For deployed cameras, the card also shows the project it's in and its last known battery/SD card status. **Not Implemented**
+- A prominent button to "Prepare and Test Nearby Devices," which opens the Camera Workbench. **Not Implemented**
+
+**Intended State**: Same as current.
+
+**Implementation**: To be scheduled.
+**Source**: app-screen-guide.md Section 2 - Devices Screen
 
 ---
 
 ### Project Management
 
-#### 2.1 Create New Project
+#### 3.1 Create New Project
 **Description**: Start a new research project with team collaboration
 
-**Current State**: TBC by AL
-- Simple project creation form
-- Project name and description
-- Creator becomes Project Admin automatically
-- Offline project creation supported
-- Auto-sync when online
+**Current State**: Partially implemented (works with test users but not for users without an organisation)
+- A "+" button on the Projects Screen opens a "New Project" form.
+- **Project Details**: Users can set the Project Name, Description, and configure project-level settings. **Implemented**
+- **Project Settings**:
+   - **Is Baited?**: Toggle to indicate if bait is used. **Implemented**
+   - **Monitoring marked individuals**: Toggle to indicate if marked individuals are monitored. **Implemented**
+   - **Sampling Design**: Select from a list of standard methods (e.g., random, systematic). **Implemented but not dropdown or extra information is displayed**
+   - **Capture Method**: Choose between "Motion Detection" (with sensitivity) or "Time-lapse" (with interval). **Not implemented (New feature)**
+   - **Default AI Model**: Select a default AI model for the project. **Not implemented (New feature)**
+- **Offline Creation**: Projects can be created fully offline and are queued for synchronization. **Implemented but not tested**
+- **Automatic Admin**: The creator of the project automatically becomes its first Project Admin. **Implemented**
+- Remove privacy level as all projects for MVP2 are set to private only visible to project members. **Not implemented (New feature)**
 
 **Intended State**: Same as current
 
@@ -229,67 +396,37 @@ For the beta release, the organizational structure is simple to focus on core pr
 **Source**: implementation-spec-v1.4.md Section 5.5
 **Completion**: October 9, 2025
 
----
-
-#### 2.2 View Projects List
-**Description**: See all projects you're assigned to (or set to be visible)
-
-**Current State**: TBC by AL
-- Card-based layout showing project cards
-- Project name and description visible
-- Creation date displayed
-- Tap card to view project details
-- Organization name shown
-- Works offline with local data
-
-**Intended State**: Enhanced in MVP2
-- Additional: Map visualization of deployment locations (Task 19)
-- Additional: Deployment count per project
-
-**Implementation**: Task 12 - Projects CRUD Operations
-**Source**: implementation-spec-v1.4.md Section 5.5
 
 ---
 
-#### 2.3 View Project Details
-**Description**: See detailed information about a specific project
+#### 3.3 View and Edit Project Details
+**Description**: View detailed project information and edit settings (Project Admins only).
 
-**Current State**: TBC by AL
-- Project name, description, organization and visibilty
-- "Manage Members" button
-- "Start New Deployment" button
-- Deployment list view
-- Works offline
+**Current State**: Partially implemented (details to match schema updates)
+- **Viewing (All Members)**:
+  - Displays project name, description, and settings. **Implemented**
+  - Shows lists of team members and deployments. **Implemented**
+  - All details are viewable offline. **Implemented but not tested**
+- **Editing (Project Admins only)**:
+  - The "Edit" button is only visible to Project Admins. **Implemented but not tested**
+  - Admins can edit the project name, description, and settings like "Is Baited?" and "Sampling Design". **Implemented**
+  - Admins can configure capture methods ("Motion Detection" or "Time-lapse") and select a default AI model. **Not Implemented (new feature)**
+  - Changes can be made offline and are queued for synchronization. **Implemented but not tested**
 
-**Intended State**: Same as current (discovered already implemented!)
+**Intended State**: Fully implemented as described.
 
-**Implementation**: Task 12 Phase 4 - Project Details Screen
+**Implementation**: Task 12 & 14
 **Status**: TBC by AL
 **Source**: implementation-spec-v1.4.md Section 5.5
 
 ---
 
-#### 2.4 Edit Project Details
-**Description**: Update project information (Project Admin only)
+### Team Management (Project Level)
 
-**Current State**: TBC by AL
-- Edit project name, description and visibility
-- Update project settings
-- Only Project Admin can edit
-
-**Intended State**: Same as planned
-
-**Implementation**: Task 14 - Organisation Switching & Project Administration
-**Source**: implementation-spec-v1.4.md Section 5.5
-
----
-
-### Team Management
-
-#### 3.1 View Project Members
+#### 4.1 View Project Members
 **Description**: See who's on the project team
 
-**Current State**: TBC by AL
+**Current State**: Implemented not tested
 - List all project members
 - Show member name and email
 - Display user role (Project Admin/Member)
@@ -304,14 +441,16 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-#### 3.2 Add Project Members
+#### 4.2 Add Project Members
 **Description**: Invite team members to join project
 
-**Current State**: TBC by AL
-- Invite users by email. If the email address is not already registered the invitation can not be send (e.g. only registered users can receive invitations to join a project) 
-- Assign role (Project Admin or Project Member)
-- Send invitation notification via email
-- Only Project Admin can add members
+**Current State**: Partially implemented (new feature)
+- **Add Existing Users**: Project Admins can search for and add any existing user from within their organization to the project. **Not implemented (New feature)**
+- **Assign Role**: The Admin assigns a role (Project Admin or Project Member) during the invitation. **Implemented not tested**
+- **Pending Status**: The invited user appears in the member list with a "Pending" status until they accept. **Not implememented (New feature)**
+- **Acceptance Required**: The user is only added to the project after they accept the invitation through the in-app notification center. **Not implememented (New feature)**
+- **Admin Control**: Only Project Admins can add members. **Implemented not tested**
+- **No New User Invites**: Project Admins cannot invite new users via email. **(New clarification)**
 
 **Intended State**: Same as current (awaiting backend integration)
 
@@ -321,7 +460,24 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-#### 3.3 Remove Project Members
+#### 4.3 In-App Project Invitations
+**Description**: A notification center for users to view and manage their pending project invitations.
+
+**Current State**: Not implememented (New feature)
+- **Notification Indicator**: A badge on the Side Drawer Menu icon indicates new invitations. **Not implememented (New feature)**
+- **Notifications Screen**: A dedicated screen, accessible from the side menu, lists all pending invitations. **Implememented**
+- **Invitation Details**: Each item shows the project name, the inviting Admin, and the assigned role. **Not implememented (New feature)**
+- **Actions**: Users can "Accept" or "Decline" an invitation directly from this screen. **Not implememented (New feature)**
+- **Acceptance**: Accepting an invitation adds the user to the project team and removes the item from the list. **Not implememented (New feature)**
+- **Declined**: Declining removes the invitation. **Not implememented (New feature)**
+
+**Intended State**: Same as planned.
+
+**Implementation**: To be scheduled.
+**Source**: User request for in-app invitation management.
+---
+
+#### 4.3 Remove Project Members
 **Description**: Remove team members from project
 
 **Current State**: TBC by AL
@@ -337,7 +493,7 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-#### 3.4 Change Member Roles
+#### 4.4 Change Member Roles
 **Description**: Promote members to admin or demote admins
 
 **Current State**: TBC by AL
@@ -352,8 +508,8 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-### Camera Deployments
-### 4.0 Camera Preparation Workflow (Pre-Deployment)
+### Device & Deployment Workflows
+#### 5.0 Camera Preparation Workflow (Pre-Deployment)
 **Description**: 2-step process for checking and configuring cameras before field deployment
 
 **Workflow Philosophy**: Ensure cameras are field-ready before deployment to prevent wasted trips
@@ -382,7 +538,7 @@ For the beta release, the organizational structure is simple to focus on core pr
 **Implementation**: Task 20 - BLE Communication & Sync
 **Source**: app-screen-guide.md Section 3 - Prepare and Test (Camera Workbench)
 
-#### 4.1 Start Deployment Wizard (4-5 Steps)
+#### 5.1 Start Deployment Wizard (4-5 Steps)
 **Description**: Guided process to deploy a camera in the field
 **Workflow Philosophy**: The wizard is designed to get the physical camera setup right first (pairing, connectivity, and field of view) before asking the user for metadata. This ensures the most critical, in-field tasks are prioritized.
 
@@ -393,8 +549,7 @@ For the beta release, the organizational structure is simple to focus on core pr
 - **Data Management**: Photos taken during this step are for temporary preview only and must be deleted from the app and the device's SD card to conserve space.
 - **Step 4: Location**: Set the deployment's GPS coordinates on a map, name the site, and take a photo of the deployed camera *with the phone* to help with later retrieval.
 - **Data Management**: Photos taken during this step are stored in the mobile phone so that they can be displayed at a later time for finding the Wildlife Watcher.
-- **Step 5: Deployment Details**: Configure the deployment name, project, start time, and capture method. Users can enable the on-device ML model for local animal detection. If LoRaWAN is disabled, a warning clarifies that detection alerts will not be sent remotely.
-- **Step 6: Confirmation & Submit**: Review a summary of all entered information and submit to finalize the deployment, which configures the camera and saves the record.
+- **Step 5: Deployment Details & Submit**: Configure the deployment name and review a summary of all entered information. Tapping "Submit" finalizes the deployment, which configures the camera and saves the record. Project, start time, and capture method are set at the project level and are not configured during deployment.
 
 **Intended State**: Same as planned
 - Works completely offline
@@ -405,32 +560,30 @@ For the beta release, the organizational structure is simple to focus on core pr
 - Final submission saves the record locally, adds it to the sync queue, and sends the configuration to the camera via BLE.
 
 **Implementation**: Task 15 - Deployment Workflow (4-5-step wizard)
-**Estimated**: 10 hours
-**Source**: start-deployment-workflow.md
+**Source**: app-screen-guide.md Section 3 - Start Deployment Wizard
 
 ---
 
-#### 4.2 End Deployment
+#### 5.2 End Deployment
 **Description**: Mark a camera deployment as finished
 **Workflow Philosophy**: A simple and efficient process for field use, ensuring the user is ending the correct deployment and capturing final notes before retrieving the hardware.
 
 **Current State**: TBC by AL
-- **Initiation**: User can start the flow from a "End Deployment" button in the Map Screen or the Deployments List.
-- **Confirmation**: A confirmation screen shows key details (Name, Project, Device, Duration) to prevent ending the wrong deployment, especially when cameras are close together.
-- **Finalization**: User confirms the end date/time (pre-filled to current time) and can add optional notes about the retrieval (e.g., "SD card full," "Device damaged by animal").
-- **Submission**: Tapping 'Confirm' updates the deployment status to "Ended", makes the camera "available" again, and queues the changes for sync. An optional "power down" command is sent to the camera if it's reachable.
-- **Success**: A final screen summarizes the device's state (e.g., final battery, SD card space) before navigating the user back.
+- **Step 1: Device Selection**: The user initiates the flow and is presented with a list of nearby Bluetooth devices, identical to the first step of the Start Deployment wizard. Tapping a camera verifies it's part of an active deployment the user has access to.
+- **Step 2: Confirmation & Finalization**:
+  - **Confirmation**: The screen displays key details of the active deployment (Deployment Name, Project Name, Start Date) to prevent errors.
+  - **Retrieval Notes**: An optional text box allows the user to add notes about the retrieval (e.g., "SD card was full," "Device damaged by animal").
+  - **Submission**: Tapping the final "End Deployment" button marks the deployment as "Ended," makes the camera "Available" again for a new deployment, and queues the change for synchronization. The user is then taken to the Deployment Details screen to see a final summary.
 - Works completely offline.
 
 **Intended State**: Same as planned
 
-**Implementation**: Task 16 - End Deployment Flow
-**Estimated**: 6 hours
-**Source**: end-deployment-workflow.md
+**Implementation**: Task 17 - Field Validation & End Deployment
+**Source**: app-screen-guide.md Section 3 - End Deployment Flow
 
 ---
 
-#### 4.3 View Deployments List
+#### 5.3 View Deployments List
 **Description**: See all deployments in a project
 
 **Current State**: TBC by AL
@@ -447,7 +600,7 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-#### 4.4 View Deployment Details
+#### 5.4 View Deployment Details
 **Description**: See complete deployment information
 
 **Current State**: TBC by AL
@@ -464,7 +617,7 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-#### 4.5 Map View of Deployments
+#### 5.5 Map View of Deployments
 **Description**: Visual map showing deployment locations
 
 **Current State**: TBC by AL
@@ -516,9 +669,9 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-### Device Management & Preparation
+### Device Management
 
-#### 5.1 Device Status Lifecycle
+#### 6.1 Device Status Lifecycle
 **Description**: Cameras exist in one of three states
 
 **Device States**:
@@ -537,7 +690,7 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-#### 5.2 View Deployed Devices
+#### 6.2 View Deployed Devices
 **Description**: The main view of the "Devices" screen lists all cameras that are actively deployed in projects the user is a member of. This gives field staff a quick overview of their active hardware.
 
 **Current State**: TBC by AL
@@ -555,7 +708,7 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-#### 5.3 Prepare and Test Nearby Devices
+#### 6.3 Prepare and Test Nearby Devices
 **Description**: A prominent button allows users to scan for nearby, non-deployed cameras to prepare them for fieldwork. This opens a "Camera Workbench" screen where a user can see and manage all aspects of a single camera before deployment.
 
 **User Capabilities**:
@@ -583,9 +736,9 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-### AI Model Management
+### AI & Data Management
  
-#### 6.1 Select Project AI Model (Project Admin)
+#### 7.1 Select Project AI Model (Project Admin)
 **Description**: From within the mobile app, a Project Admin can select which of the organization's available AI models will be used for all deployments within that specific project.
 
 **Current State**: TBC by AL
@@ -601,9 +754,9 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-### Offline Capabilities
+### Offline & Sync Capabilities
 
-#### 7.1 Offline Data Storage
+#### 8.1 Offline Data Storage
 **Description**: Local database for working without internet
 
 **Current State**: TBC by AL
@@ -623,7 +776,7 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-#### 7.2 Automatic Background Sync
+#### 8.2 Automatic Background Sync
 **Description**: Sync local changes to the cloud based on user-defined settings.
 
 **Current State**: TBC by AL
@@ -643,7 +796,7 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-#### 7.3 Sync Status Indicators
+#### 8.3 Sync Status Indicators
 **Description**: Visual feedback about sync state
 
 **Current State**: TBC by AL
@@ -660,7 +813,7 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-#### 7.4 Conflict Resolution
+#### 8.4 Conflict Resolution
 **Description**: Handle when offline changes conflict with server
 
 **Current State**: TBC by AL
@@ -678,9 +831,9 @@ For the beta release, the organizational structure is simple to focus on core pr
 **Source**: implementation-spec-v1.4.md Section 6
 
 
-### LoRaWAN Integration
+### Remote Monitoring (LoRaWAN)
 
-#### 9.1 Battery Level Monitoring
+#### 9.1 Remote Battery Level Monitoring
 **Description**: Receive camera battery status via LoRaWAN
 
 **Current State**: TBC by AL
@@ -697,7 +850,7 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-#### 9.2 SD Card Usage Monitoring
+#### 9.2 Remote SD Card Usage Monitoring
 **Description**: Track camera storage capacity via LoRaWAN
 
 **Current State**: TBC by AL
@@ -714,9 +867,9 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 ---
 
-### Developer Tools (Environment-Gated)
+### App Utilities
 
-#### 10.1 Developer Menu
+#### 10.1 Developer Menu (Environment-Gated)
 **Description**: Special debugging tools (development builds only)
 
 **Current State**: TBC by AL
@@ -731,6 +884,38 @@ For the beta release, the organizational structure is simple to focus on core pr
 
 **Implementation**: Task 10 - Auth System
 **Source**: implementation-spec-v1.4.md Section 4.3
+
+---
+#### 10.2 In-App Feedback
+**Description**: Submit feedback, bug reports, or suggestions to the Wildlife Watcher team.
+
+**Current State**: TBC by AL
+- Accessible from the side drawer menu.
+- Large text area for the user's message.
+- Sends feedback to a nominated support email address.
+- Displays a confirmation message on success.
+- Includes error handling with a retry option for network issues.
+
+**Intended State**: Same as current.
+
+**Implementation**: Part of core app features.
+**Source**: app-screen-guide.md Section 5 - Side Drawer Menu & Feedback Screen.
+
+---
+
+#### 10.3 User Settings
+**Description**: Allow users to customize app behavior, particularly for data synchronization, to manage mobile data usage.
+
+**Current State**: TBC by AL
+- Accessible from the side drawer menu.
+- **Sync on Wi-Fi only**: A switch to prevent uploads over cellular data.
+- **Ask before syncing**: A switch to prompt for confirmation before large data uploads.
+- **Automatic sync**: The default behavior where the app syncs automatically when an internet connection is available.
+
+**Intended State**: Same as current.
+
+**Implementation**: Part of core app features.
+**Source**: app-screen-guide.md Section 4 - Settings Screen.
 
 ---
 
@@ -763,9 +948,9 @@ Think of it like apartment buildings with secure key card access:
 *When Dr. Chen logs in from Serengeti Conservation Trust, the system automatically shows only projects, deployments, and team members from Serengeti—even though thousands of other deployments exist in the database from other organizations worldwide.*
 
 
-### 2-Tier Security System (Beta Version)
+### 2-Tier Security System (MVP2 Version)
 
-For the beta, the app uses a simple, project-focused permission system:
+For the mvp2, the app uses a simple, project-focused permission system:
 
 #### 1. Project Admin (Project Level)
 
@@ -803,7 +988,7 @@ For the beta, the app uses a simple, project-focused permission system:
 
 #### Core Business Information
 **Organizations** (Beta: "General" Organization)
-- For the beta, all users and projects belong to a single "General" organization.
+- For the mvp2, all users and projects belong to a single "General" organization.
 - *Future*: Will store details for multiple research institutions like "Serengeti Conservation Trust".
 
 **Users** (Team members and administrators)
