@@ -388,6 +388,39 @@ Every developer/session MUST contribute to framework evolution by:
 - **Cross-Project Tasks**: `~/wildlife-watcher-backend/project-context/MVP2-Tasks/`
 - **Backend Type Automation**: Backend has automated type sync with git pre-commit hooks. See `~/wildlife-watcher-backend/project-context/documentation/QUICK-REFERENCE-TYPE-AUTOMATION.md`
 
+### Cross-Project Coordination System
+**Location**: `~/dev/wildlifeai/cross-project-coordination/` (shared hub between mobile and backend)
+
+**Structure** (4 folders):
+- `inbox/backend-to-mobile/` - Backend sends, mobile reads
+- `inbox/mobile-to-backend/` - Mobile sends, backend reads
+- `archive/YYYY-MM/` - Flat monthly folders (completed messages)
+- `templates/` - Message templates (schema-change, task-request, status-update, generic-message)
+
+**Quick Workflow**:
+```bash
+# Read backend message
+cat ~/dev/wildlifeai/cross-project-coordination/inbox/backend-to-mobile/msg.md
+
+# Action it (e.g., regenerate types after schema change)
+npm run types:local
+
+# Archive & log
+mv ~/dev/wildlifeai/cross-project-coordination/inbox/backend-to-mobile/msg.md \
+   ~/dev/wildlifeai/cross-project-coordination/archive/$(date +%Y-%m)/
+~/dev/wildlifeai/cross-project-coordination/.coordination/log-message.sh "Mobile" "Actioned schema-change"
+```
+
+**Complete Reference**: `~/dev/wildlifeai/cross-project-coordination/SYSTEM-REFERENCE-GUIDE.md` (10K+ word comprehensive guide)
+
+**Key Principles**:
+- Flat monthly archive (NO nested/type-based folders)
+- Bidirectional inbox (no outbox needed)
+- Monthly log rotation (~50KB/month)
+- Send → Inbox → Archive → Log workflow
+
+**Documentation**: `@project-context/development-context/MVP2/implementation/execution/cross-project-coordination/`
+
 ## Development Workflow
 
 ### Before Starting Any Task
