@@ -178,26 +178,34 @@ Layer 5: GitHub Actions validates on PR (BLOCKS merge on drift)
 ```
 
 **5-Layer Defense-in-Depth Strategy**:
-1. **Layer 1 - Backend Pre-Commit** ✅ Backend hook blocks stale backend types
-2. **Layer 2 - Coordination Messages** ✅ Backend notifies mobile of schema changes
+1. **Layer 1 - Backend Pre-Commit** ✅ Backend hook blocks stale backend types + reminds to create message
+2. **Layer 2 - Coordination Messages** ✅ Backend **manually** notifies mobile (template-based, quality > automation)
 3. **Layer 3 - Mobile Inbox Check** 🟡 Manual daily check (`ls ~/dev/wildlifeai/cross-project-coordination/inbox/backend-to-mobile/`)
 4. **Layer 4 - Mobile Pre-Commit** ✅ `.git/hooks/pre-commit` blocks commits with stale types
 5. **Layer 5 - GitHub Actions** ✅ `.github/workflows/type-validation.yml` blocks PR merge
 
 **Daily Workflow**:
 1. Backend developer makes schema change
-2. Backend pre-commit hook validates + sends coordination message
-3. Mobile developer checks coordination inbox (manual or sees pre-commit warning)
-4. Mobile runs `npm run types:local` (takes 3 seconds)
-5. Mobile pre-commit hook validates types before allowing commit
-6. PR opens → GitHub Actions validates types (final safety net)
+2. Backend pre-commit hook validates types + **reminds** to create coordination message
+3. Backend developer **manually creates** coordination message (using template)
+4. Mobile developer checks coordination inbox (daily manual check or sees pre-commit warning)
+5. Mobile runs `npm run types:local` (takes 3 seconds)
+6. Mobile pre-commit hook validates types before allowing commit
+7. PR opens → GitHub Actions validates types (final safety net)
 
 **Automated Safety Nets** (5-layer defense-in-depth):
-1. **Backend Pre-Commit Hook**: Blocks backend commits without type regeneration
-2. **Coordination System**: Backend sends schema change notifications to mobile
+1. **Backend Pre-Commit Hook**: Blocks backend commits without type regeneration + reminds to notify mobile
+2. **Coordination System**: Backend **manually** sends schema change notifications (quality > automation)
 3. **Manual Inbox Check**: Mobile checks daily for coordination messages
 4. **Mobile Pre-Commit Hook** ✅ **NEW**: `.git/hooks/pre-commit` blocks commits with stale types
 5. **GitHub Actions CI/CD**: `.github/workflows/type-validation.yml` blocks PR merge on type drift
+
+**Note on Layer 2**: Coordination message creation is intentionally manual (not automatic) to ensure:
+- Quality context in messages (humans explain "why")
+- No noise from internal-only changes
+- Flexibility for experimental branches
+- Batching of related changes into one message
+- Low effort (~2 min per schema change) with high communication value
 
 **Coverage**: 80% automated (Layers 1,2,4,5), 99% prevention rate
 **ROI**: 160:1 (15 min setup → 40 hours saved annually)
