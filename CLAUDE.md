@@ -201,8 +201,8 @@ GitHub Actions validates on PR (blocks merge on drift - 95% coverage)
 - Both generated from: Same local Supabase instance (localhost:54321)
 
 **Documentation**:
-- Daily workflow: `@project-context/learnings/local-dev-sync-workflow.md`
-- Comprehensive guide: `@documentation/developer-docs/Backend-Mobile-Type-Synchronization-Guide.md`
+- Daily workflow: `@project-context/development-context/MVP2/implementation/execution/cross-project-coordination/protocols/type-synchronization/local-dev-sync-workflow.md`
+- Comprehensive guide: `@project-context/development-context/MVP2/implementation/execution/cross-project-coordination/protocols/type-synchronization/Backend-Mobile-Type-Synchronization-Guide.md`
 - Backend automation: `~/wildlife-watcher-backend/project-context/documentation/QUICK-REFERENCE-TYPE-AUTOMATION.md`
 
 **Bottom Line**: Run `npm run types:local` after backend changes. Git hooks + GitHub Actions prevent type drift. Takes 3 seconds. 95% coverage. ✅
