@@ -14,7 +14,7 @@ I'm continuing work on the Wildlife Watcher Cross-Project Coordination System im
 **IMPORTANT**: This system uses AADF agent-based parallel execution for maximum efficiency.
 
 Please read this file to understand current status:
-@project-context/development-context/MVP2/implementation/execution/cross-project-coordination/IMPLEMENTATION-PROGRESS-TRACKER.md
+@project-context/development-context/MVP2/implementation/execution/cross-project-coordination/metrics/IMPLEMENTATION-PROGRESS-TRACKER.md
 
 **File Location**: /home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/MVP2/implementation/execution/cross-project-coordination/
 
@@ -121,7 +121,7 @@ I'm continuing work on the Wildlife Watcher Cross-Project Coordination System.
 **Please do the following:**
 
 1. **Read the progress tracker:**
-   @project-context/development-context/MVP2/implementation/execution/cross-project-coordination/IMPLEMENTATION-PROGRESS-TRACKER.md
+   @project-context/development-context/MVP2/implementation/execution/cross-project-coordination/metrics/IMPLEMENTATION-PROGRESS-TRACKER.md
 
 2. **Analyze current state:**
    - Which tracks are complete? (check progress bars)
@@ -213,7 +213,7 @@ Track 4: Automation Integration    [░░░░░░░░░░░░░░�
 ```
 I'm starting the cross-project coordination system implementation.
 
-Read: @project-context/development-context/MVP2/implementation/execution/cross-project-coordination/IMPLEMENTATION-PROGRESS-TRACKER.md
+Read: @project-context/development-context/MVP2/implementation/execution/cross-project-coordination/metrics/IMPLEMENTATION-PROGRESS-TRACKER.md
 
 Execute Tracks 1, 2, and 3 in parallel using specialized agents as defined in the AADF Parallel Execution Strategy section.
 
@@ -236,7 +236,7 @@ Use a single message with 3 Task tool calls:
 **Prompt:**
 ```
 I was implementing the coordination system but stopped partway through.
-Read @IMPLEMENTATION-PROGRESS-TRACKER.md and tell me where I left off and what to do next.
+Read @metrics/IMPLEMENTATION-PROGRESS-TRACKER.md and tell me where I left off and what to do next.
 ```
 
 **Expected Response:**
@@ -251,7 +251,7 @@ Read @IMPLEMENTATION-PROGRESS-TRACKER.md and tell me where I left off and what t
 **Prompt:**
 ```
 I just completed Track 1 (mobile repo organization).
-Read @IMPLEMENTATION-PROGRESS-TRACKER.md and tell me what track to do next.
+Read @metrics/IMPLEMENTATION-PROGRESS-TRACKER.md and tell me what track to do next.
 ```
 
 **Expected Response:**
@@ -282,7 +282,7 @@ What should I do? Can I proceed with other tasks?
 **Prompt:**
 ```
 I believe I've completed all tracks.
-Read @IMPLEMENTATION-PROGRESS-TRACKER.md and verify completion.
+Read @metrics/IMPLEMENTATION-PROGRESS-TRACKER.md and verify completion.
 Then tell me what validation tests I need to run.
 ```
 
@@ -300,7 +300,7 @@ Then tell me what validation tests I need to run.
 **Solution:**
 ```
 The progress tracker is located at:
-/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/MVP2/implementation/execution/cross-project-coordination/IMPLEMENTATION-PROGRESS-TRACKER.md
+/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/MVP2/implementation/execution/cross-project-coordination/metrics/IMPLEMENTATION-PROGRESS-TRACKER.md
 
 Full directory path:
 /home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/MVP2/implementation/execution/cross-project-coordination/
@@ -311,7 +311,7 @@ Please read this file and execute the AADF Parallel Execution Strategy.
 ### Issue: Checkboxes Not Updated
 **Before new session:**
 ```
-Update @IMPLEMENTATION-PROGRESS-TRACKER.md with my current progress:
+Update @metrics/IMPLEMENTATION-PROGRESS-TRACKER.md with my current progress:
 - Track 1, Task 1.2: Complete (all boxes checked)
 - Track 1, Task 1.3: In progress (6 of 14 files archived)
 - Update progress bar for Track 1 to 40%
@@ -321,7 +321,7 @@ Update @IMPLEMENTATION-PROGRESS-TRACKER.md with my current progress:
 **Prompt:**
 ```
 I started with parallel execution but need to switch to sequential.
-Read @IMPLEMENTATION-PROGRESS-TRACKER.md and help me reorganize remaining work into sequential order.
+Read @metrics/IMPLEMENTATION-PROGRESS-TRACKER.md and help me reorganize remaining work into sequential order.
 ```
 
 ---
@@ -333,7 +333,7 @@ If you need to manually update the tracker before using continuation prompt:
 ```
 Before I continue, let me update the progress tracker.
 
-Please update @IMPLEMENTATION-PROGRESS-TRACKER.md with the following:
+Please update @metrics/IMPLEMENTATION-PROGRESS-TRACKER.md with the following:
 
 **Track 1 Progress:**
 - Task 1.1: ✅ Complete (all checkboxes)
@@ -390,7 +390,7 @@ then tell me what to do next.
 ### Check Current Progress (Manual)
 ```bash
 # View progress tracker
-cat project-context/development-context/MVP2/implementation/execution/cross-project-coordination/IMPLEMENTATION-PROGRESS-TRACKER.md | grep -A5 "Overall Progress"
+cat project-context/development-context/MVP2/implementation/execution/cross-project-coordination/metrics/IMPLEMENTATION-PROGRESS-TRACKER.md | grep -A5 "Overall Progress"
 
 # Check git status
 git status
@@ -402,7 +402,7 @@ ls -la ~/dev/wildlifeai/cross-project-coordination/
 ### Update Progress (Manual)
 ```bash
 # Edit progress tracker
-nano project-context/development-context/MVP2/implementation/execution/cross-project-coordination/IMPLEMENTATION-PROGRESS-TRACKER.md
+nano project-context/development-context/MVP2/implementation/execution/cross-project-coordination/metrics/IMPLEMENTATION-PROGRESS-TRACKER.md
 
 # Commit progress
 git add project-context/development-context/MVP2/implementation/execution/cross-project-coordination/
@@ -452,7 +452,7 @@ START
 ```
 I'm continuing the Cross-Project Coordination System implementation.
 
-Read: @project-context/development-context/MVP2/implementation/execution/cross-project-coordination/IMPLEMENTATION-PROGRESS-TRACKER.md
+Read: @project-context/development-context/MVP2/implementation/execution/cross-project-coordination/metrics/IMPLEMENTATION-PROGRESS-TRACKER.md
 
 Tell me: Current status, what's next, any blockers, and recommended action.
 ```

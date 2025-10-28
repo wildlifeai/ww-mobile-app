@@ -3,7 +3,7 @@ I'm continuing work on the Wildlife Watcher Cross-Project Coordination System im
 **IMPORTANT**: This system uses AADF agent-based parallel execution for maximum efficiency.
 
 Please read this file to understand current status:
-@project-context/development-context/MVP2/implementation/execution/cross-project-coordination/IMPLEMENTATION-PROGRESS-TRACKER.md
+@project-context/development-context/MVP2/implementation/execution/cross-project-coordination/metrics/IMPLEMENTATION-PROGRESS-TRACKER.md
 
 **File Location**: /home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/MVP2/implementation/execution/cross-project-coordination/
 

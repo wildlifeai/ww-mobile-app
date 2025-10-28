@@ -128,11 +128,11 @@ Task({
 
 ### Key Documents Created
 1. `README.md` - System overview and navigation
-2. `CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md` - Complete architecture (29KB)
+2. `../design/CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md` - Complete architecture (29KB)
 3. `IMPLEMENTATION-SUMMARY.md` - Executive summary (23KB)
-4. `VISUAL-SYSTEM-OVERVIEW.md` - 10+ diagrams (21KB)
+4. `../guides/VISUAL-SYSTEM-OVERVIEW.md` - 10+ diagrams (21KB)
 5. `QUICK-START-GUIDE.md` - 5-minute setup (12KB)
-6. `BACKEND-TEAM-INTEGRATION-GUIDE.md` - Backend workflows (16KB)
+6. `../guides/BACKEND-TEAM-INTEGRATION-GUIDE.md` - Backend workflows (16KB)
 7. `COORDINATION-FILES-AUDIT-REPORT.md` - 73 files analyzed
 8. `EXECUTIVE-SUMMARY-COORDINATION-AUDIT.md` - Stakeholder decisions
 9. `FILE-PLACEMENT-DECISION-TREE.md` - Developer reference
@@ -447,7 +447,7 @@ Share coordination system documentation with backend team and coordinate their s
 ### Tasks Breakdown
 
 #### Task 3.1: Prepare Backend Handoff Package
-- [ ] Locate `BACKEND-TEAM-INTEGRATION-GUIDE.md`
+- [ ] Locate `../guides/BACKEND-TEAM-INTEGRATION-GUIDE.md`
 - [ ] Review guide for completeness
 - [ ] Prepare any additional context or notes
 - [ ] Identify backend team primary contact
@@ -459,9 +459,9 @@ Share coordination system documentation with backend team and coordinate their s
 
 #### Task 3.2: Share Documentation
 - [ ] Email/Slack backend team lead with:
-  - Link to `BACKEND-TEAM-INTEGRATION-GUIDE.md`
-  - Link to `QUICK-START-GUIDE.md`
-  - Link to `CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md`
+  - Link to `../guides/BACKEND-TEAM-INTEGRATION-GUIDE.md`
+  - Link to `../QUICK-START-GUIDE.md`
+  - Link to `../design/CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md`
 - [ ] Schedule 30-minute coordination meeting (optional but recommended)
 - [ ] Share GitHub commit hash: `8bfce8a`
 
@@ -954,12 +954,12 @@ Continue with current task in Track 1, use checkboxes above to track progress.
 
 ## 🔗 Related Documents
 
-- **System Design**: `CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md`
-- **Quick Start**: `QUICK-START-GUIDE.md`
-- **Backend Guide**: `BACKEND-TEAM-INTEGRATION-GUIDE.md`
-- **File Audit**: `COORDINATION-FILES-AUDIT-REPORT.md`
-- **Visual Overview**: `VISUAL-SYSTEM-OVERVIEW.md`
-- **Continuation Prompt**: `IMPLEMENTATION-CONTINUATION-PROMPT.md` (to be created)
+- **System Design**: `../design/CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md`
+- **Quick Start**: `../QUICK-START-GUIDE.md`
+- **Backend Guide**: `../guides/BACKEND-TEAM-INTEGRATION-GUIDE.md`
+- **File Audit**: `../reports/COORDINATION-FILES-AUDIT-REPORT.md`
+- **Visual Overview**: `../guides/VISUAL-SYSTEM-OVERVIEW.md`
+- **Continuation Prompt**: `../utilities/IMPLEMENTATION-CONTINUATION-PROMPT.md`
 
 ---
 

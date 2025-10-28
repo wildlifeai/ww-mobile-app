@@ -10,9 +10,9 @@
 
 ### 🚀 Getting Started
 - **New User?** → Start with [`QUICK-START-GUIDE.md`](QUICK-START-GUIDE.md)
-- **Backend Team?** → Read [`BACKEND-TEAM-INTEGRATION-GUIDE.md`](BACKEND-TEAM-INTEGRATION-GUIDE.md)
-- **Architect/Lead?** → Review [`IMPLEMENTATION-SUMMARY.md`](IMPLEMENTATION-SUMMARY.md)
-- **Deep Dive?** → Study [`CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md`](CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md)
+- **Backend Team?** → Read [`guides/BACKEND-TEAM-INTEGRATION-GUIDE.md`](guides/BACKEND-TEAM-INTEGRATION-GUIDE.md)
+- **Architect/Lead?** → Review [`design/IMPLEMENTATION-SUMMARY.md`](design/IMPLEMENTATION-SUMMARY.md)
+- **Deep Dive?** → Study [`design/CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md`](design/CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md)
 
 ### 📂 Documentation Structure
 
@@ -20,18 +20,42 @@
 cross-project-coordination/
 ├── README.md (You are here)
 ├── QUICK-START-GUIDE.md (5 min to productive)
-├── BACKEND-TEAM-INTEGRATION-GUIDE.md (Backend-specific)
-├── IMPLEMENTATION-SUMMARY.md (Executive overview)
-├── CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md (Complete design)
 │
-├── scripts/
-│   ├── setup-coordination-hub.sh (Run this first!)
-│   └── coordination-watch.sh (File watcher daemon)
+├── guides/               # User-facing documentation
+│   ├── BACKEND-TEAM-INTEGRATION-GUIDE.md
+│   ├── BACKEND-FAQ.md
+│   ├── BACKEND-HANDOFF-PACKAGE.md
+│   └── VISUAL-SYSTEM-OVERVIEW.md
 │
-└── templates/
-    ├── task-request.md (Request work from other team)
-    ├── status-update.md (Progress updates)
-    └── schema-change.md (Database schema changes)
+├── design/               # System architecture & design
+│   ├── CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md
+│   ├── IMPLEMENTATION-SUMMARY.md
+│   └── FILE-PLACEMENT-DECISION-TREE.md
+│
+├── metrics/              # Active tracking & performance
+│   ├── EXECUTION-METRICS.md
+│   └── IMPLEMENTATION-PROGRESS-TRACKER.md
+│
+├── reports/              # Historical completion reports
+│   ├── TRACKS-1-3-COMPLETION-REPORT.md
+│   ├── SYSTEM-SIMPLIFICATION-COMPLETION-REPORT.md
+│   └── [7 implementation reports]
+│
+├── scripts/              # Automation scripts
+│   ├── setup-coordination-hub.sh
+│   └── coordination-watch.sh
+│
+├── templates/            # Message templates
+│   ├── task-request.md
+│   ├── status-update.md
+│   └── schema-change.md
+│
+├── protocols/            # Coordination protocols
+├── reference-links/      # Reference materials
+├── active/               # Active coordination work
+├── archive/              # Archived messages (flat monthly)
+├── utilities/            # Utility files and prompts
+└── hub -> /cross-project-coordination  # Symlink to shared hub
 ```
 
 ---
@@ -90,7 +114,7 @@ You should see: **"🧪 Test Notification - Coordination watcher is working!"**
 
 ### Step 4: Read Your Team's Guide
 - **Mobile Developer** → [`QUICK-START-GUIDE.md`](QUICK-START-GUIDE.md)
-- **Backend Developer** → [`BACKEND-TEAM-INTEGRATION-GUIDE.md`](BACKEND-TEAM-INTEGRATION-GUIDE.md)
+- **Backend Developer** → [`guides/BACKEND-TEAM-INTEGRATION-GUIDE.md`](guides/BACKEND-TEAM-INTEGRATION-GUIDE.md)
 
 ---
 
@@ -313,9 +337,9 @@ cat ~/dev/wildlifeai/cross-project-coordination/metrics/coordination-health/summ
 
 ### Documentation
 - **Quick Start**: [`QUICK-START-GUIDE.md`](QUICK-START-GUIDE.md) - 10 min read
-- **Backend Guide**: [`BACKEND-TEAM-INTEGRATION-GUIDE.md`](BACKEND-TEAM-INTEGRATION-GUIDE.md) - 15 min read
-- **Full Design**: [`CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md`](CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md) - 30 min read
-- **Summary**: [`IMPLEMENTATION-SUMMARY.md`](IMPLEMENTATION-SUMMARY.md) - 5 min read
+- **Backend Guide**: [`guides/BACKEND-TEAM-INTEGRATION-GUIDE.md`](guides/BACKEND-TEAM-INTEGRATION-GUIDE.md) - 15 min read
+- **Full Design**: [`design/CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md`](design/CROSS-REPOSITORY-COORDINATION-SYSTEM-DESIGN.md) - 30 min read
+- **Summary**: [`design/IMPLEMENTATION-SUMMARY.md`](design/IMPLEMENTATION-SUMMARY.md) - 5 min read
 
 ### Templates
 - [`templates/task-request.md`](templates/task-request.md) - Request work

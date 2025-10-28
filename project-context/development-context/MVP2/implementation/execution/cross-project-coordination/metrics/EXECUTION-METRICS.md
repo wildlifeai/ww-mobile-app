@@ -159,7 +159,7 @@
 - **Actual**: 10 minutes 15 seconds
 - **Variance**: +15 seconds (+2.5%)
 - **Status**: ✅ Complete
-- **Deliverable**: BACKEND-FAQ.md (750+ lines, 17 Q&As)
+- **Deliverable**: ../guides/BACKEND-FAQ.md (750+ lines, 17 Q&As)
 
 #### Task 3.4: Backend Team Implementation (Backend Time)
 - **Estimated**: 2-3 hours (backend team time, not counted in our metrics)
@@ -279,7 +279,7 @@
 - **Total Files Organized**: 73 files
 - **Directories Created**: 27 directories (11 in mobile repo, 16 in shared hub)
 - **README Files Created**: 60 files (13 in Track 1, 47 in Track 2)
-- **Documentation Created**: 2 new comprehensive guides (BACKEND-HANDOFF-PACKAGE.md, BACKEND-FAQ.md)
+- **Documentation Created**: 2 new comprehensive guides (../guides/BACKEND-HANDOFF-PACKAGE.md, ../guides/BACKEND-FAQ.md)
 - **Root Violations Fixed**: 2 files moved from root
 - **Git Commits**: 2 commits (Track 1: 7fa30be, Track 2: e0c4be3)
 - **Execution Time**: 36 minutes 18 seconds
