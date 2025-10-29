@@ -20,10 +20,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "NODE_ENV": "development",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://nuhwmubvygxyddkycmpa.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd",
-        "GOOGLE_MAPS_API_KEY_ANDROID": "AIzaSyD4GgP2HPVqgEOIbOiA1QF6AfTaSBg4vfI"
+        "NODE_ENV": "development"
       },
       "ios": {
         "resourceClass": "m-medium"

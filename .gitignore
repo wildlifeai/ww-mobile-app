@@ -2,7 +2,10 @@
 #
 .DS_Store
 actions-runner
-.env*
+.env
+.env.local
+.env.*.local
+!.env.example
 *service-account.json
 google-services.json
 GoogleService-Info.plist
