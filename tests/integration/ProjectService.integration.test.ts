@@ -163,7 +163,7 @@ describe('ProjectService Integration Tests', () => {
       // Sign in as org1 admin
       await signInTestUser(testUsers.org1Admin.email, testUsers.org1Admin.password);
 
-      const projects = await ProjectService.getUserProjects();
+      const projects = await ProjectService.getUserProjects(org1Id);
 
       expect(projects).toHaveLength(1);
       expect(projects[0].id).toBe(org1ProjectId);
@@ -175,7 +175,7 @@ describe('ProjectService Integration Tests', () => {
       // Sign in as WW Admin (assigned to org1)
       await signInTestUser(testUsers.wwAdmin.email, testUsers.wwAdmin.password);
 
-      const projects = await ProjectService.getUserProjects();
+      const projects = await ProjectService.getUserProjects(org1Id);
 
       // WW Admin should only see org1 projects (org-scoped, not global)
       expect(projects).toHaveLength(1);
@@ -283,7 +283,7 @@ describe('ProjectService Integration Tests', () => {
       await ProjectService.deleteProject(project.id);
 
       // Verify project no longer in getUserProjects()
-      const projects = await ProjectService.getUserProjects();
+      const projects = await ProjectService.getUserProjects(org1Id);
       expect(projects.find(p => p.id === project.id)).toBeUndefined();
 
       // Verify project still exists but has deleted_at set

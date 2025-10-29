@@ -42,7 +42,7 @@ describe('useDeepLinking Hook', () => {
       if (event === 'url') {
         capturedURLHandler = handler;
       }
-      return { remove: jest.fn() };
+      return { remove: jest.fn() } as any;
     });
     
     mockLinking.parse.mockImplementation((url: string) => {
@@ -51,7 +51,7 @@ describe('useDeepLinking Hook', () => {
         if (url.startsWith('wildlifewatcher://')) {
           const withoutScheme = url.replace('wildlifewatcher://', '');
           const [pathPart, queryPart] = withoutScheme.split('?');
-          
+
           const queryParams: Record<string, string> = {};
           if (queryPart) {
             const searchParams = new URLSearchParams(queryPart);
@@ -59,24 +59,26 @@ describe('useDeepLinking Hook', () => {
               queryParams[key] = value;
             });
           }
-          
+
           return {
+            scheme: 'wildlifewatcher',
             hostname: null, // Not really applicable for deep links
             path: `/${pathPart}`, // This is what the hook checks
             queryParams,
           };
         }
-        
+
         // Fallback for other URLs
         const urlObj = new URL(url.replace('wildlifewatcher://', 'https://'));
         const searchParams = new URLSearchParams(urlObj.search);
         const queryParams: Record<string, string> = {};
-        
+
         searchParams.forEach((value, key) => {
           queryParams[key] = value;
         });
-        
+
         return {
+          scheme: urlObj.protocol.replace(':', ''),
           hostname: urlObj.hostname,
           path: urlObj.pathname,
           queryParams,
@@ -84,6 +86,7 @@ describe('useDeepLinking Hook', () => {
       } catch (error) {
         // Handle malformed URLs
         return {
+          scheme: null,
           hostname: null,
           path: null,
           queryParams: {},
@@ -183,6 +186,7 @@ describe('useDeepLinking Hook', () => {
   test('should handle general auth callback URLs', async () => {
     // Override parse for this specific test
     mockLinking.parse.mockReturnValue({
+      scheme: 'https',
       hostname: 'localhost',
       path: '/callback',
       queryParams: {
@@ -226,13 +230,13 @@ describe('useDeepLinking Hook', () => {
 
   test('should clean up event listener on unmount', () => {
     const mockRemove = jest.fn();
-    
-    mockLinking.addEventListener.mockReturnValue({ remove: mockRemove });
-    
+
+    mockLinking.addEventListener.mockReturnValue({ remove: mockRemove } as any);
+
     const { unmount } = renderHook(() => useDeepLinking());
-    
+
     unmount();
-    
+
     expect(mockRemove).toHaveBeenCalledTimes(1);
   });
 
@@ -287,6 +291,7 @@ describe('useDeepLinking Hook', () => {
   test('should handle malformed URLs gracefully', async () => {
     // Mock parse to simulate malformed URL
     mockLinking.parse.mockReturnValue({
+      scheme: null,
       hostname: null,
       path: null,
       queryParams: {},

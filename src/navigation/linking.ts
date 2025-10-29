@@ -40,9 +40,9 @@ export const linking: LinkingOptions<any> = {
       
       console.log('Parsed params:', { tokenHash, type });
       console.log('Deferring to useDeepLinking hook for navigation');
-      
-      // Return null to let useDeepLinking hook handle the navigation
-      return null;
+
+      // Return undefined to let useDeepLinking hook handle the navigation
+      return undefined;
     }
     
     // Default path handling for non-auth routes

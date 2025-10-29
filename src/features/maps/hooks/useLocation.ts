@@ -36,34 +36,6 @@ export const useLocation = (): UseLocationReturn => {
   const [subscription, setSubscription] = useState<Location.LocationSubscription | null>(null);
 
   /**
-   * Check current permission status on mount
-   */
-  useEffect(() => {
-    const initializeLocation = async () => {
-      await checkPermissions();
-    };
-
-    initializeLocation();
-
-    // Cleanup subscription on unmount
-    return () => {
-      if (subscription) {
-        subscription.remove();
-      }
-    };
-  }, []);
-
-  /**
-   * Auto-fetch location when permission becomes granted
-   */
-  useEffect(() => {
-    if (permissions.foreground === 'granted' && !location && !loading) {
-      console.log('[useLocation] Permission granted, auto-fetching location...');
-      getCurrentLocation();
-    }
-  }, [permissions.foreground, location, loading, getCurrentLocation]);
-
-  /**
    * Check current permission status
    */
   const checkPermissions = async () => {
@@ -79,6 +51,40 @@ export const useLocation = (): UseLocationReturn => {
       setError('Failed to check location permissions');
     }
   };
+
+  /**
+   * Get current location (one-time)
+   */
+  const getCurrentLocation = useCallback(async () => {
+    if (permissions.foreground !== 'granted') {
+      setError('Location permission not granted');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      setLocation({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        altitude: position.coords.altitude,
+        accuracy: position.coords.accuracy,
+        heading: position.coords.heading,
+        speed: position.coords.speed,
+        timestamp: position.timestamp,
+      });
+    } catch (err) {
+      console.error('[useLocation] Error getting current location:', err);
+      setError('Failed to get current location');
+    } finally {
+      setLoading(false);
+    }
+  }, [permissions.foreground]);
 
   /**
    * Request location permissions
@@ -115,41 +121,35 @@ export const useLocation = (): UseLocationReturn => {
     } finally {
       setLoading(false);
     }
+  }, [getCurrentLocation]);
+
+  /**
+   * Check current permission status on mount
+   */
+  useEffect(() => {
+    const initializeLocation = async () => {
+      await checkPermissions();
+    };
+
+    initializeLocation();
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
   }, []);
 
   /**
-   * Get current location (one-time)
+   * Auto-fetch location when permission becomes granted
    */
-  const getCurrentLocation = useCallback(async () => {
-    if (permissions.foreground !== 'granted') {
-      setError('Location permission not granted');
-      return;
+  useEffect(() => {
+    if (permissions.foreground === 'granted' && !location && !loading) {
+      console.log('[useLocation] Permission granted, auto-fetching location...');
+      getCurrentLocation();
     }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-
-      setLocation({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        altitude: position.coords.altitude,
-        accuracy: position.coords.accuracy,
-        heading: position.coords.heading,
-        speed: position.coords.speed,
-        timestamp: position.timestamp,
-      });
-    } catch (err) {
-      console.error('[useLocation] Error getting current location:', err);
-      setError('Failed to get current location');
-    } finally {
-      setLoading(false);
-    }
-  }, [permissions.foreground]);
+  }, [permissions.foreground, location, loading, getCurrentLocation]);
 
   /**
    * Start continuous location tracking

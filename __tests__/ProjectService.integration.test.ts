@@ -75,7 +75,7 @@ describe('ProjectService Integration - Live Backend', () => {
   describe('Service Methods (Unauthenticated)', () => {
     it('getUserProjects should fail gracefully without auth', async () => {
       try {
-        await ProjectService.getUserProjects();
+        await ProjectService.getUserProjects('00000000-0000-0000-0000-000000000000');
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
         // Expected to fail - no authentication

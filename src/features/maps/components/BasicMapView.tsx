@@ -7,7 +7,7 @@
 
 import React, { useEffect } from 'react';
 import { StyleSheet, View, Platform } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, Region, Details } from 'react-native-maps';
 import { MapRegion, MapType, MapViewConfig } from '../types';
 
 interface BasicMapViewProps {
@@ -56,14 +56,15 @@ export const BasicMapView: React.FC<BasicMapViewProps> = ({
    * Prevents infinite loops from programmatic updates
    */
   const handleRegionChangeComplete = (
-    newRegion: MapRegion,
-    gesture?: { isGesture: boolean }
+    newRegion: Region,
+    details: Details
   ) => {
     // Only trigger callback for user gestures (not programmatic changes)
-    if (gesture && !gesture.isGesture) return;
+    // This prevents infinite loops when updating the region programmatically
+    if (!details.isGesture) return;
 
     console.log('[BasicMapView] Region changed:', newRegion);
-    onRegionChangeComplete?.(newRegion);
+    onRegionChangeComplete?.(newRegion as MapRegion);
   };
 
   return (
