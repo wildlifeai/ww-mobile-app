@@ -28,6 +28,7 @@ import { ProjectMembersScreen } from "../screens/ProjectMembersScreen"
 import { BottomTabs } from "./BottomTabs"
 import { DevBuildInfo } from "./screens/DevBuildInfo"
 import { AuthTestScreen } from "../screens/AuthTestScreen"
+import { DeveloperSettingsScreen } from "../screens/DeveloperSettingsScreen"
 import { useDeepLinking } from "../hooks/useDeepLinking"
 
 export interface RootStackParamList extends ParamListBase {
@@ -51,6 +52,7 @@ export interface RootStackParamList extends ParamListBase {
 	ProjectMembersScreen: { projectId: string; projectName: string }
 	DevBuildInfo: undefined
 	AuthTestScreen: undefined
+	DeveloperSettings: undefined
 }
 
 export type Routes = keyof RootStackParamList
@@ -210,6 +212,11 @@ export const MainNavigation = () => {
 									name="AuthTestScreen"
 									component={AuthTestScreen}
 									options={{ title: "🔐 Auth Test" }}
+								/>
+								<Stack.Screen
+									name="DeveloperSettings"
+									component={DeveloperSettingsScreen}
+									options={{ title: "Developer Settings" }}
 								/>
 							</>
 						)}
