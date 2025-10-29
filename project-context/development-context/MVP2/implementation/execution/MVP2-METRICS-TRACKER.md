@@ -7,22 +7,23 @@
 ## 🎯 Executive Metrics Dashboard
 
 ### Overall Progress
-- **Total Tasks**: 23 (14 complete, 0 in-progress, 9 remaining)
-- **Completion Rate**: 60.9% (14/23 mobile complete) - **Stream A Accelerating**
+- **Total Tasks**: 23 (14 complete, 1 in-progress, 8 remaining)
+- **Completion Rate**: 60.9% (14/23 mobile complete) + **Environment Switching** (16/22 tasks - 73%) - **Infrastructure Phase Accelerating**
 - **✅ Task 12**: 100% COMPLETE (11.9/15.0 hrs actual) - **All 4 Phases Complete!**
 - **✅ Task 13**: 100% COMPLETE (10.25/12-15 hrs actual) - **Redux Fix + Full Integration Complete!**
+- **🔄 Environment Switching**: 73% COMPLETE (16/22 tasks, 7h 2min/22.5h) - **Phase 1A+1B Complete (commit 943aaa3)**
 - **Days Elapsed**: 116 days (since Sept 17)
-- **Projected Completion**: ~8 working days remaining
-- **Current Velocity**: 1.3 tasks/day (efficiency accelerating)
-- **Current Phase**: Stream A - Task 14 ready to start (Organisation Switching & Project Details)
+- **Projected Completion**: ~6 working days remaining
+- **Current Velocity**: 1.5 tasks/day (efficiency accelerating)
+- **Current Phase**: Environment Switching Phase 2 + Stream A Task 14 ready to start
 
 ### Time Tracking Summary
 | Metric | Estimated | Actual | Variance | % Diff |
 |--------|-----------|--------|----------|--------|
-| **Total Hours** | 88 hrs | TBD | TBD | TBD |
-| **Completed Work** | 58 hrs | ~48 hrs | -10 hrs | -17.2% |
-| **Remaining Work** | 30 hrs | TBD | TBD | TBD |
-| **Daily Average** | 4.4 hrs | ~4.8 hrs | +0.4 hrs | +9% |
+| **Total Hours** | 88 hrs + 22.5 hrs (Env) | TBD | TBD | TBD |
+| **Completed Work** | 58 hrs + 16.4 hrs (Env) | ~48 hrs + 7.0 hrs | -10 hrs + -9.4 hrs | -17.2% + -57% |
+| **Remaining Work** | 30 hrs + 6.1 hrs (Env) | TBD | TBD | TBD |
+| **Daily Average** | 4.4 hrs | ~5.2 hrs | +0.8 hrs | +18% |
 
 ## 📈 Task-Level Metrics
 
@@ -36,6 +37,7 @@
 | 11.8 | UUID Alignment | 19.5 hrs | ~16 hrs | -3.5 hrs | 2025-09-17 | Critical blocker resolved |
 | 11 | Offline SQLite Foundation | 8 hrs | ~8 hrs | 0 hrs | 2025-09-30 | 100% complete (7/7 subtasks) - Redux integration + tests |
 | WW Admin | Architecture Corrections | 0 hrs | ~3.5 hrs | +3.5 hrs | 2025-09-29 | Critical architecture alignment |
+| **Env Switch** | **Runtime Environment Switching** | **22.5 hrs** | **7.0 hrs** | **-15.5 hrs** | **2025-10-29** | **73% complete (16/22 tasks) - Phase 1A+1B complete in 6h 19min** |
 
 **Key Finding**: Discovered ~8 hours of work already complete (Task 11.3)
 **Critical Addition**: WW Admin corrections unplanned but essential for architectural integrity
