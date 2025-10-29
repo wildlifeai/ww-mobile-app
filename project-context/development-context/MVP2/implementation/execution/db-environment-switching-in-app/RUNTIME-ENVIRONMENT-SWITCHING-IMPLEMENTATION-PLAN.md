@@ -32,41 +32,220 @@ Implement runtime environment switching that allows:
 ## 🎯 Implementation Strategy
 
 ### Execution Model
-- **Parallel Track A**: Core infrastructure (config, environment manager)
-- **Parallel Track B**: UI components (developer settings screen)
-- **Parallel Track C**: Type synchronization tooling (npm scripts, GitHub Actions)
-- **Sequential**: Integration → Testing → Documentation
+- **Pre-Phase 1**: TypeScript error resolution (MUST COMPLETE FIRST)
+- **Phase 1A (Parallel Track A)**: Core infrastructure (config, environment manager)
+- **Phase 1A (Parallel Track B)**: UI components (developer settings screen)
+- **Phase 1A (Parallel Track C)**: Type synchronization tooling (npm scripts, GitHub Actions)
+- **Phase 1B (Parallel)**: Code Review critical blockers (API keys, linting)
+- **Sequential Phases 2-3**: Dependent tasks
+- **Final Phase**: Integration → Testing → Documentation
 
-### Dependency Graph
+### Integrated Dependency Graph
 ```
-Track A (Infrastructure)     Track B (UI Components)      Track C (Type Sync)
-├─ Task 1.1: Config            ├─ Task 2.1: Settings         ├─ Task 3.1: Scripts
-│  (Foundation)                │  Screen                     │  (npm scripts)
-│                              │                             │
-├─ Task 1.2: Environment       │                             ├─ Task 3.2: GitHub
-│  Manager                     │                             │  Actions
-│  (Depends on 1.1)            │                             │
-│                              │                             │
-└─ Task 1.3: Supabase Client   │                             └─ Task 3.3: Pre-commit
-   Refactor                    │                                Hook
-   (Depends on 1.2)            │                                (Depends on 3.1)
-                               │
-                               └─ Task 2.2: Navigation
-                                  Integration
-                                  (Depends on 2.1)
-
-                    ↓ ↓ ↓ (All tracks complete) ↓ ↓ ↓
-
-Task 4: Integration Testing (Depends on 1.3, 2.2, 3.3)
-   ↓
-Task 5: Documentation Update (Depends on 4)
-   ↓
-Task 6: Developer Workflow Guide (Depends on 5)
+Pre-Phase 1: TypeScript Error Resolution (1-1.5h) 🔧
+├─ TS-1: Fix ProjectCard.tsx (5 errors)
+├─ TS-2: Fix SupabaseConnectivityTest.tsx (1 error)
+├─ TS-3: Fix WWScrollView.tsx (1 error)
+├─ TS-4: Fix BasicMapView.tsx (1 error)
+├─ TS-5: Fix ProjectService.integration.test.ts (1 error)
+└─ TS-6: Fix ProjectDetailsScreen.tsx (1 error)
+         ↓
+    Clean Baseline: 0 TypeScript Errors ✅
+         ↓
+┌────────────────────────────────────────────────────────────────┐
+│  Phase 1A: Environment Switching (Parallel)                    │
+├────────────────────────────────────────────────────────────────┤
+│  Track A (Infrastructure)     Track B (UI)      Track C (Sync) │
+│  ├─ Task 1.1: Config (1h)     Task 2.1:        Task 3.1:      │
+│  │                             Settings (2h)    Scripts (1.5h) │
+│  ├─ Task 1.2: Manager (1.5h)                                   │
+│  └─ Task 1.3: Refactor (2h)                                    │
+└────────────────────────────────────────────────────────────────┘
+         ↓ (Runs Concurrently) ↓
+┌────────────────────────────────────────────────────────────────┐
+│  Phase 1B: Code Review Critical Blockers (Parallel)            │
+├────────────────────────────────────────────────────────────────┤
+│  CR-1.1: Remove Hardcoded API Keys (2h) 🔐 BLOCKING            │
+│  CR-1.3: Auto-Fix Linting (1h) 🎨                              │
+└────────────────────────────────────────────────────────────────┘
+         ↓
+Phase 2: Dependent Tasks
+├─ Task 3.2: GitHub Actions (2h) [Depends: 3.1]
+├─ Task 3.3: Pre-commit Hook (1h) [Depends: 3.1]
+└─ Task 2.2: Navigation (1h) [Depends: 2.1]
+         ↓
+Phase 3: Final Integration
+├─ Task 4: Integration Testing (3h) [Depends: 1.3, 2.2, 3.3]
+├─ Task 5: Documentation Update (2h) [Depends: 4]
+└─ Task 6: Developer Workflow Guide (1.5h) [Depends: 5]
 ```
+
+**Total Estimated Time**: 18-19 hours
+- Pre-Phase 1: 1-1.5 hours
+- Phase 1A+1B (Parallel): 4.5 hours (longest track: 4.5h)
+- Phase 2: 4 hours
+- Phase 3: 6.5 hours
+- Buffer: 2 hours
 
 ---
 
 ## 📦 Task Breakdown
+
+### **Pre-Phase 1: TypeScript Error Resolution** (MUST COMPLETE FIRST)
+
+#### **TS-1: Fix ProjectCard.tsx TypeScript Errors**
+**Status**: 🔴 Not Started
+**Priority**: P0 (BLOCKING)
+**Agent**: `react-native-expo-architect`
+**Estimated Time**: 20 minutes
+**Actual Time**: _[Track during execution]_
+**Start Time**: _[Record when starting]_
+**End Time**: _[Record when completing]_
+
+**Objective**: Fix 5 TypeScript errors in ProjectCard component
+
+**Errors**:
+1. Line 62: Property 'id' does not exist on type 'ProjectWithDetails'
+2. Line 64: Property 'name' does not exist on type 'ProjectWithDetails'
+3. Line 74: Property 'name' does not exist on type 'ProjectWithDetails'
+4. Line 78: Property 'description' does not exist on type 'ProjectWithDetails'
+5. Line 185: Property 'updated_at' does not exist on type 'ProjectWithDetails'
+
+**Solution**: Update `ProjectWithDetails` type definition in `src/types/` to include missing properties
+
+**Acceptance Criteria**:
+- ✅ All 5 ProjectCard errors resolved
+- ✅ Component renders correctly
+- ✅ No new TypeScript errors introduced
+
+---
+
+#### **TS-2: Fix SupabaseConnectivityTest.tsx Module Error**
+**Status**: 🔴 Not Started
+**Priority**: P0 (BLOCKING)
+**Agent**: `react-native-expo-architect`
+**Estimated Time**: 10 minutes
+**Actual Time**: _[Track during execution]_
+**Start Time**: _[Record when starting]_
+**End Time**: _[Record when completing]_
+
+**Objective**: Fix module import error
+
+**Error**: File '/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/src/types/supabase.ts' is not a module
+
+**Solution**: Review supabase.ts export structure and update import statement
+
+**Acceptance Criteria**:
+- ✅ Module imports successfully
+- ✅ Component compiles without errors
+
+**Cross-Reference**: Related to Task 1.1 (Supabase configuration refactor)
+
+---
+
+#### **TS-3: Fix WWScrollView.tsx Gesture Handler Type**
+**Status**: 🔴 Not Started
+**Priority**: P0 (BLOCKING)
+**Agent**: `react-native-expo-architect`
+**Estimated Time**: 15 minutes
+**Actual Time**: _[Track during execution]_
+**Start Time**: _[Record when starting]_
+**End Time**: _[Record when completing]_
+
+**Objective**: Fix React Native Gesture Handler type compatibility
+
+**Error**: Line 18 - Type 'null' is not assignable to type 'HitSlop | undefined'
+
+**Solution**: Update hitSlop prop type to exclude null
+```typescript
+hitSlop?: number | Insets  // Remove | null
+```
+
+**Acceptance Criteria**:
+- ✅ Type error resolved
+- ✅ Component functionality unchanged
+- ✅ No regression in gesture handling
+
+**Cross-Reference**: Code Review Category 5 - React Native Gesture Handler Type Issues
+
+---
+
+#### **TS-4: Fix BasicMapView.tsx Callback Signature**
+**Status**: 🔴 Not Started
+**Priority**: P0 (BLOCKING)
+**Agent**: `react-native-expo-architect`
+**Estimated Time**: 15 minutes
+**Actual Time**: _[Track during execution]_
+**Start Time**: _[Record when starting]_
+**End Time**: _[Record when completing]_
+
+**Objective**: Fix map component callback type mismatch
+
+**Error**: Line 79 - Callback parameter types incompatible with react-native-maps
+
+**Solution**: Align callback signatures with react-native-maps Details type
+
+**Acceptance Criteria**:
+- ✅ Callback types match react-native-maps expectations
+- ✅ Map interactions work correctly
+- ✅ No runtime errors
+
+**Cross-Reference**: Code Review Category 6 - Map Component Type Mismatches
+
+---
+
+#### **TS-5: Fix ProjectService Integration Test**
+**Status**: 🔴 Not Started
+**Priority**: P0 (BLOCKING)
+**Agent**: `quality-assurance-engineer`
+**Estimated Time**: 10 minutes
+**Actual Time**: _[Track during execution]_
+**Start Time**: _[Record when starting]_
+**End Time**: _[Record when completing]_
+
+**Objective**: Fix integration test method signature
+
+**Error**: Line 78 - Expected 1 arguments, but got 0
+
+**Solution**: Fix test method call to match actual service signature
+
+**Acceptance Criteria**:
+- ✅ Test compiles without errors
+- ✅ Test executes successfully
+- ✅ Proper method signature used
+
+**Cross-Reference**: Code Review Category 8 - Integration Test Type Mismatches
+
+---
+
+#### **TS-6: Fix ProjectDetailsScreen.tsx Enum Constraint**
+**Status**: 🔴 Not Started
+**Priority**: P0 (BLOCKING)
+**Agent**: `react-native-expo-architect`
+**Estimated Time**: 10 minutes
+**Actual Time**: _[Track during execution]_
+**Start Time**: _[Record when starting]_
+**End Time**: _[Record when completing]_
+
+**Objective**: Fix visibility enum type constraint
+
+**Error**: Type 'string' is not assignable to type '"public" | "internal" | "private" | undefined'
+
+**Solution**: Add type assertion
+```typescript
+visibility: formData.visibility as "public" | "internal" | "private"
+```
+
+**Acceptance Criteria**:
+- ✅ Type error resolved
+- ✅ Form validation works correctly
+- ✅ Enum values properly constrained
+
+**Cross-Reference**: Code Review Category 9 - Enum Type Constraints
+
+---
+
+### **Phase 1A: Environment Switching Foundation**
 
 ### **Track A: Core Infrastructure** (Foundation Layer)
 
@@ -546,6 +725,159 @@ Task 6: Developer Workflow Guide (Depends on 5)
 
 ---
 
+### **Phase 1B: Code Review Critical Blockers** (Parallel with Phase 1A)
+
+#### **CR-1.1: Remove Hardcoded API Keys and Configure EAS Secrets**
+**Status**: 🔴 Not Started
+**Priority**: P0 (BLOCKING ALL NEW WORK - Security Vulnerability)
+**Agent**: `devops-deployment-architect` + `backend-architect`
+**Estimated Time**: 2 hours
+**Actual Time**: _[Track during execution]_
+**Start Time**: _[Record when starting]_
+**End Time**: _[Record when completing]_
+**Parallel With**: Phase 1A tasks (1.1, 2.1, 3.1)
+
+**Objective**: Remove hardcoded secrets from `eas.json` and configure EAS Secrets for secure builds
+
+**Context**:
+- **CRITICAL SECURITY ISSUE**: API keys hardcoded in `eas.json` (committed to git)
+- Must rotate all exposed keys immediately
+- Configure EAS Secrets for preview and production builds
+- Update `app.config.js` to use environment variables
+
+**Implementation Requirements**:
+
+1. **Remove secrets from `eas.json`**:
+   - Remove `EXPO_PUBLIC_SUPABASE_URL`
+   - Remove `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+   - Remove `GOOGLE_MAPS_API_KEY_ANDROID`
+   - Remove `GOOGLE_MAPS_API_KEY_IOS`
+
+2. **Create `.env.example` template**:
+   ```bash
+   EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+   GOOGLE_MAPS_API_KEY_ANDROID=your_android_key
+   GOOGLE_MAPS_API_KEY_IOS=your_ios_key
+   ```
+
+3. **Configure EAS Secrets**:
+   ```bash
+   eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_URL --value "..." --type string
+   eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "..." --type string
+   eas secret:create --scope project --name GOOGLE_MAPS_API_KEY_ANDROID --value "..." --type string
+   eas secret:create --scope project --name GOOGLE_MAPS_API_KEY_IOS --value "..." --type string
+   ```
+
+4. **Update `app.config.js`**:
+   ```javascript
+   extra: {
+     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+   }
+   ```
+
+5. **Rotate all exposed keys**:
+   - Generate new Supabase anon key
+   - Generate new Google Maps API keys
+   - Update keys in Supabase dashboard
+   - Update keys in Google Cloud Console
+
+6. **Update `.gitignore`**:
+   - Ensure `.env` is excluded
+   - Verify `eas.json` is NOT in `.gitignore` (config file, not secrets)
+
+7. **Test build with EAS Secrets**:
+   ```bash
+   eas build --platform android --profile preview
+   ```
+
+**Acceptance Criteria**:
+- ✅ No secrets in `eas.json` or any committed files
+- ✅ `.env.example` created with template
+- ✅ EAS Secrets configured for all environments
+- ✅ `app.config.js` reads from environment variables
+- ✅ All exposed keys rotated
+- ✅ `.gitignore` properly configured
+- ✅ Preview build succeeds with EAS Secrets
+- ✅ App connects to services with new keys
+
+**Files to Modify**:
+- `eas.json` (remove secrets)
+- `app.config.js` (use environment variables)
+- `.gitignore` (verify configuration)
+
+**Files to Create**:
+- `.env.example` (template)
+
+**Cross-Reference**: Code Review Tracker - CR-1.1 (lines 121-138)
+
+---
+
+#### **CR-1.3: Auto-Fix Linting Violations**
+**Status**: 🔴 Not Started
+**Priority**: P1 (HIGH)
+**Agent**: `code-analyzer`
+**Estimated Time**: 1 hour
+**Actual Time**: _[Track during execution]_
+**Start Time**: _[Record when starting]_
+**End Time**: _[Record when completing]_
+**Parallel With**: Phase 1A tasks, CR-1.1
+
+**Objective**: Auto-correct ESLint/Prettier violations for code consistency
+
+**Context**:
+- Current: 1000+ linting violations
+- Target: <50 violations
+- Use auto-fix first, manual review for remaining issues
+- Verify no functional changes introduced
+
+**Implementation Requirements**:
+
+1. **Capture baseline**:
+   ```bash
+   npm run lint 2>&1 | tee lint-baseline.txt
+   wc -l lint-baseline.txt  # Count violations
+   ```
+
+2. **Run auto-fix**:
+   ```bash
+   npm run lint -- --fix
+   ```
+
+3. **Review remaining violations**:
+   ```bash
+   npm run lint 2>&1 | tee lint-after-fix.txt
+   wc -l lint-after-fix.txt  # Count remaining
+   ```
+
+4. **Verify no breaking changes**:
+   ```bash
+   npm run type-check  # Should pass
+   npm test  # All tests should pass
+   npm run build  # Should succeed
+   ```
+
+5. **Manual fixes** (if needed):
+   - Fix critical violations only
+   - Defer non-critical to Phase 3
+
+**Acceptance Criteria**:
+- ✅ Linting violations: 1000+ → <50
+- ✅ TypeScript still compiles (0 errors)
+- ✅ All tests still pass
+- ✅ Build succeeds
+- ✅ No functional changes
+- ✅ Code formatted consistently
+
+**Impact**: Code readability, consistency, easier code reviews
+
+**Cross-Reference**: Code Review Tracker - CR-1.3 (lines 143-156)
+
+---
+
+### **Phase 2: Dependent Tasks**
+
 ### **Track D: Integration & Documentation** (Final Phase)
 
 #### **Task 4: Integration Testing**
@@ -743,46 +1075,146 @@ Task 6: Developer Workflow Guide (Depends on 5)
 
 ### Progress Summary
 **Last Updated**: 2025-10-29
+**Session Start**: _[Record when beginning Pre-Phase 1]_
 
-| Track | Tasks | Completed | In Progress | Not Started | Blocked |
-|-------|-------|-----------|-------------|-------------|---------|
-| **Track A: Infrastructure** | 3 | 0 | 0 | 3 | 0 |
-| **Track B: UI Components** | 2 | 0 | 0 | 2 | 0 |
-| **Track C: Type Sync & CI/CD** | 3 | 0 | 0 | 3 | 0 |
-| **Track D: Integration & Docs** | 3 | 0 | 0 | 3 | 0 |
-| **TOTAL** | **11** | **0** | **0** | **11** | **0** |
+| Phase | Tasks | Completed | In Progress | Not Started | Total Time | Est. Time |
+|-------|-------|-----------|-------------|-------------|------------|-----------|
+| **Pre-Phase 1: TypeScript Fixes** | 6 | 0 | 0 | 6 | 0h | 1-1.5h |
+| **Phase 1A: Environment Switching** | 5 | 0 | 0 | 5 | 0h | 4.5h |
+| **Phase 1B: Code Review Blockers** | 2 | 0 | 0 | 2 | 0h | 3h |
+| **Phase 2: Dependent Tasks** | 3 | 0 | 0 | 3 | 0h | 4h |
+| **Phase 3: Final Integration** | 3 | 0 | 0 | 3 | 0h | 6.5h |
+| **TOTAL** | **19** | **0** | **0** | **19** | **0h** | **19-20h** |
 
-**Overall Progress**: 0% (0/11 tasks completed)
+**Overall Progress**: 0% (0/19 tasks completed)
+
+### Detailed Task Status
+
+#### Pre-Phase 1: TypeScript Error Resolution
+| Task | Status | Est. | Actual | Variance | Start | End |
+|------|--------|------|--------|----------|-------|-----|
+| TS-1: ProjectCard | 🔴 | 20min | - | - | - | - |
+| TS-2: SupabaseConnectivityTest | 🔴 | 10min | - | - | - | - |
+| TS-3: WWScrollView | 🔴 | 15min | - | - | - | - |
+| TS-4: BasicMapView | 🔴 | 15min | - | - | - | - |
+| TS-5: ProjectService.integration.test | 🔴 | 10min | - | - | - | - |
+| TS-6: ProjectDetailsScreen | 🔴 | 10min | - | - | - | - |
+| **Subtotal** | **0/6** | **1h 20min** | **-** | **-** | - | - |
+
+#### Phase 1A: Environment Switching Foundation
+| Task | Status | Est. | Actual | Variance | Start | End |
+|------|--------|------|--------|----------|-------|-----|
+| 1.1: Environment Config | 🔴 | 1h | - | - | - | - |
+| 1.2: Environment Manager | 🔴 | 1.5h | - | - | - | - |
+| 1.3: Supabase Client Refactor | 🔴 | 2h | - | - | - | - |
+| 2.1: Developer Settings Screen | 🔴 | 2h | - | - | - | - |
+| 3.1: Type Sync Scripts | 🔴 | 1.5h | - | - | - | - |
+| **Subtotal** | **0/5** | **8h** | **-** | **-** | - | - |
+| **Parallel Runtime** | - | **4.5h** | **-** | **-** | - | - |
+
+#### Phase 1B: Code Review Critical Blockers
+| Task | Status | Est. | Actual | Variance | Start | End |
+|------|--------|------|--------|----------|-------|-----|
+| CR-1.1: Remove API Keys | 🔴 | 2h | - | - | - | - |
+| CR-1.3: Auto-Fix Linting | 🔴 | 1h | - | - | - | - |
+| **Subtotal** | **0/2** | **3h** | **-** | **-** | - | - |
+
+#### Phase 2: Dependent Tasks
+| Task | Status | Est. | Actual | Variance | Start | End |
+|------|--------|------|--------|----------|-------|-----|
+| 2.2: Navigation Integration | 🔴 | 1h | - | - | - | - |
+| 3.2: GitHub Actions | 🔴 | 2h | - | - | - | - |
+| 3.3: Pre-commit Hook | 🔴 | 1h | - | - | - | - |
+| **Subtotal** | **0/3** | **4h** | **-** | **-** | - | - |
+
+#### Phase 3: Final Integration
+| Task | Status | Est. | Actual | Variance | Start | End |
+|------|--------|------|--------|----------|-------|-----|
+| 4: Integration Testing | 🔴 | 3h | - | - | - | - |
+| 5: Documentation Update | 🔴 | 2h | - | - | - | - |
+| 6: Developer Workflow Guide | 🔴 | 1.5h | - | - | - | - |
+| **Subtotal** | **0/3** | **6.5h** | **-** | **-** | - | - |
+
+### Time Tracking Instructions
+**For each task:**
+1. Record **Start Time** when beginning work
+2. Record **End Time** when completing work
+3. Calculate **Actual Time** = End - Start
+4. Calculate **Variance** = Actual - Estimated
+5. Update **Status** to 🟢 when complete
+
+**Example**:
+```
+| TS-1: ProjectCard | 🟢 | 20min | 25min | +5min | 10:00 | 10:25 |
+```
 
 ---
 
 ## 🚀 Execution Checklist
 
 ### Pre-Execution Validation
+- [ ] Git status clean (or staged changes documented)
 - [ ] Supabase local instance running (`supabase start`)
 - [ ] Backend repo pulled and up to date
-- [ ] Mobile repo on clean branch
 - [ ] Node modules installed (`npm install`)
-- [ ] Existing tests passing (`npm test`)
+- [ ] Current TypeScript errors: 10 (baseline established)
 
-### Parallel Execution: Phase 1 (Can run simultaneously)
-- [ ] **Task 1.1**: Environment Configuration System (backend-architect)
-- [ ] **Task 2.1**: Developer Settings Screen (mobile-dev)
-- [ ] **Task 3.1**: Type Synchronization Scripts (devops-deployment-architect)
+### Pre-Phase 1: TypeScript Error Resolution (Sequential - 1-1.5h)
+- [ ] **TS-1**: Fix ProjectCard.tsx (20min) - react-native-expo-architect
+- [ ] **TS-2**: Fix SupabaseConnectivityTest.tsx (10min) - react-native-expo-architect
+- [ ] **TS-3**: Fix WWScrollView.tsx (15min) - react-native-expo-architect
+- [ ] **TS-4**: Fix BasicMapView.tsx (15min) - react-native-expo-architect
+- [ ] **TS-5**: Fix ProjectService.integration.test.ts (10min) - quality-assurance-engineer
+- [ ] **TS-6**: Fix ProjectDetailsScreen.tsx (10min) - react-native-expo-architect
+- [ ] **Validation**: `npm run type-check` = 0 errors ✅
 
-### Sequential Execution: Phase 2 (After Phase 1)
-- [ ] **Task 1.2**: Environment Manager (backend-architect) [Depends: 1.1]
-- [ ] **Task 3.2**: GitHub Actions Updates (devops-deployment-architect) [Depends: 3.1]
-- [ ] **Task 3.3**: Pre-Commit Hook (devops-deployment-architect) [Depends: 3.1]
+### Phase 1A + 1B: Parallel Execution (4.5h - longest track)
+**Track A: Infrastructure (Sequential within track)**
+- [ ] **Task 1.1**: Environment Configuration (1h) - backend-architect
+- [ ] **Task 1.2**: Environment Manager (1.5h) - backend-architect [Depends: 1.1]
+- [ ] **Task 1.3**: Supabase Client Refactor (2h) - backend-architect [Depends: 1.2]
 
-### Sequential Execution: Phase 3 (After Phase 2)
-- [ ] **Task 1.3**: Refactor Supabase Client (backend-architect) [Depends: 1.2]
-- [ ] **Task 2.2**: Navigation Integration (mobile-dev) [Depends: 2.1]
+**Track B: UI Components (Can start immediately)**
+- [ ] **Task 2.1**: Developer Settings Screen (2h) - mobile-dev
+- [ ] **Task 3.1**: Type Sync Scripts (1.5h) - devops-deployment-architect
 
-### Final Phase: Integration & Documentation
-- [ ] **Task 4**: Integration Testing (quality-assurance-engineer) [Depends: 1.3, 2.2, 3.3]
-- [ ] **Task 5**: Documentation Update (docs-maintainer) [Depends: 4]
-- [ ] **Task 6**: Developer Workflow Guide (docs-maintainer) [Depends: 5]
+**Track C: Code Review Blockers (Can start immediately)**
+- [ ] **CR-1.1**: Remove Hardcoded API Keys (2h) - devops-deployment-architect + backend-architect 🔐
+- [ ] **CR-1.3**: Auto-Fix Linting (1h) - code-analyzer
+
+### Phase 2: Dependent Tasks (Sequential - 4h)
+- [ ] **Task 2.2**: Navigation Integration (1h) - mobile-dev [Depends: 2.1]
+- [ ] **Task 3.2**: GitHub Actions Updates (2h) - devops-deployment-architect [Depends: 3.1]
+- [ ] **Task 3.3**: Pre-Commit Hook (1h) - devops-deployment-architect [Depends: 3.1]
+
+### Phase 3: Final Integration (Sequential - 6.5h)
+- [ ] **Task 4**: Integration Testing (3h) - quality-assurance-engineer [Depends: 1.3, 2.2, 3.3]
+- [ ] **Task 5**: Documentation Update (2h) - docs-maintainer [Depends: 4]
+- [ ] **Task 6**: Developer Workflow Guide (1.5h) - docs-maintainer [Depends: 5]
+
+### Quality Gates
+**After Pre-Phase 1**:
+- [ ] TypeScript: 0 errors ✅
+- [ ] App builds successfully
+- [ ] All tests pass
+
+**After Phase 1A + 1B**:
+- [ ] TypeScript: 0 errors ✅
+- [ ] Linting: <50 violations ✅
+- [ ] No hardcoded secrets ✅
+- [ ] Environment config complete ✅
+- [ ] Type sync scripts operational ✅
+- [ ] All tests pass ✅
+
+**After Phase 2**:
+- [ ] GitHub Actions pass ✅
+- [ ] Pre-commit hook working ✅
+- [ ] Navigation integration complete ✅
+
+**After Phase 3**:
+- [ ] All integration tests pass ✅
+- [ ] Documentation complete ✅
+- [ ] Ready for merge ✅
 
 ---
 

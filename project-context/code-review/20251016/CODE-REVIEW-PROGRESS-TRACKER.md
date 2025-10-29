@@ -1,8 +1,37 @@
 # 🎯 Code Review Remediation - Progress Tracker
 **Quick Reference for Daily Progress Tracking**
 
-**Last Updated**: 2025-10-20
+**Last Updated**: 2025-10-29
 **Overall Completion**: 20% (2/10 tasks complete)
+
+---
+
+## 🔗 INTEGRATION UPDATE - Environment Switching Project
+
+**Status**: 🟡 **INTEGRATED** - Code Review tasks folded into Environment Switching Phase 1
+
+**Integration Details**:
+- CR-1.1 (Remove API Keys) → Environment Switching Phase 1B
+- CR-1.3 (Auto-Fix Linting) → Environment Switching Phase 1B
+- TypeScript Errors (Categories 5, 6, 8, 9) → Environment Switching Pre-Phase 1
+
+**Master Plan**: `project-context/development-context/MVP2/implementation/execution/db-environment-switching-in-app/RUNTIME-ENVIRONMENT-SWITCHING-IMPLEMENTATION-PLAN.md`
+
+**Tracking**: All progress will be tracked in BOTH documents:
+- This file: Code Review perspective
+- Master Plan: Integration perspective
+
+**Cross-Reference Mapping**:
+| Code Review Task | Environment Switching Task | Status |
+|------------------|---------------------------|--------|
+| CR-1.1: API Keys | Phase 1B: CR-1.1 (2h) | 🔴 Not Started |
+| CR-1.3: Linting | Phase 1B: CR-1.3 (1h) | 🔴 Not Started |
+| TypeScript Cat 5: WWScrollView | Pre-Phase 1: TS-3 (15min) | 🔴 Not Started |
+| TypeScript Cat 6: BasicMapView | Pre-Phase 1: TS-4 (15min) | 🔴 Not Started |
+| TypeScript Cat 8: ProjectService | Pre-Phase 1: TS-5 (10min) | 🔴 Not Started |
+| TypeScript Cat 9: ProjectDetailsScreen | Pre-Phase 1: TS-6 (10min) | 🔴 Not Started |
+| NEW: ProjectCard | Pre-Phase 1: TS-1 (20min) | 🔴 Not Started |
+| NEW: SupabaseConnectivityTest | Pre-Phase 1: TS-2 (10min) | 🔴 Not Started |
 
 ---
 
