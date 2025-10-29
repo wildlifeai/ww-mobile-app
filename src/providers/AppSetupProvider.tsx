@@ -17,6 +17,7 @@ import { useSetupBLELibrary } from "../hooks/useSetupBLELibrary"
 import { useAppDispatch } from "../redux"
 import { initializeNetworkMonitoring } from "../redux/middleware/offlineSyncMiddleware"
 import ProjectService from "../services/ProjectService"
+import { initializeSupabaseClient } from "../services/supabase"
 
 interface ExtendedToastConfigParams extends ToastConfigParams<any> {
 	numberOfLines?: number
@@ -36,6 +37,18 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 	useSetupBLELibrary()
 	useBluetoothStatus()
 	useLocationStatus()
+
+	// Initialize Supabase client with current environment
+	React.useEffect(() => {
+		console.log("🔧 Initializing Supabase client...")
+		initializeSupabaseClient()
+			.then(() => {
+				console.log("✅ Supabase client initialized successfully")
+			})
+			.catch((error) => {
+				console.error("❌ Failed to initialize Supabase client:", error)
+			})
+	}, [])
 
 	// Initialize network monitoring for offline support
 	React.useEffect(() => {
