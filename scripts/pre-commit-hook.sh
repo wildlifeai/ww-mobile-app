@@ -42,7 +42,7 @@ detect_commit_context() {
 
   # Check if supabase.ts is being modified
   if git diff --cached --name-only | grep -q "src/types/supabase.ts"; then
-    echo "${BLUE}ℹ️  Type file modification detected${NC}"
+    echo "${BLUE}ℹ️  Type file modification detected${NC}" >&2
   fi
 
   # Read commit message if available (during commit-msg hook or if file exists)
@@ -51,20 +51,20 @@ detect_commit_context() {
 
     # Check for cloud-related keywords
     if echo "$commit_msg" | grep -qiE "(cloud|preview|production|deploy|release|staging)"; then
-      echo "${YELLOW}ℹ️  Cloud-related commit detected in message${NC}"
+      echo "${YELLOW}ℹ️  Cloud-related commit detected in message${NC}" >&2
       context="cloud"
     fi
 
     # Check for environment-specific tags
     if echo "$commit_msg" | grep -qE "\[cloud-dev\]|\[cloud-prod\]|\[preview\]"; then
-      echo "${YELLOW}ℹ️  Cloud environment tag detected: ${commit_msg}${NC}"
+      echo "${YELLOW}ℹ️  Cloud environment tag detected${NC}" >&2
       context="cloud"
     fi
   fi
 
   # Check environment variable override
   if [ -n "$COMMIT_CONTEXT" ]; then
-    echo "${BLUE}ℹ️  Manual context override: COMMIT_CONTEXT=$COMMIT_CONTEXT${NC}"
+    echo "${BLUE}ℹ️  Manual context override: COMMIT_CONTEXT=$COMMIT_CONTEXT${NC}" >&2
     context="$COMMIT_CONTEXT"
   fi
 
