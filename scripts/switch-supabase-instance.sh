@@ -32,12 +32,17 @@ if [ -z "$ENVIRONMENT" ]; then
   exit 1
 fi
 
-# Check if Supabase CLI is installed
-if ! command -v supabase &> /dev/null; then
-  echo "❌ Error: Supabase CLI not found"
+# Check if npx is available
+if ! command -v npx &> /dev/null; then
+  echo "❌ Error: npx not found (Node.js required)"
+  exit 1
+fi
+
+# Verify Supabase CLI is available via npx
+if ! npx supabase --version &> /dev/null; then
+  echo "❌ Error: Supabase CLI not available"
   echo ""
-  echo "Install with: npm install -g supabase"
-  echo "Or see: https://supabase.com/docs/guides/cli/getting-started"
+  echo "The Supabase CLI will be installed automatically via npx on first use"
   exit 1
 fi
 
@@ -53,7 +58,7 @@ case $ENVIRONMENT in
     echo ""
     echo "To start local instance:"
     echo "  cd ~/dev/wildlifeai/wildlife-watcher-backend"
-    echo "  supabase start"
+    echo "  npx supabase start"
     echo ""
     echo "✅ No action needed for local environment"
     ;;
@@ -68,7 +73,7 @@ case $ENVIRONMENT in
     echo ""
 
     # Check if already linked
-    CURRENT_LINK=$(supabase link --project-ref "$PROJECT_REF" 2>&1 || true)
+    CURRENT_LINK=$(npx supabase link --project-ref "$PROJECT_REF" 2>&1 || true)
 
     if echo "$CURRENT_LINK" | grep -q "already linked"; then
       echo "✅ Already linked to cloud-dev"
@@ -80,7 +85,7 @@ case $ENVIRONMENT in
       echo "Output: $CURRENT_LINK"
       echo ""
       echo "Possible causes:"
-      echo "  1. Not authenticated (run: supabase login)"
+      echo "  1. Not authenticated (run: npx supabase login)"
       echo "  2. No access to project"
       echo "  3. Network connectivity issues"
       exit 1

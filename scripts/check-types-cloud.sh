@@ -61,12 +61,17 @@ echo "🔍 Checking type alignment with $ENVIRONMENT Supabase instance..."
 echo "   Project ref: $PROJECT_REF"
 echo ""
 
-# Check if Supabase CLI is installed
-if ! command -v supabase &> /dev/null; then
-  echo "❌ Error: Supabase CLI not found"
+# Check if npx is available
+if ! command -v npx &> /dev/null; then
+  echo "❌ Error: npx not found (Node.js required)"
+  exit 1
+fi
+
+# Verify Supabase CLI is available via npx
+if ! npx supabase --version &> /dev/null; then
+  echo "❌ Error: Supabase CLI not available"
   echo ""
-  echo "Install with: npm install -g supabase"
-  echo "Or see: https://supabase.com/docs/guides/cli/getting-started"
+  echo "The Supabase CLI will be installed automatically via npx on first use"
   exit 1
 fi
 
@@ -83,13 +88,13 @@ if ! npx supabase gen types typescript --linked --project-ref "$PROJECT_REF" > "
   echo "❌ Error: Failed to generate types from $ENVIRONMENT"
   echo ""
   echo "Possible causes:"
-  echo "  1. Not authenticated to Supabase CLI (run: supabase login)"
+  echo "  1. Not authenticated to Supabase CLI (run: npx supabase login)"
   echo "  2. No access to project ref: $PROJECT_REF"
   echo "  3. Network connectivity issues"
   echo "  4. Project ref is incorrect"
   echo ""
-  echo "To authenticate: supabase login"
-  echo "To link project:  supabase link --project-ref $PROJECT_REF"
+  echo "To authenticate: npx supabase login"
+  echo "To link project:  npx supabase link --project-ref $PROJECT_REF"
   exit 1
 fi
 
