@@ -39,23 +39,23 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 
 	// Initialize network monitoring for offline support
 	React.useEffect(() => {
-		console.log('🌐 Initializing network monitoring...')
+		console.log("🌐 Initializing network monitoring...")
 		const unsubscribe = initializeNetworkMonitoring(dispatch)
 		return () => {
-			console.log('🌐 Cleaning up network monitoring')
+			console.log("🌐 Cleaning up network monitoring")
 			unsubscribe()
 		}
 	}, [dispatch])
 
 	// Initialize ProjectService with DatabaseService and OfflineService
 	React.useEffect(() => {
-		console.log('📦 Initializing ProjectService...')
+		console.log("📦 Initializing ProjectService...")
 		ProjectService.initialize()
 			.then(() => {
-				console.log('✅ ProjectService initialized successfully')
+				console.log("✅ ProjectService initialized successfully")
 			})
 			.catch((error) => {
-				console.error('❌ Failed to initialize ProjectService:', error)
+				console.error("❌ Failed to initialize ProjectService:", error)
 			})
 	}, [])
 

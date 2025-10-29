@@ -59,11 +59,7 @@ export const AddProject = () => {
 						)}
 					</Field>
 
-					<Field
-						control={control}
-						name="description"
-						label="Description"
-					>
+					<Field control={control} name="description" label="Description">
 						{(field) => (
 							<WWTextInput
 								{...field}

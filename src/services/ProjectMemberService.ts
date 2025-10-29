@@ -14,62 +14,62 @@
  * - Cannot create new users or assign system roles
  */
 
-import { supabase } from './supabase';
+import { supabase } from "./supabase"
 
-export type ProjectRole = 'project_admin' | 'project_member';
+export type ProjectRole = "project_admin" | "project_member"
 
 export interface OrganizationUser {
-  id: string;
-  name: string;
-  email: string;
-  roles: Array<{
-    role: string;
-    scope_type: string;
-    scope_id: string | null;
-    is_active: boolean;
-  }>;
-  is_in_project?: boolean; // Set client-side based on current project context
+	id: string
+	name: string
+	email: string
+	roles: Array<{
+		role: string
+		scope_type: string
+		scope_id: string | null
+		is_active: boolean
+	}>
+	is_in_project?: boolean // Set client-side based on current project context
 }
 
 export interface ProjectMember {
-  id: string;
-  name: string;
-  email: string;
-  role: ProjectRole;
-  granted_at: string;
-  granted_by: string | null;
-  granted_by_name: string | null;
+	id: string
+	name: string
+	email: string
+	role: ProjectRole
+	granted_at: string
+	granted_by: string | null
+	granted_by_name: string | null
 }
 
 export interface AddMemberRequest {
-  project_id: string;
-  user_id: string;
-  role: ProjectRole;
-  granted_by: string;
+	project_id: string
+	user_id: string
+	role: ProjectRole
+	granted_by: string
 }
 
 export interface UpdateRoleRequest {
-  project_id: string;
-  user_id: string;
-  new_role: ProjectRole;
-  updated_by: string;
+	project_id: string
+	user_id: string
+	new_role: ProjectRole
+	updated_by: string
 }
 
 export interface RemoveMemberRequest {
-  project_id: string;
-  user_id: string;
-  removed_by: string;
+	project_id: string
+	user_id: string
+	removed_by: string
 }
 
 export interface MemberOperationResponse {
-  success: boolean;
-  user_id: string;
-  project_id: string;
-  role?: ProjectRole;
-  old_role?: ProjectRole;
-  new_role?: ProjectRole;
-  removed_role?: ProjectRole;
-  error?: string;
+	success: boolean
+	user_id: string
+	project_id: string
+	role?: ProjectRole
+	old_role?: ProjectRole
+	new_role?: ProjectRole
+	removed_role?: ProjectRole
+	error?: string
 }
 
 /**
@@ -82,28 +82,32 @@ export interface MemberOperationResponse {
  * @param requestingUserId - Current user's UUID (must be project admin)
  */
 export const getOrganizationUsers = async (
-  organisationId: string,
-  requestingUserId: string
+	organisationId: string,
+	requestingUserId: string,
 ): Promise<OrganizationUser[]> => {
-  try {
-    // Call backend function to get org users
-    const { data, error } = await supabase.rpc('get_organisation_users', {
-      p_organisation_id: organisationId,
-      p_requesting_user_id: requestingUserId,
-    });
+	try {
+		// Call backend function to get org users
+		const { data, error } = await supabase.rpc("get_organisation_users", {
+			p_organisation_id: organisationId,
+			p_requesting_user_id: requestingUserId,
+		})
 
-    if (error) {
-      console.error('❌ Error fetching organization users:', error);
-      throw new Error(error.message);
-    }
+		if (error) {
+			console.error("❌ Error fetching organization users:", error)
+			throw new Error(error.message)
+		}
 
-    console.log(`✅ Fetched ${data?.length || 0} users from organization ${organisationId}`);
-    return data || [];
-  } catch (error) {
-    console.error('❌ Exception fetching organization users:', error);
-    throw error;
-  }
-};
+		console.log(
+			`✅ Fetched ${
+				data?.length || 0
+			} users from organization ${organisationId}`,
+		)
+		return data || []
+	} catch (error) {
+		console.error("❌ Exception fetching organization users:", error)
+		throw error
+	}
+}
 
 /**
  * Get all members of a project
@@ -114,28 +118,30 @@ export const getOrganizationUsers = async (
  * @param requestingUserId - Current user's UUID
  */
 export const getProjectMembers = async (
-  projectId: string,
-  requestingUserId: string
+	projectId: string,
+	requestingUserId: string,
 ): Promise<ProjectMember[]> => {
-  try {
-    // Call backend function to get project members
-    const { data, error } = await supabase.rpc('get_project_members', {
-      p_project_id: projectId,
-      p_requesting_user_id: requestingUserId,
-    });
+	try {
+		// Call backend function to get project members
+		const { data, error } = await supabase.rpc("get_project_members", {
+			p_project_id: projectId,
+			p_requesting_user_id: requestingUserId,
+		})
 
-    if (error) {
-      console.error('❌ Error fetching project members:', error);
-      throw new Error(error.message);
-    }
+		if (error) {
+			console.error("❌ Error fetching project members:", error)
+			throw new Error(error.message)
+		}
 
-    console.log(`✅ Fetched ${data?.length || 0} members from project ${projectId}`);
-    return data || [];
-  } catch (error) {
-    console.error('❌ Exception fetching project members:', error);
-    throw error;
-  }
-};
+		console.log(
+			`✅ Fetched ${data?.length || 0} members from project ${projectId}`,
+		)
+		return data || []
+	} catch (error) {
+		console.error("❌ Exception fetching project members:", error)
+		throw error
+	}
+}
 
 /**
  * Add a user to a project with specified role
@@ -146,45 +152,45 @@ export const getProjectMembers = async (
  * @param request - Add member request
  */
 export const addProjectMember = async (
-  request: AddMemberRequest
+	request: AddMemberRequest,
 ): Promise<MemberOperationResponse> => {
-  try {
-    console.log('➕ Adding project member:', {
-      project_id: request.project_id,
-      user_id: request.user_id,
-      role: request.role,
-    });
+	try {
+		console.log("➕ Adding project member:", {
+			project_id: request.project_id,
+			user_id: request.user_id,
+			role: request.role,
+		})
 
-    // Call backend function to add project member
-    const { data, error } = await supabase.rpc('add_project_member', {
-      p_project_id: request.project_id,
-      p_user_id: request.user_id,
-      p_role: request.role,
-      p_granted_by: request.granted_by,
-    });
+		// Call backend function to add project member
+		const { data, error } = await supabase.rpc("add_project_member", {
+			p_project_id: request.project_id,
+			p_user_id: request.user_id,
+			p_role: request.role,
+			p_granted_by: request.granted_by,
+		})
 
-    if (error) {
-      console.error('❌ Error adding project member:', error);
-      return {
-        success: false,
-        user_id: request.user_id,
-        project_id: request.project_id,
-        error: error.message,
-      };
-    }
+		if (error) {
+			console.error("❌ Error adding project member:", error)
+			return {
+				success: false,
+				user_id: request.user_id,
+				project_id: request.project_id,
+				error: error.message,
+			}
+		}
 
-    console.log('✅ Successfully added project member:', data);
-    return data;
-  } catch (error: any) {
-    console.error('❌ Exception adding project member:', error);
-    return {
-      success: false,
-      user_id: request.user_id,
-      project_id: request.project_id,
-      error: error.message || 'Unknown error occurred',
-    };
-  }
-};
+		console.log("✅ Successfully added project member:", data)
+		return data
+	} catch (error: any) {
+		console.error("❌ Exception adding project member:", error)
+		return {
+			success: false,
+			user_id: request.user_id,
+			project_id: request.project_id,
+			error: error.message || "Unknown error occurred",
+		}
+	}
+}
 
 /**
  * Update a project member's role
@@ -195,45 +201,45 @@ export const addProjectMember = async (
  * @param request - Update role request
  */
 export const updateProjectMemberRole = async (
-  request: UpdateRoleRequest
+	request: UpdateRoleRequest,
 ): Promise<MemberOperationResponse> => {
-  try {
-    console.log('🔄 Updating project member role:', {
-      project_id: request.project_id,
-      user_id: request.user_id,
-      new_role: request.new_role,
-    });
+	try {
+		console.log("🔄 Updating project member role:", {
+			project_id: request.project_id,
+			user_id: request.user_id,
+			new_role: request.new_role,
+		})
 
-    // Call backend function to update member role
-    const { data, error } = await supabase.rpc('update_project_member_role', {
-      p_project_id: request.project_id,
-      p_user_id: request.user_id,
-      p_new_role: request.new_role,
-      p_updated_by: request.updated_by,
-    });
+		// Call backend function to update member role
+		const { data, error } = await supabase.rpc("update_project_member_role", {
+			p_project_id: request.project_id,
+			p_user_id: request.user_id,
+			p_new_role: request.new_role,
+			p_updated_by: request.updated_by,
+		})
 
-    if (error) {
-      console.error('❌ Error updating project member role:', error);
-      return {
-        success: false,
-        user_id: request.user_id,
-        project_id: request.project_id,
-        error: error.message,
-      };
-    }
+		if (error) {
+			console.error("❌ Error updating project member role:", error)
+			return {
+				success: false,
+				user_id: request.user_id,
+				project_id: request.project_id,
+				error: error.message,
+			}
+		}
 
-    console.log('✅ Successfully updated project member role:', data);
-    return data;
-  } catch (error: any) {
-    console.error('❌ Exception updating project member role:', error);
-    return {
-      success: false,
-      user_id: request.user_id,
-      project_id: request.project_id,
-      error: error.message || 'Unknown error occurred',
-    };
-  }
-};
+		console.log("✅ Successfully updated project member role:", data)
+		return data
+	} catch (error: any) {
+		console.error("❌ Exception updating project member role:", error)
+		return {
+			success: false,
+			user_id: request.user_id,
+			project_id: request.project_id,
+			error: error.message || "Unknown error occurred",
+		}
+	}
+}
 
 /**
  * Remove a user from a project
@@ -244,43 +250,43 @@ export const updateProjectMemberRole = async (
  * @param request - Remove member request
  */
 export const removeProjectMember = async (
-  request: RemoveMemberRequest
+	request: RemoveMemberRequest,
 ): Promise<MemberOperationResponse> => {
-  try {
-    console.log('➖ Removing project member:', {
-      project_id: request.project_id,
-      user_id: request.user_id,
-    });
+	try {
+		console.log("➖ Removing project member:", {
+			project_id: request.project_id,
+			user_id: request.user_id,
+		})
 
-    // Call backend function to remove project member
-    const { data, error } = await supabase.rpc('remove_project_member', {
-      p_project_id: request.project_id,
-      p_user_id: request.user_id,
-      p_removed_by: request.removed_by,
-    });
+		// Call backend function to remove project member
+		const { data, error } = await supabase.rpc("remove_project_member", {
+			p_project_id: request.project_id,
+			p_user_id: request.user_id,
+			p_removed_by: request.removed_by,
+		})
 
-    if (error) {
-      console.error('❌ Error removing project member:', error);
-      return {
-        success: false,
-        user_id: request.user_id,
-        project_id: request.project_id,
-        error: error.message,
-      };
-    }
+		if (error) {
+			console.error("❌ Error removing project member:", error)
+			return {
+				success: false,
+				user_id: request.user_id,
+				project_id: request.project_id,
+				error: error.message,
+			}
+		}
 
-    console.log('✅ Successfully removed project member:', data);
-    return data;
-  } catch (error: any) {
-    console.error('❌ Exception removing project member:', error);
-    return {
-      success: false,
-      user_id: request.user_id,
-      project_id: request.project_id,
-      error: error.message || 'Unknown error occurred',
-    };
-  }
-};
+		console.log("✅ Successfully removed project member:", data)
+		return data
+	} catch (error: any) {
+		console.error("❌ Exception removing project member:", error)
+		return {
+			success: false,
+			user_id: request.user_id,
+			project_id: request.project_id,
+			error: error.message || "Unknown error occurred",
+		}
+	}
+}
 
 /**
  * Check if current user has project admin role
@@ -291,28 +297,28 @@ export const removeProjectMember = async (
  * @param userId - Current user's UUID
  */
 export const isProjectAdmin = async (
-  projectId: string,
-  userId: string
+	projectId: string,
+	userId: string,
 ): Promise<boolean> => {
-  try {
-    // Call backend function to check project role
-    const { data, error } = await supabase.rpc('has_project_role_mvp2', {
-      project_id: projectId,
-      required_role: 'project_admin',
-      user_id: userId,
-    });
+	try {
+		// Call backend function to check project role
+		const { data, error } = await supabase.rpc("has_project_role_mvp2", {
+			project_id: projectId,
+			required_role: "project_admin",
+			user_id: userId,
+		})
 
-    if (error) {
-      console.error('❌ Error checking project admin role:', error);
-      return false;
-    }
+		if (error) {
+			console.error("❌ Error checking project admin role:", error)
+			return false
+		}
 
-    return data === true;
-  } catch (error) {
-    console.error('❌ Exception checking project admin role:', error);
-    return false;
-  }
-};
+		return data === true
+	} catch (error) {
+		console.error("❌ Exception checking project admin role:", error)
+		return false
+	}
+}
 
 /**
  * Check if current user has WW Admin role (system-wide)
@@ -322,24 +328,24 @@ export const isProjectAdmin = async (
  * @param userId - Current user's UUID
  */
 export const isWWAdmin = async (userId: string): Promise<boolean> => {
-  try {
-    // Call backend function to check system role
-    const { data, error } = await supabase.rpc('has_system_role', {
-      required_role: 'ww_admin',
-      user_id: userId,
-    });
+	try {
+		// Call backend function to check system role
+		const { data, error } = await supabase.rpc("has_system_role", {
+			required_role: "ww_admin",
+			user_id: userId,
+		})
 
-    if (error) {
-      console.error('❌ Error checking WW admin role:', error);
-      return false;
-    }
+		if (error) {
+			console.error("❌ Error checking WW admin role:", error)
+			return false
+		}
 
-    return data === true;
-  } catch (error) {
-    console.error('❌ Exception checking WW admin role:', error);
-    return false;
-  }
-};
+		return data === true
+	} catch (error) {
+		console.error("❌ Exception checking WW admin role:", error)
+		return false
+	}
+}
 
 /**
  * Validate if a user can be added to a project
@@ -355,35 +361,35 @@ export const isWWAdmin = async (userId: string): Promise<boolean> => {
  * @param existingMembers - Current project members
  */
 export const canAddUserToProject = (
-  userId: string,
-  projectId: string,
-  organizationId: string,
-  existingMembers: ProjectMember[]
+	userId: string,
+	projectId: string,
+	organizationId: string,
+	existingMembers: ProjectMember[],
 ): { valid: boolean; reason?: string } => {
-  // Check if user is already a member
-  const isAlreadyMember = existingMembers.some((member) => member.id === userId);
+	// Check if user is already a member
+	const isAlreadyMember = existingMembers.some((member) => member.id === userId)
 
-  if (isAlreadyMember) {
-    return {
-      valid: false,
-      reason: 'User is already a member of this project',
-    };
-  }
+	if (isAlreadyMember) {
+		return {
+			valid: false,
+			reason: "User is already a member of this project",
+		}
+	}
 
-  // Additional validation happens on backend (org membership, etc.)
-  return { valid: true };
-};
+	// Additional validation happens on backend (org membership, etc.)
+	return { valid: true }
+}
 
 /**
  * Export service functions as default for easier importing
  */
 export default {
-  getOrganizationUsers,
-  getProjectMembers,
-  addProjectMember,
-  updateProjectMemberRole,
-  removeProjectMember,
-  isProjectAdmin,
-  isWWAdmin,
-  canAddUserToProject,
-};
+	getOrganizationUsers,
+	getProjectMembers,
+	addProjectMember,
+	updateProjectMemberRole,
+	removeProjectMember,
+	isProjectAdmin,
+	isWWAdmin,
+	canAddUserToProject,
+}

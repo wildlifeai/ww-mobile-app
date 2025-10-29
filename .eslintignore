@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.expo/
+.expo-shared/
+
+# Coverage reports (generated files)
+coverage/
+
+# Legacy E2E tests (being replaced by Maestro)
+memory/e2e/
+
+# Development tooling (not production code)
+project-context/development-context/project-progress-tracker/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

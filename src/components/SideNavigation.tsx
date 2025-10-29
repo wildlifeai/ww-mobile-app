@@ -80,7 +80,14 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 			</Button>
 			{__DEV__ && (
 				<>
-					<View style={{ height: 1, backgroundColor: colors.outline, marginVertical: spacing, width: '100%' }} />
+					<View
+						style={{
+							height: 1,
+							backgroundColor: colors.outline,
+							marginVertical: spacing,
+							width: "100%",
+						}}
+					/>
 					<Button
 						textColor={colors.primary}
 						style={[{ margin: spacing }, styles.link]}

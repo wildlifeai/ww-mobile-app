@@ -39,23 +39,29 @@ export const DfuScreen = () => {
 						PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
 						{
 							title: "Firmware Update Notifications",
-							message: "Wildlife Watcher needs notification permission to show firmware update progress",
+							message:
+								"Wildlife Watcher needs notification permission to show firmware update progress",
 							buttonNeutral: "Ask Me Later",
 							buttonNegative: "Cancel",
 							buttonPositive: "Allow",
 						},
 					)
 					console.log("🔍 DFU: Permission result:", granted)
-					
+
 					if (granted === PermissionsAndroid.RESULTS.DENIED) {
-						console.log("🔍 DFU: Permission denied, continuing without notifications...")
+						console.log(
+							"🔍 DFU: Permission denied, continuing without notifications...",
+						)
 						// Continue anyway - notification permission is not critical for file picking
 					} else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
 						console.log("🔍 DFU: Permission permanently denied, continuing...")
 						// Continue anyway - notification permission is not critical for file picking
 					}
 				} catch (err) {
-					console.log("🔍 DFU: Permission request failed, continuing without notifications:", err)
+					console.log(
+						"🔍 DFU: Permission request failed, continuing without notifications:",
+						err,
+					)
 					// Continue anyway - permission failure shouldn't block file picking
 				}
 			}
@@ -82,10 +88,15 @@ export const DfuScreen = () => {
 			}
 
 			if (Platform.OS === "android") {
-				console.log("🔍 DFU: Copying file from:", result[0].uri, "to:", localPath)
+				console.log(
+					"🔍 DFU: Copying file from:",
+					result[0].uri,
+					"to:",
+					localPath,
+				)
 				await FileSystem.copyAsync({
 					from: result[0].uri,
-					to: localPath
+					to: localPath,
 				})
 				console.log("🔍 DFU: File copy completed successfully")
 			}
@@ -101,7 +112,9 @@ export const DfuScreen = () => {
 			} finally {
 				// Clean up file regardless of DFU success/failure
 				if (Platform.OS === "android") {
-					await FileSystem.deleteAsync(localPath, { idempotent: true }).catch(console.error)
+					await FileSystem.deleteAsync(localPath, { idempotent: true }).catch(
+						console.error,
+					)
 				}
 			}
 		} catch (err) {
@@ -110,7 +123,7 @@ export const DfuScreen = () => {
 				console.error("🚨 DFU error details:", {
 					message: err instanceof Error ? err.message : "Unknown error",
 					stack: err instanceof Error ? err.stack : undefined,
-					name: err instanceof Error ? err.name : undefined
+					name: err instanceof Error ? err.name : undefined,
 				})
 				setDfuError(
 					err instanceof Error ? err.message : "Unknown error occurred",

@@ -9,7 +9,7 @@
  * await resetDatabaseForDev();
  */
 
-import { getDatabaseService } from '../services/offline/DatabaseService';
+import { getDatabaseService } from "../services/offline/DatabaseService"
 
 /**
  * Reset the SQLite database completely (drops and recreates all tables)
@@ -19,21 +19,21 @@ import { getDatabaseService } from '../services/offline/DatabaseService';
  * @throws Error if not in development mode or if database is not initialized
  */
 export async function resetDatabaseForDev(): Promise<void> {
-  if (!__DEV__) {
-    throw new Error('Database reset is only available in development mode');
-  }
+	if (!__DEV__) {
+		throw new Error("Database reset is only available in development mode")
+	}
 
-  try {
-    const dbService = getDatabaseService();
+	try {
+		const dbService = getDatabaseService()
 
-    console.log('🔄 Starting database reset...');
-    await dbService.resetDatabase();
-    console.log('✅ Database reset complete');
-    console.log('ℹ️  You may need to restart the app or re-authenticate');
-  } catch (error) {
-    console.error('❌ Database reset failed:', error);
-    throw error;
-  }
+		console.log("🔄 Starting database reset...")
+		await dbService.resetDatabase()
+		console.log("✅ Database reset complete")
+		console.log("ℹ️  You may need to restart the app or re-authenticate")
+	} catch (error) {
+		console.error("❌ Database reset failed:", error)
+		throw error
+	}
 }
 
 /**
@@ -45,21 +45,21 @@ export async function resetDatabaseForDev(): Promise<void> {
  * @throws Error if not in development mode or if database is not initialized
  */
 export async function clearDatabaseDataForDev(): Promise<void> {
-  if (!__DEV__) {
-    throw new Error('Database clear is only available in development mode');
-  }
+	if (!__DEV__) {
+		throw new Error("Database clear is only available in development mode")
+	}
 
-  try {
-    const dbService = getDatabaseService();
+	try {
+		const dbService = getDatabaseService()
 
-    console.log('🔄 Starting database clear...');
-    await dbService.clearAllData();
-    console.log('✅ Database cleared complete');
-    console.log('ℹ️  You may need to restart the app or re-authenticate');
-  } catch (error) {
-    console.error('❌ Database clear failed:', error);
-    throw error;
-  }
+		console.log("🔄 Starting database clear...")
+		await dbService.clearAllData()
+		console.log("✅ Database cleared complete")
+		console.log("ℹ️  You may need to restart the app or re-authenticate")
+	} catch (error) {
+		console.error("❌ Database clear failed:", error)
+		throw error
+	}
 }
 
 /**
@@ -67,15 +67,15 @@ export async function clearDatabaseDataForDev(): Promise<void> {
  * Safe to use in all modes
  */
 export async function getDatabaseStatus(): Promise<{
-  isDevelopment: boolean;
-  supabaseUrl: string;
-  version: number;
+	isDevelopment: boolean
+	supabaseUrl: string
+	version: number
 }> {
-  const dbService = getDatabaseService();
+	const dbService = getDatabaseService()
 
-  return {
-    isDevelopment: __DEV__,
-    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || 'not set',
-    version: await dbService.getDatabaseVersion(),
-  };
+	return {
+		isDevelopment: __DEV__,
+		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || "not set",
+		version: await dbService.getDatabaseVersion(),
+	}
 }

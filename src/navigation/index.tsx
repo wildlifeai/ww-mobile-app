@@ -41,7 +41,9 @@ export interface RootStackParamList extends ParamListBase {
 	DfuScreen: { deviceId: string }
 	Login: { confirmed?: boolean } | undefined
 	Register: undefined
-	ForgotPassword: { token?: string; refreshToken?: string; mode?: string } | undefined
+	ForgotPassword:
+		| { token?: string; refreshToken?: string; mode?: string }
+		| undefined
 	AddDeployment: { selectedProject?: Option } | undefined
 	AddProject: undefined
 	NewProjectScreen: undefined
@@ -73,7 +75,7 @@ export const MainNavigation = () => {
 	const { token, initialLoad: authLoading } = useAppSelector(
 		(state) => state.authentication,
 	)
-	
+
 	// Initialize deep linking
 	useDeepLinking()
 

@@ -1,19 +1,37 @@
 import React, { useState } from "react"
-import { ScrollView, StyleSheet, View, NativeModules, Alert } from "react-native"
+import {
+	ScrollView,
+	StyleSheet,
+	View,
+	NativeModules,
+	Alert,
+} from "react-native"
 import { Surface, List, Divider, Chip, Button } from "react-native-paper"
 import { WWText } from "../../components/ui/WWText"
 import { useExtendedTheme } from "../../theme"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { getReadableVersion, getBuildNumber, getBundleId, getVersion } from "react-native-device-info"
+import {
+	getReadableVersion,
+	getBuildNumber,
+	getBundleId,
+	getVersion,
+} from "react-native-device-info"
 import Constants from "expo-constants"
 import { Platform } from "react-native"
-import { resetDatabaseForDev, clearDatabaseDataForDev, getDatabaseStatus } from "../../utils/devDatabaseReset"
+import {
+	resetDatabaseForDev,
+	clearDatabaseDataForDev,
+	getDatabaseStatus,
+} from "../../utils/devDatabaseReset"
 
 export const DevBuildInfo = () => {
 	const { appPadding, spacing } = useExtendedTheme()
 	const { top } = useSafeAreaInsets()
 	const [isResetting, setIsResetting] = useState(false)
-	const [dbStatus, setDbStatus] = useState<{ version: number; supabaseUrl: string } | null>(null)
+	const [dbStatus, setDbStatus] = useState<{
+		version: number
+		supabaseUrl: string
+	} | null>(null)
 
 	const isDevelopment = __DEV__
 
@@ -22,9 +40,12 @@ export const DevBuildInfo = () => {
 		const loadDbStatus = async () => {
 			try {
 				const status = await getDatabaseStatus()
-				setDbStatus({ version: status.version, supabaseUrl: status.supabaseUrl })
+				setDbStatus({
+					version: status.version,
+					supabaseUrl: status.supabaseUrl,
+				})
 			} catch (error) {
-				console.error('Failed to load database status:', error)
+				console.error("Failed to load database status:", error)
 			}
 		}
 		loadDbStatus()
@@ -34,30 +55,36 @@ export const DevBuildInfo = () => {
 	const appVersion = getVersion()
 	const buildNumber = getBuildNumber()
 	const readableVersion = getReadableVersion()
-	
+
 	// Get React Native version
 	const reactNativeVersion = Platform.constants?.reactNativeVersion || {}
-	const rnVersionString = `${reactNativeVersion.major || 0}.${reactNativeVersion.minor || 0}.${reactNativeVersion.patch || 0}`
-	
+	const rnVersionString = `${reactNativeVersion.major || 0}.${
+		reactNativeVersion.minor || 0
+	}.${reactNativeVersion.patch || 0}`
+
 	// Count native modules
 	const nativeModuleKeys = Object.keys(NativeModules)
 	const nativeModuleCount = nativeModuleKeys.length
-	
+
 	// Debug: Log available native modules in development
 	if (__DEV__) {
 		console.log("Available Native Modules:", nativeModuleKeys.sort())
 	}
-	
+
 	// Check if module is detected via NativeModules or exists in package.json
 	const checkModule = (nativeCheck: boolean, packageName: string) => {
-		if (nativeCheck) return { status: 'loaded', source: 'native' }
+		if (nativeCheck) return { status: "loaded", source: "native" }
 
 		// Check package.json as fallback
-		const packageJson = require('../../../package.json')
+		const packageJson = require("../../../package.json")
 		if (packageJson.dependencies?.[packageName]) {
-			return { status: 'package', source: 'package.json', version: packageJson.dependencies[packageName] }
+			return {
+				status: "package",
+				source: "package.json",
+				version: packageJson.dependencies[packageName],
+			}
 		}
-		return { status: 'missing', source: 'none' }
+		return { status: "missing", source: "none" }
 	}
 
 	// Handle database reset
@@ -74,18 +101,29 @@ export const DevBuildInfo = () => {
 						setIsResetting(true)
 						try {
 							await resetDatabaseForDev()
-							Alert.alert("Success", "Database reset complete. Please restart the app.")
+							Alert.alert(
+								"Success",
+								"Database reset complete. Please restart the app.",
+							)
 							// Refresh database status
 							const status = await getDatabaseStatus()
-							setDbStatus({ version: status.version, supabaseUrl: status.supabaseUrl })
+							setDbStatus({
+								version: status.version,
+								supabaseUrl: status.supabaseUrl,
+							})
 						} catch (error) {
-							Alert.alert("Error", `Failed to reset database: ${error instanceof Error ? error.message : 'Unknown error'}`)
+							Alert.alert(
+								"Error",
+								`Failed to reset database: ${
+									error instanceof Error ? error.message : "Unknown error"
+								}`,
+							)
 						} finally {
 							setIsResetting(false)
 						}
-					}
-				}
-			]
+					},
+				},
+			],
 		)
 	}
 
@@ -103,31 +141,66 @@ export const DevBuildInfo = () => {
 						setIsResetting(true)
 						try {
 							await clearDatabaseDataForDev()
-							Alert.alert("Success", "Database cleared. Please restart the app.")
+							Alert.alert(
+								"Success",
+								"Database cleared. Please restart the app.",
+							)
 						} catch (error) {
-							Alert.alert("Error", `Failed to clear database: ${error instanceof Error ? error.message : 'Unknown error'}`)
+							Alert.alert(
+								"Error",
+								`Failed to clear database: ${
+									error instanceof Error ? error.message : "Unknown error"
+								}`,
+							)
 						} finally {
 							setIsResetting(false)
 						}
-					}
-				}
-			]
+					},
+				},
+			],
 		)
 	}
 
 	// Key native modules we care about - checking multiple possible names
 	const keyModules = {
-		"BLE Manager": checkModule(!!NativeModules.BleManager, 'react-native-ble-manager'),
-		"Nordic DFU": checkModule(!!NativeModules.NordicDfu || !!NativeModules.RNNordicDfu, 'react-native-nordic-dfu'),
-		"Maps": checkModule(!!NativeModules.RNCMaps || !!NativeModules.AirGoogleMaps || !!NativeModules.RNMaps, 'react-native-maps'),
-		"File System": checkModule(!!NativeModules.ExponentFileSystem || !!NativeModules.FileSystem, 'expo-file-system'),
-		"Constants": checkModule(!!NativeModules.ExponentConstants || !!NativeModules.ExpoConstants || !!Constants, 'expo-constants'),
-		"Bluetooth State": checkModule(!!NativeModules.RNBluetoothStateManager, 'react-native-bluetooth-state-manager'),
+		"BLE Manager": checkModule(
+			!!NativeModules.BleManager,
+			"react-native-ble-manager",
+		),
+		"Nordic DFU": checkModule(
+			!!NativeModules.NordicDfu || !!NativeModules.RNNordicDfu,
+			"react-native-nordic-dfu",
+		),
+		Maps: checkModule(
+			!!NativeModules.RNCMaps ||
+				!!NativeModules.AirGoogleMaps ||
+				!!NativeModules.RNMaps,
+			"react-native-maps",
+		),
+		"File System": checkModule(
+			!!NativeModules.ExponentFileSystem || !!NativeModules.FileSystem,
+			"expo-file-system",
+		),
+		Constants: checkModule(
+			!!NativeModules.ExponentConstants ||
+				!!NativeModules.ExpoConstants ||
+				!!Constants,
+			"expo-constants",
+		),
+		"Bluetooth State": checkModule(
+			!!NativeModules.RNBluetoothStateManager,
+			"react-native-bluetooth-state-manager",
+		),
 	}
 
 	return (
 		<ScrollView style={styles.container}>
-			<Surface style={[styles.surface, { padding: appPadding, paddingTop: appPadding + top }]}>
+			<Surface
+				style={[
+					styles.surface,
+					{ padding: appPadding, paddingTop: appPadding + top },
+				]}
+			>
 				<View style={[styles.header, { marginBottom: spacing * 2 }]}>
 					<WWText variant="titleLarge">Development Build Info</WWText>
 					<Chip icon="developer-board" style={{ marginTop: spacing }}>
@@ -192,7 +265,9 @@ export const DevBuildInfo = () => {
 					<List.Item
 						title="Platform Version"
 						description={`API ${Platform.Version}`}
-						left={(props) => <List.Icon {...props} icon="information-outline" />}
+						left={(props) => (
+							<List.Icon {...props} icon="information-outline" />
+						)}
 					/>
 					<List.Item
 						title="React Native Version"
@@ -210,40 +285,56 @@ export const DevBuildInfo = () => {
 						description={`${nativeModuleCount} modules loaded`}
 						left={(props) => <List.Icon {...props} icon="puzzle" />}
 						right={() => (
-							<Chip mode="flat" compact style={{ 
-								backgroundColor: nativeModuleCount === 0 ? '#ffeb3b' : '#4caf50'
-							}} textStyle={{
-								color: nativeModuleCount === 0 ? '#000' : '#fff'
-							}}>
+							<Chip
+								mode="flat"
+								compact
+								style={{
+									backgroundColor:
+										nativeModuleCount === 0 ? "#ffeb3b" : "#4caf50",
+								}}
+								textStyle={{
+									color: nativeModuleCount === 0 ? "#000" : "#fff",
+								}}
+							>
 								{nativeModuleCount === 0 ? "Debug" : "OK"}
 							</Chip>
 						)}
 					/>
 				</List.Section>
-				
+
 				<View style={{ paddingHorizontal: spacing * 2, marginBottom: spacing }}>
 					{Object.entries(keyModules).map(([module, moduleInfo]) => {
 						const getStatusDisplay = (info: any) => {
 							switch (info.status) {
-								case 'loaded':
-									return { text: '✓ Loaded', color: 'green' }
-								case 'package':
-									return { text: `⚠ In package.json (${info.version})`, color: '#ff9800' }
-								case 'missing':
-									return { text: '✗ Not Found', color: 'red' }
+								case "loaded":
+									return { text: "✓ Loaded", color: "green" }
+								case "package":
+									return {
+										text: `⚠ In package.json (${info.version})`,
+										color: "#ff9800",
+									}
+								case "missing":
+									return { text: "✗ Not Found", color: "red" }
 								default:
-									return { text: '? Unknown', color: 'gray' }
+									return { text: "? Unknown", color: "gray" }
 							}
 						}
-						
+
 						const { text, color } = getStatusDisplay(moduleInfo)
-						
+
 						return (
-							<View key={module} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing / 2 }}>
+							<View
+								key={module}
+								style={{
+									flexDirection: "row",
+									justifyContent: "space-between",
+									paddingVertical: spacing / 2,
+								}}
+							>
 								<WWText variant="bodyMedium">{module}</WWText>
-								<WWText 
-									variant="bodyMedium" 
-									style={{ color, fontSize: 12, flex: 1, textAlign: 'right' }}
+								<WWText
+									variant="bodyMedium"
+									style={{ color, fontSize: 12, flex: 1, textAlign: "right" }}
 								>
 									{text}
 								</WWText>
@@ -258,16 +349,20 @@ export const DevBuildInfo = () => {
 					<List.Subheader>Database (Dev Tools)</List.Subheader>
 					<List.Item
 						title="Database Version"
-						description={dbStatus ? `v${dbStatus.version}` : 'Loading...'}
+						description={dbStatus ? `v${dbStatus.version}` : "Loading..."}
 						left={(props) => <List.Icon {...props} icon="database" />}
 					/>
 					<List.Item
 						title="Supabase Instance"
-						description={dbStatus?.supabaseUrl ? (
-							dbStatus.supabaseUrl.includes('localhost') ? 'Local' :
-							dbStatus.supabaseUrl.includes('supabase.co') ? 'Cloud Dev' :
-							'Unknown'
-						) : 'Loading...'}
+						description={
+							dbStatus?.supabaseUrl
+								? dbStatus.supabaseUrl.includes("localhost")
+									? "Local"
+									: dbStatus.supabaseUrl.includes("supabase.co")
+									? "Cloud Dev"
+									: "Unknown"
+								: "Loading..."
+						}
 						left={(props) => <List.Icon {...props} icon="cloud" />}
 					/>
 				</List.Section>
@@ -293,7 +388,10 @@ export const DevBuildInfo = () => {
 					>
 						Reset Database (Full)
 					</Button>
-					<WWText variant="bodySmall" style={{ textAlign: "center", opacity: 0.7, paddingTop: spacing }}>
+					<WWText
+						variant="bodySmall"
+						style={{ textAlign: "center", opacity: 0.7, paddingTop: spacing }}
+					>
 						⚠️ Dev Only: These actions will delete all local data
 					</WWText>
 				</View>
@@ -305,22 +403,31 @@ export const DevBuildInfo = () => {
 					<List.Item
 						title="Migration"
 						description="Expo SDK 51 Migration Complete"
-						left={(props) => <List.Icon {...props} icon="check-circle" color="green" />}
+						left={(props) => (
+							<List.Icon {...props} icon="check-circle" color="green" />
+						)}
 					/>
 					<List.Item
 						title="EAS Build"
 						description="Development Client Active"
-						left={(props) => <List.Icon {...props} icon="cloud-check" color="green" />}
+						left={(props) => (
+							<List.Icon {...props} icon="cloud-check" color="green" />
+						)}
 					/>
 					<List.Item
 						title="Native Modules"
 						description="BLE, Maps, Nordic DFU Working"
-						left={(props) => <List.Icon {...props} icon="check-all" color="green" />}
+						left={(props) => (
+							<List.Icon {...props} icon="check-all" color="green" />
+						)}
 					/>
 				</List.Section>
 
 				<View style={[styles.footer, { marginTop: spacing * 3 }]}>
-					<WWText variant="bodySmall" style={{ textAlign: "center", opacity: 0.7 }}>
+					<WWText
+						variant="bodySmall"
+						style={{ textAlign: "center", opacity: 0.7 }}
+					>
 						This screen is only visible in development builds
 					</WWText>
 				</View>

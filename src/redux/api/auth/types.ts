@@ -11,4 +11,10 @@ export type RegisterRequest = {
 }
 
 // Re-export the canonical AuthResponse from authSlice for Supabase MVP2
-export type { AuthResponse, User, UserRole, UserOrganisation, UserProfile } from "../../slices/authSlice"
+export type {
+	AuthResponse,
+	User,
+	UserRole,
+	UserOrganisation,
+	UserProfile,
+} from "../../slices/authSlice"

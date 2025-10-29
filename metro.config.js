@@ -9,25 +9,28 @@ const { getDefaultConfig } = require("expo/metro-config")
 const config = getDefaultConfig(__dirname)
 
 // Add custom asset extensions for Wildlife Watcher app
-config.resolver.assetExts.push('db', 'zip')
+config.resolver.assetExts.push("db", "zip")
 
 // Add auth redirect handler
 config.server = {
-  ...config.server,
-  enhanceMiddleware: (middleware) => {
-    return (req, res, next) => {
-      // Handle auth redirect URLs
-      if (req.url.includes('/auth/reset-password') || req.url.includes('/auth/callback')) {
-        const url = new URL(req.url, `http://${req.headers.host}`)
-        const redirectTo = url.searchParams.get('redirect_to')
-        
-        if (redirectTo) {
-          // Pass through all query parameters to the redirect URL
-          const redirectUrl = redirectTo + url.search
-          console.log('Redirecting to:', redirectUrl)
-          
-          // Create HTML page that redirects to the app
-          const html = `
+	...config.server,
+	enhanceMiddleware: (middleware) => {
+		return (req, res, next) => {
+			// Handle auth redirect URLs
+			if (
+				req.url.includes("/auth/reset-password") ||
+				req.url.includes("/auth/callback")
+			) {
+				const url = new URL(req.url, `http://${req.headers.host}`)
+				const redirectTo = url.searchParams.get("redirect_to")
+
+				if (redirectTo) {
+					// Pass through all query parameters to the redirect URL
+					const redirectUrl = redirectTo + url.search
+					console.log("Redirecting to:", redirectUrl)
+
+					// Create HTML page that redirects to the app
+					const html = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -47,18 +50,17 @@ config.server = {
             </body>
             </html>
           `
-          
-          res.setHeader('Content-Type', 'text/html')
-          res.end(html)
-          return
-        }
-      }
-      
-      // Continue with normal middleware
-      return middleware(req, res, next)
-    }
-  },
-}
 
+					res.setHeader("Content-Type", "text/html")
+					res.end(html)
+					return
+				}
+			}
+
+			// Continue with normal middleware
+			return middleware(req, res, next)
+		}
+	},
+}
 
 module.exports = config

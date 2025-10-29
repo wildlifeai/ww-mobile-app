@@ -47,24 +47,28 @@ const store = configureStore({
 		getDefaultMiddleware({
 			serializableCheck: {
 				ignoredActions: [
-					'persist/PERSIST',
+					"persist/PERSIST",
 					// Ignore offline service actions with non-serializable data
-					'offline/setNetworkStatus',
-					'offline/addPendingOperation',
-					'offline/setSyncStatus',
-					'offline/queueOperation',
-					'offline/processQueue'
+					"offline/setNetworkStatus",
+					"offline/addPendingOperation",
+					"offline/setSyncStatus",
+					"offline/queueOperation",
+					"offline/processQueue",
 				],
 				ignoredPaths: [
 					// Ignore non-serializable fields in offline state
-					'offline.pendingOperations.timestamp',
-					'offline.unresolvedConflicts.resolved_at',
-					'offline.syncStatus.last_sync_at',
-					'offline.queue.operations'
+					"offline.pendingOperations.timestamp",
+					"offline.unresolvedConflicts.resolved_at",
+					"offline.syncStatus.last_sync_at",
+					"offline.queue.operations",
 				],
 			},
-		})
-		.concat(api.middleware, enhancedApi.middleware, projectsApi.middleware, offlineSyncMiddleware.middleware),
+		}).concat(
+			api.middleware,
+			enhancedApi.middleware,
+			projectsApi.middleware,
+			offlineSyncMiddleware.middleware,
+		),
 })
 
 export default store

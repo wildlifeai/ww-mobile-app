@@ -5,7 +5,7 @@ import {
 	Deployment,
 	DeploymentCreate,
 	DeploymentUpdate,
-	HttpMethod
+	HttpMethod,
 } from "../../../types/api.types"
 
 export const deploymentsApi = api.injectEndpoints({
@@ -37,10 +37,7 @@ export const deploymentsApi = api.injectEndpoints({
 			providesTags: (_result, _error, id) => [{ type: "Deployment", id }],
 		}),
 
-		createDeployment: builder.mutation<
-			Deployment,
-			DeploymentCreate
-		>({
+		createDeployment: builder.mutation<Deployment, DeploymentCreate>({
 			query: (body) => ({
 				url: API_URLS.DEPLOYMENTS,
 				method: HttpMethod.POST,
