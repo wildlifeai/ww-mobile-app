@@ -415,35 +415,45 @@ Every developer/session MUST contribute to framework evolution by:
 ### Cross-Project Coordination System
 **Location**: `~/dev/wildlifeai/cross-project-coordination/` (shared hub between mobile and backend)
 
-**Structure** (4 folders):
-- `inbox/backend-to-mobile/` - Backend sends, mobile reads
-- `inbox/mobile-to-backend/` - Mobile sends, backend reads
-- `archive/YYYY-MM/` - Flat monthly folders (completed messages)
-- `templates/` - Message templates (schema-change, task-request, status-update, generic-message)
-
 **Quick Workflow**:
 ```bash
-# Read backend message
+# 1. Check backend inbox daily
+ls ~/dev/wildlifeai/cross-project-coordination/inbox/backend-to-mobile/
+
+# 2. Read message
 cat ~/dev/wildlifeai/cross-project-coordination/inbox/backend-to-mobile/msg.md
 
-# Action it (e.g., regenerate types after schema change)
-npm run types:local
+# 3. Action it (e.g., schema change)
+npm run types:local  # 3 seconds to regenerate types
 
-# Archive & log
+# 4. Archive & log
 mv ~/dev/wildlifeai/cross-project-coordination/inbox/backend-to-mobile/msg.md \
    ~/dev/wildlifeai/cross-project-coordination/archive/$(date +%Y-%m)/
 ~/dev/wildlifeai/cross-project-coordination/.coordination/log-message.sh "Mobile" "Actioned schema-change"
 ```
 
-**Complete Reference**: `~/dev/wildlifeai/cross-project-coordination/SYSTEM-REFERENCE-GUIDE.md` (10K+ word comprehensive guide)
+**Agent-Assisted Workflow**:
+```bash
+# Use cross-project-coordinator agent for automatic handling
+/aadf-work-smart "Check coordination inbox and action any schema-change messages"
+```
+
+**Message Types**:
+- `schema-change` - Backend schema changed, regenerate types
+- `task-request` - Backend requesting mobile implementation
+- `status-update` - Backend deployment/milestone updates
+- `generic-message` - General coordination
+
+**Complete Documentation**:
+- **Quick Start**: `~/dev/wildlifeai/cross-project-coordination/COORDINATION-QUICK-START.md`
+- **Type Sync Guide**: `~/dev/wildlifeai/cross-project-coordination/TYPE-SYNC-GUIDE.md`
+- **System Reference**: `~/dev/wildlifeai/cross-project-coordination/SYSTEM-REFERENCE-GUIDE.md`
 
 **Key Principles**:
-- Flat monthly archive (NO nested/type-based folders)
-- Bidirectional inbox (no outbox needed)
-- Monthly log rotation (~50KB/month)
+- Flat monthly archive (no nested folders)
+- Bidirectional inbox (no outbox)
 - Send → Inbox → Archive → Log workflow
-
-**Documentation**: `@project-context/development-context/MVP2/implementation/execution/cross-project-coordination/`
+- Daily inbox checks (or use pre-commit warnings)
 
 ## Development Workflow
 
