@@ -27,7 +27,15 @@ import {
 	ActivityIndicator,
 } from "react-native-paper"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import * as Updates from "expo-updates"
+
+// Conditionally import expo-updates (may not be available in Expo Go)
+let Updates: typeof import("expo-updates") | null = null
+try {
+	Updates = require("expo-updates")
+} catch (e) {
+	// expo-updates not available (Expo Go or development build without native module)
+	console.warn("expo-updates not available - using manual restart instructions")
+}
 
 import { WWText } from "../components/ui/WWText"
 import { useExtendedTheme } from "../theme"
@@ -165,8 +173,19 @@ export const DeveloperSettingsScreen: React.FC = () => {
 							// In Task 1.2, this will call:
 							// await setEnvironment(selectedEnvironment);
 
-							// Restart the app
-							await Updates.reloadAsync()
+							// Restart the app if expo-updates is available
+							if (Updates?.reloadAsync) {
+								await Updates.reloadAsync()
+							} else {
+								// Fallback: Manual restart instructions
+								setIsRestarting(false)
+								Alert.alert(
+									"Manual Restart Required",
+									"Please close and reopen the app to apply the new environment.\n\n" +
+										"Tip: In Expo Go, shake the device and tap 'Reload'.",
+									[{ text: "OK", style: "default" }],
+								)
+							}
 						} catch (error) {
 							setIsRestarting(false)
 							Alert.alert(
