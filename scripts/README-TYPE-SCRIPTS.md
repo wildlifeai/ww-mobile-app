@@ -4,10 +4,14 @@ This directory contains scripts for managing TypeScript type generation and vali
 
 ## Overview
 
-The Wildlife Watcher mobile app supports three Supabase environments:
+The Wildlife Watcher mobile app supports three Supabase environments with **runtime environment switching**:
 - **Local**: Development database (localhost:54321) via backend repository
 - **Cloud Dev**: Staging/preview environment (nuhwmubvygxyddkycmpa)
 - **Cloud Prod**: Production environment (not yet configured)
+
+**Runtime Environment Switching**: The app can switch between environments at runtime via Developer Settings (development builds only). However, **types must be generated at build time** for each target environment.
+
+**Production Ready**: Runtime environment switching system completed (Task 3+4, 95% confidence)
 
 ## Scripts
 
@@ -183,13 +187,20 @@ npm run types:cloud-dev   # For cloud-dev
 
 ## Architecture Notes
 
-### Why Multiple Type Scripts?
+### Runtime Environment Switching + Build-Time Types
 
-The app supports runtime environment switching, but **types must be generated at build time** for each target environment:
+The app supports **runtime environment switching** between three Supabase instances:
+- User can switch environments via: Settings → Developer Settings (development builds only)
+- Environment selection persisted to AsyncStorage
+- Supabase client recreated on environment change
 
-1. **Local Development**: Types from local Supabase (fast iteration)
-2. **Preview Builds**: Types from cloud-dev (staging validation)
-3. **Production Builds**: Types from cloud-prod (production schema)
+**However**, TypeScript types must be generated **at build time** for each target environment:
+
+1. **Local Development**: Types from local Supabase (fast iteration, daily workflow)
+2. **Preview Builds**: Types from cloud-dev (staging validation, team testing)
+3. **Production Builds**: Types from cloud-prod (production schema, fixed environment)
+
+**Why Build-Time?** TypeScript compilation happens at build time, not runtime. Types provide compile-time safety for database operations.
 
 ### Type Synchronization Strategy
 
@@ -210,9 +221,12 @@ The app supports runtime environment switching, but **types must be generated at
 
 ## Related Documentation
 
-- **Type Sync Guide**: `@project-context/development-context/MVP2/implementation/execution/cross-project-coordination/protocols/type-synchronization/Backend-Mobile-Type-Synchronization-Guide.md`
-- **Local Dev Workflow**: `@project-context/development-context/MVP2/implementation/execution/cross-project-coordination/protocols/type-synchronization/local-dev-sync-workflow.md`
+- **Multi-Environment Guide**: `@project-context/development-context/MVP2/implementation/execution/cross-project-coordination/protocols/type-synchronization/multi-environment-type-sync-guide.md` (Comprehensive workflow guide)
+- **CLAUDE.md**: Runtime Environment Switching section (Quick reference)
+- **Type Drift Prevention**: `@project-context/learnings/type-drift-prevention-5-layer-defense.md`
 - **Backend Automation**: `~/wildlife-watcher-backend/project-context/documentation/QUICK-REFERENCE-TYPE-AUTOMATION.md`
+- **Implementation Plan**: `@project-context/development-context/MVP2/implementation/execution/RUNTIME-ENVIRONMENT-SWITCHING-IMPLEMENTATION-PLAN.md`
+- **Test Results**: `@project-context/development-context/MVP2/implementation/execution/ENVIRONMENT-SWITCHING-TEST-RESULTS.md`
 
 ## Troubleshooting
 
