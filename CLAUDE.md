@@ -35,20 +35,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Wildlife Watcher Mobile App** - React Native field deployment tool for wildlife camera management with offline-first architecture.
 
 - **Tech Stack**: Expo SDK 51, React Native 0.74.5, TypeScript, Redux Toolkit, Supabase
+- **Build Type**: Custom Development Build (NOT Expo Go) - includes custom native modules
 - **Architecture**: Offline-first with local SQLite sync, BLE + LoRaWAN device communication, organisation multi-tenancy
 - **Key Features**: 6-step deployment wizard, project management, real-time sync, WW Admin access
 - **User Roles**: ww_admin (global), project_admin (org-scoped), project_member (project-scoped)
 - **Testing**: Jest (unit/integration), Maestro (E2E/BDD), Detox
 - **Development**: SPARC methodology with TDD/BDD practices
+- **Native Modules**: react-native-ble-manager, expo-updates, react-native-maps, custom BLE integrations
 
 ## Essential Commands
 
 ### Development
+
+**IMPORTANT**: This app uses **Custom Development Builds** (NOT Expo Go). Native modules like BLE, expo-updates, and custom integrations require a full build.
+
 ```bash
-npm start                    # Start Expo dev server
-npm run android             # Run on Android device/emulator
-npm run ios                 # Run on iOS simulator (macOS only)
+# Start Metro bundler (JS updates only)
+npm start
+
+# Build and run on Android (requires rebuild for native changes)
+npx expo run:android         # Local build + run on device/emulator
+
+# Build via EAS (cloud build service)
+eas build --profile development --platform android
+
+# iOS (macOS only)
+npx expo run:ios            # Local build + run on simulator
 ```
+
+**When to rebuild**:
+- ✅ After adding/updating native modules (e.g., expo-updates)
+- ✅ After changing native configuration (app.json, plugins)
+- ❌ NOT needed for JavaScript/TypeScript changes (hot reload works)
 
 ### Testing
 ```bash
