@@ -98,7 +98,7 @@ const fetchUserOrganisations = async (userId: string) => {
 
 		// Step 1: Get user_organisations (simple link table)
 		console.log("📋 Querying user_organisations for userId:", userId)
-		const { data: userOrgs, error: userOrgsError } = await supabase
+		const { data: userOrgs, error: userOrgsError } = await supabase()
 			.from("user_organisations")
 			.select("organisation_id")
 			.eq("user_id", userId)
@@ -139,7 +139,7 @@ const fetchUserOrganisations = async (userId: string) => {
 			(uo: Tables<"user_organisations">) => uo.organisation_id,
 		)
 		console.log("📋 Querying organisations table for IDs:", orgIds)
-		const { data: orgs, error: orgsError } = await supabase
+		const { data: orgs, error: orgsError } = await supabase()
 			.from("organisations")
 			.select("id, name, slug")
 			.in("id", orgIds)
@@ -165,7 +165,7 @@ const fetchUserOrganisations = async (userId: string) => {
 		// For org-level roles: scope_type='organisation', scope_id=org_id
 		// For system-level roles: scope_type='system', scope_id=null (ww_admin)
 		console.log("📋 Querying user_roles for userId:", userId)
-		const { data: userRoles, error: rolesError } = await supabase
+		const { data: userRoles, error: rolesError } = await supabase()
 			.from("user_roles")
 			.select("role, scope_type, scope_id")
 			.eq("user_id", userId)
