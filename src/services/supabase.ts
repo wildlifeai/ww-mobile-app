@@ -307,14 +307,15 @@ export const supabase = new Proxy(
 				)
 			}
 
-			// Get current client (lazy initialization)
-			const client = supabaseClient || (() => {
-				throw new Error(
-					"Supabase client not initialized. Call initializeSupabaseClient() first.",
+			// Return undefined for client not initialized (matches Proxy behavior)
+			if (!supabaseClient) {
+				console.error(
+					"❌ Supabase client not initialized. Call initializeSupabaseClient() first.",
 				)
-			})()
+				return undefined
+			}
 
-			return client[prop as keyof SupabaseClient<Database>]
+			return supabaseClient[prop as keyof SupabaseClient<Database>]
 		},
 	},
 )

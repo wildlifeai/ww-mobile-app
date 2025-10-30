@@ -29,12 +29,10 @@ export const ENVIRONMENT_CONFIGS: Record<
 	EnvironmentConfig
 > = {
 	local: {
-		supabaseUrl: "http://172.21.24.107:54321",
-		supabaseAnonKey:
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0",
+		supabaseUrl: "http://127.0.0.1:54321",
+		supabaseAnonKey: "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH",
 		displayName: "Local Development",
-		description:
-			"Localhost Supabase (WSL: 172.21.24.107:54321 for device testing)",
+		description: "Localhost Supabase (127.0.0.1:54321)",
 		isProduction: false,
 	},
 	"cloud-dev": {
