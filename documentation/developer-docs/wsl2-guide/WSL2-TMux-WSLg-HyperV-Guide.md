@@ -1,5 +1,29 @@
 # WSL2 + Claude Code + VS Code Setup Guide
 
+> **📢 NOTICE: This guide has been split into focused quick-reference documents!**
+>
+> **New Location**: `wsl2-guide/` subfolder
+>
+> **Start Here**: [wsl2-guide/00-INDEX.md](wsl2-guide/00-INDEX.md) - Complete navigation and quick-start paths
+>
+> **Why the change?**
+> - Easier to find specific topics (architecture, tmux, troubleshooting)
+> - Faster to reference (bookmark individual documents)
+> - Better for daily use (Quick Reference Commands is now standalone)
+> - Organized by use case (setup vs daily usage vs troubleshooting)
+>
+> **Quick Links**:
+> - [Memory Fix (.wslconfig)](wsl2-guide/03-Fix-Memory-wslconfig.md) - Apply this first (5 min)
+> - [tmux Setup](wsl2-guide/04-Fix-Tmux-Setup.md) - Add session persistence (10 min)
+> - [Quick Reference Commands](wsl2-guide/08-Quick-Reference-Commands.md) - Bookmark this!
+> - [Network Troubleshooting](wsl2-guide/07-Troubleshooting-Network.md) - If disconnects persist
+>
+> This consolidated version remains for reference but is no longer actively maintained.
+
+---
+
+# CONSOLIDATED VERSION (For Reference Only)
+
 **Problem:** VS Code disconnects from WSL2, losing all Claude Code terminal sessions and work context.
 
 **Your System:**
@@ -1415,6 +1439,145 @@ echo $TMUX
 # If output shows path = in tmux
 ```
 
+### Scrolling in tmux (Copy Mode)
+
+When Claude Code outputs a lot of text and it scrolls past, you need to enter "copy mode" to scroll back:
+
+**Method 1: Keyboard (Works Everywhere)**
+
+```bash
+# Enter copy mode (scroll mode)
+Ctrl+B, [
+
+# Now you can scroll:
+Arrow Up/Down        # Scroll line by line
+Page Up/Down         # Scroll page by page
+Ctrl+U               # Scroll half page up
+Ctrl+D               # Scroll half page down
+g                    # Jump to top of history
+G                    # Jump to bottom (latest output)
+
+# Search through output:
+/                    # Search forward (type text, press Enter)
+?                    # Search backward
+n                    # Next search result
+N                    # Previous search result
+
+# Exit copy mode:
+q                    # Return to normal mode
+```
+
+**Method 2: Mouse (If Enabled)**
+
+First, enable mouse support:
+```bash
+# Inside tmux, press: Ctrl+B, :
+# Type: set -g mouse on
+# Press Enter
+
+# Or add permanently to ~/.tmux.conf:
+echo "set -g mouse on" >> ~/.tmux.conf
+tmux source ~/.tmux.conf
+```
+
+Then scrolling works naturally:
+```bash
+Scroll wheel up      # Automatically enters copy mode and scrolls up
+Scroll wheel down    # Scroll down
+Click                # Exit copy mode
+```
+
+**Using Copy Mode with Claude Code:**
+
+```bash
+# Claude Code outputs a lot of code
+# It scrolls past the screen
+# You need to review it
+
+# Step 1: Enter copy mode
+Ctrl+B, [
+
+# Step 2: Scroll up to see the code
+Page Up (multiple times)
+# or
+Arrow Up (slowly)
+
+# Step 3: Find specific code
+/ (forward slash)
+# Type: "function"
+# Press Enter
+# Press 'n' to find next occurrence
+
+# Step 4: Exit when done
+q
+```
+
+**Copy Text from Claude Code Output:**
+
+```bash
+# Enter copy mode
+Ctrl+B, [
+
+# Navigate to text you want to copy
+Arrow keys
+
+# Start selection
+Space
+
+# Move to select text
+Arrow keys (selection highlights)
+
+# Copy selection
+Enter
+
+# Paste it
+Ctrl+B, ]
+
+# Or paste in vim/nano:
+# Just use normal paste (Ctrl+Shift+V in terminal)
+```
+
+**Increase Scrollback History:**
+
+By default, tmux only keeps 2000 lines of history. For Claude Code's long outputs:
+
+```bash
+# Temporarily (in current session):
+Ctrl+B, :
+# Type: set-option history-limit 50000
+# Press Enter
+
+# Permanently (add to ~/.tmux.conf):
+echo "set-option -g history-limit 50000" >> ~/.tmux.conf
+tmux source ~/.tmux.conf
+```
+
+**Quick Reference:**
+```bash
+Ctrl+B, [          # Enter scroll mode
+Page Up/Down       # Scroll
+/text              # Search
+n                  # Next match
+q                  # Exit scroll mode
+
+# Or if mouse enabled:
+Scroll wheel       # Just scroll naturally
+```
+
+**Pro Tip for Claude Code:**
+When Claude generates a lot of code, instead of scrolling through tmux:
+```bash
+# Ask Claude to save output to a file:
+"Save that to review.md"
+
+# Then view in VS Code:
+code review.md
+
+# Or view in terminal:
+less review.md
+# (use arrow keys, 'q' to quit)
+```
+
 ### Using tmux with VS Code
 
 **Two approaches:**
@@ -2243,10 +2406,29 @@ Ctrl+B, X              # Kill current pane
 Ctrl+B, Space          # Cycle layouts
 Ctrl+B, Ctrl+Arrow     # Resize pane
 
+# Inside tmux - scrolling and navigation
+Ctrl+B, [              # Enter copy mode (scroll mode)
+  ↓ Then use:
+  Arrow keys           # Scroll line by line
+  Page Up/Down         # Scroll page by page
+  Ctrl+U / Ctrl+D      # Scroll half page
+  g                    # Go to top
+  G                    # Go to bottom
+  /                    # Search forward
+  ?                    # Search backward
+  q                    # Exit copy mode
+  
+# Inside tmux - copy/paste
+Ctrl+B, [              # Enter copy mode
+Space                  # Start selection
+Arrow keys             # Move selection
+Enter                  # Copy selection
+Ctrl+B, ]              # Paste
+
 # Mouse support (if enabled)
 Click                  # Switch pane
 Drag border            # Resize pane
-Scroll wheel           # Scroll history
+Scroll wheel           # Scroll history (auto-enters copy mode)
 
 # Useful
 Ctrl+B, ?              # Help (shows all commands)
@@ -2544,6 +2726,64 @@ The WebSocket 1006 error in logs confirms it's a network issue, not memory.
 
 **After restart:** Verify .wslconfig with `free -h` (should show 25-26GB), then test VS Code for 30 minutes.
 
+### Q: How do I scroll back in tmux to see Claude Code's output?
+**A:** Use "copy mode" (scroll mode):
+
+```bash
+# Enter scroll mode:
+Ctrl+B, [
+
+# Scroll around:
+Arrow keys         # Line by line
+Page Up/Down       # Page by page
+g                  # Jump to top
+G                  # Jump to bottom
+/text              # Search for "text"
+q                  # Exit scroll mode
+```
+
+**With mouse enabled:**
+```bash
+# Enable mouse first:
+Ctrl+B, :
+# Type: set -g mouse on
+# Press Enter
+
+# Then just scroll naturally with scroll wheel
+```
+
+**Better approach for long Claude Code output:**
+Ask Claude to save output to a file instead of scrolling through terminal:
+```bash
+"Save that code to review.md"
+code review.md  # Open in VS Code
+```
+
+### Q: What's the difference between detaching from a session and closing a window?
+**A:** 
+
+**Detach (Ctrl+B, D):**
+- Leaves ALL windows in the session running
+- You can reattach later: `tmux attach -t frontend`
+- Use when: Taking a break, switching to another session
+
+**Close window (exit or Ctrl+D):**
+- Kills that specific window only
+- Other windows keep running
+- Window is gone forever
+- Use when: Finished with that specific task
+
+**Example:**
+```bash
+# Session with 7 windows running Claude Code
+# Close window 3 (done with that task): exit
+# Result: 6 windows remain, window 3 is gone
+
+# Detach from session: Ctrl+B, D
+# Result: All 6 windows keep running in background
+# Reattach later: tmux attach -t frontend
+```
+
 ---
 
 ## Final Notes
@@ -2564,13 +2804,13 @@ Your disconnect issues should be **completely resolved** after:
 
 ---
 
-**Document Version:** 1.3  
+**Document Version:** 1.4  
 **Last Updated:** October 30, 2025  
 **Your System:** Windows 11, 32GB RAM, Intel i7-12700H (14 cores/20 threads), WSL2 Ubuntu + Docker Desktop
 
 **Changelog:**
+- v1.4: Added tmux fundamentals (sessions/windows/panes hierarchy), what tmux protects vs doesn't protect, comprehensive window management (renaming, closing, switching), scrolling in copy mode, common tmux beginner issues, additional FAQ entries
 - v1.3: Added comprehensive WebSocket 1006 troubleshooting, network/Hyper-V fixes, VS Code Server reinstall procedure, firewall solutions, two-phase fix approach (memory + network), expanded FAQ for non-memory disconnects
 - v1.2: Added Hyper-V networking explanation, resource monitoring, diagnostic logs, comprehensive tmux workflow for 12+ Claude instances, FAQ section
 - v1.1: Updated with Docker Desktop memory sharing, actual CPU specs (i7-12700H), increased memory allocation to 26GB
 - v1.0: Initial release
-
