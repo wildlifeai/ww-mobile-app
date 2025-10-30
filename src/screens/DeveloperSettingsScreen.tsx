@@ -260,24 +260,34 @@ export const DeveloperSettingsScreen: React.FC = () => {
 							await setEnvironment(selectedEnvironment)
 							console.log("✅ [Restart] Environment saved to AsyncStorage")
 
-							// Restart the app if expo-updates is available
-							if (Updates?.reloadAsync) {
-								console.log("🔄 [Restart] Calling Updates.reloadAsync()")
-								await Updates.reloadAsync()
-								console.log("✅ [Restart] reloadAsync completed")
-							} else {
-								// Fallback: Manual restart instructions
-								console.log(
-									"⚠️ [Restart] expo-updates not available - showing manual instructions",
-								)
-								setIsRestarting(false)
-								Alert.alert(
-									"Manual Restart Required",
-									"Please close and reopen the app to apply the new environment.\n\n" +
-										"Tip: In Expo Go, shake the device and tap 'Reload'.",
-									[{ text: "OK", style: "default" }],
-								)
-							}
+							// Update local state to reflect the change
+							setCurrentEnvironment(selectedEnvironment)
+
+							// In development builds, Updates.reloadAsync() just reloads JS bundle
+							// without reinitializing native modules or recreating Supabase client.
+							// We need to manually trigger Supabase client recreation.
+							console.log("🔄 [Restart] Triggering Supabase client recreation...")
+							const { reconnectSupabase } = await import("../services/supabase")
+							await reconnectSupabase()
+							console.log("✅ [Restart] Supabase client recreated with new environment")
+
+							// Stop loading spinner and show success
+							setIsRestarting(false)
+
+							Alert.alert(
+								"Environment Switched",
+								`Successfully switched to ${ENVIRONMENT_CONFIGS[selectedEnvironment].displayName}.\n\n` +
+									`The app is now connected to:\n${ENVIRONMENT_CONFIGS[selectedEnvironment].supabaseUrl}`,
+								[
+									{
+										text: "OK",
+										style: "default",
+										onPress: () => {
+											console.log("✅ [Restart] Environment switch complete")
+										},
+									},
+								],
+							)
 						} catch (error) {
 							console.error("❌ [Restart] Error during restart:", {
 								message: error instanceof Error ? error.message : "Unknown error",
