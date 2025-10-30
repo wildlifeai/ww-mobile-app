@@ -316,11 +316,21 @@ export const DeveloperSettingsScreen: React.FC = () => {
 		const config = ENVIRONMENT_CONFIGS[env]
 		const status = connectionStatus[env]
 		const statusIndicator = STATUS_INDICATORS[status]
+		const isActive = env === currentEnvironment
 
 		return (
 			<View key={env} style={styles.environmentItem}>
 				<List.Item
-					title={config.displayName}
+					title={
+						<View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+							<WWText variant="bodyLarge">{config.displayName}</WWText>
+							{isActive && (
+								<View style={styles.activeBadge}>
+									<WWText style={styles.activeBadgeText}>ACTIVE</WWText>
+								</View>
+							)}
+						</View>
+					}
 					description={config.description}
 					left={() => (
 						<RadioButton.Android
@@ -419,15 +429,31 @@ export const DeveloperSettingsScreen: React.FC = () => {
 					</WWText>
 				</View>
 
+				{/* Current Environment Indicator */}
+				<Surface
+					style={[
+						styles.currentEnvironmentBanner,
+						{
+							marginHorizontal: spacing * 2,
+							marginBottom: spacing * 2,
+							padding: spacing * 2,
+						},
+					]}
+					elevation={2}
+				>
+					<WWText variant="labelMedium" style={styles.currentEnvironmentLabel}>
+						🔌 ACTIVE ENVIRONMENT
+					</WWText>
+					<WWText variant="titleMedium" style={styles.currentEnvironmentName}>
+						{ENVIRONMENT_CONFIGS[currentEnvironment].displayName}
+					</WWText>
+					<WWText variant="bodySmall" style={styles.currentEnvironmentUrl}>
+						{ENVIRONMENT_CONFIGS[currentEnvironment].supabaseUrl}
+					</WWText>
+				</Surface>
+
 				<List.Section>
 					<List.Subheader>Environment Selection</List.Subheader>
-
-					<WWText
-						variant="bodyMedium"
-						style={[styles.infoText, { paddingHorizontal: spacing * 2 }]}
-					>
-						Current: {ENVIRONMENT_CONFIGS[currentEnvironment].displayName}
-					</WWText>
 
 					<RadioButton.Group
 						onValueChange={(value) =>
@@ -504,8 +530,42 @@ const styles = StyleSheet.create({
 		marginTop: 8,
 		opacity: 0.7,
 	},
+	currentEnvironmentBanner: {
+		borderRadius: 8,
+		backgroundColor: "rgba(76, 175, 80, 0.1)", // Light green tint
+		borderLeftWidth: 4,
+		borderLeftColor: "#4CAF50", // Green accent
+	},
+	currentEnvironmentLabel: {
+		fontWeight: "700",
+		color: "#4CAF50",
+		marginBottom: 4,
+	},
+	currentEnvironmentName: {
+		fontWeight: "700",
+		marginBottom: 4,
+	},
+	currentEnvironmentUrl: {
+		opacity: 0.7,
+		fontFamily: Platform.select({
+			ios: "Courier",
+			android: "monospace",
+			default: "monospace",
+		}),
+	},
 	environmentItem: {
 		marginBottom: 8,
+	},
+	activeBadge: {
+		backgroundColor: "#4CAF50",
+		paddingHorizontal: 8,
+		paddingVertical: 2,
+		borderRadius: 4,
+	},
+	activeBadgeText: {
+		color: "white",
+		fontSize: 10,
+		fontWeight: "700",
 	},
 	environmentDetails: {
 		marginTop: 8,
