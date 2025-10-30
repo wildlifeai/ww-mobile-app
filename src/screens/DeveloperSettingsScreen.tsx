@@ -16,7 +16,7 @@
  * @see @project-context/development-context/MVP2/implementation/execution/environment-switching/
  */
 
-import React, { useState, useCallback } from "react"
+import React, { useState, useCallback, useEffect } from "react"
 import { ScrollView, StyleSheet, View, Alert, Platform } from "react-native"
 import {
 	Surface,
@@ -45,6 +45,11 @@ import {
 	getDefaultEnvironment,
 	getAvailableEnvironments,
 } from "../config/environments"
+import {
+	getEnvironment,
+	setEnvironment,
+	canSwitchEnvironment,
+} from "../config/EnvironmentManager"
 
 /**
  * Connection status for each environment
@@ -71,10 +76,12 @@ export const DeveloperSettingsScreen: React.FC = () => {
 	const { appPadding, spacing } = useExtendedTheme()
 	const { top } = useSafeAreaInsets()
 
-	// Current environment from default (will be replaced with EnvironmentManager hook in Task 1.2)
-	const [currentEnvironment] = useState<SupabaseEnvironment>(
-		getDefaultEnvironment(),
-	)
+	// Current environment from EnvironmentManager
+	const [currentEnvironment, setCurrentEnvironment] =
+		useState<SupabaseEnvironment>(getDefaultEnvironment())
+
+	// Loading state for environment initialization
+	const [isLoadingEnvironment, setIsLoadingEnvironment] = useState(true)
 
 	// Selected environment (may differ from current until "Apply & Restart" is pressed)
 	const [selectedEnvironment, setSelectedEnvironment] =
@@ -93,10 +100,33 @@ export const DeveloperSettingsScreen: React.FC = () => {
 	const [isRestarting, setIsRestarting] = useState(false)
 
 	// Check if we can switch environments (development builds only)
-	const canSwitch = __DEV__
+	const canSwitch = canSwitchEnvironment()
 
 	// Get available environments
 	const availableEnvironments = getAvailableEnvironments()
+
+	// Load current environment from storage on mount
+	useEffect(() => {
+		const loadEnvironment = async () => {
+			console.log("📱 [DeveloperSettings] Loading current environment...")
+			try {
+				const env = await getEnvironment()
+				console.log(`📱 [DeveloperSettings] Loaded environment: ${env}`)
+				setCurrentEnvironment(env)
+				setSelectedEnvironment(env)
+			} catch (error) {
+				console.error("📱 [DeveloperSettings] Failed to load environment:", error)
+				// Fallback to default
+				const defaultEnv = getDefaultEnvironment()
+				setCurrentEnvironment(defaultEnv)
+				setSelectedEnvironment(defaultEnv)
+			} finally {
+				setIsLoadingEnvironment(false)
+			}
+		}
+
+		loadEnvironment()
+	}, [])
 
 	/**
 	 * Test connection to a specific environment
@@ -113,27 +143,63 @@ export const DeveloperSettingsScreen: React.FC = () => {
 		try {
 			const config = ENVIRONMENT_CONFIGS[env]
 
+			console.log(`🔍 [${env}] Testing connection...`)
+			console.log(`🔍 [${env}] URL: ${config.supabaseUrl}`)
+			console.log(`🔍 [${env}] Anon Key Length: ${config.supabaseAnonKey.length}`)
+			console.log(
+				`🔍 [${env}] Anon Key Prefix: ${config.supabaseAnonKey.substring(0, 20)}...`,
+			)
+
 			// Basic health check: attempt to query Supabase
-			const response = await fetch(`${config.supabaseUrl}/rest/v1/`, {
+			const testUrl = `${config.supabaseUrl}/rest/v1/`
+			console.log(`🔍 [${env}] Test URL: ${testUrl}`)
+
+			const response = await fetch(testUrl, {
 				method: "HEAD",
 				headers: {
 					apikey: config.supabaseAnonKey,
+					"Content-Type": "application/json",
 				},
 			})
 
+			console.log(`📡 [${env}] Response Status: ${response.status}`)
+			console.log(`📡 [${env}] Response OK: ${response.ok}`)
+			console.log(`📡 [${env}] Response Headers:`, {
+				contentType: response.headers.get("content-type"),
+				server: response.headers.get("server"),
+				"sb-gateway-version": response.headers.get("sb-gateway-version"),
+			})
+
 			if (response.ok) {
+				console.log(`✅ [${env}] Connection successful!`)
 				setConnectionStatus((prev) => ({
 					...prev,
 					[env]: "connected",
 				}))
 			} else {
+				console.error(
+					`❌ [${env}] Connection failed with status ${response.status}`,
+				)
+				// Try to get response body for more details
+				try {
+					const responseText = await response.text()
+					console.error(`❌ [${env}] Response body:`, responseText)
+				} catch {
+					console.error(`❌ [${env}] Could not read response body`)
+				}
+
 				setConnectionStatus((prev) => ({
 					...prev,
 					[env]: "failed",
 				}))
 			}
 		} catch (error) {
-			console.error(`Connection test failed for ${env}:`, error)
+			console.error(`❌ [${env}] Connection test exception:`, {
+				message: error instanceof Error ? error.message : "Unknown error",
+				name: error instanceof Error ? error.name : "Unknown",
+				stack: error instanceof Error ? error.stack : undefined,
+				error: error,
+			})
 			setConnectionStatus((prev) => ({
 				...prev,
 				[env]: "failed",
@@ -147,10 +213,17 @@ export const DeveloperSettingsScreen: React.FC = () => {
 	 * Prompts user for confirmation, updates environment, and restarts the app
 	 */
 	const handleApplyAndRestart = useCallback(async () => {
+		console.log("🔄 [Restart] Handle apply and restart called")
+		console.log(`🔄 [Restart] Selected: ${selectedEnvironment}`)
+		console.log(`🔄 [Restart] Current: ${currentEnvironment}`)
+
 		if (selectedEnvironment === currentEnvironment) {
+			console.log("⚠️ [Restart] No change - environments match")
 			Alert.alert("No Change", "Selected environment is already active.")
 			return
 		}
+
+		console.log("🔄 [Restart] Showing confirmation dialog")
 
 		Alert.alert(
 			"Restart Required",
@@ -160,24 +233,43 @@ export const DeveloperSettingsScreen: React.FC = () => {
 				{
 					text: "Cancel",
 					style: "cancel",
+					onPress: () => {
+						console.log("❌ [Restart] User cancelled restart")
+					},
 				},
 				{
 					text: "Restart",
 					style: "default",
 					onPress: async () => {
 						try {
+							console.log("🔄 [Restart] User confirmed restart")
+							console.log("🔄 [Restart] Setting isRestarting to true")
 							setIsRestarting(true)
 
-							// TODO: Task 1.2 - Update environment via EnvironmentManager
-							// For now, we're just mocking the environment switch
-							// In Task 1.2, this will call:
-							// await setEnvironment(selectedEnvironment);
+							console.log("🔄 [Restart] Checking expo-updates availability")
+							console.log(`🔄 [Restart] Updates object:`, Updates)
+							console.log(
+								`🔄 [Restart] reloadAsync available:`,
+								!!Updates?.reloadAsync,
+							)
+
+							// Save environment selection to AsyncStorage
+							console.log(
+								`🔄 [Restart] Saving environment: ${selectedEnvironment}`,
+							)
+							await setEnvironment(selectedEnvironment)
+							console.log("✅ [Restart] Environment saved to AsyncStorage")
 
 							// Restart the app if expo-updates is available
 							if (Updates?.reloadAsync) {
+								console.log("🔄 [Restart] Calling Updates.reloadAsync()")
 								await Updates.reloadAsync()
+								console.log("✅ [Restart] reloadAsync completed")
 							} else {
 								// Fallback: Manual restart instructions
+								console.log(
+									"⚠️ [Restart] expo-updates not available - showing manual instructions",
+								)
 								setIsRestarting(false)
 								Alert.alert(
 									"Manual Restart Required",
@@ -187,6 +279,12 @@ export const DeveloperSettingsScreen: React.FC = () => {
 								)
 							}
 						} catch (error) {
+							console.error("❌ [Restart] Error during restart:", {
+								message: error instanceof Error ? error.message : "Unknown error",
+								name: error instanceof Error ? error.name : "Unknown",
+								stack: error instanceof Error ? error.stack : undefined,
+								error: error,
+							})
 							setIsRestarting(false)
 							Alert.alert(
 								"Restart Failed",
