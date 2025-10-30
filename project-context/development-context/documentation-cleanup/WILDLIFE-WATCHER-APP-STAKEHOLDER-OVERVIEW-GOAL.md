@@ -49,7 +49,7 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 - ✅ **Error-Proof Deployments**: A step-by-step wizard guides you through setup, capturing all critical data correctly and reducing field errors.
 - ✅ **Perfect Camera Placement**: Use a live camera preview to perfectly frame your shot and location information with photos of the setup for easy retrieval.
 - ✅ **Work Anywhere, Sync Later**: Complete all tasks in remote locations without an internet connection. Data syncs to the cloud automatically when connectivity returns.
-- ✅ **Remote Camera Health Monitoring**: Receive crucial in-field updates on battery life and SD card space via LoRaWAN to prevent failed deployments.
+- ✅ **Remote Camera Health Monitoring**: Receive crucial in-field updates on battery life and key operational statistics (e.g., number of images taken) via LoRaWAN to prevent failed deployments.
 - ✅ **Secure Team Collaboration**: Work with your team in a secure, isolated organization. Robust permissions ensure data is only seen by authorized users.
 
 
@@ -88,7 +88,7 @@ The app has three distinct user types, each with specific capabilities:
 - Sync fieldwork data when online
 
 **Real-World Example**:
-*Sarah is a field researcher working on a predator monitoring study. She uses the app to test and prepare 20 cameras from the comfort of her office. Sarah confirms that the cameras have the latest firmware, full batteries, and SD card space. She also completes the one-time LoRaWAN registration for each camera so they can send remote updates from the field. She verifies that the cameras are associated with the predator monitoring project and that the flash and camera work as expected (e.g., the field of view is not obstructed and the camera doesn't take under/overexposed photos). She then goes to the field to deploy the cameras at bait stations. She turns the camera on, connects to it via the mobile app, enables remote updates via lorawan, and checks the LoRaWAN signal strength to ensure good reception. She then previews the field of view of the camera, records the location and other deployment-specific information (e.g. type of bait, angle of the camera,...) and start the deployment using the app. The deployment records are stored locally in her phone as there is no internet connection. When she returns to her vehicle with cell service, the app automatically syncs her work to the cloud because she has the "sync to cloud when available" option selected.*
+*Sarah is a field researcher working on a predator monitoring study. She uses the app to test and prepare 20 cameras from the comfort of her office. Sarah confirms that the cameras have the latest firmware, full batteries, and clear SD cards. She verifies that each camera's pre-provisioned LoRaWAN registration is active so they can send remote updates. She also ensures the cameras are associated with the predator monitoring project and that the flash and camera work as expected. Before heading out, she ensures the cameras are "disarmed" so they don't trigger during transport. In the field, she connects to each camera, checks the LoRaWAN signal strength, previews the field of view, records location details, and then starts the deployment. The deployment records are stored locally on her phone. When she returns to her vehicle with cell service, the app automatically syncs her work to the cloud.*
 
 **Current Status**: TBC by AL
 
@@ -517,15 +517,14 @@ For the mvp2 release, the organizational structure is simple to focus on core pr
 **Current State**: TBC by AL
 - **Step 1: Device Selection**: Scan for nearby available cameras via Bluetooth
 - **Step 2: Camera Workbench**: Comprehensive device preparation screen including:
-  - Edit device name
+  - View device name
   - View device ID (read-only)
   - Associate camera with a project
   - Check battery level and SD card space
   - View/update firmware version
   - View installed AI model (matches project default)
   - Test camera function with preview photo
-  - Register for LoRaWAN remote updates (one-time per device)
-  - Deregister from LoRaWAN if needed
+  - Verify LoRaWAN registration status (pre-provisioned by admin)
 
 **Data Management**:
 - Test photos deleted after preview to conserve storage
@@ -546,7 +545,7 @@ For the mvp2 release, the organizational structure is simple to focus on core pr
 - **Step 1: Device Selection & Pairing**: Select an available camera from a list of nearby Bluetooth devices.
 - **Step 2: Connectivity Setup**: Choose to enable LoRaWAN for remote status updates or operate in an offline-only mode. Includes an option to test signal reception.
 - **Step 3: Camera View & Adjustment**: Use a test photo preview from the camera to physically adjust its position and field of view until satisfied.
-- **Data Management**: Photos taken during this step are for temporary preview only and must be deleted from the app and the device's SD card to conserve space.
+- **Data Management**: Test photos taken during this step are for temporary preview only and are stored in a dedicated "test" folder on the SD card to distinguish them from deployment data.
 - **Step 4: Location**: Set the deployment's GPS coordinates on a map, name the site, and take a photo of the deployed camera *with the phone* to help with later retrieval.
 - **Data Management**: Photos taken during this step are stored in the mobile phone so that they can be displayed at a later time for finding the Wildlife Watcher.
 - **Step 5: Deployment Details & Submit**: Configure the deployment name and review a summary of all entered information. Tapping "Submit" finalizes the deployment, which configures the camera and saves the record. Project, start time, and capture method are set at the project level and are not configured during deployment.
@@ -574,6 +573,7 @@ For the mvp2 release, the organizational structure is simple to focus on core pr
   - **Confirmation**: The screen displays key details of the active deployment (Deployment Name, Project Name, Start Date) to prevent errors.
   - **Retrieval Notes**: An optional text box allows the user to add notes about the retrieval (e.g., "SD card was full," "Device damaged by animal").
   - **Submission**: Tapping the final "End Deployment" button marks the deployment as "Ended," makes the camera "Available" again for a new deployment, and queues the change for synchronization. The user is then taken to the Deployment Details screen to see a final summary.
+- **Disarming**: The camera is automatically "disarmed" (motion detection disabled) upon ending the deployment.
 - Works completely offline.
 
 **Intended State**: Same as planned
@@ -716,7 +716,7 @@ For the mvp2 release, the organizational structure is simple to focus on core pr
 - **Test Camera**: Take a test photo to ensure the camera's view is clear and preview it.
 - **Manage Project Association**: Assign the camera to a specific project. The app includes safeguards to prevent associating a camera with a project the user doesn't have access to.
 - **Update Firmware**: If a newer firmware version is available, the user can update the camera directly from the app.
-- **Enable Remote Updates**: A one-time, per-device registration to a LoRaWAN network. Once a device is registered to a network, it can send health updates from the field for any deployment using that network.
+- **Verify Remote Updates**: Check the status of the camera's pre-provisioned LoRaWAN registration.
 - **Configure AI Model**: Project Admins can change the AI detection model loaded on the camera.
 - **Name Device**: Give the camera a custom name for easy identification.
 
@@ -835,6 +835,7 @@ For the mvp2 release, the organizational structure is simple to focus on core pr
 
 #### 9.1 Remote Battery Level Monitoring
 **Description**: Receive camera battery status via LoRaWAN
+**Note**: The specific payload for LoRaWAN messages is pending discussion and will be defined as this feature becomes a higher priority.
 
 **Current State**: TBC by AL
 - Webhook receives battery level updates
@@ -850,12 +851,12 @@ For the mvp2 release, the organizational structure is simple to focus on core pr
 
 ---
 
-#### 9.2 Remote SD Card Usage Monitoring
-**Description**: Track camera storage capacity via LoRaWAN
+#### 9.2 Remote Operational Statistics Monitoring
+**Description**: Track camera operational data via LoRaWAN
 
 **Current State**: TBC by AL
-- Webhook receives SD card usage
-- Storage percentage stored
+- Webhook receives key statistics like number of images taken.
+- Data is stored against the deployment record.
 - Full card alerts
 - Historical storage data
 - Display in device and deployment list
