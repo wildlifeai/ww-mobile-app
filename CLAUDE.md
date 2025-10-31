@@ -759,14 +759,20 @@ mv ~/dev/wildlifeai/cross-project-coordination/inbox/backend-to-mobile/msg.md \
 
 For **large-scale coordinated projects** with 3+ tasks, milestone-based execution, and cloud-dev deployment coordination:
 
-**When to Use**:
+**IMPORTANT CLARIFICATION** (Confirmed by Backend Team):
+- **Flat-Inbox System**: DEFAULT for day-to-day coordination (schema changes, status updates, task requests)
+- **Dynamic System**: ONLY for special case projects meeting criteria below
+
+**When to Use Dynamic System**:
 ✅ Project has 3+ coordinated tasks across teams
 ✅ Requires milestone-based execution with human review
 ✅ Needs cloud-dev deployment coordination
 ✅ Has task dependencies requiring careful sequencing
 ✅ May exceed 200k context window (complex projects)
 
-**Examples**: BLE DFU integration, Auth redesign, API migrations, Multi-tenant features
+**Examples of Dynamic System Use**: BLE DFU integration, Auth redesign, API migrations, Multi-tenant features
+
+**Examples of Flat-Inbox Use**: Schema changes, type regeneration, status updates, simple task requests
 
 **Initialize Coordinated Project**:
 ```bash
