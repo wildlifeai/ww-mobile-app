@@ -723,6 +723,8 @@ Every developer/session MUST contribute to framework evolution by:
 ### Cross-Project Coordination System
 **Location**: `~/dev/wildlifeai/cross-project-coordination/` (shared hub between mobile and backend)
 
+#### Basic Coordination (Daily Use)
+
 **Quick Workflow**:
 ```bash
 # 1. Check backend inbox daily
@@ -740,28 +742,76 @@ mv ~/dev/wildlifeai/cross-project-coordination/inbox/backend-to-mobile/msg.md \
 ~/dev/wildlifeai/cross-project-coordination/.coordination/log-message.sh "Mobile" "Actioned schema-change"
 ```
 
-**Agent-Assisted Workflow**:
-```bash
-# Use cross-project-coordinator agent for automatic handling
-/aadf-work-smart "Check coordination inbox and action any schema-change messages"
-```
-
 **Message Types**:
 - `schema-change` - Backend schema changed, regenerate types
 - `task-request` - Backend requesting mobile implementation
 - `status-update` - Backend deployment/milestone updates
 - `generic-message` - General coordination
 
-**Complete Documentation**:
+**Basic Documentation**:
 - **Quick Start**: `~/dev/wildlifeai/cross-project-coordination/COORDINATION-QUICK-START.md`
 - **Type Sync Guide**: `~/dev/wildlifeai/cross-project-coordination/TYPE-SYNC-GUIDE.md`
 - **System Reference**: `~/dev/wildlifeai/cross-project-coordination/SYSTEM-REFERENCE-GUIDE.md`
+
+#### Dynamic Coordination System (Large Projects)
+
+**Status**: ✅ Production-Ready (2025-11-01)
+
+For **large-scale coordinated projects** with 3+ tasks, milestone-based execution, and cloud-dev deployment coordination:
+
+**When to Use**:
+✅ Project has 3+ coordinated tasks across teams
+✅ Requires milestone-based execution with human review
+✅ Needs cloud-dev deployment coordination
+✅ Has task dependencies requiring careful sequencing
+✅ May exceed 200k context window (complex projects)
+
+**Examples**: BLE DFU integration, Auth redesign, API migrations, Multi-tenant features
+
+**Initialize Coordinated Project**:
+```bash
+cd ~/dev/wildlifeai/cross-project-coordination
+./.scripts/init-project.sh \
+  --slug "project-name" \
+  --title "Project Title" \
+  --teams "mobile,backend"
+```
+
+**Send Coordination Message**:
+```bash
+./.scripts/send-message.sh \
+  --project "project-name" \
+  --from "mobile" \
+  --to "backend" \
+  --type "deployment-ready" \
+  --message "Preview build complete. Build ID: abc123. Distributed to stakeholders."
+```
+
+**Check Project Inbox**:
+```bash
+./.scripts/check-inbox.sh --project "project-name" --team "mobile"
+```
+
+**Core Components**:
+- 6 coordination scripts (init, send, check, watch)
+- 10 templates (task definitions, milestones, checklists)
+- Project isolation (dedicated folder per project)
+- Task orchestration with dependency tracking
+- Milestone-based workflow (Local → Cloud-Dev → Preview → Stakeholder)
+
+**Dynamic System Documentation**:
+- **Comprehensive Guide**: `@project-context/development-context/MVP2/implementation/execution/cross-project-coordination/DYNAMIC-COORDINATION-SYSTEM-GUIDE.md` (PRIMARY - START HERE)
+- **Quick Start**: `~/dev/wildlifeai/cross-project-coordination/QUICK-START-DYNAMIC-COORDINATION.md`
+- **Troubleshooting**: `~/dev/wildlifeai/cross-project-coordination/TROUBLESHOOTING-DYNAMIC-COORDINATION.md`
+- **Completion Report**: `@project-context/.../IMPLEMENTATION-COMPLETE-REPORT.md`
 
 **Key Principles**:
 - Flat monthly archive (no nested folders)
 - Bidirectional inbox (no outbox)
 - Send → Inbox → Archive → Log workflow
 - Daily inbox checks (or use pre-commit warnings)
+- Per-project isolation (failure isolation)
+- Template-driven project bootstrap
 
 ## Development Workflow
 

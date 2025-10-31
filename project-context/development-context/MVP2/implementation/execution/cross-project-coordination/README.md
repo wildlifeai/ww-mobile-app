@@ -77,10 +77,59 @@ Protocols for coordinating deployments between mobile app and backend infrastruc
 
 ## Recent Implementations
 
+### Dynamic Cross-Project Coordination System (2025-11-01)
+**Status**: ✅ Production-Ready
+
+**What It Is**: Comprehensive coordination framework for large-scale cross-team projects with 3+ tasks, milestone-based execution, and cloud-dev deployment coordination.
+
+**Core Components**:
+- **6 coordination scripts** (init-project.sh, send-message.sh, check-inbox.sh, watchers)
+- **10 templates** (task definitions, milestones, deployment checklists)
+- **3 documentation guides** (comprehensive, quick start, troubleshooting)
+- **Project isolation** (dedicated folder per coordinated project)
+
+**Key Features**:
+- Project initialization with template bootstrap
+- Bidirectional team messaging (6 message types)
+- Task orchestration with dependency tracking
+- Milestone-based workflow (Local → Cloud-Dev → Preview → Stakeholder)
+- Per-project file watchers (failure isolation)
+- Session recovery support (future enhancement)
+
+**Documentation**:
+- **Comprehensive Guide**: [DYNAMIC-COORDINATION-SYSTEM-GUIDE.md](DYNAMIC-COORDINATION-SYSTEM-GUIDE.md) (PRIMARY - START HERE)
+- **Completion Report**: [IMPLEMENTATION-COMPLETE-REPORT.md](IMPLEMENTATION-COMPLETE-REPORT.md)
+- **Hub Quick Start**: `hub/QUICK-START-DYNAMIC-COORDINATION.md`
+- **Hub Troubleshooting**: `hub/TROUBLESHOOTING-DYNAMIC-COORDINATION.md`
+
+**Quick Start**:
+```bash
+# Initialize coordinated project
+cd hub && ./.scripts/init-project.sh \
+  --slug "project-name" \
+  --title "Project Title" \
+  --teams "mobile,backend"
+
+# Send coordination message
+./.scripts/send-message.sh \
+  --project "project-name" \
+  --from "mobile" \
+  --to "backend" \
+  --type "status-update" \
+  --message "..."
+
+# Check inbox
+./.scripts/check-inbox.sh --project "project-name" --team "mobile"
+```
+
+**Backend Notified**: See `hub/inbox/mobile-to-backend/2025-11-01-dynamic-coordination-complete.md`
+
+---
+
 ### Runtime Environment Switching (2025-10-30)
 **Status**: ✅ Production-Ready
 
-Mobile app now supports runtime switching between three Supabase environments:
+Mobile app supports runtime switching between three Supabase environments:
 - **Local Development**: http://172.21.24.107:54321 (WSL IP)
 - **Cloud Development**: https://nuhwmubvygxyddkycmpa.supabase.co
 - **Cloud Production**: [Not yet configured]
@@ -90,13 +139,10 @@ Mobile app now supports runtime switching between three Supabase environments:
 - Build-time type generation for each environment
 - Environment-aware pre-commit hooks
 - GitHub Actions cloud type validation
-- Comprehensive documentation (27,700+ lines)
 
 **Documentation**:
 - Implementation Plan: `../db-environment-switching-in-app/RUNTIME-ENVIRONMENT-SWITCHING-IMPLEMENTATION-PLAN.md`
 - Test Results: `../ENVIRONMENT-SWITCHING-TEST-RESULTS.md`
-- Developer Workflows: `../DEVELOPER-WORKFLOW-MULTI-ENVIRONMENT.md`
-- Troubleshooting: `../TROUBLESHOOTING-ENVIRONMENT-SWITCHING.md`
 
 **Shared with Backend**: See `hub/inbox/mobile-to-backend/` for coordination message
 
