@@ -144,7 +144,15 @@ This document analyzes the current BLE and LoRaWAN implementation in the Wildlif
 
 ```mermaid
 graph TD
-    subgraph "Current Implementation (Mock)"
+    classDef current fill:#ffe6e6,stroke:#ff0000,stroke-width:1px;
+    classDef desired fill:#e6ffe6,stroke:#009900,stroke-width:1px;
+
+    Current["Current Implementation (Mock)"] --> Desired["Desired Production State"]
+    class Current current
+    class Desired desired
+    
+
+    subgraph Current
         A[Camera in Field] -.-> |LoRaWAN Packet| B(LoRaWAN Gateway)
         B -.-> |Internet| C{Backend Webhook}
         C -.-> |NOT IMPLEMENTED| D[Edge Function]
@@ -154,7 +162,7 @@ graph TD
         H --> F
     end
 
-    subgraph "Desired Production State"
+    subgraph Desired
         A2[Camera in Field] --> |LoRaWAN Packet| B2(LoRaWAN Gateway)
         B2 --> |Internet| C2{Backend Webhook}
         C2 --> |Trigger| D2[Edge Function]
