@@ -819,15 +819,71 @@ cd ~/dev/wildlifeai/cross-project-coordination
 - Per-project isolation (failure isolation)
 - Template-driven project bootstrap
 
+#### Active Coordination Projects
+
+**MVP2 Tranche 1: Foundation & Replanning** (2025-11-01)
+- **Location**: `~/dev/wildlifeai/cross-project-coordination/projects/mvp2-tranche1-foundation-replanning`
+- **Objective**: Get Tasks 1-14 working with backend schema alignment (24-hour target)
+- **Scope**: Code review remediation, backend schema migration, foundation stabilization
+- **Planning Document**: `@project-context/development-context/documentation-cleanup/planning/UPDATED-REPLANNING-PROMPT.md`
+
+**Strategy**: Two-tranche approach
+- **Tranche 1** (Current): Foundation + Tasks 1-14 (get what exists working)
+- **Tranche 2** (Future): New features Tasks 15-23 (planned separately after Tranche 1 success)
+
+**Check Tranche 1 Inbox**:
+```bash
+~/dev/wildlifeai/cross-project-coordination/.scripts/check-inbox.sh \
+  --project "mvp2-tranche1-foundation-replanning" \
+  --team "mobile"
+```
+
+**Send Message to Backend**:
+```bash
+~/dev/wildlifeai/cross-project-coordination/.scripts/send-message.sh \
+  --project "mvp2-tranche1-foundation-replanning" \
+  --from "mobile" \
+  --to "backend" \
+  --type "status-update" \
+  --message "Your message here"
+```
+
 ## Development Workflow
 
+### Session Startup (AUTOMATIC - Run Every Session Start)
+
+**CRITICAL**: At the start of EVERY session, I (Claude Code) automatically check for cross-project coordination notifications:
+
+```bash
+# Check for backend messages (run automatically)
+~/dev/wildlifeai/cross-project-coordination/.scripts/check-notifications.sh mobile
+
+# If notifications exist, read inbox
+~/dev/wildlifeai/cross-project-coordination/.scripts/check-inbox.sh \
+  --project "mvp2-tranche1-foundation-replanning" \
+  --team "mobile"
+```
+
+**Why**: Backend team may have sent schema changes, deployment updates, or planning feedback while I was offline. Checking automatically ensures I never miss critical coordination messages.
+
+**Watcher Status**: Background watcher monitors inboxes 24/7 and creates JSON notifications in `.notifications/` folder when messages arrive.
+
+**What I Do When Notifications Found**:
+1. Report to user: "Found X coordination messages from backend team"
+2. Read and summarize each message
+3. Take appropriate action (schema update, planning input, etc.)
+4. Mark notifications as handled
+
+---
+
 ### Before Starting Any Task
-1. **Check Current Status**: View Project Progress Tracker dashboard (http://localhost:3333)
-2. **Review Strategy**: Consult `MVP2-MASTER-EXECUTION-PLAN.md` for current methodology
-3. **Get Requirements**: Read `implementation-spec-v1.4.md` and specific task file
-4. **Verify Types**: Run `npm run types:check-local` (or appropriate environment) if backend schema changed
-5. **Confirm Environment**: Check which Supabase environment you're targeting (local/cloud-dev/cloud-prod)
-6. **Start Tracking**: Note start time in `MVP2-METRICS-TRACKER.md`
+1. **Check Coordination Notifications**: AUTOMATIC at session start (see above)
+2. **Check Current Status**: View Project Progress Tracker dashboard (http://localhost:3333)
+3. **Review Strategy**: Consult `MVP2-MASTER-EXECUTION-PLAN.md` for current methodology
+4. **Get Requirements**: Read `implementation-spec-v1.4.md` and specific task file
+5. **Verify Types**: Run `npm run types:check-local` (or appropriate environment) if backend schema changed
+6. **Confirm Environment**: Check which Supabase environment you're targeting (local/cloud-dev/cloud-prod)
+7. **Start Tracking**: Note start time in `MVP2-METRICS-TRACKER.md`
 
 ### During Development
 - **Research FIRST**: Use Context7 for library documentation (proven 10x efficiency)
