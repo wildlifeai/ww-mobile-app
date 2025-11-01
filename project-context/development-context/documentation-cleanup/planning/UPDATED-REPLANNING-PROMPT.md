@@ -11,12 +11,12 @@
 **Strategic Approach**: Two separate tranches with independent planning and execution
 
 ### Tranche 1: Foundation & Stabilization (Tasks 1-14)
-**Objective**: Get what currently exists working properly with backend schema alignment
+**Objective**: Get what currently exists working properly with backend schema alignment AND implement revised requirements for Tasks 1-14
 
 **Scope**:
-1. **Code Review Remediation**: Critical blockers, quality gates, characterization testing
+1. **Code Review Remediation**: Critical blockers, quality gates, characterization testing, database logging
 2. **Backend Schema Alignment**: TypeScript-guided migration for mvp2-revised schema
-3. **Foundation Tasks 1-14**: Complete and stabilize existing functionality
+3. **Foundation Tasks 1-14**: Stabilize existing functionality + implement revised requirements
 4. **Quality Gates**: Zero TypeScript errors, passing tests, secure configuration
 
 **Current State**:
@@ -205,37 +205,68 @@ mcp__context7__get-library-docs({
 - Add: Missing platform-specific configurations
 - Validate: EAS build succeeds on both platforms
 
-### Phase 3: Debt Reduction (Two-Phase Logging)
-🔄 **TWO-PHASE APPROACH**
+### Phase 3: Debt Reduction & Database Logging
+🔄 **TRANCHE 1 SCOPE: COMPLETE LOGGING IMPLEMENTATION**
 
-**CR-3.1: Database Logging System**
+**CR-3.1: Database Logging System (Full Implementation)**
 
-**Phase 1 (Tranche 1): Client-Side Logging**
+**Backend Enhancement** (Coordinate with backend team):
+```sql
+-- Enhance api_logs table with logging best practices
+ALTER TABLE api_logs ADD COLUMN correlation_id UUID;
+ALTER TABLE api_logs ADD COLUMN source TEXT;
+ALTER TABLE api_logs ADD COLUMN context JSONB;
+ALTER TABLE api_logs ADD COLUMN stack_trace TEXT;
+ALTER TABLE api_logs ADD COLUMN session_id UUID;
+ALTER TABLE api_logs ADD COLUMN app_version TEXT;
+ALTER TABLE api_logs ADD COLUMN platform TEXT;
+ALTER TABLE api_logs ADD COLUMN log_category TEXT;
+```
+
+**Mobile LoggingService Implementation**:
 ```typescript
-// Create LoggingService with AsyncStorage
+// Complete LoggingService with Supabase sync
 class LoggingService {
   async log(level: LogLevel, message: string, context?: any) {
-    // Store logs locally in AsyncStorage
-    // Format: { timestamp, level, message, context, correlation_id }
-    // Prepare for future backend sync
+    const logEntry = {
+      timestamp: new Date(),
+      level,
+      message,
+      context,
+      correlation_id: generateCorrelationId(),
+      source: getComponentName(),
+      session_id: getSessionId(),
+      app_version: Constants.expoConfig?.version,
+      platform: Platform.OS,
+      log_category: deriveCategory(context)
+    };
+
+    // Store locally in AsyncStorage (offline support)
+    await AsyncStorage.setItem(`log_${logEntry.correlation_id}`, JSON.stringify(logEntry));
+
+    // Sync to Supabase api_logs table (when online)
+    if (isOnline) {
+      await supabase.from('api_logs').insert(logEntry);
+    }
+  }
+
+  // Background sync for offline logs
+  async syncPendingLogs() {
+    // Sync any logs stored in AsyncStorage to api_logs table
   }
 }
 ```
 
-**Phase 2 (Tranche 2): Backend Sync**
-- Backend enhances api_logs table with best practices fields:
-  - correlation_id (UUID for request tracing)
-  - source (string: which service/component logged)
-  - context (JSONB: structured context data)
-  - stack_trace (text: for errors)
-  - session_id (UUID: user session tracking)
-  - app_version (text: mobile app version)
-  - platform (text: iOS/Android)
-  - log_category (text: auth, sync, deployment, etc.)
-- Mobile LoggingService switches to sync with enhanced api_logs
-- Offline queue for logs when network unavailable
+**Replace console.log Statements**:
+- Convert 486 console.log statements to LoggingService calls
+- Categorize logs: auth, sync, deployment, device, project, error
+- Add appropriate log levels: debug, info, warn, error
+- Include contextual information for debugging
 
-**Rationale**: Get logging working locally now, sync to database later when backend ready
+**Backend Coordination Required**:
+- Enhance api_logs table schema (see SQL above)
+- Confirm RLS policies for api_logs table
+- Update seed data with log_levels if needed
 
 **CR-3.2: Refactor Large Services (Characterization Testing)**
 
