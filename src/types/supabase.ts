@@ -1100,9 +1100,9 @@ export type Database = {
           last_deployment_created: string | null
           last_project_created: string | null
           metadata: Json | null
-          model_manager_count: number | null
           name: string | null
           org_project_admin_count: number | null
+          organisation_manager_count: number | null
           slug: string | null
           updated_at: string | null
         }
