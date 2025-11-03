@@ -34,6 +34,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_sensitivity: {
+        Row: {
+          created_at: string | null
+          deleted_at: string | null
+          description: string
+          id: number
+          is_active: boolean
+          modified_by: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_at?: string | null
+          description: string
+          id?: number
+          is_active?: boolean
+          modified_by: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string
+          id?: number
+          is_active?: boolean
+          modified_by?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       admin_audit_log: {
         Row: {
           action: string
@@ -205,41 +238,338 @@ export type Database = {
           },
         ]
       }
+      ai_model_organisation: {
+        Row: {
+          model_id: string
+          organisation_id: string
+        }
+        Insert: {
+          model_id: string
+          organisation_id: string
+        }
+        Update: {
+          model_id?: string
+          organisation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_model_organisation_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_model_organisation_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "ai_model_organisation_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "ai_model_organisation_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "ai_model_organisation_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_model_organisation_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_model_organisation_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "ai_model_organisation_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["organisation_id"]
+          },
+        ]
+      }
+      ai_models: {
+        Row: {
+          created_at: string | null
+          deleted_at: string | null
+          description: string | null
+          detection_capabilities: string[] | null
+          file_size_bytes: number | null
+          file_type: string | null
+          id: string
+          modified_by: string
+          name: string
+          organisation_id: string
+          storage_path: string
+          updated_at: string | null
+          uploaded_by: string | null
+          version: string
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          detection_capabilities?: string[] | null
+          file_size_bytes?: number | null
+          file_type?: string | null
+          id?: string
+          modified_by: string
+          name: string
+          organisation_id: string
+          storage_path: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+          version: string
+        }
+        Update: {
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          detection_capabilities?: string[] | null
+          file_size_bytes?: number | null
+          file_type?: string | null
+          id?: string
+          modified_by?: string
+          name?: string
+          organisation_id?: string
+          storage_path?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_models_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "ai_models_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "ai_models_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "ai_models_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_models_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_models_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "ai_models_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["organisation_id"]
+          },
+        ]
+      }
       api_logs: {
         Row: {
           api_endpoint: string | null
+          app_version: string | null
+          context: Json | null
+          correlation_id: string | null
           created_at: string | null
+          deleted_at: string | null
           deployment_id: string | null
           device_id: string | null
           id: number
+          log_category: string | null
           log_level_id: number | null
           log_message: string | null
+          organisation_id: string
+          platform: string | null
           project_id: string | null
+          session_id: string | null
+          source: string | null
+          stack_trace: string | null
+          updated_at: string | null
           user_id: string | null
         }
         Insert: {
           api_endpoint?: string | null
+          app_version?: string | null
+          context?: Json | null
+          correlation_id?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           deployment_id?: string | null
           device_id?: string | null
           id?: number
+          log_category?: string | null
           log_level_id?: number | null
           log_message?: string | null
+          organisation_id: string
+          platform?: string | null
           project_id?: string | null
+          session_id?: string | null
+          source?: string | null
+          stack_trace?: string | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
           api_endpoint?: string | null
+          app_version?: string | null
+          context?: Json | null
+          correlation_id?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           deployment_id?: string | null
           device_id?: string | null
           id?: number
+          log_category?: string | null
           log_level_id?: number | null
           log_message?: string | null
+          organisation_id?: string
+          platform?: string | null
           project_id?: string | null
+          session_id?: string | null
+          source?: string | null
+          stack_trace?: string | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "api_logs_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "api_logs_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "api_logs_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "api_logs_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_logs_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_logs_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "api_logs_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "api_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["target_project_id"]
+          },
+          {
+            foreignKeyName: "api_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "api_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "api_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "api_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_api_logs_deployment"
             columns: ["deployment_id"]
@@ -513,33 +843,287 @@ export type Database = {
           },
         ]
       }
+      device_preparation: {
+        Row: {
+          ai_model_id: string | null
+          battery_check_passed: boolean
+          camera_view_test_passed: boolean
+          created_at: string | null
+          deleted_at: string | null
+          device_eui: string | null
+          device_id: string
+          firmware_check_passed: boolean
+          firmware_id: string | null
+          firmware_updated: boolean
+          id: string
+          is_deployment_ready: boolean
+          lorawan_network: string | null
+          lorawan_registration_completed: boolean
+          modified_by: string
+          project_id: string
+          sd_card_check_passed: boolean
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          ai_model_id?: string | null
+          battery_check_passed?: boolean
+          camera_view_test_passed?: boolean
+          created_at?: string | null
+          deleted_at?: string | null
+          device_eui?: string | null
+          device_id: string
+          firmware_check_passed?: boolean
+          firmware_id?: string | null
+          firmware_updated?: boolean
+          id?: string
+          is_deployment_ready?: boolean
+          lorawan_network?: string | null
+          lorawan_registration_completed?: boolean
+          modified_by: string
+          project_id: string
+          sd_card_check_passed?: boolean
+          status: string
+          updated_at?: string | null
+        }
+        Update: {
+          ai_model_id?: string | null
+          battery_check_passed?: boolean
+          camera_view_test_passed?: boolean
+          created_at?: string | null
+          deleted_at?: string | null
+          device_eui?: string | null
+          device_id?: string
+          firmware_check_passed?: boolean
+          firmware_id?: string | null
+          firmware_updated?: boolean
+          id?: string
+          is_deployment_ready?: boolean
+          lorawan_network?: string | null
+          lorawan_registration_completed?: boolean
+          modified_by?: string
+          project_id?: string
+          sd_card_check_passed?: boolean
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_preparation_ai_model_id_fkey"
+            columns: ["ai_model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_preparation_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["device_id"]
+          },
+          {
+            foreignKeyName: "device_preparation_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_preparation_firmware_id_fkey"
+            columns: ["firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_preparation_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["target_project_id"]
+          },
+          {
+            foreignKeyName: "device_preparation_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "device_preparation_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "device_preparation_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "device_preparation_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_preparation_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       devices: {
+        Row: {
+          battery_level: number | null
+          bluetooth_id: string
+          created_at: string | null
+          deleted_at: string | null
+          firmware_id: string | null
+          firmware_last_updated: string | null
+          id: string
+          last_battery_check: string | null
+          last_sd_card_check: string | null
+          modified_by: string
+          name: string
+          organisation_id: string | null
+          sd_card_capacity_total: number | null
+          sd_card_capacity_used: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          battery_level?: number | null
+          bluetooth_id: string
+          created_at?: string | null
+          deleted_at?: string | null
+          firmware_id?: string | null
+          firmware_last_updated?: string | null
+          id?: string
+          last_battery_check?: string | null
+          last_sd_card_check?: string | null
+          modified_by: string
+          name: string
+          organisation_id?: string | null
+          sd_card_capacity_total?: number | null
+          sd_card_capacity_used?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          battery_level?: number | null
+          bluetooth_id?: string
+          created_at?: string | null
+          deleted_at?: string | null
+          firmware_id?: string | null
+          firmware_last_updated?: string | null
+          id?: string
+          last_battery_check?: string | null
+          last_sd_card_check?: string | null
+          modified_by?: string
+          name?: string
+          organisation_id?: string | null
+          sd_card_capacity_total?: number | null
+          sd_card_capacity_used?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "devices_firmware_id_fkey"
+            columns: ["firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devices_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "devices_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "devices_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "devices_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devices_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devices_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "devices_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["organisation_id"]
+          },
+        ]
+      }
+      firmware: {
         Row: {
           created_at: string | null
           deleted_at: string | null
-          device_ref_identifier: string | null
-          firmware_name: string | null
           id: string
-          model: string | null
+          is_active: boolean
+          location_path: string
+          modified_by: string
+          name: string
           updated_at: string | null
+          version: string
         }
         Insert: {
           created_at?: string | null
           deleted_at?: string | null
-          device_ref_identifier?: string | null
-          firmware_name?: string | null
           id?: string
-          model?: string | null
+          is_active?: boolean
+          location_path: string
+          modified_by: string
+          name: string
           updated_at?: string | null
+          version: string
         }
         Update: {
           created_at?: string | null
           deleted_at?: string | null
-          device_ref_identifier?: string | null
-          firmware_name?: string | null
           id?: string
-          model?: string | null
+          is_active?: boolean
+          location_path?: string
+          modified_by?: string
+          name?: string
           updated_at?: string | null
+          version?: string
         }
         Relationships: []
       }
@@ -569,6 +1153,114 @@ export type Database = {
           value?: string
         }
         Relationships: []
+      }
+      lorawan_messages: {
+        Row: {
+          deployment_id: string | null
+          device_eui: string
+          device_id: string | null
+          id: string
+          processed_at: string | null
+          raw_payload: Json
+          received_at: string | null
+        }
+        Insert: {
+          deployment_id?: string | null
+          device_eui: string
+          device_id?: string | null
+          id?: string
+          processed_at?: string | null
+          raw_payload: Json
+          received_at?: string | null
+        }
+        Update: {
+          deployment_id?: string | null
+          device_eui?: string
+          device_id?: string | null
+          id?: string
+          processed_at?: string | null
+          raw_payload?: Json
+          received_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lorawan_messages_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "lorawan_messages_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lorawan_messages_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["device_id"]
+          },
+          {
+            foreignKeyName: "lorawan_messages_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lorawan_parsed_messages: {
+        Row: {
+          battery_level: number | null
+          device_id: string | null
+          id: string
+          lorawan_message_id: string
+          model_output: string | null
+          sd_card_used_capacity: number | null
+        }
+        Insert: {
+          battery_level?: number | null
+          device_id?: string | null
+          id?: string
+          lorawan_message_id: string
+          model_output?: string | null
+          sd_card_used_capacity?: number | null
+        }
+        Update: {
+          battery_level?: number | null
+          device_id?: string | null
+          id?: string
+          lorawan_message_id?: string
+          model_output?: string | null
+          sd_card_used_capacity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lorawan_parsed_messages_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["device_id"]
+          },
+          {
+            foreignKeyName: "lorawan_parsed_messages_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lorawan_parsed_messages_lorawan_message_id_fkey"
+            columns: ["lorawan_message_id"]
+            isOneToOne: false
+            referencedRelation: "lorawan_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organisations: {
         Row: {
@@ -734,63 +1426,90 @@ export type Database = {
       }
       projects: {
         Row: {
+          activity_detection_sensitivity_id: number | null
+          capture_method_id: number | null
           created_at: string | null
           created_by: string | null
           deleted_at: string | null
           description: string | null
-          end_date: string | null
           id: string
+          is_active: boolean
           is_baited: boolean | null
-          is_monitoring_marked_individual: boolean | null
-          is_private: boolean | null
+          is_monitoring_marked_individuals: boolean | null
+          model_id: string | null
+          modified_by: string
           name: string
           organisation_id: string
-          owner_id: string | null
-          privacy_level: string
           project_image: string | null
-          sampling_design: string | null
+          sampling_design_id: number | null
+          timelapse_interval_seconds: number | null
           updated_at: string | null
           website: string | null
         }
         Insert: {
+          activity_detection_sensitivity_id?: number | null
+          capture_method_id?: number | null
           created_at?: string | null
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
-          end_date?: string | null
           id?: string
+          is_active?: boolean
           is_baited?: boolean | null
-          is_monitoring_marked_individual?: boolean | null
-          is_private?: boolean | null
+          is_monitoring_marked_individuals?: boolean | null
+          model_id?: string | null
+          modified_by: string
           name: string
           organisation_id: string
-          owner_id?: string | null
-          privacy_level?: string
           project_image?: string | null
-          sampling_design?: string | null
+          sampling_design_id?: number | null
+          timelapse_interval_seconds?: number | null
           updated_at?: string | null
           website?: string | null
         }
         Update: {
+          activity_detection_sensitivity_id?: number | null
+          capture_method_id?: number | null
           created_at?: string | null
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
-          end_date?: string | null
           id?: string
+          is_active?: boolean
           is_baited?: boolean | null
-          is_monitoring_marked_individual?: boolean | null
-          is_private?: boolean | null
+          is_monitoring_marked_individuals?: boolean | null
+          model_id?: string | null
+          modified_by?: string
           name?: string
           organisation_id?: string
-          owner_id?: string | null
-          privacy_level?: string
           project_image?: string | null
-          sampling_design?: string | null
+          sampling_design_id?: number | null
+          timelapse_interval_seconds?: number | null
           updated_at?: string | null
           website?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_activity_detection_sensitivity_id_fkey"
+            columns: ["activity_detection_sensitivity_id"]
+            isOneToOne: false
+            referencedRelation: "activity_sensitivity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_capture_method_id_fkey"
+            columns: ["capture_method_id"]
+            isOneToOne: false
+            referencedRelation: "capture_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_organisation_id_fkey"
             columns: ["organisation_id"]
@@ -840,6 +1559,13 @@ export type Database = {
             referencedRelation: "project_summary"
             referencedColumns: ["organisation_id"]
           },
+          {
+            foreignKeyName: "projects_sampling_design_id_fkey"
+            columns: ["sampling_design_id"]
+            isOneToOne: false
+            referencedRelation: "sampling_designs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       roles: {
@@ -864,6 +1590,39 @@ export type Database = {
           deleted_at?: string | null
           description?: string
           id?: number
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
+      sampling_designs: {
+        Row: {
+          created_at: string | null
+          deleted_at: string | null
+          description: string
+          id: number
+          is_active: boolean
+          modified_by: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_at?: string | null
+          description: string
+          id?: number
+          is_active?: boolean
+          modified_by: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string
+          id?: number
+          is_active?: boolean
+          modified_by?: string
           updated_at?: string | null
           value?: string
         }
@@ -995,22 +1754,28 @@ export type Database = {
         Row: {
           created_at: string | null
           deleted_at: string | null
+          firstname: string
           id: string
-          name: string
+          modified_by: string
+          surname: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           deleted_at?: string | null
+          firstname: string
           id: string
-          name: string
+          modified_by: string
+          surname: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           deleted_at?: string | null
+          firstname?: string
           id?: string
-          name?: string
+          modified_by?: string
+          surname?: string
           updated_at?: string | null
         }
         Relationships: []
@@ -1040,6 +1805,7 @@ export type Database = {
       }
       deployment_overview: {
         Row: {
+          bluetooth_id: string | null
           created_at: string | null
           created_by_email: string | null
           created_by_name: string | null
@@ -1051,10 +1817,9 @@ export type Database = {
           deployment_photos: Json | null
           deployment_start: string | null
           deployment_status: string | null
-          device_firmware: string | null
           device_id: string | null
-          device_model: string | null
-          device_ref_identifier: string | null
+          device_name: string | null
+          firmware_id: string | null
           geolocation: unknown
           latitude: number | null
           location_name: string | null
@@ -1066,7 +1831,15 @@ export type Database = {
           status_description: string | null
           updated_at: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "devices_firmware_id_fkey"
+            columns: ["firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organisation_members_detailed: {
         Row: {
@@ -1156,78 +1929,105 @@ export type Database = {
       }
       projects_with_stats: {
         Row: {
+          activity_detection_sensitivity_id: number | null
           battery_level: number | null
+          capture_method_id: number | null
           created_at: string | null
           created_by: string | null
           deleted_at: string | null
           deployment_count: number | null
           description: string | null
-          end_date: string | null
           id: string | null
+          is_active: boolean | null
           is_baited: boolean | null
-          is_monitoring_marked_individual: boolean | null
-          is_private: boolean | null
+          is_monitoring_marked_individuals: boolean | null
           lorawan_device_count: number | null
           member_count: number | null
+          model_id: string | null
+          modified_by: string | null
           name: string | null
           organisation_id: string | null
-          owner_id: string | null
-          privacy_level: string | null
           project_image: string | null
-          sampling_design: string | null
+          sampling_design_id: number | null
           sd_card_usage: number | null
+          timelapse_interval_seconds: number | null
           updated_at: string | null
           website: string | null
         }
         Insert: {
+          activity_detection_sensitivity_id?: number | null
           battery_level?: never
+          capture_method_id?: number | null
           created_at?: string | null
           created_by?: string | null
           deleted_at?: string | null
           deployment_count?: never
           description?: string | null
-          end_date?: string | null
           id?: string | null
+          is_active?: boolean | null
           is_baited?: boolean | null
-          is_monitoring_marked_individual?: boolean | null
-          is_private?: boolean | null
+          is_monitoring_marked_individuals?: boolean | null
           lorawan_device_count?: never
           member_count?: never
+          model_id?: string | null
+          modified_by?: string | null
           name?: string | null
           organisation_id?: string | null
-          owner_id?: string | null
-          privacy_level?: string | null
           project_image?: string | null
-          sampling_design?: string | null
+          sampling_design_id?: number | null
           sd_card_usage?: never
+          timelapse_interval_seconds?: number | null
           updated_at?: string | null
           website?: string | null
         }
         Update: {
+          activity_detection_sensitivity_id?: number | null
           battery_level?: never
+          capture_method_id?: number | null
           created_at?: string | null
           created_by?: string | null
           deleted_at?: string | null
           deployment_count?: never
           description?: string | null
-          end_date?: string | null
           id?: string | null
+          is_active?: boolean | null
           is_baited?: boolean | null
-          is_monitoring_marked_individual?: boolean | null
-          is_private?: boolean | null
+          is_monitoring_marked_individuals?: boolean | null
           lorawan_device_count?: never
           member_count?: never
+          model_id?: string | null
+          modified_by?: string | null
           name?: string | null
           organisation_id?: string | null
-          owner_id?: string | null
-          privacy_level?: string | null
           project_image?: string | null
-          sampling_design?: string | null
+          sampling_design_id?: number | null
           sd_card_usage?: never
+          timelapse_interval_seconds?: number | null
           updated_at?: string | null
           website?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_activity_detection_sensitivity_id_fkey"
+            columns: ["activity_detection_sensitivity_id"]
+            isOneToOne: false
+            referencedRelation: "activity_sensitivity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_capture_method_id_fkey"
+            columns: ["capture_method_id"]
+            isOneToOne: false
+            referencedRelation: "capture_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_organisation_id_fkey"
             columns: ["organisation_id"]
@@ -1276,6 +2076,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "project_summary"
             referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_sampling_design_id_fkey"
+            columns: ["sampling_design_id"]
+            isOneToOne: false
+            referencedRelation: "sampling_designs"
+            referencedColumns: ["id"]
           },
         ]
       }
