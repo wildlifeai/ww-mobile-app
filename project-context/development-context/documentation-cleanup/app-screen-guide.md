@@ -177,13 +177,13 @@ This multi-step wizard guides the user through setting up a new camera in the fi
         *   **Cancel**: This button lets the user exit the wizard and go back to the screen the user came from (usually the Maps screen).
         *   **I can't find my device**: Tpping this link shows a pop-up or a message with instructions: "To make your camera discoverable, press the button on the Wildlife Watcher until the blue Bluetooth icon lights up."
 *   **Step 2: Connectivity Setup**
-    *   **What the user sees**: This step is only shown if the camera's LoRaWAN has been preregistered by a WW admin. The progress bar shows the user is on **"Step 2 of 5"**. The name of the associated project (selected in the camera workbench) is displayed at the top of the screen. The screen has a visual indicator (like signal bars) showing the current signal strength and the lorawan network name.
+    *   **What the user sees**: This step is only shown if the camera's LoRaWAN has been preregistered. The progress bar shows the user is on **"Step 2 of 5"**. The name of the associated project (selected in the camera workbench) is displayed at the top of the screen. The screen has a visual indicator (like signal bars) showing the current signal strength and the lorawan network name.
     *   **What the buttons do**:
         *   **Test Signal**: Tapping this button makes the camera send a test signal. The signal strength indicator will update, helping the user find the best physical spot for the camera to ensure it can send updates.
         *   **Back**: Takes the user back to Step 1: Device Selection.
         *   **Next**: Takes the user to Step 3: Camera View & Adjustment.
 *   **Step 3: Camera View & Adjustment**
-    *   **What the user sees**: The progress bar shows the user's current step (either **"Step 2 of 4"** or **"Step 3 of 5"**). If the camera has not been preregistered by a WW admin to use LoRaWAN, the name of the associated project is displayed at the top of the screen along with a message reminding the user that remote updates will not be available. Below that, the screen displays a large image. The first time a user sees this screen there is no photo displayed. 
+    *   **What the user sees**: The progress bar shows the user's current step (either **"Step 2 of 4"** or **"Step 3 of 5"**). If the camera has not been pre-registered to use LoRaWAN, the name of the associated project is displayed at the top of the screen along with a message reminding the user that remote updates will not be available. Below that, the screen displays a large image. The first time a user sees this screen there is no photo displayed. 
     *   **What the buttons do**:
         *   **Take Test Photo**: Tapping this button commands the camera to take a new picture, which then appears on the screen. This allows the user to physically adjust the camera's position and take new photos until the user is happy with the framing and field of view. Test photos are stored in a dedicated "test" folder on the SD card to distinguish them from deployment data.
         *   **Back**: Takes the user to the previous step.
