@@ -54,6 +54,7 @@ export interface CreateProjectInput {
 	name: string
 	description?: string
 	organisation_id: string
+	model_id?: string // AI model selection (optional, added in T-008)
 	privacy_level?: "public" | "internal" | "private"
 	is_baited?: boolean
 	is_monitoring_marked_individual?: boolean

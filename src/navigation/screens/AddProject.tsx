@@ -20,6 +20,7 @@ export const AddProject = () => {
 			organisation_id: "", // Will need to be set from auth context
 			privacy_level: "private",
 			is_baited: false,
+			model_id: undefined,
 		},
 	})
 

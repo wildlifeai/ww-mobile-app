@@ -19,6 +19,7 @@ import { Action, ThunkAction, configureStore } from "@reduxjs/toolkit"
 import { api } from "./api"
 import { enhancedApi } from "./api/enhanced"
 import { projectsApi } from "./api/projectsApi"
+import { aiModelsApi } from "./api/aiModelsApi"
 // import { offlineMiddleware } from "./middleware/offlineMiddleware" // OLD - Replaced by offlineSyncMiddleware
 import { offlineSyncMiddleware } from "./middleware/offlineSyncMiddleware"
 
@@ -27,6 +28,7 @@ const store = configureStore({
 		[api.reducerPath]: api.reducer,
 		[enhancedApi.reducerPath]: enhancedApi.reducer,
 		[projectsApi.reducerPath]: projectsApi.reducer,
+		[aiModelsApi.reducerPath]: aiModelsApi.reducer,
 		devices: devicesReducer,
 		logs: logsReducer,
 		configuration: configurationReducer,
@@ -67,6 +69,7 @@ const store = configureStore({
 			api.middleware,
 			enhancedApi.middleware,
 			projectsApi.middleware,
+			aiModelsApi.middleware,
 			offlineSyncMiddleware.middleware,
 		),
 })

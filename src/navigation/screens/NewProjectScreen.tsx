@@ -23,6 +23,7 @@ import { WWButton } from "../../components/ui/WWButton"
 import { WWCheckbox } from "../../components/ui/WWCheckbox"
 import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { Field } from "../../components/form/Field"
+import { AIModelSelect } from "../../components/form/AIModelSelect"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { useAppSelector } from "../../redux"
 import { selectCurrentOrganisation } from "../../redux/slices/authSlice"
@@ -36,6 +37,7 @@ interface ProjectFormData {
 	is_baited: boolean
 	is_monitoring_marked_individual: boolean
 	website: string
+	model_id?: string
 }
 
 export const NewProjectScreen = () => {
@@ -60,6 +62,7 @@ export const NewProjectScreen = () => {
 			is_baited: false,
 			is_monitoring_marked_individual: false,
 			website: "",
+			model_id: "",
 		},
 	})
 
@@ -88,6 +91,7 @@ export const NewProjectScreen = () => {
 				is_monitoring_marked_individual: data.is_monitoring_marked_individual,
 				sampling_design: data.sampling_design.trim() || undefined,
 				website: data.website.trim() || undefined,
+				model_id: data.model_id || undefined,
 			}
 
 			await createProject(input).unwrap()
@@ -210,6 +214,15 @@ export const NewProjectScreen = () => {
 					>
 						Project Settings
 					</Text>
+
+					{/* AI Model Selection */}
+					<AIModelSelect
+						control={control}
+						name="model_id"
+						organisationId={currentOrganisation?.id || ""}
+						label="AI Model (Optional)"
+						required={false}
+					/>
 
 					{/* Privacy Level Radio Group */}
 					<View style={styles.radioGroup}>
