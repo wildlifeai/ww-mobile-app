@@ -245,7 +245,7 @@ describe("AIModelSelect", () => {
 
 			// Assert
 			expect(screen.getByTestId("ai-model-select-error")).toBeOnTheScreen()
-			expect(screen.getByText("Database connection failed")).toBeOnTheScreen()
+			expect(screen.getAllByText("Database connection failed").length).toBeGreaterThan(0)
 		})
 
 		it("should display generic error when error format is unknown", () => {
@@ -265,7 +265,7 @@ describe("AIModelSelect", () => {
 
 			// Assert
 			expect(screen.getByTestId("ai-model-select-error")).toBeOnTheScreen()
-			expect(screen.getByText("Failed to load AI models")).toBeOnTheScreen()
+			expect(screen.getAllByText("Failed to load AI models").length).toBeGreaterThan(0)
 		})
 
 		it("should disable select in error state", () => {

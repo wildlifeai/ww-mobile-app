@@ -36,8 +36,6 @@ describe("aiModelsApi", () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks()
-		// Reset the mock implementation after clearAllMocks
-		mockGetSupabaseClient.mockReset()
 	})
 
 	describe("getAIModels endpoint", () => {
