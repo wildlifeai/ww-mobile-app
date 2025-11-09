@@ -11,13 +11,18 @@
 import { configureStore } from "@reduxjs/toolkit"
 import { waitFor } from "@testing-library/react-native"
 import { aiModelsApi, useGetAIModelsQuery } from "../aiModelsApi"
-import { getSupabaseClient } from "../../../services/supabase"
 import type { Database } from "../../../types/supabase"
 
 type AIModel = Database["public"]["Tables"]["ai_models"]["Row"]
 
 // Mock Supabase client for controlled testing
-jest.mock("../../../services/supabase")
+// Pattern: Factory function mock (fixes Jest module hoisting issue)
+jest.mock("../../../services/supabase", () => ({
+	getSupabaseClient: jest.fn(),
+}))
+
+// Import after mock to get the mocked version
+import { getSupabaseClient } from "../../../services/supabase"
 
 const mockGetSupabaseClient = getSupabaseClient as jest.MockedFunction<
 	typeof getSupabaseClient

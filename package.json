@@ -62,6 +62,7 @@
     "expo-location": "~17.0.1",
     "expo-splash-screen": "~0.27.7",
     "expo-sqlite": "~14.0.6",
+    "expo-updates": "~0.25.28",
     "lodash.isempty": "^4.4.0",
     "react": "18.2.0",
     "react-hook-form": "^7.54.1",
@@ -82,8 +83,7 @@
     "react-native-toast-message": "^2.2.0",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-vector-icons": "^10.0.3",
-    "react-redux": "^9.1.0",
-    "expo-updates": "~0.25.28"
+    "react-redux": "^9.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
@@ -95,6 +95,7 @@
     "@react-native/typescript-config": "0.74.88",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^12.4.3",
+    "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^30.0.0",
     "@types/react": "~18.2.79",
     "@types/react-native-vector-icons": "^6.4.18",
