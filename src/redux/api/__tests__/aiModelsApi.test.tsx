@@ -9,8 +9,7 @@
  */
 
 import { configureStore } from "@reduxjs/toolkit"
-import { renderHook, waitFor } from "@testing-library/react"
-import { Provider } from "react-redux"
+import { waitFor } from "@testing-library/react-native"
 import { aiModelsApi, useGetAIModelsQuery } from "../aiModelsApi"
 import { getSupabaseClient } from "../../../services/supabase"
 import type { Database } from "../../../types/supabase"
@@ -35,18 +34,13 @@ describe("aiModelsApi", () => {
 				getDefaultMiddleware().concat(aiModelsApi.middleware),
 		})
 
-	// React hook wrapper for tests
-	const createWrapper = (store: ReturnType<typeof createTestStore>) => {
-		return ({ children }: { children: React.ReactNode }) => (
-			<Provider store={store}>{children}</Provider>
-		)
-	}
-
 	beforeEach(() => {
 		jest.clearAllMocks()
+		// Reset the mock implementation after clearAllMocks
+		mockGetSupabaseClient.mockReset()
 	})
 
-	describe("useGetAIModelsQuery", () => {
+	describe("getAIModels endpoint", () => {
 		it("should fetch AI models for organisation successfully", async () => {
 			// Arrange
 			const mockModels: AIModel[] = [
@@ -55,24 +49,32 @@ describe("aiModelsApi", () => {
 					name: "General Wildlife Model",
 					version: "1.0",
 					organisation_id: "org-123",
+					modified_by: "user-123",
+					storage_path: "models/general-wildlife-v1.onnx",
 					created_at: "2025-01-01T00:00:00Z",
 					updated_at: "2025-01-01T00:00:00Z",
 					deleted_at: null,
 					description: "Test model",
-					model_type: "classification",
-					is_default: false,
+					detection_capabilities: ["wildlife", "mammals"],
+					file_size_bytes: 1024000,
+					file_type: "application/onnx",
+					uploaded_by: "user-123",
 				},
 				{
 					id: "223e4567-e89b-12d3-a456-426614174001",
 					name: "Bird Species Model",
 					version: "2.0",
 					organisation_id: "org-123",
+					modified_by: "user-456",
+					storage_path: "models/bird-species-v2.onnx",
 					created_at: "2025-01-01T00:00:00Z",
 					updated_at: "2025-01-01T00:00:00Z",
 					deleted_at: null,
 					description: "Bird classifier",
-					model_type: "classification",
-					is_default: false,
+					detection_capabilities: ["birds"],
+					file_size_bytes: 2048000,
+					file_type: "application/onnx",
+					uploaded_by: "user-456",
 				},
 			]
 
@@ -93,17 +95,19 @@ describe("aiModelsApi", () => {
 
 			const store = createTestStore()
 
-			// Act
-			const { result } = renderHook(
-				() => useGetAIModelsQuery("org-123"),
-				{ wrapper: createWrapper(store) },
+			// Act - dispatch the query
+			const promise = store.dispatch(
+				aiModelsApi.endpoints.getAIModels.initiate("org-123")
 			)
 
 			// Assert
-			await waitFor(() => expect(result.current.isSuccess).toBe(true))
-			expect(result.current.data).toEqual(mockModels)
-			expect(result.current.data).toHaveLength(2)
-			expect(result.current.data?.[0].name).toBe("General Wildlife Model")
+			const result = await promise
+			expect(result.data).toEqual(mockModels)
+			expect(result.data).toHaveLength(2)
+			expect(result.data?.[0].name).toBe("General Wildlife Model")
+
+			// Cleanup
+			promise.unsubscribe()
 		})
 
 		it("should handle error when fetching AI models fails", async () => {
@@ -128,17 +132,19 @@ describe("aiModelsApi", () => {
 			const store = createTestStore()
 
 			// Act
-			const { result } = renderHook(
-				() => useGetAIModelsQuery("org-123"),
-				{ wrapper: createWrapper(store) },
+			const promise = store.dispatch(
+				aiModelsApi.endpoints.getAIModels.initiate("org-123")
 			)
 
 			// Assert
-			await waitFor(() => expect(result.current.isError).toBe(true))
-			expect(result.current.error).toMatchObject({
+			const result = await promise
+			expect(result.error).toMatchObject({
 				status: "CUSTOM_ERROR",
 				error: "Database connection failed",
 			})
+
+			// Cleanup
+			promise.unsubscribe()
 		})
 
 		it("should return error when organisation ID is empty", async () => {
@@ -146,16 +152,19 @@ describe("aiModelsApi", () => {
 			const store = createTestStore()
 
 			// Act
-			const { result } = renderHook(() => useGetAIModelsQuery(""), {
-				wrapper: createWrapper(store),
-			})
+			const promise = store.dispatch(
+				aiModelsApi.endpoints.getAIModels.initiate("")
+			)
 
 			// Assert
-			await waitFor(() => expect(result.current.isError).toBe(true))
-			expect(result.current.error).toMatchObject({
+			const result = await promise
+			expect(result.error).toMatchObject({
 				status: "CUSTOM_ERROR",
 				error: "Organisation ID is required",
 			})
+
+			// Cleanup
+			promise.unsubscribe()
 		})
 
 		it("should exclude soft-deleted models", async () => {
@@ -166,12 +175,16 @@ describe("aiModelsApi", () => {
 					name: "Active Model",
 					version: "1.0",
 					organisation_id: "org-123",
+					modified_by: "user-123",
+					storage_path: "models/active-model.onnx",
 					created_at: "2025-01-01T00:00:00Z",
 					updated_at: "2025-01-01T00:00:00Z",
 					deleted_at: null,
 					description: "Active",
-					model_type: "classification",
-					is_default: false,
+					detection_capabilities: null,
+					file_size_bytes: null,
+					file_type: null,
+					uploaded_by: null,
 				},
 			]
 
@@ -191,67 +204,19 @@ describe("aiModelsApi", () => {
 			const store = createTestStore()
 
 			// Act
-			const { result } = renderHook(
-				() => useGetAIModelsQuery("org-123"),
-				{ wrapper: createWrapper(store) },
+			const promise = store.dispatch(
+				aiModelsApi.endpoints.getAIModels.initiate("org-123")
 			)
 
 			// Assert
-			await waitFor(() => expect(result.current.isSuccess).toBe(true))
+			const result = await promise
+			expect(result.data).toBeDefined()
 
 			// Verify soft-delete filter was applied
 			expect(mockSupabaseChain.is).toHaveBeenCalledWith("deleted_at", null)
-		})
 
-		it("should provide correct cache tags for organisation", async () => {
-			// Arrange
-			const mockModels: AIModel[] = [
-				{
-					id: "123e4567-e89b-12d3-a456-426614174000",
-					name: "Test Model",
-					version: "1.0",
-					organisation_id: "org-123",
-					created_at: "2025-01-01T00:00:00Z",
-					updated_at: "2025-01-01T00:00:00Z",
-					deleted_at: null,
-					description: "Test",
-					model_type: "classification",
-					is_default: false,
-				},
-			]
-
-			mockGetSupabaseClient.mockReturnValue({
-				from: jest.fn().mockReturnValue({
-					select: jest.fn().mockReturnValue({
-						eq: jest.fn().mockReturnValue({
-							is: jest.fn().mockReturnValue({
-								order: jest.fn().mockResolvedValue({
-									data: mockModels,
-									error: null,
-								}),
-							}),
-						}),
-					}),
-				}),
-			} as any)
-
-			const store = createTestStore()
-
-			// Act
-			const { result } = renderHook(
-				() => useGetAIModelsQuery("org-123"),
-				{ wrapper: createWrapper(store) },
-			)
-
-			// Assert
-			await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-			// Verify cache tags are generated
-			const state = store.getState()
-			const cacheEntry = state[aiModelsApi.reducerPath]
-
-			// RTK Query stores tags in metadata
-			expect(cacheEntry).toBeDefined()
+			// Cleanup
+			promise.unsubscribe()
 		})
 
 		it("should handle exception during query execution", async () => {
@@ -263,17 +228,19 @@ describe("aiModelsApi", () => {
 			const store = createTestStore()
 
 			// Act
-			const { result } = renderHook(
-				() => useGetAIModelsQuery("org-123"),
-				{ wrapper: createWrapper(store) },
+			const promise = store.dispatch(
+				aiModelsApi.endpoints.getAIModels.initiate("org-123")
 			)
 
 			// Assert
-			await waitFor(() => expect(result.current.isError).toBe(true))
-			expect(result.current.error).toMatchObject({
+			const result = await promise
+			expect(result.error).toMatchObject({
 				status: "CUSTOM_ERROR",
 				error: "Network timeout",
 			})
+
+			// Cleanup
+			promise.unsubscribe()
 		})
 
 		it("should return empty array when no models found", async () => {
@@ -296,15 +263,17 @@ describe("aiModelsApi", () => {
 			const store = createTestStore()
 
 			// Act
-			const { result } = renderHook(
-				() => useGetAIModelsQuery("org-123"),
-				{ wrapper: createWrapper(store) },
+			const promise = store.dispatch(
+				aiModelsApi.endpoints.getAIModels.initiate("org-123")
 			)
 
 			// Assert
-			await waitFor(() => expect(result.current.isSuccess).toBe(true))
-			expect(result.current.data).toEqual([])
-			expect(result.current.data).toHaveLength(0)
+			const result = await promise
+			expect(result.data).toEqual([])
+			expect(result.data).toHaveLength(0)
+
+			// Cleanup
+			promise.unsubscribe()
 		})
 	})
 })

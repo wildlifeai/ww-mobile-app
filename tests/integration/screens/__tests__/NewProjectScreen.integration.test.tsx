@@ -94,8 +94,9 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				updated_at: "2025-01-01T00:00:00Z",
 				deleted_at: null,
 				description: "General model for wildlife classification",
-				model_type: "classification",
-				is_default: true,
+				modified_by: "user-123",
+					storage_path: "models/test-model.onnx",
+				
 			},
 			{
 				id: "223e4567-e89b-12d3-a456-426614174001",
@@ -106,8 +107,9 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				updated_at: "2025-01-01T00:00:00Z",
 				deleted_at: null,
 				description: "Specialized model for bird species identification",
-				model_type: "classification",
-				is_default: false,
+				modified_by: "user-123",
+					storage_path: "models/test-model.onnx",
+				
 			},
 		]
 
@@ -305,8 +307,9 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				updated_at: "2025-01-01T00:00:00Z",
 				deleted_at: null,
 				description: "Test",
-				model_type: "classification",
-				is_default: false,
+				modified_by: "user-123",
+					storage_path: "models/test-model.onnx",
+				
 			},
 		]
 
@@ -374,8 +377,9 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				updated_at: "2025-01-01T00:00:00Z",
 				deleted_at: null,
 				description: "Valid UUID",
-				model_type: "classification",
-				is_default: false,
+				modified_by: "user-123",
+					storage_path: "models/test-model.onnx",
+				
 			},
 		]
 

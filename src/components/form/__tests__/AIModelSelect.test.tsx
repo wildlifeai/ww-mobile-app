@@ -8,6 +8,7 @@
  * Coverage Target: 80%+ (all states, validation, testIDs)
  */
 
+import "@testing-library/jest-native/extend-expect"
 import React from "react"
 import { render, screen } from "@testing-library/react-native"
 import { useForm } from "react-hook-form"
@@ -89,24 +90,32 @@ describe("AIModelSelect", () => {
 					name: "General Wildlife Model",
 					version: "1.0",
 					organisation_id: "org-123",
+					modified_by: "user-123",
+					storage_path: "models/general-wildlife-v1.onnx",
 					created_at: "2025-01-01T00:00:00Z",
 					updated_at: "2025-01-01T00:00:00Z",
 					deleted_at: null,
 					description: "Test model",
-					model_type: "classification",
-					is_default: false,
+					detection_capabilities: ["wildlife"],
+					file_size_bytes: 1024000,
+					file_type: "application/onnx",
+					uploaded_by: "user-123",
 				},
 				{
 					id: "223e4567-e89b-12d3-a456-426614174001",
 					name: "Bird Species Model",
 					version: "2.0",
 					organisation_id: "org-123",
+					modified_by: "user-456",
+					storage_path: "models/bird-species-v2.onnx",
 					created_at: "2025-01-01T00:00:00Z",
 					updated_at: "2025-01-01T00:00:00Z",
 					deleted_at: null,
 					description: "Bird classifier",
-					model_type: "classification",
-					is_default: false,
+					detection_capabilities: ["birds"],
+					file_size_bytes: 2048000,
+					file_type: "application/onnx",
+					uploaded_by: "user-456",
 				},
 			]
 
@@ -137,12 +146,16 @@ describe("AIModelSelect", () => {
 					name: "Test Model",
 					version: "1.0",
 					organisation_id: "org-123",
+					modified_by: "user-123",
+					storage_path: "models/test-model.onnx",
 					created_at: "2025-01-01T00:00:00Z",
 					updated_at: "2025-01-01T00:00:00Z",
 					deleted_at: null,
 					description: "Test",
-					model_type: "classification",
-					is_default: false,
+					detection_capabilities: null,
+					file_size_bytes: null,
+					file_type: null,
+					uploaded_by: null,
 				},
 			]
 
@@ -289,12 +302,16 @@ describe("AIModelSelect", () => {
 					name: "Test Model",
 					version: "1.0",
 					organisation_id: "org-123",
+					modified_by: "user-123",
+					storage_path: "models/test-model.onnx",
 					created_at: "2025-01-01T00:00:00Z",
 					updated_at: "2025-01-01T00:00:00Z",
 					deleted_at: null,
 					description: "Test",
-					model_type: "classification",
-					is_default: false,
+					detection_capabilities: null,
+					file_size_bytes: null,
+					file_type: null,
+					uploaded_by: null,
 				},
 			]
 
@@ -403,12 +420,16 @@ describe("AIModelSelect", () => {
 					name: "Test Model",
 					version: "1.0",
 					organisation_id: "org-123",
+					modified_by: "user-123",
+					storage_path: "models/test-model.onnx",
 					created_at: "2025-01-01T00:00:00Z",
 					updated_at: "2025-01-01T00:00:00Z",
 					deleted_at: null,
 					description: "Test",
-					model_type: "classification",
-					is_default: false,
+					detection_capabilities: null,
+					file_size_bytes: null,
+					file_type: null,
+					uploaded_by: null,
 				},
 			]
 
