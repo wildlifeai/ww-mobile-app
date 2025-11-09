@@ -899,8 +899,189 @@ Preview Build Preparation:
 ### **Decision-Making Framework**
 - **Discovery Phase:** Always examine existing code before assumptions
 - **Validation Sequence:** Verify interfaces, methods, and contracts
-- **Quality Gates:** Multiple checkpoints with zero-tolerance standards  
+- **Quality Gates:** Multiple checkpoints with zero-tolerance standards
 - **Context Preservation:** Maintain decision context across sessions
+
+### **Risk-Based Task Prioritization** (New in v1.2)
+
+**Discovery Context**: T-010 Security Task Deferral (2025-11-06)
+
+Evidence: 90-minute comprehensive security audit, risk assessment, and evidence-based deferral decision during MVP2 Tranche 1 24-hour sprint
+
+**Problem Statement**:
+Not all P0 (critical priority) tasks require immediate execution. Traditional priority systems lack nuance for development phase, actual exposure, and context-specific risk assessment.
+
+**Core Principle**:
+Priority categories (P0/P1/P2) indicate importance, not urgency. Execution timing should be determined by evidence-based risk assessment considering development context, actual exposure surface, time constraints, and available mitigation strategies.
+
+**Risk Assessment Framework**:
+```yaml
+Context Dimensions:
+  Development Phase:
+    - Local Development: Lower risk tolerance, rapid iteration priority
+    - Preview/Staging: Medium risk, team testing focus
+    - Production: Zero tolerance, immediate execution mandatory
+
+  Exposure Surface:
+    - Private (gitignored, local filesystem): Lower risk
+    - Team-Shared (coordination systems): Medium risk
+    - Public (committed to repo, cloud-deployed): High risk
+    - Production (end-user accessible): Critical risk
+
+  Time Constraints:
+    - Sprint Deadlines: Consider opportunity cost vs risk
+    - Milestone Pressure: Balance delivery vs security
+    - Resource Availability: Factor in execution capacity
+
+  Mitigation Options:
+    - Monitoring Available: Dashboard alerts, API usage tracking
+    - Quick Response Capability: <1 hour remediation possible
+    - Rollback Options: Can revert changes if issues arise
+    - Partial Protections: Existing security measures (RLS, gitignore)
+
+Decision Matrix:
+  Execute Immediately:
+    - Production exposure + High risk + No mitigation
+    - Public repository + Credentials exposed
+    - Active exploitation detected
+    - Regulatory compliance requirement
+
+  Defer with Monitoring:
+    - Development phase + Private exposure + Monitoring available
+    - Low actual risk despite high priority category
+    - Sprint deadline pressure + Acceptable risk level
+    - Comprehensive research complete (fast execution ready)
+
+  Schedule for Milestone:
+    - Medium risk + Upcoming production deployment
+    - Pre-production quality gate requirement
+    - External testing before execution trigger
+    - Team capacity available at milestone
+```
+
+**T-010 Case Study** (Exemplar Implementation):
+```yaml
+Task: Remove hardcoded API keys and migrate to EAS secrets
+Original Priority: P0 (Critical Security)
+Decision: DEFERRED to Pre-Production
+Time Saved: 1.5 hours → Reinvested in critical path tasks
+
+Risk Assessment:
+  Exposure Surface: Private (gitignored .env.local file)
+  Development Phase: Local development only (no external builds)
+  Actual Risk: LOW
+    - Keys NOT in git repository
+    - Keys NOT publicly accessible
+    - Keys only on developer's local machine
+    - Requires physical access or backup compromise
+
+  Mitigation Available:
+    - API usage monitoring (Anthropic, Google dashboards)
+    - RLS protects Supabase data
+    - Quick response plan: 5-min key rotation if suspicious activity
+
+  Time Constraints:
+    - 24-hour MVP2 Tranche 1 sprint deadline
+    - Critical path blockers require immediate attention (T-011, T-012, T-016)
+    - 1.5 hours opportunity cost for low-risk task
+
+  Research Investment: 90 minutes PRESERVED
+    - Comprehensive security audit documented
+    - 10-part implementation guide created
+    - Execution plan ready (15-min execution when triggered)
+    - No wasted effort - accelerates future execution
+
+Deferral Triggers (When to Execute):
+  1. First EAS preview build (distributing to external testers)
+  2. Pre-production security audit
+  3. Unexpected API usage detected (monitoring alert)
+  4. End of sprint with extra capacity
+  5. Before app store submission
+
+Outcome:
+  - 1.5 hours saved during critical sprint
+  - Zero security incidents (validated low-risk assessment)
+  - Comprehensive research preserved for future execution
+  - Fast-track execution ready (15 min vs 90 min with research)
+  - Framework learning captured for future P0 triage
+```
+
+**Application Guidelines**:
+```yaml
+When to Apply Risk-Based Prioritization:
+  - P0 task appears during time-constrained sprint
+  - Security issue flagged but actual exposure unclear
+  - Multiple critical tasks competing for resources
+  - Comprehensive research reveals lower actual risk than category suggests
+
+Workflow:
+  1. Evidence-Based Research:
+     - Perform security audit (identify actual exposure)
+     - Assess development phase context
+     - Evaluate available monitoring/mitigation
+     - Document findings comprehensively
+
+  2. Risk Assessment:
+     - Apply decision matrix dimensions
+     - Calculate actual risk (not just category)
+     - Consider time constraints and opportunity cost
+     - Identify execution triggers
+
+  3. Deferral Decision (if justified):
+     - Document risk assessment rationale
+     - Define clear execution triggers
+     - Preserve research deliverables
+     - Create fast-track execution plan
+     - Establish monitoring/alerting
+
+  4. Reinvestment Strategy:
+     - Redirect time to higher-impact tasks
+     - Focus on critical path blockers
+     - Maintain sprint momentum
+     - Track deferral outcomes for learning
+
+Success Criteria:
+  - Zero security incidents during deferral period
+  - Time savings reinvested productively
+  - Research accelerates future execution
+  - Team maintains delivery momentum
+  - Framework learning captured
+```
+
+**Benefits & Measured Impact**:
+- **Time Savings**: 1.5 hours immediate (T-010 example)
+- **Risk Management**: Evidence-based assessment vs category-based assumption
+- **Sprint Velocity**: Focus on critical path without compromising security
+- **Research Value**: Comprehensive investigation preserved (not wasted)
+- **Fast Execution**: 15-min execution vs 90-min from scratch (6x improvement)
+- **Framework Evolution**: New pattern for future P0 triage decisions
+
+**Integration with Existing AADF Patterns**:
+- **Evidence-Based Development**: Risk assessment backed by comprehensive research
+- **Quality Gates**: Deferral doesn't compromise quality, just optimizes timing
+- **Context Preservation**: Research deliverables preserved for future execution
+- **Sprint Management**: Balances security with delivery velocity
+- **Learning Integration**: Deferral decisions contribute to framework evolution
+
+**Anti-Patterns to Avoid**:
+- ❌ Deferring based on convenience without risk assessment
+- ❌ Ignoring actual exposure surface (assuming category = urgency)
+- ❌ Discarding research work done during assessment
+- ❌ Deferring without clear execution triggers
+- ❌ Missing monitoring setup during deferral period
+
+**Success Indicators**:
+- Deferral decisions backed by documented risk assessment
+- Zero security incidents during deferral periods
+- Time savings reinvested in critical path tasks
+- Research preserved for fast future execution
+- Framework learnings captured systematically
+
+**Cross-References**:
+- T-010 Security Audit: `@project-context/investigation/aadf-work-smart/2025-11-06-T010-security-audit-findings.md`
+- T-010 Execution Plan: `@project-context/investigation/aadf-work-smart/2025-11-06-T010-execution-plan.md`
+- T-010 Deferral Decision: `@project-context/investigation/aadf-work-smart/2025-11-06-T010-DEFERRED.md`
+- T-010 Investigation Archive: `@project-context/investigation/aadf-work-smart/README.md`
 
 ### **Learning Integration**
 - **Session Memory:** Preserve implementation decisions and context
@@ -955,7 +1136,7 @@ claude mcp add supabase-mcp uvx supabase-mcp start
 - **Context Continuity:** Session-to-session knowledge preservation
 - **Scalable Architecture:** Framework applicable across project types and scales
 
-**Measured Efficiency Gains (Oct 2025 Data):**
+**Measured Efficiency Gains (Oct-Nov 2025 Data):**
 ```yaml
 TypeScript Error Triage:
   Metric: +28% to +52% efficiency improvement
@@ -986,6 +1167,12 @@ Agent Reusability:
   Context: Repo-agnostic design patterns
   Measured: Same agents work in backend + mobile + future projects
   Impact: -60% agent development time, 95% error reduction
+
+Risk-Based Task Prioritization:
+  Metric: 1.5 hours saved, 6x faster future execution
+  Context: T-010 P0 security task deferral
+  Measured: 90 min research preserved → 15 min execution when triggered
+  Impact: Sprint velocity maintained, zero security incidents, comprehensive research not wasted
 ```
 
 ### **Success Indicators** (Enhanced v1.1)
@@ -1065,12 +1252,13 @@ Agent Reusability:
 
 ## 📝 Changelog
 
-### v1.2 (2025-10-29)
+### v1.2 (2025-10-29 - Updated 2025-11-06)
 **Major Updates:**
 - ✅ Added TypeScript Error Triage Workflow Integration (Quality Control Framework enhancement)
 - ✅ Added Code Review Integration Patterns (CR-X.X tracking system, 3-phase review process)
 - ✅ Added Dashboard Development Methodology (metrics-driven visual progress tracking)
 - ✅ Added Pre-Phase Quality Gates (zero TypeScript errors before phase start)
+- ✅ Added Risk-Based Task Prioritization (Evidence-Based Development enhancement) **NEW 2025-11-06**
 - ✅ Enhanced Multi-Environment Workflow with code review integration
 - ✅ Updated Performance Metrics with Nov 2025 measured data
 
@@ -1080,11 +1268,13 @@ Agent Reusability:
 - Dashboard Context Switching: 90% reduction in context switching time
 - Code Review Coverage: 100% systematic tracking with CR-X.X system
 - Pre-Phase Quality: Zero TypeScript errors baseline before major phases
+- Risk-Based Task Prioritization: 1.5 hours saved, 6x faster future execution **NEW 2025-11-06**
 
 **Cross-References Added:**
 - TypeScript Error Triage Workflow: `@project-context/learnings/typescript-error-triage-workflow.md`
 - Dashboard Framework: `@project-context/learnings/aadf-cross-project-dashboard-framework.md`
 - Code Review Evidence: Commits 6b1da48 (security), edf07e1 (pre-phase), 15 code-review commits
+- Risk-Based Task Prioritization: T-010 investigation archive `@project-context/investigation/aadf-work-smart/` **NEW 2025-11-06**
 
 **Command Suite Expansion:**
 - ✅ New Command: `/aadf-update-learnings` (automate learning discovery from git history)

@@ -267,7 +267,7 @@ class LoggingService {
 - Enhance api_logs table schema (see SQL above)
 - Confirm RLS policies for api_logs table
 - Update seed data with log_levels if needed
-
+[text](../../../../assets)
 **CR-3.2: Refactor Large Services (Characterization Testing)**
 
 **Strategy**: Prevent regression during refactoring
