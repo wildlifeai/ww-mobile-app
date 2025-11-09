@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 2. **NEVER save working files, text/mds and tests to the root folder**
 3. ALWAYS organize files in appropriate subdirectories
 4. **MANDATORY**: Follow Evidence-Based Development - verify assumptions with Context7 research FIRST
+5. **MANDATORY**: Use Wildlife Watcher project-specific agents and slash commands FIRST - generic agents ONLY with explicit justification
 
 ### ⚡ GOLDEN RULE: "1 MESSAGE = ALL RELATED OPERATIONS"
 
@@ -1418,6 +1419,40 @@ uvx --from git+https://github.com/oraios/serena serena start-mcp-server
 **Production Readiness**: 95%
 **Documentation**: `@project-context/investigation/aadf-work-smart/2025-11-09-PHASE-1-P0-MVP-COMPLETION-REPORT.md`
 
+### 🔴 CRITICAL USAGE RULE: Project-Specific Agents ALWAYS Take Priority
+
+**MANDATORY AGENT SELECTION HIERARCHY**:
+
+1. **FIRST**: Use Wildlife Watcher project-specific agents (`ww-aadf-mobile-*` and `/ww-aadf-mobile-*` commands)
+2. **SECOND**: Use generic agents ONLY if:
+   - No project-specific agent exists for the task
+   - Explicit justification provided to user
+   - User explicitly approves generic agent usage
+
+**Violation Policy**: Using generic agents without justification is a **CRITICAL ERROR** equivalent to bypassing quality gates.
+
+**Examples**:
+- ✅ **CORRECT**: `/ww-aadf-mobile-validate` for quality gate validation
+- ❌ **WRONG**: Using generic `quality-assurance-engineer` agent without justification
+- ✅ **CORRECT**: `/ww-aadf-mobile-implement` for feature implementation
+- ❌ **WRONG**: Using generic `coder` agent without justification
+- ✅ **CORRECT**: Inform user if no project-specific agent exists and request approval for generic agent
+
+**Justification Template** (when generic agent is necessary):
+```
+NOTICE: Using generic agent [agent-name] because:
+- No project-specific agent exists for [specific capability]
+- Project-specific agent [ww-aadf-mobile-X] does not cover [specific requirement]
+- Awaiting user approval to proceed with generic agent
+```
+
+**Evidence**: Project-specific agents contain:
+- Wildlife Watcher architecture context (App.tsx layers, Redux, offline-first)
+- 13 quality gates enforcement (T-008 prevention)
+- Context7 research integration (10x efficiency)
+- Testing strategy (REAL Supabase only)
+- Type synchronization (5-layer defense)
+
 ### Overview
 
 Specialized agent ecosystem for enforcing quality gates, preventing type drift, and orchestrating TDD/BDD workflows. All agents created with proper Claude Code formatting (YAML frontmatter) and comprehensive specifications.
@@ -1489,6 +1524,41 @@ Specialized agent ecosystem for enforcing quality gates, preventing type drift, 
 # Check offline-first coverage
 /ww-aadf-mobile-check-offline all
 ```
+
+### Agent Selection Decision Tree
+
+**Before spawning ANY agent, follow this decision tree**:
+
+```
+START
+  ↓
+Is task related to: quality gates, type sync, offline-first, testing, or feature implementation?
+  ↓ YES
+Use appropriate /ww-aadf-mobile-* command or ww-aadf-mobile-* agent
+  ↓ DONE
+  ↓ NO
+Does a project-specific agent exist for this task category?
+  ↓ YES
+Use project-specific agent with full context
+  ↓ DONE
+  ↓ NO
+STOP → Inform user: "No project-specific agent for [task]. Request approval for generic agent [name]?"
+  ↓ USER APPROVES
+Use generic agent + document justification
+  ↓ DONE
+```
+
+**Common Task Mappings** (ALWAYS use project-specific agents for these):
+
+| Task Category | Use This Agent/Command | NOT Generic Agent |
+|---------------|------------------------|-------------------|
+| Quality validation | `/ww-aadf-mobile-validate` | ❌ quality-assurance-engineer |
+| Feature implementation | `/ww-aadf-mobile-implement` | ❌ coder, implementation-expert |
+| Code review | `/ww-aadf-mobile-review` | ❌ code-analyzer, reviewer |
+| Testing | `/ww-aadf-mobile-test` | ❌ tester, quality-assurance-engineer |
+| Type synchronization | `/ww-aadf-mobile-fix-types` | ❌ type-guardian (generic) |
+| Offline-first validation | `/ww-aadf-mobile-check-offline` | ❌ architecture agent (generic) |
+| Cross-project coordination | `ww-aadf-coordinator` | ❌ project-coordinator (generic) |
 
 ### Key Benefits
 
