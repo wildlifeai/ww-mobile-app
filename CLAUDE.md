@@ -1459,27 +1459,27 @@ Specialized agent ecosystem for enforcing quality gates, preventing type drift, 
 
 ### P0 Mobile Agents (5)
 
-1. **ww-aadf-mobile-quality-enforcer** (.claude/agents/specialized/mobile/)
+1. **ww-aadf-mobile-quality-enforcer** (.claude/agents/ww-mobile-agents/)
    - Enforce all 13 quality gates before commits and PR merges
    - Blocking enforcement (no bypasses without approval)
    - Pre-commit hook + GitHub Actions + manual review integration
 
-2. **ww-aadf-mobile-type-guardian** (.claude/agents/specialized/mobile/)
+2. **ww-aadf-mobile-type-guardian** (.claude/agents/ww-mobile-agents/)
    - Prevent type drift across environments (local, cloud-dev, cloud-prod)
    - 5-layer defense strategy (99% prevention rate)
    - Breaking change detection and validation
 
-3. **ww-aadf-mobile-offline-validator** (.claude/agents/specialized/mobile/)
+3. **ww-aadf-mobile-offline-validator** (.claude/agents/ww-mobile-agents/)
    - Validate offline-first coverage (current: 10%, target: 100%)
    - Service-by-service compliance analysis
    - Migration priority and effort estimation
 
-4. **ww-aadf-mobile-test-architect** (.claude/agents/specialized/mobile/)
+4. **ww-aadf-mobile-test-architect** (.claude/agents/ww-mobile-agents/)
    - Orchestrate TDD/BDD testing strategy
    - REAL Supabase testing only (no mocks policy)
    - Integration tests FIRST, then unit, then E2E
 
-5. **ww-aadf-mobile-implementation-expert** (.claude/agents/specialized/mobile/)
+5. **ww-aadf-mobile-implementation-expert** (.claude/agents/ww-mobile-agents/)
    - End-to-end feature implementation
    - Context7 research FIRST (proven 10x efficiency)
    - Quality gates enforced from start
