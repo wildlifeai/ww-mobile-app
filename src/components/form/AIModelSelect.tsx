@@ -9,6 +9,8 @@
  * - Empty state handling
  * - Optional "None" selection
  * - Integration with react-hook-form Controller
+ * - UUID validation for model IDs
+ * - Accessibility testID props for E2E testing
  */
 
 import { Control, FieldPath, FieldValues } from "react-hook-form"
@@ -19,6 +21,15 @@ import { useGetAIModelsQuery } from "../../redux/api/aiModelsApi"
 import type { Database } from "../../types/supabase"
 
 type AIModel = Database["public"]["Tables"]["ai_models"]["Row"]
+
+/**
+ * UUID validation helper
+ * Validates UUID v4 format (8-4-4-4-12 hexadecimal pattern)
+ */
+const isValidUUID = (uuid: string): boolean => {
+	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+	return uuidRegex.test(uuid)
+}
 
 interface AIModelSelectProps<
 	TFieldValues extends FieldValues = FieldValues,
@@ -70,6 +81,7 @@ export const AIModelSelect = <
 						label={label}
 						options={[{ label: "None", value: "" }]}
 						disabled={true}
+						testID="ai-model-select-empty"
 					/>
 				)}
 			</Field>
@@ -99,6 +111,7 @@ export const AIModelSelect = <
 						disabled={true}
 						hasError={true}
 						errorText={errorMessage}
+						testID="ai-model-select-error"
 					/>
 				)}
 			</Field>
@@ -117,12 +130,13 @@ export const AIModelSelect = <
 			>
 				{(field) => (
 					<>
-						<ActivityIndicator size="small" />
+						<ActivityIndicator size="small" testID="ai-model-select-loading" />
 						<WWSelect
 							{...field}
 							label={label}
 							options={[{ label: "Loading...", value: "" }]}
 							disabled={true}
+							testID="ai-model-select-loading-placeholder"
 						/>
 					</>
 				)}
@@ -137,6 +151,16 @@ export const AIModelSelect = <
 			name={name}
 			label={label}
 			required={required}
+			rules={{
+				validate: (value) => {
+					// Allow empty value if not required
+					if (!value || value === "") {
+						return required ? "AI Model is required" : true
+					}
+					// Validate UUID format
+					return isValidUUID(value) || "Invalid AI model selection"
+				},
+			}}
 		>
 			{(field) => (
 				<WWSelect
@@ -144,6 +168,7 @@ export const AIModelSelect = <
 					label={label}
 					options={options}
 					disabled={false}
+					testID="ai-model-select-dropdown"
 				/>
 			)}
 		</Field>
