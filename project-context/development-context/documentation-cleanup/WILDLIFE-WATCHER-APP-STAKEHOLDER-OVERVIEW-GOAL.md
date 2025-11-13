@@ -52,6 +52,7 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 - ✅ **Work Anywhere, Sync Later**: Complete all tasks in remote locations without an internet connection. Data syncs to the cloud automatically when connectivity returns.
 - ✅ **Remote Camera Health Monitoring**: Receive crucial in-field updates on battery life and SD card space via LoRaWAN to prevent failed deployments.
 - ✅ **Secure Team Collaboration**: Work with your team in a secure, isolated organization. Robust permissions ensure data is only seen by authorized users.
+- ✅ **Standardized Data Collection**: Set the project-wide capture method (motion detection or time-lapse) once, ensuring all deployments under that project follow the same protocol.
 
 
 ### Mobile App Features
@@ -65,6 +66,7 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 **For Project Admins**:
 - Invite team members and assign roles
 - Track deployment status across field sites
+- Select project capture method (motion detection or time-lapse)
 - Select AI models for camera detection
 - Monitor team activities
 
@@ -220,6 +222,7 @@ Organization: Serengeti Conservation Trust
 │  │  ├─ Creates the project
 │  │  ├─ Invites 3 field assistants as Project Members
 │  │  ├─ Assigns "Lion Detection v2.3" model
+│  │  ├─ Sets capture method to "Motion Detection"
 │  │  └─ Monitors team deployment progress
 │  │
 │  └─ Project Members: Sarah, Mike, Lisa
@@ -362,6 +365,8 @@ Organization: Serengeti Conservation Trust
 **Current State**: ✅ COMPLETE (Task 12)
 - Simple project creation form
 - Project name and description
+- Select capture method (Motion Detection or Timelapse and Motion Sensor Sensitivity: High, Medium, Low)
+- Select ML model
 - Creator becomes Project Admin automatically
 - Offline project creation supported
 - Auto-sync when online
@@ -399,7 +404,9 @@ Organization: Serengeti Conservation Trust
 **Description**: See detailed information about a specific project
 
 **Current State**: ✅ COMPLETE (Task 12 Phase 4)
-- Project name, description, organization and visibilty
+- Project name, description and organization
+- Capture method (Motion Detection or Timelapse)
+- Assigned ML model
 - "Manage Members" button
 - "Start New Deployment" button
 - Deployment list view
@@ -417,8 +424,10 @@ Organization: Serengeti Conservation Trust
 **Description**: Update project information (Project Admin only)
 
 **Current State**: ⏳ PENDING (Task 14)
-- Edit project name, description and visibility
-- Update project settings
+- Edit project name and description
+- Update capture method
+- Update ML model
+- Manage project members
 - Only Project Admin can edit
 
 **Intended State**: Same as planned
@@ -524,8 +533,8 @@ Organization: Serengeti Conservation Trust
 - **Step 3: Camera View & Adjustment**: Use a test photo preview from the camera to physically adjust its position and field of view until satisfied.
 - **Data Management**: Photos taken during this step are for temporary preview only and must be deleted from the app and the device's SD card to conserve space.
 - **Step 4: Location**: Set the deployment's GPS coordinates on a map, name the site, and take a photo of the deployed camera *with the phone* to help with later retrieval.
-- **Data Management**: Photos taken during this step are stored in the mobile phone so that they can be displayed at a later time for finding the Wildlife Watcher.
-- **Step 5: Deployment Details**: Configure the deployment name, project, start time, and capture method, including an option to enable/disable the ML model for LoRaWAN notifications.
+- **Data Management**: Photos of the camera setup are taken with the user's phone and stored locally to assist with later retrieval.
+- **Step 5: Deployment Details**: Configure the deployment name, project, and start time, including an option to enable/disable the ML model for LoRaWAN notifications. The capture method is inherited from the selected project.
 - **Step 6: Confirmation & Submit**: Review a summary of all entered information and submit to finalize the deployment, which configures the camera and saves the record.
 
 **Intended State**: Same as planned
@@ -585,7 +594,7 @@ Organization: Serengeti Conservation Trust
 **Current State**: ⏳ PENDING
 - All deployment details from wizard
 - GPS coordinates with map view
-- Sampling design settings
+- Capture method (inherited from project)
 - Camera device information with battery status and sd card information if deployment active and connected to lorawan
 - "End Deployment" button for active deployments.
 
@@ -999,7 +1008,8 @@ The app uses a hierarchical permission system (like organizational charts):
 
 **Projects** (Research initiatives)
 - Project name, description, goals
-- **Beta Version Note**: Visibility is set to "Visible only for project members" by default in the backend.
+- **Sampling Design**: The capture method for all deployments in the project (e.g., Motion Detection or Timelapse).
+- **Beta Version Note**: Project visibility is set to "Visible only for project members" by default in the backend.
 - **Future Enhancement**: Project Admins will be able to set visibility to "Visible for project and organization members" or "Publicly visible".
 - Creation date, last update, project owner
 - Organization link (automatic isolation)
@@ -1008,7 +1018,6 @@ The app uses a hierarchical permission system (like organizational charts):
 **Deployments** (Camera instances in the field)
 - Deployment name, start/end dates
 - GPS coordinates with professional mapping (PostGIS)
-- Sampling design (motion detection vs timelapse)
 - Link to project, device, and creator
 - **Setup Photo**: A photo of the deployed camera setup, taken with the user's phone to help with retrieval.
 - *Example record*: "Water Hole #3" - Active since Jan 10, 2025, GPS: -2.3333, 34.8333
@@ -1083,6 +1092,7 @@ The app uses a hierarchical permission system (like organizational charts):
 #### When you create a project:
 - **Stored in**: `projects` table
 - **Linked to**: Your organization automatically (via organization_id)
+- **Configuration**: Sets the project-wide capture method (sampling design).
 - **Security (Beta)**: Visibility is defaulted to "Visible only for project members". **(Future)** This will be controlled by the Project Admin and enforced by RLS.
 - **Tracked**: Creation date, last update, creator name
 - **Offline**: Saved locally first, synced to cloud when online
@@ -1092,7 +1102,7 @@ The app uses a hierarchical permission system (like organizational charts):
 - **Linked to**: Project, device, creator (all verified permissions)
 - **Location**: PostGIS coordinates + human-readable address
 - **Security**: Only project members can see (project_id RLS policy)
-- **Tracked**: Start date, status, sampling design, bait station info
+- **Tracked**: Start date, status, bait station info
 - **Geographic**: Searchable by distance, proximity, map region
 
 #### When you add a team member:
