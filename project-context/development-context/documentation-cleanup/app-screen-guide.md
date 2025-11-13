@@ -20,7 +20,7 @@
 3.  [Core Workflows](#3-core-workflows)
     -   [Start Deployment Wizard](#start-deployment-wizard)
     -   [End Deployment Flow](#end-deployment-flow)
-    -   [Prepare and Test (Camera Workbench)](#prepare-and-test-camera-workbench)
+    -   [Prepare and Test Nearby Devices](#prepare-and-test-nearby-devices)
 4.  [Detail Screens](#4-detail-screens)
     -   [Project Details Screen](#project-details-screen)
     -   [Deployment Details Screen](#deployment-details-screen)
@@ -31,6 +31,7 @@
     -   [Profile Screen](#profile-screen)
     -   [Settings Screen](#settings-screen)
 5.  [Side Drawer Menu](#5-side-drawer-menu)
+6.  [Engineering Tools](#6-engineering-tools)
 
 ---
 
@@ -151,10 +152,12 @@ This is the user's hardware management center, where the user can see the status
     *   A list of all cameras associated with the projects the user is a member of. Each camera is shown as a "card" with its name and status ("Deployed" or "Available").
     *   For deployed cameras, the card also shows the project it's in and its last known battery level and key operational statistics.
     *   A prominent button labeled **"Prepare and Test Nearby Devices"**.
+    *   A smaller, secondary button labeled **"Engineer Nearby Devices"**.
 
 *   **What the buttons do**:
     *   **Device Card**: Tapping on any camera card in the list takes the user to the **[Device Details Screen](#device-details-screen)** for that specific camera.
-    *   **Prepare and Test Nearby Devices**: Tapping this button will make the app scan for any Wildlife Watcher cameras nearby that are *not* currently deployed. Selecting one takes the user to the **[Camera Workbench](#prepare-and-test-camera-workbench)** screen.
+    *   **Prepare and Test Nearby Devices**: Tapping this button will make the app scan for any Wildlife Watcher cameras nearby that are *not* currently deployed. Selecting one takes the user to the **[Prepare and Test Nearby Devices](#prepare-and-test-camera-workbench)** screen.
+    *   **Engineer Nearby Devices**: This button opens the **[Engineer Console](#engineer-console)**, a tool for developers to directly interact with the camera hardware.
 
 ---
 
@@ -172,7 +175,7 @@ This multi-step wizard guides the user through setting up a new camera in the fi
         *   A signal strength icon (like Wi-Fi bars) showing how strong the connection is.
     *   If no devices are found, a message "No devices found" is displayed, along with a link labelled **"I can't find my device"**.
     *   **What the buttons do**:
-        *   **Camera in the list**: Tapping on a camera from the list shows a loading indicator while the app attempts to connect. If the connection fails, an error message with a "Retry" button will appear. If device is associated with a project the user isn't member of the app does not connect to the device and displays a message: "To use this device with its current project, ask the Project Admin to add you as a member.". If successful, the app checks the camera's status. If the device has not been prepared or is not associated with a project, the user will be redirected to the **[Prepare and Test (Camera Workbench)](#prepare-and-test-camera-workbench)** flow first. After the user finishes preparing the device, the user will be returned to the wizard to continue the deployment. If the device is ready and registered for LoRaWAN, the user will proceed to **Step 2: Connectivity Setup**. If the device is ready but *not* registered for LoRaWAN, the user will skip Step 2 and go directly to **Step 3: Camera View & Adjustment**.
+        *   **Camera in the list**: Tapping on a camera from the list shows a loading indicator while the app attempts to connect. If the connection fails, an error message with a "Retry" button will appear. If device is associated with a project the user isn't member of the app does not connect to the device and displays a message: "To use this device with its current project, ask the Project Admin to add you as a member.". If successful, the app checks the camera's status. If the device has not been prepared or is not associated with a project, the user will be redirected to the **[Prepare and Test (Prepare and Test Nearby Devices)](#prepare-and-test-camera-workbench)** flow first. After the user finishes preparing the device, the user will be returned to the wizard to continue the deployment. If the device is ready and registered for LoRaWAN, the user will proceed to **Step 2: Connectivity Setup**. If the device is ready but *not* registered for LoRaWAN, the user will skip Step 2 and go directly to **Step 3: Camera View & Adjustment**.
         *   **Refresh/Scan Again**: A button that lets the user re-scan for nearby cameras if the user doesn't see the one the user is looking for.
         *   **Cancel**: This button lets the user exit the wizard and go back to the screen the user came from (usually the Maps screen).
         *   **I can't find my device**: Tpping this link shows a pop-up or a message with instructions: "To make your camera discoverable, press the button on the Wildlife Watcher until the blue Bluetooth icon lights up."
@@ -225,19 +228,19 @@ This 2-step wizard guides the user through retrieving a camera from the field an
         *   **Back**: Takes the user back to the Device Selection screen.
         *   **End Deployment**: This is the final button. Tapping it marks the deployment as "Ended", stops the camera from recording new images, makes the camera available for a new deployment, and takes the user to the **Deployment Details Screen** to see the final summary.
 
-### Prepare and Test (Camera Workbench)
+### Prepare and Test Nearby Devices
 
 This is a 2-step process for checking and configuring a camera *before* the user takes it out for deployment. The user can start this flow from the **Devices Screen** or be redirected here from the **Start Deployment Wizard** if the user selects an unprepared camera.
 
 *   **Step 1: Device Selection**
     *   **What the user sees**: This screen is identical to the first step of the **Start Deployment Wizard**. It takes over the full screen and shows a list of nearby Wildlife Watcher cameras that the app detects via Bluetooth.
     *   **What the buttons do**:
-        *   **Camera in the list**: Tapping on a camera from the list selects it and attempts to connect. The app then verifies that this camera is not part of an active deployment and connects to it. If not, the app does not connect to the device and displays a message: "To prepare and test this device stop the active deployment this camera is associated with.". Upon successful connection, the user is taken to the **Step 2: Camera Workbench**.
+        *   **Camera in the list**: Tapping on a camera from the list selects it and attempts to connect. The app then verifies that this camera is not part of an active deployment and connects to it. If not, the app does not connect to the device and displays a message: "To prepare and test this device stop the active deployment this camera is associated with.". Upon successful connection, the user is taken to the **Step 2: Prepare and Test Nearby Devices**.
         *   **Refresh/Scan Again**: A button that lets the user re-scan for nearby cameras.
         *   **Cancel**: This button lets the user exit the flow and go back to the screen the user came from.
         *   **I can't find my device**: Tapping this link shows a pop-up with instructions on how to make the camera discoverable.
 
-*   **Step 2: Camera Workbench**
+*   **Step 2: Prepare and Test Nearby Devices**
     *   **What the user sees**: This is a single, detailed screen where the user can manage all aspects of the camera. It shows:
         *   A view-only field for the **Device Name** (e.g., "WILD-Q7ZE").
         *   A view-only field for the camera's unique **Device ID**.
@@ -315,16 +318,15 @@ This screen provides a complete overview of a specific camera's hardware informa
     *   **Device Status Definition**:
         *   **Available**: The camera is not part of an active deployment and is ready to be prepared or deployed. A device becomes "Available" after its deployment is ended, or after it has been prepared but not yet deployed.
         *   **Deployed**: The camera is currently part of an active deployment in the field.
-        *   **In Preparation**: The camera is currently connected to a user's phone in the "Prepare and Test" workbench.
     *   A history section listing all past deployments this camera has been used for.
 
 *   **What the buttons do**:
     *   **Deployment Status Link**: If the device is currently deployed, tapping on its status will take the user to the **[Deployment Details Screen](#deployment-details-screen)** for that specific deployment.
-    *   **Prepare and Test**: If the device is "Available" (not deployed), a button will be visible to take the user to the **[Prepare and Test (Camera Workbench)](#prepare-and-test-camera-workbench)** screen for this device.
+    *   **Prepare and Test**: If the device is "Available" (not deployed), a button will be visible to take the user to the **[Prepare and Test (Prepare and Test Nearby Devices)](#prepare-and-test-camera-workbench)** screen for this device.
 
 ### LoRaWAN Registration Screen (TBC with CP)
 
-This screen guides the user through verifying the camera's pre-provisioned LoRaWAN status. The user gets here by tapping "Verify Remote Updates" from the **[Camera Workbench](#prepare-and-test-camera-workbench)**.
+This screen guides the user through verifying the camera's pre-provisioned LoRaWAN status. The user gets here by tapping "Verify Remote Updates" from the **[Prepare and Test Nearby Devices](#prepare-and-test-camera-workbench)**.
 
 *   **What the user sees**:
     *   A title like "Verify Remote Updates".
@@ -334,7 +336,7 @@ This screen guides the user through verifying the camera's pre-provisioned LoRaW
 
 *   **What the buttons do**:
     *   **Start Verification**: Tapping this button begins the automated verification process. The app communicates with the backend server, which in turn checks the device's registration status with the LoRaWAN network. The app does not handle security keys.
-    *   **Cancel/Back**: A back arrow in the header lets the user return to the **Camera Workbench** without registering the device.
+    *   **Cancel/Back**: A back arrow in the header lets the user return to the **Prepare and Test Nearby Devices** without registering the device.
 
 
 ### Notifications Screen
@@ -417,5 +419,32 @@ This menu slides out from the left side of the screen when the user taps the "ha
     *   **Invitations**: Takes the user to the **[Invitations Screen](#invitations-screen)** to manage pending project invitations.
     *   **Feedback to the WW team**: Tapping this link opens the **[Feedback Screen](#feedback-screen)**.
     *   **Sign Out**: Securely logs the user out of the app and returns the user to the **Login Screen**.
+
+---
+
+## 6. Engineering Tools
+
+This section describes tools intended for developers and hardware engineers for debugging and advanced interaction with the camera hardware. For MVP2 these features are still visible for all users.
+
+### Engineer Console
+
+The Engineer Console provides a direct, low-level command line interface to a connected camera, allowing engineers to send any text-based command and see the raw response from the device. This is essential for testing new firmware features, diagnosing hardware issues, and performing advanced configurations not exposed in the standard user interface.
+
+*   **How to access**: From the **[Devices Screen](#devices-screen)**, a small button labeled **"Engineer Nearby Devices"** is available. Tapping this initiates the connection flow.
+
+*   **Step 1: Device Selection**
+    *   **What the user sees**: This screen is identical to the first step of the **Start Deployment Wizard**. It takes over the full screen and shows a list of nearby Wildlife Watcher cameras that the app detects via Bluetooth.
+    *   **What the buttons do**:
+        *   **Camera in the list**: Tapping on a camera from the list selects it and attempts to connect. Upon successful connection, the user is taken to the **Step 2: Console Interface**.
+        *   **Refresh/Scan Again**: A button that lets the user re-scan for nearby cameras.
+        *   **Cancel**: This button lets the user exit the flow and go back to the **Devices Screen**.
+
+*   **Step 2: Console Interface**
+    *   **What the user sees**:
+        *   A large output area that displays all messages and responses received from the connected camera.
+        *   A text input field at the bottom of the screen where the user can type commands.
+        *   A "Send" button next to the input field.
+    *   **What the buttons do**:
+        *   **Send**: After typing a command into the input field (e.g., `battery`), tapping "Send" transmits the command to the camera. The camera's response (e.g., `Battery = 5482mV 73%`) will then appear in the output area above.
 
 ---
