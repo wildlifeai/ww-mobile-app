@@ -79,6 +79,41 @@
 ### Project Context Management
 - `project-context-manager` - Access, understand, or manage information in the project-context folder including migration plans, development execution plans, or any project-specific documentation
 
+### Cross-Project Coordination
+#### cross-project-coordinator
+**Purpose**: Coordinate between Wildlife Watcher mobile and backend repositories
+
+**When to Use**:
+- After receiving coordination messages from backend team
+- When backend schema changes require type regeneration
+- For task requests from backend team
+- For deployment/milestone status updates
+
+**Capabilities**:
+- Reads and parses coordination messages
+- Executes type synchronization workflows
+- Creates coordination messages for backend team
+- Archives processed messages
+- Logs coordination activity
+- Validates type drift prevention
+
+**Example Invocations**:
+```bash
+# Check inbox and action schema-change messages
+/aadf-work-smart "Check coordination inbox and action schema-change message"
+
+# Create coordination message for backend
+/aadf-work-smart "Create coordination message notifying backend of mobile deployment"
+
+# Verify type sync status
+/aadf-work-smart "Verify mobile types are in sync with backend schema"
+```
+
+**Documentation**:
+- Quick Start: `~/dev/wildlifeai/cross-project-coordination/COORDINATION-QUICK-START.md`
+- Type Sync: `~/dev/wildlifeai/cross-project-coordination/TYPE-SYNC-GUIDE.md`
+- System Reference: `~/dev/wildlifeai/cross-project-coordination/SYSTEM-REFERENCE-GUIDE.md`
+
 ### Frontend & Design
 - `frontend-design-expert` - Expert guidance on frontend development, UI/UX design, modern web technologies, design systems, accessibility, performance optimization
 

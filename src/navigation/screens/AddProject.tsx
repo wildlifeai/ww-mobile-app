@@ -4,7 +4,7 @@ import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWTextInput } from "../../components/ui/WWTextInput"
 import { Field } from "../../components/form/Field"
 import { WWButton } from "../../components/ui/WWButton"
-import { useCreateProjectMutation } from "../../store/api/projectsApi"
+import { useCreateProjectMutation } from "../../redux/api/projectsApi"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { CreateProjectInput } from "../../types/project"
 
@@ -20,6 +20,7 @@ export const AddProject = () => {
 			organisation_id: "", // Will need to be set from auth context
 			privacy_level: "private",
 			is_baited: false,
+			model_id: undefined,
 		},
 	})
 
@@ -59,11 +60,7 @@ export const AddProject = () => {
 						)}
 					</Field>
 
-					<Field
-						control={control}
-						name="description"
-						label="Description"
-					>
+					<Field control={control} name="description" label="Description">
 						{(field) => (
 							<WWTextInput
 								{...field}

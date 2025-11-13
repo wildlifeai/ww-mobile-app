@@ -56,7 +56,7 @@ export const Register = () => {
 				Alert.alert(
 					"Registration Successful",
 					"Please check your email and click the confirmation link to activate your account.",
-					[{ text: "OK", onPress: () => navigation.navigate("Login") }]
+					[{ text: "OK", onPress: () => navigation.navigate("Login") }],
 				)
 				return
 			}
@@ -67,7 +67,7 @@ export const Register = () => {
 			Alert.alert(
 				"Registration Failed",
 				"Please check your information and try again.",
-				[{ text: "OK" }]
+				[{ text: "OK" }],
 			)
 		}
 	}
@@ -97,7 +97,13 @@ export const Register = () => {
 								},
 							}}
 						>
-							{(field) => <WWTextInput {...field} testID="username-input" mode="outlined" />}
+							{(field) => (
+								<WWTextInput
+									{...field}
+									testID="username-input"
+									mode="outlined"
+								/>
+							)}
 						</Field>
 
 						<Field
@@ -160,7 +166,12 @@ export const Register = () => {
 							}}
 						>
 							{(field) => (
-								<WWTextInput {...field} testID="password-input" mode="outlined" secureTextEntry />
+								<WWTextInput
+									{...field}
+									testID="password-input"
+									mode="outlined"
+									secureTextEntry
+								/>
 							)}
 						</Field>
 
@@ -174,7 +185,12 @@ export const Register = () => {
 							}}
 						>
 							{(field) => (
-								<WWTextInput {...field} testID="confirm-password-input" mode="outlined" secureTextEntry />
+								<WWTextInput
+									{...field}
+									testID="confirm-password-input"
+									mode="outlined"
+									secureTextEntry
+								/>
 							)}
 						</Field>
 

@@ -1,6 +1,10 @@
 import { PropsWithChildren, useEffect, useRef } from "react"
 import { useAppDispatch } from "../redux"
-import { setCredentials, logout, setInitialState } from "../redux/slices/authSlice"
+import {
+	setCredentials,
+	logout,
+	setInitialState,
+} from "../redux/slices/authSlice"
 import { getCurrentSession, setupAuthListener } from "../services/auth"
 import { AuthResponse } from "../redux/api/auth/types"
 
@@ -24,7 +28,7 @@ export const AuthProvider = ({ children }: PropsWithChildren<unknown>) => {
 					}
 				})
 			} catch (error) {
-				console.error('Auth initialization error:', error)
+				console.error("Auth initialization error:", error)
 				dispatch(setInitialState(null))
 			}
 		}

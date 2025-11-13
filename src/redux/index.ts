@@ -18,7 +18,8 @@ import networkReducer from "./slices/networkSlice"
 import { Action, ThunkAction, configureStore } from "@reduxjs/toolkit"
 import { api } from "./api"
 import { enhancedApi } from "./api/enhanced"
-import { projectsApi } from "../store/api/projectsApi"
+import { projectsApi } from "./api/projectsApi"
+import { aiModelsApi } from "./api/aiModelsApi"
 // import { offlineMiddleware } from "./middleware/offlineMiddleware" // OLD - Replaced by offlineSyncMiddleware
 import { offlineSyncMiddleware } from "./middleware/offlineSyncMiddleware"
 
@@ -27,6 +28,7 @@ const store = configureStore({
 		[api.reducerPath]: api.reducer,
 		[enhancedApi.reducerPath]: enhancedApi.reducer,
 		[projectsApi.reducerPath]: projectsApi.reducer,
+		[aiModelsApi.reducerPath]: aiModelsApi.reducer,
 		devices: devicesReducer,
 		logs: logsReducer,
 		configuration: configurationReducer,
@@ -47,24 +49,29 @@ const store = configureStore({
 		getDefaultMiddleware({
 			serializableCheck: {
 				ignoredActions: [
-					'persist/PERSIST',
+					"persist/PERSIST",
 					// Ignore offline service actions with non-serializable data
-					'offline/setNetworkStatus',
-					'offline/addPendingOperation',
-					'offline/setSyncStatus',
-					'offline/queueOperation',
-					'offline/processQueue'
+					"offline/setNetworkStatus",
+					"offline/addPendingOperation",
+					"offline/setSyncStatus",
+					"offline/queueOperation",
+					"offline/processQueue",
 				],
 				ignoredPaths: [
 					// Ignore non-serializable fields in offline state
-					'offline.pendingOperations.timestamp',
-					'offline.unresolvedConflicts.resolved_at',
-					'offline.syncStatus.last_sync_at',
-					'offline.queue.operations'
+					"offline.pendingOperations.timestamp",
+					"offline.unresolvedConflicts.resolved_at",
+					"offline.syncStatus.last_sync_at",
+					"offline.queue.operations",
 				],
 			},
-		})
-		.concat(api.middleware, enhancedApi.middleware, projectsApi.middleware, offlineSyncMiddleware.middleware),
+		}).concat(
+			api.middleware,
+			enhancedApi.middleware,
+			projectsApi.middleware,
+			aiModelsApi.middleware,
+			offlineSyncMiddleware.middleware,
+		),
 })
 
 export default store

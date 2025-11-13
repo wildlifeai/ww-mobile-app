@@ -6,491 +6,550 @@
  * Removes all TaskMaster dependencies - focuses on MVP2 tasks and backend integration
  */
 
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const cors = require('cors');
+const express = require("express")
+const fs = require("fs")
+const path = require("path")
+const cors = require("cors")
 
-const app = express();
-const PORT = process.env.PORT || 3333;
+const app = express()
+const PORT = process.env.PORT || 3333
 
 // Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(cors())
+app.use(express.json())
+app.use(express.static(path.join(__dirname, "public")))
 
 // Configuration
 const CONFIG = {
-  mobileAppRoot: '/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app',
-  backendRoot: '/home/adarsh/dev/wildlifeai/wildlife-watcher-backend',
-  tasksDir: '/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/MVP2/tasks',
-  metricsFile: '/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md'
-};
+	mobileAppRoot: "/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app",
+	backendRoot: "/home/adarsh/dev/wildlifeai/wildlife-watcher-backend",
+	tasksDir:
+		"/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/development-context/MVP2/tasks",
+	metricsFile:
+		"/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app/project-context/MVP2-Tasks/MVP2-METRICS-TRACKER.md",
+}
 
 // Utility Functions
 function safeFileRead(filePath, defaultValue = null) {
-  try {
-    if (fs.existsSync(filePath)) {
-      return fs.readFileSync(filePath, 'utf8');
-    }
-    return defaultValue;
-  } catch (error) {
-    console.warn(`Warning: Could not read file ${filePath}:`, error.message);
-    return defaultValue;
-  }
+	try {
+		if (fs.existsSync(filePath)) {
+			return fs.readFileSync(filePath, "utf8")
+		}
+		return defaultValue
+	} catch (error) {
+		console.warn(`Warning: Could not read file ${filePath}:`, error.message)
+		return defaultValue
+	}
 }
 
 function parseTaskFile(filePath) {
-  const content = safeFileRead(filePath);
-  if (!content) return null;
+	const content = safeFileRead(filePath)
+	if (!content) return null
 
-  const lines = content.split('\n');
-  const task = {
-    id: null,
-    title: '',
-    status: 'not_started',
-    dependencies: [],
-    priority: 'medium',
-    description: '',
-    details: '',
-    testStrategy: '',
-    subtasks: []
-  };
+	const lines = content.split("\n")
+	const task = {
+		id: null,
+		title: "",
+		status: "not_started",
+		dependencies: [],
+		priority: "medium",
+		description: "",
+		details: "",
+		testStrategy: "",
+		subtasks: [],
+	}
 
-  let currentSection = '';
-  let currentSubtask = null;
+	let currentSection = ""
+	let currentSubtask = null
 
-  for (const line of lines) {
-    const trimmed = line.trim();
+	for (const line of lines) {
+		const trimmed = line.trim()
 
-    if (trimmed.startsWith('# Task ID:')) {
-      task.id = trimmed.replace('# Task ID:', '').trim();
-    } else if (trimmed.startsWith('# Title:')) {
-      task.title = trimmed.replace('# Title:', '').trim();
-    } else if (trimmed.startsWith('# Status:')) {
-      task.status = trimmed.replace('# Status:', '').trim();
-    } else if (trimmed.startsWith('# Dependencies:')) {
-      const deps = trimmed.replace('# Dependencies:', '').trim();
-      task.dependencies = deps === 'None' ? [] : deps.split(',').map(d => d.trim());
-    } else if (trimmed.startsWith('# Priority:')) {
-      task.priority = trimmed.replace('# Priority:', '').trim();
-    } else if (trimmed.startsWith('# Description:')) {
-      task.description = trimmed.replace('# Description:', '').trim();
-    } else if (trimmed.startsWith('# Details:')) {
-      currentSection = 'details';
-    } else if (trimmed.startsWith('# Test Strategy:')) {
-      currentSection = 'test_strategy';
-    } else if (trimmed.startsWith('# Subtasks:')) {
-      currentSection = 'subtasks';
-    } else if (trimmed.startsWith('## ')) {
-      if (currentSection === 'subtasks') {
-        currentSubtask = {
-          title: trimmed.replace('## ', '').replace(/\[.*?\]/g, '').trim(),
-          status: trimmed.includes('[done]') ? 'done' : 'pending',
-          dependencies: [],
-          description: '',
-          details: ''
-        };
-        task.subtasks.push(currentSubtask);
-      }
-    } else if (trimmed.startsWith('### Dependencies:') && currentSubtask) {
-      const deps = trimmed.replace('### Dependencies:', '').trim();
-      currentSubtask.dependencies = deps === 'None' ? [] : deps.split(',').map(d => d.trim());
-    } else if (trimmed.startsWith('### Description:') && currentSubtask) {
-      currentSubtask.description = trimmed.replace('### Description:', '').trim();
-    } else if (trimmed.startsWith('### Details:') && currentSubtask) {
-      // Details section starts - collect following lines
-      currentSection = 'subtask_details';
-    } else if (currentSection === 'details' && trimmed && !trimmed.startsWith('#')) {
-      task.details += (task.details ? '\n' : '') + trimmed;
-    } else if (currentSection === 'test_strategy' && trimmed && !trimmed.startsWith('#')) {
-      task.testStrategy += (task.testStrategy ? '\n' : '') + trimmed;
-    } else if (currentSection === 'subtask_details' && currentSubtask && trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('##')) {
-      currentSubtask.details += (currentSubtask.details ? '\n' : '') + trimmed;
-    }
-  }
+		if (trimmed.startsWith("# Task ID:")) {
+			task.id = trimmed.replace("# Task ID:", "").trim()
+		} else if (trimmed.startsWith("# Title:")) {
+			task.title = trimmed.replace("# Title:", "").trim()
+		} else if (trimmed.startsWith("# Status:")) {
+			task.status = trimmed.replace("# Status:", "").trim()
+		} else if (trimmed.startsWith("# Dependencies:")) {
+			const deps = trimmed.replace("# Dependencies:", "").trim()
+			task.dependencies =
+				deps === "None" ? [] : deps.split(",").map((d) => d.trim())
+		} else if (trimmed.startsWith("# Priority:")) {
+			task.priority = trimmed.replace("# Priority:", "").trim()
+		} else if (trimmed.startsWith("# Description:")) {
+			task.description = trimmed.replace("# Description:", "").trim()
+		} else if (trimmed.startsWith("# Details:")) {
+			currentSection = "details"
+		} else if (trimmed.startsWith("# Test Strategy:")) {
+			currentSection = "test_strategy"
+		} else if (trimmed.startsWith("# Subtasks:")) {
+			currentSection = "subtasks"
+		} else if (trimmed.startsWith("## ")) {
+			if (currentSection === "subtasks") {
+				currentSubtask = {
+					title: trimmed
+						.replace("## ", "")
+						.replace(/\[.*?\]/g, "")
+						.trim(),
+					status: trimmed.includes("[done]") ? "done" : "pending",
+					dependencies: [],
+					description: "",
+					details: "",
+				}
+				task.subtasks.push(currentSubtask)
+			}
+		} else if (trimmed.startsWith("### Dependencies:") && currentSubtask) {
+			const deps = trimmed.replace("### Dependencies:", "").trim()
+			currentSubtask.dependencies =
+				deps === "None" ? [] : deps.split(",").map((d) => d.trim())
+		} else if (trimmed.startsWith("### Description:") && currentSubtask) {
+			currentSubtask.description = trimmed
+				.replace("### Description:", "")
+				.trim()
+		} else if (trimmed.startsWith("### Details:") && currentSubtask) {
+			// Details section starts - collect following lines
+			currentSection = "subtask_details"
+		} else if (
+			currentSection === "details" &&
+			trimmed &&
+			!trimmed.startsWith("#")
+		) {
+			task.details += (task.details ? "\n" : "") + trimmed
+		} else if (
+			currentSection === "test_strategy" &&
+			trimmed &&
+			!trimmed.startsWith("#")
+		) {
+			task.testStrategy += (task.testStrategy ? "\n" : "") + trimmed
+		} else if (
+			currentSection === "subtask_details" &&
+			currentSubtask &&
+			trimmed &&
+			!trimmed.startsWith("#") &&
+			!trimmed.startsWith("##")
+		) {
+			currentSubtask.details += (currentSubtask.details ? "\n" : "") + trimmed
+		}
+	}
 
-  return task;
+	return task
 }
 
 function loadMVP2Tasks() {
-  try {
-    const taskFiles = fs.readdirSync(CONFIG.tasksDir)
-      .filter(file => file.startsWith('task_') && file.endsWith('.txt'))
-      .sort((a, b) => {
-        const aNum = parseInt(a.match(/task_(\d+)/)?.[1] || '0');
-        const bNum = parseInt(b.match(/task_(\d+)/)?.[1] || '0');
-        return aNum - bNum;
-      });
+	try {
+		const taskFiles = fs
+			.readdirSync(CONFIG.tasksDir)
+			.filter((file) => file.startsWith("task_") && file.endsWith(".txt"))
+			.sort((a, b) => {
+				const aNum = parseInt(a.match(/task_(\d+)/)?.[1] || "0")
+				const bNum = parseInt(b.match(/task_(\d+)/)?.[1] || "0")
+				return aNum - bNum
+			})
 
-    const tasks = [];
-    for (const file of taskFiles) {
-      const task = parseTaskFile(path.join(CONFIG.tasksDir, file));
-      if (task) {
-        tasks.push(task);
-      }
-    }
+		const tasks = []
+		for (const file of taskFiles) {
+			const task = parseTaskFile(path.join(CONFIG.tasksDir, file))
+			if (task) {
+				tasks.push(task)
+			}
+		}
 
-    return tasks;
-  } catch (error) {
-    console.warn('Warning: Could not load MVP2 tasks:', error.message);
-    return [];
-  }
+		return tasks
+	} catch (error) {
+		console.warn("Warning: Could not load MVP2 tasks:", error.message)
+		return []
+	}
 }
 
 function parseBackendStatus() {
-  const statusFile = path.join(CONFIG.backendRoot, 'project-context/PROJECT-STATUS.md');
-  const content = safeFileRead(statusFile);
-  if (!content) {
-    return {
-      status: 'unknown',
-      deployment: 'unknown',
-      mvp2Ready: false,
-      lastUpdated: 'unknown',
-      version: 'unknown'
-    };
-  }
+	const statusFile = path.join(
+		CONFIG.backendRoot,
+		"project-context/PROJECT-STATUS.md",
+	)
+	const content = safeFileRead(statusFile)
+	if (!content) {
+		return {
+			status: "unknown",
+			deployment: "unknown",
+			mvp2Ready: false,
+			lastUpdated: "unknown",
+			version: "unknown",
+		}
+	}
 
-  // Parse key information from the status file
-  const lines = content.split('\n');
-  let status = {
-    status: 'unknown',
-    deployment: 'unknown',
-    mvp2Ready: false,
-    lastUpdated: 'unknown',
-    version: '1.0.0',
-    readiness: 0
-  };
+	// Parse key information from the status file
+	const lines = content.split("\n")
+	let status = {
+		status: "unknown",
+		deployment: "unknown",
+		mvp2Ready: false,
+		lastUpdated: "unknown",
+		version: "1.0.0",
+		readiness: 0,
+	}
 
-  for (const line of lines) {
-    if (line.includes('**Status**:') && line.includes('[DEPLOYED]')) {
-      status.status = 'deployed';
-      status.deployment = 'dev';
-      status.mvp2Ready = true;
-    } else if (line.includes('**Document Version**:')) {
-      status.version = line.split(':')[1]?.trim() || 'unknown';
-    } else if (line.includes('**Last Modified**:')) {
-      status.lastUpdated = line.split(':')[1]?.trim() || 'unknown';
-    } else if (line.includes('MVP2 Readiness:') && line.includes('%')) {
-      const match = line.match(/MVP2 Readiness:\s*(\d+)%/);
-      if (match) {
-        status.readiness = parseInt(match[1]);
-      }
-    }
-  }
+	for (const line of lines) {
+		if (line.includes("**Status**:") && line.includes("[DEPLOYED]")) {
+			status.status = "deployed"
+			status.deployment = "dev"
+			status.mvp2Ready = true
+		} else if (line.includes("**Document Version**:")) {
+			status.version = line.split(":")[1]?.trim() || "unknown"
+		} else if (line.includes("**Last Modified**:")) {
+			status.lastUpdated = line.split(":")[1]?.trim() || "unknown"
+		} else if (line.includes("MVP2 Readiness:") && line.includes("%")) {
+			const match = line.match(/MVP2 Readiness:\s*(\d+)%/)
+			if (match) {
+				status.readiness = parseInt(match[1])
+			}
+		}
+	}
 
-  return status;
+	return status
 }
 
 function parseMetrics() {
-  const content = safeFileRead(CONFIG.metricsFile);
-  if (!content) {
-    return {
-      totalTasks: 0,
-      completedTasks: 0,
-      completionRate: 0,
-      totalEstimatedHours: 0,
-      totalActualHours: 0,
-      streams: []
-    };
-  }
+	const content = safeFileRead(CONFIG.metricsFile)
+	if (!content) {
+		return {
+			totalTasks: 0,
+			completedTasks: 0,
+			completionRate: 0,
+			totalEstimatedHours: 0,
+			totalActualHours: 0,
+			streams: [],
+		}
+	}
 
-  const lines = content.split('\n');
-  const metrics = {
-    totalTasks: 0,
-    completedTasks: 0,
-    completionRate: 0,
-    totalEstimatedHours: 0,
-    totalActualHours: 0,
-    daysElapsed: 0,
-    projectedCompletion: 20,
-    streams: [
-      { name: 'Stream A: Project Management', tasks: '12-14', estimatedHours: 18, status: 'not_started' },
-      { name: 'Stream B: Deployment Workflows', tasks: '15-17', estimatedHours: 24, status: 'not_started' },
-      { name: 'Stream C: Devices & Maps', tasks: '18-20', estimatedHours: 30, status: 'not_started' }
-    ],
-    recentActivity: []
-  };
+	const lines = content.split("\n")
+	const metrics = {
+		totalTasks: 0,
+		completedTasks: 0,
+		completionRate: 0,
+		totalEstimatedHours: 0,
+		totalActualHours: 0,
+		daysElapsed: 0,
+		projectedCompletion: 20,
+		streams: [
+			{
+				name: "Stream A: Project Management",
+				tasks: "12-14",
+				estimatedHours: 18,
+				status: "not_started",
+			},
+			{
+				name: "Stream B: Deployment Workflows",
+				tasks: "15-17",
+				estimatedHours: 24,
+				status: "not_started",
+			},
+			{
+				name: "Stream C: Devices & Maps",
+				tasks: "18-20",
+				estimatedHours: 30,
+				status: "not_started",
+			},
+		],
+		recentActivity: [],
+	}
 
-  for (const line of lines) {
-    if (line.includes('- **Total Tasks**:')) {
-      const match = line.match(/Total Tasks\*\*:\s*(\d+)\s*\((\d+)\s*complete/);
-      if (match) {
-        metrics.totalTasks = parseInt(match[1]);
-        metrics.completedTasks = parseInt(match[2]);
-      }
-    } else if (line.includes('- **Completion Rate**:')) {
-      const match = line.match(/Completion Rate\*\*:\s*([\d.]+)%/);
-      if (match) {
-        metrics.completionRate = parseFloat(match[1]);
-      }
-    } else if (line.includes('| **Total Hours**')) {
-      const parts = line.split('|');
-      if (parts.length >= 4) {
-        const estimated = parts[2]?.trim().replace(/\D/g, '');
-        const actual = parts[3]?.trim().replace(/\D/g, '');
-        if (estimated) metrics.totalEstimatedHours = parseInt(estimated);
-        if (actual) metrics.totalActualHours = parseInt(actual);
-      }
-    } else if (line.includes('- **Days Elapsed**:')) {
-      const match = line.match(/Days Elapsed\*\*:\s*(\d+)/);
-      if (match) {
-        metrics.daysElapsed = parseInt(match[1]);
-      }
-    }
-  }
+	for (const line of lines) {
+		if (line.includes("- **Total Tasks**:")) {
+			const match = line.match(/Total Tasks\*\*:\s*(\d+)\s*\((\d+)\s*complete/)
+			if (match) {
+				metrics.totalTasks = parseInt(match[1])
+				metrics.completedTasks = parseInt(match[2])
+			}
+		} else if (line.includes("- **Completion Rate**:")) {
+			const match = line.match(/Completion Rate\*\*:\s*([\d.]+)%/)
+			if (match) {
+				metrics.completionRate = parseFloat(match[1])
+			}
+		} else if (line.includes("| **Total Hours**")) {
+			const parts = line.split("|")
+			if (parts.length >= 4) {
+				const estimated = parts[2]?.trim().replace(/\D/g, "")
+				const actual = parts[3]?.trim().replace(/\D/g, "")
+				if (estimated) metrics.totalEstimatedHours = parseInt(estimated)
+				if (actual) metrics.totalActualHours = parseInt(actual)
+			}
+		} else if (line.includes("- **Days Elapsed**:")) {
+			const match = line.match(/Days Elapsed\*\*:\s*(\d+)/)
+			if (match) {
+				metrics.daysElapsed = parseInt(match[1])
+			}
+		}
+	}
 
-  return metrics;
+	return metrics
 }
 
 function calculateProgress() {
-  const tasks = loadMVP2Tasks();
-  const completedTasks = tasks.filter(task => task.status === 'done').length;
-  const totalTasks = tasks.length;
-  const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+	const tasks = loadMVP2Tasks()
+	const completedTasks = tasks.filter((task) => task.status === "done").length
+	const totalTasks = tasks.length
+	const completionPercentage =
+		totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
-  return {
-    completedTasks,
-    totalTasks,
-    completionPercentage,
-    pendingTasks: totalTasks - completedTasks
-  };
+	return {
+		completedTasks,
+		totalTasks,
+		completionPercentage,
+		pendingTasks: totalTasks - completedTasks,
+	}
 }
 
 function getCurrentAndNextTasks() {
-  const tasks = loadMVP2Tasks();
-  const inProgress = tasks.filter(task => task.status === 'in_progress' || task.status === 'active');
-  const pending = tasks.filter(task => task.status === 'not_started' || task.status === 'pending')
-    .sort((a, b) => {
-      const priorityOrder = { high: 3, medium: 2, low: 1 };
-      return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
-    });
+	const tasks = loadMVP2Tasks()
+	const inProgress = tasks.filter(
+		(task) => task.status === "in_progress" || task.status === "active",
+	)
+	const pending = tasks
+		.filter(
+			(task) => task.status === "not_started" || task.status === "pending",
+		)
+		.sort((a, b) => {
+			const priorityOrder = { high: 3, medium: 2, low: 1 }
+			return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0)
+		})
 
-  return {
-    current: inProgress.slice(0, 3),
-    next: pending.slice(0, 5),
-    currentMobile: inProgress,
-    nextMobile: pending.slice(0, 3)
-  };
+	return {
+		current: inProgress.slice(0, 3),
+		next: pending.slice(0, 5),
+		currentMobile: inProgress,
+		nextMobile: pending.slice(0, 3),
+	}
 }
 
 // API Routes
 
 // Combined tasks endpoint
-app.get('/api/tasks', (req, res) => {
-  try {
-    const mobileTasks = loadMVP2Tasks();
-    const backendStatus = parseBackendStatus();
+app.get("/api/tasks", (req, res) => {
+	try {
+		const mobileTasks = loadMVP2Tasks()
+		const backendStatus = parseBackendStatus()
 
-    res.json({
-      success: true,
-      data: {
-        mobile: mobileTasks,
-        backend: {
-          status: backendStatus.status,
-          deployment: backendStatus.deployment,
-          mvp2Ready: backendStatus.mvp2Ready,
-          readiness: backendStatus.readiness,
-          lastUpdated: backendStatus.lastUpdated,
-          version: backendStatus.version
-        },
-        summary: {
-          mobileTasks: mobileTasks.length,
-          mobileCompleted: mobileTasks.filter(t => t.status === 'done').length,
-          backendReady: backendStatus.mvp2Ready
-        }
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to load tasks',
-      message: error.message
-    });
-  }
-});
+		res.json({
+			success: true,
+			data: {
+				mobile: mobileTasks,
+				backend: {
+					status: backendStatus.status,
+					deployment: backendStatus.deployment,
+					mvp2Ready: backendStatus.mvp2Ready,
+					readiness: backendStatus.readiness,
+					lastUpdated: backendStatus.lastUpdated,
+					version: backendStatus.version,
+				},
+				summary: {
+					mobileTasks: mobileTasks.length,
+					mobileCompleted: mobileTasks.filter((t) => t.status === "done")
+						.length,
+					backendReady: backendStatus.mvp2Ready,
+				},
+			},
+		})
+	} catch (error) {
+		res.status(500).json({
+			success: false,
+			error: "Failed to load tasks",
+			message: error.message,
+		})
+	}
+})
 
 // Mobile tasks only
-app.get('/api/tasks/mobile', (req, res) => {
-  try {
-    const tasks = loadMVP2Tasks();
-    const progress = calculateProgress();
+app.get("/api/tasks/mobile", (req, res) => {
+	try {
+		const tasks = loadMVP2Tasks()
+		const progress = calculateProgress()
 
-    res.json({
-      success: true,
-      data: {
-        tasks,
-        progress,
-        total: tasks.length,
-        completed: progress.completedTasks,
-        completionRate: progress.completionPercentage
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to load mobile tasks',
-      message: error.message
-    });
-  }
-});
+		res.json({
+			success: true,
+			data: {
+				tasks,
+				progress,
+				total: tasks.length,
+				completed: progress.completedTasks,
+				completionRate: progress.completionPercentage,
+			},
+		})
+	} catch (error) {
+		res.status(500).json({
+			success: false,
+			error: "Failed to load mobile tasks",
+			message: error.message,
+		})
+	}
+})
 
 // Backend status and tasks
-app.get('/api/tasks/backend', (req, res) => {
-  try {
-    const backendStatus = parseBackendStatus();
+app.get("/api/tasks/backend", (req, res) => {
+	try {
+		const backendStatus = parseBackendStatus()
 
-    res.json({
-      success: true,
-      data: {
-        status: backendStatus,
-        integration: {
-          ready: backendStatus.mvp2Ready,
-          deployment: backendStatus.deployment,
-          readiness: backendStatus.readiness
-        },
-        apis: {
-          authentication: backendStatus.mvp2Ready,
-          organisations: backendStatus.mvp2Ready,
-          projects: backendStatus.mvp2Ready,
-          roles: backendStatus.mvp2Ready
-        }
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to load backend status',
-      message: error.message
-    });
-  }
-});
+		res.json({
+			success: true,
+			data: {
+				status: backendStatus,
+				integration: {
+					ready: backendStatus.mvp2Ready,
+					deployment: backendStatus.deployment,
+					readiness: backendStatus.readiness,
+				},
+				apis: {
+					authentication: backendStatus.mvp2Ready,
+					organisations: backendStatus.mvp2Ready,
+					projects: backendStatus.mvp2Ready,
+					roles: backendStatus.mvp2Ready,
+				},
+			},
+		})
+	} catch (error) {
+		res.status(500).json({
+			success: false,
+			error: "Failed to load backend status",
+			message: error.message,
+		})
+	}
+})
 
 // Executive overview
-app.get('/api/overview', (req, res) => {
-  try {
-    const tasks = getCurrentAndNextTasks();
-    const progress = calculateProgress();
-    const backendStatus = parseBackendStatus();
+app.get("/api/overview", (req, res) => {
+	try {
+		const tasks = getCurrentAndNextTasks()
+		const progress = calculateProgress()
+		const backendStatus = parseBackendStatus()
 
-    res.json({
-      success: true,
-      data: {
-        currentTasks: tasks.current,
-        nextTasks: tasks.next,
-        progress: {
-          mobile: progress,
-          backend: {
-            ready: backendStatus.mvp2Ready,
-            readiness: backendStatus.readiness,
-            deployment: backendStatus.deployment
-          }
-        },
-        projectStatus: {
-          phase: 'MVP2 Development',
-          mobileProgress: progress.completionPercentage,
-          backendReady: backendStatus.mvp2Ready,
-          overallHealth: backendStatus.mvp2Ready && progress.completionPercentage > 0 ? 'good' : 'needs_attention'
-        }
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to generate overview',
-      message: error.message
-    });
-  }
-});
+		res.json({
+			success: true,
+			data: {
+				currentTasks: tasks.current,
+				nextTasks: tasks.next,
+				progress: {
+					mobile: progress,
+					backend: {
+						ready: backendStatus.mvp2Ready,
+						readiness: backendStatus.readiness,
+						deployment: backendStatus.deployment,
+					},
+				},
+				projectStatus: {
+					phase: "MVP2 Development",
+					mobileProgress: progress.completionPercentage,
+					backendReady: backendStatus.mvp2Ready,
+					overallHealth:
+						backendStatus.mvp2Ready && progress.completionPercentage > 0
+							? "good"
+							: "needs_attention",
+				},
+			},
+		})
+	} catch (error) {
+		res.status(500).json({
+			success: false,
+			error: "Failed to generate overview",
+			message: error.message,
+		})
+	}
+})
 
 // Stream progress data
-app.get('/api/streams', (req, res) => {
-  try {
-    const metrics = parseMetrics();
-    const tasks = loadMVP2Tasks();
+app.get("/api/streams", (req, res) => {
+	try {
+		const metrics = parseMetrics()
+		const tasks = loadMVP2Tasks()
 
-    // Map tasks to streams based on task IDs
-    const streamData = metrics.streams.map(stream => {
-      const [startId, endId] = stream.tasks.split('-').map(id => parseInt(id));
-      const streamTasks = tasks.filter(task => {
-        const taskId = parseInt(task.id);
-        return taskId >= startId && taskId <= endId;
-      });
+		// Map tasks to streams based on task IDs
+		const streamData = metrics.streams.map((stream) => {
+			const [startId, endId] = stream.tasks.split("-").map((id) => parseInt(id))
+			const streamTasks = tasks.filter((task) => {
+				const taskId = parseInt(task.id)
+				return taskId >= startId && taskId <= endId
+			})
 
-      const completed = streamTasks.filter(t => t.status === 'done').length;
-      const total = streamTasks.length;
-      const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+			const completed = streamTasks.filter((t) => t.status === "done").length
+			const total = streamTasks.length
+			const progress = total > 0 ? Math.round((completed / total) * 100) : 0
 
-      return {
-        ...stream,
-        progress,
-        completed,
-        total,
-        tasks: streamTasks
-      };
-    });
+			return {
+				...stream,
+				progress,
+				completed,
+				total,
+				tasks: streamTasks,
+			}
+		})
 
-    res.json({
-      success: true,
-      data: {
-        streams: streamData,
-        integration: {
-          estimatedHours: 16,
-          status: 'pending',
-          dependencies: streamData.map(s => s.name)
-        }
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to load stream data',
-      message: error.message
-    });
-  }
-});
+		res.json({
+			success: true,
+			data: {
+				streams: streamData,
+				integration: {
+					estimatedHours: 16,
+					status: "pending",
+					dependencies: streamData.map((s) => s.name),
+				},
+			},
+		})
+	} catch (error) {
+		res.status(500).json({
+			success: false,
+			error: "Failed to load stream data",
+			message: error.message,
+		})
+	}
+})
 
 // Metrics endpoint
-app.get('/api/metrics', (req, res) => {
-  try {
-    const metrics = parseMetrics();
-    const progress = calculateProgress();
+app.get("/api/metrics", (req, res) => {
+	try {
+		const metrics = parseMetrics()
+		const progress = calculateProgress()
 
-    res.json({
-      success: true,
-      data: {
-        ...metrics,
-        actualProgress: progress,
-        velocity: {
-          dailyAverage: metrics.daysElapsed > 0 ? Math.round(progress.completedTasks / metrics.daysElapsed * 10) / 10 : 0,
-          projectedCompletion: metrics.projectedCompletion,
-          onTrack: progress.completionPercentage >= (metrics.daysElapsed / metrics.projectedCompletion * 100)
-        }
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to load metrics',
-      message: error.message
-    });
-  }
-});
+		res.json({
+			success: true,
+			data: {
+				...metrics,
+				actualProgress: progress,
+				velocity: {
+					dailyAverage:
+						metrics.daysElapsed > 0
+							? Math.round(
+									(progress.completedTasks / metrics.daysElapsed) * 10,
+							  ) / 10
+							: 0,
+					projectedCompletion: metrics.projectedCompletion,
+					onTrack:
+						progress.completionPercentage >=
+						(metrics.daysElapsed / metrics.projectedCompletion) * 100,
+				},
+			},
+		})
+	} catch (error) {
+		res.status(500).json({
+			success: false,
+			error: "Failed to load metrics",
+			message: error.message,
+		})
+	}
+})
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    service: 'MVP2 Dashboard API',
-    version: '2.0.0',
-    status: 'healthy',
-    timestamp: new Date().toISOString()
-  });
-});
+app.get("/api/health", (req, res) => {
+	res.json({
+		success: true,
+		service: "MVP2 Dashboard API",
+		version: "2.0.0",
+		status: "healthy",
+		timestamp: new Date().toISOString(),
+	})
+})
 
 // Serve dashboard UI
-app.get('/', (req, res) => {
-  const dashboardHtml = `
+app.get("/", (req, res) => {
+	const dashboardHtml = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -680,44 +739,47 @@ app.get('/', (req, res) => {
     </script>
 </body>
 </html>
-`;
+`
 
-  res.send(dashboardHtml);
-});
+	res.send(dashboardHtml)
+})
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Server Error:', err);
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
-  });
-});
+	console.error("Server Error:", err)
+	res.status(500).json({
+		success: false,
+		error: "Internal server error",
+		message:
+			process.env.NODE_ENV === "development"
+				? err.message
+				: "Something went wrong",
+	})
+})
 
 // Start server
 const server = app.listen(PORT, () => {
-  console.log(`🚀 MVP2 Dashboard Server running on http://localhost:${PORT}`);
-  console.log(`📊 Dashboard UI: http://localhost:${PORT}`);
-  console.log(`🔍 API Health: http://localhost:${PORT}/api/health`);
-  console.log('✅ Clean implementation - No TaskMaster dependencies');
-});
+	console.log(`🚀 MVP2 Dashboard Server running on http://localhost:${PORT}`)
+	console.log(`📊 Dashboard UI: http://localhost:${PORT}`)
+	console.log(`🔍 API Health: http://localhost:${PORT}/api/health`)
+	console.log("✅ Clean implementation - No TaskMaster dependencies")
+})
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('🛑 Received SIGTERM, shutting down gracefully...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    process.exit(0);
-  });
-});
+process.on("SIGTERM", () => {
+	console.log("🛑 Received SIGTERM, shutting down gracefully...")
+	server.close(() => {
+		console.log("✅ Server closed")
+		process.exit(0)
+	})
+})
 
-process.on('SIGINT', () => {
-  console.log('🛑 Received SIGINT, shutting down gracefully...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    process.exit(0);
-  });
-});
+process.on("SIGINT", () => {
+	console.log("🛑 Received SIGINT, shutting down gracefully...")
+	server.close(() => {
+		console.log("✅ Server closed")
+		process.exit(0)
+	})
+})
 
-module.exports = app;
+module.exports = app

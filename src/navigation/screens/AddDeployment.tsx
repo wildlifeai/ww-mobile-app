@@ -8,7 +8,7 @@ import { WWButton } from "../../components/ui/WWButton"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { useRoute, useFocusEffect } from "@react-navigation/native"
 import { AppParams } from ".."
-import { useGetProjectsQuery } from "../../store/api/projectsApi"
+import { useGetProjectsQuery } from "../../redux/api/projectsApi"
 import { useCallback } from "react"
 
 type FormData = {

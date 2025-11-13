@@ -15,8 +15,9 @@ import { useBluetoothStatus } from "../hooks/useBluetoothStatus"
 import { useLocationStatus } from "../hooks/useLocationStatus"
 import { useSetupBLELibrary } from "../hooks/useSetupBLELibrary"
 import { useAppDispatch } from "../redux"
-import { initializeNetworkMonitoring } from "../store/middleware/offlineSyncMiddleware"
+import { initializeNetworkMonitoring } from "../redux/middleware/offlineSyncMiddleware"
 import ProjectService from "../services/ProjectService"
+import { initializeSupabaseClient } from "../services/supabase"
 
 interface ExtendedToastConfigParams extends ToastConfigParams<any> {
 	numberOfLines?: number
@@ -37,25 +38,37 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 	useBluetoothStatus()
 	useLocationStatus()
 
+	// Initialize Supabase client with current environment
+	React.useEffect(() => {
+		console.log("🔧 Initializing Supabase client...")
+		initializeSupabaseClient()
+			.then(() => {
+				console.log("✅ Supabase client initialized successfully")
+			})
+			.catch((error) => {
+				console.error("❌ Failed to initialize Supabase client:", error)
+			})
+	}, [])
+
 	// Initialize network monitoring for offline support
 	React.useEffect(() => {
-		console.log('🌐 Initializing network monitoring...')
+		console.log("🌐 Initializing network monitoring...")
 		const unsubscribe = initializeNetworkMonitoring(dispatch)
 		return () => {
-			console.log('🌐 Cleaning up network monitoring')
+			console.log("🌐 Cleaning up network monitoring")
 			unsubscribe()
 		}
 	}, [dispatch])
 
 	// Initialize ProjectService with DatabaseService and OfflineService
 	React.useEffect(() => {
-		console.log('📦 Initializing ProjectService...')
+		console.log("📦 Initializing ProjectService...")
 		ProjectService.initialize()
 			.then(() => {
-				console.log('✅ ProjectService initialized successfully')
+				console.log("✅ ProjectService initialized successfully")
 			})
 			.catch((error) => {
-				console.error('❌ Failed to initialize ProjectService:', error)
+				console.error("❌ Failed to initialize ProjectService:", error)
 			})
 	}, [])
 

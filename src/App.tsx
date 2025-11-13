@@ -1,14 +1,14 @@
 // Lazy load gesture handler to avoid NativeModule error during initialization
 const lazyLoadGestureHandler = () => {
-  try {
-    require("react-native-gesture-handler");
-  } catch (e) {
-    console.warn("Gesture handler not available:", e);
-  }
-};
+	try {
+		require("react-native-gesture-handler")
+	} catch (e) {
+		console.warn("Gesture handler not available:", e)
+	}
+}
 
 // Load gesture handler when component mounts
-setTimeout(lazyLoadGestureHandler, 100);
+setTimeout(lazyLoadGestureHandler, 100)
 
 import { Suspense } from "react"
 

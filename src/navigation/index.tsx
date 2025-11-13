@@ -28,6 +28,7 @@ import { ProjectMembersScreen } from "../screens/ProjectMembersScreen"
 import { BottomTabs } from "./BottomTabs"
 import { DevBuildInfo } from "./screens/DevBuildInfo"
 import { AuthTestScreen } from "../screens/AuthTestScreen"
+import { DeveloperSettingsScreen } from "../screens/DeveloperSettingsScreen"
 import { useDeepLinking } from "../hooks/useDeepLinking"
 
 export interface RootStackParamList extends ParamListBase {
@@ -39,9 +40,11 @@ export interface RootStackParamList extends ParamListBase {
 	DeviceNavigator: { deviceId: string }
 	Terminal: { deviceId: string }
 	DfuScreen: { deviceId: string }
-	Login: undefined
+	Login: { confirmed?: boolean } | undefined
 	Register: undefined
-	ForgotPassword: undefined
+	ForgotPassword:
+		| { token?: string; refreshToken?: string; mode?: string }
+		| undefined
 	AddDeployment: { selectedProject?: Option } | undefined
 	AddProject: undefined
 	NewProjectScreen: undefined
@@ -49,6 +52,7 @@ export interface RootStackParamList extends ParamListBase {
 	ProjectMembersScreen: { projectId: string; projectName: string }
 	DevBuildInfo: undefined
 	AuthTestScreen: undefined
+	DeveloperSettings: undefined
 }
 
 export type Routes = keyof RootStackParamList
@@ -73,7 +77,7 @@ export const MainNavigation = () => {
 	const { token, initialLoad: authLoading } = useAppSelector(
 		(state) => state.authentication,
 	)
-	
+
 	// Initialize deep linking
 	useDeepLinking()
 
@@ -208,6 +212,11 @@ export const MainNavigation = () => {
 									name="AuthTestScreen"
 									component={AuthTestScreen}
 									options={{ title: "🔐 Auth Test" }}
+								/>
+								<Stack.Screen
+									name="DeveloperSettings"
+									component={DeveloperSettingsScreen}
+									options={{ title: "Developer Settings" }}
 								/>
 							</>
 						)}

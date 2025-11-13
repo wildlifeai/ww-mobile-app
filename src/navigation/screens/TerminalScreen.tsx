@@ -234,7 +234,7 @@ export const Terminal = ({ embed }: Props) => {
 		ID: ID?.loaded,
 		DEVICE: DEVICE?.loaded,
 		configKeys: Object.keys(config),
-		fullConfig: config
+		fullConfig: config,
 	})
 
 	if (
@@ -248,7 +248,9 @@ export const Terminal = ({ embed }: Props) => {
 		!DEVICE?.loaded ||
 		!ID?.loaded
 	) {
-		console.log("🔍 Terminal Screen: Still loading configuration, showing AppLoading...")
+		console.log(
+			"🔍 Terminal Screen: Still loading configuration, showing AppLoading...",
+		)
 		return <AppLoading />
 	}
 

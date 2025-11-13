@@ -35,19 +35,19 @@ export const NavigationBar = ({
 					onPress={() => setIsOpen(isOpen ? false : true)}
 				/>
 			)}
-			<View style={{ flex: 1, alignItems: 'center' }}>
+			<View style={{ flex: 1, alignItems: "center" }}>
 				{title && <Appbar.Content title={title} />}
 				{isOffline && (
 					<Chip
 						style={{
-							position: 'absolute',
+							position: "absolute",
 							bottom: -10,
 							height: 18,
 							minHeight: 18,
-							backgroundColor: 'rgba(244, 67, 54, 0.9)',
-							borderColor: 'rgba(244, 67, 54, 1)',
+							backgroundColor: "rgba(244, 67, 54, 0.9)",
+							borderColor: "rgba(244, 67, 54, 1)",
 						}}
-						textStyle={{ fontSize: 9, marginVertical: -5, color: '#fff' }}
+						textStyle={{ fontSize: 9, marginVertical: -5, color: "#fff" }}
 						compact
 						mode="outlined"
 						icon="wifi-off"
@@ -58,14 +58,18 @@ export const NavigationBar = ({
 				{__DEV__ && !isOffline && route.name === "Home" && (
 					<Chip
 						style={{
-							position: 'absolute',
+							position: "absolute",
 							bottom: -10,
 							height: 18,
 							minHeight: 18,
-							backgroundColor: 'rgba(255, 255, 255, 0.1)',
-							borderColor: 'rgba(255, 255, 255, 0.2)',
+							backgroundColor: "rgba(255, 255, 255, 0.1)",
+							borderColor: "rgba(255, 255, 255, 0.2)",
 						}}
-						textStyle={{ fontSize: 9, marginVertical: -5, color: 'rgba(255, 255, 255, 0.6)' }}
+						textStyle={{
+							fontSize: 9,
+							marginVertical: -5,
+							color: "rgba(255, 255, 255, 0.6)",
+						}}
 						compact
 						mode="outlined"
 					>
