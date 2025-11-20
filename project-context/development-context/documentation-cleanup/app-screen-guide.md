@@ -25,7 +25,6 @@
     -   [Project Details Screen](#project-details-screen)
     -   [Deployment Details Screen](#deployment-details-screen)
     -   [Device Details Screen](#device-details-screen)
-    -   [LoRaWAN Registration Screen](#lorawan-registration-screen)
     -   [Notifications Screen](#notifications-screen)
     -   [Feedback Screen](#feedback-screen)
     -   [Profile Screen](#profile-screen)
@@ -149,7 +148,7 @@ This screen provides a detailed list of every camera deployment the user has acc
 This is the user's hardware management center, where the user can see the status of the user's cameras and prepare them for the field.
 
 *   **What the user sees**:
-    *   A list of all cameras associated with the projects the user is a member of. Each camera is shown as a "card" with its name and status ("Deployed" or "Available").
+    *   A list of all cameras associated with the projects the user is a member of. Each camera is shown as a "card" with its name and status ("Deployed", "Prepared on {completed_at}", or "Needs Preparation").
     *   For deployed cameras, the card also shows the project it's in and its last known battery level and key operational statistics.
     *   A prominent button labeled **"Prepare and Test Nearby Devices"**.
     *   A smaller, secondary button labeled **"Engineer Nearby Devices"**.
@@ -175,10 +174,11 @@ This multi-step wizard guides the user through setting up a new camera in the fi
         *   A signal strength icon (like Wi-Fi bars) showing how strong the connection is.
     *   If no devices are found, a message "No devices found" is displayed, along with a link labelled **"I can't find my device"**.
     *   **What the buttons do**:
-        *   **Camera in the list**: Tapping on a camera from the list shows a loading indicator while the app attempts to connect. If the connection fails, an error message with a "Retry" button will appear. If device is associated with a project the user isn't member of the app does not connect to the device and displays a message: "To use this device with its current project, ask the Project Admin to add you as a member.". If successful, the app checks the camera's status. If the device has not been prepared or is not associated with a project, the user will be redirected to the **[Prepare and Test (Prepare and Test Nearby Devices)](#prepare-and-test-camera-workbench)** flow first. After the user finishes preparing the device, the user will be returned to the wizard to continue the deployment. If the device is ready and registered for LoRaWAN, the user will proceed to **Step 2: Connectivity Setup**. If the device is ready but *not* registered for LoRaWAN, the user will skip Step 2 and go directly to **Step 3: Camera View & Adjustment**.
+        *   **Camera in the list**: Tapping on a camera from the list shows a loading indicator while the app attempts to connect. If the connection fails, an error message with a "Retry" button will appear. If device is associated with a project the user isn't member of the app does not connect to the device and displays a message: "To use this device with its current project, ask the Project Admin to add you as a member.". If successful, the app checks the camera's status. If the device has not been prepared, the user will be redirected to the **[Prepare and Test (Prepare and Test Nearby Devices)](#prepare-and-test-camera-workbench)** flow first. After the user finishes preparing the device, the user will be returned to the wizard to continue the deployment. If the device is ready and registered for LoRaWAN, the user will proceed to **Step 2: Connectivity Setup**. If the device is ready but *not* registered for LoRaWAN, the user will skip Step 2 and go directly to **Step 3: Camera View & Adjustment**.
         *   **Refresh/Scan Again**: A button that lets the user re-scan for nearby cameras if the user doesn't see the one the user is looking for.
         *   **Cancel**: This button lets the user exit the wizard and go back to the screen the user came from (usually the Maps screen).
-        *   **I can't find my device**: Tpping this link shows a pop-up or a message with instructions: "To make your camera discoverable, press the button on the Wildlife Watcher until the blue Bluetooth icon lights up."
+        *   **I can't find my device**: Tapping this link shows a pop-up or a message with instructions: "To make your camera discoverable, press the button on the Wildlife Watcher until the blue Bluetooth icon lights up."
+    * **Note Device Association**: The deployment automatically links to the most recent completed device_preparation record for the selected device. This creates the association: deployment → device_preparation → device → project.
 *   **Step 2: Connectivity Setup**
     *   **What the user sees**: This step is only shown if the camera's LoRaWAN has been preregistered. The progress bar shows the user is on **"Step 2 of 5"**. The name of the associated project (selected in the camera workbench) is displayed at the top of the screen. The screen has a visual indicator (like signal bars) showing the current signal strength and the lorawan network name.
     *   **What the buttons do**:
@@ -230,7 +230,10 @@ This 2-step wizard guides the user through retrieving a camera from the field an
 
 ### Prepare and Test Nearby Devices
 
-This is a 2-step process for checking and configuring a camera *before* the user takes it out for deployment. The user can start this flow from the **Devices Screen** or be redirected here from the **Start Deployment Wizard** if the user selects an unprepared camera.
+This is a 2-step process for checking and configuring a camera *before* the user takes it out for deployment. **All activities are recorded in the database for audit and troubleshooting purposes.**
+
+The user can start this flow from the **Devices Screen** or be redirected here from the **Start Deployment Wizard** if the user selects an unprepared camera.
+
 
 *   **Step 1: Device Selection**
     *   **What the user sees**: This screen is identical to the first step of the **Start Deployment Wizard**. It takes over the full screen and shows a list of nearby Wildlife Watcher cameras that the app detects via Bluetooth.
@@ -246,16 +249,16 @@ This is a 2-step process for checking and configuring a camera *before* the user
         *   A view-only field for the camera's unique **Device ID**.
         *   The currently associated **Project**. Tapping this allows the user to assign the camera to a project.
         *   The camera's **Battery Level** and **SD Card Status** (e.g., "Ready", "No Card").
-        *   The installed **Firmware Version**. If an update is available, a notification will appear.
-        *   The installed **AI Model** (read-only). The app checks if this matches the project's default model and if the latest version is available. If an update is available, a notification will appear. Only Project Admins can change which AI model is used - this is set at the project level.
+        *   The installed **BLE Firmware Version**, **Himax Firmware Version**, and **Config Version**. If an update is available for any component, a notification will appear.
+        *   The **AI Model** currently on the device (read-only). The app checks if this matches the project's default model. If they don't match, a notification appears. Only Project Admins can change which AI model is used - this is set at the project level.
         *   The **LoRaWAN Status** (e.g., "Not Provisioned" or "Provisioned & Verified").
-        *   If provisioned, the name of the **LoRaWAN Network** it is registered to.
+        *   If provisioned, the Device EUI (from devices.device_eui) and the name of the **LoRaWAN Network** it is registered to (from device_preparation.lorawan_network).
     *   **What the buttons do**:
         *   **Project Association**: Tapping the "Project" field opens a list of the user's projects, allowing the user to assign the camera to one. A camera must be associated with a project before it can be deployed.
         *   **Check Camera View**: Tapping this takes a test photo and displays it, so the user can confirm the lens is clear and the camera is working correctly. Test photos are stored in a dedicated "test" folder on the SD card.
-        *   **Update Firmware**: This button appears if a newer firmware version is available. When tapped, the app first downloads the firmware file (if not already cached) and then performs safety checks (battery > 30%, not actively deployed). If checks pass, a confirmation dialog appears explaining the process will take 2-3 minutes. Tapping "Start Update" begins the process. If the app doesn't have internet access, a message "Offline: Unable to check for firmware updates" is displayed.
-        *   **Update AI Model**: This button appears if the camera's installed model doesn't match the project's default AI model, or if a newer version of the project's default model is available. Tapping it starts the process of sending the project's AI model file to the camera. If the app doesn't have internet access, display a message: "Offline: Unable to check for latest model". Note: This updates the camera to use the project's assigned model - only Project Admins can change which model the project uses from the project details screen.
-        *   **Verify Remote Updates**: If the LoRaWAN status is "Provisioned," this button will be visible. Tapping it initiates a check with the backend to confirm the device's pre-provisioned status. 
+        *   **Update Firmware**: This button appears if a newer version is available for ANY firmware component (BLE, Himax, or Config). When tapped, the app checks which components need updating and processes them sequentially. It performs safety checks (battery > 30%, not actively deployed). If checks pass, a confirmation dialog appears explaining the process will take 2-3 minutes. Tapping "Start Update" begins the process.
+        *   **Update AI Model**: This button appears if the device's model doesn't match the project's required model. **For Beta:** Tapping it displays instructions: "To update the AI model: 1) Download the required Manifest.zip from [link], 2) Copy it to the SD card's root directory, 3) Re-insert the SD card into the camera." After the user completes this, they can tap "Verify Model" to confirm the correct version is present.
+        *   **Verify Remote Updates**: If the LoRaWAN status is "Provisioned," this button will be visible. Tapping it, sends `ping\n` command, displays RSSI/SNR.
         *   **Finish Preparation**: This button saves any changes the user has made (like the project association), disconnects from the camera, and takes the user back to the screen the user came from. If the user came from the Start Deployment Wizard, the user will be returned to the wizard to continue the deployment.
 
 ---
@@ -315,28 +318,15 @@ This screen provides a complete overview of a specific camera's hardware informa
     *   The device's unique hardware ID (read-only).
     *   The currently installed Firmware Version and AI Model.
     *   The device's current status. If it is deployed, this will be a clickable link like "Deployed in 'Lion Study'".
-    *   **Device Status Definition**:
-        *   **Available**: The camera is not part of an active deployment and is ready to be prepared or deployed. A device becomes "Available" after its deployment is ended, or after it has been prepared but not yet deployed.
+    *   **Device Status Definition**: The device status is a calculated field with three possible states:
         *   **Deployed**: The camera is currently part of an active deployment in the field.
+        *   **Prepared**: The camera is not deployed and has successfully passed the "Prepare and Test" workflow. The UI will show something like `Prepared on July 4th, 2025 at 14:21`.
+        *   **Needs Preparation**: The camera is not deployed and has not yet been through the "Prepare and Test" workflow, or the last preparation was cancelled.
     *   A history section listing all past deployments this camera has been used for.
 
 *   **What the buttons do**:
     *   **Deployment Status Link**: If the device is currently deployed, tapping on its status will take the user to the **[Deployment Details Screen](#deployment-details-screen)** for that specific deployment.
-    *   **Prepare and Test**: If the device is "Available" (not deployed), a button will be visible to take the user to the **[Prepare and Test (Prepare and Test Nearby Devices)](#prepare-and-test-camera-workbench)** screen for this device.
-
-### LoRaWAN Registration Screen (TBC with CP)
-
-This screen guides the user through verifying the camera's pre-provisioned LoRaWAN status. The user gets here by tapping "Verify Remote Updates" from the **[Prepare and Test Nearby Devices](#prepare-and-test-camera-workbench)**.
-
-*   **What the user sees**:
-    *   A title like "Verify Remote Updates".
-    *   A brief explanation of what LoRaWAN is and why verification is needed (e.g., "This process will confirm your camera's registration with the network so it can send battery status and other stats from the field.").
-    *   A "Start Verification" button.
-    *   Once started, the user will see a progress indicator showing the current step, such as "Contacting server...", "Checking device status...", and finally "Verification Complete!".
-
-*   **What the buttons do**:
-    *   **Start Verification**: Tapping this button begins the automated verification process. The app communicates with the backend server, which in turn checks the device's registration status with the LoRaWAN network. The app does not handle security keys.
-    *   **Cancel/Back**: A back arrow in the header lets the user return to the **Prepare and Test Nearby Devices** without registering the device.
+    *   **Prepare and Test**: If the device is not deployed (status is "Prepared" or "Needs Preparation"), a button will be visible to take the user to the **Prepare and Test Nearby Devices** screen for this device.
 
 
 ### Notifications Screen
