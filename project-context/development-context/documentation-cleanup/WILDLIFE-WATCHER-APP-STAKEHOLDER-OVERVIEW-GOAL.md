@@ -51,6 +51,7 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 - ✅ **Work Anywhere, Sync Later**: Complete all tasks in remote locations without an internet connection. Data syncs to the cloud automatically when connectivity returns.
 - ✅ **Remote Camera Health Monitoring**: Receive crucial in-field updates on battery life and key operational statistics (e.g., number of images taken) via LoRaWAN to prevent failed deployments.
 - ✅ **Secure Team Collaboration**: Work with your team in a secure, isolated organization. Robust permissions ensure data is only seen by authorized users.
+- ✅ **Standardized Data Collection**: Set the project-wide capture method (motion detection or time-lapse) once, ensuring all deployments under that project follow the same protocol.
 
 
 ### Mobile App Features
@@ -64,6 +65,8 @@ Wildlife Watcher is a **mobile field app** that enables researchers to manage wi
 **For Project Admins**:
 - Invite team members and assign roles
 - Track deployment status across field sites
+- Select project capture method (motion detection or time-lapse)
+- Select AI models for camera detection
 - Select which AI model a project uses from a list of available models
 - Monitor team activities
 
@@ -137,6 +140,7 @@ Organization: General
 │  │  ├─ Creates the project
 │  │  ├─ Invites 3 field assistants as Project Members
 │  │  ├─ Assigns "Lion Detection v2.3" model
+│  │  ├─ Sets capture method to "Motion Detection"
 │  │  └─ Monitors team deployment progress
 │  │
 │  └─ Project Members: Sarah, Mike, Lisa
@@ -423,6 +427,59 @@ For the mvp2 release, the organizational structure is simple to focus on core pr
 
 ### Team Management (Project Level)
 
+**Current State**: ✅ COMPLETE (Task 12 Phase 4)
+- Project name, description and organization
+- Capture method (Motion Detection or Timelapse)
+- Assigned ML model
+- "Manage Members" button
+- "Start New Deployment" button
+- Deployment list view
+- Works offline
+
+**Intended State**: Same as current (discovered already implemented!)
+
+**Implementation**: Task 12 Phase 4 - Project Details Screen
+**Status**: Found complete during verification (saved 3.0 hrs)
+**Source**: implementation-spec-v1.4.md Section 5.5
+
+---
+
+#### 2.4 Edit Project Details
+**Description**: Update project information (Project Admin only)
+
+**Current State**: ⏳ PENDING (Task 14)
+- Edit project name and description
+- Update capture method
+- Update ML model
+- Manage project members
+- Only Project Admin can edit
+
+**Intended State**: Same as planned
+
+**Implementation**: Task 14 - Organisation Switching & Project Administration
+**Source**: implementation-spec-v1.4.md Section 5.5
+
+---
+
+#### 2.5 Archive/Delete Projects
+**Description**: Remove completed or mistaken projects
+
+**Current State**: ⏳ PENDING (Future Enhancement)
+- Only projects with no deployments can be deleted
+- Projects with deployments can be archived if the deployments are not active.
+- Only Project Admin can delete/archive
+- **Beta Version Note**: Archiving will not be available in the beta. All projects a user is a member of will be visible in their projects list.
+
+**Intended State**: Same as planned
+
+**Implementation**: Task 14 or later
+**Source**: implementation-spec-v1.4.md Section 5.5, user-roles-permissions.md Section 5.2
+
+---
+
+### Team Management
+
+#### 3.1 View Project Members
 #### 4.1 View Project Members
 **Description**: See who's on the project team
 
@@ -606,7 +663,7 @@ For the mvp2 release, the organizational structure is simple to focus on core pr
 **Current State**: TBC by AL
 - All deployment details from wizard
 - GPS coordinates with map view
-- Sampling design settings
+- Capture method (inherited from project)
 - Camera device information with battery status and sd card information if deployment active and connected to lorawan
 - "End Deployment" button for active deployments.
 
@@ -998,6 +1055,10 @@ For the mvp2, the app uses a simple, project-focused permission system:
 - *Example record*: "Dr. Chen (dr.chen@wildlife.app), Project Admin"
 
 **Projects** (Research initiatives)
+- Project name, description, goals
+- **Sampling Design**: The capture method for all deployments in the project (e.g., Motion Detection or Timelapse).
+- **Beta Version Note**: Project visibility is set to "Visible only for project members" by default in the backend.
+- **Future Enhancement**: Project Admins will be able to set visibility to "Visible for project and organization members" or "Publicly visible".
 - Creation date, last update, project owner
 - Organization link (automatic isolation)
 - *Example record*: "Lion Population Study 2025" - 5 team members, 12 active deployments
@@ -1005,7 +1066,6 @@ For the mvp2, the app uses a simple, project-focused permission system:
 **Deployments** (Camera instances in the field)
 - Deployment name, start/end dates
 - GPS coordinates with professional mapping (PostGIS)
-- Sampling design (motion detection vs timelapse)
 - Link to project, device, and creator
 - **Setup Photo**: A photo of the deployed camera setup, taken with the user's phone to help with retrieval.
 - *Example record*: "Water Hole #3" - Active since Jan 10, 2025, GPS: -2.3333, 34.8333
@@ -1075,14 +1135,19 @@ For the mvp2, the app uses a simple, project-focused permission system:
 ### How Features Connect to Database
 
 #### When you create a project:
+- **Stored in**: `projects` table
 - **Linked to**: The "General" organization automatically (via organization_id).
+- **Configuration**: Sets the project-wide capture method (sampling design).
+- **Security (Beta)**: Visibility is defaulted to "Visible only for project members". **(Future)** This will be controlled by the Project Admin and enforced by RLS.
+- **Tracked**: Creation date, last update, creator name
+- **Offline**: Saved locally first, synced to cloud when online
 
 #### When you deploy a camera:
 - **Stored in**: `deployments` table
 - **Linked to**: Project, device, creator (all verified permissions)
 - **Location**: PostGIS coordinates + human-readable address
 - **Security**: Only project members can see (project_id RLS policy)
-- **Tracked**: Start date, status, sampling design, bait station info
+- **Tracked**: Start date, status, bait station info
 - **Geographic**: Searchable by distance, proximity, map region
 
 #### When you add a team member:
