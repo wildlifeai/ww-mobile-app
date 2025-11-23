@@ -41,7 +41,7 @@ export type Database = {
           description: string
           id: number
           is_active: boolean
-          modified_by: string
+          modified_by: string | null
           updated_at: string | null
           value: string
         }
@@ -51,7 +51,7 @@ export type Database = {
           description: string
           id?: number
           is_active?: boolean
-          modified_by: string
+          modified_by?: string | null
           updated_at?: string | null
           value: string
         }
@@ -61,7 +61,7 @@ export type Database = {
           description?: string
           id?: number
           is_active?: boolean
-          modified_by?: string
+          modified_by?: string | null
           updated_at?: string | null
           value?: string
         }
@@ -1298,6 +1298,91 @@ export type Database = {
         }
         Relationships: []
       }
+      project_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          declined_at: string | null
+          deleted_at: string | null
+          id: string
+          invited_by: string
+          invited_user_id: string
+          project_id: string
+          role: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          declined_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          invited_by: string
+          invited_user_id: string
+          project_id: string
+          role: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          declined_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          invited_by?: string
+          invited_user_id?: string
+          project_id?: string
+          role?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "admin_activity_log"
+            referencedColumns: ["target_project_id"]
+          },
+          {
+            foreignKeyName: "project_invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_members: {
         Row: {
           created_at: string | null
@@ -1602,7 +1687,7 @@ export type Database = {
           description: string
           id: number
           is_active: boolean
-          modified_by: string
+          modified_by: string | null
           updated_at: string | null
           value: string
         }
@@ -1612,7 +1697,7 @@ export type Database = {
           description: string
           id?: number
           is_active?: boolean
-          modified_by: string
+          modified_by?: string | null
           updated_at?: string | null
           value: string
         }
@@ -1622,7 +1707,7 @@ export type Database = {
           description?: string
           id?: number
           is_active?: boolean
-          modified_by?: string
+          modified_by?: string | null
           updated_at?: string | null
           value?: string
         }

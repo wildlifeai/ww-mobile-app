@@ -9,8 +9,7 @@
  */
 
 import React from "react"
-import { render, screen, waitFor } from "@testing-library/react-native"
-import userEvent from "@testing-library/user-event"
+import { render, screen, waitFor, fireEvent } from "@testing-library/react-native"
 import { Provider } from "react-redux"
 import { NavigationContainer } from "@react-navigation/native"
 import { PaperProvider } from "react-native-paper"
@@ -22,6 +21,9 @@ import authReducer from "../../../../src/redux/slices/authSlice"
 import type { Database } from "../../../../src/types/supabase"
 
 type AIModel = Database["public"]["Tables"]["ai_models"]["Row"]
+
+// Mock network info
+jest.mock("@react-native-community/netinfo")
 
 // Mock navigation
 const mockNavigate = jest.fn()
@@ -39,7 +41,7 @@ jest.mock("@react-navigation/native", () => ({
 const createTestStore = (initialState = {}) => {
 	return configureStore({
 		reducer: {
-			auth: authReducer,
+			authentication: authReducer,
 			[aiModelsApi.reducerPath]: aiModelsApi.reducer,
 			[projectsApi.reducerPath]: projectsApi.reducer,
 		},
@@ -49,7 +51,7 @@ const createTestStore = (initialState = {}) => {
 				projectsApi.middleware,
 			),
 		preloadedState: {
-			auth: {
+			authentication: {
 				user: {
 					id: "user-123",
 					email: "test@example.com",
@@ -114,7 +116,6 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		]
 
 		const store = createTestStore()
-		const user = userEvent.setup()
 
 		// Mock AI models API response
 		jest
@@ -158,11 +159,11 @@ describe("NewProjectScreen - AI Model Integration", () => {
 
 		// Fill in project name (required field)
 		const nameInput = screen.getByLabelText("Project Name")
-		await user.type(nameInput, "Test Wildlife Project")
+		fireEvent.changeText(nameInput, "Test Wildlife Project")
 
 		// Select AI model
 		const modelSelect = screen.getByTestId("ai-model-select-dropdown")
-		await user.press(modelSelect)
+		fireEvent.press(modelSelect)
 
 		// Wait for dropdown options to appear
 		await waitFor(() => {
@@ -172,22 +173,22 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		})
 
 		// Select the first model
-		await user.press(screen.getByText("General Wildlife Model v1.0"))
+		fireEvent.press(screen.getByText("General Wildlife Model v1.0"))
 
 		// Fill other optional fields
 		const descriptionInput = screen.getByLabelText("Description")
-		await user.type(
+		fireEvent.changeText(
 			descriptionInput,
 			"A project to monitor wildlife in national park",
 		)
 
 		// Check is_baited checkbox
 		const baitedCheckbox = screen.getByLabelText("Is Baited")
-		await user.press(baitedCheckbox)
+		fireEvent.press(baitedCheckbox)
 
 		// Submit the form
 		const submitButton = screen.getByText("Create Project")
-		await user.press(submitButton)
+		fireEvent.press(submitButton)
 
 		// Assert - Verify project creation was called with correct data
 		await waitFor(() => {
@@ -314,7 +315,6 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		]
 
 		const store = createTestStore()
-		const user = userEvent.setup()
 
 		jest
 			.spyOn(aiModelsApi.endpoints.getAIModels, "useQuery")
@@ -348,11 +348,11 @@ describe("NewProjectScreen - AI Model Integration", () => {
 
 		// Fill only required fields
 		const nameInput = screen.getByLabelText("Project Name")
-		await user.type(nameInput, "Project Without Model")
+		fireEvent.changeText(nameInput, "Project Without Model")
 
 		// Submit without selecting model
 		const submitButton = screen.getByText("Create Project")
-		await user.press(submitButton)
+		fireEvent.press(submitButton)
 
 		// Assert - Should create project with undefined model_id
 		await waitFor(() => {
@@ -384,7 +384,6 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		]
 
 		const store = createTestStore()
-		const user = userEvent.setup()
 
 		jest
 			.spyOn(aiModelsApi.endpoints.getAIModels, "useQuery")
@@ -407,7 +406,7 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		})
 
 		const modelSelect = screen.getByTestId("ai-model-select-dropdown")
-		await user.press(modelSelect)
+		fireEvent.press(modelSelect)
 
 		// Should display model with valid UUID
 		await waitFor(() => {

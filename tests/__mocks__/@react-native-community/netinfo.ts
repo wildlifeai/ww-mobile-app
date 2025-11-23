@@ -34,6 +34,8 @@ const defaultState = {
 let currentState = defaultState
 let listeners: ((state: any) => void)[] = []
 
+const mockUseNetInfo = jest.fn(() => currentState)
+
 const NetInfoMock = {
 	fetch: jest.fn(() => Promise.resolve(currentState)),
 	addEventListener: jest.fn((listener: (state: any) => void) => {
@@ -42,7 +44,7 @@ const NetInfoMock = {
 			listeners = listeners.filter((l) => l !== listener)
 		}
 	}),
-	useNetInfo: jest.fn(() => currentState),
+	useNetInfo: mockUseNetInfo,
 	configure: jest.fn(),
 }
 
@@ -61,4 +63,8 @@ export const __clearListeners = () => {
 }
 
 export default NetInfoMock
+export const useNetInfo = mockUseNetInfo
+export const fetch = NetInfoMock.fetch
+export const addEventListener = NetInfoMock.addEventListener
+export const configure = NetInfoMock.configure
 export { NetInfoStateType }
