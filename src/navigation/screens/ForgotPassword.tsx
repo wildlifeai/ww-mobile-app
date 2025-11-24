@@ -7,9 +7,11 @@ import { WWTextInput } from "../../components/ui/WWTextInput"
 import { Field } from "../../components/form/Field"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { WWText } from "../../components/ui/WWText"
-import { resetPassword, updatePasswordWithToken } from "../../services/auth"
+import { resetPassword, updatePasswordWithToken, getCurrentSession } from "../../services/auth"
 import { useState, useEffect } from "react"
 import { useRoute } from "@react-navigation/native"
+import { useAppDispatch } from "../../redux"
+import { setCredentials } from "../../redux/slices/authSlice"
 
 type FormData = {
 	email: string
@@ -23,6 +25,7 @@ type ResetFormData = {
 export const ForgotPassword = () => {
 	const navigation = useAppNavigation()
 	const route = useRoute<any>()
+	const dispatch = useAppDispatch()
 	const [isLoading, setIsLoading] = useState(false)
 	const [isEmailSent, setIsEmailSent] = useState(false)
 	// Initialize reset mode based on route params - check once
@@ -106,15 +109,24 @@ export const ForgotPassword = () => {
 		setIsLoading(true)
 		try {
 			await updatePasswordWithToken(token, data.password, refreshToken)
+
+			// Get the current session after password update
+			const session = await getCurrentSession()
+
+			if (session) {
+				// Update Redux state with the new session
+				dispatch(setCredentials(session))
+			}
+
 			Alert.alert(
 				"Password Updated",
-				"Your password has been successfully updated. Welcome back!",
+				"Your password has been successfully updated. You're now logged in!",
 				[
 					{
 						text: "Continue",
 						onPress: () => {
-							// User is now authenticated, navigation will automatically show home screen
-							// No need to manually navigate
+							// User is now authenticated and Redux state is updated
+							// MainNavigation will automatically show the home screen
 						},
 					},
 				],

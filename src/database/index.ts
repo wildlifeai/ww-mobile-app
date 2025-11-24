@@ -5,6 +5,7 @@ import schema from './schema'
 import Project from './models/Project'
 import Deployment from './models/Deployment'
 import User from './models/User'
+import Organisation from './models/Organisation'
 
 const adapter = new SQLiteAdapter({
     schema,
@@ -24,6 +25,7 @@ const database = new Database({
         Project,
         Deployment,
         User,
+        Organisation,
     ],
 })
 
