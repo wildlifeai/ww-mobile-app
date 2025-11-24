@@ -136,7 +136,7 @@ const fetchUserOrganisations = async (userId: string) => {
 
 		// Step 2: Get organisation details
 		const orgIds = userOrgs.map(
-			(uo: Tables<"user_organisations">) => uo.organisation_id,
+			(uo: { organisation_id: string }) => uo.organisation_id,
 		)
 		console.log("📋 Querying organisations table for IDs:", orgIds)
 		const { data: orgs, error: orgsError } = await supabase()
@@ -188,18 +188,18 @@ const fetchUserOrganisations = async (userId: string) => {
 		console.log("✅ Found", userRoles?.length || 0, "user roles")
 
 		// Step 4: Combine the data
-		const organisations = userOrgs.map((uo: Tables<"user_organisations">) => {
+		const organisations = userOrgs.map((uo: { organisation_id: string }) => {
 			const org = orgs?.find(
-				(o: Tables<"organisations">) => o.id === uo.organisation_id,
+				(o: { id: string }) => o.id === uo.organisation_id,
 			)
 
 			// Find role for this organisation (organisation-scoped or system-wide)
 			const orgRole = userRoles?.find(
-				(r: Tables<"user_roles">) =>
+				(r: { scope_type: string; scope_id: string | null; role: string }) =>
 					r.scope_type === "organisation" && r.scope_id === uo.organisation_id,
 			)
 			const systemRole = userRoles?.find(
-				(r: Tables<"user_roles">) => r.scope_type === "system",
+				(r: { scope_type: string; role: string }) => r.scope_type === "system",
 			)
 
 			// System ww_admin role takes precedence over org-specific roles
@@ -223,8 +223,8 @@ const fetchUserOrganisations = async (userId: string) => {
 		const role = allRoles.includes("ww_admin")
 			? "ww_admin"
 			: allRoles.includes("project_admin")
-			? "project_admin"
-			: "project_member"
+				? "project_admin"
+				: "project_member"
 
 		// Get default organisation (first one for now)
 		const organisationId = userOrgs[0].organisation_id

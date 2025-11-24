@@ -30,7 +30,7 @@ describe("DatabaseService", () => {
 			getAllAsync: jest.fn(() => Promise.resolve([])),
 			closeAsync: jest.fn(),
 		}
-		;(SQLite.openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb)
+			; (SQLite.openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb)
 
 		databaseService = new DatabaseService()
 		await databaseService.initializeDatabase()
@@ -369,7 +369,7 @@ describe("DatabaseService", () => {
 			mockDb.runAsync.mockResolvedValue({ changes: 1 })
 
 			await databaseService.updateQueueItemRetry(
-				sampleQueueItem.id,
+				sampleQueueItem.id!,
 				1,
 				"failed",
 			)
@@ -415,7 +415,7 @@ describe("DatabaseService", () => {
 
 	describe("Error Handling and Data Integrity", () => {
 		it("should handle database connection errors gracefully", async () => {
-			;(SQLite.openDatabaseAsync as jest.Mock).mockRejectedValue(
+			; (SQLite.openDatabaseAsync as jest.Mock).mockRejectedValue(
 				new Error("Database connection failed"),
 			)
 

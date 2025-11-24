@@ -241,11 +241,9 @@ describe("ProjectService Integration Tests", () => {
 			expect(project.id).toBeDefined()
 			expect(project.name).toBe(projectInput.name)
 			expect(project.organisation_id).toBe(org1Id)
-			expect(project.owner_id).toBe(org1AdminId)
 			expect(project.created_by).toBe(org1AdminId)
-			expect(project.privacy_level).toBe("internal")
 			expect(project.is_baited).toBe(false)
-			expect(project.is_monitoring_marked_individual).toBe(false)
+			expect(project.is_monitoring_marked_individuals).toBe(null)
 
 			// Cleanup
 			await adminSupabase.from("projects").delete().eq("id", project.id)

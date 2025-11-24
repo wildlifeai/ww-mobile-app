@@ -55,10 +55,10 @@ export interface CreateProjectInput {
 	description?: string
 	organisation_id: string
 	model_id?: string // AI model selection (optional, added in T-008)
-	privacy_level?: "public" | "internal" | "private"
+	// privacy_level removed as it's not in the schema
 	is_baited?: boolean
-	is_monitoring_marked_individual?: boolean
-	sampling_design?: string
+	is_monitoring_marked_individuals?: boolean // Renamed from is_monitoring_marked_individual
+	sampling_design_id?: number // Renamed from sampling_design and changed to number ID
 	website?: string
 }
 

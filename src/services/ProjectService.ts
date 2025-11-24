@@ -85,8 +85,7 @@ class ProjectService {
 		} catch (error) {
 			console.error("❌ Failed to fetch projects from local database:", error)
 			throw new Error(
-				`Failed to fetch projects: ${
-					error instanceof Error ? error.message : String(error)
+				`Failed to fetch projects: ${error instanceof Error ? error.message : String(error)
 				}`,
 			)
 		}
@@ -207,8 +206,7 @@ class ProjectService {
 		} catch (error) {
 			console.error("❌ Failed to fetch project from local database:", error)
 			throw new Error(
-				`Failed to fetch project: ${
-					error instanceof Error ? error.message : String(error)
+				`Failed to fetch project: ${error instanceof Error ? error.message : String(error)
 				}`,
 			)
 		}
@@ -285,20 +283,26 @@ class ProjectService {
 			name: input.name,
 			description: input.description || null,
 			organisation_id: input.organisation_id,
-			owner_id: currentUserId,
 			created_by: currentUserId,
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
 			deleted_at: null,
-			privacy_level: input.privacy_level || "public",
+			// privacy_level: input.privacy_level || "public", // Removed
 			project_image: null,
-			end_date: null,
-			is_private: input.privacy_level === "private",
+			// end_date: null, // Removed
+			// is_private: input.privacy_level === "private", // Removed
 			is_baited: input.is_baited || false,
-			is_monitoring_marked_individual:
-				input.is_monitoring_marked_individual || false,
-			sampling_design: input.sampling_design || null,
+			is_monitoring_marked_individuals:
+				input.is_monitoring_marked_individuals || false,
+			sampling_design_id: input.sampling_design_id || null,
 			website: input.website || null,
+			modified_by: currentUserId,
+			is_active: true,
+			organisation_id: input.organisation_id,
+			timelapse_interval_seconds: null,
+			activity_detection_sensitivity_id: null,
+			capture_method_id: null,
+			model_id: input.model_id || null
 		}
 
 		try {
@@ -340,8 +344,7 @@ class ProjectService {
 		} catch (error) {
 			console.error("❌ Failed to create project:", error)
 			throw new Error(
-				`Failed to create project: ${
-					error instanceof Error ? error.message : String(error)
+				`Failed to create project: ${error instanceof Error ? error.message : String(error)
 				}`,
 			)
 		}
@@ -395,8 +398,7 @@ class ProjectService {
 		} catch (error) {
 			console.error("❌ Failed to update project:", error)
 			throw new Error(
-				`Failed to update project: ${
-					error instanceof Error ? error.message : String(error)
+				`Failed to update project: ${error instanceof Error ? error.message : String(error)
 				}`,
 			)
 		}
@@ -450,8 +452,7 @@ class ProjectService {
 		} catch (error) {
 			console.error("❌ Failed to delete project:", error)
 			throw new Error(
-				`Failed to delete project: ${
-					error instanceof Error ? error.message : String(error)
+				`Failed to delete project: ${error instanceof Error ? error.message : String(error)
 				}`,
 			)
 		}
@@ -592,23 +593,30 @@ class ProjectService {
 			name: dbProject.name,
 			description: dbProject.description || null,
 			organisation_id: dbProject.organisation_id,
-			owner_id: "", // Not stored in local DB
+			organisation_id: dbProject.organisation_id,
+			// owner_id: "", // Not stored in local DB
 			created_by: "", // Not stored in local DB
 			created_at: dbProject.created_at || new Date().toISOString(),
 			updated_at: dbProject.updated_at || new Date().toISOString(),
 			deleted_at:
 				dbProject.status === "inactive" ? new Date().toISOString() : null,
-			privacy_level: "public", // Not stored in local DB
+			// privacy_level: "public", // Not stored in local DB
 			project_image: null,
-			end_date: null,
-			is_private: false,
+			// end_date: null,
+			// is_private: false,
 			is_baited: false,
-			is_monitoring_marked_individual: false,
-			sampling_design: null,
+			is_monitoring_marked_individuals: false,
+			sampling_design_id: null,
 			website: null,
+			modified_by: "",
+			is_active: dbProject.status === "active",
+			timelapse_interval_seconds: null,
+			activity_detection_sensitivity_id: null,
+			capture_method_id: null,
+			model_id: null,
 			// Computed fields (will be populated during background sync)
 			deployment_count: 0,
-			device_count: 0,
+			lorawan_device_count: 0,
 			member_count: dbProject.members?.length || 0,
 		}
 	}

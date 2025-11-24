@@ -1,5 +1,5 @@
 // New UUID-first API types based on Supabase database schema
-import type { Tables, TablesInsert, TablesUpdate } from "./database.types"
+import type { Tables, TablesInsert, TablesUpdate } from "./supabase"
 
 // HTTP Method enum
 export enum HttpMethod {

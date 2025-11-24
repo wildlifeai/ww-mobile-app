@@ -334,7 +334,7 @@ describe("Authentication Service", () => {
 			setupAuthListener(mockCallback)
 
 			// Simulate auth state change with session
-			await authStateChangeCallback("SIGNED_IN", mockSession)
+			await authStateChangeCallback!("SIGNED_IN", mockSession)
 
 			expect(mockCallback).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -364,7 +364,7 @@ describe("Authentication Service", () => {
 			setupAuthListener(mockCallback)
 
 			// Simulate auth state change without session
-			await authStateChangeCallback("SIGNED_OUT", null)
+			await authStateChangeCallback!("SIGNED_OUT", null)
 
 			expect(mockCallback).toHaveBeenCalledWith(null)
 		})

@@ -96,6 +96,7 @@ import type {
 	ProjectRole,
 	OrganizationUser,
 } from "../services/ProjectMemberService"
+import ProjectService from "../services/ProjectService"
 
 type RouteParams = {
 	params: {
@@ -179,8 +180,6 @@ export const ProjectMembersScreen: React.FC = () => {
 			}
 
 			// Get project to find its organisation_id
-			const ProjectService = (await import("../services/ProjectService"))
-				.default
 			const project = await ProjectService.getProjectById(projectId)
 
 			if (!project?.organisation_id) {
@@ -255,8 +254,7 @@ export const ProjectMembersScreen: React.FC = () => {
 			if (successCount > 0) {
 				Alert.alert(
 					"Success",
-					`${successCount} ${
-						successCount === 1 ? "member" : "members"
+					`${successCount} ${successCount === 1 ? "member" : "members"
 					} added successfully`,
 				)
 			}
@@ -642,8 +640,8 @@ export const ProjectMembersScreen: React.FC = () => {
 									selectedUserIds.length === 0
 										? "unchecked"
 										: selectedUserIds.length === filteredAvailableUsers.length
-										? "checked"
-										: "indeterminate"
+											? "checked"
+											: "indeterminate"
 								}
 								onPress={toggleSelectAll}
 								color="#4CAF50"

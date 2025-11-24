@@ -18,6 +18,7 @@ import { useAppDispatch } from "../redux"
 import { initializeNetworkMonitoring } from "../redux/middleware/offlineSyncMiddleware"
 import ProjectService from "../services/ProjectService"
 import { initializeSupabaseClient } from "../services/supabase"
+import SupabaseSyncService from "../services/SupabaseSyncService"
 
 interface ExtendedToastConfigParams extends ToastConfigParams<any> {
 	numberOfLines?: number
@@ -70,6 +71,18 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 			.catch((error) => {
 				console.error("❌ Failed to initialize ProjectService:", error)
 			})
+	}, [])
+
+	// Initialize Supabase Sync Service
+	React.useEffect(() => {
+		console.log("🔄 Starting Supabase Sync Service...")
+		SupabaseSyncService.startRealtimeSubscription()
+		SupabaseSyncService.sync() // Initial sync
+
+		return () => {
+			console.log("🛑 Stopping Supabase Sync Service...")
+			SupabaseSyncService.stopRealtimeSubscription()
+		}
 	}, [])
 
 	return (

@@ -48,10 +48,10 @@ import type { ProjectWithDetails } from "../../types/project"
 interface ProjectFormData {
 	name: string
 	description: string
-	sampling_design: string
-	privacy_level: "public" | "internal" | "private"
+	sampling_design_id: string
+	// privacy_level removed
 	is_baited: boolean
-	is_monitoring_marked_individual: boolean
+	is_monitoring_marked_individuals: boolean
 	website: string
 }
 
@@ -88,14 +88,14 @@ export const ProjectDetailsScreen = () => {
 		defaultValues: {
 			name: project?.name || "",
 			description: project?.description || "",
-			sampling_design: project?.sampling_design || "",
-			privacy_level: (project?.privacy_level || "private") as
-				| "public"
-				| "internal"
-				| "private",
+			sampling_design_id: project?.sampling_design_id?.toString() || "",
+			// privacy_level: (project?.privacy_level || "private") as
+			// 	| "public"
+			// 	| "internal"
+			// 	| "private",
 			is_baited: project?.is_baited || false,
-			is_monitoring_marked_individual:
-				project?.is_monitoring_marked_individual || false,
+			is_monitoring_marked_individuals:
+				project?.is_monitoring_marked_individuals || false,
 			website: project?.website || "",
 		},
 	})
@@ -106,14 +106,14 @@ export const ProjectDetailsScreen = () => {
 			reset({
 				name: project.name,
 				description: project.description || "",
-				sampling_design: project.sampling_design || "",
-				privacy_level: (project.privacy_level || "private") as
-					| "public"
-					| "internal"
-					| "private",
+				sampling_design_id: project.sampling_design_id?.toString() || "",
+				// privacy_level: (project.privacy_level || "private") as
+				// 	| "public"
+				// 	| "internal"
+				// 	| "private",
 				is_baited: project.is_baited || false,
-				is_monitoring_marked_individual:
-					project.is_monitoring_marked_individual || false,
+				is_monitoring_marked_individuals:
+					project.is_monitoring_marked_individuals || false,
 				website: project.website || "",
 			})
 		}
@@ -137,11 +137,11 @@ export const ProjectDetailsScreen = () => {
 					updates: {
 						name: data.name.trim(),
 						description: data.description.trim() || null,
-						sampling_design: data.sampling_design.trim() || null,
-						privacy_level: data.privacy_level,
+						sampling_design_id: data.sampling_design_id ? Number(data.sampling_design_id) : null,
+						// privacy_level: data.privacy_level,
 						is_baited: data.is_baited,
-						is_monitoring_marked_individual:
-							data.is_monitoring_marked_individual,
+						is_monitoring_marked_individuals:
+							data.is_monitoring_marked_individuals,
 						website: data.website.trim() || null,
 					},
 				}).unwrap()
@@ -457,14 +457,15 @@ export const ProjectDetailsScreen = () => {
 							<View>
 								<Field
 									control={control}
-									name="sampling_design"
-									label="Sampling Design"
+									name="sampling_design_id"
+									label="Sampling Design ID"
 								>
 									{(field) => (
 										<WWTextInput
 											{...field}
 											mode="outlined"
-											placeholder="e.g., Random, Systematic, Stratified"
+											placeholder="e.g., 1"
+											keyboardType="numeric"
 											testID="sampling-design-input"
 										/>
 									)}
@@ -483,40 +484,7 @@ export const ProjectDetailsScreen = () => {
 									)}
 								</Field>
 
-								<View style={styles.privacyGroup}>
-									<Text
-										variant="bodyMedium"
-										style={[styles.label, { color: theme.colors.onSurface }]}
-									>
-										Privacy Level
-									</Text>
-									<Controller
-										control={control}
-										name="privacy_level"
-										render={({ field: { value, onChange } }) => (
-											<View style={styles.radioOptions}>
-												<WWCheckbox
-													label="Private"
-													value={value === "private"}
-													onChange={() => onChange("private")}
-													testID="privacy-private"
-												/>
-												<WWCheckbox
-													label="Internal"
-													value={value === "internal"}
-													onChange={() => onChange("internal")}
-													testID="privacy-internal"
-												/>
-												<WWCheckbox
-													label="Public"
-													value={value === "public"}
-													onChange={() => onChange("public")}
-													testID="privacy-public"
-												/>
-											</View>
-										)}
-									/>
-								</View>
+								{/* Privacy Level Removed */}
 
 								<Controller
 									control={control}
@@ -533,7 +501,7 @@ export const ProjectDetailsScreen = () => {
 
 								<Controller
 									control={control}
-									name="is_monitoring_marked_individual"
+									name="is_monitoring_marked_individuals"
 									render={({ field: { value, onChange } }) => (
 										<WWCheckbox
 											label="Monitoring Marked Individuals"
@@ -546,19 +514,19 @@ export const ProjectDetailsScreen = () => {
 							</View>
 						) : (
 							<View>
-								{project.sampling_design && (
+								{project.sampling_design_id && (
 									<View style={styles.settingRow}>
 										<Text
 											variant="bodyMedium"
 											style={{ color: theme.colors.onSurfaceVariant }}
 										>
-											Sampling Design:
+											Sampling Design ID:
 										</Text>
 										<Text
 											variant="bodyMedium"
 											style={{ color: theme.colors.onSurface }}
 										>
-											{project.sampling_design}
+											{project.sampling_design_id}
 										</Text>
 									</View>
 								)}
@@ -580,17 +548,7 @@ export const ProjectDetailsScreen = () => {
 									</View>
 								)}
 
-								<View style={styles.settingRow}>
-									<Text
-										variant="bodyMedium"
-										style={{ color: theme.colors.onSurfaceVariant }}
-									>
-										Privacy:
-									</Text>
-									<Chip mode="outlined">
-										{project.privacy_level || "private"}
-									</Chip>
-								</View>
+								{/* Privacy Level Removed */}
 
 								{project.is_baited && (
 									<View style={styles.settingRow}>
@@ -608,7 +566,7 @@ export const ProjectDetailsScreen = () => {
 									</View>
 								)}
 
-								{project.is_monitoring_marked_individual && (
+								{project.is_monitoring_marked_individuals && (
 									<View style={styles.settingRow}>
 										<WWIcon
 											source="checkbox-marked"

@@ -32,10 +32,10 @@ import type { CreateProjectInput } from "../../types/project"
 interface ProjectFormData {
 	name: string
 	description: string
-	sampling_design: string
-	privacy_level: "public" | "internal" | "private"
+	sampling_design_id: string
+	// privacy_level removed
 	is_baited: boolean
-	is_monitoring_marked_individual: boolean
+	is_monitoring_marked_individuals: boolean
 	website: string
 	model_id?: string
 }
@@ -57,10 +57,10 @@ export const NewProjectScreen = () => {
 		defaultValues: {
 			name: "",
 			description: "",
-			sampling_design: "",
-			privacy_level: "private",
+			sampling_design_id: "",
+			// privacy_level: "private",
 			is_baited: false,
-			is_monitoring_marked_individual: false,
+			is_monitoring_marked_individuals: false,
 			website: "",
 			model_id: "",
 		},
@@ -86,10 +86,10 @@ export const NewProjectScreen = () => {
 				name: data.name.trim(),
 				description: data.description.trim() || undefined,
 				organisation_id: currentOrganisation.id,
-				privacy_level: data.privacy_level,
+				// privacy_level: data.privacy_level,
 				is_baited: data.is_baited,
-				is_monitoring_marked_individual: data.is_monitoring_marked_individual,
-				sampling_design: data.sampling_design.trim() || undefined,
+				is_monitoring_marked_individuals: data.is_monitoring_marked_individuals,
+				sampling_design_id: data.sampling_design_id ? Number(data.sampling_design_id) : undefined,
 				website: data.website.trim() || undefined,
 				model_id: data.model_id || undefined,
 			}
@@ -177,15 +177,16 @@ export const NewProjectScreen = () => {
 
 					<Field
 						control={control}
-						name="sampling_design"
-						label="Sampling Design"
+						name="sampling_design_id"
+						label="Sampling Design ID"
 					>
 						{(field) => (
 							<WWTextInput
 								{...field}
 								mode="outlined"
-								placeholder="e.g., Random, Systematic, Stratified"
-								error={!!errors.sampling_design}
+								placeholder="e.g., 1"
+								keyboardType="numeric"
+								error={!!errors.sampling_design_id}
 								testID="sampling-design-input"
 							/>
 						)}
@@ -224,42 +225,7 @@ export const NewProjectScreen = () => {
 						required={false}
 					/>
 
-					{/* Privacy Level Radio Group */}
-					<View style={styles.radioGroup}>
-						<Text
-							variant="bodyMedium"
-							style={[styles.label, { color: theme.colors.onSurface }]}
-						>
-							Privacy Level
-						</Text>
-
-						<Controller
-							control={control}
-							name="privacy_level"
-							render={({ field: { value, onChange } }) => (
-								<View style={styles.radioOptions}>
-									<WWCheckbox
-										label="Private (Only project members)"
-										value={value === "private"}
-										onChange={() => onChange("private")}
-										testID="privacy-private"
-									/>
-									<WWCheckbox
-										label="Internal (Organisation members)"
-										value={value === "internal"}
-										onChange={() => onChange("internal")}
-										testID="privacy-internal"
-									/>
-									<WWCheckbox
-										label="Public (Everyone)"
-										value={value === "public"}
-										onChange={() => onChange("public")}
-										testID="privacy-public"
-									/>
-								</View>
-							)}
-						/>
-					</View>
+					{/* Privacy Level Removed */}
 
 					{/* Checkboxes */}
 					<Controller
@@ -277,7 +243,7 @@ export const NewProjectScreen = () => {
 
 					<Controller
 						control={control}
-						name="is_monitoring_marked_individual"
+						name="is_monitoring_marked_individuals"
 						render={({ field: { value, onChange } }) => (
 							<WWCheckbox
 								label="Monitoring Marked Individuals"

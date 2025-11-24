@@ -16,29 +16,24 @@
 
 import { supabase } from "./supabase"
 
-export type ProjectRole = "project_admin" | "project_member"
+export type ProjectRole = "project_admin" | "project_member" | "viewer"
 
 export interface OrganizationUser {
 	id: string
 	name: string
 	email: string
-	roles: Array<{
-		role: string
-		scope_type: string
-		scope_id: string | null
-		is_active: boolean
-	}>
-	is_in_project?: boolean // Set client-side based on current project context
+	roles: any // JSON from RPC
+	is_in_project: boolean
 }
 
 export interface ProjectMember {
-	id: string
+	id: string // User ID
 	name: string
 	email: string
-	role: ProjectRole
+	role: string // ProjectRole
 	granted_at: string
-	granted_by: string | null
-	granted_by_name: string | null
+	granted_by: string
+	granted_by_name: string
 }
 
 export interface AddMemberRequest {
@@ -98,11 +93,10 @@ export const getOrganizationUsers = async (
 		}
 
 		console.log(
-			`✅ Fetched ${
-				data?.length || 0
+			`✅ Fetched ${data?.length || 0
 			} users from organization ${organisationId}`,
 		)
-		return data || []
+		return (data as any[]) || []
 	} catch (error) {
 		console.error("❌ Exception fetching organization users:", error)
 		throw error
@@ -136,7 +130,7 @@ export const getProjectMembers = async (
 		console.log(
 			`✅ Fetched ${data?.length || 0} members from project ${projectId}`,
 		)
-		return data || []
+		return (data as any[]) || []
 	} catch (error) {
 		console.error("❌ Exception fetching project members:", error)
 		throw error
@@ -180,7 +174,7 @@ export const addProjectMember = async (
 		}
 
 		console.log("✅ Successfully added project member:", data)
-		return data
+		return data as unknown as MemberOperationResponse
 	} catch (error: any) {
 		console.error("❌ Exception adding project member:", error)
 		return {
@@ -229,7 +223,7 @@ export const updateProjectMemberRole = async (
 		}
 
 		console.log("✅ Successfully updated project member role:", data)
-		return data
+		return data as unknown as MemberOperationResponse
 	} catch (error: any) {
 		console.error("❌ Exception updating project member role:", error)
 		return {
@@ -276,7 +270,7 @@ export const removeProjectMember = async (
 		}
 
 		console.log("✅ Successfully removed project member:", data)
-		return data
+		return data as unknown as MemberOperationResponse
 	} catch (error: any) {
 		console.error("❌ Exception removing project member:", error)
 		return {
@@ -302,7 +296,7 @@ export const isProjectAdmin = async (
 ): Promise<boolean> => {
 	try {
 		// Call backend function to check project role
-		const { data, error } = await supabase.rpc("has_project_role_mvp2", {
+		const { data, error } = await supabase.rpc("has_project_role", {
 			project_id: projectId,
 			required_role: "project_admin",
 			user_id: userId,

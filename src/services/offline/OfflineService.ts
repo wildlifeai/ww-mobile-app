@@ -142,8 +142,7 @@ export class OfflineService {
 			`📤 Queue operation called: ${operation.type} (id: ${operation.id})`,
 		)
 		console.log(
-			`📤 Network status: ${
-				this.networkStatus.isConnected ? "ONLINE" : "OFFLINE"
+			`📤 Network status: ${this.networkStatus.isConnected ? "ONLINE" : "OFFLINE"
 			}`,
 		)
 
@@ -243,8 +242,7 @@ export class OfflineService {
 			// Update retry count and requeue if within limits
 			if (this.shouldRetryOperation(operation)) {
 				console.log(
-					`⚙️ ⏱️ Updating retry count for operation ${operation.id} (retry ${
-						operation.retry_count + 1
+					`⚙️ ⏱️ Updating retry count for operation ${operation.id} (retry ${operation.retry_count + 1
 					})`,
 				)
 				// Update retry count in queue
@@ -732,9 +730,18 @@ export class OfflineService {
 				project_id: result.project_id || deploymentData.project_id,
 				organisation_id: operation.organisation_id,
 				device_id: result.device_id || deploymentData.device_id,
-				location: result.location ||
-					deploymentData.location || { lat: 0, lng: 0 },
-				// Note: 'status' and 'lorawan_status' are not properties in Supabase database types - removed
+				location: (result.location as { lat: number; lng: number }) ||
+					(deploymentData.location as { lat: number; lng: number }) || {
+					lat: 0,
+					lng: 0,
+				},
+				status: "active",
+				lorawan_status: {
+					battery_level: 0,
+					sd_card_usage: 0,
+					device_status: "offline",
+					last_seen: new Date().toISOString(),
+				},
 			}
 
 			await this.databaseService.insertDeployment(dbDeployment)
@@ -763,8 +770,18 @@ export class OfflineService {
 				project_id: result.project_id || updateData.project_id,
 				organisation_id: operation.organisation_id,
 				device_id: result.device_id || updateData.device_id,
-				location: result.location || updateData.location || { lat: 0, lng: 0 },
-				// Note: 'status' and 'lorawan_status' are not properties in Supabase database types - removed
+				location: (result.location as { lat: number; lng: number }) ||
+					(updateData.location as { lat: number; lng: number }) || {
+					lat: 0,
+					lng: 0,
+				},
+				status: "active",
+				lorawan_status: {
+					battery_level: 0,
+					sd_card_usage: 0,
+					device_status: "offline",
+					last_seen: new Date().toISOString(),
+				},
 			}
 
 			await this.databaseService.updateDeployment(id, dbDeployment)

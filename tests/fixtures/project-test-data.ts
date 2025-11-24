@@ -53,7 +53,7 @@ export const sampleProjectInputs: Record<string, CreateProjectInput> = {
 		name: "Wildlife Survey 2025",
 		description: "Annual wildlife population survey in national parks",
 		organisation_id: "", // Will be set in tests
-		privacy_level: "public",
+
 		is_baited: false,
 		is_monitoring_marked_individual: false,
 		sampling_design: "Random grid sampling with 500m spacing",

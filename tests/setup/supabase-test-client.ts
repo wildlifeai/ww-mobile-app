@@ -83,7 +83,9 @@ export async function createTestUser(
 	// Create user profile
 	const { error: profileError } = await adminSupabase.from("users").insert({
 		id: authData.user.id,
-		name,
+		firstname: name.split(" ")[0] || name,
+		surname: name.split(" ").slice(1).join(" ") || "User",
+		modified_by: authData.user.id,
 	})
 
 	if (profileError) {
