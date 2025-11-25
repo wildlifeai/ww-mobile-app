@@ -425,6 +425,30 @@ For the mvp2 release, the organizational structure is simple to focus on core pr
 
 ---
 
+### Project Visibility (MVP2)
+
+**Current Implementation:**
+- **All projects are private by default** - visible only to Project Admins and Project Members
+- Project visibility is **not stored in the database** - it's enforced through Row Level Security (RLS) policies
+- Users can only see projects where they have an assigned role (via `user_roles` table)
+
+**How It Works:**
+- When a user views the Projects Screen, RLS policies automatically filter to show only projects where:
+  - They are listed as a Project Admin OR
+  - They are listed as a Project Member
+- Projects from other teams are completely hidden - they don't appear in lists, searches, or maps
+
+**Future Enhancement:**
+Project visibility settings will be added to allow:
+- "Private" (project members only) - Current default
+- "Organization-wide" (all organization members can view)
+- "Public" (visible to all users)
+
+**Why Not in MVP2:**
+To simplify the first release, we're focusing on secure team collaboration. The RLS security model already enforces privacy, so adding a visibility field would be redundant for MVP2.
+
+---
+
 ### Team Management (Project Level)
 
 **Current State**: ✅ COMPLETE (Task 12 Phase 4)
