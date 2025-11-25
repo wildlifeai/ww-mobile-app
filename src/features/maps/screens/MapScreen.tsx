@@ -1,19 +1,22 @@
 /**
  * MapScreen Component
  *
- * Main map screen with user location, controls, and permission handling
- * Foundational implementation - zero dependencies on other MVP2 features
+ * Main map screen with deployment markers, FABs, and interactive controls
  */
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { StyleSheet, View, Text, ActivityIndicator } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
+import { FAB, Portal } from "react-native-paper"
+import { Marker, Callout } from "react-native-maps"
 import { BasicMapView } from "../components/BasicMapView"
 import { MapControls } from "../components/MapControls"
 import { LocationPermissionPrompt } from "../components/LocationPermissionPrompt"
 import { useLocation } from "../hooks/useLocation"
 import { useMapRegion } from "../hooks/useMapRegion"
 import { MapType } from "../types"
+import { useGetDeploymentsQuery } from "../../../redux/api/deployments"
+import { useAppNavigation } from "../../../hooks/useAppNavigation"
 
 export const MapScreen: React.FC = () => {
 	const {
@@ -30,6 +33,21 @@ export const MapScreen: React.FC = () => {
 
 	const [mapType, setMapType] = useState<MapType>("standard")
 	const [initialLoad, setInitialLoad] = useState(true)
+	const [showActiveOnly, setShowActiveOnly] = useState(false)
+	const navigation = useAppNavigation()
+
+	// Fetch deployments
+	const { data: deployments, isLoading: deploymentsLoading } = useGetDeploymentsQuery()
+
+	// Filter deployments based on active/all toggle
+	const filteredDeployments = useMemo(() => {
+		if (!deployments) return []
+		if (showActiveOnly) {
+			// Status ID 2 = active deployments
+			return deployments.filter(d => d.deployment_status_id === 2)
+		}
+		return deployments
+	}, [deployments, showActiveOnly])
 
 	/**
 	 * Debug logging
@@ -39,7 +57,8 @@ export const MapScreen: React.FC = () => {
 		console.log("[MapScreen] Location loading:", locationLoading)
 		console.log("[MapScreen] Has location:", !!location)
 		console.log("[MapScreen] Error:", locationError)
-	}, [permissions.foreground, locationLoading, location, locationError])
+		console.log("[MapScreen] Deployments count:", filteredDeployments.length)
+	}, [permissions.foreground, locationLoading, location, locationError, filteredDeployments])
 
 	/**
 	 * Center map on user location when available
@@ -57,7 +76,6 @@ export const MapScreen: React.FC = () => {
 	 */
 	useEffect(() => {
 		if (permissions.foreground === "undetermined") {
-			// Don't auto-request - show prompt first
 			console.log(
 				"[MapScreen] Location permission undetermined - showing prompt",
 			)
@@ -77,8 +95,49 @@ export const MapScreen: React.FC = () => {
 	}
 
 	/**
+	 * Get marker color based on deployment status ID
+	 * Status IDs: 1 = pending, 2 = active, 3 = ended (based on backend schema)
+	 */
+	const getMarkerColor = (statusId?: number | null) => {
+		switch (statusId) {
+			case 2: // active
+				return '#4CAF50' // Green
+			case 3: // ended
+				return '#FF9800' // Orange  
+			case 1: // pending
+				return '#2196F3' // Blue
+			default:
+				return '#757575' // Gray
+		}
+	}
+
+	/**
+	 * Get status label from ID
+	 */
+	const getStatusLabel = (statusId?: number | null) => {
+		switch (statusId) {
+			case 1:
+				return 'Pending'
+			case 2:
+				return 'Active'
+			case 3:
+				return 'Ended'
+			default:
+				return 'Unknown'
+		}
+	}
+
+	/**
+	 * Handle deployment marker press
+	 */
+	const handleMarkerPress = (deploymentId: string) => {
+		console.log('[MapScreen] Deployment marker pressed:', deploymentId)
+		// TODO: Navigate to deployment details when screen is implemented
+		// navigation.navigate('DeploymentDetailsScreen', { deploymentId })
+	}
+
+	/**
 	 * Show map with permission prompt overlay if needed
-	 * CHANGED: Always show map, overlay permission prompt
 	 */
 	const showPermissionPrompt = permissions.foreground !== "granted"
 	const showMapUserLocation = permissions.foreground === "granted"
@@ -92,7 +151,32 @@ export const MapScreen: React.FC = () => {
 				mapType={mapType}
 				mapRef={mapRef}
 				config={{ showsUserLocation: showMapUserLocation }}
-			/>
+			>
+				{/* Deployment Markers */}
+				{filteredDeployments.map((deployment) => {
+					if (!deployment.latitude || !deployment.longitude) return null
+
+					return (
+						<Marker
+							key={deployment.id}
+							coordinate={{
+								latitude: deployment.latitude,
+								longitude: deployment.longitude,
+							}}
+							pinColor={getMarkerColor(deployment.deployment_status_id)}
+							onPress={() => handleMarkerPress(deployment.id)}
+						>
+							<Callout>
+								<View style={styles.callout}>
+									<Text style={styles.calloutTitle}>{deployment.name || 'Unnamed Deployment'}</Text>
+									<Text style={styles.calloutText}>Status: {getStatusLabel(deployment.deployment_status_id)}</Text>
+									<Text style={styles.calloutText}>Location: {deployment.location_name}</Text>
+								</View>
+							</Callout>
+						</Marker>
+					)
+				})}
+			</BasicMapView>
 
 			{/* Permission Prompt Overlay */}
 			{showPermissionPrompt && (
@@ -111,6 +195,39 @@ export const MapScreen: React.FC = () => {
 				onMapTypeChange={setMapType}
 				currentMapType={mapType}
 			/>
+
+			{/* Layer Filter Toggle - Top Left */}
+			<Portal>
+				<FAB
+					icon={showActiveOnly ? "filter" : "filter-outline"}
+					label={showActiveOnly ? "Active" : "All"}
+					style={[styles.filterFab, { backgroundColor: showActiveOnly ? '#2196F3' : '#fff' }]}
+					color={showActiveOnly ? '#fff' : '#000'}
+					onPress={() => setShowActiveOnly(!showActiveOnly)}
+					small
+				/>
+
+				{/* Start Deployment Button */}
+				<FAB
+					icon="upload"
+					label="Start Deployment"
+					style={[styles.startFab, { backgroundColor: '#2196F3' }]}
+					color="#fff"
+					onPress={() => navigation.navigate('AddDeployment')}
+				/>
+
+				{/* End Deployment Button */}
+				<FAB
+					icon="download"
+					label="End Deployment"
+					style={[styles.endFab, { backgroundColor: '#FF9800' }]}
+					color="#fff"
+					onPress={() => {
+						// TODO: Implement end deployment flow
+						console.log('[MapScreen] End Deployment pressed')
+					}}
+				/>
+			</Portal>
 
 			{/* Loading Indicator */}
 			{locationLoading && (
@@ -143,6 +260,9 @@ export const MapScreen: React.FC = () => {
 							Accuracy: ±{location.accuracy.toFixed(0)}m
 						</Text>
 					)}
+					<Text style={styles.debugText}>
+						Deployments: {filteredDeployments.length}
+					</Text>
 				</View>
 			)}
 		</SafeAreaView>
@@ -209,5 +329,36 @@ const styles = StyleSheet.create({
 		color: "white",
 		fontSize: 12,
 		fontFamily: "monospace",
+	},
+	// Deployment Callout
+	callout: {
+		padding: 10,
+		minW: 150,
+	},
+	calloutTitle: {
+		fontSize: 14,
+		fontWeight: "600",
+		marginBottom: 4,
+	},
+	calloutText: {
+		fontSize: 12,
+		color: "#666",
+		marginBottom: 2,
+	},
+	// Floating Action Buttons
+	startFab: {
+		position: "absolute",
+		bottom: 80,
+		left: 16,
+	},
+	endFab: {
+		position: "absolute",
+		bottom: 16,
+		left: 16,
+	},
+	filterFab: {
+		position: "absolute",
+		top: 80,
+		left: 16,
 	},
 })
