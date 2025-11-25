@@ -1,305 +1,256 @@
-/**
- * ProjectService - Project management service layer
- *
- * Refactored for WatermelonDB Native Sync:
- * - Uses WatermelonDB models for all operations
- * - Sync is handled by SupabaseSyncService
- * - Removed DatabaseService and OfflineService dependencies
- */
+})
 
-import { Q } from '@nozbe/watermelondb'
-import database from '../database'
-import Project from '../database/models/Project'
-import { supabase } from "./supabase"
-import type {
-	Project as ProjectType,
-	ProjectWithDetails,
-	ProjectMemberWithProfile,
-	CreateProjectInput,
-} from "../types/project"
+if (!newProject) throw new Error("Failed to create project instance")
 
-class ProjectService {
-	private readonly projectsCollection = database.collections.get<Project>('projects')
+console.log("✅ Project created in WatermelonDB and recorded in outbox:", newProject.id)
 
-	/**
-	 * Initialize service
-	 * No explicit initialization needed for WatermelonDB
-	 */
-	async initialize(): Promise<void> {
-		// No-op
-	}
-
-	/**
-	 * Get all projects for current user's organisation
-	 * Reads from local WatermelonDB
-	 */
-	async getUserProjects(organisationId: string): Promise<ProjectWithDetails[]> {
-		try {
-			console.log("📂 Reading projects from WatermelonDB for org:", organisationId)
-
-			const projects = await this.projectsCollection
-				.query(
-					Q.where('organisation_id', organisationId),
-					// Q.where('deleted_at', null) // WatermelonDB filters deleted records by default
-				)
-				.fetch()
-
-			console.log(`✅ Found ${projects.length} projects in WatermelonDB`)
-
-			return projects.map(p => this.mapModelToDetails(p))
+return this.mapModelToType(newProject)
 		} catch (error) {
-			console.error("❌ Failed to fetch projects from WatermelonDB:", error)
-			throw new Error(
-				`Failed to fetch projects: ${error instanceof Error ? error.message : String(error)}`
-			)
-		}
-	}
-
-	/**
-	 * Get single project by ID with full details
-	 * Reads from local WatermelonDB
-	 */
-	async getProjectById(projectId: string): Promise<ProjectWithDetails | null> {
-		try {
-			console.log("📂 Reading project from WatermelonDB:", projectId)
-
-			const project = await this.projectsCollection.find(projectId)
-
-			if (!project) {
-				console.log("❌ Project not found in WatermelonDB:", projectId)
-				return null
-			}
-
-			console.log("✅ Found project in WatermelonDB:", project.name)
-
-			return this.mapModelToDetails(project)
-		} catch (error) {
-			console.error("❌ Failed to fetch project from WatermelonDB:", error)
-			// WatermelonDB throws if record not found
-			return null
-		}
-	}
-
-	/**
-	 * Create new project
-	 * Saves to local WatermelonDB. Sync engine handles pushing to server.
-	 */
-	async createProject(input: CreateProjectInput): Promise<ProjectType> {
-		const currentUserId = await this.getCurrentUserId()
-		if (!currentUserId) throw new Error("User not authenticated")
-
-		try {
-			console.log("💾 Creating project in WatermelonDB:", input.name)
-
-			let newProject: Project | undefined
-
-			await database.write(async () => {
-				newProject = await this.projectsCollection.create(project => {
-					project.name = input.name
-					project.description = input.description || ''
-					project.organisationId = input.organisation_id
-					project.samplingDesignId = input.sampling_design_id ?? null
-					project.website = input.website ?? null
-					project.createdBy = currentUserId
-					project.modifiedBy = currentUserId
-					project.isActive = true
-					project.timelapseIntervalSeconds = input.timelapse_interval_seconds ?? null
-					project.activityDetectionSensitivityId = input.activity_detection_sensitivity_id ?? null
-					project.captureMethodId = input.capture_method_id ?? null
-					project.modelId = input.model_id ?? null
-					project.isBaited = input.is_baited || false
-				})
-			})
-
-			if (!newProject) throw new Error("Failed to create project instance")
-
-			console.log("✅ Project created locally:", newProject.id)
-
-			return this.mapModelToType(newProject)
-		} catch (error) {
-			console.error("❌ Failed to create project:", error)
-			throw new Error(
-				`Failed to create project: ${error instanceof Error ? error.message : String(error)}`
-			)
-		}
+	console.error("❌ Failed to create project:", error)
+	throw new Error(
+		`Failed to create project: ${error instanceof Error ? error.message : String(error)}`
+	)
+}
 	}
 
 	/**
 	 * Update existing project
-	 * Updates local WatermelonDB. Sync engine handles pushing to server.
+	 * Updates local WatermelonDB and records in outbox for sync.
 	 */
 	async updateProject(
-		projectId: string,
-		updates: Partial<ProjectType>,
-	): Promise<ProjectType> {
-		try {
-			console.log("💾 Updating project in WatermelonDB:", projectId)
+	projectId: string,
+	updates: Partial<Project>,
+): Promise < Project > {
+	try {
+		console.log("💾 Updating project in WatermelonDB:", projectId)
 
 			const project = await this.projectsCollection.find(projectId)
 			const currentUserId = await this.getCurrentUserId()
 
 			await database.write(async () => {
-				await project.update(p => {
-					if (updates.name !== undefined) p.name = updates.name
-					if (updates.description !== undefined) p.description = updates.description || ''
-					if (updates.sampling_design_id !== undefined) p.samplingDesignId = updates.sampling_design_id ?? null
-					if (updates.website !== undefined) p.website = updates.website ?? null
-					if (updates.is_active !== undefined) p.isActive = updates.is_active ?? true
-					if (updates.timelapse_interval_seconds !== undefined) p.timelapseIntervalSeconds = updates.timelapse_interval_seconds ?? null
-					if (updates.activity_detection_sensitivity_id !== undefined) p.activityDetectionSensitivityId = updates.activity_detection_sensitivity_id ?? null
-					if (updates.capture_method_id !== undefined) p.captureMethodId = updates.capture_method_id ?? null
-					if (updates.model_id !== undefined) p.modelId = updates.model_id ?? null
-					if (updates.is_baited !== undefined) p.isBaited = updates.is_baited ?? false
+			// 1. Update local database and increment version
+			await project.update(p => {
+				if (updates.name !== undefined) p.name = updates.name
+				if (updates.description !== undefined) p.description = updates.description || ''
+				if (updates.sampling_design_id !== undefined) p.samplingDesignId = updates.sampling_design_id ?? null
+				if (updates.website !== undefined) p.website = updates.website ?? null
+				if (updates.is_active !== undefined) p.isActive = updates.is_active ?? true
+				if (updates.timelapse_interval_seconds !== undefined) p.timelapseIntervalSeconds = updates.timelapse_interval_seconds ?? null
+				if (updates.activity_detection_sensitivity_id !== undefined) p.activityDetectionSensitivityId = updates.activity_detection_sensitivity_id ?? null
+				if (updates.capture_method_id !== undefined) p.captureMethodId = updates.capture_method_id ?? null
+				if (updates.model_id !== undefined) p.modelId = updates.model_id ?? null
+				if (updates.is_baited !== undefined) p.isBaited = updates.is_baited ?? false
 
-					if (currentUserId) p.modifiedBy = currentUserId
-				})
+				if (currentUserId) p.modifiedBy = currentUserId
+
+				// Increment version and mark as pending sync
+				p.version = project.version + 1
+				p.customSyncStatus = 'pending'
 			})
 
-			console.log("✅ Project updated locally:", projectId)
+			// 2. Record operation in outbox for sync
+			await OutboxService.recordOperation({
+				operation: 'UPDATE',
+				tableName: 'projects',
+				recordId: project.id,
+				payload: {
+					id: project.id,
+					name: project.name,
+					description: project.description,
+					organisation_id: project.organisationId,
+					sampling_design_id: project.samplingDesignId,
+					website: project.website,
+					modified_by: project.modifiedBy,
+					is_active: project.isActive,
+					timelapse_interval_seconds: project.timelapseIntervalSeconds,
+					activity_detection_sensitivity_id: project.activityDetectionSensitivityId,
+					capture_method_id: project.captureMethodId,
+					model_id: project.modelId,
+					is_baited: project.isBaited,
+					updated_at: Date.now(),
+					_version: project.version
+				},
+				version: project.version,
+				userId: currentUserId || undefined
+			})
+		})
+
+			console.log("✅ Project updated in WatermelonDB and recorded in outbox:", projectId)
 
 			return this.mapModelToType(project)
-		} catch (error) {
-			console.error("❌ Failed to update project:", error)
-			throw new Error(
-				`Failed to update project: ${error instanceof Error ? error.message : String(error)}`
-			)
-		}
+	} catch(error) {
+		console.error("❌ Failed to update project:", error)
+		throw new Error(
+			`Failed to update project: ${error instanceof Error ? error.message : String(error)}`
+		)
 	}
+}
 
 	/**
 	 * Delete project (Soft Delete)
-	 * Marks as deleted in WatermelonDB. Sync engine handles pushing to server.
+	 * Marks as deleted in WatermelonDB and records in outbox for sync.
 	 */
-	async deleteProject(projectId: string): Promise<void> {
-		try {
-			console.log("🗑️ Deleting project in WatermelonDB:", projectId)
+	async deleteProject(projectId: string): Promise < void> {
+	try {
+		console.log("🗑️ Deleting project in WatermelonDB:", projectId)
 
 			const project = await this.projectsCollection.find(projectId)
+			const currentUserId = await this.getCurrentUserId()
 
 			await database.write(async () => {
-				await project.markAsDeleted()
+			// 1. Record operation in outbox BEFORE deleting
+			// (so we can still access project data)
+			await OutboxService.recordOperation({
+				operation: 'DELETE',
+				tableName: 'projects',
+				recordId: project.id,
+				payload: {
+					id: project.id,
+					_version: project.version
+				},
+				version: project.version,
+				userId: currentUserId || undefined
 			})
 
-			console.log("✅ Project marked as deleted locally:", projectId)
-		} catch (error) {
-			console.error("❌ Failed to delete project:", error)
-			throw new Error(
-				`Failed to delete project: ${error instanceof Error ? error.message : String(error)}`
-			)
-		}
+			// 2. Soft delete locally
+			await project.markAsDeleted()
+		})
+
+			console.log("✅ Project deleted in WatermelonDB and recorded in outbox:", projectId)
+	} catch(error) {
+		console.error("❌ Failed to delete project:", error)
+		throw new Error(
+			`Failed to delete project: ${error instanceof Error ? error.message : String(error)}`
+		)
 	}
+}
 
 	/**
 	 * Get project members
-	 * Note: Project Members are not yet in WatermelonDB, so we fetch from Supabase via RPC
+	 * 
+	 * NOTE: Project member management is not yet in WatermelonDB schema.
+	 * This currently requires online connectivity and uses Supabase RPC.
+	 * 
+	 * TODO for full offline support:
+	 * 1. Add project_members table to WatermelonDB schema
+	 * 2. Add member CRUD to OutboxService
+	 * 3. Update sync to handle member operations
 	 */
-	async getProjectMembers(projectId: string): Promise<ProjectMemberWithProfile[]> {
-		try {
+	async getProjectMembers(projectId: string): Promise < ProjectMemberWithProfile[] > {
+	try {
+		const supabase = getSupabaseClient()
 			const { data, error } = await (supabase as any).rpc('get_project_members', {
-				p_project_id: projectId,
-			})
+			p_project_id: projectId,
+		})
 
-			if (error) throw error
+			if(error) throw error
 
 			return data as ProjectMemberWithProfile[]
-		} catch (error) {
-			console.error("Failed to fetch project members:", error)
-			return []
-		}
+	} catch(error) {
+		console.error("Failed to fetch project members:", error)
+		return []
 	}
+}
 
 	/**
 	 * Add member to project
-	 * Note: Uses Supabase RPC directly
+	 * 
+	 * NOTE: Requires online connectivity. For full offline support,
+	 * project_members table needs to be added to WatermelonDB schema.
 	 */
 	async addProjectMember(
-		projectId: string,
-		email: string,
-		role: 'project_admin' | 'project_member'
-	): Promise<void> {
-		try {
+	projectId: string,
+	email: string,
+	role: 'project_admin' | 'project_member'
+): Promise < void> {
+	try {
+		const supabase = getSupabaseClient()
 			const { error } = await (supabase as any).rpc('add_project_member', {
-				p_project_id: projectId,
-				p_email: email,
-				p_role: role,
-			})
+			p_project_id: projectId,
+			p_email: email,
+			p_role: role,
+		})
 
-			if (error) throw error
-		} catch (error) {
-			console.error("Failed to add project member:", error)
-			throw error
-		}
+			if(error) throw error
+	} catch(error) {
+		console.error("Failed to add project member:", error)
+		throw error
 	}
+}
 
 	/**
 	 * Remove member from project
-	 * Note: Uses Supabase RPC directly
+	 * 
+	 * NOTE: Requires online connectivity. For full offline support,
+	 * project_members table needs to be added to WatermelonDB schema.
 	 */
-	async removeProjectMember(projectId: string, userId: string): Promise<void> {
-		try {
+	async removeProjectMember(projectId: string, userId: string): Promise < void> {
+	try {
+		const supabase = getSupabaseClient()
 			const { error } = await (supabase as any).rpc('remove_project_member', {
-				p_project_id: projectId,
-				p_user_id: userId,
-			})
+			p_project_id: projectId,
+			p_user_id: userId,
+		})
 
-			if (error) throw error
-		} catch (error) {
-			console.error("Failed to remove project member:", error)
-			throw error
-		}
+			if(error) throw error
+	} catch(error) {
+		console.error("Failed to remove project member:", error)
+		throw error
 	}
+}
 
 	// --- Private Helpers ---
 
-	private async getCurrentUserId(): Promise<string | null> {
+	private async getCurrentUserId(): Promise < string | null > {
+	const supabase = getSupabaseClient()
 		const { data: { user } } = await supabase.auth.getUser()
 		return user?.id || null
-	}
+}
 
-	private mapModelToDetails(model: Project): ProjectWithDetails {
-		return {
-			id: model.id,
-			name: model.name,
-			description: model.description,
-			organisation_id: model.organisationId,
-			created_at: new Date(model.createdAt).toISOString(),
-			updated_at: new Date(model.updatedAt).toISOString(),
-			sampling_design_id: model.samplingDesignId || null,
-			website: model.website || null,
-			created_by: model.createdBy,
-			modified_by: model.modifiedBy,
-			is_active: model.isActive,
-			timelapse_interval_seconds: model.timelapseIntervalSeconds || null,
-			activity_detection_sensitivity_id: model.activityDetectionSensitivityId || null,
-			capture_method_id: model.captureMethodId || null,
-			model_id: model.modelId || null,
-			is_baited: model.isBaited,
-			role: 'project_admin', // Default role, should be enriched if needed
-			members: [], // Members are fetched separately
-			deployments_count: 0, // Deployments are fetched separately
-		}
+	private mapModelToDetails(model: ProjectModel): ProjectWithDetails {
+	return {
+		id: model.id,
+		name: model.name,
+		description: model.description,
+		organisation_id: model.organisationId,
+		created_at: new Date(model.createdAt).toISOString(),
+		updated_at: new Date(model.updatedAt).toISOString(),
+		sampling_design_id: model.samplingDesignId || null,
+		website: model.website || null,
+		created_by: model.createdBy,
+		modified_by: model.modifiedBy,
+		is_active: model.isActive,
+		timelapse_interval_seconds: model.timelapseIntervalSeconds || null,
+		activity_detection_sensitivity_id: model.activityDetectionSensitivityId || null,
+		capture_method_id: model.captureMethodId || null,
+		model_id: model.modelId || null,
+		is_baited: model.isBaited,
+		role: 'project_admin', // Default role, should be enriched if needed
+		members: [], // Members are fetched separately
+		deployments_count: 0, // Deployments are fetched separately
 	}
+}
 
-	private mapModelToType(model: Project): ProjectType {
-		return {
-			id: model.id,
-			name: model.name,
-			description: model.description,
-			organisation_id: model.organisationId,
-			created_at: new Date(model.createdAt).toISOString(),
-			updated_at: new Date(model.updatedAt).toISOString(),
-			sampling_design_id: model.samplingDesignId || null,
-			website: model.website || null,
-			created_by: model.createdBy,
-			modified_by: model.modifiedBy,
-			is_active: model.isActive,
-			timelapse_interval_seconds: model.timelapseIntervalSeconds || null,
-			activity_detection_sensitivity_id: model.activityDetectionSensitivityId || null,
-			capture_method_id: model.captureMethodId || null,
-			model_id: model.modelId || null,
-			is_baited: model.isBaited,
-		}
+	private mapModelToType(model: ProjectModel): Project {
+	return {
+		id: model.id,
+		name: model.name,
+		description: model.description,
+		organisation_id: model.organisationId,
+		created_at: new Date(model.createdAt).toISOString(),
+		updated_at: new Date(model.updatedAt).toISOString(),
+		sampling_design_id: model.samplingDesignId || null,
+		website: model.website || null,
+		created_by: model.createdBy,
+		modified_by: model.modifiedBy,
+		is_active: model.isActive,
+		timelapse_interval_seconds: model.timelapseIntervalSeconds || null,
+		activity_detection_sensitivity_id: model.activityDetectionSensitivityId || null,
+		capture_method_id: model.captureMethodId || null,
+		model_id: model.modelId || null,
+		is_baited: model.isBaited,
 	}
+}
 }
 
 export default new ProjectService()

@@ -50,27 +50,6 @@ export const Projects = () => {
 		refetch,
 	} = useGetProjectsQuery()
 
-	// Temporarily disable sync callback to stop infinite loop
-	// TODO: Fix the root cause - projects not filtered by organisation during sync
-	useEffect(() => {
-		console.log(
-			"🔧 Projects Screen - Sync callback DISABLED (preventing infinite loop)",
-		)
-		ProjectService.setOnSyncComplete(undefined as any)
-	}, [])
-
-	// 🔍 DEBUG: Log projects data whenever it changes
-	useEffect(() => {
-		console.log("🔍 Projects Screen - Data changed:", {
-			projects: projects?.length || 0,
-			projectsData: projects?.map((p) => ({ id: p.id, name: p.name })) || [],
-			isLoading,
-			isFetching,
-			hasError: !!error,
-			error: error ? JSON.stringify(error) : null,
-		})
-	}, [projects, isLoading, isFetching, error])
-
 	// Search state
 	const [searchQuery, setSearchQuery] = useState("")
 
@@ -116,7 +95,7 @@ export const Projects = () => {
 	const keyExtractor = useCallback((item: ProjectWithDetails) => item.id, [])
 
 	const getItemLayout = useCallback(
-		(_: ProjectWithDetails[] | null | undefined, index: number) => ({
+		(_: ArrayLike<ProjectWithDetails> | null | undefined, index: number) => ({
 			length: ITEM_HEIGHT,
 			offset: ITEM_HEIGHT * index,
 			index,
