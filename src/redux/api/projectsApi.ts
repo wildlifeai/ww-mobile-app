@@ -22,6 +22,33 @@ import type {
 	CreateProjectInput,
 	ProjectMemberWithProfile,
 } from "../../types/project"
+import { supabase } from "../../services/supabase"
+
+// Define return types for reference data
+export interface CaptureMethod {
+	id: number
+	value: string
+	description: string
+}
+
+export interface ActivitySensitivity {
+	id: number
+	value: string
+	description: string
+}
+
+export interface AiModel {
+	id: string
+	name: string
+	version: string
+	description: string | null
+}
+
+export interface SamplingDesign {
+	id: number
+	value: string
+	description: string
+}
 
 export const projectsApi = createApi({
 	reducerPath: "projectsApi",
@@ -92,9 +119,9 @@ export const projectsApi = createApi({
 			providesTags: (result) =>
 				result
 					? [
-							...result.map(({ id }) => ({ type: "Projects" as const, id })),
-							{ type: "Projects", id: "LIST" },
-					  ]
+						...result.map(({ id }) => ({ type: "Projects" as const, id })),
+						{ type: "Projects", id: "LIST" },
+					]
 					: [{ type: "Projects", id: "LIST" }],
 		}),
 
@@ -232,11 +259,11 @@ export const projectsApi = createApi({
 		// Add project member
 		addProjectMember: builder.mutation<
 			void,
-			{ projectId: string; userId: string; roleId: number }
+			{ projectId: string; email: string; role: 'project_admin' | 'project_member' }
 		>({
-			queryFn: async ({ projectId, userId, roleId }) => {
+			queryFn: async ({ projectId, email, role }) => {
 				try {
-					await ProjectService.addProjectMember(projectId, userId, roleId)
+					await ProjectService.addProjectMember(projectId, email, role)
 					return { data: undefined }
 				} catch (error) {
 					return {
@@ -274,6 +301,51 @@ export const projectsApi = createApi({
 				{ type: "ProjectMembers", id: projectId },
 			],
 		}),
+
+		// Reference Data Endpoints
+		getCaptureMethods: builder.query<CaptureMethod[], void>({
+			queryFn: async () => {
+				const { data, error } = await supabase
+					.from("capture_methods")
+					.select("*")
+					.order("id")
+				if (error) return { error: { status: "CUSTOM_ERROR", error: error.message } }
+				return { data: data as CaptureMethod[] }
+			},
+		}),
+
+		getActivitySensitivity: builder.query<ActivitySensitivity[], void>({
+			queryFn: async () => {
+				const { data, error } = await supabase
+					.from("activity_sensitivity")
+					.select("*")
+					.order("id")
+				if (error) return { error: { status: "CUSTOM_ERROR", error: error.message } }
+				return { data: data as ActivitySensitivity[] }
+			},
+		}),
+
+		getAiModels: builder.query<AiModel[], void>({
+			queryFn: async () => {
+				const { data, error } = await supabase
+					.from("ai_models")
+					.select("*")
+					.order("name")
+				if (error) return { error: { status: "CUSTOM_ERROR", error: error.message } }
+				return { data: data as AiModel[] }
+			},
+		}),
+
+		getSamplingDesigns: builder.query<SamplingDesign[], void>({
+			queryFn: async () => {
+				const { data, error } = await supabase
+					.from("sampling_designs")
+					.select("*")
+					.order("id")
+				if (error) return { error: { status: "CUSTOM_ERROR", error: error.message } }
+				return { data: data as SamplingDesign[] }
+			},
+		}),
 	}),
 })
 
@@ -287,4 +359,8 @@ export const {
 	useGetProjectMembersQuery,
 	useAddProjectMemberMutation,
 	useRemoveProjectMemberMutation,
+	useGetCaptureMethodsQuery,
+	useGetActivitySensitivityQuery,
+	useGetAiModelsQuery,
+	useGetSamplingDesignsQuery,
 } = projectsApi

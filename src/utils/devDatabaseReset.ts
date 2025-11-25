@@ -1,7 +1,7 @@
 /**
  * Development Database Reset Utility
  *
- * Provides convenient methods to reset SQLite database during development/testing.
+ * Provides convenient methods to reset WatermelonDB during development/testing.
  * Only available when connected to local or cloud dev Supabase instances.
  *
  * Usage:
@@ -9,14 +9,14 @@
  * await resetDatabaseForDev();
  */
 
-import { getDatabaseService } from "../services/offline/DatabaseService"
+import database from "../database"
 
 /**
- * Reset the SQLite database completely (drops and recreates all tables)
+ * Reset the WatermelonDB database completely
  * Only available in development mode
  *
  * @returns Promise that resolves when reset is complete
- * @throws Error if not in development mode or if database is not initialized
+ * @throws Error if not in development mode
  */
 export async function resetDatabaseForDev(): Promise<void> {
 	if (!__DEV__) {
@@ -24,42 +24,24 @@ export async function resetDatabaseForDev(): Promise<void> {
 	}
 
 	try {
-		const dbService = getDatabaseService()
-
-		console.log("🔄 Starting database reset...")
-		await dbService.resetDatabase()
-		console.log("✅ Database reset complete")
+		console.log("🔄 Starting WatermelonDB reset...")
+		await database.write(async () => {
+			await database.unsafeResetDatabase()
+		})
+		console.log("✅ WatermelonDB reset complete")
 		console.log("ℹ️  You may need to restart the app or re-authenticate")
 	} catch (error) {
-		console.error("❌ Database reset failed:", error)
+		console.error("❌ WatermelonDB reset failed:", error)
 		throw error
 	}
 }
 
 /**
- * Clear all data from the database without dropping tables
- * Preserves schema and indexes
- * Only available in development mode
- *
- * @returns Promise that resolves when clear is complete
- * @throws Error if not in development mode or if database is not initialized
+ * Clear all data from the database
+ * Alias for resetDatabaseForDev in WatermelonDB context
  */
 export async function clearDatabaseDataForDev(): Promise<void> {
-	if (!__DEV__) {
-		throw new Error("Database clear is only available in development mode")
-	}
-
-	try {
-		const dbService = getDatabaseService()
-
-		console.log("🔄 Starting database clear...")
-		await dbService.clearAllData()
-		console.log("✅ Database cleared complete")
-		console.log("ℹ️  You may need to restart the app or re-authenticate")
-	} catch (error) {
-		console.error("❌ Database clear failed:", error)
-		throw error
-	}
+	return resetDatabaseForDev()
 }
 
 /**
@@ -69,13 +51,11 @@ export async function clearDatabaseDataForDev(): Promise<void> {
 export async function getDatabaseStatus(): Promise<{
 	isDevelopment: boolean
 	supabaseUrl: string
-	version: number
+	adapter: string
 }> {
-	const dbService = getDatabaseService()
-
 	return {
 		isDevelopment: __DEV__,
 		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || "not set",
-		version: await dbService.getDatabaseVersion(),
+		adapter: "WatermelonDB",
 	}
 }

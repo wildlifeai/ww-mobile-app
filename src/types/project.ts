@@ -60,6 +60,9 @@ export interface CreateProjectInput {
 	is_monitoring_marked_individuals?: boolean // Renamed from is_monitoring_marked_individual
 	sampling_design_id?: number // Renamed from sampling_design and changed to number ID
 	website?: string
+	timelapse_interval_seconds?: number
+	activity_detection_sensitivity_id?: number
+	capture_method_id?: number
 }
 
 // LoRaWAN device status (mock for now)

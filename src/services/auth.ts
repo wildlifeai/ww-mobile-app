@@ -11,7 +11,7 @@ import {
 	LoginRequest,
 	RegisterRequest,
 } from "../redux/api/auth/types"
-import { getDatabaseService } from "./offline/DatabaseService"
+// import { getDatabaseService } from "./offline/DatabaseService"
 import type { Tables } from "../types/supabase"
 
 /**
@@ -28,34 +28,14 @@ const supabase = () => getSupabaseClient()
  * Sync user's organisations to local SQLite database
  * This ensures foreign key constraints are satisfied for offline operations
  */
+/**
+ * Sync user's organisations to local SQLite database
+ * Deprecated: WatermelonDB handles organisation sync now.
+ */
 const syncOrganisationsToLocal = async (
 	organisations: { id: string; name: string }[],
 ) => {
-	try {
-		const dbService = getDatabaseService()
-		await dbService.initializeDatabase()
-
-		for (const org of organisations) {
-			// Check if organisation already exists
-			const existingOrg = await dbService.getOrganisationById(org.id)
-
-			if (!existingOrg) {
-				// Insert organisation with default settings
-				await dbService.insertOrganisation({
-					id: org.id,
-					name: org.name,
-					settings: {
-						timezone: "UTC",
-						currency: "USD",
-					},
-				})
-				console.log(`✅ Synced organisation to local database: ${org.name}`)
-			}
-		}
-	} catch (error) {
-		console.error("⚠️ Failed to sync organisations to local database:", error)
-		// Don't throw - this is non-critical for login, but log the error
-	}
+	// No-op: DatabaseService removed
 }
 
 /**

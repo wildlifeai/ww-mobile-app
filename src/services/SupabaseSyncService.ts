@@ -3,10 +3,6 @@ import { RealtimeChannel } from '@supabase/supabase-js'
 import database from '../database'
 import { getSupabaseClient } from './supabase'
 
-// Define the tables we are syncing
-type TableName = 'projects' | 'deployments' | 'users'
-const SYNC_TABLES: TableName[] = ['projects', 'deployments', 'users']
-
 class SupabaseSyncService {
     private realtimeChannel: RealtimeChannel | null = null
     private isSyncing = false
@@ -24,38 +20,18 @@ class SupabaseSyncService {
                 pullChanges: async ({ lastPulledAt, schemaVersion, migration }) => {
                     console.log('Pulling changes since', lastPulledAt)
                     const client = getSupabaseClient()
-                    const timestamp = Date.now()
 
-                    const changes: any = {}
+                    const { data, error } = await (client as any).rpc('pull_changes', {
+                        last_pulled_at: lastPulledAt ?? 0
+                    })
 
-                    for (const table of SYNC_TABLES) {
-                        const lastPulledIso = lastPulledAt ? new Date(lastPulledAt).toISOString() : new Date(0).toISOString()
-
-                        // Explicitly cast table to string to satisfy Supabase client overload if needed
-                        const { data: remoteChanges, error } = await client
-                            .from(table)
-                            .select('*')
-                            .gt('updated_at', lastPulledIso)
-
-                        if (error) throw error
-
-                        const created = []
-                        const updated = []
-                        const deleted = []
-
-                        for (const record of remoteChanges || []) {
-                            const typedRecord = record as any
-                            if (typedRecord.deleted_at) {
-                                deleted.push(typedRecord.id)
-                            } else if (lastPulledAt && new Date(typedRecord.created_at).getTime() > lastPulledAt) {
-                                created.push(typedRecord)
-                            } else {
-                                updated.push(typedRecord)
-                            }
-                        }
-
-                        changes[table] = { created, updated, deleted }
+                    if (error) {
+                        console.error('Pull changes failed:', error)
+                        throw error
                     }
+
+                    // RPC returns { changes: ..., timestamp: ... }
+                    const { changes, timestamp } = data as any
 
                     return { changes, timestamp }
                 },
@@ -63,31 +39,13 @@ class SupabaseSyncService {
                     console.log('Pushing changes')
                     const client = getSupabaseClient()
 
-                    for (const table of SYNC_TABLES) {
-                        const tableChanges = (changes as any)[table]
-                        if (!tableChanges) continue
+                    const { error } = await (client as any).rpc('push_changes', {
+                        changes
+                    })
 
-                        const { created, updated, deleted } = tableChanges
-
-                        // Bulk Insert
-                        if (created.length > 0) {
-                            const { error } = await client.from(table).insert(created)
-                            if (error) throw error
-                        }
-
-                        // Bulk Update (Upsert)
-                        if (updated.length > 0) {
-                            const { error } = await client.from(table).upsert(updated)
-                            if (error) throw error
-                        }
-
-                        // Bulk Delete (Soft Delete)
-                        if (deleted.length > 0) {
-                            const now = new Date().toISOString()
-                            const updates = deleted.map((id: string) => ({ id, deleted_at: now }))
-                            const { error } = await client.from(table).upsert(updates as any)
-                            if (error) throw error
-                        }
+                    if (error) {
+                        console.error('Push changes failed:', error)
+                        throw error
                     }
                 },
                 // migrationsEnabledAtVersion: 1,
@@ -106,6 +64,8 @@ class SupabaseSyncService {
             return
         }
 
+        // Listen to changes on the 'projects' and 'deployments' tables
+        // We can use a wildcard for the schema to catch all changes
         this.realtimeChannel = client
             .channel('public:db_changes')
             .on(
@@ -113,6 +73,7 @@ class SupabaseSyncService {
                 { event: '*', schema: 'public' },
                 (payload) => {
                     console.log('Realtime change received:', payload)
+                    // Debounce sync to avoid flooding
                     this.sync()
                 }
             )

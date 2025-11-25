@@ -11,7 +11,7 @@
  * - Loading states: Proper skeleton/spinner for data fetching
  */
 
-import React, { useState, useCallback } from "react"
+import React, { useState, useCallback, useMemo } from "react"
 import { StyleSheet, View, ScrollView, Alert } from "react-native"
 import { useForm, Controller } from "react-hook-form"
 import {
@@ -21,7 +21,6 @@ import {
 	Card,
 	Divider,
 	IconButton,
-	Chip,
 	Portal,
 	Dialog,
 	Button,
@@ -33,26 +32,33 @@ import {
 	useDeleteProjectMutation,
 	useGetProjectMembersQuery,
 	useRemoveProjectMemberMutation,
+	useGetCaptureMethodsQuery,
+	useGetActivitySensitivityQuery,
+	useGetAiModelsQuery,
+	useGetSamplingDesignsQuery,
 } from "../../redux/api/projectsApi"
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWTextInput } from "../../components/ui/WWTextInput"
 import { WWButton } from "../../components/ui/WWButton"
 import { WWCheckbox } from "../../components/ui/WWCheckbox"
 import { WWIcon } from "../../components/ui/WWIcon"
+import { WWSelect } from "../../components/ui/WWSelect"
 import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { Field } from "../../components/form/Field"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import type { AppParams } from "../index"
-import type { ProjectWithDetails } from "../../types/project"
 
 interface ProjectFormData {
 	name: string
 	description: string
 	sampling_design_id: string
-	// privacy_level removed
+	website: string
 	is_baited: boolean
 	is_monitoring_marked_individuals: boolean
-	website: string
+	capture_method_id: string
+	activity_detection_sensitivity_id: string
+	timelapse_interval_seconds: string
+	model_id: string
 }
 
 export const ProjectDetailsScreen = () => {
@@ -65,7 +71,7 @@ export const ProjectDetailsScreen = () => {
 	const [isEditMode, setIsEditMode] = useState(false)
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
-	// Queries and mutations
+	// Queries
 	const {
 		data: project,
 		isLoading,
@@ -74,6 +80,14 @@ export const ProjectDetailsScreen = () => {
 	} = useGetProjectByIdQuery(projectId)
 	const { data: members, isLoading: membersLoading } =
 		useGetProjectMembersQuery(projectId)
+
+	// Reference Data Queries
+	const { data: captureMethods } = useGetCaptureMethodsQuery()
+	const { data: activitySensitivities } = useGetActivitySensitivityQuery()
+	const { data: aiModels } = useGetAiModelsQuery()
+	const { data: samplingDesigns } = useGetSamplingDesignsQuery()
+
+	// Mutations
 	const [updateProject, { isLoading: isUpdating }] = useUpdateProjectMutation()
 	const [deleteProject, { isLoading: isDeleting }] = useDeleteProjectMutation()
 	const [removeMember] = useRemoveProjectMemberMutation()
@@ -83,22 +97,57 @@ export const ProjectDetailsScreen = () => {
 		control,
 		handleSubmit,
 		reset,
+		watch,
 		formState: { errors, isDirty },
 	} = useForm<ProjectFormData>({
 		defaultValues: {
-			name: project?.name || "",
-			description: project?.description || "",
-			sampling_design_id: project?.sampling_design_id?.toString() || "",
-			// privacy_level: (project?.privacy_level || "private") as
-			// 	| "public"
-			// 	| "internal"
-			// 	| "private",
-			is_baited: project?.is_baited || false,
-			is_monitoring_marked_individuals:
-				project?.is_monitoring_marked_individuals || false,
-			website: project?.website || "",
+			name: "",
+			description: "",
+			sampling_design_id: "",
+			website: "",
+			is_baited: false,
+			is_monitoring_marked_individuals: false,
+			capture_method_id: "",
+			activity_detection_sensitivity_id: "",
+			timelapse_interval_seconds: "",
+			model_id: "",
 		},
 	})
+
+	// Watch fields for conditional rendering
+	const selectedCaptureMethodId = watch("capture_method_id")
+
+	// Options for Select components
+	const captureMethodOptions = useMemo(() =>
+		captureMethods?.map(cm => ({ label: cm.value, value: cm.id.toString() })) || [],
+		[captureMethods]
+	)
+
+	const sensitivityOptions = useMemo(() =>
+		activitySensitivities?.map(as => ({ label: as.value, value: as.id.toString() })) || [],
+		[activitySensitivities]
+	)
+
+	const aiModelOptions = useMemo(() =>
+		aiModels?.map(m => ({ label: `${m.name} (${m.version})`, value: m.id })) || [],
+		[aiModels]
+	)
+
+	const samplingDesignOptions = useMemo(() =>
+		samplingDesigns?.map(sd => ({ label: sd.value, value: sd.id.toString() })) || [],
+		[samplingDesigns]
+	)
+
+	// Determine if Motion Detection or Time-lapse is selected
+	const isMotionDetection = useMemo(() => {
+		const method = captureMethods?.find(cm => cm.id.toString() === selectedCaptureMethodId)
+		return method?.value === "Motion Detection"
+	}, [captureMethods, selectedCaptureMethodId])
+
+	const isTimeLapse = useMemo(() => {
+		const method = captureMethods?.find(cm => cm.id.toString() === selectedCaptureMethodId)
+		return method?.value === "Time-lapse"
+	}, [captureMethods, selectedCaptureMethodId])
 
 	// Reset form when project data loads
 	React.useEffect(() => {
@@ -107,14 +156,14 @@ export const ProjectDetailsScreen = () => {
 				name: project.name,
 				description: project.description || "",
 				sampling_design_id: project.sampling_design_id?.toString() || "",
-				// privacy_level: (project.privacy_level || "private") as
-				// 	| "public"
-				// 	| "internal"
-				// 	| "private",
+				website: project.website || "",
 				is_baited: project.is_baited || false,
 				is_monitoring_marked_individuals:
 					project.is_monitoring_marked_individuals || false,
-				website: project.website || "",
+				capture_method_id: project.capture_method_id?.toString() || "",
+				activity_detection_sensitivity_id: project.activity_detection_sensitivity_id?.toString() || "",
+				timelapse_interval_seconds: project.timelapse_interval_seconds?.toString() || "",
+				model_id: project.model_id || "",
 			})
 		}
 	}, [project, reset])
@@ -138,11 +187,13 @@ export const ProjectDetailsScreen = () => {
 						name: data.name.trim(),
 						description: data.description.trim() || null,
 						sampling_design_id: data.sampling_design_id ? Number(data.sampling_design_id) : null,
-						// privacy_level: data.privacy_level,
-						is_baited: data.is_baited,
-						is_monitoring_marked_individuals:
-							data.is_monitoring_marked_individuals,
 						website: data.website.trim() || null,
+						is_baited: data.is_baited,
+						is_monitoring_marked_individuals: data.is_monitoring_marked_individuals,
+						capture_method_id: data.capture_method_id ? Number(data.capture_method_id) : null,
+						activity_detection_sensitivity_id: data.activity_detection_sensitivity_id ? Number(data.activity_detection_sensitivity_id) : null,
+						timelapse_interval_seconds: data.timelapse_interval_seconds ? Number(data.timelapse_interval_seconds) : null,
+						model_id: data.model_id || null,
 					},
 				}).unwrap()
 
@@ -200,6 +251,12 @@ export const ProjectDetailsScreen = () => {
 		[projectId, removeMember],
 	)
 
+	// Helper to get label for ID
+	const getLabel = (options: { label: string; value: string }[], value?: string | number | null) => {
+		if (!value) return null
+		return options.find(o => o.value === value.toString())?.label || value
+	}
+
 	// Loading state
 	if (isLoading) {
 		return (
@@ -253,6 +310,8 @@ export const ProjectDetailsScreen = () => {
 			</WWScreenView>
 		)
 	}
+
+	const isProjectAdmin = project.role === 'project_admin'
 
 	return (
 		<ScrollView style={styles.container}>
@@ -308,7 +367,7 @@ export const ProjectDetailsScreen = () => {
 								</View>
 							)}
 
-							{!isEditMode && (
+							{!isEditMode && isProjectAdmin && (
 								<View style={styles.actionButtons}>
 									<IconButton
 										icon="pencil"
@@ -458,18 +517,79 @@ export const ProjectDetailsScreen = () => {
 								<Field
 									control={control}
 									name="sampling_design_id"
-									label="Sampling Design ID"
+									label="Sampling Design"
 								>
 									{(field) => (
-										<WWTextInput
+										<WWSelect
 											{...field}
-											mode="outlined"
-											placeholder="e.g., 1"
-											keyboardType="numeric"
-											testID="sampling-design-input"
+											options={samplingDesignOptions}
+											label="Sampling Design"
 										/>
 									)}
 								</Field>
+
+								<Field
+									control={control}
+									name="capture_method_id"
+									label="Capture Method"
+								>
+									{(field) => (
+										<WWSelect
+											{...field}
+											options={captureMethodOptions}
+											label="Capture Method"
+										/>
+									)}
+								</Field>
+
+								{isMotionDetection && (
+									<Field
+										control={control}
+										name="activity_detection_sensitivity_id"
+										label="Motion Sensitivity"
+									>
+										{(field) => (
+											<WWSelect
+												{...field}
+												options={sensitivityOptions}
+												label="Motion Sensitivity"
+											/>
+										)}
+									</Field>
+								)}
+
+								{isTimeLapse && (
+									<Field
+										control={control}
+										name="timelapse_interval_seconds"
+										label="Time-lapse Interval (seconds)"
+									>
+										{(field) => (
+											<WWTextInput
+												{...field}
+												mode="outlined"
+												keyboardType="numeric"
+												placeholder="e.g., 60"
+											/>
+										)}
+									</Field>
+								)}
+
+								{isProjectAdmin && (
+									<Field
+										control={control}
+										name="model_id"
+										label="Default AI Model"
+									>
+										{(field) => (
+											<WWSelect
+												{...field}
+												options={aiModelOptions}
+												label="Default AI Model"
+											/>
+										)}
+									</Field>
+								)}
 
 								<Field control={control} name="website" label="Website">
 									{(field) => (
@@ -483,8 +603,6 @@ export const ProjectDetailsScreen = () => {
 										/>
 									)}
 								</Field>
-
-								{/* Privacy Level Removed */}
 
 								<Controller
 									control={control}
@@ -520,13 +638,81 @@ export const ProjectDetailsScreen = () => {
 											variant="bodyMedium"
 											style={{ color: theme.colors.onSurfaceVariant }}
 										>
-											Sampling Design ID:
+											Sampling Design:
 										</Text>
 										<Text
 											variant="bodyMedium"
 											style={{ color: theme.colors.onSurface }}
 										>
-											{project.sampling_design_id}
+											{getLabel(samplingDesignOptions, project.sampling_design_id)}
+										</Text>
+									</View>
+								)}
+
+								{project.capture_method_id && (
+									<View style={styles.settingRow}>
+										<Text
+											variant="bodyMedium"
+											style={{ color: theme.colors.onSurfaceVariant }}
+										>
+											Capture Method:
+										</Text>
+										<Text
+											variant="bodyMedium"
+											style={{ color: theme.colors.onSurface }}
+										>
+											{getLabel(captureMethodOptions, project.capture_method_id)}
+										</Text>
+									</View>
+								)}
+
+								{project.activity_detection_sensitivity_id && (
+									<View style={styles.settingRow}>
+										<Text
+											variant="bodyMedium"
+											style={{ color: theme.colors.onSurfaceVariant }}
+										>
+											Motion Sensitivity:
+										</Text>
+										<Text
+											variant="bodyMedium"
+											style={{ color: theme.colors.onSurface }}
+										>
+											{getLabel(sensitivityOptions, project.activity_detection_sensitivity_id)}
+										</Text>
+									</View>
+								)}
+
+								{project.timelapse_interval_seconds && (
+									<View style={styles.settingRow}>
+										<Text
+											variant="bodyMedium"
+											style={{ color: theme.colors.onSurfaceVariant }}
+										>
+											Time-lapse Interval:
+										</Text>
+										<Text
+											variant="bodyMedium"
+											style={{ color: theme.colors.onSurface }}
+										>
+											{project.timelapse_interval_seconds}s
+										</Text>
+									</View>
+								)}
+
+								{project.model_id && (
+									<View style={styles.settingRow}>
+										<Text
+											variant="bodyMedium"
+											style={{ color: theme.colors.onSurfaceVariant }}
+										>
+											AI Model:
+										</Text>
+										<Text
+											variant="bodyMedium"
+											style={{ color: theme.colors.onSurface }}
+										>
+											{getLabel(aiModelOptions, project.model_id)}
 										</Text>
 									</View>
 								)}
@@ -547,8 +733,6 @@ export const ProjectDetailsScreen = () => {
 										</Text>
 									</View>
 								)}
-
-								{/* Privacy Level Removed */}
 
 								{project.is_baited && (
 									<View style={styles.settingRow}>
@@ -597,19 +781,21 @@ export const ProjectDetailsScreen = () => {
 								>
 									Members
 								</Text>
-								<Button
-									mode="text"
-									icon="account-multiple"
-									onPress={() => {
-										navigation.navigate("ProjectMembersScreen", {
-											projectId: project.id,
-											projectName: project.name,
-										})
-									}}
-									testID="manage-members-button"
-								>
-									Manage
-								</Button>
+								{isProjectAdmin && (
+									<Button
+										mode="text"
+										icon="account-multiple"
+										onPress={() => {
+											navigation.navigate("ProjectMembersScreen", {
+												projectId: project.id,
+												projectName: project.name,
+											})
+										}}
+										testID="manage-members-button"
+									>
+										Manage
+									</Button>
+								)}
 							</View>
 
 							<Divider style={styles.divider} />
@@ -646,13 +832,15 @@ export const ProjectDetailsScreen = () => {
 													)}
 												</View>
 											</View>
-											<IconButton
-												icon="close"
-												size={20}
-												iconColor={theme.colors.error}
-												onPress={() => handleRemoveMember(member.user_id)}
-												testID={`remove-member-${member.user_id}`}
-											/>
+											{isProjectAdmin && (
+												<IconButton
+													icon="close"
+													size={20}
+													iconColor={theme.colors.error}
+													onPress={() => handleRemoveMember(member.user_id)}
+													testID={`remove-member-${member.user_id}`}
+												/>
+											)}
 										</View>
 									))}
 								</View>
