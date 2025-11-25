@@ -12,7 +12,6 @@ import { NavigationBar } from "../components/NavigationBar"
 import { AppLoading } from "./screens/AppLoading"
 import { AppDrawer } from "../components/AppDrawer"
 import { Notifications } from "./screens/Notifications"
-import { CommunityDiscussion } from "./screens/CommunityDiscussion"
 import { Profile } from "./screens/Profile"
 import { Settings } from "./screens/Settings"
 import { DfuScreen } from "./screens/DfuScreen"
@@ -21,7 +20,6 @@ import { Register } from "./screens/Register"
 import { ForgotPassword } from "./screens/ForgotPassword"
 import { AddDeployment } from "./screens/AddDeployment"
 import type { Option } from "../components/ui/WWSelect"
-import { AddProject } from "./screens/AddProject"
 import { NewProjectScreen } from "./screens/NewProjectScreen"
 import { ProjectDetailsScreen } from "./screens/ProjectDetailsScreen"
 import { ProjectMembersScreen } from "../screens/ProjectMembersScreen"
@@ -32,7 +30,6 @@ import { DeveloperSettingsScreen } from "../screens/DeveloperSettingsScreen"
 import { useDeepLinking } from "../hooks/useDeepLinking"
 
 export interface RootStackParamList extends ParamListBase {
-	CommunityDiscussion: undefined
 	Notifications: undefined
 	Profile: undefined
 	Settings: undefined
@@ -43,10 +40,9 @@ export interface RootStackParamList extends ParamListBase {
 	Login: { confirmed?: boolean } | undefined
 	Register: undefined
 	ForgotPassword:
-		| { token?: string; refreshToken?: string; mode?: string }
-		| undefined
+	| { token?: string; refreshToken?: string; mode?: string }
+	| undefined
 	AddDeployment: { selectedProject?: Option } | undefined
-	AddProject: undefined
 	NewProjectScreen: undefined
 	ProjectDetailsScreen: { projectId: string }
 	ProjectMembersScreen: { projectId: string; projectName: string }
@@ -151,11 +147,7 @@ export const MainNavigation = () => {
 							component={Notifications}
 							options={{ title: "Notifications" }}
 						/>
-						<Stack.Screen
-							name="CommunityDiscussion"
-							component={CommunityDiscussion}
-							options={{ title: "Community Discussion" }}
-						/>
+
 						<Stack.Screen
 							name="Profile"
 							component={Profile}
@@ -180,11 +172,6 @@ export const MainNavigation = () => {
 							name="AddDeployment"
 							component={AddDeployment}
 							options={{ title: "Start deployment" }}
-						/>
-						<Stack.Screen
-							name="AddProject"
-							component={AddProject}
-							options={{ title: "New project details" }}
 						/>
 						<Stack.Screen
 							name="NewProjectScreen"

@@ -70,7 +70,7 @@ export const AddDeployment = () => {
 								]}
 								onSelectEffect={(value) => {
 									if (value === "add") {
-										navigation.navigate("AddProject")
+										navigation.navigate("NewProjectScreen")
 									}
 								}}
 							/>
