@@ -3,7 +3,6 @@ import { Appbar, Chip } from "react-native-paper"
 import { getHeaderTitle } from "@react-navigation/elements"
 import { useAppDrawer } from "./AppDrawer"
 import { useExtendedTheme } from "../theme"
-import { WWAvatar } from "./ui/WWAvatar"
 import { View } from "react-native"
 import { useNetInfo } from "@react-native-community/netinfo"
 
@@ -77,7 +76,6 @@ export const NavigationBar = ({
 					</Chip>
 				)}
 			</View>
-			{!isOpen && <WWAvatar onPress={() => navigation.navigate("Profile")} />}
 		</Appbar.Header>
 	)
 }

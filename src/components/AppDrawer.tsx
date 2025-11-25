@@ -7,7 +7,7 @@ import {
 } from "react"
 import { StyleSheet, View } from "react-native"
 import { Drawer } from "react-native-drawer-layout"
-import { Avatar, Surface } from "react-native-paper"
+import { Surface } from "react-native-paper"
 import { WWText } from "./ui/WWText"
 import { useExtendedTheme } from "../theme"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -44,7 +44,6 @@ export const AppDrawer = ({ children }: PropsWithChildren<unknown>) => {
 							styles.view,
 						]}
 					>
-						<Avatar.Image source={require("../assets/avatar.png")} />
 						<SideNavigation drawerControls={setIsOpen} />
 						<View style={styles.version}>
 							<WWText>Current version:</WWText>

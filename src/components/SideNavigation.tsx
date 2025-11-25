@@ -65,14 +65,6 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 			<Button
 				textColor={colors.onBackground}
 				style={[{ margin: spacing }, styles.link]}
-				icon="crowd"
-				onPress={() => goTo("CommunityDiscussion")}
-			>
-				Community discussion
-			</Button>
-			<Button
-				textColor={colors.onBackground}
-				style={[{ margin: spacing }, styles.link]}
 				icon="logout"
 				onPress={onLogout}
 			>
