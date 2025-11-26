@@ -17,6 +17,7 @@ import { useSetupBLELibrary } from "../hooks/useSetupBLELibrary"
 import { useAppDispatch } from "../redux"
 import { initializeNetworkMonitoring } from "../redux/middleware/offlineSyncMiddleware"
 import ProjectService from "../services/ProjectService"
+import ReferenceDataService from "../services/ReferenceDataService"
 import { initializeSupabaseClient } from "../services/supabase"
 import SupabaseSyncService from "../services/SupabaseSyncService"
 
@@ -39,37 +40,21 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 	useBluetoothStatus()
 	useLocationStatus()
 
-	// Initialize Supabase client with current environment
+	// Initialize Supabase client and then sync reference data
 	React.useEffect(() => {
 		console.log("🔧 Initializing Supabase client...")
 		initializeSupabaseClient()
 			.then(() => {
 				console.log("✅ Supabase client initialized successfully")
+				// Sync reference data only after Supabase client is ready
+				console.log("📚 Syncing reference data...")
+				return ReferenceDataService.syncReferenceData()
 			})
-			.catch((error) => {
-				console.error("❌ Failed to initialize Supabase client:", error)
-			})
-	}, [])
-
-	// Initialize network monitoring for offline support
-	React.useEffect(() => {
-		console.log("🌐 Initializing network monitoring...")
-		const unsubscribe = initializeNetworkMonitoring(dispatch)
-		return () => {
-			console.log("🌐 Cleaning up network monitoring")
-			unsubscribe()
-		}
-	}, [dispatch])
-
-	// Initialize ProjectService with DatabaseService and OfflineService
-	React.useEffect(() => {
-		console.log("📦 Initializing ProjectService...")
-		ProjectService.initialize()
 			.then(() => {
-				console.log("✅ ProjectService initialized successfully")
+				console.log("✅ Reference data sync complete")
 			})
 			.catch((error) => {
-				console.error("❌ Failed to initialize ProjectService:", error)
+				console.error("❌ Failed to initialize Supabase or sync data:", error)
 			})
 	}, [])
 
