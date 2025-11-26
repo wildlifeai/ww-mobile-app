@@ -10,7 +10,7 @@ cd ~/dev/wildlifeai/wildlife-watcher-backend && npx supabase gen types typescrip
 cd ~/dev/wildlifeai/wildlife-watcher-mobile-app
 
 # Compare with committed types
-if ! diff -q src/types/supabase.ts .types-check.ts > /dev/null 2>&1; then
+if ! diff -q src/types/database.types.ts .types-check.ts > /dev/null 2>&1; then
   echo ""
   echo "❌ ERROR: Supabase types are out of sync!"
   echo ""
@@ -20,7 +20,7 @@ if ! diff -q src/types/supabase.ts .types-check.ts > /dev/null 2>&1; then
   echo "  npm run types:local"
   echo ""
   echo "Differences:"
-  diff src/types/supabase.ts .types-check.ts | head -20
+  diff src/types/database.types.ts .types-check.ts | head -20
   echo ""
   rm .types-check.ts
   exit 1

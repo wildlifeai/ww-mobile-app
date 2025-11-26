@@ -1,3 +1,24 @@
+/**
+ * ⚠️ WARNING: DO NOT MANUALLY EDIT THIS FILE ⚠️
+ * 
+ * This schema MUST stay in sync with the Supabase database schema.
+ * Manual modifications will cause runtime errors and data inconsistencies.
+ * 
+ * TO UPDATE THIS SCHEMA:
+ * 1. Make changes in Supabase (backend migrations)
+ * 2. Regenerate types: `npm run types:cloud-dev`
+ * 3. Validate schema: `npm run schema:validate:live:cloud-dev`
+ * 4. Update this file based on validation errors (if any)
+ * 
+ * See: scripts/README-SCHEMA-VALIDATION.md for detailed workflow
+ * See: scripts/README-TYPE-SCRIPTS.md for type synchronization
+ * 
+ * Schema Version History:
+ * - v5: Added project reference fields (sampling_design_id, capture_method_id, etc.)
+ * - v4: Added device_preparation table
+ * - v3: Initial MVP2 schema
+ */
+
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
@@ -8,20 +29,22 @@ export default appSchema({
             columns: [
                 { name: 'name', type: 'string' },
                 { name: 'description', type: 'string', isOptional: true },
-                { name: 'organisation_id', type: 'string', isOptional: true },
+                { name: 'organisation_id', type: 'string' },
                 { name: 'is_active', type: 'boolean' },
                 { name: 'is_baited', type: 'boolean', isOptional: true },
                 { name: 'is_monitoring_marked_individuals', type: 'boolean', isOptional: true },
                 { name: 'timelapse_interval_seconds', type: 'number', isOptional: true },
                 { name: 'project_image', type: 'string', isOptional: true },
                 { name: 'website', type: 'string', isOptional: true },
-                { name: 'longitude', type: 'number', isOptional: true },
-                { name: 'deployment_start', type: 'number' },
-                { name: 'deployment_end', type: 'number' },
-                { name: 'deployment_status_id', type: 'number', isOptional: true },
-                { name: 'deployment_comments', type: 'string', isOptional: true },
-                { name: 'camera_location_description', type: 'string', isOptional: true },
-                { name: 'camera_location_image_path', type: 'string', isOptional: true },
+                // Reference IDs
+                { name: 'sampling_design_id', type: 'number', isOptional: true },
+                { name: 'activity_detection_sensitivity_id', type: 'number', isOptional: true },
+                { name: 'capture_method_id', type: 'number', isOptional: true },
+                { name: 'model_id', type: 'string', isOptional: true },
+                // Audit fields
+                { name: 'created_by', type: 'string' },
+                { name: 'modified_by', type: 'string' },
+                // Timestamps
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
                 { name: 'deleted_at', type: 'number' },

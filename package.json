@@ -26,7 +26,7 @@
     "deps:add": "node scripts/deps-cli.js add",
     "deps:scan": "node scripts/deps-cli.js scan",
     "types:local": "cd ~/dev/wildlifeai/wildlife-watcher-backend && npx supabase gen types typescript --local > ~/dev/wildlifeai/wildlife-watcher-mobile-app/src/types/supabase.ts",
-    "types:cloud-dev": "npx supabase gen types typescript --linked --project-ref nuhwmubvygxyddkycmpa > src/types/supabase.ts",
+    "types:cloud-dev": "npx supabase gen types typescript --project-id nuhwmubvygxyddkycmpa --schema public > src/types/database.types.ts",
     "types:cloud-prod": "echo '⚠️  Production project ref not yet configured' && exit 1",
     "types:check-local": "./scripts/check-types-local.sh",
     "types:check-cloud-dev": "./scripts/check-types-cloud.sh cloud-dev",

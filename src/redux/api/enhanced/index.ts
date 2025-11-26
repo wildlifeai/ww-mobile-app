@@ -5,7 +5,7 @@
 
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react"
 import type { RootState } from "../.."
-import { supabase } from "../../../services/supabase"
+import { getSupabaseClient } from "../../../services/supabase"
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js"
 
 // Enhanced API types with role-based security
@@ -364,7 +364,7 @@ export const enhancedApi = createApi({
 		>({
 			queryFn: async ({ table, organisation_id }) => {
 				try {
-					const channel = supabase
+					const channel = getSupabaseClient()
 						.channel(`realtime-${table}`)
 						.on(
 							"postgres_changes",

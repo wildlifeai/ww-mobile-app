@@ -149,7 +149,7 @@ npm run schema:validate:live:local
 #    (Edit src/database/schema.ts based on validation output)
 
 # 5. Commit changes
-git add src/types/supabase.ts src/database/schema.ts
+git add src/types/database.types.ts src/database/schema.ts
 git commit -m "chore: sync types and schema with local database"
 ```
 

@@ -29,7 +29,7 @@ const ENV_ARG = ARGS.find(arg => arg.startsWith('--env='));
 const ENV = ENV_ARG ? ENV_ARG.split('=')[1] : 'local';
 
 const WATERMELON_SCHEMA_PATH = path.join(__dirname, '../src/database/schema.ts');
-const SUPABASE_TYPES_PATH = path.join(__dirname, '../src/types/supabase.ts');
+const SUPABASE_TYPES_PATH = path.join(__dirname, '../src/types/database.types.ts');
 
 // Environment configuration
 const ENVIRONMENTS = {
@@ -71,7 +71,23 @@ function validateTypesAreCurrent() {
     }
 
     try {
-        execSync(envConfig.checkScript, {
+        // Detect OS and use appropriate script
+        const isWindows = process.platform === 'win32';
+        let checkScript;
+
+        if (isWindows) {
+            // Use PowerShell scripts on Windows
+            if (ENV === 'local') {
+                checkScript = 'powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\check-types-local.ps1';
+            } else {
+                checkScript = `powershell.exe -ExecutionPolicy Bypass -File .\\scripts\\check-types-cloud.ps1 -Environment ${ENV}`;
+            }
+        } else {
+            // Use bash scripts on Unix/Mac
+            checkScript = envConfig.checkScript;
+        }
+
+        execSync(checkScript, {
             stdio: JSON_OUTPUT ? 'pipe' : 'inherit',
             encoding: 'utf8'
         });

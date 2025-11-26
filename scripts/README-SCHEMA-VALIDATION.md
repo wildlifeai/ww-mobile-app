@@ -113,7 +113,7 @@ npm run dev:status
 npm run sync:from-live:cloud-dev
 
 # Review changes
-git diff src/types/supabase.ts
+git diff src/types/database.types.ts
 
 # Update schema.ts if needed based on validation errors
 # Then re-validate
@@ -148,7 +148,7 @@ npm run sync:from-live:cloud-dev
 npm run schema:validate:live:cloud-dev
 
 # 5. Commit changes
-git add src/types/supabase.ts src/database/schema.ts
+git add src/types/database.types.ts src/database/schema.ts
 git commit -m "chore: sync schema with backend changes"
 ```
 

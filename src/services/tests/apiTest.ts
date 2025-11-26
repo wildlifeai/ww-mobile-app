@@ -1,4 +1,4 @@
-import { supabase } from "../supabase"
+import { getSupabaseClient } from "../supabase"
 import DeviceService from "../DeviceService"
 import { getSupabaseClient } from "../supabase"
 import ReferenceDataService from "../ReferenceDataService"
@@ -14,7 +14,7 @@ import database from "../../database"
 
 export const testBasicConnection = async (): Promise<boolean> => {
 	try {
-		const { error } = await supabase.from("users").select("count").limit(1)
+		const { error } = await getSupabaseClient().from("users").select("count").limit(1)
 		if (error) {
 			console.error("Basic connection test failed:", error)
 			return false
@@ -38,7 +38,7 @@ export const testDatabaseAccess = async (): Promise<boolean> => {
 		] as const
 
 		for (const table of tables) {
-			const { error } = await supabase.from(table).select("*").limit(1)
+			const { error } = await getSupabaseClient().from(table).select("*").limit(1)
 			if (error) {
 				console.error(`Table ${table} access failed:`, error)
 				return false
@@ -57,7 +57,7 @@ export const testBusinessLogic = async (): Promise<boolean> => {
 		console.log("🧪 Testing business logic...")
 
 		// 1. Get current user profile (Direct Supabase call)
-		const { data: { user } } = await supabase.auth.getUser()
+		const { data: { user } } = await getSupabaseClient().auth.getUser()
 		if (!user) {
 			console.log("⚠️ No authenticated user, skipping business logic test")
 			return true
@@ -72,11 +72,11 @@ export const testBusinessLogic = async (): Promise<boolean> => {
 		console.log("👤 User profile fetched:", profile ? "Yes" : "No")
 
 		// 2. Get devices (Direct Supabase call)
-		const { data: devices } = await supabase.from("devices").select("*").limit(5)
+		const { data: devices } = await getSupabaseClient().from("devices").select("*").limit(5)
 		console.log(`📱 Devices fetched (Direct): ${devices?.length || 0}`)
 
 		// 3. Get projects (Direct Supabase call)
-		const { data: projects } = await supabase.from("projects").select("*").limit(5)
+		const { data: projects } = await getSupabaseClient().from("projects").select("*").limit(5)
 		console.log(`📂 Projects fetched (Direct): ${projects?.length || 0}`)
 
 		console.log("✅ Business logic test passed")

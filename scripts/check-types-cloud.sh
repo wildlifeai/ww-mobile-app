@@ -105,7 +105,7 @@ if [ ! -s "$TEMP_TYPES" ]; then
 fi
 
 # Compare with committed types
-if diff -q "$TEMP_TYPES" src/types/supabase.ts > /dev/null 2>&1; then
+if diff -q "$TEMP_TYPES" src/types/database.types.ts > /dev/null 2>&1; then
   echo ""
   echo "✅ Types are aligned with $ENVIRONMENT"
   echo ""
@@ -115,18 +115,18 @@ else
   echo ""
   echo "❌ ERROR: Types are out of sync with $ENVIRONMENT!"
   echo ""
-  echo "The committed types (src/types/supabase.ts) do not match the"
+  echo "The committed types (src/types/database.types.ts) do not match the"
   echo "current schema of the $ENVIRONMENT Supabase instance."
   echo ""
   echo "To fix, run:"
   echo "  npm run types:$ENVIRONMENT"
   echo ""
   echo "Then commit the updated types:"
-  echo "  git add src/types/supabase.ts"
+  echo "  git add src/types/database.types.ts"
   echo "  git commit -m 'chore(types): sync with $ENVIRONMENT schema'"
   echo ""
   echo "First 20 lines of diff:"
-  diff -u src/types/supabase.ts "$TEMP_TYPES" | head -30 || true
+  diff -u src/types/database.types.ts "$TEMP_TYPES" | head -30 || true
   echo ""
   exit 1
 fi

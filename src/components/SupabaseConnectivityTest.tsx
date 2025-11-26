@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { View, ScrollView, Alert } from "react-native"
 import { Button, Card, Text, Chip, ActivityIndicator } from "react-native-paper"
-import { supabase } from "../services/supabase"
+import { getSupabaseClient } from "../services/supabase"
 import type {
 	RealtimePostgresChangesPayload,
 	REALTIME_SUBSCRIBE_STATES,
@@ -94,7 +94,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 
 	const testBasicConnection = async () => {
 		// Test basic Supabase connection
-		const { error } = await supabase.from("users").select("count").limit(1)
+		const { error } = await getSupabaseClient().from("users").select("count").limit(1)
 		if (error) throw new Error(`Connection failed: ${error.message}`)
 	}
 
@@ -109,7 +109,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 		] as const
 
 		for (const table of tables) {
-			const { error } = await supabase.from(table).select("*").limit(1)
+			const { error } = await getSupabaseClient().from(table).select("*").limit(1)
 			if (error)
 				throw new Error(`Table ${table} not accessible: ${error.message}`)
 		}
@@ -117,7 +117,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 
 	const testPublicDataQuery = async () => {
 		// Test querying public/reference data
-		const { data, error } = await supabase.from("roles").select("*").limit(5)
+		const { data, error } = await getSupabaseClient().from("roles").select("*").limit(5)
 
 		if (error) throw new Error(`Public query failed: ${error.message}`)
 		if (!data) throw new Error("No data returned from public query")
@@ -127,7 +127,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 		if (!isLoggedIn) throw new Error("User not authenticated")
 
 		// Test authenticated query to users table
-		const { data, error } = await supabase
+		const { data, error } = await getSupabaseClient()
 			.from("users")
 			.select("*")
 			.eq("id", user?.id)
@@ -142,7 +142,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 
 		try {
 			// Try to access all users (should be restricted by RLS)
-			const { data, error } = await supabase.from("users").select("*")
+			const { data, error } = await getSupabaseClient().from("users").select("*")
 
 			// If this succeeds without proper filtering, RLS might not be working
 			if (data && data.length > 1) {
@@ -159,8 +159,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 			// Test passed - user can only see their own data or RLS is correctly applied
 		} catch (error) {
 			throw new Error(
-				`RLS test failed: ${
-					error instanceof Error ? error.message : "Unknown error"
+				`RLS test failed: ${error instanceof Error ? error.message : "Unknown error"
 				}`,
 			)
 		}
@@ -172,7 +171,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 
 			try {
 				// Set up subscription to devices table
-				const channel = supabase
+				const channel = getSupabaseClient()
 					.channel("connectivity-test")
 					.on(
 						"postgres_changes",
@@ -217,7 +216,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 	const testErrorHandling = async () => {
 		try {
 			// Intentionally trigger an error by querying with invalid filter
-			const { error } = await supabase
+			const { error } = await getSupabaseClient()
 				.from("users")
 				.select("*")
 				.eq("invalid_column", "test")
@@ -243,9 +242,9 @@ export const SupabaseConnectivityTest: React.FC = () => {
 
 		// Run multiple concurrent queries
 		const promises = [
-			supabase.from("users").select("count").limit(1),
-			supabase.from("devices").select("count").limit(1),
-			supabase.from("projects").select("count").limit(1),
+			getSupabaseClient().from("users").select("count").limit(1),
+			getSupabaseClient().from("devices").select("count").limit(1),
+			getSupabaseClient().from("projects").select("count").limit(1),
 		]
 
 		await Promise.all(promises)

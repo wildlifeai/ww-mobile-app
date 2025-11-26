@@ -22,7 +22,7 @@ import type {
 	CreateProjectInput,
 	ProjectMemberWithProfile,
 } from "../../types/project"
-import { supabase } from "../../services/supabase"
+import { getSupabaseClient } from "../../services/supabase"
 
 // Define return types for reference data
 export interface CaptureMethod {

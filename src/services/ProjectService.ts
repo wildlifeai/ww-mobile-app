@@ -10,7 +10,7 @@
 import { Q } from '@nozbe/watermelondb'
 import database from '../database'
 import Project from '../database/models/Project'
-import { supabase } from "./supabase"
+import { getSupabaseClient } from "./supabase"
 import type {
 	Project as ProjectType,
 	ProjectWithDetails,
@@ -252,7 +252,7 @@ class ProjectService {
 	// --- Private Helpers ---
 
 	private async getCurrentUserId(): Promise<string | null> {
-		const { data: { user } } = await supabase.auth.getUser()
+		const { data: { user } } = await getSupabaseClient().auth.getUser()
 		return user?.id || null
 	}
 

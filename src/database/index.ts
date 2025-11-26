@@ -19,10 +19,6 @@ import SamplingDesign from './models/SamplingDesign'
 
 const adapter = new SQLiteAdapter({
     schema,
-    // (You might want to comment out migrations if you haven't created them yet)
-    // migrations,
-    // dbName: 'myapp', // optional, defaults to 'watermelon'
-    // jsi: true, // recommended for iOS
     onSetUpError: error => {
         // Database failed to load -- offer the user to reload the app or log out
         console.error('Database setup error:', error)

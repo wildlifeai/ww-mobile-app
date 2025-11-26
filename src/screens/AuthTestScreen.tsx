@@ -10,7 +10,7 @@ import {
 	Divider,
 } from "react-native-paper"
 import { useSupabaseAuth } from "../hooks/useSupabaseAuth"
-import { supabase } from "../services/supabase"
+import { getSupabaseClient } from "../services/supabase"
 import * as apiTestSuite from "../services/tests/apiTest"
 
 /**
