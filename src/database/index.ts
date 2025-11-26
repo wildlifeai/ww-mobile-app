@@ -10,6 +10,7 @@ import SyncOutbox from './models/SyncOutbox'
 import SyncState from './models/SyncState'
 import ProjectMember from './models/ProjectMember'
 import Device from './models/Device'
+import DevicePreparation from './models/DevicePreparation'
 // Reference Data Models
 import CaptureMethod from './models/CaptureMethod'
 import ActivitySensitivity from './models/ActivitySensitivity'
@@ -39,6 +40,7 @@ const database = new Database({
         SyncState,
         ProjectMember,
         Device,
+        DevicePreparation,
         // Reference Data
         CaptureMethod,
         ActivitySensitivity,

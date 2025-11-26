@@ -1,0 +1,288 @@
+import React, { useEffect, useMemo, useCallback } from 'react'
+import { View, FlatList, StyleSheet, Alert } from 'react-native'
+import { useIsFocused, useNavigation, useRoute, RouteProp } from '@react-navigation/native'
+import { WWScreenView } from '../../components/ui/WWScreenView'
+import { WWText } from '../../components/ui/WWText'
+import { WWButton } from '../../components/ui/WWButton'
+import { useBleActions } from '../../providers/BleEngineProvider'
+import { useAppSelector } from '../../redux'
+import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
+import { ActivityIndicator } from 'react-native-paper'
+import { log } from '../../utils/logger'
+import { DeviceItem } from '../../components/DeviceItem'
+import { DeviceService } from '../../services/DeviceService'
+import { selectCurrentOrganisation } from '../../redux/slices/authSlice'
+import { RootStackParamList } from '../../navigation'
+
+type DeviceDiscoveryScreenRouteProp = RouteProp<RootStackParamList, 'DeviceDiscovery'>
+
+export const DeviceDiscoveryScreen = () => {
+    const navigation = useNavigation()
+    const route = useRoute<DeviceDiscoveryScreenRouteProp>()
+    const isFocused = useIsFocused()
+    const { isBleConnecting, startScan, connectDevice, disconnectDevice } = useBleActions()
+    const devices = useAppSelector((state) => state.devices)
+    const { isScanning } = useAppSelector((state) => state.scanning)
+    const currentOrganisation = useAppSelector(selectCurrentOrganisation)
+
+    const mode = route.params?.mode || 'prepare' // Default to 'prepare' if not specified
+
+    const isBleBusy = isBleConnecting || isScanning
+
+    // Sort devices by signal strength (RSSI)
+    const devicesToDisplay = useMemo(() => {
+        return Object.values(devices)
+            .sort((a, b) => {
+                if (a.rssi && b.rssi) {
+                    if (b.rssi === 127 || a.rssi === 127) return -1
+                    return b.rssi - a.rssi
+                }
+                return -1
+            })
+            .filter((device) => !device.signalLost)
+    }, [devices])
+
+    const isAnyDeviceConnecting = useMemo(() => {
+        return !!Object.values(devices).find((device) => device.loading)
+    }, [devices])
+
+    // Start scanning when screen is focused
+    useEffect(() => {
+        if (isFocused) {
+            startScan(10)
+        }
+    }, [isFocused, startScan])
+
+    // Auto-scan every 15 seconds
+    useEffect(() => {
+        if (!isFocused) return
+
+        const interval = setInterval(() => {
+            if (!isBleBusy && isFocused) {
+                startScan(10)
+            } else {
+                log('Scanning already taking place, skipping.')
+            }
+        }, 30 * 1000)
+
+        return () => {
+            log('Clearing scan interval.')
+            clearInterval(interval)
+        }
+    }, [isScanning, isBleConnecting, isBleBusy, startScan, isFocused])
+
+    const handleScan = () => {
+        if (!isBleBusy && !isScanning) {
+            startScan()
+        } else {
+            log('Scanning already taking place, skipping.')
+        }
+    }
+
+    const [processing, setProcessing] = React.useState(false)
+
+    const handleDeviceSelect = useCallback(
+        async (device: ExtendedPeripheral) => {
+            if (processing) return
+            log(`Device selected: ${device.id}, mode: ${mode}`)
+            setProcessing(true)
+            try {
+                // 1. Connect to the device
+                log(`Connecting to device ${device.id}...`)
+                const connectedDevice = await connectDevice(device)
+                log(`Connect result: ${connectedDevice.connected}`)
+
+                if (connectedDevice.connected) {
+                    // 4. Mode-specific logic
+                    log(`Proceeding with mode: ${mode}`)
+
+                    if (mode === 'engineer') {
+                        // Navigate to Engineer Console (Terminal) directly - NO DB interaction
+                        log(`Navigating to DeviceNavigator with ID ${device.id}`)
+                        navigation.navigate('DeviceNavigator' as never, { deviceId: device.id } as never)
+                        setProcessing(false)
+                        return
+                    }
+
+                    // For 'prepare' mode, we need the device in the DB
+                    // 2. Check if device exists in DB
+                    log(`Checking DB for device ${device.id}...`)
+                    let dbDevice = await DeviceService.getDeviceByBluetoothId(device.id)
+                    log(`DB Device found: ${!!dbDevice}`)
+
+                    // 3. If not found, create it
+                    if (!dbDevice) {
+                        if (currentOrganisation?.id) {
+                            log(`Creating device in DB for org ${currentOrganisation.id}...`)
+                            try {
+                                dbDevice = await DeviceService.createDevice(
+                                    device.id,
+                                    device.name || 'Unknown Device',
+                                    currentOrganisation.id
+                                )
+                                log(`Device created: ${dbDevice?.id}`)
+                            } catch (error) {
+                                console.error('Error creating device in DB:', error)
+                                // If creation fails, it might be because it was just created. Try fetching again.
+                                dbDevice = await DeviceService.getDeviceByBluetoothId(device.id)
+                            }
+                        } else {
+                            log('No organisation selected')
+                            Alert.alert('Error', 'No organisation selected. Cannot create device.')
+                            await disconnectDevice(device)
+                            setProcessing(false)
+                            return
+                        }
+                    }
+
+                    if (mode === 'prepare') {
+                        // Check deployment status
+                        if (dbDevice) {
+                            const status = await DeviceService.calculateDeviceStatus(dbDevice.id)
+                            if (status === 'deployed') {
+                                Alert.alert(
+                                    'Device Deployed',
+                                    'This device is currently deployed. Please end the deployment before preparing it.',
+                                    [{ text: 'OK', onPress: () => disconnectDevice(device) }]
+                                )
+                                setProcessing(false)
+                                return
+                            }
+                        }
+
+                        // Navigate to Prepare and Test
+                        if (dbDevice) {
+                            log(`Navigating to PrepareAndTest with ID ${dbDevice.id}`)
+                            navigation.navigate('PrepareAndTest' as never, { deviceId: dbDevice.id } as never)
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error connecting to device:', error)
+                Alert.alert('Connection Failed', 'Could not connect to device. It might be in DFU mode or out of range.')
+            } finally {
+                setProcessing(false)
+            }
+        },
+        [connectDevice, disconnectDevice, navigation, currentOrganisation, mode, processing]
+    )
+
+    const handleDisconnect = useCallback(async (device: ExtendedPeripheral) => {
+        log(`Disconnecting from ${device.id}`)
+        await disconnectDevice(device)
+    }, [disconnectDevice])
+
+    const renderEmptyState = () => (
+        <View style={styles.emptyState}>
+            {isScanning ? (
+                <>
+                    <ActivityIndicator size="large" color="#4CAF50" />
+                    <WWText variant="bodyLarge" style={styles.emptyText}>
+                        Scanning for nearby devices...
+                    </WWText>
+                </>
+            ) : (
+                <>
+                    <WWText variant="titleMedium" style={styles.emptyTitle}>
+                        No Devices Found
+                    </WWText>
+                    <WWText variant="bodyMedium" style={styles.emptyText}>
+                        To make your camera discoverable, press the button on the Wildlife Watcher until the blue Bluetooth icon lights up.
+                    </WWText>
+                </>
+            )}
+        </View>
+    )
+
+    return (
+        <WWScreenView>
+            <View style={styles.container}>
+                {/* Header Title based on mode */}
+                <View style={styles.header}>
+                    <WWText variant="titleLarge" style={styles.title}>
+                        {mode === 'prepare' ? 'Select Device to Prepare' : 'Engineer Console: Select Device'}
+                    </WWText>
+                </View>
+
+                {/* Scan Button */}
+                <View style={styles.headerView}>
+                    <View style={styles.buttonRow}>
+                        <WWButton
+                            mode="contained"
+                            onPress={handleScan}
+                            loading={isScanning}
+                            style={styles.scanButton}
+                        >
+                            {isScanning ? 'Scanning' : 'Scan'}
+                        </WWButton>
+                    </View>
+                </View>
+
+                {/* Devices List */}
+                <FlatList
+                    data={devicesToDisplay}
+                    renderItem={({ item }) => (
+                        <DeviceItem
+                            disabled={isAnyDeviceConnecting}
+                            item={item}
+                            disconnect={handleDisconnect}
+                            go={handleDeviceSelect}
+                            upgrade={() => { }} // No-op for selection screen
+                        />
+                    )}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={styles.listContent}
+                    ListEmptyComponent={renderEmptyState}
+                />
+            </View>
+        </WWScreenView>
+    )
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    header: {
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 8,
+        alignItems: 'center',
+    },
+    title: {
+        textAlign: 'center',
+    },
+    headerView: {
+        marginBottom: 16,
+        alignItems: 'center',
+    },
+    buttonRow: {
+        width: '100%',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+    },
+    scanButton: {
+        flex: 1,
+        backgroundColor: '#4CAF50',
+    },
+    listContent: {
+        flexGrow: 1,
+        paddingHorizontal: 16,
+    },
+    emptyState: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 32,
+    },
+    emptyTitle: {
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    emptyText: {
+        textAlign: 'center',
+        color: '#6B7280',
+        marginBottom: 16,
+    },
+})

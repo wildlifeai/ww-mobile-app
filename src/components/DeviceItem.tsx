@@ -19,7 +19,8 @@ export const DeviceItem = ({
 	upgrade,
 	disabled,
 }: DeviceItemProps) => {
-	const showUpgradeButton = item.name?.toLowerCase().includes("dfu")
+	// const showUpgradeButton = item.name?.toLowerCase().includes("dfu")
+	const showUpgradeButton = false
 
 	return (
 		<TouchableRipple

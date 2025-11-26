@@ -162,6 +162,35 @@ export default appSchema({
                 { name: 'updated_at', type: 'number' },
             ],
         }),
+        // Device Preparation Table
+        tableSchema({
+            name: 'device_preparation',
+            columns: [
+                { name: 'device_id', type: 'string', isIndexed: true },
+                { name: 'project_id', type: 'string', isIndexed: true },
+                { name: 'ai_model_id', type: 'string', isOptional: true },
+                { name: 'firmware_id', type: 'string', isOptional: true },
+                { name: 'status', type: 'string', isIndexed: true }, // in_progress, completed, cancelled
+                { name: 'is_deployment_ready', type: 'boolean' },
+                // Check results (boolean flags)
+                { name: 'battery_check_passed', type: 'boolean' },
+                { name: 'camera_view_test_passed', type: 'boolean' },
+                { name: 'firmware_check_passed', type: 'boolean' },
+                { name: 'sd_card_check_passed', type: 'boolean' },
+                { name: 'firmware_updated', type: 'boolean' },
+                // LoRaWAN fields
+                { name: 'device_eui', type: 'string', isOptional: true },
+                { name: 'lorawan_network', type: 'string', isOptional: true },
+                { name: 'lorawan_registration_completed', type: 'boolean' },
+                { name: 'modified_by', type: 'string' },
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                // Sync tracking fields
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+            ],
+        }),
         // Sync Infrastructure Tables
         tableSchema({
             name: 'sync_outbox',

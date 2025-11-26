@@ -28,6 +28,8 @@ import { DevBuildInfo } from "./screens/DevBuildInfo"
 import { AuthTestScreen } from "../screens/AuthTestScreen"
 import { DeveloperSettingsScreen } from "../screens/DeveloperSettingsScreen"
 import { useDeepLinking } from "../hooks/useDeepLinking"
+import { DeviceDiscoveryScreen } from "../screens/device/DeviceDiscoveryScreen"
+import { DeviceDetailsScreen } from "../screens/device/DeviceDetailsScreen"
 
 export interface RootStackParamList extends ParamListBase {
 	Notifications: undefined
@@ -49,6 +51,8 @@ export interface RootStackParamList extends ParamListBase {
 	DevBuildInfo: undefined
 	AuthTestScreen: undefined
 	DeveloperSettings: undefined
+	DeviceDiscovery: { mode: 'prepare' | 'engineer' }
+	DeviceDetails: { deviceId: string }
 }
 
 export type Routes = keyof RootStackParamList
@@ -187,6 +191,16 @@ export const MainNavigation = () => {
 							name="ProjectMembersScreen"
 							component={ProjectMembersScreen}
 							options={{ title: "Project Members" }}
+						/>
+						<Stack.Screen
+							name="DeviceDiscovery"
+							component={DeviceDiscoveryScreen}
+							options={{ title: "Select Device" }}
+						/>
+						<Stack.Screen
+							name="DeviceDetails"
+							component={DeviceDetailsScreen}
+							options={{ title: "Device Details" }}
 						/>
 						{__DEV__ && (
 							<>
