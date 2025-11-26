@@ -11,7 +11,7 @@ import {
 } from "react-native-paper"
 import { useSupabaseAuth } from "../hooks/useSupabaseAuth"
 import { supabase } from "../services/supabase"
-import { apiTestSuite } from "../services/apiTest"
+import * as apiTestSuite from "../services/tests/apiTest"
 
 /**
  * Authentication Test Screen
@@ -110,8 +110,7 @@ export const AuthTestScreen: React.FC = () => {
 		try {
 			const isAuth = await checkAuthStatus()
 			addTestResult(
-				`✅ Auth status check: ${
-					isAuth ? "Authenticated" : "Not authenticated"
+				`✅ Auth status check: ${isAuth ? "Authenticated" : "Not authenticated"
 				}`,
 			)
 		} catch (error) {
@@ -158,20 +157,21 @@ export const AuthTestScreen: React.FC = () => {
 			addTestResult(`${databaseAccess ? "✅" : "❌"} Database access test`)
 
 			// Test reference data
-			const referenceData = await apiTestSuite.testReferenceData()
+			const referenceData = await apiTestSuite.testReferenceDataSync()
 			addTestResult(`${referenceData ? "✅" : "❌"} Reference data test`)
 
 			// Test authenticated operations (only if logged in)
 			if (isLoggedIn) {
-				const authOps = await apiTestSuite.testAuthenticatedOperations()
+				const authOps = await apiTestSuite.testBusinessLogic()
 				addTestResult(`${authOps ? "✅" : "❌"} Authenticated operations test`)
 			} else {
 				addTestResult("⚠️ Skipped authenticated operations (not logged in)")
 			}
 
 			// Test real-time subscription
-			const realtime = await apiTestSuite.testRealTimeSubscription()
-			addTestResult(`${realtime ? "✅" : "❌"} Real-time subscription test`)
+			// const realtime = await apiTestSuite.testRealTimeSubscription()
+			// addTestResult(`${realtime ? "✅" : "❌"} Real-time subscription test`)
+			addTestResult("⚠️ Real-time subscription test skipped (not implemented)")
 
 			addTestResult("🎉 API connectivity tests completed")
 		} catch (error) {
@@ -385,8 +385,8 @@ export const AuthTestScreen: React.FC = () => {
 										color: result.includes("❌")
 											? "#F44336"
 											: result.includes("✅")
-											? "#4CAF50"
-											: "#333",
+												? "#4CAF50"
+												: "#333",
 									}}
 								>
 									{result}

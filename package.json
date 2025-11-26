@@ -39,6 +39,11 @@
     "supabase:types": "echo 'Types are manually synced from backend repository. See src/types/supabase.ts'",
     "schema:validate": "node scripts/validate-watermelon-schema.js",
     "schema:validate:verbose": "node scripts/validate-watermelon-schema.js --verbose",
+    "schema:validate:live": "node scripts/validate-watermelon-schema-live.js",
+    "schema:validate:live:local": "node scripts/validate-watermelon-schema-live.js --env=local",
+    "schema:validate:live:cloud-dev": "node scripts/validate-watermelon-schema-live.js --env=cloud-dev",
+    "sync:from-live:cloud-dev": "npm run types:cloud-dev && npm run schema:validate:live:cloud-dev",
+    "dev:status": "npm run types:check-local && npm run schema:validate:live:local",
     "postinstall": "npm run validate:deps"
   },
   "dependencies": {
@@ -76,6 +81,7 @@
     "react-native-document-picker": "^9.3.1",
     "react-native-drawer-layout": "^3.3.0",
     "react-native-gesture-handler": "~2.16.1",
+    "react-native-get-random-values": "^2.0.0",
     "react-native-maps": "1.14.0",
     "react-native-nordic-dfu": "github:Salt-PepperEngineering/react-native-nordic-dfu",
     "react-native-paper": "^5.12.3",
@@ -85,6 +91,7 @@
     "react-native-screens": "3.31.1",
     "react-native-toast-message": "^2.2.0",
     "react-native-url-polyfill": "^2.0.0",
+    "react-native-uuid": "^2.0.3",
     "react-native-vector-icons": "^10.0.3",
     "react-redux": "^9.1.0"
   },

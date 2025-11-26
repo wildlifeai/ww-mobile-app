@@ -8,6 +8,13 @@ import User from './models/User'
 import Organisation from './models/Organisation'
 import SyncOutbox from './models/SyncOutbox'
 import SyncState from './models/SyncState'
+import ProjectMember from './models/ProjectMember'
+import Device from './models/Device'
+// Reference Data Models
+import CaptureMethod from './models/CaptureMethod'
+import ActivitySensitivity from './models/ActivitySensitivity'
+import AiModel from './models/AiModel'
+import SamplingDesign from './models/SamplingDesign'
 
 const adapter = new SQLiteAdapter({
     schema,
@@ -30,6 +37,13 @@ const database = new Database({
         Organisation,
         SyncOutbox,
         SyncState,
+        ProjectMember,
+        Device,
+        // Reference Data
+        CaptureMethod,
+        ActivitySensitivity,
+        AiModel,
+        SamplingDesign,
     ],
 })
 

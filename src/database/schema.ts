@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 4,
+    version: 5,
     tables: [
         tableSchema({
             name: 'projects',
@@ -15,30 +15,6 @@ export default appSchema({
                 { name: 'timelapse_interval_seconds', type: 'number', isOptional: true },
                 { name: 'project_image', type: 'string', isOptional: true },
                 { name: 'website', type: 'string', isOptional: true },
-                // Reference fields for offline support
-                { name: 'capture_method_id', type: 'number', isOptional: true },
-                { name: 'activity_detection_sensitivity_id', type: 'number', isOptional: true },
-                { name: 'sampling_design_id', type: 'number', isOptional: true },
-                { name: 'model_id', type: 'string', isOptional: true },
-                // Audit fields
-                { name: 'created_at', type: 'number' },
-                { name: 'updated_at', type: 'number' },
-                { name: 'deleted_at', type: 'number' },
-                { name: 'created_by', type: 'string', isOptional: true },
-                { name: 'modified_by', type: 'string', isOptional: true },
-                // Sync tracking fields
-                { name: '_version', type: 'number' },
-                { name: '_custom_sync_status', type: 'string', isOptional: true },
-            ],
-        }),
-        tableSchema({
-            name: 'deployments',
-            columns: [
-                { name: 'project_id', type: 'string', isIndexed: true },
-                { name: 'user_id', type: 'string', isIndexed: true },
-                { name: 'device_id', type: 'string' },
-                { name: 'location_name', type: 'string' },
-                { name: 'latitude', type: 'number', isOptional: true },
                 { name: 'longitude', type: 'number', isOptional: true },
                 { name: 'deployment_start', type: 'number' },
                 { name: 'deployment_end', type: 'number' },
@@ -55,6 +31,33 @@ export default appSchema({
             ],
         }),
         tableSchema({
+            name: 'deployments',
+            columns: [
+                { name: 'project_id', type: 'string', isIndexed: true },
+                { name: 'user_id', type: 'string', isIndexed: true },
+                { name: 'device_id', type: 'string' },
+                { name: 'deployment_status_id', type: 'number', isOptional: true },
+                { name: 'capture_method_id', type: 'number', isOptional: true },
+                { name: 'name', type: 'string', isOptional: true },
+                { name: 'location_name', type: 'string' },
+                { name: 'location', type: 'string' }, // JSON stored as string
+                { name: 'latitude', type: 'number', isOptional: true },
+                { name: 'longitude', type: 'number', isOptional: true },
+                { name: 'deployment_start', type: 'number' },
+                { name: 'deployment_end', type: 'number' },
+                { name: 'deployment_comments', type: 'string', isOptional: true },
+                { name: 'camera_location_description', type: 'string', isOptional: true },
+                { name: 'camera_location_image_path', type: 'string', isOptional: true },
+                { name: 'deployment_photos', type: 'string' }, // JSON stored as string
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                // Sync tracking fields
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+            ],
+        }),
+        tableSchema({
             name: 'users',
             columns: [
                 { name: 'firstname', type: 'string' },
@@ -62,6 +65,9 @@ export default appSchema({
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
                 { name: 'deleted_at', type: 'number' },
+                // Sync tracking fields
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
             ],
         }),
         tableSchema({
@@ -74,6 +80,86 @@ export default appSchema({
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
                 { name: 'deleted_at', type: 'number' },
+                // Sync tracking fields
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+            ],
+        }),
+        tableSchema({
+            name: 'devices',
+            columns: [
+                { name: 'bluetooth_id', type: 'string' },
+                { name: 'name', type: 'string' },
+                { name: 'battery_level', type: 'number' },
+                { name: 'organisation_id', type: 'string' },
+                { name: 'firmware_id', type: 'string' },
+                { name: 'last_battery_check', type: 'string' },
+                { name: 'last_sd_card_check', type: 'string' },
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                // Sync tracking fields
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+            ],
+        }),
+        tableSchema({
+            name: 'project_members',
+            columns: [
+                { name: 'project_id', type: 'string', isIndexed: true },
+                { name: 'user_id', type: 'string', isIndexed: true },
+                { name: 'role', type: 'string' },
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                // Sync tracking fields
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+            ],
+        }),
+        // Reference Data Tables (Read-only, synced from Supabase)
+        tableSchema({
+            name: 'capture_methods',
+            columns: [
+                { name: 'server_id', type: 'number' }, // Original ID from Supabase
+                { name: 'value', type: 'string' },
+                { name: 'description', type: 'string' },
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+            ],
+        }),
+        tableSchema({
+            name: 'activity_sensitivity',
+            columns: [
+                { name: 'server_id', type: 'number' }, // Original ID from Supabase
+                { name: 'value', type: 'string' },
+                { name: 'description', type: 'string' },
+                { name: 'is_active', type: 'boolean' },
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+            ],
+        }),
+        tableSchema({
+            name: 'ai_models',
+            columns: [
+                { name: 'server_id', type: 'string' }, // Original UUID from Supabase
+                { name: 'name', type: 'string' },
+                { name: 'version', type: 'string' },
+                { name: 'description', type: 'string', isOptional: true },
+                { name: 'organisation_id', type: 'string' },
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+            ],
+        }),
+        tableSchema({
+            name: 'sampling_designs',
+            columns: [
+                { name: 'server_id', type: 'number' }, // Original ID from Supabase
+                { name: 'value', type: 'string' },
+                { name: 'description', type: 'string' },
+                { name: 'is_active', type: 'boolean' },
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
             ],
         }),
         // Sync Infrastructure Tables

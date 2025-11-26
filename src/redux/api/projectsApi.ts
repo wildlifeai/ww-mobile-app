@@ -346,6 +346,75 @@ export const projectsApi = createApi({
 				return { data: data as SamplingDesign[] }
 			},
 		}),
+
+		// Reference Data Endpoints - Read from local WatermelonDB for offline support
+		getCaptureMethods: builder.query<CaptureMethod[], void>({
+			queryFn: async () => {
+				try {
+					const ReferenceDataService = (await import('../../services/ReferenceDataService')).default
+					const data = await ReferenceDataService.getCaptureMethods()
+					return { data: data as CaptureMethod[] }
+				} catch (error) {
+					return {
+						error: {
+							status: "CUSTOM_ERROR",
+							error: error instanceof Error ? error.message : String(error)
+						}
+					}
+				}
+			},
+		}),
+
+		getActivitySensitivity: builder.query<ActivitySensitivity[], void>({
+			queryFn: async () => {
+				try {
+					const ReferenceDataService = (await import('../../services/ReferenceDataService')).default
+					const data = await ReferenceDataService.getActivitySensitivity()
+					return { data: data as ActivitySensitivity[] }
+				} catch (error) {
+					return {
+						error: {
+							status: "CUSTOM_ERROR",
+							error: error instanceof Error ? error.message : String(error)
+						}
+					}
+				}
+			},
+		}),
+
+		getAiModels: builder.query<AiModel[], void>({
+			queryFn: async () => {
+				try {
+					const ReferenceDataService = (await import('../../services/ReferenceDataService')).default
+					const data = await ReferenceDataService.getAiModels()
+					return { data: data as AiModel[] }
+				} catch (error) {
+					return {
+						error: {
+							status: "CUSTOM_ERROR",
+							error: error instanceof Error ? error.message : String(error)
+						}
+					}
+				}
+			},
+		}),
+
+		getSamplingDesigns: builder.query<SamplingDesign[], void>({
+			queryFn: async () => {
+				try {
+					const ReferenceDataService = (await import('../../services/ReferenceDataService')).default
+					const data = await ReferenceDataService.getSamplingDesigns()
+					return { data: data as SamplingDesign[] }
+				} catch (error) {
+					return {
+						error: {
+							status: "CUSTOM_ERROR",
+							error: error instanceof Error ? error.message : String(error)
+						}
+					}
+				}
+			},
+		}),
 	}),
 })
 

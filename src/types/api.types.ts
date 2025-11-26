@@ -98,3 +98,16 @@ export type ProjectMembership = {
 	role: string
 	user_id: string
 }
+
+// Composite types for Service layer
+export type ProjectInput = ProjectCreate
+
+export type ProjectMemberWithProfile = ProjectMember & {
+	profile: User
+}
+
+export type ProjectWithDetails = Project & {
+	members: ProjectMemberWithProfile[]
+	deployments_count: number
+	role: string
+}

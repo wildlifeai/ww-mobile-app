@@ -22,12 +22,18 @@ export const SYNC_STATE_KEYS = {
     LAST_SYNC_ERROR: 'last_sync_error',
     TOTAL_SYNCS: 'total_syncs',
     LAMPORT_CLOCK: 'lamport_clock',
+    PROJECT_MEMBERS_LAST_PULLED_AT: 'project_members_last_pulled_at',
+    DEVICES_LAST_PULLED_AT: 'devices_last_pulled_at',
 } as const
 
-type SyncStateKey = typeof SYNC_STATE_KEYS[keyof typeof SYNC_STATE_KEYS]
+export type SyncStateKey = typeof SYNC_STATE_KEYS[keyof typeof SYNC_STATE_KEYS]
 
 class SyncStateService {
     private readonly STORAGE_PREFIX = '@wildlifewatcher:sync:'
+
+    private getStorageKey(key: SyncStateKey): string {
+        return `${this.STORAGE_PREFIX}${key}`
+    }
 
     /**
      * Get a sync state value
@@ -71,23 +77,22 @@ class SyncStateService {
      */
     async set(key: SyncStateKey, value: string): Promise<void> {
         try {
-            // Update database first (source of truth)
-            await database.write(async () => {
-                const existing = await database.get<SyncState>('sync_state')
-                    .query(Q.where('key', key))
-                    .fetch()
+            // NOTE: Must be called from within a database.write() transaction
+            // Don't wrap here to avoid nested transactions
+            const existing = await database.get<SyncState>('sync_state')
+                .query(Q.where('key', key))
+                .fetch()
 
-                if (existing.length > 0) {
-                    await existing[0].update(state => {
-                        state.value = value
-                    })
-                } else {
-                    await database.get<SyncState>('sync_state').create(state => {
-                        state.key = key
-                        state.value = value
-                    })
-                }
-            })
+            if (existing.length > 0) {
+                await existing[0].update(state => {
+                    state.value = value
+                })
+            } else {
+                await database.get<SyncState>('sync_state').create(state => {
+                    state.key = key
+                    state.value = value
+                })
+            }
 
             // Update AsyncStorage cache
             await AsyncStorage.setItem(this.getStorageKey(key), value)
@@ -225,49 +230,31 @@ class SyncStateService {
     async getAllState(): Promise<Record<string, string>> {
         const allStates: Record<string, string> = {}
 
-        try {
-            const records = await database.get<SyncState>('sync_state').query().fetch()
+        // Get from DB as source of truth
+        const records = await database.get<SyncState>('sync_state').query().fetch()
 
-            for (const record of records) {
-                allStates[record.key] = record.value
-            }
-        } catch (error) {
-            console.error('[SyncStateService] Error getting all state:', error)
+        for (const record of records) {
+            allStates[record.key] = record.value
         }
 
         return allStates
     }
 
     /**
-     * Clear all sync state (use with caution!)
+     * Clear all sync state (e.g. on logout)
      */
     async clearAllState(): Promise<void> {
-        try {
-            // Clear database
-            await database.write(async () => {
-                const records = await database.get<SyncState>('sync_state').query().fetch()
-                for (const record of records) {
-                    await record.markAsDeleted()
-                }
-            })
+        await database.write(async () => {
+            const records = await database.get<SyncState>('sync_state').query().fetch()
+            for (const record of records) {
+                await record.markAsDeleted()
+            }
+        })
 
-            // Clear AsyncStorage
-            const keys = Object.values(SYNC_STATE_KEYS)
-            await AsyncStorage.multiRemove(keys.map(k => this.getStorageKey(k)))
-
-            console.log('[SyncStateService] All sync state cleared')
-        } catch (error) {
-            console.error('[SyncStateService] Error clearing all state:', error)
-            throw error
+        const keys = Object.values(SYNC_STATE_KEYS)
+        for (const key of keys) {
+            await AsyncStorage.removeItem(this.getStorageKey(key))
         }
-    }
-
-    // ===========================================================================
-    // Private Helpers
-    // ===========================================================================
-
-    private getStorageKey(key: string): string {
-        return `${this.STORAGE_PREFIX}${key}`
     }
 }
 

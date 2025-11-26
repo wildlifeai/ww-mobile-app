@@ -29,10 +29,6 @@ export default class Deployment extends Model {
     @readonly @date('updated_at') updatedAt!: number
     @readonly @date('deleted_at') deletedAt!: number
 
-    // Sync tracking fields
-    @field('_version') version!: number
-    @field('_custom_sync_status') customSyncStatus?: string
-
     @relation('projects', 'project_id') project: any
     @relation('users', 'user_id') user: any
 }

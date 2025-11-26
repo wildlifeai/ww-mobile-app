@@ -29,7 +29,7 @@ try {
 				Text,
 				null,
 				"Error loading app: " +
-					(error?.message || error?.toString() || "Unknown error"),
+				(error?.message || error?.toString() || "Unknown error"),
 			),
 		)
 	AppRegistry.registerComponent("main", () => FallbackApp)

@@ -53,22 +53,23 @@ class OutboxService {
             const operationId = uuidv4()
 
             // Get next Lamport clock for ordering
-            const lamportClock = await SyncStateService.getNextLamportClock()
+            // Use timestamp for operation ordering (simpler than Lamport clock with DB writes)
+            const lamportClock = Date.now()
 
-            await database.write(async () => {
-                await database.get<SyncOutbox>('sync_outbox').create(op => {
-                    op.operationId = operationId
-                    op.operationType = operation
-                    op.tableName = tableName
-                    op.recordId = recordId
-                    op.payload = JSON.stringify(payload)
-                    op.version = version
-                    op.lamportClock = lamportClock
-                    op.retryCount = 0
-                    op.status = 'pending'
-                    op.userId = userId
-                    op.deviceId = deviceId
-                })
+            // NOTE: No database.write() wrapper - caller must provide transaction context
+            // This prevents nested writes which cause WatermelonDB deadlocks
+            await database.get<SyncOutbox>('sync_outbox').create(op => {
+                op.operationId = operationId
+                op.operationType = operation
+                op.tableName = tableName
+                op.recordId = recordId
+                op.payload = JSON.stringify(payload)
+                op.version = version
+                op.lamportClock = lamportClock
+                op.retryCount = 0
+                op.status = 'pending'
+                op.userId = userId
+                op.deviceId = deviceId
             })
 
             console.log(`📦 Recorded ${operation} operation for ${tableName}:${recordId} (clock: ${lamportClock})`)

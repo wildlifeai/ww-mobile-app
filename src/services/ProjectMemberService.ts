@@ -14,7 +14,7 @@
  * - Cannot create new users or assign system roles
  */
 
-import { supabase } from "./supabase"
+import { getSupabaseClient } from "./supabase"
 
 export type ProjectRole = "project_admin" | "project_member" | "viewer"
 
@@ -82,7 +82,7 @@ export const getOrganizationUsers = async (
 ): Promise<OrganizationUser[]> => {
 	try {
 		// Call backend function to get org users
-		const { data, error } = await supabase.rpc("get_organisation_users", {
+		const { data, error } = await getSupabaseClient().rpc("get_organisation_users", {
 			p_organisation_id: organisationId,
 			p_requesting_user_id: requestingUserId,
 		})
@@ -117,7 +117,7 @@ export const getProjectMembers = async (
 ): Promise<ProjectMember[]> => {
 	try {
 		// Call backend function to get project members
-		const { data, error } = await supabase.rpc("get_project_members", {
+		const { data, error } = await getSupabaseClient().rpc("get_project_members", {
 			p_project_id: projectId,
 			p_requesting_user_id: requestingUserId,
 		})
@@ -156,7 +156,7 @@ export const addProjectMember = async (
 		})
 
 		// Call backend function to add project member
-		const { data, error } = await supabase.rpc("add_project_member", {
+		const { data, error } = await getSupabaseClient().rpc("add_project_member", {
 			p_project_id: request.project_id,
 			p_user_id: request.user_id,
 			p_role: request.role,
@@ -205,7 +205,7 @@ export const updateProjectMemberRole = async (
 		})
 
 		// Call backend function to update member role
-		const { data, error } = await supabase.rpc("update_project_member_role", {
+		const { data, error } = await getSupabaseClient().rpc("update_project_member_role", {
 			p_project_id: request.project_id,
 			p_user_id: request.user_id,
 			p_new_role: request.new_role,
@@ -253,7 +253,7 @@ export const removeProjectMember = async (
 		})
 
 		// Call backend function to remove project member
-		const { data, error } = await supabase.rpc("remove_project_member", {
+		const { data, error } = await getSupabaseClient().rpc("remove_project_member", {
 			p_project_id: request.project_id,
 			p_user_id: request.user_id,
 			p_removed_by: request.removed_by,
@@ -296,7 +296,7 @@ export const isProjectAdmin = async (
 ): Promise<boolean> => {
 	try {
 		// Call backend function to check project role
-		const { data, error } = await supabase.rpc("has_project_role", {
+		const { data, error } = await getSupabaseClient().rpc("has_project_role", {
 			project_id: projectId,
 			required_role: "project_admin",
 			user_id: userId,
@@ -324,7 +324,7 @@ export const isProjectAdmin = async (
 export const isWWAdmin = async (userId: string): Promise<boolean> => {
 	try {
 		// Call backend function to check system role
-		const { data, error } = await supabase.rpc("has_system_role", {
+		const { data, error } = await getSupabaseClient().rpc("has_system_role", {
 			required_role: "ww_admin",
 			user_id: userId,
 		})

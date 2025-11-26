@@ -2,9 +2,40 @@
 
 This validation script ensures your WatermelonDB schema (`src/database/schema.ts`) stays in sync with the Supabase database schema to prevent runtime errors and data inconsistencies.
 
+## TL;DR - Quick Reference
+
+```bash
+# Daily development - check status
+npm run dev:status
+
+# Sync from live database
+npm run sync:from-live:cloud-dev
+
+# Validate before building
+npm run prebuild:check
+```
+
 ## Usage
 
-### Manual Validation
+### Live Validation (Recommended)
+
+Validates against the **live database** to ensure types are current:
+
+```bash
+# Quick status check
+npm run dev:status  # Checks types + schema against local database
+
+# Validate against cloud-dev
+npm run schema:validate:live:cloud-dev
+
+# Complete sync workflow (regenerate types + validate)
+npm run sync:from-live:cloud-dev
+
+# Validate against local database
+npm run schema:validate:live:local
+```
+
+### Static Validation (Legacy)
 
 ```bash
 # Run validation
@@ -67,8 +98,70 @@ When the Supabase schema changes:
 
 4. **Test again**:
    ```bash
-   npm run schema:validate
+   npm run schema:validate:live:cloud-dev
    ```
+
+## Common Workflows
+
+### Daily Development
+
+```bash
+# Single command to check everything
+npm run dev:status
+
+# If drift detected, sync from live
+npm run sync:from-live:cloud-dev
+
+# Review changes
+git diff src/types/supabase.ts
+
+# Update schema.ts if needed based on validation errors
+# Then re-validate
+npm run schema:validate:live:cloud-dev
+```
+
+### Before Preview Build
+
+```bash
+# Complete validation workflow
+npm run prebuild:preview  # Includes schema validation
+
+# Or manual steps
+npm run types:check-cloud-dev    # Check types are current
+npm run schema:validate:live:cloud-dev  # Validate schema
+npm run type-check               # TypeScript compile check
+npm test                         # Run tests
+```
+
+### When Backend Schema Changes
+
+```bash
+# 1. Sync from live database
+npm run sync:from-live:cloud-dev
+   # This runs: types:cloud-dev + schema:validate:live:cloud-dev
+
+# 2. Review validation output
+
+# 3. Update src/database/schema.ts based on errors/warnings
+
+# 4. Verify fixes
+npm run schema:validate:live:cloud-dev
+
+# 5. Commit changes
+git add src/types/supabase.ts src/database/schema.ts
+git commit -m "chore: sync schema with backend changes"
+```
+
+### Troubleshooting Schema Issues
+
+```bash
+# Verbose output for debugging
+npm run schema:validate:live:cloud-dev -- --verbose
+
+# Check what environment you're validating against
+npm run schema:validate:live:local        # Local database
+npm run schema:validate:live:cloud-dev    # Cloud dev database
+```
 
 ### New Column Added to Supabase
 

@@ -136,13 +136,6 @@ export type Database = {
             foreignKeyName: "admin_audit_log_target_project_id_fkey"
             columns: ["target_project_id"]
             isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_project_id_fkey"
-            columns: ["target_project_id"]
-            isOneToOne: false
             referencedRelation: "project_members_detailed"
             referencedColumns: ["project_id"]
           },
@@ -158,13 +151,6 @@ export type Database = {
             columns: ["target_project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_project_id_fkey"
-            columns: ["target_project_id"]
-            isOneToOne: false
-            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
           {
@@ -244,13 +230,6 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "admin_activity_log"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "ai_model_organisation_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
             referencedColumns: ["organisation_id"]
           },
           {
@@ -345,13 +324,6 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "admin_activity_log"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "ai_models_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
             referencedColumns: ["organisation_id"]
           },
           {
@@ -470,13 +442,6 @@ export type Database = {
             foreignKeyName: "api_logs_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "api_logs_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
             referencedRelation: "organisation_members_detailed"
             referencedColumns: ["organisation_id"]
           },
@@ -519,13 +484,6 @@ export type Database = {
             foreignKeyName: "api_logs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "api_logs_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
             referencedRelation: "project_members_detailed"
             referencedColumns: ["project_id"]
           },
@@ -544,32 +502,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "api_logs_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects_with_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_api_logs_deployment"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["deployment_id"]
-          },
-          {
             foreignKeyName: "fk_api_logs_deployment"
             columns: ["deployment_id"]
             isOneToOne: false
             referencedRelation: "deployments"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_api_logs_device"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["device_id"]
           },
           {
             foreignKeyName: "fk_api_logs_device"
@@ -596,13 +533,6 @@ export type Database = {
             foreignKeyName: "fk_api_logs_project"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "fk_api_logs_project"
-            columns: ["project_id"]
-            isOneToOne: false
             referencedRelation: "project_members_detailed"
             referencedColumns: ["project_id"]
           },
@@ -618,13 +548,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_api_logs_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
         ]
@@ -769,13 +692,6 @@ export type Database = {
             foreignKeyName: "fk_deployments_device"
             columns: ["device_id"]
             isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["device_id"]
-          },
-          {
-            foreignKeyName: "fk_deployments_device"
-            columns: ["device_id"]
-            isOneToOne: false
             referencedRelation: "devices"
             referencedColumns: ["id"]
           },
@@ -785,13 +701,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_activity_log"
             referencedColumns: ["target_project_id"]
-          },
-          {
-            foreignKeyName: "fk_deployments_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "fk_deployments_project"
@@ -812,13 +721,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_deployments_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
         ]
@@ -899,13 +801,6 @@ export type Database = {
             foreignKeyName: "device_preparation_device_id_fkey"
             columns: ["device_id"]
             isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["device_id"]
-          },
-          {
-            foreignKeyName: "device_preparation_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
             referencedRelation: "devices"
             referencedColumns: ["id"]
           },
@@ -927,13 +822,6 @@ export type Database = {
             foreignKeyName: "device_preparation_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "device_preparation_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
             referencedRelation: "project_members_detailed"
             referencedColumns: ["project_id"]
           },
@@ -949,13 +837,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_preparation_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
         ]
@@ -1025,13 +906,6 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "admin_activity_log"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "devices_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
             referencedColumns: ["organisation_id"]
           },
           {
@@ -1167,22 +1041,8 @@ export type Database = {
             foreignKeyName: "lorawan_messages_deployment_id_fkey"
             columns: ["deployment_id"]
             isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["deployment_id"]
-          },
-          {
-            foreignKeyName: "lorawan_messages_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
             referencedRelation: "deployments"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lorawan_messages_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["device_id"]
           },
           {
             foreignKeyName: "lorawan_messages_device_id_fkey"
@@ -1219,13 +1079,6 @@ export type Database = {
           sd_card_used_capacity?: number | null
         }
         Relationships: [
-          {
-            foreignKeyName: "lorawan_parsed_messages_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["device_id"]
-          },
           {
             foreignKeyName: "lorawan_parsed_messages_device_id_fkey"
             columns: ["device_id"]
@@ -1315,13 +1168,6 @@ export type Database = {
             foreignKeyName: "fk_project_members_project"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "fk_project_members_project"
-            columns: ["project_id"]
-            isOneToOne: false
             referencedRelation: "project_members_detailed"
             referencedColumns: ["project_id"]
           },
@@ -1337,13 +1183,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_project_members_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
           {
@@ -1364,13 +1203,6 @@ export type Database = {
             foreignKeyName: "project_members_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "project_members_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
             referencedRelation: "project_members_detailed"
             referencedColumns: ["project_id"]
           },
@@ -1386,13 +1218,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_members_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
           {
@@ -1495,13 +1320,6 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "admin_activity_log"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "projects_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
             referencedColumns: ["organisation_id"]
           },
           {
@@ -1645,13 +1463,6 @@ export type Database = {
             foreignKeyName: "user_organisations_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "user_organisations_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
             referencedRelation: "organisation_members_detailed"
             referencedColumns: ["organisation_id"]
           },
@@ -1783,44 +1594,6 @@ export type Database = {
         }
         Relationships: []
       }
-      deployment_overview: {
-        Row: {
-          bluetooth_id: string | null
-          created_at: string | null
-          created_by_email: string | null
-          created_by_name: string | null
-          deleted_at: string | null
-          deployment_comments: string | null
-          deployment_end: string | null
-          deployment_id: string | null
-          deployment_name: string | null
-          deployment_photos: Json | null
-          deployment_start: string | null
-          deployment_status: string | null
-          device_id: string | null
-          device_name: string | null
-          firmware_id: string | null
-          geolocation: unknown
-          latitude: number | null
-          location_name: string | null
-          longitude: number | null
-          organisation_id: string | null
-          organisation_name: string | null
-          project_id: string | null
-          project_name: string | null
-          status_description: string | null
-          updated_at: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "devices_firmware_id_fkey"
-            columns: ["firmware_id"]
-            isOneToOne: false
-            referencedRelation: "firmware"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       organisation_members_detailed: {
         Row: {
           is_ww_admin: boolean | null
@@ -1906,165 +1679,6 @@ export type Database = {
           updated_at: string | null
         }
         Relationships: []
-      }
-      projects_with_stats: {
-        Row: {
-          activity_detection_sensitivity_id: number | null
-          battery_level: number | null
-          capture_method_id: number | null
-          created_at: string | null
-          created_by: string | null
-          deleted_at: string | null
-          deployment_count: number | null
-          description: string | null
-          id: string | null
-          is_active: boolean | null
-          is_baited: boolean | null
-          is_monitoring_marked_individuals: boolean | null
-          lorawan_device_count: number | null
-          member_count: number | null
-          model_id: string | null
-          modified_by: string | null
-          name: string | null
-          organisation_id: string | null
-          project_image: string | null
-          sampling_design_id: number | null
-          sd_card_usage: number | null
-          timelapse_interval_seconds: number | null
-          updated_at: string | null
-          website: string | null
-        }
-        Insert: {
-          activity_detection_sensitivity_id?: number | null
-          battery_level?: never
-          capture_method_id?: number | null
-          created_at?: string | null
-          created_by?: string | null
-          deleted_at?: string | null
-          deployment_count?: never
-          description?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          is_baited?: boolean | null
-          is_monitoring_marked_individuals?: boolean | null
-          lorawan_device_count?: never
-          member_count?: never
-          model_id?: string | null
-          modified_by?: string | null
-          name?: string | null
-          organisation_id?: string | null
-          project_image?: string | null
-          sampling_design_id?: number | null
-          sd_card_usage?: never
-          timelapse_interval_seconds?: number | null
-          updated_at?: string | null
-          website?: string | null
-        }
-        Update: {
-          activity_detection_sensitivity_id?: number | null
-          battery_level?: never
-          capture_method_id?: number | null
-          created_at?: string | null
-          created_by?: string | null
-          deleted_at?: string | null
-          deployment_count?: never
-          description?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          is_baited?: boolean | null
-          is_monitoring_marked_individuals?: boolean | null
-          lorawan_device_count?: never
-          member_count?: never
-          model_id?: string | null
-          modified_by?: string | null
-          name?: string | null
-          organisation_id?: string | null
-          project_image?: string | null
-          sampling_design_id?: number | null
-          sd_card_usage?: never
-          timelapse_interval_seconds?: number | null
-          updated_at?: string | null
-          website?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "projects_activity_detection_sensitivity_id_fkey"
-            columns: ["activity_detection_sensitivity_id"]
-            isOneToOne: false
-            referencedRelation: "activity_sensitivity"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projects_capture_method_id_fkey"
-            columns: ["capture_method_id"]
-            isOneToOne: false
-            referencedRelation: "capture_methods"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projects_model_id_fkey"
-            columns: ["model_id"]
-            isOneToOne: false
-            referencedRelation: "ai_models"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projects_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "projects_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "projects_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisation_members_detailed"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "projects_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisation_summary"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projects_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projects_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "project_members_detailed"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "projects_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "project_summary"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "projects_sampling_design_id_fkey"
-            columns: ["sampling_design_id"]
-            isOneToOne: false
-            referencedRelation: "sampling_designs"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       recent_activity_summary: {
         Row: {
@@ -2217,6 +1831,8 @@ export type Database = {
         Args: { required_role?: string; user_id?: string }
         Returns: boolean
       }
+      pull_changes: { Args: { last_pulled_at: number }; Returns: Json }
+      push_changes: { Args: { changes: Json }; Returns: undefined }
       remove_project_member: {
         Args: { p_project_id: string; p_removed_by: string; p_user_id: string }
         Returns: Json
@@ -2228,6 +1844,7 @@ export type Database = {
         Args: { p_project_id: string; p_user_id: string }
         Returns: undefined
       }
+      to_timestamp_ms: { Args: { epoch_ms: number }; Returns: string }
       update_project_member_role: {
         Args: {
           p_new_role: string

@@ -79,6 +79,20 @@ npm run types:check-cloud-dev  # Check against cloud-dev
 npm run types:check-cloud-prod # Check against cloud-prod
 ```
 
+### Schema Validation (Integrated with Type Checking)
+Validate WatermelonDB schema against live Supabase database:
+
+```bash
+npm run schema:validate:live:local      # Validate against local database
+npm run schema:validate:live:cloud-dev  # Validate against cloud-dev database
+
+# Combined workflows
+npm run dev:status                   # Types + schema check (local)
+npm run sync:from-live:cloud-dev     # Generate types + validate schema
+```
+
+**Note**: Schema validation automatically runs type checking first to ensure types are current before comparing schemas.
+
 ### Full Validation
 Run type check + TypeScript compilation + tests:
 
@@ -123,30 +137,36 @@ npm run prebuild:production  # Runs validate:cloud-prod
 cd ~/dev/wildlifeai/wildlife-watcher-backend
 supabase start
 
-# 2. Check if types need updating
+# 2. Quick status check (types + schema)
 cd ~/dev/wildlifeai/wildlife-watcher-mobile-app
-npm run types:check-local
+npm run dev:status  # Checks types + validates schema
 
-# 3. If out of sync, regenerate
+# 3. If out of sync, regenerate and validate
 npm run types:local
+npm run schema:validate:live:local
 
-# 4. Commit changes
-git add src/types/supabase.ts
-git commit -m "chore(types): sync with local schema"
+# 4. Update schema.ts if validation shows errors
+#    (Edit src/database/schema.ts based on validation output)
+
+# 5. Commit changes
+git add src/types/supabase.ts src/database/schema.ts
+git commit -m "chore: sync types and schema with local database"
 ```
 
 ### Preview Build Preparation
 ```bash
-# 1. Switch to cloud-dev environment (optional, for context)
-./scripts/switch-supabase-instance.sh cloud-dev
+# 1. Complete sync from live cloud-dev database
+npm run sync:from-live:cloud-dev  # Types + schema validation
 
-# 2. Generate types from cloud-dev
-npm run types:cloud-dev
+# 2. Update schema.ts if needed (based on validation output)
 
-# 3. Validate everything
+# 3. Full validation (types, TypeScript, tests)
 npm run validate:cloud-dev
 
-# 4. Build preview
+# 4. Pre-build check (includes schema validation)
+npm run prebuild:preview
+
+# 5. Build preview
 eas build --profile preview
 ```
 
@@ -250,6 +270,28 @@ supabase link --project-ref <correct-ref>
 # Ensure you're checking against correct environment
 npm run types:check-local      # For local dev
 npm run types:check-cloud-dev  # For preview builds
+```
+
+### Schema validation fails
+```bash
+# Get detailed output
+npm run schema:validate:live:cloud-dev -- --verbose
+
+# Sync from live database
+npm run sync:from-live:cloud-dev
+
+# Review validation errors and update src/database/schema.ts
+# Each error includes suggested fix code
+```
+
+### "Types are out of sync" during schema validation
+Schema validation runs type checking first. If types are stale:
+```bash
+# Regenerate types first
+npm run types:cloud-dev
+
+# Then validate schema
+npm run schema:validate:live:cloud-dev
 ```
 
 ## Future Improvements

@@ -10,6 +10,7 @@ import {
 	AuthResponse,
 	LoginRequest,
 	RegisterRequest,
+	UserRole,
 } from "../redux/api/auth/types"
 // import { getDatabaseService } from "./offline/DatabaseService"
 import type { Tables } from "../types/supabase"
@@ -28,15 +29,7 @@ const supabase = () => getSupabaseClient()
  * Sync user's organisations to local SQLite database
  * This ensures foreign key constraints are satisfied for offline operations
  */
-/**
- * Sync user's organisations to local SQLite database
- * Deprecated: WatermelonDB handles organisation sync now.
- */
-const syncOrganisationsToLocal = async (
-	organisations: { id: string; name: string }[],
-) => {
-	// No-op: DatabaseService removed
-}
+
 
 /**
  * Fetch user's organisations and role information from database
@@ -215,10 +208,7 @@ const fetchUserOrganisations = async (userId: string) => {
 			organisationId,
 		})
 
-		// Sync organisations to local database (non-blocking)
-		syncOrganisationsToLocal(organisations).catch((err) => {
-			console.warn("⚠️ Organisation sync failed (non-blocking):", err)
-		})
+
 
 		return { organisations, role, organisationId }
 	} catch (error) {
@@ -251,13 +241,8 @@ const transformSupabaseUser = async (
 		jwt: session.access_token,
 		user: {
 			id: user.id, // Keep UUID as string
-			username: user.user_metadata?.username || user.email?.split("@")[0] || "",
 			email: user.email || "",
-			confirmed: user.email_confirmed_at !== null,
-			blocked: false, // Supabase doesn't have blocked status
-			createdAt: user.created_at,
-			updatedAt: user.updated_at || user.created_at,
-			role, // User's highest privilege role
+			role: role as UserRole, // User's highest privilege role
 			organisation_id: organisationId, // Default organisation
 			organisations, // All organisations user belongs to
 		},
@@ -345,12 +330,10 @@ export const register = async (
 				jwt: "", // No JWT until confirmed
 				user: {
 					id: data.user.id, // Keep UUID as string
-					username: credentials.username,
 					email: credentials.email,
-					confirmed: false,
-					blocked: false,
-					createdAt: data.user.created_at,
-					updatedAt: data.user.updated_at || data.user.created_at,
+					role: "project_member" as UserRole,
+					organisation_id: null,
+					organisations: [],
 				},
 			}
 
