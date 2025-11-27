@@ -369,11 +369,11 @@ class SupabaseSyncService {
         console.log('👥 Syncing project members since', lastPulledAt)
 
         const client = getSupabaseClient()
-        // Join with roles table to get role name
+        // Join with roles table to get role value (not 'name' - that column doesn't exist)
         // Specify the exact foreign key to avoid ambiguity (two FKs exist: fk_project_members_role and project_members_role_id_fkey)
         const { data, error } = await client
             .from('project_members')
-            .select('*, roles!fk_project_members_role(name)')
+            .select('*, roles!fk_project_members_role(value)')
             .gt('updated_at', lastPulledAt)
 
         if (error) {
@@ -392,10 +392,10 @@ class SupabaseSyncService {
             const collection = database.get<ProjectMember>('project_members')
 
             for (const row of data as any[]) {
-                // Extract role name from joined data
+                // Extract role value from joined data
                 // Supabase returns joined data as an object or array depending on relationship
-                // Here it should be an object: { name: 'admin' }
-                const roleName = row.roles?.name || 'member'
+                // Here it should be an object: { value: 'admin' }
+                const roleName = row.roles?.value || 'member'
 
                 // Check if exists
                 const existing = await collection.query(
@@ -427,9 +427,6 @@ class SupabaseSyncService {
         console.log('✅ Project members sync complete')
     }
 
-    /**
-     * Sync devices (incremental pull)
-     */
     /**
      * Sync devices (incremental pull)
      */

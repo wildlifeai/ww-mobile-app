@@ -94,12 +94,23 @@ export const Terminal = ({ embed }: Props) => {
 	})
 
 	const [autoscroll, setAutoscroll] = useState(true)
+	const [configLoadTimeout, setConfigLoadTimeout] = useState(false)
 
 	const [heartbeat, setHeartbeat] = useState<string>()
 	const [heartbeatTime, setHeartbeatTime] = useState<string>("s")
 	const [appEui, setAppEui] = useState<string>("")
 	const [devEui, setDevEui] = useState<string>("")
 	const [localSensor, setLocalSensor] = useState<boolean>()
+
+	// Timeout to force showing screen after 15 seconds even if config not fully loaded
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setConfigLoadTimeout(true)
+			console.log("⏱️ Configuration load timeout reached (15s), forcing screen to show")
+		}, 15000) // 15 seconds
+
+		return () => clearTimeout(timer)
+	}, [])
 
 	useEffect(() => {
 		setLocalSensor(config.SENSOR?.value === "enable")
@@ -237,7 +248,8 @@ export const Terminal = ({ embed }: Props) => {
 		fullConfig: config,
 	})
 
-	if (
+	// Show loading screen only if configs are still loading AND timeout hasn't been reached
+	const isConfigLoading = (
 		!HEARTBEAT?.loaded ||
 		!APPEUI?.loaded ||
 		!SENSOR?.loaded ||
@@ -247,11 +259,20 @@ export const Terminal = ({ embed }: Props) => {
 		!VERSION?.loaded ||
 		!DEVICE?.loaded ||
 		!ID?.loaded
-	) {
+	)
+
+	if (isConfigLoading && !configLoadTimeout) {
 		console.log(
 			"🔍 Terminal Screen: Still loading configuration, showing AppLoading...",
 		)
 		return <AppLoading />
+	}
+
+	// If timeout reached but still loading, log warning
+	if (isConfigLoading && configLoadTimeout) {
+		console.warn(
+			"⚠️ Terminal Screen: Timeout reached, showing UI with partial configuration. Some values may be missing.",
+		)
 	}
 
 	return (

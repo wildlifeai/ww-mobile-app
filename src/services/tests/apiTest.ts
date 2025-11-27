@@ -1,6 +1,5 @@
 import { getSupabaseClient } from "../supabase"
 import DeviceService from "../DeviceService"
-import { getSupabaseClient } from "../supabase"
 import ReferenceDataService from "../ReferenceDataService"
 import SupabaseSyncService from "../SupabaseSyncService"
 import database from "../../database"
@@ -63,7 +62,7 @@ export const testBusinessLogic = async (): Promise<boolean> => {
 			return true
 		}
 
-		const { data: profile } = await supabase
+		const { data: profile } = await getSupabaseClient()
 			.from("users")
 			.select("*")
 			.eq("id", user.id)
