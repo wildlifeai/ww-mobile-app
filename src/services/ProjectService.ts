@@ -195,7 +195,7 @@ class ProjectService {
 	 */
 	async getProjectMembers(projectId: string): Promise<ProjectMemberWithProfile[]> {
 		try {
-			const { data, error } = await (supabase as any).rpc('get_project_members', {
+			const { data, error } = await (getSupabaseClient() as any).rpc('get_project_members', {
 				p_project_id: projectId,
 			})
 
@@ -218,7 +218,7 @@ class ProjectService {
 		role: 'project_admin' | 'project_member'
 	): Promise<void> {
 		try {
-			const { error } = await (supabase as any).rpc('add_project_member', {
+			const { error } = await (getSupabaseClient() as any).rpc('add_project_member', {
 				p_project_id: projectId,
 				p_email: email,
 				p_role: role,
@@ -237,7 +237,7 @@ class ProjectService {
 	 */
 	async removeProjectMember(projectId: string, userId: string): Promise<void> {
 		try {
-			const { error } = await (supabase as any).rpc('remove_project_member', {
+			const { error } = await (getSupabaseClient() as any).rpc('remove_project_member', {
 				p_project_id: projectId,
 				p_user_id: userId,
 			})

@@ -9,11 +9,11 @@ This guide documents the complete authentication system implementation for the W
 ### Authentication Flow
 
 ```
-App Start → AuthProvider → Session Check → Navigation Decision
+App Start → AuthProvider → Supabase Session Check
     ↓
-Session Exists? → Yes → Main App Navigation
+Session Exists? → Dispatch setCredentials (Redux) → Main App
     ↓
-Session Missing? → No → Authentication Stack (Login/Register/ForgotPassword)
+Session Missing? → Clear Redux State → Auth Stack
 ```
 
 ### Provider Hierarchy
@@ -394,7 +394,23 @@ export type AuthState = {
 
 ### Auth Slice Integration
 
-The auth state is managed through the AuthProvider context rather than Redux to avoid circular dependencies and ensure proper session management.
+The app uses Redux to manage global user state, permissions, and organization context. The `AuthProvider` syncs Supabase session changes to the Redux store.
+
+```typescript
+// src/redux/slices/authSlice.ts
+export const authSlice = createSlice({
+  name: "authentication",
+  initialState,
+  reducers: {
+    setCredentials: (state, action) => {
+      state.user = action.payload.user;
+      state.token = action.payload.jwt;
+      state.permissions = calculatePermissions(action.payload.user.role);
+    },
+    // ...
+  }
+});
+```
 
 ## Common Pitfalls and Solutions
 

@@ -17,7 +17,8 @@ The Wildlife Watcher mobile app uses Supabase as its backend-as-a-service platfo
 - **Client:** `src/services/supabase.ts`
 - **Types:** `src/types/supabase.ts`
 - **Auth Service:** `src/services/auth.ts`
-- **Database Operations:** `src/services/database.ts`
+- **Database Setup:** `src/database/index.ts`
+- **Sync Service:** `src/services/SupabaseSyncService.ts`
 
 ## Architecture Overview
 
@@ -133,23 +134,22 @@ const user = await authService.getCurrentUser();
 await authService.logout();
 ```
 
-### Database Operations
+### Database Operations (WatermelonDB)
 
-Use the database service for common CRUD operations:
+For offline-first data (projects, deployments, devices), use WatermelonDB models instead of direct Supabase calls.
 
 ```typescript
-import { databaseService } from '../services/database';
-
-// Get user projects
-const projects = await databaseService.getUserProjects(userId);
+import { database } from '../database';
 
 // Create new deployment
-const deployment = await databaseService.createDeployment({
-  device_id: deviceId,
-  project_id: projectId,
-  latitude: -36.8485,
-  longitude: 174.7633
+await database.write(async () => {
+  await database.get('deployments').create(deployment => {
+    deployment.project_id = projectId;
+    deployment.latitude = -36.8485;
+    deployment.longitude = 174.7633;
+  });
 });
+// Sync happens automatically in background via SupabaseSyncService
 ```
 
 ## Real-time Subscriptions
@@ -245,14 +245,14 @@ console.log('Test results:', results);
 The app implements offline-first patterns with Supabase sync:
 
 ### Local Storage
-- Use Expo SQLite for offline data storage
-- Queue operations when offline
-- Sync with Supabase when connectivity returns
+- **WatermelonDB** as the source of truth for the UI
+- **Reactive Architecture** using Observables
+- **Background Sync** via `SupabaseSyncService`
 
 ### Conflict Resolution
-- Last-write-wins for most fields
-- Special handling for deployment status (ended status always wins)
-- Project members use merge strategy (union of both lists)
+- **Last-Write-Wins** strategy for most fields
+- **Pull-First** approach: Local changes are pushed, then remote changes are pulled
+- **Consistent State**: WatermelonDB ensures relational integrity locally
 
 ## Advanced Usage
 
@@ -373,9 +373,9 @@ export type ProjectWithMembers = Database['public']['Tables']['projects']['Row']
 - Use filters to reduce unnecessary updates
 
 ### Caching
-- Implement client-side caching for reference data
-- Use Expo SQLite for offline storage
-- Consider implementing optimistic updates
+- **WatermelonDB** acts as a persistent cache
+- **Optimistic Updates** are built-in (write local first, sync later)
+- **Lazy Loading** via `@lazy` decorators in models
 
 ## Migration and Updates
 

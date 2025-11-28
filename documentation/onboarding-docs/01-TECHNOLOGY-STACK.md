@@ -98,7 +98,7 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector
 **What it is**: Tools and libraries that make React Native development easier.
 
 **Key Expo Modules We Use**:
-- `expo-sqlite` - Local SQLite database
+- `@nozbe/watermelondb` - High-performance reactive database
 - `expo-location` - GPS access
 - `expo-file-system` - File operations
 - `expo-constants` - App configuration
@@ -270,51 +270,61 @@ export const api = createApi({
 
 ## Database & Backend
 
-### SQLite (expo-sqlite)
+### WatermelonDB (@nozbe/watermelondb)
 
-**Purpose**: Local offline data storage.
+**Purpose**: High-performance, reactive, offline-first local database.
 
-**Schema Example**: src/services/offline/DatabaseService.ts:157-283
+**Schema Example**: src/database/schema.ts
 ```typescript
-private async createTables(): Promise<void> {
-  // Projects table with organisation scoping
-  await this.db.execAsync(`
-    CREATE TABLE IF NOT EXISTS local_projects (
-      id TEXT PRIMARY KEY,
-      organisation_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      description TEXT,
-      status TEXT CHECK(status IN ('active', 'inactive', 'completed')) DEFAULT 'active',
-      members TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (organisation_id) REFERENCES local_organisations (id)
-    );
-  `);
+import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
-  // Offline queue table for sync operations
-  await this.db.execAsync(`
-    CREATE TABLE IF NOT EXISTS offline_queue (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      operation_type TEXT NOT NULL,
-      data TEXT NOT NULL,
-      organisation_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      priority TEXT CHECK(priority IN ('low', 'medium', 'high', 'critical')) DEFAULT 'medium',
-      retry_count INTEGER DEFAULT 0,
-      max_retries INTEGER DEFAULT 3,
-      status TEXT CHECK(status IN ('pending', 'processing', 'completed', 'failed')) DEFAULT 'pending',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+export default appSchema({
+  version: 1,
+  tables: [
+    tableSchema({
+      name: 'projects',
+      columns: [
+        { name: 'name', type: 'string' },
+        { name: 'description', type: 'string', isOptional: true },
+        { name: 'status', type: 'string' },
+        { name: 'organisation_id', type: 'string', isIndexed: true },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+      ]
+    }),
+    tableSchema({
+      name: 'sync_outbox',
+      columns: [
+        { name: 'operation_id', type: 'string', isIndexed: true },
+        { name: 'table_name', type: 'string' },
+        { name: 'record_id', type: 'string' },
+        { name: 'operation_type', type: 'string' }, // create, update, delete
+        { name: 'payload', type: 'string' }, // JSON payload
+        { name: 'status', type: 'string', isIndexed: true }, // pending, syncing, synced, failed
+        { name: 'created_at', type: 'number' },
+      ]
+    }),
+  ]
+})
+```
 
-  // Create indexes for better query performance
-  await this.db.execAsync(`
-    CREATE INDEX IF NOT EXISTS idx_projects_org ON local_projects (organisation_id);
-    CREATE INDEX IF NOT EXISTS idx_queue_status ON offline_queue (status);
-    CREATE INDEX IF NOT EXISTS idx_queue_priority ON offline_queue (priority);
-  `);
+**Model Example**: src/database/models/Project.ts
+```typescript
+import { Model } from '@nozbe/watermelondb'
+import { field, text, date, children } from '@nozbe/watermelondb/decorators'
+
+export default class Project extends Model {
+  static table = 'projects'
+
+  @text('name') name!: string
+  @text('description') description?: string
+  @text('status') status!: string
+  @text('organisation_id') organisationId!: string
+  @date('created_at') createdAt!: Date
+  @date('updated_at') updatedAt!: Date
+
+  // Relationships
+  @children('deployments') deployments!: any
 }
 ```
 

@@ -18,286 +18,89 @@ The heart of Wildlife Watcher - understanding offline-first design patterns with
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────┐
-│          User Action                     │
-└──────────────┬──────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────┐
-│     1. Save to SQLite (ALWAYS FIRST)    │
-│        - Immediate persistence           │
-│        - User sees instant feedback      │
-└──────────────┬──────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────┐
-│     2. Update Redux State               │
-│        - UI reflects change immediately  │
-└──────────────┬──────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────┐
-│     3. Queue for Sync (if applicable)   │
-│        - Add to offline_queue table      │
-│        - Priority-based ordering         │
-└──────────────┬──────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────┐
-│     4. Sync When Online                 │
-│        - Network monitor detects         │
-│        - Process queue automatically     │
-│        - Conflict resolution if needed   │
-└─────────────────────────────────────────┘
-```
-
-## SQLite Schema
-
-Located in: `src/services/offline/DatabaseService.ts:157-283`
+Located in: `src/database/schema.ts`
 
 ### Key Tables
 
-**1. local_projects** - Project data cache
-```sql
-CREATE TABLE IF NOT EXISTS local_projects (
-  id TEXT PRIMARY KEY,
-  organisation_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  description TEXT,
-  status TEXT CHECK(status IN ('active', 'inactive', 'completed')),
-  members TEXT NOT NULL,  -- JSON array
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (organisation_id) REFERENCES local_organisations (id)
-);
-```
-
-**2. offline_queue** - Pending sync operations
-```sql
-CREATE TABLE IF NOT EXISTS offline_queue (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  operation_type TEXT NOT NULL,  -- 'CREATE_PROJECT', 'UPDATE_DEPLOYMENT', etc.
-  data TEXT NOT NULL,             -- JSON payload
-  organisation_id TEXT NOT NULL,  -- For multi-tenancy filtering
-  user_id TEXT NOT NULL,
-  priority TEXT DEFAULT 'medium', -- 'low', 'medium', 'high', 'critical'
-  retry_count INTEGER DEFAULT 0,
-  max_retries INTEGER DEFAULT 3,
-  status TEXT DEFAULT 'pending',  -- 'pending', 'processing', 'completed', 'failed'
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-**3. conflict_resolutions** - Audit trail
-```sql
-CREATE TABLE IF NOT EXISTS conflict_resolutions (
-  id TEXT PRIMARY KEY,
-  conflict_type TEXT NOT NULL,
-  resolution_strategy TEXT,  -- 'server_wins', 'local_wins', 'merge'
-  resolved_at DATETIME,
-  server_data TEXT NOT NULL,
-  local_data TEXT NOT NULL,
-  needs_user_resolution BOOLEAN DEFAULT FALSE
-);
-```
-
-## OfflineService Deep Dive
-
-Located in: `src/services/offline/OfflineService.ts` (983 lines!)
-
-### Initialization
-
+**1. projects** - Project data
 ```typescript
-// src/services/offline/OfflineService.ts:55-65
-async initialize(): Promise<void> {
-  if (this.initialized) return;
-
-  // Initialize database connection
-  await this.databaseService.initializeDatabase();
-
-  // Set up network monitoring
-  await this.setupNetworkMonitoring();
-
-  this.initialized = true;
-}
+tableSchema({
+  name: 'projects',
+  columns: [
+    { name: 'name', type: 'string' },
+    { name: 'description', type: 'string', isOptional: true },
+    { name: 'status', type: 'string' },
+    { name: 'organisation_id', type: 'string', isIndexed: true },
+    { name: 'created_at', type: 'number' },
+    { name: 'updated_at', type: 'number' },
+    { name: 'modified_by', type: 'string' }, // Audit trail
+  ]
+})
 ```
 
-### Network Monitoring
-
+**2. sync_outbox** - Pending sync operations (Internal)
 ```typescript
-// src/services/offline/OfflineService.ts:70-100
-private async setupNetworkMonitoring(): Promise<void> {
-  // Get initial network state
-  const initialState = await NetInfo.fetch();
-  this.updateNetworkStatus(initialState);
-
-  // Listen for network changes
-  this.networkUnsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
-    const wasOffline = !this.networkStatus.isConnected;
-    this.updateNetworkStatus(state);
-    const isNowOnline = this.networkStatus.isConnected;
-
-    console.log('📡 ============ NETWORK STATE CHANGE ============');
-    console.log('📡 Was offline:', wasOffline);
-    console.log('📡 Is now online:', isNowOnline);
-
-    // Trigger sync when coming online
-    if (wasOffline && isNowOnline) {
-      console.log('📡 🔄 TRANSITIONING FROM OFFLINE → ONLINE');
-      this.syncPendingOperations().catch(error => {
-        console.error('📡 ❌ Failed to sync pending operations:', error);
-      });
-    }
-  });
-}
+tableSchema({
+  name: 'sync_outbox',
+  columns: [
+    { name: 'operation_id', type: 'string', isIndexed: true },
+    { name: 'table_name', type: 'string' },
+    { name: 'record_id', type: 'string' },
+    { name: 'operation_type', type: 'string' }, // create, update, delete
+    { name: 'payload', type: 'string' }, // JSON payload
+    { name: 'status', type: 'string', isIndexed: true }, // pending, syncing, synced, failed
+    { name: 'created_at', type: 'number' },
+  ]
+})
 ```
 
-**Key Points**:
-- Monitors network state changes in real-time
-- Automatically triggers sync when connectivity returns
-- Logs extensively for debugging offline issues
+## SupabaseSyncService Deep Dive
 
-### Queuing Operations
+Located in: `src/services/SupabaseSyncService.ts`
 
-```typescript
-// src/services/offline/OfflineService.ts:130-170
-async queueOperation(operation: OfflineOperation): Promise<void> {
-  console.log(`📤 Queue operation called: ${operation.type}`);
-  console.log(`📤 Network status: ${this.networkStatus.isConnected ? 'ONLINE' : 'OFFLINE'}`);
+### Core Logic
 
-  if (this.networkStatus.isConnected) {
-    // Attempt immediate execution if online
-    try {
-      const success = await this.executeOperation(operation);
-      if (success) {
-        console.log('📤 ✅ Operation completed successfully, not queuing');
-        return; // Don't queue if successful
-      }
-    } catch (error) {
-      console.warn('📤 ❌ Failed immediately, queuing for retry:', error);
-    }
-  }
+The sync service orchestrates the bi-directional data flow:
 
-  // Queue operation for offline processing or retry
-  const queueItem: any = {
-    id: operation.id,
-    operation_type: operation.type,
-    data: JSON.stringify(operation.data),
-    user_id: operation.user_id,
-    organisation_id: operation.organisation_id,
-    priority: 'medium',
-    retry_count: operation.retry_count,
-    max_retries: 3,
-    status: 'pending'
-  };
-
-  await this.databaseService.addToOfflineQueue(queueItem);
-}
-```
-
-**Smart Queuing Logic**:
-1. If online → Try immediate execution
-2. If succeeds → Don't queue (optimization)
-3. If fails OR offline → Queue for later
+1.  **Push Changes**: Reads `sync_outbox` and sends changes to Supabase via RPC.
+2.  **Pull Changes**: Fetches changes from Supabase (since last sync) and updates WatermelonDB.
 
 ### Sync Process
 
 ```typescript
-// src/services/offline/OfflineService.ts:240-301
-async syncPendingOperations(user?: User): Promise<void> {
-  console.log('🔄 ============ SYNC PENDING OPERATIONS START ============');
+// src/services/SupabaseSyncService.ts
+async sync(): Promise<void> {
+  if (this.isSyncing) return;
+  this.isSyncing = true;
 
-  if (!this.networkStatus.isConnected) {
-    console.log('🔄 ❌ Sync aborted - network not connected');
-    return;
-  }
-
-  const operations = await this.getOperationsForSync(user);
-  console.log(`🔄 Found ${operations.length} operations to sync`);
-
-  let processedCount = 0;
-  let failedCount = 0;
-
-  for (const operation of operations) {
-    // Role-based permission check
-    if (user && !this.canUserPerformOperation(user, operation)) {
-      console.warn(`🔄 ⚠️ User ${user.id} cannot perform operation, skipping`);
-      continue;
-    }
-
-    // Check retry delay (exponential backoff)
-    if (!this.isOperationReadyForRetry(operation)) {
-      console.log(`🔄 ⏱️ Operation not ready for retry yet`);
-      continue;
-    }
-
-    const success = await this.executeOperation(operation);
-    if (success) {
-      processedCount++;
-    } else {
-      failedCount++;
-    }
-  }
-
-  console.log(`🔄 Processed: ${processedCount}, Failed: ${failedCount}`);
-}
-```
-
-### Operation Execution
-
-```typescript
-// src/services/offline/OfflineService.ts:175-235
-async executeOperation(operation: OfflineOperation): Promise<boolean> {
   try {
-    switch (operation.type) {
-      case 'CREATE_PROJECT':
-        await this.executeCreateProject(operation);
-        break;
-      case 'UPDATE_PROJECT':
-        await this.executeUpdateProject(operation);
-        break;
-      case 'CREATE_DEPLOYMENT':
-        await this.executeCreateDeployment(operation);
-        break;
-      // ... more operation types
-    }
+    // 1. Push local changes
+    await this.pushChanges();
 
-    // Remove successful operation from queue
-    await this.databaseService.markQueueItemCompleted(operation.id);
-    return true;
+    // 2. Pull remote changes
+    await this.pullChanges();
+
   } catch (error) {
-    // Update retry count and requeue if within limits
-    if (this.shouldRetryOperation(operation)) {
-      await this.databaseService.updateQueueItemRetry(
-        operation.id,
-        operation.retry_count + 1,
-        'pending'
-      );
-    }
-    return false;
+    console.error('Sync failed:', error);
+  } finally {
+    this.isSyncing = false;
   }
 }
 ```
 
-### Example: Creating a Project Offline
+### Push Implementation
 
 ```typescript
-// src/services/offline/OfflineService.ts:580-604
-private async executeCreateProject(operation: OfflineOperation): Promise<void> {
-  const projectData = operation.data as ProjectCreate;
+private async pushChanges() {
+  const { changes, lastPulledAt } = await database.write(async () => {
+    // Get pending changes from sync_outbox
+    // ...
+  });
 
-  // Execute API call through OfflineApiService
-  const result = await OfflineApiService.createProject(projectData);
-
-  // Update local database with server response
-  const dbProject = {
-    name: result.name || projectData.name,
-    description: result.description || projectData.description || '',
-    status: result.status || 'active',
-    members: result.members || []
-  };
-
-  await this.databaseService.updateProject(result.id, dbProject);
+  if (changes.length > 0) {
+    // Send to Supabase RPC 'push_changes'
+    await supabase.rpc('push_changes', { payload: changes });
+  }
 }
 ```
 
@@ -432,49 +235,37 @@ export const OPERATION_PRIORITY = {
 
 ### Scenario: User creates project in airplane mode
 
-**Step 1: Component dispatches action**
+**Step 1: Component calls Service**
 ```typescript
-const handleCreateProject = async () => {
-  dispatch(queueOfflineOperation({
-    type: 'CREATE_PROJECT',
-    entityType: 'project',
-    entityId: newProject.id,
-    data: newProject,
-    userId: currentUser.id,
-    organisationId: currentUser.organisationId,
-    priority: OPERATION_PRIORITY.MEDIUM,
-  }));
-};
+// src/services/ProjectService.ts
+async createProject(input: CreateProjectInput) {
+  await database.write(async () => {
+    // Create in WatermelonDB
+    await projectsCollection.create(project => {
+      project.name = input.name;
+      // ...
+    });
+  });
+}
 ```
 
-**Step 2: Redux thunk saves to SQLite**
+**Step 2: WatermelonDB updates UI**
 ```typescript
-// offlineSlice.ts async thunk
-await databaseService.insertProject(newProject);
-await databaseService.addToOfflineQueue(queueItem);
+// Component using withObservables
+const enhance = withObservables([], () => ({
+  projects: database.collections.get('projects').query()
+}));
+// UI updates automatically!
 ```
 
-**Step 3: UI updates immediately**
-```typescript
-// Component re-renders with new project in list
-const projects = useAppSelector(state => state.projects.items);
-```
+**Step 3: Sync Outbox Entry Created**
+WatermelonDB automatically tracks this creation in `sync_outbox` (if configured) or via our custom sync adapter logic.
 
 **Step 4: User lands, network returns**
-```typescript
-// NetInfo detects connection
-// OfflineService.syncPendingOperations() called automatically
-```
+`SupabaseSyncService` detects connection and triggers `sync()`.
 
-**Step 5: Sync processes queue**
-```typescript
-// 1. Fetch operation from SQLite
-// 2. POST to Supabase API
-// 3. Get server-assigned ID
-// 4. Update local database with real ID
-// 5. Mark operation completed
-// 6. Remove from queue
-```
+**Step 5: Sync Engine Pushes**
+The pending creation is sent to Supabase. The server responds with the confirmed record. WatermelonDB updates the local record with any server-side changes (e.g., timestamps).
 
 ## Best Practices
 
@@ -564,4 +355,5 @@ await offlineService.selectiveSync(user, ['CREATE_PROJECT', 'UPDATE_PROJECT'], '
 
 - [Offline-First Web Apps Book](https://www.oreilly.com/library/view/building-progressive-web/9781491961643/)
 - [NetInfo Documentation](https://github.com/react-native-netinfo/react-native-netinfo)
-- [Expo SQLite Documentation](https://docs.expo.dev/versions/latest/sdk/sqlite/)
+- [WatermelonDB Documentation](https://watermelondb.dev/docs)
+- [Supabase Offline Sync Guide](https://supabase.com/docs/guides/mobile/offline-sync)

@@ -32,7 +32,7 @@ The app uses a layered architecture with clear separation of concerns:
 ┌─────────────────────────────────────────────────────────────┐
 │                    Integration Layer                       │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │ BLE Engine  │  │ DFU Service │  │  API Client │        │
+│  │ BLE Engine  │  │ DFU Service │  │ Sync Engine │        │
 │  └─────────────┘  └─────────────┘  └─────────────┘        │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
@@ -41,6 +41,14 @@ The app uses a layered architecture with clear separation of concerns:
 │  │ React Native│  │ Expo Modules│  │Native Modules│       │
 │  └─────────────┘  └─────────────┘  └─────────────┘        │
 └─────────────────────────────────────────────────────────────┘
+          │                             │
+┌─────────▼──────────┐        ┌─────────▼───────────┐
+│   Local Storage    │        │   Cloud Backend     │
+│                    │        │                     │
+│  WatermelonDB      │◄──────►│  Supabase           │
+│  (Reactive DB)     │  Sync  │  (PostgreSQL +      │
+│                    │        │   Auth + Storage)   │
+└────────────────────┘        └─────────────────────┘
 ```
 
 ## Provider Hierarchy
@@ -89,8 +97,8 @@ The app uses a nested provider pattern that wraps the entire application with es
 - Processes incoming data and updates Redux state
 
 **5. AuthProvider**
-- Manages user authentication (currently optional/disabled)
-- Handles login/logout state and API authentication
+- Manages user authentication
+- Handles login/logout state and Supabase session management
 
 ## Navigation Structure
 
@@ -144,6 +152,8 @@ The app uses Redux Toolkit for state management with the following slices:
   locationStatus: locationStatusReducer, // GPS/location status
   androidPermissions: androidPermissionsReducer, // Permission status
   authentication: authReducer,       // User authentication
+  offline: offlineReducer,           // Sync status
+  projects: projectsReducer,         // UI state (filters)
   [api.reducerPath]: api.reducer     // RTK Query API state
 }
 ```
@@ -275,26 +285,9 @@ Google Maps SDK (Android) / MapKit (iOS)
 
 ## API Integration
 
-The app uses RTK Query for backend communication:
+The app uses Supabase for backend communication and WatermelonDB for local persistence.
 
-### API Endpoints (`src/redux/api/`)
-- **auth/** - User authentication
-- **projects/** - Project management
-- **deployments/** - Deployment tracking
-- **devices/** - Device registry
-- **observations/** - Wildlife data
-- **media/** - Image/video handling
-
-### API Architecture
-```
-RTK Query (src/redux/api/)
-    ↓
-Fetch with Base Query
-    ↓
-Wildlife Watcher Backend API
-```
-
-> **📝 Note**: This app will integrate with a **Supabase backend** in the future. The backend project is located at `~/dev/wildlifeai/wildlife-watcher-backend` and will replace the current RTK Query API integration with Supabase client libraries for real-time data synchronization, authentication, and database operations.
+> **✅ Integration Status**: This app is fully integrated with Supabase. The backend project is located at `~/dev/wildlifeai/wildlife-watcher-backend`. We use the Supabase JS client for Auth and WatermelonDB's Sync Engine for offline-first data synchronization.
 
 ## Development Workflow Integration
 
@@ -344,17 +337,15 @@ User Action
     ↓
 React Component
     ↓
-Redux Action/Hook
+WatermelonDB Write (Action)
     ↓
-BLE Engine / API Client
+Local Database Update
     ↓
-Device / Backend
-    ↓
-Response Processing
-    ↓
-Redux State Update
+Observables Trigger (withObservables)
     ↓
 UI Re-render
+    ↓
+(Background) Supabase Sync
 ```
 
 ## Common Patterns
@@ -389,12 +380,15 @@ export const ScreenName = () => {
 };
 ```
 
-### 3. API Integration Pattern
+### 3. Data Access Pattern (WatermelonDB)
 ```typescript
-// RTK Query hook
-const { data, isLoading, error } = useGetProjectsQuery();
+// Connect component to database
+const enhance = withObservables(['project'], ({ project }) => ({
+  project,
+  deployments: project.deployments.observe(),
+}));
 
-// Component automatically re-renders when data changes
+export default enhance(ProjectDetails);
 ```
 
 ## Error Handling
@@ -410,8 +404,9 @@ const { data, isLoading, error } = useGetProjectsQuery();
 - **Graceful Degradation** - Clear error screens for missing permissions
 
 ### Network Error Handling
-- **API Failures** - Retry logic with exponential backoff
-- **Offline Mode** - Local data caching and sync when online
+- **Sync Failures** - Automatic retry by WatermelonDB Sync Engine
+- **Offline Mode** - Full functionality via local database
+- **Conflict Resolution** - Last-write-wins strategy implemented in sync service
 
 ## Security Considerations
 
@@ -480,8 +475,6 @@ const { data, isLoading, error } = useGetProjectsQuery();
 
 ### Planned Enhancements
 - **AI Model Updates** - Extend DFU system to support AI model files
-- **Offline Sync** - Robust offline data handling with sync
-- **Multi-User Support** - Team collaboration features
 - **Advanced Analytics** - Wildlife detection and analysis
 
 ### Scalability Considerations
@@ -502,9 +495,9 @@ const { data, isLoading, error } = useGetProjectsQuery();
 ### Key Files to Understand
 - `src/App.tsx` - Provider hierarchy and app structure
 - `src/hooks/useBle.ts` - Core BLE communication engine
-- `src/redux/index.ts` - State management setup
+- `src/database/index.ts` - WatermelonDB setup
+- `src/services/SupabaseSyncService.ts` - Offline sync engine
 - `src/navigation/index.tsx` - Navigation flow and prerequisite checks
-- `src/services/DfuService.ts` - Firmware update system
 
 ### Development Flow
 1. **Set up development environment** - Follow onboarding guides

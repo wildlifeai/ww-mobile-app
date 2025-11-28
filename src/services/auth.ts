@@ -12,7 +12,7 @@ import {
 	RegisterRequest,
 	UserRole,
 } from "../redux/api/auth/types"
-// import { getDatabaseService } from "./offline/DatabaseService"
+
 import type { Tables } from "../types/supabase"
 
 /**

@@ -14,37 +14,29 @@ Comprehensive guide to Redux patterns used in Wildlife Watcher, with real exampl
 
 ## Store Configuration
 
-**Location**: `src/redux/index.ts:25-76`
+**Location**: `src/redux/index.ts`
 
 ```typescript
 const store = configureStore({
   reducer: {
     // RTK Query APIs
     [api.reducerPath]: api.reducer,
-    [enhancedApi.reducerPath]: enhancedApi.reducer,
-    [projectsApi.reducerPath]: projectsApi.reducer,
-
+    
     // Feature slices
-    devices: devicesReducer,
     authentication: authReducer,
-    projects: projectsReducer,
-    deployments: deploymentsReducer,
-    offline: offlineReducer,
-    sync: syncReducer,
+    projects: projectsReducer, // UI state only (filters, selection)
+    offline: offlineReducer,   // Sync status
     network: networkReducer,
     // ... more slices
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ['persist/PERSIST', 'offline/setNetworkStatus'],
-        ignoredPaths: ['offline.pendingOperations.timestamp'],
+        ignoredActions: ['persist/PERSIST'],
       },
     })
     .concat(
       api.middleware,
-      enhancedApi.middleware,
-      projectsApi.middleware,
       offlineSyncMiddleware.middleware
     ),
 })
@@ -58,168 +50,92 @@ export const useAppDispatch = () => useDispatch<AppDispatch>()
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector
 ```
 
-**Key Points**:
-- Each feature gets its own slice
-- RTK Query APIs get their own reducers
-- Middleware handles API calls and sync operations
-- TypeScript types exported for use throughout app
+## The Shift: Redux vs. WatermelonDB
+
+**Crucial Architecture Change**: 
+We have moved away from storing large data collections (like `projects`, `deployments`, `observations`) in Redux. 
+
+| Feature | Old Architecture | New Architecture (WatermelonDB) |
+|---------|------------------|---------------------------------|
+| **Data Persistence** | SQLite + Redux Cache | WatermelonDB (SQLite) |
+| **Data Access** | `useAppSelector(state => state.projects)` | `withObservables` or `useDatabase` |
+| **Mutations** | Dispatch Thunk -> SQLite -> Redux | Direct DB Write -> Reactive UI Update |
+| **Redux Role** | Everything | **Session** (Auth), **UI** (Modals), **Global Status** |
 
 ## Creating a Slice
 
-### Example: Offline Slice
+### Example: UI State Slice
 
-**Location**: `src/redux/slices/offlineSlice.ts`
+**Location**: `src/redux/slices/uiSlice.ts` (Conceptual)
+
+Redux is perfect for ephemeral UI state that doesn't need to be in the database.
 
 ```typescript
-export interface OfflineState {
-  queue: {
-    operations: OfflineOperation[];
-    processing: boolean;
-    lastProcessed: string | null;
-  };
-  stats: {
-    totalQueued: number;
-    totalProcessed: number;
-    totalFailed: number;
-  };
+interface UIState {
+  theme: 'light' | 'dark';
+  sidebarOpen: boolean;
+  activeModal: string | null;
 }
 
-const initialState: OfflineState = {
-  queue: {
-    operations: [],
-    processing: false,
-    lastProcessed: null,
-  },
-  stats: {
-    totalQueued: 0,
-    totalProcessed: 0,
-    totalFailed: 0,
-  },
+const initialState: UIState = {
+  theme: 'light',
+  sidebarOpen: false,
+  activeModal: null,
 };
 
-const offlineSlice = createSlice({
-  name: 'offline',
+const uiSlice = createSlice({
+  name: 'ui',
   initialState,
   reducers: {
-    // Synchronous actions
-    clearProcessedOperations: (state) => {
-      state.queue.operations = state.queue.operations.filter(
-        (op) => op.retry_count < 5
-      );
+    toggleTheme: (state) => {
+      state.theme = state.theme === 'light' ? 'dark' : 'light';
     },
-
-    resetOfflineState: (state) => {
-      return initialState;
+    setModal: (state, action: PayloadAction<string | null>) => {
+      state.activeModal = action.payload;
     },
-  },
-  extraReducers: (builder) => {
-    // Handle async thunk actions
-    builder
-      .addCase(queueOfflineOperation.fulfilled, (state, action) => {
-        state.queue.operations.push(action.payload);
-        state.stats.totalQueued++;
-      })
-      .addCase(processOfflineQueue.pending, (state) => {
-        state.queue.processing = true;
-      })
-      .addCase(processOfflineQueue.fulfilled, (state, action) => {
-        state.queue.processing = false;
-        state.queue.lastProcessed = new Date().toISOString();
-        state.stats.totalProcessed += action.payload.processed || 0;
-      });
+    closeModal: (state) => {
+      state.activeModal = null;
+    }
   },
 });
 
-// Export actions
-export const { clearProcessedOperations, resetOfflineState } = offlineSlice.actions;
-
-// Export reducer
-export default offlineSlice.reducer;
+export const { toggleTheme, setModal, closeModal } = uiSlice.actions;
+export default uiSlice.reducer;
 ```
-
-**Anatomy**:
-- `initialState` - Starting state shape
-- `reducers` - Synchronous state updates
-- `extraReducers` - Handle async thunk lifecycle (pending/fulfilled/rejected)
-- Actions auto-generated from reducer names
 
 ## Async Thunks
 
-### Basic Async Thunk
+Async thunks are still used for operations that don't map directly to database writes, like Authentication.
+
+### Example: Auth Thunk
 
 ```typescript
-export const queueOfflineOperation = createAsyncThunk(
-  'offline/queueOperation',  // Action type prefix
-  async (
-    operation: {
-      type: OfflineOperationType;
-      entityType: string;
-      entityId: string;
-      data: any;
-      userId: string;
-      organisationId: string;
-    },
-    { dispatch, rejectWithValue }  // ThunkAPI
-  ) => {
+export const loginUser = createAsyncThunk(
+  'auth/login',
+  async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      // Perform async work
-      const offlineOp: OfflineOperation = {
-        id: `${operation.type}_${operation.entityId}_${Date.now()}`,
-        type: operation.type,
-        data: operation.data,
-        // ... more fields
-      };
-
-      // Save to database
-      await databaseService.queueOperation(offlineOp);
-
-      // Dispatch other actions
-      dispatch(markEntityPending({
-        entityType: operation.entityType,
-        entityId: operation.entityId,
-      }));
-
-      // Return value becomes action.payload
-      return offlineOp;
+      const { data, error } = await supabase.auth.signInWithPassword(credentials);
+      if (error) throw error;
+      return data.user;
     } catch (error: any) {
-      // Error becomes action.error
-      return rejectWithValue({ error: error.message });
+      return rejectWithValue(error.message);
     }
   }
 );
 ```
 
-**Thunk Lifecycle Actions**:
-- `queueOfflineOperation.pending` - When thunk starts
-- `queueOfflineOperation.fulfilled` - When thunk succeeds
-- `queueOfflineOperation.rejected` - When thunk fails
-
 ### Using Thunks in Components
 
 ```typescript
-import { useAppDispatch } from '../redux';
-import { queueOfflineOperation, OPERATION_PRIORITY } from '../redux/slices/offlineSlice';
-
-const MyComponent = () => {
+const LoginScreen = () => {
   const dispatch = useAppDispatch();
 
-  const handleCreateProject = async () => {
-    // Dispatch async thunk
-    const result = await dispatch(queueOfflineOperation({
-      type: 'CREATE_PROJECT',
-      entityType: 'project',
-      entityId: newProject.id,
-      data: newProject,
-      userId: currentUser.id,
-      organisationId: currentUser.organisationId,
-      priority: OPERATION_PRIORITY.MEDIUM,
-    }));
-
-    // Check result
-    if (queueOfflineOperation.fulfilled.match(result)) {
-      console.log('Queued successfully:', result.payload);
-    } else {
-      console.error('Failed to queue:', result.error);
+  const handleLogin = async () => {
+    try {
+      await dispatch(loginUser({ email, password })).unwrap();
+      // Navigation handled by auth state change
+    } catch (error) {
+      console.error('Login failed:', error);
     }
   };
 };
@@ -227,389 +143,128 @@ const MyComponent = () => {
 
 ## Selectors
 
+Selectors are used to read from the Redux state.
+
 ### Basic Selectors
 
 ```typescript
-// src/redux/slices/offlineSlice.ts:293-297
-export const selectQueueOperations = (state: RootState) => state.offline.queue.operations;
-export const selectIsProcessing = (state: RootState) => state.offline.queue.processing;
-export const selectQueueStats = (state: RootState) => state.offline.stats;
-export const selectPendingCount = (state: RootState) =>
-  state.offline.queue.operations.filter((op) => op.retry_count < 5).length;
-```
-
-### Using Selectors in Components
-
-```typescript
-import { useAppSelector } from '../redux';
-import { selectQueueOperations, selectPendingCount } from '../redux/slices/offlineSlice';
-
-const SyncStatusComponent = () => {
-  const operations = useAppSelector(selectQueueOperations);
-  const pendingCount = useAppSelector(selectPendingCount);
-  const isProcessing = useAppSelector(state => state.offline.queue.processing);
-
-  return (
-    <View>
-      <Text>Pending Operations: {pendingCount}</Text>
-      {isProcessing && <ActivityIndicator />}
-    </View>
-  );
-};
+export const selectIsAuthenticated = (state: RootState) => !!state.authentication.user;
+export const selectTheme = (state: RootState) => state.ui.theme;
 ```
 
 ### Memoized Selectors (Reselect)
 
-For expensive computations:
+Useful for deriving data from Redux state (e.g., filtering a list *stored in Redux*, though lists are mostly in DB now).
 
 ```typescript
 import { createSelector } from '@reduxjs/toolkit';
 
-// Input selectors
-const selectProjects = (state: RootState) => state.projects.items;
-const selectSearchTerm = (state: RootState) => state.projects.searchTerm;
+const selectItems = (state: RootState) => state.someList.items;
+const selectFilter = (state: RootState) => state.someList.filter;
 
-// Memoized selector - only recomputes when inputs change
-export const selectFilteredProjects = createSelector(
-  [selectProjects, selectSearchTerm],
-  (projects, searchTerm) => {
-    if (!searchTerm) return projects;
-    return projects.filter(p =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }
+export const selectFilteredItems = createSelector(
+  [selectItems, selectFilter],
+  (items, filter) => items.filter(i => i.includes(filter))
 );
 ```
 
-## RTK Query
-
-### Defining an API
-
-**Location**: `src/redux/api/index.ts`
-
-```typescript
-import { createApi } from "@reduxjs/toolkit/query/react"
-
-export const api = createApi({
-  reducerPath: "api",
-  baseQuery: extendedBaseQuery,  // Custom base query with Supabase
-  tagTypes: [
-    "User",
-    "Device",
-    "Project",
-    "Deployment",
-  ],
-  endpoints: () => ({}),  // Endpoints injected elsewhere
-})
-```
-
-### Creating Endpoints
-
-```typescript
-// src/redux/api/projects/projectsEndpoints.ts (example)
-import { api } from '../index';
-
-export const projectsApi = api.injectEndpoints({
-  endpoints: (builder) => ({
-    getProjects: builder.query<Project[], void>({
-      query: () => '/projects',
-      providesTags: ['Project'],
-    }),
-
-    getProject: builder.query<Project, string>({
-      query: (id) => `/projects/${id}`,
-      providesTags: (result, error, id) => [{ type: 'Project', id }],
-    }),
-
-    createProject: builder.mutation<Project, ProjectCreate>({
-      query: (project) => ({
-        url: '/projects',
-        method: 'POST',
-        body: project,
-      }),
-      invalidatesTags: ['Project'],  // Refetch projects list
-    }),
-
-    updateProject: builder.mutation<Project, { id: string; data: ProjectUpdate }>({
-      query: ({ id, data }) => ({
-        url: `/projects/${id}`,
-        method: 'PATCH',
-        body: data,
-      }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'Project', id }],
-    }),
-  }),
-});
-
-// Auto-generated hooks
-export const {
-  useGetProjectsQuery,
-  useGetProjectQuery,
-  useCreateProjectMutation,
-  useUpdateProjectMutation,
-} = projectsApi;
-```
-
-### Using RTK Query in Components
-
-```typescript
-import { useGetProjectsQuery, useCreateProjectMutation } from '../redux/api/projectsApi';
-
-const ProjectsScreen = () => {
-  // Query hook - auto-fetches and caches
-  const { data: projects, isLoading, error, refetch } = useGetProjectsQuery();
-
-  // Mutation hook
-  const [createProject, { isLoading: isCreating }] = useCreateProjectMutation();
-
-  const handleCreate = async () => {
-    try {
-      const newProject = await createProject({
-        name: 'New Project',
-        description: 'Test project',
-      }).unwrap();  // unwrap() returns promise
-
-      console.log('Created:', newProject);
-    } catch (error) {
-      console.error('Failed:', error);
-    }
-  };
-
-  if (isLoading) return <ActivityIndicator />;
-  if (error) return <Text>Error loading projects</Text>;
-
-  return (
-    <FlatList
-      data={projects}
-      onRefresh={refetch}
-      refreshing={isLoading}
-      renderItem={({ item }) => <ProjectCard project={item} />}
-    />
-  );
-};
-```
-
-**Benefits**:
-- Auto caching
-- Automatic refetching
-- Loading/error states built-in
-- Optimistic updates support
-- Request deduplication
-
 ## Middleware
 
-### Custom Offline Sync Middleware
+### Sync Middleware
 
 **Location**: `src/redux/middleware/offlineSyncMiddleware.ts`
 
-```typescript
-import { Middleware } from '@reduxjs/toolkit';
+Middleware listens for network changes to trigger the WatermelonDB sync engine.
 
+```typescript
 export const offlineSyncMiddleware: Middleware = (storeAPI) => (next) => (action) => {
-  // Let action pass through first
   const result = next(action);
 
-  // React to specific actions
+  // When network comes online, trigger sync
   if (action.type === 'network/setOnline') {
-    // Network came online - trigger sync
-    storeAPI.dispatch(processOfflineQueue());
-  }
-
-  if (action.type.startsWith('offline/queueOperation')) {
-    // Operation queued - check if we should sync
-    const state = storeAPI.getState();
-    if (state.network.isOnline && !state.offline.queue.processing) {
-      storeAPI.dispatch(processOfflineQueue());
-    }
+    SupabaseSyncService.sync(); 
   }
 
   return result;
 };
 ```
 
-**Usage in Store**:
-```typescript
-middleware: (getDefaultMiddleware) =>
-  getDefaultMiddleware()
-    .concat(offlineSyncMiddleware.middleware)
-```
+## Complete Example: Project Creation Flow
 
-## Complete Example: Project Management Flow
+### 1. Component (Direct DB Write)
 
-### 1. Component Dispatches Action
+The component interacts directly with WatermelonDB for data creation.
 
 ```typescript
-const ProjectCreateScreen = () => {
-  const dispatch = useAppDispatch();
-  const isOnline = useAppSelector(state => state.network.isOnline);
-
-  const handleSubmit = async (projectData: ProjectCreate) => {
-    if (isOnline) {
-      // Try direct API call
-      try {
-        await dispatch(createProjectApi(projectData)).unwrap();
-        navigation.goBack();
-      } catch (error) {
-        // Fallback to offline queue
-        await dispatch(queueOfflineOperation({
-          type: 'CREATE_PROJECT',
-          data: projectData,
-          // ...
-        }));
-      }
-    } else {
-      // Queue immediately
-      await dispatch(queueOfflineOperation({
-        type: 'CREATE_PROJECT',
-        data: projectData,
-        // ...
-      }));
-    }
-  };
-};
-```
-
-### 2. Thunk Saves to SQLite
-
-```typescript
-export const queueOfflineOperation = createAsyncThunk(
-  'offline/queueOperation',
-  async (operation, { dispatch }) => {
-    // Save to local database
-    await databaseService.insertProject(operation.data);
-    await databaseService.queueOperation(operation);
-
-    // Update sync state
-    dispatch(markEntityPending({
-      entityType: 'project',
-      entityId: operation.data.id,
-    }));
-
-    return operation;
-  }
-);
-```
-
-### 3. Reducer Updates State
-
-```typescript
-extraReducers: (builder) => {
-  builder.addCase(queueOfflineOperation.fulfilled, (state, action) => {
-    state.queue.operations.push(action.payload);
-    state.stats.totalQueued++;
+// src/screens/ProjectCreateScreen.tsx
+const handleSubmit = async (data) => {
+  // Write directly to WatermelonDB
+  await database.write(async () => {
+    await projectsCollection.create(project => {
+      project.name = data.name;
+      project.description = data.description;
+      project.organisation_id = currentOrgId;
+    });
   });
-}
-```
-
-### 4. Component Re-renders
-
-```typescript
-const ProjectsList = () => {
-  // Selector automatically triggers re-render when state changes
-  const projects = useAppSelector(state => state.projects.items);
-
-  return (
-    <FlatList
-      data={projects}
-      renderItem={({ item }) => <ProjectCard project={item} />}
-    />
-  );
+  
+  // Navigate back - WatermelonDB observers will update the list screen automatically
+  navigation.goBack();
 };
 ```
 
-### 5. Network Returns → Middleware Triggers Sync
+### 2. List Screen (Reactive)
+
+The list screen observes the database. No Redux dispatch needed to fetch data.
 
 ```typescript
-// Middleware detects network change
-if (action.type === 'network/setOnline') {
-  storeAPI.dispatch(processOfflineQueue());
-}
+// src/screens/ProjectsList.tsx
+const ProjectsList = ({ projects }) => (
+  <FlatList data={projects} renderItem={...} />
+);
+
+// Connect to WatermelonDB
+const enhance = withObservables([], () => ({
+  projects: database.collections.get('projects').query().observe()
+}));
+
+export default enhance(ProjectsList);
 ```
 
-### 6. Sync Thunk Processes Queue
+### 3. Redux (UI State Only)
+
+Redux is used if we want to filter this list in the UI.
 
 ```typescript
-export const processOfflineQueue = createAsyncThunk(
-  'offline/processQueue',
-  async (_, { dispatch, getState }) => {
-    const operations = await databaseService.getPendingOperations();
-
-    for (const operation of operations) {
-      try {
-        await offlineService.syncOperation(operation);
-        await databaseService.markOperationProcessed(operation.id);
-
-        dispatch(markEntitySynced({
-          entityType: operation.metadata.entityType,
-          entityId: operation.metadata.entityId,
-        }));
-      } catch (error) {
-        // Handle error
-      }
-    }
+// src/redux/slices/projectsSlice.ts
+const projectsSlice = createSlice({
+  name: 'projects',
+  initialState: { filter: '' },
+  reducers: {
+    setFilter: (state, action) => { state.filter = action.payload }
   }
-);
+});
 ```
 
 ## Best Practices
 
 ### DO:
-✅ Use typed hooks (`useAppDispatch`, `useAppSelector`)
-✅ Organize state by feature (slices)
-✅ Use async thunks for async operations
-✅ Use RTK Query for API calls when appropriate
-✅ Memoize expensive selectors
-✅ Handle all thunk lifecycle states (pending/fulfilled/rejected)
-✅ Keep reducers pure (no side effects)
+✅ Use Redux for **global UI state** (modals, sidebars, themes).
+✅ Use Redux for **session state** (user tokens, permissions).
+✅ Use WatermelonDB for **domain data** (projects, observations).
+✅ Use `withObservables` to connect components to data.
 
 ### DON'T:
-❌ Mutate state outside reducers (RTK allows immer mutations in reducers)
-❌ Put functions/classes in state
-❌ Dispatch actions inside reducers
-❌ Access store directly (use hooks)
-❌ Store derived data (compute with selectors)
+❌ Duplicate WatermelonDB data into Redux.
+❌ Use Redux for caching API responses (unless using RTK Query for non-DB data).
+❌ Dispatch actions to "save" data (write to DB directly).
 
-## Debugging Redux
+## Debugging
 
 ### Redux DevTools
+Still useful for tracking auth state and UI interactions.
 
-```typescript
-// Store automatically connects to Redux DevTools in development
-const store = configureStore({
-  reducer: rootReducer,
-  // DevTools enabled by default
-});
-```
-
-### Logging Middleware
-
-```typescript
-import { createLogger } from 'redux-logger';
-
-const logger = createLogger({
-  collapsed: true,
-  diff: true,
-});
-
-// Add to middleware in development only
-middleware: (getDefaultMiddleware) =>
-  __DEV__
-    ? getDefaultMiddleware().concat(logger)
-    : getDefaultMiddleware()
-```
-
-### Console Logging
-
-```typescript
-// In components
-const projects = useAppSelector(state => {
-  console.log('Projects state:', state.projects);
-  return state.projects.items;
-});
-
-// In thunks
-console.log('Dispatching action with payload:', payload);
-```
+### WatermelonDB Flipper Plugin
+Use Flipper to inspect the local SQLite database state.
 
 ## Next Steps
 
@@ -620,5 +275,4 @@ console.log('Dispatching action with payload:', payload);
 ## Resources
 
 - [Redux Toolkit Documentation](https://redux-toolkit.js.org/)
-- [RTK Query Tutorial](https://redux-toolkit.js.org/tutorials/rtk-query)
-- [Redux Style Guide](https://redux.js.org/style-guide/style-guide)
+- [WatermelonDB Documentation](https://watermelondb.dev/docs)

@@ -23,14 +23,14 @@ Your entry point to the Wildlife Watcher app. Get oriented quickly with the proj
 
 3. **[03-OFFLINE-FIRST-ARCHITECTURE.md](./03-OFFLINE-FIRST-ARCHITECTURE.md)**
    - Understanding offline-first design
-   - SQLite local database patterns
-   - Sync queue and conflict resolution
+   - WatermelonDB local database patterns
+   - Supabase Sync Engine
    - Network state management
-   - Real examples from OfflineService
+   - Real examples from SupabaseSyncService
 
 4. **[04-REDUX-STATE-MANAGEMENT.md](./04-REDUX-STATE-MANAGEMENT.md)**
-   - Redux Toolkit (RTK) patterns used in this app
-   - RTK Query for API integration
+   - Redux Toolkit (RTK) for UI & Session state
+   - Why we moved data persistence to WatermelonDB
    - Slice creation and async thunks
    - Connecting components to Redux
    - Practical examples from our store
@@ -79,9 +79,9 @@ Your entry point to the Wildlife Watcher app. Get oriented quickly with the proj
 - `src/services/supabase.ts` - Supabase client
 
 **Understand offline sync**:
-- `src/services/offline/OfflineService.ts` - Main offline logic
-- `src/services/offline/DatabaseService.ts` - SQLite operations
-- `src/redux/slices/offlineSlice.ts` - Offline queue state
+- `src/services/SupabaseSyncService.ts` - Main sync logic
+- `src/database/index.ts` - WatermelonDB setup
+- `src/redux/slices/offlineSlice.ts` - Sync status state
 
 **Add a new screen**:
 - Create component in `src/screens/`

@@ -43,8 +43,8 @@ The Wildlife Watcher Mobile App is an **offline-first field deployment tool** th
 ┌─────────▼─────────┐        ┌──────────▼─────────┐
 │   Local Storage    │        │   Cloud Backend     │
 │                    │        │                     │
-│  SQLite Database   │◄──────►│  Supabase           │
-│  (Offline data)    │  Sync  │  (PostgreSQL +      │
+│  WatermelonDB      │◄──────►│  Supabase           │
+│  (Reactive DB)     │  Sync  │  (PostgreSQL +      │
 │                    │        │   Auth + Storage)   │
 └────────────────────┘        └─────────────────────┘
 ```
@@ -53,9 +53,9 @@ The Wildlife Watcher Mobile App is an **offline-first field deployment tool** th
 
 - **React Native 0.74.5** - Mobile UI framework
 - **TypeScript** - Type-safe JavaScript
-- **Redux Toolkit** - State management
+- **Redux Toolkit** - State management (UI & Session)
 - **Expo SDK 51** - Development tools and APIs
-- **SQLite** - Local offline database
+- **WatermelonDB** - High-performance reactive local database
 - **Supabase** - Backend (PostgreSQL, Auth, Storage)
 - **React Navigation** - Screen navigation
 - **React Native Paper** - UI component library
@@ -67,28 +67,26 @@ The Wildlife Watcher Mobile App is an **offline-first field deployment tool** th
 **This is not a web app with offline support - it's an offline app with sync capabilities.**
 
 Key principles:
-- **All writes go to local SQLite first** - Never rely on network availability
-- **Queue operations for sync** - Store operations in offline queue
-- **Sync intelligently** - Process queue when network returns
-- **Handle conflicts gracefully** - Resolve data conflicts with smart strategies
+- **WatermelonDB as Source of Truth** - UI observes local DB
+- **Background Sync** - Supabase Sync Engine handles data transfer
+- **Conflict Resolution** - "Last Write Wins" or custom strategies
 
 **Example Flow:**
 ```
-User creates project → Save to SQLite → Update UI immediately
+User creates project → Write to WatermelonDB → UI updates automatically (Reactive)
                                 ↓
-                         (When online)
+                         (Background Sync)
                                 ↓
-                    Queue item → Supabase API → Update with server ID
+                    Push Changes → Supabase API → Pull Changes
 ```
 
 ### 2. Redux for State Management
 
-We use **Redux Toolkit (RTK)** for managing app state:
+We use **Redux Toolkit (RTK)** for managing app state, but **NOT** for domain data (projects, deployments).
 
-- **Slices** organize state by feature (auth, projects, offline, etc.)
-- **Async thunks** handle asynchronous operations
-- **RTK Query** manages API calls and caching
-- **Typed hooks** (`useAppSelector`, `useAppDispatch`) for TypeScript safety
+- **Slices** organize UI state (modals, themes) and Session state (Auth).
+- **Async thunks** handle non-DB async operations (like Auth).
+- **Typed hooks** (`useAppSelector`, `useAppDispatch`) for TypeScript safety.
 
 **Example: Auth State**
 ```typescript
@@ -97,7 +95,6 @@ const authSlice = createSlice({
   name: 'authentication',
   initialState: {
     user: null,
-    token: null,
     isAuthenticated: false,
   },
   reducers: {
@@ -107,7 +104,6 @@ const authSlice = createSlice({
     },
     logout: (state) => {
       state.user = null;
-      state.token = null;
       state.isAuthenticated = false;
     }
   }
@@ -180,17 +176,18 @@ wildlife-watcher-mobile-app/
 │   │   ├── index.tsx            # Main navigation config
 │   │   ├── BottomTabs.tsx       # Bottom tab navigation
 │   │   └── types.ts             # Navigation TypeScript types
-│   ├── redux/                    # State management
+│   ├── redux/                    # State management (UI/Auth)
 │   │   ├── index.ts             # Store configuration
 │   │   ├── slices/              # Redux slices
 │   │   ├── api/                 # RTK Query APIs
 │   │   └── middleware/          # Custom middleware
+│   ├── database/                 # WatermelonDB Setup
+│   │   ├── index.ts             # Database instance
+│   │   ├── schema.ts            # Database schema
+│   │   └── models/              # Data models
 │   ├── services/                 # Business logic
 │   │   ├── auth.ts              # Authentication
-│   │   ├── database.ts          # Supabase operations
-│   │   ├── offline/             # Offline services
-│   │   │   ├── OfflineService.ts    # Main offline logic
-│   │   │   └── DatabaseService.ts   # SQLite operations
+│   │   ├── SupabaseSyncService.ts # Sync Engine
 │   │   └── supabase.ts          # Supabase client
 │   ├── types/                    # TypeScript definitions
 │   ├── hooks/                    # Custom React hooks
@@ -216,23 +213,21 @@ wildlife-watcher-mobile-app/
 3. Scan for nearby Wildlife Watcher cameras via Bluetooth
 4. Configure deployment (location, capture method, etc.)
 5. Test camera snapshot
-6. Save deployment → **Writes to SQLite immediately**
-7. Queue sync operation
-8. When network returns → Sync to Supabase
+6. Save deployment → **Writes to WatermelonDB immediately**
+7. UI updates instantly via Observables
+8. When network returns → **Supabase Sync Engine pushes changes**
 
 ### Data Sync Flow
 ```
-Offline Queue (SQLite)
+WatermelonDB (Local)
    ↓
 Network Monitor detects connectivity
    ↓
-Process queue by priority
+Supabase Sync Engine triggers
    ↓
-For each operation:
-   - Execute API call
-   - Handle conflicts if any
-   - Update local database with server response
-   - Mark operation complete
+1. PUSH local changes to Supabase
+2. PULL remote changes from Supabase
+3. Apply updates to local DB
 ```
 
 ## Key Files to Explore
@@ -240,10 +235,10 @@ For each operation:
 Start exploring the codebase with these essential files:
 
 1. **`src/App.tsx`** - Application root with providers
-2. **`src/redux/index.ts`** - Redux store configuration
+2. **`src/database/index.ts`** - WatermelonDB configuration
 3. **`src/navigation/index.tsx`** - Navigation structure
-4. **`src/services/offline/OfflineService.ts`** - Core offline logic (900+ lines!)
-5. **`src/services/offline/DatabaseService.ts`** - SQLite operations
+4. **`src/services/SupabaseSyncService.ts`** - Core sync logic
+5. **`src/database/models/Project.ts`** - Example data model
 6. **`src/types/supabase.ts`** - Generated TypeScript types from database schema
 
 ## Development Environment
@@ -291,12 +286,11 @@ npm run supabase:types
 ```typescript
 // src/hooks/useOfflineSync.ts
 export const useOfflineSync = () => {
-  const dispatch = useAppDispatch();
   const isOnline = useAppSelector(state => state.network.isOnline);
 
   useEffect(() => {
     if (isOnline) {
-      dispatch(syncPendingOperations());
+      SupabaseSyncService.sync();
     }
   }, [isOnline]);
 };
@@ -305,8 +299,8 @@ export const useOfflineSync = () => {
 ### 2. Typed Redux Selectors
 ```typescript
 // Component usage
-const projects = useAppSelector(state => state.projects.items);
-const isLoading = useAppSelector(state => state.projects.loading);
+const isSidebarOpen = useAppSelector(state => state.ui.isSidebarOpen);
+const user = useAppSelector(state => state.authentication.user);
 ```
 
 ### 3. Service Layer Pattern
@@ -314,17 +308,14 @@ const isLoading = useAppSelector(state => state.projects.loading);
 // src/services/ProjectService.ts
 export class ProjectService {
   async createProject(data: ProjectCreate): Promise<Project> {
-    // Save locally first
-    await databaseService.insertProject(data);
-
-    // Queue for sync
-    await offlineService.queueOperation({
-      type: 'CREATE_PROJECT',
-      data,
-      // ...
+    // Write directly to WatermelonDB
+    await database.write(async () => {
+      await projectsCollection.create(project => {
+        project.name = data.name;
+        // ...
+      });
     });
-
-    return data;
+    // Sync happens automatically in background
   }
 }
 ```

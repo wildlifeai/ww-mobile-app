@@ -236,9 +236,8 @@ services/
 ├── DfuService.ts          # Firmware updates
 ├── MockLoRaWANService.ts  # LoRaWAN mocking
 ├── offline/               # Offline services (THE CORE!)
-│   ├── OfflineService.ts      # Main offline logic (983 lines!)
-│   ├── DatabaseService.ts     # SQLite operations (800+ lines)
-│   ├── OfflineApiService.ts   # API calls with offline support
+│   ├── OfflineService.ts      # Main offline logic
+│   ├── SupabaseSyncService.ts # WatermelonDB Sync Adapter
 │   └── ConflictResolutionService.ts
 └── sync/                  # Sync-related services
 ```
@@ -248,17 +247,15 @@ services/
 // src/services/ProjectService.ts
 export class ProjectService {
   async createProject(data: ProjectCreate): Promise<Project> {
-    // Save locally first (offline-first!)
-    await databaseService.insertProject(data);
-
-    // Queue for sync
-    await offlineService.queueOperation({
-      type: 'CREATE_PROJECT',
-      data,
-      user_id: currentUser.id,
-      organisation_id: currentUser.organisationId,
+    // Save locally first (offline-first!) - WatermelonDB handles this
+    await database.write(async () => {
+        await projectsCollection.create(project => {
+            project.name = data.name;
+            // ...
+        });
     });
 
+    // WatermelonDB Sync Engine handles the rest automatically!
     return data;
   }
 }
@@ -426,8 +423,9 @@ project-context/
 - **Screens**: `src/navigation/screens/Login.tsx`, `Register.tsx`
 
 ### "Where is offline sync implemented?"
-- **Main Service**: `src/services/offline/OfflineService.ts` ⭐
-- **Database**: `src/services/offline/DatabaseService.ts`
+- **Main Service**: `src/services/offline/OfflineService.ts`
+- **Sync Adapter**: `src/services/offline/SupabaseSyncService.ts` ⭐
+- **Database**: `src/database/index.ts` (WatermelonDB)
 - **Redux State**: `src/redux/slices/offlineSlice.ts`
 - **Middleware**: `src/redux/middleware/offlineSyncMiddleware.ts`
 
@@ -498,8 +496,8 @@ import { OfflineOperation, ProjectCreate } from '../types';
 | App entry point | `src/App.tsx` |
 | Redux store | `src/redux/index.ts` |
 | Main navigation | `src/navigation/index.tsx` |
-| Offline sync | `src/services/offline/OfflineService.ts` |
-| SQLite database | `src/services/offline/DatabaseService.ts` |
+| Offline sync | `src/services/offline/SupabaseSyncService.ts` |
+| Local database | `src/database/index.ts` (WatermelonDB) |
 | API calls | `src/redux/api/` or `src/services/database.ts` |
 | TypeScript types | `src/types/` |
 | Custom hooks | `src/hooks/` |

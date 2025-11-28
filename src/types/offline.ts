@@ -176,16 +176,4 @@ export interface SyncConfiguration {
 	batch_sync_size: number
 }
 
-// Database table names for offline storage
-export const OFFLINE_TABLES = {
-	ORGANISATIONS: "local_organisations",
-	PROJECTS: "local_projects",
-	DEPLOYMENTS: "local_deployments",
-	DEVICES: "local_devices",
-	USER_ROLES: "local_user_roles",
-	OFFLINE_QUEUE: "offline_queue",
-	SYNC_STATUS: "sync_status",
-} as const
 
-export type OfflineTableName =
-	(typeof OFFLINE_TABLES)[keyof typeof OFFLINE_TABLES]

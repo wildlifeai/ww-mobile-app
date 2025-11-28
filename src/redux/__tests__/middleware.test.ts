@@ -15,13 +15,7 @@ describe("Middleware Registration", () => {
 		expect(state.sync.queue).toBeDefined()
 	})
 
-	it("store has offline reducer with queue", () => {
-		const state = store.getState()
-		expect(state.offline).toBeDefined()
-		expect(state.offline.queue).toBeDefined()
-		expect(state.offline.queue.operations).toBeDefined()
-		expect(Array.isArray(state.offline.queue.operations)).toBe(true)
-	})
+
 
 	it("store has network reducer", () => {
 		const state = store.getState()
@@ -41,14 +35,7 @@ describe("Middleware Registration", () => {
 		expect(state.sync.queue.failed).toBe(0)
 	})
 
-	it("offline reducer has correct initial state", () => {
-		const state = store.getState()
-		expect(state.offline.queue.processing).toBe(false)
-		expect(state.offline.queue.operations).toEqual([])
-		expect(state.offline.stats.totalQueued).toBe(0)
-		expect(state.offline.stats.totalProcessed).toBe(0)
-		expect(state.offline.stats.totalFailed).toBe(0)
-	})
+
 
 	it("network reducer has correct initial state", () => {
 		const state = store.getState()
