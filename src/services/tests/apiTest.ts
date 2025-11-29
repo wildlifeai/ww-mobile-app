@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "../supabase"
-import DeviceService from "../DeviceService"
+import { DeviceService } from "../DeviceService"
 import ReferenceDataService from "../ReferenceDataService"
 import SupabaseSyncService from "../SupabaseSyncService"
 import database from "../../database"
@@ -33,7 +33,7 @@ export const testDatabaseAccess = async (): Promise<boolean> => {
 			"devices",
 			"projects",
 			"deployments",
-			"roles",
+			"user_roles",
 		] as const
 
 		for (const table of tables) {

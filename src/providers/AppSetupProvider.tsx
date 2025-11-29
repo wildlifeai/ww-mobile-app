@@ -1,7 +1,7 @@
 import * as React from "react"
 import { PropsWithChildren } from "react"
 
-import { StyleSheet } from "react-native"
+import { StyleSheet, View, Text, ActivityIndicator } from "react-native"
 
 import Toast, {
 	BaseToast,
@@ -15,7 +15,7 @@ import { useBluetoothStatus } from "../hooks/useBluetoothStatus"
 import { useLocationStatus } from "../hooks/useLocationStatus"
 import { useSetupBLELibrary } from "../hooks/useSetupBLELibrary"
 import { useAppDispatch } from "../redux"
-import { initializeNetworkMonitoring } from "../redux/middleware/offlineSyncMiddleware"
+
 import ProjectService from "../services/ProjectService"
 import ReferenceDataService from "../services/ReferenceDataService"
 import { initializeSupabaseClient } from "../services/supabase"
@@ -36,6 +36,9 @@ interface ExtendedToastConfigParams extends ToastConfigParams<any> {
 export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 	const dispatch = useAppDispatch()
 
+	// Add loading state to wait for Supabase initialization
+	const [isSupabaseReady, setIsSupabaseReady] = React.useState(false)
+
 	useSetupBLELibrary()
 	useBluetoothStatus()
 	useLocationStatus()
@@ -46,6 +49,8 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 		initializeSupabaseClient()
 			.then(() => {
 				console.log("✅ Supabase client initialized successfully")
+				setIsSupabaseReady(true)  // Mark as ready
+
 				// Sync reference data only after Supabase client is ready
 				console.log("📚 Syncing reference data...")
 				return ReferenceDataService.syncReferenceData()
@@ -55,11 +60,15 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 			})
 			.catch((error) => {
 				console.error("❌ Failed to initialize Supabase or sync data:", error)
+				// Still mark as ready so app doesn't hang forever
+				setIsSupabaseReady(true)
 			})
 	}, [])
 
 	// Initialize Supabase Sync Service
 	React.useEffect(() => {
+		if (!isSupabaseReady) return  // Wait for Supabase
+
 		console.log("🔄 Starting Supabase Sync Service...")
 		SupabaseSyncService.startRealtimeSubscription()
 		SupabaseSyncService.sync() // Initial sync
@@ -68,8 +77,19 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 			console.log("🛑 Stopping Supabase Sync Service...")
 			SupabaseSyncService.stopRealtimeSubscription()
 		}
-	}, [])
+	}, [isSupabaseReady])  // Depend on ready state
 
+	// Show loading screen while initializing
+	if (!isSupabaseReady) {
+		return (
+			<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+				<ActivityIndicator size="large" color="#2e7d32" />
+				<Text style={{ marginTop: 16, fontSize: 16, color: '#333' }}>Initializing...</Text>
+			</View>
+		)
+	}
+
+	// Only render children after Supabase is ready
 	return (
 		<>
 			{children}

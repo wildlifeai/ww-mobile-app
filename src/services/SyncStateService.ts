@@ -22,7 +22,7 @@ export const SYNC_STATE_KEYS = {
     LAST_SYNC_ERROR: 'last_sync_error',
     TOTAL_SYNCS: 'total_syncs',
     LAMPORT_CLOCK: 'lamport_clock',
-    PROJECT_MEMBERS_LAST_PULLED_AT: 'project_members_last_pulled_at',
+    USER_ROLES_LAST_PULLED_AT: 'user_roles_last_pulled_at',
     DEVICES_LAST_PULLED_AT: 'devices_last_pulled_at',
 } as const
 

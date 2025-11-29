@@ -24,14 +24,14 @@ describe("Environment Configuration System", () => {
 	beforeEach(() => {
 		// Reset environment variables before each test
 		process.env = { ...originalEnv }
-		// Default to development mode
-		;(global as any).__DEV__ = true
+			// Default to development mode
+			; (global as any).__DEV__ = true
 	})
 
 	afterEach(() => {
 		// Restore original environment and __DEV__
 		process.env = originalEnv
-		;(global as any).__DEV__ = originalDev
+			; (global as any).__DEV__ = originalDev
 	})
 
 	describe("ENVIRONMENT_CONFIGS", () => {
@@ -84,30 +84,30 @@ describe("Environment Configuration System", () => {
 
 	describe("getDefaultEnvironment", () => {
 		it("should return cloud-dev in development mode by default", () => {
-			;(global as any).__DEV__ = true
+			; (global as any).__DEV__ = true
 			expect(getDefaultEnvironment()).toBe("cloud-dev")
 		})
 
 		it("should return cloud-dev when APP_VARIANT is development", () => {
-			;(global as any).__DEV__ = false
-			process.env.APP_VARIANT = "development"
+			; (global as any).__DEV__ = false
+				; (process.env as any).APP_VARIANT = "development"
 			expect(getDefaultEnvironment()).toBe("cloud-dev")
 		})
 
 		it("should return cloud-prod in production mode", () => {
-			;(global as any).__DEV__ = false
-			process.env.APP_VARIANT = "production"
+			; (global as any).__DEV__ = false
+				; (process.env as any).APP_VARIANT = "production"
 			expect(getDefaultEnvironment()).toBe("cloud-prod")
 		})
 
 		it("should respect EXPO_PUBLIC_SUPABASE_ENV override", () => {
-			process.env.EXPO_PUBLIC_SUPABASE_ENV = "local"
+			; (process.env as any).EXPO_PUBLIC_SUPABASE_ENV = "local"
 			expect(getDefaultEnvironment()).toBe("local")
 		})
 
 		it("should ignore invalid EXPO_PUBLIC_SUPABASE_ENV values", () => {
-			;(global as any).__DEV__ = true
-			process.env.EXPO_PUBLIC_SUPABASE_ENV = "invalid-env" as any
+			; (global as any).__DEV__ = true
+				; (process.env as any).EXPO_PUBLIC_SUPABASE_ENV = "invalid-env" as any
 			// Should fall back to development default
 			expect(getDefaultEnvironment()).toBe("cloud-dev")
 		})

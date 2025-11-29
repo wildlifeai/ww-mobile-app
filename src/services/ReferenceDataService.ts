@@ -196,7 +196,7 @@ class ReferenceDataService {
                     await existing.update(rec => {
                         rec.name = row.name
                         rec.version = row.version
-                        rec.description = row.description
+                        rec.description = row.description ?? undefined
                         rec.organisationId = row.organisation_id
                     })
                 } else {
@@ -204,7 +204,7 @@ class ReferenceDataService {
                         rec.serverId = row.id
                         rec.name = row.name
                         rec.version = row.version
-                        rec.description = row.description || undefined
+                        rec.description = row.description ?? undefined
                         rec.organisationId = row.organisation_id
                     })
                 }

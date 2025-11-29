@@ -167,7 +167,25 @@ export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch
 ```
 
-**Slice Example**: src/redux/slices/offlineSlice.ts:32-56
+**Slice Example**: src/redux/slices/syncSlice.ts
+```typescript
+const syncSlice = createSlice({
+  name: 'sync',
+  initialState: {
+    overallSyncStatus: 'idle',
+    lastSyncedAt: null,
+    isSyncing: false,
+  },
+  reducers: {
+    setSyncStatus: (state, action) => {
+      state.overallSyncStatus = action.payload
+    },
+    setLastSyncedAt: (state, action) => {
+      state.lastSyncedAt = action.payload
+    },
+  },
+})
+```
 ```typescript
 export interface OfflineState {
   queue: {
@@ -196,7 +214,17 @@ const initialState: OfflineState = {
 };
 ```
 
-**Async Thunk Example**: src/redux/slices/offlineSlice.ts:75-123
+**Async Thunk Example**: src/redux/slices/authSlice.ts
+```typescript
+export const loginUser = createAsyncThunk(
+  'auth/login',
+  async (credentials: { email: string; password: string }) => {
+    const { data, error } = await supabase.auth.signInWithPassword(credentials)
+    if (error) throw error
+    return data
+  }
+)
+```
 ```typescript
 export const queueOfflineOperation = createAsyncThunk(
   'offline/queueOperation',

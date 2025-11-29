@@ -18,11 +18,11 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { EventEmitter } from "events"
-import type { Database } from "../types/supabase"
+import type { Database } from "../types/database.types"
 import {
 	getEnvironmentConfig,
-	type EnvironmentConfig,
 } from "../config/EnvironmentManager"
+import type { EnvironmentConfig } from "../config/environments"
 
 // ============================================================================
 // Internal State
@@ -81,8 +81,7 @@ export async function initializeSupabaseClient(
 		if (!config.supabaseUrl || !config.supabaseAnonKey) {
 			throw new Error(
 				`Invalid Supabase configuration for environment. ` +
-					`Missing: ${!config.supabaseUrl ? "supabaseUrl" : ""} ${
-						!config.supabaseAnonKey ? "supabaseAnonKey" : ""
+				`Missing: ${!config.supabaseUrl ? "supabaseUrl" : ""} ${!config.supabaseAnonKey ? "supabaseAnonKey" : ""
 					}`.trim(),
 			)
 		}
@@ -138,7 +137,7 @@ export function getSupabaseClient(): SupabaseClient<Database> {
 	if (!supabaseClient) {
 		throw new Error(
 			"Supabase client not initialized. " +
-				"Call initializeSupabaseClient() first or use the useSupabaseClient() hook in React components.",
+			"Call initializeSupabaseClient() first or use the useSupabaseClient() hook in React components.",
 		)
 	}
 	return supabaseClient
@@ -174,7 +173,7 @@ export async function reconnectSupabase(): Promise<SupabaseClient<Database>> {
 
 			try {
 				// Remove all realtime subscriptions
-				await supabaseClient.removeAllSubscriptions()
+				await supabaseClient.removeAllChannels()
 				console.log("✅ Removed all subscriptions")
 			} catch (error) {
 				// Non-fatal: log but continue
@@ -302,8 +301,8 @@ export const supabase = new Proxy(
 			if (__DEV__ && prop !== "then" && prop !== "catch") {
 				console.warn(
 					"⚠️ DEPRECATED: Direct 'supabase' export is deprecated. " +
-						"Use getSupabaseClient() instead. " +
-						"See SUPABASE-CLIENT-MIGRATION-GUIDE.md for migration instructions.",
+					"Use getSupabaseClient() instead. " +
+					"See SUPABASE-CLIENT-MIGRATION-GUIDE.md for migration instructions.",
 				)
 			}
 

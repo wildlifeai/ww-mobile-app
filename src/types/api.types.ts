@@ -1,5 +1,5 @@
 // New UUID-first API types based on Supabase database schema
-import type { Tables, TablesInsert, TablesUpdate } from "./supabase"
+import type { Tables, TablesInsert, TablesUpdate } from "./database.types"
 
 // HTTP Method enum
 export enum HttpMethod {
@@ -56,16 +56,37 @@ export type UserRole = Tables<"user_roles">
 export type UserRoleCreate = TablesInsert<"user_roles">
 export type UserRoleUpdate = TablesUpdate<"user_roles">
 
-export type ProjectMember = Tables<"project_members">
-export type ProjectMemberCreate = TablesInsert<"project_members">
-export type ProjectMemberUpdate = TablesUpdate<"project_members">
+// Note: project_members table removed - use user_roles instead
+// Keeping these types for backward compatibility during migration
+export type ProjectMember = {
+	id: string
+	project_id: string
+	user_id: string
+	role: string
+	created_at: string
+	updated_at: string
+}
+export type ProjectMemberCreate = Omit<ProjectMember, 'id' | 'created_at' | 'updated_at'>
+export type ProjectMemberUpdate = Partial<ProjectMemberCreate>
 
-export type UserOrganisation = Tables<"user_organisations">
-export type UserOrganisationCreate = TablesInsert<"user_organisations">
-export type UserOrganisationUpdate = TablesUpdate<"user_organisations">
+// Note: user_organisations table removed - use user_roles with scope_type='organisation'
+export type UserOrganisation = {
+	id: string
+	user_id: string
+	organisation_id: string
+	role: string
+	created_at: string
+	updated_at: string
+}
+export type UserOrganisationCreate = Omit<UserOrganisation, 'id' | 'created_at' | 'updated_at'>
+export type UserOrganisationUpdate = Partial<UserOrganisationCreate>
 
 // Role and other lookup types
-export type Role = Tables<"roles">
+// Role table removed - roles are now defined in code or user_roles
+export type Role = {
+	name: string
+	description?: string
+}
 export type CaptureMethod = Tables<"capture_methods">
 export type DeploymentStatus = Tables<"deployment_statuses">
 export type LogLevel = Tables<"log_levels">

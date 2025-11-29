@@ -12,7 +12,7 @@ import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { WWText } from "../../components/ui/WWText"
 
 type FormData = {
-	username: string
+	name: string
 	email: string
 	password: string
 	confirmPassword: string
@@ -26,7 +26,7 @@ export const Register = () => {
 
 	const { control, handleSubmit, setError } = useForm<FormData>({
 		defaultValues: {
-			username: "",
+			name: "",
 			email: "",
 			password: "",
 			confirmPassword: "",
@@ -45,7 +45,7 @@ export const Register = () => {
 
 		try {
 			const response = await register({
-				username: data.username,
+				name: data.name,
 				email: data.email,
 				password: data.password,
 				organization: data.organization?.trim() || undefined,
@@ -86,21 +86,21 @@ export const Register = () => {
 					<View style={styles.form}>
 						<Field
 							control={control}
-							name="username"
-							label="Username"
+							name="name"
+							label="Full Name"
 							required
 							rules={{
-								required: "Username is required",
+								required: "Name is required",
 								minLength: {
 									value: 3,
-									message: "Username must be at least 3 characters",
+									message: "Name must be at least 3 characters",
 								},
 							}}
 						>
 							{(field) => (
 								<WWTextInput
 									{...field}
-									testID="username-input"
+									testID="name-input"
 									mode="outlined"
 								/>
 							)}

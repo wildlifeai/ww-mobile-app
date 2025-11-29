@@ -44,7 +44,7 @@ export interface WWAdminState {
 const initialState: WWAdminState = {
 	visibleProjects: [],
 	webPortalUrl:
-		process.env.EXPO_PUBLIC_WW_ADMIN_PORTAL_URL ||
+		(process.env as any).EXPO_PUBLIC_WW_ADMIN_PORTAL_URL ||
 		"https://admin.wildlifewatcher.com",
 	adminPermissions: {
 		canViewAllProjects: false,

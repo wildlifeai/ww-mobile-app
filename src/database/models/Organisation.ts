@@ -8,6 +8,7 @@ export default class Organisation extends Model {
     @text('slug') slug!: string
     @text('created_by') createdBy?: string
     @field('is_active') isActive!: boolean
+    @text('modified_by') modifiedBy!: string
 
     @readonly @date('created_at') createdAt!: number
     @readonly @date('updated_at') updatedAt!: number

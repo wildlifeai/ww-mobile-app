@@ -14,11 +14,11 @@ export const invalidLoginCredentials = {
 	password: "wrongpassword",
 }
 
-// Valid registration credentials (service layer expects username and organization)
+// Valid registration credentials (service layer expects name and organization)
 export const validRegisterCredentials = {
 	email: "newuser@wildlifeai.org",
 	password: "password123",
-	username: "testuser",
+	name: "Test User",
 	organization: "Wildlife AI Org",
 }
 
@@ -26,7 +26,7 @@ export const validRegisterCredentials = {
 export const invalidRegisterCredentials = {
 	email: "invalid-email",
 	password: "123",
-	username: "",
+	name: "ab", // Too short
 	organization: "",
 }
 
@@ -34,7 +34,7 @@ export const invalidRegisterCredentials = {
 export const existingUserRegisterCredentials = {
 	email: "existing@wildlifeai.org",
 	password: "password123",
-	username: "existinguser",
+	name: "Existing User",
 	organization: "Wildlife AI Org",
 }
 
@@ -72,9 +72,9 @@ export const formValidationCases = {
 		valid: ["password123", "ValidPass1!", "secure-password"],
 		invalid: ["", "123", "short"],
 	},
-	username: {
-		valid: ["testuser", "validusername", "user123"],
-		invalid: ["", "ab", "x"],
+	name: {
+		valid: ["Test User", "John Doe"],
+		invalid: ["ab", ""], // Too short, empty
 	},
 	organization: {
 		valid: ["WildlifeAI", "Test Organization", "Conservation Society"],

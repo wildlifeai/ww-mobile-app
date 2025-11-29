@@ -4,8 +4,8 @@ import database from '../database'
 import { getSupabaseClient } from './supabase'
 import SyncOutbox from '../database/models/SyncOutbox'
 import SyncStateService, { SYNC_STATE_KEYS } from './SyncStateService'
-import { Database } from '../types/supabase'
-import ProjectMember from '../database/models/ProjectMember'
+import { Database } from '../types/database.types'
+import UserRole from '../database/models/UserRole'
 import Device from '../database/models/Device'
 
 class SupabaseSyncService {
@@ -60,7 +60,7 @@ class SupabaseSyncService {
             // STEP 2: PULL REMOTE CHANGES
             // ================================================================
             await this.pullRemoteChanges()
-            await this.syncProjectMembers()
+            await this.syncUserRoles()
             await this.syncDevices()
 
             // ================================================================
@@ -357,62 +357,63 @@ class SupabaseSyncService {
     }
 
     /**
-     * Sync project members (incremental pull)
-     * Note: This uses standard Supabase queries instead of the pull_changes RPC
-     * because the RPC might not support project_members yet.
+     * Sync user roles (incremental pull)
+     * Syncs the user_roles table which replaces project_members
      */
-    private async syncProjectMembers(): Promise<void> {
-        const LAST_PULLED_KEY = SYNC_STATE_KEYS.PROJECT_MEMBERS_LAST_PULLED_AT
+    private async syncUserRoles(): Promise<void> {
+        const LAST_PULLED_KEY = SYNC_STATE_KEYS.USER_ROLES_LAST_PULLED_AT
         const lastPulledStr = await SyncStateService.get(LAST_PULLED_KEY)
         const lastPulledAt = lastPulledStr ? new Date(parseInt(lastPulledStr, 10)).toISOString() : new Date(0).toISOString()
 
-        console.log('👥 Syncing project members since', lastPulledAt)
+        console.log('👥 Syncing user roles since', lastPulledAt)
 
         const client = getSupabaseClient()
-        // Join with roles table to get role value (not 'name' - that column doesn't exist)
-        // Specify the exact foreign key to avoid ambiguity (two FKs exist: fk_project_members_role and project_members_role_id_fkey)
         const { data, error } = await client
-            .from('project_members')
-            .select('*, roles!fk_project_members_role(value)')
+            .from('user_roles')
+            .select('*')
             .gt('updated_at', lastPulledAt)
 
         if (error) {
-            console.error('❌ Failed to sync project members:', error)
+            console.error('❌ Failed to sync user roles:', error)
             return
         }
 
         if (!data || data.length === 0) {
-            console.log('✅ No new project member changes')
+            console.log('✅ No new user role changes')
             return
         }
 
-        console.log(`📥 Received ${data.length} project member updates`)
+        console.log(`📥 Received ${data.length} user role updates`)
 
         await database.write(async () => {
-            const collection = database.get<ProjectMember>('project_members')
+            const collection = database.get<UserRole>('user_roles')
 
             for (const row of data as any[]) {
-                // Extract role value from joined data
-                // Supabase returns joined data as an object or array depending on relationship
-                // Here it should be an object: { value: 'admin' }
-                const roleName = row.roles?.value || 'member'
-
                 // Check if exists
                 const existing = await collection.query(
-                    Q.where('project_id', row.project_id),
-                    Q.where('user_id', row.user_id)
+                    Q.where('user_id', row.user_id),
+                    Q.where('scope_type', row.scope_type),
+                    Q.where('scope_id', row.scope_id || '')
                 ).fetch()
 
                 if (existing.length > 0) {
                     await existing[0].update((rec) => {
-                        rec.role = roleName
+                        rec.role = row.role
+                        rec.isActive = row.is_active
+                        rec.modifiedBy = row.modified_by
                         rec.updatedAt = new Date(row.updated_at ?? Date.now())
                     })
                 } else {
                     await collection.create((rec) => {
-                        rec.projectId = row.project_id
                         rec.userId = row.user_id
-                        rec.role = roleName
+                        rec.role = row.role
+                        rec.scopeType = row.scope_type
+                        rec.scopeId = row.scope_id
+                        rec.grantedBy = row.granted_by
+                        rec.grantedAt = new Date(row.granted_at ?? Date.now())
+                        rec.expiresAt = row.expires_at ? new Date(row.expires_at) : undefined
+                        rec.isActive = row.is_active
+                        rec.modifiedBy = row.modified_by
                         rec.createdAt = new Date(row.created_at ?? Date.now())
                         rec.updatedAt = new Date(row.updated_at ?? Date.now())
                     })
@@ -424,7 +425,7 @@ class SupabaseSyncService {
         const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
         await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
 
-        console.log('✅ Project members sync complete')
+        console.log('✅ User roles sync complete')
     }
 
     /**
@@ -470,7 +471,7 @@ class SupabaseSyncService {
                         rec.name = row.name
                         rec.batteryLevel = row.battery_level ?? 0
                         rec.organisationId = row.organisation_id ?? ''
-                        rec.firmwareId = row.firmware_id ?? ''
+                        rec.firmwareId = row.config_firmware_id ?? row.ble_firmware_id ?? ''
                         rec.lastBatteryCheck = row.last_battery_check ?? ''
                         rec.lastSdCardCheck = row.last_sd_card_check ?? ''
                         rec.updatedAt = new Date(row.updated_at ?? Date.now())
@@ -483,7 +484,7 @@ class SupabaseSyncService {
                         rec.name = row.name
                         rec.batteryLevel = row.battery_level ?? 0
                         rec.organisationId = row.organisation_id ?? ''
-                        rec.firmwareId = row.firmware_id ?? ''
+                        rec.firmwareId = row.config_firmware_id ?? row.ble_firmware_id ?? ''
                         rec.lastBatteryCheck = row.last_battery_check ?? ''
                         rec.lastSdCardCheck = row.last_sd_card_check ?? ''
                         rec.createdAt = new Date(row.created_at ?? Date.now())

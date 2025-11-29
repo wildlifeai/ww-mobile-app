@@ -14,6 +14,7 @@
  * See: scripts/README-TYPE-SCRIPTS.md for type synchronization
  * 
  * Schema Version History:
+ * - v6: Migrated from project_members to user_roles, added modified_by to all tables
  * - v5: Added project reference fields (sampling_design_id, capture_method_id, etc.)
  * - v4: Added device_preparation table
  * - v3: Initial MVP2 schema
@@ -22,7 +23,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 5,
+    version: 6,
     tables: [
         tableSchema({
             name: 'projects',
@@ -72,6 +73,7 @@ export default appSchema({
                 { name: 'camera_location_description', type: 'string', isOptional: true },
                 { name: 'camera_location_image_path', type: 'string', isOptional: true },
                 { name: 'deployment_photos', type: 'string' }, // JSON stored as string
+                { name: 'modified_by', type: 'string' },
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
                 { name: 'deleted_at', type: 'number' },
@@ -85,6 +87,7 @@ export default appSchema({
             columns: [
                 { name: 'firstname', type: 'string' },
                 { name: 'surname', type: 'string' },
+                { name: 'modified_by', type: 'string' },
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
                 { name: 'deleted_at', type: 'number' },
@@ -100,6 +103,7 @@ export default appSchema({
                 { name: 'slug', type: 'string' },
                 { name: 'created_by', type: 'string', isOptional: true },
                 { name: 'is_active', type: 'boolean' },
+                { name: 'modified_by', type: 'string' },
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
                 { name: 'deleted_at', type: 'number' },
@@ -118,6 +122,7 @@ export default appSchema({
                 { name: 'firmware_id', type: 'string' },
                 { name: 'last_battery_check', type: 'string' },
                 { name: 'last_sd_card_check', type: 'string' },
+                { name: 'modified_by', type: 'string' },
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
                 { name: 'deleted_at', type: 'number' },
@@ -127,11 +132,17 @@ export default appSchema({
             ],
         }),
         tableSchema({
-            name: 'project_members',
+            name: 'user_roles',
             columns: [
-                { name: 'project_id', type: 'string', isIndexed: true },
                 { name: 'user_id', type: 'string', isIndexed: true },
-                { name: 'role', type: 'string' },
+                { name: 'role', type: 'string' }, // 'ww_admin', 'project_admin', 'project_member'
+                { name: 'scope_type', type: 'string' }, // 'global', 'organisation', 'project'
+                { name: 'scope_id', type: 'string', isOptional: true, isIndexed: true },
+                { name: 'granted_by', type: 'string' },
+                { name: 'granted_at', type: 'number' },
+                { name: 'expires_at', type: 'number', isOptional: true },
+                { name: 'is_active', type: 'boolean' },
+                { name: 'modified_by', type: 'string' },
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
                 { name: 'deleted_at', type: 'number' },

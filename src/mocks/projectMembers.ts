@@ -8,7 +8,7 @@ import {
 	OrganizationUser,
 	ProjectMember,
 	ProjectRole,
-} from "../services/ProjectMemberService"
+} from "../services/UserRoleService"
 
 // Mock organization users (user pool)
 export const mockOrganizationUsers: OrganizationUser[] = [

@@ -47,163 +47,6 @@ export type Database = {
         }
         Relationships: []
       }
-      admin_audit_log: {
-        Row: {
-          action: string
-          admin_id: string
-          created_at: string
-          id: string
-          metadata: Json | null
-          target_project_id: string | null
-          target_user_id: string | null
-        }
-        Insert: {
-          action: string
-          admin_id: string
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          target_project_id?: string | null
-          target_user_id?: string | null
-        }
-        Update: {
-          action?: string
-          admin_id?: string
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          target_project_id?: string | null
-          target_user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "admin_audit_log_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["admin_user_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["target_user_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "organisation_members_detailed"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "project_members_detailed"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "user_access_summary"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "user_roles_detailed"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_project_id_fkey"
-            columns: ["target_project_id"]
-            isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["target_project_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_project_id_fkey"
-            columns: ["target_project_id"]
-            isOneToOne: false
-            referencedRelation: "project_members_detailed"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_project_id_fkey"
-            columns: ["target_project_id"]
-            isOneToOne: false
-            referencedRelation: "project_summary"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_project_id_fkey"
-            columns: ["target_project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_user_id_fkey"
-            columns: ["target_user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["admin_user_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_user_id_fkey"
-            columns: ["target_user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["target_user_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_user_id_fkey"
-            columns: ["target_user_id"]
-            isOneToOne: false
-            referencedRelation: "organisation_members_detailed"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_user_id_fkey"
-            columns: ["target_user_id"]
-            isOneToOne: false
-            referencedRelation: "project_members_detailed"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_user_id_fkey"
-            columns: ["target_user_id"]
-            isOneToOne: false
-            referencedRelation: "user_access_summary"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_user_id_fkey"
-            columns: ["target_user_id"]
-            isOneToOne: false
-            referencedRelation: "user_roles_detailed"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "admin_audit_log_target_user_id_fkey"
-            columns: ["target_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       ai_model_organisation: {
         Row: {
           model_id: string
@@ -229,7 +72,7 @@ export type Database = {
             foreignKeyName: "ai_model_organisation_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
-            referencedRelation: "admin_activity_log"
+            referencedRelation: "deployment_overview"
             referencedColumns: ["organisation_id"]
           },
           {
@@ -323,7 +166,7 @@ export type Database = {
             foreignKeyName: "ai_models_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
-            referencedRelation: "admin_activity_log"
+            referencedRelation: "deployment_overview"
             referencedColumns: ["organisation_id"]
           },
           {
@@ -435,7 +278,7 @@ export type Database = {
             foreignKeyName: "api_logs_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
-            referencedRelation: "admin_activity_log"
+            referencedRelation: "deployment_overview"
             referencedColumns: ["organisation_id"]
           },
           {
@@ -477,8 +320,8 @@ export type Database = {
             foreignKeyName: "api_logs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["target_project_id"]
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "api_logs_project_id_fkey"
@@ -502,52 +345,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_api_logs_deployment"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_api_logs_device"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_api_logs_log_level"
-            columns: ["log_level_id"]
-            isOneToOne: false
-            referencedRelation: "log_levels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_api_logs_project"
+            foreignKeyName: "api_logs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["target_project_id"]
-          },
-          {
-            foreignKeyName: "fk_api_logs_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "project_members_detailed"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "fk_api_logs_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "project_summary"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "fk_api_logs_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
         ]
@@ -558,6 +359,8 @@ export type Database = {
           deleted_at: string | null
           description: string
           id: number
+          is_active: boolean
+          modified_by: string
           updated_at: string | null
           value: string
         }
@@ -566,6 +369,8 @@ export type Database = {
           deleted_at?: string | null
           description: string
           id?: number
+          is_active?: boolean
+          modified_by: string
           updated_at?: string | null
           value: string
         }
@@ -574,6 +379,8 @@ export type Database = {
           deleted_at?: string | null
           description?: string
           id?: number
+          is_active?: boolean
+          modified_by?: string
           updated_at?: string | null
           value?: string
         }
@@ -585,6 +392,8 @@ export type Database = {
           deleted_at: string | null
           description: string
           id: number
+          is_active: boolean
+          modified_by: string
           updated_at: string | null
           value: string
         }
@@ -593,6 +402,8 @@ export type Database = {
           deleted_at?: string | null
           description: string
           id?: number
+          is_active?: boolean
+          modified_by: string
           updated_at?: string | null
           value: string
         }
@@ -601,6 +412,8 @@ export type Database = {
           deleted_at?: string | null
           description?: string
           id?: number
+          is_active?: boolean
+          modified_by?: string
           updated_at?: string | null
           value?: string
         }
@@ -608,119 +421,87 @@ export type Database = {
       }
       deployments: {
         Row: {
-          camera_location_description: string | null
-          camera_location_image_path: string | null
-          capture_method_id: number | null
+          camera_height: number | null
+          camera_location_image_paths: Json | null
           created_at: string | null
           deleted_at: string | null
-          deployment_comments: string | null
           deployment_end: string | null
-          deployment_photos: Json | null
-          deployment_start: string | null
+          deployment_start: string
           deployment_status_id: number | null
-          device_id: string
+          device_preparation_id: string | null
+          end_deployment_comments: string | null
+          ended_by: string | null
           id: string
           latitude: number | null
           location: unknown
+          location_description: string | null
+          location_id: string | null
           location_name: string
           longitude: number | null
-          name: string | null
-          project_id: string
+          name: string
+          setup_by: string
+          start_deployment_comments: string | null
           updated_at: string | null
-          user_id: string
         }
         Insert: {
-          camera_location_description?: string | null
-          camera_location_image_path?: string | null
-          capture_method_id?: number | null
+          camera_height?: number | null
+          camera_location_image_paths?: Json | null
           created_at?: string | null
           deleted_at?: string | null
-          deployment_comments?: string | null
           deployment_end?: string | null
-          deployment_photos?: Json | null
-          deployment_start?: string | null
+          deployment_start: string
           deployment_status_id?: number | null
-          device_id: string
+          device_preparation_id?: string | null
+          end_deployment_comments?: string | null
+          ended_by?: string | null
           id?: string
           latitude?: number | null
           location?: unknown
+          location_description?: string | null
+          location_id?: string | null
           location_name: string
           longitude?: number | null
-          name?: string | null
-          project_id: string
+          name: string
+          setup_by: string
+          start_deployment_comments?: string | null
           updated_at?: string | null
-          user_id: string
         }
         Update: {
-          camera_location_description?: string | null
-          camera_location_image_path?: string | null
-          capture_method_id?: number | null
+          camera_height?: number | null
+          camera_location_image_paths?: Json | null
           created_at?: string | null
           deleted_at?: string | null
-          deployment_comments?: string | null
           deployment_end?: string | null
-          deployment_photos?: Json | null
-          deployment_start?: string | null
+          deployment_start?: string
           deployment_status_id?: number | null
-          device_id?: string
+          device_preparation_id?: string | null
+          end_deployment_comments?: string | null
+          ended_by?: string | null
           id?: string
           latitude?: number | null
           location?: unknown
+          location_description?: string | null
+          location_id?: string | null
           location_name?: string
           longitude?: number | null
-          name?: string | null
-          project_id?: string
+          name?: string
+          setup_by?: string
+          start_deployment_comments?: string | null
           updated_at?: string | null
-          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "fk_deployments_capture_method"
-            columns: ["capture_method_id"]
-            isOneToOne: false
-            referencedRelation: "capture_methods"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_deployments_deployment_status"
+            foreignKeyName: "deployments_deployment_status_id_fkey"
             columns: ["deployment_status_id"]
             isOneToOne: false
             referencedRelation: "deployment_statuses"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_deployments_device"
-            columns: ["device_id"]
+            foreignKeyName: "deployments_device_preparation_id_fkey"
+            columns: ["device_preparation_id"]
             isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_deployments_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["target_project_id"]
-          },
-          {
-            foreignKeyName: "fk_deployments_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "project_members_detailed"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "fk_deployments_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "project_summary"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "fk_deployments_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "device_preparation"
             referencedColumns: ["id"]
           },
         ]
@@ -728,64 +509,79 @@ export type Database = {
       device_preparation: {
         Row: {
           ai_model_id: string | null
-          battery_check_passed: boolean
-          camera_view_test_passed: boolean
+          battery_level_at_check: number | null
+          ble_firmware_id: string | null
+          camera_model: string | null
+          completed_at: string | null
+          config_firmware_id: string | null
           created_at: string | null
           deleted_at: string | null
           device_eui: string | null
           device_id: string
-          firmware_check_passed: boolean
-          firmware_id: string | null
-          firmware_updated: boolean
+          himax_firmware_id: string | null
           id: string
           is_deployment_ready: boolean
+          lorawan_last_verified_at: string | null
           lorawan_network: string | null
           lorawan_registration_completed: boolean
+          lorawan_rssi_at_check: number | null
+          lorawan_snr_at_check: number | null
           modified_by: string
-          project_id: string
-          sd_card_check_passed: boolean
+          project_id: string | null
+          sd_card_available_kb_at_check: number | null
+          sd_card_total_kb_at_check: number | null
           status: string
           updated_at: string | null
         }
         Insert: {
           ai_model_id?: string | null
-          battery_check_passed?: boolean
-          camera_view_test_passed?: boolean
+          battery_level_at_check?: number | null
+          ble_firmware_id?: string | null
+          camera_model?: string | null
+          completed_at?: string | null
+          config_firmware_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
           device_eui?: string | null
           device_id: string
-          firmware_check_passed?: boolean
-          firmware_id?: string | null
-          firmware_updated?: boolean
+          himax_firmware_id?: string | null
           id?: string
           is_deployment_ready?: boolean
+          lorawan_last_verified_at?: string | null
           lorawan_network?: string | null
           lorawan_registration_completed?: boolean
+          lorawan_rssi_at_check?: number | null
+          lorawan_snr_at_check?: number | null
           modified_by: string
-          project_id: string
-          sd_card_check_passed?: boolean
-          status: string
+          project_id?: string | null
+          sd_card_available_kb_at_check?: number | null
+          sd_card_total_kb_at_check?: number | null
+          status?: string
           updated_at?: string | null
         }
         Update: {
           ai_model_id?: string | null
-          battery_check_passed?: boolean
-          camera_view_test_passed?: boolean
+          battery_level_at_check?: number | null
+          ble_firmware_id?: string | null
+          camera_model?: string | null
+          completed_at?: string | null
+          config_firmware_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
           device_eui?: string | null
           device_id?: string
-          firmware_check_passed?: boolean
-          firmware_id?: string | null
-          firmware_updated?: boolean
+          himax_firmware_id?: string | null
           id?: string
           is_deployment_ready?: boolean
+          lorawan_last_verified_at?: string | null
           lorawan_network?: string | null
           lorawan_registration_completed?: boolean
+          lorawan_rssi_at_check?: number | null
+          lorawan_snr_at_check?: number | null
           modified_by?: string
-          project_id?: string
-          sd_card_check_passed?: boolean
+          project_id?: string | null
+          sd_card_available_kb_at_check?: number | null
+          sd_card_total_kb_at_check?: number | null
           status?: string
           updated_at?: string | null
         }
@@ -798,6 +594,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "device_preparation_ble_firmware_id_fkey"
+            columns: ["ble_firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_preparation_config_firmware_id_fkey"
+            columns: ["config_firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_preparation_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["device_id"]
+          },
+          {
             foreignKeyName: "device_preparation_device_id_fkey"
             columns: ["device_id"]
             isOneToOne: false
@@ -805,8 +622,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "device_preparation_firmware_id_fkey"
-            columns: ["firmware_id"]
+            foreignKeyName: "device_preparation_himax_firmware_id_fkey"
+            columns: ["himax_firmware_id"]
             isOneToOne: false
             referencedRelation: "firmware"
             referencedColumns: ["id"]
@@ -815,8 +632,8 @@ export type Database = {
             foreignKeyName: "device_preparation_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["target_project_id"]
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "device_preparation_project_id_fkey"
@@ -839,64 +656,100 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "device_preparation_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
         ]
       }
       devices: {
         Row: {
           battery_level: number | null
+          ble_firmware_id: string | null
+          ble_firmware_updated_at: string | null
           bluetooth_id: string
+          config_firmware_id: string | null
+          config_firmware_updated_at: string | null
           created_at: string | null
           deleted_at: string | null
-          firmware_id: string | null
-          firmware_last_updated: string | null
+          device_eui: string | null
+          himax_firmware_id: string | null
+          himax_firmware_updated_at: string | null
           id: string
           last_battery_check: string | null
           last_sd_card_check: string | null
           modified_by: string
           name: string
           organisation_id: string | null
-          sd_card_capacity_total: number | null
-          sd_card_capacity_used: number | null
+          sd_card_capacity_total_kb: number | null
+          sd_card_capacity_used_kb: number | null
           updated_at: string | null
         }
         Insert: {
           battery_level?: number | null
+          ble_firmware_id?: string | null
+          ble_firmware_updated_at?: string | null
           bluetooth_id: string
+          config_firmware_id?: string | null
+          config_firmware_updated_at?: string | null
           created_at?: string | null
           deleted_at?: string | null
-          firmware_id?: string | null
-          firmware_last_updated?: string | null
+          device_eui?: string | null
+          himax_firmware_id?: string | null
+          himax_firmware_updated_at?: string | null
           id?: string
           last_battery_check?: string | null
           last_sd_card_check?: string | null
           modified_by: string
           name: string
           organisation_id?: string | null
-          sd_card_capacity_total?: number | null
-          sd_card_capacity_used?: number | null
+          sd_card_capacity_total_kb?: number | null
+          sd_card_capacity_used_kb?: number | null
           updated_at?: string | null
         }
         Update: {
           battery_level?: number | null
+          ble_firmware_id?: string | null
+          ble_firmware_updated_at?: string | null
           bluetooth_id?: string
+          config_firmware_id?: string | null
+          config_firmware_updated_at?: string | null
           created_at?: string | null
           deleted_at?: string | null
-          firmware_id?: string | null
-          firmware_last_updated?: string | null
+          device_eui?: string | null
+          himax_firmware_id?: string | null
+          himax_firmware_updated_at?: string | null
           id?: string
           last_battery_check?: string | null
           last_sd_card_check?: string | null
           modified_by?: string
           name?: string
           organisation_id?: string | null
-          sd_card_capacity_total?: number | null
-          sd_card_capacity_used?: number | null
+          sd_card_capacity_total_kb?: number | null
+          sd_card_capacity_used_kb?: number | null
           updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "devices_firmware_id_fkey"
-            columns: ["firmware_id"]
+            foreignKeyName: "devices_ble_firmware_id_fkey"
+            columns: ["ble_firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devices_config_firmware_id_fkey"
+            columns: ["config_firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devices_himax_firmware_id_fkey"
+            columns: ["himax_firmware_id"]
             isOneToOne: false
             referencedRelation: "firmware"
             referencedColumns: ["id"]
@@ -905,7 +758,7 @@ export type Database = {
             foreignKeyName: "devices_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
-            referencedRelation: "admin_activity_log"
+            referencedRelation: "deployment_overview"
             referencedColumns: ["organisation_id"]
           },
           {
@@ -949,33 +802,42 @@ export type Database = {
         Row: {
           created_at: string | null
           deleted_at: string | null
+          file_size_bytes: number | null
           id: string
           is_active: boolean
           location_path: string
           modified_by: string
           name: string
+          release_notes: string | null
+          type: string
           updated_at: string | null
           version: string
         }
         Insert: {
           created_at?: string | null
           deleted_at?: string | null
+          file_size_bytes?: number | null
           id?: string
           is_active?: boolean
           location_path: string
           modified_by: string
           name: string
+          release_notes?: string | null
+          type: string
           updated_at?: string | null
           version: string
         }
         Update: {
           created_at?: string | null
           deleted_at?: string | null
+          file_size_bytes?: number | null
           id?: string
           is_active?: boolean
           location_path?: string
           modified_by?: string
           name?: string
+          release_notes?: string | null
+          type?: string
           updated_at?: string | null
           version?: string
         }
@@ -1041,8 +903,22 @@ export type Database = {
             foreignKeyName: "lorawan_messages_deployment_id_fkey"
             columns: ["deployment_id"]
             isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "lorawan_messages_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
             referencedRelation: "deployments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lorawan_messages_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["device_id"]
           },
           {
             foreignKeyName: "lorawan_messages_device_id_fkey"
@@ -1083,6 +959,13 @@ export type Database = {
             foreignKeyName: "lorawan_parsed_messages_device_id_fkey"
             columns: ["device_id"]
             isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["device_id"]
+          },
+          {
+            foreignKeyName: "lorawan_parsed_messages_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
             referencedRelation: "devices"
             referencedColumns: ["id"]
           },
@@ -1102,7 +985,7 @@ export type Database = {
           deleted_at: string | null
           id: string
           is_active: boolean
-          metadata: Json
+          modified_by: string
           name: string
           slug: string
           updated_at: string | null
@@ -1113,7 +996,7 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           is_active?: boolean
-          metadata?: Json
+          modified_by: string
           name: string
           slug: string
           updated_at?: string | null
@@ -1124,110 +1007,12 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           is_active?: boolean
-          metadata?: Json
+          modified_by?: string
           name?: string
           slug?: string
           updated_at?: string | null
         }
         Relationships: []
-      }
-      project_members: {
-        Row: {
-          created_at: string | null
-          deleted_at: string | null
-          project_id: string
-          role_id: number | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          deleted_at?: string | null
-          project_id: string
-          role_id?: number | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          deleted_at?: string | null
-          project_id?: string
-          role_id?: number | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_project_members_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["target_project_id"]
-          },
-          {
-            foreignKeyName: "fk_project_members_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "project_members_detailed"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "fk_project_members_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "project_summary"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "fk_project_members_project"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_project_members_role"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "roles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_members_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["target_project_id"]
-          },
-          {
-            foreignKeyName: "project_members_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "project_members_detailed"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "project_members_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "project_summary"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "project_members_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_members_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "roles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       projects: {
         Row: {
@@ -1319,7 +1104,7 @@ export type Database = {
             foreignKeyName: "projects_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
-            referencedRelation: "admin_activity_log"
+            referencedRelation: "deployment_overview"
             referencedColumns: ["organisation_id"]
           },
           {
@@ -1366,33 +1151,6 @@ export type Database = {
           },
         ]
       }
-      roles: {
-        Row: {
-          created_at: string | null
-          deleted_at: string | null
-          description: string
-          id: number
-          updated_at: string | null
-          value: string
-        }
-        Insert: {
-          created_at?: string | null
-          deleted_at?: string | null
-          description: string
-          id?: number
-          updated_at?: string | null
-          value: string
-        }
-        Update: {
-          created_at?: string | null
-          deleted_at?: string | null
-          description?: string
-          id?: number
-          updated_at?: string | null
-          value?: string
-        }
-        Relationships: []
-      }
       sampling_designs: {
         Row: {
           created_at: string | null
@@ -1426,75 +1184,29 @@ export type Database = {
         }
         Relationships: []
       }
-      user_organisations: {
+      spatial_ref_sys: {
         Row: {
-          created_at: string | null
-          deleted_at: string | null
-          id: string
-          organisation_id: string
-          updated_at: string | null
-          user_id: string
+          auth_name: string | null
+          auth_srid: number | null
+          proj4text: string | null
+          srid: number
+          srtext: string | null
         }
         Insert: {
-          created_at?: string | null
-          deleted_at?: string | null
-          id?: string
-          organisation_id: string
-          updated_at?: string | null
-          user_id: string
+          auth_name?: string | null
+          auth_srid?: number | null
+          proj4text?: string | null
+          srid: number
+          srtext?: string | null
         }
         Update: {
-          created_at?: string | null
-          deleted_at?: string | null
-          id?: string
-          organisation_id?: string
-          updated_at?: string | null
-          user_id?: string
+          auth_name?: string | null
+          auth_srid?: number | null
+          proj4text?: string | null
+          srid?: number
+          srtext?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_organisations_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "admin_activity_log"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "user_organisations_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisation_members_detailed"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "user_organisations_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisation_summary"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_organisations_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_organisations_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "project_members_detailed"
-            referencedColumns: ["organisation_id"]
-          },
-          {
-            foreignKeyName: "user_organisations_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "project_summary"
-            referencedColumns: ["organisation_id"]
-          },
-        ]
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -1505,6 +1217,7 @@ export type Database = {
           granted_by: string | null
           id: string
           is_active: boolean
+          modified_by: string
           role: string
           scope_id: string | null
           scope_type: string
@@ -1519,6 +1232,7 @@ export type Database = {
           granted_by?: string | null
           id?: string
           is_active?: boolean
+          modified_by: string
           role: string
           scope_id?: string | null
           scope_type: string
@@ -1533,6 +1247,7 @@ export type Database = {
           granted_by?: string | null
           id?: string
           is_active?: boolean
+          modified_by?: string
           role?: string
           scope_id?: string | null
           scope_type?: string
@@ -1573,24 +1288,100 @@ export type Database = {
       }
     }
     Views: {
-      admin_activity_log: {
+      deployment_overview: {
         Row: {
-          action: string | null
-          action_timestamp: string | null
-          admin_email: string | null
-          admin_name: string | null
-          admin_user_id: string | null
-          log_id: string | null
-          metadata: Json | null
-          metadata_org_id: string | null
+          ble_firmware_id: string | null
+          bluetooth_id: string | null
+          camera_location_image_paths: Json | null
+          config_firmware_id: string | null
+          created_at: string | null
+          created_by_email: string | null
+          created_by_name: string | null
+          deleted_at: string | null
+          deployment_end: string | null
+          deployment_id: string | null
+          deployment_name: string | null
+          deployment_start: string | null
+          deployment_status: string | null
+          device_id: string | null
+          device_name: string | null
+          end_deployment_comments: string | null
+          geolocation: unknown
+          himax_firmware_id: string | null
+          latitude: number | null
+          location_name: string | null
+          longitude: number | null
           organisation_id: string | null
           organisation_name: string | null
-          role_affected: string | null
-          target_project_id: string | null
-          target_project_name: string | null
-          target_user_email: string | null
-          target_user_id: string | null
-          target_user_name: string | null
+          project_id: string | null
+          project_name: string | null
+          start_deployment_comments: string | null
+          status_description: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "devices_ble_firmware_id_fkey"
+            columns: ["ble_firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devices_config_firmware_id_fkey"
+            columns: ["config_firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devices_himax_firmware_id_fkey"
+            columns: ["himax_firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      geography_columns: {
+        Row: {
+          coord_dimension: number | null
+          f_geography_column: unknown
+          f_table_catalog: unknown
+          f_table_name: unknown
+          f_table_schema: unknown
+          srid: number | null
+          type: string | null
+        }
+        Relationships: []
+      }
+      geometry_columns: {
+        Row: {
+          coord_dimension: number | null
+          f_geometry_column: unknown
+          f_table_catalog: string | null
+          f_table_name: unknown
+          f_table_schema: unknown
+          srid: number | null
+          type: string | null
+        }
+        Insert: {
+          coord_dimension?: number | null
+          f_geometry_column?: unknown
+          f_table_catalog?: string | null
+          f_table_name?: unknown
+          f_table_schema?: unknown
+          srid?: number | null
+          type?: string | null
+        }
+        Update: {
+          coord_dimension?: number | null
+          f_geometry_column?: unknown
+          f_table_catalog?: string | null
+          f_table_name?: unknown
+          f_table_schema?: unknown
+          srid?: number | null
+          type?: string | null
         }
         Relationships: []
       }
@@ -1625,10 +1416,8 @@ export type Database = {
           is_active: boolean | null
           last_deployment_created: string | null
           last_project_created: string | null
-          metadata: Json | null
           name: string | null
           org_project_admin_count: number | null
-          organisation_manager_count: number | null
           slug: string | null
           updated_at: string | null
         }
@@ -1679,6 +1468,158 @@ export type Database = {
           updated_at: string | null
         }
         Relationships: []
+      }
+      projects_with_stats: {
+        Row: {
+          activity_detection_sensitivity_id: number | null
+          battery_level: number | null
+          capture_method_id: number | null
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          deployment_count: number | null
+          description: string | null
+          id: string | null
+          is_active: boolean | null
+          is_baited: boolean | null
+          is_monitoring_marked_individuals: boolean | null
+          lorawan_device_count: number | null
+          member_count: number | null
+          model_id: string | null
+          modified_by: string | null
+          name: string | null
+          organisation_id: string | null
+          project_image: string | null
+          sampling_design_id: number | null
+          sd_card_usage: number | null
+          timelapse_interval_seconds: number | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          activity_detection_sensitivity_id?: number | null
+          battery_level?: never
+          capture_method_id?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deployment_count?: never
+          description?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_baited?: boolean | null
+          is_monitoring_marked_individuals?: boolean | null
+          lorawan_device_count?: never
+          member_count?: never
+          model_id?: string | null
+          modified_by?: string | null
+          name?: string | null
+          organisation_id?: string | null
+          project_image?: string | null
+          sampling_design_id?: number | null
+          sd_card_usage?: never
+          timelapse_interval_seconds?: number | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          activity_detection_sensitivity_id?: number | null
+          battery_level?: never
+          capture_method_id?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deployment_count?: never
+          description?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_baited?: boolean | null
+          is_monitoring_marked_individuals?: boolean | null
+          lorawan_device_count?: never
+          member_count?: never
+          model_id?: string | null
+          modified_by?: string | null
+          name?: string | null
+          organisation_id?: string | null
+          project_image?: string | null
+          sampling_design_id?: number | null
+          sd_card_usage?: never
+          timelapse_interval_seconds?: number | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_activity_detection_sensitivity_id_fkey"
+            columns: ["activity_detection_sensitivity_id"]
+            isOneToOne: false
+            referencedRelation: "activity_sensitivity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_capture_method_id_fkey"
+            columns: ["capture_method_id"]
+            isOneToOne: false
+            referencedRelation: "capture_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "projects_sampling_design_id_fkey"
+            columns: ["sampling_design_id"]
+            isOneToOne: false
+            referencedRelation: "sampling_designs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recent_activity_summary: {
         Row: {
@@ -1732,6 +1673,95 @@ export type Database = {
       }
     }
     Functions: {
+      _postgis_deprecate: {
+        Args: { newname: string; oldname: string; version: string }
+        Returns: undefined
+      }
+      _postgis_index_extent: {
+        Args: { col: string; tbl: unknown }
+        Returns: unknown
+      }
+      _postgis_pgsql_version: { Args: never; Returns: string }
+      _postgis_scripts_pgsql_version: { Args: never; Returns: string }
+      _postgis_selectivity: {
+        Args: { att_name: string; geom: unknown; mode?: string; tbl: unknown }
+        Returns: number
+      }
+      _postgis_stats: {
+        Args: { ""?: string; att_name: string; tbl: unknown }
+        Returns: string
+      }
+      _st_3dintersects: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_contains: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_containsproperly: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_coveredby:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      _st_covers:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      _st_crosses: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_dwithin: {
+        Args: {
+          geog1: unknown
+          geog2: unknown
+          tolerance: number
+          use_spheroid?: boolean
+        }
+        Returns: boolean
+      }
+      _st_equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      _st_intersects: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_linecrossingdirection: {
+        Args: { line1: unknown; line2: unknown }
+        Returns: number
+      }
+      _st_longestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      _st_maxdistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      _st_orderingequals: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_overlaps: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_sortablehash: { Args: { geom: unknown }; Returns: number }
+      _st_touches: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_voronoi: {
+        Args: {
+          clip?: unknown
+          g1: unknown
+          return_polygons?: boolean
+          tolerance?: number
+        }
+        Returns: unknown
+      }
+      _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       add_project_member: {
         Args: {
           p_granted_by: string
@@ -1741,6 +1771,175 @@ export type Database = {
         }
         Returns: Json
       }
+      addauth: { Args: { "": string }; Returns: boolean }
+      addgeometrycolumn:
+        | {
+            Args: {
+              column_name: string
+              new_dim: number
+              new_srid: number
+              new_type: string
+              schema_name: string
+              table_name: string
+              use_typmod?: boolean
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              column_name: string
+              new_dim: number
+              new_srid: number
+              new_type: string
+              table_name: string
+              use_typmod?: boolean
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              catalog_name: string
+              column_name: string
+              new_dim: number
+              new_srid_in: number
+              new_type: string
+              schema_name: string
+              table_name: string
+              use_typmod?: boolean
+            }
+            Returns: string
+          }
+      disablelongtransactions: { Args: never; Returns: string }
+      dropgeometrycolumn:
+        | {
+            Args: {
+              column_name: string
+              schema_name: string
+              table_name: string
+            }
+            Returns: string
+          }
+        | { Args: { column_name: string; table_name: string }; Returns: string }
+        | {
+            Args: {
+              catalog_name: string
+              column_name: string
+              schema_name: string
+              table_name: string
+            }
+            Returns: string
+          }
+      dropgeometrytable:
+        | { Args: { schema_name: string; table_name: string }; Returns: string }
+        | { Args: { table_name: string }; Returns: string }
+        | {
+            Args: {
+              catalog_name: string
+              schema_name: string
+              table_name: string
+            }
+            Returns: string
+          }
+      enablelongtransactions: { Args: never; Returns: string }
+      equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      geometry: { Args: { "": string }; Returns: unknown }
+      geometry_above: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_below: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_cmp: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      geometry_contained_3d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_contains: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_contains_3d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_distance_box: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      geometry_distance_centroid: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      geometry_eq: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_ge: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_gt: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_le: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_left: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_lt: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overabove: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overbelow: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overlaps: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overlaps_3d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overleft: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overright: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_right: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_same: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_same_3d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_within: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geomfromewkt: { Args: { "": string }; Returns: unknown }
       get_current_user_id: { Args: never; Returns: string }
       get_organisation_report: {
         Args: {
@@ -1815,6 +2014,7 @@ export type Database = {
         Args: { organisation_id?: string; user_id?: string }
         Returns: string
       }
+      gettransactionid: { Args: never; Returns: unknown }
       has_organisation_role: {
         Args: {
           organisation_id?: string
@@ -1831,8 +2031,47 @@ export type Database = {
         Args: { required_role?: string; user_id?: string }
         Returns: boolean
       }
-      pull_changes: { Args: { last_pulled_at: number }; Returns: Json }
-      push_changes: { Args: { changes: Json }; Returns: undefined }
+      longtransactionsenabled: { Args: never; Returns: boolean }
+      populate_geometry_columns:
+        | { Args: { use_typmod?: boolean }; Returns: string }
+        | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
+      postgis_constraint_dims: {
+        Args: { geomcolumn: string; geomschema: string; geomtable: string }
+        Returns: number
+      }
+      postgis_constraint_srid: {
+        Args: { geomcolumn: string; geomschema: string; geomtable: string }
+        Returns: number
+      }
+      postgis_constraint_type: {
+        Args: { geomcolumn: string; geomschema: string; geomtable: string }
+        Returns: string
+      }
+      postgis_extensions_upgrade: { Args: never; Returns: string }
+      postgis_full_version: { Args: never; Returns: string }
+      postgis_geos_version: { Args: never; Returns: string }
+      postgis_lib_build_date: { Args: never; Returns: string }
+      postgis_lib_revision: { Args: never; Returns: string }
+      postgis_lib_version: { Args: never; Returns: string }
+      postgis_libjson_version: { Args: never; Returns: string }
+      postgis_liblwgeom_version: { Args: never; Returns: string }
+      postgis_libprotobuf_version: { Args: never; Returns: string }
+      postgis_libxml_version: { Args: never; Returns: string }
+      postgis_proj_version: { Args: never; Returns: string }
+      postgis_scripts_build_date: { Args: never; Returns: string }
+      postgis_scripts_installed: { Args: never; Returns: string }
+      postgis_scripts_released: { Args: never; Returns: string }
+      postgis_svn_version: { Args: never; Returns: string }
+      postgis_type_name: {
+        Args: {
+          coord_dimension: number
+          geomname: string
+          use_new_name?: boolean
+        }
+        Returns: string
+      }
+      postgis_version: { Args: never; Returns: string }
+      postgis_wagyu_version: { Args: never; Returns: string }
       remove_project_member: {
         Args: { p_project_id: string; p_removed_by: string; p_user_id: string }
         Returns: Json
@@ -1844,7 +2083,588 @@ export type Database = {
         Args: { p_project_id: string; p_user_id: string }
         Returns: undefined
       }
-      to_timestamp_ms: { Args: { epoch_ms: number }; Returns: string }
+      st_3dclosestpoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_3ddistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_3dintersects: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_3dlongestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_3dmakebox: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_3dmaxdistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_3dshortestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_addpoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_angle:
+        | { Args: { line1: unknown; line2: unknown }; Returns: number }
+        | {
+            Args: { pt1: unknown; pt2: unknown; pt3: unknown; pt4?: unknown }
+            Returns: number
+          }
+      st_area:
+        | { Args: { geog: unknown; use_spheroid?: boolean }; Returns: number }
+        | { Args: { "": string }; Returns: number }
+      st_asencodedpolyline: {
+        Args: { geom: unknown; nprecision?: number }
+        Returns: string
+      }
+      st_asewkt: { Args: { "": string }; Returns: string }
+      st_asgeojson:
+        | {
+            Args: {
+              geom_column?: string
+              maxdecimaldigits?: number
+              pretty_bool?: boolean
+              r: Record<string, unknown>
+            }
+            Returns: string
+          }
+        | {
+            Args: { geom: unknown; maxdecimaldigits?: number; options?: number }
+            Returns: string
+          }
+        | {
+            Args: { geog: unknown; maxdecimaldigits?: number; options?: number }
+            Returns: string
+          }
+        | { Args: { "": string }; Returns: string }
+      st_asgml:
+        | {
+            Args: {
+              geom: unknown
+              id?: string
+              maxdecimaldigits?: number
+              nprefix?: string
+              options?: number
+              version: number
+            }
+            Returns: string
+          }
+        | {
+            Args: { geom: unknown; maxdecimaldigits?: number; options?: number }
+            Returns: string
+          }
+        | {
+            Args: {
+              geog: unknown
+              id?: string
+              maxdecimaldigits?: number
+              nprefix?: string
+              options?: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              geog: unknown
+              id?: string
+              maxdecimaldigits?: number
+              nprefix?: string
+              options?: number
+              version: number
+            }
+            Returns: string
+          }
+        | { Args: { "": string }; Returns: string }
+      st_askml:
+        | {
+            Args: { geom: unknown; maxdecimaldigits?: number; nprefix?: string }
+            Returns: string
+          }
+        | {
+            Args: { geog: unknown; maxdecimaldigits?: number; nprefix?: string }
+            Returns: string
+          }
+        | { Args: { "": string }; Returns: string }
+      st_aslatlontext: {
+        Args: { geom: unknown; tmpl?: string }
+        Returns: string
+      }
+      st_asmarc21: { Args: { format?: string; geom: unknown }; Returns: string }
+      st_asmvtgeom: {
+        Args: {
+          bounds: unknown
+          buffer?: number
+          clip_geom?: boolean
+          extent?: number
+          geom: unknown
+        }
+        Returns: unknown
+      }
+      st_assvg:
+        | {
+            Args: { geom: unknown; maxdecimaldigits?: number; rel?: number }
+            Returns: string
+          }
+        | {
+            Args: { geog: unknown; maxdecimaldigits?: number; rel?: number }
+            Returns: string
+          }
+        | { Args: { "": string }; Returns: string }
+      st_astext: { Args: { "": string }; Returns: string }
+      st_astwkb:
+        | {
+            Args: {
+              geom: unknown[]
+              ids: number[]
+              prec?: number
+              prec_m?: number
+              prec_z?: number
+              with_boxes?: boolean
+              with_sizes?: boolean
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              geom: unknown
+              prec?: number
+              prec_m?: number
+              prec_z?: number
+              with_boxes?: boolean
+              with_sizes?: boolean
+            }
+            Returns: string
+          }
+      st_asx3d: {
+        Args: { geom: unknown; maxdecimaldigits?: number; options?: number }
+        Returns: string
+      }
+      st_azimuth:
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: number }
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: number }
+      st_boundingdiagonal: {
+        Args: { fits?: boolean; geom: unknown }
+        Returns: unknown
+      }
+      st_buffer:
+        | {
+            Args: { geom: unknown; options?: string; radius: number }
+            Returns: unknown
+          }
+        | {
+            Args: { geom: unknown; quadsegs: number; radius: number }
+            Returns: unknown
+          }
+      st_centroid: { Args: { "": string }; Returns: unknown }
+      st_clipbybox2d: {
+        Args: { box: unknown; geom: unknown }
+        Returns: unknown
+      }
+      st_closestpoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_collect: { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
+      st_concavehull: {
+        Args: {
+          param_allow_holes?: boolean
+          param_geom: unknown
+          param_pctconvex: number
+        }
+        Returns: unknown
+      }
+      st_contains: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_containsproperly: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_coorddim: { Args: { geometry: unknown }; Returns: number }
+      st_coveredby:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_covers:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_crosses: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_curvetoline: {
+        Args: { flags?: number; geom: unknown; tol?: number; toltype?: number }
+        Returns: unknown
+      }
+      st_delaunaytriangles: {
+        Args: { flags?: number; g1: unknown; tolerance?: number }
+        Returns: unknown
+      }
+      st_difference: {
+        Args: { geom1: unknown; geom2: unknown; gridsize?: number }
+        Returns: unknown
+      }
+      st_disjoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_distance:
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: number }
+        | {
+            Args: { geog1: unknown; geog2: unknown; use_spheroid?: boolean }
+            Returns: number
+          }
+      st_distancesphere:
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: number }
+        | {
+            Args: { geom1: unknown; geom2: unknown; radius: number }
+            Returns: number
+          }
+      st_distancespheroid: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_dwithin: {
+        Args: {
+          geog1: unknown
+          geog2: unknown
+          tolerance: number
+          use_spheroid?: boolean
+        }
+        Returns: boolean
+      }
+      st_equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_expand:
+        | {
+            Args: {
+              dm?: number
+              dx: number
+              dy: number
+              dz?: number
+              geom: unknown
+            }
+            Returns: unknown
+          }
+        | {
+            Args: { box: unknown; dx: number; dy: number; dz?: number }
+            Returns: unknown
+          }
+        | { Args: { box: unknown; dx: number; dy: number }; Returns: unknown }
+      st_force3d: { Args: { geom: unknown; zvalue?: number }; Returns: unknown }
+      st_force3dm: {
+        Args: { geom: unknown; mvalue?: number }
+        Returns: unknown
+      }
+      st_force3dz: {
+        Args: { geom: unknown; zvalue?: number }
+        Returns: unknown
+      }
+      st_force4d: {
+        Args: { geom: unknown; mvalue?: number; zvalue?: number }
+        Returns: unknown
+      }
+      st_generatepoints:
+        | {
+            Args: { area: unknown; npoints: number; seed: number }
+            Returns: unknown
+          }
+        | { Args: { area: unknown; npoints: number }; Returns: unknown }
+      st_geogfromtext: { Args: { "": string }; Returns: unknown }
+      st_geographyfromtext: { Args: { "": string }; Returns: unknown }
+      st_geohash:
+        | { Args: { geog: unknown; maxchars?: number }; Returns: string }
+        | { Args: { geom: unknown; maxchars?: number }; Returns: string }
+      st_geomcollfromtext: { Args: { "": string }; Returns: unknown }
+      st_geometricmedian: {
+        Args: {
+          fail_if_not_converged?: boolean
+          g: unknown
+          max_iter?: number
+          tolerance?: number
+        }
+        Returns: unknown
+      }
+      st_geometryfromtext: { Args: { "": string }; Returns: unknown }
+      st_geomfromewkt: { Args: { "": string }; Returns: unknown }
+      st_geomfromgeojson:
+        | { Args: { "": Json }; Returns: unknown }
+        | { Args: { "": Json }; Returns: unknown }
+        | { Args: { "": string }; Returns: unknown }
+      st_geomfromgml: { Args: { "": string }; Returns: unknown }
+      st_geomfromkml: { Args: { "": string }; Returns: unknown }
+      st_geomfrommarc21: { Args: { marc21xml: string }; Returns: unknown }
+      st_geomfromtext: { Args: { "": string }; Returns: unknown }
+      st_gmltosql: { Args: { "": string }; Returns: unknown }
+      st_hasarc: { Args: { geometry: unknown }; Returns: boolean }
+      st_hausdorffdistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_hexagon: {
+        Args: { cell_i: number; cell_j: number; origin?: unknown; size: number }
+        Returns: unknown
+      }
+      st_hexagongrid: {
+        Args: { bounds: unknown; size: number }
+        Returns: Record<string, unknown>[]
+      }
+      st_interpolatepoint: {
+        Args: { line: unknown; point: unknown }
+        Returns: number
+      }
+      st_intersection: {
+        Args: { geom1: unknown; geom2: unknown; gridsize?: number }
+        Returns: unknown
+      }
+      st_intersects:
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+      st_isvaliddetail: {
+        Args: { flags?: number; geom: unknown }
+        Returns: Database["public"]["CompositeTypes"]["valid_detail"]
+        SetofOptions: {
+          from: "*"
+          to: "valid_detail"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      st_length:
+        | { Args: { geog: unknown; use_spheroid?: boolean }; Returns: number }
+        | { Args: { "": string }; Returns: number }
+      st_letters: { Args: { font?: Json; letters: string }; Returns: unknown }
+      st_linecrossingdirection: {
+        Args: { line1: unknown; line2: unknown }
+        Returns: number
+      }
+      st_linefromencodedpolyline: {
+        Args: { nprecision?: number; txtin: string }
+        Returns: unknown
+      }
+      st_linefromtext: { Args: { "": string }; Returns: unknown }
+      st_linelocatepoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_linetocurve: { Args: { geometry: unknown }; Returns: unknown }
+      st_locatealong: {
+        Args: { geometry: unknown; leftrightoffset?: number; measure: number }
+        Returns: unknown
+      }
+      st_locatebetween: {
+        Args: {
+          frommeasure: number
+          geometry: unknown
+          leftrightoffset?: number
+          tomeasure: number
+        }
+        Returns: unknown
+      }
+      st_locatebetweenelevations: {
+        Args: { fromelevation: number; geometry: unknown; toelevation: number }
+        Returns: unknown
+      }
+      st_longestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_makebox2d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_makeline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_makevalid: {
+        Args: { geom: unknown; params: string }
+        Returns: unknown
+      }
+      st_maxdistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_minimumboundingcircle: {
+        Args: { inputgeom: unknown; segs_per_quarter?: number }
+        Returns: unknown
+      }
+      st_mlinefromtext: { Args: { "": string }; Returns: unknown }
+      st_mpointfromtext: { Args: { "": string }; Returns: unknown }
+      st_mpolyfromtext: { Args: { "": string }; Returns: unknown }
+      st_multilinestringfromtext: { Args: { "": string }; Returns: unknown }
+      st_multipointfromtext: { Args: { "": string }; Returns: unknown }
+      st_multipolygonfromtext: { Args: { "": string }; Returns: unknown }
+      st_node: { Args: { g: unknown }; Returns: unknown }
+      st_normalize: { Args: { geom: unknown }; Returns: unknown }
+      st_offsetcurve: {
+        Args: { distance: number; line: unknown; params?: string }
+        Returns: unknown
+      }
+      st_orderingequals: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_overlaps: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_perimeter: {
+        Args: { geog: unknown; use_spheroid?: boolean }
+        Returns: number
+      }
+      st_pointfromtext: { Args: { "": string }; Returns: unknown }
+      st_pointm: {
+        Args: {
+          mcoordinate: number
+          srid?: number
+          xcoordinate: number
+          ycoordinate: number
+        }
+        Returns: unknown
+      }
+      st_pointz: {
+        Args: {
+          srid?: number
+          xcoordinate: number
+          ycoordinate: number
+          zcoordinate: number
+        }
+        Returns: unknown
+      }
+      st_pointzm: {
+        Args: {
+          mcoordinate: number
+          srid?: number
+          xcoordinate: number
+          ycoordinate: number
+          zcoordinate: number
+        }
+        Returns: unknown
+      }
+      st_polyfromtext: { Args: { "": string }; Returns: unknown }
+      st_polygonfromtext: { Args: { "": string }; Returns: unknown }
+      st_project: {
+        Args: { azimuth: number; distance: number; geog: unknown }
+        Returns: unknown
+      }
+      st_quantizecoordinates: {
+        Args: {
+          g: unknown
+          prec_m?: number
+          prec_x: number
+          prec_y?: number
+          prec_z?: number
+        }
+        Returns: unknown
+      }
+      st_reduceprecision: {
+        Args: { geom: unknown; gridsize: number }
+        Returns: unknown
+      }
+      st_relate: { Args: { geom1: unknown; geom2: unknown }; Returns: string }
+      st_removerepeatedpoints: {
+        Args: { geom: unknown; tolerance?: number }
+        Returns: unknown
+      }
+      st_segmentize: {
+        Args: { geog: unknown; max_segment_length: number }
+        Returns: unknown
+      }
+      st_setsrid:
+        | { Args: { geom: unknown; srid: number }; Returns: unknown }
+        | { Args: { geog: unknown; srid: number }; Returns: unknown }
+      st_sharedpaths: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_shortestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_simplifypolygonhull: {
+        Args: { geom: unknown; is_outer?: boolean; vertex_fraction: number }
+        Returns: unknown
+      }
+      st_split: { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
+      st_square: {
+        Args: { cell_i: number; cell_j: number; origin?: unknown; size: number }
+        Returns: unknown
+      }
+      st_squaregrid: {
+        Args: { bounds: unknown; size: number }
+        Returns: Record<string, unknown>[]
+      }
+      st_srid:
+        | { Args: { geog: unknown }; Returns: number }
+        | { Args: { geom: unknown }; Returns: number }
+      st_subdivide: {
+        Args: { geom: unknown; gridsize?: number; maxvertices?: number }
+        Returns: unknown[]
+      }
+      st_swapordinates: {
+        Args: { geom: unknown; ords: unknown }
+        Returns: unknown
+      }
+      st_symdifference: {
+        Args: { geom1: unknown; geom2: unknown; gridsize?: number }
+        Returns: unknown
+      }
+      st_symmetricdifference: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_tileenvelope: {
+        Args: {
+          bounds?: unknown
+          margin?: number
+          x: number
+          y: number
+          zoom: number
+        }
+        Returns: unknown
+      }
+      st_touches: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_transform:
+        | { Args: { geom: unknown; to_proj: string }; Returns: unknown }
+        | {
+            Args: { from_proj: string; geom: unknown; to_srid: number }
+            Returns: unknown
+          }
+        | {
+            Args: { from_proj: string; geom: unknown; to_proj: string }
+            Returns: unknown
+          }
+      st_triangulatepolygon: { Args: { g1: unknown }; Returns: unknown }
+      st_union:
+        | {
+            Args: { geom1: unknown; geom2: unknown; gridsize: number }
+            Returns: unknown
+          }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
+      st_voronoilines: {
+        Args: { extend_to?: unknown; g1: unknown; tolerance?: number }
+        Returns: unknown
+      }
+      st_voronoipolygons: {
+        Args: { extend_to?: unknown; g1: unknown; tolerance?: number }
+        Returns: unknown
+      }
+      st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_wkbtosql: { Args: { wkb: string }; Returns: unknown }
+      st_wkttosql: { Args: { "": string }; Returns: unknown }
+      st_wrapx: {
+        Args: { geom: unknown; move: number; wrap: number }
+        Returns: unknown
+      }
+      unlockrows: { Args: { "": string }; Returns: number }
       update_project_member_role: {
         Args: {
           p_new_role: string
@@ -1854,12 +2674,30 @@ export type Database = {
         }
         Returns: Json
       }
+      updategeometrysrid: {
+        Args: {
+          catalogn_name: string
+          column_name: string
+          new_srid_in: number
+          schema_name: string
+          table_name: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
     }
     CompositeTypes: {
-      [_ in never]: never
+      geometry_dump: {
+        path: number[] | null
+        geom: unknown
+      }
+      valid_detail: {
+        valid: boolean | null
+        reason: string | null
+        location: unknown
+      }
     }
   }
 }

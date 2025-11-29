@@ -8,7 +8,7 @@ import User from './models/User'
 import Organisation from './models/Organisation'
 import SyncOutbox from './models/SyncOutbox'
 import SyncState from './models/SyncState'
-import ProjectMember from './models/ProjectMember'
+import UserRole from './models/UserRole'
 import Device from './models/Device'
 import DevicePreparation from './models/DevicePreparation'
 // Reference Data Models
@@ -34,7 +34,7 @@ const database = new Database({
         Organisation,
         SyncOutbox,
         SyncState,
-        ProjectMember,
+        UserRole,
         Device,
         DevicePreparation,
         // Reference Data

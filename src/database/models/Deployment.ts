@@ -24,6 +24,7 @@ export default class Deployment extends Model {
     @text('camera_location_description') cameraLocationDescription?: string
     @text('camera_location_image_path') cameraLocationImagePath?: string
     @json('deployment_photos', (raw: any) => raw) deploymentPhotos: any
+    @field('modified_by') modifiedBy!: string
 
     @readonly @date('created_at') createdAt!: number
     @readonly @date('updated_at') updatedAt!: number

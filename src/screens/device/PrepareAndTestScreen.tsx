@@ -21,7 +21,7 @@ export const PrepareAndTestScreen = () => {
     const route = useRoute<PrepareAndTestRouteProp>()
     const navigation = useNavigation()
     const { deviceId } = route.params
-    const user = useAppSelector((state) => state.auth.user)
+    const user = useAppSelector((state) => state.authentication.user)
 
     const [device, setDevice] = useState<Device | undefined>()
     const [preparation, setPreparation] = useState<DevicePreparation | undefined>()
@@ -189,7 +189,7 @@ export const PrepareAndTestScreen = () => {
                     <WWSelect
                         label="Project"
                         value={selectedProject}
-                        onValueChange={handleProjectChange}
+                        onChange={handleProjectChange}
                         options={[
                             { label: 'Select a project...', value: '' },
                             ...(projects?.map((p) => ({ label: p.name, value: p.id })) || []),

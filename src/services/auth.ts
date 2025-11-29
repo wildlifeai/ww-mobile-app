@@ -13,7 +13,7 @@ import {
 	UserRole,
 } from "../redux/api/auth/types"
 
-import type { Tables } from "../types/supabase"
+import type { Tables } from "../types/database.types"
 
 /**
  * Supabase Authentication Service
@@ -69,19 +69,20 @@ const fetchUserOrganisations = async (userId: string) => {
 			})
 		}
 
-		// Step 1: Get user_organisations (simple link table)
-		console.log("📋 Querying user_organisations for userId:", userId)
-		const { data: userOrgs, error: userOrgsError } = await supabase()
-			.from("user_organisations")
-			.select("organisation_id")
+		// Step 1: Get user roles (replaces user_organisations)
+		console.log("📋 Querying user_roles for userId:", userId)
+		const { data: userRoles, error: rolesError } = await supabase()
+			.from("user_roles")
+			.select("role, scope_type, scope_id")
 			.eq("user_id", userId)
+			.eq("is_active", true)
 
-		if (userOrgsError) {
-			console.error("❌ Error fetching user_organisations:", {
-				message: userOrgsError.message,
-				details: userOrgsError.details,
-				hint: userOrgsError.hint,
-				code: userOrgsError.code,
+		if (rolesError) {
+			console.error("❌ Error fetching user_roles:", {
+				message: rolesError.message,
+				details: rolesError.details,
+				hint: rolesError.hint,
+				code: rolesError.code,
 			})
 			return {
 				organisations: [],
@@ -90,14 +91,8 @@ const fetchUserOrganisations = async (userId: string) => {
 			}
 		}
 
-		if (!userOrgs || userOrgs.length === 0) {
-			console.warn("⚠️ No organisations found for user:", userId)
-			console.warn(
-				"   Backend team confirmed 8 user-org links exist. This may be:",
-			)
-			console.warn("   1. JWT token issue (check above DEBUG output)")
-			console.warn("   2. RLS policy blocking access")
-			console.warn("   3. Wrong Supabase URL/project")
+		if (!userRoles || userRoles.length === 0) {
+			console.warn("⚠️ No roles found for user:", userId)
 			return {
 				organisations: [],
 				role: "project_member" as const,
@@ -105,12 +100,13 @@ const fetchUserOrganisations = async (userId: string) => {
 			}
 		}
 
-		console.log("✅ Found", userOrgs.length, "user_organisation links")
+		console.log("✅ Found", userRoles.length, "user roles")
 
 		// Step 2: Get organisation details
-		const orgIds = userOrgs.map(
-			(uo: { organisation_id: string }) => uo.organisation_id,
-		)
+		// Extract unique organisation IDs from roles
+		const orgIds = [...new Set(userRoles
+			.filter(r => r.scope_type === 'organisation' && r.scope_id)
+			.map(r => r.scope_id as string))]
 		console.log("📋 Querying organisations table for IDs:", orgIds)
 		const { data: orgs, error: orgsError } = await supabase()
 			.from("organisations")
@@ -133,46 +129,16 @@ const fetchUserOrganisations = async (userId: string) => {
 
 		console.log("✅ Found", orgs?.length || 0, "organisations")
 
-		// Step 3: Get user roles for each organisation
-		// user_roles has: user_id, role, scope_type, scope_id
-		// For org-level roles: scope_type='organisation', scope_id=org_id
-		// For system-level roles: scope_type='system', scope_id=null (ww_admin)
-		console.log("📋 Querying user_roles for userId:", userId)
-		const { data: userRoles, error: rolesError } = await supabase()
-			.from("user_roles")
-			.select("role, scope_type, scope_id")
-			.eq("user_id", userId)
-			.eq("is_active", true)
+		// Step 3: Combine the data
+		const organisations = orgIds.map((orgId) => {
+			const org = orgs?.find((o) => o.id === orgId)
 
-		if (rolesError) {
-			console.error("❌ Error fetching user_roles:", {
-				message: rolesError.message,
-				details: rolesError.details,
-				hint: rolesError.hint,
-				code: rolesError.code,
-			})
-			return {
-				organisations: [],
-				role: "project_member" as const,
-				organisationId: null,
-			}
-		}
-
-		console.log("✅ Found", userRoles?.length || 0, "user roles")
-
-		// Step 4: Combine the data
-		const organisations = userOrgs.map((uo: { organisation_id: string }) => {
-			const org = orgs?.find(
-				(o: { id: string }) => o.id === uo.organisation_id,
+			// Find role for this organisation
+			const orgRole = userRoles.find(
+				(r) => r.scope_type === "organisation" && r.scope_id === orgId,
 			)
-
-			// Find role for this organisation (organisation-scoped or system-wide)
-			const orgRole = userRoles?.find(
-				(r: { scope_type: string; scope_id: string | null; role: string }) =>
-					r.scope_type === "organisation" && r.scope_id === uo.organisation_id,
-			)
-			const systemRole = userRoles?.find(
-				(r: { scope_type: string; role: string }) => r.scope_type === "system",
+			const systemRole = userRoles.find(
+				(r) => r.scope_type === "system" || r.scope_type === "global",
 			)
 
 			// System ww_admin role takes precedence over org-specific roles
@@ -200,7 +166,8 @@ const fetchUserOrganisations = async (userId: string) => {
 				: "project_member"
 
 		// Get default organisation (first one for now)
-		const organisationId = userOrgs[0].organisation_id
+		// Get default organisation (first one for now)
+		const organisationId = orgIds.length > 0 ? orgIds[0] : null
 
 		console.log("✅ Fetched user organisations:", {
 			organisations,
@@ -306,7 +273,7 @@ export const register = async (
 			password: credentials.password,
 			options: {
 				data: {
-					username: credentials.username,
+					name: credentials.name,
 					organization: credentials.organization,
 				},
 				emailRedirectTo: "wildlifewatcher://auth/callback",

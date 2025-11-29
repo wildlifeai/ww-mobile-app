@@ -11,6 +11,7 @@ export default class Device extends Model {
     @field('firmware_id') firmwareId!: string
     @field('last_battery_check') lastBatteryCheck!: string
     @field('last_sd_card_check') lastSdCardCheck!: string
+    @field('modified_by') modifiedBy!: string
 
     @readonly @date('created_at') createdAt!: Date
     @date('updated_at') updatedAt!: Date

@@ -5,11 +5,11 @@
 
 // Test setup for React Native environment
 
-import "react-native-gesture-handler/jestSetup"
-import mockAsyncStorage from "@react-native-async-storage/async-storage/jest/async-storage-mock"
+// import "react-native-gesture-handler/jestSetup"
+// import mockAsyncStorage from "@react-native-async-storage/async-storage/jest/async-storage-mock"
 
 // Mock AsyncStorage
-jest.mock("@react-native-async-storage/async-storage", () => mockAsyncStorage)
+// jest.mock("@react-native-async-storage/async-storage", () => mockAsyncStorage)
 
 // Mock React Native modules
 jest.mock("react-native/Libraries/EventEmitter/NativeEventEmitter")
@@ -59,48 +59,48 @@ jest.mock("expo-file-system", () => ({
 	moveAsync: jest.fn(),
 }))
 
-// Mock React Navigation
-jest.mock("@react-navigation/native", () => {
-	const actualNav = jest.requireActual("@react-navigation/native")
-	const { mockNavigation } = require("../setup/utils/testUtils")
-	return {
-		...actualNav,
-		useNavigation: () => mockNavigation,
-		useRoute: () => ({
-			params: {},
-		}),
-		useFocusEffect: jest.fn(),
-	}
-})
+	// Mock React Navigation
+	// jest.mock("@react-navigation/native", () => {
+	// 	const actualNav = jest.requireActual("@react-navigation/native")
+	// 	const { mockNavigation } = require("../setup/utils/testUtils")
+	// 	return {
+	// 		...actualNav,
+	// 		useNavigation: () => mockNavigation,
+	// 		useRoute: () => ({
+	// 			params: {},
+	// 		}),
+	// 		useFocusEffect: jest.fn(),
+	// 	}
+	// })
 
-// Mock React Native Paper
-jest.mock("react-native-paper", () => ({
-	...jest.requireActual("react-native-paper"),
-	MD3LightTheme: {
-		colors: {
-			primary: "#6200EE",
-			onPrimary: "#FFFFFF",
-			background: "#FFFFFF",
-			surface: "#FFFFFF",
-		},
-	},
-}))
+	// Mock React Native Paper
+	// jest.mock("react-native-paper", () => ({
+	// 	...jest.requireActual("react-native-paper"),
+	// 	MD3LightTheme: {
+	// 		colors: {
+	// 			primary: "#6200EE",
+	// 			onPrimary: "#FFFFFF",
+	// 			background: "#FFFFFF",
+	// 			surface: "#FFFFFF",
+	// 		},
+	// 	},
+	// }))
 
-// Mock React Native Vector Icons
-jest.mock("react-native-vector-icons/MaterialIcons", () => "MaterialIcon")
-jest.mock("react-native-vector-icons/FontAwesome", () => "FontAwesome")
+	// Mock React Native Vector Icons
+	// jest.mock("react-native-vector-icons/MaterialIcons", () => "MaterialIcon")
+	// jest.mock("react-native-vector-icons/FontAwesome", () => "FontAwesome")
 
-// Mock Supabase service with proper mock client
-jest.mock("../../src/services/supabase", () => ({
-	supabase: require("../__mocks__/supabase").mockSupabaseClient,
-}))
+	// Mock Supabase service with proper mock client
+	// jest.mock("../../src/services/supabase", () => ({
+	// 	getSupabaseClient: () => require("../__mocks__/supabase").mockSupabaseClient,
+	// }))
 
-// Note: Auth service mocks removed to allow integration tests to test real implementation
-// Individual test files can mock specific functions as needed
+	// Note: Auth service mocks removed to allow integration tests to test real implementation
+	// Individual test files can mock specific functions as needed
 
-// Mock environment variables for Supabase
-process.env.EXPO_PUBLIC_SUPABASE_URL = "https://test-supabase-url.supabase.co"
-process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key"
+	// Mock environment variables for Supabase
+	(process.env as any).EXPO_PUBLIC_SUPABASE_URL = "https://test-supabase-url.supabase.co";
+(process.env as any).EXPO_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
 
 // Mock BLE Manager
 jest.mock("react-native-ble-manager", () => ({

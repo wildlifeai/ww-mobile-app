@@ -157,7 +157,7 @@ export const mockAuthError = (message = "Authentication failed") => {
 		status: 400,
 		code: "auth_error",
 		__isAuthError: true,
-	}
+	} as any
 
 	const response = {
 		data: { user: null as any, session: null as any },
@@ -181,7 +181,7 @@ export const mockAuthSignOutError = (message = "Sign out failed") => {
 		status: 400,
 		code: "auth_error",
 		__isAuthError: true,
-	}
+	} as any
 
 	const response = { error }
 	mockSupabaseClient.auth.signOut.mockResolvedValue(response)

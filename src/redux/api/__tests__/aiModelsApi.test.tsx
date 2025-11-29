@@ -11,7 +11,7 @@
 import { configureStore } from "@reduxjs/toolkit"
 import { waitFor } from "@testing-library/react-native"
 import { aiModelsApi, useGetAIModelsQuery } from "../aiModelsApi"
-import type { Database } from "../../../types/supabase"
+import type { Database } from "../../../types/database.types"
 
 type AIModel = Database["public"]["Tables"]["ai_models"]["Row"]
 

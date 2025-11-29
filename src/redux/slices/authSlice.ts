@@ -171,22 +171,23 @@ export const authSlice = createSlice({
 			storeDataToStorage(AUTH_STORAGE_KEY, null)
 		},
 		setInitialState: (state, action: PayloadAction<AuthResponse | null>) => {
-			if (action.payload) {
-				state.token = action.payload.jwt
-				state.refreshToken = action.payload.refresh_token
-				state.user = action.payload.user
-				state.permissions = calculatePermissions(action.payload.user.role)
+			const payload = action.payload
+			if (payload) {
+				state.token = payload.jwt
+				state.refreshToken = payload.refresh_token
+				state.user = payload.user
+				state.permissions = calculatePermissions(payload.user.role)
 				state.sessionPersisted = true
 
 				// Set current organisation
 				if (
-					action.payload.user.organisations &&
-					action.payload.user.organisations.length > 0
+					payload.user.organisations &&
+					payload.user.organisations.length > 0
 				) {
 					const defaultOrg =
-						action.payload.user.organisations.find(
-							(org) => org.id === action.payload.user.organisation_id,
-						) || action.payload.user.organisations[0]
+						payload.user.organisations.find(
+							(org) => org.id === payload.user.organisation_id,
+						) || payload.user.organisations[0]
 					state.currentOrganisation = defaultOrg
 					state.permissions = calculatePermissions(defaultOrg.role)
 				}

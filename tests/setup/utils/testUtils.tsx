@@ -9,9 +9,8 @@ import { NavigationContainer } from "@react-navigation/native"
 import { PaperProvider } from "react-native-paper"
 import { configureStore } from "@reduxjs/toolkit"
 import authSlice from "../../../src/redux/slices/authSlice"
-import projectsSlice from "../../../src/redux/slices/projectsSlice"
 import deploymentsSlice from "../../../src/redux/slices/deploymentsSlice"
-import offlineSlice from "../../../src/redux/slices/offlineSlice"
+import syncSlice from "../../../src/redux/slices/syncSlice"
 import wwAdminSlice from "../../../src/redux/slices/wwAdminSlice"
 import { api } from "../../../src/redux/api"
 
@@ -34,9 +33,8 @@ export function createTestStore(preloadedState = {}) {
 	return configureStore({
 		reducer: {
 			authentication: authSlice,
-			projects: projectsSlice,
 			deployments: deploymentsSlice,
-			offline: offlineSlice,
+			sync: syncSlice,
 			wwAdmin: wwAdminSlice,
 			api: api.reducer,
 		},

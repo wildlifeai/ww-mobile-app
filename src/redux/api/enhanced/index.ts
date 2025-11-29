@@ -147,7 +147,7 @@ export const enhancedApi = createApi({
 				success: true,
 			}),
 			transformErrorResponse: (error) => ({
-				error: error.data?.message || "Failed to create project",
+				error: (error as any).data?.message || "Failed to create project",
 				success: false,
 			}),
 		}),
@@ -342,7 +342,7 @@ export const enhancedApi = createApi({
 				success: true,
 			}),
 			transformErrorResponse: (error) => ({
-				error: error.data?.message || "Login failed",
+				error: (error as any).data?.message || "Login failed",
 				success: false,
 			}),
 		}),
@@ -389,7 +389,7 @@ export const enhancedApi = createApi({
 
 					return { data: { channel, status: "subscribed" } }
 				} catch (error) {
-					return { error: { status: "SUBSCRIPTION_ERROR", data: error } }
+					return { error: { status: "CUSTOM_ERROR", error: "Subscription error", data: error } }
 				}
 			},
 		}),

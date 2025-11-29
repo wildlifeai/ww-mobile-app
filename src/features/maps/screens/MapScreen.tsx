@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
 	// Deployment Callout
 	callout: {
 		padding: 10,
-		minW: 150,
+		minWidth: 150,
 	},
 	calloutTitle: {
 		fontSize: 14,

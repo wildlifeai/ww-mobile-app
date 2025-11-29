@@ -9,7 +9,7 @@ import {
 	useSupabaseClient,
 	useSupabaseClientOptional,
 } from "../useSupabaseClient"
-import { getEnvironmentConfig } from "../../config/EnvironmentManager"
+
 
 // Mock services/supabase module
 const mockResetSupabaseClient = jest.fn()
@@ -17,18 +17,18 @@ const mockInitializeSupabaseClient = jest.fn()
 const mockGetSupabaseClient = jest.fn()
 const mockOnSupabaseClientChange = jest.fn((callback) => {
 	// Store callback for manual triggering in tests
-	;(global as any).__supabaseClientChangeCallback = callback
+	; (global as any).__supabaseClientChangeCallback = callback
 	return jest.fn() // unsubscribe function
 })
 const mockReconnectSupabase = jest.fn()
 
 jest.mock("../../services/supabase", () => ({
 	...jest.requireActual("../../services/supabase"),
-	initializeSupabaseClient: mockInitializeSupabaseClient,
-	getSupabaseClient: mockGetSupabaseClient,
-	onSupabaseClientChange: mockOnSupabaseClientChange,
-	reconnectSupabase: mockReconnectSupabase,
-	resetSupabaseClient: mockResetSupabaseClient,
+	initializeSupabaseClient: (...args: any[]) => mockInitializeSupabaseClient(...args),
+	getSupabaseClient: (...args: any[]) => mockGetSupabaseClient(...args),
+	onSupabaseClientChange: (...args: any[]) => mockOnSupabaseClientChange(...args),
+	reconnectSupabase: (...args: any[]) => mockReconnectSupabase(...args),
+	resetSupabaseClient: (...args: any[]) => mockResetSupabaseClient(...args),
 }))
 
 jest.mock("../../config/EnvironmentManager")
@@ -134,7 +134,7 @@ describe("useSupabaseClient", () => {
 
 			const consoleErrorSpy = jest
 				.spyOn(console, "error")
-				.mockImplementation(() => {})
+				.mockImplementation(() => { })
 
 			const { result } = renderHook(() => useSupabaseClient())
 
@@ -213,7 +213,7 @@ describe("useSupabaseClient", () => {
 
 			const consoleErrorSpy = jest
 				.spyOn(console, "error")
-				.mockImplementation(() => {})
+				.mockImplementation(() => { })
 
 			// Trigger client change callback
 			const callback = (global as any).__supabaseClientChangeCallback
@@ -243,7 +243,7 @@ describe("useSupabaseClient", () => {
 
 			const consoleErrorSpy = jest
 				.spyOn(console, "error")
-				.mockImplementation(() => {})
+				.mockImplementation(() => { })
 
 			const { result } = renderHook(() => useSupabaseClientOptional())
 
@@ -315,8 +315,8 @@ describe("useSupabaseClient", () => {
 
 			// Wait for updates
 			await waitFor(() => {
-				rerender1()
-				rerender2()
+				rerender1({})
+				rerender2({})
 				expect(result1.current).toBe(newClient)
 				expect(result2.current).toBe(newClient)
 			})

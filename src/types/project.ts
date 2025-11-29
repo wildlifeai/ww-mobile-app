@@ -3,7 +3,7 @@
  * Type definitions for project-related data structures
  */
 
-import { Database } from "./supabase"
+import { Database } from "./database.types"
 
 // Helper type to extract table types from Supabase schema
 type Tables<T extends keyof Database["public"]["Tables"]> =
@@ -18,9 +18,23 @@ export type Project = Tables<"projects">
 export type ProjectInsert = TablesInsert<"projects">
 export type ProjectUpdate = TablesUpdate<"projects">
 
-export type ProjectMember = Tables<"project_members">
+// Note: project_members table removed - using backward-compatible type
+export type ProjectMember = {
+	id: string
+	project_id: string
+	user_id: string
+	role: string
+	created_at: string
+	updated_at: string
+}
 export type Organisation = Tables<"organisations">
-export type UserOrganisation = Tables<"user_organisations">
+// Note: user_organisations table removed
+export type UserOrganisation = {
+	id: string
+	user_id: string
+	organisation_id: string
+	role: string
+}
 export type UserRole = Tables<"user_roles">
 
 // User profile type (from public.users extension table)
@@ -33,6 +47,7 @@ export interface ProjectWithDetails extends Project {
 	organisation?: Organisation
 	owner_profile?: UserProfile | null
 	created_by_profile?: UserProfile | null
+	role?: string
 	// Computed fields (from backend queries or LoRaWAN service)
 	member_count?: number
 	deployment_count?: number
@@ -43,7 +58,7 @@ export interface ProjectWithDetails extends Project {
 
 export interface ProjectMemberWithProfile extends ProjectMember {
 	user_profile?: UserProfile
-	role?: {
+	role_details?: {
 		value: string
 		description: string
 	}

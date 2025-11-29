@@ -115,7 +115,7 @@ describe("ProjectService Integration - Live Backend", () => {
 			} = await supabase.auth.getSession()
 
 			// Verify configuration is pointing to local backend
-			const url = process.env.EXPO_PUBLIC_SUPABASE_URL
+			const url = (process.env as any).EXPO_PUBLIC_SUPABASE_URL
 			expect(url).toBe("http://127.0.0.1:54321")
 		})
 	})

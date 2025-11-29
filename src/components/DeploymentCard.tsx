@@ -4,7 +4,7 @@ import { WWText } from "./ui/WWText"
 import { Deployment } from "../types/api.types"
 
 type Props = {
-	deployment: Deployment
+	deployment: Deployment & { device_id?: string }
 	onPress?: (deploymentId: string) => void
 }
 

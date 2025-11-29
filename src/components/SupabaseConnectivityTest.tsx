@@ -7,7 +7,7 @@ import type {
 	REALTIME_SUBSCRIBE_STATES,
 } from "@supabase/supabase-js"
 import { useSupabaseAuth } from "../hooks/useSupabaseAuth"
-import type { Tables } from "../types/supabase"
+import type { Tables } from "../types/database.types"
 
 type TestResult = {
 	name: string
@@ -105,7 +105,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 			"devices",
 			"projects",
 			"deployments",
-			"roles",
+			"user_roles",
 		] as const
 
 		for (const table of tables) {
@@ -117,7 +117,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 
 	const testPublicDataQuery = async () => {
 		// Test querying public/reference data
-		const { data, error } = await getSupabaseClient().from("roles").select("*").limit(5)
+		const { data, error } = await getSupabaseClient().from("activity_sensitivity").select("*").limit(5)
 
 		if (error) throw new Error(`Public query failed: ${error.message}`)
 		if (!data) throw new Error("No data returned from public query")
@@ -126,11 +126,13 @@ export const SupabaseConnectivityTest: React.FC = () => {
 	const testAuthenticatedQuery = async () => {
 		if (!isLoggedIn) throw new Error("User not authenticated")
 
+		if (!user?.id) throw new Error("User ID missing")
+
 		// Test authenticated query to users table
 		const { data, error } = await getSupabaseClient()
 			.from("users")
 			.select("*")
-			.eq("id", user?.id)
+			.eq("id", user.id)
 			.single()
 
 		if (error) throw new Error(`Authenticated query failed: ${error.message}`)

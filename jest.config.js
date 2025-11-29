@@ -2,7 +2,7 @@ module.exports = {
 	preset: "react-native",
 	setupFiles: ["<rootDir>/jest.setup.js"],
 	setupFilesAfterEnv: [
-		"<rootDir>/tests/setup/setupTests.ts",
+		"<rootDir>/tests/setup/sanitySetup.ts",
 		"@testing-library/jest-native/extend-expect",
 	],
 	testEnvironment: "node",
@@ -31,7 +31,8 @@ module.exports = {
 		// Root level tests
 		"<rootDir>/__tests__/**/*.{js,jsx,ts,tsx}",
 	],
-	testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/e2e/"],
+	testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/e2e/", "<rootDir>/project-context/"],
+	modulePathIgnorePatterns: ["<rootDir>/project-context/"],
 	collectCoverageFrom: [
 		"src/**/*.{ts,tsx}",
 		"!src/**/*.d.ts",

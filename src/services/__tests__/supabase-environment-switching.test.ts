@@ -28,6 +28,8 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
 // Mock dependencies
+jest.unmock("../supabase")
+jest.unmock("../../services/supabase")
 jest.mock("@react-native-async-storage/async-storage")
 jest.mock("@supabase/supabase-js", () => ({
 	createClient: jest.fn((url, key) => ({
@@ -217,7 +219,7 @@ describe("Supabase Client Environment Switching", () => {
 			// Should not throw, but should log error
 			const consoleErrorSpy = jest
 				.spyOn(console, "error")
-				.mockImplementation(() => {})
+				.mockImplementation(() => { })
 
 			await reconnectSupabase()
 
@@ -291,7 +293,7 @@ describe("Supabase Client Environment Switching", () => {
 
 			const consoleErrorSpy = jest
 				.spyOn(console, "error")
-				.mockImplementation(() => {})
+				.mockImplementation(() => { })
 
 			await reconnectSupabase()
 
@@ -361,7 +363,7 @@ describe("Supabase Client Environment Switching", () => {
 			})
 
 			const client1 = await initializeSupabaseClient()
-			expect(client1._url).toBe("http://localhost:54321")
+			expect((client1 as any)._url).toBe("http://localhost:54321")
 
 			// Step 2: Change environment
 			mockGetEnvironmentConfig.mockResolvedValueOnce({
@@ -380,7 +382,7 @@ describe("Supabase Client Environment Switching", () => {
 
 			// Verify cleanup and recreation
 			expect(client1.removeAllSubscriptions).toHaveBeenCalled()
-			expect(client2._url).toBe("https://cloud.supabase.co")
+			expect((client2 as any)._url).toBe("https://cloud.supabase.co")
 			expect(callback).toHaveBeenCalled()
 
 			// Step 4: Verify new client is active

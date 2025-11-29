@@ -3,11 +3,30 @@
  * Central export for all type definitions
  */
 
-// Supabase types
-export * from "./supabase"
+// Supabase types - only export Database to avoid conflicts with offline.ts
+export type { Database } from "./database.types"
 
 // Offline service types
-export * from "./offline"
+// Offline service types - Alias conflicting types to avoid collisions with API types
+export type {
+	UserRole as OfflineUserRole,
+	User as OfflineUser,
+	Organisation as OfflineOrganisation,
+	Project as OfflineProject,
+	Deployment as OfflineDeployment,
+	Device as OfflineDevice,
+	NetworkStatus,
+	OfflineOperationType,
+	OfflineOperation,
+	LoRaWANStatus,
+	ConflictType,
+	ConflictResolution,
+	SyncStatus,
+	UserPermissions,
+	OperationMetadata,
+	EnhancedOfflineOperation,
+	SyncConfiguration
+} from "./offline"
 
 // Project types - explicit re-exports to avoid conflicts
 export type {

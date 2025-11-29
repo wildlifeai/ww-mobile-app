@@ -14,7 +14,7 @@ import { render, screen } from "@testing-library/react-native"
 import { useForm } from "react-hook-form"
 import { AIModelSelect } from "../AIModelSelect"
 import { useGetAIModelsQuery } from "../../../redux/api/aiModelsApi"
-import type { Database } from "../../../types/supabase"
+import type { Database } from "../../../types/database.types"
 
 type AIModel = Database["public"]["Tables"]["ai_models"]["Row"]
 

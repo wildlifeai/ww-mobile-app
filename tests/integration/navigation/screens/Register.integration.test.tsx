@@ -49,7 +49,7 @@ describe("Register Screen Integration Tests", () => {
 	test("should render registration form correctly", () => {
 		renderWithProviders(<Register />, { store })
 
-		expect(screen.getByText("Username", { exact: false })).toBeTruthy()
+		expect(screen.getByText("Full Name", { exact: false })).toBeTruthy()
 		expect(screen.getByText("Email", { exact: false })).toBeTruthy()
 		expect(screen.getByText("Organization (Optional)")).toBeTruthy()
 		// Multiple Password labels exist (Password and Confirm Password)
@@ -68,39 +68,39 @@ describe("Register Screen Integration Tests", () => {
 		fireEvent.press(registerButton)
 
 		await waitFor(() => {
-			expect(screen.getByText("Username is required")).toBeTruthy()
+			expect(screen.getByText("Name is required")).toBeTruthy()
 			expect(screen.getByText("Email is required")).toBeTruthy()
 			expect(screen.getByText("Password is required")).toBeTruthy()
 			expect(screen.getByText("Please confirm your password")).toBeTruthy()
 		})
 	})
 
-	test("should validate username field correctly", async () => {
+	test("should validate name field correctly", async () => {
 		renderWithProviders(<Register />, { store })
 
-		const usernameInput = screen.getByTestId("username-input")
+		const nameInput = screen.getByTestId("name-input")
 		const registerButton = screen.getByTestId("register-button")
 
-		// Test too short username
-		fireEvent.changeText(usernameInput, "ab")
+		// Test too short name
+		fireEvent.changeText(nameInput, "ab")
 		fireEvent.press(registerButton)
 
 		await waitFor(() => {
 			expect(
-				screen.getByText("Username must be at least 3 characters"),
+				screen.getByText("Name must be at least 3 characters"),
 			).toBeTruthy()
 		})
 
-		// Test valid username
-		fireEvent.changeText(usernameInput, formValidationCases.username.valid[0])
+		// Test valid name
+		fireEvent.changeText(nameInput, formValidationCases.name.valid[0])
 
 		// Clear the error by submitting again with valid input
 		fireEvent.press(registerButton)
 
 		await waitFor(() => {
-			// Username validation error should be gone
+			// Name validation error should be gone
 			expect(
-				screen.queryByText("Username must be at least 3 characters"),
+				screen.queryByText("Name must be at least 3 characters"),
 			).toBeFalsy()
 		})
 	})
@@ -258,8 +258,8 @@ describe("Register Screen Integration Tests", () => {
 
 		// Fill form
 		fireEvent.changeText(
-			screen.getByTestId("username-input"),
-			validRegisterCredentials.username,
+			screen.getByTestId("name-input"),
+			validRegisterCredentials.name,
 		)
 		fireEvent.changeText(
 			screen.getByTestId("email-input"),
@@ -307,8 +307,8 @@ describe("Register Screen Integration Tests", () => {
 
 		// Fill form
 		fireEvent.changeText(
-			screen.getByTestId("username-input"),
-			validRegisterCredentials.username,
+			screen.getByTestId("name-input"),
+			validRegisterCredentials.name,
 		)
 		fireEvent.changeText(
 			screen.getByTestId("email-input"),
@@ -353,8 +353,8 @@ describe("Register Screen Integration Tests", () => {
 
 		// Fill form with existing user data
 		fireEvent.changeText(
-			screen.getByTestId("username-input"),
-			existingUserRegisterCredentials.username,
+			screen.getByTestId("name-input"),
+			existingUserRegisterCredentials.name,
 		)
 		fireEvent.changeText(
 			screen.getByTestId("email-input"),
@@ -410,8 +410,8 @@ describe("Register Screen Integration Tests", () => {
 
 		// Fill form
 		fireEvent.changeText(
-			screen.getByTestId("username-input"),
-			validRegisterCredentials.username,
+			screen.getByTestId("name-input"),
+			validRegisterCredentials.name,
 		)
 		fireEvent.changeText(
 			screen.getByTestId("email-input"),
@@ -446,8 +446,8 @@ describe("Register Screen Integration Tests", () => {
 
 		// Fill form without organization
 		fireEvent.changeText(
-			screen.getByTestId("username-input"),
-			validRegisterCredentials.username,
+			screen.getByTestId("name-input"),
+			validRegisterCredentials.name,
 		)
 		fireEvent.changeText(
 			screen.getByTestId("email-input"),
@@ -479,8 +479,8 @@ describe("Register Screen Integration Tests", () => {
 
 		// Fill form with empty organization
 		fireEvent.changeText(
-			screen.getByTestId("username-input"),
-			validRegisterCredentials.username,
+			screen.getByTestId("name-input"),
+			validRegisterCredentials.name,
 		)
 		fireEvent.changeText(
 			screen.getByTestId("email-input"),
@@ -506,7 +506,7 @@ describe("Register Screen Integration Tests", () => {
 				password: validRegisterCredentials.password,
 				options: {
 					data: {
-						username: validRegisterCredentials.username,
+						name: validRegisterCredentials.name,
 						organization: undefined, // Should be undefined, not empty string
 					},
 					emailRedirectTo: "wildlifewatcher://auth/callback",
@@ -549,8 +549,8 @@ describe("Register Screen Integration Tests", () => {
 
 		// Fill valid form
 		fireEvent.changeText(
-			screen.getByTestId("username-input"),
-			validRegisterCredentials.username,
+			screen.getByTestId("name-input"),
+			validRegisterCredentials.name,
 		)
 		fireEvent.changeText(
 			screen.getByTestId("email-input"),
@@ -583,25 +583,25 @@ describe("Register Screen Integration Tests", () => {
 	test("should clear form validation errors when input is corrected", async () => {
 		renderWithProviders(<Register />, { store })
 
-		const usernameInput = screen.getByTestId("username-input")
+		const nameInput = screen.getByTestId("name-input")
 		const registerButton = screen.getByTestId("register-button")
 
 		// Trigger validation error
-		fireEvent.changeText(usernameInput, "a")
+		fireEvent.changeText(nameInput, "a")
 		fireEvent.press(registerButton)
 
 		await waitFor(() => {
 			expect(
-				screen.getByText("Username must be at least 3 characters"),
+				screen.getByText("Name must be at least 3 characters"),
 			).toBeTruthy()
 		})
 
 		// Fix the input
-		fireEvent.changeText(usernameInput, "validusername")
+		fireEvent.changeText(nameInput, "validname")
 
 		await waitFor(() => {
 			expect(
-				screen.queryByText("Username must be at least 3 characters"),
+				screen.queryByText("Name must be at least 3 characters"),
 			).toBeFalsy()
 		})
 	})

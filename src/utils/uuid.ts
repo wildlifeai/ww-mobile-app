@@ -1,11 +1,11 @@
-let expoCrypto = null
+let expoCrypto: any = null
 try {
     expoCrypto = require('expo-crypto')
 } catch (_) {
     expoCrypto = null
 }
 
-let rnUuid = null
+let rnUuid: any = null
 try {
     rnUuid = require('react-native-uuid')
 } catch (_) {

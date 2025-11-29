@@ -81,7 +81,7 @@ Your entry point to the Wildlife Watcher app. Get oriented quickly with the proj
 **Understand offline sync**:
 - `src/services/SupabaseSyncService.ts` - Main sync logic
 - `src/database/index.ts` - WatermelonDB setup
-- `src/redux/slices/offlineSlice.ts` - Sync status state
+- `src/redux/slices/syncSlice.ts` - Sync status state
 
 **Add a new screen**:
 - Create component in `src/screens/`
@@ -133,5 +133,5 @@ Begin with [00-GETTING-STARTED.md](./00-GETTING-STARTED.md) and follow the learn
 
 ---
 
-**Last Updated**: January 2025
+**Last Updated**: November 2025
 **Maintained By**: Wildlife Watcher Development Team

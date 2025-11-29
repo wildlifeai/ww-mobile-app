@@ -21,9 +21,9 @@ class EnvironmentConfig {
 						extra: {
 							apiBase: "https://api.wildlifeai.org", // Fallback API base
 							googleMapsApiKeyAndroid:
-								process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_ANDROID,
+								(process.env as any).EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_ANDROID,
 							googleMapsApiKeyIos:
-								process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_IOS,
+								(process.env as any).EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_IOS,
 							bundleIdentifier: "com.wildlife.wildlifewatcher.expo",
 							isDevelopment: true,
 							eas: { projectId: "6cf53a5e-90e1-4987-82c6-5f0337affe97" },

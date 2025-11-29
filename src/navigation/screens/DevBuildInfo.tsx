@@ -29,8 +29,9 @@ export const DevBuildInfo = () => {
 	const { top } = useSafeAreaInsets()
 	const [isResetting, setIsResetting] = useState(false)
 	const [dbStatus, setDbStatus] = useState<{
-		version: number
+		isDevelopment: boolean
 		supabaseUrl: string
+		adapter: string
 	} | null>(null)
 
 	const isDevelopment = __DEV__
@@ -40,10 +41,7 @@ export const DevBuildInfo = () => {
 		const loadDbStatus = async () => {
 			try {
 				const status = await getDatabaseStatus()
-				setDbStatus({
-					version: status.version,
-					supabaseUrl: status.supabaseUrl,
-				})
+				setDbStatus(status)
 			} catch (error) {
 				console.error("Failed to load database status:", error)
 			}
@@ -58,9 +56,8 @@ export const DevBuildInfo = () => {
 
 	// Get React Native version
 	const reactNativeVersion = Platform.constants?.reactNativeVersion || {}
-	const rnVersionString = `${reactNativeVersion.major || 0}.${
-		reactNativeVersion.minor || 0
-	}.${reactNativeVersion.patch || 0}`
+	const rnVersionString = `${reactNativeVersion.major || 0}.${reactNativeVersion.minor || 0
+		}.${reactNativeVersion.patch || 0}`
 
 	// Count native modules
 	const nativeModuleKeys = Object.keys(NativeModules)
@@ -107,15 +104,11 @@ export const DevBuildInfo = () => {
 							)
 							// Refresh database status
 							const status = await getDatabaseStatus()
-							setDbStatus({
-								version: status.version,
-								supabaseUrl: status.supabaseUrl,
-							})
+							setDbStatus(status)
 						} catch (error) {
 							Alert.alert(
 								"Error",
-								`Failed to reset database: ${
-									error instanceof Error ? error.message : "Unknown error"
+								`Failed to reset database: ${error instanceof Error ? error.message : "Unknown error"
 								}`,
 							)
 						} finally {
@@ -148,8 +141,7 @@ export const DevBuildInfo = () => {
 						} catch (error) {
 							Alert.alert(
 								"Error",
-								`Failed to clear database: ${
-									error instanceof Error ? error.message : "Unknown error"
+								`Failed to clear database: ${error instanceof Error ? error.message : "Unknown error"
 								}`,
 							)
 						} finally {
@@ -173,8 +165,8 @@ export const DevBuildInfo = () => {
 		),
 		Maps: checkModule(
 			!!NativeModules.RNCMaps ||
-				!!NativeModules.AirGoogleMaps ||
-				!!NativeModules.RNMaps,
+			!!NativeModules.AirGoogleMaps ||
+			!!NativeModules.RNMaps,
 			"react-native-maps",
 		),
 		"File System": checkModule(
@@ -183,8 +175,8 @@ export const DevBuildInfo = () => {
 		),
 		Constants: checkModule(
 			!!NativeModules.ExponentConstants ||
-				!!NativeModules.ExpoConstants ||
-				!!Constants,
+			!!NativeModules.ExpoConstants ||
+			!!Constants,
 			"expo-constants",
 		),
 		"Bluetooth State": checkModule(
@@ -348,8 +340,8 @@ export const DevBuildInfo = () => {
 				<List.Section>
 					<List.Subheader>Database (Dev Tools)</List.Subheader>
 					<List.Item
-						title="Database Version"
-						description={dbStatus ? `v${dbStatus.version}` : "Loading..."}
+						title="Database Adapter"
+						description={dbStatus ? dbStatus.adapter : "Loading..."}
 						left={(props) => <List.Icon {...props} icon="database" />}
 					/>
 					<List.Item
@@ -359,8 +351,8 @@ export const DevBuildInfo = () => {
 								? dbStatus.supabaseUrl.includes("localhost")
 									? "Local"
 									: dbStatus.supabaseUrl.includes("supabase.co")
-									? "Cloud Dev"
-									: "Unknown"
+										? "Cloud Dev"
+										: "Unknown"
 								: "Loading..."
 						}
 						left={(props) => <List.Icon {...props} icon="cloud" />}

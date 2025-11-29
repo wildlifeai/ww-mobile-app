@@ -366,13 +366,13 @@ export const Terminal = ({ embed }: Props) => {
 							<Divider />
 							<View style={[styles.buttons, { marginVertical: spacing }]}>
 								<View style={{ padding: spacing }}>
-									{ID.loaded && (
+									{ID?.loaded && (
 										<WWText>
 											ID:{" "}
 											{idLoading ? (
 												"Loading..."
 											) : (
-												<WWText style={styles.bold}>{ID.value}</WWText>
+												<WWText style={styles.bold}>{ID?.value}</WWText>
 											)}
 										</WWText>
 									)}
@@ -389,13 +389,13 @@ export const Terminal = ({ embed }: Props) => {
 							<Divider />
 							<View style={[styles.buttons, { marginVertical: spacing }]}>
 								<View style={{ padding: spacing }}>
-									{DEVICE.loaded && (
+									{DEVICE?.loaded && (
 										<WWText>
 											Device name:{" "}
 											{deviceLoading ? (
 												"Loading..."
 											) : (
-												<WWText style={styles.bold}>{DEVICE.value}</WWText>
+												<WWText style={styles.bold}>{DEVICE?.value}</WWText>
 											)}
 										</WWText>
 									)}
@@ -412,13 +412,13 @@ export const Terminal = ({ embed }: Props) => {
 							<Divider />
 							<View style={[styles.buttons, { marginVertical: spacing }]}>
 								<View style={{ padding: spacing }}>
-									{VERSION.loaded && (
+									{VERSION?.loaded && (
 										<WWText>
 											Version:{" "}
 											{versionLoading ? (
 												"Loading..."
 											) : (
-												<WWText style={styles.bold}>{VERSION.value}</WWText>
+												<WWText style={styles.bold}>{VERSION?.value}</WWText>
 											)}
 										</WWText>
 									)}
@@ -435,13 +435,13 @@ export const Terminal = ({ embed }: Props) => {
 							<Divider />
 							<View style={[styles.buttons, { marginVertical: spacing }]}>
 								<View style={{ padding: spacing }}>
-									{BATTERY.loaded && (
+									{BATTERY?.loaded && (
 										<WWText>
 											Current battery level:{" "}
 											{batteryLoading ? (
 												"Loading..."
 											) : (
-												<WWText style={styles.bold}>{BATTERY.value}%</WWText>
+												<WWText style={styles.bold}>{BATTERY?.value}%</WWText>
 											)}
 										</WWText>
 									)}
@@ -458,14 +458,14 @@ export const Terminal = ({ embed }: Props) => {
 							<Divider />
 							<View style={[styles.buttons, { marginVertical: spacing }]}>
 								<View style={{ padding: spacing }}>
-									{HEARTBEAT.loaded && (
+									{HEARTBEAT?.loaded && (
 										<WWText>
 											Current heartbeat:{" "}
 											{hbLoading ? (
 												"Loading..."
 											) : (
 												<WWText style={styles.bold}>
-													{formatHeartbeat(HEARTBEAT.value)}
+													{formatHeartbeat(HEARTBEAT?.value)}
 												</WWText>
 											)}
 										</WWText>
@@ -478,7 +478,7 @@ export const Terminal = ({ embed }: Props) => {
 									value={heartbeat}
 									onChangeText={(value: string) => setHeartbeat(value)}
 									style={{ marginRight: spacing }}
-									placeholder={HEARTBEAT.value}
+									placeholder={HEARTBEAT?.value}
 								/>
 								<Button mode="outlined" onPress={triggerHeartbeat}>
 									Change Heartbeat
@@ -512,13 +512,13 @@ export const Terminal = ({ embed }: Props) => {
 							<Divider />
 							<View style={[styles.buttons, { marginVertical: spacing }]}>
 								<View style={{ padding: spacing }}>
-									{APPEUI.loaded && (
+									{APPEUI?.loaded && (
 										<WWText>
 											Current App EUI:{" "}
 											{aeLoading ? (
 												"Loading..."
 											) : (
-												<WWText style={styles.bold}>{APPEUI.value}</WWText>
+												<WWText style={styles.bold}>{APPEUI?.value}</WWText>
 											)}
 										</WWText>
 									)}
@@ -529,7 +529,7 @@ export const Terminal = ({ embed }: Props) => {
 									value={heartbeat}
 									onChangeText={(value: string) => setAppEui(value)}
 									style={{ marginRight: spacing }}
-									placeholder={APPEUI.value}
+									placeholder={APPEUI?.value}
 								/>
 								<Button mode="outlined" onPress={triggerAppEui}>
 									Save
@@ -541,13 +541,13 @@ export const Terminal = ({ embed }: Props) => {
 							<Divider />
 							<View style={[styles.buttons, { marginVertical: spacing }]}>
 								<View style={{ padding: spacing }}>
-									{DEVEUI.loaded && (
+									{DEVEUI?.loaded && (
 										<WWText>
 											Current Dev EUI:{" "}
 											{deLoading ? (
 												"Loading..."
 											) : (
-												<WWText style={styles.bold}>{DEVEUI.value}</WWText>
+												<WWText style={styles.bold}>{DEVEUI?.value}</WWText>
 											)}
 										</WWText>
 									)}
@@ -558,7 +558,7 @@ export const Terminal = ({ embed }: Props) => {
 									value={heartbeat}
 									onChangeText={(value: string) => setDevEui(value)}
 									style={{ marginRight: spacing }}
-									placeholder={DEVEUI.value}
+									placeholder={DEVEUI?.value}
 								/>
 								<Button mode="outlined" onPress={triggerDevEui}>
 									Save
@@ -578,7 +578,7 @@ export const Terminal = ({ embed }: Props) => {
 								</View>
 								<WWText>
 									Sensor messages are{" "}
-									{SENSOR.value === "enable" ? (
+									{SENSOR?.value === "enable" ? (
 										<WWText style={styles.bold}>enabled</WWText>
 									) : (
 										<WWText style={styles.bold}>disabled</WWText>
@@ -594,7 +594,7 @@ export const Terminal = ({ embed }: Props) => {
 								<WWText>
 									Lorawan is currently{" "}
 									<WWText style={styles.bold}>
-										{LORAWAN.value?.toLowerCase()}
+										{LORAWAN?.value?.toLowerCase()}
 									</WWText>
 									.
 								</WWText>

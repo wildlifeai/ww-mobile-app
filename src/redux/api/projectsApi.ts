@@ -74,17 +74,14 @@ export const projectsApi = createApi({
 					const currentOrgId = state.authentication?.currentOrganisation?.id
 
 					if (!currentOrgId) {
-						console.error("❌ No current organisation ID in state")
-						console.error(
+						console.warn("⚠️ No current organisation - user may not have roles assigned")
+						console.warn("   Returning empty projects list. User can still navigate the app.")
+						console.warn(
 							"   Full authentication state:",
 							JSON.stringify(state.authentication, null, 2),
 						)
-						return {
-							error: {
-								status: "CUSTOM_ERROR",
-								error: "No current organisation selected",
-							},
-						}
+						// Return empty array instead of error - allows app to show "No projects" screen
+						return { data: [] }
 					}
 
 					console.log(

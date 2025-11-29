@@ -98,8 +98,8 @@ export const DeviceDiscoveryScreen = () => {
 
                     if (mode === 'engineer') {
                         // Navigate to Engineer Console (Terminal) directly - NO DB interaction
-                        log(`Navigating to DeviceNavigator with ID ${device.id}`)
-                        navigation.navigate('DeviceNavigator' as never, { deviceId: device.id } as never)
+                        // log(`Navigating to DeviceNavigator with ID ${device.id}`)
+                        (navigation as any).navigate('DeviceNavigator', { deviceId: device.id })
                         setProcessing(false)
                         return
                     }
@@ -152,8 +152,8 @@ export const DeviceDiscoveryScreen = () => {
 
                         // Navigate to Prepare and Test
                         if (dbDevice) {
-                            log(`Navigating to PrepareAndTest with ID ${dbDevice.id}`)
-                            navigation.navigate('PrepareAndTest' as never, { deviceId: dbDevice.id } as never)
+                            // log(`Navigating to PrepareAndTest with ID ${dbDevice.id}`)
+                            (navigation as any).navigate('PrepareAndTest', { deviceId: dbDevice.id })
                         }
                     }
                 }

@@ -18,7 +18,7 @@ import { NewProjectScreen } from "../../../../src/navigation/screens/NewProjectS
 import { aiModelsApi } from "../../../../src/redux/api/aiModelsApi"
 import { projectsApi } from "../../../../src/redux/api/projectsApi"
 import authReducer from "../../../../src/redux/slices/authSlice"
-import type { Database } from "../../../../src/types/supabase"
+import type { Database } from "../../../../src/types/database.types"
 
 type AIModel = Database["public"]["Tables"]["ai_models"]["Row"]
 
@@ -97,8 +97,11 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				deleted_at: null,
 				description: "General model for wildlife classification",
 				modified_by: "user-123",
-					storage_path: "models/test-model.onnx",
-				
+				storage_path: "models/test-model.onnx",
+				detection_capabilities: ["animal", "person"],
+				file_size_bytes: 1024,
+				file_type: "onnx",
+				uploaded_by: "user-123",
 			},
 			{
 				id: "223e4567-e89b-12d3-a456-426614174001",
@@ -110,8 +113,11 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				deleted_at: null,
 				description: "Specialized model for bird species identification",
 				modified_by: "user-123",
-					storage_path: "models/test-model.onnx",
-				
+				storage_path: "models/test-model.onnx",
+				detection_capabilities: ["bird"],
+				file_size_bytes: 1024,
+				file_type: "onnx",
+				uploaded_by: "user-123",
 			},
 		]
 
@@ -309,8 +315,11 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				deleted_at: null,
 				description: "Test",
 				modified_by: "user-123",
-					storage_path: "models/test-model.onnx",
-				
+				storage_path: "models/test-model.onnx",
+				detection_capabilities: ["test"],
+				file_size_bytes: 1024,
+				file_type: "onnx",
+				uploaded_by: "user-123",
 			},
 		]
 
@@ -378,8 +387,11 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				deleted_at: null,
 				description: "Valid UUID",
 				modified_by: "user-123",
-					storage_path: "models/test-model.onnx",
-				
+				storage_path: "models/test-model.onnx",
+				detection_capabilities: ["valid"],
+				file_size_bytes: 1024,
+				file_type: "onnx",
+				uploaded_by: "user-123",
 			},
 		]
 

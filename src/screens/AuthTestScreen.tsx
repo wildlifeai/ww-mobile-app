@@ -236,15 +236,10 @@ export const AuthTestScreen: React.FC = () => {
 								<Text style={{ fontWeight: "bold" }}>Email:</Text> {user.email}
 							</Text>
 							<Text>
-								<Text style={{ fontWeight: "bold" }}>Username:</Text>{" "}
-								{user.username}
-							</Text>
-							<Text>
 								<Text style={{ fontWeight: "bold" }}>ID:</Text> {user.id}
 							</Text>
 							<Text>
-								<Text style={{ fontWeight: "bold" }}>Confirmed:</Text>{" "}
-								{user.confirmed ? "Yes" : "No"}
+								<Text style={{ fontWeight: "bold" }}>Role:</Text> {user.role}
 							</Text>
 						</View>
 					)}

@@ -84,7 +84,7 @@ import {
 	addProjectMember,
 	updateProjectMemberRole,
 	removeProjectMember,
-} from "../services/ProjectMemberService"
+} from "../services/UserRoleService"
 import { useAppSelector } from "../redux"
 import {
 	selectCurrentUser,
@@ -95,7 +95,7 @@ import type {
 	ProjectMember,
 	ProjectRole,
 	OrganizationUser,
-} from "../services/ProjectMemberService"
+} from "../services/UserRoleService"
 import ProjectService from "../services/ProjectService"
 
 type RouteParams = {
@@ -469,7 +469,7 @@ export const ProjectMembersScreen: React.FC = () => {
 											.map((n) => n[0])
 											.join("")
 											.toUpperCase()}
-										style={{ backgroundColor: getRoleBadgeColor(member.role) }}
+										style={{ backgroundColor: getRoleBadgeColor(member.role as ProjectRole) }}
 									/>
 
 									{/* Member Info */}
@@ -492,10 +492,10 @@ export const ProjectMembersScreen: React.FC = () => {
 											style={{
 												marginTop: 8,
 												alignSelf: "flex-start",
-												backgroundColor: getRoleBadgeColor(member.role) + "20",
+												backgroundColor: getRoleBadgeColor(member.role as ProjectRole) + "20",
 											}}
 										>
-											{getRoleDisplayName(member.role)}
+											{getRoleDisplayName(member.role as ProjectRole)}
 										</Chip>
 									</View>
 
@@ -733,7 +733,7 @@ export const ProjectMembersScreen: React.FC = () => {
 											Current:
 										</Text>
 										<Chip style={{ marginTop: 4 }}>
-											{getRoleDisplayName(selectedMember.role)}
+											{getRoleDisplayName(selectedMember.role as ProjectRole)}
 										</Chip>
 									</View>
 									<IconButton icon="arrow-right" />

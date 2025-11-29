@@ -190,8 +190,6 @@ redux/
 ├── index.ts               # Store configuration
 ├── slices/                # Redux slices (feature state)
 │   ├── authSlice.ts
-│   ├── projectsSlice.ts
-│   ├── offlineSlice.ts
 │   ├── syncSlice.ts
 │   ├── networkSlice.ts
 │   └── ... more slices
@@ -420,19 +418,6 @@ project-context/
 - **Redux State**: `src/redux/slices/authSlice.ts`
 - **Service Layer**: `src/services/auth.ts`
 - **Supabase**: `src/services/supabase.ts`
-- **Screens**: `src/navigation/screens/Login.tsx`, `Register.tsx`
-
-### "Where is offline sync implemented?"
-- **Main Service**: `src/services/offline/OfflineService.ts`
-- **Sync Adapter**: `src/services/offline/SupabaseSyncService.ts` ⭐
-- **Database**: `src/database/index.ts` (WatermelonDB)
-- **Redux State**: `src/redux/slices/offlineSlice.ts`
-- **Middleware**: `src/redux/middleware/offlineSyncMiddleware.ts`
-
-### "Where are the API calls?"
-- **RTK Query**: `src/redux/api/`
-- **Typed Operations**: `src/services/database.ts`
-- **Base Setup**: `src/services/supabase.ts`
 
 ### "Where are the project screens?"
 - **List Screen**: `src/navigation/screens/Projects.tsx` (if exists) or check `src/navigation/BottomTabs.tsx`

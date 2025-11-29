@@ -18,7 +18,7 @@ import { ActivityIndicator } from "react-native"
 import { Field } from "./Field"
 import { WWSelect, Option } from "../ui/WWSelect"
 import { useGetAIModelsQuery } from "../../redux/api/aiModelsApi"
-import type { Database } from "../../types/supabase"
+import type { Database } from "../../types/database.types"
 
 type AIModel = Database["public"]["Tables"]["ai_models"]["Row"]
 

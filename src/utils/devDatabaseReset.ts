@@ -55,7 +55,7 @@ export async function getDatabaseStatus(): Promise<{
 }> {
 	return {
 		isDevelopment: __DEV__,
-		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || "not set",
+		supabaseUrl: (process.env as any).EXPO_PUBLIC_SUPABASE_URL || "not set",
 		adapter: "WatermelonDB",
 	}
 }

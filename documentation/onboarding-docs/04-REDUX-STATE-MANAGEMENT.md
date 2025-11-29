@@ -24,9 +24,11 @@ const store = configureStore({
     
     // Feature slices
     authentication: authReducer,
-    projects: projectsReducer, // UI state only (filters, selection)
-    offline: offlineReducer,   // Sync status
+    sync: syncReducer,          // Sync status
     network: networkReducer,
+    deployment: deploymentReducer,
+    wwAdmin: wwAdminReducer,
+    androidPermissions: androidPermissionsReducer,
     // ... more slices
   },
   middleware: (getDefaultMiddleware) =>
@@ -35,10 +37,7 @@ const store = configureStore({
         ignoredActions: ['persist/PERSIST'],
       },
     })
-    .concat(
-      api.middleware,
-      offlineSyncMiddleware.middleware
-    ),
+    .concat(api.middleware),
 })
 
 // TypeScript types

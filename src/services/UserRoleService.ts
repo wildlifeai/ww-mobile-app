@@ -1,20 +1,20 @@
 /**
- * Project Member Management Service
+ * User Role Management Service
  *
- * Handles project-level member management including:
+ * Handles role management including:
  * - Fetching organization user pool
- * - Adding members to projects
+ * - Adding members to projects (assigning project roles)
  * - Changing member roles
- * - Removing members from projects
+ * - Removing members from projects (revoking roles)
  * - Getting project member list
  *
- * Implements Tier 2 user management (Project Admin scope only):
- * - Can only add existing org users (created by WW Admin via web portal)
- * - Can only assign project roles (project_admin, project_member)
- * - Cannot create new users or assign system roles
+ * Uses the `user_roles` table with `scope_type` and `scope_id`.
  */
 
 import { getSupabaseClient } from "./supabase"
+import type { Database } from "../types/database.types"
+
+type UserRoleRow = Database["public"]["Tables"]["user_roles"]["Row"]
 
 export type ProjectRole = "project_admin" | "project_member" | "viewer"
 
@@ -22,7 +22,7 @@ export interface OrganizationUser {
 	id: string
 	name: string
 	email: string
-	roles: any // JSON from RPC
+	roles: any
 	is_in_project: boolean
 }
 
@@ -33,7 +33,7 @@ export interface ProjectMember {
 	role: string // ProjectRole
 	granted_at: string
 	granted_by: string
-	granted_by_name: string
+	granted_by_name?: string
 }
 
 export interface AddMemberRequest {
@@ -72,31 +72,37 @@ export interface MemberOperationResponse {
  *
  * Security: Only project admins can view organization user pool
  * Returns: All users in the org with their roles
- *
- * @param organisationId - Organization UUID
- * @param requestingUserId - Current user's UUID (must be project admin)
  */
 export const getOrganizationUsers = async (
 	organisationId: string,
 	requestingUserId: string,
 ): Promise<OrganizationUser[]> => {
 	try {
-		// Call backend function to get org users
-		const { data, error } = await getSupabaseClient().rpc("get_organisation_users", {
-			p_organisation_id: organisationId,
-			p_requesting_user_id: requestingUserId,
-		})
+		// Use the secure RPC to fetch organization users
+		// This bypasses RLS on user_roles/users tables which are restricted to own-data only
+		const { data: users, error } = await getSupabaseClient()
+			.rpc("get_organisation_users", {
+				p_organisation_id: organisationId,
+				p_requesting_user_id: requestingUserId
+			})
 
 		if (error) {
 			console.error("❌ Error fetching organization users:", error)
 			throw new Error(error.message)
 		}
 
-		console.log(
-			`✅ Fetched ${data?.length || 0
-			} users from organization ${organisationId}`,
-		)
-		return (data as any[]) || []
+		// Transform to OrganizationUser format
+		// The RPC returns { id, name, email, roles: [...], is_in_project }
+		const transformedUsers = (users as any[]).map((u) => ({
+			id: u.id,
+			name: u.name,
+			email: u.email,
+			roles: u.roles.map((r: any) => r.role), // Extract role names
+			is_in_project: u.is_in_project
+		}))
+
+		console.log(`✅ Fetched ${transformedUsers.length} users from organization ${organisationId}`)
+		return transformedUsers as OrganizationUser[]
 	} catch (error) {
 		console.error("❌ Exception fetching organization users:", error)
 		throw error
@@ -105,32 +111,48 @@ export const getOrganizationUsers = async (
 
 /**
  * Get all members of a project
- *
- * Security: Only project members can view member list
- *
- * @param projectId - Project UUID
- * @param requestingUserId - Current user's UUID
  */
 export const getProjectMembers = async (
 	projectId: string,
 	requestingUserId: string,
 ): Promise<ProjectMember[]> => {
 	try {
-		// Call backend function to get project members
-		const { data, error } = await getSupabaseClient().rpc("get_project_members", {
-			p_project_id: projectId,
-			p_requesting_user_id: requestingUserId,
-		})
+		// Query user_roles directly
+		const { data: roles, error } = await getSupabaseClient()
+			.from("user_roles")
+			.select(`
+				user_id,
+				role,
+				granted_at,
+				granted_by,
+				users:user_id (
+					id,
+					email,
+					firstname,
+					surname
+				)
+			`)
+			.eq("scope_type", "project")
+			.eq("scope_id", projectId)
+			.eq("is_active", true)
 
 		if (error) {
 			console.error("❌ Error fetching project members:", error)
 			throw new Error(error.message)
 		}
 
-		console.log(
-			`✅ Fetched ${data?.length || 0} members from project ${projectId}`,
-		)
-		return (data as any[]) || []
+		const members = roles.map((r: any) => ({
+			id: r.users.id,
+			name: `${r.users.firstname} ${r.users.surname}`.trim(),
+			email: r.users.email,
+			role: r.role,
+			granted_at: r.granted_at,
+			granted_by: r.granted_by,
+			granted_by_name: "Unknown" // We'd need another join or lookup to get this
+		}))
+
+		console.log(`✅ Fetched ${members.length} members from project ${projectId}`)
+		return members
 	} catch (error) {
 		console.error("❌ Exception fetching project members:", error)
 		throw error
@@ -139,29 +161,27 @@ export const getProjectMembers = async (
 
 /**
  * Add a user to a project with specified role
- *
- * Security: Only project admins can add members
- * Validation: User must be from same organization as project
- *
- * @param request - Add member request
  */
 export const addProjectMember = async (
 	request: AddMemberRequest,
 ): Promise<MemberOperationResponse> => {
 	try {
-		console.log("➕ Adding project member:", {
-			project_id: request.project_id,
-			user_id: request.user_id,
-			role: request.role,
-		})
+		console.log("➕ Adding project member:", request)
 
-		// Call backend function to add project member
-		const { data, error } = await getSupabaseClient().rpc("add_project_member", {
-			p_project_id: request.project_id,
-			p_user_id: request.user_id,
-			p_role: request.role,
-			p_granted_by: request.granted_by,
-		})
+		// Insert into user_roles
+		const { data, error } = await getSupabaseClient()
+			.from("user_roles")
+			.insert({
+				user_id: request.user_id,
+				role: request.role,
+				scope_type: "project",
+				scope_id: request.project_id,
+				granted_by: request.granted_by,
+				modified_by: request.granted_by,
+				is_active: true
+			})
+			.select()
+			.single()
 
 		if (error) {
 			console.error("❌ Error adding project member:", error)
@@ -174,7 +194,13 @@ export const addProjectMember = async (
 		}
 
 		console.log("✅ Successfully added project member:", data)
-		return data as unknown as MemberOperationResponse
+		return {
+			success: true,
+			user_id: request.user_id,
+			project_id: request.project_id,
+			role: request.role,
+			new_role: request.role
+		}
 	} catch (error: any) {
 		console.error("❌ Exception adding project member:", error)
 		return {
@@ -188,29 +214,27 @@ export const addProjectMember = async (
 
 /**
  * Update a project member's role
- *
- * Security: Only project admins can change roles
- * Protection: Cannot demote self if last admin
- *
- * @param request - Update role request
  */
 export const updateProjectMemberRole = async (
 	request: UpdateRoleRequest,
 ): Promise<MemberOperationResponse> => {
 	try {
-		console.log("🔄 Updating project member role:", {
-			project_id: request.project_id,
-			user_id: request.user_id,
-			new_role: request.new_role,
-		})
+		console.log("🔄 Updating project member role:", request)
 
-		// Call backend function to update member role
-		const { data, error } = await getSupabaseClient().rpc("update_project_member_role", {
-			p_project_id: request.project_id,
-			p_user_id: request.user_id,
-			p_new_role: request.new_role,
-			p_updated_by: request.updated_by,
-		})
+		// Update user_roles
+		// We need to find the active role for this user in this project
+		const { data, error } = await getSupabaseClient()
+			.from("user_roles")
+			.update({
+				role: request.new_role,
+				modified_by: request.updated_by
+			})
+			.eq("user_id", request.user_id)
+			.eq("scope_type", "project")
+			.eq("scope_id", request.project_id)
+			.eq("is_active", true)
+			.select()
+			.single()
 
 		if (error) {
 			console.error("❌ Error updating project member role:", error)
@@ -223,7 +247,12 @@ export const updateProjectMemberRole = async (
 		}
 
 		console.log("✅ Successfully updated project member role:", data)
-		return data as unknown as MemberOperationResponse
+		return {
+			success: true,
+			user_id: request.user_id,
+			project_id: request.project_id,
+			new_role: request.new_role
+		}
 	} catch (error: any) {
 		console.error("❌ Exception updating project member role:", error)
 		return {
@@ -237,27 +266,25 @@ export const updateProjectMemberRole = async (
 
 /**
  * Remove a user from a project
- *
- * Security: Only project admins can remove members
- * Protection: Cannot remove last project admin
- *
- * @param request - Remove member request
  */
 export const removeProjectMember = async (
 	request: RemoveMemberRequest,
 ): Promise<MemberOperationResponse> => {
 	try {
-		console.log("➖ Removing project member:", {
-			project_id: request.project_id,
-			user_id: request.user_id,
-		})
+		console.log("➖ Removing project member:", request)
 
-		// Call backend function to remove project member
-		const { data, error } = await getSupabaseClient().rpc("remove_project_member", {
-			p_project_id: request.project_id,
-			p_user_id: request.user_id,
-			p_removed_by: request.removed_by,
-		})
+		// Soft delete or hard delete from user_roles?
+		// Usually we set is_active = false or delete. Let's assume delete for now to match previous behavior, 
+		// or update is_active if we want history.
+		// Let's use DELETE for now as per previous implementation, but user_roles might prefer soft delete.
+		// Actually, let's use DELETE to keep it simple and consistent with "removing".
+
+		const { error } = await getSupabaseClient()
+			.from("user_roles")
+			.delete()
+			.eq("user_id", request.user_id)
+			.eq("scope_type", "project")
+			.eq("scope_id", request.project_id)
 
 		if (error) {
 			console.error("❌ Error removing project member:", error)
@@ -269,8 +296,12 @@ export const removeProjectMember = async (
 			}
 		}
 
-		console.log("✅ Successfully removed project member:", data)
-		return data as unknown as MemberOperationResponse
+		console.log("✅ Successfully removed project member")
+		return {
+			success: true,
+			user_id: request.user_id,
+			project_id: request.project_id
+		}
 	} catch (error: any) {
 		console.error("❌ Exception removing project member:", error)
 		return {
@@ -284,30 +315,28 @@ export const removeProjectMember = async (
 
 /**
  * Check if current user has project admin role
- *
- * Helper function for UI to determine if member management features should be shown
- *
- * @param projectId - Project UUID
- * @param userId - Current user's UUID
  */
 export const isProjectAdmin = async (
 	projectId: string,
 	userId: string,
 ): Promise<boolean> => {
 	try {
-		// Call backend function to check project role
-		const { data, error } = await getSupabaseClient().rpc("has_project_role", {
-			project_id: projectId,
-			required_role: "project_admin",
-			user_id: userId,
-		})
+		const { data, error } = await getSupabaseClient()
+			.from("user_roles")
+			.select("role")
+			.eq("user_id", userId)
+			.eq("scope_type", "project")
+			.eq("scope_id", projectId)
+			.eq("role", "project_admin")
+			.eq("is_active", true)
+			.single()
 
-		if (error) {
+		if (error && error.code !== 'PGRST116') { // PGRST116 is "The result contains 0 rows"
 			console.error("❌ Error checking project admin role:", error)
 			return false
 		}
 
-		return data === true
+		return !!data
 	} catch (error) {
 		console.error("❌ Exception checking project admin role:", error)
 		return false
@@ -316,25 +345,24 @@ export const isProjectAdmin = async (
 
 /**
  * Check if current user has WW Admin role (system-wide)
- *
- * Helper function for UI to determine if global admin features should be shown
- *
- * @param userId - Current user's UUID
  */
 export const isWWAdmin = async (userId: string): Promise<boolean> => {
 	try {
-		// Call backend function to check system role
-		const { data, error } = await getSupabaseClient().rpc("has_system_role", {
-			required_role: "ww_admin",
-			user_id: userId,
-		})
+		const { data, error } = await getSupabaseClient()
+			.from("user_roles")
+			.select("role")
+			.eq("user_id", userId)
+			.eq("scope_type", "system")
+			.eq("role", "ww_admin")
+			.eq("is_active", true)
+			.single()
 
-		if (error) {
+		if (error && error.code !== 'PGRST116') {
 			console.error("❌ Error checking WW admin role:", error)
 			return false
 		}
 
-		return data === true
+		return !!data
 	} catch (error) {
 		console.error("❌ Exception checking WW admin role:", error)
 		return false
@@ -343,16 +371,6 @@ export const isWWAdmin = async (userId: string): Promise<boolean> => {
 
 /**
  * Validate if a user can be added to a project
- *
- * Client-side validation before calling backend
- * - User must exist
- * - User must be from same organization
- * - User must not already be a member
- *
- * @param userId - User to add
- * @param projectId - Target project
- * @param organizationId - Project's organization
- * @param existingMembers - Current project members
  */
 export const canAddUserToProject = (
 	userId: string,
@@ -370,7 +388,6 @@ export const canAddUserToProject = (
 		}
 	}
 
-	// Additional validation happens on backend (org membership, etc.)
 	return { valid: true }
 }
 

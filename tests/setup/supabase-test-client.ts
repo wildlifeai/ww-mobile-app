@@ -4,7 +4,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
-import type { Database } from "../../src/types/supabase"
+import type { Database } from "../../src/types/database.types"
 
 // Local Supabase configuration (from .env.local)
 const SUPABASE_URL = "http://127.0.0.1:54321"
@@ -110,7 +110,7 @@ export async function createTestOrganisation(
 			slug,
 			created_by: createdBy,
 			is_active: true,
-			metadata: {},
+			modified_by: createdBy,
 		})
 		.select()
 		.single()
@@ -129,9 +129,14 @@ export async function assignUserToOrganisation(
 	userId: string,
 	organisationId: string,
 ) {
-	const { error } = await adminSupabase.from("user_organisations").insert({
+	const { error } = await adminSupabase.from("user_roles").insert({
 		user_id: userId,
-		organisation_id: organisationId,
+		role: "project_member", // Default role
+		scope_type: "organisation",
+		scope_id: organisationId,
+		is_active: true,
+		granted_at: new Date().toISOString(),
+		modified_by: userId, // Assuming self-modification or admin
 	})
 
 	if (error) {
@@ -155,6 +160,7 @@ export async function grantUserRole(
 		scope_id: scopeId || null,
 		is_active: true,
 		granted_at: new Date().toISOString(),
+		modified_by: userId, // Assuming self-modification or admin
 	})
 
 	if (error) {
@@ -168,19 +174,7 @@ export async function grantUserRole(
 export async function cleanupTestData() {
 	// Order matters due to foreign key constraints
 	await adminSupabase
-		.from("project_members")
-		.delete()
-		.neq("id", "00000000-0000-0000-0000-000000000000")
-	await adminSupabase
-		.from("projects")
-		.delete()
-		.neq("id", "00000000-0000-0000-0000-000000000000")
-	await adminSupabase
 		.from("user_roles")
-		.delete()
-		.neq("id", "00000000-0000-0000-0000-000000000000")
-	await adminSupabase
-		.from("user_organisations")
 		.delete()
 		.neq("id", "00000000-0000-0000-0000-000000000000")
 	await adminSupabase

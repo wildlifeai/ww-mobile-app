@@ -155,6 +155,7 @@ type CharacteristicProperty =
 	| "Write"
 	| "WriteWithoutResponse"
 	| "Notify"
+	| "Indicate"
 
 type CharacteristicProperties = {
 	[key in CharacteristicProperty]?: CharacteristicProperty

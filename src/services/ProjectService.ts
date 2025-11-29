@@ -17,6 +17,7 @@ import type {
 	ProjectMemberWithProfile,
 	CreateProjectInput,
 } from "../types/project"
+import UserRoleService from './UserRoleService'
 
 class ProjectService {
 	private readonly projectsCollection = database.collections.get<Project>('projects')
@@ -189,19 +190,33 @@ class ProjectService {
 		}
 	}
 
+
+
 	/**
 	 * Get project members
-	 * Note: Project Members are not yet in WatermelonDB, so we fetch from Supabase via RPC
+	 * Delegates to UserRoleService
 	 */
 	async getProjectMembers(projectId: string): Promise<ProjectMemberWithProfile[]> {
 		try {
-			const { data, error } = await (getSupabaseClient() as any).rpc('get_project_members', {
-				p_project_id: projectId,
-			})
+			const currentUserId = await this.getCurrentUserId()
+			if (!currentUserId) return []
 
-			if (error) throw error
+			const members = await UserRoleService.getProjectMembers(projectId, currentUserId)
 
-			return data as ProjectMemberWithProfile[]
+			// Map to ProjectMemberWithProfile to maintain compatibility
+			return members.map(m => ({
+				id: m.id, // Using user_id as ID for now, or we could fetch the user_role ID if needed
+				project_id: projectId,
+				user_id: m.id,
+				role: m.role,
+				created_at: m.granted_at,
+				updated_at: m.granted_at,
+				user_profile: { name: m.name },
+				role_details: {
+					value: m.role,
+					description: m.role === 'project_admin' ? 'Project Admin' : 'Project Member'
+				}
+			})) as ProjectMemberWithProfile[]
 		} catch (error) {
 			console.error("Failed to fetch project members:", error)
 			return []
@@ -210,7 +225,7 @@ class ProjectService {
 
 	/**
 	 * Add member to project
-	 * Note: Uses Supabase RPC directly
+	 * Delegates to UserRoleService
 	 */
 	async addProjectMember(
 		projectId: string,
@@ -218,13 +233,31 @@ class ProjectService {
 		role: 'project_admin' | 'project_member'
 	): Promise<void> {
 		try {
-			const { error } = await (getSupabaseClient() as any).rpc('add_project_member', {
-				p_project_id: projectId,
-				p_email: email,
-				p_role: role,
+			const currentUserId = await this.getCurrentUserId()
+			if (!currentUserId) throw new Error("User not authenticated")
+
+			// 1. Find user by email
+			const { data: user, error: userError } = await getSupabaseClient()
+				.from('users')
+				.select('id')
+				.eq('email', email)
+				.single()
+
+			if (userError || !user) {
+				throw new Error(`User with email ${email} not found`)
+			}
+
+			// 2. Add member via UserRoleService
+			const result = await UserRoleService.addProjectMember({
+				project_id: projectId,
+				user_id: user.id,
+				role,
+				granted_by: currentUserId
 			})
 
-			if (error) throw error
+			if (!result.success) {
+				throw new Error(result.error || "Failed to add project member")
+			}
 		} catch (error) {
 			console.error("Failed to add project member:", error)
 			throw error
@@ -233,16 +266,22 @@ class ProjectService {
 
 	/**
 	 * Remove member from project
-	 * Note: Uses Supabase RPC directly
+	 * Delegates to UserRoleService
 	 */
 	async removeProjectMember(projectId: string, userId: string): Promise<void> {
 		try {
-			const { error } = await (getSupabaseClient() as any).rpc('remove_project_member', {
-				p_project_id: projectId,
-				p_user_id: userId,
+			const currentUserId = await this.getCurrentUserId()
+			if (!currentUserId) throw new Error("User not authenticated")
+
+			const result = await UserRoleService.removeProjectMember({
+				project_id: projectId,
+				user_id: userId,
+				removed_by: currentUserId
 			})
 
-			if (error) throw error
+			if (!result.success) {
+				throw new Error(result.error || "Failed to remove project member")
+			}
 		} catch (error) {
 			console.error("Failed to remove project member:", error)
 			throw error
@@ -260,23 +299,26 @@ class ProjectService {
 		return {
 			id: model.id,
 			name: model.name,
-			description: model.description,
+			description: model.description || '',
 			organisation_id: model.organisationId,
 			created_at: new Date(model.createdAt).toISOString(),
 			updated_at: new Date(model.updatedAt).toISOString(),
+			deleted_at: model.deletedAt ? new Date(model.deletedAt).toISOString() : null,
 			sampling_design_id: model.samplingDesignId || null,
 			website: model.website || null,
-			created_by: model.createdBy,
-			modified_by: model.modifiedBy,
+			created_by: model.createdBy || '',
+			modified_by: model.modifiedBy || '',
 			is_active: model.isActive,
 			timelapse_interval_seconds: model.timelapseIntervalSeconds || null,
 			activity_detection_sensitivity_id: model.activityDetectionSensitivityId || null,
 			capture_method_id: model.captureMethodId || null,
 			model_id: model.modelId || null,
-			is_baited: model.isBaited,
-			role: 'project_admin', // Default role, should be enriched if needed
-			members: [], // Members are fetched separately
-			deployments_count: 0, // Deployments are fetched separately
+			is_baited: model.isBaited || false,
+			is_monitoring_marked_individuals: model.isMonitoringMarkedIndividuals || false,
+			project_image: model.projectImage || null,
+			// Computed fields
+			member_count: 0,
+			deployment_count: 0,
 		}
 	}
 
@@ -284,20 +326,23 @@ class ProjectService {
 		return {
 			id: model.id,
 			name: model.name,
-			description: model.description,
+			description: model.description || '',
 			organisation_id: model.organisationId,
 			created_at: new Date(model.createdAt).toISOString(),
 			updated_at: new Date(model.updatedAt).toISOString(),
+			deleted_at: model.deletedAt ? new Date(model.deletedAt).toISOString() : null,
 			sampling_design_id: model.samplingDesignId || null,
 			website: model.website || null,
-			created_by: model.createdBy,
-			modified_by: model.modifiedBy,
+			created_by: model.createdBy || '',
+			modified_by: model.modifiedBy || '',
 			is_active: model.isActive,
 			timelapse_interval_seconds: model.timelapseIntervalSeconds || null,
 			activity_detection_sensitivity_id: model.activityDetectionSensitivityId || null,
 			capture_method_id: model.captureMethodId || null,
 			model_id: model.modelId || null,
-			is_baited: model.isBaited,
+			is_baited: model.isBaited || false,
+			is_monitoring_marked_individuals: model.isMonitoringMarkedIndividuals || false,
+			project_image: model.projectImage || null,
 		}
 	}
 }

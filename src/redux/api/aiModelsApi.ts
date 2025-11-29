@@ -15,7 +15,7 @@
 
 import { createApi, fakeBaseQuery } from "@reduxjs/toolkit/query/react"
 import { getSupabaseClient } from "../../services/supabase"
-import type { Database } from "../../types/supabase"
+import type { Database } from "../../types/database.types"
 import { log, logError } from "../../utils/logger"
 
 type AIModel = Database["public"]["Tables"]["ai_models"]["Row"]
@@ -91,9 +91,9 @@ export const aiModelsApi = createApi({
 			providesTags: (result, _error, organisationId) =>
 				result
 					? [
-							...result.map(({ id }) => ({ type: "AIModels" as const, id })),
-							{ type: "AIModels", id: `ORG-${organisationId}` },
-					  ]
+						...result.map(({ id }) => ({ type: "AIModels" as const, id })),
+						{ type: "AIModels", id: `ORG-${organisationId}` },
+					]
 					: [{ type: "AIModels", id: `ORG-${organisationId}` }],
 		}),
 	}),

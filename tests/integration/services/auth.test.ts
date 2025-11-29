@@ -38,6 +38,11 @@ import {
 	pendingConfirmationAuthResponse,
 } from "../../setup/fixtures/auth"
 
+// Mock the Supabase service
+jest.mock("../../../src/services/supabase", () => ({
+	getSupabaseClient: () => mockSupabaseClient,
+}))
+
 // Clear mocks before each test
 beforeEach(() => {
 	resetSupabaseMocks()
@@ -60,12 +65,10 @@ describe("Authentication Service", () => {
 				jwt: expect.any(String),
 				user: {
 					id: expect.any(String),
-					username: expect.any(String),
 					email: validLoginCredentials.identifier,
-					confirmed: true,
-					blocked: false,
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
+					role: expect.any(String),
+					organisation_id: null,
+					organisations: expect.any(Array),
 				},
 			})
 		})
@@ -114,7 +117,7 @@ describe("Authentication Service", () => {
 				password: validRegisterCredentials.password,
 				options: {
 					data: {
-						username: validRegisterCredentials.username,
+						name: validRegisterCredentials.name,
 						organization: validRegisterCredentials.organization,
 					},
 					emailRedirectTo: "wildlifewatcher://auth/callback",
@@ -124,9 +127,10 @@ describe("Authentication Service", () => {
 			expect(result).toMatchObject({
 				jwt: expect.any(String),
 				user: {
-					username: expect.any(String),
 					email: validRegisterCredentials.email,
-					confirmed: true,
+					role: "project_member",
+					organisation_id: null,
+					organisations: [],
 				},
 			})
 		})
@@ -145,9 +149,10 @@ describe("Authentication Service", () => {
 			expect(result).toMatchObject({
 				jwt: "",
 				user: {
-					username: validRegisterCredentials.username,
 					email: validRegisterCredentials.email,
-					confirmed: false,
+					role: "project_member",
+					organisation_id: null,
+					organisations: [],
 				},
 			})
 			expect((result as any).isPendingConfirmation).toBe(true)
@@ -213,7 +218,7 @@ describe("Authentication Service", () => {
 				jwt: mockSession.access_token,
 				user: {
 					email: mockUser.email,
-					username: expect.any(String),
+					role: expect.any(String),
 				},
 			})
 		})

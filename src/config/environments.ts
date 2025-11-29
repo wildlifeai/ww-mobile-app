@@ -37,18 +37,18 @@ export const ENVIRONMENT_CONFIGS: Record<
 	},
 	"cloud-dev": {
 		supabaseUrl:
-			process.env.EXPO_PUBLIC_SUPABASE_URL ||
+			(process.env as any).EXPO_PUBLIC_SUPABASE_URL ||
 			"https://nuhwmubvygxyddkycmpa.supabase.co",
 		supabaseAnonKey:
-			process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+			(process.env as any).EXPO_PUBLIC_SUPABASE_ANON_KEY ||
 			"sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd",
 		displayName: "Cloud Development",
 		description: "Cloud Supabase development instance (default)",
 		isProduction: false,
 	},
 	"cloud-prod": {
-		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_PROD_URL || "",
-		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_PROD_ANON_KEY || "",
+		supabaseUrl: (process.env as any).EXPO_PUBLIC_SUPABASE_PROD_URL || "",
+		supabaseAnonKey: (process.env as any).EXPO_PUBLIC_SUPABASE_PROD_ANON_KEY || "",
 		displayName: "Cloud Production",
 		description:
 			"Production Supabase instance (requires production credentials)",
@@ -68,15 +68,15 @@ export const ENVIRONMENT_CONFIGS: Record<
  */
 export function getDefaultEnvironment(): SupabaseEnvironment {
 	// Check for explicit environment override
-	if (process.env.EXPO_PUBLIC_SUPABASE_ENV) {
-		const env = process.env.EXPO_PUBLIC_SUPABASE_ENV
+	if ((process.env as any).EXPO_PUBLIC_SUPABASE_ENV) {
+		const env = (process.env as any).EXPO_PUBLIC_SUPABASE_ENV
 		if (isValidEnvironment(env)) {
 			return env
 		}
 	}
 
 	// Development builds default to local Supabase
-	const isDevelopment = __DEV__ || process.env.APP_VARIANT === "development"
+	const isDevelopment = __DEV__ || (process.env as any).APP_VARIANT === "development"
 
 	// For now, default to cloud-dev since local has networking issues on device
 	// TODO: Re-enable 'local' default once WSL networking is stable
@@ -109,8 +109,7 @@ export function getEnvironmentConfig(
 	if (!config.supabaseUrl || !config.supabaseAnonKey) {
 		throw new Error(
 			`Incomplete configuration for environment '${env}'. ` +
-				`Missing: ${!config.supabaseUrl ? "supabaseUrl" : ""} ${
-					!config.supabaseAnonKey ? "supabaseAnonKey" : ""
+			`Missing: ${!config.supabaseUrl ? "supabaseUrl" : ""} ${!config.supabaseAnonKey ? "supabaseAnonKey" : ""
 				}`.trim(),
 		)
 	}

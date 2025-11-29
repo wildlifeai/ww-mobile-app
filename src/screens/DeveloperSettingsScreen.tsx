@@ -50,6 +50,7 @@ import {
 	setEnvironment,
 	canSwitchEnvironment,
 } from "../config/EnvironmentManager"
+import { reconnectSupabase } from "../services/supabase"
 
 /**
  * Connection status for each environment
@@ -228,7 +229,7 @@ export const DeveloperSettingsScreen: React.FC = () => {
 		Alert.alert(
 			"Restart Required",
 			`Switch to ${ENVIRONMENT_CONFIGS[selectedEnvironment].displayName}?\n\n` +
-				"The app will restart to apply the new environment configuration.",
+			"The app will restart to apply the new environment configuration.",
 			[
 				{
 					text: "Cancel",
@@ -267,7 +268,6 @@ export const DeveloperSettingsScreen: React.FC = () => {
 							// without reinitializing native modules or recreating Supabase client.
 							// We need to manually trigger Supabase client recreation.
 							console.log("🔄 [Restart] Triggering Supabase client recreation...")
-							const { reconnectSupabase } = await import("../services/supabase")
 							await reconnectSupabase()
 							console.log("✅ [Restart] Supabase client recreated with new environment")
 
@@ -277,7 +277,7 @@ export const DeveloperSettingsScreen: React.FC = () => {
 							Alert.alert(
 								"Environment Switched",
 								`Successfully switched to ${ENVIRONMENT_CONFIGS[selectedEnvironment].displayName}.\n\n` +
-									`The app is now connected to:\n${ENVIRONMENT_CONFIGS[selectedEnvironment].supabaseUrl}`,
+								`The app is now connected to:\n${ENVIRONMENT_CONFIGS[selectedEnvironment].supabaseUrl}`,
 								[
 									{
 										text: "OK",
@@ -298,8 +298,7 @@ export const DeveloperSettingsScreen: React.FC = () => {
 							setIsRestarting(false)
 							Alert.alert(
 								"Restart Failed",
-								`Failed to restart app: ${
-									error instanceof Error ? error.message : "Unknown error"
+								`Failed to restart app: ${error instanceof Error ? error.message : "Unknown error"
 								}`,
 							)
 						}

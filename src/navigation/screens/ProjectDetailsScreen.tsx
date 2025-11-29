@@ -822,12 +822,12 @@ export const ProjectDetailsScreen = () => {
 													>
 														{member.user_profile?.name || "Unknown User"}
 													</Text>
-													{member.role?.value && (
+													{member.role && (
 														<Text
 															variant="bodySmall"
 															style={{ color: theme.colors.onSurfaceVariant }}
 														>
-															{member.role.value}
+															{member.role}
 														</Text>
 													)}
 												</View>

@@ -8,7 +8,9 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "NODE_ENV": "development"
+        "NODE_ENV": "development",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nuhwmubvygxyddkycmpa.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd"
       },
       "ios": {
         "resourceClass": "m-medium"
@@ -20,7 +22,9 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "NODE_ENV": "development"
+        "NODE_ENV": "development",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nuhwmubvygxyddkycmpa.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd"
       },
       "ios": {
         "resourceClass": "m-medium"

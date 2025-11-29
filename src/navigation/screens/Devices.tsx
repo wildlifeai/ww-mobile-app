@@ -38,15 +38,15 @@ export const Devices = () => {
 	}
 
 	const handleDevicePress = (deviceId: string) => {
-		navigation.navigate('DeviceDetails' as never, { deviceId } as never)
+		(navigation as any).navigate('DeviceDetails', { deviceId })
 	}
 
 	const handlePrepareAndTest = () => {
-		navigation.navigate('DeviceDiscovery' as never, { mode: 'prepare' } as never)
+		(navigation as any).navigate('DeviceDiscovery', { mode: 'prepare' })
 	}
 
 	const handleEngineerConsole = () => {
-		navigation.navigate('DeviceDiscovery' as never, { mode: 'engineer' } as never)
+		(navigation as any).navigate('DeviceDiscovery', { mode: 'engineer' })
 	}
 
 	// Loading state
