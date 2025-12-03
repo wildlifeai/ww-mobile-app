@@ -1,5 +1,12 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query"
-import { RootState } from ".."
+// import { RootState } from ".." // Circular dependency
+
+// Define local state type to avoid circular dependency
+interface AuthRootState {
+	authentication: {
+		token: string | null
+	}
+}
 
 // Lazy load config to avoid NativeModule access during initialization
 let Config: any = null
@@ -17,7 +24,7 @@ const createExtendedBaseQuery = () => {
 		_extendedBaseQuery = fetchBaseQuery({
 			baseUrl: getConfig().API_BASE || "",
 			prepareHeaders: (headers, { getState }) => {
-				const token = (getState() as RootState).authentication.token
+				const token = (getState() as AuthRootState).authentication.token
 
 				// If we have a token set in state, let's assume that we should be passing it.
 				if (token) {

@@ -1,5 +1,6 @@
-// Import URL polyfill for React Native (required for Supabase)
-import "react-native-url-polyfill/auto"
+// Import polyfills for React Native
+
+import "react-native-url-polyfill/auto" // Required for Supabase
 
 import { AppRegistry } from "react-native"
 import { name as appName } from "./app.json"

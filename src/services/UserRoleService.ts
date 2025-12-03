@@ -13,6 +13,10 @@
 
 import { getSupabaseClient } from "./supabase"
 import type { Database } from "../types/database.types"
+import database from '../database'
+import Project from '../database/models/Project'
+import UserRole from '../database/models/UserRole'
+import { Q } from '@nozbe/watermelondb'
 
 type UserRoleRow = Database["public"]["Tables"]["user_roles"]["Row"]
 
@@ -111,44 +115,104 @@ export const getOrganizationUsers = async (
 
 /**
  * Get all members of a project
+ * Checks local WatermelonDB first for offline support
  */
 export const getProjectMembers = async (
 	projectId: string,
 	requestingUserId: string,
 ): Promise<ProjectMember[]> => {
 	try {
-		// Query user_roles directly
-		const { data: roles, error } = await getSupabaseClient()
-			.from("user_roles")
-			.select(`
-				user_id,
-				role,
-				granted_at,
-				granted_by,
-				users:user_id (
-					id,
-					email,
-					firstname,
-					surname
-				)
-			`)
-			.eq("scope_type", "project")
-			.eq("scope_id", projectId)
-			.eq("is_active", true)
+		// 1. Try local database first
+		const localRoles = await database.get<UserRole>('user_roles')
+			.query(
+				Q.where('scope_type', 'project'),
+				Q.where('scope_id', projectId),
+				Q.where('is_active', true)
+			)
+			.fetch()
+
+		if (localRoles.length > 0) {
+			// Fetch user details for these roles
+			const userIds = localRoles.map(r => r.userId)
+			const users = await database.get<any>('users') // Use any to avoid import issues if User model not exported as value
+				.query(Q.where('id', Q.oneOf(userIds)))
+				.fetch()
+
+			const userMap = new Map(users.map(u => [u.id, u]))
+
+			const members = localRoles.map(role => {
+				const user = userMap.get(role.userId)
+				const name = user ? `${user.firstname} ${user.surname}` : "Unknown User"
+				// We might not have email locally if it's not in public.users or not synced
+				// But for basic display, name is most important.
+				return {
+					id: role.userId,
+					name: name,
+					email: "", // Email might be missing locally
+					role: role.role,
+					granted_at: role.grantedAt.toISOString(),
+					granted_by: role.grantedBy,
+					granted_by_name: "Unknown" // We could fetch this too but let's keep it simple
+				}
+			})
+
+			console.log(`✅ Fetched ${members.length} members from local DB for project ${projectId}`)
+			return members
+		}
+
+		// 1b. Optimistic check: If no roles found, check if I am the creator (project might not be synced yet)
+		try {
+			const project = await database.get<Project>('projects').find(projectId)
+			if (project && project.createdBy === requestingUserId) {
+				console.log(`✅ Optimistic check: Current user is creator of project ${projectId}`)
+
+				// Fetch my user details if available
+				let name = "Me"
+				try {
+					const user = await database.get<any>('users').find(requestingUserId)
+					if (user) {
+						name = `${user.firstname} ${user.surname}`
+					}
+				} catch (e) {
+					// User not found locally, ignore
+				}
+
+				return [{
+					id: requestingUserId,
+					name: name,
+					email: "",
+					role: "project_admin",
+					granted_at: new Date().toISOString(),
+					granted_by: requestingUserId,
+					granted_by_name: name
+				}]
+			}
+		} catch (e) {
+			// Project not found or error, proceed to RPC fallback
+		}
+
+		// 2. Fallback to backend RPC
+		// This bypasses RLS issues and provides proper data joins
+		const { data, error } = await getSupabaseClient()
+			.rpc("get_project_members", {
+				p_project_id: projectId,
+				p_requesting_user_id: requestingUserId
+			})
 
 		if (error) {
 			console.error("❌ Error fetching project members:", error)
 			throw new Error(error.message)
 		}
 
-		const members = roles.map((r: any) => ({
-			id: r.users.id,
-			name: `${r.users.firstname} ${r.users.surname}`.trim(),
-			email: r.users.email,
-			role: r.role,
-			granted_at: r.granted_at,
-			granted_by: r.granted_by,
-			granted_by_name: "Unknown" // We'd need another join or lookup to get this
+		// Map RPC response to ProjectMember format
+		const members = (data || []).map((m: any) => ({
+			id: m.id,  // RPC returns 'id' not 'user_id'
+			name: m.name || "Unknown",
+			email: m.email || "",
+			role: m.role,
+			granted_at: m.granted_at,
+			granted_by: m.granted_by,
+			granted_by_name: m.granted_by_name || "Unknown"
 		}))
 
 		console.log(`✅ Fetched ${members.length} members from project ${projectId}`)
@@ -314,13 +378,90 @@ export const removeProjectMember = async (
 }
 
 /**
+ * Get current user's role in a project
+ * Checks local WatermelonDB first, then optimistic check, then Supabase
+ */
+export const getUserProjectRole = async (
+	projectId: string,
+	userId: string,
+): Promise<ProjectRole | null> => {
+	try {
+		// 1. Check local database first
+		const localRoles = await database.get<UserRole>('user_roles')
+			.query(
+				Q.where('user_id', userId),
+				Q.where('scope_type', 'project'),
+				Q.where('scope_id', projectId),
+				Q.where('is_active', true)
+			)
+			.fetch()
+
+		if (localRoles.length > 0) {
+			// Return the highest priority role if multiple?
+			// For now assume one role per project
+			return localRoles[0].role as ProjectRole
+		}
+
+		// 2. Optimistic check: If no roles found, check if I am the creator
+		try {
+			const project = await database.get<Project>('projects').find(projectId)
+			if (project && project.createdBy === userId) {
+				console.log(`✅ Optimistic check (getUserProjectRole): Current user is creator of project ${projectId}`)
+				return "project_admin"
+			}
+		} catch (e) {
+			// Ignore
+		}
+
+		// 3. Fallback to Supabase
+		const { data, error } = await getSupabaseClient()
+			.from("user_roles")
+			.select("role")
+			.eq("user_id", userId)
+			.eq("scope_type", "project")
+			.eq("scope_id", projectId)
+			.eq("is_active", true)
+			.single()
+
+		if (error) {
+			if (error.code !== 'PGRST116') { // Not found
+				console.error("❌ Error checking user project role:", error)
+			}
+			return null
+		}
+
+		return data?.role as ProjectRole || null
+	} catch (error) {
+		console.error("❌ Exception checking user project role:", error)
+		return null
+	}
+}
+
+/**
  * Check if current user has project admin role
+ * Checks local WatermelonDB first for offline support
  */
 export const isProjectAdmin = async (
 	projectId: string,
 	userId: string,
 ): Promise<boolean> => {
 	try {
+		// Check local database first
+		const localRole = await database.get<UserRole>('user_roles')
+			.query(
+				Q.where('user_id', userId),
+				Q.where('scope_type', 'project'),
+				Q.where('scope_id', projectId),
+				Q.where('role', 'project_admin'),
+				Q.where('is_active', true)
+			)
+			.fetch()
+
+		if (localRole.length > 0) {
+			return true
+		}
+
+		// Fallback to Supabase if not found locally (e.g. not synced yet)
 		const { data, error } = await getSupabaseClient()
 			.from("user_roles")
 			.select("role")
@@ -331,7 +472,7 @@ export const isProjectAdmin = async (
 			.eq("is_active", true)
 			.single()
 
-		if (error && error.code !== 'PGRST116') { // PGRST116 is "The result contains 0 rows"
+		if (error && error.code !== 'PGRST116') {
 			console.error("❌ Error checking project admin role:", error)
 			return false
 		}
@@ -345,9 +486,25 @@ export const isProjectAdmin = async (
 
 /**
  * Check if current user has WW Admin role (system-wide)
+ * Checks local WatermelonDB first
  */
 export const isWWAdmin = async (userId: string): Promise<boolean> => {
 	try {
+		// Check local database first
+		const localRole = await database.get<UserRole>('user_roles')
+			.query(
+				Q.where('user_id', userId),
+				Q.where('scope_type', 'system'),
+				Q.where('role', 'ww_admin'),
+				Q.where('is_active', true)
+			)
+			.fetch()
+
+		if (localRole.length > 0) {
+			return true
+		}
+
+		// Fallback to Supabase
 		const { data, error } = await getSupabaseClient()
 			.from("user_roles")
 			.select("role")
@@ -403,4 +560,5 @@ export default {
 	isProjectAdmin,
 	isWWAdmin,
 	canAddUserToProject,
+	getUserProjectRole,
 }

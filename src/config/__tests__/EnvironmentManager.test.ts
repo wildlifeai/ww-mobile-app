@@ -49,7 +49,7 @@ describe("EnvironmentManager", () => {
 
 		it("should return cloud-dev as default for development builds when no storage value", async () => {
 			mockAsyncStorage.getItem.mockResolvedValue(null)
-			;(Constants.expoConfig!.extra as any).isDevelopment = true
+				; (Constants.expoConfig!.extra as any).isDevelopment = true
 
 			const env = await getEnvironment()
 
@@ -59,7 +59,7 @@ describe("EnvironmentManager", () => {
 
 		it("should return cloud-dev as default for non-development builds when no storage value", async () => {
 			mockAsyncStorage.getItem.mockResolvedValue(null)
-			;(Constants.expoConfig!.extra as any).isDevelopment = false
+				; (Constants.expoConfig!.extra as any).isDevelopment = false
 
 			const env = await getEnvironment()
 
@@ -68,7 +68,7 @@ describe("EnvironmentManager", () => {
 
 		it("should validate and fallback to default on invalid stored value", async () => {
 			mockAsyncStorage.getItem.mockResolvedValue("invalid-env")
-			;(Constants.expoConfig!.extra as any).isDevelopment = true
+				; (Constants.expoConfig!.extra as any).isDevelopment = true
 
 			const env = await getEnvironment()
 
@@ -78,7 +78,7 @@ describe("EnvironmentManager", () => {
 
 		it("should fallback to default on AsyncStorage error", async () => {
 			mockAsyncStorage.getItem.mockRejectedValue(new Error("Storage error"))
-			;(Constants.expoConfig!.extra as any).isDevelopment = true
+				; (Constants.expoConfig!.extra as any).isDevelopment = true
 
 			const env = await getEnvironment()
 
@@ -89,7 +89,7 @@ describe("EnvironmentManager", () => {
 
 	describe("setEnvironment", () => {
 		beforeEach(() => {
-			;(Constants.expoConfig!.extra as any).isDevelopment = true
+			; (Constants.expoConfig!.extra as any).isDevelopment = true
 		})
 
 		it("should persist environment to AsyncStorage in dev builds", async () => {
@@ -104,7 +104,7 @@ describe("EnvironmentManager", () => {
 		})
 
 		it("should throw error when attempting to switch in non-dev builds", async () => {
-			;(Constants.expoConfig!.extra as any).isDevelopment = false
+			; (Constants.expoConfig!.extra as any).isDevelopment = false
 
 			await expect(setEnvironment("local")).rejects.toThrow(
 				"Environment switching is only allowed in development builds",
@@ -134,12 +134,12 @@ describe("EnvironmentManager", () => {
 
 			expect(config.displayName).toBe("Local Development")
 			expect(config.isProduction).toBe(false)
-			expect(config.supabaseUrl).toContain("172.21.24.107")
+			expect(config.supabaseUrl).toContain("192.168.1.239")
 		})
 
 		it("should return config for default environment when no storage", async () => {
 			mockAsyncStorage.getItem.mockResolvedValue(null)
-			;(Constants.expoConfig!.extra as any).isDevelopment = true
+				; (Constants.expoConfig!.extra as any).isDevelopment = true
 
 			const config = await getEnvironmentConfig()
 
@@ -162,19 +162,19 @@ describe("EnvironmentManager", () => {
 
 	describe("canSwitchEnvironment", () => {
 		it("should return true in development builds", () => {
-			;(Constants.expoConfig!.extra as any).isDevelopment = true
+			; (Constants.expoConfig!.extra as any).isDevelopment = true
 
 			expect(canSwitchEnvironment()).toBe(true)
 		})
 
 		it("should return false in non-development builds", () => {
-			;(Constants.expoConfig!.extra as any).isDevelopment = false
+			; (Constants.expoConfig!.extra as any).isDevelopment = false
 
 			expect(canSwitchEnvironment()).toBe(false)
 		})
 
 		it("should return false when isDevelopment is undefined", () => {
-			;(Constants.expoConfig!.extra as any).isDevelopment = undefined
+			; (Constants.expoConfig!.extra as any).isDevelopment = undefined
 
 			expect(canSwitchEnvironment()).toBe(false)
 		})
@@ -200,7 +200,7 @@ describe("EnvironmentManager", () => {
 		})
 
 		it("should allow resetting even in non-dev builds", async () => {
-			;(Constants.expoConfig!.extra as any).isDevelopment = false
+			; (Constants.expoConfig!.extra as any).isDevelopment = false
 			mockAsyncStorage.removeItem.mockResolvedValue()
 
 			await expect(resetToDefault()).resolves.not.toThrow()
@@ -209,11 +209,11 @@ describe("EnvironmentManager", () => {
 
 	describe("Error Messages", () => {
 		beforeEach(() => {
-			;(Constants.expoConfig!.extra as any).isDevelopment = true
+			; (Constants.expoConfig!.extra as any).isDevelopment = true
 		})
 
 		it("should provide actionable error message for permission denied", async () => {
-			;(Constants.expoConfig!.extra as any).isDevelopment = false
+			; (Constants.expoConfig!.extra as any).isDevelopment = false
 
 			try {
 				await setEnvironment("local")

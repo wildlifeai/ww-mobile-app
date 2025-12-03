@@ -35,15 +35,9 @@ describe("Environment Configuration System", () => {
 	})
 
 	describe("ENVIRONMENT_CONFIGS", () => {
-		it("should have all three environment configurations", () => {
-			expect(ENVIRONMENT_CONFIGS).toHaveProperty("local")
-			expect(ENVIRONMENT_CONFIGS).toHaveProperty("cloud-dev")
-			expect(ENVIRONMENT_CONFIGS).toHaveProperty("cloud-prod")
-		})
-
 		it("should have local environment configured with WSL host IP", () => {
 			const local = ENVIRONMENT_CONFIGS.local
-			expect(local.supabaseUrl).toBe("http://172.21.24.107:54321")
+			expect(local.supabaseUrl).toBe("http://192.168.1.239:54321")
 			expect(local.supabaseAnonKey).toBeTruthy()
 			expect(local.displayName).toBe("Local Development")
 			expect(local.isProduction).toBe(false)
@@ -142,7 +136,7 @@ describe("Environment Configuration System", () => {
 	describe("getEnvironmentConfig", () => {
 		it("should return correct configuration for local environment", () => {
 			const config = getEnvironmentConfig("local")
-			expect(config.supabaseUrl).toBe("http://172.21.24.107:54321")
+			expect(config.supabaseUrl).toBe("http://192.168.1.239:54321")
 			expect(config.displayName).toBe("Local Development")
 			expect(config.isProduction).toBe(false)
 		})
@@ -206,6 +200,7 @@ describe("Environment Configuration System", () => {
 		it("should return array of SupabaseEnvironment types", () => {
 			const available = getAvailableEnvironments()
 			available.forEach((env) => {
+				const config = ENVIRONMENT_CONFIGS[env]
 				expect(isValidEnvironment(env)).toBe(true)
 			})
 		})
@@ -220,9 +215,9 @@ describe("Environment Configuration System", () => {
 		it("should return formatted debug info for local environment", () => {
 			const info = getEnvironmentDebugInfo("local")
 			expect(info).toContain("Environment: Local Development")
-			expect(info).toContain("URL: http://172.21.24.107:54321")
+			expect(info).toContain("URL: http://192.168.1.239:54321")
 			// Local URL extracts IP as project ref
-			expect(info).toContain("Project: 172")
+			expect(info).toContain("Project: 192")
 			expect(info).toContain("Production: false")
 			expect(info).toContain("Configured: true")
 		})

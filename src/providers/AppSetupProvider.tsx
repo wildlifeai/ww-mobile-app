@@ -70,8 +70,10 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 		if (!isSupabaseReady) return  // Wait for Supabase
 
 		console.log("🔄 Starting Supabase Sync Service...")
-		SupabaseSyncService.startRealtimeSubscription()
-		SupabaseSyncService.sync() // Initial sync
+		SupabaseSyncService.resetSyncState().then(() => {
+			SupabaseSyncService.startRealtimeSubscription()
+			SupabaseSyncService.sync() // Initial sync
+		})
 
 		return () => {
 			console.log("🛑 Stopping Supabase Sync Service...")

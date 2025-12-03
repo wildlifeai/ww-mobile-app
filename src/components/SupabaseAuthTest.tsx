@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { View, Alert } from "react-native"
 import { Button, TextInput, Text, Card } from "react-native-paper"
 import { useSupabaseAuth } from "../hooks/useSupabaseAuth"
-import { checkSupabaseConnection } from "../services/supabase"
+import { getSupabaseClient } from "../services/supabase"
 
 /**
  * Supabase Authentication Test Component
@@ -30,8 +30,14 @@ export const SupabaseAuthTest: React.FC = () => {
 	const handleTestConnection = async () => {
 		try {
 			setConnectionStatus("Testing...")
-			const isConnected = await checkSupabaseConnection()
-			setConnectionStatus(isConnected ? "Connected ✅" : "Failed ❌")
+			const client = getSupabaseClient()
+			const { error } = await client.from("users").select("count").limit(1)
+
+			if (error) {
+				throw new Error(error.message)
+			}
+
+			setConnectionStatus("Connected ✅")
 		} catch (error) {
 			setConnectionStatus(
 				`Error: ${error instanceof Error ? error.message : "Unknown error"}`,

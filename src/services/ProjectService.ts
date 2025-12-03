@@ -4,13 +4,15 @@
  * Refactored for WatermelonDB Native Sync:
  * - Uses WatermelonDB models for all operations
  * - Sync is handled by SupabaseSyncService
- * - Removed DatabaseService and OfflineService dependencies
+ * - OutboxService integration for automatic sync queueing
  */
 
 import { Q } from '@nozbe/watermelondb'
 import database from '../database'
 import Project from '../database/models/Project'
 import { getSupabaseClient } from "./supabase"
+import OutboxService from './OutboxService'
+import SupabaseSyncService from './SupabaseSyncService'
 import type {
 	Project as ProjectType,
 	ProjectWithDetails,
@@ -36,7 +38,7 @@ class ProjectService {
 	 */
 	async getUserProjects(organisationId: string): Promise<ProjectWithDetails[]> {
 		try {
-			console.log("≡ƒôé Reading projects from WatermelonDB for org:", organisationId)
+			console.log("📂 Reading projects from WatermelonDB for org:", organisationId)
 
 			const projects = await this.projectsCollection
 				.query(
@@ -45,11 +47,11 @@ class ProjectService {
 				)
 				.fetch()
 
-			console.log(`Γ£à Found ${projects.length} projects in WatermelonDB`)
+			console.log(`✅ Found ${projects.length} projects in WatermelonDB`)
 
 			return projects.map(p => this.mapModelToDetails(p))
 		} catch (error) {
-			console.error("Γ¥î Failed to fetch projects from WatermelonDB:", error)
+			console.error("❌ Failed to fetch projects from WatermelonDB:", error)
 			throw new Error(
 				`Failed to fetch projects: ${error instanceof Error ? error.message : String(error)}`
 			)
@@ -62,20 +64,32 @@ class ProjectService {
 	 */
 	async getProjectById(projectId: string): Promise<ProjectWithDetails | null> {
 		try {
-			console.log("≡ƒôé Reading project from WatermelonDB:", projectId)
+			console.log("📂 Reading project from WatermelonDB:", projectId)
 
 			const project = await this.projectsCollection.find(projectId)
 
 			if (!project) {
-				console.log("Γ¥î Project not found in WatermelonDB:", projectId)
+				console.log("❌ Project not found in WatermelonDB:", projectId)
 				return null
 			}
 
-			console.log("Γ£à Found project in WatermelonDB:", project.name)
+			console.log("✅ Found project in WatermelonDB:", project.name)
 
-			return this.mapModelToDetails(project)
+			const details = this.mapModelToDetails(project)
+
+			// Populate user role
+			const currentUserId = await this.getCurrentUserId()
+			if (currentUserId) {
+				const role = await UserRoleService.getUserProjectRole(projectId, currentUserId)
+				if (role) {
+					details.role = role
+					console.log(`✅ User role for project ${projectId}: ${role}`)
+				}
+			}
+
+			return details
 		} catch (error) {
-			console.error("Γ¥î Failed to fetch project from WatermelonDB:", error)
+			console.error("❌ Failed to fetch project from WatermelonDB:", error)
 			// WatermelonDB throws if record not found
 			return null
 		}
@@ -83,19 +97,22 @@ class ProjectService {
 
 	/**
 	 * Create new project
-	 * Saves to local WatermelonDB. Sync engine handles pushing to server.
+	 * Saves to local WatermelonDB, queues for sync, and triggers background sync.
 	 */
 	async createProject(input: CreateProjectInput): Promise<ProjectType> {
 		const currentUserId = await this.getCurrentUserId()
 		if (!currentUserId) throw new Error("User not authenticated")
 
 		try {
-			console.log("≡ƒÆ╛ Creating project in WatermelonDB:", input.name)
+			console.log("🛠️ Creating project in WatermelonDB:", input.name)
 
 			let newProject: Project | undefined
 
 			await database.write(async () => {
-				newProject = await this.projectsCollection.create(project => {
+
+				// 1. Prepare project creation
+
+				newProject = this.projectsCollection.prepareCreate(project => {
 					project.name = input.name
 					project.description = input.description || ''
 					project.organisationId = input.organisation_id
@@ -110,15 +127,38 @@ class ProjectService {
 					project.modelId = input.model_id ?? null
 					project.isBaited = input.is_baited || false
 				})
+
+
+				// 2. Prepare outbox record
+
+
+
+
+				const outboxOp = OutboxService.recordOperation({
+					operation: 'CREATE',
+					tableName: 'projects',
+					recordId: newProject.id,
+					payload: this.mapModelToType(newProject),
+					userId: currentUserId,
+				})
+
+
+				// 3. Execute batch
+
+				await database.batch(newProject, outboxOp)
+
 			})
 
 			if (!newProject) throw new Error("Failed to create project instance")
 
-			console.log("Γ£à Project created locally:", newProject.id)
+			console.log("✅ Project created locally:", newProject.id)
+
+			// Trigger background sync (debounced to batch operations)
+			SupabaseSyncService.debouncedSync()
 
 			return this.mapModelToType(newProject)
 		} catch (error) {
-			console.error("Γ¥î Failed to create project:", error)
+			console.error("❌ Failed to create project:", error)
 			throw new Error(
 				`Failed to create project: ${error instanceof Error ? error.message : String(error)}`
 			)
@@ -127,20 +167,21 @@ class ProjectService {
 
 	/**
 	 * Update existing project
-	 * Updates local WatermelonDB. Sync engine handles pushing to server.
+	 * Updates local WatermelonDB, queues for sync, and triggers background sync.
 	 */
 	async updateProject(
 		projectId: string,
 		updates: Partial<ProjectType>,
 	): Promise<ProjectType> {
 		try {
-			console.log("≡ƒÆ╛ Updating project in WatermelonDB:", projectId)
+			console.log("🛠️ Updating project in WatermelonDB:", projectId)
 
 			const project = await this.projectsCollection.find(projectId)
 			const currentUserId = await this.getCurrentUserId()
 
 			await database.write(async () => {
-				await project.update(p => {
+				// 1. Prepare project update
+				const projectUpdate = project.prepareUpdate(p => {
 					if (updates.name !== undefined) p.name = updates.name
 					if (updates.description !== undefined) p.description = updates.description || ''
 					if (updates.sampling_design_id !== undefined) p.samplingDesignId = updates.sampling_design_id ?? null
@@ -154,13 +195,28 @@ class ProjectService {
 
 					if (currentUserId) p.modifiedBy = currentUserId
 				})
+
+				// 2. Prepare outbox record
+				const outboxOp = OutboxService.recordOperation({
+					operation: 'UPDATE',
+					tableName: 'projects',
+					recordId: project.id,
+					payload: this.mapModelToType(project),
+					userId: currentUserId || undefined,
+				})
+
+				// 3. Execute batch
+				await database.batch(projectUpdate, outboxOp)
 			})
 
-			console.log("Γ£à Project updated locally:", projectId)
+			console.log("✅ Project updated locally:", projectId)
+
+			// Trigger background sync
+			SupabaseSyncService.debouncedSync()
 
 			return this.mapModelToType(project)
 		} catch (error) {
-			console.error("Γ¥î Failed to update project:", error)
+			console.error("❌ Failed to update project:", error)
 			throw new Error(
 				`Failed to update project: ${error instanceof Error ? error.message : String(error)}`
 			)
@@ -169,28 +225,43 @@ class ProjectService {
 
 	/**
 	 * Delete project (Soft Delete)
-	 * Marks as deleted in WatermelonDB. Sync engine handles pushing to server.
+	 * Marks as deleted in WatermelonDB, queues for sync, and triggers background sync.
 	 */
 	async deleteProject(projectId: string): Promise<void> {
 		try {
-			console.log("≡ƒùæ∩╕Å Deleting project in WatermelonDB:", projectId)
+			console.log("🗑️ Deleting project in WatermelonDB:", projectId)
 
 			const project = await this.projectsCollection.find(projectId)
+			const currentUserId = await this.getCurrentUserId()
 
 			await database.write(async () => {
-				await project.markAsDeleted()
+				// 1. Prepare project deletion
+				const projectDelete = project.prepareMarkAsDeleted()
+
+				// 2. Prepare outbox record
+				const outboxOp = OutboxService.recordOperation({
+					operation: 'DELETE',
+					tableName: 'projects',
+					recordId: project.id,
+					payload: { id: project.id },
+					userId: currentUserId || undefined,
+				})
+
+				// 3. Execute batch
+				await database.batch(projectDelete, outboxOp)
 			})
 
-			console.log("Γ£à Project marked as deleted locally:", projectId)
+			console.log("✅ Project marked as deleted locally:", projectId)
+
+			// Trigger background sync
+			SupabaseSyncService.debouncedSync()
 		} catch (error) {
-			console.error("Γ¥î Failed to delete project:", error)
+			console.error("❌ Failed to delete project:", error)
 			throw new Error(
 				`Failed to delete project: ${error instanceof Error ? error.message : String(error)}`
 			)
 		}
 	}
-
-
 
 	/**
 	 * Get project members

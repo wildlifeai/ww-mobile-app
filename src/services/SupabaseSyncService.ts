@@ -7,12 +7,31 @@ import SyncStateService, { SYNC_STATE_KEYS } from './SyncStateService'
 import { Database } from '../types/database.types'
 import UserRole from '../database/models/UserRole'
 import Device from '../database/models/Device'
+import Project from '../database/models/Project'
 
 class SupabaseSyncService {
     private realtimeChannel: RealtimeChannel | null = null
     private isSyncing = false
     private syncDebounceTimer: NodeJS.Timeout | null = null
     private readonly SYNC_DEBOUNCE_MS = 2000 // 2 seconds
+
+    /**
+     * Reset sync state on app startup
+     * Clears any stuck "in progress" flags from previous crashes
+     */
+    async resetSyncState() {
+        console.log('🔄 Resetting sync state...')
+        this.isSyncing = false
+        if (this.syncDebounceTimer) {
+            clearTimeout(this.syncDebounceTimer)
+            this.syncDebounceTimer = null
+        }
+
+        await database.write(async () => {
+            await SyncStateService.set(SYNC_STATE_KEYS.SYNC_IN_PROGRESS, 'false')
+        })
+        console.log('✅ Sync state reset complete')
+    }
 
     /**
      * Debounced sync - prevents sync thrashing from rapid triggers
@@ -61,6 +80,7 @@ class SupabaseSyncService {
             // ================================================================
             await this.pullRemoteChanges()
             await this.syncUserRoles()
+            await this.syncProjects()
             await this.syncDevices()
 
             // ================================================================
@@ -413,19 +433,116 @@ class SupabaseSyncService {
                         rec.grantedAt = new Date(row.granted_at ?? Date.now())
                         rec.expiresAt = row.expires_at ? new Date(row.expires_at) : undefined
                         rec.isActive = row.is_active
-                        rec.modifiedBy = row.modified_by
-                        rec.createdAt = new Date(row.created_at ?? Date.now())
+                        rec.modifiedBy = row.modified_by;
+                        // Use _raw to bypass @readonly check
+                        (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
                         rec.updatedAt = new Date(row.updated_at ?? Date.now())
                     })
                 }
             }
+            // Update timestamp
+            const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
+            await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
         })
 
-        // Update timestamp
-        const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
-        await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
-
         console.log('✅ User roles sync complete')
+    }
+
+    /**
+     * Sync projects (incremental pull)
+     * Pulls projects that the user has access to via their user_roles
+     */
+    private async syncProjects(): Promise<void> {
+        const LAST_PULLED_KEY = SYNC_STATE_KEYS.PROJECTS_LAST_PULLED_AT
+        const lastPulledStr = await SyncStateService.get(LAST_PULLED_KEY)
+        const lastPulledAt = lastPulledStr ? new Date(parseInt(lastPulledStr, 10)).toISOString() : new Date(0).toISOString()
+
+        console.log('📂 Syncing projects since', lastPulledAt)
+
+        const client = getSupabaseClient()
+
+        // Get current user
+        const { data: { user } } = await client.auth.getUser()
+        if (!user) {
+            console.log('⚠️ No authenticated user, skipping project sync')
+            return
+        }
+
+        // Query projects using the projects_with_stats view which includes role information
+        const { data, error } = await client
+            .from('projects_with_stats')
+            .select('*')
+            .gt('updated_at', lastPulledAt)
+
+        if (error) {
+            console.error('❌ Failed to sync projects:', error)
+            return
+        }
+
+        if (!data || data.length === 0) {
+            console.log('✅ No new project changes')
+            return
+        }
+
+        console.log(`📥 Received ${data.length} project updates`)
+
+        const collection = database.collections.get<Project>('projects')
+
+        await database.write(async () => {
+            for (const row of data) {
+                // Check if exists
+                try {
+                    const existing = await collection.find(row.id)
+                    await existing.update((rec) => {
+                        rec.name = row.name || ''
+                        rec.description = row.description || ''
+                        rec.organisationId = row.organisation_id || ''
+                        rec.samplingDesignId = row.sampling_design_id ?? undefined
+                        rec.website = row.website ?? undefined
+                        rec.isActive = row.is_active ?? true
+                        rec.timelapseIntervalSeconds = row.timelapse_interval_seconds ?? undefined
+                        rec.activityDetectionSensitivityId = row.activity_detection_sensitivity_id ?? undefined
+                        rec.captureMethodId = row.capture_method_id ?? undefined
+                        rec.modelId = row.model_id ?? undefined
+                        rec.isBaited = row.is_baited ?? false
+                        rec.isMonitoringMarkedIndividuals = row.is_monitoring_marked_individuals ?? false
+                        rec.projectImage = row.project_image ?? undefined
+                        rec.createdBy = row.created_by || ''
+                        rec.modifiedBy = row.modified_by || '';
+                        // Use _raw to bypass @readonly check
+                        (rec._raw as any).updated_at = new Date(row.updated_at ?? Date.now()).getTime()
+                    })
+                } catch (e) {
+                    // Project doesn't exist, create it
+                    await collection.create((rec) => {
+                        rec._raw.id = row.id // Set the ID from server
+                        rec.name = row.name || ''
+                        rec.description = row.description || ''
+                        rec.organisationId = row.organisation_id || ''
+                        rec.samplingDesignId = row.sampling_design_id ?? undefined
+                        rec.website = row.website ?? undefined
+                        rec.isActive = row.is_active ?? true
+                        rec.timelapseIntervalSeconds = row.timelapse_interval_seconds ?? undefined
+                        rec.activityDetectionSensitivityId = row.activity_detection_sensitivity_id ?? undefined
+                        rec.captureMethodId = row.capture_method_id ?? undefined
+                        rec.modelId = row.model_id ?? undefined
+                        rec.isBaited = row.is_baited ?? false
+                        rec.isMonitoringMarkedIndividuals = row.is_monitoring_marked_individuals ?? false
+                        rec.projectImage = row.project_image ?? undefined
+                        rec.createdBy = row.created_by || ''
+                        rec.modifiedBy = row.modified_by || '';
+                        // Use _raw to bypass @readonly check
+                        (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime();
+                        (rec._raw as any).updated_at = new Date(row.updated_at ?? Date.now()).getTime()
+                    })
+                }
+            }
+            // Update timestamp
+            const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
+            await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
+        })
+
+        console.log('✅ Projects sync complete')
     }
 
     /**
@@ -486,17 +603,17 @@ class SupabaseSyncService {
                         rec.organisationId = row.organisation_id ?? ''
                         rec.firmwareId = row.config_firmware_id ?? row.ble_firmware_id ?? ''
                         rec.lastBatteryCheck = row.last_battery_check ?? ''
-                        rec.lastSdCardCheck = row.last_sd_card_check ?? ''
-                        rec.createdAt = new Date(row.created_at ?? Date.now())
+                        rec.lastSdCardCheck = row.last_sd_card_check ?? '';
+                        // Use _raw to bypass @readonly check
+                        (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
                         rec.updatedAt = new Date(row.updated_at ?? Date.now())
                     })
                 }
             }
+            // Update timestamp
+            const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
+            await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
         })
-
-        // Update timestamp
-        const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
-        await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
 
         console.log('✅ Devices sync complete')
     }

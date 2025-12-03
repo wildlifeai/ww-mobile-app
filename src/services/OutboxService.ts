@@ -1,5 +1,5 @@
 import { Q } from '@nozbe/watermelondb'
-import { v4 as uuidv4 } from 'uuid'
+import * as Crypto from 'expo-crypto'
 import database from '../database'
 import SyncOutbox from '../database/models/SyncOutbox'
 import SyncStateService from './SyncStateService'
@@ -34,10 +34,12 @@ class OutboxService {
     /**
      * Record a CRUD operation in the outbox
      * 
-     * This is called after every local database mutation to track
-     * the change for eventual sync to the server.
+     * IMPORTANT: This method returns a prepared model that MUST be batched
+     * with the main operation using database.batch().
+     * 
+     * It uses prepareCreate() to avoid nested write operations.
      */
-    async recordOperation(params: RecordOperationParams): Promise<string> {
+    recordOperation(params: RecordOperationParams): SyncOutbox {
         const {
             operation,
             tableName,
@@ -50,15 +52,15 @@ class OutboxService {
 
         try {
             // Generate unique operation ID for idempotency
-            const operationId = uuidv4()
+            const operationId = Crypto.randomUUID()
 
             // Get next Lamport clock for ordering
             // Use timestamp for operation ordering (simpler than Lamport clock with DB writes)
             const lamportClock = Date.now()
 
-            // NOTE: No database.write() wrapper - caller must provide transaction context
-            // This prevents nested writes which cause WatermelonDB deadlocks
-            await database.get<SyncOutbox>('sync_outbox').create(op => {
+            // Use prepareCreate to avoid nested writes
+            // Caller must execute this within their transaction using batch()
+            const outboxRecord = database.get<SyncOutbox>('sync_outbox').prepareCreate(op => {
                 op.operationId = operationId
                 op.operationType = operation
                 op.tableName = tableName
@@ -72,10 +74,10 @@ class OutboxService {
                 op.deviceId = deviceId
             })
 
-            console.log(`📦 Recorded ${operation} operation for ${tableName}:${recordId} (clock: ${lamportClock})`)
-            return operationId
+            console.log(`📦 Prepared ${operation} operation for ${tableName}:${recordId} (clock: ${lamportClock})`)
+            return outboxRecord
         } catch (error) {
-            console.error('[OutboxService] Error recording operation:', error)
+            console.error('[OutboxService] Error preparing operation:', error)
             throw error
         }
     }

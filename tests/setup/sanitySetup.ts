@@ -99,6 +99,7 @@ jest.mock("expo-constants", () => ({
 
 // Mock React Navigation (simplified)
 jest.mock("@react-navigation/native", () => ({
+    NavigationContainer: ({ children }: { children: any }) => children,
     useNavigation: () => ({
         navigate: jest.fn(),
         goBack: jest.fn(),
@@ -144,7 +145,27 @@ jest.mock("react-native-gesture-handler", () => ({
 // Mock React Native Paper
 jest.mock("react-native-paper", () => ({
     Provider: ({ children }: { children: any }) => children,
-    Button: "Button",
+    PaperProvider: ({ children }: { children: any }) => children,
+    Button: ({ children, disabled, ...props }: any) => {
+        const React = require("react");
+        const { View, Text } = require("react-native");
+        return React.createElement(View, {
+            ...props,
+            accessibilityState: { disabled },
+            disabled
+        }, React.createElement(Text, null, children));
+    },
+    Checkbox: Object.assign((props: any) => {
+        const React = require("react");
+        const { View } = require("react-native");
+        const checked = props.status === "checked";
+        return React.createElement(View, {
+            ...props,
+            accessibilityRole: "checkbox",
+            accessible: true,
+            accessibilityState: { checked }
+        });
+    }, { Android: "Checkbox.Android", IOS: "Checkbox.IOS", Item: "Checkbox.Item" }),
     Text: "Text",
     TextInput: "TextInput",
     ActivityIndicator: "ActivityIndicator",
@@ -205,3 +226,18 @@ jest.mock("react-native/Libraries/Utilities/NativePlatformConstantsIOS", () => (
         reactNativeVersion: { major: 0, minor: 72, patch: 6 },
     }),
 }));
+
+// Mock Database to prevent SQLiteAdapter crash
+const mockDatabase = {
+    collections: {
+        get: jest.fn(() => ({
+            query: jest.fn(() => ({ fetch: jest.fn(() => []) })),
+            create: jest.fn(),
+            prepareCreate: jest.fn(),
+        })),
+    },
+    write: jest.fn((cb) => cb()),
+    batch: jest.fn(),
+}
+
+

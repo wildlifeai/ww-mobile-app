@@ -407,6 +407,16 @@ export const setupAuthListener = (
 			if (session && session.user) {
 				const authResponse = await transformSupabaseUser(session.user, session)
 				onAuthStateChange(authResponse)
+
+				// Trigger sync after successful sign-in to pull projects and other data
+				if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+					// Import dynamically to avoid circular dependency
+					const { default: SupabaseSyncService } = await import('./SupabaseSyncService')
+					// Trigger sync after a short delay to ensure auth is fully set up
+					setTimeout(() => {
+						SupabaseSyncService.debouncedSync()
+					}, 1000)
+				}
 			} else {
 				onAuthStateChange(null)
 			}

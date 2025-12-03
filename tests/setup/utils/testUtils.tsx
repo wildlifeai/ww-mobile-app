@@ -62,6 +62,14 @@ export function renderWithProviders(
 		...renderOptions
 	}: ExtendedRenderOptions = {},
 ) {
+	console.log("DEBUG: Checking components in renderWithProviders:", {
+		ProviderType: typeof Provider,
+		PaperProviderType: typeof PaperProvider,
+		NavigationContainerType: typeof NavigationContainer,
+		ProviderVal: Provider,
+		PaperProviderVal: PaperProvider,
+		NavigationContainerVal: NavigationContainer,
+	})
 	function Wrapper({ children }: { children: React.ReactNode }) {
 		return (
 			<Provider store={store}>

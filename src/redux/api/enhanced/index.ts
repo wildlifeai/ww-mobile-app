@@ -4,9 +4,23 @@
  */
 
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react"
-import type { RootState } from "../.."
+// import type { RootState } from "../.." // Circular dependency
 import { getSupabaseClient } from "../../../services/supabase"
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js"
+
+// Define local state type to avoid circular dependency
+interface AuthRootState {
+	authentication: {
+		user: {
+			id: string
+			role?: string
+		} | null
+		token: string | null
+		currentOrganisation: {
+			id: string
+		} | null
+	}
+}
 
 // Enhanced API types with role-based security
 export interface APIResponse<T> {
@@ -94,7 +108,7 @@ export const enhancedApi = createApi({
 	baseQuery: fetchBaseQuery({
 		baseUrl: "/api/v1",
 		prepareHeaders: (headers, { getState }) => {
-			const state = getState() as RootState
+			const state = getState() as AuthRootState
 			const token = state.authentication.token
 			const currentOrg = state.authentication.currentOrganisation
 

@@ -15,6 +15,10 @@ jest.mock("expo-constants", () => ({
 	},
 }))
 
+jest.mock("expo-crypto", () => ({
+	randomUUID: jest.fn(() => "test-uuid"),
+}))
+
 // Silence console warnings in tests
 global.console = {
 	...console,
@@ -24,3 +28,19 @@ global.console = {
 
 // Setup test environment
 global.__DEV__ = true
+
+// Mock Database to prevent SQLiteAdapter crash
+const mockDatabase = {
+	collections: {
+		get: jest.fn(() => ({
+			query: jest.fn(() => ({ fetch: jest.fn(() => []) })),
+			create: jest.fn(),
+			prepareCreate: jest.fn(),
+		})),
+	},
+	write: jest.fn((cb) => cb()),
+	batch: jest.fn(),
+}
+
+jest.mock("./src/database", () => mockDatabase)
+jest.mock("./src/database/index", () => mockDatabase)

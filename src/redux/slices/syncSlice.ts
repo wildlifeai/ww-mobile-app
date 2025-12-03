@@ -10,7 +10,12 @@
  */
 
 import { createSlice, PayloadAction } from "@reduxjs/toolkit"
-import { RootState } from "../index"
+// import { RootState } from "../index" // Circular dependency
+
+// Define local state type to avoid circular dependency
+interface SyncRootState {
+	sync: SyncState
+}
 
 // Entity sync status interface
 export interface EntitySyncStatus {
@@ -221,14 +226,14 @@ export const {
 } = syncSlice.actions
 
 // Selectors
-export const selectOverallSyncStatus = (state: RootState) => state.sync.overall
-export const selectQueueStatus = (state: RootState) => state.sync.queue
-export const selectLastSync = (state: RootState) => state.sync.lastSync
-export const selectSyncErrors = (state: RootState) => state.sync.errors
+export const selectOverallSyncStatus = (state: SyncRootState) => state.sync.overall
+export const selectQueueStatus = (state: SyncRootState) => state.sync.queue
+export const selectLastSync = (state: SyncRootState) => state.sync.lastSync
+export const selectSyncErrors = (state: SyncRootState) => state.sync.errors
 
 // Selector for specific entity sync status
 export const selectEntitySyncStatus = (
-	state: RootState,
+	state: SyncRootState,
 	entityType: keyof SyncState["entities"],
 	entityId: string,
 ): EntitySyncStatus => {
@@ -242,7 +247,7 @@ export const selectEntitySyncStatus = (
 
 // Selector for all entities of a type
 export const selectEntitiesSyncStatus = (
-	state: RootState,
+	state: SyncRootState,
 	entityType: keyof SyncState["entities"],
 ): EntitySyncMap => {
 	return state.sync.entities[entityType]

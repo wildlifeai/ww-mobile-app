@@ -1,5 +1,7 @@
 import { Database } from '@nozbe/watermelondb'
 import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite'
+import { setGenerator } from '@nozbe/watermelondb/utils/common/randomId'
+import * as Crypto from 'expo-crypto'
 
 import schema from './schema'
 import Project from './models/Project'
@@ -44,5 +46,8 @@ const database = new Database({
         SamplingDesign,
     ],
 })
+
+// ⚡️ VITAL: Override the default ID generator with the native crypto UUID
+setGenerator(() => Crypto.randomUUID())
 
 export default database

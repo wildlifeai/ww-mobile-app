@@ -16,13 +16,25 @@
 
 import { createApi, fakeBaseQuery } from "@reduxjs/toolkit/query/react"
 import ProjectService from "../../services/ProjectService"
-import type { RootState } from "../index"
+// import type { RootState } from "../index" // Circular dependency
 import type {
 	ProjectWithDetails,
 	CreateProjectInput,
 	ProjectMemberWithProfile,
 } from "../../types/project"
 import { getSupabaseClient } from "../../services/supabase"
+
+// Define local state type to avoid circular dependency
+interface AuthRootState {
+	authentication: {
+		user: any
+		token: string | null
+		currentOrganisation: {
+			id: string
+			name: string
+		} | null
+	}
+}
 
 // Define return types for reference data
 export interface CaptureMethod {
@@ -63,7 +75,7 @@ export const projectsApi = createApi({
 
 				try {
 					// Get current organisation ID from Redux state
-					const state = getState() as RootState
+					const state = getState() as AuthRootState
 					console.log("🔍 RTK Query - Redux state check:", {
 						hasAuth: !!state.authentication,
 						hasCurrentOrg: !!state.authentication?.currentOrganisation,

@@ -86,6 +86,8 @@ export async function initializeSupabaseClient(
 			)
 		}
 
+		console.log("DEBUG: initializeSupabaseClient config:", config)
+
 		// Create new client with environment config
 		const client = createClient<Database>(
 			config.supabaseUrl,
@@ -100,6 +102,8 @@ export async function initializeSupabaseClient(
 				},
 			},
 		)
+
+		console.log("DEBUG: initializeSupabaseClient client:", client)
 
 		// Store client and config
 		supabaseClient = client

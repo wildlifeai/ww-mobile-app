@@ -24,6 +24,7 @@ export const SYNC_STATE_KEYS = {
     LAMPORT_CLOCK: 'lamport_clock',
     USER_ROLES_LAST_PULLED_AT: 'user_roles_last_pulled_at',
     DEVICES_LAST_PULLED_AT: 'devices_last_pulled_at',
+    PROJECTS_LAST_PULLED_AT: 'projects_last_pulled_at',
 } as const
 
 export type SyncStateKey = typeof SYNC_STATE_KEYS[keyof typeof SYNC_STATE_KEYS]
@@ -104,19 +105,20 @@ class SyncStateService {
 
     /**
      * Delete a sync state value
+     * 
+     * NOTE: Must be called from within a database.write() transaction
      */
     async delete(key: SyncStateKey): Promise<void> {
         try {
             // Remove from database
-            await database.write(async () => {
-                const records = await database.get<SyncState>('sync_state')
-                    .query(Q.where('key', key))
-                    .fetch()
+            // Don't wrap in database.write() to avoid nested transactions
+            const records = await database.get<SyncState>('sync_state')
+                .query(Q.where('key', key))
+                .fetch()
 
-                for (const record of records) {
-                    await record.markAsDeleted()
-                }
-            })
+            for (const record of records) {
+                await record.markAsDeleted()
+            }
 
             // Remove from AsyncStorage
             await AsyncStorage.removeItem(this.getStorageKey(key))
@@ -193,7 +195,9 @@ class SyncStateService {
      * Clear last sync error
      */
     async clearLastSyncError(): Promise<void> {
-        await this.delete(SYNC_STATE_KEYS.LAST_SYNC_ERROR)
+        await database.write(async () => {
+            await this.delete(SYNC_STATE_KEYS.LAST_SYNC_ERROR)
+        })
     }
 
     /**

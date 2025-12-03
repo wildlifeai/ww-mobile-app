@@ -1,0 +1,57 @@
+# Maestro E2E Test for Project CRUD Workflow
+# Goal: Verify Create, Read, Update, Delete operations for Projects
+
+appId: com.wildlifewatcher.app
+
+---
+# 1. Login (Reuse existing flow or simplified)
+- launchApp
+- assertVisible: "Login Screen"
+- tapOn: "Email Input"
+- inputText: "admin@wildlifewatcher.com"
+- tapOn: "Password Input"
+- inputText: "admin123"
+- tapOn: "Login Button"
+- assertVisible: "Dashboard"
+
+# 2. Navigate to Projects
+- tapOn: "Projects"
+- assertVisible: "Projects Overview"
+
+# 3. Create Project
+- tapOn: "Create Project"
+- assertVisible: "New Project"
+
+# Fill Form
+- tapOn: "Name Input"
+- inputText: "Maestro Test Project"
+
+# Select Dropdowns (Assuming they are populated now)
+- tapOn: "Capture Method"
+- tapOn: "Activity Detection" # Value from seed data
+
+- tapOn: "Deployment Status"
+- tapOn: "Planned"
+
+- tapOn: "Create"
+
+# 4. Verify Creation
+- assertVisible: "Maestro Test Project"
+
+# 5. Update Project
+- tapOn: "Maestro Test Project"
+- tapOn: "Edit"
+- tapOn: "Name Input"
+- inputText: "Maestro Project Updated"
+- tapOn: "Save"
+
+# 6. Verify Update
+- assertVisible: "Maestro Project Updated"
+
+# 7. Delete Project
+- tapOn: "Maestro Project Updated"
+- tapOn: "Delete" 
+- tapOn: "Confirm" # Assuming a confirmation dialog
+
+# 8. Verify Deletion
+- assertNotVisible: "Maestro Project Updated"

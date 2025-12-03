@@ -15,16 +15,12 @@ export const authApi = api.injectEndpoints({
 					console.log("✅ RTK Query: Login successful")
 					return { data: result }
 				} catch (error) {
-					console.error("❌ RTK Query: Login failed:", {
-						message: error instanceof Error ? error.message : "Unknown error",
-						error: error,
-						stack: error instanceof Error ? error.stack : undefined,
-					})
+					// Error will be displayed in UI, no need for verbose console logs
 					return {
 						error: {
 							status: "CUSTOM_ERROR",
 							error: error instanceof Error ? error.message : "Login failed",
-							data: error, // Pass through full error object
+							data: error instanceof Error ? { message: error.message, stack: error.stack } : error,
 						},
 					}
 				}
