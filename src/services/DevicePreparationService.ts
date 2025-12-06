@@ -124,4 +124,40 @@ export const DevicePreparationService = {
             }
         })
     },
+
+    /**
+     * Record battery check result
+     */
+    recordBatteryCheck: async (preparationId: string, passed: boolean): Promise<void> => {
+        return await DevicePreparationService.updatePreparation(preparationId, {
+            batteryCheckPassed: passed
+        })
+    },
+
+    /**
+     * Record SD card check result
+     */
+    recordSdCardCheck: async (preparationId: string, passed: boolean): Promise<void> => {
+        return await DevicePreparationService.updatePreparation(preparationId, {
+            sdCardCheckPassed: passed
+        })
+    },
+
+    /**
+     * Record LoRaWAN check result
+     */
+    recordLoRaWANCheck: async (preparationId: string, passed: boolean): Promise<void> => {
+        return await DevicePreparationService.updatePreparation(preparationId, {
+            lorawanRegistrationCompleted: passed
+        })
+    },
+
+    /**
+     * Start a new preparation workflow
+     */
+    startPreparation: async (deviceId: string, projectId: string, modifiedBy: string): Promise<DevicePreparation> => {
+        // Cancel any existing in-progress preparations first
+        await DevicePreparationService.cancelInProgressPreparations(deviceId)
+        return await DevicePreparationService.createPreparation(deviceId, projectId, modifiedBy)
+    },
 }

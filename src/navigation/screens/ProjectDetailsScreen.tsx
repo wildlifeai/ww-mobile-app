@@ -48,6 +48,7 @@ import { Field } from "../../components/form/Field"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import type { AppParams } from "../index"
 
+
 interface ProjectFormData {
 	name: string
 	description: string
@@ -70,6 +71,7 @@ export const ProjectDetailsScreen = () => {
 	// State
 	const [isEditMode, setIsEditMode] = useState(false)
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+
 
 	// Queries
 	const {
@@ -141,12 +143,12 @@ export const ProjectDetailsScreen = () => {
 	// Determine if Motion Detection or Time-lapse is selected
 	const isMotionDetection = useMemo(() => {
 		const method = captureMethods?.find(cm => cm.id.toString() === selectedCaptureMethodId)
-		return method?.value === "Motion Detection"
+		return method?.value === "Motion Detection" || method?.value === "activityDetection"
 	}, [captureMethods, selectedCaptureMethodId])
 
 	const isTimeLapse = useMemo(() => {
 		const method = captureMethods?.find(cm => cm.id.toString() === selectedCaptureMethodId)
-		return method?.value === "Time-lapse"
+		return method?.value === "Time-lapse" || method?.value === "timeLapse"
 	}, [captureMethods, selectedCaptureMethodId])
 
 	// Reset form when project data loads
@@ -251,6 +253,8 @@ export const ProjectDetailsScreen = () => {
 		[projectId, removeMember],
 	)
 
+
+
 	// Helper to get label for ID
 	const getLabel = (options: { label: string; value: string }[], value?: string | number | null) => {
 		if (!value) return null
@@ -316,6 +320,7 @@ export const ProjectDetailsScreen = () => {
 	return (
 		<ScrollView style={styles.container}>
 			<OfflineIndicator />
+
 
 			<View style={styles.content}>
 				{/* Header Card */}
@@ -796,6 +801,7 @@ export const ProjectDetailsScreen = () => {
 										Manage
 									</Button>
 								)}
+
 							</View>
 
 							<Divider style={styles.divider} />

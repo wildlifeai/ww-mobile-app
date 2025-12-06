@@ -23,6 +23,7 @@ import type {
 	ProjectMemberWithProfile,
 } from "../../types/project"
 import { getSupabaseClient } from "../../services/supabase"
+import ReferenceDataService from "../../services/ReferenceDataService"
 
 // Define local state type to avoid circular dependency
 interface AuthRootState {
@@ -311,56 +312,12 @@ export const projectsApi = createApi({
 			],
 		}),
 
-		// Reference Data Endpoints
-		getCaptureMethods: builder.query<CaptureMethod[], void>({
-			queryFn: async () => {
-				const { data, error } = await supabase
-					.from("capture_methods")
-					.select("*")
-					.order("id")
-				if (error) return { error: { status: "CUSTOM_ERROR", error: error.message } }
-				return { data: data as CaptureMethod[] }
-			},
-		}),
 
-		getActivitySensitivity: builder.query<ActivitySensitivity[], void>({
-			queryFn: async () => {
-				const { data, error } = await supabase
-					.from("activity_sensitivity")
-					.select("*")
-					.order("id")
-				if (error) return { error: { status: "CUSTOM_ERROR", error: error.message } }
-				return { data: data as ActivitySensitivity[] }
-			},
-		}),
-
-		getAiModels: builder.query<AiModel[], void>({
-			queryFn: async () => {
-				const { data, error } = await supabase
-					.from("ai_models")
-					.select("*")
-					.order("name")
-				if (error) return { error: { status: "CUSTOM_ERROR", error: error.message } }
-				return { data: data as AiModel[] }
-			},
-		}),
-
-		getSamplingDesigns: builder.query<SamplingDesign[], void>({
-			queryFn: async () => {
-				const { data, error } = await supabase
-					.from("sampling_designs")
-					.select("*")
-					.order("id")
-				if (error) return { error: { status: "CUSTOM_ERROR", error: error.message } }
-				return { data: data as SamplingDesign[] }
-			},
-		}),
 
 		// Reference Data Endpoints - Read from local WatermelonDB for offline support
 		getCaptureMethods: builder.query<CaptureMethod[], void>({
 			queryFn: async () => {
 				try {
-					const ReferenceDataService = (await import('../../services/ReferenceDataService')).default
 					const data = await ReferenceDataService.getCaptureMethods()
 					return { data: data as CaptureMethod[] }
 				} catch (error) {
@@ -377,7 +334,6 @@ export const projectsApi = createApi({
 		getActivitySensitivity: builder.query<ActivitySensitivity[], void>({
 			queryFn: async () => {
 				try {
-					const ReferenceDataService = (await import('../../services/ReferenceDataService')).default
 					const data = await ReferenceDataService.getActivitySensitivity()
 					return { data: data as ActivitySensitivity[] }
 				} catch (error) {
@@ -394,7 +350,6 @@ export const projectsApi = createApi({
 		getAiModels: builder.query<AiModel[], void>({
 			queryFn: async () => {
 				try {
-					const ReferenceDataService = (await import('../../services/ReferenceDataService')).default
 					const data = await ReferenceDataService.getAiModels()
 					return { data: data as AiModel[] }
 				} catch (error) {
@@ -411,7 +366,6 @@ export const projectsApi = createApi({
 		getSamplingDesigns: builder.query<SamplingDesign[], void>({
 			queryFn: async () => {
 				try {
-					const ReferenceDataService = (await import('../../services/ReferenceDataService')).default
 					const data = await ReferenceDataService.getSamplingDesigns()
 					return { data: data as SamplingDesign[] }
 				} catch (error) {

@@ -71,7 +71,10 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 		if (data === "") return
 
 		try {
-			const byteArray = [...Buffer.from(data)]
+			// Strip trailing newlines/CRs as they break firmware command matching
+			const sanitizedData = data.replace(/[\r\n]+$/, "")
+			const byteArray = [...Buffer.from(sanitizedData)]
+			log(`TX Hex: ${Buffer.from(byteArray).toString("hex")}`)
 
 			// Push a LF-CR (LF = 10, CR = 13 in decimal)
 			readlineParserEmitter.emit(

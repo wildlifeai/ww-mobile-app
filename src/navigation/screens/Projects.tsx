@@ -13,7 +13,7 @@
  * - Navigation to project details and new project creation
  */
 
-import React, { useState, useMemo, useCallback, useEffect } from "react"
+import React, { useState, useMemo, useCallback } from "react"
 import {
 	FlatList,
 	StyleSheet,
@@ -35,7 +35,6 @@ import { WWScreenView } from "../../components/ui/WWScreenView"
 import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import type { ProjectWithDetails } from "../../types/project"
-import ProjectService from "../../services/ProjectService"
 
 export const Projects = () => {
 	const navigation = useAppNavigation()
@@ -172,7 +171,7 @@ export const Projects = () => {
 					<Text
 						variant="bodyMedium"
 						style={[
-							styles.emptyMessage,
+							styles.errorMessage,
 							{ color: theme.colors.onSurfaceVariant },
 						]}
 					>
@@ -268,9 +267,16 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 16,
 		paddingVertical: 8,
 		backgroundColor: "transparent",
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
 	},
 	searchbar: {
 		elevation: 0,
+		flex: 1,
+	},
+	notificationButton: {
+		margin: 0,
 	},
 	listContent: {
 		paddingHorizontal: 16,

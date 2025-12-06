@@ -1,8 +1,5 @@
 import { useRoute, useIsFocused } from "@react-navigation/native"
-import { useState } from "react"
-import { useCallback } from "react"
-import { useEffect, useRef } from "react"
-
+import { useState, useCallback, useEffect, useRef } from "react"
 import {
 	Keyboard,
 	NativeScrollEvent,
@@ -10,13 +7,6 @@ import {
 	StyleSheet,
 	View,
 } from "react-native"
-import { AppParams } from ".."
-import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView"
-import { useBleActions } from "../../providers/BleEngineProvider"
-import { useAppSelector } from "../../redux"
-import { useCommand } from "../../hooks/useCommand"
-import { COMMANDS } from "../../ble/types"
-import { useSelectDevice } from "../../hooks/useSelectDevice"
 import {
 	Button,
 	Divider,
@@ -24,7 +14,15 @@ import {
 	RadioButton,
 	Switch,
 	TextInput,
+	List,
 } from "react-native-paper"
+import { AppParams } from ".."
+import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView"
+import { useBleActions } from "../../providers/BleEngineProvider"
+import { useAppSelector } from "../../redux"
+import { useCommand } from "../../hooks/useCommand"
+import { COMMANDS } from "../../ble/types"
+import { useSelectDevice } from "../../hooks/useSelectDevice"
 import { WWText } from "../../components/ui/WWText"
 import { useExtendedTheme } from "../../theme"
 import { WWTextInput } from "../../components/ui/WWTextInput"
@@ -92,9 +90,22 @@ export const Terminal = ({ embed }: Props) => {
 		deviceId,
 		command: COMMANDS.DFU,
 	})
+	const { set: runSelfTest, commandLoading: selfTestLoading } = useCommand({
+		deviceId,
+		command: COMMANDS.SELFTEST,
+	})
+	const { set: checkSdCard, commandLoading: sdCardLoading } = useCommand({
+		deviceId,
+		command: COMMANDS.AI_INFO,
+	})
+	const { set: captureImage, commandLoading: captureImageLoading } = useCommand({
+		deviceId,
+		command: COMMANDS.AI_CAPTURE,
+	})
 
 	const [autoscroll, setAutoscroll] = useState(true)
 	const [configLoadTimeout, setConfigLoadTimeout] = useState(false)
+	const [expandedSection, setExpandedSection] = useState<string | null>(null)
 
 	const [heartbeat, setHeartbeat] = useState<string>()
 	const [heartbeatTime, setHeartbeatTime] = useState<string>("s")
@@ -106,7 +117,6 @@ export const Terminal = ({ embed }: Props) => {
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			setConfigLoadTimeout(true)
-			console.log("⏱️ Configuration load timeout reached (15s), forcing screen to show")
 		}, 15000) // 15 seconds
 
 		return () => clearTimeout(timer)
@@ -220,6 +230,10 @@ export const Terminal = ({ embed }: Props) => {
 		}
 	}, [])
 
+	const toggleSection = (section: string) => {
+		setExpandedSection(expandedSection === section ? null : section)
+	}
+
 	const {
 		HEARTBEAT,
 		APPEUI,
@@ -231,22 +245,6 @@ export const Terminal = ({ embed }: Props) => {
 		ID,
 		DEVICE,
 	} = config
-
-	// Debug: Log configuration loading status
-	console.log("🔍 Terminal Screen Config Status:", {
-		deviceId,
-		HEARTBEAT: HEARTBEAT?.loaded,
-		APPEUI: APPEUI?.loaded,
-		SENSOR: SENSOR?.loaded,
-		LORAWAN: LORAWAN?.loaded,
-		DEVEUI: DEVEUI?.loaded,
-		BATTERY: BATTERY?.loaded,
-		VERSION: VERSION?.loaded,
-		ID: ID?.loaded,
-		DEVICE: DEVICE?.loaded,
-		configKeys: Object.keys(config),
-		fullConfig: config,
-	})
 
 	// Show loading screen only if configs are still loading AND timeout hasn't been reached
 	const isConfigLoading = (
@@ -262,22 +260,12 @@ export const Terminal = ({ embed }: Props) => {
 	)
 
 	if (isConfigLoading && !configLoadTimeout) {
-		console.log(
-			"🔍 Terminal Screen: Still loading configuration, showing AppLoading...",
-		)
 		return <AppLoading />
-	}
-
-	// If timeout reached but still loading, log warning
-	if (isConfigLoading && configLoadTimeout) {
-		console.warn(
-			"⚠️ Terminal Screen: Timeout reached, showing UI with partial configuration. Some values may be missing.",
-		)
 	}
 
 	return (
 		<CustomKeyboardAvoidingView style={styles.scroll}>
-			<WWScreenView>
+			<WWScreenView scrollable={false}>
 				<View style={(styles.container, { margin: spacing })}>
 					{!isKeyboardVisible && (
 						<View style={styles.view}>
@@ -327,279 +315,368 @@ export const Terminal = ({ embed }: Props) => {
 
 				<View style={styles.scrollContainer}>
 					<WWScrollView style={styles.scroll}>
-						<View style={{ paddingVertical: spacing }}>
-							<WWText variant="titleMedium">Actions</WWText>
-							<Divider />
-							<View style={[styles.buttons, { marginVertical: spacing }]}>
-								<View style={styles.button}>
-									<Button mode="outlined" onPress={() => reset()}>
-										Reset
-									</Button>
+						<List.Section>
+							<List.Accordion
+								title="Quick Actions"
+								left={(props) => <List.Icon {...props} icon="flash" />}
+								expanded={expandedSection === "quickActions"}
+								onPress={() => toggleSection("quickActions")}
+								style={styles.accordion}
+							>
+								<View style={[styles.buttons, { marginVertical: spacing }]}>
+									<View style={styles.button}>
+										<Button mode="outlined" onPress={() => reset()}>
+											Reset
+										</Button>
+									</View>
+									<View style={styles.button}>
+										<Button mode="outlined" onPress={() => erase()}>
+											Erase
+										</Button>
+									</View>
+									<View style={styles.button}>
+										<Button mode="outlined" onPress={() => ping()}>
+											Ping
+										</Button>
+									</View>
+									<View style={styles.button}>
+										<Button
+											mode="outlined"
+											onPress={() => disconnectDevice(device)}
+										>
+											Disconnect
+										</Button>
+									</View>
+									<View style={styles.button}>
+										<Button mode="outlined" onPress={() => triggerDfu()}>
+											DFU mode
+										</Button>
+									</View>
 								</View>
-								<View style={styles.button}>
-									<Button mode="outlined" onPress={() => erase()}>
-										Erase
-									</Button>
+							</List.Accordion>
+
+							<List.Accordion
+								title="Diagnostics"
+								left={(props) => <List.Icon {...props} icon="stethoscope" />}
+								expanded={expandedSection === "diagnostics"}
+								onPress={() => toggleSection("diagnostics")}
+								style={styles.accordion}
+							>
+								<View style={[styles.buttons, { marginVertical: spacing }]}>
+									<View style={styles.button}>
+										<Button
+											mode="contained"
+											onPress={() => runSelfTest()}
+											loading={selfTestLoading}
+											disabled={selfTestLoading}
+											style={styles.actionButton}
+											icon="check-circle-outline"
+										>
+											Run Self Test
+										</Button>
+									</View>
+									<View style={styles.button}>
+										<Button
+											mode="contained"
+											onPress={() => checkSdCard()}
+											loading={sdCardLoading}
+											disabled={sdCardLoading}
+											style={styles.actionButton}
+											icon="sd"
+										>
+											Check SD Card
+										</Button>
+									</View>
+									<View style={styles.button}>
+										<Button
+											mode="contained"
+											onPress={() => captureImage()}
+											loading={captureImageLoading}
+											disabled={captureImageLoading}
+											style={styles.actionButton}
+											icon="camera"
+										>
+											Capture Image
+										</Button>
+									</View>
 								</View>
-								<View style={styles.button}>
-									<Button mode="outlined" onPress={() => ping()}>
-										Ping
-									</Button>
-								</View>
-								<View style={styles.button}>
-									<Button
-										mode="outlined"
-										onPress={() => disconnectDevice(device)}
-									>
-										Disconnect
-									</Button>
-								</View>
-								<View style={styles.button}>
-									<Button mode="outlined" onPress={() => triggerDfu()}>
-										DFU mode
-									</Button>
-								</View>
-							</View>
-						</View>
-						<View style={{ paddingVertical: spacing }}>
-							<WWText variant="titleMedium">ID</WWText>
-							<Divider />
-							<View style={[styles.buttons, { marginVertical: spacing }]}>
-								<View style={{ padding: spacing }}>
-									{ID?.loaded && (
-										<WWText>
-											ID:{" "}
-											{idLoading ? (
-												"Loading..."
-											) : (
-												<WWText style={styles.bold}>{ID?.value}</WWText>
-											)}
-										</WWText>
-									)}
-								</View>
-							</View>
-							<View style={styles.heartbeat}>
-								<Button mode="outlined" onPress={getId}>
-									Refresh ID
-								</Button>
-							</View>
-						</View>
-						<View style={{ paddingVertical: spacing }}>
-							<WWText variant="titleMedium">Device</WWText>
-							<Divider />
-							<View style={[styles.buttons, { marginVertical: spacing }]}>
-								<View style={{ padding: spacing }}>
-									{DEVICE?.loaded && (
-										<WWText>
-											Device name:{" "}
-											{deviceLoading ? (
-												"Loading..."
-											) : (
-												<WWText style={styles.bold}>{DEVICE?.value}</WWText>
-											)}
-										</WWText>
-									)}
-								</View>
-							</View>
-							<View style={styles.heartbeat}>
-								<Button mode="outlined" onPress={getDevice}>
-									Refresh device
-								</Button>
-							</View>
-						</View>
-						<View style={{ paddingVertical: spacing }}>
-							<WWText variant="titleMedium">Version</WWText>
-							<Divider />
-							<View style={[styles.buttons, { marginVertical: spacing }]}>
-								<View style={{ padding: spacing }}>
-									{VERSION?.loaded && (
-										<WWText>
-											Version:{" "}
-											{versionLoading ? (
-												"Loading..."
-											) : (
-												<WWText style={styles.bold}>{VERSION?.value}</WWText>
-											)}
-										</WWText>
-									)}
-								</View>
-							</View>
-							<View style={styles.heartbeat}>
-								<Button mode="outlined" onPress={getVersion}>
-									Refresh version
-								</Button>
-							</View>
-						</View>
-						<View style={{ paddingVertical: spacing }}>
-							<WWText variant="titleMedium">Battery</WWText>
-							<Divider />
-							<View style={[styles.buttons, { marginVertical: spacing }]}>
-								<View style={{ padding: spacing }}>
-									{BATTERY?.loaded && (
-										<WWText>
-											Current battery level:{" "}
-											{batteryLoading ? (
-												"Loading..."
-											) : (
-												<WWText style={styles.bold}>{BATTERY?.value}%</WWText>
-											)}
-										</WWText>
-									)}
-								</View>
-							</View>
-							<View style={styles.heartbeat}>
-								<Button mode="outlined" onPress={getBattery}>
-									Refresh battery level
-								</Button>
-							</View>
-						</View>
-						<View style={{ paddingVertical: spacing }}>
-							<WWText variant="titleMedium">Heartbeat</WWText>
-							<Divider />
-							<View style={[styles.buttons, { marginVertical: spacing }]}>
-								<View style={{ padding: spacing }}>
-									{HEARTBEAT?.loaded && (
-										<WWText>
-											Current heartbeat:{" "}
-											{hbLoading ? (
-												"Loading..."
-											) : (
-												<WWText style={styles.bold}>
-													{formatHeartbeat(HEARTBEAT?.value)}
+							</List.Accordion>
+
+							<List.Accordion
+								title="Device Info"
+								left={(props) => <List.Icon {...props} icon="information" />}
+								expanded={expandedSection === "deviceInfo"}
+								onPress={() => toggleSection("deviceInfo")}
+								style={styles.accordion}
+							>
+								<View style={{ paddingVertical: spacing }}>
+									<WWText variant="titleMedium">ID</WWText>
+									<Divider />
+									<View style={[styles.buttons, { marginVertical: spacing }]}>
+										<View style={{ padding: spacing }}>
+											{ID?.loaded && (
+												<WWText>
+													ID:{" "}
+													{idLoading ? (
+														"Loading..."
+													) : (
+														<WWText style={styles.bold}>{ID?.value}</WWText>
+													)}
 												</WWText>
 											)}
-										</WWText>
-									)}
+										</View>
+									</View>
+									<View style={styles.heartbeat}>
+										<Button mode="outlined" onPress={getId}>
+											Refresh ID
+										</Button>
+									</View>
 								</View>
-							</View>
-							<View style={styles.heartbeat}>
-								<WWTextInput
-									keyboardType="numeric"
-									value={heartbeat}
-									onChangeText={(value: string) => setHeartbeat(value)}
-									style={{ marginRight: spacing }}
-									placeholder={HEARTBEAT?.value}
-								/>
-								<Button mode="outlined" onPress={triggerHeartbeat}>
-									Change Heartbeat
-								</Button>
-							</View>
-							<View style={{ marginVertical: spacing }}>
-								<WWText variant="bodyLarge">
-									You are setting the value in: {formatHeartbeat(heartbeatTime)}
-								</WWText>
-								<RadioButton.Group
-									onValueChange={setHeartbeatTime}
-									value={heartbeatTime}
-								>
-									<View style={styles.radioButton}>
-										<RadioButton.Item label="Days" value="d" />
-									</View>
-									<View style={styles.radioButton}>
-										<RadioButton.Item label="Hours" value="h" />
-									</View>
-									<View style={styles.radioButton}>
-										<RadioButton.Item label="Minutes" value="m" />
-									</View>
-									<View style={styles.radioButton}>
-										<RadioButton.Item label="Seconds" value="s" />
-									</View>
-								</RadioButton.Group>
-							</View>
-						</View>
-						<View style={{ paddingVertical: spacing }}>
-							<WWText variant="titleMedium">App EUI</WWText>
-							<Divider />
-							<View style={[styles.buttons, { marginVertical: spacing }]}>
-								<View style={{ padding: spacing }}>
-									{APPEUI?.loaded && (
-										<WWText>
-											Current App EUI:{" "}
-											{aeLoading ? (
-												"Loading..."
-											) : (
-												<WWText style={styles.bold}>{APPEUI?.value}</WWText>
+								<View style={{ paddingVertical: spacing }}>
+									<WWText variant="titleMedium">Device</WWText>
+									<Divider />
+									<View style={[styles.buttons, { marginVertical: spacing }]}>
+										<View style={{ padding: spacing }}>
+											{DEVICE?.loaded && (
+												<WWText>
+													Device name:{" "}
+													{deviceLoading ? (
+														"Loading..."
+													) : (
+														<WWText style={styles.bold}>{DEVICE?.value}</WWText>
+													)}
+												</WWText>
 											)}
-										</WWText>
-									)}
+										</View>
+									</View>
+									<View style={styles.heartbeat}>
+										<Button mode="outlined" onPress={getDevice}>
+											Refresh device
+										</Button>
+									</View>
 								</View>
-							</View>
-							<View style={styles.heartbeat}>
-								<WWTextInput
-									value={heartbeat}
-									onChangeText={(value: string) => setAppEui(value)}
-									style={{ marginRight: spacing }}
-									placeholder={APPEUI?.value}
-								/>
-								<Button mode="outlined" onPress={triggerAppEui}>
-									Save
-								</Button>
-							</View>
-						</View>
-						<View style={{ paddingVertical: spacing }}>
-							<WWText variant="titleMedium">Dev EUI</WWText>
-							<Divider />
-							<View style={[styles.buttons, { marginVertical: spacing }]}>
-								<View style={{ padding: spacing }}>
-									{DEVEUI?.loaded && (
-										<WWText>
-											Current Dev EUI:{" "}
-											{deLoading ? (
-												"Loading..."
-											) : (
-												<WWText style={styles.bold}>{DEVEUI?.value}</WWText>
+								<View style={{ paddingVertical: spacing }}>
+									<WWText variant="titleMedium">Version</WWText>
+									<Divider />
+									<View style={[styles.buttons, { marginVertical: spacing }]}>
+										<View style={{ padding: spacing }}>
+											{VERSION?.loaded && (
+												<WWText>
+													Version:{" "}
+													{versionLoading ? (
+														"Loading..."
+													) : (
+														<WWText style={styles.bold}>{VERSION?.value}</WWText>
+													)}
+												</WWText>
 											)}
+										</View>
+									</View>
+									<View style={styles.heartbeat}>
+										<Button mode="outlined" onPress={getVersion}>
+											Refresh version
+										</Button>
+									</View>
+								</View>
+							</List.Accordion>
+
+							<List.Accordion
+								title="Power & Timing"
+								left={(props) => <List.Icon {...props} icon="battery" />}
+								expanded={expandedSection === "powerTiming"}
+								onPress={() => toggleSection("powerTiming")}
+								style={styles.accordion}
+							>
+								<View style={{ paddingVertical: spacing }}>
+									<WWText variant="titleMedium">Battery</WWText>
+									<Divider />
+									<View style={[styles.buttons, { marginVertical: spacing }]}>
+										<View style={{ padding: spacing }}>
+											{BATTERY?.loaded && (
+												<WWText>
+													Current battery level:{" "}
+													{batteryLoading ? (
+														"Loading..."
+													) : (
+														<WWText style={styles.bold}>{BATTERY?.value}%</WWText>
+													)}
+												</WWText>
+											)}
+										</View>
+									</View>
+									<View style={styles.heartbeat}>
+										<Button mode="outlined" onPress={getBattery}>
+											Refresh battery level
+										</Button>
+									</View>
+								</View>
+								<View style={{ paddingVertical: spacing }}>
+									<WWText variant="titleMedium">Heartbeat</WWText>
+									<Divider />
+									<View style={[styles.buttons, { marginVertical: spacing }]}>
+										<View style={{ padding: spacing }}>
+											{HEARTBEAT?.loaded && (
+												<WWText>
+													Current heartbeat:{" "}
+													{hbLoading ? (
+														"Loading..."
+													) : (
+														<WWText style={styles.bold}>
+															{formatHeartbeat(HEARTBEAT?.value)}
+														</WWText>
+													)}
+												</WWText>
+											)}
+										</View>
+									</View>
+									<View style={styles.heartbeat}>
+										<WWTextInput
+											keyboardType="numeric"
+											value={heartbeat}
+											onChangeText={(value: string) => setHeartbeat(value)}
+											style={{ marginRight: spacing }}
+											placeholder={HEARTBEAT?.value}
+										/>
+										<Button mode="outlined" onPress={triggerHeartbeat}>
+											Change Heartbeat
+										</Button>
+									</View>
+									<View style={{ marginVertical: spacing }}>
+										<WWText variant="bodyLarge">
+											You are setting the value in: {formatHeartbeat(heartbeatTime)}
 										</WWText>
-									)}
+										<RadioButton.Group
+											onValueChange={setHeartbeatTime}
+											value={heartbeatTime}
+										>
+											<View style={styles.radioButton}>
+												<RadioButton.Item label="Days" value="d" />
+											</View>
+											<View style={styles.radioButton}>
+												<RadioButton.Item label="Hours" value="h" />
+											</View>
+											<View style={styles.radioButton}>
+												<RadioButton.Item label="Minutes" value="m" />
+											</View>
+											<View style={styles.radioButton}>
+												<RadioButton.Item label="Seconds" value="s" />
+											</View>
+										</RadioButton.Group>
+									</View>
 								</View>
-							</View>
-							<View style={styles.heartbeat}>
-								<WWTextInput
-									value={heartbeat}
-									onChangeText={(value: string) => setDevEui(value)}
-									style={{ marginRight: spacing }}
-									placeholder={DEVEUI?.value}
-								/>
-								<Button mode="outlined" onPress={triggerDevEui}>
-									Save
-								</Button>
-							</View>
-						</View>
-						<View style={{ paddingVertical: spacing }}>
-							<WWText variant="titleMedium">Sensor messages</WWText>
-							<Divider />
-							<View style={[styles.buttons, { marginVertical: spacing }]}>
-								<View style={[styles.button, { marginEnd: spacing }]}>
-									<Switch
-										disabled={sensorLoading}
-										value={localSensor}
-										onValueChange={triggerSensor}
-									/>
+							</List.Accordion>
+
+							<List.Accordion
+								title="LoRaWAN Config"
+								left={(props) => <List.Icon {...props} icon="wifi" />}
+								expanded={expandedSection === "lorawanConfig"}
+								onPress={() => toggleSection("lorawanConfig")}
+								style={styles.accordion}
+							>
+								<View style={{ paddingVertical: spacing }}>
+									<WWText variant="titleMedium">App EUI</WWText>
+									<Divider />
+									<View style={[styles.buttons, { marginVertical: spacing }]}>
+										<View style={{ padding: spacing }}>
+											{APPEUI?.loaded && (
+												<WWText>
+													Current App EUI:{" "}
+													{aeLoading ? (
+														"Loading..."
+													) : (
+														<WWText style={styles.bold}>{APPEUI?.value}</WWText>
+													)}
+												</WWText>
+											)}
+										</View>
+									</View>
+									<View style={styles.heartbeat}>
+										<WWTextInput
+											value={appEui}
+											onChangeText={(value: string) => setAppEui(value)}
+											style={{ marginRight: spacing }}
+											placeholder={APPEUI?.value}
+										/>
+										<Button mode="outlined" onPress={triggerAppEui}>
+											Save
+										</Button>
+									</View>
 								</View>
-								<WWText>
-									Sensor messages are{" "}
-									{SENSOR?.value === "enable" ? (
-										<WWText style={styles.bold}>enabled</WWText>
-									) : (
-										<WWText style={styles.bold}>disabled</WWText>
-									)}
-									.
-								</WWText>
-							</View>
-						</View>
-						<View style={{ paddingVertical: spacing }}>
-							<WWText variant="titleMedium">Lorawan status</WWText>
-							<Divider />
-							<View style={[styles.buttons, { marginVertical: spacing }]}>
-								<WWText>
-									Lorawan is currently{" "}
-									<WWText style={styles.bold}>
-										{LORAWAN?.value?.toLowerCase()}
-									</WWText>
-									.
-								</WWText>
-							</View>
-						</View>
+								<View style={{ paddingVertical: spacing }}>
+									<WWText variant="titleMedium">Dev EUI</WWText>
+									<Divider />
+									<View style={[styles.buttons, { marginVertical: spacing }]}>
+										<View style={{ padding: spacing }}>
+											{DEVEUI?.loaded && (
+												<WWText>
+													Current Dev EUI:{" "}
+													{deLoading ? (
+														"Loading..."
+													) : (
+														<WWText style={styles.bold}>{DEVEUI?.value}</WWText>
+													)}
+												</WWText>
+											)}
+										</View>
+									</View>
+									<View style={styles.heartbeat}>
+										<WWTextInput
+											value={devEui}
+											onChangeText={(value: string) => setDevEui(value)}
+											style={{ marginRight: spacing }}
+											placeholder={DEVEUI?.value}
+										/>
+										<Button mode="outlined" onPress={triggerDevEui}>
+											Save
+										</Button>
+									</View>
+								</View>
+							</List.Accordion>
+
+							<List.Accordion
+								title="Status"
+								left={(props) => <List.Icon {...props} icon="eye" />}
+								expanded={expandedSection === "status"}
+								onPress={() => toggleSection("status")}
+								style={styles.accordion}
+							>
+								<View style={{ paddingVertical: spacing }}>
+									<WWText variant="titleMedium">Sensor messages</WWText>
+									<Divider />
+									<View style={[styles.buttons, { marginVertical: spacing }]}>
+										<View style={[styles.button, { marginEnd: spacing }]}>
+											<Switch
+												disabled={sensorLoading}
+												value={localSensor}
+												onValueChange={triggerSensor}
+											/>
+										</View>
+										<WWText>
+											Sensor messages are{" "}
+											{SENSOR?.value === "enable" ? (
+												<WWText style={styles.bold}>enabled</WWText>
+											) : (
+												<WWText style={styles.bold}>disabled</WWText>
+											)}
+											.
+										</WWText>
+									</View>
+								</View>
+								<View style={{ paddingVertical: spacing }}>
+									<WWText variant="titleMedium">Lorawan status</WWText>
+									<Divider />
+									<View style={[styles.buttons, { marginVertical: spacing }]}>
+										<WWText>
+											Lorawan is currently{" "}
+											<WWText style={styles.bold}>
+												{LORAWAN?.value?.toLowerCase()}
+											</WWText>
+											.
+										</WWText>
+									</View>
+								</View>
+							</List.Accordion>
+						</List.Section>
 					</WWScrollView>
 				</View>
 			</WWScreenView>
@@ -670,5 +747,11 @@ const styles = StyleSheet.create({
 	radioButton: {
 		flexDirection: "row",
 		alignItems: "center",
+	},
+	accordion: {
+		backgroundColor: "transparent",
+	},
+	actionButton: {
+		width: "100%",
 	},
 })

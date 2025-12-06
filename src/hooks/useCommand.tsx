@@ -28,7 +28,9 @@ export const useCommand = ({ deviceId, command }: Props) => {
 	const timeoutRef = useRef<NodeJS.Timeout>()
 
 	const [goal, setGoal] = useState<number | string>()
-	const [commandLoading, setCommandLoading] = useState(true)
+	const [commandLoading, setCommandLoading] = useState(
+		!!(command.readRegex || command.readCommand),
+	)
 
 	const { write } = useBleActions()
 	const devices = useAppSelector((state) => state.devices)
@@ -78,7 +80,10 @@ export const useCommand = ({ deviceId, command }: Props) => {
 			sendCommand(CommandControlTypes.WRITE, data)
 
 			// Means its just an action command in reality, can not set or get
-			if (!command.readRegex && !command.readCommand) return
+			if (!command.readRegex && !command.readCommand) {
+				setCommandLoading(false)
+				return
+			}
 
 			requestRef.current = setInterval(
 				() => sendCommand(CommandControlTypes.WRITE, data),
@@ -210,7 +215,7 @@ export const useCommand = ({ deviceId, command }: Props) => {
 
 	useEffect(() => {
 		return () => {
-			log(`Cancelling timers for ${command.name} hook.`)
+			// log(`Cancelling timers for ${command.name} hook.`)
 			clearTimers()
 		}
 	}, [command.name])

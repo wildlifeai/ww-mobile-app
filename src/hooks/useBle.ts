@@ -32,6 +32,7 @@ import {
 	CommandConstructOptions,
 	CommandControlTypes,
 	CommandNames,
+	COMMANDS,
 	Services,
 } from "../ble/types"
 import { constructCommandString } from "../ble/parser"
@@ -117,7 +118,7 @@ export const useBle = (): ReturnType => {
 					const { fun, canBeIgnored } = next
 
 					if (pingsPauseRef.current && canBeIgnored) {
-						log(`Pinging paused`)
+						// log(`Pinging paused`)
 					} else {
 						await fun()
 
@@ -130,12 +131,12 @@ export const useBle = (): ReturnType => {
 	}, 500)
 
 	const enginePause = useCallback((toggle: boolean) => {
-		log(`Engine turning: ${toggle ? "off" : "on"}`)
+		// log(`Engine turning: ${toggle ? "off" : "on"}`)
 		enginePauseRef.current = toggle
 	}, [])
 
 	const pingsPause = useCallback((toggle: boolean) => {
-		log(`Pinging paused: ${toggle ? "YES" : "NO"}`)
+		// log(`Pinging paused: ${toggle ? "YES" : "NO"}`)
 		pingsPauseRef.current = toggle
 	}, [])
 
@@ -147,7 +148,7 @@ export const useBle = (): ReturnType => {
 				try {
 					pingsPause(true)
 					await BleManager.scan([], length)
-					log("Scan started")
+					// log("Scan started")
 					dispatch(scanStart())
 				} catch (e: any) {
 					logError(e)
@@ -216,8 +217,7 @@ export const useBle = (): ReturnType => {
 							.then((e?: Error) => {
 								if (e) {
 									log(
-										`Disconnecting device ${
-											peripheral.id
+										`Disconnecting device ${peripheral.id
 										} due to an error (${JSON.stringify(e)})`,
 									)
 									disconnectDevice(peripheral)
@@ -253,9 +253,9 @@ export const useBle = (): ReturnType => {
 			 * Basically, use the timeout.
 			 */
 			if (isDeviceReconnecting.current[peripheral.id]) {
-				log(
-					`Cancelling the connection request for ${peripheral.id}. connectDevice is already running.`,
-				)
+				// log(
+				// 	`Cancelling the connection request for ${peripheral.id}. connectDevice is already running.`,
+				// )
 				return peripheral
 			}
 
@@ -274,7 +274,7 @@ export const useBle = (): ReturnType => {
 
 			if (!newPeripheral.connected) {
 				try {
-					log(`Device ${deviceIdentification} will try to connect`)
+					// log(`Device ${deviceIdentification} will try to connect`)
 
 					// if (Platform.OS === "android") {
 					// 	await BleManager.createBond(newPeripheral.id)
@@ -286,45 +286,22 @@ export const useBle = (): ReturnType => {
 						timeout,
 					)
 
+					const services = await invokeWithTimeout(
+						() => BleManager.retrieveServices(newPeripheral.id),
+						"BleManager.retrieveServices",
+						timeout,
+					)
+					log("Discovered services: " + JSON.stringify(services))
+
+					newPeripheral.services = extractServiceAndCharacteristic(services)
+
 					dispatch(deviceLogChange({ id: newPeripheral.id, log: "" }))
 					dispatch(deviceConfigClear({ id: newPeripheral.id }))
 
 					log(`Device ${deviceIdentification} connected`)
 
-					const services = (await invokeWithTimeout(
-						() => BleManager.retrieveServices(newPeripheral.id),
-						"BleManager.retrieveServices",
-						timeout,
-					)) as Services
-
-					log(`Device ${deviceIdentification} services retireved`)
-
-					const extractedServices = extractServiceAndCharacteristic(services)
-
-					newPeripheral.services = extractedServices
-
-					await BleManager.startNotification(
-						newPeripheral.id,
-						extractedServices.serviceCharacteristic,
-						extractedServices.readCharacteristic,
-					)
-
-					log(`Device ${deviceIdentification} notifications started`)
-
-					/** Acts as the PING request */
-					const ping = () =>
-						guard(() =>
-							write(newPeripheral, [
-								[CommandNames.BATTERY, { control: CommandControlTypes.READ }],
-							]),
-						)
-
-					await ping()
-
 					newPeripheral.connected = true
-					newPeripheral.intervals = {
-						ping: setInterval(async () => await ping(), 40000),
-					}
+					newPeripheral.intervals = {}
 
 					dispatch(deviceUpdate({ ...newPeripheral }))
 				} catch (e: any) {

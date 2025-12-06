@@ -23,7 +23,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 6,
+    version: 7,
     tables: [
         tableSchema({
             name: 'projects',
@@ -149,6 +149,22 @@ export default appSchema({
                 // Sync tracking fields
                 { name: '_version', type: 'number' },
                 { name: '_custom_sync_status', type: 'string', isOptional: true },
+            ],
+        }),
+        tableSchema({
+            name: 'project_invitations',
+            columns: [
+                { name: 'remote_id', type: 'string', isIndexed: true },
+                { name: 'project_id', type: 'string', isIndexed: true },
+                { name: 'inviter_id', type: 'string' },
+                { name: 'invitee_email', type: 'string', isIndexed: true },
+                { name: 'invitee_id', type: 'string', isOptional: true },
+                { name: 'role', type: 'string' },
+                { name: 'status', type: 'string', isIndexed: true },
+                { name: 'expires_at', type: 'number' },
+                { name: 'responded_at', type: 'number', isOptional: true },
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
             ],
         }),
         // Reference Data Tables (Read-only, synced from Supabase)

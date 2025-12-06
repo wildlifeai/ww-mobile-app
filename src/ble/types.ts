@@ -21,6 +21,13 @@ export enum CommandNames {
 	TRAP = "TRAP",
 	LORAWAN = "LORAWAN",
 	DEVICE = "DEVICE",
+	AI_INFO = "AI_INFO",
+	AI_CAPTURE = "AI_CAPTURE",
+	PING = "PING",
+	SELFTEST = "SELFTEST",
+	FLASH_R = "FLASH_R",
+	FLASH_G = "FLASH_G",
+	FLASH_B = "FLASH_B",
 }
 
 /**
@@ -77,25 +84,29 @@ export const COMMANDS: {
 	[CommandNames.BATTERY]: {
 		name: CommandNames.BATTERY,
 		readCommand: "battery",
-		readRegex: /\bBattery\s=\s(100|\d{1,3})%/,
+		// Matches "Battery = 3305mV 100%" or "Battery = 100%"
+		readRegex: /\bBattery\s=\s(?:\d+mV\s)?(100|\d{1,3})%/,
 	},
 	[CommandNames.SENSOR]: {
 		name: CommandNames.SENSOR,
 		readCommand: "status",
+		// Matches "Sensor: disabled. LoRaWan: Not Joined. Seq: 0"
+		// Made Trap optional as it's missing in recent logs
 		readRegex:
-			/Trap: (\w+). Sensor: (enabled|disabled). LoRaWan: ((?:\w+\s*)+)./,
+			/(?:Trap: \w+\.\s)?Sensor: (enabled|disabled)\./,
 		writeCommand: (value?: string) => `${value}`,
 	},
 	[CommandNames.TRAP]: {
 		name: CommandNames.TRAP,
 		readCommand: "status",
 		readRegex:
-			/Trap: (\w+). Sensor: (enabled|disabled). LoRaWan: ((?:\w+\s*)+)./,
+			/Trap: (\w+)\./,
 	},
 	[CommandNames.LORAWAN]: {
 		name: CommandNames.LORAWAN,
 		readCommand: "status",
-		readRegex: /Sensor: (enabled|disabled). LoRaWan: ((?:\w+\s*)+)\./,
+		// Matches "LoRaWan: Not Joined. Seq: 0" or similar
+		readRegex: /LoRaWan: ((?:[\w\s]+)+?)(?:\.|\s+Seq)/,
 	},
 	[CommandNames.HEARTBEAT]: {
 		name: CommandNames.HEARTBEAT,
@@ -124,6 +135,7 @@ export const COMMANDS: {
 	[CommandNames.PING]: {
 		name: CommandNames.PING,
 		writeCommand: () => "ping",
+		readRegex: /RSSI=(-?\d+),\s*SNR=(-?\d+(?:\.\d+)?)/,
 	},
 	[CommandNames.RESET]: {
 		name: CommandNames.RESET,
@@ -147,6 +159,35 @@ export const COMMANDS: {
 	[CommandNames.DEVICE]: {
 		name: CommandNames.DEVICE,
 		readCommand: "device",
+	},
+	[CommandNames.AI_INFO]: {
+		name: CommandNames.AI_INFO,
+		readCommand: "AI info",
+		// Regex to capture total and available space
+		readRegex: /(\d+)\s*K\s*total\s*drive\s*space[\s\S]*?(\d+)\s*K\s*available/,
+	},
+	[CommandNames.AI_CAPTURE]: {
+		name: CommandNames.AI_CAPTURE,
+		// Default to 1 image, 0 delay if no value provided
+		writeCommand: (value?: string) => `AI capture ${value || "1 0"}`,
+		// No readRegex - we're looking for binary data in hex logs, not text responses
+	},
+	[CommandNames.SELFTEST]: {
+		name: CommandNames.SELFTEST,
+		writeCommand: () => "selftest",
+		readRegex: /Error\s*bits\s*=\s*(0x[0-9A-Fa-f]+)/,
+	},
+	[CommandNames.FLASH_R]: {
+		name: CommandNames.FLASH_R,
+		writeCommand: (value?: string) => `flashr ${value || "100 5"}`,
+	},
+	[CommandNames.FLASH_G]: {
+		name: CommandNames.FLASH_G,
+		writeCommand: (value?: string) => `flashg ${value || "100 5"}`,
+	},
+	[CommandNames.FLASH_B]: {
+		name: CommandNames.FLASH_B,
+		writeCommand: (value?: string) => `flashb ${value || "100 5"}`,
 	},
 }
 

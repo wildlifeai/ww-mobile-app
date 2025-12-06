@@ -140,6 +140,44 @@ export const getProjectMembers = async (
 
 			const userMap = new Map(users.map(u => [u.id, u]))
 
+			// Check for missing users and fetch them
+			const missingUserIds = userIds.filter(id => !userMap.has(id))
+			if (missingUserIds.length > 0) {
+				console.log(`⚠️ Missing ${missingUserIds.length} users locally, fetching from Cloud...`)
+				try {
+					const { data: remoteUsers, error } = await getSupabaseClient()
+						.from('users')
+						.select('*')
+						.in('id', missingUserIds)
+
+					if (remoteUsers && !error) {
+						await database.write(async () => {
+							const usersCollection = database.collections.get<any>('users')
+							const operations = remoteUsers.map(u =>
+								usersCollection.prepareCreate(localUser => {
+									localUser._raw.id = u.id
+									localUser.firstname = u.firstname
+									localUser.surname = u.surname
+									localUser.modifiedBy = u.modified_by || 'system'
+									// Bypass @readonly decorator by assigning to _raw
+									// Timestamps are numbers (epochs) in _raw, but Dates in model
+									localUser._raw.created_at = new Date(u.created_at || Date.now()).getTime()
+									localUser._raw.updated_at = new Date(u.updated_at || Date.now()).getTime()
+									// Handle deleted_at if needed, though usually active users are null
+								})
+							)
+							await database.batch(operations)
+						})
+
+						// Add to map for immediate display
+						remoteUsers.forEach(u => userMap.set(u.id, u))
+						console.log(`✅ Synced ${remoteUsers.length} missing users to local DB`)
+					}
+				} catch (err) {
+					console.error("Failed to fetch missing users:", err)
+				}
+			}
+
 			const members = localRoles.map(role => {
 				const user = userMap.get(role.userId)
 				const name = user ? `${user.firstname} ${user.surname}` : "Unknown User"

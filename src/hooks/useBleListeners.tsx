@@ -27,6 +27,7 @@ import {
 import isEmpty from "lodash.isempty"
 import { useBleActions } from "../providers/BleEngineProvider"
 import { isOurDevice } from "../utils/helpers"
+import { ImageReassembler } from "../utils/ImageReassembler"
 
 // Lazy-load the emitter to avoid accessing NativeModules during import
 let _bleManagerEmitter: NativeEventEmitter | null = null
@@ -122,10 +123,10 @@ const readlineParser = (data: UpdateValueEventType) => {
 }
 
 /*
-    Helper hook of useBleDevices to extract the listener logic out
-    and make the code more readable. Simply attaches listeners
-    to events triggered by the Ble library and helps update
-    the state accordingly.
+	Helper hook of useBleDevices to extract the listener logic out
+	and make the code more readable. Simply attaches listeners
+	to events triggered by the Ble library and helps update
+	the state accordingly.
 */
 export const useBleListeners = () => {
 	const devices = useAppSelector((state) => state.devices)
@@ -186,9 +187,19 @@ export const useBleListeners = () => {
 		(data: UpdateValueEventType) => {
 			const { peripheral, value } = data
 
-			const text = Buffer.from(value).toString()
+			const dataArray = value as number[]
+			const hex = Buffer.from(dataArray).toString("hex")
+			log(`RX Hex: ${hex}`)
 
-			console.debug(JSON.stringify(text))
+			// Check for binary image packet (0x06)
+			if (dataArray[0] === 0x06) {
+				const reassembler = ImageReassembler.getInstance()
+				reassembler.processPacket(dataArray)
+				return
+			}
+
+			const text = Buffer.from(value).toString()
+			// console.debug(JSON.stringify(text))
 
 			const currentConfiguration = configRef.current[peripheral] || {}
 			const currentLog = allLogs.current[peripheral] || ""
@@ -312,7 +323,7 @@ export const useBleListeners = () => {
 		)
 
 		dispatch(scanStop())
-		log("Scan stopped.")
+		// log("Scan stopped.")
 	}, [disconnectDevice, dispatch, pingsPause])
 
 	useEffect(() => {

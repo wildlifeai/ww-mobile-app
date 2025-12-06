@@ -49,7 +49,8 @@ class ProjectService {
 
 			console.log(`✅ Found ${projects.length} projects in WatermelonDB`)
 
-			return projects.map(p => this.mapModelToDetails(p))
+			// Map concurrently
+			return await Promise.all(projects.map(p => this.enrichProjectWithDetails(p)))
 		} catch (error) {
 			console.error("❌ Failed to fetch projects from WatermelonDB:", error)
 			throw new Error(
@@ -75,7 +76,7 @@ class ProjectService {
 
 			console.log("✅ Found project in WatermelonDB:", project.name)
 
-			const details = this.mapModelToDetails(project)
+			const details = await this.enrichProjectWithDetails(project)
 
 			// Populate user role
 			const currentUserId = await this.getCurrentUserId()
@@ -366,7 +367,21 @@ class ProjectService {
 		return user?.id || null
 	}
 
-	private mapModelToDetails(model: Project): ProjectWithDetails {
+	private async enrichProjectWithDetails(model: Project): Promise<ProjectWithDetails> {
+		// Calculate counts
+		const memberCount = await database.collections.get('user_roles')
+			.query(
+				Q.where('scope_type', 'project'),
+				Q.where('scope_id', model.id)
+			)
+			.fetchCount()
+
+		const deploymentCount = await model.deployments.fetchCount()
+
+		// TODO: Calculate distinct LoRaWAN devices from deployments if needed
+		// For now keeping it 0 to match previous behavior (or could query deployments where device_id != null)
+		const lorawanDeviceCount = 0
+
 		return {
 			id: model.id,
 			name: model.name,
@@ -388,8 +403,9 @@ class ProjectService {
 			is_monitoring_marked_individuals: model.isMonitoringMarkedIndividuals || false,
 			project_image: model.projectImage || null,
 			// Computed fields
-			member_count: 0,
-			deployment_count: 0,
+			member_count: memberCount,
+			deployment_count: deploymentCount,
+			lorawan_device_count: lorawanDeviceCount,
 		}
 	}
 

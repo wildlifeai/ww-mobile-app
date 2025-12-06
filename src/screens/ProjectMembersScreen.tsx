@@ -22,7 +22,9 @@ import {
 	Modal,
 	SafeAreaView,
 } from "react-native"
+import { WWTextInput } from "../components/ui/WWTextInput"
 import {
+
 	Card,
 	Text,
 	Button,
@@ -97,6 +99,8 @@ import type {
 	OrganizationUser,
 } from "../services/UserRoleService"
 import ProjectService from "../services/ProjectService"
+import InvitationService from "../services/InvitationService"
+import type ProjectInvitation from "../database/models/ProjectInvitation"
 
 type RouteParams = {
 	params: {
@@ -132,19 +136,19 @@ export const ProjectMembersScreen: React.FC = () => {
 	const [selectedRole, setSelectedRole] =
 		useState<ProjectRole>("project_member")
 
-	// Add member dialog state
-	const [availableUsers, setAvailableUsers] = useState<OrganizationUser[]>([])
-	const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
-	const [selectedUserRole, setSelectedUserRole] =
-		useState<ProjectRole>("project_member")
-	const [searchQuery, setSearchQuery] = useState("")
+	// Invite member dialog state
+	const [inviteEmail, setInviteEmail] = useState("")
+	const [inviteRole, setInviteRole] = useState<ProjectRole>("project_member")
+	const [pendingInvitations, setPendingInvitations] = useState<ProjectInvitation[]>([])
 
 	// Menu state (for individual member actions)
 	const [menuVisible, setMenuVisible] = useState<{ [key: string]: boolean }>({})
 
 	// Permission checks
+	const currentUserProjectRole = members.find((m) => m.id === user?.id)?.role
 	const canManageMembers =
-		user && (user.role === "project_admin" || user.role === "ww_admin")
+		user &&
+		(currentUserProjectRole === "project_admin" || user.role === "ww_admin")
 
 	// Load data
 	useEffect(() => {
@@ -173,32 +177,15 @@ export const ProjectMembersScreen: React.FC = () => {
 					// User not authorized to view members - show empty list
 					console.log("⚠️ User not authorized to view project members")
 					setMembers([])
-					setAvailableUsers([])
+
 					return
 				}
 				throw error // Re-throw other errors
 			}
 
-			// Get project to find its organisation_id
-			const project = await ProjectService.getProjectById(projectId)
-
-			if (!project?.organisation_id) {
-				console.error("❌ Project has no organisation_id")
-				return
-			}
-
-			// Load available users from PROJECT'S organization (not current user's org!)
-			const orgUsers = await getOrganizationUsers(
-				project.organisation_id,
-				user.id,
-			)
-
-			// Filter out users already in project
-			const available = orgUsers.filter(
-				(orgUser) => !members.some((m) => m.id === orgUser.id),
-			)
-			setAvailableUsers(available)
-			console.log(`✅ Loaded ${available.length} available users`)
+			// Load pending invitations
+			const pending = await InvitationService.getProjectPendingInvitations(projectId)
+			setPendingInvitations(pending)
 		} catch (error) {
 			console.error("❌ Error loading members:", error)
 			Alert.alert("Error", "Failed to load project members")
@@ -213,9 +200,9 @@ export const ProjectMembersScreen: React.FC = () => {
 		setRefreshing(false)
 	}
 
-	const handleAddMembers = async () => {
-		if (selectedUserIds.length === 0) {
-			Alert.alert("Error", "Please select at least one user to add")
+	const handleInviteMember = async () => {
+		if (!inviteEmail.trim()) {
+			Alert.alert("Error", "Please enter an email address")
 			return
 		}
 
@@ -226,69 +213,41 @@ export const ProjectMembersScreen: React.FC = () => {
 
 		setLoading(true)
 		try {
-			console.log(`➕ Adding ${selectedUserIds.length} members...`)
+			console.log(`📧 Inviting ${inviteEmail}...`)
 
-			// Add all selected users
-			const results = await Promise.all(
-				selectedUserIds.map((userId) =>
-					addProjectMember({
-						project_id: projectId,
-						user_id: userId,
-						role: selectedUserRole,
-						granted_by: user.id,
-					}),
-				),
+			// 1. Check if user exists
+			const exists = await InvitationService.checkUserExists(inviteEmail.trim())
+			if (!exists) {
+				Alert.alert("Error", "No user associated with this email address")
+				setLoading(false)
+				return
+			}
+
+			// 2. Send invitation
+			await InvitationService.sendInvitation(
+				projectId,
+				inviteEmail.trim(),
+				inviteRole
 			)
 
-			// Check for failures
-			const failures = results.filter((r) => !r.success)
-			if (failures.length > 0) {
-				console.error("❌ Some members failed to add:", failures)
-				Alert.alert("Warning", `${failures.length} members could not be added`)
-			}
+			Alert.alert("Success", "Invitation sent successfully")
 
-			// Refresh member list
+			// Refresh lists
 			await loadMembers()
-
-			const successCount = results.length - failures.length
-			if (successCount > 0) {
-				Alert.alert(
-					"Success",
-					`${successCount} ${successCount === 1 ? "member" : "members"
-					} added successfully`,
-				)
-			}
 
 			// Reset form
 			setShowAddMemberDialog(false)
-			setSelectedUserIds([])
-			setSelectedUserRole("project_member")
-			setSearchQuery("")
-		} catch (error) {
-			console.error("❌ Error adding members:", error)
-			Alert.alert("Error", "Failed to add members")
+			setInviteEmail("")
+			setInviteRole("project_member")
+		} catch (error: any) {
+			console.error("❌ Error sending invitation:", error)
+			Alert.alert("Error", error.message || "Failed to send invitation")
 		} finally {
 			setLoading(false)
 		}
 	}
 
-	const toggleUserSelection = (userId: string) => {
-		setSelectedUserIds((prev) =>
-			prev.includes(userId)
-				? prev.filter((id) => id !== userId)
-				: [...prev, userId],
-		)
-	}
 
-	const toggleSelectAll = () => {
-		if (selectedUserIds.length === filteredAvailableUsers.length) {
-			// Deselect all
-			setSelectedUserIds([])
-		} else {
-			// Select all filtered users
-			setSelectedUserIds(filteredAvailableUsers.map((u) => u.id))
-		}
-	}
 
 	const handleChangeRole = async () => {
 		if (!selectedMember || !user) return
@@ -388,12 +347,7 @@ export const ProjectMembersScreen: React.FC = () => {
 		closeMenu(member.id)
 	}
 
-	// Filter available users based on search
-	const filteredAvailableUsers = availableUsers.filter(
-		(user) =>
-			user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			user.email.toLowerCase().includes(searchQuery.toLowerCase()),
-	)
+
 
 	if (loading && members.length === 0) {
 		return (
@@ -439,6 +393,27 @@ export const ProjectMembersScreen: React.FC = () => {
 					>
 						Add Member
 					</Button>
+				</View>
+			)}
+
+			{/* Pending Invitations List (Admin Only) */}
+			{canManageMembers && pendingInvitations.length > 0 && (
+				<View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+					<Text variant="titleSmall" style={{ marginBottom: 8, color: theme.colors.onSurfaceVariant }}>
+						Pending Invitations ({pendingInvitations.length})
+					</Text>
+					{pendingInvitations.map((invite) => (
+						<Card key={invite.id || invite.remoteId} style={{ marginBottom: 8, backgroundColor: theme.colors.surfaceVariant }}>
+							<Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 }}>
+								<View>
+									<Text variant="bodyMedium" style={{ fontWeight: 'bold' }}>{invite.inviteeEmail}</Text>
+									<Text variant="bodySmall">{getRoleDisplayName(invite.role as ProjectRole)} • Expires {new Date(invite.expiresAt).toLocaleDateString()}</Text>
+								</View>
+								<Chip icon="clock-outline" compact>Pending</Chip>
+							</Card.Content>
+						</Card>
+					))}
+					<Divider style={{ marginVertical: 8 }} />
 				</View>
 			)}
 
@@ -562,147 +537,76 @@ export const ProjectMembersScreen: React.FC = () => {
 					{/* Header with back button */}
 					<Appbar.Header>
 						<Appbar.BackAction onPress={() => setShowAddMemberDialog(false)} />
-						<Appbar.Content title="Add Members" />
+						<Appbar.Content title="Invite Member" />
 						<Button
-							onPress={handleAddMembers}
-							disabled={selectedUserIds.length === 0}
+							onPress={handleInviteMember}
+							disabled={!inviteEmail.trim() || loading}
 							mode="contained"
 							style={styles.headerButton}
+							loading={loading}
 						>
-							{selectedUserIds.length === 0
-								? "Add"
-								: `Add ${selectedUserIds.length}`}
+							Send Invite
 						</Button>
 					</Appbar.Header>
 
-					{/* Role Selection with Segmented Buttons - GREEN THEME */}
-					<View style={styles.roleSelectionSection}>
-						<Text variant="titleMedium" style={styles.roleLabel}>
-							Adding as:
+					<ScrollView style={{ flex: 1, padding: 16 }}>
+						<Text variant="bodyMedium" style={{ marginBottom: 16 }}>
+							Enter the email address of the user you want to invite to this project.
 						</Text>
-						<SegmentedButtons
-							value={selectedUserRole}
-							onValueChange={(value) =>
-								setSelectedUserRole(value as ProjectRole)
-							}
-							buttons={[
-								{
-									value: "project_member",
-									label: "Member",
-									icon: "account",
-									style: { borderColor: "#4CAF50" },
-									labelStyle: { color: "#FFFFFF" },
-									uncheckedColor: "#FFFFFF",
-									checkedColor: "#FFFFFF",
-								},
-								{
-									value: "project_admin",
-									label: "Admin",
-									icon: "shield-account",
-									style: { borderColor: "#4CAF50" },
-									labelStyle: { color: "#FFFFFF" },
-									uncheckedColor: "#FFFFFF",
-									checkedColor: "#FFFFFF",
-								},
-							]}
-							theme={{
-								colors: {
-									secondaryContainer: "#4CAF50",
-									onSecondaryContainer: "#FFFFFF",
-									outline: "#4CAF50",
-								},
-							}}
-							style={styles.segmentedButtons}
-						/>
-					</View>
 
-					{/* Search Bar */}
-					<View style={styles.searchContainer}>
-						<Searchbar
-							placeholder="Search members"
-							placeholderTextColor="#666666"
-							onChangeText={setSearchQuery}
-							value={searchQuery}
-							style={styles.searchBarFull}
-							inputStyle={styles.searchInput}
-							theme={{
-								colors: { onSurfaceVariant: "#000000", onSurface: "#000000" },
-							}}
-							testID="member-search-bar"
+						<WWTextInput
+							label="Email Address"
+							value={inviteEmail}
+							onChange={setInviteEmail}
+							keyboardType="email-address"
+							autoCapitalize="none"
+							autoCorrect={false}
+							style={{ marginBottom: 24 }}
 						/>
-					</View>
 
-					{/* Select All Header */}
-					{filteredAvailableUsers.length > 0 && (
-						<View style={styles.selectAllContainer}>
-							<Checkbox
-								status={
-									selectedUserIds.length === 0
-										? "unchecked"
-										: selectedUserIds.length === filteredAvailableUsers.length
-											? "checked"
-											: "indeterminate"
+						{/* Role Selection with Segmented Buttons - GREEN THEME */}
+						<View style={styles.roleSelectionSection}>
+							<Text variant="titleMedium" style={styles.roleLabel}>
+								Role:
+							</Text>
+							<SegmentedButtons
+								value={inviteRole}
+								onValueChange={(value) =>
+									setInviteRole(value as ProjectRole)
 								}
-								onPress={toggleSelectAll}
-								color="#4CAF50"
+								buttons={[
+									{
+										value: "project_member",
+										label: "Member",
+										icon: "account",
+										style: { borderColor: "#4CAF50" },
+										labelStyle: { color: "#FFFFFF" },
+										uncheckedColor: "#FFFFFF",
+										checkedColor: "#FFFFFF",
+									},
+									{
+										value: "project_admin",
+										label: "Admin",
+										icon: "shield-account",
+										style: { borderColor: "#4CAF50" },
+										labelStyle: { color: "#FFFFFF" },
+										uncheckedColor: "#FFFFFF",
+										checkedColor: "#FFFFFF",
+									},
+								]}
+								theme={{
+									colors: {
+										secondaryContainer: "#4CAF50",
+										onSecondaryContainer: "#FFFFFF",
+										outline: "#4CAF50",
+									},
+								}}
+								style={styles.segmentedButtons}
 							/>
-							<Text
-								variant="bodyMedium"
-								style={styles.selectAllText}
-								onPress={toggleSelectAll}
-							>
-								{selectedUserIds.length === filteredAvailableUsers.length
-									? "Deselect All"
-									: "Select All"}
+							<Text variant="bodySmall" style={{ marginTop: 8, color: theme.colors.onSurfaceVariant }}>
+								{getRoleDescription(inviteRole)}
 							</Text>
 						</View>
-					)}
-
-					{/* User List - NO BACKGROUND CHANGES */}
-					<ScrollView style={styles.fullUserList}>
-						{filteredAvailableUsers.length === 0 ? (
-							<View style={styles.emptyStateFull}>
-								<Text style={styles.emptyText}>
-									{searchQuery ? "No users found" : "No available users to add"}
-								</Text>
-							</View>
-						) : (
-							filteredAvailableUsers.map((user) => {
-								const isSelected = selectedUserIds.includes(user.id)
-								return (
-									<View key={user.id} style={styles.userItemFull}>
-										<Checkbox
-											status={isSelected ? "checked" : "unchecked"}
-											onPress={() => toggleUserSelection(user.id)}
-											color="#4CAF50"
-										/>
-										<View
-											style={styles.userItemContent}
-											onTouchEnd={() => toggleUserSelection(user.id)}
-										>
-											<Text
-												variant="bodyLarge"
-												style={[
-													styles.userNameFull,
-													{ color: theme.colors.onSurface },
-												]}
-											>
-												{user.name}
-											</Text>
-											<Text
-												variant="bodyMedium"
-												style={[
-													styles.userEmailFull,
-													{ color: theme.colors.onSurfaceVariant },
-												]}
-											>
-												{user.email}
-											</Text>
-										</View>
-									</View>
-								)
-							})
-						)}
 					</ScrollView>
 				</SafeAreaView>
 			</Modal>

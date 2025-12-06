@@ -13,9 +13,18 @@
  */
 
 import React, { useState, useMemo } from "react"
-import { StyleSheet, View } from "react-native"
+import { StyleSheet, View, ScrollView } from "react-native"
 import { useForm, Controller } from "react-hook-form"
-import { Text, useTheme, Snackbar } from "react-native-paper"
+import {
+	Text,
+	useTheme,
+	Snackbar,
+	IconButton,
+	Portal,
+	Dialog,
+	Button,
+	Divider,
+} from "react-native-paper"
 import {
 	useCreateProjectMutation,
 	useGetCaptureMethodsQuery,
@@ -56,6 +65,8 @@ export const NewProjectScreen = () => {
 	const [createProject, { isLoading }] = useCreateProjectMutation()
 	const [errorMessage, setErrorMessage] = useState<string>("")
 	const [showError, setShowError] = useState(false)
+	const [samplingHelpVisible, setSamplingHelpVisible] = useState(false)
+	const [captureHelpVisible, setCaptureHelpVisible] = useState(false)
 
 	// Reference Data Queries
 	const { data: captureMethods } = useGetCaptureMethodsQuery()
@@ -128,14 +139,16 @@ export const NewProjectScreen = () => {
 		const method = captureMethods?.find(
 			(cm) => cm.id.toString() === selectedCaptureMethodId,
 		)
-		return method?.value === "Motion Detection"
+		return (
+			method?.value === "Motion Detection" || method?.value === "activityDetection"
+		)
 	}, [captureMethods, selectedCaptureMethodId])
 
 	const isTimeLapse = useMemo(() => {
 		const method = captureMethods?.find(
 			(cm) => cm.id.toString() === selectedCaptureMethodId,
 		)
-		return method?.value === "Time-lapse"
+		return method?.value === "Time-lapse" || method?.value === "timeLapse"
 	}, [captureMethods, selectedCaptureMethodId])
 
 	const onSubmit = async (data: ProjectFormData) => {
@@ -281,25 +294,55 @@ export const NewProjectScreen = () => {
 						Project Settings
 					</Text>
 
-					<Field control={control} name="sampling_design_id" label="Sampling Design">
-						{(field) => (
-							<WWSelect
-								{...field}
-								options={samplingDesignOptions}
+					<View style={styles.fieldRow}>
+						<View style={styles.flex1}>
+							<Field
+								control={control}
+								name="sampling_design_id"
 								label="Sampling Design"
-							/>
-						)}
-					</Field>
+							>
+								{(field) => (
+									<WWSelect
+										{...field}
+										options={samplingDesignOptions}
+										label="Sampling Design"
+									/>
+								)}
+							</Field>
+						</View>
+						<IconButton
+							icon="help-circle-outline"
+							size={24}
+							onPress={() => setSamplingHelpVisible(true)}
+							style={styles.helpIcon}
+							iconColor={theme.colors.primary}
+						/>
+					</View>
 
-					<Field control={control} name="capture_method_id" label="Capture Method">
-						{(field) => (
-							<WWSelect
-								{...field}
-								options={captureMethodOptions}
+					<View style={styles.fieldRow}>
+						<View style={styles.flex1}>
+							<Field
+								control={control}
+								name="capture_method_id"
 								label="Capture Method"
-							/>
-						)}
-					</Field>
+							>
+								{(field) => (
+									<WWSelect
+										{...field}
+										options={captureMethodOptions}
+										label="Capture Method"
+									/>
+								)}
+							</Field>
+						</View>
+						<IconButton
+							icon="help-circle-outline"
+							size={24}
+							onPress={() => setCaptureHelpVisible(true)}
+							style={styles.helpIcon}
+							iconColor={theme.colors.primary}
+						/>
+					</View>
 
 					{isMotionDetection && (
 						<Field
@@ -396,6 +439,93 @@ export const NewProjectScreen = () => {
 				>
 					{errorMessage}
 				</Snackbar>
+
+				{/* Help Dialog */}
+				<Portal>
+					<Dialog
+						visible={samplingHelpVisible}
+						onDismiss={() => setSamplingHelpVisible(false)}
+						style={{ maxHeight: "80%" }}
+					>
+						<Dialog.Title>Sampling Designs</Dialog.Title>
+						<Dialog.ScrollArea>
+							<ScrollView contentContainerStyle={{ paddingVertical: 16 }}>
+								<Text style={styles.helpItem}>
+									<Text style={styles.bold}>Simple random:</Text> random
+									distribution of sampling locations
+								</Text>
+								<Divider style={styles.divider} />
+
+								<Text style={styles.helpItem}>
+									<Text style={styles.bold}>Systematic random:</Text> random
+									distribution of sampling locations, but arranged in a regular
+									pattern
+								</Text>
+								<Divider style={styles.divider} />
+
+								<Text style={styles.helpItem}>
+									<Text style={styles.bold}>Clustered random:</Text> random
+									distribution of sampling locations, but clustered in arrays
+								</Text>
+								<Divider style={styles.divider} />
+
+								<Text style={styles.helpItem}>
+									<Text style={styles.bold}>Experimental:</Text> non-random
+									distribution aimed to study an effect, including the
+									before-after control-impact (BACI) design
+								</Text>
+								<Divider style={styles.divider} />
+
+								<Text style={styles.helpItem}>
+									<Text style={styles.bold}>Targeted:</Text> non-random
+									distribution optimized for capturing specific target species
+									(often using various bait types)
+								</Text>
+								<Divider style={styles.divider} />
+
+								<Text style={styles.helpItem}>
+									<Text style={styles.bold}>Opportunistic:</Text> opportunistic
+									camera trapping (usually with a small number of cameras).
+								</Text>
+							</ScrollView>
+						</Dialog.ScrollArea>
+						<Dialog.Actions>
+							<Button onPress={() => setSamplingHelpVisible(false)}>
+								Close
+							</Button>
+						</Dialog.Actions>
+					</Dialog>
+				</Portal>
+
+				{/* Capture Method Help Dialog */}
+				<Portal>
+					<Dialog
+						visible={captureHelpVisible}
+						onDismiss={() => setCaptureHelpVisible(false)}
+						style={{ maxHeight: "80%" }}
+					>
+						<Dialog.Title>Capture Methods</Dialog.Title>
+						<Dialog.ScrollArea>
+							<ScrollView contentContainerStyle={{ paddingVertical: 16 }}>
+								<Text style={styles.helpItem}>
+									<Text style={styles.bold}>activityDetection:</Text> The camera
+									uses the motion-detection sensor to record photos
+								</Text>
+								<Divider style={styles.divider} />
+
+								<Text style={styles.helpItem}>
+									<Text style={styles.bold}>timeLapse:</Text> Set a timer (e.g.
+									every 30 seconds) for the camera to take photos.
+								</Text>
+							</ScrollView>
+						</Dialog.ScrollArea>
+						<Dialog.Actions>
+							<Button onPress={() => setCaptureHelpVisible(false)}>
+								Close
+							</Button>
+						</Dialog.Actions>
+					</Dialog>
+				</Portal>
 			</View>
 		</WWScreenView>
 	)
@@ -411,6 +541,28 @@ const styles = StyleSheet.create({
 	sectionTitle: {
 		fontWeight: "600",
 		marginBottom: 16,
+	},
+	fieldRow: {
+		flexDirection: "row",
+		alignItems: "flex-start", // Align top to handle different heights
+		gap: 8,
+	},
+	flex1: {
+		flex: 1,
+	},
+	helpIcon: {
+		margin: 0,
+		marginTop: 8, // Align with input field visually
+	},
+	helpItem: {
+		marginBottom: 8,
+		lineHeight: 20,
+	},
+	bold: {
+		fontWeight: "bold",
+	},
+	divider: {
+		marginVertical: 8,
 	},
 	radioGroup: {
 		marginBottom: 16,

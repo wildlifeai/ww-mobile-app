@@ -30,6 +30,8 @@ import { DeveloperSettingsScreen } from "../screens/DeveloperSettingsScreen"
 import { useDeepLinking } from "../hooks/useDeepLinking"
 import { DeviceDiscoveryScreen } from "../screens/device/DeviceDiscoveryScreen"
 import { DeviceDetailsScreen } from "../screens/device/DeviceDetailsScreen"
+import { EngineerConsoleScreen } from "./screens/EngineerConsoleScreen"
+import { DevicePreparationScreen } from "./screens/DevicePreparationScreen"
 
 export interface RootStackParamList extends ParamListBase {
 	Notifications: undefined
@@ -144,7 +146,7 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="Home"
 							component={BottomTabs}
-							options={{ title: "Wildlife Watcher" }}
+							options={{ title: "" }}
 						/>
 						<Stack.Screen
 							name="Notifications"

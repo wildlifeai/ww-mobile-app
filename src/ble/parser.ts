@@ -257,6 +257,62 @@ export const parseLogs = (finishedLog: string, lastLog: string) => {
 		}
 	}
 
+	// AI INFO
+	const lastAiInfoLine = checkForLastLine(COMMANDS.AI_INFO.readCommand!, lines)
+	if (lastAiInfoLine) {
+		const matches = COMMANDS.AI_INFO.readRegex!.exec(lastAiInfoLine)
+		if (matches) {
+			const [, total, available] = matches
+			results.push({
+				value: JSON.stringify({ total: parseInt(total), available: parseInt(available) }),
+				command: COMMANDS.AI_INFO,
+			})
+		}
+	}
+
+	// AI CAPTURE
+	// Note: AI capture might take longer and might not be the immediate next line
+	// But for now we follow the pattern. The regex is robust enough to find it if it's there.
+	// We might need to scan more lines if it's not the immediate next one.
+	// For now, let's try the standard approach.
+	const lastAiCaptureLine = checkForLastLine("Captured", lines) // "Captured" is part of the response
+	if (lastAiCaptureLine) {
+		const matches = COMMANDS.AI_CAPTURE.readRegex!.exec(lastAiCaptureLine)
+		if (matches) {
+			const [, filename] = matches
+			results.push({
+				value: filename,
+				command: COMMANDS.AI_CAPTURE,
+			})
+		}
+	}
+
+	// PING
+	const lastPingLine = checkForLastLine(COMMANDS.PING.writeCommand!(), lines)
+	if (lastPingLine) {
+		const matches = COMMANDS.PING.readRegex!.exec(lastPingLine)
+		if (matches) {
+			const [, rssi, snr] = matches
+			results.push({
+				value: JSON.stringify({ rssi: parseInt(rssi), snr: parseFloat(snr) }),
+				command: COMMANDS.PING,
+			})
+		}
+	}
+
+	// SELFTEST
+	const lastSelftestLine = checkForLastLine(COMMANDS.SELFTEST.writeCommand!(), lines)
+	if (lastSelftestLine) {
+		const matches = COMMANDS.SELFTEST.readRegex!.exec(lastSelftestLine)
+		if (matches) {
+			const [, errorBits] = matches
+			results.push({
+				value: errorBits,
+				command: COMMANDS.SELFTEST,
+			})
+		}
+	}
+
 	return results
 }
 

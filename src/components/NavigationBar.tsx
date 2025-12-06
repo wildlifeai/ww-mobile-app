@@ -54,27 +54,6 @@ export const NavigationBar = ({
 						Offline
 					</Chip>
 				)}
-				{__DEV__ && !isOffline && route.name === "Home" && (
-					<Chip
-						style={{
-							position: "absolute",
-							bottom: -10,
-							height: 18,
-							minHeight: 18,
-							backgroundColor: "rgba(255, 255, 255, 0.1)",
-							borderColor: "rgba(255, 255, 255, 0.2)",
-						}}
-						textStyle={{
-							fontSize: 9,
-							marginVertical: -5,
-							color: "rgba(255, 255, 255, 0.6)",
-						}}
-						compact
-						mode="outlined"
-					>
-						Expo Dev
-					</Chip>
-				)}
 			</View>
 		</Appbar.Header>
 	)

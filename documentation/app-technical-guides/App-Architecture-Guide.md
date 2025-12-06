@@ -240,8 +240,9 @@ Wildlife Camera Device (Bootloader Mode)
 6. **Reboot** → Device restarts with new firmware
 
 ### Limitations
-- **Firmware Only**: Current system only supports firmware updates
-- **No AI Models**: Cannot transfer AI model files (identified limitation)
+- **Firmware Only**: Current system only supports nRF (BLE) firmware updates. Himax AI processor updates are planned.
+- **No AI Models**: Cannot transfer AI model files (identified limitation).
+- **No Config Persistence**: App cannot currently write to `CONFIG.TXT` on SD card (planned feature).
 - **ZIP Format**: Requires Nordic DFU-compatible ZIP packages
 
 ## UI Component System
@@ -474,6 +475,8 @@ export default enhance(ProjectDetails);
 ## Future Architecture Considerations
 
 ### Planned Enhancements
+- **Himax Firmware Updates** - Extend DFU system to support flashing Himax AI processor via BLE
+- **Remote Configuration** - Implement writing to `CONFIG.TXT` on SD card for persistent settings
 - **AI Model Updates** - Extend DFU system to support AI model files
 - **Advanced Analytics** - Wildlife detection and analysis
 
