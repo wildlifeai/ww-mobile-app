@@ -8,6 +8,8 @@
  * When running on emulator, localhost works fine. On physical device, use host IP.
  */
 
+import Constants from "expo-constants"
+
 export type SupabaseEnvironment = "local" | "cloud-dev" | "cloud-prod"
 
 export interface EnvironmentConfig {
@@ -37,18 +39,18 @@ export const ENVIRONMENT_CONFIGS: Record<
 	},
 	"cloud-dev": {
 		supabaseUrl:
-			(process.env as any).EXPO_PUBLIC_SUPABASE_URL ||
+			Constants.expoConfig?.extra?.supabaseUrl ||
 			"https://nuhwmubvygxyddkycmpa.supabase.co",
 		supabaseAnonKey:
-			(process.env as any).EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+			Constants.expoConfig?.extra?.supabaseAnonKey ||
 			"sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd",
 		displayName: "Cloud Development",
 		description: "Cloud Supabase development instance (default)",
 		isProduction: false,
 	},
 	"cloud-prod": {
-		supabaseUrl: (process.env as any).EXPO_PUBLIC_SUPABASE_PROD_URL || "",
-		supabaseAnonKey: (process.env as any).EXPO_PUBLIC_SUPABASE_PROD_ANON_KEY || "",
+		supabaseUrl: Constants.expoConfig?.extra?.supabaseProdUrl || "",
+		supabaseAnonKey: Constants.expoConfig?.extra?.supabaseProdAnonKey || "",
 		displayName: "Cloud Production",
 		description:
 			"Production Supabase instance (requires production credentials)",
@@ -67,20 +69,18 @@ export const ENVIRONMENT_CONFIGS: Record<
  * @returns Default environment for current build type
  */
 export function getDefaultEnvironment(): SupabaseEnvironment {
-	// Check for explicit environment override
-	if ((process.env as any).EXPO_PUBLIC_SUPABASE_ENV) {
-		const env = (process.env as any).EXPO_PUBLIC_SUPABASE_ENV
-		if (isValidEnvironment(env)) {
-			return env
-		}
+	// Check for explicit environment override from app config
+	const envOverride = Constants.expoConfig?.extra?.supabaseEnv
+	if (envOverride && isValidEnvironment(envOverride)) {
+		return envOverride
 	}
 
-	// Development builds default to local Supabase
-	const isDevelopment = __DEV__ || (process.env as any).APP_VARIANT === "development"
+	// Development builds default to cloud-dev
+	const isDevelopment = __DEV__ || Constants.expoConfig?.extra?.isDevelopment
 
-	// For now, default to cloud-dev since local has networking issues on device
-	// TODO: Re-enable 'local' default once WSL networking is stable
-	return isDevelopment ? "cloud-dev" : "cloud-prod"
+	// For now, default to cloud-dev for all builds
+	// TODO: Use 'cloud-prod' for production builds once we have prod credentials
+	return isDevelopment ? "cloud-dev" : "cloud-dev"
 }
 
 /**

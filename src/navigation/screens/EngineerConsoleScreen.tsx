@@ -12,6 +12,7 @@ import { CommandControlTypes, CommandNames, COMMANDS } from '../../ble/types'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { imageReassemblerEmitter } from '../../ble/emitters'
 import { CommandReferenceModal } from '../../components/CommandReferenceModal'
+import { ImagePreviewModal } from '../../components/ImagePreviewModal'
 
 
 export const EngineerConsoleScreen = () => {
@@ -42,6 +43,10 @@ export const EngineerConsoleScreen = () => {
     const [isWaitingForCapture, setIsWaitingForCapture] = useState(false)
     const captureRetryTimeout = React.useRef<NodeJS.Timeout | null>(null)
     const lastProcessedLog = React.useRef<string>("")
+
+    // Image preview state
+    const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
+    const [showPreviewModal, setShowPreviewModal] = useState(false)
 
     // Monitor logs and update console history
     useEffect(() => {
@@ -128,6 +133,21 @@ export const EngineerConsoleScreen = () => {
 
     }, [logs, isWaitingForCapture, device, write])
 
+    // Listen for completed image downloads
+    useEffect(() => {
+        const handleImageComplete = (data: { filePath: string; filename: string }) => {
+            console.log('Image download complete:', data.filename)
+            setPreviewImageUri(data.filePath)
+            setShowPreviewModal(true)
+        }
+
+        imageReassemblerEmitter.on('complete', handleImageComplete)
+
+        return () => {
+            imageReassemblerEmitter.off('complete', handleImageComplete)
+        }
+    }, [])
+
     const handleSend = async (cmd?: string) => {
         const commandToSend = cmd || inputText.trim()
         if (!commandToSend || !device) return
@@ -142,6 +162,12 @@ export const EngineerConsoleScreen = () => {
             content: commandToSend
         }
         setConsoleHistory(prev => [...prev, newEntry])
+
+        // Detect CAPTURE_PREVIEW or AI capture commands to enable auto-download
+        if (commandToSend.includes('AI capture') || commandToSend === CommandNames.CAPTURE_PREVIEW) {
+            console.log('Capture command detected, setting isWaitingForCapture = true')
+            setIsWaitingForCapture(true)
+        }
 
         try {
             await write(device, [commandToSend])
@@ -411,6 +437,13 @@ export const EngineerConsoleScreen = () => {
                     </View>
                 </Modal>
             </Portal>
+
+            {/* Image Preview Modal */}
+            <ImagePreviewModal
+                visible={showPreviewModal}
+                imageUri={previewImageUri}
+                onDismiss={() => setShowPreviewModal(false)}
+            />
 
         </KeyboardAvoidingView>
     )

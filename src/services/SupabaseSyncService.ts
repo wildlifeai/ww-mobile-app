@@ -8,6 +8,8 @@ import { Database } from '../types/database.types'
 import UserRole from '../database/models/UserRole'
 import Device from '../database/models/Device'
 import Project from '../database/models/Project'
+import NetInfo from '@react-native-community/netinfo'
+import type { RootState } from '../redux'
 
 class SupabaseSyncService {
     private realtimeChannel: RealtimeChannel | null = null
@@ -60,6 +62,40 @@ class SupabaseSyncService {
         const inProgress = await SyncStateService.isSyncInProgress()
         if (inProgress || this.isSyncing) {
             console.log('⏳ Sync already in progress, skipping.')
+            return
+        }
+
+        // Check network state - don't sync if offline
+        // Try Redux first (maintained by OfflineService), but fallback to NetInfo if offline
+        // This handles the race condition where Redux hasn't initialized yet
+        let isOnline = false
+        try {
+            const { default: store } = require('../redux')
+            const state: RootState = store.getState()
+            isOnline = state.network.isOnline
+
+            // If Redux says offline, double-check with NetInfo (handles initialization race)
+            if (!isOnline) {
+                const netState = await NetInfo.fetch()
+                const netInfoOnline = netState.isConnected === true
+                if (netInfoOnline) {
+                    console.log(`🌐 Network check: Redux says OFFLINE but NetInfo says ONLINE - using NetInfo`)
+                    isOnline = true
+                } else {
+                    console.log(`🌐 Network check (Redux): OFFLINE`)
+                }
+            } else {
+                console.log(`🌐 Network check (Redux): ONLINE`)
+            }
+        } catch (e) {
+            // Fallback to NetInfo if Redux not available
+            const netState = await NetInfo.fetch()
+            isOnline = netState.isConnected === true
+            console.log(`🌐 Network check (NetInfo fallback): ${isOnline ? 'ONLINE' : 'OFFLINE'}`)
+        }
+
+        if (!isOnline) {
+            console.log('⏸️ Device is offline - skipping sync')
             return
         }
 
@@ -490,6 +526,19 @@ class SupabaseSyncService {
 
         await database.write(async () => {
             for (const row of data) {
+                // Skip projects that were deleted on server
+                if (row.deleted_at) {
+                    try {
+                        const existing = await collection.find(row.id)
+                        if (!existing._raw._status.includes('deleted')) {
+                            await existing.markAsDeleted()
+                        }
+                    } catch (e) {
+                        // Project doesn't exist locally, skip it
+                    }
+                    continue
+                }
+
                 // Check if exists
                 try {
                     const existing = await collection.find(row.id)

@@ -1,6 +1,8 @@
 import NetInfo, { NetInfoState } from "@react-native-community/netinfo"
 import { NetworkStatus } from "../../types/offline"
 import SupabaseSyncService from "../SupabaseSyncService"
+import store from "../../redux"
+import { networkOnline, networkOffline } from "../../redux/slices/networkSlice"
 
 /**
  * OfflineService - Network status monitoring
@@ -67,12 +69,22 @@ export class OfflineService {
 	}
 
 	/**
-	 * Update internal network status
+	 * Update internal network status and dispatch to Redux
 	 */
 	private updateNetworkStatus(state: NetInfoState): void {
 		this.networkStatus = {
 			isConnected: state.isConnected ?? false,
 			type: state.type || "none",
+		}
+
+		// Dispatch to Redux store so entire app knows network state
+		if (this.networkStatus.isConnected) {
+			store.dispatch(networkOnline({
+				connectionType: this.networkStatus.type as any,
+				isInternetReachable: state.isInternetReachable ?? false
+			}))
+		} else {
+			store.dispatch(networkOffline())
 		}
 	}
 

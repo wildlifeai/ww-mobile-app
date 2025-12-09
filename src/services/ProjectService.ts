@@ -131,22 +131,27 @@ class ProjectService {
 
 
 				// 2. Prepare outbox record
+				console.log("📦 Preparing outbox record for project:", newProject.id)
 
+				try {
+					const outboxOp = OutboxService.recordOperation({
+						operation: 'CREATE',
+						tableName: 'projects',
+						recordId: newProject.id,
+						payload: this.mapModelToType(newProject),
+						userId: currentUserId,
+					})
 
+					console.log("✅ Outbox record prepared, executing batch...")
 
+					// 3. Execute batch
+					await database.batch(newProject, outboxOp)
 
-				const outboxOp = OutboxService.recordOperation({
-					operation: 'CREATE',
-					tableName: 'projects',
-					recordId: newProject.id,
-					payload: this.mapModelToType(newProject),
-					userId: currentUserId,
-				})
-
-
-				// 3. Execute batch
-
-				await database.batch(newProject, outboxOp)
+					console.log("✅ Batch executed successfully - project and outbox record created")
+				} catch (outboxError) {
+					console.error("❌ Failed to create outbox record:", outboxError)
+					throw new Error(`Outbox creation failed: ${outboxError instanceof Error ? outboxError.message : String(outboxError)}`)
+				}
 
 			})
 
@@ -363,8 +368,10 @@ class ProjectService {
 	// --- Private Helpers ---
 
 	private async getCurrentUserId(): Promise<string | null> {
-		const { data: { user } } = await getSupabaseClient().auth.getUser()
-		return user?.id || null
+		// Use getSession() instead of getUser() - works offline by reading from AsyncStorage
+		// getUser() tries to verify with server, which fails when offline
+		const { data: { session } } = await getSupabaseClient().auth.getSession()
+		return session?.user?.id || null
 	}
 
 	private async enrichProjectWithDetails(model: Project): Promise<ProjectWithDetails> {

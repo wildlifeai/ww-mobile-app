@@ -208,20 +208,20 @@ export const COMMANDS: {
 	},
 	[CommandNames.flashr]: {
 		name: CommandNames.flashr,
-		writeCommand: (duration?: string, count?: string) => `flashr ${duration || '1000'} ${count || '2'}`,
-		description: "Flash red LED 2 times for 1 second each (duration_ms count)",
+		writeCommand: (count?: string, duration?: string) => `flashr ${count || '2'} ${duration || '1000'}`,
+		description: "Flash red LED 2 times for 1 second each (count duration_ms)",
 		type: 'command',
 	},
 	[CommandNames.flashg]: {
 		name: CommandNames.flashg,
-		writeCommand: (duration?: string, count?: string) => `flashg ${duration || '1000'} ${count || '2'}`,
-		description: "Flash green LED 2 times for 1 second each (duration_ms count)",
+		writeCommand: (count?: string, duration?: string) => `flashg ${count || '2'} ${duration || '1000'}`,
+		description: "Flash green LED 2 times for 1 second each (count duration_ms)",
 		type: 'command',
 	},
 	[CommandNames.flashb]: {
 		name: CommandNames.flashb,
-		writeCommand: (duration?: string, count?: string) => `flashb ${duration || '1000'} ${count || '2'}`,
-		description: "Flash blue LED 2 times for 1 second each (duration_ms count)",
+		writeCommand: (count?: string, duration?: string) => `flashb ${count || '2'} ${duration || '1000'}`,
+		description: "Flash blue LED 2 times for 1 second each (count duration_ms)",
 		type: 'command',
 	},
 	[CommandNames.SET_UTC]: {

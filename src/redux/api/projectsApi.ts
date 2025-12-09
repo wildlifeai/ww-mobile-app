@@ -229,7 +229,7 @@ export const projectsApi = createApi({
 					console.log(
 						"✅ RTK Query - deleteProject succeeded (deleted locally)",
 					)
-					return { data: undefined }
+					return { data: void 0 as void }
 				} catch (error) {
 					console.error("❌ RTK Query - deleteProject failed:", error)
 					return {
