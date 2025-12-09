@@ -269,6 +269,27 @@ If you wish to contribute to this project, submit a [pull request](https://githu
 
 If you find this project helpful, consider [donating to Wildlife.ai](https://givealittle.co.nz/donate/org/wildlifeai)
 
+## Documentation
+
+All documentation is organized under `documentation/`:
+
+### Getting Started
+- **[Onboarding](./documentation/onboarding/)** - Getting started guides, architecture overview, Redux patterns
+  - [Quick Start Checklist](./documentation/onboarding/Quick-Start-Checklist.md)
+  - [Developer Onboarding Guide](./documentation/onboarding/Developer-Onboarding-Guide.md)
+
+### Setup & Configuration
+- **[Setup](./documentation/setup/)** - Platform setup, integrations, dependencies
+  - Android, BLE, Expo/EAS, WSL2, Docker, MCP
+- **[Environment](./documentation/environment/)** - Environment variable configuration  
+- **[Workflows](./documentation/workflows/)** - Developer workflows, troubleshooting, database management
+
+### Testing
+- **[Testing](./documentation/testing/)** - Maestro E2E testing guide
+
+### Archive
+- **[Archive](./documentation/archive/)** - Historical documentation, agentic development guidelines, project context
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
