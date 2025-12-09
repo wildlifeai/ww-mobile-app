@@ -46,80 +46,7 @@ export type UpdateValueEventType = {
 	peripheral: string
 	service: string
 	value: any
-}
-
-/**
- * This is a readline parser that simplifies how the whole
- * BLE communication works.
- *
- * BLE manager events will trigger this function that uses
- * the global object to keep track of each peripherals buffer
- * and emits an event.
- *
- * At the moment, it seems that firmware doesn't return any
- * newlines so we just emit each event as if a new line was
- * detected after it.
- *
- * Sine this logic is only used in this file, I didn't
- * extract it.
- */
-// const buffers: {
-// 	[peripheral: string]: Buffer
-// } = {}
-
-const readlineParser = (data: UpdateValueEventType) => {
-	const { value, peripheral } = data
-
-	// Check for newline character in the received data
-	const newlineIndex = Buffer.from(value).indexOf("\n")
-
-	if (newlineIndex !== -1) {
-		readlineParserEmitter.emit(
-			"BleManagerDidUpdateValueForCharacteristicReadlineParser",
-			{
-				...data,
-				value,
-			},
-		)
-	} else {
-		readlineParserEmitter.emit(
-			"BleManagerDidUpdateValueForCharacteristicReadlineParser",
-			{ peripheral: peripheral, value: [...value, 10, 13] },
-		)
-	}
-
-	/**
-	 * IMPORTANT
-	 *
-	 * Ble does not return any new lines at the moment.
-	 *
-	 * We just emit each event as it is.
-	 *
-	 * In the future, uncomment the code.
-	 */
-
-	// if (!buffers[peripheral]) {
-	// 	buffers[peripheral] = Buffer.from([])
-	// }
-
-	// buffers[peripheral] = Buffer.concat([buffers[peripheral], Buffer.from(value)])
-
-	// // Check for newline character in the received data
-	// const newlineIndex = buffers[peripheral].indexOf("\n")
-
-	// if (newlineIndex !== -1) {
-	// 	// Extract the data up to the newline character including the newline
-	// 	const newData = buffers[peripheral].subarray(0, newlineIndex + 1)
-
-	// 	// Update the buffer to remove the processed data
-	// 	buffers[peripheral] = buffers[peripheral].subarray(newlineIndex + 1)
-
-	// 	// Emit the event with the extracted newline-terminated data
-	// 	readlineParserEmitter.emit(
-	// 		"BleManagerDidUpdateValueForCharacteristicReadlineParser",
-	// 		{ ...data, value: newData },
-	// 	)
-	// }
+	isLocal?: boolean
 }
 
 /*
@@ -168,48 +95,99 @@ export const useBleListeners = () => {
 		}
 	}, 5000)
 
-	const deviceDisconnectedEvent = useCallback(
-		(data: { peripheral: string }) => {
-			log(
-				`Peripheral disconnect event triggered. Disconnecting: ${data.peripheral}`,
-			)
+	/*
+		Helper function to check for newlines and emit a custom event
+		that contains the full line. This is to avoid partial messages
+		being processed by the rest of the app.
+	*/
+	const readlineParser = useCallback(
+		(data: UpdateValueEventType) => {
+			const { value, peripheral } = data
 
-			/** Clear the device out on Android systems */
-			Platform.OS === "android" &&
-				guard(() => BleManager.removePeripheral(data.peripheral))
+			// Check for binary packets (Image Transfer)
+			// Protocol: 0x06 is Image Binary. Sometimes prefixed with 0x80 (Notification/Status).
+			if (value[0] === 0x06 || (value[0] === 0x80 && value[1] === 0x06)) {
+				readlineParserEmitter.emit(
+					"BleManagerDidUpdateValueForCharacteristicReadlineParser",
+					{
+						...data,
+						value,
+					},
+				)
+				return
+			}
 
-			dispatch(deviceDisconnect({ id: data.peripheral }))
+			// Check for newline character in the received data
+			const newlineIndex = Buffer.from(value).indexOf("\n")
+
+			if (newlineIndex !== -1) {
+				readlineParserEmitter.emit(
+					"BleManagerDidUpdateValueForCharacteristicReadlineParser",
+					{
+						...data,
+						value,
+					},
+				)
+			} else {
+				readlineParserEmitter.emit(
+					"BleManagerDidUpdateValueForCharacteristicReadlineParser",
+					{ peripheral: peripheral, value: [...value, 10, 13] },
+				)
+			}
 		},
-		[dispatch],
+		[],
 	)
 
 	const deviceValueUpdatedEvent = useCallback(
 		(data: UpdateValueEventType) => {
-			const { peripheral, value } = data
+			const { peripheral, value, isLocal } = data
 
 			const dataArray = value as number[]
 			const hex = Buffer.from(dataArray).toString("hex")
-			log(`RX Hex: ${hex}`)
+			log(`${isLocal ? 'TX' : 'RX'} Hex: ${hex}`)
 
-			// Check for binary image packet (0x06)
+			// Check for binary image packet (0x06) or (0x80 0x06)
+			// Firmware might send 0x80 as a status/header byte.
+			let imagePacket: number[] | null = null;
 			if (dataArray[0] === 0x06) {
+				imagePacket = dataArray;
+			} else if (dataArray[0] === 0x80 && dataArray[1] === 0x06) {
+				imagePacket = dataArray.slice(1);
+			}
+
+			if (imagePacket) {
 				const reassembler = ImageReassembler.getInstance()
-				reassembler.processPacket(dataArray)
+				reassembler.processPacket(imagePacket)
 				return
 			}
 
 			const text = Buffer.from(value).toString()
-			// console.debug(JSON.stringify(text))
+
+			// Check for Image Transfer Start Message
+			// Example: "10361 bytes in TL000019.JPG"
+			const imageStartMatch = text.match(/(\d+) bytes in (.+)/)
+			if (imageStartMatch) {
+				const size = parseInt(imageStartMatch[1])
+				const filename = imageStartMatch[2]
+				log(`Detected image transfer start: ${filename} (${size} bytes)`)
+				ImageReassembler.getInstance().initialize(size)
+			}
 
 			const currentConfiguration = configRef.current[peripheral] || {}
 			const currentLog = allLogs.current[peripheral] || ""
 
+			// Format the new log entry
+			// Add newline if there isn't one at the end of previous log
+			const needsNewline = currentLog.length > 0 && !currentLog.endsWith('\n')
+			const prefix = needsNewline ? '\n' : ''
+			const formattedText = `${prefix}${isLocal ? '> TX: ' : '< RX: '}${text}${text.endsWith('\n') ? '' : '\n'}`
+
 			if (allLogs.current[peripheral]) {
-				allLogs.current[peripheral] += text
+				allLogs.current[peripheral] += formattedText
 			} else {
-				allLogs.current[peripheral] = text
+				allLogs.current[peripheral] = formattedText
 			}
-			const finishedLog = currentLog + text
+			const finishedLog = currentLog + formattedText
 
 			dispatch(
 				deviceLogChange({
@@ -278,6 +256,21 @@ export const useBleListeners = () => {
 		[dispatch],
 	)
 
+	const deviceDisconnectedEvent = useCallback(
+		(data: { peripheral: string }) => {
+			log(
+				`Peripheral disconnect event triggered. Disconnecting: ${data.peripheral}`,
+			)
+
+			/** Clear the device out on Android systems */
+			Platform.OS === "android" &&
+				guard(() => BleManager.removePeripheral(data.peripheral))
+
+			dispatch(deviceDisconnect({ id: data.peripheral }))
+		},
+		[dispatch],
+	)
+
 	const scanStoppedEvent = useCallback(async () => {
 		pingsPause(false)
 
@@ -301,7 +294,7 @@ export const useBleListeners = () => {
 			) {
 				if (peripheral.connected) {
 					log(`Disconnecting device ${peripheral.id} after scan stopped.`)
-					disconnectDevice(peripheral)
+					// disconnectDevice(peripheral) // USER REQUEST: Prevent auto-disconnect
 				}
 				notFoundAnymore.push(peripheral)
 			}

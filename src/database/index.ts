@@ -14,6 +14,7 @@ import UserRole from './models/UserRole'
 import ProjectInvitation from './models/ProjectInvitation'
 import Device from './models/Device'
 import DevicePreparation from './models/DevicePreparation'
+import Firmware from './models/Firmware'
 // Reference Data Models
 import CaptureMethod from './models/CaptureMethod'
 import ActivitySensitivity from './models/ActivitySensitivity'
@@ -41,6 +42,7 @@ const database = new Database({
         ProjectInvitation,
         Device,
         DevicePreparation,
+        Firmware,
         // Reference Data
         CaptureMethod,
         ActivitySensitivity,

@@ -4,6 +4,7 @@ import CaptureMethod from '../database/models/CaptureMethod'
 import ActivitySensitivity from '../database/models/ActivitySensitivity'
 import AiModel from '../database/models/AiModel'
 import SamplingDesign from '../database/models/SamplingDesign'
+import Firmware from '../database/models/Firmware'
 import { getSupabaseClient } from './supabase'
 
 /**
@@ -32,6 +33,7 @@ class ReferenceDataService {
                 this.syncActivitySensitivity(),
                 this.syncAiModels(),
                 this.syncSamplingDesigns(),
+                this.syncFirmware(),
             ])
 
             console.log('✅ Reference data sync complete')
@@ -294,6 +296,99 @@ class ReferenceDataService {
             value: d.value,
             description: d.description,
         }))
+    }
+
+    // =========================================================================
+    // Firmware
+    // =========================================================================
+
+    public async syncFirmware(): Promise<void> {
+        const supabase = getSupabaseClient()
+        // Sync all active firmware metadata
+        console.log('[RefData] Syncing firmware...')
+        const { data, error } = await supabase
+            .from('firmware')
+            .select('*')
+            .is('deleted_at', null)
+            .eq('is_active', true)
+            .order('version', { ascending: false })
+
+        if (error) {
+            console.error('[RefData] Failed to fetch firmware:', error)
+            return
+        }
+
+        console.log('[RefData] Fetched firmware records:', data?.length)
+
+        if (!data) return
+
+        await database.write(async () => {
+            const collection = database.get<Firmware>('firmware')
+            const existingRecords = await collection.query().fetch()
+            console.log('[RefData] Local firmware records before sync:', existingRecords.length)
+
+            // Firmware uses UUID (string) for ID, not number like other ref tables
+            const existingMap = new Map(existingRecords.map(r => [r.id, r]))
+            const serverIds = new Set(data.map(d => d.id))
+
+            // Upsert
+            for (const row of data) {
+                const existing = existingMap.get(row.id)
+                if (existing) {
+                    await existing.update(rec => {
+                        rec.version = row.version
+                        rec.type = row.type
+                        rec.locationPath = row.location_path
+                        rec.fileSizeBytes = row.file_size_bytes ?? 0
+                        rec.releaseNotes = row.release_notes
+                        rec.isActive = row.is_active
+                        rec.modifiedBy = row.modified_by
+                    })
+                } else {
+                    await collection.create(rec => {
+                        (rec._raw as any).id = row.id // Use Supabase UUID
+                        rec.version = row.version
+                        rec.type = row.type
+                        rec.locationPath = row.location_path
+                        rec.fileSizeBytes = row.file_size_bytes ?? 0
+                        rec.releaseNotes = row.release_notes
+                        rec.isActive = row.is_active
+                        rec.modifiedBy = row.modified_by
+                    })
+                }
+            }
+
+            // Delete removed (or no longer active/present in fetch)
+            for (const rec of existingRecords) {
+                if (!serverIds.has(rec.id)) {
+                    await rec.destroyPermanently()
+                }
+            }
+
+            console.log('[RefData] Firmware sync complete.')
+        })
+
+        console.log(`   ✅ Synced ${data.length} firmware records`)
+    }
+
+    /**
+     * Get the latest firmware for a specific type
+     */
+    async getLatestFirmware(type: 'ble' | 'himax' | 'config'): Promise<Firmware | null> {
+        const firmwares = await database.get<Firmware>('firmware')
+            .query(
+                Q.where('type', type),
+                Q.where('is_active', true)
+            )
+            .fetch()
+
+        // Sort by version descending using numeric comparison (handles v0.10.0 > v0.2.0)
+        const sorted = firmwares.sort((a, b) =>
+            b.version.localeCompare(a.version, undefined, { numeric: true, sensitivity: 'base' })
+        )
+
+        console.log(`[RefData] getLatestFirmware(${type}) found:`, sorted.length, sorted[0]?._raw)
+        return sorted.length > 0 ? sorted[0] : null
     }
 }
 

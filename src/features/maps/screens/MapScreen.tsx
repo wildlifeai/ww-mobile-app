@@ -17,6 +17,8 @@ import { useMapRegion } from "../hooks/useMapRegion"
 import { MapType } from "../types"
 import { useGetDeploymentsQuery } from "../../../redux/api/deployments"
 import { useAppNavigation } from "../../../hooks/useAppNavigation"
+import { useAppDrawer } from "../../../components/AppDrawer"
+import { useExtendedTheme } from "../../../theme"
 
 export const MapScreen: React.FC = () => {
 	const {
@@ -31,13 +33,19 @@ export const MapScreen: React.FC = () => {
 	const { region, setRegion, zoomIn, zoomOut, resetToUserLocation, mapRef } =
 		useMapRegion()
 
-	const [mapType, setMapType] = useState<MapType>("standard")
+	// Default to hybrid, no selector shown
+	const [mapType, setMapType] = useState<MapType>("hybrid")
 	const [initialLoad, setInitialLoad] = useState(true)
 	const [showActiveOnly, setShowActiveOnly] = useState(false)
 	const navigation = useAppNavigation()
 
 	// Fetch deployments
 	const { data: deployments, isLoading: deploymentsLoading } = useGetDeploymentsQuery()
+
+	// Check if there is ANY active deployment (status_id = 2)
+	const hasActiveDeployment = useMemo(() => {
+		return deployments?.some(d => d.deployment_status_id === 2)
+	}, [deployments])
 
 	// Filter deployments based on active/all toggle
 	const filteredDeployments = useMemo(() => {
@@ -48,6 +56,10 @@ export const MapScreen: React.FC = () => {
 		}
 		return deployments
 	}, [deployments, showActiveOnly])
+
+	// Navigation Drawer Control
+	const { isOpen, setIsOpen } = useAppDrawer()
+	const { colors: { onBackground } } = useExtendedTheme()
 
 	/**
 	 * Debug logging
@@ -143,7 +155,7 @@ export const MapScreen: React.FC = () => {
 	const showMapUserLocation = permissions.foreground === "granted"
 
 	return (
-		<SafeAreaView style={styles.container} edges={["top"]}>
+		<View style={styles.container}>
 			{/* Map View - ALWAYS SHOWN */}
 			<BasicMapView
 				region={region}
@@ -187,47 +199,59 @@ export const MapScreen: React.FC = () => {
 				/>
 			)}
 
-			{/* Map Controls */}
+			{/* Map Controls (Zoom, Center) - Type selector disabled */}
 			<MapControls
 				onZoomIn={zoomIn}
 				onZoomOut={zoomOut}
 				onCenterUser={handleCenterUser}
 				onMapTypeChange={setMapType}
 				currentMapType={mapType}
+				showMapTypeSelector={false}
 			/>
 
-			{/* Layer Filter Toggle - Top Left */}
-			<Portal>
-				<FAB
-					icon={showActiveOnly ? "filter" : "filter-outline"}
-					label={showActiveOnly ? "Active" : "All"}
-					style={[styles.filterFab, { backgroundColor: showActiveOnly ? '#2196F3' : '#fff' }]}
-					color={showActiveOnly ? '#fff' : '#000'}
-					onPress={() => setShowActiveOnly(!showActiveOnly)}
-					small
-				/>
+			{/* Custom Header with Hamburger Button - Top Left */}
+			{/* We use FAB.Group or just a FAB/IconButton absolutely positioned */}
+			<FAB
+				icon="menu"
+				style={styles.menuFab}
+				onPress={() => setIsOpen(true)}
+				color="#000"
+				small
+			/>
 
-				{/* Start Deployment Button */}
+			{/* Layer Filter Toggle - Top Right (Moved from Top Left) */}
+			<FAB
+				icon={showActiveOnly ? "filter" : "filter-outline"}
+				label={showActiveOnly ? "Active" : "All"}
+				style={[styles.filterFab, { backgroundColor: showActiveOnly ? '#2196F3' : '#fff' }]}
+				color={showActiveOnly ? '#fff' : '#000'}
+				onPress={() => setShowActiveOnly(!showActiveOnly)}
+				small
+			/>
+
+			{/* Mutually Exclusive Action Button - Bottom Center/Right */}
+			{hasActiveDeployment ? (
+				/* End Deployment Button - Shown ONLY if there is an active deployment */
 				<FAB
-					icon="upload"
+					icon="stop"
+					label="End Deployment"
+					style={[styles.actionFab, { backgroundColor: '#FFAB00' }]} // Amber/Orange
+					color="#000"
+					onPress={() => {
+						console.log('[MapScreen] End Deployment pressed')
+						// TODO: Navigate to End Deployment flow
+					}}
+				/>
+			) : (
+				/* Start Deployment Button - Shown ONLY if NO active deployment */
+				<FAB
+					icon="play"
 					label="Start Deployment"
-					style={[styles.startFab, { backgroundColor: '#2196F3' }]}
+					style={[styles.actionFab, { backgroundColor: '#4CAF50' }]} // Green
 					color="#fff"
 					onPress={() => navigation.navigate('AddDeployment')}
 				/>
-
-				{/* End Deployment Button */}
-				<FAB
-					icon="download"
-					label="End Deployment"
-					style={[styles.endFab, { backgroundColor: '#FF9800' }]}
-					color="#fff"
-					onPress={() => {
-						// TODO: Implement end deployment flow
-						console.log('[MapScreen] End Deployment pressed')
-					}}
-				/>
-			</Portal>
+			)}
 
 			{/* Loading Indicator */}
 			{locationLoading && (
@@ -245,27 +269,7 @@ export const MapScreen: React.FC = () => {
 					<Text style={styles.errorText}>⚠️ {locationError}</Text>
 				</View>
 			)}
-
-			{/* Location Info (Development) */}
-			{__DEV__ && location && (
-				<View style={styles.debugInfo}>
-					<Text style={styles.debugText}>
-						Lat: {location.latitude.toFixed(6)}
-					</Text>
-					<Text style={styles.debugText}>
-						Lng: {location.longitude.toFixed(6)}
-					</Text>
-					{location.accuracy && (
-						<Text style={styles.debugText}>
-							Accuracy: ±{location.accuracy.toFixed(0)}m
-						</Text>
-					)}
-					<Text style={styles.debugText}>
-						Deployments: {filteredDeployments.length}
-					</Text>
-				</View>
-			)}
-		</SafeAreaView>
+		</View>
 	)
 }
 
@@ -317,19 +321,6 @@ const styles = StyleSheet.create({
 		fontWeight: "600",
 		textAlign: "center",
 	},
-	debugInfo: {
-		position: "absolute",
-		bottom: 16,
-		left: 16,
-		backgroundColor: "rgba(0, 0, 0, 0.7)",
-		borderRadius: 8,
-		padding: 12,
-	},
-	debugText: {
-		color: "white",
-		fontSize: 12,
-		fontFamily: "monospace",
-	},
 	// Deployment Callout
 	callout: {
 		padding: 10,
@@ -345,20 +336,24 @@ const styles = StyleSheet.create({
 		color: "#666",
 		marginBottom: 2,
 	},
-	// Floating Action Buttons
-	startFab: {
+	// Overlay Buttons
+	menuFab: {
 		position: "absolute",
-		bottom: 80,
+		top: 50, // Top Safe Area (approx)
 		left: 16,
-	},
-	endFab: {
-		position: "absolute",
-		bottom: 16,
-		left: 16,
+		backgroundColor: "rgba(255, 255, 255, 0.9)",
+		elevation: 4,
 	},
 	filterFab: {
 		position: "absolute",
-		top: 80,
+		top: 50, // Top Safe Area (approx)
+		right: 16, // Move to right to balance with Menu button
+		elevation: 4,
+	},
+	actionFab: {
+		position: "absolute",
+		bottom: 16,
 		left: 16,
+		right: undefined, // ensure it doesn't stretch
 	},
 })

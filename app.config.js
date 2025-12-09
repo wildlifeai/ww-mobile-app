@@ -63,6 +63,9 @@ export default ({ config }) => {
 				"CAMERA",
 				"READ_EXTERNAL_STORAGE",
 				"WRITE_EXTERNAL_STORAGE",
+				"FOREGROUND_SERVICE",
+				"FOREGROUND_SERVICE_CONNECTED_DEVICE",
+				"POST_NOTIFICATIONS",
 			],
 		},
 		web: {
@@ -84,9 +87,8 @@ export default ({ config }) => {
 			supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
 			supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
 			// Debug: Log the URL being used
-			_supabaseUrlDebug: `Loading Supabase URL: ${
-				process.env.EXPO_PUBLIC_SUPABASE_URL || "NOT SET"
-			}`,
+			_supabaseUrlDebug: `Loading Supabase URL: ${process.env.EXPO_PUBLIC_SUPABASE_URL || "NOT SET"
+				}`,
 			// Bundle identifier info for runtime access
 			bundleIdentifier: bundleId,
 			isDevelopment,
@@ -117,6 +119,7 @@ export default ({ config }) => {
 					},
 				},
 			],
+			"./plugins/withDfuService",
 		],
 	}
 }

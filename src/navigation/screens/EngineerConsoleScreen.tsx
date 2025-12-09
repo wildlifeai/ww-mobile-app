@@ -1,74 +1,150 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native'
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Image } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
+import { Modal, Portal, IconButton, Button, useTheme } from 'react-native-paper'
 import { useAppSelector } from '../../redux'
 import { useBle } from '../../hooks/useBle'
 import { useBleCommands } from '../../hooks/useBleCommands'
 import { BleConsoleOutput, ConsoleEntry } from '../../components/BleConsoleOutput'
 import { AppParams } from '../types'
-import { CommandControlTypes, CommandNames } from '../../ble/types'
+import { CommandControlTypes, CommandNames, COMMANDS } from '../../ble/types'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
+import { imageReassemblerEmitter } from '../../ble/emitters'
+import { CommandReferenceModal } from '../../components/CommandReferenceModal'
+
 
 export const EngineerConsoleScreen = () => {
     const navigation = useNavigation()
-    const route = useRoute<AppParams<'EngineerConsole'>>()
-    const { deviceId } = route.params
+    const route = useRoute<any>()
+    const theme = useTheme()
+    const deviceId = route.params?.deviceId
 
-    const device = useAppSelector(state => state.devices[deviceId])
-    const logs = useAppSelector(state => state.logs[deviceId] || "")
+    const device = useAppSelector(state => state.devices[deviceId || ''])
+    const logs = useAppSelector(state => state.logs[deviceId || ''] || "")
 
     const { write, disconnectDevice, connectDevice } = useBle()
-    const { getBatteryLevel, checkSdCard, pingNetwork, runSelfTest } = useBleCommands()
+    // Destructure all the new commands
+    const {
+        getBatteryLevel, checkSdCard, pingNetwork, runSelfTest,
+        getDeviceVer, getDeviceName, getDeviceId, getStatus,
+        runDfu, runReset, runErase, runDisconnect, setUtc,
+        getDevEui, getAppEui, getAppKey, getHeartbeat, flashLed,
+        captureTestImage
+    } = useBleCommands()
 
     const [inputText, setInputText] = useState('')
     const [consoleHistory, setConsoleHistory] = useState<ConsoleEntry[]>([])
     const [isConnecting, setIsConnecting] = useState(false)
+    const [isHelpVisible, setIsHelpVisible] = useState(false)
+
+
+    const [isWaitingForCapture, setIsWaitingForCapture] = useState(false)
+    const captureRetryTimeout = React.useRef<NodeJS.Timeout | null>(null)
+    const lastProcessedLog = React.useRef<string>("")
 
     // Monitor logs and update console history
     useEffect(() => {
-        if (!logs) return
+        if (!logs || logs === lastProcessedLog.current) return
 
-        // Simple check to avoid duplicate processing would be needed in a real app
-        // For now, we'll just append the latest log chunk if it's new
-        // This is a simplification - robust log parsing is in src/ble/parser.ts
-        // Here we just want to show raw output
+        // Split current and previous logs into lines
+        const currentLines = logs.split('\n').filter(line => line.trim())
+        const previousLines = lastProcessedLog.current.split('\n').filter(line => line.trim())
 
-        const newEntry: ConsoleEntry = {
+        // Find only the new lines that weren't in the previous log
+        const newLines = currentLines.slice(previousLines.length)
+
+        // Update the last processed log reference
+        lastProcessedLog.current = logs
+
+        // Only process if there are actually new lines
+        if (newLines.length === 0) return
+
+        // Add new lines to console history
+        const newEntries: ConsoleEntry[] = newLines.map(line => ({
             id: Date.now().toString() + Math.random(),
             timestamp: new Date(),
             type: 'response',
-            content: logs
+            content: line
+        }))
+
+        setConsoleHistory(prev => [...prev, ...newEntries])
+
+        // Check for automation triggers in the new lines
+        const combinedNewLogs = newLines.join('\n')
+
+        // Automation: If waiting for capture and log contains "Captured", trigger download
+        if (isWaitingForCapture && combinedNewLogs.includes("Captured")) {
+            console.log("Capture confirmed, auto-triggering download...")
+
+            // Clear any pending retry
+            if (captureRetryTimeout.current) {
+                clearTimeout(captureRetryTimeout.current)
+                captureRetryTimeout.current = null
+            }
+
+            setIsWaitingForCapture(false)
+
+            const autoEntry: ConsoleEntry = {
+                id: Date.now().toString(),
+                timestamp: new Date(),
+                type: 'info',
+                content: 'Capture complete. Requesting file...'
+            }
+            setConsoleHistory(prev => [...prev, autoEntry])
+            write(device, ['AI txfile .'])
         }
 
-        // Only add if content is not empty and different from last response
-        // (This logic might need refinement based on how logs slice is updated)
-        setConsoleHistory(prev => {
-            const last = prev[prev.length - 1]
-            if (last && last.type === 'response' && last.content === logs) return prev
-            return [...prev, newEntry]
-        })
+        // Automation: Handle Firmware Wakeup Logic
+        if (isWaitingForCapture) {
+            if (combinedNewLogs.includes("Waking it")) {
+                const infoEntry: ConsoleEntry = {
+                    id: Date.now().toString(),
+                    timestamp: new Date(),
+                    type: 'info',
+                    content: 'Device waking up... Waiting for firmware to auto-send.'
+                }
+                setConsoleHistory(prev => {
+                    const last = prev[prev.length - 1]
+                    if (last && last.content === infoEntry.content) return prev
+                    return [...prev, infoEntry]
+                })
+            }
 
-    }, [logs])
+            if (combinedNewLogs.includes("Discarding message")) {
+                const infoEntry: ConsoleEntry = {
+                    id: Date.now().toString(),
+                    timestamp: new Date(),
+                    type: 'info',
+                    content: 'Command queued. Waiting...'
+                }
+                setConsoleHistory(prev => {
+                    const last = prev[prev.length - 1]
+                    if (last && last.content === infoEntry.content) return prev
+                    return [...prev, infoEntry]
+                })
+            }
+        }
 
-    const handleSend = async () => {
-        if (!inputText.trim() || !device) return
+    }, [logs, isWaitingForCapture, device, write])
 
-        const command = inputText.trim()
-        setInputText('')
+    const handleSend = async (cmd?: string) => {
+        const commandToSend = cmd || inputText.trim()
+        if (!commandToSend || !device) return
+
+        if (!cmd) setInputText('')
 
         // Add to history
         const newEntry: ConsoleEntry = {
             id: Date.now().toString(),
             timestamp: new Date(),
             type: 'command',
-            content: command
+            content: commandToSend
         }
         setConsoleHistory(prev => [...prev, newEntry])
 
         try {
-            // Send raw string command
-            await write(device, [command])
+            await write(device, [commandToSend])
         } catch (error) {
             const errorEntry: ConsoleEntry = {
                 id: Date.now().toString(),
@@ -86,21 +162,66 @@ export const EngineerConsoleScreen = () => {
         let commandDisplay = action
         try {
             switch (action) {
-                case 'Battery':
-                    await getBatteryLevel(device)
+                // --- Top Priority ---
+                case 'Capture & Download':
+                    // Start automated flow
+                    setIsWaitingForCapture(true)
+                    commandDisplay = 'AI capture 1 1 (Auto-download)'
+                    await write(device, ['AI capture 1 1'])
+
+                    // Robust Retry: If "Captured" doesn't arrive in 15s (wake up + execute), send it again.
+                    if (captureRetryTimeout.current) clearTimeout(captureRetryTimeout.current)
+
+                    captureRetryTimeout.current = setTimeout(() => {
+                        console.log("Capture timeout - Retrying command...")
+                        const retryEntry: ConsoleEntry = {
+                            id: Date.now().toString(),
+                            timestamp: new Date(),
+                            type: 'info',
+                            content: 'No confirmation (15s). Retrying...'
+                        }
+                        setConsoleHistory(prev => [...prev, retryEntry])
+                        write(device, ['AI capture 1 1'])
+                    }, 15000)
                     break
-                case 'SD Card':
-                    await checkSdCard(device)
-                    break
-                case 'Ping':
-                    await pingNetwork(device)
-                    break
-                case 'Self Test':
-                    await runSelfTest(device)
+                case 'Get Last Image':
+                    commandDisplay = 'AI txfile .'
+                    await write(device, ['AI txfile .'])
                     break
                 case 'Clear':
                     setConsoleHistory([])
                     return
+
+                // --- System ---
+                case 'Sync Time': await setUtc(device); break;
+                case 'DFU': await runDfu(device); break;
+                case 'Reset': await runReset(device); break;
+                case 'Erase': await runErase(device); break;
+                case 'Disconnect': await runDisconnect(device); break;
+
+                // --- Device ---
+                case 'ID': await getDeviceId(device); break;
+                case 'Ver': await getDeviceVer(device); break;
+                case 'Name': await getDeviceName(device); break;
+                case 'Battery': await getBatteryLevel(device); break;
+                case 'Status': await getStatus(device); break;
+
+                // --- LoRaWAN ---
+                case 'Ping': await pingNetwork(device); break;
+                case 'Get DevEUI': await getDevEui(device); break;
+                case 'Get AppEUI': await getAppEui(device); break;
+                case 'Get AppKey': await getAppKey(device); break;
+
+                // --- AI ---
+                case 'AI Info': await checkSdCard(device); break;
+
+                // --- Debug ---
+                case 'Self Test': await runSelfTest(device); break;
+                case 'Heartbeat': await getHeartbeat(device); break;
+                case 'Flash Red': await flashLed(device, 'red', 1000, 3); break;
+                case 'Flash Green': await flashLed(device, 'green', 1000, 3); break;
+                case 'Flash Blue': await flashLed(device, 'blue', 1000, 3); break;
+
                 default:
                     return
             }
@@ -123,6 +244,25 @@ export const EngineerConsoleScreen = () => {
             setConsoleHistory(prev => [...prev, errorEntry])
         }
     }
+
+    const [lastImage, setLastImage] = useState<string | null>(null)
+    const [isImageModalVisible, setIsImageModalVisible] = useState(false)
+
+    useEffect(() => {
+        const onImageComplete = (base64: string) => {
+            console.log('Image received, showing modal')
+            setLastImage(base64)
+            setIsImageModalVisible(true)
+            // Reset automation state just in case
+            setIsWaitingForCapture(false)
+        }
+
+        imageReassemblerEmitter.on('onImageComplete', onImageComplete)
+
+        return () => {
+            imageReassemblerEmitter.off('onImageComplete', onImageComplete)
+        }
+    }, [])
 
     const handleConnect = async () => {
         if (!device) return
@@ -149,21 +289,31 @@ export const EngineerConsoleScreen = () => {
         }
     }
 
-    const handleDisconnect = async () => {
-        if (!device) return
-        try {
-            await disconnectDevice(device)
-            const entry: ConsoleEntry = {
-                id: Date.now().toString(),
-                timestamp: new Date(),
-                type: 'info',
-                content: 'Disconnected from device'
-            }
-            setConsoleHistory(prev => [...prev, entry])
-        } catch (error) {
-            console.error(error)
+    const onRunHelpCommand = (cmdName: CommandNames) => {
+        setIsHelpVisible(false)
+
+        // Handle special command types
+        if (cmdName === CommandNames.CAPTURE_DOWNLOAD) {
+            handleQuickAction('Capture & Download')
+            return
+        }
+
+        if (cmdName === CommandNames.CLEAR_CONSOLE) {
+            handleQuickAction('Clear')
+            return
+        }
+
+        // Default: execute the command normally
+        const cmd = COMMANDS[cmdName]
+        if (!cmd) return
+
+        if (cmd.writeCommand) {
+            handleSend(cmd.writeCommand())
+        } else if (cmd.readCommand) {
+            handleSend(cmd.readCommand)
         }
     }
+
 
     if (!device) {
         return (
@@ -187,40 +337,33 @@ export const EngineerConsoleScreen = () => {
                 <View style={styles.statusContainer}>
                     <View style={[styles.statusDot, { backgroundColor: device.connected ? '#4CAF50' : '#F44336' }]} />
                     <Text style={styles.statusText}>{device.connected ? 'Connected' : 'Disconnected'}</Text>
+                    <Button
+                        mode="outlined"
+                        compact
+                        onPress={() => setIsHelpVisible(true)}
+                        style={{ marginLeft: 8 }}
+                    >
+                        Command Reference
+                    </Button>
                 </View>
             </View>
 
             {!device.connected && (
-                <TouchableOpacity
-                    style={styles.connectButton}
+                <Button
+                    mode="contained"
                     onPress={handleConnect}
                     disabled={isConnecting}
+                    style={styles.connectButton}
+                    buttonColor={theme.colors.primary}
+                    textColor="#FFFFFF"
+                    loading={isConnecting}
                 >
-                    {isConnecting ? (
-                        <ActivityIndicator color="#FFF" size="small" />
-                    ) : (
-                        <Text style={styles.connectButtonText}>Connect to Console</Text>
-                    )}
-                </TouchableOpacity>
+                    Connect to Console
+                </Button>
             )}
 
             <View style={styles.consoleContainer}>
                 <BleConsoleOutput entries={consoleHistory} />
-            </View>
-
-            <View style={styles.quickActions}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {['Battery', 'SD Card', 'Ping', 'Self Test', 'Clear'].map((action) => (
-                        <TouchableOpacity
-                            key={action}
-                            style={styles.actionChip}
-                            onPress={() => handleQuickAction(action)}
-                            disabled={!device.connected && action !== 'Clear'}
-                        >
-                            <Text style={styles.actionText}>{action}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
             </View>
 
             <View style={styles.inputContainer}>
@@ -236,17 +379,49 @@ export const EngineerConsoleScreen = () => {
                 />
                 <TouchableOpacity
                     style={[styles.sendButton, (!inputText.trim() || !device.connected) && styles.sendButtonDisabled]}
-                    onPress={handleSend}
+                    onPress={() => handleSend()}
                     disabled={!inputText.trim() || !device.connected}
                 >
                     <Ionicons name="send" size={20} color="#FFF" />
                 </TouchableOpacity>
             </View>
+
+            <Portal>
+                <CommandReferenceModal
+                    visible={isHelpVisible}
+                    onDismiss={() => setIsHelpVisible(false)}
+                    onRunCommand={onRunHelpCommand}
+                />
+
+                <Modal visible={isImageModalVisible} onDismiss={() => setIsImageModalVisible(false)} contentContainerStyle={styles.modalContent}>
+                    <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 8, alignItems: 'center' }}>
+                        <Text style={{ fontSize: 18, marginBottom: 10, fontWeight: 'bold' }}>Received Image</Text>
+                        {lastImage && (
+                            <Image
+                                source={{ uri: `data:image/jpeg;base64,${lastImage}` }}
+                                style={{ width: 300, height: 300, resizeMode: 'contain', backgroundColor: '#eee' }}
+                            />
+                        )}
+                        <TouchableOpacity
+                            style={{ marginTop: 20, padding: 10, backgroundColor: '#2196F3', borderRadius: 5 }}
+                            onPress={() => setIsImageModalVisible(false)}
+                        >
+                            <Text style={{ color: 'white' }}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </Modal>
+            </Portal>
+
         </KeyboardAvoidingView>
     )
 }
 
 const styles = StyleSheet.create({
+    modalContent: {
+        padding: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     container: {
         flex: 1,
         backgroundColor: '#F5F5F5',
@@ -307,7 +482,8 @@ const styles = StyleSheet.create({
     quickActions: {
         paddingHorizontal: 16,
         paddingBottom: 8,
-        height: 40,
+        height: 48,
+        flexGrow: 0,
     },
     actionChip: {
         backgroundColor: '#E0E0E0',

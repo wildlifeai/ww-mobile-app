@@ -286,6 +286,14 @@ export const useBle = (): ReturnType => {
 						timeout,
 					)
 
+					if (Platform.OS === "android") {
+						await invokeWithTimeout(
+							() => BleManager.requestMTU(newPeripheral.id, 512),
+							"BleManager.requestMTU",
+							timeout,
+						)
+					}
+
 					const services = await invokeWithTimeout(
 						() => BleManager.retrieveServices(newPeripheral.id),
 						"BleManager.retrieveServices",
@@ -294,6 +302,26 @@ export const useBle = (): ReturnType => {
 					log("Discovered services: " + JSON.stringify(services))
 
 					newPeripheral.services = extractServiceAndCharacteristic(services)
+
+					const {
+						serviceCharacteristic,
+						readCharacteristic,
+					} = newPeripheral.services
+
+					await invokeWithTimeout(
+						() =>
+							BleManager.startNotification(
+								newPeripheral.id,
+								serviceCharacteristic,
+								readCharacteristic,
+							),
+						"BleManager.startNotification",
+						timeout,
+					)
+
+					log(`Notifications started for ${readCharacteristic}`)
+
+					await BleManager.readRSSI(newPeripheral.id)
 
 					dispatch(deviceLogChange({ id: newPeripheral.id, log: "" }))
 					dispatch(deviceConfigClear({ id: newPeripheral.id }))
@@ -338,6 +366,12 @@ export const useBle = (): ReturnType => {
 			}
 
 			results.map(async (peripheral) => {
+				// Prevent disconnecting devices that are already handled by the app state
+				if (devices[peripheral.id]?.connected) {
+					log(`Skipping cleanup for already connected device: ${peripheral.id}`)
+					return
+				}
+
 				if (
 					Platform.OS === "android" &&
 					(await BleManager.isPeripheralConnected(peripheral.id, [

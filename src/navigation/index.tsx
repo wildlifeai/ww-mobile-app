@@ -1,12 +1,10 @@
 import { useEffect } from "react"
-import { ParamListBase, RouteProp, useRoute } from "@react-navigation/native"
+import { ParamListBase, RouteProp } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { useAppSelector } from "../redux"
 import { BluetoothProblems } from "./screens/BluetoothProblems"
 import { LocationProblems } from "./screens/LocationProblems"
 import { BleProblems } from "./screens/BleProblems"
-import { DeviceReconnectProvider } from "../providers/DeviceReconnectProvider"
-import { Terminal } from "./screens/TerminalScreen"
 import * as SplashScreen from "expo-splash-screen"
 import { NavigationBar } from "../components/NavigationBar"
 import { AppLoading } from "./screens/AppLoading"
@@ -38,8 +36,6 @@ export interface RootStackParamList extends ParamListBase {
 	Profile: undefined
 	Settings: undefined
 	Home: undefined
-	DeviceNavigator: { deviceId: string }
-	Terminal: { deviceId: string }
 	DfuScreen: { deviceId: string }
 	Login: { confirmed?: boolean } | undefined
 	Register: undefined
@@ -55,6 +51,7 @@ export interface RootStackParamList extends ParamListBase {
 	DeveloperSettings: undefined
 	DeviceDiscovery: { mode: 'prepare' | 'engineer' }
 	DeviceDetails: { deviceId: string }
+	EngineerConsoleScreen: { deviceId: string }
 }
 
 export type Routes = keyof RootStackParamList
@@ -164,11 +161,7 @@ export const MainNavigation = () => {
 							component={Settings}
 							options={{ title: "Settings" }}
 						/>
-						<Stack.Screen
-							name="DeviceNavigator"
-							options={{ title: "Configure device" }}
-							component={DeviceNavigation} // Nested navigator here
-						/>
+
 						<Stack.Screen
 							name="DfuScreen"
 							component={DfuScreen}
@@ -197,12 +190,17 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="DeviceDiscovery"
 							component={DeviceDiscoveryScreen}
-							options={{ title: "Select Device" }}
+							options={{ title: "Select Device", headerTitleAlign: 'center' }}
 						/>
 						<Stack.Screen
 							name="DeviceDetails"
 							component={DeviceDetailsScreen}
 							options={{ title: "Device Details" }}
+						/>
+						<Stack.Screen
+							name="EngineerConsoleScreen"
+							component={EngineerConsoleScreen}
+							options={{ title: "Engineer Console", headerTitleAlign: 'center' }}
 						/>
 						{__DEV__ && (
 							<>
@@ -227,30 +225,5 @@ export const MainNavigation = () => {
 				)}
 			</Stack.Navigator>
 		</AppDrawer>
-	)
-}
-
-/**
- * This is just a wrapper for device that checks whether the device
- * is locked/connected/inBootloader/upgrading or not. As a provider,
- * it is unique, other providers will later on wrap the navigators
- * as DeviceProviders in the <Device /> component once the device is
- * unlocked.
- */
-export const DeviceNavigation = () => {
-	const {
-		params: { deviceId },
-	} = useRoute<AppParams<"DeviceNavigator">>()
-
-	return (
-		<DeviceReconnectProvider deviceId={deviceId}>
-			<Stack.Navigator screenOptions={{ headerShown: false }}>
-				<Stack.Screen
-					name="Terminal"
-					component={Terminal}
-					initialParams={{ deviceId }}
-				/>
-			</Stack.Navigator>
-		</DeviceReconnectProvider>
 	)
 }

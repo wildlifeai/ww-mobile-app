@@ -199,7 +199,7 @@ export const useCommand = ({ deviceId, command }: Props) => {
 
 		if (requestRef.current || initialHookLoad) return
 
-		get()
+		// get()
 	}, [
 		write,
 		command.name,

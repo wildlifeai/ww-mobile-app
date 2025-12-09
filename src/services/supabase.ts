@@ -301,8 +301,19 @@ export const supabase = new Proxy(
 	{} as SupabaseClient<Database>,
 	{
 		get(_target, prop) {
-			// Issue deprecation warning in development
-			if (__DEV__ && prop !== "then" && prop !== "catch") {
+			// Allow bundlers and runtimes to inspect specific properties without triggering warnings
+			if (
+				prop === "$$typeof" ||
+				prop === "__esModule" ||
+				prop === "then" ||
+				prop === "catch" ||
+				typeof prop === "symbol"
+			) {
+				return undefined
+			}
+
+			// Issue deprecation warning in development for all other property usage
+			if (__DEV__) {
 				console.warn(
 					"⚠️ DEPRECATED: Direct 'supabase' export is deprecated. " +
 					"Use getSupabaseClient() instead. " +

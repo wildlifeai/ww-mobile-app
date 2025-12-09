@@ -73,13 +73,15 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 		try {
 			// Strip trailing newlines/CRs as they break firmware command matching
 			const sanitizedData = data.replace(/[\r\n]+$/, "")
+			// Revert: Firmware rejects newline (treats as extra char causing mismatch)
 			const byteArray = [...Buffer.from(sanitizedData)]
+			console.log('DEBUG: byteArray content:', byteArray)
 			log(`TX Hex: ${Buffer.from(byteArray).toString("hex")}`)
 
-			// Push a LF-CR (LF = 10, CR = 13 in decimal)
+			// Push a LF-CR (LF = 10, CR = 13 in decimal) to local listener for UI feedback
 			readlineParserEmitter.emit(
 				"BleManagerDidUpdateValueForCharacteristicReadlineParser",
-				{ peripheral: peripheral.id, value: [...byteArray, 10, 13] },
+				{ peripheral: peripheral.id, value: [...byteArray], isLocal: true }, // Use the same terminated array
 			)
 
 			await BleManager.writeWithoutResponse(
@@ -88,6 +90,7 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 				peripheral.services?.writeCharacteristic ||
 				BLE_CHARACTERISTIC_WRITE_UUID,
 				byteArray,
+				512 // Explicitly allow larger packets
 			)
 
 			log(

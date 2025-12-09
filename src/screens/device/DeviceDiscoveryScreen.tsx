@@ -99,7 +99,7 @@ export const DeviceDiscoveryScreen = () => {
                     if (mode === 'engineer') {
                         // Navigate to Engineer Console (Terminal) directly - NO DB interaction
                         // log(`Navigating to DeviceNavigator with ID ${device.id}`)
-                        (navigation as any).navigate('DeviceNavigator', { deviceId: device.id })
+                        (navigation as any).navigate('EngineerConsoleScreen', { deviceId: device.id })
                         setProcessing(false)
                         return
                     }
@@ -195,7 +195,7 @@ export const DeviceDiscoveryScreen = () => {
     )
 
     return (
-        <WWScreenView>
+        <WWScreenView scrollable={false}>
             <View style={styles.container}>
                 {/* Header Title based on mode */}
                 <View style={styles.header}>

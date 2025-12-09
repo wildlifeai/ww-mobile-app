@@ -1,214 +1,162 @@
-import { memo, useEffect, useMemo, useCallback } from "react"
-import { FlatList, StyleSheet, View } from "react-native"
+import { memo, useState, useMemo, useCallback } from "react"
+import {
+	FlatList,
+	StyleSheet,
+	View,
+	RefreshControl,
+	ListRenderItemInfo,
+} from "react-native"
+import {
+	Searchbar,
+	FAB,
+	ActivityIndicator,
+	Text,
+	useTheme,
+	Button,
+} from "react-native-paper"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
-import { useBleActions } from "../../providers/BleEngineProvider"
-import { useAppSelector } from "../../redux"
-import { ExtendedPeripheral } from "../../redux/slices/devicesSlice"
-import { DeviceItem } from "../../components/DeviceItem"
-import { WWText } from "../../components/ui/WWText"
 import { WWScreenView } from "../../components/ui/WWScreenView"
-import { log } from "../../utils/logger"
-import { useIsFocused } from "@react-navigation/native"
-import { WWButton } from "../../components/ui/WWButton"
 import { WWLoader } from "../../components/ui/WWLoader"
 import { useGetDeploymentsQuery } from "../../redux/api/deployments"
 import { DeploymentCard } from "../../components/DeploymentCard"
+import type { Deployment } from "../../types/deployment"
 
 export const Deployments = memo(() => {
-	const { isBleConnecting, startScan, connectDevice, disconnectDevice } =
-		useBleActions()
-	const devices = useAppSelector((state) => state.devices)
-	const { isScanning } = useAppSelector((state) => state.scanning)
 	const navigation = useAppNavigation()
-	const isFocused = useIsFocused()
-	const { data: deployments, isLoading } = useGetDeploymentsQuery()
+	const theme = useTheme()
 
-	const isBleBusy = isBleConnecting || isScanning
+	// Query deployments
+	const {
+		data: deployments,
+		isLoading,
+		isFetching,
+		refetch
+	} = useGetDeploymentsQuery()
 
-	const devicesToDisplay = useMemo(() => {
-		return Object.values(devices)
-			.sort((a, b) => {
-				if (a.rssi && b.rssi) {
-					if (b.rssi === 127 || a.rssi === 127) return -1
-					return b.rssi - a.rssi
-				}
-				return -1
-			})
-			.filter((device) => !device.signalLost)
-	}, [devices])
+	// Search state
+	const [searchQuery, setSearchQuery] = useState("")
 
-	const isAnyDeviceConnecting = useMemo(() => {
-		return !!Object.values(devices).find((device) => device.loading)
-	}, [devices])
+	// Filter deployments based on search query
+	const filteredDeployments = useMemo(() => {
+		if (!deployments) return []
+		if (!searchQuery.trim()) return deployments
 
-	const disconnect = useCallback(
-		async (item: ExtendedPeripheral) => {
-			await disconnectDevice(item)
-		},
-		[disconnectDevice],
-	)
+		const query = searchQuery.toLowerCase()
+		return deployments.filter(
+			(deployment) =>
+				deployment.site_name?.toLowerCase().includes(query) ||
+				deployment.notes?.toLowerCase().includes(query)
+		)
+	}, [deployments, searchQuery])
 
-	const go = useCallback(
-		async (item: ExtendedPeripheral) => {
-			if (item.connected || (await connectDevice(item)).connected) {
-				navigation.navigate("DeviceNavigator", { deviceId: item.id })
-			}
-		},
-		[connectDevice, navigation],
-	)
+	const handleDeploymentPress = useCallback((deploymentId: string) => {
+		// console.log(`pressed deployment ${deploymentId}`)
+		// Navigate to details if exists, or just log for now
+	}, [])
 
-	const upgrade = useCallback(
-		(item: ExtendedPeripheral) => {
-			navigation.navigate("DfuScreen", { deviceId: item.id })
-		},
-		[navigation],
-	)
-
-	const scan = () => {
-		if (!isBleBusy && !isScanning) {
-			startScan()
-		} else {
-			log("Scanning already taking place, skipping.")
-		}
-	}
-
-	useEffect(() => {
-		if (isFocused) {
-			startScan(10)
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isFocused])
-
-	useEffect(() => {
-		if (!isFocused) return
-
-		const interval = setInterval(() => {
-			if (!isBleBusy && isFocused) {
-				startScan(10)
-			} else {
-				log("Scanning already taking place, skipping.")
-			}
-		}, 15 * 1000)
-
-		return () => {
-			log("Clearing interval.")
-			clearInterval(interval)
-		}
-	}, [isScanning, isBleConnecting, isBleBusy, startScan, isFocused])
-
-	const handleDeploymentPress = (deploymentId: string) => {
-		console.log(`pressed deployment ${deploymentId}`)
-	}
-
-	const handleAddDeployment = () => {
+	const handleAddDeployment = useCallback(() => {
 		navigation.navigate("AddDeployment")
-	}
+	}, [navigation])
+
+	// FlatList optimization
+	const renderItem = useCallback(
+		({ item }: ListRenderItemInfo<Deployment>) => (
+			<DeploymentCard
+				deployment={item}
+				onPress={handleDeploymentPress}
+			/>
+		),
+		[handleDeploymentPress],
+	)
+
+	const keyExtractor = useCallback((item: Deployment) => item.id, [])
 
 	return (
-		<WWScreenView scrollable>
-			<View style={styles.wrapper}>
-				<View style={styles.headerView}>
-					<View style={styles.buttonRow}>
-						<WWButton mode="contained" onPress={scan} loading={isScanning}>
-							{isScanning ? "Scanning" : "Scan"}
-						</WWButton>
-					</View>
-				</View>
-
-				{/* Devices List */}
-				{devicesToDisplay.length > 0 && (
-					<View style={styles.section}>
-						<WWText variant="titleLarge" style={styles.sectionTitle}>
-							Devices
-						</WWText>
-						<FlatList
-							contentContainerStyle={styles.devicesList}
-							data={devicesToDisplay}
-							renderItem={({ item }: { item: ExtendedPeripheral }) => (
-								<DeviceItem
-									disabled={isAnyDeviceConnecting}
-									item={item}
-									disconnect={disconnect}
-									go={go}
-									upgrade={upgrade}
-								/>
-							)}
-							keyExtractor={(item: ExtendedPeripheral) => item.id}
-						/>
-					</View>
-				)}
-
-				{/* Deployments List */}
-				<View style={styles.section}>
-					<WWText variant="titleLarge" style={styles.sectionTitle}>
-						Deployments
-					</WWText>
-					{isLoading ? (
-						<WWLoader />
-					) : deployments && deployments.length > 0 ? (
-						<View style={styles.list}>
-							{deployments.map((deployment) => {
-								console.log("Deployment:", deployment)
-								return (
-									<DeploymentCard
-										key={deployment.id}
-										deployment={deployment}
-										onPress={handleDeploymentPress}
-									/>
-								)
-							})}
-						</View>
-					) : (
-						<View style={styles.emptyView}>
-							<WWText>No deployments found.</WWText>
-						</View>
-					)}
-				</View>
-
-				<WWButton
-					mode="contained"
-					style={styles.addButton}
-					onPress={handleAddDeployment}
-				>
-					Add new deployment
-				</WWButton>
+		<View style={styles.container}>
+			{/* Search Bar */}
+			<View style={styles.searchContainer}>
+				<Searchbar
+					placeholder="Search deployments..."
+					onChangeText={setSearchQuery}
+					value={searchQuery}
+					style={styles.searchbar}
+					testID="deployment-search-bar"
+				/>
 			</View>
-		</WWScreenView>
+
+			{/* Deployments List */}
+			{isLoading && !deployments ? (
+				<View style={styles.centerContainer}>
+					<ActivityIndicator size="large" />
+					<Text style={{ marginTop: 16, color: theme.colors.onSurfaceVariant }}>
+						Loading deployments...
+					</Text>
+				</View>
+			) : (
+				<FlatList
+					data={filteredDeployments}
+					renderItem={renderItem}
+					keyExtractor={keyExtractor}
+					contentContainerStyle={styles.listContent}
+					refreshControl={
+						<RefreshControl
+							refreshing={isFetching && !isLoading}
+							onRefresh={refetch}
+							colors={[theme.colors.primary]}
+							tintColor={theme.colors.primary}
+						/>
+					}
+					ListEmptyComponent={
+						<View style={styles.centerContainer}>
+							<Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
+								{searchQuery
+									? `No deployments found matching "${searchQuery}"`
+									: "No deployments found. Create one to get started."}
+							</Text>
+						</View>
+					}
+				/>
+			)}
+
+			{/* Floating Action Button */}
+			<FAB
+				icon="plus"
+				style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+				onPress={handleAddDeployment}
+				label="New Deployment"
+				testID="new-deployment-fab"
+			/>
+		</View>
 	)
 })
 
 const styles = StyleSheet.create({
-	wrapper: {
+	container: {
 		flex: 1,
 	},
-	headerView: {
-		marginBottom: 16,
-		alignItems: "center",
+	searchContainer: {
+		paddingHorizontal: 16,
+		paddingVertical: 8,
+		backgroundColor: "transparent",
 	},
-	buttonRow: {
-		width: "100%",
-		flexDirection: "row",
-		justifyContent: "space-between",
+	searchbar: {
+		elevation: 0,
 	},
-	section: {
-		marginBottom: 24,
+	listContent: {
+		paddingHorizontal: 16,
+		paddingBottom: 100, // Space for FAB
 	},
-	sectionTitle: {
-		marginBottom: 16,
-	},
-	devicesList: {
-		gap: 8,
-	},
-	list: {
+	centerContainer: {
 		flex: 1,
-	},
-	emptyView: {
-		padding: 16,
 		justifyContent: "center",
 		alignItems: "center",
+		padding: 32,
+		marginTop: 64,
 	},
-	addButton: {
-		marginTop: 16,
-		backgroundColor: "#4CAF50",
+	fab: {
+		position: "absolute",
+		margin: 16,
+		right: 0,
+		bottom: 0,
 	},
 })

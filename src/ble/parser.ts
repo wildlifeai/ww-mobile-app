@@ -58,50 +58,49 @@ export const parseLogs = (finishedLog: string, lastLog: string) => {
 	 */
 
 	// BATTERY
-	const lastBatteryLine = checkForLastLine(COMMANDS.BATTERY.readCommand!, lines)
+	const lastBatteryLine = checkForLastLine(COMMANDS.battery.readCommand!, lines)
 
 	if (lastBatteryLine) {
-		const value = valueChecker(lastBatteryLine, COMMANDS.BATTERY)
+		const value = valueChecker(lastBatteryLine, COMMANDS.battery)
 		if (value) {
 			results.push({
 				value,
-				command: COMMANDS.BATTERY,
+				command: COMMANDS.battery,
 			})
 		}
 	}
 
 	// ID
-	const lastIdLine = checkForLastLine(COMMANDS.ID.readCommand!, lines)
+	const lastIdLine = checkForLastLine(COMMANDS.id.readCommand!, lines)
 
 	if (lastIdLine) {
-		const value = valueChecker(lastIdLine, COMMANDS.ID)
+		const value = valueChecker(lastIdLine, COMMANDS.id)
 		if (value) {
 			results.push({
 				value,
-				command: COMMANDS.ID,
+				command: COMMANDS.id,
 			})
 		}
 	}
 
 	// DEVICE
-	const lastDeviceLine = checkForLastLine(COMMANDS.DEVICE.readCommand!, lines)
+	const lastDeviceLine = checkForLastLine(COMMANDS.device.readCommand!, lines)
 
 	if (lastDeviceLine) {
-		const value = valueChecker(lastDeviceLine, COMMANDS.DEVICE)
+		const value = valueChecker(lastDeviceLine, COMMANDS.device)
 		if (value) {
 			results.push({
 				value,
-				command: COMMANDS.DEVICE,
+				command: COMMANDS.device,
 			})
 		}
 	}
 
-	// SENSOR
+	// STATUS (previously SENSOR)
+	const lastStatusLine = checkForLastLine(COMMANDS.status.readCommand!, lines)
 
-	const lastSensorLine = checkForLastLine(COMMANDS.SENSOR.readCommand!, lines)
-
-	if (lastSensorLine) {
-		const matches = COMMANDS.SENSOR.readRegex!.exec(lastSensorLine)
+	if (lastStatusLine) {
+		const matches = COMMANDS.status.readRegex!.exec(lastStatusLine)
 		if (matches) {
 			let [, , value] = matches
 
@@ -111,161 +110,129 @@ export const parseLogs = (finishedLog: string, lastLog: string) => {
 				 * setting the value was succesful.
 				 */
 				value: value === "enabled" ? "enable" : "disable",
-				command: COMMANDS.SENSOR,
+				command: COMMANDS.status,
 			})
-		}
-	}
-
-	// TRAP
-
-	const lastTrapLine = checkForLastLine(COMMANDS.TRAP.readCommand!, lines)
-
-	if (lastTrapLine) {
-		const matches = COMMANDS.TRAP.readRegex!.exec(lastTrapLine)
-		if (matches) {
-			const [, value] = matches
-
-			results.push({
-				value,
-				command: COMMANDS.TRAP,
-			})
-		}
-	}
-
-	// LORAWAN
-
-	const lastLorawanLine = checkForLastLine(COMMANDS.LORAWAN.readCommand!, lines)
-
-	if (lastLorawanLine) {
-		const matches = COMMANDS.LORAWAN.readRegex!.exec(lastLorawanLine)
-		if (matches) {
-			const [, , value] = matches // Updated to match new regex with 2 capture groups
-
-			results.push({
-				value,
-				command: COMMANDS.LORAWAN,
-			})
-		} else {
-			console.log("🔍 LORAWAN regex failed to match:", lastLorawanLine)
 		}
 	}
 
 	// VERSION
-	const lastVersionLine = checkForLastLine(COMMANDS.VERSION.readCommand!, lines)
+	const lastVersionLine = checkForLastLine(COMMANDS.ver.readCommand!, lines)
 
 	if (lastVersionLine) {
-		const value = valueChecker(lastVersionLine, COMMANDS.VERSION)
+		const value = valueChecker(lastVersionLine, COMMANDS.ver)
 		if (value) {
 			results.push({
 				value,
-				command: COMMANDS.VERSION,
+				command: COMMANDS.ver,
 			})
 		}
 	}
 
 	// HEARTBEAT
 	const lastHeartbeatLine = checkForLastLine(
-		COMMANDS.HEARTBEAT.readCommand!,
+		COMMANDS.heartbeat.readCommand!,
 		lines,
 	)
 
 	if (lastHeartbeatLine) {
-		const value = valueChecker(lastHeartbeatLine, COMMANDS.HEARTBEAT)
+		const value = valueChecker(lastHeartbeatLine, COMMANDS.heartbeat)
 		if (value) {
 			results.push({
 				value,
-				command: COMMANDS.HEARTBEAT,
+				command: COMMANDS.heartbeat,
 			})
 		}
 	}
 
 	// DEV EUI
-	const lastDevEuiLine = checkForLastLine(COMMANDS.DEVEUI.readCommand!, lines)
+	const lastDevEuiLine = checkForLastLine(COMMANDS.deveui.readCommand!, lines)
 
 	if (lastDevEuiLine) {
-		const value = valueChecker(lastDevEuiLine, COMMANDS.DEVEUI)
+		const value = valueChecker(lastDevEuiLine, COMMANDS.deveui)
 		if (value) {
 			results.push({
 				value,
-				command: COMMANDS.DEVEUI,
+				command: COMMANDS.deveui,
 			})
 		}
 	}
 
 	// APP EUI
-	const lastAppEuiLine = checkForLastLine(COMMANDS.APPEUI.readCommand!, lines)
+	const lastAppEuiLine = checkForLastLine(COMMANDS.appeui.readCommand!, lines)
 
 	if (lastAppEuiLine) {
-		const value = valueChecker(lastAppEuiLine, COMMANDS.APPEUI)
+		const value = valueChecker(lastAppEuiLine, COMMANDS.appeui)
 		if (value) {
 			results.push({
 				value,
-				command: COMMANDS.APPEUI,
+				command: COMMANDS.appeui,
 			})
 		}
 	}
 
 	// APP KEY
-	const lastAppKeyLine = checkForLastLine(COMMANDS.APPKEY.readCommand!, lines)
+	const lastAppKeyLine = checkForLastLine(COMMANDS.appkey.readCommand!, lines)
 
 	if (lastAppKeyLine) {
-		const value = valueChecker(lastAppKeyLine, COMMANDS.APPKEY)
+		const value = valueChecker(lastAppKeyLine, COMMANDS.appkey)
 		if (value) {
 			results.push({
 				value,
-				command: COMMANDS.APPKEY,
+				command: COMMANDS.appkey,
 			})
 		}
 	}
 
 	// RESET
-	const lastResetLine = checkForLastLine(COMMANDS.RESET.writeCommand!(), lines)
+	const lastResetLine = checkForLastLine(COMMANDS.reset.writeCommand!(), lines)
 
 	if (lastResetLine) {
-		const value = valueChecker(lastResetLine, COMMANDS.RESET)
+		const value = valueChecker(lastResetLine, COMMANDS.reset)
 		if (value) {
 			results.push({
 				value,
-				command: COMMANDS.RESET,
+				command: COMMANDS.reset,
 			})
 		}
 	}
 
 	// DFU
-	const lastDfuLine = checkForLastLine(COMMANDS.DFU.writeCommand!(), lines)
+	const lastDfuLine = checkForLastLine(COMMANDS.dfu.writeCommand!(), lines)
 
 	if (lastDfuLine) {
-		const value = valueChecker(lastDfuLine, COMMANDS.DFU)
+		const value = valueChecker(lastDfuLine, COMMANDS.dfu)
 		if (value) {
 			results.push({
 				value,
-				command: COMMANDS.DFU,
+				command: COMMANDS.dfu,
 			})
 		}
 	}
 
 	// ERASE
-	const lastEraseLine = checkForLastLine(COMMANDS.ERASE.writeCommand!(), lines)
+	const lastEraseLine = checkForLastLine(COMMANDS.erase.writeCommand!(), lines)
 
 	if (lastEraseLine) {
-		const value = valueChecker(lastEraseLine, COMMANDS.ERASE)
+		const value = valueChecker(lastEraseLine, COMMANDS.erase)
 		if (value) {
 			results.push({
 				value,
-				command: COMMANDS.ERASE,
+				command: COMMANDS.erase,
 			})
 		}
 	}
 
 	// AI INFO
-	const lastAiInfoLine = checkForLastLine(COMMANDS.AI_INFO.readCommand!, lines)
+	const lastAiInfoLine = checkForLastLine(COMMANDS.aiinfo.writeCommand!() || "AI info", lines)
 	if (lastAiInfoLine) {
-		const matches = COMMANDS.AI_INFO.readRegex!.exec(lastAiInfoLine)
+		// Regex to capture total and available space
+		const aiInfoRegex = /(\d+)\s*K\s*total\s*drive\s*space[\s\S]*?(\d+)\s*K\s*available/
+		const matches = aiInfoRegex.exec(lastAiInfoLine)
 		if (matches) {
 			const [, total, available] = matches
 			results.push({
 				value: JSON.stringify({ total: parseInt(total), available: parseInt(available) }),
-				command: COMMANDS.AI_INFO,
+				command: COMMANDS.aiinfo,
 			})
 		}
 	}
@@ -275,9 +242,12 @@ export const parseLogs = (finishedLog: string, lastLog: string) => {
 	// But for now we follow the pattern. The regex is robust enough to find it if it's there.
 	// We might need to scan more lines if it's not the immediate next one.
 	// For now, let's try the standard approach.
-	const lastAiCaptureLine = checkForLastLine("Captured", lines) // "Captured" is part of the response
+	// AI CAPTURE
+	const lastAiCaptureLine = checkForLastLine("Captured", lines)
 	if (lastAiCaptureLine) {
-		const matches = COMMANDS.AI_CAPTURE.readRegex!.exec(lastAiCaptureLine)
+		// Regex for captured file
+		const aiCaptureRegex = /Captured\s+([a-zA-Z0-9_]+\.jpg)/
+		const matches = aiCaptureRegex.exec(lastAiCaptureLine)
 		if (matches) {
 			const [, filename] = matches
 			results.push({
@@ -287,28 +257,17 @@ export const parseLogs = (finishedLog: string, lastLog: string) => {
 		}
 	}
 
-	// PING
-	const lastPingLine = checkForLastLine(COMMANDS.PING.writeCommand!(), lines)
-	if (lastPingLine) {
-		const matches = COMMANDS.PING.readRegex!.exec(lastPingLine)
-		if (matches) {
-			const [, rssi, snr] = matches
-			results.push({
-				value: JSON.stringify({ rssi: parseInt(rssi), snr: parseFloat(snr) }),
-				command: COMMANDS.PING,
-			})
-		}
-	}
+
 
 	// SELFTEST
-	const lastSelftestLine = checkForLastLine(COMMANDS.SELFTEST.writeCommand!(), lines)
+	const lastSelftestLine = checkForLastLine(COMMANDS.selftest.writeCommand!(), lines)
 	if (lastSelftestLine) {
-		const matches = COMMANDS.SELFTEST.readRegex!.exec(lastSelftestLine)
+		const matches = COMMANDS.selftest.readRegex!.exec(lastSelftestLine)
 		if (matches) {
 			const [, errorBits] = matches
 			results.push({
 				value: errorBits,
-				command: COMMANDS.SELFTEST,
+				command: COMMANDS.selftest,
 			})
 		}
 	}

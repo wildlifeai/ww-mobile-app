@@ -23,7 +23,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 7,
+    version: 8,
     tables: [
         tableSchema({
             name: 'projects',
@@ -165,6 +165,24 @@ export default appSchema({
                 { name: 'responded_at', type: 'number', isOptional: true },
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
+            ],
+        }),
+        tableSchema({
+            name: 'firmware',
+            columns: [
+                { name: 'version', type: 'string' },
+                { name: 'type', type: 'string', isIndexed: true }, // 'ble', 'himax', 'config'
+                { name: 'location_path', type: 'string' },
+                { name: 'file_size_bytes', type: 'number' },
+                { name: 'release_notes', type: 'string', isOptional: true },
+                { name: 'is_active', type: 'boolean' },
+                { name: 'modified_by', type: 'string' },
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                // Sync tracking fields
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
             ],
         }),
         // Reference Data Tables (Read-only, synced from Supabase)

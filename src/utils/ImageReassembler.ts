@@ -1,5 +1,6 @@
 import { Buffer } from "buffer"
 import { log } from "./logger"
+import { imageReassemblerEmitter } from "../ble/emitters"
 
 export class ImageReassembler {
     private static instance: ImageReassembler
@@ -7,7 +8,8 @@ export class ImageReassembler {
     private expectedPacketNum: number = 1
     private isReceiving: boolean = false
     private lastPacketTime: number = 0
-    private readonly TIMEOUT_MS = 2000 // Reset if no packet for 2 seconds
+    private readonly TIMEOUT_MS = 5000 // 5 seconds timeout
+    private totalExpectedBytes: number = 0
 
     private constructor() { }
 
@@ -18,58 +20,82 @@ export class ImageReassembler {
         return ImageReassembler.instance
     }
 
+    public initialize(totalBytes: number): void {
+        log(`ImageReassembler: Initializing transfer for ${totalBytes} bytes`)
+        this.reset()
+        this.totalExpectedBytes = totalBytes
+        this.isReceiving = true
+        this.lastPacketTime = Date.now()
+    }
+
     public processPacket(data: number[]): void {
         const now = Date.now()
 
-        // Check for timeout/reset
-        if (this.isReceiving && (now - this.lastPacketTime > this.TIMEOUT_MS)) {
-            log("ImageReassembler: Timeout, resetting buffer")
-            this.reset()
-        }
-
-        // Header: [0x06, PacketNum, PayloadLen, ...Payload]
-        const packetNum = data[1]
-        const payloadLen = data[2]
-        const payload = data.slice(3, 3 + payloadLen)
-
-        // Check for new transmission start
-        if (packetNum === 1) {
-            if (this.isReceiving) {
-                log("ImageReassembler: Received packet 1 while already receiving, resetting")
-            }
+        // Auto-start mechanism: If we receive a packet but aren't in receiving state,
+        // assume it's the start of a new transfer. This handles cases where the
+        // "Start" text message was dropped or parsed incorrectly.
+        if (!this.isReceiving) {
+            log("ImageReassembler: Auto-starting transfer (Size unknown)")
             this.reset()
             this.isReceiving = true
-            log("ImageReassembler: Started receiving image")
-        } else if (!this.isReceiving) {
-            log(`ImageReassembler: Ignored orphan packet ${packetNum}`)
+            this.lastPacketTime = now
+        }
+
+        // Timeout Check
+        if (now - this.lastPacketTime > this.TIMEOUT_MS) {
+            log("ImageReassembler: Timeout, restarting buffer")
+            this.reset()
+            this.isReceiving = true
+            this.lastPacketTime = now
+            // If we had a known size, we lost it on reset. Proceed with unknown size.
+        }
+
+        // Protocol observed in logs: [0x06, PacketNum, Len, ...Payload]
+        // data[0] is 0x06 (Type)
+        // data[1] is PacketNum (e.g. 0x01, 0x02...)
+        // data[2] is Length (1 byte, e.g. 0xF1 = 241)
+
+        const packetNum = data[1]
+        const payloadLen = data[2]
+
+        // Safety check on length
+        if (payloadLen <= 0 || payloadLen > data.length - 3) {
+            log(`ImageReassembler: Invalid payload length ${payloadLen}`)
             return
         }
 
-        // Check packet sequence
-        if (packetNum !== this.expectedPacketNum) {
-            log(`ImageReassembler: Sequence error. Expected ${this.expectedPacketNum}, got ${packetNum}`)
-            // We might want to reset or just log error? 
-            // For now, let's reset to avoid corrupted images
-            this.reset()
-            return
-        }
+        const payload = data.slice(3, 3 + payloadLen)
 
         // Append data
         this.buffer = Buffer.concat([this.buffer, Buffer.from(payload)])
-        this.expectedPacketNum++
         this.lastPacketTime = now
 
-        log(`ImageReassembler: Processed packet ${packetNum}, total size: ${this.buffer.length}`)
-    }
+        log(`ImageReassembler: Rx ${payloadLen} bytes, total: ${this.buffer.length}/${this.totalExpectedBytes || '?'}`)
 
-    public getImageData(): string | null {
-        if (this.buffer.length === 0) return null
-        return this.buffer.toString('base64')
+        // Check completion
+        let isComplete = false
+        if (this.totalExpectedBytes > 0 && this.buffer.length >= this.totalExpectedBytes) {
+            isComplete = true
+        } else if (this.totalExpectedBytes === 0) {
+            // If size is unknown, check for JPEG EOI marker (0xFF 0xD9)
+            // It is usually the very last two bytes.
+            if (this.buffer.indexOf(Buffer.from([0xFF, 0xD9])) !== -1) {
+                isComplete = true
+            }
+        }
+
+        if (isComplete) {
+            log("ImageReassembler: Transfer complete!")
+            const base64 = this.buffer.toString('base64')
+            imageReassemblerEmitter.emit('onImageComplete', base64)
+            this.reset()
+        }
     }
 
     public reset(): void {
         this.buffer = Buffer.alloc(0)
-        this.expectedPacketNum = 1
+        // expectedPacketNum removed as protocol doesn't support it
         this.isReceiving = false
+        this.totalExpectedBytes = 0
     }
 }
