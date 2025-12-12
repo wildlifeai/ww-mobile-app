@@ -70,40 +70,24 @@ export const projectsApi = createApi({
 	endpoints: (builder) => ({
 		// Get all projects for organisation (RLS auto-filters by user's org)
 		// PHASE 3: Now reads from local database (works offline automatically)
-		getProjects: builder.query<ProjectWithDetails[], void>({
-			queryFn: async (_arg, { getState }) => {
+		getProjects: builder.query<ProjectWithDetails[], { userId: string; organisationId: string }>({
+			queryFn: async ({ userId, organisationId }, { getState }) => {
 				console.log("📂 RTK Query - getProjects (offline-first) - STARTING")
 
 				try {
-					// Get current organisation ID from Redux state
-					const state = getState() as AuthRootState
-					console.log("🔍 RTK Query - Redux state check:", {
-						hasAuth: !!state.authentication,
-						hasCurrentOrg: !!state.authentication?.currentOrganisation,
-						currentOrgId: state.authentication?.currentOrganisation?.id,
-						currentOrgName: state.authentication?.currentOrganisation?.name,
-					})
-
-					const currentOrgId = state.authentication?.currentOrganisation?.id
-
-					if (!currentOrgId) {
-						console.warn("⚠️ No current organisation - user may not have roles assigned")
-						console.warn("   Returning empty projects list. User can still navigate the app.")
-						console.warn(
-							"   Full authentication state:",
-							JSON.stringify(state.authentication, null, 2),
-						)
-						// Return empty array instead of error - allows app to show "No projects" screen
+					if (!organisationId || !userId) {
+						console.warn("⚠️ No current organisation or user ID found")
 						return { data: [] }
 					}
 
 					console.log(
-						"📂 RTK Query - Calling ProjectService.getUserProjects with orgId:",
-						currentOrgId,
+						`📂 RTK Query - Calling ProjectService.getProjectsForUserInOrganisation`,
+						{ userId, organisationId }
 					)
-					// ProjectService now ALWAYS reads from local database
-					// Background sync happens automatically if online
-					const data = await ProjectService.getUserProjects(currentOrgId)
+
+					// Call new filtered method
+					const data = await ProjectService.getProjectsForUserInOrganisation(userId, organisationId)
+
 					console.log(
 						`✅ RTK Query - Retrieved ${data.length} projects from local database`,
 					)

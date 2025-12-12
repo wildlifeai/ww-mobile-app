@@ -8,8 +8,10 @@ import { Database } from '../types/database.types'
 import UserRole from '../database/models/UserRole'
 import Device from '../database/models/Device'
 import Project from '../database/models/Project'
+import DevicePreparation from '../database/models/DevicePreparation'
 import NetInfo from '@react-native-community/netinfo'
 import type { RootState } from '../redux'
+import { generateUUID } from '../utils/uuid'
 
 class SupabaseSyncService {
     private realtimeChannel: RealtimeChannel | null = null
@@ -99,6 +101,14 @@ class SupabaseSyncService {
             return
         }
 
+        const client = getSupabaseClient()
+        const { data: { user } } = await client.auth.getUser()
+
+        if (!user) {
+            console.log('👤 No authenticated user - skipping sync')
+            return
+        }
+
         this.isSyncing = true
         await database.write(async () => {
             await SyncStateService.set(SYNC_STATE_KEYS.SYNC_IN_PROGRESS, 'true')
@@ -118,6 +128,7 @@ class SupabaseSyncService {
             await this.syncUserRoles()
             await this.syncProjects()
             await this.syncDevices()
+            await this.syncDevicePreparation()
 
             // ================================================================
             // STEP 3: UPDATE SYNC TIMESTAMPS
@@ -174,7 +185,6 @@ class SupabaseSyncService {
         console.log(`📤 Uploading ${pendingOps.length} pending operations...`)
 
         // Mark operations as syncing
-        const operationIds = pendingOps.map(op => op.operationId)
         await database.write(async () => {
             for (const op of pendingOps) {
                 await op.update(o => {
@@ -184,99 +194,243 @@ class SupabaseSyncService {
         })
 
         // Group operations by table and operation type
-        const changes: any = {
+        const allChanges: any = {
             projects: { created: [], updated: [], deleted: [] },
+            devices: { created: [], updated: [], deleted: [] },
+            device_preparation: { created: [], updated: [], deleted: [] },
             deployments: { created: [], updated: [], deleted: [] },
         }
 
-        for (const op of pendingOps) {
-            const payload = JSON.parse(op.payload)
-
-            // Add operation_id to payload for server-side idempotency
-            payload.operation_id = op.operationId
-
-            const tableName = op.tableName
-            const operationType = op.operationType.toLowerCase()
-
-            if (changes[tableName]) {
-                if (operationType === 'create') {
-                    changes[tableName].created.push(payload)
-                } else if (operationType === 'update') {
-                    changes[tableName].updated.push(payload)
-                } else if (operationType === 'delete') {
-                    changes[tableName].deleted.push(payload.id)
-                }
+        // Helper to populate changes object
+        const populateChanges = (ops: SyncOutbox[], currentUserId?: string) => {
+            const result: any = {
+                projects: { created: [], updated: [], deleted: [] },
+                devices: { created: [], updated: [], deleted: [] },
+                device_preparation: { created: [], updated: [], deleted: [] },
+                deployments: { created: [], updated: [], deleted: [] },
             }
-        }
 
-        console.log('📦 Changes to upload:', {
-            projects: {
-                created: changes.projects.created.length,
-                updated: changes.projects.updated.length,
-                deleted: changes.projects.deleted.length,
-            },
-            deployments: {
-                created: changes.deployments.created.length,
-                updated: changes.deployments.updated.length,
-                deleted: changes.deployments.deleted.length,
-            },
-        })
+            for (const op of ops) {
+                const payload = JSON.parse(op.payload)
+                // Add operation_id to payload for server-side idempotency
+                payload.operation_id = op.operationId
 
-        // Push to server
-        const client = getSupabaseClient()
-        const { data, error } = await (client as any).rpc('push_changes', { changes })
+                const tableName = op.tableName
+                const operationType = op.operationType.toLowerCase()
 
-        if (error) {
-            console.error('❌ Push failed:', error)
-
-            // Mark operations as failed
-            await database.write(async () => {
-                for (const op of pendingOps) {
-                    await op.update(o => {
-                        o.status = 'failed'
-                        o.errorMessage = error.message
-                        o.retryCount = op.retryCount + 1
-                    })
-                }
-            })
-
-            throw error
-        }
-
-        console.log(`✅ Server processed ${data.processed} operations`)
-
-        // Handle conflicts
-        if (data.conflicts > 0) {
-            console.warn(`⚠️ ${data.conflicts} conflicts detected:`, data.conflict_details)
-
-            await database.write(async () => {
-                for (const conflict of data.conflict_details) {
-                    const conflictOp = pendingOps.find(op => op.operationId === conflict.operation_id)
-                    if (conflictOp) {
-                        await conflictOp.update(o => {
-                            o.status = 'conflict'
-                        })
+                // HOTFIX: Patch device creation with valid modified_by if it has nil UUID
+                // This fixes pending operations created by previous version of DeviceService
+                if (tableName === 'devices' && operationType === 'create' && currentUserId) {
+                    if (payload.modified_by === '00000000-0000-0000-0000-000000000000') {
+                        console.log(`🔧 Patching device creation modified_by for ${op.recordId}`)
+                        payload.modified_by = currentUserId
                     }
                 }
-            })
-        }
 
-        // Mark successfully synced operations
-        const conflictOpIds = new Set(
-            (data.conflict_details || []).map((c: any) => c.operation_id)
-        )
+                // Sanitize deleted_at (WatermelonDB uses 0/1970 epoch for null)
+                // If it is 1970-01-01 or 0 or undefined, set to null for Supabase
+                if (!payload.deleted_at || String(payload.deleted_at).startsWith('1970-01-01') || payload.deleted_at === 0) {
+                    payload.deleted_at = null
+                }
 
-        await database.write(async () => {
-            for (const op of pendingOps) {
-                if (!conflictOpIds.has(op.operationId)) {
-                    await op.update(o => {
-                        o.status = 'synced'
-                    })
+                // Ensure timestamps are present
+                const now = new Date().toISOString()
+                if (!payload.created_at) payload.created_at = now
+                if (!payload.updated_at) payload.updated_at = now
+
+                if (result[tableName]) {
+                    if (operationType === 'create') {
+                        result[tableName].created.push(payload)
+                    } else if (operationType === 'update') {
+                        result[tableName].updated.push(payload)
+                    } else if (operationType === 'delete') {
+                        result[tableName].deleted.push(payload.id)
+                    }
                 }
             }
-        })
+            return result
+        }
 
-        console.log(`✅ Marked ${pendingOps.length - conflictOpIds.size} operations as synced`)
+        // Define upload order: Projects -> Devices -> Preparation -> Deployments
+        // This ensures Foreign Keys are satisfied (e.g. Device Prep needs Device, Deployment needs Device & Project)
+        const uploadOrder = ['projects', 'devices', 'device_preparation', 'deployments']
+
+        const client = getSupabaseClient()
+
+        // Get current user ID for patching bad payloads
+        let currentUserId: string | undefined
+        try {
+            const { data: { user } } = await client.auth.getUser()
+            currentUserId = user?.id
+        } catch (e) {
+            console.warn('Could not fetch user for patching payloads', e)
+        }
+
+        let anyFailures = false
+
+        for (const tableName of uploadOrder) {
+            // Filter ops for this table
+            const tableOps = pendingOps.filter(op => op.tableName === tableName)
+
+            if (tableOps.length === 0) continue
+
+            console.log(`📤 Uploading batch for table: ${tableName} (${tableOps.length} ops)`)
+
+            // Build changes object just for this table
+            // We pass the full structure but only populate the current table
+            const changes = populateChanges(tableOps, currentUserId)
+
+            console.log(`🔍 DEBUG: Payload for ${tableName}:`, JSON.stringify(changes))
+
+            try {
+                const { data, error } = await (client as any).rpc('push_changes', { changes })
+
+                // IMPORTANT DEBUG: Log processed count to detect silent failures
+                console.log(`✅ Server processed ${data?.processed ?? '?'} operations for ${tableName}`)
+
+                if (error) {
+                    console.error(`❌ Push failed for ${tableName}:`, error)
+                    anyFailures = true
+
+                    // Mark these specific ops as failed
+                    await database.write(async () => {
+                        for (const op of tableOps) {
+                            await op.update(o => {
+                                o.status = 'failed'
+                                o.errorMessage = error.message
+                                o.retryCount = op.retryCount + 1
+                            })
+                        }
+                    })
+
+                    // SPECIAL HANDLING: Self-healing for Device Preparation Foreign Key errors (23503)
+                    // If device_preparation fails because device doesn't exist on server, 
+                    // check if we have it locally and queue a creation for it.
+                    if (tableName === 'device_preparation' && error.code === '23503') {
+                        console.log('🚑 Attempting self-healing for missing device dependency...')
+                        const devicesCollection = database.get<Device>('devices')
+                        const missingDeviceIds = new Set<string>()
+
+                        // Extract device_ids from failed preparation ops
+                        for (const op of tableOps) {
+                            try {
+                                const payload = JSON.parse(op.payload)
+                                if (payload.device_id) {
+                                    missingDeviceIds.add(payload.device_id)
+                                }
+                            } catch (e) {
+                                // ignore parse check
+                            }
+                        }
+
+                        // Check which ones exist locally but might not have synced
+                        for (const deviceId of Array.from(missingDeviceIds)) {
+                            try {
+                                const localDevice = await devicesCollection.find(deviceId)
+                                if (localDevice) {
+                                    // Check if there's already a pending create op for this device
+                                    const existingOps = await database.get<SyncOutbox>('sync_outbox').query(
+                                        Q.where('table_name', 'devices'),
+                                        Q.where('record_id', deviceId),
+                                        Q.where('operation_type', 'CREATE'),
+                                        Q.where('status', 'pending')
+                                    ).fetch()
+
+                                    if (existingOps.length === 0) {
+                                        console.log(`🚑 Self-healing: Queueing CREATE for missing device ${deviceId}`)
+                                        await database.write(async () => {
+                                            const { data: { user } } = await client.auth.getUser()
+
+                                            // Re-queue device creation properly
+                                            // We use direct interaction with OutboxService logic here to avoid circular dep if possible,
+                                            // or just manual record creation since we are in a write block
+                                            const devicesOutboxCollection = database.get<SyncOutbox>('sync_outbox')
+                                            await devicesOutboxCollection.create(op => {
+                                                op.operationId = generateUUID()
+                                                op.operationType = 'CREATE'
+                                                op.tableName = 'devices'
+                                                op.recordId = localDevice.id
+                                                op.payload = JSON.stringify({
+                                                    id: localDevice.id,
+                                                    bluetooth_id: localDevice.bluetoothId,
+                                                    name: localDevice.name,
+                                                    organisation_id: localDevice.organisationId || null,
+                                                    battery_level: localDevice.batteryLevel,
+                                                    firmware_id: localDevice.firmwareId || null,
+                                                    last_battery_check: localDevice.lastBatteryCheck || null,
+                                                    last_sd_card_check: localDevice.lastSdCardCheck || null,
+                                                    modified_by: user?.id || '00000000-0000-0000-0000-000000000000'
+                                                })
+                                                op.version = 0
+                                                op.lamportClock = Date.now()
+                                                op.retryCount = 0
+                                                op.status = 'pending'
+                                            })
+                                        })
+                                    } else {
+                                        console.log(`ℹ️ Pending CREATE op already exists for device ${deviceId}, it normally should have run first.`)
+                                        // If it exists but we still failed, maybe it failed too? 
+                                        // The loop logic processes 'devices' before 'device_preparation', so if it failed, it would have stopped chain.
+                                        // If it succeeded, we shouldn't be here. 
+                                        // Unless checking for 'pending' is wrong because it's now 'failed'?
+                                    }
+                                }
+                            } catch (e) {
+                                // Device not found locally, cannot heal
+                                console.log(`⚠️ Cannot heal device ${deviceId} - not found locally (Caught error: ${e})`)
+                            }
+                        }
+                    }
+
+                    // Stop processing subsequent dependent tables if a dependency failed
+                    console.warn(`⚠️ Stopping upload chain due to failure in ${tableName}`)
+                    break
+                }
+
+                console.log(`✅ Server processed ${data.processed} operations for ${tableName}`)
+
+                // Handle conflicts
+                if (data.conflicts > 0) {
+                    console.warn(`⚠️ ${data.conflicts} conflicts in ${tableName}:`, data.conflict_details)
+                    await database.write(async () => {
+                        for (const conflict of data.conflict_details) {
+                            const conflictOp = tableOps.find(op => op.operationId === conflict.operation_id)
+                            if (conflictOp) {
+                                await conflictOp.update(o => {
+                                    o.status = 'conflict'
+                                })
+                            }
+                        }
+                    })
+                }
+
+                // Mark successfully synced operations
+                const conflictOpIds = new Set(
+                    (data.conflict_details || []).map((c: any) => c.operation_id)
+                )
+
+                await database.write(async () => {
+                    for (const op of tableOps) {
+                        if (!conflictOpIds.has(op.operationId)) {
+                            await op.update(o => {
+                                o.status = 'synced'
+                            })
+                        }
+                    }
+                })
+
+            } catch (err) {
+                console.error(`❌ Exception during push for ${tableName}:`, err)
+                anyFailures = true
+                break
+            }
+        }
+
+        if (anyFailures) {
+            throw new Error('One or more sync batches failed')
+        }
+
+        console.log('✅ All sync batches completed successfully')
     }
 
     /**
@@ -313,7 +467,9 @@ class SupabaseSyncService {
         // Build set of record IDs that have pending changes
         const pendingByTable: Record<string, Set<string>> = {
             projects: new Set(),
+            devices: new Set(),
             deployments: new Set(),
+            device_preparation: new Set(),
         }
 
         for (const op of pendingOps) {
@@ -377,6 +533,52 @@ class SupabaseSyncService {
                     return !isPending
                 }),
             },
+            device_preparation: {
+                created: (rawChanges.device_preparation?.created || []).filter((dp: any) => {
+                    const isPending = pendingByTable.device_preparation.has(dp.id)
+                    if (isPending) {
+                        console.log(`   ⚠️ Filtered device_preparation CREATED: ${dp.id} (has pending changes)`)
+                    }
+                    return !isPending
+                }),
+                updated: (rawChanges.device_preparation?.updated || []).filter((dp: any) => {
+                    const isPending = pendingByTable.device_preparation.has(dp.id)
+                    if (isPending) {
+                        console.log(`   ⚠️ Filtered device_preparation UPDATED: ${dp.id} (has pending changes)`)
+                    }
+                    return !isPending
+                }),
+                deleted: (rawChanges.device_preparation?.deleted || []).filter((id: string) => {
+                    const isPending = pendingByTable.device_preparation.has(id)
+                    if (isPending) {
+                        console.log(`   ⚠️ Filtered device_preparation DELETED: ${id} (has pending changes)`)
+                    }
+                    return !isPending
+                }),
+            },
+            devices: {
+                created: (rawChanges.devices?.created || []).filter((d: any) => {
+                    const isPending = pendingByTable.devices.has(d.id)
+                    if (isPending) {
+                        console.log(`   ⚠️ Filtered device CREATED: ${d.id} (has pending changes)`)
+                    }
+                    return !isPending
+                }),
+                updated: (rawChanges.devices?.updated || []).filter((d: any) => {
+                    const isPending = pendingByTable.devices.has(d.id)
+                    if (isPending) {
+                        console.log(`   ⚠️ Filtered device UPDATED: ${d.id} (has pending changes)`)
+                    }
+                    return !isPending
+                }),
+                deleted: (rawChanges.devices?.deleted || []).filter((id: string) => {
+                    const isPending = pendingByTable.devices.has(id)
+                    if (isPending) {
+                        console.log(`   ⚠️ Filtered device DELETED: ${id} (has pending changes)`)
+                    }
+                    return !isPending
+                }),
+            },
         }
 
         // Log filtering stats
@@ -386,7 +588,13 @@ class SupabaseSyncService {
             (rawChanges.projects?.deleted?.length || 0) - (safeChanges.projects.deleted.length) +
             (rawChanges.deployments?.created?.length || 0) - (safeChanges.deployments.created.length) +
             (rawChanges.deployments?.updated?.length || 0) - (safeChanges.deployments.updated.length) +
-            (rawChanges.deployments?.deleted?.length || 0) - (safeChanges.deployments.deleted.length)
+            (rawChanges.deployments?.deleted?.length || 0) - (safeChanges.deployments.deleted.length) +
+            (rawChanges.device_preparation?.created?.length || 0) - (safeChanges.device_preparation.created.length) +
+            (rawChanges.device_preparation?.updated?.length || 0) - (safeChanges.device_preparation.updated.length) +
+            (rawChanges.device_preparation?.deleted?.length || 0) - (safeChanges.device_preparation.deleted.length) +
+            (rawChanges.devices?.created?.length || 0) - (safeChanges.devices.created.length) +
+            (rawChanges.devices?.updated?.length || 0) - (safeChanges.devices.updated.length) +
+            (rawChanges.devices?.deleted?.length || 0) - (safeChanges.devices.deleted.length)
 
         if (totalFiltered > 0) {
             console.log(`✅ Filtered ${totalFiltered} server changes with pending local modifications`)
@@ -529,7 +737,7 @@ class SupabaseSyncService {
                 // Skip projects that were deleted on server
                 if (row.deleted_at) {
                     try {
-                        const existing = await collection.find(row.id)
+                        const existing = await collection.find(row.id || '')
                         if (!existing._raw._status.includes('deleted')) {
                             await existing.markAsDeleted()
                         }
@@ -541,7 +749,7 @@ class SupabaseSyncService {
 
                 // Check if exists
                 try {
-                    const existing = await collection.find(row.id)
+                    const existing = await collection.find(row.id || '')
                     await existing.update((rec) => {
                         rec.name = row.name || ''
                         rec.description = row.description || ''
@@ -564,7 +772,7 @@ class SupabaseSyncService {
                 } catch (e) {
                     // Project doesn't exist, create it
                     await collection.create((rec) => {
-                        rec._raw.id = row.id // Set the ID from server
+                        rec._raw.id = row.id || '' // Set the ID from server
                         rec.name = row.name || ''
                         rec.description = row.description || ''
                         rec.organisationId = row.organisation_id || ''
@@ -645,7 +853,7 @@ class SupabaseSyncService {
                 } catch (e) {
                     // Not found, create
                     await collection.create((rec) => {
-                        rec._raw.id = row.id // Use server ID
+                        rec._raw.id = row.id || '' // Use server ID
                         rec.bluetoothId = row.bluetooth_id
                         rec.name = row.name
                         rec.batteryLevel = row.battery_level ?? 0
@@ -665,6 +873,95 @@ class SupabaseSyncService {
         })
 
         console.log('✅ Devices sync complete')
+    }
+
+    /**
+     * Sync device preparation records (incremental pull)
+     */
+    private async syncDevicePreparation(): Promise<void> {
+        const LAST_PULLED_KEY = SYNC_STATE_KEYS.DEVICE_PREP_LAST_PULLED_AT
+        const lastPulledStr = await SyncStateService.get(LAST_PULLED_KEY)
+        const lastPulledAt = lastPulledStr ? new Date(parseInt(lastPulledStr, 10)).toISOString() : new Date(0).toISOString()
+
+        console.log('📷 Syncing device_preparation since', lastPulledAt)
+
+        const client = getSupabaseClient()
+        const { data, error } = await client
+            .from('device_preparation')
+            .select('*')
+            .gt('updated_at', lastPulledAt)
+
+        if (error) {
+            console.error('❌ Failed to sync device_preparation:', error)
+            return
+        }
+
+        if (!data || data.length === 0) {
+            console.log('✅ No new device preparation changes')
+            return
+        }
+
+        console.log(`📥 Received ${data.length} device preparation updates`)
+
+        await database.write(async () => {
+            const collection = database.get<DevicePreparation>('device_preparation')
+
+            for (const row of data) {
+                // Skip if deleted on server
+                if (row.deleted_at) {
+                    try {
+                        const existing = await collection.find(row.id)
+                        if (!existing._raw._status.includes('deleted')) {
+                            await existing.markAsDeleted()
+                        }
+                    } catch (e) {
+                        // Doesn't exist locally, skip
+                    }
+                    continue
+                }
+
+                // Update or create
+                try {
+                    const existing = await collection.find(row.id)
+                    await existing.update((rec) => {
+                        rec.deviceId = row.device_id || ''
+                        rec.projectId = row.project_id || ''
+                        rec.aiModelId = row.ai_model_id ?? undefined
+                        rec.firmwareId = row.ble_firmware_id ?? undefined
+                        rec.status = row.status
+                        rec.isDeploymentReady = row.is_deployment_ready
+                        rec.deviceEui = row.device_eui ?? undefined
+                        rec.lorawanNetwork = row.lorawan_network ?? undefined
+                        rec.lorawanRegistrationCompleted = row.lorawan_registration_completed
+                        rec.modifiedBy = row.modified_by;
+                        (rec._raw as any).updated_at = new Date(row.updated_at ?? Date.now()).getTime()
+                    })
+                } catch (e) {
+                    // Not found, create
+                    await collection.create((rec) => {
+                        rec._raw.id = row.id || ''
+                        rec.deviceId = row.device_id || ''
+                        rec.projectId = row.project_id || ''
+                        rec.aiModelId = row.ai_model_id ?? undefined
+                        rec.firmwareId = row.ble_firmware_id ?? undefined
+                        rec.status = row.status
+                        rec.isDeploymentReady = row.is_deployment_ready
+                        rec.deviceEui = row.device_eui ?? undefined
+                        rec.lorawanNetwork = row.lorawan_network ?? undefined
+                        rec.lorawanRegistrationCompleted = row.lorawan_registration_completed
+                        rec.modifiedBy = row.modified_by;
+                        (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
+                        rec.updatedAt = new Date(row.updated_at ?? Date.now())
+                    })
+                }
+            }
+
+            // Update timestamp
+            const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
+            await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
+        })
+
+        console.log('✅ Device preparation sync complete')
     }
 
 

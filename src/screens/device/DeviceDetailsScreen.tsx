@@ -111,7 +111,7 @@ export const DeviceDetailsScreen = () => {
                         </View>
                     )}
 
-                    {device.batteryLevel && (
+                    {device.batteryLevel !== undefined && device.batteryLevel !== null && (
                         <View style={styles.infoRow}>
                             <WWText variant="bodySmall" style={styles.label}>Battery Level:</WWText>
                             <WWText variant="bodyMedium" style={styles.value}>🔋 {device.batteryLevel}%</WWText>

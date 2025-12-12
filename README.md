@@ -48,6 +48,8 @@ User Interface ← Local DB ← Pull Sync ← Supabase Changes
 
 ## BLE Features
 
+> **Important:** When working with BLE commands, please read the [BLE Architecture Guide](./documentation/ble-architecture-guide.md) to understand our hook-based command system and avoid code duplication.
+
 ### Camera Communication
 
 - **Device Discovery**: Scan and connect to Wildlife Watcher cameras via Bluetooth

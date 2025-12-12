@@ -1,8 +1,9 @@
 import React from 'react'
-import { View, StyleSheet, TouchableOpacity } from 'react-native'
-import { WWText } from './ui/WWText'
+import { StyleSheet, View } from 'react-native'
+import { Card, Text, useTheme } from 'react-native-paper'
 import { DeviceStatusBadge } from './DeviceStatusBadge'
 import { DeviceListItem } from '../types/device'
+import { WWIcon } from './ui/WWIcon'
 
 interface DeviceCardProps {
     device: DeviceListItem
@@ -10,92 +11,130 @@ interface DeviceCardProps {
 }
 
 export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
+    const theme = useTheme()
+
     return (
-        <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-            <View style={styles.header}>
-                <WWText variant="titleMedium" style={styles.deviceName}>
-                    {device.name}
-                </WWText>
-                <DeviceStatusBadge status={device.status} />
-            </View>
-
-            <WWText variant="bodySmall" style={styles.bluetoothId}>
-                ID: {device.bluetoothId}
-            </WWText>
-
-            {/* Deployed device info */}
-            {device.status === 'deployed' && (
-                <View style={styles.deploymentInfo}>
-                    {device.deploymentName && (
-                        <WWText variant="bodyMedium" style={styles.deploymentName}>
-                            📍 {device.deploymentName}
-                        </WWText>
-                    )}
-                    {device.projectName && (
-                        <WWText variant="bodySmall" style={styles.projectName}>
-                            Project: {device.projectName}
-                        </WWText>
-                    )}
-                    {device.batteryLevel !== undefined && (
-                        <View style={styles.batteryInfo}>
-                            <WWText variant="bodySmall">
-                                🔋 {device.batteryLevel}%
-                            </WWText>
-                        </View>
-                    )}
+        <Card
+            mode="outlined"
+            style={styles.card}
+            onPress={onPress}
+            testID={`device-card-${device.id}`}
+        >
+            <Card.Content style={styles.content}>
+                {/* Header: Name and Badge */}
+                <View style={styles.header}>
+                    <Text
+                        variant="headlineSmall"
+                        style={[styles.title, { color: theme.colors.onSurface }]}
+                        numberOfLines={1}
+                    >
+                        {device.name || 'Unknown Device'}
+                    </Text>
+                    <DeviceStatusBadge status={device.status} />
                 </View>
-            )}
 
-            {/* Prepared device info */}
-            {device.status === 'prepared' && device.preparedDate && (
-                <WWText variant="bodySmall" style={styles.preparedDate}>
-                    ✓ Prepared on {new Date(device.preparedDate).toLocaleDateString()}
-                </WWText>
-            )}
-        </TouchableOpacity>
+                {/* Bluetooth ID */}
+                <Text
+                    variant="bodySmall"
+                    style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}
+                >
+                    ID: {device.bluetoothId}
+                </Text>
+
+                {/* Deployed Info */}
+                {device.status === 'deployed' && (
+                    <View style={styles.infoSection}>
+                        {device.deploymentName && (
+                            <View style={styles.row}>
+                                <WWIcon
+                                    source="map-marker"
+                                    size={16}
+                                    color={theme.colors.primary}
+                                    containerStyle={styles.icon}
+                                />
+                                <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                                    {device.deploymentName}
+                                </Text>
+                            </View>
+                        )}
+                        {device.projectName && (
+                            <View style={styles.row}>
+                                <WWIcon
+                                    source="folder"
+                                    size={16}
+                                    color={theme.colors.onSurfaceVariant}
+                                    containerStyle={styles.icon}
+                                />
+                                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                                    {device.projectName}
+                                </Text>
+                            </View>
+                        )}
+                        {device.batteryLevel !== undefined && (
+                            <View style={styles.row}>
+                                <WWIcon
+                                    source={device.batteryLevel > 20 ? 'battery' : 'battery-alert'}
+                                    size={16}
+                                    color={device.batteryLevel > 20 ? theme.colors.primary : theme.colors.error}
+                                    containerStyle={styles.icon}
+                                />
+                                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                                    {device.batteryLevel}%
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                )}
+
+                {/* Prepared Info */}
+                {device.status === 'prepared' && device.preparedDate && (
+                    <View style={styles.row}>
+                        <WWIcon
+                            source="check-circle"
+                            size={16}
+                            color={theme.colors.primary}
+                            containerStyle={styles.icon}
+                        />
+                        <Text variant="bodySmall" style={{ color: theme.colors.primary }}>
+                            Prepared on {new Date(device.preparedDate).toLocaleDateString()}
+                        </Text>
+                    </View>
+                )}
+            </Card.Content>
+        </Card>
     )
 }
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 16,
+        marginBottom: 12,
         marginHorizontal: 16,
-        marginVertical: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        elevation: 0,
+    },
+    content: {
+        paddingVertical: 12,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 4,
     },
-    deviceName: {
-        flex: 1,
-        marginRight: 12,
-    },
-    bluetoothId: {
-        color: '#6B7280',
-        marginBottom: 12,
-    },
-    deploymentInfo: {
-        gap: 4,
-    },
-    deploymentName: {
+    title: {
         fontWeight: '600',
+        flex: 1,
+        marginRight: 8,
     },
-    projectName: {
-        color: '#6B7280',
-    },
-    batteryInfo: {
+    infoSection: {
+        gap: 4,
         marginTop: 4,
     },
-    preparedDate: {
-        color: '#10B981',
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 4,
+    },
+    icon: {
+        marginRight: 6,
     },
 })

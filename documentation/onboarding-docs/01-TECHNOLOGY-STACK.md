@@ -16,33 +16,42 @@ Complete guide to the technologies powering Wildlife Watcher, with real examples
 
 **Example from Our App**: src/App.tsx:1-54
 ```typescript
+// src/App.tsx
+import 'react-native-gesture-handler' // Must be first
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { Suspense } from "react"
+import { Text } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { Provider as ReduxProvider } from "react-redux"
 import store from "./redux"
 import { MainNavigation } from "./navigation"
 
 export const App = () => {
-  return (
-    <SafeAreaProvider>
-      <ReduxProvider store={store}>
-        <PaperProvider theme={CombinedDefaultTheme}>
-          <NavigationContainer theme={CombinedDefaultTheme} linking={linking}>
-            <AndroidPermissionsProvider>
-              <AppSetupProvider>
-                <BleEngineProvider>
-                  <ListenToBleEngineProvider>
-                    <AuthProvider>
-                      <MainNavigation />
-                    </AuthProvider>
-                  </ListenToBleEngineProvider>
-                </BleEngineProvider>
-              </AppSetupProvider>
-            </AndroidPermissionsProvider>
-          </NavigationContainer>
-        </PaperProvider>
-      </ReduxProvider>
-    </SafeAreaProvider>
-  )
+    return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <SafeAreaProvider>
+                <Suspense fallback={<Text>Loading...</Text>}>
+                    <ReduxProvider store={store}>
+                        <PaperProvider theme={CombinedDefaultTheme}>
+                            <NavigationContainer theme={CombinedDefaultTheme} linking={linking}>
+                                <AndroidPermissionsProvider>
+                                    <AppSetupProvider>
+                                        <BleEngineProvider>
+                                            <ListenToBleEngineProvider>
+                                                <AuthProvider>
+                                                    <MainNavigation />
+                                                </AuthProvider>
+                                            </ListenToBleEngineProvider>
+                                        </BleEngineProvider>
+                                    </AppSetupProvider>
+                                </AndroidPermissionsProvider>
+                            </NavigationContainer>
+                        </PaperProvider>
+                    </ReduxProvider>
+                </Suspense>
+            </SafeAreaProvider>
+        </GestureHandlerRootView>
+    )
 }
 ```
 
@@ -500,6 +509,34 @@ import { Button, Card, TextInput } from 'react-native-paper'
 </Card>
 ```
 
+
+## Maps
+
+### React Native Maps 1.14.0
+
+**Provider**: Google Maps (configured for both iOS and Android).
+
+**Usage**: Used for checking device locations and deployments.
+
+**Component Example**: src/features/maps/components/BasicMapView.tsx
+```typescript
+import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+
+<MapView
+  provider={PROVIDER_GOOGLE}
+  style={styles.map}
+  region={initialRegion}
+>
+  {markers.map(marker => (
+    <Marker
+      key={marker.id}
+      coordinate={marker.coordinate}
+      title={marker.title}
+    />
+  ))}
+</MapView>
+```
+
 ## Network & Connectivity
 
 ### NetInfo (@react-native-community/netinfo)
@@ -538,13 +575,53 @@ private async setupNetworkMonitoring(): Promise<void> {
 
 ### Bluetooth (react-native-ble-manager)
 
-**Purpose**: Communication with Wildlife Watcher cameras.
+**Purpose**: Communication with Wildlife Watcher cameras via Bluetooth Low Energy (BLE).
 
-**Key Operations**:
-- Device scanning and discovery
-- Connect/disconnect
-- Read/write characteristics
-- Firmware updates (DFU)
+> **🔧 Important for Developers**: We use a centralized hook-based architecture for all BLE commands. Before implementing BLE features, please read the [BLE Architecture Guide](../ble-architecture-guide.md) to understand our patterns and avoid code duplication.
+
+**Architecture Pattern**:
+```typescript
+// ✅ CORRECT - Use centralized hooks
+import { useBleCommands } from '../hooks/useBleCommands'
+import { useCapturePreview } from '../hooks/useCapturePreview'
+
+const { getBatteryLevel, checkSdCard } = useBleCommands()
+await getBatteryLevel(device)
+
+// ❌ WRONG - Don't hardcode commands or duplicate logic
+await write(device, ['Battery']) // Never do this!
+```
+
+**Key Components**:
+- **`useBle`** - Low-level BLE operations (connect, write, read)
+- **`useBleCommands`** - Individual command functions (battery, SD card, etc.)
+- **`useCapturePreview`** - Complete image capture process
+- **`src/ble/types.ts`** - Single source of truth for all command definitions
+- **Engineer Console** - Testing ground and reference implementation
+
+**Command Flow**:
+1. Commands defined in `src/ble/types.ts`
+2. Wrapped in hooks in `src/hooks/useBleCommands.ts`
+3. Tested in Engineer Console
+4. Reused across all screens
+
+**Why This Matters**:
+- Update battery check once → propagates to all screens automatically
+- No duplicate BLE logic
+- Consistent behavior everywhere
+- Engineer Console serves as live documentation
+
+**See**: [BLE Architecture Guide](../ble-architecture-guide.md) for complete patterns and examples.
+
+
+### Firmware Updates (react-native-nordic-dfu)
+
+**Purpose**: Over-the-air (OTA) firmware updates for Wildlife Watcher cameras using Nordic Semiconductor's DFU protocol.
+
+**Usage**:
+- Scan for DFU-capable devices
+- Handle DFU mode transitions
+- Upload new firmware images
 
 ## Development Tools
 

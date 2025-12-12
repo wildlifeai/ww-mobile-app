@@ -27,6 +27,14 @@ class ReferenceDataService {
     async syncReferenceData(): Promise<void> {
         console.log('📚 Syncing reference data from Supabase...')
 
+        const client = getSupabaseClient()
+        const { data: { user } } = await client.auth.getUser()
+
+        if (!user) {
+            console.log('📚 No authenticated user - skipping reference data sync')
+            return
+        }
+
         try {
             await Promise.all([
                 this.syncCaptureMethods(),

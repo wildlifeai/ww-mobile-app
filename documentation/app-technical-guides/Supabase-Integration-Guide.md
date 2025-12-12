@@ -76,15 +76,16 @@ The backend provides 10 core tables for wildlife monitoring:
 3. **`projects`** - Wildlife monitoring projects
 4. **`deployments`** - Camera deployment records
 5. **`project_members`** - Project membership and roles
+6. **`device_preparation`** - Device configuration and testing records
 
 ### Reference Tables
-6. **`roles`** - User role definitions
-7. **`capture_methods`** - Data capture methodology
-8. **`deployment_statuses`** - Deployment status tracking
+7. **`roles`** - User role definitions
+8. **`capture_methods`** - Data capture methodology
+9. **`deployment_statuses`** - Deployment status tracking
 
 ### Logging Tables
-9. **`api_logs`** - API logging and monitoring
-10. **`log_levels`** - Logging level definitions
+10. **`api_logs`** - API logging and monitoring
+11. **`log_levels`** - Logging level definitions
 
 ## Working with the Client
 
@@ -136,7 +137,7 @@ await authService.logout();
 
 ### Database Operations (WatermelonDB)
 
-For offline-first data (projects, deployments, devices), use WatermelonDB models instead of direct Supabase calls.
+For offline-first data (projects, deployments, devices, device_preparation), use WatermelonDB models instead of direct Supabase calls.
 
 ```typescript
 import { database } from '../database';

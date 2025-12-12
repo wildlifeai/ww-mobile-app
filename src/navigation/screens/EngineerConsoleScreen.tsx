@@ -6,6 +6,9 @@ import { Modal, Portal, IconButton, Button, useTheme } from 'react-native-paper'
 import { useAppSelector } from '../../redux'
 import { useBle } from '../../hooks/useBle'
 import { useBleCommands } from '../../hooks/useBleCommands'
+import { useGPSLocation } from '../../hooks/useGPSLocation'
+import { formatGPSString } from '../../utils/gpsUtils'
+import { useCapturePreview } from '../../hooks/useCapturePreview'
 import { BleConsoleOutput, ConsoleEntry } from '../../components/BleConsoleOutput'
 import { AppParams } from '../types'
 import { CommandControlTypes, CommandNames, COMMANDS } from '../../ble/types'
@@ -39,13 +42,23 @@ export const EngineerConsoleScreen = () => {
     const [isConnecting, setIsConnecting] = useState(false)
     const [isHelpVisible, setIsHelpVisible] = useState(false)
 
+    // Use capture preview hook
+    const { capturedImageUri: previewImageUri, isCapturing: isWaitingForCapture, startCapture } = useCapturePreview({
+        device: device,
+        logs: logs,
+        write: write,
+        onImageReceived: (imageUri) => {
+            console.log('[EngineerConsole] Image received:', imageUri)
+            setShowPreviewModal(true)
+        }
+    })
 
-    const [isWaitingForCapture, setIsWaitingForCapture] = useState(false)
-    const captureRetryTimeout = React.useRef<NodeJS.Timeout | null>(null)
+    // GPS location hook for SET_GPS command
+    const { location, isGettingLocation, getLocation } = useGPSLocation()
+
     const lastProcessedLog = React.useRef<string>("")
 
     // Image preview state
-    const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
     const [showPreviewModal, setShowPreviewModal] = useState(false)
 
     // Monitor logs and update console history
@@ -77,28 +90,6 @@ export const EngineerConsoleScreen = () => {
 
         // Check for automation triggers in the new lines
         const combinedNewLogs = newLines.join('\n')
-
-        // Automation: If waiting for capture and log contains "Captured", trigger download
-        if (isWaitingForCapture && combinedNewLogs.includes("Captured")) {
-            console.log("Capture confirmed, auto-triggering download...")
-
-            // Clear any pending retry
-            if (captureRetryTimeout.current) {
-                clearTimeout(captureRetryTimeout.current)
-                captureRetryTimeout.current = null
-            }
-
-            setIsWaitingForCapture(false)
-
-            const autoEntry: ConsoleEntry = {
-                id: Date.now().toString(),
-                timestamp: new Date(),
-                type: 'info',
-                content: 'Capture complete. Requesting file...'
-            }
-            setConsoleHistory(prev => [...prev, autoEntry])
-            write(device, ['AI txfile .'])
-        }
 
         // Automation: Handle Firmware Wakeup Logic
         if (isWaitingForCapture) {
@@ -133,21 +124,6 @@ export const EngineerConsoleScreen = () => {
 
     }, [logs, isWaitingForCapture, device, write])
 
-    // Listen for completed image downloads
-    useEffect(() => {
-        const handleImageComplete = (data: { filePath: string; filename: string }) => {
-            console.log('Image download complete:', data.filename)
-            setPreviewImageUri(data.filePath)
-            setShowPreviewModal(true)
-        }
-
-        imageReassemblerEmitter.on('complete', handleImageComplete)
-
-        return () => {
-            imageReassemblerEmitter.off('complete', handleImageComplete)
-        }
-    }, [])
-
     const handleSend = async (cmd?: string) => {
         const commandToSend = cmd || inputText.trim()
         if (!commandToSend || !device) return
@@ -163,12 +139,6 @@ export const EngineerConsoleScreen = () => {
         }
         setConsoleHistory(prev => [...prev, newEntry])
 
-        // Detect CAPTURE_PREVIEW or AI capture commands to enable auto-download
-        if (commandToSend.includes('AI capture') || commandToSend === CommandNames.CAPTURE_PREVIEW) {
-            console.log('Capture command detected, setting isWaitingForCapture = true')
-            setIsWaitingForCapture(true)
-        }
-
         try {
             await write(device, [commandToSend])
         } catch (error) {
@@ -183,6 +153,7 @@ export const EngineerConsoleScreen = () => {
     }
 
     const handleQuickAction = async (action: string) => {
+        console.log('[EngineerConsole] handleQuickAction called with:', action)
         if (!device) return
 
         let commandDisplay = action
@@ -190,25 +161,14 @@ export const EngineerConsoleScreen = () => {
             switch (action) {
                 // --- Top Priority ---
                 case 'Capture & Download':
-                    // Start automated flow
-                    setIsWaitingForCapture(true)
                     commandDisplay = 'AI capture 1 1 (Auto-download)'
-                    await write(device, ['AI capture 1 1'])
-
-                    // Robust Retry: If "Captured" doesn't arrive in 15s (wake up + execute), send it again.
-                    if (captureRetryTimeout.current) clearTimeout(captureRetryTimeout.current)
-
-                    captureRetryTimeout.current = setTimeout(() => {
-                        console.log("Capture timeout - Retrying command...")
-                        const retryEntry: ConsoleEntry = {
-                            id: Date.now().toString(),
-                            timestamp: new Date(),
-                            type: 'info',
-                            content: 'No confirmation (15s). Retrying...'
-                        }
-                        setConsoleHistory(prev => [...prev, retryEntry])
-                        write(device, ['AI capture 1 1'])
-                    }, 15000)
+                    try {
+                        console.log('[EngineerConsole] About to call startCapture()')
+                        await startCapture()
+                        console.log('[EngineerConsole] startCapture() completed')
+                    } catch (error) {
+                        console.error('[EngineerConsole] startCapture() threw error:', error)
+                    }
                     break
                 case 'Get Last Image':
                     commandDisplay = 'AI txfile .'
@@ -274,21 +234,6 @@ export const EngineerConsoleScreen = () => {
     const [lastImage, setLastImage] = useState<string | null>(null)
     const [isImageModalVisible, setIsImageModalVisible] = useState(false)
 
-    useEffect(() => {
-        const onImageComplete = (base64: string) => {
-            console.log('Image received, showing modal')
-            setLastImage(base64)
-            setIsImageModalVisible(true)
-            // Reset automation state just in case
-            setIsWaitingForCapture(false)
-        }
-
-        imageReassemblerEmitter.on('onImageComplete', onImageComplete)
-
-        return () => {
-            imageReassemblerEmitter.off('onImageComplete', onImageComplete)
-        }
-    }, [])
 
     const handleConnect = async () => {
         if (!device) return
@@ -315,12 +260,42 @@ export const EngineerConsoleScreen = () => {
         }
     }
 
-    const onRunHelpCommand = (cmdName: CommandNames) => {
+    const onRunHelpCommand = async (cmdName: CommandNames) => { // Added async here
         setIsHelpVisible(false)
 
         // Handle special command types
-        if (cmdName === CommandNames.CAPTURE_DOWNLOAD) {
-            handleQuickAction('Capture & Download')
+        if (cmdName === CommandNames.CAPTURE_PREVIEW) {
+            console.log('[EngineerConsole] CAPTURE_PREVIEW clicked, calling startCapture via hook')
+            startCapture()
+            return
+        }
+
+        if (cmdName === CommandNames.SET_GPS) {
+            console.log('[EngineerConsole] SET_GPS clicked, getting phone location')
+            try {
+                // Add timeout to prevent hanging
+                const locationPromise = getLocation()
+                const timeoutPromise = new Promise<null>((_, reject) =>
+                    setTimeout(() => reject(new Error('Location request timed out after 30 seconds')), 30000)
+                )
+
+                const loc = await Promise.race([locationPromise, timeoutPromise])
+
+                if (!loc) {
+                    console.error('[EngineerConsole] Failed to get GPS location (returned null)')
+                    return
+                }
+
+                console.log('[EngineerConsole] Location received, formatting GPS string...')
+                const gpsString = formatGPSString(loc.latitude, loc.longitude, loc.altitude)
+                console.log('[EngineerConsole] GPS string formatted:', gpsString)
+
+                await write(device, [[CommandNames.setgps, { control: CommandControlTypes.WRITE, value: gpsString }]])
+                console.log('[EngineerConsole] GPS command sent successfully:', { lat: loc.latitude, lon: loc.longitude, alt: loc.altitude })
+            } catch (error) {
+                console.error('[EngineerConsole] GPS error:', error)
+                Alert.alert('GPS Error', error instanceof Error ? error.message : 'Failed to set GPS location')
+            }
             return
         }
 
@@ -328,6 +303,7 @@ export const EngineerConsoleScreen = () => {
             handleQuickAction('Clear')
             return
         }
+
 
         // Default: execute the command normally
         const cmd = COMMANDS[cmdName]

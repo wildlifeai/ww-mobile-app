@@ -44,6 +44,7 @@ const store = configureStore({
 			serializableCheck: {
 				ignoredActions: ["persist/PERSIST"],
 			},
+			immutableCheck: { warnAfter: 1000 },
 		}).concat(
 			api.middleware,
 			enhancedApi.middleware,

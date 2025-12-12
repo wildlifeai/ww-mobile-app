@@ -2,12 +2,14 @@ import { useCallback } from "react"
 import { useBle } from "./useBle"
 import { CommandControlTypes, CommandNames } from "../ble/types"
 import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
+import { formatGPSString } from '../utils/gpsUtils'
 
 export const useBleCommands = () => {
     const { write, disconnectDevice } = useBle()
 
     // --- Device Info ---
     const getBatteryLevel = useCallback(async (peripheral: ExtendedPeripheral) => {
+        console.log('[BLE CMD] Sending battery level request to device:', peripheral.id)
         await write(peripheral, [[CommandNames.battery, { control: CommandControlTypes.READ }]])
     }, [write])
 
@@ -72,7 +74,15 @@ export const useBleCommands = () => {
 
     // --- AI ---
     const checkSdCard = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.aiinfo, { control: CommandControlTypes.READ }]])
+        console.log('[BLE CMD] Sending SD card check request (aiinfo) to device:', peripheral.id)
+        try {
+            // Send as raw string command like Engineer Console does
+            await write(peripheral, ['AI info'])
+            console.log('[BLE CMD] aiinfo command write completed successfully')
+        } catch (error) {
+            console.error('[BLE CMD] Failed to write aiinfo command:', error)
+            throw error
+        }
     }, [write])
 
     const captureTestImage = useCallback(async (peripheral: ExtendedPeripheral) => {
@@ -99,6 +109,27 @@ export const useBleCommands = () => {
         await write(peripheral, [[commandName, { control: CommandControlTypes.WRITE, value }]])
     }, [write])
 
+    const setOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number, value: string) => {
+        await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]])
+    }, [write])
+
+    const setGpsLocation = useCallback(
+        async (peripheral: ExtendedPeripheral, latitude: number, longitude: number, altitude: number) => {
+            try {
+                const gpsString = formatGPSString(latitude, longitude, altitude)
+                console.log('[BLE] Setting GPS location:', { latitude, longitude, altitude, gpsString })
+
+                await write(peripheral, [[CommandNames.setgps, { control: CommandControlTypes.WRITE, value: gpsString }]])
+
+                console.log('[BLE] GPS location set successfully')
+            } catch (error) {
+                console.error('[BLE] Failed to set GPS location:', error)
+                throw error
+            }
+        },
+        [write]
+    )
+
 
     return {
         // Device
@@ -124,6 +155,11 @@ export const useBleCommands = () => {
         // Debug
         runSelfTest,
         getHeartbeat,
-        flashLed
+        flashLed,
+        disconnectDevice,
+
+        // Settings
+        setOperationalParam,
+        setGpsLocation,
     }
 }

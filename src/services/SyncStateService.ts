@@ -25,6 +25,7 @@ export const SYNC_STATE_KEYS = {
     USER_ROLES_LAST_PULLED_AT: 'user_roles_last_pulled_at',
     DEVICES_LAST_PULLED_AT: 'devices_last_pulled_at',
     PROJECTS_LAST_PULLED_AT: 'projects_last_pulled_at',
+    DEVICE_PREP_LAST_PULLED_AT: 'device_prep_last_pulled_at',
 } as const
 
 export type SyncStateKey = typeof SYNC_STATE_KEYS[keyof typeof SYNC_STATE_KEYS]

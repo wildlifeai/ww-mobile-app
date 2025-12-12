@@ -29,13 +29,13 @@ import { useDeepLinking } from "../hooks/useDeepLinking"
 import { DeviceDiscoveryScreen } from "../screens/device/DeviceDiscoveryScreen"
 import { DeviceDetailsScreen } from "../screens/device/DeviceDetailsScreen"
 import { EngineerConsoleScreen } from "./screens/EngineerConsoleScreen"
-import { DevicePreparationScreen } from "./screens/DevicePreparationScreen"
+import { PrepareAndTestScreen } from "../screens/device/PrepareAndTestScreen"
 
 export interface RootStackParamList extends ParamListBase {
 	Notifications: undefined
 	Profile: undefined
 	Settings: undefined
-	Home: undefined
+	Home: { initialTab?: string } | undefined
 	DfuScreen: { deviceId: string }
 	Login: { confirmed?: boolean } | undefined
 	Register: undefined
@@ -52,6 +52,7 @@ export interface RootStackParamList extends ParamListBase {
 	DeviceDiscovery: { mode: 'prepare' | 'engineer' }
 	DeviceDetails: { deviceId: string }
 	EngineerConsoleScreen: { deviceId: string }
+	PrepareAndTest: { deviceId: string; bleDeviceId: string; selftestError?: string; setUtcError?: string }
 }
 
 export type Routes = keyof RootStackParamList
@@ -108,12 +109,7 @@ export const MainNavigation = () => {
 
 	return (
 		<AppDrawer>
-			<Stack.Navigator
-				initialRouteName="Home"
-				screenOptions={{
-					header: NavigationBar,
-				}}
-			>
+			<Stack.Navigator initialRouteName="Home">
 				{!["PoweredOn", "Unsupported"].includes(status) ? (
 					<Stack.Screen
 						name="BluetoothProblems"
@@ -139,11 +135,19 @@ export const MainNavigation = () => {
 						<Stack.Screen name="ForgotPassword" component={ForgotPassword} />
 					</Stack.Group>
 				) : (
-					<Stack.Group>
+					<Stack.Group
+						screenOptions={{
+							header: (props) => (
+								<NavigationBar
+									{...props}
+								/>
+							),
+						}}
+					>
 						<Stack.Screen
 							name="Home"
 							component={BottomTabs}
-							options={{ title: "" }}
+							options={{ headerShown: false }}
 						/>
 						<Stack.Screen
 							name="Notifications"
@@ -201,6 +205,11 @@ export const MainNavigation = () => {
 							name="EngineerConsoleScreen"
 							component={EngineerConsoleScreen}
 							options={{ title: "Engineer Console", headerTitleAlign: 'center' }}
+						/>
+						<Stack.Screen
+							name="PrepareAndTest"
+							component={PrepareAndTestScreen}
+							options={{ title: "Prepare & Test", headerTitleAlign: 'center' }}
 						/>
 						{__DEV__ && (
 							<>

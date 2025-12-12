@@ -59,7 +59,7 @@ export const MapScreen: React.FC = () => {
 
 	// Navigation Drawer Control
 	const { isOpen, setIsOpen } = useAppDrawer()
-	const { colors: { onBackground } } = useExtendedTheme()
+	const { colors } = useExtendedTheme()
 
 	/**
 	 * Debug logging
@@ -199,7 +199,7 @@ export const MapScreen: React.FC = () => {
 				/>
 			)}
 
-			{/* Map Controls (Zoom, Center) - Type selector disabled */}
+			{/* Map Controls - Center button only, no zoom */}
 			<MapControls
 				onZoomIn={zoomIn}
 				onZoomOut={zoomOut}
@@ -207,6 +207,7 @@ export const MapScreen: React.FC = () => {
 				onMapTypeChange={setMapType}
 				currentMapType={mapType}
 				showMapTypeSelector={false}
+				showZoomControls={false}
 			/>
 
 			{/* Custom Header with Hamburger Button - Top Left */}
@@ -229,7 +230,16 @@ export const MapScreen: React.FC = () => {
 				small
 			/>
 
-			{/* Mutually Exclusive Action Button - Bottom Center/Right */}
+			{/* Center on User Location - Bottom Left */}
+			<FAB
+				icon="crosshairs-gps"
+				style={styles.centerFab}
+				onPress={handleCenterUser}
+				color="#000"
+				small
+			/>
+
+			{/* Mutually Exclusive Action Button - Bottom Right */}
 			{hasActiveDeployment ? (
 				/* End Deployment Button - Shown ONLY if there is an active deployment */
 				<FAB
@@ -243,11 +253,11 @@ export const MapScreen: React.FC = () => {
 					}}
 				/>
 			) : (
-				/* Start Deployment Button - Shown ONLY if NO active deployment */
+				/* New Deployment Button - Shown ONLY if NO active deployment */
 				<FAB
-					icon="play"
-					label="Start Deployment"
-					style={[styles.actionFab, { backgroundColor: '#4CAF50' }]} // Green
+					icon="plus"
+					label="New Deployment"
+					style={[styles.actionFab, { backgroundColor: colors.primary }]}
 					color="#fff"
 					onPress={() => navigation.navigate('AddDeployment')}
 				/>
@@ -350,10 +360,16 @@ const styles = StyleSheet.create({
 		right: 16, // Move to right to balance with Menu button
 		elevation: 4,
 	},
-	actionFab: {
+	centerFab: {
 		position: "absolute",
 		bottom: 16,
 		left: 16,
-		right: undefined, // ensure it doesn't stretch
+		backgroundColor: "rgba(255, 255, 255, 0.9)",
+		elevation: 4,
+	},
+	actionFab: {
+		position: "absolute",
+		bottom: 16,
+		right: 16,
 	},
 })

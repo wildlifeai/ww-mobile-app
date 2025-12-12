@@ -1,7 +1,8 @@
 import { memo } from "react"
-import { StyleSheet, TouchableOpacity, View } from "react-native"
-import { WWText } from "./ui/WWText"
+import { StyleSheet, View } from "react-native"
+import { Card, Text, useTheme } from "react-native-paper"
 import { Deployment } from "../types/api.types"
+import { WWIcon } from "./ui/WWIcon"
 
 type Props = {
 	deployment: Deployment & { device_id?: string }
@@ -9,18 +10,19 @@ type Props = {
 }
 
 export const DeploymentCard = memo<Props>(({ deployment, onPress }) => {
+	const theme = useTheme()
+
 	const getStatusColor = () => {
-		// Not started = white, Active = green, Ended = red
-		if (!deployment.deployment_start) return "#FFFFFF"
+		if (!deployment.deployment_start) return theme.colors.onSurfaceDisabled
 		const now = new Date()
 		const start = new Date(deployment.deployment_start)
 		const end = deployment.deployment_end
 			? new Date(deployment.deployment_end)
 			: null
 
-		if (now < start) return "#FFFFFF" // Not started
+		if (now < start) return theme.colors.onSurfaceDisabled // Not started
 		if (!end || now < end) return "#4CAF50" // Active/Green
-		return "#F44336" // Ended/Red
+		return theme.colors.error // Ended/Red
 	}
 
 	const getStatusText = () => {
@@ -33,77 +35,129 @@ export const DeploymentCard = memo<Props>(({ deployment, onPress }) => {
 
 		if (now < start) return "Not started"
 		if (!end || now < end) {
-			// If active, show start date
 			return `Started ${start.toLocaleDateString()}`
 		}
 		return `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`
 	}
 
 	return (
-		<TouchableOpacity
-			style={styles.container}
+		<Card
+			mode="outlined"
+			style={styles.card}
 			onPress={() => onPress?.(deployment.id)}
 		>
-			<View style={styles.content}>
+			<Card.Content style={styles.content}>
+				{/* Header: Name and Status Dot */}
 				<View style={styles.header}>
-					<WWText variant="titleMedium">
+					<Text
+						variant="headlineSmall"
+						style={[styles.title, { color: theme.colors.onSurface }]}
+						numberOfLines={1}
+					>
 						{deployment.location_name ||
 							`Deployment #${deployment.id.slice(-4)}`}
-					</WWText>
+					</Text>
 					<View
 						style={[styles.statusDot, { backgroundColor: getStatusColor() }]}
 					/>
 				</View>
-				<WWText variant="bodyMedium" style={styles.date}>
-					{getStatusText()}
-				</WWText>
+
+				{/* Date / Status Text */}
+				<View style={styles.row}>
+					<WWIcon
+						source="calendar"
+						size={16}
+						color={theme.colors.onSurfaceVariant}
+						containerStyle={styles.icon}
+					/>
+					<Text
+						variant="bodyMedium"
+						style={{ color: theme.colors.onSurfaceVariant }}
+					>
+						{getStatusText()}
+					</Text>
+				</View>
+
+				{/* Stats (Placeholder or Real if available) */}
 				{deployment.device_id && (
-					<View style={styles.stats}>
-						<View style={styles.stat}>
-							<WWText variant="bodySmall">512 mb</WWText>
+					<View style={styles.statsRow}>
+						<View style={styles.statItem}>
+							<WWIcon
+								source="sd"
+								size={16}
+								color={theme.colors.onSurfaceVariant}
+								containerStyle={styles.icon}
+							/>
+							<Text
+								variant="bodySmall"
+								style={{ color: theme.colors.onSurfaceVariant }}
+							>
+								512 mb
+							</Text>
 						</View>
-						<View style={styles.stat}>
-							<WWText variant="bodySmall">50%</WWText>
+						<View style={styles.statItem}>
+							<WWIcon
+								source="battery"
+								size={16}
+								color={theme.colors.onSurfaceVariant}
+								containerStyle={styles.icon}
+							/>
+							<Text
+								variant="bodySmall"
+								style={{ color: theme.colors.onSurfaceVariant }}
+							>
+								50%
+							</Text>
 						</View>
 					</View>
 				)}
-			</View>
-		</TouchableOpacity>
+			</Card.Content>
+		</Card>
 	)
 })
 
 const styles = StyleSheet.create({
-	container: {
-		backgroundColor: "#424242",
-		borderRadius: 12,
+	card: {
 		marginBottom: 12,
-		overflow: "hidden",
+		elevation: 0,
 	},
 	content: {
-		padding: 16,
+		paddingVertical: 12,
 	},
 	header: {
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "center",
-		marginBottom: 4,
+		marginBottom: 8,
+	},
+	title: {
+		fontWeight: "600",
+		flex: 1,
+		marginRight: 8,
 	},
 	statusDot: {
 		width: 12,
 		height: 12,
 		borderRadius: 6,
 	},
-	date: {
-		opacity: 0.7,
+	row: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 4,
 	},
-	stats: {
+	icon: {
+		marginRight: 6,
+	},
+	statsRow: {
 		flexDirection: "row",
 		marginTop: 8,
 		gap: 16,
+		paddingTop: 8,
+		borderTopWidth: 1,
+		borderTopColor: "rgba(0, 0, 0, 0.08)",
 	},
-	stat: {
+	statItem: {
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 4,
 	},
 })

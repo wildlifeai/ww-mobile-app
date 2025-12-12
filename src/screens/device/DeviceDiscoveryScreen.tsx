@@ -5,6 +5,7 @@ import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
 import { useBleActions } from '../../providers/BleEngineProvider'
+import { useBleCommands } from '../../hooks/useBleCommands'
 import { useAppSelector } from '../../redux'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { ActivityIndicator } from 'react-native-paper'
@@ -21,9 +22,12 @@ export const DeviceDiscoveryScreen = () => {
     const route = useRoute<DeviceDiscoveryScreenRouteProp>()
     const isFocused = useIsFocused()
     const { isBleConnecting, startScan, connectDevice, disconnectDevice } = useBleActions()
+    const { runSelfTest, setUtc } = useBleCommands()
     const devices = useAppSelector((state) => state.devices)
+    const logs = useAppSelector((state) => state.logs)
     const { isScanning } = useAppSelector((state) => state.scanning)
     const currentOrganisation = useAppSelector(selectCurrentOrganisation)
+    const user = useAppSelector((state) => state.authentication.user)
 
     const mode = route.params?.mode || 'prepare' // Default to 'prepare' if not specified
 
@@ -112,13 +116,14 @@ export const DeviceDiscoveryScreen = () => {
 
                     // 3. If not found, create it
                     if (!dbDevice) {
-                        if (currentOrganisation?.id) {
+                        if (currentOrganisation?.id && user?.id) {
                             log(`Creating device in DB for org ${currentOrganisation.id}...`)
                             try {
                                 dbDevice = await DeviceService.createDevice(
                                     device.id,
                                     device.name || 'Unknown Device',
-                                    currentOrganisation.id
+                                    currentOrganisation.id,
+                                    user.id
                                 )
                                 log(`Device created: ${dbDevice?.id}`)
                             } catch (error) {
@@ -127,15 +132,20 @@ export const DeviceDiscoveryScreen = () => {
                                 dbDevice = await DeviceService.getDeviceByBluetoothId(device.id)
                             }
                         } else {
-                            log('No organisation selected')
-                            Alert.alert('Error', 'No organisation selected. Cannot create device.')
+                            log('No organisation or user selected')
+                            Alert.alert('Error', 'No organisation selected or user not logged in. Cannot create device.')
                             await disconnectDevice(device)
                             setProcessing(false)
                             return
                         }
                     }
 
-                    if (mode === 'prepare') {
+                    if (mode === 'engineer') {
+                        // Navigate to engineer console
+                        (navigation as any).navigate('EngineerConsole', {
+                            deviceId: device.id
+                        })
+                    } else if (mode === 'prepare') {
                         // Check deployment status
                         if (dbDevice) {
                             const status = await DeviceService.calculateDeviceStatus(dbDevice.id)
@@ -150,10 +160,12 @@ export const DeviceDiscoveryScreen = () => {
                             }
                         }
 
-                        // Navigate to Prepare and Test
+                        // Navigate directly to Prepare and Test without initialization
                         if (dbDevice) {
-                            // log(`Navigating to PrepareAndTest with ID ${dbDevice.id}`)
-                            (navigation as any).navigate('PrepareAndTest', { deviceId: dbDevice.id })
+                            (navigation as any).navigate('PrepareAndTest', {
+                                deviceId: dbDevice.id,
+                                bleDeviceId: connectedDevice.id,
+                            })
                         }
                     }
                 }

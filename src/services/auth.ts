@@ -412,9 +412,12 @@ export const setupAuthListener = (
 				if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
 					// Import dynamically to avoid circular dependency
 					const { default: SupabaseSyncService } = await import('./SupabaseSyncService')
+					const { default: ReferenceDataService } = await import('./ReferenceDataService')
+
 					// Trigger sync after a short delay to ensure auth is fully set up
 					setTimeout(() => {
 						SupabaseSyncService.debouncedSync()
+						ReferenceDataService.syncReferenceData()
 					}, 1000)
 				}
 			} else {

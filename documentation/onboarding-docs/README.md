@@ -93,6 +93,13 @@ Your entry point to the Wildlife Watcher app. Get oriented quickly with the proj
 - `src/services/database.ts` - Typed Supabase operations
 - `src/types/supabase.ts` - Generated TypeScript types
 
+**Work with BLE Commands**:
+- [BLE Architecture Guide](../ble-architecture-guide.md) - **Read this first!**
+- `src/ble/types.ts` - Command definitions (single source of truth)
+- `src/hooks/useBleCommands.ts` - Individual command hooks
+- `src/hooks/useCapturePreview.ts` - Image capture process
+- `src/navigation/screens/EngineerConsoleScreen.tsx` - Testing & reference
+
 ### Getting Help
 
 1. **Documentation First**: Check these guides for patterns and examples

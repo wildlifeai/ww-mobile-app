@@ -1,16 +1,26 @@
 import { Q } from '@nozbe/watermelondb'
 import database from '../database'
 import DevicePreparation from '../database/models/DevicePreparation'
+import OutboxService from './OutboxService'
+import SupabaseSyncService from './SupabaseSyncService'
 
 export const DevicePreparationService = {
     /**
      * Create a new device preparation record
      */
+    /**
+     * Create a new device preparation record
+     */
     createPreparation: async (deviceId: string, projectId: string, modifiedBy: string): Promise<DevicePreparation> => {
-        return await database.write(async () => {
+        console.log('[DevPrepService] Creating preparation for device:', deviceId, 'project:', projectId)
+
+        let newPrep: DevicePreparation | undefined
+
+        await database.write(async () => {
             const preparationsCollection = database.get<DevicePreparation>('device_preparation')
 
-            return await preparationsCollection.create((preparation) => {
+            // 1. Prepare record
+            newPrep = preparationsCollection.prepareCreate((preparation) => {
                 preparation.deviceId = deviceId
                 preparation.projectId = projectId
                 preparation.modifiedBy = modifiedBy
@@ -23,7 +33,27 @@ export const DevicePreparationService = {
                 preparation.firmwareUpdated = false
                 preparation.lorawanRegistrationCompleted = false
             })
+
+            // 2. Prepare outbox record
+            const outboxOp = OutboxService.recordOperation({
+                operation: 'CREATE',
+                tableName: 'device_preparation',
+                recordId: newPrep.id,
+                payload: mapModelToPayload(newPrep),
+                userId: modifiedBy || undefined, // modifiedBy holds the user ID
+            })
+
+            // 3. Execute batch
+            await database.batch(newPrep, outboxOp)
+            console.log('[DevPrepService] Created preparation and outbox record:', newPrep.id)
         })
+
+        if (!newPrep) throw new Error("Failed to create preparation instance")
+
+        // Trigger background sync
+        SupabaseSyncService.debouncedSync()
+
+        return newPrep
     },
 
     /**
@@ -44,11 +74,14 @@ export const DevicePreparationService = {
             lorawanNetwork: string
         }>
     ): Promise<DevicePreparation> => {
-        return await database.write(async () => {
+        console.log('[DevPrepService] Updating preparation:', preparationId, updates)
+
+        await database.write(async () => {
             const preparationsCollection = database.get<DevicePreparation>('device_preparation')
             const preparation = await preparationsCollection.find(preparationId)
 
-            return await preparation.update((prep) => {
+            // 1. Prepare update
+            const prepUpdate = preparation.prepareUpdate((prep) => {
                 if (updates.batteryCheckPassed !== undefined) prep.batteryCheckPassed = updates.batteryCheckPassed
                 if (updates.cameraViewTestPassed !== undefined) prep.cameraViewTestPassed = updates.cameraViewTestPassed
                 if (updates.firmwareCheckPassed !== undefined) prep.firmwareCheckPassed = updates.firmwareCheckPassed
@@ -60,22 +93,63 @@ export const DevicePreparationService = {
                 if (updates.deviceEui) prep.deviceEui = updates.deviceEui
                 if (updates.lorawanNetwork) prep.lorawanNetwork = updates.lorawanNetwork
             })
+
+            // 2. Prepare outbox record
+            const outboxOp = OutboxService.recordOperation({
+                operation: 'UPDATE',
+                tableName: 'device_preparation',
+                recordId: preparation.id,
+                payload: mapModelToPayload(preparation), // Using prepared updated state by WatermelonDB magic or just current? 
+                // Note: WatermelonDB prepareUpdate mutates the model in memory immediately for the batch, so this payload will reflect updates.
+                userId: preparation.modifiedBy || undefined,
+            })
+
+            // 3. Execute batch
+            await database.batch(prepUpdate, outboxOp)
         })
+
+        // Trigger background sync
+        SupabaseSyncService.debouncedSync()
+
+        const preparationsCollection = database.get<DevicePreparation>('device_preparation')
+        return await preparationsCollection.find(preparationId)
     },
 
     /**
      * Complete a device preparation
      */
     completePreparation: async (preparationId: string, isDeploymentReady: boolean): Promise<DevicePreparation> => {
-        return await database.write(async () => {
+        console.log('[DevPrepService] Completing preparation:', preparationId, 'ready:', isDeploymentReady)
+
+        await database.write(async () => {
             const preparationsCollection = database.get<DevicePreparation>('device_preparation')
             const preparation = await preparationsCollection.find(preparationId)
 
-            return await preparation.update((prep) => {
+            // 1. Prepare update
+            const prepUpdate = preparation.prepareUpdate((prep) => {
                 prep.status = 'completed'
                 prep.isDeploymentReady = isDeploymentReady
             })
+
+            // 2. Prepare outbox record
+            const outboxOp = OutboxService.recordOperation({
+                operation: 'UPDATE',
+                tableName: 'device_preparation',
+                recordId: preparation.id,
+                payload: mapModelToPayload(preparation),
+                userId: preparation.modifiedBy || undefined,
+            })
+
+            // 3. Execute batch
+            await database.batch(prepUpdate, outboxOp)
+            console.log('[DevPrepService] Preparation completed and queued for sync:', preparation.id)
         })
+
+        // Trigger background sync
+        SupabaseSyncService.debouncedSync()
+
+        const preparationsCollection = database.get<DevicePreparation>('device_preparation')
+        return await preparationsCollection.find(preparationId)
     },
 
     /**
@@ -86,9 +160,27 @@ export const DevicePreparationService = {
             const preparationsCollection = database.get<DevicePreparation>('device_preparation')
             const preparation = await preparationsCollection.find(preparationId)
 
-            return await preparation.update((prep) => {
+            // 1. Prepare update
+            const prepUpdate = preparation.prepareUpdate((prep) => {
                 prep.status = 'cancelled'
             })
+
+            // 2. Prepare outbox record
+            const outboxOp = OutboxService.recordOperation({
+                operation: 'UPDATE',
+                tableName: 'device_preparation',
+                recordId: preparation.id,
+                payload: mapModelToPayload(preparation),
+                userId: preparation.modifiedBy || undefined,
+            })
+
+            // 3. Execute batch
+            await database.batch(prepUpdate, outboxOp)
+
+            // Trigger background sync
+            SupabaseSyncService.debouncedSync()
+
+            return preparation
         })
     },
 
@@ -116,13 +208,35 @@ export const DevicePreparationService = {
             Q.where('status', 'in_progress')
         ).fetch()
 
+        if (inProgressPreparations.length === 0) return
+
         await database.write(async () => {
+            const batchOperations = []
+
             for (const prep of inProgressPreparations) {
-                await prep.update((p) => {
+                // 1. Prepare update
+                const prepUpdate = prep.prepareUpdate((p) => {
                     p.status = 'cancelled'
                 })
+                batchOperations.push(prepUpdate)
+
+                // 2. Prepare outbox record
+                const outboxOp = OutboxService.recordOperation({
+                    operation: 'UPDATE',
+                    tableName: 'device_preparation',
+                    recordId: prep.id,
+                    payload: mapModelToPayload(prep),
+                    userId: prep.modifiedBy || undefined,
+                })
+                batchOperations.push(outboxOp)
             }
+
+            // 3. Execute batch
+            await database.batch(...batchOperations)
         })
+
+        // Trigger background sync
+        SupabaseSyncService.debouncedSync()
     },
 
     /**
@@ -160,4 +274,36 @@ export const DevicePreparationService = {
         await DevicePreparationService.cancelInProgressPreparations(deviceId)
         return await DevicePreparationService.createPreparation(deviceId, projectId, modifiedBy)
     },
+}
+
+/**
+ * Helper to map model to plain object for sync (snake_case)
+ */
+function mapModelToPayload(model: DevicePreparation): any {
+    return {
+        id: model.id,
+        device_id: model.deviceId,
+        project_id: model.projectId || null,
+        ai_model_id: model.aiModelId || null,
+        ble_firmware_id: model.firmwareId || null,
+        status: model.status,
+        is_deployment_ready: model.isDeploymentReady,
+
+        // Check results - these might not all be needed by backend depending on logic but good to include
+        battery_check_passed: model.batteryCheckPassed,
+        camera_view_test_passed: model.cameraViewTestPassed,
+        firmware_check_passed: model.firmwareCheckPassed,
+        sd_card_check_passed: model.sdCardCheckPassed,
+        firmware_updated: model.firmwareUpdated,
+
+        // LoRaWAN
+        device_eui: model.deviceEui || null,
+        lorawan_network: model.lorawanNetwork || null,
+        lorawan_registration_completed: model.lorawanRegistrationCompleted,
+
+        modified_by: model.modifiedBy || null,
+        created_at: new Date(model.createdAt).toISOString(),
+        updated_at: new Date(model.updatedAt).toISOString(),
+        deleted_at: model.deletedAt ? new Date(model.deletedAt).toISOString() : null,
+    }
 }

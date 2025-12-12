@@ -1,0 +1,12 @@
+all_changes.txt
+app.config.ts
+changed_files.txt
+documentation/app-technical-guides/ble-architecture-guide.md
+documentation/onboarding-docs/02-DEVICE-PREPARATION.md
+git_changes.txt
+src/components/ui/StandardizedListLayout.tsx
+src/hooks/useCapturePreview.ts
+src/hooks/useDeviceSettings.ts
+src/hooks/useGPSLocation.ts
+src/utils/gpsUtils.ts
+untracked.txt

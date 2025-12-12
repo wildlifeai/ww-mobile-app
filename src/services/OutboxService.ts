@@ -1,8 +1,9 @@
 import { Q } from '@nozbe/watermelondb'
-import * as Crypto from 'expo-crypto'
+// import * as Crypto from 'expo-crypto' // Removed to use standardized helper
 import database from '../database'
 import SyncOutbox from '../database/models/SyncOutbox'
 import SyncStateService from './SyncStateService'
+import { generateUUID } from '../utils/uuid'
 
 /**
  * OutboxService
@@ -52,7 +53,7 @@ class OutboxService {
 
         try {
             // Generate unique operation ID for idempotency
-            const operationId = Crypto.randomUUID()
+            const operationId = generateUUID()
 
             // Get next Lamport clock for ordering
             // Use timestamp for operation ordering (simpler than Lamport clock with DB writes)

@@ -14,40 +14,31 @@
  */
 
 import React, { useState, useMemo, useCallback } from "react"
-import {
-	FlatList,
-	StyleSheet,
-	View,
-	ListRenderItemInfo,
-	RefreshControl,
-} from "react-native"
-import {
-	Searchbar,
-	FAB,
-	ActivityIndicator,
-	Text,
-	useTheme,
-	Button,
-} from "react-native-paper"
+import { ListRenderItemInfo } from "react-native"
 import { useGetProjectsQuery } from "../../redux/api/projectsApi"
 import { ProjectCard } from "../../components/ProjectCard"
-import { WWScreenView } from "../../components/ui/WWScreenView"
-import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import type { ProjectWithDetails } from "../../types/project"
+import { useAppSelector } from "../../redux"
+import { StandardizedListLayout } from "../../components/ui/StandardizedListLayout"
 
 export const Projects = () => {
 	const navigation = useAppNavigation()
-	const theme = useTheme()
 
-	// Query projects for current organisation (RLS handles filtering)
+	// Query projects for current organisation
+	const userId = useAppSelector((state) => state.authentication.user?.id)
+	const organisationId = useAppSelector((state) => state.authentication.currentOrganisation?.id)
+
 	const {
 		data: projects,
 		isLoading,
 		isFetching,
 		error,
 		refetch,
-	} = useGetProjectsQuery()
+	} = useGetProjectsQuery(
+		{ userId: userId!, organisationId: organisationId! },
+		{ skip: !userId || !organisationId }
+	)
 
 	// Search state
 	const [searchQuery, setSearchQuery] = useState("")
@@ -69,21 +60,15 @@ export const Projects = () => {
 	// Navigation handlers
 	const handleProjectPress = useCallback(
 		(projectId: string) => {
-			console.log(
-				"🎯 Projects - Navigating to ProjectDetailsScreen:",
-				projectId,
-			)
 			navigation.navigate("ProjectDetailsScreen", { projectId })
 		},
 		[navigation],
 	)
 
 	const handleCreateProject = useCallback(() => {
-		console.log("🎯 Projects - Navigating to NewProjectScreen")
 		navigation.navigate("NewProjectScreen")
 	}, [navigation])
 
-	// FlatList optimization
 	const renderItem = useCallback(
 		({ item }: ListRenderItemInfo<ProjectWithDetails>) => (
 			<ProjectCard project={item} onPress={() => handleProjectPress(item.id)} />
@@ -93,236 +78,23 @@ export const Projects = () => {
 
 	const keyExtractor = useCallback((item: ProjectWithDetails) => item.id, [])
 
-	const getItemLayout = useCallback(
-		(_: ArrayLike<ProjectWithDetails> | null | undefined, index: number) => ({
-			length: ITEM_HEIGHT,
-			offset: ITEM_HEIGHT * index,
-			index,
-		}),
-		[],
-	)
-
-	// Loading state
-	if (isLoading && !projects) {
-		return (
-			<WWScreenView scrollable={false}>
-				<View style={styles.centerContainer}>
-					<ActivityIndicator size="large" testID="loading-indicator" />
-					<Text
-						variant="bodyMedium"
-						style={[
-							styles.loadingText,
-							{ color: theme.colors.onSurfaceVariant },
-						]}
-					>
-						Loading projects...
-					</Text>
-				</View>
-			</WWScreenView>
-		)
-	}
-
-	// Error state
-	if (error && !projects) {
-		return (
-			<WWScreenView scrollable={false}>
-				<View style={styles.centerContainer}>
-					<Text
-						variant="headlineSmall"
-						style={[styles.errorTitle, { color: theme.colors.error }]}
-					>
-						Failed to load projects
-					</Text>
-					<Text
-						variant="bodyMedium"
-						style={[
-							styles.errorMessage,
-							{ color: theme.colors.onSurfaceVariant },
-						]}
-					>
-						{error && typeof error === "object" && "error" in error
-							? String(error.error)
-							: "An unexpected error occurred"}
-					</Text>
-					<Button
-						mode="contained"
-						onPress={() => refetch()}
-						style={styles.retryButton}
-					>
-						Retry
-					</Button>
-				</View>
-			</WWScreenView>
-		)
-	}
-
-	// Empty state
-	if (!projects || projects.length === 0) {
-		return (
-			<WWScreenView scrollable={false}>
-				<OfflineIndicator />
-				<View style={styles.centerContainer}>
-					<Text
-						variant="headlineSmall"
-						style={[styles.emptyTitle, { color: theme.colors.onSurface }]}
-					>
-						No projects yet
-					</Text>
-					<Text
-						variant="bodyMedium"
-						style={[
-							styles.errorMessage,
-							{ color: theme.colors.onSurfaceVariant },
-						]}
-					>
-						Create your first project to start managing wildlife camera
-						deployments
-					</Text>
-					<Button
-						mode="contained"
-						icon="plus"
-						onPress={handleCreateProject}
-						style={styles.createButton}
-						testID="create-first-project-button"
-					>
-						Create Project
-					</Button>
-				</View>
-			</WWScreenView>
-		)
-	}
-
 	return (
-		<View style={styles.container}>
-			<OfflineIndicator />
-
-			{/* Search Bar */}
-			<View style={styles.searchContainer}>
-				<Searchbar
-					placeholder="Search projects..."
-					onChangeText={setSearchQuery}
-					value={searchQuery}
-					style={styles.searchbar}
-					testID="project-search-bar"
-					accessibilityLabel="Search projects by name or description"
-				/>
-			</View>
-
-			{/* Projects List */}
-			<FlatList
-				data={filteredProjects}
-				renderItem={renderItem}
-				keyExtractor={keyExtractor}
-				getItemLayout={getItemLayout}
-				contentContainerStyle={styles.listContent}
-				refreshControl={
-					<RefreshControl
-						refreshing={isFetching && !isLoading}
-						onRefresh={refetch}
-						colors={[theme.colors.primary]}
-						tintColor={theme.colors.primary}
-						testID="refresh-control"
-					/>
-				}
-				ListEmptyComponent={
-					searchQuery ? (
-						<View style={styles.emptySearchContainer}>
-							<Text
-								variant="bodyLarge"
-								style={{ color: theme.colors.onSurfaceVariant }}
-							>
-								No projects found matching "{searchQuery}"
-							</Text>
-						</View>
-					) : null
-				}
-				maxToRenderPerBatch={10}
-				windowSize={10}
-				removeClippedSubviews={true}
-				initialNumToRender={10}
-				testID="projects-list"
-			/>
-
-			{/* Floating Action Button */}
-			<FAB
-				icon="plus"
-				style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-				onPress={handleCreateProject}
-				label="New Project"
-				testID="new-project-fab"
-				accessibilityLabel="Create new project"
-			/>
-		</View>
+		<StandardizedListLayout
+			data={filteredProjects}
+			renderItem={renderItem}
+			keyExtractor={keyExtractor}
+			isLoading={isLoading}
+			isFetching={isFetching}
+			onRefresh={refetch}
+			error={error}
+			onRetry={refetch}
+			searchQuery={searchQuery}
+			onSearchChange={setSearchQuery}
+			searchPlaceholder="Search projects..."
+			primaryActionLabel="New Project"
+			onPrimaryAction={handleCreateProject}
+			emptyStateTitle="No projects yet"
+			emptyStateMessage="Create your first project to start managing wildlife camera deployments"
+		/>
 	)
 }
-
-// Estimated item height for FlatList optimization
-const ITEM_HEIGHT = 180
-
-const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-	},
-	searchContainer: {
-		paddingHorizontal: 16,
-		paddingVertical: 8,
-		backgroundColor: "transparent",
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
-	},
-	searchbar: {
-		elevation: 0,
-		flex: 1,
-	},
-	notificationButton: {
-		margin: 0,
-	},
-	listContent: {
-		paddingHorizontal: 16,
-		paddingBottom: 100, // Space for FAB
-	},
-	centerContainer: {
-		flex: 1,
-		justifyContent: "center",
-		alignItems: "center",
-		padding: 32,
-	},
-	loadingText: {
-		marginTop: 16,
-	},
-	errorTitle: {
-		marginBottom: 8,
-		textAlign: "center",
-	},
-	errorMessage: {
-		marginBottom: 24,
-		textAlign: "center",
-	},
-	retryButton: {
-		marginTop: 8,
-	},
-	emptyTitle: {
-		marginBottom: 8,
-		textAlign: "center",
-		fontWeight: "600",
-	},
-	emptyMessage: {
-		marginBottom: 24,
-		textAlign: "center",
-		maxWidth: 280,
-	},
-	createButton: {
-		marginTop: 8,
-	},
-	emptySearchContainer: {
-		paddingVertical: 32,
-		alignItems: "center",
-	},
-	fab: {
-		position: "absolute",
-		margin: 16,
-		right: 0,
-		bottom: 0,
-	},
-})

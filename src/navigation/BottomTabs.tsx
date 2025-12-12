@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { BottomNavigation } from "react-native-paper"
+import { useRoute, RouteProp } from "@react-navigation/native"
+import { RootStackParamList } from "./index"
 import { Deployments } from "./screens/Deployments"
 import { Maps } from "./screens/Maps"
 import { Projects } from "./screens/Projects"
@@ -12,7 +14,7 @@ import { useAppNavigation } from "../hooks/useAppNavigation"
 const routes = [
 	{
 		key: "maps",
-		title: "Maps",
+		title: "Map",
 		focusedIcon: "map",
 		unfocusedIcon: "map-outline",
 	},
@@ -24,7 +26,7 @@ const routes = [
 	},
 	{
 		key: "deployment",
-		title: "Deployment",
+		title: "Deployments",
 		focusedIcon: "upload",
 		unfocusedIcon: "upload-outline",
 	},
@@ -52,8 +54,15 @@ export const BottomTabs = () => {
 	const [invitationCount, setInvitationCount] = useState(0)
 	const { colors } = useExtendedTheme()
 	const navigation = useAppNavigation()
+	const route = useRoute<RouteProp<RootStackParamList, "Home">>()
 
-	// ...
+	useEffect(() => {
+		if (route.params?.initialTab === "devices") {
+			setIndex(3)
+			// Clear params so it doesn't keep resetting on re-renders/focus
+			navigation.setParams({ initialTab: undefined })
+		}
+	}, [route.params?.initialTab])
 
 
 	return (

@@ -16,6 +16,7 @@ interface MapControlsProps {
 	onMapTypeChange: (type: MapType) => void
 	currentMapType: MapType
 	showMapTypeSelector?: boolean
+	showZoomControls?: boolean
 }
 
 export const MapControls: React.FC<MapControlsProps> = ({
@@ -25,38 +26,32 @@ export const MapControls: React.FC<MapControlsProps> = ({
 	onMapTypeChange,
 	currentMapType,
 	showMapTypeSelector = true,
+	showZoomControls = true,
 }) => {
 	const mapTypes: MapType[] = ["standard", "satellite", "hybrid"]
 
 	return (
 		<>
 			{/* Zoom Controls - Right Side */}
-			<View style={styles.zoomControls}>
-				<TouchableOpacity
-					style={styles.controlButton}
-					onPress={onZoomIn}
-					activeOpacity={0.7}
-				>
-					<Text style={styles.controlIcon}>+</Text>
-				</TouchableOpacity>
-				<View style={styles.controlDivider} />
-				<TouchableOpacity
-					style={styles.controlButton}
-					onPress={onZoomOut}
-					activeOpacity={0.7}
-				>
-					<Text style={styles.controlIcon}>−</Text>
-				</TouchableOpacity>
-			</View>
-
-			{/* Center on User - Bottom Right */}
-			<TouchableOpacity
-				style={styles.centerButton}
-				onPress={onCenterUser}
-				activeOpacity={0.7}
-			>
-				<Text style={styles.centerIcon}>⊙</Text>
-			</TouchableOpacity>
+			{showZoomControls && (
+				<View style={styles.zoomControls}>
+					<TouchableOpacity
+						style={styles.controlButton}
+						onPress={onZoomIn}
+						activeOpacity={0.7}
+					>
+						<Text style={styles.controlIcon}>+</Text>
+					</TouchableOpacity>
+					<View style={styles.controlDivider} />
+					<TouchableOpacity
+						style={styles.controlButton}
+						onPress={onZoomOut}
+						activeOpacity={0.7}
+					>
+						<Text style={styles.controlIcon}>−</Text>
+					</TouchableOpacity>
+				</View>
+			)}
 
 			{/* Map Type Selector - Top Right */}
 			{showMapTypeSelector && (

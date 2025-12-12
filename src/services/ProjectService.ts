@@ -20,6 +20,7 @@ import type {
 	CreateProjectInput,
 } from "../types/project"
 import UserRoleService from './UserRoleService'
+import UserRole from '../database/models/UserRole'
 
 class ProjectService {
 	private readonly projectsCollection = database.collections.get<Project>('projects')
@@ -33,29 +34,174 @@ class ProjectService {
 	}
 
 	/**
-	 * Get all projects for current user's organisation
-	 * Reads from local WatermelonDB
+	 * Get projects that current user has access to
+	 * Logic mirrors DeviceService.getDevicesForUser
 	 */
-	async getUserProjects(organisationId: string): Promise<ProjectWithDetails[]> {
+	async getProjectsForUser(userId: string): Promise<ProjectWithDetails[]> {
 		try {
-			console.log("📂 Reading projects from WatermelonDB for org:", organisationId)
+			// 1. Get user's accessible project IDs via user_roles
+			const userRolesCollection = database.collections.get<UserRole>('user_roles')
+			const userRoles = await userRolesCollection.query(
+				Q.where('user_id', userId),
+				Q.where('is_active', true)
+			).fetch()
 
-			const projects = await this.projectsCollection
-				.query(
-					Q.where('organisation_id', organisationId),
-					// Q.where('deleted_at', null) // WatermelonDB filters deleted records by default
-				)
-				.fetch()
+			// 2. Build set of accessible project IDs
+			const projectIds = new Set<string>()
 
-			console.log(`✅ Found ${projects.length} projects in WatermelonDB`)
+			// Check for global admin
+			const isGlobalAdmin = userRoles.some(r => r.scopeType === 'global')
+			if (isGlobalAdmin) {
+				// Return all projects
+				const allProjects = await this.projectsCollection.query().fetch()
+				return await Promise.all(allProjects.map(p => this.enrichProjectWithDetails(p)))
+			}
 
-			// Map concurrently
+			// Process other roles
+			for (const role of userRoles) {
+				if (role.scopeType === 'project' && role.scopeId) {
+					projectIds.add(role.scopeId)
+				} else if (role.scopeType === 'organisation' && role.scopeId) {
+					// Only fetch all projects if user is an Admin in this organisation
+					// 'project_admin' at organisation scope = Organisation Admin
+					// 'ww_admin' = System Admin (already handled by global check, but safely included here)
+					if (role.role === 'project_admin' || role.role === 'ww_admin') {
+						const orgProjects = await this.projectsCollection.query(
+							Q.where('organisation_id', role.scopeId),
+							Q.where('is_active', true)
+						).fetch()
+						orgProjects.forEach(p => projectIds.add(p.id))
+					}
+					// If they are just 'organisation_member' (or similar), they get NO projects from this role.
+					// They must rely on specific 'project' scoped roles.
+				}
+			}
+
+			// 3. Optimistic UI: Also fetch projects created by the user locally
+			// This ensures immediate visibility even before role sync
+			const createdProjects = await this.projectsCollection.query(
+				Q.where('created_by', userId),
+				Q.where('is_active', true)
+			).fetch()
+			createdProjects.forEach(p => projectIds.add(p.id))
+
+			if (projectIds.size === 0) {
+				return []
+			}
+
+			// 4. Fetch all projects by ID
+			const projects = await this.projectsCollection.query(
+				Q.where('id', Q.oneOf(Array.from(projectIds)))
+			).fetch()
+
 			return await Promise.all(projects.map(p => this.enrichProjectWithDetails(p)))
+
 		} catch (error) {
-			console.error("❌ Failed to fetch projects from WatermelonDB:", error)
-			throw new Error(
-				`Failed to fetch projects: ${error instanceof Error ? error.message : String(error)}`
+			console.error("❌ Failed to fetch user projects:", error)
+			return []
+		}
+	}
+
+	/**
+	 * Get projects for user in a specific organisation
+	 * Restricts based on user roles:
+	 * - Global/Org Admin: Sees all projects in org
+	 * - Project Member: Sees only assigned projects
+	 * - Organisation Member: Sees only assigned projects (unless specific project roles exist)
+	 */
+	async getProjectsForUserInOrganisation(userId: string, organisationId: string): Promise<ProjectWithDetails[]> {
+		try {
+			console.log(`📂 Fetching projects for user ${userId} in org ${organisationId}`)
+
+			// 1. Get user's roles
+			const userRolesCollection = database.collections.get<UserRole>('user_roles')
+			const userRoles = await userRolesCollection.query(
+				Q.where('user_id', userId),
+				Q.where('is_active', true)
+			).fetch()
+
+			// 2. Check for Admin privileges
+			const isGlobalAdmin = userRoles.some(r => r.scopeType === 'global')
+			const isOrgAdmin = userRoles.some(r =>
+				r.scopeType === 'organisation' &&
+				r.scopeId === organisationId &&
+				r.role === 'project_admin' // Assuming 'project_admin' at org level means Org Admin, or if there's a specific 'organisation_admin' role check?
+				// Based on logs: role is 'organisation_member'. I should check for 'organisation_admin' or 'ww_admin'
 			)
+			// Checking UserRole definition: role is 'ww_admin' | 'project_admin' | 'project_member'
+			// Typically admin is handled via specific checks.
+			// Let's assume 'ww_admin' is global.
+			// 'project_admin' at organisation scope might be the "Org Admin".
+			// Let's verify what 'organisation_member' maps to.
+			// The log says: "role": "organisation_member" in the fetch output, but that might be from a different view.
+			// In UserRole.ts, roles are 'ww_admin' | 'project_admin' | 'project_member'.
+			// If scopeType is 'organisation', 'project_admin' likely means Organisation Admin.
+
+			// Let's be safe: if they have 'project_admin' (which seems to be the highest non-global role) at ORG scope, they see all.
+			// If they are 'ww_admin', they see all.
+
+			const hasFullAccess = userRoles.some(r =>
+				r.scopeType === 'global' ||
+				(r.scopeType === 'organisation' && r.scopeId === organisationId && r.role === 'project_admin') ||
+				(r.scopeType === 'organisation' && r.scopeId === organisationId && r.role === 'ww_admin')
+			)
+
+			if (hasFullAccess) {
+				console.log("✅ User has full access (Admin), fetching all projects in org")
+				const allProjects = await this.projectsCollection.query(
+					Q.where('organisation_id', organisationId)
+				).fetch()
+				return await Promise.all(allProjects.map(p => this.enrichProjectWithDetails(p)))
+			}
+
+			// 3. Filter specific projects
+			// Find all roles with scope_type='project'
+			const accessibleProjectIds = new Set<string>()
+
+			userRoles.forEach(r => {
+				if (r.scopeType === 'project' && r.scopeId) {
+					accessibleProjectIds.add(r.scopeId)
+				}
+			})
+
+			// 4. Also always include projects created by the user in this organisation (Optimistic UI)
+			// This covers the case where the user just created a project but the 'admin' role hasn't synced back from server yet.
+			const createdProjects = await this.projectsCollection.query(
+				Q.where('created_by', userId),
+				Q.where('organisation_id', organisationId),
+				Q.where('is_active', true)
+			).fetch()
+
+			console.log(`✅ Found ${createdProjects.length} locally created projects`)
+
+			// 5. Fetch role-accessible projects
+			let roleProjects: Project[] = []
+			if (accessibleProjectIds.size > 0) {
+				const projects = await this.projectsCollection.query(
+					Q.where('id', Q.oneOf(Array.from(accessibleProjectIds)))
+				).fetch()
+				roleProjects = projects.filter(p => p.organisationId === organisationId)
+			}
+
+			// 6. Merge and Deduplicate
+			// Use a Map to deduplicate by ID
+			const projectMap = new Map<string, Project>()
+
+			// Add role projects first
+			roleProjects.forEach(p => projectMap.set(p.id, p))
+
+			// Add created projects (will overwrite duplicates, which is fine as they are the same record)
+			createdProjects.forEach(p => projectMap.set(p.id, p))
+
+			const uniqueProjects = Array.from(projectMap.values())
+
+			console.log(`✅ Total accessible projects (Roles + Created): ${uniqueProjects.length}`)
+
+			return await Promise.all(uniqueProjects.map(p => this.enrichProjectWithDetails(p)))
+
+		} catch (error) {
+			console.error("❌ Failed to fetch user projects:", error)
+			return []
 		}
 	}
 

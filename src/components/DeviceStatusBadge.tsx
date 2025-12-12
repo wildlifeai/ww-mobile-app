@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
+import { useTheme } from 'react-native-paper'
 import { WWText } from './ui/WWText'
 import { DeviceStatus } from '../types/device'
 
@@ -8,19 +9,21 @@ interface DeviceStatusBadgeProps {
 }
 
 export const DeviceStatusBadge: React.FC<DeviceStatusBadgeProps> = ({ status }) => {
+    const theme = useTheme()
+
     const getStatusConfig = () => {
         switch (status) {
             case 'deployed':
                 return {
                     label: 'Deployed',
-                    backgroundColor: '#10B981', // green-500
+                    backgroundColor: '#10B981', // Standard success green
                     color: '#FFFFFF',
                 }
             case 'prepared':
                 return {
                     label: 'Prepared',
-                    backgroundColor: '#3B82F6', // blue-500
-                    color: '#FFFFFF',
+                    backgroundColor: theme.colors.primary, // APP GREEN
+                    color: theme.colors.onPrimary,
                 }
             case 'needs_preparation':
                 return {
