@@ -38,6 +38,7 @@ export enum CommandNames {
 	// Process commands (UPPERCASE - app-specific workflows)
 	SET_UTC = "SET_UTC",
 	SET_GPS = "SET_GPS",
+	SET_DEPLOYMENT_ID = "SET_DEPLOYMENT_ID",
 	AI_CAPTURE = "AI_CAPTURE",
 	SET_NUM_PICTURES = "SET_NUM_PICTURES",
 	SET_PICTURE_INTERVAL = "SET_PICTURE_INTERVAL",
@@ -49,6 +50,7 @@ export enum CommandNames {
 	DISABLE_CAMERA = "DISABLE_CAMERA",
 	TX_FILE = "TX_FILE",
 	CAPTURE_PREVIEW = "CAPTURE_PREVIEW",
+	UPDATE_BLE_FIRMWARE = "UPDATE_BLE_FIRMWARE",
 
 	// Local commands (UPPERCASE - app-only actions)
 	CLEAR_CONSOLE = "CLEAR_CONSOLE",
@@ -365,6 +367,12 @@ export const COMMANDS: {
 		description: "Returns state machine state",
 		type: 'command',
 	},
+	[CommandNames.SET_DEPLOYMENT_ID]: {
+		name: CommandNames.SET_DEPLOYMENT_ID,
+		writeCommand: (id?: string) => `setdeploymentid ${id || ''}`.trim(),
+		description: "Set Deployment ID",
+		type: 'command',
+	},
 	[CommandNames.TX_FILE]: {
 		name: CommandNames.TX_FILE,
 		// "AI txfile ." requests the last captured file
@@ -376,6 +384,11 @@ export const COMMANDS: {
 		name: CommandNames.CAPTURE_PREVIEW,
 		writeCommand: () => "AI capture 1 0",
 		description: "Capture image for preview",
+		type: 'process',
+	},
+	[CommandNames.UPDATE_BLE_FIRMWARE]: {
+		name: CommandNames.UPDATE_BLE_FIRMWARE,
+		description: "Update BLE Firmware (DFU)",
 		type: 'process',
 	},
 	[CommandNames.CLEAR_CONSOLE]: {

@@ -23,7 +23,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 8,
+    version: 10,
     tables: [
         tableSchema({
             name: 'projects',
@@ -58,10 +58,11 @@ export default appSchema({
             name: 'deployments',
             columns: [
                 { name: 'project_id', type: 'string', isIndexed: true },
-                { name: 'user_id', type: 'string', isIndexed: true },
                 { name: 'device_id', type: 'string' },
                 { name: 'deployment_status_id', type: 'number', isOptional: true },
                 { name: 'capture_method_id', type: 'number', isOptional: true },
+                { name: 'activity_detection_sensitivity_id', type: 'number', isOptional: true },
+                { name: 'timelapse_interval_seconds', type: 'number', isOptional: true },
                 { name: 'name', type: 'string', isOptional: true },
                 { name: 'location_name', type: 'string' },
                 { name: 'location', type: 'string' }, // JSON stored as string
@@ -69,6 +70,14 @@ export default appSchema({
                 { name: 'longitude', type: 'number', isOptional: true },
                 { name: 'deployment_start', type: 'number' },
                 { name: 'deployment_end', type: 'number' },
+                { name: 'device_preparation_id', type: 'string', isIndexed: true },
+                { name: 'setup_by', type: 'string', isOptional: true },
+                { name: 'ended_by', type: 'string', isOptional: true },
+                { name: 'camera_height', type: 'number', isOptional: true },
+                { name: 'start_deployment_comments', type: 'string', isOptional: true },
+                { name: 'end_deployment_comments', type: 'string', isOptional: true },
+                { name: 'camera_location_image_paths', type: 'string', isOptional: true }, // JSON array
+                // Legacy / Conserved
                 { name: 'deployment_comments', type: 'string', isOptional: true },
                 { name: 'camera_location_description', type: 'string', isOptional: true },
                 { name: 'camera_location_image_path', type: 'string', isOptional: true },

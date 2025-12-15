@@ -53,6 +53,10 @@ export const useBleCommands = () => {
         await write(peripheral, [[CommandNames.SET_UTC, { control: CommandControlTypes.WRITE }]])
     }, [write])
 
+    const getUtc = useCallback(async (peripheral: ExtendedPeripheral) => {
+        await write(peripheral, [[CommandNames.getutc, { control: CommandControlTypes.READ }]])
+    }, [write])
+
 
     // --- LoRaWAN ---
     const getDevEui = useCallback(async (peripheral: ExtendedPeripheral) => {
@@ -95,6 +99,16 @@ export const useBleCommands = () => {
         await write(peripheral, [[CommandNames.selftest, { control: CommandControlTypes.WRITE }]])
     }, [write])
 
+    const enableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
+        console.log('[BLE CMD] Sending enable camera command to:', peripheral.id)
+        await write(peripheral, [[CommandNames.ENABLE_CAMERA, { control: CommandControlTypes.WRITE }]])
+    }, [write])
+
+    const disableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
+        console.log('[BLE CMD] Sending disable camera command to:', peripheral.id)
+        await write(peripheral, [[CommandNames.DISABLE_CAMERA, { control: CommandControlTypes.WRITE }]])
+    }, [write])
+
     const getHeartbeat = useCallback(async (peripheral: ExtendedPeripheral) => {
         await write(peripheral, [[CommandNames.heartbeat, { control: CommandControlTypes.READ }]])
     }, [write])
@@ -130,6 +144,31 @@ export const useBleCommands = () => {
         [write]
     )
 
+    const setMotionDetectInterval = useCallback(async (peripheral: ExtendedPeripheral, intervalMs: number) => {
+        await write(peripheral, [[CommandNames.SET_MOTION_DETECT_INTERVAL, { control: CommandControlTypes.WRITE, value: intervalMs.toString() }]])
+    }, [write])
+
+    const disableMotionDetect = useCallback(async (peripheral: ExtendedPeripheral) => {
+        await write(peripheral, [[CommandNames.DISABLE_MOTION_DETECT, { control: CommandControlTypes.WRITE }]])
+    }, [write])
+
+    const setTimelapseInterval = useCallback(async (peripheral: ExtendedPeripheral, intervalSec: number) => {
+        await write(peripheral, [[CommandNames.SET_TIMELAPSE_INTERVAL, { control: CommandControlTypes.WRITE, value: intervalSec.toString() }]])
+    }, [write])
+
+    const disableTimelapse = useCallback(async (peripheral: ExtendedPeripheral) => {
+        await write(peripheral, [[CommandNames.DISABLE_TIMELAPSE, { control: CommandControlTypes.WRITE }]])
+    }, [write])
+
+
+
+    const setDeploymentId = useCallback(
+        async (peripheral: ExtendedPeripheral, id: string) => {
+            console.log('[BLE CMD] Sending setdeploymentid command with ID:', id)
+            await write(peripheral, [[CommandNames.SET_DEPLOYMENT_ID, { control: CommandControlTypes.WRITE, value: id }]])
+        },
+        [write]
+    )
 
     return {
         // Device
@@ -144,6 +183,8 @@ export const useBleCommands = () => {
         runErase,
         runDisconnect,
         setUtc,
+        getUtc,
+        setDeploymentId,
         // LoRaWAN
         getDevEui,
         getAppEui,
@@ -157,9 +198,15 @@ export const useBleCommands = () => {
         getHeartbeat,
         flashLed,
         disconnectDevice,
+        enableCamera,
+        disableCamera,
 
         // Settings
         setOperationalParam,
         setGpsLocation,
+        setMotionDetectInterval,
+        disableMotionDetect,
+        setTimelapseInterval,
+        disableTimelapse,
     }
 }

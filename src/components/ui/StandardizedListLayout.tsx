@@ -44,6 +44,13 @@ interface StandardizedListLayoutProps<T> {
     secondaryActionIcon?: string
     secondaryActionColor?: string
 
+    // Filters
+    filterActions?: {
+        label: string
+        selected: boolean
+        onPress: () => void
+    }[]
+
     // Empty States
     emptyStateTitle: string
     emptyStateMessage: string
@@ -72,6 +79,7 @@ export function StandardizedListLayout<T>({
     onSecondaryAction,
     secondaryActionIcon = 'wrench',
     secondaryActionColor,
+    filterActions,
     emptyStateTitle,
     emptyStateMessage,
     emptySearchMessage,
@@ -233,6 +241,23 @@ const styles = StyleSheet.create({
         elevation: 0,
         flex: 1,
     },
+    filterContainer: {
+        maxHeight: 50,
+        marginBottom: 8,
+    },
+    filterContent: {
+        paddingHorizontal: 16,
+        gap: 8,
+    },
+    filterChip: {
+        borderRadius: 20,
+    },
+    filterChipLabel: {
+        fontSize: 12,
+        marginHorizontal: 8,
+        marginVertical: 2,
+    },
+
     menuFab: {
         position: 'absolute',
         top: 16,

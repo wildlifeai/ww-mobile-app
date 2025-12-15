@@ -233,6 +233,11 @@ class SupabaseSyncService {
                     payload.deleted_at = null
                 }
 
+                // Sanitize deployment_end (WatermelonDB uses 0/1970 epoch for null)
+                if (payload.deployment_end && (String(payload.deployment_end).startsWith('1970-01-01') || payload.deployment_end === 0)) {
+                    payload.deployment_end = null
+                }
+
                 // Ensure timestamps are present
                 const now = new Date().toISOString()
                 if (!payload.created_at) payload.created_at = now

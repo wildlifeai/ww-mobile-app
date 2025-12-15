@@ -3,8 +3,35 @@ import database from '../database'
 import DevicePreparation from '../database/models/DevicePreparation'
 import OutboxService from './OutboxService'
 import SupabaseSyncService from './SupabaseSyncService'
+import { getSupabaseClient } from './supabase'
 
 export const DevicePreparationService = {
+    // ... existing methods ...
+
+    /**
+     * Start a new preparation workflow
+     */
+    startPreparation: async (deviceId: string, projectId: string, modifiedBy: string): Promise<DevicePreparation> => {
+        // 1. Try to clean server state (best effort, handles zombie records)
+        await DevicePreparationService.ensureServerStateClean(deviceId)
+
+        // 2. Cancel any existing in-progress preparations locally
+        await DevicePreparationService.cancelInProgressPreparations(deviceId)
+
+        // 3. CRITICAL: Trigger sync to push cancellations to server BEFORE creating new preparation
+        // This prevents race condition where server still has old in_progress record
+        console.log('[DevPrepService] Triggering sync to push cancellations before creating new preparation')
+        try {
+            await SupabaseSyncService.sync()
+            console.log('[DevPrepService] Sync complete, proceeding with new preparation creation')
+        } catch (syncErr) {
+            console.warn('[DevPrepService] Sync failed, proceeding anyway:', syncErr)
+            // Continue even if sync fails - the server cleanup should have handled it
+        }
+
+        // 4. Create new preparation
+        return await DevicePreparationService.createPreparation(deviceId, projectId, modifiedBy)
+    },
     /**
      * Create a new device preparation record
      */
@@ -199,6 +226,19 @@ export const DevicePreparationService = {
     },
 
     /**
+     * Get preparation by ID
+     */
+    getPreparationById: async (id: string): Promise<DevicePreparation | undefined> => {
+        try {
+            const preparationsCollection = database.get<DevicePreparation>('device_preparation')
+            return await preparationsCollection.find(id)
+        } catch (error) {
+            console.log('[DevPrepService] Preparation not found:', id)
+            return undefined
+        }
+    },
+
+    /**
      * Cancel any in-progress preparations for a device
      */
     cancelInProgressPreparations: async (deviceId: string): Promise<void> => {
@@ -242,7 +282,7 @@ export const DevicePreparationService = {
     /**
      * Record battery check result
      */
-    recordBatteryCheck: async (preparationId: string, passed: boolean): Promise<void> => {
+    recordBatteryCheck: async (preparationId: string, passed: boolean): Promise<DevicePreparation> => {
         return await DevicePreparationService.updatePreparation(preparationId, {
             batteryCheckPassed: passed
         })
@@ -251,7 +291,7 @@ export const DevicePreparationService = {
     /**
      * Record SD card check result
      */
-    recordSdCardCheck: async (preparationId: string, passed: boolean): Promise<void> => {
+    recordSdCardCheck: async (preparationId: string, passed: boolean): Promise<DevicePreparation> => {
         return await DevicePreparationService.updatePreparation(preparationId, {
             sdCardCheckPassed: passed
         })
@@ -260,19 +300,50 @@ export const DevicePreparationService = {
     /**
      * Record LoRaWAN check result
      */
-    recordLoRaWANCheck: async (preparationId: string, passed: boolean): Promise<void> => {
+    recordLoRaWANCheck: async (preparationId: string, passed: boolean): Promise<DevicePreparation> => {
         return await DevicePreparationService.updatePreparation(preparationId, {
             lorawanRegistrationCompleted: passed
         })
     },
 
+
+
     /**
-     * Start a new preparation workflow
+     * Ensure server state is clean by cancelling any active preparations directly on Supabase
+     * This avoids unique constraint violations when creating a new preparation
+     * 
+     * NOTE: We unconditionally issue the UPDATE without querying first because RLS policies
+     * might prevent us from seeing records that still exist on the server
      */
-    startPreparation: async (deviceId: string, projectId: string, modifiedBy: string): Promise<DevicePreparation> => {
-        // Cancel any existing in-progress preparations first
-        await DevicePreparationService.cancelInProgressPreparations(deviceId)
-        return await DevicePreparationService.createPreparation(deviceId, projectId, modifiedBy)
+    ensureServerStateClean: async (deviceId: string): Promise<void> => {
+        try {
+            console.log(`[DevPrepService] Unconditionally cancelling any in_progress preparations for device: ${deviceId}`)
+            const supabase = getSupabaseClient()
+
+            // UNCONDITIONAL UPDATE: Cancel any in_progress preparations without querying first
+            // This bypasses RLS visibility issues - if no records exist, UPDATE affects 0 rows (harmless)
+            const { error: updateError, data } = await supabase
+                .from('device_preparation')
+                .update({ status: 'cancelled' })
+                .eq('device_id', deviceId)
+                .eq('status', 'in_progress')
+                .is('deleted_at', null)
+                .select('id')
+
+            if (updateError) {
+                console.error('[DevPrepService] Failed to cancel server preparations:', updateError)
+            } else {
+                const count = data?.length || 0
+                if (count > 0) {
+                    console.log(`[DevPrepService] ✅ Cancelled ${count} in_progress preparation(s) on server`)
+                } else {
+                    console.log('[DevPrepService] No in_progress preparations found to cancel (clean state)')
+                }
+            }
+        } catch (e) {
+            console.error('[DevPrepService] Exception in ensureServerStateClean:', e)
+            // Don't block flow if offline or error
+        }
     },
 }
 

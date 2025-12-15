@@ -27,9 +27,13 @@ import { AuthTestScreen } from "../screens/AuthTestScreen"
 import { DeveloperSettingsScreen } from "../screens/DeveloperSettingsScreen"
 import { useDeepLinking } from "../hooks/useDeepLinking"
 import { DeviceDiscoveryScreen } from "../screens/device/DeviceDiscoveryScreen"
+import { DeploymentDetailsStep } from "../screens/deployment/DeploymentDetailsStep"
 import { DeviceDetailsScreen } from "../screens/device/DeviceDetailsScreen"
 import { EngineerConsoleScreen } from "./screens/EngineerConsoleScreen"
 import { PrepareAndTestScreen } from "../screens/device/PrepareAndTestScreen"
+// Import new screens
+import { DeploymentDetailsScreen } from '../navigation/screens/deployment/DeploymentDetailsScreen'
+import { EndDeploymentDetailsStep } from '../navigation/screens/deployment/EndDeploymentDetailsStep'
 
 export interface RootStackParamList extends ParamListBase {
 	Notifications: undefined
@@ -49,10 +53,12 @@ export interface RootStackParamList extends ParamListBase {
 	DevBuildInfo: undefined
 	AuthTestScreen: undefined
 	DeveloperSettings: undefined
-	DeviceDiscovery: { mode: 'prepare' | 'engineer' }
+	DeviceDiscovery: { mode: 'prepare' | 'engineer' | 'deployment' }
 	DeviceDetails: { deviceId: string }
 	EngineerConsoleScreen: { deviceId: string }
-	PrepareAndTest: { deviceId: string; bleDeviceId: string; selftestError?: string; setUtcError?: string }
+	PrepareAndTest: { deviceId: string; bleDeviceId: string; selftestError?: string; setUtcError?: string; nextRoute?: string }
+	StartDeploymentWizard: { mode: 'deployment' }
+	DeploymentDetailsStep: { devicePreparationId: string; deviceId: string; bleDeviceId: string }
 }
 
 export type Routes = keyof RootStackParamList
@@ -205,6 +211,33 @@ export const MainNavigation = () => {
 							name="EngineerConsoleScreen"
 							component={EngineerConsoleScreen}
 							options={{ title: "Engineer Console", headerTitleAlign: 'center' }}
+						/>
+						<Stack.Screen
+							name="StartDeploymentWizard"
+							component={DeviceDiscoveryScreen}
+							initialParams={{ mode: 'deployment' }}
+							options={{ title: "Select Device", headerTitleAlign: 'center' }}
+						/>
+						<Stack.Screen
+							name="DeploymentDetailsStep"
+							component={DeploymentDetailsStep}
+							options={{ title: "Deployment Details", headerTitleAlign: 'center' }}
+						/>
+						<Stack.Screen
+							name="EndDeploymentWizard"
+							component={DeviceDiscoveryScreen}
+							options={{ title: "End Deployment" }}
+							initialParams={{ mode: 'end_deployment' }}
+						/>
+						<Stack.Screen
+							name="EndDeploymentDetailsStep"
+							component={EndDeploymentDetailsStep}
+							options={{ title: "Confirm End Deployment" }}
+						/>
+						<Stack.Screen
+							name="DeploymentDetails"
+							component={DeploymentDetailsScreen}
+							options={{ title: "Deployment" }}
 						/>
 						<Stack.Screen
 							name="PrepareAndTest"

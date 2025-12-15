@@ -217,6 +217,8 @@ wildlife-watcher-mobile-app/
 7. UI updates instantly via Observables
 8. When network returns → **Supabase Sync Engine pushes changes**
 
+(See full details in **[03-DEPLOYMENT-FLOW.md](./03-DEPLOYMENT-FLOW.md)**)
+
 ### Data Sync Flow
 ```
 WatermelonDB (Local)

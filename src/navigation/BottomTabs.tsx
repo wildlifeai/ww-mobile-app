@@ -72,11 +72,6 @@ export const BottomTabs = () => {
 			renderScene={renderScene}
 			activeColor={colors.primary}
 			barStyle={{ backgroundColor: colors.background }}
-			theme={{
-				colors: {
-					secondaryContainer: colors.background,
-				},
-			}}
 		/>
 	)
 }

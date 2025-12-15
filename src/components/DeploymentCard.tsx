@@ -9,15 +9,23 @@ type Props = {
 	onPress?: (deploymentId: string) => void
 }
 
-export const DeploymentCard = memo<Props>(({ deployment, onPress }) => {
+// Helper to safely access fields from either API type (snake_case) or Model (camelCase)
+const getField = (obj: any, snake: string, camel: string) => obj[snake] ?? obj[camel]
+
+export const DeploymentCard = memo<{ deployment: any, onPress?: (id: string) => void }>(({ deployment, onPress }) => {
 	const theme = useTheme()
 
+	const deploymentStart = getField(deployment, 'deployment_start', 'deploymentStart')
+	const deploymentEnd = getField(deployment, 'deployment_end', 'deploymentEnd')
+	const locationName = getField(deployment, 'location_name', 'locationName')
+	const deviceId = getField(deployment, 'device_id', 'deviceId')
+
 	const getStatusColor = () => {
-		if (!deployment.deployment_start) return theme.colors.onSurfaceDisabled
+		if (!deploymentStart) return theme.colors.onSurfaceDisabled
 		const now = new Date()
-		const start = new Date(deployment.deployment_start)
-		const end = deployment.deployment_end
-			? new Date(deployment.deployment_end)
+		const start = new Date(deploymentStart)
+		const end = deploymentEnd
+			? new Date(deploymentEnd)
 			: null
 
 		if (now < start) return theme.colors.onSurfaceDisabled // Not started
@@ -26,11 +34,11 @@ export const DeploymentCard = memo<Props>(({ deployment, onPress }) => {
 	}
 
 	const getStatusText = () => {
-		if (!deployment.deployment_start) return "Not started"
+		if (!deploymentStart) return "Not started"
 		const now = new Date()
-		const start = new Date(deployment.deployment_start)
-		const end = deployment.deployment_end
-			? new Date(deployment.deployment_end)
+		const start = new Date(deploymentStart)
+		const end = deploymentEnd
+			? new Date(deploymentEnd)
 			: null
 
 		if (now < start) return "Not started"
@@ -54,7 +62,7 @@ export const DeploymentCard = memo<Props>(({ deployment, onPress }) => {
 						style={[styles.title, { color: theme.colors.onSurface }]}
 						numberOfLines={1}
 					>
-						{deployment.location_name ||
+						{locationName ||
 							`Deployment #${deployment.id.slice(-4)}`}
 					</Text>
 					<View
@@ -79,7 +87,7 @@ export const DeploymentCard = memo<Props>(({ deployment, onPress }) => {
 				</View>
 
 				{/* Stats (Placeholder or Real if available) */}
-				{deployment.device_id && (
+				{deviceId && (
 					<View style={styles.statsRow}>
 						<View style={styles.statItem}>
 							<WWIcon

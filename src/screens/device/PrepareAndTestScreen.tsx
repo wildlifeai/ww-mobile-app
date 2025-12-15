@@ -26,7 +26,7 @@ import database from '../../database'
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper'
 import { getSupabaseClient } from '../../services/supabase'
 
-type PrepareAndTestRouteProp = RouteProp<{ params: { deviceId: string; bleDeviceId: string; selftestError?: string; setUtcError?: string } }, 'params'>
+type PrepareAndTestRouteProp = RouteProp<{ params: { deviceId: string; bleDeviceId: string; selftestError?: string; setUtcError?: string, nextRoute?: string } }, 'params'>
 
 export const PrepareAndTestScreen = () => {
     const route = useRoute<PrepareAndTestRouteProp>()
@@ -57,7 +57,7 @@ export const PrepareAndTestScreen = () => {
     const [isCheckingFirmware, setIsCheckingFirmware] = useState(false)
 
     // BLE command hooks
-    const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer } = useBleCommands()
+    const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, disableCamera, runDisconnect } = useBleCommands()
     const { write } = useBle()
     const bleDevice = useAppSelector((state) => state.devices[bleDeviceId])
     const logs = useAppSelector(state => state.logs[bleDeviceId || ''] || "")
@@ -140,6 +140,24 @@ export const PrepareAndTestScreen = () => {
             checkBleFirmware()
         }
     }, [device])
+
+    // Disable camera on mount to ensure clean state
+    useEffect(() => {
+        if (bleDevice) {
+            console.log('[PrepareTest] Disabling camera on mount to ensure clean state')
+            disableCamera(bleDevice).catch(err => console.error('[PrepareTest] Failed to disable camera on mount:', err))
+        }
+
+        // Cleanup: Disconnect on unmount
+        return () => {
+            if (bleDevice && bleDevice.connected) {
+                console.log('[PrepareTest] Unmounting - Disconnecting device...')
+                runDisconnect(bleDevice).catch(err => console.error('[PrepareTest] Failed to disconnect on unmount:', err))
+            }
+        }
+    }, [])
+
+    // Parse BLE logs for command responses
 
     // Parse BLE logs for command responses
     useEffect(() => {
@@ -228,12 +246,9 @@ export const PrepareAndTestScreen = () => {
                 }
             }
 
-            // Cancel any in-progress preparations
-            await DevicePreparationService.cancelInProgressPreparations(deviceId)
-
-            // Create new preparation record
+            // Create new preparation record (startPreparation handles cleanup)
             if (user?.id) {
-                const newPrep = await DevicePreparationService.createPreparation(
+                const newPrep = await DevicePreparationService.startPreparation(
                     deviceId,
                     selectedProject || (projects && projects.length > 0 ? projects[0].id : ''),
                     user.id
@@ -481,6 +496,10 @@ export const PrepareAndTestScreen = () => {
                     })
 
                     console.log('[PrepareTest] Device settings configured successfully')
+
+                    // Explicitly disable camera again just to be safe
+                    await disableCamera(bleDevice)
+
                 } else {
                     console.log('[PrepareTest] No project selected or found, skipping settings configuration')
                 }
@@ -513,9 +532,25 @@ export const PrepareAndTestScreen = () => {
 
                     [{
                         text: 'OK',
-                        onPress: () => {
-                            // Navigate to Devices tab
-                            navigation.navigate("Home", { initialTab: "devices" })
+                        onPress: async () => {
+                            // Disconnect BLE before navigating away
+                            if (bleDevice) {
+                                console.log('[PrepareTest] Finishing - Disconnecting device...')
+                                await runDisconnect(bleDevice).catch(e => console.error('Failed to disconnect:', e))
+                            }
+
+                            // Check for nextRoute (start deployment flow)
+                            const { nextRoute } = route.params || {}
+                            if (nextRoute) {
+                                (navigation as any).navigate(nextRoute, {
+                                    devicePreparationId: preparation.id,
+                                    deviceId: deviceId,
+                                    bleDeviceId: bleDeviceId
+                                })
+                            } else {
+                                // Default: Navigate to Devices tab
+                                navigation.navigate("Home", { initialTab: "devices" })
+                            }
                         },
                     }]
                 )

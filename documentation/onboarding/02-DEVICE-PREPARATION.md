@@ -115,3 +115,9 @@ The device is now safe to turn off (if needed) and transport to the deployment s
 ### "Battery too low for update"
 - **Cause**: Battery is under 30%.
 - **Fix**: Replace batteries or charge unit. The update is blocked to prevent bricking.
+
+## What's Next?
+
+Once your device is prepared and ready, proceed to the deployment guide:
+
+➡️ **[Go to Deployment Flow Guide](./03-DEPLOYMENT-FLOW.md)**

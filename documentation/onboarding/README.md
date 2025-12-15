@@ -49,6 +49,19 @@ Your entry point to the Wildlife Watcher app. Get oriented quickly with the proj
    - Testing strategies
    - Git workflow and commit patterns
 
+### Field Workflows (User Guides)
+
+These documents explain the functional workflows of the app:
+
+1. **[Device Preparation](./02-DEVICE-PREPARATION.md)**
+   - Configuring hardware for the field
+   - Firmware updates & testing
+   
+2. **[Deployment Flow](./03-DEPLOYMENT-FLOW.md)**
+   - Step-by-step field deployment guide
+   - Location capture and verification
+   - Device activation logic
+
 ## 🎯 Learning Path
 
 ### Week 1: Foundation

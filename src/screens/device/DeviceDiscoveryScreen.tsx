@@ -9,11 +9,13 @@ import { useBleCommands } from '../../hooks/useBleCommands'
 import { useAppSelector } from '../../redux'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { ActivityIndicator } from 'react-native-paper'
-import { log } from '../../utils/logger'
+
 import { DeviceItem } from '../../components/DeviceItem'
 import { DeviceService } from '../../services/DeviceService'
 import { selectCurrentOrganisation } from '../../redux/slices/authSlice'
 import { RootStackParamList } from '../../navigation'
+import { DevicePreparationService } from '../../services/DevicePreparationService'
+import { DeploymentService } from '../../services/DeploymentService'
 
 type DeviceDiscoveryScreenRouteProp = RouteProp<RootStackParamList, 'DeviceDiscovery'>
 
@@ -65,12 +67,12 @@ export const DeviceDiscoveryScreen = () => {
             if (!isBleBusy && isFocused) {
                 startScan(10)
             } else {
-                log('Scanning already taking place, skipping.')
+                console.log('Scanning already taking place, skipping.')
             }
         }, 30 * 1000)
 
         return () => {
-            log('Clearing scan interval.')
+            console.log('Clearing scan interval.')
             clearInterval(interval)
         }
     }, [isScanning, isBleConnecting, isBleBusy, startScan, isFocused])
@@ -79,7 +81,7 @@ export const DeviceDiscoveryScreen = () => {
         if (!isBleBusy && !isScanning) {
             startScan()
         } else {
-            log('Scanning already taking place, skipping.')
+            console.log('Scanning already taking place, skipping.')
         }
     }
 
@@ -88,17 +90,17 @@ export const DeviceDiscoveryScreen = () => {
     const handleDeviceSelect = useCallback(
         async (device: ExtendedPeripheral) => {
             if (processing) return
-            log(`Device selected: ${device.id}, mode: ${mode}`)
+            console.log(`Device selected: ${device.id}, mode: ${mode}`)
             setProcessing(true)
             try {
                 // 1. Connect to the device
-                log(`Connecting to device ${device.id}...`)
+                console.log(`Connecting to device ${device.id}...`)
                 const connectedDevice = await connectDevice(device)
-                log(`Connect result: ${connectedDevice.connected}`)
+                console.log(`Connect result: ${connectedDevice.connected}`)
 
                 if (connectedDevice.connected) {
                     // 4. Mode-specific logic
-                    log(`Proceeding with mode: ${mode}`)
+                    console.log(`Proceeding with mode: ${mode}`)
 
                     if (mode === 'engineer') {
                         // Navigate to Engineer Console (Terminal) directly - NO DB interaction
@@ -108,16 +110,16 @@ export const DeviceDiscoveryScreen = () => {
                         return
                     }
 
-                    // For 'prepare' mode, we need the device in the DB
+                    // For 'prepare' and 'end_deployment', we need the device in the DB
                     // 2. Check if device exists in DB
-                    log(`Checking DB for device ${device.id}...`)
+                    console.log(`Checking DB for device ${device.id}...`)
                     let dbDevice = await DeviceService.getDeviceByBluetoothId(device.id)
-                    log(`DB Device found: ${!!dbDevice}`)
+                    console.log(`DB Device found: ${!!dbDevice}`)
 
                     // 3. If not found, create it
                     if (!dbDevice) {
                         if (currentOrganisation?.id && user?.id) {
-                            log(`Creating device in DB for org ${currentOrganisation.id}...`)
+                            console.log(`Creating device in DB for org ${currentOrganisation.id}...`)
                             try {
                                 dbDevice = await DeviceService.createDevice(
                                     device.id,
@@ -125,14 +127,14 @@ export const DeviceDiscoveryScreen = () => {
                                     currentOrganisation.id,
                                     user.id
                                 )
-                                log(`Device created: ${dbDevice?.id}`)
+                                console.log(`Device created: ${dbDevice?.id}`)
                             } catch (error) {
                                 console.error('Error creating device in DB:', error)
                                 // If creation fails, it might be because it was just created. Try fetching again.
                                 dbDevice = await DeviceService.getDeviceByBluetoothId(device.id)
                             }
                         } else {
-                            log('No organisation or user selected')
+                            console.log('No organisation or user selected')
                             Alert.alert('Error', 'No organisation selected or user not logged in. Cannot create device.')
                             await disconnectDevice(device)
                             setProcessing(false)
@@ -140,12 +142,33 @@ export const DeviceDiscoveryScreen = () => {
                         }
                     }
 
-                    if (mode === 'engineer') {
-                        // Navigate to engineer console
-                        (navigation as any).navigate('EngineerConsole', {
-                            deviceId: device.id
-                        })
-                    } else if (mode === 'prepare') {
+                    if ((mode as string) === 'end_deployment') {
+                        if (dbDevice) {
+                            const activeDeployment = await DeploymentService.getActiveDeploymentForDeviceId(dbDevice.id)
+
+                            if (!activeDeployment) {
+                                console.log(`Device ${dbDevice.id} has no active deployment.`)
+                                Alert.alert(
+                                    'No Active Deployment',
+                                    'This device is not part of an active deployment.',
+                                    [{ text: 'OK', onPress: () => disconnectDevice(device) }]
+                                )
+                                setProcessing(false)
+                                return
+                            }
+
+                            // Proceed to End Deployment Step 2
+                            console.log(`activeDeployment found: ${activeDeployment.id}. Proceeding to End Deployment details.`);
+                            (navigation as any).navigate('EndDeploymentDetailsStep', {
+                                deploymentId: activeDeployment.id,
+                                deviceId: dbDevice.id,
+                                bleDeviceId: connectedDevice.id
+                            })
+                            return // Done
+                        }
+                    }
+
+                    if (mode === 'prepare') {
                         // Check deployment status
                         if (dbDevice) {
                             const status = await DeviceService.calculateDeviceStatus(dbDevice.id)
@@ -167,6 +190,68 @@ export const DeviceDiscoveryScreen = () => {
                                 bleDeviceId: connectedDevice.id,
                             })
                         }
+                    } else if (mode === 'deployment') {
+
+                        // Smart Routing: Check if device is prepared
+                        if (dbDevice) {
+                            // Check for active deployment first
+                            const status = await DeviceService.calculateDeviceStatus(dbDevice.id)
+
+                            if (status === 'deployed') {
+                                // Already deployed? Maybe user wants to update/check it? Or mistake?
+                                // For now, let's warn.
+                                Alert.alert(
+                                    'Device Already Deployed',
+                                    'This device is currently deployed. Do you want to end the current deployment?',
+                                    [
+                                        { text: 'Cancel', onPress: () => disconnectDevice(device), style: 'cancel' },
+                                        {
+                                            text: 'End Deployment', onPress: () => {
+                                                // Navigate to end deployment flow
+                                                (navigation as any).navigate('EndDeploymentWizard', { mode: 'end_deployment' })
+                                                disconnectDevice(device)
+                                            }
+                                        }
+                                    ]
+                                )
+                                setProcessing(false)
+                                return
+                            }
+
+                            // Check preparation status
+                            const lastPrep = await DevicePreparationService.getLastCompletedPreparation(dbDevice.id)
+
+                            // Better logic: Is there a preparation that is completed AND marked is_deployment_ready?
+                            if (lastPrep && lastPrep.isDeploymentReady) {
+                                // Go to Step 2: Deployment Details
+                                console.log(`Device ${dbDevice.id} is prepared. Proceeding to details.`);
+
+                                // We need to pass the preparation ID to the next step
+                                (navigation as any).navigate('DeploymentDetailsStep', {
+                                    devicePreparationId: lastPrep.id,
+                                    deviceId: dbDevice.id,
+                                    bleDeviceId: connectedDevice.id
+                                })
+                            } else {
+                                // Not prepared -> Validated Preparation Step
+                                console.log(`Device ${dbDevice.id} not fully prepared. Redirecting to preparation.`)
+                                Alert.alert(
+                                    "Device Not Prepared",
+                                    "This device needs to be prepared before deployment. Redirecting to preparation step.",
+                                    [
+                                        {
+                                            text: "OK", onPress: () => {
+                                                (navigation as any).navigate('PrepareAndTest', {
+                                                    deviceId: dbDevice.id,
+                                                    bleDeviceId: connectedDevice.id,
+                                                    nextRoute: 'DeploymentDetailsStep' // Pass next route to auto-navigate after prep
+                                                })
+                                            }
+                                        }
+                                    ]
+                                )
+                            }
+                        }
                     }
                 }
             } catch (error) {
@@ -180,7 +265,7 @@ export const DeviceDiscoveryScreen = () => {
     )
 
     const handleDisconnect = useCallback(async (device: ExtendedPeripheral) => {
-        log(`Disconnecting from ${device.id}`)
+        console.log(`Disconnecting from ${device.id}`)
         await disconnectDevice(device)
     }, [disconnectDevice])
 
