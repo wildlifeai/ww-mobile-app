@@ -116,7 +116,11 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "0.0.1"
-        manifestPlaceholders = [googleMapsApiKey: System.getenv("GOOGLE_MAPS_API_KEY_ANDROID") ?: ""]
+        def googleMapsApiKey = System.getenv("GOOGLE_MAPS_API_KEY_ANDROID")
+        if (!googleMapsApiKey) {
+            throw new RuntimeException("Missing GOOGLE_MAPS_API_KEY_ANDROID environment variable. Please set it in your environment or EAS secrets.")
+        }
+        manifestPlaceholders = [googleMapsApiKey: googleMapsApiKey]
     }
     signingConfigs {
         debug {

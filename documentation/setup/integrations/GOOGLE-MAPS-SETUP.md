@@ -18,7 +18,7 @@ Enable these APIs:
 
 Go to: https://console.cloud.google.com/google/maps-apis/credentials
 
-**Your API Key**: `AIzaSyD4GgP2HPVqgEOIbOiA1QF6AfTaSBg4vfI`
+**Your API Key**: `<YOUR_API_KEY>`
 
 Click on the API key, then:
 
