@@ -6,6 +6,7 @@ import {
 	BLE_CHARACTERISTIC_WRITE_UUID,
 	BLE_SERVICE_UUID,
 	DEVICE_NAMES,
+	BLE_DFU_SERVICE_UUID,
 } from "./constants"
 import BleManager from "react-native-ble-manager"
 import { Buffer } from "buffer"
@@ -70,20 +71,26 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 		if (data === "") return
 
 		try {
-			const byteArray = [...Buffer.from(data)]
+			// Strip trailing newlines/CRs as they break firmware command matching
+			const sanitizedData = data.replace(/[\r\n]+$/, "")
+			// Revert: Firmware rejects newline (treats as extra char causing mismatch)
+			const byteArray = [...Buffer.from(sanitizedData)]
+			console.log('DEBUG: byteArray content:', byteArray)
+			log(`TX Hex: ${Buffer.from(byteArray).toString("hex")}`)
 
-			// Push a LF-CR (LF = 10, CR = 13 in decimal)
+			// Push a LF-CR (LF = 10, CR = 13 in decimal) to local listener for UI feedback
 			readlineParserEmitter.emit(
 				"BleManagerDidUpdateValueForCharacteristicReadlineParser",
-				{ peripheral: peripheral.id, value: [...byteArray, 10, 13] },
+				{ peripheral: peripheral.id, value: [...byteArray], isLocal: true }, // Use the same terminated array
 			)
 
 			await BleManager.writeWithoutResponse(
 				peripheral.id,
 				peripheral.services?.serviceCharacteristic || BLE_SERVICE_UUID,
 				peripheral.services?.writeCharacteristic ||
-					BLE_CHARACTERISTIC_WRITE_UUID,
+				BLE_CHARACTERISTIC_WRITE_UUID,
 				byteArray,
+				512 // Explicitly allow larger packets
 			)
 
 			log(
@@ -125,39 +132,88 @@ export const extractServiceAndCharacteristic = (services?: Services) => {
 	}
 
 	try {
+		log(`Available services: ${JSON.stringify(services.services.map(s => s.uuid))}`)
+
+		// 1. Try to find our specific UART service first
+		const targetService = services.services.find(
+			(s) => s.uuid.toLowerCase() === BLE_SERVICE_UUID.toLowerCase()
+		)
+
+		if (targetService) {
+			const write = services.characteristics.find((c) =>
+				c.service.toLowerCase() === targetService.uuid.toLowerCase() &&
+				c.properties.WriteWithoutResponse
+			)
+
+			const read = services.characteristics.find((c) =>
+				c.service.toLowerCase() === targetService.uuid.toLowerCase() &&
+				c.properties.Notify
+			)
+
+			if (write && read) {
+				return {
+					serviceCharacteristic: targetService.uuid,
+					readCharacteristic: read.characteristic,
+					writeCharacteristic: write.characteristic,
+				}
+			}
+		}
+
+		// 2. Try to find DFU service
+		const dfuService = services.services.find(
+			(s) => s.uuid.toLowerCase().includes(BLE_DFU_SERVICE_UUID.toLowerCase())
+		)
+
+		if (dfuService) {
+			log("DFU Service found, attempting to connect...")
+			// For DFU, we just need any write/notify characteristic to keep the connection alive
+			const write = services.characteristics.find((c) =>
+				c.service.toLowerCase() === dfuService.uuid.toLowerCase() &&
+				(c.properties.Write || c.properties.WriteWithoutResponse)
+			)
+
+			const read = services.characteristics.find((c) =>
+				c.service.toLowerCase() === dfuService.uuid.toLowerCase() &&
+				(c.properties.Notify || c.properties.Indicate)
+			)
+
+			if (write && read) {
+				return {
+					serviceCharacteristic: dfuService.uuid,
+					readCharacteristic: read.characteristic,
+					writeCharacteristic: write.characteristic,
+				}
+			}
+		}
+
+		// 3. Fallback: Look for any service with 36-char UUID (Legacy logic, but less strict)
 		const allServices = services.services.filter(
 			(s) => s.uuid.length === UUID_LENGTH,
 		)
 
-		if (allServices.length !== 1) {
-			throw new Error("Error: More then one service found.")
-		}
-
-		const service = allServices[0]
-
-		const write = services.characteristics.find((c) => {
-			if (c.service === service.uuid && c.properties.WriteWithoutResponse) {
-				return true
-			}
-		})
-
-		const read = services.characteristics.find((c) => {
-			if (c.service === service.uuid && c.properties.Notify) {
-				return true
-			}
-		})
-
-		if (!write || !read) {
-			throw new Error(
-				`Error: No combination found for this service: ${service.uuid}`,
+		// If we found exactly one custom service (that wasn't the target one), try to use it
+		if (allServices.length === 1) {
+			const service = allServices[0]
+			const write = services.characteristics.find((c) =>
+				c.service === service.uuid && c.properties.WriteWithoutResponse
 			)
+			const read = services.characteristics.find((c) =>
+				c.service === service.uuid && c.properties.Notify
+			)
+
+			if (write && read) {
+				return {
+					serviceCharacteristic: service.uuid,
+					readCharacteristic: read.characteristic,
+					writeCharacteristic: write.characteristic,
+				}
+			}
 		}
 
-		return {
-			serviceCharacteristic: service.uuid,
-			readCharacteristic: read.characteristic,
-			writeCharacteristic: write.characteristic,
-		}
+		throw new Error(
+			`Target service ${BLE_SERVICE_UUID} not found and no suitable fallback service detected.`
+		)
+
 	} catch (e: any) {
 		log(e.message)
 		log("Extracting services and characteristics failed, using default.")
@@ -190,4 +246,28 @@ export const getStorageData = async <T>(key: string): Promise<T | null> => {
 
 export const isOurDevice = (name: string) => {
 	return !!DEVICE_NAMES.find((deviceName) => name.includes(deviceName))
+}
+
+/**
+ * Parses a 36-char UUID into 8 x 16-bit integers (0-65535)
+ * for transmission as Operational Parameters.
+ */
+export const parseUuidToOps = (uuid: string): number[] => {
+	// Remove hyphens
+	const cleanUuid = uuid.replace(/-/g, '')
+	if (cleanUuid.length !== 32) {
+		throw new Error(`Invalid UUID length after cleaning: ${cleanUuid.length}`)
+	}
+
+	const ops: number[] = []
+	// Split into 8 chunks of 4 hex chars
+	for (let i = 0; i < 8; i++) {
+		const chunk = cleanUuid.substring(i * 4, (i + 1) * 4)
+		const val = parseInt(chunk, 16)
+		if (isNaN(val)) {
+			throw new Error(`Invalid hex chunk at index ${i}: ${chunk}`)
+		}
+		ops.push(val)
+	}
+	return ops
 }

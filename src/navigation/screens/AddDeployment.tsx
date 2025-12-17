@@ -8,8 +8,9 @@ import { WWButton } from "../../components/ui/WWButton"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { useRoute, useFocusEffect } from "@react-navigation/native"
 import { AppParams } from ".."
-import { useGetProjectsQuery } from "../../redux/api/projects"
+import { useGetProjectsQuery } from "../../redux/api/projectsApi"
 import { useCallback } from "react"
+import { useAppSelector } from "../../redux"
 
 type FormData = {
 	project: string
@@ -19,7 +20,14 @@ type FormData = {
 export const AddDeployment = () => {
 	const navigation = useAppNavigation()
 	const route = useRoute<AppParams<"AddDeployment">>()
-	const { data: projects, refetch } = useGetProjectsQuery()
+	const userId = useAppSelector((state) => state.authentication.user?.id)
+	const currentOrganisation = useAppSelector((state) => state.authentication.currentOrganisation)
+
+	// Fetch projects for selection
+	const { data: projects, refetch } = useGetProjectsQuery(
+		{ userId: userId!, organisationId: currentOrganisation?.id! },
+		{ skip: !userId || !currentOrganisation?.id }
+	)
 	const { control, handleSubmit, setValue } = useForm<FormData>({
 		defaultValues: {
 			project: "",
@@ -64,13 +72,13 @@ export const AddDeployment = () => {
 								options={[
 									{ label: "Add project", value: "add" },
 									...(projects?.map((project) => ({
-										label: project.title,
+										label: project.name,
 										value: project.id,
 									})) || []),
 								]}
 								onSelectEffect={(value) => {
 									if (value === "add") {
-										navigation.navigate("AddProject")
+										navigation.navigate("NewProjectScreen")
 									}
 								}}
 							/>

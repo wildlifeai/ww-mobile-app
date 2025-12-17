@@ -7,6 +7,11 @@ import { useAppDispatch } from "../redux"
 import { logout } from "../redux/slices/authSlice"
 import { OrgSwitcher } from "./OrgSwitcher"
 import { useUserOrganisations } from "../hooks/useUserOrganisations"
+import { Badge } from "react-native-paper"
+import { useState, useEffect } from "react"
+import InvitationService from "../services/InvitationService"
+import { useAppSelector } from "../redux"
+import { selectCurrentUser } from "../redux/slices/authSlice"
 
 type Props = {
 	drawerControls: Dispatch<React.SetStateAction<boolean>>
@@ -16,7 +21,30 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 	const navigation = useAppNavigation()
 	const dispatch = useAppDispatch()
 	const { spacing, colors, appPadding } = useExtendedTheme()
+
 	const { canSwitchOrganisations } = useUserOrganisations()
+	const user = useAppSelector(selectCurrentUser)
+	const [invitationCount, setInvitationCount] = useState(0)
+
+	useEffect(() => {
+		if (!user?.email) return
+
+		const loadCount = async () => {
+			const count = await InvitationService.getPendingInvitationCount()
+			setInvitationCount(count)
+		}
+
+		loadCount()
+
+		// Subscribe to realtime updates
+		const channel = InvitationService.subscribeToInvitations(user.email, () => {
+			loadCount()
+		})
+
+		return () => {
+			InvitationService.unsubscribeFromInvitations()
+		}
+	}, [user?.email])
 
 	const goTo = (link: string) => {
 		navigation.navigate(link)
@@ -38,14 +66,29 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 				</>
 			)}
 
-			<Button
-				textColor={colors.onBackground}
-				style={[{ margin: spacing }, styles.link]}
-				icon="bell"
-				onPress={() => goTo("Notifications")}
-			>
-				Notifications
-			</Button>
+			<View>
+				<Button
+					textColor={colors.onBackground}
+					style={[{ margin: spacing }, styles.link]}
+					icon="bell"
+					onPress={() => goTo("Notifications")}
+				>
+					Notifications
+				</Button>
+				{invitationCount > 0 && (
+					<Badge
+						size={20}
+						style={{
+							position: 'absolute',
+							top: 5,
+							right: 10,
+							backgroundColor: colors.error
+						}}
+					>
+						{invitationCount}
+					</Badge>
+				)}
+			</View>
 			<Button
 				textColor={colors.onBackground}
 				style={[{ margin: spacing }, styles.link]}
@@ -65,14 +108,6 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 			<Button
 				textColor={colors.onBackground}
 				style={[{ margin: spacing }, styles.link]}
-				icon="crowd"
-				onPress={() => goTo("CommunityDiscussion")}
-			>
-				Community discussion
-			</Button>
-			<Button
-				textColor={colors.onBackground}
-				style={[{ margin: spacing }, styles.link]}
 				icon="logout"
 				onPress={onLogout}
 			>
@@ -80,7 +115,14 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 			</Button>
 			{__DEV__ && (
 				<>
-					<View style={{ height: 1, backgroundColor: colors.outline, marginVertical: spacing, width: '100%' }} />
+					<View
+						style={{
+							height: 1,
+							backgroundColor: colors.outline,
+							marginVertical: spacing,
+							width: "100%",
+						}}
+					/>
 					<Button
 						textColor={colors.primary}
 						style={[{ margin: spacing }, styles.link]}

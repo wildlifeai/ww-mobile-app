@@ -18,10 +18,6 @@ export type BaseResponse = {
 	details?: string
 }
 
-export type StrapiRequest<T> = {
-	data: T
-}
-
 // Enums
 export enum ProjectRole {
 	Manager = "Manager",

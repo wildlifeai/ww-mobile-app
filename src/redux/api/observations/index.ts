@@ -17,9 +17,9 @@ export const observationsApi = api.injectEndpoints({
 			providesTags: (_result) =>
 				_result
 					? [
-							..._result.map(({ _id }) => ({
+							..._result.map(({ id }) => ({
 								type: "Observation" as const,
-								id: _id,
+								id: id,
 							})),
 							{ type: "Observation", id: "LIST" },
 					  ]

@@ -8,8 +8,12 @@ import {
 } from "react-native"
 import { ScrollView } from "react-native-gesture-handler"
 
-type Props = ScrollViewProps & {
+// Omit hitSlop from ScrollViewProps to avoid null type issue with react-native-gesture-handler
+type Props = Omit<ScrollViewProps, "hitSlop"> & {
 	containerStyle?: StyleProp<ViewStyle>
+	hitSlop?:
+		| number
+		| { top?: number; bottom?: number; left?: number; right?: number }
 }
 
 export const WWScrollView = forwardRef<ScrollView, Props>(

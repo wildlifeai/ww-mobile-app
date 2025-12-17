@@ -1,0 +1,55 @@
+name: Quality Gate Validation
+
+on:
+  pull_request:
+    branches: [main, dev-mvp2-development]
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate type system not empty
+        run: |
+          if [ ! -s src/types/supabase.ts ] || [ $(wc -c < src/types/supabase.ts) -lt 51200 ]; then
+            echo "❌ Type system is empty or suspiciously small"
+            echo "Expected: 50-100KB, Found: $(wc -c < src/types/supabase.ts) bytes"
+            exit 1
+          fi
+
+      - name: Check console.log pollution
+        run: |
+          CONSOLE_LOGS=$(grep -r 'console\.log' src/ --exclude-dir=__tests__ --exclude=logger.ts | wc -l || echo "0")
+          if [ "$CONSOLE_LOGS" -gt 0 ]; then
+            echo "❌ Found $CONSOLE_LOGS console.log statements"
+            grep -rn 'console\.log' src/ --exclude-dir=__tests__ --exclude=logger.ts || true
+            exit 1
+          fi
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage --ci
+
+      - name: Check test coverage threshold
+        run: |
+          # Verify overall coverage is >= 70%
+          npm test -- --coverage --silent | grep "All files" | awk '{if ($4+0 < 70) exit 1}' || {
+            echo "❌ Test coverage below 70%"
+            exit 1
+          }
+
+      - name: TypeScript compilation
+        run: npm run type-check
+
+      - name: Linting
+        run: npm run lint

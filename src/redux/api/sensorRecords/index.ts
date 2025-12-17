@@ -17,9 +17,9 @@ export const sensorRecordsApi = api.injectEndpoints({
 			providesTags: (_result) =>
 				_result
 					? [
-							..._result.map(({ _id }) => ({
+							..._result.map(({ id }) => ({
 								type: "SensorRecord" as const,
-								id: _id,
+								id: id,
 							})),
 							{ type: "SensorRecord", id: "LIST" },
 					  ]

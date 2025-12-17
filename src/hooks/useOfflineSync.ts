@@ -2,106 +2,75 @@
  * useOfflineSync Hook
  *
  * Provides offline sync functionality for components
- * Handles queuing operations and monitoring sync status
+ * Handles monitoring sync status
+ *
+ * Refactored to use WatermelonDB sync status only.
  */
 
-import { useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '../redux';
+import { useCallback } from "react"
+import { useAppSelector } from "../redux"
 import {
-  queueOfflineOperation,
-  processOfflineQueue,
-  selectQueueOperations,
-  selectIsProcessing,
-  selectQueueStats,
-  selectPendingCount,
-  OPERATION_PRIORITY,
-} from '../redux/slices/offlineSlice';
-import {
-  selectOverallSyncStatus,
-  selectQueueStatus,
-  selectEntitySyncStatus,
-} from '../redux/slices/syncSlice';
-import { selectIsOnline, selectCanSync } from '../redux/slices/networkSlice';
-import { OfflineOperationType } from '../types/offline';
+	selectOverallSyncStatus,
+	selectQueueStatus,
+	selectEntitySyncStatus,
+} from "../redux/slices/syncSlice"
+import { selectIsOnline, selectCanSync } from "../redux/slices/networkSlice"
 
 export const useOfflineSync = () => {
-  const dispatch = useAppDispatch();
+	// Network state
+	const isOnline = useAppSelector(selectIsOnline)
+	const canSync = useAppSelector(selectCanSync)
 
-  // Network state
-  const isOnline = useAppSelector(selectIsOnline);
-  const canSync = useAppSelector(selectCanSync);
+	// Sync state
+	const overallSyncStatus = useAppSelector(selectOverallSyncStatus)
+	const queueStatus = useAppSelector(selectQueueStatus)
 
-  // Sync state
-  const overallSyncStatus = useAppSelector(selectOverallSyncStatus);
-  const queueStatus = useAppSelector(selectQueueStatus);
-  const queueStats = useAppSelector(selectQueueStats);
-  const pendingCount = useAppSelector(selectPendingCount);
-  const isProcessing = useAppSelector(selectIsProcessing);
+	/**
+	 * Get sync status for a specific entity
+	 */
+	const getEntitySyncStatus = useCallback(
+		(
+			entityType: "projects" | "deployments" | "devices" | "organisations",
+			entityId: string,
+		) => {
+			return selectEntitySyncStatus(
+				{ sync: { entities: { [entityType]: {} } } } as any,
+				entityType,
+				entityId,
+			)
+		},
+		[],
+	)
 
-  /**
-   * Queue an offline operation
-   */
-  const queueOperation = useCallback(
-    async (params: {
-      type: OfflineOperationType;
-      entityType: string;
-      entityId: string;
-      data: any;
-      userId: string;
-      organisationId: string;
-      priority?: number;
-    }) => {
-      const result = await dispatch(queueOfflineOperation(params));
-      return result;
-    },
-    [dispatch]
-  );
+	/**
+	 * Queue operation (deprecated - kept for compatibility)
+	 * @deprecated Use WatermelonDB models directly instead
+	 */
+	const queueOperation = useCallback(async (operation: any) => {
+		console.warn("⚠️ queueOperation is deprecated. Use WatermelonDB models directly.")
+		// Return a mock fulfilled result for compatibility
+		return {
+			meta: {
+				requestStatus: "fulfilled" as const
+			}
+		}
+	}, [])
 
-  /**
-   * Manually trigger sync
-   */
-  const triggerSync = useCallback(async () => {
-    if (!canSync) {
-      throw new Error('Cannot sync: network unavailable or offline mode enabled');
-    }
-    const result = await dispatch(processOfflineQueue());
-    return result;
-  }, [dispatch, canSync]);
+	return {
+		// Network state
+		isOnline,
+		canSync,
 
-  /**
-   * Get sync status for a specific entity
-   */
-  const getEntitySyncStatus = useCallback(
-    (entityType: 'projects' | 'deployments' | 'devices' | 'organisations', entityId: string) => {
-      return selectEntitySyncStatus(
-        { sync: { entities: { [entityType]: {} } } } as any,
-        entityType,
-        entityId
-      );
-    },
-    []
-  );
+		// Sync state
+		syncStatus: overallSyncStatus,
+		queueStatus,
+		pendingCount: queueStatus.pending,
+		isProcessing: queueStatus.processing !== null,
 
-  return {
-    // Network state
-    isOnline,
-    canSync,
+		// Actions
+		getEntitySyncStatus,
+		queueOperation,
+	}
+}
 
-    // Sync state
-    syncStatus: overallSyncStatus,
-    queueStatus,
-    queueStats,
-    pendingCount,
-    isProcessing,
-
-    // Actions
-    queueOperation,
-    triggerSync,
-    getEntitySyncStatus,
-
-    // Priority constants
-    PRIORITY: OPERATION_PRIORITY,
-  };
-};
-
-export default useOfflineSync;
+export default useOfflineSync

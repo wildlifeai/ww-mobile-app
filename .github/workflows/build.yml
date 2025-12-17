@@ -7,9 +7,61 @@ on:
       - "*"
 
 jobs:
+  validate-types:
+    name: Validate Cloud Types
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Authenticate to Supabase
+        run: |
+          echo "Authenticating to Supabase cloud..."
+          if [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ]; then
+            echo "⚠️  Warning: SUPABASE_ACCESS_TOKEN not configured"
+            echo "Skipping cloud type validation"
+            exit 0
+          fi
+          echo "${{ secrets.SUPABASE_ACCESS_TOKEN }}" | npx supabase login --token -
+
+      - name: Validate types against cloud-dev
+        run: |
+          echo "🔍 Validating types against cloud-dev Supabase instance..."
+          npm run types:check-cloud-dev || {
+            echo ""
+            echo "❌ ERROR: Types are out of sync with cloud-dev"
+            echo ""
+            echo "This build cannot proceed with stale types."
+            echo "To fix, run: npm run types:cloud-dev"
+            echo "Then commit the updated types."
+            exit 1
+          }
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Run TypeScript type check
+        run: npm run type-check
+
   extract-metadata:
     name: Extract app metadata
     runs-on: ubuntu-latest
+    needs: validate-types
     outputs:
       version: ${{ steps.extract-metadata.outputs.version }}
       release_notes: ${{ steps.extract-metadata.outputs.release_notes }}

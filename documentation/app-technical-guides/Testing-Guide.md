@@ -99,6 +99,26 @@ describe('Authentication Service', () => {
 });
 ```
 
+### Database Testing (WatermelonDB)
+
+Test WatermelonDB models and interactions using the in-memory adapter.
+
+```typescript
+// src/database/__tests__/Project.test.ts
+import { database } from '../index';
+
+describe('Project Model', () => {
+  test('should create a project', async () => {
+    await database.write(async () => {
+      const project = await database.get('projects').create(p => {
+        p.name = 'Test Project';
+      });
+      expect(project.name).toBe('Test Project');
+    });
+  });
+});
+```
+
 ### Hook Testing
 
 Test custom hooks with proper React testing utilities:
@@ -339,6 +359,27 @@ test('email validation')
 - Test both success and failure paths
 - Verify error handling and user feedback
 - Test edge cases and boundary conditions
+
+### 6. Mocking WatermelonDB
+
+Use the `LokiJSAdapter` for fast, in-memory database testing without needing a native SQLite environment.
+
+```typescript
+// src/test/setup.ts
+import { Database } from '@nozbe/watermelondb';
+import LokiJSAdapter from '@nozbe/watermelondb/adapters/lokijs';
+
+const adapter = new LokiJSAdapter({
+  schema,
+  useWebWorker: false,
+  useIncrementalIndexedDB: true,
+});
+
+export const testDatabase = new Database({
+  adapter,
+  modelClasses: [Project, Deployment, /* ... */],
+});
+```
 
 ## Common Patterns
 

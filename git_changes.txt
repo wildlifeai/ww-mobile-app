@@ -1,0 +1,63 @@
+﻿ M README.md
+ M android/.gitignore
+ M android/app/build.gradle
+ M android/app/proguard-rules.pro
+ M android/app/src/debug/AndroidManifest.xml
+ M android/app/src/main/AndroidManifest.xml
+ M android/app/src/main/java/com/wildlife/wildlifewatcher/expo/MainActivity.kt
+ M android/app/src/main/java/com/wildlife/wildlifewatcher/expo/MainApplication.kt
+ M android/app/src/main/res/drawable/rn_edit_text_material.xml
+ M android/app/src/main/res/drawable/splashscreen.xml
+ M android/app/src/main/res/values/colors.xml
+ M android/app/src/main/res/values/strings.xml
+ M android/app/src/main/res/values/styles.xml
+ M android/build.gradle
+ M android/gradle.properties
+ M android/gradle/wrapper/gradle-wrapper.properties
+ M android/gradlew
+ M android/react-settings-plugin/build.gradle.kts
+ M android/react-settings-plugin/src/main/kotlin/expo/plugins/ReactSettingsPlugin.kt
+ M android/settings.gradle
+ D app.json
+ M documentation/app-technical-guides/Supabase-Integration-Guide.md
+ M documentation/onboarding-docs/01-TECHNOLOGY-STACK.md
+ M documentation/onboarding-docs/README.md
+ M src/ble/types.ts
+ M src/components/AppDrawer.tsx
+ M src/components/DeploymentCard.tsx
+ M src/components/DeviceCard.tsx
+ M src/components/DeviceStatusBadge.tsx
+ M src/components/ui/WWSelect.tsx
+ M src/features/maps/components/MapControls.tsx
+ M src/features/maps/screens/MapScreen.tsx
+ M src/hooks/useBleCommands.ts
+ M src/navigation/BottomTabs.tsx
+ M src/navigation/index.tsx
+ M src/navigation/screens/AddDeployment.tsx
+ M src/navigation/screens/Deployments.tsx
+ M src/navigation/screens/Devices.tsx
+ M src/navigation/screens/EngineerConsoleScreen.tsx
+ M src/navigation/screens/Projects.tsx
+ M src/redux/api/projectsApi.ts
+ M src/redux/index.ts
+ M src/screens/device/DeviceDetailsScreen.tsx
+ M src/screens/device/DeviceDiscoveryScreen.tsx
+ M src/screens/device/PrepareAndTestScreen.tsx
+ M src/services/DevicePreparationService.ts
+ M src/services/DeviceService.ts
+ M src/services/OutboxService.ts
+ M src/services/ProjectService.ts
+ M src/services/ReferenceDataService.ts
+ M src/services/SupabaseSyncService.ts
+ M src/services/SyncStateService.ts
+ M src/services/auth.ts
+?? app.config.ts
+?? changed_files.txt
+?? documentation/app-technical-guides/ble-architecture-guide.md
+?? documentation/onboarding-docs/02-DEVICE-PREPARATION.md
+?? git_changes.txt
+?? src/components/ui/StandardizedListLayout.tsx
+?? src/hooks/useCapturePreview.ts
+?? src/hooks/useDeviceSettings.ts
+?? src/hooks/useGPSLocation.ts
+?? src/utils/gpsUtils.ts

@@ -5,5 +5,8 @@ module.exports = {
 			plugins: ["react-native-paper/babel"],
 		},
 	},
-	plugins: ["react-native-reanimated/plugin"],
+	plugins: [
+		["@babel/plugin-proposal-decorators", { legacy: true }],
+		"react-native-reanimated/plugin",
+	],
 }

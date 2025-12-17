@@ -7,9 +7,11 @@ import { WWTextInput } from "../../components/ui/WWTextInput"
 import { Field } from "../../components/form/Field"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { WWText } from "../../components/ui/WWText"
-import { resetPassword, updatePasswordWithToken } from "../../services/auth"
+import { resetPassword, updatePasswordWithToken, getCurrentSession } from "../../services/auth"
 import { useState, useEffect } from "react"
 import { useRoute } from "@react-navigation/native"
+import { useAppDispatch } from "../../redux"
+import { setCredentials } from "../../redux/slices/authSlice"
 
 type FormData = {
 	email: string
@@ -23,19 +25,23 @@ type ResetFormData = {
 export const ForgotPassword = () => {
 	const navigation = useAppNavigation()
 	const route = useRoute<any>()
+	const dispatch = useAppDispatch()
 	const [isLoading, setIsLoading] = useState(false)
 	const [isEmailSent, setIsEmailSent] = useState(false)
 	// Initialize reset mode based on route params - check once
 	const [isResetMode, setIsResetMode] = useState(() => {
-		console.log('ForgotPassword: Initial route.params:', route.params)
-		return !!(route.params?.token || route.params?.mode === 'reset')
+		console.log("ForgotPassword: Initial route.params:", route.params)
+		return !!(route.params?.token || route.params?.mode === "reset")
 	})
-	
+
 	// Only update reset mode if it changes from false to true (not back and forth)
 	useEffect(() => {
-		console.log('ForgotPassword: route.params changed:', route.params)
-		if (!isResetMode && (route.params?.token || route.params?.mode === 'reset')) {
-			console.log('ForgotPassword: Setting reset mode to true')
+		console.log("ForgotPassword: route.params changed:", route.params)
+		if (
+			!isResetMode &&
+			(route.params?.token || route.params?.mode === "reset")
+		) {
+			console.log("ForgotPassword: Setting reset mode to true")
 			setIsResetMode(true)
 		}
 	}, [route.params?.token, route.params?.mode, isResetMode])
@@ -45,16 +51,16 @@ export const ForgotPassword = () => {
 			email: "",
 		},
 	})
-	
+
 	const resetForm = useForm<ResetFormData>({
 		defaultValues: {
 			password: "",
 			confirmPassword: "",
 		},
 		// Prevent form from resetting when component re-renders
-		mode: 'onChange',
+		mode: "onChange",
 	})
-	
+
 	const { control: resetControl, handleSubmit: handleResetSubmit } = resetForm
 
 	const onSubmit = async (data: FormData) => {
@@ -68,22 +74,22 @@ export const ForgotPassword = () => {
 				[
 					{
 						text: "Back to Login",
-						onPress: () => navigation.navigate("Login")
-					}
-				]
+						onPress: () => navigation.navigate("Login"),
+					},
+				],
 			)
 		} catch (error) {
 			console.error("Password reset failed:", error)
 			Alert.alert(
 				"Reset Failed",
 				"There was an error sending the reset email. Please check your email address and try again.",
-				[{ text: "OK" }]
+				[{ text: "OK" }],
 			)
 		} finally {
 			setIsLoading(false)
 		}
 	}
-	
+
 	const onResetSubmit = async (data: ResetFormData) => {
 		if (data.password !== data.confirmPassword) {
 			Alert.alert("Error", "Passwords do not match")
@@ -93,32 +99,44 @@ export const ForgotPassword = () => {
 		const token = route.params?.token
 		const refreshToken = route.params?.refreshToken
 		if (!token) {
-			Alert.alert("Error", "Reset token is missing. Please request a new password reset.")
+			Alert.alert(
+				"Error",
+				"Reset token is missing. Please request a new password reset.",
+			)
 			return
 		}
 
 		setIsLoading(true)
 		try {
 			await updatePasswordWithToken(token, data.password, refreshToken)
+
+			// Get the current session after password update
+			const session = await getCurrentSession()
+
+			if (session) {
+				// Update Redux state with the new session
+				dispatch(setCredentials(session))
+			}
+
 			Alert.alert(
 				"Password Updated",
-				"Your password has been successfully updated. Welcome back!",
+				"Your password has been successfully updated. You're now logged in!",
 				[
 					{
 						text: "Continue",
 						onPress: () => {
-							// User is now authenticated, navigation will automatically show home screen
-							// No need to manually navigate
-						}
-					}
-				]
+							// User is now authenticated and Redux state is updated
+							// MainNavigation will automatically show the home screen
+						},
+					},
+				],
 			)
 		} catch (error) {
 			console.error("Password update failed:", error)
 			Alert.alert(
 				"Update Failed",
 				"There was an error updating your password. The reset link may have expired. Please request a new password reset.",
-				[{ text: "OK" }]
+				[{ text: "OK" }],
 			)
 		} finally {
 			setIsLoading(false)
@@ -190,7 +208,8 @@ export const ForgotPassword = () => {
 							<>
 								<WWText style={styles.title}>Reset Your Password</WWText>
 								<WWText style={styles.subtitle}>
-									Enter your email address and we'll send you instructions to reset your password.
+									Enter your email address and we'll send you instructions to
+									reset your password.
 								</WWText>
 
 								<Field
@@ -237,7 +256,6 @@ export const ForgotPassword = () => {
 						>
 							Back to Login
 						</Button>
-						
 					</View>
 				</View>
 			</WWScreenView>

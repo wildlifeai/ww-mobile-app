@@ -1,13 +1,103 @@
-import { View } from "react-native"
-import { WWScreenView } from "../../components/ui/WWScreenView"
-import { WWText } from "../../components/ui/WWText"
+import React, { useState, useEffect } from 'react'
+import { Alert } from 'react-native'
+import { useTheme } from 'react-native-paper'
+import { DeviceCard } from '../../components/DeviceCard'
+import { DeviceService } from '../../services/DeviceService'
+import { DeviceListItem } from '../../types/device'
+import { useNavigation, useFocusEffect } from '@react-navigation/native'
+import { useCallback } from 'react'
+import { useSelector } from 'react-redux'
+import { RootState } from '../../redux'
+import { StandardizedListLayout } from '../../components/ui/StandardizedListLayout'
 
 export const Devices = () => {
+	const theme = useTheme()
+	const navigation = useNavigation()
+	const [devices, setDevices] = useState<DeviceListItem[]>([])
+	const [loading, setLoading] = useState(true)
+	const [refreshing, setRefreshing] = useState(false)
+	const [searchQuery, setSearchQuery] = useState('')
+
+	// Get current user ID from Redux
+	const userId = useSelector((state: RootState) => state.authentication.user?.id)
+
+	const loadDevices = async () => {
+		try {
+			if (!userId) {
+				console.log('No user ID available, cannot load devices')
+				setDevices([])
+				return
+			}
+
+			// Use filtered method to get only devices user has access to
+			const devicesList = await DeviceService.getDevicesForUser(userId)
+			setDevices(devicesList)
+		} catch (error) {
+			console.error('Error loading devices:', error)
+			Alert.alert('Error', 'Failed to load devices')
+		} finally {
+			setLoading(false)
+			setRefreshing(false)
+		}
+	}
+
+	useFocusEffect(
+		useCallback(() => {
+			loadDevices()
+		}, [userId])
+	)
+
+	const handleRefresh = () => {
+		setRefreshing(true)
+		loadDevices()
+	}
+
+	const handleDevicePress = (deviceId: string) => {
+		(navigation as any).navigate('DeviceDetails', { deviceId })
+	}
+
+	const handlePrepareAndTest = () => {
+		(navigation as any).navigate('DeviceDiscovery', { mode: 'prepare' })
+	}
+
+	const handleEngineerConsole = () => {
+		(navigation as any).navigate('DeviceDiscovery', { mode: 'engineer' })
+	}
+
+	// Filter devices locally since we load all at once
+	const filteredDevices = devices.filter(device =>
+		!searchQuery ||
+		device.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+		device.bluetoothId?.toLowerCase().includes(searchQuery.toLowerCase())
+	)
+
 	return (
-		<WWScreenView>
-			<View>
-				<WWText variant="titleSmall">Devices screen coming soon.</WWText>
-			</View>
-		</WWScreenView>
+		<StandardizedListLayout
+			data={filteredDevices}
+			renderItem={({ item }) => (
+				<DeviceCard device={item} onPress={() => handleDevicePress(item.id)} />
+			)}
+			keyExtractor={(item) => item.id}
+			isLoading={loading}
+			isFetching={refreshing}
+			onRefresh={handleRefresh}
+			searchQuery={searchQuery}
+			onSearchChange={setSearchQuery}
+			searchPlaceholder="Search devices..."
+
+			// Primary Action: Prepare & Test
+			primaryActionLabel="Prepare & Test Devices"
+			onPrimaryAction={handlePrepareAndTest}
+
+			// Secondary Action: Engineer Console
+			secondaryActionLabel="Engineer Device"
+			onSecondaryAction={handleEngineerConsole}
+			secondaryActionIcon="wrench"
+			secondaryActionColor={theme.colors.primary}
+
+			emptyStateTitle="No devices yet"
+			emptyStateMessage="Prepare and test nearby cameras to add them to your device list"
+			emptySearchMessage={`No devices found matching "${searchQuery}"`}
+		/>
 	)
 }

@@ -1,13 +1,16 @@
 {
   "cli": {
-    "version": ">= 5.2.0"
+    "version": ">= 5.2.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "NODE_ENV": "development"
+        "NODE_ENV": "development",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nuhwmubvygxyddkycmpa.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd"
       },
       "ios": {
         "resourceClass": "m-medium"
@@ -21,11 +24,11 @@
       "env": {
         "NODE_ENV": "development",
         "EXPO_PUBLIC_SUPABASE_URL": "https://nuhwmubvygxyddkycmpa.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd",
-        "GOOGLE_MAPS_API_KEY_ANDROID": "AIzaSyD4GgP2HPVqgEOIbOiA1QF6AfTaSBg4vfI"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd"
       },
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "cocoapods": "1.16.1"
       },
       "android": {
         "resourceClass": "medium"
@@ -36,7 +39,8 @@
         "NODE_ENV": "production"
       },
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "cocoapods": "1.16.1"
       },
       "android": {
         "resourceClass": "medium"

@@ -7,22 +7,21 @@ export const authApi = api.injectEndpoints({
 		login: builder.mutation<AuthResponse, LoginRequest>({
 			queryFn: async (credentials) => {
 				try {
-					console.log('🔐 RTK Query: Attempting login for:', credentials.identifier)
+					console.log(
+						"🔐 RTK Query: Attempting login for:",
+						credentials.identifier,
+					)
 					const result = await login(credentials)
-					console.log('✅ RTK Query: Login successful')
+					console.log("✅ RTK Query: Login successful")
 					return { data: result }
 				} catch (error) {
-					console.error('❌ RTK Query: Login failed:', {
-						message: error instanceof Error ? error.message : 'Unknown error',
-						error: error,
-						stack: error instanceof Error ? error.stack : undefined
-					})
+					// Error will be displayed in UI, no need for verbose console logs
 					return {
 						error: {
-							status: 'CUSTOM_ERROR',
-							error: error instanceof Error ? error.message : 'Login failed',
-							data: error // Pass through full error object
-						}
+							status: "CUSTOM_ERROR",
+							error: error instanceof Error ? error.message : "Login failed",
+							data: error instanceof Error ? { message: error.message, stack: error.stack } : error,
+						},
 					}
 				}
 			},
@@ -33,11 +32,12 @@ export const authApi = api.injectEndpoints({
 					const result = await register(credentials)
 					return { data: result }
 				} catch (error) {
-					return { 
-						error: { 
-							status: 'CUSTOM_ERROR', 
-							error: error instanceof Error ? error.message : 'Registration failed' 
-						} 
+					return {
+						error: {
+							status: "CUSTOM_ERROR",
+							error:
+								error instanceof Error ? error.message : "Registration failed",
+						},
 					}
 				}
 			},

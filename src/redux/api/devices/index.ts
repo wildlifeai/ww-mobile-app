@@ -12,9 +12,9 @@ export const devicesApi = api.injectEndpoints({
 			providesTags: (_result) =>
 				_result
 					? [
-							..._result.map(({ _id }) => ({
+							..._result.map(({ id }) => ({
 								type: "Device" as const,
-								id: _id,
+								id: id,
 							})),
 							{ type: "Device", id: "LIST" },
 					  ]

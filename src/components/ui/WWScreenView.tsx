@@ -1,6 +1,7 @@
 import { PropsWithChildren } from "react"
 import {
 	Keyboard,
+	Platform,
 	ScrollView,
 	ScrollViewProps,
 	StyleSheet,
@@ -21,7 +22,10 @@ export const WWScreenView = ({
 	...props
 }: Props) => {
 	const { appPadding } = useExtendedTheme()
-	const { bottom } = useSafeAreaInsets()
+	const { bottom, top } = useSafeAreaInsets()
+
+	// Robust Safe Area for Android: If top inset is 0, assume we might be behind a translucent bar and add decent padding.
+	const safeTop = top > 0 ? top : (Platform.OS === 'android' ? 30 : 0)
 
 	return (
 		<TouchableWithoutFeedback style={styles.view} onPress={Keyboard.dismiss}>
@@ -29,7 +33,7 @@ export const WWScreenView = ({
 				<ScrollView
 					style={styles.scrollView}
 					contentContainerStyle={[
-						{ padding: appPadding, paddingBottom: appPadding + bottom },
+						{ padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
 						styles.scrollContent,
 						props.style,
 					]}
@@ -40,7 +44,7 @@ export const WWScreenView = ({
 			) : (
 				<View
 					style={[
-						{ padding: appPadding, paddingBottom: appPadding + bottom },
+						{ padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
 						styles.view,
 						props.style,
 					]}

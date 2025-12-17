@@ -1,20 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Alert } from 'react-native';
-import { Button, Card, Text, Chip, ActivityIndicator } from 'react-native-paper';
-import { supabase } from '../services/supabase';
-import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
-import type { Tables } from '../types/supabase';
+import React, { useState, useEffect } from "react"
+import { View, ScrollView, Alert } from "react-native"
+import { Button, Card, Text, Chip, ActivityIndicator } from "react-native-paper"
+import { getSupabaseClient } from "../services/supabase"
+import type {
+	RealtimePostgresChangesPayload,
+	REALTIME_SUBSCRIBE_STATES,
+} from "@supabase/supabase-js"
+import { useSupabaseAuth } from "../hooks/useSupabaseAuth"
+import type { Tables } from "../types/database.types"
 
 type TestResult = {
-  name: string;
-  status: 'pending' | 'running' | 'success' | 'error';
-  message: string;
-  duration?: number;
-};
+	name: string
+	status: "pending" | "running" | "success" | "error"
+	message: string
+	duration?: number
+}
 
 /**
  * Comprehensive Supabase Connectivity Test Component
- * 
+ *
  * Tests all aspects of Supabase integration:
  * - Database connectivity
  * - Authenticated queries with RLS
@@ -23,323 +27,356 @@ type TestResult = {
  * - Performance metrics
  */
 export const SupabaseConnectivityTest: React.FC = () => {
-  const { isLoggedIn, user } = useSupabaseAuth();
-  const [tests, setTests] = useState<TestResult[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [subscription, setSubscription] = useState<any>(null);
+	const { isLoggedIn, user } = useSupabaseAuth()
+	const [tests, setTests] = useState<TestResult[]>([])
+	const [isRunning, setIsRunning] = useState(false)
+	const [subscription, setSubscription] = useState<any>(null)
 
-  const updateTest = (name: string, updates: Partial<TestResult>) => {
-    setTests(prev => prev.map(test => 
-      test.name === name ? { ...test, ...updates } : test
-    ));
-  };
+	const updateTest = (name: string, updates: Partial<TestResult>) => {
+		setTests((prev) =>
+			prev.map((test) => (test.name === name ? { ...test, ...updates } : test)),
+		)
+	}
 
-  const initializeTests = () => {
-    const initialTests: TestResult[] = [
-      { name: 'Basic Connection', status: 'pending', message: 'Not started' },
-      { name: 'Database Schema', status: 'pending', message: 'Not started' },
-      { name: 'Public Data Query', status: 'pending', message: 'Not started' },
-      { name: 'Authenticated Query', status: 'pending', message: 'Not started' },
-      { name: 'RLS Policy Test', status: 'pending', message: 'Not started' },
-      { name: 'Real-time Subscription', status: 'pending', message: 'Not started' },
-      { name: 'Error Handling', status: 'pending', message: 'Not started' },
-      { name: 'Performance Test', status: 'pending', message: 'Not started' },
-    ];
-    setTests(initialTests);
-  };
+	const initializeTests = () => {
+		const initialTests: TestResult[] = [
+			{ name: "Basic Connection", status: "pending", message: "Not started" },
+			{ name: "Database Schema", status: "pending", message: "Not started" },
+			{ name: "Public Data Query", status: "pending", message: "Not started" },
+			{
+				name: "Authenticated Query",
+				status: "pending",
+				message: "Not started",
+			},
+			{ name: "RLS Policy Test", status: "pending", message: "Not started" },
+			{
+				name: "Real-time Subscription",
+				status: "pending",
+				message: "Not started",
+			},
+			{ name: "Error Handling", status: "pending", message: "Not started" },
+			{ name: "Performance Test", status: "pending", message: "Not started" },
+		]
+		setTests(initialTests)
+	}
 
-  useEffect(() => {
-    initializeTests();
-    return () => {
-      // Cleanup subscription on unmount
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
-  }, []);
+	useEffect(() => {
+		initializeTests()
+		return () => {
+			// Cleanup subscription on unmount
+			if (subscription) {
+				subscription.unsubscribe()
+			}
+		}
+	}, [])
 
-  const runTest = async (testName: string, testFn: () => Promise<void>) => {
-    const startTime = Date.now();
-    updateTest(testName, { status: 'running', message: 'Running...' });
-    
-    try {
-      await testFn();
-      const duration = Date.now() - startTime;
-      updateTest(testName, { 
-        status: 'success', 
-        message: 'Passed', 
-        duration 
-      });
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      updateTest(testName, { 
-        status: 'error', 
-        message: error instanceof Error ? error.message : 'Unknown error',
-        duration 
-      });
-    }
-  };
+	const runTest = async (testName: string, testFn: () => Promise<void>) => {
+		const startTime = Date.now()
+		updateTest(testName, { status: "running", message: "Running..." })
 
-  const testBasicConnection = async () => {
-    // Test basic Supabase connection
-    const { error } = await supabase.from('users').select('count').limit(1);
-    if (error) throw new Error(`Connection failed: ${error.message}`);
-  };
+		try {
+			await testFn()
+			const duration = Date.now() - startTime
+			updateTest(testName, {
+				status: "success",
+				message: "Passed",
+				duration,
+			})
+		} catch (error) {
+			const duration = Date.now() - startTime
+			updateTest(testName, {
+				status: "error",
+				message: error instanceof Error ? error.message : "Unknown error",
+				duration,
+			})
+		}
+	}
 
-  const testDatabaseSchema = async () => {
-    // Test that all expected tables are accessible
-    const tables = ['users', 'devices', 'projects', 'deployments', 'roles'] as const;
-    
-    for (const table of tables) {
-      const { error } = await supabase.from(table).select('*').limit(1);
-      if (error) throw new Error(`Table ${table} not accessible: ${error.message}`);
-    }
-  };
+	const testBasicConnection = async () => {
+		// Test basic Supabase connection
+		const { error } = await getSupabaseClient().from("users").select("count").limit(1)
+		if (error) throw new Error(`Connection failed: ${error.message}`)
+	}
 
-  const testPublicDataQuery = async () => {
-    // Test querying public/reference data
-    const { data, error } = await supabase
-      .from('roles')
-      .select('*')
-      .limit(5);
-    
-    if (error) throw new Error(`Public query failed: ${error.message}`);
-    if (!data) throw new Error('No data returned from public query');
-  };
+	const testDatabaseSchema = async () => {
+		// Test that all expected tables are accessible
+		const tables = [
+			"users",
+			"devices",
+			"projects",
+			"deployments",
+			"user_roles",
+		] as const
 
-  const testAuthenticatedQuery = async () => {
-    if (!isLoggedIn) throw new Error('User not authenticated');
-    
-    // Test authenticated query to users table
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user?.id)
-      .single();
-    
-    if (error) throw new Error(`Authenticated query failed: ${error.message}`);
-    if (!data) throw new Error('No user data returned');
-  };
+		for (const table of tables) {
+			const { error } = await getSupabaseClient().from(table).select("*").limit(1)
+			if (error)
+				throw new Error(`Table ${table} not accessible: ${error.message}`)
+		}
+	}
 
-  const testRLSPolicy = async () => {
-    if (!isLoggedIn) throw new Error('User not authenticated');
-    
-    try {
-      // Try to access all users (should be restricted by RLS)
-      const { data, error } = await supabase
-        .from('users')
-        .select('*');
-      
-      // If this succeeds without proper filtering, RLS might not be working
-      if (data && data.length > 1) {
-        console.warn('RLS might not be properly configured - returned multiple users');
-      }
-      
-      if (error && error.message.includes('RLS')) {
-        // RLS is working correctly
-        return;
-      }
-      
-      // Test passed - user can only see their own data or RLS is correctly applied
-    } catch (error) {
-      throw new Error(`RLS test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
+	const testPublicDataQuery = async () => {
+		// Test querying public/reference data
+		const { data, error } = await getSupabaseClient().from("activity_sensitivity").select("*").limit(5)
 
-  const testRealtimeSubscription = async () => {
-    return new Promise<void>((resolve, reject) => {
-      let timeoutId: NodeJS.Timeout;
-      
-      try {
-        // Set up subscription to devices table
-        const channel = supabase
-          .channel('connectivity-test')
-          .on('postgres_changes', 
-            { event: '*', schema: 'public', table: 'devices' },
-            (payload) => {
-              console.log('Real-time update received:', payload);
-              clearTimeout(timeoutId);
-              channel.unsubscribe();
-              resolve();
-            }
-          )
-          .subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-              // Subscription established successfully
-              console.log('Real-time subscription established');
-              
-              // Set timeout to resolve after a short wait (no changes expected)
-              timeoutId = setTimeout(() => {
-                channel.unsubscribe();
-                resolve(); // Consider it successful if subscription was established
-              }, 3000);
-            } else if (status === 'CLOSED') {
-              clearTimeout(timeoutId);
-              reject(new Error('Real-time subscription closed unexpectedly'));
-            }
-          });
+		if (error) throw new Error(`Public query failed: ${error.message}`)
+		if (!data) throw new Error("No data returned from public query")
+	}
 
-        setSubscription(channel);
-        
-        // Fallback timeout
-        setTimeout(() => {
-          clearTimeout(timeoutId);
-          channel.unsubscribe();
-          reject(new Error('Real-time subscription timeout'));
-        }, 10000);
-        
-      } catch (error) {
-        reject(error);
-      }
-    });
-  };
+	const testAuthenticatedQuery = async () => {
+		if (!isLoggedIn) throw new Error("User not authenticated")
 
-  const testErrorHandling = async () => {
-    try {
-      // Intentionally trigger an error by querying with invalid filter
-      const { error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('invalid_column', 'test');
-      
-      if (!error) throw new Error('Expected error was not thrown');
-      
-      // Verify we get a proper error object
-      if (!error.message) throw new Error('Error object missing message');
-      
-    } catch (error) {
-      // This is expected - we're testing error handling
-      if (error instanceof Error && error.message.includes('Expected error was not thrown')) {
-        throw error;
-      }
-      // Other errors are expected and indicate proper error handling
-    }
-  };
+		if (!user?.id) throw new Error("User ID missing")
 
-  const testPerformance = async () => {
-    const startTime = Date.now();
-    
-    // Run multiple concurrent queries
-    const promises = [
-      supabase.from('users').select('count').limit(1),
-      supabase.from('devices').select('count').limit(1),
-      supabase.from('projects').select('count').limit(1),
-    ];
-    
-    await Promise.all(promises);
-    
-    const duration = Date.now() - startTime;
-    if (duration > 5000) {
-      throw new Error(`Performance test failed: ${duration}ms (expected < 5000ms)`);
-    }
-  };
+		// Test authenticated query to users table
+		const { data, error } = await getSupabaseClient()
+			.from("users")
+			.select("*")
+			.eq("id", user.id)
+			.single()
 
-  const runAllTests = async () => {
-    setIsRunning(true);
-    initializeTests();
-    
-    const testSuite = [
-      { name: 'Basic Connection', fn: testBasicConnection },
-      { name: 'Database Schema', fn: testDatabaseSchema },
-      { name: 'Public Data Query', fn: testPublicDataQuery },
-      { name: 'Authenticated Query', fn: testAuthenticatedQuery },
-      { name: 'RLS Policy Test', fn: testRLSPolicy },
-      { name: 'Real-time Subscription', fn: testRealtimeSubscription },
-      { name: 'Error Handling', fn: testErrorHandling },
-      { name: 'Performance Test', fn: testPerformance },
-    ];
-    
-    for (const test of testSuite) {
-      await runTest(test.name, test.fn);
-      // Small delay between tests
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    
-    setIsRunning(false);
-    
-    // Show summary
-    const passedTests = tests.filter(t => t.status === 'success').length;
-    const totalTests = tests.length;
-    Alert.alert(
-      'Test Results',
-      `${passedTests}/${totalTests} tests passed`,
-      [{ text: 'OK' }]
-    );
-  };
+		if (error) throw new Error(`Authenticated query failed: ${error.message}`)
+		if (!data) throw new Error("No user data returned")
+	}
 
-  const getStatusColor = (status: TestResult['status']) => {
-    switch (status) {
-      case 'success': return '#4CAF50';
-      case 'error': return '#F44336';
-      case 'running': return '#FF9800';
-      default: return '#9E9E9E';
-    }
-  };
+	const testRLSPolicy = async () => {
+		if (!isLoggedIn) throw new Error("User not authenticated")
 
-  const getStatusIcon = (status: TestResult['status']) => {
-    switch (status) {
-      case 'success': return '✅';
-      case 'error': return '❌';
-      case 'running': return '⏳';
-      default: return '⚪';
-    }
-  };
+		try {
+			// Try to access all users (should be restricted by RLS)
+			const { data, error } = await getSupabaseClient().from("users").select("*")
 
-  return (
-    <ScrollView style={{ padding: 16 }}>
-      <Text variant="headlineMedium" style={{ marginBottom: 16 }}>
-        Supabase Connectivity Test
-      </Text>
-      
-      <Card style={{ marginBottom: 16 }}>
-        <Card.Title title="Test Suite" />
-        <Card.Content>
-          <Text>Authentication Status: {isLoggedIn ? '✅ Logged In' : '❌ Not Logged In'}</Text>
-          <Text>User: {user?.email || 'None'}</Text>
-          <Button 
-            mode="contained" 
-            onPress={runAllTests} 
-            disabled={isRunning}
-            style={{ marginTop: 8 }}
-          >
-            {isRunning ? 'Running Tests...' : 'Run All Tests'}
-          </Button>
-        </Card.Content>
-      </Card>
+			// If this succeeds without proper filtering, RLS might not be working
+			if (data && data.length > 1) {
+				console.warn(
+					"RLS might not be properly configured - returned multiple users",
+				)
+			}
 
-      {tests.map((test, index) => (
-        <Card key={index} style={{ marginBottom: 8 }}>
-          <Card.Content>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 20, marginRight: 8 }}>
-                {getStatusIcon(test.status)}
-              </Text>
-              <Text variant="titleMedium" style={{ flex: 1 }}>
-                {test.name}
-              </Text>
-              {test.duration && (
-                <Chip mode="outlined" compact>
-                  {test.duration}ms
-                </Chip>
-              )}
-            </View>
-            <Text 
-              style={{ 
-                color: getStatusColor(test.status),
-                fontSize: 12
-              }}
-            >
-              {test.message}
-            </Text>
-            {test.status === 'running' && (
-              <ActivityIndicator 
-                size="small" 
-                style={{ marginTop: 8 }} 
-              />
-            )}
-          </Card.Content>
-        </Card>
-      ))}
-    </ScrollView>
-  );
-};
+			if (error && error.message.includes("RLS")) {
+				// RLS is working correctly
+				return
+			}
+
+			// Test passed - user can only see their own data or RLS is correctly applied
+		} catch (error) {
+			throw new Error(
+				`RLS test failed: ${error instanceof Error ? error.message : "Unknown error"
+				}`,
+			)
+		}
+	}
+
+	const testRealtimeSubscription = async () => {
+		return new Promise<void>((resolve, reject) => {
+			let timeoutId: NodeJS.Timeout
+
+			try {
+				// Set up subscription to devices table
+				const channel = getSupabaseClient()
+					.channel("connectivity-test")
+					.on(
+						"postgres_changes",
+						{ event: "*", schema: "public", table: "devices" },
+						(payload: RealtimePostgresChangesPayload<Tables<"devices">>) => {
+							console.log("Real-time update received:", payload)
+							clearTimeout(timeoutId)
+							channel.unsubscribe()
+							resolve()
+						},
+					)
+					.subscribe((status: `${REALTIME_SUBSCRIBE_STATES}`) => {
+						if (status === "SUBSCRIBED") {
+							// Subscription established successfully
+							console.log("Real-time subscription established")
+
+							// Set timeout to resolve after a short wait (no changes expected)
+							timeoutId = setTimeout(() => {
+								channel.unsubscribe()
+								resolve() // Consider it successful if subscription was established
+							}, 3000)
+						} else if (status === "CLOSED") {
+							clearTimeout(timeoutId)
+							reject(new Error("Real-time subscription closed unexpectedly"))
+						}
+					})
+
+				setSubscription(channel)
+
+				// Fallback timeout
+				setTimeout(() => {
+					clearTimeout(timeoutId)
+					channel.unsubscribe()
+					reject(new Error("Real-time subscription timeout"))
+				}, 10000)
+			} catch (error) {
+				reject(error)
+			}
+		})
+	}
+
+	const testErrorHandling = async () => {
+		try {
+			// Intentionally trigger an error by querying with invalid filter
+			const { error } = await getSupabaseClient()
+				.from("users")
+				.select("*")
+				.eq("invalid_column", "test")
+
+			if (!error) throw new Error("Expected error was not thrown")
+
+			// Verify we get a proper error object
+			if (!error.message) throw new Error("Error object missing message")
+		} catch (error) {
+			// This is expected - we're testing error handling
+			if (
+				error instanceof Error &&
+				error.message.includes("Expected error was not thrown")
+			) {
+				throw error
+			}
+			// Other errors are expected and indicate proper error handling
+		}
+	}
+
+	const testPerformance = async () => {
+		const startTime = Date.now()
+
+		// Run multiple concurrent queries
+		const promises = [
+			getSupabaseClient().from("users").select("count").limit(1),
+			getSupabaseClient().from("devices").select("count").limit(1),
+			getSupabaseClient().from("projects").select("count").limit(1),
+		]
+
+		await Promise.all(promises)
+
+		const duration = Date.now() - startTime
+		if (duration > 5000) {
+			throw new Error(
+				`Performance test failed: ${duration}ms (expected < 5000ms)`,
+			)
+		}
+	}
+
+	const runAllTests = async () => {
+		setIsRunning(true)
+		initializeTests()
+
+		const testSuite = [
+			{ name: "Basic Connection", fn: testBasicConnection },
+			{ name: "Database Schema", fn: testDatabaseSchema },
+			{ name: "Public Data Query", fn: testPublicDataQuery },
+			{ name: "Authenticated Query", fn: testAuthenticatedQuery },
+			{ name: "RLS Policy Test", fn: testRLSPolicy },
+			{ name: "Real-time Subscription", fn: testRealtimeSubscription },
+			{ name: "Error Handling", fn: testErrorHandling },
+			{ name: "Performance Test", fn: testPerformance },
+		]
+
+		for (const test of testSuite) {
+			await runTest(test.name, test.fn)
+			// Small delay between tests
+			await new Promise((resolve) => setTimeout(resolve, 500))
+		}
+
+		setIsRunning(false)
+
+		// Show summary
+		const passedTests = tests.filter((t) => t.status === "success").length
+		const totalTests = tests.length
+		Alert.alert("Test Results", `${passedTests}/${totalTests} tests passed`, [
+			{ text: "OK" },
+		])
+	}
+
+	const getStatusColor = (status: TestResult["status"]) => {
+		switch (status) {
+			case "success":
+				return "#4CAF50"
+			case "error":
+				return "#F44336"
+			case "running":
+				return "#FF9800"
+			default:
+				return "#9E9E9E"
+		}
+	}
+
+	const getStatusIcon = (status: TestResult["status"]) => {
+		switch (status) {
+			case "success":
+				return "✅"
+			case "error":
+				return "❌"
+			case "running":
+				return "⏳"
+			default:
+				return "⚪"
+		}
+	}
+
+	return (
+		<ScrollView style={{ padding: 16 }}>
+			<Text variant="headlineMedium" style={{ marginBottom: 16 }}>
+				Supabase Connectivity Test
+			</Text>
+
+			<Card style={{ marginBottom: 16 }}>
+				<Card.Title title="Test Suite" />
+				<Card.Content>
+					<Text>
+						Authentication Status:{" "}
+						{isLoggedIn ? "✅ Logged In" : "❌ Not Logged In"}
+					</Text>
+					<Text>User: {user?.email || "None"}</Text>
+					<Button
+						mode="contained"
+						onPress={runAllTests}
+						disabled={isRunning}
+						style={{ marginTop: 8 }}
+					>
+						{isRunning ? "Running Tests..." : "Run All Tests"}
+					</Button>
+				</Card.Content>
+			</Card>
+
+			{tests.map((test, index) => (
+				<Card key={index} style={{ marginBottom: 8 }}>
+					<Card.Content>
+						<View
+							style={{
+								flexDirection: "row",
+								alignItems: "center",
+								marginBottom: 8,
+							}}
+						>
+							<Text style={{ fontSize: 20, marginRight: 8 }}>
+								{getStatusIcon(test.status)}
+							</Text>
+							<Text variant="titleMedium" style={{ flex: 1 }}>
+								{test.name}
+							</Text>
+							{test.duration && (
+								<Chip mode="outlined" compact>
+									{test.duration}ms
+								</Chip>
+							)}
+						</View>
+						<Text
+							style={{
+								color: getStatusColor(test.status),
+								fontSize: 12,
+							}}
+						>
+							{test.message}
+						</Text>
+						{test.status === "running" && (
+							<ActivityIndicator size="small" style={{ marginTop: 8 }} />
+						)}
+					</Card.Content>
+				</Card>
+			))}
+		</ScrollView>
+	)
+}

@@ -1,16 +1,10 @@
-// Lazy load gesture handler to avoid NativeModule error during initialization
-const lazyLoadGestureHandler = () => {
-  try {
-    require("react-native-gesture-handler");
-  } catch (e) {
-    console.warn("Gesture handler not available:", e);
-  }
-};
-
-// Load gesture handler when component mounts
-setTimeout(lazyLoadGestureHandler, 100);
+// Import gesture handler FIRST before any other imports  
+import 'react-native-gesture-handler'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { StatusBar } from 'expo-status-bar'
 
 import { Suspense } from "react"
+import { Text } from "react-native"
 
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { Provider as ReduxProvider } from "react-redux"
@@ -28,26 +22,29 @@ import { AuthProvider } from "./providers/AuthProvider"
 
 export const App = () => {
 	return (
-		<SafeAreaProvider>
-			<Suspense fallback={"Loading..."}>
-				<ReduxProvider store={store}>
-					<PaperProvider theme={CombinedDefaultTheme}>
-						<NavigationContainer theme={CombinedDefaultTheme} linking={linking}>
-							<AndroidPermissionsProvider>
-								<AppSetupProvider>
-									<BleEngineProvider>
-										<ListenToBleEngineProvider>
-											<AuthProvider>
-												<MainNavigation />
-											</AuthProvider>
-										</ListenToBleEngineProvider>
-									</BleEngineProvider>
-								</AppSetupProvider>
-							</AndroidPermissionsProvider>
-						</NavigationContainer>
-					</PaperProvider>
-				</ReduxProvider>
-			</Suspense>
-		</SafeAreaProvider>
+		<GestureHandlerRootView style={{ flex: 1 }}>
+			<SafeAreaProvider>
+				<StatusBar style="light" backgroundColor="#000000" />
+				<Suspense fallback={<Text>Loading...</Text>}>
+					<ReduxProvider store={store}>
+						<PaperProvider theme={CombinedDefaultTheme}>
+							<NavigationContainer theme={CombinedDefaultTheme} linking={linking}>
+								<AndroidPermissionsProvider>
+									<AppSetupProvider>
+										<BleEngineProvider>
+											<ListenToBleEngineProvider>
+												<AuthProvider>
+													<MainNavigation />
+												</AuthProvider>
+											</ListenToBleEngineProvider>
+										</BleEngineProvider>
+									</AppSetupProvider>
+								</AndroidPermissionsProvider>
+							</NavigationContainer>
+						</PaperProvider>
+					</ReduxProvider>
+				</Suspense>
+			</SafeAreaProvider>
+		</GestureHandlerRootView>
 	)
 }

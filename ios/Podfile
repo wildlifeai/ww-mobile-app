@@ -1,6 +1,9 @@
 require File.join(File.dirname(`node --print "require.resolve('expo/package.json')"`), "scripts/autolinking")
 require File.join(File.dirname(`node --print "require.resolve('react-native/package.json')"`), "scripts/react_native_pods")
 
+# WatermelonDB 0.28.0 fix: Ensure CocoaPods can find simdjson
+source 'https://cdn.cocoapods.org/'
+
 require 'json'
 podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties.json'))) rescue {}
 
@@ -28,9 +31,10 @@ self.define_singleton_method(use_autolinking_method_symbol) do |*args|
   end
 end
 
-platform :ios, podfile_properties['ios.deploymentTarget'] || '13.4'
+platform :ios, podfile_properties['ios.deploymentTarget'] || '14.0'
 install! 'cocoapods',
-  :deterministic_uuids => false
+  :deterministic_uuids => false,
+  :repo_update => true
 
 prepare_react_native_project!
 
@@ -41,6 +45,16 @@ target 'WildlifeWatcher' do
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
 
+  # WatermelonDB dependency - simdjson is bundled with WatermelonDB
+  pod 'simdjson', path: '../node_modules/@nozbe/simdjson', :modular_headers => true
+  
+  # Explicitly include ZIPFoundation and iOSDFULibrary with modular headers to fix Swift module visibility
+  pod 'ZIPFoundation', :modular_headers => true
+  pod 'iOSDFULibrary', :modular_headers => true
+  
+  # Also require modular headers for the RN bridge module to see Swift headers
+  pod 'react-native-nordic-dfu', path: '../node_modules/@circularing/react-native-nordic-dfu', :modular_headers => true
+  
   use_react_native!(
     :path => config[:reactNativePath],
     :hermes_enabled => podfile_properties['expo.jsEngine'] == nil || podfile_properties['expo.jsEngine'] == 'hermes',
@@ -66,6 +80,26 @@ target 'WildlifeWatcher' do
           config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
         end
       end
+    end
+    
+    # Patch RNNordicDfu.h to fix 'NordicDFU/NordicDFU-Swift.h' file not found error
+    # The @circularing fork uses <NordicDFU/NordicDFU-Swift.h> which fails in this setup.
+    # We replace it with "iOSDFULibrary-Swift.h"
+    puts "Patching RNNordicDfu.h for @circularing fork..."
+    header_file = File.expand_path("../node_modules/@circularing/react-native-nordic-dfu/ios/RNNordicDfu.h", __dir__)
+    
+    if File.exist?(header_file)
+      puts "Found RNNordicDfu.h at #{header_file}"
+      text = File.read(header_file)
+      if text.include?("#import <NordicDFU/NordicDFU-Swift.h>")
+        new_contents = text.gsub("#import <NordicDFU/NordicDFU-Swift.h>", "#import \"iOSDFULibrary-Swift.h\"")
+        File.open(header_file, "w") {|file| file.puts new_contents }
+        puts "Patched RNNordicDfu.h successfully"
+      else
+        puts "RNNordicDfu.h already patched or import not found"
+      end
+    else
+      puts "Could not find RNNordicDfu.h at #{header_file}"
     end
   end
 

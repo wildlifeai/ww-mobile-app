@@ -41,7 +41,7 @@ export const Login = () => {
 		try {
 			const savedEmail = await AsyncStorage.getItem("rememberedEmail")
 			const savedRememberMe = await AsyncStorage.getItem("rememberMe")
-			
+
 			if (savedEmail && savedRememberMe === "true") {
 				setValue("email", savedEmail)
 				setRememberMe(true)
@@ -56,11 +56,11 @@ export const Login = () => {
 			// Transform email to identifier format for existing API
 			const loginData = {
 				identifier: data.email,
-				password: data.password
+				password: data.password,
 			}
-			
+
 			const response = await login(loginData).unwrap()
-			
+
 			// Save credentials if remember me is checked
 			if (rememberMe) {
 				await AsyncStorage.setItem("rememberedEmail", data.email)
@@ -69,18 +69,18 @@ export const Login = () => {
 				await AsyncStorage.removeItem("rememberedEmail")
 				await AsyncStorage.removeItem("rememberMe")
 			}
-			
+
 			dispatch(setCredentials(response))
 		} catch (err) {
 			console.error("❌ Login failed - Full error details:", {
-				message: err instanceof Error ? err.message : 'Unknown error',
+				message: err instanceof Error ? err.message : "Unknown error",
 				errorObject: err,
-				stack: err instanceof Error ? err.stack : undefined
+				stack: err instanceof Error ? err.stack : undefined,
 			})
 
 			// Extract detailed error message
 			let errorMessage = "Please check your email and password and try again."
-			if (err && typeof err === 'object') {
+			if (err && typeof err === "object") {
 				const anyErr = err as any
 				if (anyErr.data?.error) {
 					errorMessage = anyErr.data.error
@@ -91,11 +91,7 @@ export const Login = () => {
 				}
 			}
 
-			Alert.alert(
-				"Login Failed",
-				errorMessage,
-				[{ text: "OK" }]
-			)
+			Alert.alert("Login Failed", errorMessage, [{ text: "OK" }])
 		}
 	}
 
@@ -150,7 +146,12 @@ export const Login = () => {
 							}}
 						>
 							{(field) => (
-								<WWTextInput {...field} testID="password-input" mode="outlined" secureTextEntry />
+								<WWTextInput
+									{...field}
+									testID="password-input"
+									mode="outlined"
+									secureTextEntry
+								/>
 							)}
 						</Field>
 
@@ -159,7 +160,7 @@ export const Login = () => {
 								status={rememberMe ? "checked" : "unchecked"}
 								onPress={() => setRememberMe(!rememberMe)}
 							/>
-							<WWText 
+							<WWText
 								style={styles.checkboxLabel}
 								onPress={() => setRememberMe(!rememberMe)}
 							>
@@ -169,7 +170,8 @@ export const Login = () => {
 
 						{error && (
 							<WWText style={styles.error}>
-								{(error as any)?.data?.error?.message || "Login failed. Please try again."}
+								{(error as any)?.data?.error?.message ||
+									"Login failed. Please try again."}
 							</WWText>
 						)}
 
@@ -203,7 +205,7 @@ export const Login = () => {
 						>
 							Don't have an account? Register
 						</Button>
-						
+
 						{/* Temporary test component for deep linking */}
 						{__DEV__ && <TestDeepLink />}
 					</View>

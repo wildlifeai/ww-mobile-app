@@ -64,7 +64,7 @@ print_summary() {
 print_header
 
 # Check 1: Required configuration files
-print_check "1/8" "Checking required configuration files..."
+print_check "1/9" "Checking required configuration files..."
 REQUIRED_FILES=(
     "app.json"
     "package.json"
@@ -83,7 +83,7 @@ for file in "${REQUIRED_FILES[@]}"; do
 done
 
 # Check 2: Entry file syntax
-print_check "2/8" "Validating JavaScript syntax in entry file..."
+print_check "2/9" "Validating JavaScript syntax in entry file..."
 if node -c index.js 2>/dev/null; then
     print_pass "index.js has valid syntax"
 else
@@ -91,7 +91,7 @@ else
 fi
 
 # Check 3: Core dependencies
-print_check "3/8" "Checking core dependencies..."
+print_check "3/9" "Checking core dependencies..."
 node -e "
 const pkg = require('./package.json');
 const required = ['react', 'react-native', 'expo', '@supabase/supabase-js', '@reduxjs/toolkit'];
@@ -110,7 +110,7 @@ process.exit(allPresent ? 0 : 1);
 " && ((CHECKS_PASSED++)) || ((CHECKS_FAILED++))
 
 # Check 4: Critical import paths
-print_check "4/8" "Validating critical import paths..."
+print_check "4/9" "Validating critical import paths..."
 IMPORT_CHECK_PASSED=true
 
 # Check ALL api.types imports in src/redux/api subdirectories
@@ -138,7 +138,7 @@ else
 fi
 
 # Check 5: TypeScript configuration
-print_check "5/8" "Checking TypeScript configuration..."
+print_check "5/9" "Checking TypeScript configuration..."
 if [ -f "tsconfig.json" ]; then
     print_pass "tsconfig.json exists"
     ((CHECKS_PASSED++))
@@ -148,7 +148,7 @@ else
 fi
 
 # Check 6: Android build configuration
-print_check "6/8" "Validating Android configuration..."
+print_check "6/9" "Validating Android configuration..."
 ANDROID_CHECK_PASSED=true
 
 if [ -d "android" ]; then
@@ -179,7 +179,7 @@ else
 fi
 
 # Check 7: Environment and secrets
-print_check "7/8" "Checking environment configuration..."
+print_check "7/9" "Checking environment configuration..."
 ENV_CHECK_PASSED=true
 
 if [ -f ".env" ] || [ -f ".env.local" ]; then
@@ -205,7 +205,7 @@ fi
 ((CHECKS_PASSED++))
 
 # Check 8: Git repository status
-print_check "8/8" "Checking Git repository status..."
+print_check "8/9" "Checking Git repository status..."
 if git rev-parse --git-dir > /dev/null 2>&1; then
     print_pass "Git repository initialized"
 
@@ -220,6 +220,23 @@ if git rev-parse --git-dir > /dev/null 2>&1; then
 else
     print_warn "Not a Git repository (non-critical)"
     ((CHECKS_PASSED++))
+fi
+
+# Check 9: Schema validation
+print_check "9/9" "Validating WatermelonDB schema..."
+SCHEMA_CHECK_PASSED=true
+
+if npm run schema:validate:live:cloud-dev --silent 2>/dev/null; then
+    print_pass "Schema matches cloud-dev database"
+else
+    print_fail "Schema out of sync with cloud-dev"
+    SCHEMA_CHECK_PASSED=false
+fi
+
+if [ "$SCHEMA_CHECK_PASSED" = true ]; then
+    ((CHECKS_PASSED++))
+else
+    ((CHECKS_FAILED++))
 fi
 
 # Print summary

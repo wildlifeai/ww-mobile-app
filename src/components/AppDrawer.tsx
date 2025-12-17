@@ -7,7 +7,7 @@ import {
 } from "react"
 import { StyleSheet, View } from "react-native"
 import { Drawer } from "react-native-drawer-layout"
-import { Avatar, Surface } from "react-native-paper"
+import { Surface } from "react-native-paper"
 import { WWText } from "./ui/WWText"
 import { useExtendedTheme } from "../theme"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -26,12 +26,12 @@ export const useAppDrawer = () => useContext(DrawerContext)
 export const AppDrawer = ({ children }: PropsWithChildren<unknown>) => {
 	const [isOpen, setIsOpen] = useState(false)
 	const { appPadding, spacing } = useExtendedTheme()
-	const { token } = useAppSelector((state) => state.authentication)
+	const { user } = useAppSelector((state) => state.authentication)
 	const { top } = useSafeAreaInsets()
 
 	return (
 		<Drawer
-			swipeEnabled={!!token}
+			swipeEnabled={!!user}
 			open={isOpen}
 			onOpen={() => setIsOpen(true)}
 			onClose={() => setIsOpen(false)}
@@ -44,13 +44,33 @@ export const AppDrawer = ({ children }: PropsWithChildren<unknown>) => {
 							styles.view,
 						]}
 					>
-						<Avatar.Image source={require("../assets/avatar.png")} />
+						<View style={styles.profileSection}>
+							<View style={styles.avatar}>
+								<WWText style={styles.avatarText}>
+									{user?.profile?.first_name?.[0] || user?.email?.[0] || "U"}
+								</WWText>
+							</View>
+							<View style={styles.userInfo}>
+								<WWText style={styles.userName}>
+									{user?.profile?.first_name
+										? `${user.profile.first_name} ${user.profile.last_name || ''}`
+										: "Wildlife Watcher User"}
+								</WWText>
+								<WWText style={styles.userEmail} variant="bodySmall">
+									{user?.email || "No email"}
+								</WWText>
+							</View>
+						</View>
+
 						<SideNavigation drawerControls={setIsOpen} />
-						<View style={styles.version}>
-							<WWText>Current version:</WWText>
-							<WWText style={[styles.versionText, { marginStart: spacing }]}>
-								v{getReadableVersion()}
-							</WWText>
+
+						<View style={styles.footer}>
+							<View style={styles.version}>
+								<WWText variant="bodySmall" style={styles.versionLabel}>Version</WWText>
+								<WWText variant="bodySmall" style={styles.versionText}>
+									v{getReadableVersion()}
+								</WWText>
+							</View>
 						</View>
 					</Surface>
 				)
@@ -66,17 +86,55 @@ export const AppDrawer = ({ children }: PropsWithChildren<unknown>) => {
 const styles = StyleSheet.create({
 	view: {
 		flex: 1,
-		height: "auto",
+		height: "100%",
 	},
-	test: {
-		height: 500,
+	profileSection: {
+		paddingHorizontal: 24,
+		paddingBottom: 24,
+		borderBottomWidth: 1,
+		borderBottomColor: 'rgba(0,0,0,0.1)',
+		marginBottom: 16,
+	},
+	avatar: {
+		width: 48,
+		height: 48,
+		borderRadius: 24,
+		backgroundColor: '#2E7D32', // Wildlife Green
+		justifyContent: 'center',
+		alignItems: 'center',
+		marginBottom: 12,
+	},
+	avatarText: {
+		color: 'white',
+		fontSize: 20,
+		fontWeight: 'bold',
+	},
+	userInfo: {
+		justifyContent: 'center',
+	},
+	userName: {
+		fontSize: 18,
+		fontWeight: 'bold',
+		marginBottom: 4,
+	},
+	userEmail: {
+		color: '#666',
+	},
+	footer: {
+		padding: 24,
+		borderTopWidth: 1,
+		borderTopColor: 'rgba(0,0,0,0.1)',
 	},
 	version: {
-		flex: 1,
-		flexDirection: "row",
-		alignItems: "flex-end",
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+	},
+	versionLabel: {
+		color: '#888',
 	},
 	versionText: {
-		fontWeight: "bold",
+		color: '#888',
+		fontWeight: '600',
 	},
 })

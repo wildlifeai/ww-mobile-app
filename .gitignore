@@ -2,7 +2,10 @@
 #
 .DS_Store
 actions-runner
-.env*
+.env
+.env.local
+.env.*.local
+!.env.example
 *service-account.json
 google-services.json
 GoogleService-Info.plist
@@ -167,4 +170,4 @@ project-context/stuff.md
 # Serena MCP memory files
 .serena/
 
-project-context/presentations
+project-context/presentations.coordination-hub

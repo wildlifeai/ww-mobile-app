@@ -1,214 +1,149 @@
-import { memo, useEffect, useMemo, useCallback } from "react"
-import { FlatList, StyleSheet, View } from "react-native"
+import React, { memo, useState, useMemo, useCallback } from "react"
+import { ListRenderItemInfo, View, StyleSheet } from "react-native"
+import { withObservables } from '@nozbe/watermelondb/react'
+import { FAB } from 'react-native-paper'
 import { useAppNavigation } from "../../hooks/useAppNavigation"
-import { useBleActions } from "../../providers/BleEngineProvider"
-import { useAppSelector } from "../../redux"
-import { ExtendedPeripheral } from "../../redux/slices/devicesSlice"
-import { DeviceItem } from "../../components/DeviceItem"
-import { WWText } from "../../components/ui/WWText"
-import { WWScreenView } from "../../components/ui/WWScreenView"
-import { log } from "../../utils/logger"
-import { useIsFocused } from "@react-navigation/native"
-import { WWButton } from "../../components/ui/WWButton"
-import { WWLoader } from "../../components/ui/WWLoader"
-import { useGetDeploymentsQuery } from "../../redux/api/deployments"
 import { DeploymentCard } from "../../components/DeploymentCard"
+import type { Deployment } from "../../types/api.types"
+import { StandardizedListLayout } from "../../components/ui/StandardizedListLayout"
+import { useExtendedTheme } from "../../theme"
+import { DeploymentService } from "../../services/DeploymentService"
 
-export const Deployments = memo(() => {
-	const { isBleConnecting, startScan, connectDevice, disconnectDevice } =
-		useBleActions()
-	const devices = useAppSelector((state) => state.devices)
-	const { isScanning } = useAppSelector((state) => state.scanning)
+type Props = {
+	deployments: Deployment[]
+}
+
+const DeploymentsComponent = ({ deployments }: Props) => {
 	const navigation = useAppNavigation()
-	const isFocused = useIsFocused()
-	const { data: deployments, isLoading } = useGetDeploymentsQuery()
+	const theme = useExtendedTheme()
 
-	const isBleBusy = isBleConnecting || isScanning
+	// Search & Filter state
+	const [searchQuery, setSearchQuery] = useState("")
+	const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'ended'>('all')
 
-	const devicesToDisplay = useMemo(() => {
-		return Object.values(devices)
-			.sort((a, b) => {
-				if (a.rssi && b.rssi) {
-					if (b.rssi === 127 || a.rssi === 127) return -1
-					return b.rssi - a.rssi
-				}
-				return -1
-			})
-			.filter((device) => !device.signalLost)
-	}, [devices])
+	// Filter deployments based on search query and status
+	const filteredDeployments = useMemo(() => {
+		if (!deployments) return []
 
-	const isAnyDeviceConnecting = useMemo(() => {
-		return !!Object.values(devices).find((device) => device.loading)
-	}, [devices])
+		let result = deployments
 
-	const disconnect = useCallback(
-		async (item: ExtendedPeripheral) => {
-			await disconnectDevice(item)
-		},
-		[disconnectDevice],
+		// 1. Status Filter
+		if (statusFilter === 'active') {
+			result = result.filter(d => !(d as any).deploymentEnd)
+		} else if (statusFilter === 'ended') {
+			result = result.filter(d => !!(d as any).deploymentEnd)
+		}
+
+		// 2. Search Filter
+		if (searchQuery.trim()) {
+			const query = searchQuery.toLowerCase()
+			result = result.filter(
+				(deployment: any) =>
+					deployment.name?.toLowerCase().includes(query) ||
+					deployment.locationName?.toLowerCase().includes(query) ||
+					deployment.startDeploymentComments?.toLowerCase().includes(query)
+			)
+		}
+
+		return result
+	}, [deployments, searchQuery, statusFilter])
+
+	const handleDeploymentPress = useCallback((deploymentId: string) => {
+		// Navigate to details if exists, or just log for now
+		navigation.navigate('DeploymentDetails', { deploymentId })
+	}, [navigation])
+
+	const handleAddDeployment = useCallback(() => {
+		// Use updated route name for the wizard
+		navigation.navigate("StartDeploymentWizard", { mode: 'deployment' })
+	}, [navigation])
+
+	const renderItem = useCallback(
+		({ item }: ListRenderItemInfo<Deployment>) => (
+			<DeploymentCard
+				deployment={item}
+				onPress={handleDeploymentPress}
+			/>
+		),
+		[handleDeploymentPress],
 	)
 
-	const go = useCallback(
-		async (item: ExtendedPeripheral) => {
-			if (item.connected || (await connectDevice(item)).connected) {
-				navigation.navigate("DeviceNavigator", { deviceId: item.id })
-			}
-		},
-		[connectDevice, navigation],
-	)
+	const keyExtractor = useCallback((item: Deployment) => item.id, [])
 
-	const upgrade = useCallback(
-		(item: ExtendedPeripheral) => {
-			navigation.navigate("DfuScreen", { deviceId: item.id })
-		},
-		[navigation],
-	)
-
-	const scan = () => {
-		if (!isBleBusy && !isScanning) {
-			startScan()
-		} else {
-			log("Scanning already taking place, skipping.")
-		}
-	}
-
-	useEffect(() => {
-		if (isFocused) {
-			startScan(10)
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isFocused])
-
-	useEffect(() => {
-		if (!isFocused) return
-
-		const interval = setInterval(() => {
-			if (!isBleBusy && isFocused) {
-				startScan(10)
-			} else {
-				log("Scanning already taking place, skipping.")
-			}
-		}, 15 * 1000)
-
-		return () => {
-			log("Clearing interval.")
-			clearInterval(interval)
-		}
-	}, [isScanning, isBleConnecting, isBleBusy, startScan, isFocused])
-
-	const handleDeploymentPress = (deploymentId: string) => {
-		console.log(`pressed deployment ${deploymentId}`)
-	}
-
-	const handleAddDeployment = () => {
-		navigation.navigate("AddDeployment")
-	}
+	const hasActiveDeployments = useMemo(() => {
+		return deployments?.some(d => !(d as any).deploymentEnd) ?? false
+	}, [deployments])
 
 	return (
-		<WWScreenView scrollable>
-			<View style={styles.wrapper}>
-				<View style={styles.headerView}>
-					<View style={styles.buttonRow}>
-						<WWButton mode="contained" onPress={scan} loading={isScanning}>
-							{isScanning ? "Scanning" : "Scan"}
-						</WWButton>
-					</View>
-				</View>
+		<View style={styles.container}>
+			<StandardizedListLayout
+				data={filteredDeployments}
+				renderItem={renderItem}
+				keyExtractor={keyExtractor}
+				isLoading={false}
+				isFetching={false}
+				// onRefresh={refetch} // No manual refresh needed with observables
+				searchQuery={searchQuery}
+				onSearchChange={setSearchQuery}
+				searchPlaceholder="Search deployments..."
+				primaryActionLabel="New Deployment"
+				onPrimaryAction={handleAddDeployment}
+				// We render End Deployment manually via FAB below
 
-				{/* Devices List */}
-				{devicesToDisplay.length > 0 && (
-					<View style={styles.section}>
-						<WWText variant="titleLarge" style={styles.sectionTitle}>
-							Devices
-						</WWText>
-						<FlatList
-							contentContainerStyle={styles.devicesList}
-							data={devicesToDisplay}
-							renderItem={({ item }: { item: ExtendedPeripheral }) => (
-								<DeviceItem
-									disabled={isAnyDeviceConnecting}
-									item={item}
-									disconnect={disconnect}
-									go={go}
-									upgrade={upgrade}
-								/>
-							)}
-							keyExtractor={(item: ExtendedPeripheral) => item.id}
-						/>
-					</View>
-				)}
+				/* Filter Actions */
+				filterActions={[
+					{
+						label: "All",
+						selected: statusFilter === 'all',
+						onPress: () => setStatusFilter('all')
+					},
+					{
+						label: "Active",
+						selected: statusFilter === 'active',
+						onPress: () => setStatusFilter('active')
+					},
+					{
+						label: "Ended",
+						selected: statusFilter === 'ended',
+						onPress: () => setStatusFilter('ended')
+					}
+				]}
 
-				{/* Deployments List */}
-				<View style={styles.section}>
-					<WWText variant="titleLarge" style={styles.sectionTitle}>
-						Deployments
-					</WWText>
-					{isLoading ? (
-						<WWLoader />
-					) : deployments && deployments.length > 0 ? (
-						<View style={styles.list}>
-							{deployments.map((deployment) => {
-								console.log("Deployment:", deployment)
-								return (
-									<DeploymentCard
-										key={deployment.id}
-										deployment={deployment}
-										onPress={handleDeploymentPress}
-									/>
-								)
-							})}
-						</View>
-					) : (
-						<View style={styles.emptyView}>
-							<WWText>No deployments found.</WWText>
-						</View>
-					)}
-				</View>
+				emptyStateTitle="No deployments found"
+				emptyStateMessage={
+					statusFilter === 'all'
+						? "Create a deployment to track your devices in the field"
+						: `No ${statusFilter} deployments match your search`
+				}
+			/>
 
-				<WWButton
-					mode="contained"
-					style={styles.addButton}
-					onPress={handleAddDeployment}
-				>
-					Add new deployment
-				</WWButton>
-			</View>
-		</WWScreenView>
+			{hasActiveDeployments && (
+				<FAB
+					icon="stop"
+					label="End Deployment"
+					style={[styles.fab, { backgroundColor: '#FFAB00' }]}
+					color="#000"
+					onPress={() => navigation.navigate("EndDeploymentWizard", { mode: 'end_deployment' } as any)}
+				/>
+			)}
+		</View>
 	)
-})
+}
 
 const styles = StyleSheet.create({
-	wrapper: {
+	container: {
 		flex: 1,
 	},
-	headerView: {
-		marginBottom: 16,
-		alignItems: "center",
-	},
-	buttonRow: {
-		width: "100%",
-		flexDirection: "row",
-		justifyContent: "space-between",
-	},
-	section: {
-		marginBottom: 24,
-	},
-	sectionTitle: {
-		marginBottom: 16,
-	},
-	devicesList: {
-		gap: 8,
-	},
-	list: {
-		flex: 1,
-	},
-	emptyView: {
-		padding: 16,
-		justifyContent: "center",
-		alignItems: "center",
-	},
-	addButton: {
-		marginTop: 16,
-		backgroundColor: "#4CAF50",
-	},
+	fab: {
+		position: 'absolute',
+		margin: 16,
+		right: 0,
+		bottom: 80, // Stack above the standard Primary Action FAB (usually at bottom: 16)
+	}
 })
+
+const enhance = withObservables([], () => ({
+	deployments: DeploymentService.observeDeployments()
+}))
+
+export const Deployments = enhance(DeploymentsComponent)

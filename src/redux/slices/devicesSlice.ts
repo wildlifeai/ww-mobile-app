@@ -19,6 +19,7 @@ export interface ExtendedPeripheral extends Peripheral {
 	intervals: {
 		[x: string]: NodeJS.Timeout | undefined | null
 	}
+	dfuInProgress?: boolean
 }
 
 interface DevicesState {
@@ -38,6 +39,7 @@ export const DEFAULT_PERIPHERAL: (id: string) => ExtendedPeripheral = (
 	intervals: {},
 	rssi: 0,
 	advertising: {},
+	dfuInProgress: false,
 })
 
 export const devicesSlice = createSlice({
@@ -108,6 +110,15 @@ export const devicesSlice = createSlice({
 				delete state[id]
 			}
 		},
+		setDfuStatus: (
+			state,
+			action: PayloadAction<{ id: string; status: boolean }>,
+		) => {
+			const { id, status } = action.payload
+			if (state[id]) {
+				state[id].dfuInProgress = status
+			}
+		},
 	},
 })
 
@@ -117,6 +128,7 @@ export const {
 	deviceLoading,
 	deviceSignalChanged,
 	removeDevice,
+	setDfuStatus,
 } = devicesSlice.actions
 
 export default devicesSlice.reducer

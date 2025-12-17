@@ -16,6 +16,7 @@ type CommonProps = {
 	label: string
 	options: Option[]
 	style?: StyleProp<ViewStyle>
+	theme?: any
 }
 
 export type WWSelectProps = CommonProps &
