@@ -58,7 +58,14 @@ One last check to ensure the camera view is not obstructed by leaves or branches
    - *Is the angle right?*
    - *Is the view clear?*
 
-### 6. Activate Deployment
+### 6. Sync Deployment ID
+
+To ensure photos can be linked back to this specific deployment, the app syncs the Deployment Unique ID (UUID) to the device.
+1. The app generates a 36-character UUID for the deployment.
+2. **Splitting Process**: The UUID is split into 8 chunks of 4 characters.
+3. **Transmission**: The app sends 8 separate "Set Operational Parameter" commands (indices 20-27) to the device. This ensures compatibility with all phones, including those with limited Bluetooth data packet size (MTU).
+
+### 7. Activate Deployment
 
 1. Tap **"Start Deployment"**.
 2. The app sends the **ENABLE_CAMERA** command to the device.
@@ -78,9 +85,10 @@ The device is now "Deployed". It will appear as a **Green Camera Icon** on the m
 | 1 | Discovery | Scans for `ServiceUUID` match |
 | 2 | Connect | Connects & bonds BLE |
 | 3 | Location | Uses `expo-location` (High Accuracy) |
-| 4 | Deploy | Sends `setOperationalParam`, `enableCamera` |
-| 5 | Persist | Creates `Deployment` with `capture_method_id` in WatermelonDB |
-| 6 | Sync | `SupabaseSyncService` pushes to Cloud |
+| 4 | ID Sync | Sends 8x `setOperationalParam` commands (OP20-OP27) to transmit Deployment ID |
+| 5 | Deploy | Sends `enableCamera` |
+| 6 | Persist | Creates `Deployment` with `capture_method_id` in WatermelonDB |
+| 7 | Sync | `SupabaseSyncService` pushes to Cloud |
 
 ## Troubleshooting
 
