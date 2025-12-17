@@ -13,6 +13,7 @@ import { DevicePreparationService } from '../../services/DevicePreparationServic
 import ProjectService from '../../services/ProjectService'
 import ReferenceDataService from '../../services/ReferenceDataService'
 import { DfuService } from '../../services/DfuService'
+import FirmwareService from '../../services/FirmwareService'
 import { useBleCommands } from '../../hooks/useBleCommands'
 import { useBle } from '../../hooks/useBle'
 import { useCapturePreview } from '../../hooks/useCapturePreview'
@@ -349,62 +350,38 @@ export const PrepareAndTestScreen = () => {
                             setIsUpdatingFirmware(true)
                             setFirmwareUpdateProgress(0)
 
-                            // Download firmware file from Supabase Storage
-                            const supabase = getSupabaseClient()
-                            const { data, error } = await supabase.storage
-                                .from('firmware')
-                                .download(latestBleFirmware.locationPath)
+                            // Use FirmwareService to handle download and caching (supports offline updates)
+                            console.log('[PrepareTest] Ensuring firmware is available locally...')
+                            const localUri = await FirmwareService.ensureFirmwareDownloaded(latestBleFirmware)
+                            console.log('[PrepareTest] Firmware ready at:', localUri)
 
-                            if (error || !data) {
-                                throw new Error(`Failed to download firmware: ${error?.message}`)
-                            }
+                            // Start DFU process
+                            await DfuService.startDFU(
+                                bleDevice.id,
+                                localUri,
+                                (progress) => setFirmwareUpdateProgress(progress)
+                            )
 
-                            // Save to local file system
-                            const localPath = `${FileSystem.cacheDirectory}ble_firmware_${Date.now()}.zip`
-
-                            // Convert blob to base64 and write to file
-                            const reader = new FileReader()
-                            reader.readAsDataURL(data)
-                            reader.onloadend = async () => {
-                                const base64data = reader.result as string
-                                const base64Content = base64data.split(',')[1]
-
-                                await FileSystem.writeAsStringAsync(
-                                    localPath,
-                                    base64Content,
-                                    { encoding: FileSystem.EncodingType.Base64 }
-                                )
-
-                                // Start DFU process
-                                await DfuService.startDFU(
-                                    bleDevice.id,
-                                    localPath,
-                                    (progress) => setFirmwareUpdateProgress(progress)
-                                )
-
-                                // Update device firmware_id in database
-                                await database.write(async () => {
-                                    await device.update(d => {
-                                        d.firmwareId = latestBleFirmware.id
-                                    })
+                            // Update device firmware_id in database
+                            await database.write(async () => {
+                                await device.update(d => {
+                                    d.firmwareId = latestBleFirmware.id
                                 })
+                            })
 
-                                // Clean up
-                                await FileSystem.deleteAsync(localPath, { idempotent: true })
+                            setBleFirmwareUpdateAvailable(false)
+                            setFirmwareUpToDate(true)
+                            setFirmwareUpdateProgress(100)
 
-                                setBleFirmwareUpdateAvailable(false)
-                                setFirmwareUpToDate(true)
-                                setFirmwareUpdateProgress(100)
+                            Alert.alert('Success', 'BLE firmware updated successfully!')
 
-                                Alert.alert('Success', 'BLE firmware updated successfully!')
-
-                                if (preparation) {
-                                    await DevicePreparationService.updatePreparation(preparation.id, {
-                                        firmwareUpdated: true,
-                                        firmwareCheckPassed: true,
-                                    })
-                                }
+                            if (preparation) {
+                                await DevicePreparationService.updatePreparation(preparation.id, {
+                                    firmwareUpdated: true,
+                                    firmwareCheckPassed: true,
+                                })
                             }
+
 
                         } catch (error) {
                             console.error('[PrepareTest] Firmware update failed:', error)

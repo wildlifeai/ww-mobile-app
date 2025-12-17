@@ -1,5 +1,5 @@
 import { Platform } from "react-native"
-import { NordicDFU, DFUEmitter } from "react-native-nordic-dfu"
+import { NordicDFU, DFUEmitter } from "@circularing/react-native-nordic-dfu"
 
 export class DfuService {
 	static async startDFU(

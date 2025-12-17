@@ -11,6 +11,7 @@ interface Props {
     onNotesChange: (text: string) => void
     onLocationDescriptionChange: (text: string) => void
     onCameraHeightChange: (text: string) => void
+    onShowHelp: (title: string, content: string) => void
 }
 
 export const MetadataSection = ({
@@ -21,7 +22,8 @@ export const MetadataSection = ({
     onNameChange,
     onNotesChange,
     onLocationDescriptionChange,
-    onCameraHeightChange
+    onCameraHeightChange,
+    onShowHelp
 }: Props) => {
     return (
         <Card style={styles.card}>
@@ -33,6 +35,7 @@ export const MetadataSection = ({
                     onChangeText={onNameChange}
                     mode="outlined"
                     style={styles.input}
+                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Deployment Name', 'A unique identifier for this specific deployment. It helps track data collected during this session.')} />}
                 />
 
                 <TextInput
@@ -44,6 +47,7 @@ export const MetadataSection = ({
                     multiline
                     numberOfLines={2}
                     style={styles.input}
+                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Location Description', "Describe the immediate surroundings (e.g., 'On oak tree, facing North'). Useful for finding the camera later.")} />}
                 />
 
                 <TextInput
@@ -54,6 +58,7 @@ export const MetadataSection = ({
                     mode="outlined"
                     keyboardType="numeric"
                     style={styles.input}
+                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Camera Height', 'The height of the camera lens from the ground in centimeters. Important for estimating animal size and perspective.')} />}
                 />
 
                 <TextInput
@@ -64,6 +69,7 @@ export const MetadataSection = ({
                     multiline
                     numberOfLines={3}
                     style={styles.input}
+                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Notes', 'Any additional observations, such as bait used, weather conditions, or specific features being monitored.')} />}
                 />
             </Card.Content>
         </Card>

@@ -148,13 +148,28 @@ export const DeviceService = {
     deviceToListItem: async (device: Device): Promise<DeviceListItem> => {
         const deviceWithStatus = await DeviceService.getDeviceWithStatus(device.id)
 
+        // Get last deployment (active or ended) for status display
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        const allDeployments = await deploymentsCollection.query(
+            Q.where('device_id', device.id),
+            Q.sortBy('deployment_start', Q.desc)
+        ).fetch()
+        const lastDeployment = allDeployments[0]
+
         return {
             id: device.id,
             name: device.name,
             bluetoothId: device.bluetoothId,
             status: deviceWithStatus?.status || 'needs_preparation',
             batteryLevel: device.batteryLevel || undefined,
-            deploymentName: deviceWithStatus?.activeDeployment?.name,
+            deploymentName: deviceWithStatus?.activeDeployment?.name || lastDeployment?.name,
+            deploymentId: deviceWithStatus?.activeDeployment?.id || lastDeployment?.id,
+            deploymentEndDate: (deviceWithStatus?.activeDeployment?.deploymentEnd || lastDeployment?.deploymentEnd)
+                ? new Date(deviceWithStatus?.activeDeployment?.deploymentEnd || lastDeployment?.deploymentEnd)
+                : undefined,
+            lastDeploymentDate: lastDeployment?.deploymentStart
+                ? new Date(lastDeployment.deploymentStart)
+                : undefined,
             projectName: undefined, // TODO: Resolve project name from deployment
             preparedDate: deviceWithStatus?.preparedDate,
         }

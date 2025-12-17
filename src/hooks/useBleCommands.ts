@@ -162,10 +162,33 @@ export const useBleCommands = () => {
 
 
 
-    const setDeploymentId = useCallback(
-        async (peripheral: ExtendedPeripheral, id: string) => {
-            console.log('[BLE CMD] Sending setdeploymentid command with ID:', id)
-            await write(peripheral, [[CommandNames.SET_DEPLOYMENT_ID, { control: CommandControlTypes.WRITE, value: id }]])
+    const setDeploymentIdAsOps = useCallback(
+        async (peripheral: ExtendedPeripheral, id: string | null) => {
+            console.log('[BLE CMD] Sending Deployment ID via OPs (20-27). ID:', id)
+
+            let ops: number[]
+            if (!id) {
+                // Clear ID case: Send all zeros
+                ops = [0, 0, 0, 0, 0, 0, 0, 0]
+            } else {
+                // Parse UUID
+                const { parseUuidToOps } = require('../utils/helpers') // Lazy import to avoid cycle if any
+                ops = parseUuidToOps(id)
+            }
+
+            // Send 8 commands
+            // Start index 20
+            for (let i = 0; i < 8; i++) {
+                const opIndex = 20 + i
+                const value = ops[i]
+                console.log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
+                // Reuse existing setOperationalParam logic manually to avoid hook recursion issues if any
+                // or just call write directly
+                await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]])
+                // Small delay to prevent buffer overflow on slow devices
+                await new Promise(r => setTimeout(r, 100))
+            }
+            console.log('[BLE CMD] Deployment ID OPs sent successfully')
         },
         [write]
     )
@@ -184,7 +207,7 @@ export const useBleCommands = () => {
         runDisconnect,
         setUtc,
         getUtc,
-        setDeploymentId,
+        setDeploymentIdAsOps,
         // LoRaWAN
         getDevEui,
         getAppEui,

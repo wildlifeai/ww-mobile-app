@@ -276,6 +276,10 @@ export const useBle = (): ReturnType => {
 				try {
 					// log(`Device ${deviceIdentification} will try to connect`)
 
+					// Clear logs BEFORE starting connection/notifications to ensure we don't wipe early firmware messages
+					dispatch(deviceLogChange({ id: newPeripheral.id, log: "" }))
+					dispatch(deviceConfigClear({ id: newPeripheral.id }))
+
 					// if (Platform.OS === "android") {
 					// 	await BleManager.createBond(newPeripheral.id)
 					// }
@@ -287,11 +291,16 @@ export const useBle = (): ReturnType => {
 					)
 
 					if (Platform.OS === "android") {
-						await invokeWithTimeout(
-							() => BleManager.requestMTU(newPeripheral.id, 512),
-							"BleManager.requestMTU",
-							timeout,
-						)
+						// Tolerate MTU failure (Samsung devices/slow connections)
+						try {
+							await invokeWithTimeout(
+								() => BleManager.requestMTU(newPeripheral.id, 512),
+								"BleManager.requestMTU",
+								timeout,
+							)
+						} catch (mtuError) {
+							console.warn("MTU negotiation failed, proceeding with default speed:", mtuError)
+						}
 					}
 
 					const services = await invokeWithTimeout(
@@ -323,8 +332,7 @@ export const useBle = (): ReturnType => {
 
 					await BleManager.readRSSI(newPeripheral.id)
 
-					dispatch(deviceLogChange({ id: newPeripheral.id, log: "" }))
-					dispatch(deviceConfigClear({ id: newPeripheral.id }))
+					// Logs cleared at start, so we don't clear here anymore
 
 					log(`Device ${deviceIdentification} connected`)
 

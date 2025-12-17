@@ -7,9 +7,10 @@ import { WWIcon } from '../../../components/ui/WWIcon'
 
 interface Props {
     device?: ExtendedPeripheral
+    onShowHelp: (title: string, content: string) => void
 }
 
-export const LoRaWANSection = ({ device }: Props) => {
+export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
     const theme = useTheme()
     const { pingNetwork } = useBleCommands()
     const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'failed'>('idle')
@@ -35,7 +36,11 @@ export const LoRaWANSection = ({ device }: Props) => {
 
     return (
         <Card style={styles.card}>
-            <Card.Title title="LoRaWAN Signal Test" left={(props) => <WWIcon {...props} source="wifi" />} />
+            <Card.Title
+                title="LoRaWAN Signal Test"
+                left={(props) => <WWIcon {...props} source="wifi" />}
+                right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => onShowHelp('LoRaWAN Signal Test', 'Sends a ping through the LoRaWAN network to verify the device can transmit data to the gateway.')}>Help</Button>}
+            />
             <Card.Content style={styles.content}>
                 <View style={styles.statusRow}>
                     <Text variant="bodyMedium" style={{ flex: 1 }}>

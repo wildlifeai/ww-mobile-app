@@ -78,6 +78,7 @@ export const NewProjectScreen = () => {
 		control,
 		handleSubmit,
 		watch,
+		setValue,
 		formState: { errors },
 	} = useForm<ProjectFormData>({
 		defaultValues: {
@@ -89,13 +90,44 @@ export const NewProjectScreen = () => {
 			is_monitoring_marked_individuals: false,
 			capture_method_id: "",
 			activity_detection_sensitivity_id: "",
-			timelapse_interval_seconds: "",
+			timelapse_interval_seconds: "30", // Default timelapse interval
 			model_id: "",
 		},
 	})
 
 	// Watch for capture method selection
 	const selectedCaptureMethodId = watch("capture_method_id")
+
+	// Set defaults when reference data loads
+	React.useEffect(() => {
+		if (samplingDesigns?.length && !watch("sampling_design_id")) {
+			setValue("sampling_design_id", samplingDesigns[0].id.toString())
+		}
+	}, [samplingDesigns])
+
+	React.useEffect(() => {
+		if (captureMethods?.length && !watch("capture_method_id")) {
+			// Prefer 'Motion Detection' or 'activityDetection'
+			const defaultMethod = captureMethods.find(
+				(cm) => cm.value === "Motion Detection" || cm.value === "activityDetection"
+			) || captureMethods[0]
+			setValue("capture_method_id", defaultMethod.id.toString())
+		}
+	}, [captureMethods])
+
+	React.useEffect(() => {
+		if (activitySensitivities?.length && !watch("activity_detection_sensitivity_id")) {
+			// Prefer 'Medium'
+			const defaultSens = activitySensitivities.find(s => s.value === 'Medium') || activitySensitivities[0]
+			setValue("activity_detection_sensitivity_id", defaultSens.id.toString())
+		}
+	}, [activitySensitivities])
+
+	React.useEffect(() => {
+		if (aiModels?.length && !watch("model_id")) {
+			setValue("model_id", aiModels[0].id)
+		}
+	}, [aiModels])
 
 	// Options for Select components
 	const captureMethodOptions = useMemo(

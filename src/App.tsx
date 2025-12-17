@@ -1,6 +1,7 @@
 // Import gesture handler FIRST before any other imports  
 import 'react-native-gesture-handler'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { StatusBar } from 'expo-status-bar'
 
 import { Suspense } from "react"
 import { Text } from "react-native"
@@ -23,6 +24,7 @@ export const App = () => {
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<SafeAreaProvider>
+				<StatusBar style="light" backgroundColor="#000000" />
 				<Suspense fallback={<Text>Loading...</Text>}>
 					<ReduxProvider store={store}>
 						<PaperProvider theme={CombinedDefaultTheme}>

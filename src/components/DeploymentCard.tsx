@@ -17,6 +17,7 @@ export const DeploymentCard = memo<{ deployment: any, onPress?: (id: string) => 
 
 	const deploymentStart = getField(deployment, 'deployment_start', 'deploymentStart')
 	const deploymentEnd = getField(deployment, 'deployment_end', 'deploymentEnd')
+	const deploymentName = deployment.name || getField(deployment, 'name', 'name')
 	const locationName = getField(deployment, 'location_name', 'locationName')
 	const deviceId = getField(deployment, 'device_id', 'deviceId')
 
@@ -42,7 +43,7 @@ export const DeploymentCard = memo<{ deployment: any, onPress?: (id: string) => 
 			: null
 
 		if (now < start) return "Not started"
-		if (!end || now < end) {
+		if (!end || end.getTime() === 0 || now < end) {
 			return `Started ${start.toLocaleDateString()}`
 		}
 		return `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`
@@ -62,7 +63,8 @@ export const DeploymentCard = memo<{ deployment: any, onPress?: (id: string) => 
 						style={[styles.title, { color: theme.colors.onSurface }]}
 						numberOfLines={1}
 					>
-						{locationName ||
+						{deploymentName ||
+							locationName ||
 							`Deployment #${deployment.id.slice(-4)}`}
 					</Text>
 					<View
@@ -86,39 +88,7 @@ export const DeploymentCard = memo<{ deployment: any, onPress?: (id: string) => 
 					</Text>
 				</View>
 
-				{/* Stats (Placeholder or Real if available) */}
-				{deviceId && (
-					<View style={styles.statsRow}>
-						<View style={styles.statItem}>
-							<WWIcon
-								source="sd"
-								size={16}
-								color={theme.colors.onSurfaceVariant}
-								containerStyle={styles.icon}
-							/>
-							<Text
-								variant="bodySmall"
-								style={{ color: theme.colors.onSurfaceVariant }}
-							>
-								512 mb
-							</Text>
-						</View>
-						<View style={styles.statItem}>
-							<WWIcon
-								source="battery"
-								size={16}
-								color={theme.colors.onSurfaceVariant}
-								containerStyle={styles.icon}
-							/>
-							<Text
-								variant="bodySmall"
-								style={{ color: theme.colors.onSurfaceVariant }}
-							>
-								50%
-							</Text>
-						</View>
-					</View>
-				)}
+				{/* Stats - Hidden until we have real data from LoRaWAN */}
 			</Card.Content>
 		</Card>
 	)

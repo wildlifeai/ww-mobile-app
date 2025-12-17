@@ -6,9 +6,10 @@ import { WWIcon } from '../../../components/ui/WWIcon'
 
 interface Props {
     onLocationChange: (loc: any) => void
+    onShowHelp: (title: string, content: string) => void
 }
 
-export const LocationSection = ({ onLocationChange }: Props) => {
+export const LocationSection = ({ onLocationChange, onShowHelp }: Props) => {
     const { location, isGettingLocation, getLocation } = useGPSLocation()
 
     useEffect(() => {
@@ -24,7 +25,11 @@ export const LocationSection = ({ onLocationChange }: Props) => {
 
     return (
         <Card style={styles.card}>
-            <Card.Title title="Location" left={(props) => <WWIcon {...props} source="map-marker" />} />
+            <Card.Title
+                title="Location"
+                left={(props) => <WWIcon {...props} source="map-marker" />}
+                right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => onShowHelp('GPS Location', 'Location provided by your device GPS. Ensure you have a clear view of the sky for best accuracy.')}>Help</Button>}
+            />
             <Card.Content style={styles.content}>
                 {isGettingLocation ? (
                     <ActivityIndicator />

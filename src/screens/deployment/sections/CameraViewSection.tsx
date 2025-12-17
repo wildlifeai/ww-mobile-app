@@ -10,9 +10,10 @@ import { WWIcon } from '../../../components/ui/WWIcon'
 interface Props {
     device?: ExtendedPeripheral
     onImageCaptured: (path: string) => void
+    onShowHelp: (title: string, content: string) => void
 }
 
-export const CameraViewSection = ({ device, onImageCaptured }: Props) => {
+export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props) => {
     const theme = useTheme()
     const { write } = useBle()
     // Need full logs for capture logic
@@ -38,7 +39,11 @@ export const CameraViewSection = ({ device, onImageCaptured }: Props) => {
 
     return (
         <Card style={styles.card}>
-            <Card.Title title="Camera Preview" left={(props) => <WWIcon {...props} source="camera" />} />
+            <Card.Title
+                title="Camera Preview"
+                left={(props) => <WWIcon {...props} source="camera" />}
+                right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => onShowHelp('Camera Preview', 'Take a test photo to ensure the camera is pointing at the desired target and the view is unobstructed.')}>Help</Button>}
+            />
             <Card.Content style={styles.content}>
                 {capturedImageUri ? (
                     <View style={styles.imageContainer}>

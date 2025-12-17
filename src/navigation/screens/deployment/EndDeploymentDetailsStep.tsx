@@ -28,7 +28,7 @@ interface InnerProps {
 const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, deviceId, bleDeviceId }) => {
     const navigation = useNavigation()
     const { disconnectDevice } = useBleActions()
-    const { getBatteryLevel, setOperationalParam, disableCamera, runDisconnect, setDeploymentId } = useBleCommands()
+    const { getBatteryLevel, setOperationalParam, disableCamera, runDisconnect, setDeploymentIdAsOps } = useBleCommands()
 
     // Get current user
     const user = useAppSelector(selectCurrentUser)
@@ -40,7 +40,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
     const bleDevice = useMemo(() => {
         if (devices[bleDeviceId]) return devices[bleDeviceId];
 
-        const match = Object.values(devices).find(d => d.id.toLowerCase() === bleDeviceId.toLowerCase());
+        const match = Object.values(devices).find(d => d.id?.toLowerCase() === bleDeviceId?.toLowerCase());
         if (match) return match;
 
         // Fallback: If we assume it is connected but missing from store (edge case),
@@ -78,13 +78,13 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
             if (bleDevice) {
                 setBleStatus('Clearing Config...')
                 console.log('[EndDeployment] Clearing Deployment ID on device...')
-                const NIL_UUID = '00000000-0000-0000-0000-000000000000'
                 let idCleared = false
                 let attempts = 0
                 while (!idCleared && attempts < 3) {
                     try {
                         attempts++
-                        await setDeploymentId(bleDevice, NIL_UUID)
+                        // Pass null to clear the ID (sends zeros to OPs)
+                        await setDeploymentIdAsOps(bleDevice, null)
                         console.log('[EndDeployment] Deployment ID cleared successfully')
                         idCleared = true
                     } catch (e) {
@@ -154,7 +154,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
         <WWScreenView scrollable>
             <Appbar.Header>
                 <Appbar.BackAction onPress={() => navigation.goBack()} />
-                <Appbar.Content title="Step 2 of 2: Confirm" />
+                <Appbar.Content title="End Deployment" />
             </Appbar.Header>
 
             <View style={styles.container}>
@@ -167,19 +167,14 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
 
                 <Card style={styles.card}>
                     <Card.Content>
-                        <View style={styles.row}>
-                            <WWText variant="labelLarge">Deployment Name:</WWText>
-                            <WWText variant="bodyLarge">{deployment.name}</WWText>
+                        <View style={styles.column}>
+                            <WWText variant="labelLarge" style={styles.label}>Deployment Name</WWText>
+                            <WWText variant="headlineSmall">{deployment.name}</WWText>
                         </View>
                         <View style={styles.divider} />
                         <View style={styles.row}>
                             <WWText variant="labelLarge">Started:</WWText>
                             <WWText variant="bodyLarge">{new Date(deployment.deploymentStart).toLocaleDateString()}</WWText>
-                        </View>
-                        <View style={styles.divider} />
-                        <View style={styles.row}>
-                            <WWText variant="labelLarge">Device ID:</WWText>
-                            <WWText variant="bodyLarge">{deviceId}</WWText>
                         </View>
                     </Card.Content>
                 </Card>
@@ -190,7 +185,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
                         mode="outlined"
                         placeholder="e.g. SD card full, Battery low, Device damaged..."
                         multiline
-                        numberOfLines={4}
+                        numberOfLines={8}
                         value={retrievalNotes}
                         onChangeText={setRetrievalNotes}
                         style={styles.input}
@@ -245,6 +240,13 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: 8,
     },
+    column: {
+        marginBottom: 8,
+    },
+    label: {
+        marginBottom: 4,
+        color: '#666',
+    },
     divider: {
         height: 1,
         backgroundColor: '#eee',
@@ -258,6 +260,7 @@ const styles = StyleSheet.create({
     },
     input: {
         backgroundColor: '#fff',
+        minHeight: 120,
     },
     actionSection: {
         gap: 12,

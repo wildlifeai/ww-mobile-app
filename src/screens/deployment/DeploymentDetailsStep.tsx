@@ -21,6 +21,7 @@ import { CameraViewSection } from './sections/CameraViewSection'
 import { LocationSection } from './sections/LocationSection'
 // import { PhotosSection } from './sections/PhotosSection'
 import { MetadataSection } from './sections/MetadataSection'
+import { HelpDialog } from '../../components/ui/HelpDialog'
 
 type DeploymentDetailsRouteProp = RouteProp<RootStackParamList, 'DeploymentDetailsStep'>;
 
@@ -32,7 +33,7 @@ export const DeploymentDetailsStep = () => {
     const { devicePreparationId, deviceId, bleDeviceId } = route.params || {}
 
     // BLE Hooks
-    const { getUtc, setUtc, setDeploymentId, disconnectDevice, enableCamera, runDisconnect, getStatus, setMotionDetectInterval, disableMotionDetect, setTimelapseInterval, disableTimelapse } = useBleCommands()
+    const { getUtc, setUtc, setDeploymentIdAsOps, disconnectDevice, enableCamera, runDisconnect, getStatus, setMotionDetectInterval, disableMotionDetect, setTimelapseInterval, disableTimelapse } = useBleCommands()
     const { isBleConnecting } = useBleActions()
 
     const devices = useAppSelector(state => state.devices)
@@ -223,7 +224,7 @@ export const DeploymentDetailsStep = () => {
             while (!deploymentIdSet && attempts < 3) {
                 try {
                     attempts++
-                    await setDeploymentId(bleDevice, newDeployment.id)
+                    await setDeploymentIdAsOps(bleDevice, newDeployment.id)
                     console.log('[Deployment] Deployment ID set successfully on attempt', attempts)
                     deploymentIdSet = true
                 } catch (bleError) {
@@ -296,12 +297,28 @@ export const DeploymentDetailsStep = () => {
         return <View><WWButton onPress={() => navigation.goBack()}>Go Back</WWButton></View>
     }
 
+    const [helpVisible, setHelpVisible] = useState(false)
+    const [helpTitle, setHelpTitle] = useState('')
+    const [helpContent, setHelpContent] = useState('')
+
+    const showHelp = (title: string, content: string) => {
+        setHelpTitle(title)
+        setHelpContent(content)
+        setHelpVisible(true)
+    }
+
+    // ... (rest of logic)
+
     return (
         <WWScreenView>
             <View style={styles.container}>
                 {/* Project & Configuration Header */}
                 <Card style={styles.card}>
-                    <Card.Title title="Configuration" left={(props) => <WWIcon {...props} source="tune" />} />
+                    <Card.Title
+                        title="Configuration"
+                        left={(props) => <WWIcon {...props} source="tune" />}
+                        right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Configuration', 'Project and Capture Method are set during Project Creation and Device Preparation. To change these, you must restart the preparation.')}>Help</Button>}
+                    />
                     <Card.Content>
                         <View style={styles.infoRow}>
                             <Text variant="labelMedium">Project:</Text>
@@ -329,27 +346,19 @@ export const DeploymentDetailsStep = () => {
 
                 <LoRaWANSection
                     device={bleDevice}
+                    onShowHelp={showHelp}
                 />
 
                 <CameraViewSection
                     device={bleDevice}
                     onImageCaptured={(path: string) => setFormState(prev => ({ ...prev, testImagePath: path }))}
+                    onShowHelp={showHelp}
                 />
 
                 <LocationSection
                     onLocationChange={(loc) => setFormState(prev => ({ ...prev, location: loc }))}
+                    onShowHelp={showHelp}
                 />
-
-                {/* 
-                   Photos Feature Deferred:
-                   Uploading photos taken by the user with their mobile and syncing in supabase and locally
-                   is going to require lots of engineering time so we will implement this feature in the future.
-                   
-                   <PhotosSection 
-                       photos={formState.photos}
-                       onPhotosChange={(photos) => setFormState(prev => ({...prev, photos}))}
-                   />
-                */}
 
                 <MetadataSection
                     name={formState.name}
@@ -360,6 +369,7 @@ export const DeploymentDetailsStep = () => {
                     onNotesChange={(notes: string) => setFormState(prev => ({ ...prev, notes }))}
                     onLocationDescriptionChange={(text: string) => setFormState(prev => ({ ...prev, locationDescription: text }))}
                     onCameraHeightChange={(text: string) => setFormState(prev => ({ ...prev, cameraHeight: text }))}
+                    onShowHelp={showHelp}
                 />
 
                 <View style={styles.footer}>
@@ -373,6 +383,13 @@ export const DeploymentDetailsStep = () => {
                     </WWButton>
                 </View>
             </View>
+
+            <HelpDialog
+                visible={helpVisible}
+                title={helpTitle}
+                content={helpContent}
+                onDismiss={() => setHelpVisible(false)}
+            />
         </WWScreenView>
     )
 }

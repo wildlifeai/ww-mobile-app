@@ -46,6 +46,9 @@ export interface DeviceListItem {
     status: DeviceStatus
     batteryLevel?: number
     deploymentName?: string
+    deploymentId?: string
+    deploymentEndDate?: Date
+    lastDeploymentDate?: Date
     projectName?: string
     preparedDate?: Date
 }

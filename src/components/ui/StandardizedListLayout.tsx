@@ -7,7 +7,7 @@ import {
     ListRenderItemInfo,
     ViewStyle,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
     FAB,
     Searchbar,
@@ -88,6 +88,7 @@ export function StandardizedListLayout<T>({
 }: StandardizedListLayoutProps<T>) {
     const theme = useTheme()
     const { setIsOpen } = useAppDrawer()
+    const insets = useSafeAreaInsets()
 
     // Loading State (Initial Load)
     if (isLoading && (!data || data.length === 0)) {
@@ -138,7 +139,7 @@ export function StandardizedListLayout<T>({
             {/* Hamburger Menu Button */}
             <FAB
                 icon="menu"
-                style={styles.menuFab}
+                style={[styles.menuFab, { top: insets.top + 16 }]}
                 onPress={() => setIsOpen(true)}
                 color="#000"
                 small
@@ -260,7 +261,6 @@ const styles = StyleSheet.create({
 
     menuFab: {
         position: 'absolute',
-        top: 16,
         left: 16,
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
         elevation: 4,

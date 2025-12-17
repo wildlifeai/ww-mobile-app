@@ -247,3 +247,27 @@ export const getStorageData = async <T>(key: string): Promise<T | null> => {
 export const isOurDevice = (name: string) => {
 	return !!DEVICE_NAMES.find((deviceName) => name.includes(deviceName))
 }
+
+/**
+ * Parses a 36-char UUID into 8 x 16-bit integers (0-65535)
+ * for transmission as Operational Parameters.
+ */
+export const parseUuidToOps = (uuid: string): number[] => {
+	// Remove hyphens
+	const cleanUuid = uuid.replace(/-/g, '')
+	if (cleanUuid.length !== 32) {
+		throw new Error(`Invalid UUID length after cleaning: ${cleanUuid.length}`)
+	}
+
+	const ops: number[] = []
+	// Split into 8 chunks of 4 hex chars
+	for (let i = 0; i < 8; i++) {
+		const chunk = cleanUuid.substring(i * 4, (i + 1) * 4)
+		const val = parseInt(chunk, 16)
+		if (isNaN(val)) {
+			throw new Error(`Invalid hex chunk at index ${i}: ${chunk}`)
+		}
+		ops.push(val)
+	}
+	return ops
+}

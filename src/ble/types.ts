@@ -38,7 +38,6 @@ export enum CommandNames {
 	// Process commands (UPPERCASE - app-specific workflows)
 	SET_UTC = "SET_UTC",
 	SET_GPS = "SET_GPS",
-	SET_DEPLOYMENT_ID = "SET_DEPLOYMENT_ID",
 	AI_CAPTURE = "AI_CAPTURE",
 	SET_NUM_PICTURES = "SET_NUM_PICTURES",
 	SET_PICTURE_INTERVAL = "SET_PICTURE_INTERVAL",
@@ -365,12 +364,6 @@ export const COMMANDS: {
 		readCommand: "state",
 		readRegex: /State = (.*)/,
 		description: "Returns state machine state",
-		type: 'command',
-	},
-	[CommandNames.SET_DEPLOYMENT_ID]: {
-		name: CommandNames.SET_DEPLOYMENT_ID,
-		writeCommand: (id?: string) => `setdeploymentid ${id || ''}`.trim(),
-		description: "Set Deployment ID",
 		type: 'command',
 	},
 	[CommandNames.TX_FILE]: {

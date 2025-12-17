@@ -10,6 +10,7 @@ import { FAB } from "react-native-paper"
 import { Marker, Callout } from "react-native-maps"
 import { withObservables } from '@nozbe/watermelondb/react'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { BasicMapView } from "../components/BasicMapView"
 import { MapControls } from "../components/MapControls"
 import { LocationPermissionPrompt } from "../components/LocationPermissionPrompt"
@@ -38,6 +39,8 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 
 	const { region, setRegion, zoomIn, zoomOut, resetToUserLocation, mapRef } =
 		useMapRegion()
+
+	const insets = useSafeAreaInsets()
 
 	// Default to hybrid, no selector shown
 	const [mapType, setMapType] = useState<MapType>("hybrid")
@@ -113,14 +116,14 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 	/**
 	 * Get marker color based on deployment status ID
 	 * 1 = Active, 2 = Ended/Recovery, 3 = Failed
-	 * Request: Green (#4CAF50) for active, Green (#4CAF50) for ended.
+	 * Request: Green (#4CAF50) for active, Grey for ended.
 	 */
 	const getMarkerColor = (statusId?: number | null) => {
 		switch (statusId) {
 			case 1: // active
 				return '#4CAF50' // Green
 			case 2: // ended
-				return '#4CAF50' // Green (Requested)
+				return '#616161' // Grey 700
 			case 3: // failed
 				return '#F44336' // Red
 			default:
@@ -152,6 +155,12 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 		// Use 'camera' for both as requested
 		const iconName = 'camera'
 
+		// Ended status transparency logic
+		// "10% transparent" requested - interpreted as slightly transparent (0.9 opacity)
+		// or potentially "10% opacity" (0.1). 
+		// Using 0.6 as a reasonable visual indication for "ended/inactive".
+		const opacity = statusId === 2 ? 0.6 : 1.0
+
 		return (
 			<View style={{
 				backgroundColor: 'white',
@@ -164,6 +173,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 				shadowOffset: { width: 0, height: 2 },
 				shadowOpacity: 0.25,
 				shadowRadius: 2,
+				opacity: opacity
 			}}>
 				<MaterialCommunityIcons name={iconName} size={20} color={color} />
 			</View>
@@ -252,7 +262,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 			{/* Custom Header with Hamburger Button - Top Left */}
 			<FAB
 				icon="menu"
-				style={styles.menuFab}
+				style={[styles.menuFab, { top: insets.top + 16 }]}
 				onPress={() => setIsOpen(true)}
 				color="#000"
 				small
@@ -262,7 +272,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 			<FAB
 				icon={showActiveOnly ? "filter" : "filter-outline"}
 				label={showActiveOnly ? "Active" : "All"}
-				style={[styles.filterFab, { backgroundColor: showActiveOnly ? '#2196F3' : '#fff' }]}
+				style={[styles.filterFab, { backgroundColor: showActiveOnly ? '#2196F3' : '#fff', top: insets.top + 16 }]}
 				color={showActiveOnly ? '#fff' : '#000'}
 				onPress={() => setShowActiveOnly(!showActiveOnly)}
 				small
@@ -405,14 +415,12 @@ const styles = StyleSheet.create({
 	// Overlay Buttons
 	menuFab: {
 		position: "absolute",
-		top: 50, // Top Safe Area (approx)
 		left: 16,
 		backgroundColor: "rgba(255, 255, 255, 0.9)",
 		elevation: 4,
 	},
 	filterFab: {
 		position: "absolute",
-		top: 50, // Top Safe Area (approx)
 		right: 16, // Move to right to balance with Menu button
 		elevation: 4,
 	},
