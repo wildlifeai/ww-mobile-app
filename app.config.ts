@@ -6,6 +6,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     slug: 'wildlife-watcher-expo',
     owner: 'wildlifeai',
     version: '1.0.0', // Default version
+    scheme: 'wildlifewatcher',
     orientation: 'portrait',
     icon: './assets/icon.png', // Standard default
     userInterfaceStyle: 'light',
@@ -26,7 +27,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         infoPlist: {
             NSLocationWhenInUseUsageDescription: "We need your location to set GPS coordinates on camera devices for accurate wildlife tracking and habitat mapping.",
             NSBluetoothAlwaysUsageDescription: "This app uses Bluetooth to connect to wildlife camera devices.",
-            NSBluetoothPeripheralUsageDescription: "This app uses Bluetooth to connect to wildlife camera devices."
+            NSBluetoothPeripheralUsageDescription: "This app uses Bluetooth to connect to wildlife camera devices.",
+            NSCameraUsageDescription: "We need access to your camera to take photos of the deployment site.",
+            NSPhotoLibraryUsageDescription: "We need access to your photo library to select deployment photos.",
+            NSPhotoLibraryAddUsageDescription: "We need access to save deployment photos to your library."
         }
     },
     android: {
@@ -34,6 +38,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         adaptiveIcon: {
             foregroundImage: "./assets/adaptive-icon.png",
             backgroundColor: "#ffffff"
+        },
+        statusBar: {
+            barStyle: "light-content",
+            backgroundColor: "#000000",
+            translucent: false
         },
         config: {
             googleMaps: {
@@ -68,7 +77,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                     "buildToolsVersion": "34.0.0"
                 },
                 "ios": {
-                    "deploymentTarget": "13.4"
+                    "deploymentTarget": "14.0",
+                    "useFrameworks": "static"
                 }
             }
         ],
