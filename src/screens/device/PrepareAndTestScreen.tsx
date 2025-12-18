@@ -202,8 +202,8 @@ export const PrepareAndTestScreen = () => {
             }
         }
 
-        // Parse firmware version response: "BLE: v0.10.0" or "Version: v0.10.0"
-        const versionMatch = logs.match(/(?:BLE|Version):\s*(v[\d.]+)/i)
+        // Parse firmware version response: "BLE: v0.10.0", "Version: v0.10.0", "Version: 0.10.0"
+        const versionMatch = logs.match(/(?:BLE|Version|Ver)[:\s]+v?([\d.]+)/i)
         if (versionMatch && deviceFirmwareVersion === null && isCheckingFirmware) {
             const version = versionMatch[1]
             console.log('[PrepareTest] Parsed device firmware version:', version)
@@ -317,10 +317,11 @@ export const PrepareAndTestScreen = () => {
             console.log('[PrepareTest] Firmware version command sent, waiting for response in logs')
 
             // Wait for device to respond
-            await new Promise(resolve => setTimeout(resolve, 1500))
-            console.log('[PrepareTest] Wait period complete, response should be in logs now')
+            await new Promise(resolve => setTimeout(resolve, 2500))
 
-            // Response will be parsed from logs in useEffect
+            // If still checking after timeout, assume failure or parse from existing logs if missed
+            console.log('[PrepareTest] Wait period complete.')
+            setIsCheckingFirmware(false)
         } catch (error) {
             console.error('Firmware check failed:', error)
             setIsCheckingFirmware(false)
