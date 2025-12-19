@@ -117,8 +117,21 @@ android {
         versionCode 1
         versionName "0.0.1"
         def googleMapsApiKey = System.getenv("GOOGLE_MAPS_API_KEY_ANDROID")
+        
+        // Fallback: Check for .env file in project root for local development
         if (!googleMapsApiKey) {
-            throw new RuntimeException("Missing GOOGLE_MAPS_API_KEY_ANDROID environment variable. Please set it in your environment or EAS secrets.")
+            def envFile = new File(projectRoot, ".env")
+            if (envFile.exists()) {
+                envFile.eachLine { line ->
+                    if (line.trim().startsWith("GOOGLE_MAPS_API_KEY_ANDROID=")) {
+                        googleMapsApiKey = line.trim().substring("GOOGLE_MAPS_API_KEY_ANDROID=".length())
+                    }
+                }
+            }
+        }
+
+        if (!googleMapsApiKey) {
+            throw new RuntimeException("Missing GOOGLE_MAPS_API_KEY_ANDROID environment variable. Please set it in your environment (EAS secrets for CI) or in a .env file for local development.")
         }
         manifestPlaceholders = [googleMapsApiKey: googleMapsApiKey]
     }

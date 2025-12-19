@@ -5,6 +5,24 @@
 
 ## Quick Fix Steps
 
+### 0. Set up Project Environment
+
+**Security Note:** We do not hardcode API keys in the app.
+
+#### For Local Development (`npx expo run:android`)
+1.  Create a `.env` file in the project root (`wildlife-watcher-mobile-app/.env`).
+2.  Add your API key:
+    ```bash
+    GOOGLE_MAPS_API_KEY_ANDROID=your_api_key_here
+    ```
+    *Note: The native Android build has been modified to automatically read this file.*
+
+#### For Cloud Builds (EAS)
+1.  Add the secret to EAS:
+    ```bash
+    eas secret:create --scope project --name GOOGLE_MAPS_API_KEY_ANDROID --value "your_api_key_here"
+    ```
+
 ### 1. Enable Required APIs
 
 Go to: https://console.cloud.google.com/apis/library

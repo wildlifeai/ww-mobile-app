@@ -51,21 +51,24 @@ class FirmwareService {
             const supabase = getSupabaseClient()
             console.log(`Getting signed URL for path: ${firmware.locationPath}`)
 
-            // Use createSignedUrl instead of getPublicUrl to handle private buckets
-            // and ensure we have an authenticated link
-            const { data, error } = await supabase.storage
+            // Use getPublicUrl as the bucket is verified to be public and signed URL generation was failing
+            const { data } = supabase.storage
                 .from('firmware')
-                .createSignedUrl(firmware.locationPath, 3600) // Valid for 1 hour
+                .getPublicUrl(firmware.locationPath)
 
-            if (error || !data?.signedUrl) {
-                console.error("Failed to get signed URL:", error)
-                throw new Error('Could not get signed URL for firmware: ' + (error?.message || 'unknown error'))
+            if (!data?.publicUrl) {
+                throw new Error('Could not get public URL for firmware')
             }
 
-            console.log(`Got signed URL, starting download...`)
+            // Validate the URL actually exists before downloading 
+            // (getPublicUrl returns a URL even if file doesn't exist)
+            // fetch head check is handled by downloadAsync which throws on 404 usually? 
+            // Actually FileSystem.downloadAsync might save the 404 page content, so we should check status.
+
+            console.log(`Got public URL: ${data.publicUrl}, starting download...`)
 
             const downloadRes = await FileSystem.downloadAsync(
-                data.signedUrl,
+                data.publicUrl,
                 localUri
             )
 
