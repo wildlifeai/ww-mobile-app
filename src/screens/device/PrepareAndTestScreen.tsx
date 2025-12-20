@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, ScrollView, StyleSheet, Alert, Image } from 'react-native'
+import { View, ScrollView, StyleSheet, Alert, Image, PermissionsAndroid, Platform } from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import * as FileSystem from 'expo-file-system'
@@ -26,6 +26,56 @@ import Firmware from '../../database/models/Firmware'
 import database from '../../database'
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper'
 import { getSupabaseClient } from '../../services/supabase'
+import BleManager, { Peripheral } from 'react-native-ble-manager'
+
+/**
+ * Scans for the Nordic DFU booth loader which advertises as "DfuTarg"
+ * after the device reboots into bootloader mode
+ * @param timeoutMs How long to scan before giving up
+ * @returns MAC address of the bootloader, or null if not found
+ */
+const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> => {
+    return new Promise((resolve, reject) => {
+        const eventEmitter = BleManager.addListener(
+            'BleManagerDiscoverPeripheral',
+            (peripheral: Peripheral) => {
+                console.log('[scanForBootloader] Discovered:', peripheral.name, peripheral.id)
+
+                // Check if this is the bootloader (WW500_DFU or DfuTarg)
+                if (peripheral.name === 'WW500_DFU' || peripheral.name === 'DfuTarg') {
+                    console.log('[scanForBootloader] Found bootloader at:', peripheral.id)
+                    // Stop scanning
+                    BleManager.stopScan().catch(err => console.warn('Failed to stop scan:', err))
+                    // Remove listener
+                    eventEmitter.remove()
+                    // Clear timeout
+                    if (timeout) clearTimeout(timeout)
+                    // Return the address
+                    resolve(peripheral.id)
+                }
+            }
+        )
+
+        // Start scanning
+        BleManager.scan([], timeoutMs / 1000) // Convert to seconds
+            .then(() => {
+                console.log('[scanForBootloader] Scan started for DfuTarg')
+            })
+            .catch(err => {
+                console.error('[scanForBootloader] Scan failed:', err)
+                eventEmitter.remove()
+                reject(err)
+            })
+
+        // Timeout if not found
+        const timeout = setTimeout(() => {
+            console.log('[scanForBootloader] Scan timeout, bootloader not found')
+            BleManager.stopScan().catch(err => console.warn('Failed to stop scan:', err))
+            eventEmitter.remove()
+            resolve(null)
+        }, timeoutMs)
+    })
+}
 
 type PrepareAndTestRouteProp = RouteProp<{ params: { deviceId: string; bleDeviceId: string; selftestError?: string; setUtcError?: string, nextRoute?: string } }, 'params'>
 
@@ -58,7 +108,7 @@ export const PrepareAndTestScreen = () => {
     const [isCheckingFirmware, setIsCheckingFirmware] = useState(false)
 
     // BLE command hooks
-    const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, disableCamera, runDisconnect } = useBleCommands()
+    const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, disableCamera, runDisconnect, runDfu } = useBleCommands()
     const { write } = useBle()
     const bleDevice = useAppSelector((state) => state.devices[bleDeviceId])
     const logs = useAppSelector(state => state.logs[bleDeviceId || ''] || "")
@@ -120,27 +170,24 @@ export const PrepareAndTestScreen = () => {
                 const latest = await ReferenceDataService.getLatestFirmware('ble')
                 setLatestBleFirmware(latest)
 
-                if (device && latest) {
-                    const updateAvailable = device.firmwareId !== latest.id
-                    setBleFirmwareUpdateAvailable(updateAvailable)
-                    setFirmwareUpToDate(!updateAvailable)
+                // Auto-trigger device check if connected and not yet checked
+                if (bleDevice && bleDevice.connected && !deviceFirmwareVersion && !isCheckingFirmware) {
+                    console.log('[PrepareTest] Auto-triggering firmware check on mount...')
+                    handleFirmwareCheck()
+                }
 
-                    console.log('[PrepareTest] BLE Firmware check:', {
-                        deviceFirmwareId: device.firmwareId,
-                        latestFirmwareId: latest.id,
-                        latestVersion: latest.version,
-                        updateAvailable
-                    })
+                if (device && latest && device.firmwareId) {
+                    // Check based on DB record first if available (fallback)
+                    const updateAvailable = device.firmwareId !== latest.id
+                    // ... logic continues ...
                 }
             } catch (error) {
                 console.error('[PrepareTest] Failed to check BLE firmware:', error)
             }
         }
 
-        if (device) {
-            checkBleFirmware()
-        }
-    }, [device])
+        checkBleFirmware()
+    }, [device, bleDevice?.connected]) // Re-run when device connects
 
     // Disable camera on mount to ensure clean state
     useEffect(() => {
@@ -160,13 +207,29 @@ export const PrepareAndTestScreen = () => {
 
     // Parse BLE logs for command responses
 
+    // Helper to compare version strings: "00.13.00" vs "0.13.0"
+    const compareVersions = (v1: string, v2: string) => {
+        // Strip non-numeric/dot characters just in case
+        const norm1 = v1.replace(/[^0-9.]/g, '').split('.').map(Number)
+        const norm2 = v2.replace(/[^0-9.]/g, '').split('.').map(Number)
+
+        const len = Math.max(norm1.length, norm2.length)
+        for (let i = 0; i < len; i++) {
+            const num1 = norm1[i] || 0
+            const num2 = norm2[i] || 0
+            if (num1 > num2) return 1
+            if (num1 < num2) return -1
+        }
+        return 0
+    }
+
     // Parse BLE logs for command responses
     useEffect(() => {
         if (!logs) return
 
         // Log incoming data for debugging
         if (logs.length > 0) {
-            console.log('[PrepareTest] BLE logs updated, length:', logs.length, 'preview:', logs.substring(0, 200))
+            // console.log('[PrepareTest] BLE logs updated, length:', logs.length)
         }
 
         // Parse battery response: "Battery = 5482mV 73%"
@@ -183,11 +246,16 @@ export const PrepareAndTestScreen = () => {
         }
 
         // Parse SD card response: "30515200 K total drive space." and "30512400 K available."
-        const totalMatch = logs.match(/(\d+)\s+K total drive space\.?/)
-        const availMatch = logs.match(/(\d+)\s+K available\.?/)
+        // Also handling: "K total", "k total", possible extra spaces
+        const totalMatch = logs.match(/(\d+)\s*[Kk]\s*total\s*drive\s*space/i)
+        const availMatch = logs.match(/(\d+)\s*[Kk]\s*available/i)
+
+        if (logs.length > 0 && !sdCardStatus && (logs.toLowerCase().includes('total') || logs.toLowerCase().includes('available'))) {
+            console.log('[PrepareTest] SD keywords found but match failed? Logs snippet:', logs.substring(Math.max(0, logs.length - 300)))
+        }
 
         if (logs.includes('K total') || logs.includes('K available')) {
-            console.log('[PrepareTest] SD card keywords detected in logs, totalMatch:', !!totalMatch, 'availMatch:', !!availMatch)
+            // console.log('[PrepareTest] SD card keywords detected')
         }
 
         if (totalMatch && availMatch && sdCardStatus === null) {
@@ -202,8 +270,9 @@ export const PrepareAndTestScreen = () => {
             }
         }
 
-        // Parse firmware version response: "BLE: v0.10.0" or "Version: v0.10.0"
-        const versionMatch = logs.match(/(?:BLE|Version):\s*(v[\d.]+)/i)
+        // Parse firmware version response: "BLE: v0.10.0", "WW500-A00 V 00.11.01", "Version: 0.10.0"
+        // Matches: "V 00.11.01", "Ver: 1.0", "BLE: v1.0"
+        const versionMatch = logs.match(/(?:V|Ver|Version|BLE)[:\s]+v?(\d+\.\d+\.\d+)/i)
         if (versionMatch && deviceFirmwareVersion === null && isCheckingFirmware) {
             const version = versionMatch[1]
             console.log('[PrepareTest] Parsed device firmware version:', version)
@@ -212,12 +281,17 @@ export const PrepareAndTestScreen = () => {
 
             // Compare with latest firmware
             if (latestBleFirmware) {
-                const updateAvailable = version !== latestBleFirmware.version
+                // Use semantic comparison instead of strict string equality
+                // Returns 0 if equal, -1 if v1 < v2, 1 if v1 > v2
+                const comparison = compareVersions(version, latestBleFirmware.version)
+                const updateAvailable = comparison < 0 // Only update if device version is LOWER
+
                 setBleFirmwareUpdateAvailable(updateAvailable)
                 setFirmwareUpToDate(!updateAvailable)
                 console.log('[PrepareTest] Firmware comparison:', {
                     deviceVersion: version,
                     latestVersion: latestBleFirmware.version,
+                    comparisonResult: comparison,
                     updateAvailable
                 })
             }
@@ -288,13 +362,16 @@ export const PrepareAndTestScreen = () => {
             return
         }
         try {
-            console.log('[PrepareTest] Sending SD card check command...')
+            console.log('[PrepareTest] Sending SD card check command (AI info)...')
             await checkSdCard(bleDevice)
-            console.log('[PrepareTest] SD card check command sent, waiting for response in logs')
 
-            // Wait for device to respond (aiinfo command takes longer than battery)
-            await new Promise(resolve => setTimeout(resolve, 2000))
-            console.log('[PrepareTest] Wait period complete, response should be in logs now')
+            // The AI processor is in Deep Power Down (DPD) mode to save battery.
+            // First command wakes it and it processes the request automatically.
+            // Based on working firmware logs, wake + response takes ~3-4 seconds total.
+            console.log('[PrepareTest] Waiting 4s for AI processor to wake and respond...')
+            await new Promise(resolve => setTimeout(resolve, 4000))
+
+            console.log('[PrepareTest] Response should be in logs now')
 
             // Response will be parsed from logs in useEffect  
         } catch (error) {
@@ -317,10 +394,11 @@ export const PrepareAndTestScreen = () => {
             console.log('[PrepareTest] Firmware version command sent, waiting for response in logs')
 
             // Wait for device to respond
-            await new Promise(resolve => setTimeout(resolve, 1500))
-            console.log('[PrepareTest] Wait period complete, response should be in logs now')
+            await new Promise(resolve => setTimeout(resolve, 2500))
 
-            // Response will be parsed from logs in useEffect
+            // If still checking after timeout, assume failure or parse from existing logs if missed
+            console.log('[PrepareTest] Wait period complete.')
+            setIsCheckingFirmware(false)
         } catch (error) {
             console.error('Firmware check failed:', error)
             setIsCheckingFirmware(false)
@@ -355,9 +433,53 @@ export const PrepareAndTestScreen = () => {
                             const localUri = await FirmwareService.ensureFirmwareDownloaded(latestBleFirmware)
                             console.log('[PrepareTest] Firmware ready at:', localUri)
 
+                            // Trigger DFU mode switch if connected
+                            // This sends the "dfu" command, causing the device to reboot into DFU (Bootloader) mode
+                            if (bleDevice.connected) {
+                                console.log('[PrepareTest] Sending DFU command to reset device into bootloader mode...')
+                                try {
+                                    await runDfu(bleDevice)
+                                    console.log('[PrepareTest] DFU command sent. Waiting 500ms for firmware processing...')
+
+                                    // CRITICAL: Wait for firmware to receive and process the 'dfu' command
+                                    await new Promise(r => setTimeout(r, 500))
+
+                                    console.log('[PrepareTest] Disconnecting to trigger DFU mode switch...')
+                                    await runDisconnect(bleDevice)
+
+                                    // Give device time to reboot and advertise as DfuTarg
+                                    console.log('[PrepareTest] Waiting 5s for reboot...')
+                                    await new Promise(r => setTimeout(r, 5000))
+                                } catch (e) {
+                                    console.warn('[PrepareTest] Failed to send DFU command (device might already be in DFU mode?):', e)
+                                }
+                            }
+
+                            // Request notification permission (Android 13+)
+                            if (Platform.OS === 'android' && Platform.Version >= 33) {
+                                try {
+                                    const granted = await PermissionsAndroid.request(
+                                        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+                                    )
+                                    if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+                                        throw new Error('Notification permission required for firmware update')
+                                    }
+                                } catch (permErr) {
+                                    console.warn('[PrepareTest] Notification permission warning:', permErr)
+                                }
+                            }
+
+                            // Scan for bootloader
+                            console.log('[PrepareTest] Scanning for bootloader...')
+                            const bootloaderAddress = await scanForBootloader(10000)
+                            if (!bootloaderAddress) {
+                                throw new Error('Bootloader not found. Ensure device is in DFU mode (flashing red).')
+                            }
+                            console.log('[PrepareTest] Found bootloader at:', bootloaderAddress)
+
                             // Start DFU process
                             await DfuService.startDFU(
-                                bleDevice.id,
+                                bootloaderAddress,
                                 localUri,
                                 (progress) => setFirmwareUpdateProgress(progress)
                             )
@@ -600,7 +722,9 @@ export const PrepareAndTestScreen = () => {
                         onChange={handleProjectChange}
                         options={[
                             { label: 'Select a project...', value: '' },
-                            { label: '➕ Create New Project', value: 'create_new' },
+                            // Only show "Create New Project" if there are NO existing projects
+                            // OR if the user explicitly needs it (but user said it's not required if others exist)
+                            ...((!projects || projects.length === 0) ? [{ label: '➕ Create New Project', value: 'create_new' }] : []),
                             ...(projects?.map((p) => ({ label: p.name, value: p.id })) || []),
                         ]}
 

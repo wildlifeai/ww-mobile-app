@@ -320,8 +320,20 @@ export const DevicePreparationService = {
             console.log(`[DevPrepService] Unconditionally cancelling any in_progress preparations for device: ${deviceId}`)
             const supabase = getSupabaseClient()
 
-            // UNCONDITIONAL UPDATE: Cancel any in_progress preparations without querying first
-            // This bypasses RLS visibility issues - if no records exist, UPDATE affects 0 rows (harmless)
+            // 1. Try RPC first (e.g. force_cancel_active_preparation) if available
+            // This is the preferred method as it uses SECURITY DEFINER to bypass RLS
+            const { error: rpcError } = await supabase.rpc('force_cancel_active_preparation', {
+                p_device_id: deviceId
+            })
+
+            if (!rpcError) {
+                console.log('[DevPrepService] ✅ Force-cancelled preparations via RPC')
+                return
+            }
+
+            console.warn('[DevPrepService] RPC failed (migration likely missing), falling back to direct update:', rpcError.message)
+
+            // 2. Fallback: Direct UPDATE (subject to RLS visibility)
             const { error: updateError, data } = await supabase
                 .from('device_preparation')
                 .update({ status: 'cancelled' })
@@ -335,7 +347,7 @@ export const DevicePreparationService = {
             } else {
                 const count = data?.length || 0
                 if (count > 0) {
-                    console.log(`[DevPrepService] ✅ Cancelled ${count} in_progress preparation(s) on server`)
+                    console.log(`[DevPrepService] ✅ Cancelled ${count} in_progress preparation(s) on server (Direct Update)`)
                 } else {
                     console.log('[DevPrepService] No in_progress preparations found to cancel (clean state)')
                 }
