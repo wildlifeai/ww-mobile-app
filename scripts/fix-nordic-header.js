@@ -9,12 +9,7 @@ const filePath = path.join(process.cwd(), 'node_modules', '@circularing', 'react
 const robustContent = `#import <CoreBluetooth/CoreBluetooth.h>
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
-
-#if __has_include("iOSDFULibrary-Swift.h")
-#import "iOSDFULibrary-Swift.h"
-#else
 #import <NordicDFU/NordicDFU-Swift.h>
-#endif
 
 @interface RNNordicDfu : RCTEventEmitter<RCTBridgeModule, DFUServiceDelegate, DFUProgressDelegate, LoggerDelegate>
 
@@ -32,8 +27,13 @@ const robustContent = `#import <CoreBluetooth/CoreBluetooth.h>
 try {
     if (fs.existsSync(filePath)) {
         console.log('Found RNNordicDfu.h at:', filePath);
+        const oldContent = fs.readFileSync(filePath, 'utf8');
+        console.log('--- OLD CONTENT START ---');
+        console.log(oldContent);
+        console.log('--- OLD CONTENT END ---');
+
         fs.writeFileSync(filePath, robustContent, 'utf8');
-        console.log('Fix applied. Verifying content...');
+        console.log('Fix applied (Unconditional). Verifying content...');
         const newContent = fs.readFileSync(filePath, 'utf8');
         if (newContent === robustContent) {
             console.log('Content verification: PASSED');
