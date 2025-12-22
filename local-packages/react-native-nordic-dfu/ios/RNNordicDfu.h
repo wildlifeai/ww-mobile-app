@@ -4,21 +4,11 @@
 
 /*
  * The Swift bridging header for iOSDFULibrary is actually named
- * NordicDFU-Swift.h because the module name is NordicDFU, but it's packaged in
- * a pod called iOSDFULibrary. We use __has_include to cover all possible
- * locations found in the build logs.
+ * NordicDFU-Swift.h because the module name is NordicDFU. The Podfile
+ * post_install hook adds the correct search path:
+ * $(BUILT_PRODUCTS_DIR)/iOSDFULibrary/Swift Compatibility Header
  */
-#if __has_include(<NordicDFU/NordicDFU-Swift.h>)
-#import <NordicDFU/NordicDFU-Swift.h>
-#elif __has_include("NordicDFU-Swift.h")
 #import "NordicDFU-Swift.h"
-#elif __has_include(<NordicDFU-Swift.h>)
-#import <NordicDFU-Swift.h>
-#elif __has_include(<iOSDFULibrary/iOSDFULibrary-Swift.h>)
-#import <iOSDFULibrary/iOSDFULibrary-Swift.h>
-#else
-#import "iOSDFULibrary-Swift.h"
-#endif
 
 @interface RNNordicDfu : RCTEventEmitter <RCTBridgeModule, DFUServiceDelegate,
                                           DFUProgressDelegate, LoggerDelegate>
