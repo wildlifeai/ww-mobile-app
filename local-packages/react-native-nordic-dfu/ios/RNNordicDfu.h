@@ -2,10 +2,12 @@
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
 
-#if __has_include("iOSDFULibrary-Swift.h")
+#if __has_include(<iOSDFULibrary/iOSDFULibrary-Swift.h>)
+#import <iOSDFULibrary/iOSDFULibrary-Swift.h>
+#elif __has_include("iOSDFULibrary-Swift.h")
 #import "iOSDFULibrary-Swift.h"
 #else
-#import <iOSDFULibrary/iOSDFULibrary-Swift.h>
+#import <iOSDFULibrary-Swift.h>
 #endif
 
 @interface RNNordicDfu : RCTEventEmitter <RCTBridgeModule, DFUServiceDelegate,
