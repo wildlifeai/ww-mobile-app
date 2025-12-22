@@ -101,6 +101,7 @@
     "@babel/preset-env": "^7.20.0",
     "@babel/runtime": "^7.20.0",
     "@morrowdigital/watermelondb-expo-plugin": "^2.3.3",
+    "@react-native-community/cli": "^20.0.2",
     "@react-native/babel-preset": "0.74.88",
     "@react-native/eslint-config": "0.74.88",
     "@react-native/metro-config": "0.74.88",
