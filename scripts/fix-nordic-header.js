@@ -1,7 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const filePath = path.join(__dirname, '..', 'node_modules', '@circularing', 'react-native-nordic-dfu', 'ios', 'RNNordicDfu.h');
+console.log('Running fix-nordic-header.js');
+console.log('CWD:', process.cwd());
+
+const filePath = path.join(process.cwd(), 'node_modules', '@circularing', 'react-native-nordic-dfu', 'ios', 'RNNordicDfu.h');
 
 const robustContent = `#import <CoreBluetooth/CoreBluetooth.h>
 #import <React/RCTBridgeModule.h>
@@ -28,13 +31,27 @@ const robustContent = `#import <CoreBluetooth/CoreBluetooth.h>
 
 try {
     if (fs.existsSync(filePath)) {
-        console.log('Found RNNordicDfu.h, applying fix...');
+        console.log('Found RNNordicDfu.h at:', filePath);
         fs.writeFileSync(filePath, robustContent, 'utf8');
-        console.log('Fix applied successfully.');
+        console.log('Fix applied. Verifying content...');
+        const newContent = fs.readFileSync(filePath, 'utf8');
+        if (newContent === robustContent) {
+            console.log('Content verification: PASSED');
+        } else {
+            console.error('Content verification: FAILED');
+            process.exit(1);
+        }
     } else {
-        console.warn('RNNordicDfu.h not found at:', filePath);
-        // Do not fail the build, as maybe the package is not installed yet or path changed.
-        // But for this issue, it's critical.
+        console.error('RNNordicDfu.h not found at:', filePath);
+        // List parent dir
+        const parentDir = path.dirname(filePath);
+        if (fs.existsSync(parentDir)) {
+            console.log('Listing directory:', parentDir);
+            console.log(fs.readdirSync(parentDir));
+        } else {
+            console.log('Parent directory does not exist:', parentDir);
+        }
+        process.exit(1); // Fail build if we can't patch
     }
 } catch (error) {
     console.error('Error applying fix:', error);
