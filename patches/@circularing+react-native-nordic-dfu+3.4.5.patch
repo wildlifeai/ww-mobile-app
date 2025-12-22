@@ -1,0 +1,17 @@
+diff --git a/node_modules/@circularing/react-native-nordic-dfu/ios/RNNordicDfu.h b/node_modules/@circularing/react-native-nordic-dfu/ios/RNNordicDfu.h
+index c1090f4..9422bce 100644
+--- a/node_modules/@circularing/react-native-nordic-dfu/ios/RNNordicDfu.h
++++ b/node_modules/@circularing/react-native-nordic-dfu/ios/RNNordicDfu.h
+@@ -1,7 +1,12 @@
+ #import <CoreBluetooth/CoreBluetooth.h>
+ #import <React/RCTBridgeModule.h>
+ #import <React/RCTEventEmitter.h>
++
++#if __has_include("iOSDFULibrary-Swift.h")
++#import "iOSDFULibrary-Swift.h"
++#else
+ #import <NordicDFU/NordicDFU-Swift.h>
++#endif
+ 
+ @interface RNNordicDfu : RCTEventEmitter<RCTBridgeModule, DFUServiceDelegate, DFUProgressDelegate, LoggerDelegate>
+ 
