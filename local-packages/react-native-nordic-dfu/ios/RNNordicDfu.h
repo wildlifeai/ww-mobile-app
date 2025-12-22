@@ -3,12 +3,16 @@
 #import <React/RCTEventEmitter.h>
 
 /*
- * The Swift bridging header for iOSDFULibrary is actually named
- * NordicDFU-Swift.h because the module name is NordicDFU. The Podfile
- * post_install hook adds the correct search path:
- * $(BUILT_PRODUCTS_DIR)/iOSDFULibrary/Swift Compatibility Header
+ * With dynamic frameworks, the standard module import should work.
+ * The iOSDFULibrary exposes its Swift types through the NordicDFU module.
  */
-#import "NordicDFU-Swift.h"
+#if __has_include(<NordicDFU/NordicDFU-Swift.h>)
+#import <NordicDFU/NordicDFU-Swift.h>
+#elif __has_include(<iOSDFULibrary/iOSDFULibrary-Swift.h>)
+#import <iOSDFULibrary/iOSDFULibrary-Swift.h>
+#else
+@import iOSDFULibrary;
+#endif
 
 @interface RNNordicDfu : RCTEventEmitter <RCTBridgeModule, DFUServiceDelegate,
                                           DFUProgressDelegate, LoggerDelegate>

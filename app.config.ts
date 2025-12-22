@@ -3,8 +3,8 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 export default ({ config }: ConfigContext): ExpoConfig => ({
     ...config,
     name: 'WildlifeWatcher',
-    slug: 'localwatcher',
-    owner: 'victor_wildlife',
+    slug: 'ww-expo-poc',
+    owner: 'apps_wildlife',
     version: '1.0.0', // Default version
     scheme: 'wildlifewatcher',
     orientation: 'portrait',
@@ -64,7 +64,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     extra: {
         eas: {
-            projectId: "3efab2c3-5606-4c24-a20c-38f979b5dc4b"
+            projectId: "bc664ac2-e320-43ce-b03c-c508a75f7451"
         }
     },
     plugins: [
@@ -78,7 +78,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 },
                 "ios": {
                     "deploymentTarget": "14.0",
-                    "useFrameworks": "static"
+                    "useFrameworks": "dynamic"
                 }
             }
         ],
