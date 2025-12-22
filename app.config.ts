@@ -74,11 +74,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 "android": {
                     "compileSdkVersion": 34,
                     "targetSdkVersion": 34,
-                    "buildToolsVersion": "34.0.0"
+                    "buildToolsVersion": "34.0.0",
+                    "newArchEnabled": true
                 },
                 "ios": {
                     "deploymentTarget": "17.0",
-                    "useFrameworks": "static"
+                    "useFrameworks": "static",
+                    "newArchEnabled": true
                 }
             }
         ],
