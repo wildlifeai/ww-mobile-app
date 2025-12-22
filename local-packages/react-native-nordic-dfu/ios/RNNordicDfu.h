@@ -2,12 +2,22 @@
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
 
-#if __has_include(<iOSDFULibrary/iOSDFULibrary-Swift.h>)
+/*
+ * The Swift bridging header for iOSDFULibrary is actually named
+ * NordicDFU-Swift.h because the module name is NordicDFU, but it's packaged in
+ * a pod called iOSDFULibrary. We use __has_include to cover all possible
+ * locations found in the build logs.
+ */
+#if __has_include(<NordicDFU/NordicDFU-Swift.h>)
+#import <NordicDFU/NordicDFU-Swift.h>
+#elif __has_include("NordicDFU-Swift.h")
+#import "NordicDFU-Swift.h"
+#elif __has_include(<NordicDFU-Swift.h>)
+#import <NordicDFU-Swift.h>
+#elif __has_include(<iOSDFULibrary/iOSDFULibrary-Swift.h>)
 #import <iOSDFULibrary/iOSDFULibrary-Swift.h>
-#elif __has_include("iOSDFULibrary-Swift.h")
-#import "iOSDFULibrary-Swift.h"
 #else
-#import <iOSDFULibrary-Swift.h>
+#import "iOSDFULibrary-Swift.h"
 #endif
 
 @interface RNNordicDfu : RCTEventEmitter <RCTBridgeModule, DFUServiceDelegate,
