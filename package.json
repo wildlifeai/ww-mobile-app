@@ -44,7 +44,7 @@
     "schema:validate:live:cloud-dev": "node scripts/validate-watermelon-schema-live.js --env=cloud-dev",
     "sync:from-live:cloud-dev": "npm run types:cloud-dev && npm run schema:validate:live:cloud-dev",
     "dev:status": "npm run types:check-local && npm run schema:validate:live:local",
-    "postinstall": "patch-package && npm run validate:deps"
+    "postinstall": "patch-package && node scripts/fix-nordic-header.js && npm run validate:deps"
   },
   "dependencies": {
     "@circularing/react-native-nordic-dfu": "^3.4.5",
