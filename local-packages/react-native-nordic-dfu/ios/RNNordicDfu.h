@@ -1,7 +1,7 @@
+#import "iOSDFULibrary-Swift.h"
 #import <CoreBluetooth/CoreBluetooth.h>
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
-@import iOSDFULibrary;
 
 @interface RNNordicDfu : RCTEventEmitter <RCTBridgeModule, DFUServiceDelegate,
                                           DFUProgressDelegate, LoggerDelegate>

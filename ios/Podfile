@@ -53,7 +53,7 @@ target 'WildlifeWatcher' do
   pod 'iOSDFULibrary', :modular_headers => true
   
   # Also require modular headers for the RN bridge module to see Swift headers
-  pod 'react-native-nordic-dfu', path: '../node_modules/@circularing/react-native-nordic-dfu', :modular_headers => true
+  pod 'react-native-nordic-dfu', path: '../local-packages/react-native-nordic-dfu', :modular_headers => true
   
   use_react_native!(
     :path => config[:reactNativePath],
@@ -86,7 +86,7 @@ target 'WildlifeWatcher' do
     # The @circularing fork uses <NordicDFU/NordicDFU-Swift.h> which fails in this setup.
     # We replace it with "iOSDFULibrary-Swift.h"
     puts "Patching RNNordicDfu.h for @circularing fork..."
-    header_file = File.expand_path("../node_modules/@circularing/react-native-nordic-dfu/ios/RNNordicDfu.h", __dir__)
+    header_file = File.expand_path("../local-packages/react-native-nordic-dfu/ios/RNNordicDfu.h", __dir__)
     
     if File.exist?(header_file)
       puts "Found RNNordicDfu.h at #{header_file}"
