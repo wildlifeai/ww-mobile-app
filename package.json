@@ -47,7 +47,7 @@
     "postinstall": "npm run validate:deps"
   },
   "dependencies": {
-    "@getquip/expo-nordic-dfu": "https://github.com/getquip/expo-nordic-dfu/tarball/main",
+    "@getquip/expo-nordic-dfu": "^2.0.3",
     "@nozbe/watermelondb": "^0.28.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/geolocation": "^3.4.0",
