@@ -78,21 +78,6 @@ target 'WildlifeWatcher' do
         end
       end
     end
-    
-    # Fix iOSDFULibrary Swift header visibility for react-native-nordic-dfu
-    # The Swift compatibility header is generated as NordicDFU-Swift.h in a special directory
-    installer.pods_project.targets.each do |target|
-      if target.name == 'react-native-nordic-dfu'
-        target.build_configurations.each do |config|
-          existing_paths = config.build_settings['HEADER_SEARCH_PATHS'] || '$(inherited)'
-          new_path = '"$(BUILT_PRODUCTS_DIR)/iOSDFULibrary/Swift Compatibility Header"'
-          config.build_settings['HEADER_SEARCH_PATHS'] = "#{existing_paths} #{new_path}"
-          
-          # Also try to use modular imports
-          config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
-        end
-      end
-    end
   end
 
   post_integrate do |installer|

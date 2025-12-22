@@ -77,8 +77,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                     "buildToolsVersion": "34.0.0"
                 },
                 "ios": {
-                    "deploymentTarget": "14.0",
-                    "useFrameworks": "dynamic"
+                    "deploymentTarget": "17.0",
+                    "useFrameworks": "static"
                 }
             }
         ],
