@@ -52,9 +52,6 @@ target 'WildlifeWatcher' do
   pod 'ZIPFoundation', :modular_headers => true
   pod 'iOSDFULibrary', :modular_headers => true
   
-  # Also require modular headers for the RN bridge module to see Swift headers
-  pod 'react-native-nordic-dfu', path: '../local-packages/react-native-nordic-dfu', :modular_headers => true
-  
   use_react_native!(
     :path => config[:reactNativePath],
     :hermes_enabled => podfile_properties['expo.jsEngine'] == nil || podfile_properties['expo.jsEngine'] == 'hermes',
@@ -80,26 +77,6 @@ target 'WildlifeWatcher' do
           config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
         end
       end
-    end
-    
-    # Patch RNNordicDfu.h to fix 'NordicDFU/NordicDFU-Swift.h' file not found error
-    # The @circularing fork uses <NordicDFU/NordicDFU-Swift.h> which fails in this setup.
-    # We replace it with "iOSDFULibrary-Swift.h"
-    puts "Patching RNNordicDfu.h for @circularing fork..."
-    header_file = File.expand_path("../local-packages/react-native-nordic-dfu/ios/RNNordicDfu.h", __dir__)
-    
-    if File.exist?(header_file)
-      puts "Found RNNordicDfu.h at #{header_file}"
-      text = File.read(header_file)
-      if text.include?("#import <NordicDFU/NordicDFU-Swift.h>")
-        new_contents = text.gsub("#import <NordicDFU/NordicDFU-Swift.h>", "#import \"iOSDFULibrary-Swift.h\"")
-        File.open(header_file, "w") {|file| file.puts new_contents }
-        puts "Patched RNNordicDfu.h successfully"
-      else
-        puts "RNNordicDfu.h already patched or import not found"
-      end
-    else
-      puts "Could not find RNNordicDfu.h at #{header_file}"
     end
   end
 
