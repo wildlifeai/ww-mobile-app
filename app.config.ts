@@ -1,8 +1,11 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
+const IS_DEV = process.env.APP_VARIANT === 'development';
+const BUNDLE_ID = IS_DEV ? 'com.wildlife.wildlifewatcher.expo' : 'com.wildlife.wildlifewatcher';
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
     ...config,
-    name: 'WildlifeWatcher',
+    name: IS_DEV ? 'Wildlife Watcher (Dev)' : 'Wildlife Watcher',
     slug: 'ww-expo-poc',
     owner: 'wildlifeai',
     version: '1.0.0',
@@ -21,7 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     ios: {
         supportsTablet: true,
-        bundleIdentifier: 'com.wildlife.wildlifewatcher.expo',
+        bundleIdentifier: BUNDLE_ID,
         config: {
             googleMapsApiKey: process.env['GOOGLE_MAPS_API_KEY_IOS'],
         },
@@ -36,7 +39,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         }
     },
     android: {
-        package: 'com.wildlife.wildlifewatcher.expo',
+        package: BUNDLE_ID,
         adaptiveIcon: {
             foregroundImage: "./assets/adaptive-icon.png",
             backgroundColor: "#ffffff"
