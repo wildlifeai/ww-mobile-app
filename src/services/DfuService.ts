@@ -1,5 +1,5 @@
 import { Platform } from "react-native"
-import { NordicDFU, DFUEmitter } from "@circularing/react-native-nordic-dfu"
+import ExpoNordicDfu from "@getquip/expo-nordic-dfu"
 
 export class DfuService {
 	static async startDFU(
@@ -7,33 +7,30 @@ export class DfuService {
 		firmwareFilePath: string,
 		onProgress?: (progress: number) => void,
 	) {
+		let subscription: { remove: () => void } | undefined
+
 		try {
 			// Set up progress listener
-			DFUEmitter.addListener("DFUProgress", (update) => {
-				onProgress?.(update.percent || 0)
+			subscription = ExpoNordicDfu.module.addListener("DFUProgress", (update) => {
+				onProgress?.(update?.percent || 0)
 			})
 
-			// Ensure file path is correct for the native module
-			// Android often requires the raw path without 'file://' prefix for native file access not going through ContentResolver
-			const filePath = Platform.OS === 'android' && firmwareFilePath.startsWith('file://')
-				? firmwareFilePath.replace('file://', '')
-				: firmwareFilePath
+			// Ensure file path is correct
+			// The new library expects 'fileUri', so we should typically pass the URI directly.
+			const fileUri = firmwareFilePath
 
-			const result = await NordicDFU.startDFU({
+			const result = await ExpoNordicDfu.startDfu({
 				deviceAddress,
-				filePath,
-				alternativeAdvertisingNameEnabled: false,
+				fileUri,
 			})
-
-			// Clean up listener
-			DFUEmitter.removeAllListeners("DFUProgress")
 
 			return result
 		} catch (error) {
 			console.error("DFU failed:", error)
-			// Clean up listener on error too
-			DFUEmitter.removeAllListeners("DFUProgress")
 			throw error
+		} finally {
+			// Clean up listener
+			subscription?.remove()
 		}
 	}
 }

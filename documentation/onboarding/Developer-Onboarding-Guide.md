@@ -25,8 +25,8 @@ The Wildlife Watcher app is a React Native application that:
 - Uses maps for device location tracking
 
 **Technology Stack:**
-- **React Native 0.74.6**: Cross-platform mobile framework
-- **Expo SDK 51**: Development and build platform
+- **React Native 0.81.5**: Cross-platform mobile framework
+- **Expo SDK 54**: Development and build platform
 - **TypeScript**: Type-safe JavaScript
 - **Redux Toolkit**: State management
 - **React Navigation**: Navigation system
@@ -118,6 +118,8 @@ cd wildlife-watcher-mobile-app
 git checkout dev-mvp2-development
 docker-compose -f docker-compose.dev.yml up -d
 docker-compose -f docker-compose.dev.yml exec wildlife-watcher-dev bash
+# Inside container:
+npm install --ignore-scripts
 npx expo start
 ```
 
@@ -211,7 +213,8 @@ sudo pacman -S git
 **Install Expo CLI and EAS CLI:**
 ```bash
 # Install exact versions used by project maintainer
-npm install -g @expo/cli@0.18.31 eas-cli@16.17.3
+npx expo --version # Verify SDK 54
+npm install -g eas-cli@latest
 
 # Verify installation
 npx @expo/cli --version  # Use npx for new Expo CLI
@@ -317,11 +320,10 @@ ls  # Should see package.json, src/, etc.
 
 ```bash
 # Install JavaScript dependencies
+# On Windows:
+npm install --ignore-scripts
+# On macOS/Linux:
 npm install
-
-# Install iOS dependencies (macOS only)
-# Skip this step if you're on Windows or don't plan to test on iOS
-npm run pod-install
 ```
 
 This will take several minutes the first time. The app has many dependencies including BLE libraries and UI components.

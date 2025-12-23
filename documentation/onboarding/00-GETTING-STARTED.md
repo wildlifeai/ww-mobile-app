@@ -34,7 +34,7 @@ The Wildlife Watcher Mobile App is an **offline-first field deployment tool** th
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│           React Native + Expo SDK 51                 │
+│           React Native + Expo SDK 54                 │
 │    (Cross-platform iOS & Android from one codebase) │
 └─────────────────────────────────────────────────────┘
                          │
@@ -51,10 +51,10 @@ The Wildlife Watcher Mobile App is an **offline-first field deployment tool** th
 
 ### Key Technologies
 
-- **React Native 0.74.5** - Mobile UI framework
+- **React Native 0.81.5** - Mobile UI framework
 - **TypeScript** - Type-safe JavaScript
 - **Redux Toolkit** - State management (UI & Session)
-- **Expo SDK 51** - Development tools and APIs
+- **Expo SDK 54** - Development tools and APIs
 - **WatermelonDB** - High-performance reactive local database
 - **Supabase** - Backend (PostgreSQL, Auth, Storage)
 - **React Navigation** - Screen navigation
@@ -246,25 +246,22 @@ Start exploring the codebase with these essential files:
 ## Development Environment
 
 ### Prerequisites
-- Node.js 18+ (check with `node --version`)
-- npm or yarn
-- Android Studio (for Android development)
+- Node.js 20+ (check with `node --version`)
+- npm
+- Android Studio (for Android development, SDK 35)
 - Xcode (for iOS development - Mac only)
 - Expo CLI (installed via npx)
 
 ### Quick Start
 ```bash
 # Install dependencies
+# On Windows:
+npm install --ignore-scripts
+# On macOS/Linux:
 npm install
 
 # Start development server
 npm start
-
-# Run on Android (connects to emulator or device)
-npm run android
-
-# Run on iOS (Mac only)
-npm run ios
 ```
 
 ### Useful Commands

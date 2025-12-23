@@ -1,11 +1,15 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
+const IS_DEV = process.env.APP_VARIANT === 'development';
+const BUNDLE_ID = IS_DEV ? 'com.wildlife.wildlifewatcher.expo' : 'com.wildlife.wildlifewatcher';
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
     ...config,
-    name: 'WildlifeWatcher',
-    slug: 'wildlife-watcher-expo',
+    name: IS_DEV ? 'Wildlife Watcher (Dev)' : 'Wildlife Watcher',
+    slug: 'ww-expo-poc',
     owner: 'wildlifeai',
-    version: '1.0.0', // Default version
+    version: '1.0.0',
+    newArchEnabled: true,
     scheme: 'wildlifewatcher',
     orientation: 'portrait',
     icon: './assets/icon.png', // Standard default
@@ -20,29 +24,26 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     ios: {
         supportsTablet: true,
-        bundleIdentifier: 'com.wildlifewatcher.app',
+        bundleIdentifier: BUNDLE_ID,
         config: {
             googleMapsApiKey: process.env['GOOGLE_MAPS_API_KEY_IOS'],
         },
         infoPlist: {
             NSLocationWhenInUseUsageDescription: "We need your location to set GPS coordinates on camera devices for accurate wildlife tracking and habitat mapping.",
+            NSLocationAlwaysAndWhenInUseUsageDescription: "We need your location in the background to set GPS coordinates on camera devices even when the app is minimized.",
             NSBluetoothAlwaysUsageDescription: "This app uses Bluetooth to connect to wildlife camera devices.",
             NSBluetoothPeripheralUsageDescription: "This app uses Bluetooth to connect to wildlife camera devices.",
             NSCameraUsageDescription: "We need access to your camera to take photos of the deployment site.",
             NSPhotoLibraryUsageDescription: "We need access to your photo library to select deployment photos.",
-            NSPhotoLibraryAddUsageDescription: "We need access to save deployment photos to your library."
+            NSPhotoLibraryAddUsageDescription: "We need access to save deployment photos to your library.",
+            ITSAppUsesNonExemptEncryption: false
         }
     },
     android: {
-        package: 'com.wildlifewatcher.app',
+        package: BUNDLE_ID,
         adaptiveIcon: {
             foregroundImage: "./assets/adaptive-icon.png",
             backgroundColor: "#ffffff"
-        },
-        statusBar: {
-            barStyle: "light-content",
-            backgroundColor: "#000000",
-            translucent: false
         },
         config: {
             googleMaps: {
@@ -62,9 +63,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     web: {
         favicon: "./assets/favicon.png"
     },
+    updates: {
+        url: "https://u.expo.dev/eb6d9e5f-0daa-4451-8e6d-813330e0c557"
+    },
+    runtimeVersion: "1.0.0",
     extra: {
         eas: {
-            projectId: "6cf53a5e-90e1-4987-82c6-5f0337affe97"
+            projectId: "eb6d9e5f-0daa-4451-8e6d-813330e0c557"
         }
     },
     plugins: [
@@ -72,13 +77,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             "expo-build-properties",
             {
                 "android": {
-                    "compileSdkVersion": 34,
-                    "targetSdkVersion": 34,
-                    "buildToolsVersion": "34.0.0"
+                    "compileSdkVersion": 35,
+                    "targetSdkVersion": 35,
+                    "newArchEnabled": true
                 },
                 "ios": {
-                    "deploymentTarget": "14.0",
-                    "useFrameworks": "static"
+                    "deploymentTarget": "17.0",
+                    "useFrameworks": "static",
+                    "newArchEnabled": true,
+                    "bridgeless": false
                 }
             }
         ],

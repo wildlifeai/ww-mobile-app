@@ -38,8 +38,8 @@ which expo
 # Result: /home/adarsh/.nvm/versions/node/v20.19.4/bin/expo
 
 # Check Expo CLI version
-expo --version
-# Result: 6.3.10
+npx expo --version
+# Result: 54.0.30 (Expo SDK 54)
 
 # Check if EAS CLI is installed
 which eas
@@ -189,38 +189,16 @@ eas build --platform android --local --profile preview --output ./build/android/
 
 **Environment Variables for Local Builds**:
 
-⚠️ **CRITICAL**: Environment variables must be defined in `eas.json` for local builds, NOT just in `.env.local`.
+⚠️ **CRITICAL**: Environment variables must be defined in `.env` or `eas.json` for builds. `process.env` in `app.config.ts` will pick up values from `.env` when using `npx expo run:android`.
 
-Local EAS builds read environment variables from `eas.json` at build time and bake them into the app bundle. Variables in `.env.local` are only used during development with `expo start`.
-
-**Required variables in `eas.json`**:
-```json
-{
-  "build": {
-    "preview": {
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://your-project.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "your-anon-key",
-        "GOOGLE_MAPS_API_KEY_ANDROID": "your-maps-key"
-      }
-    }
-  }
-}
-```
-
-**Why this is necessary**:
-- `app.config.js` reads `process.env` during build time
-- Environment variables become part of the compiled app bundle
-- The app accesses them via `Constants.expoConfig.extra` at runtime
-- Rebuilding is required after changing environment variables in `eas.json`
+**Robust Fallback in `build.gradle`**:
+For tools like Android Studio that don't natively load project-root `.env` files, our `android/app/build.gradle` includes a fallback mechanism to manually parse the `.env` file for critical keys like `GOOGLE_MAPS_API_KEY_ANDROID`.
 
 **Process**:
-1. Reads environment variables from `eas.json`
-2. Checks dependencies locally
-3. Bundles JavaScript code with baked-in config
-4. Generates native code
-5. Creates APK file
-6. Outputs to project directory
+1. Checks for system environment variables.
+2. Falls back to manual `.env` parsing if not found.
+3. Injects values into `manifestPlaceholders`.
+4. Bundles JavaScript with baked-in config.
 
 ### Method 2: Cloud Build
 
@@ -620,28 +598,18 @@ eas build:view <BUILD_ID>
 
 This guide covers the complete process of building and installing the Wildlife Watcher mobile app on Android devices.
 
-### ✅ Infrastructure Status (Updated 2025-09-29)
-**EAS Build Infrastructure: WORKING** - All dependency and configuration issues resolved.
+### ✅ Infrastructure Status (Updated 2025-12-24)
+**Build Infrastructure: WORKING** - Configured for Expo 54 and React Native 0.81.5.
 
 The build process successfully:
-- ✅ Installs dependencies with expo-sqlite ~14.0.6
-- ✅ Passes dependency validation with Expo SDK 51 compatibility
-- ✅ Completes Gradle build and reaches JavaScript bundling
-- ❌ Currently fails during bundling due to **incomplete Task 11** (SQLite Foundation)
+- ✅ Installs dependencies (with Windows `--ignore-scripts` workaround)
+- ✅ Synchronizes native code with `npx expo prebuild --clean`
+- ✅ Injects environment variables via robust Gradle fallback
+- ✅ Reaches C++ compilation and JavaScript bundling
 
-### Current Status
-**Build infrastructure is functional** - the failure is now at the application code level due to missing offline-first architecture components from Task 11. Complete Task 11 before attempting builds.
+### Troubleshooting Windows Path Lengths
+If you encounter `The maximum full path to an object file is 250 characters`, you must move your project to a shorter root directory (e.g., `C:\ww`).
 
-### Recommended Approach
-1. **Complete Task 11** (SQLite Foundation) - Required before builds will succeed
-2. Use `eas build --platform android --local --profile preview` for fast local builds
-3. Transfer the APK to your phone via USB or cloud storage
-4. Enable installation from unknown sources and install
-
-For production deployments, use the cloud build system with the production profile and follow the app store submission process.
-
----
-
-*Last Updated: 2025-09-29*
-*Document Version: 1.0*
+*Last Updated: 2025-12-24*
+*Document Version: 1.1*
 *Author: Generated via Claude Code with Context7 research*

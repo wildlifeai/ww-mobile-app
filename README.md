@@ -2,13 +2,13 @@
 
 Welcome to the development repository of the Wildlife Watcher mobile app. This document provides instructions for setting up and running the project on your local machine.
 
-The Wildlife Watcher mobile app allows users to communicate with Wildlife Watcher cameras that record animals and use AI to identify them. Built with **Expo SDK 51** and **React Native 0.74.6** with **Supabase** backend integration and **offline-first architecture**.
+The Wildlife Watcher mobile app allows users to communicate with Wildlife Watcher cameras that record animals and use AI to identify them. Built with **Expo SDK 54** and **React Native 0.81.5** (New Architecture enabled), using **Supabase** backend integration and an **offline-first architecture**.
 
 **Project Overview**: [Watch on YouTube](https://www.youtube.com/watch?v=Ima3n2EYfeE)
 
 ## Tech Stack
 
-- **Framework**: Expo SDK 51 with React Native 0.74.6
+- **Framework**: Expo SDK 54 with React Native 0.81.5 (React 19.1.0)
 - **Backend**: Supabase (PostgreSQL, Auth, Storage, Edge Functions)
 - **Local Database**: WatermelonDB for offline-first data persistence
 - **State Management**: Redux Toolkit with RTK Query
@@ -68,72 +68,144 @@ User Interface ← Local DB ← Pull Sync ← Supabase Changes
 
 ## Prerequisites
 
-This app now uses Expo SDK 51 with a managed workflow. Make sure you have the following prerequisites installed on your machine:
+This app uses **Expo SDK 54** with a managed workflow (prebuild enabled). Ensure you have:
 
-- **Node.js**: Version 18 or higher
-- **Expo CLI**: For development and builds
-- **EAS CLI**: For cloud builds and deployments
-- **Android Studio**: For Android development and device connections (if developing for Android)
-- **Xcode**: For iOS development (macOS only, if developing for iOS)
+- **Node.js**: Version 20 (LTS) or higher
+- **Expo CLI**: `npm install -g expo-cli`
+- **EAS CLI**: `npm install -g eas-cli`
+- **Android Studio**: Android SDK 35 (Vanilla Ice Cream) & Java 17 (Zulu JDK 17 recommended)
+- **Xcode**: macOS only, latest version
+
+> [!WARNING]
+> **Windows Users:** You **MUST** clone this project into a short path (e.g., `C:\dev\ww`) to avoid Windows 260-character path limit errors during the Android build.
+> Do NOT use `C:\Users\YourName\Documents\...`.
+> Virtual drives (`subst`) are NOT recommended as they cause Metro module resolution issues.
 
 ## Getting Started
 
-1. Clone this repository to your local machine:
-
+1. **Clone to a Short Path (Windows)**:
     ```bash
-    git clone https://github.com/wildlifeai/wildlife-watcher-mobile-app.git
-    cd wildlife-watcher-mobile-app
+    git clone https://github.com/wildlifeai/wildlife-watcher-mobile-app.git C:\dev\ww
+    cd C:\dev\ww
     ```
 
-2. Install project dependencies:
-
+2. **Install Dependencies**:
     ```bash
+    # On Windows:
+    npm install --ignore-scripts
+    
+    # On macOS/Linux:
     npm install
+    
+    # Manually run post-install tools if --ignore-scripts was used:
+    npx patch-package
+    npm run validate:deps
     ```
+    *Note: `npm install --ignore-scripts` is recommended on Windows to avoid script execution failures in certain native packages like `maestro`.*
 
-3. Set up environment variables:
-
-    Create a `.env` file in the root directory with:
+3. **Set up Environment**:
+    Create a `.env` file in the root directory:
     ```env
-    EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+    EXPO_PUBLIC_SUPABASE_URL=your_url
+    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_key
     ```
 
-4. Start the Expo development server:
-
+4. **Start Development Server**:
     ```bash
-    npm start
-    # or
-    npx expo start
+    # Always use --clear to ensure patches are loaded
+    npx expo start --clear
     ```
 
-## iOS Setup
+## Building Locally
 
-For iOS development:
-
-1. Ensure you have Xcode installed (macOS only)
-
-2. Run the project in development mode:
-
+### Android (Windows/Mac)
+1. Ensure Android Emulator is running or device is connected.
+2. Run the build command:
     ```bash
-    npm run ios
-    # or
+    npx expo run:android
+    ```
+    *Note: The first build may take 10-15 minutes.*
+
+### iOS (Mac Only)
+1. Run on Simulator:
+    ```bash
     npx expo run:ios
     ```
 
-## Android Setup
+## Building with EAS (Cloud)
 
-For Android development:
+Builds are managed via Expo Application Services (EAS).
 
-1. Ensure you have Android Studio installed for device/emulator support
+### Authenticating
+If you need to switch accounts or link a new project:
 
-2. Run the project in development mode:
+1.  **Logout and Login**:
+    ```bash
+    npx eas logout
+    npx eas login
+    ```
+2.  **Clear Existing Config**:
+    *   Open `app.config.ts`.
+    *   Remove or comment out `owner`, `updates.url`, and `extra.eas.projectId`.
+3.  **Initialize Project**:
+    ```bash
+    npx eas init # Select your account/project
+    ```
 
+### Running a Build
+To build for iOS (on Windows) or generic cloud builds:
 ```bash
-npm run android
-# or
-npx expo run:android
+npx eas build --clear-cache --profile development --platform ios
 ```
+
+## Troubleshooting
+
+### "useLegacyImplementation" or "useAnimatedGestureHandler" Errors
+These are caused by incompatibility between `react-native-drawer-layout` and Reanimated 4.
+**Fix:** We upgraded `react-native-drawer-layout` to v4.2.1+. Ensure you are using the latest version:
+```bash
+npm install react-native-drawer-layout@latest
+npx expo start --clear
+```
+
+### Module Resolution / EBUSY Errors (Windows)
+*   **Cause:** Long paths or file locking.
+*   **Fix:** Move project to `C:\dev\ww`. Delete `node_modules` and run `npm install` again.
+
+### Android Build Failures
+*   **Cause:** Missing SDK, JDK mismatch, or missing `local.properties`.
+*   **Fix:** 
+    - Ensure you have **Android SDK 35** and **Java 17**.
+    - If you see "SDK location not found", create `android/local.properties` with:
+      `sdk.dir=C:/Users/YourName/AppData/Local/Android/Sdk`
+    - Run `npx expo prebuild --clean` to reset native files.
+
+### Windows Path Length Errors (`MAX_PATH`)
+*   **Cause:** Windows has a 260 character path limit.
+*   **Fix:** Ensure the project is in a very short path like `C:\dev\ww`. If errors persist, try `git config --global core.longpaths true`.
+
+### Sync Issues
+
+If sync isn't working:
+1. Check network connectivity
+2. Verify Supabase credentials in `.env`
+3. Check Metro logs for sync errors
+4. Clear app data and reinstall if needed
+
+### BLE Connection Issues
+
+If camera won't connect:
+1. Ensure Bluetooth is enabled
+2. Check camera is powered on and in range
+3. Reset camera if needed
+4. Check Metro logs for BLE errors
+
+### Database Issues
+
+If local database is corrupted:
+1. Clear app data
+2. Reinstall app
+3. Data will re-sync from Supabase on next login
 
 ## Offline Development & Testing
 
