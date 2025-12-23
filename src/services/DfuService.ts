@@ -12,7 +12,7 @@ export class DfuService {
 		try {
 			// Set up progress listener
 			subscription = ExpoNordicDfu.module.addListener("DFUProgress", (update) => {
-				onProgress?.(update.percent || 0)
+				onProgress?.(update?.percent || 0)
 			})
 
 			// Ensure file path is correct

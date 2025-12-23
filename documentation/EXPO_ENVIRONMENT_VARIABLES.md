@@ -1,6 +1,6 @@
 # Expo Environment Variables Documentation
 
-This document outlines the environment variables required for the Expo SDK 51 migration.
+This document outlines the environment variables required for the Expo SDK 54 project.
 
 ## Variable Types
 

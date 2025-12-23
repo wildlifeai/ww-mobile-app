@@ -8,8 +8,7 @@ This guide explains core Expo SDK concepts that every Wildlife Watcher developer
 
 ### Expo vs Traditional React Native
 
-| Aspect | Traditional React Native | Expo SDK |
-|--------|-------------------------|----------|
+| **Framework** | Expo SDK 54 | React Native 0.81.5 |
 | **Setup** | Complex native tooling (Xcode, Android Studio) | Single CLI tool |
 | **Development** | Platform-specific commands | Unified `expo start` command |
 | **Native Modules** | Manual linking, platform code | Pre-built expo-* modules |

@@ -35,7 +35,7 @@ docker-compose -f docker-compose.dev.yml up -d
 docker-compose -f docker-compose.dev.yml exec wildlife-watcher-dev bash
 
 # 3. Inside container - install and start
-npm install
+npm install --ignore-scripts
 npx expo start
 ```
 
@@ -59,8 +59,10 @@ cd wildlife-watcher-mobile-app
 git checkout dev-mvp2-development
 
 # 2. Install dependencies
+# On Windows:
+npm install --ignore-scripts
+# On macOS/Linux:
 npm install
-# For iOS: npm run pod-install
 
 # 3. Start development server
 npx expo start
@@ -92,7 +94,7 @@ eas build --platform android --profile development
 
 ## Key Tech Stack Notes
 
-- **React Native 0.74.6** + **Expo SDK 51**
+- **React Native 0.81.5** + **Expo SDK 54**
 - **TypeScript** throughout
 - **Redux Toolkit** + RTK Query for state
 - **React Navigation 6** (native stack)

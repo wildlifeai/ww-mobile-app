@@ -30,6 +30,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
         infoPlist: {
             NSLocationWhenInUseUsageDescription: "We need your location to set GPS coordinates on camera devices for accurate wildlife tracking and habitat mapping.",
+            NSLocationAlwaysAndWhenInUseUsageDescription: "We need your location in the background to set GPS coordinates on camera devices even when the app is minimized.",
             NSBluetoothAlwaysUsageDescription: "This app uses Bluetooth to connect to wildlife camera devices.",
             NSBluetoothPeripheralUsageDescription: "This app uses Bluetooth to connect to wildlife camera devices.",
             NSCameraUsageDescription: "We need access to your camera to take photos of the deployment site.",

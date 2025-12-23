@@ -1,4 +1,4 @@
-package com.wildlife.wildlifewatcher.expo
+package com.wildlife.wildlifewatcher
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

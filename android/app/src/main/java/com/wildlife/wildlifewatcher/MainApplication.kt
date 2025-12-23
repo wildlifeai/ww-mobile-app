@@ -1,4 +1,4 @@
-package com.wildlife.wildlifewatcher.expo
+package com.wildlife.wildlifewatcher
 
 import android.app.Application
 import android.content.res.Configuration

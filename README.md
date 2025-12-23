@@ -91,11 +91,17 @@ This app uses **Expo SDK 54** with a managed workflow (prebuild enabled). Ensure
 
 2. **Install Dependencies**:
     ```bash
+    # On Windows:
+    npm install --ignore-scripts
+    
+    # On macOS/Linux:
     npm install
-    # This automatically runs `npx patch-package` to fix library issues:
-    # - react-native-drawer-layout (Reanimated 4 compatibility)
-    # - react-native-document-picker (Android build fix)
+    
+    # Manually run post-install tools if --ignore-scripts was used:
+    npx patch-package
+    npm run validate:deps
     ```
+    *Note: `npm install --ignore-scripts` is recommended on Windows to avoid script execution failures in certain native packages like `maestro`.*
 
 3. **Set up Environment**:
     Create a `.env` file in the root directory:
@@ -167,8 +173,16 @@ npx expo start --clear
 *   **Fix:** Move project to `C:\dev\ww`. Delete `node_modules` and run `npm install` again.
 
 ### Android Build Failures
-*   **Cause:** Missing SDK or JDK mismatch.
-*   **Fix:** Ensure you have **Android SDK 35** installed via Android Studio SDK Manager and use **Java 17**.
+*   **Cause:** Missing SDK, JDK mismatch, or missing `local.properties`.
+*   **Fix:** 
+    - Ensure you have **Android SDK 35** and **Java 17**.
+    - If you see "SDK location not found", create `android/local.properties` with:
+      `sdk.dir=C:/Users/YourName/AppData/Local/Android/Sdk`
+    - Run `npx expo prebuild --clean` to reset native files.
+
+### Windows Path Length Errors (`MAX_PATH`)
+*   **Cause:** Windows has a 260 character path limit.
+*   **Fix:** Ensure the project is in a very short path like `C:\dev\ww`. If errors persist, try `git config --global core.longpaths true`.
 
 ### Sync Issues
 
