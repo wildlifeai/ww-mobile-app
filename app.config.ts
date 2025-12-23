@@ -4,8 +4,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ...config,
     name: 'WildlifeWatcher',
     slug: 'ww-expo-poc',
-    owner: 'apps_wildlife',
-    version: '1.0.0', // Default version
+    owner: 'wildlifeai',
+    version: '1.0.0',
+    newArchEnabled: true,
     scheme: 'wildlifewatcher',
     orientation: 'portrait',
     icon: './assets/icon.png', // Standard default
@@ -20,7 +21,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     ios: {
         supportsTablet: true,
-        bundleIdentifier: 'com.wildlifewatcher.app',
+        bundleIdentifier: 'com.wildlife.wildlifewatcher.expo',
         config: {
             googleMapsApiKey: process.env['GOOGLE_MAPS_API_KEY_IOS'],
         },
@@ -30,19 +31,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             NSBluetoothPeripheralUsageDescription: "This app uses Bluetooth to connect to wildlife camera devices.",
             NSCameraUsageDescription: "We need access to your camera to take photos of the deployment site.",
             NSPhotoLibraryUsageDescription: "We need access to your photo library to select deployment photos.",
-            NSPhotoLibraryAddUsageDescription: "We need access to save deployment photos to your library."
+            NSPhotoLibraryAddUsageDescription: "We need access to save deployment photos to your library.",
+            ITSAppUsesNonExemptEncryption: false
         }
     },
     android: {
-        package: 'com.wildlifewatcher.app',
+        package: 'com.wildlife.wildlifewatcher.expo',
         adaptiveIcon: {
             foregroundImage: "./assets/adaptive-icon.png",
             backgroundColor: "#ffffff"
-        },
-        statusBar: {
-            barStyle: "light-content",
-            backgroundColor: "#000000",
-            translucent: false
         },
         config: {
             googleMaps: {
@@ -62,9 +59,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     web: {
         favicon: "./assets/favicon.png"
     },
+    updates: {
+        url: "https://u.expo.dev/eb6d9e5f-0daa-4451-8e6d-813330e0c557"
+    },
+    runtimeVersion: "1.0.0",
     extra: {
         eas: {
-            projectId: "bc664ac2-e320-43ce-b03c-c508a75f7451"
+            projectId: "eb6d9e5f-0daa-4451-8e6d-813330e0c557"
         }
     },
     plugins: [
@@ -72,15 +73,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             "expo-build-properties",
             {
                 "android": {
-                    "compileSdkVersion": 34,
-                    "targetSdkVersion": 34,
-                    "buildToolsVersion": "34.0.0",
+                    "compileSdkVersion": 35,
+                    "targetSdkVersion": 35,
                     "newArchEnabled": true
                 },
                 "ios": {
                     "deploymentTarget": "17.0",
                     "useFrameworks": "static",
-                    "newArchEnabled": true
+                    "newArchEnabled": true,
+                    "bridgeless": false
                 }
             }
         ],

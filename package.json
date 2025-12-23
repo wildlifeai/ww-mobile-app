@@ -44,7 +44,7 @@
     "schema:validate:live:cloud-dev": "node scripts/validate-watermelon-schema-live.js --env=cloud-dev",
     "sync:from-live:cloud-dev": "npm run types:cloud-dev && npm run schema:validate:live:cloud-dev",
     "dev:status": "npm run types:check-local && npm run schema:validate:live:local",
-    "postinstall": "npm run validate:deps"
+    "postinstall": "npx patch-package && npm run validate:deps"
   },
   "dependencies": {
     "@getquip/expo-nordic-dfu": "^2.0.3",
@@ -74,16 +74,17 @@
     "expo-location": "~19.0.8",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
+    "expo-system-ui": "~6.0.9",
     "expo-updates": "~29.0.15",
     "lodash.isempty": "^4.4.0",
-    "react": "19.1.1",
+    "react": "19.1.0",
     "react-hook-form": "^7.54.1",
     "react-native": "0.81.5",
     "react-native-ble-manager": "^11.3.2",
     "react-native-bluetooth-state-manager": "^1.3.5",
     "react-native-device-info": "^10.13.1",
     "react-native-document-picker": "^9.3.1",
-    "react-native-drawer-layout": "^3.3.0",
+    "react-native-drawer-layout": "^4.2.1",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-maps": "1.20.1",
     "react-native-paper": "^5.12.3",
@@ -98,15 +99,15 @@
     "react-redux": "^9.2.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0",
-    "@babel/preset-env": "^7.20.0",
-    "@babel/runtime": "^7.20.0",
+    "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.2",
+    "@babel/runtime": "^7.25.2",
     "@morrowdigital/watermelondb-expo-plugin": "^2.3.3",
     "@react-native-community/cli": "^20.0.2",
-    "@react-native/babel-preset": "0.74.88",
-    "@react-native/eslint-config": "0.74.88",
-    "@react-native/metro-config": "0.74.88",
-    "@react-native/typescript-config": "0.74.88",
+    "@react-native/babel-preset": "0.81.5",
+    "@react-native/eslint-config": "0.81.5",
+    "@react-native/metro-config": "0.81.5",
+    "@react-native/typescript-config": "0.81.5",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^12.4.3",
     "@testing-library/user-event": "^14.6.1",
@@ -123,11 +124,14 @@
     "maestro": "^2.1.1",
     "patch-package": "^8.0.1",
     "prettier": "2.8.8",
-    "react-test-renderer": "19.1.1",
+    "react-test-renderer": "19.1.0",
     "redux-mock-store": "^1.5.5",
     "typescript": "~5.3.3"
   },
-  "overrides": {},
+  "overrides": {
+    "react": "19.1.0",
+    "react-test-renderer": "19.1.0"
+  },
   "engines": {
     "node": ">=18"
   }

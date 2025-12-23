@@ -8,6 +8,13 @@ const { getDefaultConfig } = require("expo/metro-config")
  */
 const config = getDefaultConfig(__dirname)
 
+config.transformer.getTransformOptions = async () => ({
+	transform: {
+		experimentalImportSupport: false,
+		inlineRequires: false,
+	},
+})
+
 // Add custom asset extensions for Wildlife Watcher app
 config.resolver.assetExts.push("db", "zip")
 

@@ -1,5 +1,5 @@
 module.exports = {
-	presets: ["module:@react-native/babel-preset"],
+	presets: ["babel-preset-expo"],
 	env: {
 		production: {
 			plugins: ["react-native-paper/babel"],
@@ -7,6 +7,6 @@ module.exports = {
 	},
 	plugins: [
 		["@babel/plugin-proposal-decorators", { legacy: true }],
-		"react-native-worklets/plugin",
+		"react-native-reanimated/plugin",
 	],
 }

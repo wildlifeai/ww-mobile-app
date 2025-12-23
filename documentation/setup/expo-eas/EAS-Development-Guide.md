@@ -16,6 +16,23 @@ npx expo login
 eas project:info
 ```
 
+### Switching Accounts & Relinking Projects
+If you need to change the EAS account (e.g., Personal -> Organization) or fix authorization errors:
+1. **Logout & Login:**
+    ```bash
+    npx eas logout
+    npx eas login
+    ```
+2. **Clear Configuration:**
+    *   Open `app.config.ts`.
+    *   Comment out or remove `owner`, `updates.url` and `extra.eas.projectId`.
+3. **Relink Project:**
+    ```bash
+    npx eas init
+    ```
+    *   Select the correct account when prompted.
+    *   This generates a new Project ID and updates your config.
+
 ## Development Workflow
 
 ### 1. Development Client
