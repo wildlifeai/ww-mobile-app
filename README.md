@@ -155,7 +155,7 @@ If you need to switch accounts or link a new project:
 ### Running a Build
 To build for iOS (on Windows) or generic cloud builds:
 ```bash
-eas build --clear-cache --profile development --platform ios
+npx eas build --clear-cache --profile development --platform ios
 ```
 
 ## Troubleshooting

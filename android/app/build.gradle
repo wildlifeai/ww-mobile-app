@@ -115,11 +115,11 @@ android {
             }
         }
 
-        if (!googleMapsApiKey) {
-            // As a last resort, if it's not set, we don't throw yet to allow prebuild to run,
-            // but we'll use a placeholder if it's still null.
-            // Actually, keep it strict as per previous version if that's what's preferred.
-            // threshold = googleMapsApiKey ?: "placeholder_to_prevent_build_failure"
+        // Fail the build if the Google Maps API key is missing during an actual app build.
+        // This allows `expo prebuild` to run without the key, but prevents creating a broken APK.
+        def isAssembleTask = gradle.startParameter.taskNames.any { it.toLowerCase().contains('assemble') }
+        if (isAssembleTask && !googleMapsApiKey) {
+            throw new GradleException("Missing GOOGLE_MAPS_API_KEY_ANDROID environment variable. Please set it in your environment or in a .env file for local development.")
         }
         
         manifestPlaceholders = [GOOGLE_MAPS_API_KEY: googleMapsApiKey ?: ""]
