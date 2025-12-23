@@ -132,11 +132,19 @@ Builds are managed via Expo Application Services (EAS).
 
 ### Authenticating
 If you need to switch accounts or link a new project:
-```bash
-npx eas logout
-npx eas login
-npx eas init # Select your account/project
-```
+
+1.  **Logout and Login**:
+    ```bash
+    npx eas logout
+    npx eas login
+    ```
+2.  **Clear Existing Config**:
+    *   Open `app.config.ts`.
+    *   Remove or comment out `owner`, `updates.url`, and `extra.eas.projectId`.
+3.  **Initialize Project**:
+    ```bash
+    npx eas init # Select your account/project
+    ```
 
 ### Running a Build
 To build for iOS (on Windows) or generic cloud builds:
