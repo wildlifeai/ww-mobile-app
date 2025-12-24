@@ -183,6 +183,12 @@ class InvitationService {
             console.log('🔄 Syncing invitations from Supabase...')
 
             const supabase = getSupabaseClient()
+            const { data: { user } } = await supabase.auth.getUser()
+
+            if (!user) {
+                console.warn('⚠️ No user session, skipping invitation sync.')
+                return
+            }
 
             // Use RPC to get invitations (bypasses RLS)
             const { data: remoteInvitations, error } = await supabase.rpc('get_my_pending_invitations' as any)
@@ -209,8 +215,8 @@ class InvitationService {
                             invitation.remoteId = remote.id
                             invitation.projectId = remote.project_id
                             invitation.inviterId = remote.inviter_id
-                            invitation.inviteeEmail = (supabase.auth.getUser() as any).data?.user?.email || ''
-                            invitation.inviteeId = supabase.auth.getUser() as any
+                            invitation.inviteeEmail = user.email || ''
+                            invitation.inviteeId = user.id
                             invitation.role = remote.role
                             invitation.status = 'pending'
                             invitation.expiresAt = new Date(remote.expires_at)
