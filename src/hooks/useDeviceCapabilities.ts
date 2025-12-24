@@ -33,7 +33,7 @@ export const useDeviceCapabilities = (peripheralId: string): DeviceCapabilities 
 
         // Parse operational parameters array from 'getops' command
         const opParamsStr = config?.[CommandNames.getops]?.value;
-        const operationalParams = opParamsStr ? opParamsStr.split(' ').filter(s => s !== '').map(Number) : [];
+        const operationalParams = opParamsStr ? opParamsStr.trim().split(/\s+/).map(Number).filter(n => !isNaN(n)) : [];
 
         // Hardware-specific identification
         const isWW500 = boardType.includes('WW500');

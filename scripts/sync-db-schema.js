@@ -96,10 +96,10 @@ SCHEMA_MAP.forEach(schemaPath => {
 
     // Clean Sync
     destFiles.forEach(file => {
-        const isDeperecated = !srcFiles.includes(file);
+        const isDeprecated = !srcFiles.includes(file);
         const isProtected = PRESERVE_FILES.includes(file);
 
-        if (isDeperecated) {
+        if (isDeprecated) {
             if (isProtected) {
                 console.log(`🛡️ Preserving mobile-specific file: ${path.join(schemaPath, file)}`);
             } else {
