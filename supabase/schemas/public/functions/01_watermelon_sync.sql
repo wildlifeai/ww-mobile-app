@@ -83,3 +83,43 @@ BEGIN
   );
 END;
 $$;
+
+-- Get pending invitations for a specific project (needed for mobile management)
+CREATE OR REPLACE FUNCTION get_project_pending_invitations(p_project_id UUID)
+RETURNS TABLE (
+  id UUID,
+  project_id UUID,
+  inviter_id UUID,
+  invitee_email TEXT,
+  role TEXT,
+  status TEXT,
+  created_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Verify requester is project admin
+  IF NOT has_project_role(auth.uid(), p_project_id, 'project_admin') THEN
+    RAISE EXCEPTION 'Only project admins can view invitations';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    pi.id,
+    pi.project_id,
+    pi.inviter_id,
+    pi.invitee_email,
+    pi.role,
+    pi.status,
+    pi.created_at,
+    pi.expires_at
+  FROM project_invitations pi
+  WHERE pi.project_id = p_project_id
+    AND pi.status = 'pending'
+    AND pi.expires_at > NOW()
+  ORDER BY pi.created_at DESC;
+END;
+$$;
+
