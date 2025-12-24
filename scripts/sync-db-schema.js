@@ -10,7 +10,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 // Configuration
-const BACKEND_PATH = path.resolve(__dirname, '../../../Users/VictorAnton/Wildlife-Watcher/wildlife-watcher-backend');
+const BACKEND_PATH = process.env.WILDLIFE_WATCHER_BACKEND_PATH || path.resolve(__dirname, '../../wildlife-watcher-backend');
 const MOBILE_SUPABASE_PATH = path.resolve(__dirname, '../supabase');
 const SCHEMA_MAP = [
     'schemas/public/tables',
