@@ -324,6 +324,9 @@ ls  # Should see package.json, src/, etc.
 npm install --ignore-scripts
 # On macOS/Linux:
 npm install
+
+# 2b. Sync Database Schema (Pull core logic from backend)
+npm run db:sync-schema
 ```
 
 This will take several minutes the first time. The app has many dependencies including BLE libraries and UI components.

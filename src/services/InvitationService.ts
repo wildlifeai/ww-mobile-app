@@ -90,12 +90,9 @@ class InvitationService {
             console.log('📥 Fetching pending invitations for project:', projectId)
 
             const supabase = getSupabaseClient()
-            const { data, error } = await supabase
-                .from('project_invitations' as any)
-                .select('*')
-                .eq('project_id', projectId)
-                .eq('status', 'pending')
-                .gt('expires_at', new Date().toISOString())
+            const { data, error } = await supabase.rpc('get_project_pending_invitations' as any, {
+                p_project_id: projectId
+            })
 
             if (error) throw error
 
@@ -186,19 +183,9 @@ class InvitationService {
             console.log('🔄 Syncing invitations from Supabase...')
 
             const supabase = getSupabaseClient()
-            const { data: { user } } = await supabase.auth.getUser()
 
-            if (!user?.email) {
-                console.log('⚠️ No user email, skipping invitation sync')
-                return
-            }
-
-            const { data: remoteInvitations, error } = await supabase
-                .from('project_invitations' as any)
-                .select('*')
-                .eq('invitee_email', user.email)
-                .eq('status', 'pending')
-                .gt('expires_at', new Date().toISOString())
+            // Use RPC to get invitations (bypasses RLS)
+            const { data: remoteInvitations, error } = await supabase.rpc('get_my_pending_invitations' as any)
 
             if (error) throw error
 
@@ -214,10 +201,7 @@ class InvitationService {
                     if (existing.length > 0) {
                         // Update existing
                         await existing[0].update(invitation => {
-                            invitation.status = remote.status
-                            invitation.respondedAt = remote.responded_at
-                                ? new Date(remote.responded_at)
-                                : undefined
+                            invitation.status = 'pending' // RPC only returns pending
                         })
                     } else {
                         // Create new
@@ -225,14 +209,11 @@ class InvitationService {
                             invitation.remoteId = remote.id
                             invitation.projectId = remote.project_id
                             invitation.inviterId = remote.inviter_id
-                            invitation.inviteeEmail = remote.invitee_email
-                            invitation.inviteeId = remote.invitee_id || undefined
+                            invitation.inviteeEmail = (supabase.auth.getUser() as any).data?.user?.email || ''
+                            invitation.inviteeId = supabase.auth.getUser() as any
                             invitation.role = remote.role
-                            invitation.status = remote.status
+                            invitation.status = 'pending'
                             invitation.expiresAt = new Date(remote.expires_at)
-                            invitation.respondedAt = remote.responded_at
-                                ? new Date(remote.responded_at)
-                                : undefined
                         })
                     }
                 }

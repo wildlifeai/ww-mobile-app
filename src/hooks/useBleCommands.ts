@@ -29,6 +29,14 @@ export const useBleCommands = () => {
         await write(peripheral, [[CommandNames.status, { control: CommandControlTypes.READ }]])
     }, [write])
 
+    const getOps = useCallback(async (peripheral: ExtendedPeripheral) => {
+        await write(peripheral, [[CommandNames.getops, { control: CommandControlTypes.READ }]])
+    }, [write])
+
+    const getAiVer = useCallback(async (peripheral: ExtendedPeripheral) => {
+        await write(peripheral, [[CommandNames.ai_ver, { control: CommandControlTypes.READ }]])
+    }, [write])
+
 
     // --- System Actions ---
     const runDfu = useCallback(async (peripheral: ExtendedPeripheral) => {
@@ -200,6 +208,8 @@ export const useBleCommands = () => {
         getDeviceName,
         getDeviceId,
         getStatus,
+        getOps,
+        getAiVer,
         // System
         runDfu,
         runReset,
