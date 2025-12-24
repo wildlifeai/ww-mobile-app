@@ -1,24 +1,23 @@
 {
   "$schema": "./dependency-rules-schema.json",
-  "description": "Dependency validation rules for Wildlife Watcher Expo SDK 51 Migration",
-  "lastUpdated": "2025-07-28T15:30:00Z",
+  "description": "Dependency validation rules for Wildlife Watcher Expo SDK 54 Migration",
+  "lastUpdated": "2025-12-24T00:30:00Z",
   "rules": {
     "expo": {
-      "required": "~51.0.0",
-      "installed": "51.0.39",
+      "required": "~54.0.0",
       "severity": "warning",
-      "reason": "PRD specifies 51.0.0 but 51.0.39 is a compatible patch version",
-      "allowedRange": ">=51.0.0 <51.1.0"
+      "reason": "Expo SDK 54 Migration",
+      "allowedRange": ">=54.0.0 <54.1.0"
     },
     "react-native": {
-      "required": "0.74.5",
+      "required": "0.81.5",
       "severity": "error",
-      "reason": "Expo SDK 51 compatibility requirement - must match exactly"
+      "reason": "Expo SDK 54 compatibility requirement - must match exactly"
     },
     "typescript": {
       "required": "~5.3.3",
       "severity": "error",
-      "reason": "Expo SDK 51 compatibility"
+      "reason": "Expo SDK 54 compatibility"
     },
     "react-native-ble-manager": {
       "required": "11.3.2",
@@ -33,31 +32,31 @@
       "reason": "Native module - will be installed in Phase 2"
     },
     "react-native-reanimated": {
-      "required": "~3.10.1",
+      "required": "~4.1.1",
       "severity": "warning",
       "optional": true,
-      "reason": "Required by Expo SDK 51 and also supported by React Native 0.74"
+      "reason": "Required by Expo SDK 54"
     },
     "expo-dev-client": {
-      "required": "~4.0.29",
+      "required": "~6.0.20",
       "severity": "warning",
       "optional": true,
-      "reason": "Expo development client for managed workflow - migrated from bare React Native"
+      "reason": "Expo development client for managed workflow"
     },
     "react-native-maps": {
-      "required": "1.14.0",
+      "required": "1.20.1",
       "severity": "warning",
       "optional": true,
-      "reason": "Expo SDK 51 compatible version"
+      "reason": "Expo SDK 54 compatible version"
     },
     "@reduxjs/toolkit": {
-      "required": "^2.2.1",
+      "required": "^2.5.0",
       "severity": "warning",
       "optional": true,
       "reason": "Redux state management from WW app architecture"
     },
     "react-redux": {
-      "required": "^9.1.0",
+      "required": "^9.2.0",
       "severity": "warning",
       "optional": true,
       "reason": "Redux bindings from WW app architecture"
@@ -75,13 +74,13 @@
       "reason": "Tab navigation from WW app architecture"
     },
     "@react-navigation/drawer": {
-      "required": "latest",
+      "required": "^4.2.1",
       "severity": "warning",
       "optional": true,
       "reason": "Drawer navigation from WW app architecture"
     },
     "@react-navigation/native-stack": {
-      "required": "latest",
+      "required": "^6.9.20",
       "severity": "warning",
       "optional": true,
       "reason": "Stack navigation from WW app architecture"
@@ -93,72 +92,51 @@
       "reason": "Material Design components from WW app"
     },
     "expo-file-system": {
-      "required": "~16.0.0",
+      "required": "~19.0.21",
       "severity": "warning",
       "optional": true,
-      "reason": "File system operations - migrated from react-native-fs"
+      "reason": "File system operations"
     },
     "expo-constants": {
-      "required": "~16.0.0",
+      "required": "~18.0.12",
       "severity": "warning",
       "optional": true,
-      "reason": "Environment variable access - migrated from react-native-config"
+      "reason": "Environment variable access"
     },
     "expo-localization": {
-      "required": "~15.0.3",
+      "required": "~17.0.8",
       "severity": "info",
       "optional": true,
-      "reason": "Localization support - installed during Expo setup"
+      "reason": "Localization support"
     },
     "expo-splash-screen": {
-      "required": "~0.27.7",
+      "required": "~31.0.13",
       "severity": "warning",
       "optional": true,
-      "reason": "Splash screen management - migrated from react-native-bootsplash"
+      "reason": "Splash screen management"
     },
     "@react-native-community/netinfo": {
       "required": "^11.3.1",
       "severity": "warning",
       "optional": true,
-      "reason": "Expo SDK 51 compatible version"
+      "reason": "Expo SDK 54 compatible version"
     }
   },
   "blockedPackages": {
     "react-native-vector-icons": {
-      "reason": "Use @expo/vector-icons instead for Expo managed workflow",
+      "reason": "Use @expo/vector-icons instead for Expo managed workflow (Note: project currently has it installed, verify if needed)",
       "alternative": "@expo/vector-icons",
       "severity": "warning"
-    },
-    "react-native-linear-gradient": {
-      "reason": "Use expo-linear-gradient instead for Expo managed workflow",
-      "alternative": "expo-linear-gradient", 
-      "severity": "warning"
-    },
-    "react-native-fs": {
-      "reason": "Migrated to expo-file-system for Expo managed workflow",
-      "alternative": "expo-file-system",
-      "severity": "error"
-    },
-    "react-native-config": {
-      "reason": "Migrated to expo-constants for environment variables",
-      "alternative": "expo-constants",
-      "severity": "error"
-    },
-    "react-native-bootsplash": {
-      "reason": "Migrated to expo-splash-screen for Expo managed workflow",
-      "alternative": "expo-splash-screen",
-      "severity": "error"
     }
   },
   "overrideRequirements": {
-    "react-native": "0.74.5",
-    "react-native-reanimated": "~3.10.1"
+    "react": "19.1.0",
+    "react-test-renderer": "19.1.0"
   },
   "sdkCompatibility": {
-    "51": {
-      "expo-dev-client": "~4.0.29",
-      "@expo/config-plugins": "~8.0.0",
-      "react-native": "0.74.5"
+    "54": {
+      "expo-dev-client": "~6.0.20",
+      "react-native": "0.81.5"
     }
   },
   "validationSettings": {
@@ -167,6 +145,6 @@
     "runExpoDoctor": true,
     "checkOverrides": true,
     "checkDuplicates": true,
-    "migrationMode": true
+    "migrationMode": false
   }
 }
