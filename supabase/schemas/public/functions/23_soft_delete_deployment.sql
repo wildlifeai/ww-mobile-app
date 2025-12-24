@@ -5,9 +5,26 @@ language plpgsql
 security invoker
 set search_path = ''
 as $$
-begin
-  update public.deployments
-  set deleted_at = now()
-  where id = p_id and user_id = auth.uid();
-end;
+DECLARE
+  v_project_id uuid;
+BEGIN
+  -- Get project_id for the deployment to check permissions
+  SELECT dp.project_id INTO v_project_id
+  FROM public.deployments d
+  JOIN public.device_preparation dp ON d.device_preparation_id = dp.id
+  WHERE d.id = p_id;
+
+  IF v_project_id IS NULL THEN
+    RAISE EXCEPTION 'Deployment not found: %', p_id;
+  END IF;
+
+  -- Check if user is a project admin for the associated project
+  IF NOT public.has_project_role(auth.uid(), v_project_id, 'project_admin') THEN
+    RAISE EXCEPTION 'Permission denied: You must be a project admin to delete a deployment.';
+  END IF;
+
+  UPDATE public.deployments
+  SET deleted_at = now()
+  WHERE id = p_id;
+END;
 $$;

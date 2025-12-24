@@ -25,6 +25,11 @@ CREATE POLICY "authenticated_read_firmware"
   ON firmware FOR SELECT
   USING (auth.uid() IS NOT NULL);
 
+-- Anonymous users: Can view all firmware (needed for public firmware downloads)
+CREATE POLICY "anon_read_firmware"
+  ON firmware FOR SELECT
+  USING (true);
+
 -- ==================================================================
 -- LOOKUP TABLES POLICIES (activity_sensitivity, sampling_designs)
 -- ==================================================================

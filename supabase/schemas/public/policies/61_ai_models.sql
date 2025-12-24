@@ -58,6 +58,11 @@ CREATE POLICY "project_access_view_org_ai_models"
     )
   );
 
+-- Anonymous users: Can view all AI models (needed for public model downloads)
+CREATE POLICY "anon_read_ai_models"
+  ON ai_models FOR SELECT
+  USING (true);
+
 -- ==================================================================
 -- AI MODEL ORGANISATION POLICIES
 -- ==================================================================

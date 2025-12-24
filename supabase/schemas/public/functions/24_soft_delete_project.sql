@@ -6,7 +6,8 @@ security invoker
 set search_path = ''
 as $$
 begin
-  if not has_project_role(p_id, 'admin') then
+  -- Check if user is a project admin (correct signature)
+  if not public.has_project_role(auth.uid(), p_id, 'project_admin') then
     raise exception 'Permission denied: must be project admin to delete project.';
   end if;
 
