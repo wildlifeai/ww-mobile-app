@@ -45,12 +45,14 @@ cd ~/dev/wildlifeai
 git clone [repo-url] wildlife-watcher-mobile-app
 cd wildlife-watcher-mobile-app
 
-# Clone backend repository (required for local Supabase)
+# OPTIONAL: Clone backend repository (for full cross-repo coordination)
 cd ~/dev/wildlifeai
 git clone [repo-url] wildlife-watcher-backend
 ```
 
-**Why clone backend?** The mobile app generates types from the backend's local Supabase instance for daily development.
+**Note**: While cloning the backend is recommended for full visibility, the mobile app now supports a **GitHub Fallback**. If you haven't cloned the backend locally, the sync script will automatically fetch the latest schema from GitHub.
+
+**Why a local Supabase?** It provides a disposable sandbox for testing the app's **offline-first sync engine** and powers isolated **CI/CD integration tests**. See [supabase/README.md](../../supabase/README.md) for the full rationale.
 
 #### Step 2: Configure Local Environment
 

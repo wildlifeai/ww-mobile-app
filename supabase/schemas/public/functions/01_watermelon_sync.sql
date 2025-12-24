@@ -12,7 +12,7 @@ CREATE OR REPLACE FUNCTION public.pull_changes(last_pulled_at bigint)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   _ts timestamptz;
@@ -27,6 +27,16 @@ DECLARE
   _deployments_created jsonb;
   _deployments_updated jsonb;
   _deployments_deleted jsonb;
+
+  -- Devices
+  _devices_created jsonb;
+  _devices_updated jsonb;
+  _devices_deleted jsonb;
+
+  -- Device Preparation
+  _device_prep_created jsonb;
+  _device_prep_updated jsonb;
+  _device_prep_deleted jsonb;
 
 BEGIN
   _ts := to_timestamp_ms(last_pulled_at);
@@ -62,6 +72,36 @@ BEGIN
   WHERE deleted_at > _ts;
 
   -- ----------------------------------------------------------------------------
+  -- DEVICES
+  -- ----------------------------------------------------------------------------
+  SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) INTO _devices_created
+  FROM devices t
+  WHERE created_at > _ts AND deleted_at IS NULL;
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) INTO _devices_updated
+  FROM devices t
+  WHERE updated_at > _ts AND created_at <= _ts AND deleted_at IS NULL;
+
+  SELECT COALESCE(jsonb_agg(id), '[]'::jsonb) INTO _devices_deleted
+  FROM devices
+  WHERE deleted_at > _ts;
+
+  -- ----------------------------------------------------------------------------
+  -- DEVICE PREPARATION
+  -- ----------------------------------------------------------------------------
+  SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) INTO _device_prep_created
+  FROM device_preparation t
+  WHERE created_at > _ts AND deleted_at IS NULL;
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) INTO _device_prep_updated
+  FROM device_preparation t
+  WHERE updated_at > _ts AND created_at <= _ts AND deleted_at IS NULL;
+
+  SELECT COALESCE(jsonb_agg(id), '[]'::jsonb) INTO _device_prep_deleted
+  FROM device_preparation
+  WHERE deleted_at > _ts;
+
+  -- ----------------------------------------------------------------------------
   -- CONSTRUCT RESPONSE
   -- ----------------------------------------------------------------------------
   _changes := jsonb_build_object(
@@ -74,6 +114,16 @@ BEGIN
       'created', _deployments_created,
       'updated', _deployments_updated,
       'deleted', _deployments_deleted
+    ),
+    'devices', jsonb_build_object(
+      'created', _devices_created,
+      'updated', _devices_updated,
+      'deleted', _devices_deleted
+    ),
+    'device_preparation', jsonb_build_object(
+      'created', _device_prep_created,
+      'updated', _device_prep_updated,
+      'deleted', _device_prep_deleted
     )
   );
 
@@ -83,43 +133,3 @@ BEGIN
   );
 END;
 $$;
-
--- Get pending invitations for a specific project (needed for mobile management)
-CREATE OR REPLACE FUNCTION get_project_pending_invitations(p_project_id UUID)
-RETURNS TABLE (
-  id UUID,
-  project_id UUID,
-  inviter_id UUID,
-  invitee_email TEXT,
-  role TEXT,
-  status TEXT,
-  created_at TIMESTAMPTZ,
-  expires_at TIMESTAMPTZ
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  -- Verify requester is project admin
-  IF NOT has_project_role(auth.uid(), p_project_id, 'project_admin') THEN
-    RAISE EXCEPTION 'Only project admins can view invitations';
-  END IF;
-
-  RETURN QUERY
-  SELECT
-    pi.id,
-    pi.project_id,
-    pi.inviter_id,
-    pi.invitee_email,
-    pi.role,
-    pi.status,
-    pi.created_at,
-    pi.expires_at
-  FROM project_invitations pi
-  WHERE pi.project_id = p_project_id
-    AND pi.status = 'pending'
-    AND pi.expires_at > NOW()
-  ORDER BY pi.created_at DESC;
-END;
-$$;
-

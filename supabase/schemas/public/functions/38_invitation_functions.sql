@@ -1,5 +1,5 @@
 -- RPC: Send invitation (no email sent - handled by app notification system)
-CREATE OR REPLACE FUNCTION send_project_invitation(
+CREATE OR REPLACE FUNCTION public.send_project_invitation(
   p_project_id UUID,
   p_invitee_email TEXT,
   p_role TEXT DEFAULT 'project_member'
@@ -7,6 +7,7 @@ CREATE OR REPLACE FUNCTION send_project_invitation(
 RETURNS UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = ''
 AS $$
 DECLARE
   v_invitation_id UUID;
@@ -16,25 +17,13 @@ BEGIN
   v_inviter_id := auth.uid();
   
   -- Verify user is project admin
-  IF NOT has_project_role(v_inviter_id, p_project_id, 'project_admin') THEN
+  IF NOT public.has_project_role(v_inviter_id, p_project_id, 'project_admin') THEN
     RAISE EXCEPTION 'Only project admins can send invitations';
   END IF;
   
-  -- Check if user is already a member
-  IF EXISTS (
-    SELECT 1 FROM user_roles ur
-    JOIN auth.users u ON u.id = ur.user_id
-    WHERE ur.scope_type = 'project'
-      AND ur.scope_id = p_project_id
-      AND u.email = p_invitee_email
-      AND ur.is_active = true
-      AND ur.deleted_at IS NULL
-  ) THEN
-    RAISE EXCEPTION 'User is already a project member';
-  END IF;
   
-  -- Create invitation (notification handled by app's realtime subscription)
-  INSERT INTO project_invitations (
+  -- Create invitation
+  INSERT INTO public.project_invitations (
     project_id,
     inviter_id,
     invitee_email,
@@ -53,13 +42,14 @@ END;
 $$;
 
 -- RPC: Respond to invitation
-CREATE OR REPLACE FUNCTION respond_to_invitation(
+CREATE OR REPLACE FUNCTION public.respond_to_invitation(
   p_invitation_id UUID,
   p_accept BOOLEAN
 )
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = ''
 AS $$
 DECLARE
   v_invitation RECORD;
@@ -72,7 +62,7 @@ BEGIN
   
   -- Get invitation details
   SELECT * INTO v_invitation
-  FROM project_invitations
+  FROM public.project_invitations
   WHERE id = p_invitation_id
     AND invitee_email = v_user_email
     AND status = 'pending'
@@ -84,25 +74,43 @@ BEGIN
   
   IF p_accept THEN
     -- Accept invitation
-    UPDATE project_invitations
+    UPDATE public.project_invitations
     SET status = 'accepted',
         invitee_id = v_user_id,
         responded_at = NOW()
     WHERE id = p_invitation_id;
     
-    -- Add user to project with specified role
-    INSERT INTO user_roles (user_id, role, scope_type, scope_id, granted_by)
-    VALUES (
-      v_user_id, 
-      v_invitation.role, 
-      'project', 
-      v_invitation.project_id,
-      v_invitation.inviter_id
-    )
-    ON CONFLICT (user_id, role, scope_type, scope_id) DO NOTHING; -- Conflict on partial index
+    -- Try to reactivate a soft-deleted role first
+    -- This handles the case where a user was previously a member but was removed
+    UPDATE public.user_roles
+    SET is_active = true,
+        deleted_at = NULL,
+        granted_by = v_invitation.inviter_id,
+        updated_at = NOW()
+    WHERE user_id = v_user_id
+      AND role = v_invitation.role
+      AND scope_type = 'project'
+      AND scope_id = v_invitation.project_id
+      AND (deleted_at IS NOT NULL OR is_active = false);
+
+    -- If no record was found to reactivate, insert a new one
+    -- We use ON CONFLICT to handle the rare race condition where two requests process same invitation
+    IF NOT FOUND THEN
+      INSERT INTO public.user_roles (user_id, role, scope_type, scope_id, granted_by)
+      VALUES (
+        v_user_id, 
+        v_invitation.role, 
+        'project', 
+        v_invitation.project_id,
+        v_invitation.inviter_id
+      )
+      ON CONFLICT (user_id, role, scope_type, (COALESCE(scope_id, '00000000-0000-0000-0000-000000000000'::uuid))) 
+      WHERE deleted_at IS NULL AND is_active = true
+      DO NOTHING;
+    END IF;
   ELSE
     -- Decline invitation
-    UPDATE project_invitations
+    UPDATE public.project_invitations
     SET status = 'declined',
         invitee_id = v_user_id,
         responded_at = NOW()
@@ -112,20 +120,21 @@ END;
 $$;
 
 -- RPC: Get pending invitations for current user
-CREATE OR REPLACE FUNCTION get_my_pending_invitations()
+CREATE OR REPLACE FUNCTION public.get_my_pending_invitations()
 RETURNS TABLE (
   id UUID,
   project_id UUID,
   project_name TEXT,
   inviter_id UUID,
   inviter_email TEXT,
-  inviter_name TEXT, -- Added for UI
+  inviter_name TEXT,
   role TEXT,
   created_at TIMESTAMPTZ,
   expires_at TIMESTAMPTZ
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = ''
 AS $$
 DECLARE
   v_user_email TEXT;
@@ -139,14 +148,14 @@ BEGIN
     p.name AS project_name,
     pi.inviter_id,
     u.email AS inviter_email,
-    COALESCE(up.firstname || ' ' || up.surname, 'Unknown') AS inviter_name, -- Join with users profile
+    COALESCE(up.firstname || ' ' || up.surname, 'Unknown') AS inviter_name,
     pi.role,
     pi.created_at,
     pi.expires_at
-  FROM project_invitations pi
-  JOIN projects p ON p.id = pi.project_id
+  FROM public.project_invitations pi
+  JOIN public.projects p ON p.id = pi.project_id
   JOIN auth.users u ON u.id = pi.inviter_id
-  LEFT JOIN users up ON up.id = pi.inviter_id -- Join for name
+  LEFT JOIN public.users up ON up.id = pi.inviter_id
   WHERE pi.invitee_email = v_user_email
     AND pi.status = 'pending'
     AND pi.expires_at > NOW()
@@ -154,26 +163,8 @@ BEGIN
 END;
 $$;
 
--- Function to expire old invitations (for cron job)
-CREATE OR REPLACE FUNCTION expire_old_invitations()
-RETURNS INTEGER
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  v_count INTEGER;
-BEGIN
-  UPDATE project_invitations
-  SET status = 'expired'
-  WHERE status = 'pending'
-    AND expires_at <= NOW();
-    
-  GET DIAGNOSTICS v_count = ROW_COUNT;
-  RETURN v_count;
-END;
-$$;
-
 -- RPC: Get pending invitations for a specific project
-CREATE OR REPLACE FUNCTION get_project_pending_invitations(p_project_id UUID)
+CREATE OR REPLACE FUNCTION public.get_project_pending_invitations(p_project_id UUID)
 RETURNS TABLE (
   id UUID,
   project_id UUID,
@@ -186,10 +177,11 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = ''
 AS $$
 BEGIN
   -- Verify requester is project admin
-  IF NOT has_project_role(auth.uid(), p_project_id, 'project_admin') THEN
+  IF NOT public.has_project_role(auth.uid(), p_project_id, 'project_admin') THEN
     RAISE EXCEPTION 'Only project admins can view invitations';
   END IF;
 
@@ -203,10 +195,30 @@ BEGIN
     pi.status,
     pi.created_at,
     pi.expires_at
-  FROM project_invitations pi
+  FROM public.project_invitations pi
   WHERE pi.project_id = p_project_id
     AND pi.status = 'pending'
     AND pi.expires_at > NOW()
   ORDER BY pi.created_at DESC;
+END;
+$$;
+
+-- Function to expire old invitations (for cron job)
+CREATE OR REPLACE FUNCTION public.expire_old_invitations()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_count INTEGER;
+BEGIN
+  UPDATE public.project_invitations
+  SET status = 'expired'
+  WHERE status = 'pending'
+    AND expires_at <= NOW();
+    
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
 END;
 $$;
