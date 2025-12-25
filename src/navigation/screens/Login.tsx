@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form"
-import { StyleSheet, View, Image, Alert } from "react-native"
+import { StyleSheet, View, Image, Alert, ScrollView } from "react-native"
 import { Button, Checkbox } from "react-native-paper"
 import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView"
 import { WWScreenView } from "../../components/ui/WWScreenView"
@@ -98,118 +98,125 @@ export const Login = () => {
 	return (
 		<CustomKeyboardAvoidingView>
 			<WWScreenView style={styles.view}>
-				<View style={styles.container}>
-					<View style={styles.logoContainer}>
-						<Image
-							source={require("../../assets/ww-logo-1.png")}
-							style={styles.logo}
-							resizeMode="contain"
-						/>
-					</View>
-					<View style={styles.form}>
-						<Field
-							control={control}
-							name="email"
-							label="Email"
-							required
-							rules={{
-								required: "Email is required",
-								pattern: {
-									value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-									message: "Please enter a valid email address",
-								},
-							}}
-						>
-							{(field) => (
-								<WWTextInput
-									{...field}
-									testID="email-input"
-									mode="outlined"
-									textContentType="emailAddress"
-									keyboardType="email-address"
-									autoCapitalize="none"
-								/>
-							)}
-						</Field>
-
-						<Field
-							control={control}
-							name="password"
-							label="Password"
-							required
-							rules={{
-								required: "Password is required",
-								minLength: {
-									value: 6,
-									message: "Password must be at least 6 characters",
-								},
-							}}
-						>
-							{(field) => (
-								<WWTextInput
-									{...field}
-									testID="password-input"
-									mode="outlined"
-									secureTextEntry
-								/>
-							)}
-						</Field>
-
-						<View style={styles.checkboxContainer}>
-							<Checkbox
-								status={rememberMe ? "checked" : "unchecked"}
-								onPress={() => setRememberMe(!rememberMe)}
+				<ScrollView
+					style={styles.scrollView}
+					contentContainerStyle={styles.scrollContent}
+					keyboardShouldPersistTaps="handled"
+					showsVerticalScrollIndicator={false}
+				>
+					<View style={styles.container}>
+						<View style={styles.logoContainer}>
+							<Image
+								source={require("../../assets/ww-logo-1.png")}
+								style={styles.logo}
+								resizeMode="contain"
 							/>
-							<WWText
-								style={styles.checkboxLabel}
-								onPress={() => setRememberMe(!rememberMe)}
-							>
-								Remember me
-							</WWText>
 						</View>
+						<View style={styles.form}>
+							<Field
+								control={control}
+								name="email"
+								label="Email"
+								required
+								rules={{
+									required: "Email is required",
+									pattern: {
+										value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+										message: "Please enter a valid email address",
+									},
+								}}
+							>
+								{(field) => (
+									<WWTextInput
+										{...field}
+										testID="email-input"
+										mode="outlined"
+										textContentType="emailAddress"
+										keyboardType="email-address"
+										autoCapitalize="none"
+									/>
+								)}
+							</Field>
 
-						{error && (
-							<WWText style={styles.error}>
-								{(error as any)?.data?.error?.message ||
-									"Login failed. Please try again."}
-							</WWText>
-						)}
+							<Field
+								control={control}
+								name="password"
+								label="Password"
+								required
+								rules={{
+									required: "Password is required",
+									minLength: {
+										value: 6,
+										message: "Password must be at least 6 characters",
+									},
+								}}
+							>
+								{(field) => (
+									<WWTextInput
+										{...field}
+										testID="password-input"
+										mode="outlined"
+										secureTextEntry
+									/>
+								)}
+							</Field>
 
-						<Button
-							mode="contained"
-							testID="login-button"
-							onPress={handleSubmit(onSubmit)}
-							loading={isLoading}
-							style={styles.button}
-							disabled={isLoading}
-						>
-							Login
-						</Button>
+							<View style={styles.checkboxContainer}>
+								<Checkbox
+									status={rememberMe ? "checked" : "unchecked"}
+									onPress={() => setRememberMe(!rememberMe)}
+								/>
+								<WWText
+									style={styles.checkboxLabel}
+									onPress={() => setRememberMe(!rememberMe)}
+								>
+									Remember me
+								</WWText>
+							</View>
 
-						<Button
-							mode="text"
-							testID="forgot-password-button"
-							onPress={() => navigation.navigate("ForgotPassword")}
-							style={styles.textButton}
-							disabled={isLoading}
-						>
-							Forgot Password?
-						</Button>
+							{error && (
+								<WWText style={styles.error}>
+									{(error as any)?.data?.error?.message ||
+										"Login failed. Please try again."}
+								</WWText>
+							)}
 
-						<Button
-							mode="text"
-							testID="register-button"
-							onPress={() => navigation.navigate("Register")}
-							style={styles.textButton}
-							disabled={isLoading}
-						>
-							Don't have an account? Register
-						</Button>
+							<Button
+								mode="contained"
+								testID="login-button"
+								onPress={handleSubmit(onSubmit)}
+								loading={isLoading}
+								style={styles.button}
+								disabled={isLoading}
+							>
+								Login
+							</Button>
 
-						{/* Temporary test component for deep linking */}
-						{__DEV__ && <TestDeepLink />}
+							<Button
+								mode="text"
+								testID="forgot-password-button"
+								onPress={() => navigation.navigate("ForgotPassword")}
+								style={styles.textButton}
+								disabled={isLoading}
+							>
+								Forgot Password?
+							</Button>
+
+							<Button
+								mode="text"
+								testID="register-button"
+								onPress={() => navigation.navigate("Register")}
+								style={styles.textButton}
+								disabled={isLoading}
+							>
+								Don't have an account? Register
+							</Button>
+
+							{/* Temporary test component for deep linking */}
+							{__DEV__ && <TestDeepLink />}
+						</View>
 					</View>
-				</View>
+				</ScrollView>
 			</WWScreenView>
 		</CustomKeyboardAvoidingView>
 	)
@@ -218,6 +225,13 @@ export const Login = () => {
 const styles = StyleSheet.create({
 	view: {
 		flex: 1,
+	},
+	scrollView: {
+		flex: 1,
+	},
+	scrollContent: {
+		flexGrow: 1,
+		paddingBottom: 300,
 	},
 	container: {
 		flex: 1,
