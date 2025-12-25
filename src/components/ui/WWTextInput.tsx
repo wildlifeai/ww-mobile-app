@@ -45,22 +45,22 @@ export const WWTextInput = forwardRef<RNTextInput, WWTextInputProps>(
 		}
 
 		// Determine the right icon to display
-		let rightIcon = null
-		if (disabled) {
-			rightIcon = <RNPTextInput.Icon icon="lock" />
-		} else if (secureTextEntry) {
-			// Password field - show eye icon toggle
-			rightIcon = (
-				<RNPTextInput.Icon
-					icon={isPasswordVisible ? "eye-off" : "eye"}
-					onPress={togglePasswordVisibility}
-				/>
-			)
-		} else if (right) {
-			rightIcon = right
-		} else if (hasError) {
-			rightIcon = <RNPTextInput.Icon icon="alert-circle" color="red" />
-		}
+    let rightIcon = null
+    if (disabled) {
+      rightIcon = <RNPTextInput.Icon icon="lock" />
+    } else if (right) {
+      rightIcon = right
+    } else if (hasError) {
+      rightIcon = <RNPTextInput.Icon icon="alert-circle" color="red" />
+    } else if (secureTextEntry) {
+      // Password field - show eye icon toggle
+      rightIcon = (
+        <RNPTextInput.Icon
+          icon={isPasswordVisible ? "eye-off" : "eye"}
+          onPress={togglePasswordVisibility}
+        />
+      )
+    }
 
 		return (
 			<View style={styles.container}>
