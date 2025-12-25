@@ -145,7 +145,7 @@ export const ForgotPassword = () => {
 
 	return (
 		<CustomKeyboardAvoidingView>
-			<WWScreenView style={styles.view}>
+<WWScreenView style={styles.view} scrollable={false}>
 				<ScrollView
 					style={styles.scrollView}
 					contentContainerStyle={styles.scrollContent}
