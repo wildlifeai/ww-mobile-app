@@ -40,9 +40,9 @@ export const WWTextInput = forwardRef<RNTextInput, WWTextInputProps>(
 
 		const sanitizedValue = value ?? ""
 
-		const togglePasswordVisibility = () => {
-			setIsPasswordVisible(!isPasswordVisible)
-		}
+    const togglePasswordVisibility = useCallback(() => {
+      setIsPasswordVisible(isVisible => !isVisible)
+    }, [])
 
 		// Determine the right icon to display
     let rightIcon = null
