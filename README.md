@@ -265,14 +265,18 @@ Local database schema is defined in `src/database/schema.ts`. To modify:
 3. Test migration on development device
 4. Commit changes
 
-### Supabase Migrations
+### Supabase Migrations (Backend)
 
-Backend database migrations are in `../wildlife-watcher-backend/supabase/migrations/`:
+The mobile app follows a **declarative schema-as-code** workflow, synced from the [wildlife-watcher-backend](https://github.com/wildlifeai/wildlife-watcher-backend) repository.
 
-1. Create migration file: `npx supabase migration new migration_name`
-2. Write SQL migration
-3. Test locally: `npx supabase db reset`
-4. Deploy: `npx supabase db push`
+1. **Automated Sync**: The schema is automatically synced from the backend repo whenever you run `ios`, `android`, or `start` scripts.
+    * manual sync: `npm run db:sync-schema`
+    * **Note**: Synchronization uses a **Protected Clean Sync** logic—it automatically removes stale files from synced folders while preserving intentional mobile-only code (like `01_watermelon_sync.sql`). It also includes a **GitHub Fallback** if the local backend repository is not found.
+2. **Local Schema Store**: Core logic lives in `supabase/schemas/`.
+3. **Applying Changes**:
+   * **Local Only**: `npx supabase db reset` (resets local DB with the latest synced schema files).
+   * **Remote**: All remote migrations and schema deployments are managed exclusively in the [backend repository](https://github.com/wildlifeai/wildlife-watcher-backend).
+4. **Detailed Guide**: See [supabase/README.md](./supabase/README.md) for full instructions on synchronization.
 
 ## Testing
 

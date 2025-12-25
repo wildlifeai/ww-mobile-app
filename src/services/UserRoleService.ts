@@ -180,7 +180,13 @@ export const getProjectMembers = async (
 
 			const members = localRoles.map(role => {
 				const user = userMap.get(role.userId)
-				const name = user ? `${user.firstname} ${user.surname}` : "Unknown User"
+				let name = "Unknown User"
+				if (user) {
+					name = `${user.firstname} ${user.surname}`.trim() || "Unknown User"
+				} else if (role.userId === requestingUserId) {
+					name = "Me" // Fallback if local user is missing but it's the current user
+				}
+
 				// We might not have email locally if it's not in public.users or not synced
 				// But for basic display, name is most important.
 				return {

@@ -64,6 +64,9 @@ npm install --ignore-scripts
 # On macOS/Linux:
 npm install
 
+# 2b. Sync Database Schema
+npm run db:sync-schema
+
 # 3. Start development server
 npx expo start
 ```

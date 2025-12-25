@@ -34,6 +34,8 @@ export enum CommandNames {
 	state = "state",
 	setop = "setop",
 	getop = "getop",
+	getops = "getops",
+	ai_ver = "ai_ver",
 
 	// Process commands (UPPERCASE - app-specific workflows)
 	SET_UTC = "SET_UTC",
@@ -268,6 +270,19 @@ export const COMMANDS: {
 		writeCommand: (index?: string) => `AI getop ${index || ''}`.trim(),
 		readRegex: /Op\[(\d+)\] = (.+)/,
 		description: "Get Operational Parameter <index> (Advanced)",
+		type: 'command',
+	},
+	[CommandNames.getops]: {
+		name: CommandNames.getops,
+		readCommand: "getops",
+		readRegex: /OpParams:\s(.+)/,
+		description: "Get all operational parameters (array)",
+		type: 'command',
+	},
+	[CommandNames.ai_ver]: {
+		name: CommandNames.ai_ver,
+		readCommand: "AI ver",
+		description: "Get AI processor version",
 		type: 'command',
 	},
 	// Preset Operational Parameter Commands

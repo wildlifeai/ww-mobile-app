@@ -259,6 +259,28 @@ export const parseLogs = (finishedLog: string, lastLog: string) => {
 
 
 
+	// GETOPS
+	const lastGetopsLine = checkForLastLine(COMMANDS.getops.readCommand!, lines)
+	if (lastGetopsLine) {
+		const matches = COMMANDS.getops.readRegex!.exec(lastGetopsLine)
+		if (matches) {
+			const [, params] = matches
+			results.push({
+				value: params,
+				command: COMMANDS.getops,
+			})
+		}
+	}
+
+	// AI VER
+	const lastAiVerLine = checkForLastLine(COMMANDS.ai_ver.readCommand!, lines)
+	if (lastAiVerLine) {
+		results.push({
+			value: lastAiVerLine.trim(),
+			command: COMMANDS.ai_ver,
+		})
+	}
+
 	// SELFTEST
 	const lastSelftestLine = checkForLastLine(COMMANDS.selftest.writeCommand!(), lines)
 	if (lastSelftestLine) {

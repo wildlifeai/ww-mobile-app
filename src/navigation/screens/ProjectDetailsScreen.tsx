@@ -24,6 +24,7 @@ import {
 	Portal,
 	Dialog,
 	Button,
+	Avatar,
 } from "react-native-paper"
 import { useRoute } from "@react-navigation/native"
 import {
@@ -46,6 +47,7 @@ import { WWSelect } from "../../components/ui/WWSelect"
 import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { Field } from "../../components/form/Field"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
+import { useAppSelector } from "../../redux"
 import type { AppParams } from "../index"
 
 
@@ -72,6 +74,9 @@ export const ProjectDetailsScreen = () => {
 	const [isEditMode, setIsEditMode] = useState(false)
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
+
+	// Redux
+	const currentUser = useAppSelector((state) => state.authentication.user)
 
 	// Queries
 	const {
@@ -810,45 +815,62 @@ export const ProjectDetailsScreen = () => {
 								<ActivityIndicator size="small" />
 							) : members && members.length > 0 ? (
 								<View style={styles.membersList}>
-									{members.map((member, index) => (
-										<View
-											key={member.user_id || `member-${index}`}
-											style={styles.memberRow}
-										>
-											<View style={styles.memberInfo}>
-												<WWIcon
-													source="account-circle"
-													size={40}
-													color={theme.colors.onSurfaceVariant}
-												/>
-												<View style={styles.memberDetails}>
-													<Text
-														variant="bodyMedium"
-														style={{ color: theme.colors.onSurface }}
-													>
-														{member.user_profile?.name || "Unknown User"}
-													</Text>
-													{member.role && (
+									{members.map((member, index) => {
+										const isMe = member.user_id === currentUser?.id
+										const displayName = isMe
+											? (currentUser.profile?.first_name
+												? `${currentUser.profile.first_name} ${currentUser.profile.last_name || ""}`.trim()
+												: "Me")
+											: (member.user_profile?.name || "Unknown User")
+
+										const initials = displayName
+											.split(" ")
+											.map(n => n[0])
+											.join("")
+											.toUpperCase()
+											.substring(0, 2)
+
+										return (
+											<View
+												key={member.user_id || `member-${index}`}
+												style={styles.memberListItem}
+											>
+												<View style={styles.memberInfo}>
+													<Avatar.Text
+														size={32}
+														label={initials}
+														style={{ backgroundColor: theme.colors.primaryContainer }}
+														labelStyle={{ color: theme.colors.onPrimaryContainer, fontSize: 12 }}
+													/>
+													<View style={styles.memberDetails}>
 														<Text
-															variant="bodySmall"
-															style={{ color: theme.colors.onSurfaceVariant }}
+															variant="bodyMedium"
+															style={{ color: theme.colors.onSurface, fontWeight: isMe ? 'bold' : 'normal' }}
 														>
-															{member.role}
+															{displayName} {isMe && "(You)"}
 														</Text>
-													)}
+														{member.role && (
+															<Text
+																variant="bodySmall"
+																style={{ color: theme.colors.onSurfaceVariant }}
+															>
+																{member.role === 'project_admin' ? 'Admin' : 'Member'}
+															</Text>
+														)}
+													</View>
 												</View>
+												{isProjectAdmin && !isMe && (
+													<IconButton
+														icon="close"
+														size={20}
+														iconColor={theme.colors.error}
+														onPress={() => handleRemoveMember(member.user_id)}
+														testID={`remove-member-${member.user_id}`}
+													/>
+												)}
 											</View>
-											{isProjectAdmin && (
-												<IconButton
-													icon="close"
-													size={20}
-													iconColor={theme.colors.error}
-													onPress={() => handleRemoveMember(member.user_id)}
-													testID={`remove-member-${member.user_id}`}
-												/>
-											)}
-										</View>
-									))}
+										)
+									})}
 								</View>
 							) : (
 								<Text
@@ -1016,10 +1038,11 @@ const styles = StyleSheet.create({
 	membersList: {
 		gap: 12,
 	},
-	memberRow: {
+	memberListItem: {
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
+		marginBottom: 12,
 	},
 	memberInfo: {
 		flexDirection: "row",
@@ -1028,7 +1051,11 @@ const styles = StyleSheet.create({
 	},
 	memberDetails: {
 		marginLeft: 12,
-		flex: 1,
+	},
+	memberRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
 	},
 	editActions: {
 		flexDirection: "row",
