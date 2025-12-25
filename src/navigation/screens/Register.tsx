@@ -10,6 +10,7 @@ import { useAppDispatch } from "../../redux"
 import { setCredentials } from "../../redux/slices/authSlice"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { WWText } from "../../components/ui/WWText"
+import { KEYBOARD_AVOID_PADDING } from "../../constants/layout"
 
 type FormData = {
 	name: string
@@ -74,7 +75,7 @@ export const Register = () => {
 
 	return (
 		<CustomKeyboardAvoidingView>
-<WWScreenView style={styles.view} scrollable={false}>
+			<WWScreenView style={styles.view} scrollable={false}>
 				<ScrollView
 					style={styles.scrollView}
 					contentContainerStyle={styles.scrollContent}
@@ -245,7 +246,7 @@ const styles = StyleSheet.create({
 	},
 	scrollContent: {
 		flexGrow: 1,
-		paddingBottom: 300,
+		paddingBottom: KEYBOARD_AVOID_PADDING,
 	},
 	container: {
 		flex: 1,

@@ -7,6 +7,7 @@ import { WWTextInput } from "../../components/ui/WWTextInput"
 import { Field } from "../../components/form/Field"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { WWText } from "../../components/ui/WWText"
+import { KEYBOARD_AVOID_PADDING } from "../../constants/layout"
 import { resetPassword, updatePasswordWithToken, getCurrentSession } from "../../services/auth"
 import { useState, useEffect } from "react"
 import { useRoute } from "@react-navigation/native"
@@ -145,7 +146,7 @@ export const ForgotPassword = () => {
 
 	return (
 		<CustomKeyboardAvoidingView>
-<WWScreenView style={styles.view} scrollable={false}>
+			<WWScreenView style={styles.view} scrollable={false}>
 				<ScrollView
 					style={styles.scrollView}
 					contentContainerStyle={styles.scrollContent}
@@ -279,7 +280,7 @@ const styles = StyleSheet.create({
 	},
 	scrollContent: {
 		flexGrow: 1,
-		paddingBottom: 300,
+		paddingBottom: KEYBOARD_AVOID_PADDING,
 	},
 	container: {
 		flex: 1,

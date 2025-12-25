@@ -13,6 +13,7 @@ import { WWText } from "../../components/ui/WWText"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useState, useEffect } from "react"
 import { TestDeepLink } from "../../components/TestDeepLink"
+import { KEYBOARD_AVOID_PADDING } from "../../constants/layout"
 
 type FormData = {
 	email: string
@@ -97,7 +98,7 @@ export const Login = () => {
 
 	return (
 		<CustomKeyboardAvoidingView>
-<WWScreenView style={styles.view} scrollable={false}>
+			<WWScreenView style={styles.view} scrollable={false}>
 				<ScrollView
 					style={styles.scrollView}
 					contentContainerStyle={styles.scrollContent}
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
 	},
 	scrollContent: {
 		flexGrow: 1,
-		paddingBottom: 300,
+		paddingBottom: KEYBOARD_AVOID_PADDING,
 	},
 	container: {
 		flex: 1,
