@@ -3,11 +3,13 @@ import Firmware from '../database/models/Firmware'
 import { getSupabaseClient } from './supabase'
 
 const FIRMWARE_DIR = new Directory(Paths.document, 'firmware')
+/** Tolerance in bytes when comparing file sizes (accounts for minor filesystem differences) */
+const FILE_SIZE_TOLERANCE_BYTES = 100
 
 class FirmwareService {
     private initialized = false
 
-    private async init() {
+    private init(): void {
         if (this.initialized) return
 
         if (!FIRMWARE_DIR.exists) {
@@ -22,7 +24,7 @@ class FirmwareService {
      * Returns the local file URI.
      */
     async ensureFirmwareDownloaded(firmware: Firmware): Promise<string> {
-        await this.init()
+        this.init()
 
         // locationPath is typically "type/filename.zip" e.g., "ble/firmware_v1.0.0.zip"
         // We use the full path structure locally to avoid filename collisions across types
@@ -34,7 +36,7 @@ class FirmwareService {
         if (localFile.exists) {
             const fileSize = localFile.size
             // Verify size if possible (approximate check)
-            if (fileSize !== null && Math.abs(fileSize - firmware.fileSizeBytes) < 100) { // Tolerance of 100 bytes
+            if (fileSize !== null && Math.abs(fileSize - firmware.fileSizeBytes) < FILE_SIZE_TOLERANCE_BYTES) {
                 console.log(`✅ Firmware already downloaded: ${localFile.uri}`)
                 return localFile.uri
             } else {
@@ -71,9 +73,13 @@ class FirmwareService {
             return downloadedFile.uri
         } catch (error) {
             console.error('❌ Firmware download failed:', error)
-            // Cleanup partial file if needed
-            if (localFile.exists) {
-                localFile.delete()
+            // Cleanup partial file if needed (wrap in try-catch to preserve original error)
+            try {
+                if (localFile.exists) {
+                    localFile.delete()
+                }
+            } catch (cleanupError) {
+                console.error('❌ Failed to cleanup partial firmware file:', cleanupError)
             }
             throw error
         }
@@ -83,7 +89,7 @@ class FirmwareService {
      * Deletes a local firmware file
      */
     async deleteLocalFirmware(firmware: Firmware): Promise<void> {
-        await this.init()
+        this.init()
         const filename = `${firmware.type}_${firmware.version}_${firmware.locationPath.split('/').pop()}`
         const localFile = new File(FIRMWARE_DIR, filename)
         if (localFile.exists) {
