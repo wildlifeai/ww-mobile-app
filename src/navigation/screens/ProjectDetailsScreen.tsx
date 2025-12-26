@@ -146,17 +146,18 @@ export const ProjectDetailsScreen = () => {
 	)
 
 	// Determine if Motion Detection or Time-lapse is selected
-	const isMotionDetection = useMemo(() => {
+	const selectedMethod = useMemo(() => {
 		const methodId = isEditMode ? selectedCaptureMethodId : project?.capture_method_id?.toString()
-		const method = captureMethods?.find(cm => cm.id.toString() === methodId)
-		return method?.value === "Motion Detection" || method?.value === "activityDetection"
+		return captureMethods?.find(cm => cm.id.toString() === methodId)
 	}, [captureMethods, selectedCaptureMethodId, isEditMode, project?.capture_method_id])
 
+	const isMotionDetection = useMemo(() => {
+		return selectedMethod?.value === "Motion Detection" || selectedMethod?.value === "activityDetection"
+	}, [selectedMethod])
+
 	const isTimeLapse = useMemo(() => {
-		const methodId = isEditMode ? selectedCaptureMethodId : project?.capture_method_id?.toString()
-		const method = captureMethods?.find(cm => cm.id.toString() === methodId)
-		return method?.value === "Time-lapse" || method?.value === "timeLapse"
-	}, [captureMethods, selectedCaptureMethodId, isEditMode, project?.capture_method_id])
+		return selectedMethod?.value === "Time-lapse" || selectedMethod?.value === "timeLapse"
+	}, [selectedMethod])
 
 	// Reset form when project data loads
 	React.useEffect(() => {
