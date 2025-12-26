@@ -335,12 +335,12 @@ export const DeploymentDetailsStep = () => {
                             <Text variant="labelMedium">Capture Method:</Text>
                             <Text variant="bodyLarge">{captureMethodName || 'Loading...'}</Text>
                         </View>
-                        {(captureMethodName.toLowerCase().includes('activity') || captureMethodName.toLowerCase().includes('motion')) && sensitivityLabel ? (
+                        {project?.capture_method_id === 1 && sensitivityLabel ? (
                             <View style={styles.infoRow}>
                                 <Text variant="labelMedium">Motion Sensitivity:</Text>
                                 <Text variant="bodyLarge">{sensitivityLabel}</Text>
                             </View>
-                        ) : (captureMethodName.toLowerCase().includes('time') || captureMethodName.toLowerCase().includes('lapse')) && project?.timelapse_interval_seconds ? (
+                        ) : project?.capture_method_id === 2 && project?.timelapse_interval_seconds ? (
                             <View style={styles.infoRow}>
                                 <Text variant="labelMedium">Time-lapse Interval:</Text>
                                 <Text variant="bodyLarge">{project.timelapse_interval_seconds}s</Text>
