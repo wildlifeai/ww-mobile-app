@@ -109,6 +109,8 @@ export const PrepareAndTestScreen = () => {
 
     // Ref to track DFU in progress (prevents Connection Lost alert during expected disconnection)
     const isDfuInProgress = useRef(false)
+    // Ref to track intentional navigation (prevents Connection Lost alert when finishing preparation)
+    const isNavigatingAway = useRef(false)
 
     // BLE command hooks
     const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, disableCamera, runDisconnect, runDfu } = useBleCommands()
@@ -316,7 +318,8 @@ export const PrepareAndTestScreen = () => {
         useCallback(() => {
             // Only check if we've already started preparation (not loading)
             // Skip check if DFU is in progress (device disconnects during DFU)
-            if (!loading && bleDevice && !isDfuInProgress.current) {
+            // Skip check if navigating away (user completed preparation)
+            if (!loading && bleDevice && !isDfuInProgress.current && !isNavigatingAway.current) {
                 if (!bleDevice.connected) {
                     console.log('[PrepareTest] Connection lost detected on focus')
                     Alert.alert(
@@ -669,6 +672,9 @@ export const PrepareAndTestScreen = () => {
                     [{
                         text: 'OK',
                         onPress: async () => {
+                            // Mark as navigating away to suppress Connection Lost alert
+                            isNavigatingAway.current = true
+
                             // Disconnect BLE before navigating away
                             if (bleDevice) {
                                 console.log('[PrepareTest] Finishing - Disconnecting device...')
