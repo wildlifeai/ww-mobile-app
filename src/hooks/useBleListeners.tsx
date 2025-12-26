@@ -237,6 +237,7 @@ export const useBleListeners = () => {
 				...DEFAULT_PERIPHERAL(peripheral.id),
 				device: peripheral,
 				name: peripheral.name,
+				rssi: peripheral.rssi, // Copy RSSI value for signal strength display
 				signalLost: false,
 			}
 
