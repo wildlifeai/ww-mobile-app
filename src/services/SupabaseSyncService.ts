@@ -240,7 +240,15 @@ class SupabaseSyncService {
                     const auditFields = ['modified_by', 'created_by', 'setup_by', 'granted_by', 'managed_by']
                     let patched = false
 
+                    // Deployment table doesn't have modified_by in Supabase, so we must exclude it
+                    const tablesWithoutModifiedBy = new Set(['deployments'])
+
                     auditFields.forEach(field => {
+                        // Skip modified_by if table doesn't support it
+                        if (field === 'modified_by' && tablesWithoutModifiedBy.has(tableName)) {
+                            return
+                        }
+
                         // For CREATE: Always ensure we own it
                         // For UPDATE: We are the one modifying it, so we should be the modified_by
                         if (payload[field] && payload[field] !== currentUserId) {
@@ -255,6 +263,11 @@ class SupabaseSyncService {
                     if (patched) {
                         console.log(`✅ Patched audit fields for ${tableName} ${operationType} (internal ID: ${op.recordId})`)
                     }
+                }
+
+                // SECURITY/CRITICAL: Ensure deployments does NOT have modified_by as it's missing on server
+                if (tableName === 'deployments' && 'modified_by' in payload) {
+                    delete payload.modified_by
                 }
 
                 // Sanitize deleted_at (WatermelonDB uses 0/1970 epoch for null)
@@ -379,7 +392,9 @@ class SupabaseSyncService {
                                                     name: localDevice.name,
                                                     organisation_id: localDevice.organisationId || null,
                                                     battery_level: localDevice.batteryLevel,
-                                                    firmware_id: localDevice.firmwareId || null,
+                                                    ble_firmware_id: localDevice.bleFirmwareId || null,
+                                                    config_firmware_id: localDevice.configFirmwareId || null,
+                                                    himax_firmware_id: localDevice.himaxFirmwareId || null,
                                                     last_battery_check: localDevice.lastBatteryCheck || null,
                                                     last_sd_card_check: localDevice.lastSdCardCheck || null,
                                                     modified_by: currentUserId
@@ -860,6 +875,12 @@ class SupabaseSyncService {
             type DeviceRow = Database['public']['Tables']['devices']['Row']
 
             for (const row of data as DeviceRow[]) {
+                if (!row) {
+                    console.error('[Sync] Found undefined row in devices data!')
+                    continue
+                }
+                console.log(`[Sync] Processing device row: ${row.id}`) // Debug for TypeError
+
                 // Check if exists
                 try {
                     const existing = await collection.find(row.id)
@@ -868,7 +889,9 @@ class SupabaseSyncService {
                         rec.name = row.name
                         rec.batteryLevel = row.battery_level ?? 0
                         rec.organisationId = row.organisation_id ?? ''
-                        rec.firmwareId = row.config_firmware_id ?? row.ble_firmware_id ?? ''
+                        rec.bleFirmwareId = row.ble_firmware_id ?? undefined
+                        rec.configFirmwareId = row.config_firmware_id ?? undefined
+                        rec.himaxFirmwareId = row.himax_firmware_id ?? undefined
                         rec.lastBatteryCheck = row.last_battery_check ?? ''
                         rec.lastSdCardCheck = row.last_sd_card_check ?? ''
                         rec.updatedAt = new Date(row.updated_at ?? Date.now())
@@ -881,7 +904,9 @@ class SupabaseSyncService {
                         rec.name = row.name
                         rec.batteryLevel = row.battery_level ?? 0
                         rec.organisationId = row.organisation_id ?? ''
-                        rec.firmwareId = row.config_firmware_id ?? row.ble_firmware_id ?? ''
+                        rec.bleFirmwareId = row.ble_firmware_id ?? undefined
+                        rec.configFirmwareId = row.config_firmware_id ?? undefined
+                        rec.himaxFirmwareId = row.himax_firmware_id ?? undefined
                         rec.lastBatteryCheck = row.last_battery_check ?? ''
                         rec.lastSdCardCheck = row.last_sd_card_check ?? '';
                         // Use _raw to bypass @readonly check
@@ -950,7 +975,9 @@ class SupabaseSyncService {
                         rec.deviceId = row.device_id || ''
                         rec.projectId = row.project_id || ''
                         rec.aiModelId = row.ai_model_id ?? undefined
-                        rec.firmwareId = row.ble_firmware_id ?? undefined
+                        rec.bleFirmwareId = row.ble_firmware_id ?? undefined
+                        rec.configFirmwareId = row.config_firmware_id ?? undefined
+                        rec.himaxFirmwareId = row.himax_firmware_id ?? undefined
                         rec.status = row.status
                         rec.isDeploymentReady = row.is_deployment_ready
                         rec.deviceEui = row.device_eui ?? undefined
@@ -966,7 +993,9 @@ class SupabaseSyncService {
                         rec.deviceId = row.device_id || ''
                         rec.projectId = row.project_id || ''
                         rec.aiModelId = row.ai_model_id ?? undefined
-                        rec.firmwareId = row.ble_firmware_id ?? undefined
+                        rec.bleFirmwareId = row.ble_firmware_id ?? undefined
+                        rec.configFirmwareId = row.config_firmware_id ?? undefined
+                        rec.himaxFirmwareId = row.himax_firmware_id ?? undefined
                         rec.status = row.status
                         rec.isDeploymentReady = row.is_deployment_ready
                         rec.deviceEui = row.device_eui ?? undefined

@@ -31,5 +31,5 @@ export default class Project extends Model {
     @readonly @date('updated_at') updatedAt!: number
     @readonly @date('deleted_at') deletedAt!: number
 
-    @children('deployments') deployments: any
+    // @children('deployments') deployments: any // REMOVED: deployments table missing project_id column
 }

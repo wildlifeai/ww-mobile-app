@@ -293,6 +293,8 @@ BEGIN
                 activity_detection_sensitivity_id,
                 timelapse_interval_seconds,
                 location_data,
+                altitude,
+                accuracy,
                 created_at, 
                 updated_at
             )
@@ -307,9 +309,9 @@ BEGIN
                 (_item->>'deployment_status_id')::int,
                 (_item->>'capture_method_id')::int,
                 _item->>'location_name',
-                _item->>'camera_location_description',
-                (_item->>'latitude')::double precision,
-                (_item->>'longitude')::double precision,
+                COALESCE(_item->>'location_description', _item->>'camera_location_description'),
+                public.safe_to_double(NULLIF(_item->>'latitude', '')),
+                public.safe_to_double(NULLIF(_item->>'longitude', '')),
                 CASE 
                     WHEN _item->>'camera_location_image_path' IS NOT NULL 
                     THEN jsonb_build_array(_item->>'camera_location_image_path')
@@ -323,10 +325,12 @@ BEGIN
                 (_item->>'device_preparation_id')::uuid,
                 _item->>'start_deployment_comments',
                 _item->>'end_deployment_comments',
-                (_item->>'camera_height')::numeric,
+                public.safe_to_numeric(NULLIF(_item->>'camera_height', '')),
                 (_item->>'activity_detection_sensitivity_id')::int,
                 (_item->>'timelapse_interval_seconds')::int,
                 (_item->>'location')::jsonb,
+                public.safe_to_double(NULLIF(_item->>'altitude', '')),
+                public.safe_to_double(NULLIF(_item->>'accuracy', '')),
                 (_item->>'created_at')::timestamptz,
                 (_item->>'updated_at')::timestamptz
             )
@@ -349,9 +353,9 @@ BEGIN
                 deployment_status_id = (_item->>'deployment_status_id')::int,
                 capture_method_id = (_item->>'capture_method_id')::int,
                 location_name = _item->>'location_name',
-                location_description = _item->>'camera_location_description',
-                latitude = (_item->>'latitude')::double precision,
-                longitude = (_item->>'longitude')::double precision,
+                location_description = COALESCE(_item->>'location_description', _item->>'camera_location_description'),
+                latitude = public.safe_to_double(NULLIF(_item->>'latitude', '')),
+                longitude = public.safe_to_double(NULLIF(_item->>'longitude', '')),
                 camera_location_image_paths = CASE 
                     WHEN _item->>'camera_location_image_path' IS NOT NULL 
                     THEN jsonb_build_array(_item->>'camera_location_image_path')
@@ -365,10 +369,12 @@ BEGIN
                 device_preparation_id = (_item->>'device_preparation_id')::uuid,
                 start_deployment_comments = _item->>'start_deployment_comments',
                 end_deployment_comments = _item->>'end_deployment_comments',
-                camera_height = (_item->>'camera_height')::numeric,
+                camera_height = public.safe_to_numeric(NULLIF(_item->>'camera_height', '')),
                 activity_detection_sensitivity_id = (_item->>'activity_detection_sensitivity_id')::int,
                 timelapse_interval_seconds = (_item->>'timelapse_interval_seconds')::int,
                 location_data = (_item->>'location')::jsonb,
+                altitude = public.safe_to_double(NULLIF(_item->>'altitude', '')),
+                accuracy = public.safe_to_double(NULLIF(_item->>'accuracy', '')),
                 updated_at = (_item->>'updated_at')::timestamptz
             WHERE id = (_item->>'id')::uuid;
             _processed_count := _processed_count + 1;

@@ -25,6 +25,8 @@ CREATE TABLE deployments (
   camera_location_image_paths jsonb,
   latitude double precision,
   longitude double precision,
+  altitude double precision,
+  accuracy double precision,
   location geography(Point,4326),
   -- Camera configuration
   camera_height float,
@@ -58,6 +60,8 @@ COMMENT ON COLUMN deployments.location_name IS 'Descriptive label or name for th
 COMMENT ON COLUMN deployments.location_description IS 'Detailed description of the location.';
 COMMENT ON COLUMN deployments.camera_location_image_paths IS 'Array of paths to photos of the camera setup location.';
 COMMENT ON COLUMN deployments.camera_height IS 'Height of the camera in meters.';
+COMMENT ON COLUMN deployments.altitude IS 'Altitude in meters from GPS.';
+COMMENT ON COLUMN deployments.accuracy IS 'GPS accuracy in meters.';
 COMMENT ON COLUMN deployments.capture_method_id IS 'Mode of capture (timelapse, motion, etc).';
 COMMENT ON COLUMN deployments.project_id IS 'Project this deployment belongs to.';
 COMMENT ON COLUMN deployments.device_id IS 'Device used in this deployment.';

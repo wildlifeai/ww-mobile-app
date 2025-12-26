@@ -789,7 +789,7 @@ export const PrepareAndTestScreen = () => {
                 // But keeping the variable for clarity in case we add non-blocking checks later
                 const isReady = true
 
-                await DevicePreparationService.completePreparation(preparation.id, isReady)
+                await DevicePreparationService.completePreparation(preparation.id, isReady, selectedProject)
 
                 Alert.alert(
                     'Preparation Complete',

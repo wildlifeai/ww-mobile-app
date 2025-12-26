@@ -51,59 +51,85 @@ export const DeploymentService = {
         await database.write(async () => {
             const deploymentsCollection = database.get<Deployment>('deployments')
 
-            // 1. Prepare record
-            newDeployment = deploymentsCollection.prepareCreate((deployment) => {
-                deployment.name = data.name
-                deployment.projectId = data.projectId
-                // deployment.userId = data.userId // REMOVED
-                deployment.deviceId = data.deviceId
-                deployment.devicePreparationId = data.devicePreparationId
-                deployment.setupBy = data.setupBy
-                deployment.deploymentStart = new Date().getTime()
-                deployment.deploymentStatusId = DEPLOYMENT_STATUS.DEPLOYED
+            try {
+                // 1. Prepare record
+                console.log('[DeploymentService] Step 1: Preparing deployment record')
+                newDeployment = deploymentsCollection.prepareCreate((deployment) => {
+                    deployment.name = data.name
+                    // deployment.projectId = data.projectId // REMOVED: Column missing in schema, linked via device_preparation
+                    // deployment.userId = data.userId // REMOVED
+                    // deployment.deviceId = data.deviceId // REMOVED: derived from device_preparation
+                    deployment.devicePreparationId = data.devicePreparationId
+                    deployment.setupBy = data.setupBy
+                    deployment.deploymentStart = new Date().getTime()
+                    deployment.deploymentStatusId = DEPLOYMENT_STATUS.DEPLOYED
 
-                // Add capture method if provided
-                if (data.captureMethodId) {
-                    deployment.captureMethodId = data.captureMethodId
+                    // Add capture method if provided
+                    if (data.captureMethodId) {
+                        deployment.captureMethodId = data.captureMethodId
+                    }
+
+                    // Snapshot Project Settings
+                    if (sensitivityId) deployment.activityDetectionSensitivityId = sensitivityId
+                    if (timelapseInterval) deployment.timelapseIntervalSeconds = timelapseInterval
+
+                    // Location data
+                    deployment.locationName = data.locationName
+                    deployment.latitude = data.latitude
+                    deployment.longitude = data.longitude
+                    deployment.altitude = data.altitude
+                    deployment.accuracy = data.accuracy
+                    deployment.locationDescription = data.locationDescription
+
+                    // Standardize Camera Height to meters (input is cm)
+                    if (data.cameraHeight) {
+                        deployment.cameraHeight = data.cameraHeight / 100
+                    }
+
+                    // Store image paths as JSON string array if provided
+                    if (data.cameraImagePaths) {
+                        deployment.cameraLocationImagePaths = data.cameraImagePaths
+                    }
+
+                    deployment.startDeploymentComments = data.startComments
+
+                    // Initialize required JSON fields to defaults to prevent schema validation errors
+                    deployment.location = {}
+                    deployment.deploymentPhotos = []
+                    console.log('[DeploymentService] Preparation function complete')
+                })
+
+                console.log('[DeploymentService] Step 1 complete: Record prepared with ID:', newDeployment.id)
+
+                // 2. Prepare outbox record
+                console.log('[DeploymentService] Step 2: Mapping payload')
+                let payload
+                try {
+                    payload = mapModelToPayload(newDeployment)
+                    console.log('[DeploymentService] Payload mapped successfully')
+                } catch (mapErr) {
+                    console.error('[DeploymentService] Error mapping payload:', mapErr)
+                    throw mapErr
                 }
 
-                // Snapshot Project Settings
-                if (sensitivityId) deployment.activityDetectionSensitivityId = sensitivityId
-                if (timelapseInterval) deployment.timelapseIntervalSeconds = timelapseInterval
+                console.log('[DeploymentService] Step 3: Recording operation')
+                const outboxOp = OutboxService.recordOperation({
+                    operation: 'CREATE',
+                    tableName: 'deployments',
+                    recordId: newDeployment.id,
+                    payload,
+                    userId: data.setupBy,
+                })
+                console.log('[DeploymentService] Step 3 complete: Outbox op prepared')
 
-                // Location data
-                deployment.locationName = data.locationName
-                deployment.latitude = data.latitude
-                deployment.longitude = data.longitude
-                deployment.altitude = data.altitude
-                deployment.accuracy = data.accuracy
-                deployment.locationDescription = data.locationDescription
-
-                // Standardize Camera Height to meters (input is cm)
-                if (data.cameraHeight) {
-                    deployment.cameraHeight = data.cameraHeight / 100
-                }
-
-                // Store image paths as JSON string array if provided
-                if (data.cameraImagePaths) {
-                    deployment.cameraLocationImagePaths = JSON.stringify(data.cameraImagePaths)
-                }
-
-                deployment.startDeploymentComments = data.startComments
-            })
-
-            // 2. Prepare outbox record
-            const outboxOp = OutboxService.recordOperation({
-                operation: 'CREATE',
-                tableName: 'deployments',
-                recordId: newDeployment.id,
-                payload: mapModelToPayload(newDeployment),
-                userId: data.setupBy,
-            })
-
-            // 3. Execute batch
-            await database.batch(newDeployment, outboxOp)
-            console.log('[DeploymentService] Created deployment and outbox record:', newDeployment.id)
+                // 3. Execute batch
+                console.log('[DeploymentService] Step 4: Batching operations')
+                await database.batch(newDeployment, outboxOp)
+                console.log('[DeploymentService] Created deployment and outbox record:', newDeployment.id)
+            } catch (err) {
+                console.error('[DeploymentService] Critical error in createDeployment batch:', err)
+                throw err
+            }
         })
 
         if (!newDeployment) throw new Error("Failed to create deployment instance")
@@ -210,7 +236,7 @@ export const DeploymentService = {
     getActiveDeploymentForDeviceId: async (deviceId: string): Promise<Deployment | undefined> => {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const deployments = await deploymentsCollection.query(
-            Q.where('device_id', deviceId),
+            Q.on('device_preparation', 'device_id', deviceId),
             Q.where('deployment_status_id', DEPLOYMENT_STATUS.DEPLOYED),
             Q.sortBy('deployment_start', Q.desc)
         ).fetch()
@@ -235,9 +261,9 @@ export const DeploymentService = {
 function mapModelToPayload(model: Deployment): any {
     return {
         id: model.id,
-        project_id: model.projectId,
+        // project_id: model.projectId, // REMOVED: Column missing in schema, linked via device_preparation
         // user_id: model.userId, // REMOVED
-        device_id: model.deviceId,
+        // device_id: model.deviceId, // REMOVED: Column missing in schema, linked via device_preparation
         device_preparation_id: model.devicePreparationId,
         name: model.name,
         setup_by: model.setupBy,
@@ -255,7 +281,9 @@ function mapModelToPayload(model: Deployment): any {
         location_description: model.locationDescription || null,
         altitude: model.altitude || null,
         accuracy: model.accuracy || null,
-        camera_location_image_paths: model.cameraLocationImagePaths ? JSON.parse(model.cameraLocationImagePaths) : null,
+        camera_location_image_paths: (model.cameraLocationImagePaths && typeof model.cameraLocationImagePaths === 'string')
+            ? JSON.parse(model.cameraLocationImagePaths)
+            : (model.cameraLocationImagePaths || null),
         latitude: model.latitude || null,
         longitude: model.longitude || null,
 

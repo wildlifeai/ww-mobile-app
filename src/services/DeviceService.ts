@@ -70,7 +70,7 @@ export const DeviceService = {
         // Check for active deployment
         const deploymentsCollection = database.get<Deployment>('deployments')
         const activeDeployments = await deploymentsCollection.query(
-            Q.where('device_id', deviceId),
+            Q.on('device_preparation', 'device_id', deviceId),
             Q.where('deployment_status_id', 1) // 1 = DEPLOYED
         ).fetch()
 
@@ -107,7 +107,7 @@ export const DeviceService = {
         if (status === 'deployed') {
             const deploymentsCollection = database.get<Deployment>('deployments')
             const deployments = await deploymentsCollection.query(
-                Q.where('device_id', deviceId),
+                Q.on('device_preparation', 'device_id', deviceId),
                 Q.where('deployment_status_id', 1) // 1 = DEPLOYED
             ).fetch()
             activeDeployment = deployments[0]
@@ -137,7 +137,7 @@ export const DeviceService = {
     getDeviceDeploymentHistory: async (deviceId: string): Promise<Deployment[]> => {
         const deploymentsCollection = database.get<Deployment>('deployments')
         return await deploymentsCollection.query(
-            Q.where('device_id', deviceId),
+            Q.on('device_preparation', 'device_id', deviceId),
             Q.sortBy('deployment_start', Q.desc)
         ).fetch()
     },
@@ -151,7 +151,7 @@ export const DeviceService = {
         // Get last deployment (active or ended) for status display
         const deploymentsCollection = database.get<Deployment>('deployments')
         const allDeployments = await deploymentsCollection.query(
-            Q.where('device_id', device.id),
+            Q.on('device_preparation', 'device_id', device.id),
             Q.sortBy('deployment_start', Q.desc)
         ).fetch()
         const lastDeployment = allDeployments[0]
@@ -189,7 +189,9 @@ export const DeviceService = {
                 device.name = name
                 device.organisationId = organisationId
                 device.batteryLevel = 0 // Default
-                device.firmwareId = '' // Default
+                device.bleFirmwareId = '' // Default
+                device.configFirmwareId = ''
+                device.himaxFirmwareId = ''
                 device.lastBatteryCheck = ''
                 device.lastSdCardCheck = ''
             })
@@ -204,7 +206,9 @@ export const DeviceService = {
                     name: name,
                     organisation_id: organisationId || null,
                     battery_level: 0,
-                    firmware_id: null,
+                    ble_firmware_id: null,
+                    config_firmware_id: null,
+                    himax_firmware_id: null,
                     last_battery_check: null,
                     last_sd_card_check: null,
                     // Timestamps will be handled by backend or defaults
@@ -276,9 +280,9 @@ export const DeviceService = {
         const deviceIds = new Set<string>()
 
         // Optimization: Use Q.oneOf if possible, but loop is safe for now
-        // We can query deployments where project_id IS IN projectIds
+        // We can query deployments where project_id IS IN projectIds via device_preparation
         const projectDeployments = await deploymentsCollection.query(
-            Q.where('project_id', Q.oneOf(Array.from(projectIds)))
+            Q.on('device_preparation', Q.where('project_id', Q.oneOf(Array.from(projectIds))))
         ).fetch()
         projectDeployments.forEach(d => deviceIds.add(d.deviceId))
         console.log(`[DeviceService] Found ${projectDeployments.length} deployments, cumulative devices: ${deviceIds.size}`)

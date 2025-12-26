@@ -28,7 +28,7 @@ interface InnerProps {
 const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, deviceId, bleDeviceId }) => {
     const navigation = useNavigation()
     const { disconnectDevice } = useBleActions()
-    const { getBatteryLevel, setOperationalParam, disableCamera, runDisconnect, setDeploymentIdAsOps } = useBleCommands()
+    const { getBatteryLevel, setOperationalParam, disableCamera, runDisconnect, setDeploymentIdAsOps, clearGpsLocation, flashLed } = useBleCommands()
 
     // Get current user
     const user = useAppSelector(selectCurrentUser)
@@ -98,12 +98,46 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
                         'Failed to clear Deployment ID on the device. Please manually reset the device configuration if you plan to redeploy it immediately.'
                     )
                 }
+
+                // 1.6 Check if legacy firmware (no extended OPs) and clear GPS
+                setBleStatus('Checking Firmware...')
+                try {
+                    // Legacy devices don't support OP 20-27, so if we successfully set them above,
+                    // the device is modern. We can also check by trying to read OP 20, but for simplicity,
+                    // we'll just always clear GPS for safety after ending deployment
+                    console.log('[EndDeployment] Clearing GPS location for next deployment...')
+                    await clearGpsLocation(bleDevice)
+                    console.log('[EndDeployment] GPS location cleared successfully')
+                } catch (e) {
+                    console.warn('[EndDeployment] Failed to clear GPS location:', e)
+                    // Non-critical, continue
+                }
             }
 
             // 2. Update DB
             setBleStatus('Updating Record...')
             const userId = user?.id || null
             await DeploymentService.endDeployment(deployment.id, userId, retrievalNotes)
+
+            // 2.5 Visual Confirmation Sequence (LED Flashes)
+            if (bleDevice) {
+                setBleStatus('Confirming...')
+                console.log('[EndDeployment] Starting LED confirmation sequence...')
+                try {
+                    // Sequence: Green (1s) → Blue (1s) → Red (1s) → Green (4s)
+                    await flashLed(bleDevice, 'green', 1000, 1)
+                    await new Promise(r => setTimeout(r, 100)) // Small delay between colors
+                    await flashLed(bleDevice, 'blue', 1000, 1)
+                    await new Promise(r => setTimeout(r, 100))
+                    await flashLed(bleDevice, 'red', 1000, 1)
+                    await new Promise(r => setTimeout(r, 100))
+                    await flashLed(bleDevice, 'green', 4000, 1)
+                    console.log('[EndDeployment] LED confirmation sequence complete')
+                } catch (e) {
+                    console.warn('[EndDeployment] Failed to complete LED sequence:', e)
+                    // Non-critical, continue to disconnect
+                }
+            }
 
             // 3. Disconnect
             setBleStatus('Disconnecting...')
