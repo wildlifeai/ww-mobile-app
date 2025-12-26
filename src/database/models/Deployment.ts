@@ -5,10 +5,12 @@ export default class Deployment extends Model {
     static table = 'deployments'
     static associations = {
         projects: { type: 'belongs_to', key: 'project_id' },
+        users: { type: 'belongs_to', key: 'setup_by' },
+        device_preparation: { type: 'belongs_to', key: 'device_preparation_id' },
     } as const
 
     @field('project_id') projectId!: string
-    @field('device_id') deviceId!: string // Legacy? or derived?
+    @field('device_id') deviceId!: string // derived from device_preparation
     @field('device_preparation_id') devicePreparationId!: string
 
     @field('deployment_status_id') deploymentStatusId?: number
@@ -25,6 +27,9 @@ export default class Deployment extends Model {
     @json('location', (raw: any) => raw) location: any
     @field('latitude') latitude?: number
     @field('longitude') longitude?: number
+    @field('altitude') altitude?: number
+    @field('accuracy') accuracy?: number
+    @text('location_description') locationDescription?: string
     @json('camera_location_image_paths', (raw: any) => raw) cameraLocationImagePaths: any
     @field('camera_height') cameraHeight?: number
 
@@ -49,5 +54,6 @@ export default class Deployment extends Model {
     @readonly @date('deleted_at') deletedAt!: number
 
     @relation('projects', 'project_id') project: any
-    @relation('users', 'user_id') user: any
+    @relation('users', 'setup_by') user: any
+    @relation('device_preparation', 'device_preparation_id') devicePreparation: any
 }

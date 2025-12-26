@@ -8,7 +8,9 @@ export default class Device extends Model {
     @field('name') name!: string
     @field('battery_level') batteryLevel!: number
     @field('organisation_id') organisationId!: string
-    @field('firmware_id') firmwareId!: string
+    @field('ble_firmware_id') bleFirmwareId?: string
+    @field('config_firmware_id') configFirmwareId?: string
+    @field('himax_firmware_id') himaxFirmwareId?: string
     @field('last_battery_check') lastBatteryCheck!: string
     @field('last_sd_card_check') lastSdCardCheck!: string
     @field('modified_by') modifiedBy!: string

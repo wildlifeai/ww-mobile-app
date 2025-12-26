@@ -15,6 +15,7 @@
 
 import React, { useState, useMemo, useCallback } from "react"
 import { ListRenderItemInfo } from "react-native"
+import { useFocusEffect } from "@react-navigation/native"
 import { useGetProjectsQuery } from "../../redux/api/projectsApi"
 import { ProjectCard } from "../../components/ProjectCard"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
@@ -38,6 +39,13 @@ export const Projects = () => {
 	} = useGetProjectsQuery(
 		{ userId: userId!, organisationId: organisationId! },
 		{ skip: !userId || !organisationId }
+	)
+
+	// Refresh on focus
+	useFocusEffect(
+		useCallback(() => {
+			refetch()
+		}, [refetch])
 	)
 
 	// Search state

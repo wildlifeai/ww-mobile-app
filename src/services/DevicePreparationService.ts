@@ -61,12 +61,16 @@ export const DevicePreparationService = {
                 preparation.lorawanRegistrationCompleted = false
             })
 
+            console.log('[DevPrepService] Record prepared, mapping to payload...')
             // 2. Prepare outbox record
+            const payload = mapModelToPayload(newPrep)
+            console.log('[DevPrepService] Payload mapped successfully:', JSON.stringify(payload))
+
             const outboxOp = OutboxService.recordOperation({
                 operation: 'CREATE',
                 tableName: 'device_preparation',
                 recordId: newPrep.id,
-                payload: mapModelToPayload(newPrep),
+                payload,
                 userId: modifiedBy || undefined, // modifiedBy holds the user ID
             })
 
@@ -99,6 +103,7 @@ export const DevicePreparationService = {
             firmwareId: string
             deviceEui: string
             lorawanNetwork: string
+            projectId: string // <--- Added optional projectId
         }>
     ): Promise<DevicePreparation> => {
         console.log('[DevPrepService] Updating preparation:', preparationId, updates)
@@ -116,9 +121,10 @@ export const DevicePreparationService = {
                 if (updates.firmwareUpdated !== undefined) prep.firmwareUpdated = updates.firmwareUpdated
                 if (updates.lorawanRegistrationCompleted !== undefined) prep.lorawanRegistrationCompleted = updates.lorawanRegistrationCompleted
                 if (updates.aiModelId) prep.aiModelId = updates.aiModelId
-                if (updates.firmwareId) prep.firmwareId = updates.firmwareId
+                if (updates.firmwareId) prep.bleFirmwareId = updates.firmwareId
                 if (updates.deviceEui) prep.deviceEui = updates.deviceEui
                 if (updates.lorawanNetwork) prep.lorawanNetwork = updates.lorawanNetwork
+                if (updates.projectId) prep.projectId = updates.projectId // <--- Ensure projectId is updated
             })
 
             // 2. Prepare outbox record
@@ -145,8 +151,8 @@ export const DevicePreparationService = {
     /**
      * Complete a device preparation
      */
-    completePreparation: async (preparationId: string, isDeploymentReady: boolean): Promise<DevicePreparation> => {
-        console.log('[DevPrepService] Completing preparation:', preparationId, 'ready:', isDeploymentReady)
+    completePreparation: async (preparationId: string, isDeploymentReady: boolean, projectId?: string): Promise<DevicePreparation> => {
+        console.log('[DevPrepService] Completing preparation:', preparationId, 'ready:', isDeploymentReady, 'projectId:', projectId)
 
         await database.write(async () => {
             const preparationsCollection = database.get<DevicePreparation>('device_preparation')
@@ -156,6 +162,7 @@ export const DevicePreparationService = {
             const prepUpdate = preparation.prepareUpdate((prep) => {
                 prep.status = 'completed'
                 prep.isDeploymentReady = isDeploymentReady
+                if (projectId) prep.projectId = projectId // <--- Crucial fix: Ensure projectId is present when completing
             })
 
             // 2. Prepare outbox record
@@ -322,7 +329,7 @@ export const DevicePreparationService = {
 
             // 1. Try RPC first (e.g. force_cancel_active_preparation) if available
             // This is the preferred method as it uses SECURITY DEFINER to bypass RLS
-            const { error: rpcError } = await supabase.rpc('force_cancel_active_preparation', {
+            const { error: rpcError } = await (supabase as any).rpc('force_cancel_active_preparation', {
                 p_device_id: deviceId
             })
 
@@ -363,30 +370,40 @@ export const DevicePreparationService = {
  * Helper to map model to plain object for sync (snake_case)
  */
 function mapModelToPayload(model: DevicePreparation): any {
-    return {
-        id: model.id,
-        device_id: model.deviceId,
-        project_id: model.projectId || null,
-        ai_model_id: model.aiModelId || null,
-        ble_firmware_id: model.firmwareId || null,
-        status: model.status,
-        is_deployment_ready: model.isDeploymentReady,
+    try {
+        console.log('[DevPrepService] mapModelToPayload for model:', model.id)
+        const payload = {
+            id: model.id,
+            device_id: model.deviceId,
+            project_id: model.projectId || null,
+            ai_model_id: model.aiModelId || null,
+            ble_firmware_id: model.bleFirmwareId || null,
+            config_firmware_id: model.configFirmwareId || null,
+            himax_firmware_id: model.himaxFirmwareId || null,
+            status: model.status,
+            is_deployment_ready: model.isDeploymentReady,
 
-        // Check results - these might not all be needed by backend depending on logic but good to include
-        battery_check_passed: model.batteryCheckPassed,
-        camera_view_test_passed: model.cameraViewTestPassed,
-        firmware_check_passed: model.firmwareCheckPassed,
-        sd_card_check_passed: model.sdCardCheckPassed,
-        firmware_updated: model.firmwareUpdated,
+            // Check results
+            battery_check_passed: model.batteryCheckPassed,
+            camera_view_test_passed: model.cameraViewTestPassed,
+            firmware_check_passed: model.firmwareCheckPassed,
+            sd_card_check_passed: model.sdCardCheckPassed,
+            firmware_updated: model.firmwareUpdated,
 
-        // LoRaWAN
-        device_eui: model.deviceEui || null,
-        lorawan_network: model.lorawanNetwork || null,
-        lorawan_registration_completed: model.lorawanRegistrationCompleted,
+            // LoRaWAN
+            device_eui: model.deviceEui || null,
+            lorawan_network: model.lorawanNetwork || null,
+            lorawan_registration_completed: model.lorawanRegistrationCompleted,
 
-        modified_by: model.modifiedBy || null,
-        created_at: new Date(model.createdAt).toISOString(),
-        updated_at: new Date(model.updatedAt).toISOString(),
-        deleted_at: model.deletedAt ? new Date(model.deletedAt).toISOString() : null,
+            modified_by: model.modifiedBy || null,
+            created_at: model.createdAt ? new Date(model.createdAt).toISOString() : new Date().toISOString(),
+            updated_at: model.updatedAt ? new Date(model.updatedAt).toISOString() : new Date().toISOString(),
+            deleted_at: model.deletedAt ? new Date(model.deletedAt).toISOString() : null,
+        }
+        console.log('[DevPrepService] mapModelToPayload successful')
+        return payload
+    } catch (err) {
+        console.error('[DevPrepService] mapModelToPayload failed:', err)
+        throw err
     }
 }

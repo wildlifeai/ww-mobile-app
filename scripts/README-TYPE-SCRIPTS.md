@@ -145,8 +145,8 @@ npm run dev:status  # Checks types + validates schema
 npm run types:local
 npm run schema:validate:live:local
 
-# 4. Update schema.ts if validation shows errors
-#    (Edit src/database/schema.ts based on validation output)
+# 4. Automatically update schema.ts
+npm run schema:generate
 
 # 5. Commit changes
 git add src/types/database.types.ts src/database/schema.ts
@@ -280,8 +280,8 @@ npm run schema:validate:live:cloud-dev -- --verbose
 # Sync from live database
 npm run sync:from-live:cloud-dev
 
-# Review validation errors and update src/database/schema.ts
-# Each error includes suggested fix code
+# Automatically update schema.ts
+npm run schema:generate
 ```
 
 ### "Types are out of sync" during schema validation

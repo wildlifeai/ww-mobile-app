@@ -38,6 +38,7 @@ export const LocationSection = ({ onLocationChange, onShowHelp }: Props) => {
                         <Text>Lat: {location.latitude}</Text>
                         <Text>Lon: {location.longitude}</Text>
                         <Text>Alt: {location.altitude}m</Text>
+                        {location.accuracy && <Text>Accuracy: +/- {location.accuracy?.toFixed(1)}m</Text>}
                     </View>
                 ) : (
                     <Text>Location not available.</Text>

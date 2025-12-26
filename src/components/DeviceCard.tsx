@@ -26,7 +26,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
             const lastDeploy = deployEndDate || lastDeployDate
             if (lastDeploy && prepDate > lastDeploy) {
                 return {
-                    text: `Prepared on ${prepDate.toLocaleDateString()}`,
+                    text: `Prepared on ${prepDate.toLocaleDateString()} at ${prepDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
                     color: theme.colors.primary,
                     icon: 'check-circle' as const,
                     hasLink: false
@@ -35,9 +35,10 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
         }
 
         // Logic 2: Active deployment (no end date)
-        if (device.status === 'deployed' && !deployEndDate && device.deploymentName) {
+        // If there is a last deployment date (start) but NO end date, it is active.
+        if (!deployEndDate && device.lastDeploymentDate && device.deploymentName) {
             return {
-                text: `Deployed ${device.deploymentName}`,
+                text: `Device is deployed: ${device.deploymentName}`,
                 color: '#4CAF50',
                 icon: 'map-marker' as const,
                 hasLink: true,
@@ -46,7 +47,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
         }
 
         // Logic 3: Last deployment ended
-        if (device.deploymentName && device.lastDeploymentDate) {
+        if (device.deploymentName && device.lastDeploymentDate && deployEndDate) {
             return {
                 text: `Last deployment ${device.deploymentName}`,
                 color: theme.colors.onSurfaceVariant,
@@ -59,7 +60,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
         // Logic 1 (alternate): Prepared without any deployment
         if (prepDate) {
             return {
-                text: `Prepared on ${prepDate.toLocaleDateString()}`,
+                text: `Prepared on ${prepDate.toLocaleDateString()} at ${prepDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
                 color: theme.colors.primary,
                 icon: 'check-circle' as const,
                 hasLink: false
@@ -84,7 +85,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
             testID={`device-card-${device.id}`}
         >
             <Card.Content style={styles.content}>
-                {/* Header: Name only (Badge removed as requested) */}
+                {/* Header: Name only */}
                 <View style={styles.header}>
                     <Text
                         variant="headlineSmall"
@@ -94,14 +95,6 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
                         {device.name || 'Unknown Device'}
                     </Text>
                 </View>
-
-                {/* Bluetooth ID */}
-                <Text
-                    variant="bodySmall"
-                    style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}
-                >
-                    ID: {device.bluetoothId}
-                </Text>
 
                 {/* Status Info - Side layout */}
                 {statusInfo && (

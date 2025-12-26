@@ -152,6 +152,12 @@ export const useBleCommands = () => {
         [write]
     )
 
+    const clearGpsLocation = useCallback(async (peripheral: ExtendedPeripheral) => {
+        console.log('[BLE CMD] Clearing GPS location on device:', peripheral.id)
+        // Sending setgps "" which firmware handles by clearing/zeroing
+        await write(peripheral, [[CommandNames.setgps, { control: CommandControlTypes.WRITE, value: "" }]])
+    }, [write])
+
     const setMotionDetectInterval = useCallback(async (peripheral: ExtendedPeripheral, intervalMs: number) => {
         await write(peripheral, [[CommandNames.SET_MOTION_DETECT_INTERVAL, { control: CommandControlTypes.WRITE, value: intervalMs.toString() }]])
     }, [write])
@@ -237,6 +243,7 @@ export const useBleCommands = () => {
         // Settings
         setOperationalParam,
         setGpsLocation,
+        clearGpsLocation,
         setMotionDetectInterval,
         disableMotionDetect,
         setTimelapseInterval,

@@ -56,11 +56,13 @@ These documents explain the functional workflows of the app:
 1. **[Device Preparation](./02-DEVICE-PREPARATION.md)**
    - Configuring hardware for the field
    - Firmware updates & testing
+   - Pre-deployment validation
    
 2. **[Deployment Flow](./03-DEPLOYMENT-FLOW.md)**
-   - Step-by-step field deployment guide
-   - Location capture and verification
-   - Device activation logic
+   - **Starting a deployment**: Step-by-step field deployment guide with location capture, device configuration, and activation
+   - **Ending a deployment**: Complete device retrieval process with configuration cleanup and LED confirmation
+   - BLE command sequences and technical reference tables
+   - Troubleshooting common deployment issues
 
 ## 🎯 Learning Path
 
@@ -95,6 +97,7 @@ These documents explain the functional workflows of the app:
 - `src/services/SupabaseSyncService.ts` - Main sync logic
 - `src/database/index.ts` - WatermelonDB setup
 - `src/redux/slices/syncSlice.ts` - Sync status state
+- `npm run schema:generate` - Auto-generate local schema from backend types
 
 **Add a new screen**:
 - Create component in `src/screens/`

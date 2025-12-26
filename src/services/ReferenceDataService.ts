@@ -53,12 +53,13 @@ class ReferenceDataService {
         }
 
         try {
+            console.log('📚 Starting parallel sync of reference tables...')
             await Promise.all([
-                this.syncCaptureMethods(),
-                this.syncActivitySensitivity(),
-                this.syncAiModels(),
-                this.syncSamplingDesigns(),
-                this.syncFirmware(),
+                (async () => { console.log('📚 Syncing capture methods...'); await this.syncCaptureMethods() })(),
+                (async () => { console.log('📚 Syncing activity sensitivity...'); await this.syncActivitySensitivity() })(),
+                (async () => { console.log('📚 Syncing AI models...'); await this.syncAiModels() })(),
+                (async () => { console.log('📚 Syncing sampling designs...'); await this.syncSamplingDesigns() })(),
+                (async () => { console.log('📚 Syncing firmware...'); await this.syncFirmware() })(),
             ])
 
             console.log('✅ Reference data sync complete')
@@ -343,9 +344,10 @@ class ReferenceDataService {
             return
         }
 
-        console.log('[RefData] Fetched firmware records:', data?.length)
-
-        if (!data) return
+        if (!data || data.length === 0) {
+            console.log('[RefData] No firmware data received from server')
+            return
+        }
 
         await database.write(async () => {
             const collection = database.get<Firmware>('firmware')
@@ -357,29 +359,39 @@ class ReferenceDataService {
             const serverIds = new Set(data.map(d => d.id))
 
             // Upsert
+            console.log(`[RefData] Raw firmware data:`, JSON.stringify(data))
             for (const row of data) {
-                const existing = existingMap.get(row.id)
-                if (existing) {
-                    await existing.update(rec => {
-                        rec.version = row.version
-                        rec.type = row.type
-                        rec.locationPath = row.location_path
-                        rec.fileSizeBytes = row.file_size_bytes ?? 0
-                        rec.releaseNotes = row.release_notes
-                        rec.isActive = row.is_active
-                        rec.modifiedBy = row.modified_by
-                    })
-                } else {
-                    await collection.create(rec => {
-                        (rec._raw as any).id = row.id // Use Supabase UUID
-                        rec.version = row.version
-                        rec.type = row.type
-                        rec.locationPath = row.location_path
-                        rec.fileSizeBytes = row.file_size_bytes ?? 0
-                        rec.releaseNotes = row.release_notes
-                        rec.isActive = row.is_active
-                        rec.modifiedBy = row.modified_by
-                    })
+                try {
+                    if (!row) {
+                        console.error('[RefData] Found undefined row in firmware data!')
+                        continue
+                    }
+                    console.log(`[RefData] Processing firmware row: ${row.id}, type=${row.type}`)
+                    const existing = existingMap.get(row.id)
+                    if (existing) {
+                        await existing.update(rec => {
+                            rec.version = row.version || '0.0.0'
+                            rec.type = row.type || 'ble'
+                            rec.locationPath = row.location_path || ''
+                            rec.fileSizeBytes = row.file_size_bytes ?? 0
+                            rec.releaseNotes = row.release_notes
+                            rec.isActive = row.is_active || false
+                            rec.modifiedBy = row.modified_by || 'system'
+                        })
+                    } else {
+                        await collection.create(rec => {
+                            (rec._raw as any).id = row.id // Use Supabase UUID
+                            rec.version = row.version || '0.0.0'
+                            rec.type = row.type || 'ble'
+                            rec.locationPath = row.location_path || ''
+                            rec.fileSizeBytes = row.file_size_bytes ?? 0
+                            rec.releaseNotes = row.release_notes
+                            rec.isActive = row.is_active || false
+                            rec.modifiedBy = row.modified_by || 'system'
+                        })
+                    }
+                } catch (err) {
+                    console.error(`[RefData] Failed to process firmware row ${row?.id}:`, err)
                 }
             }
 
@@ -408,9 +420,11 @@ class ReferenceDataService {
             .fetch()
 
         // Sort by version descending using numeric comparison (handles v0.10.0 > v0.2.0)
-        const sorted = firmwares.sort((a, b) =>
-            b.version.localeCompare(a.version, undefined, { numeric: true, sensitivity: 'base' })
-        )
+        const sorted = firmwares.sort((a, b) => {
+            const versionA = a?.version || '0.0.0'
+            const versionB = b?.version || '0.0.0'
+            return versionB.localeCompare(versionA, undefined, { numeric: true, sensitivity: 'base' })
+        })
 
         console.log(`[RefData] getLatestFirmware(${type}) found:`, sorted.length, sorted[0]?._raw)
         return sorted.length > 0 ? sorted[0] : null

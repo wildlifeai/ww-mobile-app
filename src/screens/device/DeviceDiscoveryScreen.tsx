@@ -237,16 +237,21 @@ export const DeviceDiscoveryScreen = () => {
                                 console.log(`Device ${dbDevice.id} not fully prepared. Redirecting to preparation.`)
                                 Alert.alert(
                                     "Device Not Prepared",
-                                    "This device needs to be prepared before deployment. Redirecting to preparation step.",
+                                    "You cannot deploy a device that has not been prepared/verified.\n\nPlease prepare the device first.",
                                     [
                                         {
-                                            text: "OK", onPress: () => {
+                                            text: "Go to Preparation", onPress: () => {
                                                 (navigation as any).navigate('PrepareAndTest', {
                                                     deviceId: dbDevice.id,
                                                     bleDeviceId: connectedDevice.id,
                                                     nextRoute: 'DeploymentDetailsStep' // Pass next route to auto-navigate after prep
                                                 })
                                             }
+                                        },
+                                        {
+                                            text: "Cancel",
+                                            onPress: () => disconnectDevice(device),
+                                            style: "cancel"
                                         }
                                     ]
                                 )

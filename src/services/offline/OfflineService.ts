@@ -47,6 +47,11 @@ export class OfflineService {
 		// Listen for network changes
 		this.networkUnsubscribe = NetInfo.addEventListener(
 			(state: NetInfoState) => {
+				if (!state) {
+					console.warn("📡 Received undefined network state from NetInfo")
+					return
+				}
+
 				const wasOffline = !this.networkStatus.isConnected
 				this.updateNetworkStatus(state)
 				const isNowOnline = this.networkStatus.isConnected
@@ -72,6 +77,11 @@ export class OfflineService {
 	 * Update internal network status and dispatch to Redux
 	 */
 	private updateNetworkStatus(state: NetInfoState): void {
+		if (!state) {
+			console.warn("📡 updateNetworkStatus called with undefined state")
+			return
+		}
+
 		this.networkStatus = {
 			isConnected: state.isConnected ?? false,
 			type: state.type || "none",

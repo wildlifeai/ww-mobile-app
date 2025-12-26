@@ -55,27 +55,25 @@ export const sampleProjectInputs: Record<string, CreateProjectInput> = {
 		organisation_id: "", // Will be set in tests
 
 		is_baited: false,
-		is_monitoring_marked_individual: false,
-		sampling_design: "Random grid sampling with 500m spacing",
+		is_monitoring_marked_individuals: false,
+		sampling_design_id: 1, // Simple Random
 		website: "https://wildlifesurvey2025.example.com",
 	},
 	tigerMonitoring: {
 		name: "Tiger Monitoring Project",
 		description: "Long-term monitoring of tiger populations",
 		organisation_id: "", // Will be set in tests
-		privacy_level: "private",
 		is_baited: true,
-		is_monitoring_marked_individual: true,
-		sampling_design: "Targeted monitoring of known territories",
+		is_monitoring_marked_individuals: true,
+		sampling_design_id: 5, // Targeted
 	},
 	birdMigration: {
 		name: "Bird Migration Study",
 		description: "Tracking migratory bird patterns through camera traps",
 		organisation_id: "", // Will be set in tests
-		privacy_level: "internal",
 		is_baited: false,
-		is_monitoring_marked_individual: false,
-		sampling_design: "Linear transect sampling along migration routes",
+		is_monitoring_marked_individuals: false,
+		sampling_design_id: 2, // Systematic Random
 	},
 }
 

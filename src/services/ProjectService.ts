@@ -529,7 +529,9 @@ class ProjectService {
 			)
 			.fetchCount()
 
-		const deploymentCount = await model.deployments.fetchCount()
+		const deploymentCount = await database.get('deployments').query(
+			Q.on('device_preparation', 'project_id', model.id)
+		).fetchCount()
 
 		// TODO: Calculate distinct LoRaWAN devices from deployments if needed
 		// For now keeping it 0 to match previous behavior (or could query deployments where device_id != null)

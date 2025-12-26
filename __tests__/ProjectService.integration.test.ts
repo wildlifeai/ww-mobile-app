@@ -72,9 +72,9 @@ describe("ProjectService Integration - Live Backend", () => {
 	})
 
 	describe("Service Methods (Unauthenticated)", () => {
-		it("getUserProjects should fail gracefully without auth", async () => {
+		it("getProjectsForUser should fail gracefully without auth", async () => {
 			try {
-				await ProjectService.getUserProjects(
+				await ProjectService.getProjectsForUser(
 					"00000000-0000-0000-0000-000000000000",
 				)
 			} catch (error) {

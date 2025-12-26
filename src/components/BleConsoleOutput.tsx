@@ -40,20 +40,23 @@ export const BleConsoleOutput: React.FC<Props> = ({ entries }) => {
                 {entries.length === 0 ? (
                     <Text style={styles.emptyText}>No commands yet. Type 'help' or send a command.</Text>
                 ) : (
-                    entries.map((entry) => (
-                        <TouchableOpacity
-                            key={entry.id}
-                            onLongPress={() => copyToClipboard(entry.content)}
-                            activeOpacity={0.8}
-                            style={[styles.entryContainer, styles[entry.type]]}
-                        >
-                            <View style={styles.entryHeader}>
-                                <Text style={styles.timestamp}>{formatTime(entry.timestamp)}</Text>
-                                <Text style={styles.typeLabel}>{entry.type.toUpperCase()}</Text>
-                            </View>
-                            <Text style={styles.content}>{entry.content}</Text>
-                        </TouchableOpacity>
-                    ))
+                    entries.map((entry) => {
+                        if (!entry) return null
+                        return (
+                            <TouchableOpacity
+                                key={entry.id}
+                                onLongPress={() => copyToClipboard(entry.content)}
+                                activeOpacity={0.8}
+                                style={[styles.entryContainer, styles[entry.type]]}
+                            >
+                                <View style={styles.entryHeader}>
+                                    <Text style={styles.timestamp}>{formatTime(entry.timestamp)}</Text>
+                                    <Text style={styles.typeLabel}>{entry.type.toUpperCase()}</Text>
+                                </View>
+                                <Text style={styles.content}>{entry.content}</Text>
+                            </TouchableOpacity>
+                        )
+                    })
                 )}
             </ScrollView>
         </View>

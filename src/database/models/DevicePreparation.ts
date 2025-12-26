@@ -7,7 +7,9 @@ export default class DevicePreparation extends Model {
     @field('device_id') deviceId!: string
     @field('project_id') projectId!: string
     @field('ai_model_id') aiModelId?: string
-    @field('firmware_id') firmwareId?: string
+    @field('ble_firmware_id') bleFirmwareId?: string
+    @field('config_firmware_id') configFirmwareId?: string
+    @field('himax_firmware_id') himaxFirmwareId?: string
     @field('status') status!: string // 'in_progress' | 'completed' | 'cancelled'
     @field('is_deployment_ready') isDeploymentReady!: boolean
 

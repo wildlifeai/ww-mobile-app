@@ -194,7 +194,7 @@ export const getProjectMembers = async (
 					name: name,
 					email: "", // Email might be missing locally
 					role: role.role,
-					granted_at: role.grantedAt.toISOString(),
+					granted_at: (role.grantedAt && !isNaN(role.grantedAt.getTime())) ? role.grantedAt.toISOString() : new Date().toISOString(),
 					granted_by: role.grantedBy,
 					granted_by_name: "Unknown" // We could fetch this too but let's keep it simple
 				}

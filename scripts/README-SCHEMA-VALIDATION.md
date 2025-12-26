@@ -62,7 +62,7 @@ npm run prebuild:check
 - Missing columns that WatermelonDB expects from Sup abase
 - Incorrect timestamp column types
 
-**Action**: Update `src/database/schema.ts` to fix the errors.
+**Action**: Run `npm run schema:generate` to automatically update `src/database/schema.ts` with correct types.
 
 ### Warnings (Informational)
 
@@ -115,7 +115,9 @@ npm run sync:from-live:cloud-dev
 # Review changes
 git diff src/types/database.types.ts
 
-# Update schema.ts if needed based on validation errors
+# Update schema.ts automatically
+npm run schema:generate
+
 # Then re-validate
 npm run schema:validate:live:cloud-dev
 ```
@@ -142,9 +144,10 @@ npm run sync:from-live:cloud-dev
 
 # 2. Review validation output
 
-# 3. Update src/database/schema.ts based on errors/warnings
+# 3. Update src/database/schema.ts automatically
+npm run schema:generate
 
-# 4. Verify fixes
+# 4. Verify fix matches
 npm run schema:validate:live:cloud-dev
 
 # 5. Commit changes

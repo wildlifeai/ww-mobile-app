@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
-import { StyleSheet, View, Alert } from 'react-native'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { StyleSheet, View, Alert, Platform, KeyboardAvoidingView } from 'react-native'
 import { useAppSelector } from '../../redux'
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
+import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navigation/native'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWButton } from '../../components/ui/WWButton'
 import { RootStackParamList } from '../../navigation'
@@ -25,6 +25,8 @@ import { HelpDialog } from '../../components/ui/HelpDialog'
 
 type DeploymentDetailsRouteProp = RouteProp<RootStackParamList, 'DeploymentDetailsStep'>;
 
+const INITIALIZATION_GUARD_TIMEOUT = 2000;
+
 export const DeploymentDetailsStep = () => {
     const navigation = useNavigation()
     const route = useRoute<DeploymentDetailsRouteProp>()
@@ -33,7 +35,7 @@ export const DeploymentDetailsStep = () => {
     const { devicePreparationId, deviceId, bleDeviceId } = route.params || {}
 
     // BLE Hooks
-    const { getUtc, setUtc, setDeploymentIdAsOps, disconnectDevice, enableCamera, runDisconnect, getStatus, setMotionDetectInterval, disableMotionDetect, setTimelapseInterval, disableTimelapse } = useBleCommands()
+    const { getUtc, setUtc, setDeploymentIdAsOps, disconnectDevice, enableCamera, runDisconnect, getStatus, setMotionDetectInterval, disableMotionDetect, setTimelapseInterval, disableTimelapse, flashLed, setOperationalParam, setGpsLocation } = useBleCommands()
     const { isBleConnecting } = useBleActions()
 
     const devices = useAppSelector(state => state.devices)
@@ -50,7 +52,8 @@ export const DeploymentDetailsStep = () => {
         location: {
             latitude: 0,
             longitude: 0,
-            altitude: 0
+            altitude: 0,
+            accuracy: 0
         },
         testImagePath: undefined as string | undefined
     })
@@ -61,6 +64,19 @@ export const DeploymentDetailsStep = () => {
     const [captureMethodName, setCaptureMethodName] = useState<string>('')
     const [sensitivityLabel, setSensitivityLabel] = useState<string>('')
     const [timeCheckStatus, setTimeCheckStatus] = useState<'pending' | 'ok' | 'correcting' | 'failed'>('pending')
+
+    // Connection Guard Refs
+    const isNavigatingAway = useRef(false)
+    const isStartDeploymentInProgress = useRef(false)
+    const isInitializing = useRef(true)
+
+    // Mark initialization as done after mount
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            isInitializing.current = false
+        }, INITIALIZATION_GUARD_TIMEOUT)
+        return () => clearTimeout(timer)
+    }, [])
 
     useEffect(() => {
         if (devicePreparationId) {
@@ -96,7 +112,10 @@ export const DeploymentDetailsStep = () => {
                 [
                     {
                         text: 'Cancel',
-                        onPress: () => navigation.goBack(),
+                        onPress: () => {
+                            isNavigatingAway.current = true
+                            navigation.goBack()
+                        },
                         style: 'cancel'
                     },
                     {
@@ -116,6 +135,23 @@ export const DeploymentDetailsStep = () => {
             validateAndCorrectTime(timeValue)
         }
     }, [deviceConfig?.[CommandNames.getutc]?.value])
+
+
+    // Robust Connection Lost Alert
+    useEffect(() => {
+        if (!isInitializing.current && !submitting && bleDevice && !bleDevice.connected && !isNavigatingAway.current && !isStartDeploymentInProgress.current) {
+            Alert.alert(
+                'Connection Lost',
+                'Device disconnected unexpectedly during deployment setup.',
+                [{
+                    text: 'OK', onPress: () => {
+                        isNavigatingAway.current = true
+                        navigation.goBack()
+                    }
+                }]
+            )
+        }
+    }, [bleDevice?.connected, submitting])
 
     const validateAndCorrectTime = async (timeString: string) => {
         try {
@@ -193,6 +229,7 @@ export const DeploymentDetailsStep = () => {
         }
 
         setSubmitting(true)
+        isStartDeploymentInProgress.current = true // Suppress disconnect alerts
 
         // 1. Final Time Check
         console.log('[Deployment] Performing final time check...')
@@ -211,11 +248,13 @@ export const DeploymentDetailsStep = () => {
 
                 // Location & Metadata
                 locationName: formState.locationName || 'User Location',
-                cameraLocationDescription: formState.locationDescription,
+                locationDescription: formState.locationDescription,
                 cameraHeight: formState.cameraHeight ? parseFloat(formState.cameraHeight) : undefined,
 
                 latitude: formState.location.latitude,
                 longitude: formState.location.longitude,
+                altitude: formState.location.altitude,
+                accuracy: formState.location.accuracy,
 
                 // Pass capture method ID from project
                 captureMethodId: project.capture_method_id,
@@ -224,27 +263,59 @@ export const DeploymentDetailsStep = () => {
                 cameraImagePaths: [], // Photos deferred
             })
 
+
             // 3. Send Deployment ID to Device via BLE
             console.log('[Deployment] Sending Deployment ID to device:', newDeployment.id)
-            let deploymentIdSet = false
-            let attempts = 0
-            while (!deploymentIdSet && attempts < 3) {
+            try {
+                // Try setting OP20 first to see if device supports it (Feature Detection)
+                console.log('[Deployment] Testing if device supports extended OPs (OP20)...')
                 try {
-                    attempts++
-                    await setDeploymentIdAsOps(bleDevice, newDeployment.id)
-                    console.log('[Deployment] Deployment ID set successfully on attempt', attempts)
-                    deploymentIdSet = true
-                } catch (bleError) {
-                    console.error(`[Deployment] Failed to set Deployment ID (attempt ${attempts}):`, bleError)
-                    if (attempts < 3) await new Promise(r => setTimeout(r, 1000)) // Wait 1s between retries
-                }
-            }
+                    await setOperationalParam(bleDevice, 20, '0') // Dummy write
+                    // If successful, proceed to write actual ID
+                    console.log('[Deployment] Extended OPs supported. Writing Deployment ID...')
 
-            if (!deploymentIdSet) {
-                Alert.alert(
-                    'Warning',
-                    'Deployment created locally, but failed to send Deployment ID to the device. The device may not tag images correctly.\n\nPlease verify connection and try "Engineer Device" > "Set Deployment ID" manually if needed.'
-                )
+                    // Delay to allow device to process
+                    await new Promise(r => setTimeout(r, 500))
+
+                    let deploymentIdSet = false
+                    let attempts = 0
+                    while (!deploymentIdSet && attempts < 3) {
+                        try {
+                            attempts++
+                            await setDeploymentIdAsOps(bleDevice, newDeployment.id)
+                            console.log('[Deployment] Deployment ID set successfully on attempt', attempts)
+                            deploymentIdSet = true
+                        } catch (bleError) {
+                            console.error(`[Deployment] Failed to set Deployment ID (attempt ${attempts}):`, bleError)
+                            if (attempts < 3) await new Promise(r => setTimeout(r, 1000))
+                        }
+                    }
+                    if (!deploymentIdSet) {
+                        // Fallback warning only if we knew it SHOULD support it but failed
+                        console.warn('[Deployment] Failed to set ID despite OP support.')
+                        Alert.alert(
+                            'Warning',
+                            'Deployment created locally, but failed to send Deployment ID to the device. The device may not tag images correctly.\n\nPlease verify connection and try "Engineer Device" > "Set Deployment ID" manually if needed.'
+                        );
+                    }
+                } catch (opError) {
+                    console.log('[Deployment] Device does not support extended OPs (OP20 write failed). Falling back to SET_GPS...')
+
+                    // Fallback to SET_GPS command for older firmware
+                    try {
+                        const { latitude, longitude, altitude } = formState.location
+                        if (latitude || longitude) {
+                            await setGpsLocation(bleDevice, latitude, longitude, altitude)
+                            console.log('[Deployment] GPS location set successfully as fallback.')
+                        } else {
+                            console.warn('[Deployment] No valid GPS coordinates available for fallback.')
+                        }
+                    } catch (gpsError) {
+                        console.error('[Deployment] GPS fallback failed:', gpsError)
+                    }
+                }
+            } catch (e) {
+                console.error('[Deployment] Error during Deployment ID setup:', e)
             }
 
             // 3.5 Configure Capture Method
@@ -278,6 +349,14 @@ export const DeploymentDetailsStep = () => {
                 console.error('[Deployment] Failed to enable camera:', e)
             }
 
+            // 4.5 Flash Green LED (Success Confirmation)
+            console.log('[Deployment] Flashing Green LED...')
+            try {
+                await flashLed(bleDevice, 'green', 1000, 5) // 5x 1s flashes
+            } catch (e) {
+                console.warn('[Deployment] Failed to flash LED:', e)
+            }
+
             // 5. Disconnect
             console.log('[Deployment] Disconnecting device...')
             try {
@@ -289,12 +368,14 @@ export const DeploymentDetailsStep = () => {
             }
 
             // 4. Navigate back to Deployments list
+            isNavigatingAway.current = true
             // @ts-ignore - navigation types need to be strict but for now this works
             navigation.navigate('Home', { screen: 'Deployments' })
 
         } catch (error) {
             console.error('Deployment failed:', error)
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
+            isStartDeploymentInProgress.current = false // Re-enable alerts on failure
         } finally {
             setSubmitting(false)
         }
@@ -314,100 +395,103 @@ export const DeploymentDetailsStep = () => {
         setHelpVisible(true)
     }
 
-    // ... (rest of logic)
-
     return (
         <WWScreenView>
-            <View style={styles.container}>
-                {/* Project & Configuration Header */}
-                <Card style={styles.card}>
-                    <Card.Title
-                        title="Project settings"
-                        left={(props) => <WWIcon {...props} source="tune" />}
-                        right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Project settings', 'Project and Capture Method are set during Project Creation and Device Preparation. To change these, you must restart the preparation.')}>Help</Button>}
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+                <View style={styles.container}>
+                    {/* Project & Configuration Header */}
+                    <Card style={styles.card}>
+                        <Card.Title
+                            title="Project settings"
+                            left={(props) => <WWIcon {...props} source="tune" />}
+                            right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Project settings', 'Project and Capture Method are set during Project Creation and Device Preparation. To change these, you must restart the preparation.')}>Help</Button>}
+                        />
+                        <Card.Content>
+                            <View style={styles.infoRow}>
+                                <Text variant="labelMedium">Project:</Text>
+                                <Text variant="bodyLarge">{project ? project.name : 'Loading...'}</Text>
+                            </View>
+                            <View style={styles.infoRow}>
+                                <Text variant="labelMedium">Capture Method:</Text>
+                                <Text variant="bodyLarge">{captureMethodName || 'Loading...'}</Text>
+                            </View>
+                            {project?.capture_method_id === 1 && sensitivityLabel ? (
+                                <View style={styles.infoRow}>
+                                    <Text variant="labelMedium">Motion Sensitivity:</Text>
+                                    <Text variant="bodyLarge">{sensitivityLabel}</Text>
+                                </View>
+                            ) : project?.capture_method_id === 2 && project?.timelapse_interval_seconds ? (
+                                <View style={styles.infoRow}>
+                                    <Text variant="labelMedium">Time-lapse Interval:</Text>
+                                    <Text variant="bodyLarge">{project.timelapse_interval_seconds}s</Text>
+                                </View>
+                            ) : null}
+
+                            <Button
+                                mode="outlined"
+                                onPress={() => {
+                                    isNavigatingAway.current = true
+                                        ; (navigation as any).navigate('PrepareAndTest', {
+                                            deviceId,
+                                            bleDeviceId,
+                                            nextRoute: 'DeploymentDetailsStep'
+                                        })
+                                }}
+                                style={{ marginTop: 12 }}
+                                icon="cog"
+                            >
+                                Edit Project Settings
+                            </Button>
+                        </Card.Content>
+                    </Card>
+
+                    <LoRaWANSection
+                        device={bleDevice}
+                        onShowHelp={showHelp}
                     />
-                    <Card.Content>
-                        <View style={styles.infoRow}>
-                            <Text variant="labelMedium">Project:</Text>
-                            <Text variant="bodyLarge">{project ? project.name : 'Loading...'}</Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <Text variant="labelMedium">Capture Method:</Text>
-                            <Text variant="bodyLarge">{captureMethodName || 'Loading...'}</Text>
-                        </View>
-                        {project?.capture_method_id === 1 && sensitivityLabel ? (
-                            <View style={styles.infoRow}>
-                                <Text variant="labelMedium">Motion Sensitivity:</Text>
-                                <Text variant="bodyLarge">{sensitivityLabel}</Text>
-                            </View>
-                        ) : project?.capture_method_id === 2 && project?.timelapse_interval_seconds ? (
-                            <View style={styles.infoRow}>
-                                <Text variant="labelMedium">Time-lapse Interval:</Text>
-                                <Text variant="bodyLarge">{project.timelapse_interval_seconds}s</Text>
-                            </View>
-                        ) : null}
 
-                        <Button
-                            mode="outlined"
-                            onPress={() => (navigation as any).navigate('PrepareAndTest', {
-                                deviceId,
-                                bleDeviceId,
-                                nextRoute: 'DeploymentDetailsStep'
-                            })}
-                            style={{ marginTop: 12 }}
-                            icon="cog"
+                    <CameraViewSection
+                        device={bleDevice}
+                        onImageCaptured={(path: string) => setFormState(prev => ({ ...prev, testImagePath: path }))}
+                        onShowHelp={showHelp}
+                    />
+
+                    <LocationSection
+                        onLocationChange={(loc) => setFormState(prev => ({ ...prev, location: loc }))}
+                        onShowHelp={showHelp}
+                    />
+
+                    <MetadataSection
+                        name={formState.name}
+                        notes={formState.notes}
+                        locationDescription={formState.locationDescription}
+                        cameraHeight={formState.cameraHeight}
+                        onNameChange={(name: string) => setFormState(prev => ({ ...prev, name }))}
+                        onNotesChange={(notes: string) => setFormState(prev => ({ ...prev, notes }))}
+                        onLocationDescriptionChange={(text: string) => setFormState(prev => ({ ...prev, locationDescription: text }))}
+                        onCameraHeightChange={(text: string) => setFormState(prev => ({ ...prev, cameraHeight: text }))}
+                        onShowHelp={showHelp}
+                    />
+
+                    <View style={styles.footer}>
+                        <WWButton
+                            mode="contained"
+                            onPress={handleStartDeployment}
+                            loading={submitting}
+                            style={styles.deployButton}
                         >
-                            Edit Project Settings
-                        </Button>
-                    </Card.Content>
-                </Card>
-
-                <LoRaWANSection
-                    device={bleDevice}
-                    onShowHelp={showHelp}
-                />
-
-                <CameraViewSection
-                    device={bleDevice}
-                    onImageCaptured={(path: string) => setFormState(prev => ({ ...prev, testImagePath: path }))}
-                    onShowHelp={showHelp}
-                />
-
-                <LocationSection
-                    onLocationChange={(loc) => setFormState(prev => ({ ...prev, location: loc }))}
-                    onShowHelp={showHelp}
-                />
-
-                <MetadataSection
-                    name={formState.name}
-                    notes={formState.notes}
-                    locationDescription={formState.locationDescription}
-                    cameraHeight={formState.cameraHeight}
-                    onNameChange={(name: string) => setFormState(prev => ({ ...prev, name }))}
-                    onNotesChange={(notes: string) => setFormState(prev => ({ ...prev, notes }))}
-                    onLocationDescriptionChange={(text: string) => setFormState(prev => ({ ...prev, locationDescription: text }))}
-                    onCameraHeightChange={(text: string) => setFormState(prev => ({ ...prev, cameraHeight: text }))}
-                    onShowHelp={showHelp}
-                />
-
-                <View style={styles.footer}>
-                    <WWButton
-                        mode="contained"
-                        onPress={handleStartDeployment}
-                        loading={submitting}
-                        style={styles.deployButton}
-                    >
-                        Start Deployment
-                    </WWButton>
+                            Start Deployment
+                        </WWButton>
+                    </View>
                 </View>
-            </View>
 
-            <HelpDialog
-                visible={helpVisible}
-                title={helpTitle}
-                content={helpContent}
-                onDismiss={() => setHelpVisible(false)}
-            />
+                <HelpDialog
+                    visible={helpVisible}
+                    title={helpTitle}
+                    content={helpContent}
+                    onDismiss={() => setHelpVisible(false)}
+                />
+            </KeyboardAvoidingView>
         </WWScreenView>
     )
 }

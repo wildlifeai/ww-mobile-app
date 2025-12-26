@@ -10,84 +10,79 @@ In the app data model, a Deployment links:
 - 📅 A **Time Period** (Start Date to End Date)
 - ⚙️ **Configuration** (Motion sensitivity, Timelapse interval)
 
-## Prerequisites
+---
+
+## Part 1: Starting a Deployment
+
+### Prerequisites
 
 Before starting a deployment, ensure you have:
 - [ ] A **Prepared Device** (See [02-DEVICE-PREPARATION.md](./02-DEVICE-PREPARATION.md))
 - [ ] The device physically with you
 - [ ] Good GPS visibility (clear view of the sky)
+- [ ] Your phone's GPS enabled
 - [ ] Physical installation gear (straps, mounts)
 
-## Step-by-Step Guide
+### Step-by-Step Guide
 
-### 1. Start Deployment Wizard
+#### 1. Start Deployment Wizard
 
 1. Open the **Wildlife Watcher** app.
 2. Navigate to the **Maps** tab.
 3. Tap the **"New Deployment"** FAB (Plus icon).
-4. Select **"Deployment"** mode.
 
-### 2. Device Discovery & Connection
+#### 2. Device Discovery & Connection
 
 The app scans for nearby devices.
-1. Holds your phone close to the camera.
+1. Hold your phone close to the WW camera.
 2. Select the target device from the list.
    - *Tip*: Verify the Device ID matches the label on the unit.
 3. The app establishes a BLE connection.
 
-### 3. Location Capture
+**Smart Routing Logic:**
+- If device is **already deployed**: App warns and offers to end current deployment
+- If device is **not prepared**: App redirects to preparation flow with option to continue to deployment after
+- If device is **prepared and ready**: Proceeds to deployment details
 
-Accurate geolocation is critical for data analysis.
-1. The app requests high-accuracy GPS from the phone.
-2. Wait for the accuracy to settle (Green indicator).
+#### 3. Location Capture
+
+Accurate geolocation is critical for data analysis. The app captures:
+1. **Latitude & Longitude**: High-accuracy GPS from the phone.
+2. **Altitude**: Height above sea level.
+3. **Accuracy**: GPS precision estimate (wait for Green indicator).
+ 
+**Tip**: Wait for the accuracy to settle (Green indicator) and ideally reach below 5-10 meters for optimal data quality.
 3. **Confirm Location**.
 
-### 4. Configuration Check
+#### 4. Deployment Details
 
-Review the settings applied during preparation:
-- **Project**: Confirm the correct project is selected.
-- **Capture Method**: Automatically inherited from the Project settings (e.g., Motion Detection or Timelapse).
-- **Validation**: The app ensures the configuration matches the project requirements.
+Enter additional deployment information:
+- **Deployment Name**: Descriptive name for this deployment location
+- **Location Description**: Optional notes about the specific site
+- **Camera Height**: Height of camera from ground (in centimeters)
+- **Camera View Images**: Optional photos showing the camera's field of view
+- **Start Comments**: Any notes about deployment conditions
 
-### 5. Final Camera Test (On-Site)
+#### 5. Configuration Review
 
-One last check to ensure the camera view is not obstructed by leaves or branches.
-1. Mount the camera in its final position.
-2. Tap **"Test Camera View"**.
-3. Review the received image. 
-   - *Is the angle right?*
-   - *Is the view clear?*
+Review the settings automatically inherited from the project:
+- **Project**: Confirms the correct project is selected
+- **Capture Method**: Inherited from project (Motion Detection, Timelapse, or Both)
+- **Activity Sensitivity**: Motion detection threshold (if applicable)
+- **Timelapse Interval**: Photo interval in seconds (if applicable)
+- **AI Model**: Detection model assigned to this project
 
-### 6. Sync Device Time
+These settings are **snapshotted** to the deployment record and stored in `capture_method_id`, `activity_detection_sensitivity_id`, and `timelapse_interval_seconds` fields.
 
-The device's internal clock is synchronized with the phone to ensure accurate photo timestamps.
-1. The app reads the current time from the phone.
-2. Sends `setUtc` command with ISO 8601 timestamp (e.g., `2025-12-18T16:27:00.000Z`).
-3. This ensures metadata accuracy for data analysis.
+#### 6. Final Device Time Check
 
-### 7. Sync Deployment ID
+The device's internal clock is synchronized with the phone to ensure accurate photo timestamps:
+1. App sends `getutc` command to verify device time
+2. Checks if device time is within acceptable threshold
+3. If needed, sends `setutc` command with current UTC timestamp in ISO 8601 format
+4. Validates the update was successful
 
-To ensure photos can be linked back to this specific deployment, the app syncs the Deployment Unique ID (UUID) to the device.
-1. The app generates a 36-character UUID for the deployment.
-2. **Splitting Process**: The UUID is split into 8 chunks of 4 characters.
-3. **Transmission**: The app sends 8 separate "Set Operational Parameter" commands (indices 20-27) to the device. This ensures compatibility with all phones, including those with limited Bluetooth data packet size (MTU).
-4. **Retry Logic**: The app retries up to 3 times with 1-second delays if transmission fails.
-
-### 8. Configure Capture Method
-
-The device is configured according to the project's capture requirements.
-
-**For Activity Detection Projects:**
-- Sets motion detection interval to 1000ms
-- Disables timelapse mode
-
-**For Timelapse Projects:**
-- Sets timelapse interval (from project settings, default 15 minutes)
-- Disables motion detection
-
-This ensures the device captures data exactly as specified by the project configuration.
-
-### 9. Create Deployment Record
+#### 7. Create Deployment Record
 
 The app saves the deployment to the local database **before** sending commands to the device. This ensures:
 - If BLE commands fail, you still have a record of the deployment attempt
@@ -96,56 +91,276 @@ The app saves the deployment to the local database **before** sending commands t
 
 The record includes:
 - Deployment UUID
-- Device ID
-- Project ID
-- Location coordinates
-- Capture method configuration
-- Status: "Active"
+- Device Preparation ID (links to preparation record)
+- **Location Data**: GPS coordinates, altitude, accuracy
+- **Metadata**: Location name, description, camera height (converted to meters)
+- **Configuration Snapshot**: capture_method_id, activity_detection_sensitivity_id, timelapse_interval_seconds
+- **Timestamps**: deployment_start, created_at, updated_at
+- **Audit**: setup_by (user ID)
+- **Status**: deployment_status_id = 1 (Active/Deployed)
 
-### 10. Configure Device via BLE
+#### 8. Sync Deployment ID to Device
 
-Now that the deployment exists, the app configures the physical device:
+To ensure photos can be linked back to this specific deployment:
+1. **Extended OP Check**: App first tests if device supports OP 20+ by sending `AI setop 20 0`
+2. **UUID Splitting**: The 128-bit UUID is parsed into 8 x 16-bit integers
+3. **Transmission**: App sends 8 separate `AI setop <index> <value>` commands (OP 20-27)
+4. **Retry Logic**: Up to 3 attempts with 1-second delays if transmission fails
+5. **Validation**: Each command is logged and verified
 
-1. **Sends Deployment ID** (8x `setOperationalParam` OP20-27, retries 3x if needed)
-2. **Configures Capture Method**:
-   - Activity Detection: Sets motion interval to 1000ms, disables timelapse
-   - Timelapse: Sets timelapse interval (from project), disables motion
-3. **Enables Camera** (sends `ENABLE_CAMERA` command)
-4. **Disconnects Gracefully** (sends `disconnect` command)
+**Example:**
+```
+Deployment ID: 11f59ca9-5aca-4dd3-a101-92205ca07384
+Parsed to: [4597, 40105, 23242, 19923, 41217, 37408, 23712, 29572]
+Sent as:
+  AI setop 20 4597
+  AI setop 21 40105
+  ...
+  AI setop 27 29572
+```
+
+#### 9. Configure Capture Method
+
+The device is configured according to the project's capture requirements.
+
+**For Activity Detection:**
+- Sets motion detection interval: `AI setop 11 1000` (1000ms)
+- Disables timelapse: `AI setop 7 0`
+
+**For Timelapse:**
+- Sets timelapse interval: `AI setop 7 <seconds>` (from project config)
+- Disables motion detection: `AI setop 11 0`
+
+**For Both (Activity + Timelapse):**
+- Sets motion detection interval: `AI setop 11 1000`
+- Sets timelapse interval: `AI setop 7 <seconds>`
+
+#### 10. Enable Camera & Disconnect
+
+1. **Enable Camera**: Sends `AI setop 10 1` to activate the camera and AI system
+2. **Visual Confirmation**: Flashes green LED (2 times, 500ms, 1000ms duration)
+3. **Disconnect**: Sends `dis` command to gracefully close BLE connection
 
 The device enters low-power monitoring state and begins capturing according to the configured method.
 
 ### Success State
 
-The device is now "Deployed". It will appear as a **Green Camera Icon** on the map.
+The device is now **"Deployed"**. It will appear as a **Green Camera Icon** on the map with status "Active".
+
+---
+
+## Part 2: Ending a Deployment
+
+### Prerequisites
+
+- [ ] Device is within BLE range
+- [ ] You have retrieved the physical device from the field
+- [ ] Optional: SD card contents backed up
+
+### Step-by-Step Guide
+
+#### 1. Initiate End Deployment
+
+**From Maps Screen:**
+1. Tap on the deployed device marker
+2. Select "End Deployment"
+
+**From Devices List:**
+1. Navigate to Devices screen
+2. Find device showing "Device is deployed: [Name]"
+3. Tap "End Deployment" button
+
+**From Deployment Details:**
+1. Navigate to the specific deployment
+2. Tap "End Deployment" action
+
+#### 2. Device Discovery & Connection
+
+1. App scans for nearby devices
+2. Select the deployed device from the list
+3. App establishes BLE connection
+
+**Validation:**
+- App checks if device has an **active deployment** in the database
+- If NO active deployment found: Shows blocking alert "This device is not part of an active deployment"
+- If active deployment found: Proceeds to end deployment screen
+
+#### 3. Confirm Deployment to End
+
+Review screen shows:
+- **Deployment Name**
+- **Deployment Start Date**
+- **Duration** (calculated from start to now)
+
+Enter optional **Retrieval Notes**:
+- Condition of device (battery level, damage, etc.)
+- SD card status (full, corrupted, etc.)
+- Reason for ending (project complete, device failure, relocation, etc.)
+
+#### 4. End Deployment Process
+
+When user taps "End Deployment", the app executes the following sequence:
+
+**Step 1: Disable Camera**
+- Sends `AI setop 10 0` to stop camera and AI system
+- Prevents further photo captures
+- Status: "Disabling Camera..."
+
+**Step 2: Clear Deployment ID**
+- Sends 8 commands to clear OPs 20-27: `AI setop <index> 0`
+- Wipes the deployment UUID from device memory
+- Retry logic: Up to 3 attempts with 1-second delays
+- If fails: Shows warning but continues (user must manually reset device)
+- Status: "Clearing Config..."
+
+**Step 3: Clear GPS Location (Legacy Support)**
+- Sends `setgps ""` to reset GPS data for next deployment
+- Ensures old location data doesn't persist
+- Non-blocking: Logs warning if fails but continues
+- Status: "Checking Firmware..."
+
+**Step 4: Update Database**
+- Sets `deployment_end` to current timestamp
+- Sets `ended_by` to current user ID
+- Stores `end_deployment_comments` (retrieval notes)
+- Updates `deployment_status_id` to ended/retrieved status
+- Marks device as available for re-preparation
+- Status: "Updating Record..."
+
+**Step 5: Visual Confirmation Sequence**
+LED sequence provides clear visual feedback that deployment has ended:
+1. Flash **Green** LED (1 second, 1 time)
+2. Wait 100ms
+3. Flash **Blue** LED (1 second, 1 time)
+4. Wait 100ms
+5. Flash **Red** LED (1 second, 1 time)
+6. Wait 100ms
+7. Flash **Green** LED (4 seconds, 1 time) - Final confirmation
+8. Total duration: ~7.3 seconds
+- Status: "Confirming..."
+
+**Step 6: Disconnect**
+- Sends `dis` command to device
+- Closes BLE connection gracefully
+- Status: "Disconnecting..."
+
+#### 5. Success Confirmation
+
+App shows success alert:
+```
+Deployment Ended
+The deployment has been successfully ended.
+[View Details]
+```
+
+Tapping "View Details" navigates to the deployment record showing:
+- Complete deployment history
+- Start and end dates
+- All metadata and photos
+- Retrieval notes
+
+### Post-Deployment State
+
+**Device Status:**
+- Shows as **"Last deployment: [Name]"** on device card
+- Ready for re-preparation for next deployment
+- GPS and configuration data cleared
+
+**Deployment Record:**
+- Status changed to "Ended" or "Retrieved"
+- End timestamp recorded
+- Available for data export and analysis
+- Photos can still be associated via deployment ID
 
 ---
 
 ## Technical Flow Reference
 
-| Step | Action | Technical Detail |
-|------|--------|------------------|
-| 1 | Discovery | Scans for `ServiceUUID` match |
-| 2 | Connect | Connects & bonds BLE |
-| 3 | Location | Uses `expo-location` (High Accuracy) |
-| 4 | UTC Sync | Sends `setUtc` with ISO timestamp |
-| 5 | ID Sync | Sends 8x `setOperationalParam` (OP20-27), retries 3x |
-| 6 | Capture Config | Sends motion (1000ms) OR timelapse (project interval) |
-| 7 | Deploy | Sends `enableCamera` |
-| 8 | Disconnect | Sends `disconnect` command |
-| 9 | Persist | Creates `Deployment` with `capture_method_id` in WatermelonDB |
-| 10 | Sync | `SupabaseSyncService` pushes to Cloud |
+### Start Deployment Flow
+
+| Step | Action | BLE Commands | Database Operations |
+|------|--------|--------------|---------------------|
+| 1 | Discovery | BLE scan for service UUID | Check device exists in DB |
+| 2 | Validation | - | Verify device is prepared |
+| 3 | Location | - | Capture GPS via expo-location |
+| 4 | Time Check | `getutc`, `setutc [timestamp]` | - |
+| 5 | DB Create | - | Create deployment record with snapshots |
+| 6 | ID Sync | `AI setop 20 [value]` × 8 (retry 3x) | - |
+| 7 | Configure | Activity: `AI setop 11 1000`, `AI setop 7 0` | - |
+| | | Timelapse: `AI setop 7 [secs]`, `AI setop 11 0` | - |
+| 8 | Enable | `AI setop 10 1` | - |
+| 9 | Confirm | `flashg 2 500 1000` | - |
+| 10 | Disconnect | `dis` | Mark device as deployed |
+| 11 | Sync | - | Push to Supabase via SupabaseSyncService |
+
+### End Deployment Flow
+
+| Step | Action | BLE Commands | Database Operations |
+|------|--------|--------------|---------------------|
+| 1 | Validation | - | Check device has active deployment |
+| 2 | Disable | `AI setop 10 0` | - |
+| 3 | Clear ID | `AI setop 20 0` × 8 (retry 3x) | - |
+| 4 | Clear GPS | `setgps ""` | - |
+| 5 | DB Update | - | Set deployment_end, ended_by, comments |
+| 6 | LED Sequence | `flashg 1 1000`, `flashb 1 1000`, `flashr 1 1000`, `flashg 1 4000` | - |
+| 7 | Disconnect | `dis` | Mark device as available |
+| 8 | Sync | - | Push to Supabase via SupabaseSyncService |
+
+---
 
 ## Troubleshooting
 
-### "GPS Accuracy Too Low"
+### Start Deployment Issues
+
+**"GPS Accuracy Too Low"**
 - **Cause**: Weak GPS signal (under canopy/dense trees).
 - **Fix**: Move to a clearing to get a fix, then return to the deployment site.
 
-### "Device Not Found"
+**"Device Not Found"**
 - **Cause**: Device is asleep or battery dead.
 - **Fix**: Wake the device (magnet swipe or button press) and rescan.
 
-### "Write Failed"
+**"Device Not Prepared"**
+- **Cause**: Device hasn't completed preparation checks.
+- **Fix**: Go through preparation flow first (see [02-DEVICE-PREPARATION.md](./02-DEVICE-PREPARATION.md)).
+
+**"Failed to Set Deployment ID"**
+- **Cause**: BLE connection unstable or device doesn't support extended OPs.
+- **Fix**: Keep phone within 1 meter. Retry. If persistent, check device firmware version.
+
+**"Write Failed"**
 - **Cause**: BLE connection unstable.
 - **Fix**: Keep phone within 1 meter of the device. Retry the step.
+
+### End Deployment Issues
+
+**"No Active Deployment"**
+- **Cause**: Device is not currently deployed, or deployment already ended.
+- **Fix**: Verify correct device. Check deployment status in Deployments list.
+
+**"Failed to Clear Deployment ID"**
+- **Cause**: BLE write failure or device unresponsive.
+- **Fix**: Retry process. If continues to fail, manually reset device using Engineer Console.
+
+**"GPS Clear Failed"**
+- **Cause**: Legacy firmware or BLE timeout.
+- **Impact**: Non-critical. GPS will be overwritten on next deployment.
+- **Fix**: Can be ignored, or manually clear via Engineer Console: `setgps ""`
+
+**"LED Sequence Not Visible"**
+- **Cause**: Device LED damaged or BLE commands not reaching device.
+- **Impact**: Non-critical. Deployment is still ended in database.
+- **Fix**: Verify physically that deployment was ended. Check device status in app.
+
+---
+
+## Related Documentation
+
+- [Device Preparation](./02-DEVICE-PREPARATION.md) - Must be completed before deployment
+- [Offline Architecture](./03-OFFLINE-FIRST-ARCHITECTURE.md) - How data syncs work
+- [BLE Architecture Guide](../ble-architecture-guide.md) - Complete BLE command reference
+
+---
+
+**Last Updated**: December 2025  
+**Maintained By**: Wildlife Watcher Development Team
