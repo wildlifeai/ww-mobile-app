@@ -147,7 +147,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                 {/* Device & Configuration Card */}
                 <Card style={styles.card}>
                     <Card.Title
-                        title="Device & Configuration"
+                        title="Project settings"
                         left={(props) => <WWIcon {...props} source="camera" size={24} />}
                     />
                     <Card.Content>
@@ -164,12 +164,20 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                                     </WWText>
                                 </View>
                             )}
-                            {deployment.activityDetectionSensitivityId && (
+                            {deployment.captureMethodId === 1 && deployment.activityDetectionSensitivityId && (
                                 <View style={styles.infoRow}>
                                     <WWText variant="labelMedium" style={styles.infoLabel}>Sensitivity:</WWText>
                                     <WWText variant="bodyMedium">
                                         {deployment.activityDetectionSensitivityId === 1 ? 'Low' :
                                             deployment.activityDetectionSensitivityId === 2 ? 'Medium' : 'High'}
+                                    </WWText>
+                                </View>
+                            )}
+                            {deployment.captureMethodId === 2 && deployment.timelapseIntervalSeconds && (
+                                <View style={styles.infoRow}>
+                                    <WWText variant="labelMedium" style={styles.infoLabel}>Interval:</WWText>
+                                    <WWText variant="bodyMedium">
+                                        {deployment.timelapseIntervalSeconds}s
                                     </WWText>
                                 </View>
                             )}

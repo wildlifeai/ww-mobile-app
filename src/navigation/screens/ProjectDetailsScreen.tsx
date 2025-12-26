@@ -147,14 +147,16 @@ export const ProjectDetailsScreen = () => {
 
 	// Determine if Motion Detection or Time-lapse is selected
 	const isMotionDetection = useMemo(() => {
-		const method = captureMethods?.find(cm => cm.id.toString() === selectedCaptureMethodId)
+		const methodId = isEditMode ? selectedCaptureMethodId : project?.capture_method_id?.toString()
+		const method = captureMethods?.find(cm => cm.id.toString() === methodId)
 		return method?.value === "Motion Detection" || method?.value === "activityDetection"
-	}, [captureMethods, selectedCaptureMethodId])
+	}, [captureMethods, selectedCaptureMethodId, isEditMode, project?.capture_method_id])
 
 	const isTimeLapse = useMemo(() => {
-		const method = captureMethods?.find(cm => cm.id.toString() === selectedCaptureMethodId)
+		const methodId = isEditMode ? selectedCaptureMethodId : project?.capture_method_id?.toString()
+		const method = captureMethods?.find(cm => cm.id.toString() === methodId)
 		return method?.value === "Time-lapse" || method?.value === "timeLapse"
-	}, [captureMethods, selectedCaptureMethodId])
+	}, [captureMethods, selectedCaptureMethodId, isEditMode, project?.capture_method_id])
 
 	// Reset form when project data loads
 	React.useEffect(() => {
@@ -676,7 +678,7 @@ export const ProjectDetailsScreen = () => {
 									</View>
 								)}
 
-								{project.activity_detection_sensitivity_id && (
+								{project.activity_detection_sensitivity_id && isMotionDetection && (
 									<View style={styles.settingRow}>
 										<Text
 											variant="bodyMedium"
@@ -693,7 +695,7 @@ export const ProjectDetailsScreen = () => {
 									</View>
 								)}
 
-								{project.timelapse_interval_seconds && (
+								{project.timelapse_interval_seconds && isTimeLapse && (
 									<View style={styles.settingRow}>
 										<Text
 											variant="bodyMedium"
