@@ -343,12 +343,20 @@ console.log('Current user:', user);
 
 ### Syncing Types
 
-Types are manually synced from the backend repository:
+### Syncing Types
+
+There are scripts available to generate types automatically from either the local backend or the cloud development instance:
 
 ```bash
-# Note: Types are manually copied from backend repo
-npm run supabase:types  # Shows sync instructions
+# Generate types from local backend (requires local Supabase running)
+# Note: Check paths in package.json fit your environment
+npm run types:local
+
+# Generate types from cloud development project
+npm run types:cloud-dev
 ```
+
+Alternatively, `npm run supabase:types` will display instructions for manual syncing if needed.
 
 The types file (`src/types/supabase.ts`) contains complete definitions for all database tables, views, and functions.
 

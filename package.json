@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "android": "npm run schema:generate && npx expo run:android",
+    "android": "npm run db:sync-schema && npm run schema:generate && npx expo run:android",
     "ios": "npm run db:sync-schema && npx expo run:ios",
     "start": "npm run db:sync-schema && npx expo start",
     "prebuild:check": "npm run db:sync-schema && bash scripts/pre-build-check.sh",

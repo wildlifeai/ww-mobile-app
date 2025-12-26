@@ -256,6 +256,21 @@ Building and releasing is managed through EAS Build service. See the app configu
 
 ## Database Migrations
 
+### ⚠️ CRITICAL: Database Workflow Rules
+
+> [!CAUTION]
+> **NEVER make database schema changes directly in this mobile repository.**
+> 
+> The Mobile Repository is a **Downstream Consumer** of the backend schema. All schema changes must originate from the Backend Repository.
+
+**Correct Workflow:**
+1.  **Backend Changes**: Make schema changes in the `wildlife-watcher-backend` repository.
+2.  **Cloud Deployment**: Push changes to the backend repo. The GitHub Actions CI/CD pipeline will automatically deploy changes to the Supabase Cloud.
+3.  **Mobile Sync**: Once deployed, pull the changes into this mobile repo:
+    *   **Schema**: `npm run db:sync-schema`
+    *   **Types**: `npm run types:cloud-dev` or `npm run types:local`
+    *   **Verify**: Check updated files in `supabase/schemas` and `src/types/supabase.ts`.
+
 ### WatermelonDB Schema
 
 Local database schema is defined in `src/database/schema.ts`. To modify:

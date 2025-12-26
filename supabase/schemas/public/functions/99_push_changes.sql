@@ -2,7 +2,7 @@
 -- FIX: Includes devices, device_preparation, projects, and deployments
 -- FIX: Handles deletes as string arrays
 -- FIX: Handles silent sync failure by properly processing all tables
--- FIX: Added missing columns for deployments (project_id, device_id, etc.)
+-- FIX: Added missing columns for deployments, devices, and device_preparation
 
 CREATE OR REPLACE FUNCTION public.push_changes(changes jsonb)
 RETURNS jsonb
@@ -123,20 +123,32 @@ BEGIN
         LOOP
             INSERT INTO public.devices (
                 id,
+                bluetooth_id,
+                organisation_id,
+                name,
                 ble_firmware_id,
                 himax_firmware_id,
                 config_firmware_id,
                 device_eui,
+                battery_level,
+                last_battery_check,
+                last_sd_card_check,
                 modified_by,
                 created_at,
                 updated_at
             )
             VALUES (
                 (_item->>'id')::uuid,
+                _item->>'bluetooth_id',
+                (_item->>'organisation_id')::uuid,
+                _item->>'name',
                 (_item->>'ble_firmware_id')::uuid,
                 (_item->>'himax_firmware_id')::uuid,
                 (_item->>'config_firmware_id')::uuid,
                 _item->>'device_eui',
+                (_item->>'battery_level')::int,
+                (_item->>'last_battery_check')::timestamptz,
+                (_item->>'last_sd_card_check')::timestamptz,
                 (_item->>'modified_by')::uuid,
                 (_item->>'created_at')::timestamptz,
                 (_item->>'updated_at')::timestamptz
@@ -152,10 +164,16 @@ BEGIN
         LOOP
             UPDATE public.devices
             SET
+                bluetooth_id = _item->>'bluetooth_id',
+                organisation_id = (_item->>'organisation_id')::uuid,
+                name = _item->>'name',
                 ble_firmware_id = (_item->>'ble_firmware_id')::uuid,
                 himax_firmware_id = (_item->>'himax_firmware_id')::uuid,
                 config_firmware_id = (_item->>'config_firmware_id')::uuid,
                 device_eui = _item->>'device_eui',
+                battery_level = (_item->>'battery_level')::int,
+                last_battery_check = (_item->>'last_battery_check')::timestamptz,
+                last_sd_card_check = (_item->>'last_sd_card_check')::timestamptz,
                 modified_by = (_item->>'modified_by')::uuid,
                 updated_at = (_item->>'updated_at')::timestamptz
             WHERE id = (_item->>'id')::uuid;
@@ -185,6 +203,7 @@ BEGIN
                 ai_model_id,
                 ble_firmware_id,
                 himax_firmware_id,
+                config_firmware_id,
                 status,
                 is_deployment_ready,
                 battery_check_passed,
@@ -195,6 +214,14 @@ BEGIN
                 device_eui,
                 lorawan_network,
                 lorawan_registration_completed,
+                lorawan_last_verified_at,
+                camera_model,
+                completed_at,
+                battery_level_at_check,
+                sd_card_total_kb_at_check,
+                sd_card_available_kb_at_check,
+                lorawan_rssi_at_check,
+                lorawan_snr_at_check,
                 modified_by,
                 created_at,
                 updated_at
@@ -206,6 +233,7 @@ BEGIN
                 (_item->>'ai_model_id')::uuid,
                 (_item->>'ble_firmware_id')::uuid,
                 (_item->>'himax_firmware_id')::uuid,
+                (_item->>'config_firmware_id')::uuid,
                 COALESCE(_item->>'status', 'in_progress'),
                 COALESCE((_item->>'is_deployment_ready')::boolean, false),
                 COALESCE((_item->>'battery_check_passed')::boolean, false),
@@ -216,6 +244,14 @@ BEGIN
                 _item->>'device_eui',
                 _item->>'lorawan_network',
                 COALESCE((_item->>'lorawan_registration_completed')::boolean, false),
+                (_item->>'lorawan_last_verified_at')::timestamptz,
+                _item->>'camera_model',
+                (_item->>'completed_at')::timestamptz,
+                (_item->>'battery_level_at_check')::int,
+                (_item->>'sd_card_total_kb_at_check')::int,
+                (_item->>'sd_card_available_kb_at_check')::int,
+                (_item->>'lorawan_rssi_at_check')::int,
+                public.safe_to_double(_item->>'lorawan_snr_at_check'),
                 (_item->>'modified_by')::uuid,
                 (_item->>'created_at')::timestamptz,
                 (_item->>'updated_at')::timestamptz
@@ -236,6 +272,7 @@ BEGIN
                 ai_model_id = (_item->>'ai_model_id')::uuid,
                 ble_firmware_id = (_item->>'ble_firmware_id')::uuid,
                 himax_firmware_id = (_item->>'himax_firmware_id')::uuid,
+                config_firmware_id = (_item->>'config_firmware_id')::uuid,
                 status = _item->>'status',
                 is_deployment_ready = COALESCE((_item->>'is_deployment_ready')::boolean, false),
                 battery_check_passed = COALESCE((_item->>'battery_check_passed')::boolean, false),
@@ -246,6 +283,14 @@ BEGIN
                 device_eui = _item->>'device_eui',
                 lorawan_network = _item->>'lorawan_network',
                 lorawan_registration_completed = COALESCE((_item->>'lorawan_registration_completed')::boolean, false),
+                lorawan_last_verified_at = (_item->>'lorawan_last_verified_at')::timestamptz,
+                camera_model = _item->>'camera_model',
+                completed_at = (_item->>'completed_at')::timestamptz,
+                battery_level_at_check = (_item->>'battery_level_at_check')::int,
+                sd_card_total_kb_at_check = (_item->>'sd_card_total_kb_at_check')::int,
+                sd_card_available_kb_at_check = (_item->>'sd_card_available_kb_at_check')::int,
+                lorawan_rssi_at_check = (_item->>'lorawan_rssi_at_check')::int,
+                lorawan_snr_at_check = public.safe_to_double(_item->>'lorawan_snr_at_check'),
                 modified_by = (_item->>'modified_by')::uuid,
                 updated_at = (_item->>'updated_at')::timestamptz
             WHERE id = (_item->>'id')::uuid;
@@ -284,7 +329,6 @@ BEGIN
                 longitude,
                 camera_location_image_paths, 
                 deployment_photos,
-                modified_by,
                 device_id,
                 device_preparation_id,
                 start_deployment_comments,
@@ -307,7 +351,7 @@ BEGIN
                 (_item->>'deployment_end')::timestamptz,
                 (_item->>'ended_by')::uuid,
                 (_item->>'deployment_status_id')::int,
-                (_item->>'capture_method_id')::int,
+                (_item->>'deployment_status_id')::int,
                 _item->>'location_name',
                 COALESCE(_item->>'location_description', _item->>'camera_location_description'),
                 public.safe_to_double(NULLIF(_item->>'latitude', '')),
@@ -320,7 +364,6 @@ BEGIN
                     ELSE NULL
                 END,
                 (_item->'deployment_photos'),
-                (_item->>'modified_by')::uuid,
                 (_item->>'device_id')::uuid,
                 (_item->>'device_preparation_id')::uuid,
                 _item->>'start_deployment_comments',
@@ -359,12 +402,11 @@ BEGIN
                 camera_location_image_paths = CASE 
                     WHEN _item->>'camera_location_image_path' IS NOT NULL 
                     THEN jsonb_build_array(_item->>'camera_location_image_path')
-                     WHEN _item->>'camera_location_image_paths' IS NOT NULL
+                    WHEN _item->>'camera_location_image_paths' IS NOT NULL
                     THEN (_item->'camera_location_image_paths')
                     ELSE camera_location_image_paths
                 END,
                 deployment_photos = (_item->'deployment_photos'),
-                modified_by = (_item->>'modified_by')::uuid,
                 device_id = (_item->>'device_id')::uuid,
                 device_preparation_id = (_item->>'device_preparation_id')::uuid,
                 start_deployment_comments = _item->>'start_deployment_comments',
