@@ -331,7 +331,7 @@ export const PrepareAndTestScreen = () => {
                     )
                 }
             }
-        }, [bleDevice?.connected, loading, navigation])
+        }, [bleDevice, loading, navigation])
     )
 
     const loadDeviceAndPreparation = async () => {
