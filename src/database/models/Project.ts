@@ -5,6 +5,7 @@ export default class Project extends Model {
     static table = 'projects'
     static associations = {
         deployments: { type: 'has_many', foreignKey: 'project_id' },
+        organisations: { type: 'belongs_to', key: 'organisation_id' },
     } as const
 
     @field('organisation_id') organisationId!: string

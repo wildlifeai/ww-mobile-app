@@ -213,6 +213,44 @@ export const PrepareAndTestScreen = () => {
         }
     }, [])
 
+    // Use ref to track latest logs for the robust initialization sequence
+    const logsRef = useRef(logs)
+    useEffect(() => {
+        logsRef.current = logs
+    }, [logs])
+
+    /**
+     * Helper to wait for a specific log response since the start of the call
+     * This is much more robust than arbitrary timeouts.
+     */
+    const waitForLogMatch = useCallback(async (regex: RegExp, timeoutMs: number = 5000): Promise<RegExpMatchArray> => {
+        console.log(`[PrepareTest] Waiting for log match: ${regex}`)
+        const startTime = Date.now()
+        // Capture initial log length to only look at NEW logs
+        const startOffset = logsRef.current.length
+
+        return new Promise((resolve, reject) => {
+            const check = () => {
+                const newLogs = logsRef.current.substring(startOffset)
+                const match = newLogs.match(regex)
+                if (match) {
+                    console.log(`[PrepareTest] Found log match for: ${regex}`)
+                    resolve(match)
+                    return true
+                }
+                if (Date.now() - startTime > timeoutMs) {
+                    reject(new Error(`Timeout waiting for log response: ${regex}`))
+                    return true
+                }
+                return false
+            }
+
+            const interval = setInterval(() => {
+                if (check()) clearInterval(interval)
+            }, 100)
+        })
+    }, [])
+
     // BLE Initialization on mount: selftest, setUtc, clear deployment ID
     useEffect(() => {
         const runBleInitialization = async () => {
@@ -224,16 +262,15 @@ export const PrepareAndTestScreen = () => {
 
             const errors: { selftest?: string; setUtc?: string } = {}
 
-            // 1. Run selftest (non-blocking alert on failure)
+            // 1. Run selftest
             try {
                 console.log('[PrepareTest] Running selftest...')
                 await runSelfTest(bleDevice)
-                // Wait for response in logs
-                await new Promise(r => setTimeout(r, 2000))
-                // Check logs for selftest failure (parsed elsewhere, but we can log here)
-                console.log('[PrepareTest] Selftest command sent')
+                // Wait for Error bits response
+                await waitForLogMatch(/Error\s*bits\s*=\s*(0x[0-9A-Fa-f]+)/, 3000)
+                console.log('[PrepareTest] Selftest completed')
             } catch (err) {
-                console.error('[PrepareTest] Selftest failed:', err)
+                console.error('[PrepareTest] Selftest failed or timed out:', err)
                 errors.selftest = err instanceof Error ? err.message : 'Unknown error'
             }
 
@@ -241,6 +278,8 @@ export const PrepareAndTestScreen = () => {
             try {
                 console.log('[PrepareTest] Setting UTC time...')
                 await setUtc(bleDevice)
+                // Wait for UTC echo
+                await waitForLogMatch(/UTC is:/, 2000)
                 console.log('[PrepareTest] UTC time set')
             } catch (err) {
                 console.error('[PrepareTest] Failed to set UTC:', err)
@@ -252,26 +291,33 @@ export const PrepareAndTestScreen = () => {
                 console.log('[PrepareTest] Testing if device supports extended OPs...')
                 // Try setting OP20 as a feature detection test
                 await setOperationalParam(bleDevice, 20, '0')
-                // Wait for response to detect error
-                await new Promise(r => setTimeout(r, 500))
+                // Wait for response to detect support/error
+                await waitForLogMatch(/Op\[20\] = 0/, 1000)
 
                 // If we get here without error, firmware supports extended OPs
                 console.log('[PrepareTest] Device supports extended OPs, clearing deployment ID...')
                 // Clear remaining OPs 21-27
                 for (let i = 21; i <= 27; i++) {
                     await setOperationalParam(bleDevice, i, '0')
-                    await new Promise(r => setTimeout(r, 100))
+                    // Wait for each to be set for robustness
+                    await waitForLogMatch(new RegExp(`Op\\[${i}\\] = 0`), 500).catch(e => {
+                        console.warn(`[PrepareTest] Target OP ${i} set confirmation not found, but continuing...`)
+                    })
                 }
                 console.log('[PrepareTest] Deployment ID cleared')
             } catch (err) {
-                // Silently skip if firmware doesn't support extended OPs
-                console.log('[PrepareTest] Device does not support extended OPs (20-27), skipping deployment ID clear')
+                // Silently skip if firmware doesn't support extended OPs or timeout
+                console.log('[PrepareTest] Device does not support extended OPs (20-27) or timed out, skipping deployment ID clear')
             }
 
             // 4. Clear GPS location
             try {
                 console.log('[PrepareTest] Clearing GPS location...')
                 await clearGpsLocation(bleDevice)
+                // Wait for confirmation if possible (setgps usually echo's)
+                await waitForLogMatch(/Location is:|setgps/, 1000).catch(() => {
+                    // Ignore timeout for GPS clear as it's non-critical if echo is missing
+                })
                 console.log('[PrepareTest] GPS location cleared')
             } catch (err) {
                 console.error('[PrepareTest] Failed to clear GPS location:', err)

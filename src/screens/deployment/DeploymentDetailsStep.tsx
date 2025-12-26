@@ -136,20 +136,6 @@ export const DeploymentDetailsStep = () => {
         }
     }, [deviceConfig?.[CommandNames.getutc]?.value])
 
-    // Prevent connection lost alert if we are just navigating away or starting deployment
-    useFocusEffect(
-        useCallback(() => {
-            // When screen is focused
-
-            return () => {
-                // When screen is unfocused (or component unmounts check)
-                // If we lost connection and NOT navigating away and NOT starting deployment...
-                if (!bleDevice?.connected && !isNavigatingAway.current && !isStartDeploymentInProgress.current && !isInitializing.current) {
-                    // This is handled by the useEffect below for immediacy relying on 'bleDevice'
-                }
-            }
-        }, [bleDevice?.connected])
-    )
 
     // Robust Connection Lost Alert
     useEffect(() => {
@@ -307,6 +293,10 @@ export const DeploymentDetailsStep = () => {
                     if (!deploymentIdSet) {
                         // Fallback warning only if we knew it SHOULD support it but failed
                         console.warn('[Deployment] Failed to set ID despite OP support.')
+                        Alert.alert(
+                            'Warning',
+                            'Deployment created locally, but failed to send Deployment ID to the device. The device may not tag images correctly.\n\nPlease verify connection and try "Engineer Device" > "Set Deployment ID" manually if needed.'
+                        );
                     }
                 } catch (opError) {
                     console.log('[Deployment] Device does not support extended OPs (OP20 write failed). Falling back to SET_GPS...')

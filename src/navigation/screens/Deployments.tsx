@@ -18,13 +18,6 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 	const navigation = useAppNavigation()
 	const theme = useExtendedTheme()
 
-	// Refresh/Force re-load on focus to ensure latest items
-	// withObservables is reactive, but navigation focus triggers are sometimes cleaner for UX
-	useFocusEffect(
-		useCallback(() => {
-			console.log('[Deployments] Screen focused - ensuring observer is active')
-		}, [])
-	)
 
 	// Search & Filter state
 	const [searchQuery, setSearchQuery] = useState("")

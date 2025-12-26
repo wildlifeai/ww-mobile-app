@@ -5,6 +5,7 @@ export default class Deployment extends Model {
     static table = 'deployments'
     static associations = {
         projects: { type: 'belongs_to', key: 'project_id' },
+        users: { type: 'belongs_to', key: 'setup_by' },
     } as const
 
     @field('project_id') projectId!: string
@@ -52,5 +53,5 @@ export default class Deployment extends Model {
     @readonly @date('deleted_at') deletedAt!: number
 
     @relation('projects', 'project_id') project: any
-    @relation('users', 'user_id') user: any
+    @relation('users', 'setup_by') user: any
 }
