@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { View, ScrollView, StyleSheet, Alert, Image, PermissionsAndroid, Platform } from 'react-native'
-import { useRoute, useNavigation } from '@react-navigation/native'
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import * as FileSystem from 'expo-file-system'
 import { WWScreenView } from '../../components/ui/WWScreenView'
@@ -307,6 +307,32 @@ export const PrepareAndTestScreen = () => {
             })
         }
     }, [selftestError, setUtcError])
+
+    // Check BLE connection status when screen regains focus
+    useFocusEffect(
+        useCallback(() => {
+            // Only check if we've already started preparation (not loading)
+            if (!loading && bleDevice) {
+                if (!bleDevice.connected) {
+                    console.log('[PrepareTest] Connection lost detected on focus')
+                    Alert.alert(
+                        'Connection Lost',
+                        'The device connection was lost. Please reconnect to continue preparation.',
+                        [
+                            {
+                                text: 'Reconnect',
+                                onPress: () => {
+                                    // Navigate back to device connection
+                                    navigation.goBack()
+                                }
+                            }
+                        ],
+                        { cancelable: false }
+                    )
+                }
+            }
+        }, [bleDevice?.connected, loading, navigation])
+    )
 
     const loadDeviceAndPreparation = async () => {
         try {
