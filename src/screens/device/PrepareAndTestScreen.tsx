@@ -442,9 +442,14 @@ export const PrepareAndTestScreen = () => {
             return
         }
 
+        const isLowBattery = batteryLevel !== null && batteryLevel < 30
+        const batteryWarning = isLowBattery
+            ? "\n\n⚠️ WARNING: Battery is low. Updating with low battery increases the risk of device failure if power is lost during the process. Proceed with caution."
+            : "\n\nMake sure the device battery is above 30%."
+
         Alert.alert(
             'Update BLE Firmware',
-            `This will update the BLE firmware to version ${latestBleFirmware.version}. The process takes 2-3 minutes. Make sure the device battery is above 30%.`,
+            `This will update the BLE firmware to version ${latestBleFirmware.version}. The process takes 2-3 minutes.${batteryWarning}`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -891,13 +896,12 @@ export const PrepareAndTestScreen = () => {
                             <WWButton
                                 mode="outlined"
                                 onPress={handleBleFirmwareUpdate}
-                                disabled={batteryLevel !== null && batteryLevel < 30}
                             >
                                 Update BLE Firmware
                             </WWButton>
                             {batteryLevel !== null && batteryLevel < 30 && (
                                 <Text variant="bodySmall" style={[styles.warningText, { color: theme.colors.error }]}>
-                                    Battery must be above 30% to update
+                                    ⚠️ Battery level low - update at your own risk
                                 </Text>
                             )}
                         </>

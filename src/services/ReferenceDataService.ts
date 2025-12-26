@@ -28,10 +28,27 @@ class ReferenceDataService {
         console.log('📚 Syncing reference data from Supabase...')
 
         const client = getSupabaseClient()
-        const { data: { user } } = await client.auth.getUser()
+
+        // Robustness: Wait for auth session to hydrate if needed (up to 3 retries)
+        let user = null
+        let attempts = 0
+        const MAX_ATTEMPTS = 3
+        const RETRY_DELAY_MS = 1000
+
+        while (attempts < MAX_ATTEMPTS) {
+            const { data } = await client.auth.getUser()
+            user = data.user
+            if (user) break
+
+            attempts++
+            if (attempts < MAX_ATTEMPTS) {
+                console.log(`📚 Auth user check attempt ${attempts} failed, retrying in ${RETRY_DELAY_MS}ms...`)
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS))
+            }
+        }
 
         if (!user) {
-            console.log('📚 No authenticated user - skipping reference data sync')
+            console.log('📚 No authenticated user found after retries - skipping reference data sync')
             return
         }
 

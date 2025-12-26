@@ -59,6 +59,7 @@ export const DeploymentDetailsStep = () => {
     const [preparation, setPreparation] = useState<any>(null)
     const [project, setProject] = useState<any>(null)
     const [captureMethodName, setCaptureMethodName] = useState<string>('')
+    const [sensitivityLabel, setSensitivityLabel] = useState<string>('')
     const [timeCheckStatus, setTimeCheckStatus] = useState<'pending' | 'ok' | 'correcting' | 'failed'>('pending')
 
     useEffect(() => {
@@ -165,6 +166,12 @@ export const DeploymentDetailsStep = () => {
                     const methods = await ReferenceDataService.getCaptureMethods()
                     const method = methods.find(m => m.id === proj.capture_method_id)
                     setCaptureMethodName(method ? method.value : 'Unknown')
+
+                    if (proj.activity_detection_sensitivity_id) {
+                        const sensitivities = await ReferenceDataService.getActivitySensitivity()
+                        const sensitivity = sensitivities.find(s => s.id === proj.activity_detection_sensitivity_id)
+                        setSensitivityLabel(sensitivity ? sensitivity.value : 'Unknown')
+                    }
                 } else {
                     setCaptureMethodName('Not Set')
                 }
@@ -315,9 +322,9 @@ export const DeploymentDetailsStep = () => {
                 {/* Project & Configuration Header */}
                 <Card style={styles.card}>
                     <Card.Title
-                        title="Configuration"
+                        title="Project settings"
                         left={(props) => <WWIcon {...props} source="tune" />}
-                        right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Configuration', 'Project and Capture Method are set during Project Creation and Device Preparation. To change these, you must restart the preparation.')}>Help</Button>}
+                        right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Project settings', 'Project and Capture Method are set during Project Creation and Device Preparation. To change these, you must restart the preparation.')}>Help</Button>}
                     />
                     <Card.Content>
                         <View style={styles.infoRow}>
@@ -328,6 +335,17 @@ export const DeploymentDetailsStep = () => {
                             <Text variant="labelMedium">Capture Method:</Text>
                             <Text variant="bodyLarge">{captureMethodName || 'Loading...'}</Text>
                         </View>
+                        {project?.capture_method_id === 1 && sensitivityLabel ? (
+                            <View style={styles.infoRow}>
+                                <Text variant="labelMedium">Motion Sensitivity:</Text>
+                                <Text variant="bodyLarge">{sensitivityLabel}</Text>
+                            </View>
+                        ) : project?.capture_method_id === 2 && project?.timelapse_interval_seconds ? (
+                            <View style={styles.infoRow}>
+                                <Text variant="labelMedium">Time-lapse Interval:</Text>
+                                <Text variant="bodyLarge">{project.timelapse_interval_seconds}s</Text>
+                            </View>
+                        ) : null}
 
                         <Button
                             mode="outlined"
@@ -339,7 +357,7 @@ export const DeploymentDetailsStep = () => {
                             style={{ marginTop: 12 }}
                             icon="cog"
                         >
-                            Prepare Device Settings
+                            Edit Project Settings
                         </Button>
                     </Card.Content>
                 </Card>

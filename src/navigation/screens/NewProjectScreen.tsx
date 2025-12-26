@@ -40,8 +40,8 @@ import { WWSelect } from "../../components/ui/WWSelect"
 import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { Field } from "../../components/form/Field"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
-import { useAppSelector } from "../../redux"
-import { selectCurrentOrganisation } from "../../redux/slices/authSlice"
+import { useAppDispatch, useAppSelector } from "../../redux"
+import { selectCurrentOrganisation, selectCurrentUser, setCurrentOrganisation } from "../../redux/slices/authSlice"
 import type { CreateProjectInput } from "../../types/project"
 
 interface ProjectFormData {
@@ -59,8 +59,19 @@ interface ProjectFormData {
 
 export const NewProjectScreen = () => {
 	const navigation = useAppNavigation()
+	const dispatch = useAppDispatch()
 	const theme = useTheme()
 	const currentOrganisation = useAppSelector(selectCurrentOrganisation)
+	const user = useAppSelector(selectCurrentUser)
+
+	// Auto-select organisation if missing but user has access to one
+	React.useEffect(() => {
+		if (!currentOrganisation && user?.organisations?.length) {
+			console.log('🔄 NewProjectScreen: Auto-selecting default organisation')
+			const defaultOrg = user.organisations[0]
+			dispatch(setCurrentOrganisation(defaultOrg.id))
+		}
+	}, [currentOrganisation, user, dispatch])
 
 	const [createProject, { isLoading }] = useCreateProjectMutation()
 	const [errorMessage, setErrorMessage] = useState<string>("")
