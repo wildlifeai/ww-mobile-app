@@ -285,6 +285,15 @@ function generateSchema() {
                 tables['deployments'].push(field);
             }
         });
+
+        // Override types for timestamps that come as string from Supabase but are number in Model (@date)
+        const timestampFields = ['deployment_start', 'deployment_end'];
+        tables['deployments'] = tables['deployments'].map(col => {
+            if (timestampFields.includes(col.name)) {
+                return { ...col, type: 'number' };
+            }
+            return col;
+        });
     }
 
     // 4. Generate Output (with auto-incrementing version)

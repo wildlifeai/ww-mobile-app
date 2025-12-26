@@ -35,7 +35,8 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
         }
 
         // Logic 2: Active deployment (no end date)
-        if (device.status === 'deployed' && !deployEndDate && device.deploymentName) {
+        // If there is a last deployment date (start) but NO end date, it is active.
+        if (!deployEndDate && device.lastDeploymentDate && device.deploymentName) {
             return {
                 text: `Device is deployed: ${device.deploymentName}`,
                 color: '#4CAF50',
@@ -46,7 +47,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
         }
 
         // Logic 3: Last deployment ended
-        if (device.deploymentName && device.lastDeploymentDate) {
+        if (device.deploymentName && device.lastDeploymentDate && deployEndDate) {
             return {
                 text: `Last deployment ${device.deploymentName}`,
                 color: theme.colors.onSurfaceVariant,

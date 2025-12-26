@@ -56,9 +56,9 @@ export const DeploymentService = {
                 console.log('[DeploymentService] Step 1: Preparing deployment record')
                 newDeployment = deploymentsCollection.prepareCreate((deployment) => {
                     deployment.name = data.name
-                    // deployment.projectId = data.projectId // REMOVED: Column missing in schema, linked via device_preparation
+                    deployment.projectId = data.projectId
                     // deployment.userId = data.userId // REMOVED
-                    // deployment.deviceId = data.deviceId // REMOVED: derived from device_preparation
+                    deployment.deviceId = data.deviceId
                     deployment.devicePreparationId = data.devicePreparationId
                     deployment.setupBy = data.setupBy
                     deployment.deploymentStart = new Date().getTime()

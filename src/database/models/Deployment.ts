@@ -9,8 +9,8 @@ export default class Deployment extends Model {
         device_preparation: { type: 'belongs_to', key: 'device_preparation_id' },
     } as const
 
-    // @field('project_id') projectId!: string // REMOVED: Column missing in schema
-    // @field('device_id') deviceId!: string // REMOVED: Column missing in schema, derived from device_preparation
+    @field('project_id') projectId!: string
+    @field('device_id') deviceId!: string // derived from device_preparation
     @field('device_preparation_id') devicePreparationId!: string
 
     @field('deployment_status_id') deploymentStatusId?: number
@@ -53,7 +53,7 @@ export default class Deployment extends Model {
     @readonly @date('updated_at') updatedAt!: number
     @readonly @date('deleted_at') deletedAt!: number
 
-    // @relation('projects', 'project_id') project: any // REMOVED: Column missing in schema
+    @relation('projects', 'project_id') project: any
     @relation('users', 'setup_by') user: any
     @relation('device_preparation', 'device_preparation_id') devicePreparation: any
 }
