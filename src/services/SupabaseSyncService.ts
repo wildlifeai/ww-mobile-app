@@ -266,8 +266,15 @@ class SupabaseSyncService {
                 }
 
                 // SECURITY/CRITICAL: Ensure deployments does NOT have modified_by as it's missing on server
-                if (tableName === 'deployments' && 'modified_by' in payload) {
-                    delete payload.modified_by
+                if (tableName === 'deployments') {
+                    console.log(`🔍 Processing deployments payload. Has modified_by: ${'modified_by' in payload}`)
+                    if ('modified_by' in payload) {
+                        console.log(`🔧 Removing modified_by from deployments payload (value was: ${payload.modified_by})`)
+                        delete payload.modified_by
+                        console.log(`✅ modified_by removed. Still present: ${'modified_by' in payload}`)
+                    } else {
+                        console.log(`ℹ️ No modified_by in payload for deployments. Keys: ${Object.keys(payload).join(', ')}`)
+                    }
                 }
 
                 // Sanitize deleted_at (WatermelonDB uses 0/1970 epoch for null)
@@ -319,6 +326,20 @@ class SupabaseSyncService {
             const changes = populateChanges(tableOps, currentUserId)
 
             console.log(`🔍 DEBUG: Payload for ${tableName}:`, JSON.stringify(changes))
+
+            // CRITICAL FIX: Remove modified_by from deployments at batch level (server-side adds it)
+            if (tableName === 'deployments') {
+                ['created', 'updated'].forEach(opType => {
+                    if (changes.deployments[opType]) {
+                        changes.deployments[opType].forEach((record: any) => {
+                            if ('modified_by' in record) {
+                                console.log(`🔧 [BATCH-LEVEL] Removing modified_by from deployment ${record.id}`)
+                                delete record.modified_by
+                            }
+                        })
+                    }
+                })
+            }
 
             try {
                 const { data, error } = await (client as any).rpc('push_changes', { changes })
