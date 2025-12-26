@@ -4,7 +4,6 @@
  */
 
 // Test setup for React Native environment
-declare const jest: any
 
 // import "react-native-gesture-handler/jestSetup"
 // Mock AsyncStorage

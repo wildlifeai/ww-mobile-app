@@ -25,6 +25,8 @@ import { HelpDialog } from '../../components/ui/HelpDialog'
 
 type DeploymentDetailsRouteProp = RouteProp<RootStackParamList, 'DeploymentDetailsStep'>;
 
+const INITIALIZATION_GUARD_TIMEOUT = 2000;
+
 export const DeploymentDetailsStep = () => {
     const navigation = useNavigation()
     const route = useRoute<DeploymentDetailsRouteProp>()
@@ -50,7 +52,8 @@ export const DeploymentDetailsStep = () => {
         location: {
             latitude: 0,
             longitude: 0,
-            altitude: 0
+            altitude: 0,
+            accuracy: 0
         },
         testImagePath: undefined as string | undefined
     })
@@ -71,7 +74,7 @@ export const DeploymentDetailsStep = () => {
     useEffect(() => {
         const timer = setTimeout(() => {
             isInitializing.current = false
-        }, 2000)
+        }, INITIALIZATION_GUARD_TIMEOUT)
         return () => clearTimeout(timer)
     }, [])
 
@@ -259,13 +262,13 @@ export const DeploymentDetailsStep = () => {
 
                 // Location & Metadata
                 locationName: formState.locationName || 'User Location',
-                cameraLocationDescription: formState.locationDescription,
+                locationDescription: formState.locationDescription,
                 cameraHeight: formState.cameraHeight ? parseFloat(formState.cameraHeight) : undefined,
 
                 latitude: formState.location.latitude,
                 longitude: formState.location.longitude,
                 altitude: formState.location.altitude,
-                accuracy: (formState.location as any).accuracy,
+                accuracy: formState.location.accuracy,
 
                 // Pass capture method ID from project
                 captureMethodId: project.capture_method_id,

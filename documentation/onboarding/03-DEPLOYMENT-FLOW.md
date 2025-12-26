@@ -15,6 +15,8 @@ In the app data model, a Deployment links:
 Before starting a deployment, ensure you have:
 - [ ] A **Prepared Device** (See [02-DEVICE-PREPARATION.md](./02-DEVICE-PREPARATION.md))
 - [ ] The device physically with you
+- [ ] Good GPS visibility (clear view of the sky)
+- [ ] Your phone's GPS enabled
 - [ ] Physical installation gear (straps, mounts)
 
 ## Step-by-Step Guide
@@ -28,7 +30,7 @@ Before starting a deployment, ensure you have:
 ### 2. Device Discovery & Connection
 
 The app scans for nearby devices.
-1. Hold your phone close to the WWcamera.
+1. Hold your phone close to the WW camera.
 2. Select the target device from the list.
    - *Tip*: Verify the Device ID matches the label on the unit.
 3. The app establishes a BLE connection.

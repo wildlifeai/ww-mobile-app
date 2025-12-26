@@ -35,7 +35,6 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
         }
 
         // Logic 2: Active deployment (no end date)
-        // Logic 2: Active deployment (no end date)
         if (device.status === 'deployed' && !deployEndDate && device.deploymentName) {
             return {
                 text: `Device is deployed: ${device.deploymentName}`,

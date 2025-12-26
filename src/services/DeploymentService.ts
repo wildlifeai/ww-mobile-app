@@ -34,7 +34,7 @@ export const DeploymentService = {
             startComments?: string
             cameraImagePaths?: string[]
             cameraHeight?: number
-            cameraLocationDescription?: string
+            locationDescription?: string
             captureMethodId?: number
         }
     ): Promise<Deployment> => {
@@ -77,7 +77,7 @@ export const DeploymentService = {
                 deployment.longitude = data.longitude
                 deployment.altitude = data.altitude
                 deployment.accuracy = data.accuracy
-                deployment.locationDescription = data.cameraLocationDescription
+                deployment.locationDescription = data.locationDescription
 
                 // Standardize Camera Height to meters (input is cm)
                 if (data.cameraHeight) {

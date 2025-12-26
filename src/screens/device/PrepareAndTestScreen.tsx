@@ -113,7 +113,7 @@ export const PrepareAndTestScreen = () => {
     const isNavigatingAway = useRef(false)
 
     // BLE command hooks
-    const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, disableCamera, runDisconnect, runDfu, runSelfTest, flashLed } = useBleCommands()
+    const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, disableCamera, runDisconnect, runDfu, runSelfTest, flashLed, clearGpsLocation } = useBleCommands()
     const { write } = useBle()
     const bleDevice = useAppSelector((state) => state.devices[bleDeviceId])
     const logs = useAppSelector(state => state.logs[bleDeviceId || ''] || "")
@@ -266,6 +266,15 @@ export const PrepareAndTestScreen = () => {
             } catch (err) {
                 // Silently skip if firmware doesn't support extended OPs
                 console.log('[PrepareTest] Device does not support extended OPs (20-27), skipping deployment ID clear')
+            }
+
+            // 4. Clear GPS location
+            try {
+                console.log('[PrepareTest] Clearing GPS location...')
+                await clearGpsLocation(bleDevice)
+                console.log('[PrepareTest] GPS location cleared')
+            } catch (err) {
+                console.error('[PrepareTest] Failed to clear GPS location:', err)
             }
 
             // Set any errors to trigger warning display
