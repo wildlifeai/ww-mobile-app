@@ -25,6 +25,9 @@ export default class Deployment extends Model {
     @json('location', (raw: any) => raw) location: any
     @field('latitude') latitude?: number
     @field('longitude') longitude?: number
+    @field('altitude') altitude?: number
+    @field('accuracy') accuracy?: number
+    @text('location_description') locationDescription?: string
     @json('camera_location_image_paths', (raw: any) => raw) cameraLocationImagePaths: any
     @field('camera_height') cameraHeight?: number
 

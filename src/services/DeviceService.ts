@@ -71,7 +71,7 @@ export const DeviceService = {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const activeDeployments = await deploymentsCollection.query(
             Q.where('device_id', deviceId),
-            Q.where('deployment_end', null)
+            Q.where('deployment_status_id', 1) // 1 = DEPLOYED
         ).fetch()
 
         if (activeDeployments.length > 0) {
@@ -108,7 +108,7 @@ export const DeviceService = {
             const deploymentsCollection = database.get<Deployment>('deployments')
             const deployments = await deploymentsCollection.query(
                 Q.where('device_id', deviceId),
-                Q.where('deployment_end', null)
+                Q.where('deployment_status_id', 1) // 1 = DEPLOYED
             ).fetch()
             activeDeployment = deployments[0]
         }

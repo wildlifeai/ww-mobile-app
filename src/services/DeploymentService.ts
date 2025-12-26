@@ -29,6 +29,8 @@ export const DeploymentService = {
             locationName: string
             latitude?: number
             longitude?: number
+            altitude?: number
+            accuracy?: number
             startComments?: string
             cameraImagePaths?: string[]
             cameraHeight?: number
@@ -73,8 +75,14 @@ export const DeploymentService = {
                 deployment.locationName = data.locationName
                 deployment.latitude = data.latitude
                 deployment.longitude = data.longitude
-                deployment.cameraLocationDescription = data.cameraLocationDescription
-                deployment.cameraHeight = data.cameraHeight
+                deployment.altitude = data.altitude
+                deployment.accuracy = data.accuracy
+                deployment.locationDescription = data.cameraLocationDescription
+
+                // Standardize Camera Height to meters (input is cm)
+                if (data.cameraHeight) {
+                    deployment.cameraHeight = data.cameraHeight / 100
+                }
 
                 // Store image paths as JSON string array if provided
                 if (data.cameraImagePaths) {
@@ -99,6 +107,20 @@ export const DeploymentService = {
         })
 
         if (!newDeployment) throw new Error("Failed to create deployment instance")
+
+        // 4. Touch Device to trigger observers/refresh
+        try {
+            await database.write(async () => {
+                const device = await database.get('devices').find(data.deviceId)
+                await device.update(() => {
+                    // Just update the timestamp to trigger reactivity
+                    // (WatermelonDB models update updatedAt automatically on save)
+                })
+            })
+            console.log('[DeploymentService] Touched device:', data.deviceId)
+        } catch (e) {
+            console.warn('[DeploymentService] Failed to touch device:', e)
+        }
 
         // Trigger background sync
         SupabaseSyncService.debouncedSync()
@@ -230,7 +252,9 @@ function mapModelToPayload(model: Deployment): any {
         end_deployment_comments: model.endDeploymentComments || null,
 
         location_name: model.locationName,
-        camera_location_description: model.cameraLocationDescription || null,
+        location_description: model.locationDescription || null,
+        altitude: model.altitude || null,
+        accuracy: model.accuracy || null,
         camera_location_image_paths: model.cameraLocationImagePaths ? JSON.parse(model.cameraLocationImagePaths) : null,
         latitude: model.latitude || null,
         longitude: model.longitude || null,

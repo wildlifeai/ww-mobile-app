@@ -322,7 +322,7 @@ export const DevicePreparationService = {
 
             // 1. Try RPC first (e.g. force_cancel_active_preparation) if available
             // This is the preferred method as it uses SECURITY DEFINER to bypass RLS
-            const { error: rpcError } = await supabase.rpc('force_cancel_active_preparation', {
+            const { error: rpcError } = await (supabase as any).rpc('force_cancel_active_preparation', {
                 p_device_id: deviceId
             })
 

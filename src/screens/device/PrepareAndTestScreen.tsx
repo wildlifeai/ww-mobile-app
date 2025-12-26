@@ -113,7 +113,7 @@ export const PrepareAndTestScreen = () => {
     const isNavigatingAway = useRef(false)
 
     // BLE command hooks
-    const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, disableCamera, runDisconnect, runDfu } = useBleCommands()
+    const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, disableCamera, runDisconnect, runDfu, runSelfTest, flashLed } = useBleCommands()
     const { write } = useBle()
     const bleDevice = useAppSelector((state) => state.devices[bleDeviceId])
     const logs = useAppSelector(state => state.logs[bleDeviceId || ''] || "")
@@ -145,6 +145,9 @@ export const PrepareAndTestScreen = () => {
 
     // Initialization errors from connection
     const [initErrors, setInitErrors] = useState<{ selftest?: string; setUtc?: string }>({})
+    // Track whether BLE initialization has run
+    const [isInitializing, setIsInitializing] = useState(false)
+    const hasInitialized = useRef(false)
 
     // Load user projects using RTK Query (consistent with Projects screen)
     const currentOrganisation = useAppSelector((state) => state.authentication.currentOrganisation)
@@ -209,6 +212,73 @@ export const PrepareAndTestScreen = () => {
             }
         }
     }, [])
+
+    // BLE Initialization on mount: selftest, setUtc, clear deployment ID
+    useEffect(() => {
+        const runBleInitialization = async () => {
+            if (!bleDevice || !bleDevice.connected || hasInitialized.current) return
+
+            hasInitialized.current = true
+            setIsInitializing(true)
+            console.log('[PrepareTest] Running BLE initialization sequence...')
+
+            const errors: { selftest?: string; setUtc?: string } = {}
+
+            // 1. Run selftest (non-blocking alert on failure)
+            try {
+                console.log('[PrepareTest] Running selftest...')
+                await runSelfTest(bleDevice)
+                // Wait for response in logs
+                await new Promise(r => setTimeout(r, 2000))
+                // Check logs for selftest failure (parsed elsewhere, but we can log here)
+                console.log('[PrepareTest] Selftest command sent')
+            } catch (err) {
+                console.error('[PrepareTest] Selftest failed:', err)
+                errors.selftest = err instanceof Error ? err.message : 'Unknown error'
+            }
+
+            // 2. Set UTC time
+            try {
+                console.log('[PrepareTest] Setting UTC time...')
+                await setUtc(bleDevice)
+                console.log('[PrepareTest] UTC time set')
+            } catch (err) {
+                console.error('[PrepareTest] Failed to set UTC:', err)
+                errors.setUtc = err instanceof Error ? err.message : 'Unknown error'
+            }
+
+            // 3. Clear deployment ID (OPs 20-27) - only if firmware supports extended OPs
+            try {
+                console.log('[PrepareTest] Testing if device supports extended OPs...')
+                // Try setting OP20 as a feature detection test
+                await setOperationalParam(bleDevice, 20, '0')
+                // Wait for response to detect error
+                await new Promise(r => setTimeout(r, 500))
+
+                // If we get here without error, firmware supports extended OPs
+                console.log('[PrepareTest] Device supports extended OPs, clearing deployment ID...')
+                // Clear remaining OPs 21-27
+                for (let i = 21; i <= 27; i++) {
+                    await setOperationalParam(bleDevice, i, '0')
+                    await new Promise(r => setTimeout(r, 100))
+                }
+                console.log('[PrepareTest] Deployment ID cleared')
+            } catch (err) {
+                // Silently skip if firmware doesn't support extended OPs
+                console.log('[PrepareTest] Device does not support extended OPs (20-27), skipping deployment ID clear')
+            }
+
+            // Set any errors to trigger warning display
+            if (errors.selftest || errors.setUtc) {
+                setInitErrors(errors)
+            }
+
+            setIsInitializing(false)
+            console.log('[PrepareTest] BLE initialization complete')
+        }
+
+        runBleInitialization()
+    }, [bleDevice?.connected])
 
     // Parse BLE logs for command responses
 
@@ -319,7 +389,8 @@ export const PrepareAndTestScreen = () => {
             // Only check if we've already started preparation (not loading)
             // Skip check if DFU is in progress (device disconnects during DFU)
             // Skip check if navigating away (user completed preparation)
-            if (!loading && bleDevice && !isDfuInProgress.current && !isNavigatingAway.current) {
+            // Skip check if initializing (BLE commands in progress)
+            if (!loading && bleDevice && !isDfuInProgress.current && !isNavigatingAway.current && !isInitializing) {
                 if (!bleDevice.connected) {
                     console.log('[PrepareTest] Connection lost detected on focus')
                     Alert.alert(
@@ -675,8 +746,17 @@ export const PrepareAndTestScreen = () => {
                             // Mark as navigating away to suppress Connection Lost alert
                             isNavigatingAway.current = true
 
-                            // Disconnect BLE before navigating away
+                            // Flash green LED 2x to confirm preparation complete
                             if (bleDevice) {
+                                console.log('[PrepareTest] Flashing green LED to confirm preparation...')
+                                try {
+                                    await flashLed(bleDevice, 'green', 500, 2)
+                                    await new Promise(r => setTimeout(r, 1200)) // Wait for flashes to complete
+                                } catch (e) {
+                                    console.warn('[PrepareTest] Failed to flash LED:', e)
+                                }
+
+                                // Disconnect BLE after LED flash
                                 console.log('[PrepareTest] Finishing - Disconnecting device...')
                                 await runDisconnect(bleDevice).catch(e => console.error('Failed to disconnect:', e))
                             }
@@ -785,11 +865,16 @@ export const PrepareAndTestScreen = () => {
                         Battery Level
                     </Text>
                     {batteryLevel !== null ? (
-                        <View style={styles.statusDisplay}>
-                            <WWText variant="bodyLarge">🔋 {batteryLevel}%</WWText>
-                            <WWText variant="bodySmall" style={styles.statusHint}>
-                                {batteryLevel > 30 ? 'Battery level sufficient' : 'Battery level low - charge before deployment'}
-                            </WWText>
+                        <View>
+                            <View style={styles.statusDisplay}>
+                                <WWText variant="bodyLarge">🔋 {batteryLevel}%</WWText>
+                                <WWText variant="bodySmall" style={styles.statusHint}>
+                                    {batteryLevel > 30 ? 'Battery level sufficient' : 'Battery level low - charge before deployment'}
+                                </WWText>
+                            </View>
+                            <WWButton mode="outlined" onPress={handleBatteryCheck} style={{ marginTop: 8 }}>
+                                Check Again
+                            </WWButton>
                         </View>
                     ) : (
                         <WWButton mode="outlined" onPress={handleBatteryCheck}>
@@ -804,15 +889,20 @@ export const PrepareAndTestScreen = () => {
                         SD Card Status
                     </Text>
                     {sdCardStatus !== null ? (
-                        <View style={styles.statusDisplay}>
-                            <WWText variant="bodyLarge">
-                                💾 {Math.round((sdCardStatus.free / sdCardStatus.total) * 100)}% available of {Math.round(sdCardStatus.total / 1024 / 1024)}GB
-                            </WWText>
-                            <WWText variant="bodySmall" style={styles.statusHint}>
-                                {(sdCardStatus.free / sdCardStatus.total) > 0.1
-                                    ? 'SD card has sufficient space'
-                                    : 'SD card is nearly full - free up space'}
-                            </WWText>
+                        <View>
+                            <View style={styles.statusDisplay}>
+                                <WWText variant="bodyLarge">
+                                    💾 {Math.round((sdCardStatus.free / sdCardStatus.total) * 100)}% available of {Math.round(sdCardStatus.total / 1024 / 1024)}GB
+                                </WWText>
+                                <WWText variant="bodySmall" style={styles.statusHint}>
+                                    {(sdCardStatus.free / sdCardStatus.total) > 0.1
+                                        ? 'SD card has sufficient space'
+                                        : 'SD card is nearly full - free up space'}
+                                </WWText>
+                            </View>
+                            <WWButton mode="outlined" onPress={handleSdCardCheck} style={{ marginTop: 8 }}>
+                                Check Again
+                            </WWButton>
                         </View>
                     ) : (
                         <WWButton mode="outlined" onPress={handleSdCardCheck}>

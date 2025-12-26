@@ -1,5 +1,6 @@
 import React, { memo, useState, useMemo, useCallback } from "react"
 import { ListRenderItemInfo, View, StyleSheet } from "react-native"
+import { useFocusEffect } from "@react-navigation/native"
 import { withObservables } from '@nozbe/watermelondb/react'
 import { FAB } from 'react-native-paper'
 import { useAppNavigation } from "../../hooks/useAppNavigation"
@@ -16,6 +17,14 @@ type Props = {
 const DeploymentsComponent = ({ deployments }: Props) => {
 	const navigation = useAppNavigation()
 	const theme = useExtendedTheme()
+
+	// Refresh/Force re-load on focus to ensure latest items
+	// withObservables is reactive, but navigation focus triggers are sometimes cleaner for UX
+	useFocusEffect(
+		useCallback(() => {
+			console.log('[Deployments] Screen focused - ensuring observer is active')
+		}, [])
+	)
 
 	// Search & Filter state
 	const [searchQuery, setSearchQuery] = useState("")

@@ -14,13 +14,15 @@ const TEST_MODE = false
 const TEST_COORDS = {
     latitude: -41.2865, // Wellington, NZ
     longitude: 174.7762,
-    altitude: 10
+    altitude: 10,
+    accuracy: 5
 }
 
 interface GPSLocation {
     latitude: number
     longitude: number
     altitude: number
+    accuracy: number | null
 }
 
 export const useGPSLocation = () => {
@@ -84,6 +86,7 @@ export const useGPSLocation = () => {
                 latitude: loc.coords.latitude,
                 longitude: loc.coords.longitude,
                 altitude: loc.coords.altitude || 0, // Default to 0 if null
+                accuracy: loc.coords.accuracy || null,
             }
 
             setLocation(locationData)

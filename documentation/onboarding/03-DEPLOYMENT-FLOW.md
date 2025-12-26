@@ -15,7 +15,6 @@ In the app data model, a Deployment links:
 Before starting a deployment, ensure you have:
 - [ ] A **Prepared Device** (See [02-DEVICE-PREPARATION.md](./02-DEVICE-PREPARATION.md))
 - [ ] The device physically with you
-- [ ] Good GPS visibility (clear view of the sky)
 - [ ] Physical installation gear (straps, mounts)
 
 ## Step-by-Step Guide
@@ -25,22 +24,24 @@ Before starting a deployment, ensure you have:
 1. Open the **Wildlife Watcher** app.
 2. Navigate to the **Maps** tab.
 3. Tap the **"New Deployment"** FAB (Plus icon).
-4. Select **"Deployment"** mode.
 
 ### 2. Device Discovery & Connection
 
 The app scans for nearby devices.
-1. Holds your phone close to the camera.
+1. Hold your phone close to the WWcamera.
 2. Select the target device from the list.
    - *Tip*: Verify the Device ID matches the label on the unit.
 3. The app establishes a BLE connection.
 
 ### 3. Location Capture
 
-Accurate geolocation is critical for data analysis.
-1. The app requests high-accuracy GPS from the phone.
-2. Wait for the accuracy to settle (Green indicator).
-3. **Confirm Location**.
+ Accurate geolocation is critical for data analysis. The app captures:
+ 1. **Latitude & Longitude**: High-accuracy GPS from the phone.
+ 2. **Altitude**: Height above sea level.
+ 3. **Accuracy**: GPS precision estimate (wait for Green indicator).
+ 
+ **Tip**: Wait for the accuracy to settle (Green indicator) and ideally reach below 5-10 meters for optimal data quality.
+ 3. **Confirm Location**.
 
 ### 4. Configuration Check
 
@@ -98,7 +99,9 @@ The record includes:
 - Deployment UUID
 - Device ID
 - Project ID
-- Location coordinates
+- Location coordinates (Latitude, Longitude)
+- **Telemetry**: Altitude & Accuracy
+- **Metadata**: Location Description & Camera Height (automatically converted to **meters**)
 - Capture method configuration
 - Status: "Active"
 

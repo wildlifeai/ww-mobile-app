@@ -20,23 +20,27 @@ BEGIN
     RETURN false;
   END IF;
 
-  -- Check direct organisation role
+  -- Check organisation role with hierarchy
+  -- organisation_manager > organisation_member/project_admin > project_member
   IF EXISTS (
     SELECT 1
     FROM public.user_roles ur
     WHERE ur.user_id = check_user_id
       AND ur.scope_type = 'organisation'
       AND ur.scope_id = organisation_id
-      AND ur.role = required_role
       AND ur.is_active = true
       AND ur.deleted_at IS NULL
       AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+      AND (
+        ur.role = required_role OR                                     -- Exact match
+        ur.role = 'organisation_manager' OR                            -- Manager has all privileges
+        (required_role = 'project_member' AND ur.role IN ('organisation_member', 'project_admin')) -- Admin/Member can see projects
+      )
   ) THEN
     RETURN true;
   END IF;
 
   -- SECURITY ENHANCEMENT: System admin has unrestricted access
-  -- ww_admin gets full system access without requiring organisation membership
   RETURN EXISTS (
     SELECT 1
     FROM public.user_roles ur

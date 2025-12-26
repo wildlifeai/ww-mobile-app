@@ -46,7 +46,7 @@ export const MetadataSection = ({
                     mode="outlined"
                     multiline
                     numberOfLines={2}
-                    style={styles.input}
+                    style={[styles.input, { minHeight: 60 }]}
                     right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Location Description', "Describe the immediate surroundings (e.g., 'On oak tree, facing North'). Useful for finding the camera later.")} />}
                 />
 
@@ -67,8 +67,8 @@ export const MetadataSection = ({
                     onChangeText={onNotesChange}
                     mode="outlined"
                     multiline
-                    numberOfLines={3}
-                    style={styles.input}
+                    numberOfLines={2}
+                    style={[styles.input, { minHeight: 60 }]}
                     right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Notes', 'Any additional observations, such as bait used, weather conditions, or specific features being monitored.')} />}
                 />
             </Card.Content>
