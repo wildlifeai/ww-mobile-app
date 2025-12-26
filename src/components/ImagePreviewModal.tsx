@@ -59,7 +59,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                     {/* Footer with filename */}
                     <View style={styles.footer}>
                         <Text style={[styles.filename, { color: theme.colors.onSurfaceVariant }]}>
-                            {imageUri.split('/').pop()}
+                            {imageUri.startsWith('data:') ? 'Captured Image' : imageUri.split('/').pop()}
                         </Text>
                     </View>
                 </Surface>
