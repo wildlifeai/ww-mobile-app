@@ -1,4 +1,3 @@
-
 import React, { useLayoutEffect, useMemo } from 'react'
 import { View, StyleSheet, ScrollView, Linking, Platform } from 'react-native'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
@@ -15,6 +14,7 @@ import type Deployment from '../../../database/models/Deployment'
 import { BasicMapView } from '../../../features/maps/components/BasicMapView'
 import { Marker } from 'react-native-maps'
 import { useGetCaptureMethodsQuery, useGetActivitySensitivityQuery } from '../../../redux/api/projectsApi'
+import { useExtendedTheme } from '../../../theme'
 
 type DeploymentDetailsRouteProp = RouteProp<RootStackParamList, 'DeploymentDetails'>
 
@@ -25,6 +25,9 @@ interface Props {
 const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
     const [menuVisible, setMenuVisible] = React.useState(false)
+    const theme = useExtendedTheme()
+    const { colors } = theme
+    const styles = useMemo(() => createStyles(theme), [theme])
 
     // Queries for lookup data
     const { data: captureMethods } = useGetCaptureMethodsQuery()
@@ -33,7 +36,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
     // Status helpers
     const isActive = !deployment.deploymentEnd
     const statusLabel = isActive ? 'Active' : (deployment.deploymentStatusId === 2 ? 'Ended' : 'Failed')
-    const statusColor = isActive ? '#4CAF50' : '#FF9800'
+    const statusColor = isActive ? colors.primary : colors.error // Used error for failed/ended differentiation if needed, or stick to map logic
 
     // Lookup names
     const captureMethodName = useMemo(() => {
@@ -145,7 +148,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                         {/* Project Info */}
                         {deployment.projectId && (
                             <View style={styles.infoRow}>
-                                <WWIcon source="folder" size={16} color="#9CA3AF" />
+                                <WWIcon source="folder" size={16} color={colors.onSurfaceVariant} />
                                 <WWText variant="bodyMedium" style={styles.infoText}>
                                     Project ID: {deployment.projectId.slice(0, 8)}...
                                 </WWText>
@@ -185,7 +188,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                     <Card.Title
                         title="Project details"
                         titleStyle={styles.cardTitle}
-                        left={(props) => <WWIcon {...props} source="cog" size={24} color="#FFFFFF" />}
+                        left={(props) => <WWIcon {...props} source="cog" size={24} color={colors.onSurface} />}
                     />
                     <Card.Content>
                         <View style={styles.deviceInfo}>
@@ -223,7 +226,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
 
                         <Divider style={styles.smallDivider} />
                         <View style={styles.statusPlaceholder}>
-                            <WWIcon source="access-point" size={20} color="#9CA3AF" />
+                            <WWIcon source="access-point" size={20} color={colors.onSurfaceVariant} />
                             <WWText variant="bodySmall" style={styles.placeholderText}>
                                 Device status via LoRaWAN
                             </WWText>
@@ -236,7 +239,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                     <Card.Title
                         title="Location"
                         titleStyle={styles.cardTitle}
-                        left={(props) => <WWIcon {...props} source="map-marker" size={24} color="#FFFFFF" />}
+                        left={(props) => <WWIcon {...props} source="map-marker" size={24} color={colors.onSurface} />}
                     />
                     <Card.Content>
                         {deployment.locationName ? (
@@ -272,7 +275,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                             </View>
                         ) : (
                             <View style={styles.noLocation}>
-                                <WWIcon source="map-marker-off" size={48} color="#666" />
+                                <WWIcon source="map-marker-off" size={48} color={colors.onSurfaceVariant} />
                                 <WWText style={styles.noLocationText}>No location data available</WWText>
                             </View>
                         )}
@@ -293,7 +296,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                         <Card.Title
                             title="Notes & Comments"
                             titleStyle={styles.cardTitle}
-                            left={(props) => <WWIcon {...props} source="note-text" size={24} color="#FFFFFF" />}
+                            left={(props) => <WWIcon {...props} source="note-text" size={24} color={colors.onSurface} />}
                         />
                         <Card.Content>
                             {deployment.startDeploymentComments && (
@@ -325,7 +328,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                     <WWButton
                         mode="outlined"
                         icon="map"
-                        onPress={() => navigation.navigate('Home' as any)}
+                        onPress={() => navigation.navigate('Home')}
                         style={styles.actionButton}
                     >
                         View on Map
@@ -337,7 +340,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                             icon="stop"
                             onPress={() => navigation.navigate('EndDeploymentWizard', { mode: 'end_deployment' } as any)}
                             style={[styles.actionButton, styles.endButton]}
-                            color="#D32F2F"
+                            color={colors.error}
                         >
                             End Deployment
                         </WWButton>
@@ -348,9 +351,9 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
     )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
-        padding: 16,
+        padding: theme.spacing * 1.6, // approx 16
     },
     heroCard: {
         marginBottom: 16,
@@ -361,7 +364,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
     },
     cardTitle: {
-        color: '#FFFFFF',
+        color: theme.colors.onSurface,
     },
     statusBadgeContainer: {
         alignItems: 'flex-start',
@@ -374,7 +377,7 @@ const styles = StyleSheet.create({
     deploymentName: {
         fontWeight: 'bold',
         marginBottom: 8,
-        color: '#FFFFFF',
+        color: theme.colors.onSurface,
     },
     infoRow: {
         flexDirection: 'row',
@@ -383,15 +386,15 @@ const styles = StyleSheet.create({
     },
     infoText: {
         marginLeft: 8,
-        color: '#9CA3AF',
+        color: theme.colors.onSurfaceVariant,
     },
     divider: {
         marginVertical: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: theme.colors.outlineVariant,
     },
     smallDivider: {
         marginVertical: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: theme.colors.outlineVariant,
     },
     datesGrid: {
         flexDirection: 'row',
@@ -403,42 +406,42 @@ const styles = StyleSheet.create({
         minWidth: '30%',
     },
     label: {
-        color: '#9CA3AF',
+        color: theme.colors.onSurfaceVariant,
         marginBottom: 4,
     },
     dateValue: {
         fontWeight: '600',
-        color: '#FFFFFF',
+        color: theme.colors.onSurface,
     },
     deviceInfo: {
         gap: 8,
     },
     infoLabel: {
-        color: '#9CA3AF',
+        color: theme.colors.onSurfaceVariant,
         width: 140,
     },
     valueText: {
-        color: '#FFFFFF',
+        color: theme.colors.onSurface,
         flex: 1,
     },
     statusPlaceholder: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: theme.colors.elevation.level1,
         padding: 12,
         borderRadius: 8,
         gap: 8,
     },
     placeholderText: {
-        color: '#9CA3AF',
+        color: theme.colors.onSurfaceVariant,
         flex: 1,
     },
     locationName: {
         marginBottom: 4,
-        color: '#FFFFFF',
+        color: theme.colors.onSurface,
     },
     coordinates: {
-        color: '#9CA3AF',
+        color: theme.colors.onSurfaceVariant,
         marginBottom: 12,
     },
     mapContainer: {
@@ -452,10 +455,10 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     customMarker: {
-        backgroundColor: '#D32F2F',
-        padding: 8,
+        backgroundColor: theme.colors.primary,
+        padding: 6,
         borderRadius: 20,
-        borderWidth: 3,
+        borderWidth: 2,
         borderColor: '#fff',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -467,22 +470,22 @@ const styles = StyleSheet.create({
         height: 200,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: theme.colors.elevation.level1,
     },
     noLocationText: {
         marginTop: 8,
-        color: '#666',
+        color: theme.colors.onSurfaceVariant,
     },
     noteSection: {
         marginBottom: 16,
     },
     noteLabel: {
-        color: '#9CA3AF',
+        color: theme.colors.onSurfaceVariant,
         marginBottom: 6,
     },
     noteText: {
         lineHeight: 20,
-        color: '#FFFFFF',
+        color: theme.colors.onSurface,
     },
     actionSection: {
         gap: 12,
@@ -493,7 +496,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     endButton: {
-        backgroundColor: '#D32F2F',
+        backgroundColor: theme.colors.error,
     },
 })
 

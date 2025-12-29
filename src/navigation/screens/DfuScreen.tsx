@@ -29,7 +29,7 @@ export const DfuScreen = () => {
 
 	const handleFilePick = async () => {
 		console.log("🔍 DFU: Starting file pick process...")
-		console.log("🔍 DFU: FileSystem.cacheDirectory:", FileSystem.cacheDirectory)
+		console.log("🔍 DFU: FileSystem.cacheDirectory:", (FileSystem as any).cacheDirectory)
 		try {
 			// Request necessary permissions first
 			if (Platform.OS === "android") {
@@ -80,7 +80,7 @@ export const DfuScreen = () => {
 			const timestamp = Date.now()
 			const localPath = Platform.select({
 				ios: result[0].uri,
-				android: `${FileSystem.cacheDirectory}firmware_${timestamp}.zip`,
+				android: `${(FileSystem as any).cacheDirectory ?? ""}firmware_${timestamp}.zip`,
 			})
 
 			if (!localPath) {

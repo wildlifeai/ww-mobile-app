@@ -32,6 +32,8 @@ import BleManager, { Peripheral } from 'react-native-ble-manager'
  */
 const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> => {
     return new Promise((resolve, reject) => {
+        let timeout: NodeJS.Timeout
+
         const eventEmitter = BleManager.addListener(
             'BleManagerDiscoverPeripheral',
             (peripheral: Peripheral) => {
@@ -53,23 +55,20 @@ const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> =>
         )
 
         // Start scanning
-        BleManager.scan([], timeoutMs / 1000) // Convert to seconds
-            .then(() => {
-                console.log('[scanForBootloader] Scan started for DfuTarg')
-            })
-            .catch(err => {
-                console.error('[scanForBootloader] Scan failed:', err)
-                eventEmitter.remove()
-                reject(err)
-            })
+        BleManager.scan([], 5, true).catch(err => {
+            console.error('[scanForBootloader] Scan failed:', err)
+            reject(err)
+        })
 
-        // Timeout if not found
-        const timeout = setTimeout(() => {
-            console.log('[scanForBootloader] Scan timeout, bootloader not found')
-            BleManager.stopScan().catch(err => console.warn('Failed to stop scan:', err))
+        // Set timeout
+        timeout = setTimeout(() => {
+            console.log('[scanForBootloader] Scan timed out')
+            BleManager.stopScan().catch(() => { })
             eventEmitter.remove()
             resolve(null)
         }, timeoutMs)
+
+
     })
 }
 
@@ -383,7 +382,7 @@ export const EngineerConsoleScreen = () => {
                                 if (error || !data) throw new Error(`Download failed: ${error?.message}`)
 
                                 // 3. Save to file
-                                const localPath = `${FileSystem.cacheDirectory}ble_firmware_${Date.now()}.zip`
+                                const localPath = (FileSystem as any).cacheDirectory + 'last_image.jpg_' + Date.now() + '.zip'
                                 const reader = new FileReader()
                                 reader.readAsDataURL(data)
                                 reader.onloadend = async () => {
@@ -393,7 +392,7 @@ export const EngineerConsoleScreen = () => {
                                     await FileSystem.writeAsStringAsync(
                                         localPath,
                                         base64Content,
-                                        { encoding: FileSystem.EncodingType.Base64 }
+                                        { encoding: (FileSystem as any).EncodingType.Base64, }
                                     )
 
 

@@ -5,8 +5,8 @@ export const useInterval = (
 	delay: number,
 	instant: boolean = false,
 ) => {
-	const savedCallback = useRef<any>()
-	const intervalRef = useRef<any>()
+	const savedCallback = useRef<any>(null)
+
 
 	useEffect(() => {
 		savedCallback.current = callback

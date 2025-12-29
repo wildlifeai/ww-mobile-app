@@ -1130,7 +1130,7 @@ class SupabaseSyncService {
                         rec.cameraLocationImagePaths = row.camera_location_image_paths
                         rec.cameraHeight = row.camera_height ?? undefined
 
-                        rec.deploymentStart = new Date(row.deployment_start)
+                        rec.deploymentStart = row.deployment_start ? new Date(row.deployment_start) : new Date()
                         rec.deploymentEnd = row.deployment_end ? new Date(row.deployment_end) : null
 
                         rec.startDeploymentComments = row.start_deployment_comments ?? undefined

@@ -13,9 +13,12 @@ import { WWIcon } from '../../components/ui/WWIcon'
 
 type DeviceDetailsRouteProp = RouteProp<{ params: { deviceId: string } }, 'params'>
 
+import { RootStackParamList } from '../../navigation'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+
 export const DeviceDetailsScreen = () => {
     const route = useRoute<DeviceDetailsRouteProp>()
-    const navigation = useNavigation()
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
     const theme = useTheme()
     const { deviceId } = route.params
 
@@ -53,7 +56,7 @@ export const DeviceDetailsScreen = () => {
 
     const handleViewDeployment = (deploymentId: string) => {
         // Navigate to deployment details
-        (navigation as any).navigate('DeploymentDetails', { deploymentId })
+        navigation.navigate('DeploymentDetails', { deploymentId })
     }
 
     if (loading) {

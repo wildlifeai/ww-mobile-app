@@ -184,7 +184,7 @@ export const DeviceService = {
             deploymentName: deviceWithStatus?.activeDeployment?.name || lastDeployment?.name,
             deploymentId: deviceWithStatus?.activeDeployment?.id || lastDeployment?.id,
             deploymentEndDate: (deviceWithStatus?.activeDeployment?.deploymentEnd || lastDeployment?.deploymentEnd)
-                ? new Date(deviceWithStatus?.activeDeployment?.deploymentEnd || lastDeployment?.deploymentEnd)
+                ? new Date((deviceWithStatus?.activeDeployment?.deploymentEnd || lastDeployment?.deploymentEnd)!)
                 : undefined,
             lastDeploymentDate: lastDeployment?.deploymentStart
                 ? new Date(lastDeployment.deploymentStart)
