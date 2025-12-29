@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { RootStackParamList } from '../../navigation'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppSelector } from '../../redux'
 import { useBle } from '../../hooks/useBle'
@@ -11,9 +13,10 @@ import { AppParams } from '../types'
 import { BleConsoleOutput, ConsoleEntry } from '../../components/BleConsoleOutput'
 
 export const DevicePreparationScreen = () => {
-    const navigation = useNavigation()
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
     const route = useRoute<AppParams<'DevicePreparation'>>()
-    const { deviceId } = route.params
+    const params = route.params as { deviceId: string } | undefined
+    const deviceId = params?.deviceId as string // Force cast as we check for it or it's dead code
 
     const device = useAppSelector(state => state.devices[deviceId])
     const logs = useAppSelector(state => state.logs[deviceId] || [])
@@ -192,7 +195,7 @@ export const DevicePreparationScreen = () => {
 
                         <TouchableOpacity
                             style={[styles.actionButton, styles.secondaryButton]}
-                            onPress={() => navigation.navigate('EngineerConsole', { deviceId })}
+                            onPress={() => navigation.navigate('EngineerConsoleScreen', { deviceId })}
                         >
                             <Ionicons name="terminal" size={20} color="#2196F3" style={styles.actionIcon} />
                             <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Open Engineer Console</Text>

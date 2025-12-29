@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { StyleSheet, View, Alert, Platform, KeyboardAvoidingView } from 'react-native'
+import { StyleSheet, View, Alert, Platform } from 'react-native'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navigation/native'
 import { WWScreenView } from '../../components/ui/WWScreenView'
@@ -422,101 +422,99 @@ export const DeploymentDetailsStep = () => {
 
     return (
         <WWScreenView>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-                <View style={styles.container}>
-                    {/* Project & Configuration Header */}
-                    <Card style={styles.card}>
-                        <Card.Title
-                            title="Project settings"
-                            left={(props) => <WWIcon {...props} source="tune" />}
-                            right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Project settings', 'Project and Capture Method are set during Project Creation and Device Preparation. To change these, you must restart the preparation.')}>Help</Button>}
-                        />
-                        <Card.Content>
+            <View style={styles.container}>
+                {/* Project & Configuration Header */}
+                <Card style={styles.card}>
+                    <Card.Title
+                        title="Project settings"
+                        left={(props) => <WWIcon {...props} source="tune" />}
+                        right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Project settings', 'Project and Capture Method are set during Project Creation and Device Preparation. To change these, you must restart the preparation.')}>Help</Button>}
+                    />
+                    <Card.Content>
+                        <View style={styles.infoRow}>
+                            <Text variant="labelMedium">Project:</Text>
+                            <Text variant="bodyLarge">{project ? project.name : 'Loading...'}</Text>
+                        </View>
+                        <View style={styles.infoRow}>
+                            <Text variant="labelMedium">Capture Method:</Text>
+                            <Text variant="bodyLarge">{captureMethodName || 'Loading...'}</Text>
+                        </View>
+                        {project?.capture_method_id === 1 && sensitivityLabel ? (
                             <View style={styles.infoRow}>
-                                <Text variant="labelMedium">Project:</Text>
-                                <Text variant="bodyLarge">{project ? project.name : 'Loading...'}</Text>
+                                <Text variant="labelMedium">Motion Sensitivity:</Text>
+                                <Text variant="bodyLarge">{sensitivityLabel}</Text>
                             </View>
+                        ) : project?.capture_method_id === 2 && project?.timelapse_interval_seconds ? (
                             <View style={styles.infoRow}>
-                                <Text variant="labelMedium">Capture Method:</Text>
-                                <Text variant="bodyLarge">{captureMethodName || 'Loading...'}</Text>
+                                <Text variant="labelMedium">Time-lapse Interval:</Text>
+                                <Text variant="bodyLarge">{project.timelapse_interval_seconds}s</Text>
                             </View>
-                            {project?.capture_method_id === 1 && sensitivityLabel ? (
-                                <View style={styles.infoRow}>
-                                    <Text variant="labelMedium">Motion Sensitivity:</Text>
-                                    <Text variant="bodyLarge">{sensitivityLabel}</Text>
-                                </View>
-                            ) : project?.capture_method_id === 2 && project?.timelapse_interval_seconds ? (
-                                <View style={styles.infoRow}>
-                                    <Text variant="labelMedium">Time-lapse Interval:</Text>
-                                    <Text variant="bodyLarge">{project.timelapse_interval_seconds}s</Text>
-                                </View>
-                            ) : null}
+                        ) : null}
 
-                            <Button
-                                mode="outlined"
-                                onPress={() => {
-                                    isNavigatingAway.current = true
-                                        ; (navigation as any).navigate('PrepareAndTest', {
-                                            deviceId,
-                                            bleDeviceId,
-                                            nextRoute: 'DeploymentDetailsStep'
-                                        })
-                                }}
-                                style={{ marginTop: 12 }}
-                                icon="cog"
-                            >
-                                Edit Project Settings
-                            </Button>
-                        </Card.Content>
-                    </Card>
-
-                    <LoRaWANSection
-                        device={bleDevice}
-                        onShowHelp={showHelp}
-                    />
-
-                    <CameraViewSection
-                        device={bleDevice}
-                        onImageCaptured={(path: string) => setFormState(prev => ({ ...prev, testImagePath: path }))}
-                        onShowHelp={showHelp}
-                    />
-
-                    <LocationSection
-                        onLocationChange={(loc) => setFormState(prev => ({ ...prev, location: loc }))}
-                        onShowHelp={showHelp}
-                    />
-
-                    <MetadataSection
-                        name={formState.name}
-                        notes={formState.notes}
-                        locationDescription={formState.locationDescription}
-                        cameraHeight={formState.cameraHeight}
-                        onNameChange={(name: string) => setFormState(prev => ({ ...prev, name }))}
-                        onNotesChange={(notes: string) => setFormState(prev => ({ ...prev, notes }))}
-                        onLocationDescriptionChange={(text: string) => setFormState(prev => ({ ...prev, locationDescription: text }))}
-                        onCameraHeightChange={(text: string) => setFormState(prev => ({ ...prev, cameraHeight: text }))}
-                        onShowHelp={showHelp}
-                    />
-
-                    <View style={styles.footer}>
-                        <WWButton
-                            mode="contained"
-                            onPress={handleStartDeployment}
-                            loading={submitting}
-                            style={styles.deployButton}
+                        <Button
+                            mode="outlined"
+                            onPress={() => {
+                                isNavigatingAway.current = true
+                                    ; (navigation as any).navigate('PrepareAndTest', {
+                                        deviceId,
+                                        bleDeviceId,
+                                        nextRoute: 'DeploymentDetailsStep'
+                                    })
+                            }}
+                            style={{ marginTop: 12 }}
+                            icon="cog"
                         >
-                            Start Deployment
-                        </WWButton>
-                    </View>
-                </View>
+                            Edit Project Settings
+                        </Button>
+                    </Card.Content>
+                </Card>
 
-                <HelpDialog
-                    visible={helpVisible}
-                    title={helpTitle}
-                    content={helpContent}
-                    onDismiss={() => setHelpVisible(false)}
+                <LoRaWANSection
+                    device={bleDevice}
+                    onShowHelp={showHelp}
                 />
-            </KeyboardAvoidingView>
+
+                <CameraViewSection
+                    device={bleDevice}
+                    onImageCaptured={(path: string) => setFormState(prev => ({ ...prev, testImagePath: path }))}
+                    onShowHelp={showHelp}
+                />
+
+                <LocationSection
+                    onLocationChange={(loc) => setFormState(prev => ({ ...prev, location: loc }))}
+                    onShowHelp={showHelp}
+                />
+
+                <MetadataSection
+                    name={formState.name}
+                    notes={formState.notes}
+                    locationDescription={formState.locationDescription}
+                    cameraHeight={formState.cameraHeight}
+                    onNameChange={(name: string) => setFormState(prev => ({ ...prev, name }))}
+                    onNotesChange={(notes: string) => setFormState(prev => ({ ...prev, notes }))}
+                    onLocationDescriptionChange={(text: string) => setFormState(prev => ({ ...prev, locationDescription: text }))}
+                    onCameraHeightChange={(text: string) => setFormState(prev => ({ ...prev, cameraHeight: text }))}
+                    onShowHelp={showHelp}
+                />
+
+                <View style={styles.footer}>
+                    <WWButton
+                        mode="contained"
+                        onPress={handleStartDeployment}
+                        loading={submitting}
+                        style={styles.deployButton}
+                    >
+                        Start Deployment
+                    </WWButton>
+                </View>
+            </View>
+
+            <HelpDialog
+                visible={helpVisible}
+                title={helpTitle}
+                content={helpContent}
+                onDismiss={() => setHelpVisible(false)}
+            />
         </WWScreenView>
     )
 }

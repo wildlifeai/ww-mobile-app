@@ -24,8 +24,8 @@ const INTERVAL = 1000 * 7
 const TIMEOUT = 1000 * 10
 
 export const useCommand = ({ deviceId, command }: Props) => {
-	const requestRef = useRef<NodeJS.Timeout>()
-	const timeoutRef = useRef<NodeJS.Timeout>()
+	const requestRef = useRef<any>(null)
+	const timeoutRef = useRef<any>(null)
 
 	const [goal, setGoal] = useState<number | string>()
 	const [commandLoading, setCommandLoading] = useState(

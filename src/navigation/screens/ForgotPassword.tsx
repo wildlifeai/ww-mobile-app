@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form"
 import { StyleSheet, View, Image, Alert, ScrollView } from "react-native"
 import { Button } from "react-native-paper"
-import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView"
+// import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView"
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWTextInput } from "../../components/ui/WWTextInput"
 import { Field } from "../../components/form/Field"
@@ -145,129 +145,120 @@ export const ForgotPassword = () => {
 	}
 
 	return (
-		<CustomKeyboardAvoidingView>
-			<WWScreenView style={styles.view} scrollable={false}>
-				<ScrollView
-					style={styles.scrollView}
-					contentContainerStyle={styles.scrollContent}
-					keyboardShouldPersistTaps="handled"
-					showsVerticalScrollIndicator={false}
-				>
-					<View style={styles.container}>
-						<View style={styles.logoContainer}>
-							<Image
-								source={require("../../assets/ww-logo-1.png")}
-								style={styles.logo}
-								resizeMode="contain"
-							/>
-						</View>
-						<View style={styles.form}>
-							{isResetMode ? (
-								<>
-									<WWText style={styles.title}>Set New Password</WWText>
-									<WWText style={styles.subtitle}>
-										Enter your new password below.
-									</WWText>
+		<WWScreenView style={styles.view} scrollable={true}>
+			<View style={styles.container}>
+				<View style={styles.logoContainer}>
+					<Image
+						source={require("../../assets/ww-logo-1.png")}
+						style={styles.logo}
+						resizeMode="contain"
+					/>
+				</View>
+				<View style={styles.form}>
+					{isResetMode ? (
+						<>
+							<WWText style={styles.title}>Set New Password</WWText>
+							<WWText style={styles.subtitle}>
+								Enter your new password below.
+							</WWText>
 
-									<Field
-										control={resetControl}
-										name="password"
-										label="New Password"
-										required
-										rules={{
-											required: "Password is required",
-											minLength: {
-												value: 6,
-												message: "Password must be at least 6 characters",
-											},
-										}}
-									>
-										{(field) => (
-											<WWTextInput {...field} mode="outlined" secureTextEntry />
-										)}
-									</Field>
+							<Field
+								control={resetControl}
+								name="password"
+								label="New Password"
+								required
+								rules={{
+									required: "Password is required",
+									minLength: {
+										value: 6,
+										message: "Password must be at least 6 characters",
+									},
+								}}
+							>
+								{(field) => (
+									<WWTextInput {...field} mode="outlined" secureTextEntry />
+								)}
+							</Field>
 
-									<Field
-										control={resetControl}
-										name="confirmPassword"
-										label="Confirm Password"
-										required
-										rules={{
-											required: "Please confirm your password",
-										}}
-									>
-										{(field) => (
-											<WWTextInput {...field} mode="outlined" secureTextEntry />
-										)}
-									</Field>
-
-									<Button
-										mode="contained"
-										onPress={handleResetSubmit(onResetSubmit)}
-										loading={isLoading}
-										style={styles.button}
-										disabled={isLoading}
-									>
-										Update Password
-									</Button>
-								</>
-							) : (
-								<>
-									<WWText style={styles.title}>Reset Your Password</WWText>
-									<WWText style={styles.subtitle}>
-										Enter your email address and we'll send you instructions to
-										reset your password.
-									</WWText>
-
-									<Field
-										control={control}
-										name="email"
-										label="Email"
-										required
-										rules={{
-											required: "Email is required",
-											pattern: {
-												value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-												message: "Please enter a valid email address",
-											},
-										}}
-									>
-										{(field) => (
-											<WWTextInput
-												{...field}
-												mode="outlined"
-												textContentType="emailAddress"
-												keyboardType="email-address"
-												autoCapitalize="none"
-											/>
-										)}
-									</Field>
-
-									<Button
-										mode="contained"
-										onPress={handleSubmit(onSubmit)}
-										loading={isLoading}
-										style={styles.button}
-										disabled={isLoading || isEmailSent}
-									>
-										{isEmailSent ? "Email Sent" : "Send Reset Email"}
-									</Button>
-								</>
-							)}
+							<Field
+								control={resetControl}
+								name="confirmPassword"
+								label="Confirm Password"
+								required
+								rules={{
+									required: "Please confirm your password",
+								}}
+							>
+								{(field) => (
+									<WWTextInput {...field} mode="outlined" secureTextEntry />
+								)}
+							</Field>
 
 							<Button
-								mode="text"
-								onPress={() => navigation.navigate("Login")}
-								style={styles.textButton}
+								mode="contained"
+								onPress={handleResetSubmit(onResetSubmit)}
+								loading={isLoading}
+								style={styles.button}
 								disabled={isLoading}
 							>
-								Back to Login
+								Update Password
 							</Button>
-						</View>
-					</View>
-				</ScrollView>
-			</WWScreenView>
-		</CustomKeyboardAvoidingView>
+						</>
+					) : (
+						<>
+							<WWText style={styles.title}>Reset Your Password</WWText>
+							<WWText style={styles.subtitle}>
+								Enter your email address and we'll send you instructions to
+								reset your password.
+							</WWText>
+
+							<Field
+								control={control}
+								name="email"
+								label="Email"
+								required
+								rules={{
+									required: "Email is required",
+									pattern: {
+										value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+										message: "Please enter a valid email address",
+									},
+								}}
+							>
+								{(field) => (
+									<WWTextInput
+										{...field}
+										mode="outlined"
+										textContentType="emailAddress"
+										keyboardType="email-address"
+										autoCapitalize="none"
+									/>
+								)}
+							</Field>
+
+							<Button
+								mode="contained"
+								onPress={handleSubmit(onSubmit)}
+								loading={isLoading}
+								style={styles.button}
+								disabled={isLoading || isEmailSent}
+							>
+								{isEmailSent ? "Email Sent" : "Send Reset Email"}
+							</Button>
+						</>
+					)}
+
+					<Button
+						mode="text"
+						onPress={() => navigation.navigate("Login")}
+						style={styles.textButton}
+						disabled={isLoading}
+					>
+						Back to Login
+					</Button>
+				</View>
+			</View>
+		</WWScreenView>
 	)
 }
 

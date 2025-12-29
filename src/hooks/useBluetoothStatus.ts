@@ -10,13 +10,13 @@ import { log } from "../utils/logger"
 import { useAppDispatch, useAppSelector } from "../redux"
 import { blStatusChanged } from "../redux/slices/bluetoothStatusSlice"
 
-export type ReturnType = {
+export type BluetoothStatusResult = {
 	status: BluetoothState
 	initialLoad: boolean
 }
 
-export const useBluetoothStatus = (): ReturnType => {
-	const bleLibRef = useRef<any>()
+export const useBluetoothStatus = (): BluetoothStatusResult => {
+	const bleLibRef = useRef<any>(null)
 	const { initialLoad, status } = useAppSelector((state) => state.blStatus)
 	const dispatch = useAppDispatch()
 

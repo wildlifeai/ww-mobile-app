@@ -12,6 +12,7 @@ import {
 
 
 // Mock services/supabase module
+import { getEnvironmentConfig } from "../../config/EnvironmentManager"
 const mockResetSupabaseClient = jest.fn()
 const mockInitializeSupabaseClient = jest.fn()
 const mockGetSupabaseClient = jest.fn()
@@ -24,11 +25,11 @@ const mockReconnectSupabase = jest.fn()
 
 jest.mock("../../services/supabase", () => ({
 	...jest.requireActual("../../services/supabase"),
-	initializeSupabaseClient: (...args: any[]) => mockInitializeSupabaseClient(...args),
-	getSupabaseClient: (...args: any[]) => mockGetSupabaseClient(...args),
-	onSupabaseClientChange: (...args: any[]) => mockOnSupabaseClientChange(...args),
-	reconnectSupabase: (...args: any[]) => mockReconnectSupabase(...args),
-	resetSupabaseClient: (...args: any[]) => mockResetSupabaseClient(...args),
+	initializeSupabaseClient: (...args: any[]) => (mockInitializeSupabaseClient as any)(...args),
+	getSupabaseClient: (...args: any[]) => (mockGetSupabaseClient as any)(...args),
+	onSupabaseClientChange: (...args: any[]) => (mockOnSupabaseClientChange as any)(...args),
+	reconnectSupabase: (...args: any[]) => (mockReconnectSupabase as any)(...args),
+	resetSupabaseClient: (...args: any[]) => (mockResetSupabaseClient as any)(...args),
 }))
 
 jest.mock("../../config/EnvironmentManager")

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { Alert } from 'react-native'
-import { ExtendedPeripheral } from '../ble/types'
+import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { useBleCommands } from './useBleCommands'
 
 /**
