@@ -64,9 +64,8 @@ export const ProjectCard = React.memo(
 				onPress={onPress}
 				testID={`project-card-${project.id}`}
 				accessible
-				accessibilityLabel={`Project ${project.name}, ${
-					project.member_count || 0
-				} members, ${project.deployment_count || 0} deployments`}
+				accessibilityLabel={`Project ${project.name}, ${project.member_count || 0
+					} members, ${project.deployment_count || 0} deployments`}
 			>
 				<Card.Content style={styles.content}>
 					{/* Project Name */}
@@ -129,6 +128,7 @@ export const ProjectCard = React.memo(
 								{(project.deployment_count || 0) === 1
 									? "deployment"
 									: "deployments"}
+								{` (${project.active_deployment_count || 0} active)`}
 							</Text>
 						</View>
 					</View>
@@ -147,7 +147,7 @@ export const ProjectCard = React.memo(
 									variant="bodySmall"
 									style={{ color: theme.colors.onSurfaceVariant }}
 								>
-									{project.lorawan_device_count} LoRaWAN{" "}
+									{project.lorawan_device_count} {" "}
 									{(project.lorawan_device_count || 0) === 1
 										? "device"
 										: "devices"}
@@ -162,10 +162,10 @@ export const ProjectCard = React.memo(
 											project.battery_level >= 80
 												? "battery-high"
 												: project.battery_level >= 50
-												? "battery-medium"
-												: project.battery_level >= 20
-												? "battery-low"
-												: "battery-alert"
+													? "battery-medium"
+													: project.battery_level >= 20
+														? "battery-low"
+														: "battery-alert"
 										}
 										size={16}
 										color={getBatteryColor(project.battery_level)}
@@ -209,7 +209,7 @@ export const ProjectCard = React.memo(
 						]}
 						testID="last-updated"
 					>
-						Updated {formatDate(project.updated_at)}
+						Settings Updated: {formatDate(project.updated_at)}
 					</Text>
 				</Card.Content>
 			</Card>

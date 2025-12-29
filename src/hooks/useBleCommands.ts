@@ -52,9 +52,14 @@ export const useBleCommands = () => {
     }, [write])
 
     const runDisconnect = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.dis, { control: CommandControlTypes.WRITE }]])
-        // Also trigger app-side disconnect
-        await disconnectDevice(peripheral)
+        try {
+            await write(peripheral, [[CommandNames.dis, { control: CommandControlTypes.WRITE }]])
+        } catch (e) {
+            console.warn('[runDisconnect] BLE write failed, proceeding to local disconnect:', e)
+        } finally {
+            // Always trigger app-side disconnect
+            await disconnectDevice(peripheral)
+        }
     }, [write, disconnectDevice])
 
     const setUtc = useCallback(async (peripheral: ExtendedPeripheral) => {

@@ -59,6 +59,9 @@ export interface RootStackParamList extends ParamListBase {
 	PrepareAndTest: { deviceId: string; bleDeviceId: string; selftestError?: string; setUtcError?: string; nextRoute?: string }
 	StartDeploymentWizard: { mode: 'deployment' }
 	DeploymentDetailsStep: { devicePreparationId: string; deviceId: string; bleDeviceId: string }
+	DeploymentDetails: { deploymentId: string }
+	EndDeploymentWizard: { mode: 'end_deployment'; deploymentId?: string }
+	EndDeploymentDetailsStep: { deploymentId: string; deviceId: string; bleDeviceId: string }
 }
 
 export type Routes = keyof RootStackParamList

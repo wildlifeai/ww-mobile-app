@@ -8,14 +8,13 @@ import { WWScreenView } from '../../../components/ui/WWScreenView'
 import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
 import { RootStackParamList } from '../../../navigation'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { DeploymentService } from '../../../services/DeploymentService'
 import { useBleCommands } from '../../../hooks/useBleCommands'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { withObservables } from '@nozbe/watermelondb/react'
 import { selectCurrentUser } from '../../../redux/slices/authSlice'
 import type Deployment from '../../../database/models/Deployment'
-
-// ... existing imports ...
 
 type EndDeploymentDetailsStepRouteProp = RouteProp<RootStackParamList, 'EndDeploymentDetailsStep'>
 
@@ -25,9 +24,10 @@ interface InnerProps {
     bleDeviceId: string
 }
 
-const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, deviceId, bleDeviceId }) => {
-    const navigation = useNavigation()
-    const { disconnectDevice } = useBleActions()
+const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment }) => {
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
+    const route = useRoute<EndDeploymentDetailsStepRouteProp>()
+    const { deviceId = '', bleDeviceId = '' } = route.params || {}
     const { getBatteryLevel, setOperationalParam, disableCamera, runDisconnect, setDeploymentIdAsOps, clearGpsLocation, flashLed } = useBleCommands()
 
     // Get current user
@@ -36,17 +36,34 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
     // Get full device object for BLE commands
     const devices = useAppSelector(state => state.devices)
 
+    console.log(`[EndDeployment] Rendering (Fixed). Params from route:: bleDeviceId=${bleDeviceId}, deviceId=${deviceId}`);
+
     // Robust lookup: Try direct match, then case-insensitive, then fallback
     const bleDevice = useMemo(() => {
-        if (devices[bleDeviceId]) return devices[bleDeviceId];
+        let device = devices[bleDeviceId];
 
-        const match = Object.values(devices).find(d => d.id?.toLowerCase() === bleDeviceId?.toLowerCase());
-        if (match) return match;
+        if (!device) {
+            device = Object.values(devices).find(d => d.id?.toLowerCase() === bleDeviceId?.toLowerCase());
+        }
+
+        console.log(`[EndDeployment] Validating device from store. bleDeviceId=${bleDeviceId}, Found=${!!device}, ID=${device?.id}, Connected=${device?.connected}`);
+
+        if (device) {
+            // FORCE connected: true. If we are on this screen, we assume we are connected.
+            // If Redux says false (stale), we still want to try sending commands.
+            // BleManager will throw if really disconnected, which is better than silent failure.
+            return { ...device, connected: true };
+        }
 
         // Fallback: If we assume it is connected but missing from store (edge case),
         // we construct a minimal object so commands can still be attempted.
-        console.warn(`[EndDeployment] Device ${bleDeviceId} not found in store. Using fallback. Available keys: ${Object.keys(devices).join(', ')}`);
-        return { id: bleDeviceId, connected: true } as any;
+        console.warn(`[EndDeployment] Device ${bleDeviceId} not found in store. Using fallback.`);
+        return {
+            id: bleDeviceId,
+            connected: true,
+            name: 'Unknown Device',
+            services: undefined, // writeToDevice handles undefined services by using default UUIDs
+        } as any;
     }, [devices, bleDeviceId]);
 
     // Local state

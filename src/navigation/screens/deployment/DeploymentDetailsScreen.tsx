@@ -9,10 +9,12 @@ import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { RootStackParamList } from '../../../navigation'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { DeploymentService } from '../../../services/DeploymentService'
 import type Deployment from '../../../database/models/Deployment'
 import { BasicMapView } from '../../../features/maps/components/BasicMapView'
 import { Marker } from 'react-native-maps'
+import { useGetCaptureMethodsQuery, useGetActivitySensitivityQuery } from '../../../redux/api/projectsApi'
 
 type DeploymentDetailsRouteProp = RouteProp<RootStackParamList, 'DeploymentDetails'>
 
@@ -21,22 +23,57 @@ interface Props {
 }
 
 const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
-    const navigation = useNavigation()
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
     const [menuVisible, setMenuVisible] = React.useState(false)
+
+    // Queries for lookup data
+    const { data: captureMethods } = useGetCaptureMethodsQuery()
+    const { data: activitySensitivities } = useGetActivitySensitivityQuery()
 
     // Status helpers
     const isActive = deployment.deploymentStatusId === 1
     const statusLabel = isActive ? 'Active' : (deployment.deploymentStatusId === 2 ? 'Ended' : 'Failed')
     const statusColor = isActive ? '#4CAF50' : '#FF9800'
 
+    // Lookup names
+    const captureMethodName = useMemo(() => {
+        if (!deployment.captureMethodId) return 'N/A'
+        const cm = captureMethods?.find(c => c.id === deployment.captureMethodId)
+        return cm?.value || cm?.description || `Unknown (ID: ${deployment.captureMethodId})`
+    }, [deployment.captureMethodId, captureMethods])
+
+    const sensitivityName = useMemo(() => {
+        if (!deployment.activityDetectionSensitivityId) return 'N/A'
+        const ads = activitySensitivities?.find(a => a.id === deployment.activityDetectionSensitivityId)
+        return ads?.value || ads?.description || `Unknown (ID: ${deployment.activityDetectionSensitivityId})`
+    }, [deployment.activityDetectionSensitivityId, activitySensitivities])
+
+    // Date helper
+    const isValidDate = (date: any) => {
+        if (!date) return false
+        const d = new Date(date)
+        return !isNaN(d.getTime()) && d.getTime() > 946684800000 // > Year 2000
+    }
+
+    const getDurationString = (start: any, end: any) => {
+        if (!isValidDate(start)) return ''
+        const startDate = new Date(start)
+        const endDate = isValidDate(end) ? new Date(end) : new Date()
+        const diffMs = endDate.getTime() - startDate.getTime()
+        if (diffMs < 0) return ''
+
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+        const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+
+        if (days > 0) return `${days} day${days !== 1 ? 's' : ''}, ${hours} hour${hours !== 1 ? 's' : ''}`
+        if (hours > 0) return `${hours} hr ${minutes} min${minutes !== 1 ? 's' : ''}`
+        return `${minutes} min${minutes !== 1 ? 's' : ''}`
+    }
+
     // Calculate duration
     const duration = useMemo(() => {
-        if (!deployment.deploymentStart) return null
-        const start = new Date(deployment.deploymentStart)
-        const end = deployment.deploymentEnd ? new Date(deployment.deploymentEnd) : new Date()
-        const days = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-        if (days === 0) return 'Less than 1 day'
-        return `${days} day${days !== 1 ? 's' : ''}`
+        return getDurationString(deployment.deploymentStart, deployment.deploymentEnd)
     }, [deployment.deploymentStart, deployment.deploymentEnd])
 
     // Configure header menu
@@ -87,17 +124,16 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
         <WWScreenView scrollable>
             <View style={styles.container}>
                 {/* Hero Card - Status & Overview */}
-                <Card style={styles.heroCard}>
+                <Card mode="outlined" style={styles.heroCard}>
                     <Card.Content>
                         {/* Status Badge */}
                         <View style={styles.statusBadgeContainer}>
                             <Chip
                                 icon={isActive ? "circle" : "check-circle"}
                                 style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}
+                                textStyle={{ color: statusColor, fontWeight: 'bold' }}
                             >
-                                <WWText style={{ color: statusColor, fontWeight: 'bold', fontSize: 16 }}>
-                                    {statusLabel}
-                                </WWText>
+                                {statusLabel}
                             </Chip>
                         </View>
 
@@ -109,7 +145,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                         {/* Project Info */}
                         {deployment.projectId && (
                             <View style={styles.infoRow}>
-                                <WWIcon source="folder" size={16} color="#666" />
+                                <WWIcon source="folder" size={16} color="#9CA3AF" />
                                 <WWText variant="bodyMedium" style={styles.infoText}>
                                     Project ID: {deployment.projectId.slice(0, 8)}...
                                 </WWText>
@@ -123,10 +159,10 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                             <View style={styles.dateItem}>
                                 <WWText variant="labelMedium" style={styles.label}>Started</WWText>
                                 <WWText variant="bodyLarge" style={styles.dateValue}>
-                                    {new Date(deployment.deploymentStart).toLocaleDateString()}
+                                    {isValidDate(deployment.deploymentStart) ? new Date(deployment.deploymentStart).toLocaleDateString() : 'N/A'}
                                 </WWText>
                             </View>
-                            {deployment.deploymentEnd && (
+                            {deployment.deploymentEnd && isValidDate(deployment.deploymentEnd) && (
                                 <View style={styles.dateItem}>
                                     <WWText variant="labelMedium" style={styles.label}>Ended</WWText>
                                     <WWText variant="bodyLarge" style={styles.dateValue}>
@@ -134,77 +170,80 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                                     </WWText>
                                 </View>
                             )}
-                            {duration && (
-                                <View style={styles.dateItem}>
-                                    <WWText variant="labelMedium" style={styles.label}>Duration</WWText>
-                                    <WWText variant="bodyLarge" style={styles.dateValue}>{duration}</WWText>
-                                </View>
-                            )}
+                            <View style={styles.dateItem}>
+                                <WWText variant="labelMedium" style={styles.label}>Duration</WWText>
+                                <WWText variant="bodyLarge" style={styles.dateValue}>
+                                    {duration || '--'}
+                                </WWText>
+                            </View>
                         </View>
                     </Card.Content>
                 </Card>
 
                 {/* Device & Configuration Card */}
-                <Card style={styles.card}>
+                <Card mode="outlined" style={styles.card}>
                     <Card.Title
-                        title="Project settings"
-                        left={(props) => <WWIcon {...props} source="camera" size={24} />}
+                        title="Project details"
+                        titleStyle={styles.cardTitle}
+                        left={(props) => <WWIcon {...props} source="cog" size={24} color="#FFFFFF" />}
                     />
                     <Card.Content>
                         <View style={styles.deviceInfo}>
                             <View style={styles.infoRow}>
                                 <WWText variant="labelMedium" style={styles.infoLabel}>Device ID:</WWText>
-                                <WWText variant="bodyMedium">{deployment.deviceId?.slice(0, 18) || 'Unknown'}...</WWText>
+                                <WWText variant="bodyMedium" style={styles.valueText}>
+                                    {deployment.deviceId ? `${deployment.deviceId.slice(0, 18)}...` : 'Unknown'}
+                                </WWText>
                             </View>
-                            {deployment.captureMethodId && (
-                                <View style={styles.infoRow}>
-                                    <WWText variant="labelMedium" style={styles.infoLabel}>Capture Method:</WWText>
-                                    <WWText variant="bodyMedium">
-                                        {deployment.captureMethodId === 1 ? 'Motion Detection' : 'Timelapse'}
-                                    </WWText>
-                                </View>
-                            )}
-                            {deployment.captureMethodId === 1 && deployment.activityDetectionSensitivityId && (
+
+                            <View style={styles.infoRow}>
+                                <WWText variant="labelMedium" style={styles.infoLabel}>Capture Method:</WWText>
+                                <WWText variant="bodyMedium" style={styles.valueText}>
+                                    {captureMethodName}
+                                </WWText>
+                            </View>
+
+                            {deployment.captureMethodId === 1 && (
                                 <View style={styles.infoRow}>
                                     <WWText variant="labelMedium" style={styles.infoLabel}>Sensitivity:</WWText>
-                                    <WWText variant="bodyMedium">
-                                        {deployment.activityDetectionSensitivityId === 1 ? 'Low' :
-                                            deployment.activityDetectionSensitivityId === 2 ? 'Medium' : 'High'}
+                                    <WWText variant="bodyMedium" style={styles.valueText}>
+                                        {sensitivityName}
                                     </WWText>
                                 </View>
                             )}
                             {deployment.captureMethodId === 2 && deployment.timelapseIntervalSeconds && (
                                 <View style={styles.infoRow}>
                                     <WWText variant="labelMedium" style={styles.infoLabel}>Interval:</WWText>
-                                    <WWText variant="bodyMedium">
+                                    <WWText variant="bodyMedium" style={styles.valueText}>
                                         {deployment.timelapseIntervalSeconds}s
                                     </WWText>
                                 </View>
                             )}
                         </View>
 
-                        {/* Placeholder for future LoRaWAN data */}
                         <Divider style={styles.smallDivider} />
                         <View style={styles.statusPlaceholder}>
+                            <WWIcon source="access-point" size={20} color="#9CA3AF" />
                             <WWText variant="bodySmall" style={styles.placeholderText}>
-                                📡 Device status data will appear here when available via LoRaWAN
+                                Device status via LoRaWAN
                             </WWText>
                         </View>
                     </Card.Content>
                 </Card>
 
                 {/* Location Card */}
-                <Card style={styles.card}>
+                <Card mode="outlined" style={styles.card}>
                     <Card.Title
                         title="Location"
-                        left={(props) => <WWIcon {...props} source="map-marker" size={24} />}
+                        titleStyle={styles.cardTitle}
+                        left={(props) => <WWIcon {...props} source="map-marker" size={24} color="#FFFFFF" />}
                     />
                     <Card.Content>
-                        {deployment.locationName && (
+                        {deployment.locationName ? (
                             <WWText variant="titleMedium" style={styles.locationName}>
                                 {deployment.locationName}
                             </WWText>
-                        )}
+                        ) : null}
                         {deployment.latitude && deployment.longitude && (
                             <WWText variant="bodySmall" style={styles.coordinates}>
                                 {deployment.latitude.toFixed(6)}, {deployment.longitude.toFixed(6)}
@@ -233,7 +272,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                             </View>
                         ) : (
                             <View style={styles.noLocation}>
-                                <WWIcon source="map-marker-off" size={48} color="#ccc" />
+                                <WWIcon source="map-marker-off" size={48} color="#666" />
                                 <WWText style={styles.noLocationText}>No location data available</WWText>
                             </View>
                         )}
@@ -250,10 +289,11 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
 
                 {/* Notes & Comments Card */}
                 {(deployment.startDeploymentComments || deployment.endDeploymentComments) && (
-                    <Card style={styles.card}>
+                    <Card mode="outlined" style={styles.card}>
                         <Card.Title
                             title="Notes & Comments"
-                            left={(props) => <WWIcon {...props} source="note-text" size={24} />}
+                            titleStyle={styles.cardTitle}
+                            left={(props) => <WWIcon {...props} source="note-text" size={24} color="#FFFFFF" />}
                         />
                         <Card.Content>
                             {deployment.startDeploymentComments && (
@@ -280,27 +320,12 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                     </Card>
                 )}
 
-                {/* Photos Placeholder */}
-                {deployment.cameraLocationImagePaths && deployment.cameraLocationImagePaths.length > 0 && (
-                    <Card style={styles.card}>
-                        <Card.Title
-                            title={`Camera Setup Photos (${deployment.cameraLocationImagePaths.length})`}
-                            left={(props) => <WWIcon {...props} source="camera-image" size={24} />}
-                        />
-                        <Card.Content>
-                            <WWText variant="bodySmall" style={styles.placeholderText}>
-                                📷 Photo viewing functionality coming soon
-                            </WWText>
-                        </Card.Content>
-                    </Card>
-                )}
-
                 {/* Action Buttons */}
                 <View style={styles.actionSection}>
                     <WWButton
                         mode="outlined"
                         icon="map"
-                        onPress={() => navigation.navigate('Map' as any)}
+                        onPress={() => navigation.navigate('Home' as any)}
                         style={styles.actionButton}
                     >
                         View on Map
@@ -329,24 +354,27 @@ const styles = StyleSheet.create({
     },
     heroCard: {
         marginBottom: 16,
-        backgroundColor: '#fff',
-        elevation: 4,
+        backgroundColor: 'transparent',
     },
     card: {
         marginBottom: 16,
-        backgroundColor: '#fff',
+        backgroundColor: 'transparent',
+    },
+    cardTitle: {
+        color: '#FFFFFF',
     },
     statusBadgeContainer: {
         alignItems: 'flex-start',
         marginBottom: 12,
     },
     statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
+        paddingHorizontal: 0,
+        height: 32,
     },
     deploymentName: {
         fontWeight: 'bold',
         marginBottom: 8,
+        color: '#FFFFFF',
     },
     infoRow: {
         flexDirection: 'row',
@@ -355,13 +383,15 @@ const styles = StyleSheet.create({
     },
     infoText: {
         marginLeft: 8,
-        color: '#666',
+        color: '#9CA3AF',
     },
     divider: {
         marginVertical: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
     smallDivider: {
         marginVertical: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
     datesGrid: {
         flexDirection: 'row',
@@ -373,40 +403,49 @@ const styles = StyleSheet.create({
         minWidth: '30%',
     },
     label: {
-        color: '#666',
+        color: '#9CA3AF',
         marginBottom: 4,
     },
     dateValue: {
         fontWeight: '600',
+        color: '#FFFFFF',
     },
     deviceInfo: {
         gap: 8,
     },
     infoLabel: {
-        color: '#666',
+        color: '#9CA3AF',
         width: 140,
     },
+    valueText: {
+        color: '#FFFFFF',
+        flex: 1,
+    },
     statusPlaceholder: {
-        backgroundColor: '#f5f5f5',
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
         padding: 12,
         borderRadius: 8,
+        gap: 8,
     },
     placeholderText: {
-        color: '#666',
-        textAlign: 'center',
+        color: '#9CA3AF',
+        flex: 1,
     },
     locationName: {
         marginBottom: 4,
+        color: '#FFFFFF',
     },
     coordinates: {
-        color: '#666',
+        color: '#9CA3AF',
         marginBottom: 12,
     },
     mapContainer: {
         height: 200,
         overflow: 'hidden',
-        borderRadius: 8,
-        marginTop: 8,
+        borderBottomLeftRadius: 12,
+        borderBottomRightRadius: 12,
     },
     map: {
         width: '100%',
@@ -428,21 +467,22 @@ const styles = StyleSheet.create({
         height: 200,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
     },
     noLocationText: {
         marginTop: 8,
-        color: '#999',
+        color: '#666',
     },
     noteSection: {
         marginBottom: 16,
     },
     noteLabel: {
-        color: '#666',
+        color: '#9CA3AF',
         marginBottom: 6,
     },
     noteText: {
         lineHeight: 20,
+        color: '#FFFFFF',
     },
     actionSection: {
         gap: 12,
@@ -459,7 +499,7 @@ const styles = StyleSheet.create({
 
 // Enhance
 const enhance = withObservables(['route'], ({ route }: { route: DeploymentDetailsRouteProp }) => ({
-    deployment: DeploymentService.observeDeploymentById(route.params.deploymentId)
+    deployment: DeploymentService.observeDeploymentById(route.params?.deploymentId || '')
 }))
 
 export const DeploymentDetailsScreen = enhance(DeploymentDetailsScreenComponent)

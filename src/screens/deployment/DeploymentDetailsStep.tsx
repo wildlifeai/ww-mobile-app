@@ -40,6 +40,7 @@ export const DeploymentDetailsStep = () => {
 
     const devices = useAppSelector(state => state.devices)
     const bleDevice = devices[bleDeviceId]
+    const logs = useAppSelector(state => state.logs[bleDeviceId] || [])
     const deviceConfig = useAppSelector(state => state.configuration[bleDeviceId])
     const user = useAppSelector(state => state.authentication.user)
 
@@ -270,12 +271,23 @@ export const DeploymentDetailsStep = () => {
                 // Try setting OP20 first to see if device supports it (Feature Detection)
                 console.log('[Deployment] Testing if device supports extended OPs (OP20)...')
                 try {
+                    const currentLogLength = logs.length
                     await setOperationalParam(bleDevice, 20, '0') // Dummy write
-                    // If successful, proceed to write actual ID
-                    console.log('[Deployment] Extended OPs supported. Writing Deployment ID...')
 
-                    // Delay to allow device to process
-                    await new Promise(r => setTimeout(r, 500))
+                    // Wait for response to appear in logs
+                    await new Promise(r => setTimeout(r, 1500))
+
+                    // Check recent logs for error
+                    const recentLogs = logs.slice(currentLogLength) as any[]
+                    const hasOpError = recentLogs.some(l => (l.content || l).includes('Error: index') || (l.content || l).includes('Error: bits'))
+
+                    if (hasOpError) {
+                        console.log('[Deployment] Device returned error for OP20. Extended OPs likely not supported.')
+                        throw new Error('Device rejected OP20')
+                    }
+
+                    // If successful, proceed to write actual ID
+                    console.log('[Deployment] Extended OPs supported (no error found). Writing Deployment ID...')
 
                     let deploymentIdSet = false
                     let attempts = 0
@@ -291,7 +303,11 @@ export const DeploymentDetailsStep = () => {
                         }
                     }
                     if (!deploymentIdSet) {
-                        // Fallback warning only if we knew it SHOULD support it but failed
+                        // Double check logs again just in case valid ops failed
+                        const errorCheck = (logs as any[]).slice(-20).some(l => (l.content || l).includes('Error: index'))
+                        if (errorCheck) {
+                            throw new Error('Device rejected Extended OPs during write sequence')
+                        }
                         console.warn('[Deployment] Failed to set ID despite OP support.')
                         Alert.alert(
                             'Warning',
@@ -299,17 +315,19 @@ export const DeploymentDetailsStep = () => {
                         );
                     }
                 } catch (opError) {
-                    console.log('[Deployment] Device does not support extended OPs (OP20 write failed). Falling back to SET_GPS...')
+                    console.log('[Deployment] Device does not support extended OPs or write failed. Falling back to SET_GPS...', opError)
 
                     // Fallback to SET_GPS command for older firmware
                     try {
                         const { latitude, longitude, altitude } = formState.location
-                        if (latitude || longitude) {
-                            await setGpsLocation(bleDevice, latitude, longitude, altitude)
-                            console.log('[Deployment] GPS location set successfully as fallback.')
-                        } else {
-                            console.warn('[Deployment] No valid GPS coordinates available for fallback.')
-                        }
+                        // Use 0,0 if location is empty to at least clear it/set valid GPS format
+                        const lat = latitude || 0
+                        const lng = longitude || 0
+                        const alt = altitude || 0
+
+                        await setGpsLocation(bleDevice, lat, lng, alt)
+                        console.log('[Deployment] GPS location set successfully as fallback.')
+
                     } catch (gpsError) {
                         console.error('[Deployment] GPS fallback failed:', gpsError)
                     }
@@ -341,20 +359,27 @@ export const DeploymentDetailsStep = () => {
             }
 
             // 4. Enable Camera
-            console.log('[Deployment] Enabling Camera...')
-            try {
-                await enableCamera(bleDevice)
-                console.log('[Deployment] Camera enabled successfully')
-            } catch (e) {
-                console.error('[Deployment] Failed to enable camera:', e)
+            if (bleDevice?.connected) {
+                console.log('[Deployment] Enabling Camera...')
+                try {
+                    await enableCamera(bleDevice)
+                    await new Promise(r => setTimeout(r, 500)) // Wait for cam to wake
+                    console.log('[Deployment] Camera enabled successfully')
+                } catch (e) {
+                    console.error('[Deployment] Failed to enable camera:', e)
+                }
+            } else {
+                console.warn('[Deployment] Skipping Camera enable - Device disconnected.')
             }
 
             // 4.5 Flash Green LED (Success Confirmation)
-            console.log('[Deployment] Flashing Green LED...')
-            try {
-                await flashLed(bleDevice, 'green', 1000, 5) // 5x 1s flashes
-            } catch (e) {
-                console.warn('[Deployment] Failed to flash LED:', e)
+            if (bleDevice?.connected) {
+                console.log('[Deployment] Flashing Green LED...')
+                try {
+                    await flashLed(bleDevice, 'green', 500, 5) // 5x 500ms flashes. Note: corrected duration argument order check
+                } catch (e) {
+                    console.warn('[Deployment] Failed to flash LED:', e)
+                }
             }
 
             // 5. Disconnect

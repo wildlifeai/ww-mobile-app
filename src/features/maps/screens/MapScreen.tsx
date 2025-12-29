@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect, useMemo } from "react"
 import { StyleSheet, View, Text, ActivityIndicator } from "react-native"
-import { FAB } from "react-native-paper"
+import { FAB, IconButton, Menu, Divider } from "react-native-paper"
 import { Marker, Callout } from "react-native-maps"
 import { withObservables } from '@nozbe/watermelondb/react'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
@@ -45,24 +45,25 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 	// Default to hybrid, no selector shown
 	const [mapType, setMapType] = useState<MapType>("hybrid")
 	const [initialLoad, setInitialLoad] = useState(true)
-	const [showActiveOnly, setShowActiveOnly] = useState(false)
+	const [showActive, setShowActive] = useState(true)
+	const [showEnded, setShowEnded] = useState(false)
+	const [filterMenuVisible, setFilterMenuVisible] = useState(false)
+
 	const navigation = useAppNavigation()
 
-	// Check if there is ANY active deployment (status_id = 1, based on service constant)
-	// Service says: 1 = deployed (Active), 2 = recovery (Ended)
-	// Model has: deploymentStatusId
+	// Check if there is ANY active deployment (based on missing end date)
 	const hasActiveDeployment = useMemo(() => {
-		return deployments.some(d => d.deploymentStatusId === 1)
+		return deployments.some(d => !d.deploymentEnd)
 	}, [deployments])
 
-	// Filter deployments based on active/all toggle
+	// Filter deployments based on filter mode
 	const filteredDeployments = useMemo(() => {
-		if (showActiveOnly) {
-			// Status ID 1 = active deployments
-			return deployments.filter(d => d.deploymentStatusId === 1)
-		}
-		return deployments
-	}, [deployments, showActiveOnly])
+		return deployments.filter(d => {
+			const isActive = !d.deploymentEnd
+			if (isActive) return showActive
+			return showEnded
+		})
+	}, [deployments, showActive, showEnded])
 
 	// Navigation Drawer Control
 	const { setIsOpen } = useAppDrawer()
@@ -259,24 +260,48 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 				showZoomControls={false}
 			/>
 
+			{/* Header Background Gradient/Overlay - Status Bar Only */}
+			<View style={[styles.headerBackground, { height: insets.top }]} />
+
 			{/* Custom Header with Hamburger Button - Top Left */}
-			<FAB
+			<IconButton
 				icon="menu"
-				style={[styles.menuFab, { top: insets.top + 16 }]}
+				iconColor="white"
+				size={28}
+				style={[styles.menuFab, { top: insets.top + 8, backgroundColor: '#121212' }]}
 				onPress={() => setIsOpen(true)}
-				color="#000"
-				small
 			/>
 
 			{/* Layer Filter Toggle - Top Right */}
-			<FAB
-				icon={showActiveOnly ? "filter" : "filter-outline"}
-				label={showActiveOnly ? "Active" : "All"}
-				style={[styles.filterFab, { backgroundColor: showActiveOnly ? '#2196F3' : '#fff', top: insets.top + 16 }]}
-				color={showActiveOnly ? '#fff' : '#000'}
-				onPress={() => setShowActiveOnly(!showActiveOnly)}
-				small
-			/>
+			<View style={[styles.filterFab, { top: insets.top + 16 }]}>
+				<Menu
+					visible={filterMenuVisible}
+					onDismiss={() => setFilterMenuVisible(false)}
+					anchor={
+						<FAB
+							icon="filter"
+							label="Filter"
+							style={{ backgroundColor: (showActive || showEnded) ? '#4CAF50' : '#fff' }}
+							color={(showActive || showEnded) ? '#fff' : '#000'}
+							onPress={() => setFilterMenuVisible(true)}
+							small
+						/>
+					}
+				>
+					<Menu.Item title="Deployments" disabled />
+					<Divider />
+					<Menu.Item
+						onPress={() => setShowActive(!showActive)}
+						title="Active"
+						leadingIcon={showActive ? "check" : undefined}
+					/>
+					<Menu.Item
+						onPress={() => setShowEnded(!showEnded)}
+						title="Ended"
+						leadingIcon={showEnded ? "check" : undefined}
+					/>
+				</Menu>
+			</View>
 
 			{/* Center on User Location - Bottom Left */}
 			<FAB
@@ -435,6 +460,14 @@ const styles = StyleSheet.create({
 		position: "absolute",
 		bottom: 16,
 		right: 16,
+	},
+	headerBackground: {
+		position: "absolute",
+		top: 0,
+		left: 0,
+		right: 0,
+		backgroundColor: '#121212', // Black background to match bottom nav
+		zIndex: 1, // Ensure it sits below buttons but above map
 	},
 })
 

@@ -80,17 +80,36 @@ export const DeviceService = {
 
         // Check for completed preparation
         const preparationsCollection = database.get<DevicePreparation>('device_preparation')
-        const completedPreparations = await preparationsCollection.query(
+        const preparations = await preparationsCollection.query(
             Q.where('device_id', deviceId),
             Q.where('status', 'completed'),
-            Q.sortBy('created_at', Q.desc)
+            Q.sortBy('created_at', Q.desc),
+            Q.take(1)
         ).fetch()
+        const lastPreparation = preparations[0]
 
-        if (completedPreparations.length > 0) {
-            return 'prepared'
+        if (!lastPreparation) {
+            return 'needs_preparation'
         }
 
-        return 'needs_preparation'
+        // Check if last preparation is OLDER than the last ended deployment
+        const endedDeployments = await deploymentsCollection.query(
+            Q.on('device_preparation', 'device_id', deviceId),
+            Q.where('deployment_status_id', Q.notEq(1)), // Not active
+            Q.where('deployment_end', Q.notEq(null)),
+            Q.sortBy('deployment_end', Q.desc),
+            Q.take(1)
+        ).fetch()
+        const lastEndedDeployment = endedDeployments[0]
+
+        if (lastEndedDeployment && lastEndedDeployment.deploymentEnd) {
+            // If prep date is BEFORE deployment end date, it needs new preparation
+            if (lastPreparation.createdAt.getTime() < lastEndedDeployment.deploymentEnd.getTime()) {
+                return 'needs_preparation'
+            }
+        }
+
+        return 'prepared'
     },
 
     /**
@@ -282,9 +301,13 @@ export const DeviceService = {
         // Optimization: Use Q.oneOf if possible, but loop is safe for now
         // We can query deployments where project_id IS IN projectIds via device_preparation
         const projectDeployments = await deploymentsCollection.query(
-            Q.on('device_preparation', Q.where('project_id', Q.oneOf(Array.from(projectIds))))
+            Q.where('project_id', Q.oneOf(Array.from(projectIds)))
         ).fetch()
-        projectDeployments.forEach(d => deviceIds.add(d.deviceId))
+        projectDeployments.forEach(d => {
+            // Fix potential issue where deviceId might be accessed but is on relationship?
+            // Deployment model has deviceId field.
+            if (d.deviceId) deviceIds.add(d.deviceId)
+        })
         console.log(`[DeviceService] Found ${projectDeployments.length} deployments, cumulative devices: ${deviceIds.size}`)
 
         // 4. Get device IDs from device_preparation in these projects
