@@ -29,7 +29,7 @@ export const NavigationBar = ({
 				/>
 			) : (
 				<Appbar.Action
-					iconColor="#FFFFFF"
+					iconColor={onBackground}
 					icon="menu"
 					onPress={() => setIsOpen(!isOpen)}
 				/>

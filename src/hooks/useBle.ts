@@ -312,7 +312,7 @@ export const useBle = (): ReturnType => {
 
 					// Cast to any to access .services property if type is unknown
 					const peripheralInfo = services as any
-					newPeripheral.services = extractServiceAndCharacteristic(peripheralInfo?.services || [])
+					newPeripheral.services = extractServiceAndCharacteristic(peripheralInfo)
 
 					const {
 						serviceCharacteristic,

@@ -1,4 +1,5 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
+import pkg from './package.json';
 
 const IS_DEV = process.env.APP_VARIANT === 'development';
 const BUNDLE_ID = IS_DEV ? 'com.wildlife.wildlifewatcher.expo' : 'com.wildlife.wildlifewatcher';
@@ -8,7 +9,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     name: IS_DEV ? 'Wildlife Watcher (Dev)' : 'Wildlife Watcher',
     slug: 'ww-expo-poc',
     owner: 'wildlifeai',
-    version: '1.0.0',
+    version: pkg.version,
     newArchEnabled: true,
     scheme: 'wildlifewatcher',
     orientation: 'portrait',

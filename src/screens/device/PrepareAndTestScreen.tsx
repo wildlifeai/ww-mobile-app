@@ -184,9 +184,9 @@ export const PrepareAndTestScreen = () => {
                     handleFirmwareCheck()
                 }
 
-                if (device && latest && device.firmwareId) {
+                if (device && latest && device.bleFirmwareId) {
                     // Check based on DB record first if available (fallback)
-                    const updateAvailable = device.firmwareId !== latest.id
+                    const updateAvailable = device.bleFirmwareId !== latest.id
                     // ... logic continues ...
                 }
             } catch (error) {
@@ -649,27 +649,60 @@ export const PrepareAndTestScreen = () => {
                             // Update device firmware_id in database
                             await database.write(async () => {
                                 await device.update(d => {
-                                    d.firmwareId = latestBleFirmware.id
+                                    d.bleFirmwareId = latestBleFirmware.id
                                 })
                             })
 
-                            setBleFirmwareUpdateAvailable(false)
-                            setFirmwareUpToDate(true)
                             setFirmwareUpdateProgress(100)
+                            Alert.alert('Update Complete', 'Device is rebooting. Verifying new version...')
 
-                            Alert.alert('Success', 'BLE firmware updated successfully!')
+                            // Reset state for verification
+                            setDeviceFirmwareVersion(null)
+                            setIsCheckingFirmware(true)
+                            setBleFirmwareUpdateAvailable(false) // Optimistically hide until verified
 
-                            if (preparation) {
-                                await DevicePreparationService.updatePreparation(preparation.id, {
-                                    firmwareUpdated: true,
-                                    firmwareCheckPassed: true,
-                                })
+                            // Wait for reboot (approx 5-8s)
+                            console.log('[PrepareTest] Waiting for device reboot...')
+                            await new Promise(r => setTimeout(r, 8000))
+
+                            // Reconnect and check
+                            // We need to trigger the hook's scan/connect logic
+                            // But since we are likely disconnected, we can try to "nudge" it or manually connect
+                            console.log('[PrepareTest] Attempting to reconnect for verification...')
+                            if (bleDevice) {
+                                // Manual connect attempt
+                                try {
+                                    // Make sure we're disconnected first to clean up
+                                    await runDisconnect(bleDevice).catch(() => { })
+
+                                    // Reconnect
+                                    // The main useBle hook needs to handle this, but we can try invoking connectDevice from here 
+                                    // if we had access to it. Since we only have 'write', we rely on the screen's focus effect or manual trigger.
+                                    // For now, let's trigger the handleFirmwareCheck which has safety checks
+
+                                    // We need to actually perform the connection here since we are in a function
+                                    // Using a helper or just letting the user press "Test Again" if auto-reconnect fails
+                                    // But let's try to simulate the flow:
+
+                                    Alert.alert(
+                                        'Verification Required',
+                                        'Please ensure the device has restarted (green LED flashing). If it is not connected, tap "Test Again" or go back and reconnect.',
+                                        [
+                                            {
+                                                text: 'Verify Now',
+                                                onPress: () => handleFirmwareCheck()
+                                            }
+                                        ]
+                                    )
+                                } catch (reconnectErr) {
+                                    console.warn('[PrepareTest] Reconnect failed:', reconnectErr)
+                                }
                             }
-
 
                         } catch (error) {
                             console.error('[PrepareTest] Firmware update failed:', error)
                             Alert.alert('Update Failed', error instanceof Error ? error.message : 'Unknown error')
+                            setFirmwareUpToDate(false) // Assume failed
                         } finally {
                             setIsUpdatingFirmware(false)
                             isDfuInProgress.current = false // Re-enable connection monitoring
@@ -679,6 +712,23 @@ export const PrepareAndTestScreen = () => {
             ]
         )
     }
+
+    // Separate effect for comparison to ensure it runs whenever either value changes
+    useEffect(() => {
+        if (deviceFirmwareVersion && latestBleFirmware) {
+            console.log('[PrepareTest] Comparing versions:', { device: deviceFirmwareVersion, latest: latestBleFirmware.version })
+
+            // Use semantic comparison
+            const comparison = compareVersions(deviceFirmwareVersion, latestBleFirmware.version)
+            // If device (-1) < latest (0) -> update available
+            const updateAvailable = comparison < 0
+
+            console.log('[PrepareTest] Firmware status:', { updateAvailable, comparison })
+
+            setBleFirmwareUpdateAvailable(updateAvailable)
+            setFirmwareUpToDate(!updateAvailable)
+        }
+    }, [deviceFirmwareVersion, latestBleFirmware])
 
     const handleProjectChange = async (projectId: string) => {
         if (projectId === 'create_new') {

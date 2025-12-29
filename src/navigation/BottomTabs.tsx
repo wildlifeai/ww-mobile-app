@@ -65,9 +65,9 @@ export const BottomTabs = () => {
 			navigationState={{ index, routes }}
 			onIndexChange={setIndex}
 			renderScene={renderScene}
-			activeColor="#4CAF50"
-			inactiveColor="#FFFFFF"
-			barStyle={{ backgroundColor: '#121212' }}
+			activeColor={colors.primary}
+			inactiveColor={colors.onSurfaceVariant}
+			barStyle={{ backgroundColor: colors.surface }}
 			theme={{ colors: { secondaryContainer: 'transparent' } }}
 		/>
 	)

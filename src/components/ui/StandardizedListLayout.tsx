@@ -140,7 +140,7 @@ export function StandardizedListLayout<T>({
             {/* Hamburger Menu Button */}
             <IconButton
                 icon="menu"
-                iconColor="white"
+                iconColor={theme.colors.onSurface}
                 size={28}
                 style={[styles.menuFab, { top: insets.top + 8, backgroundColor: 'transparent', elevation: 0 }]}
                 onPress={() => setIsOpen(true)}

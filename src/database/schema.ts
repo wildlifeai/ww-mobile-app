@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 56,
+    version: 57,
     tables: [
         tableSchema({
             name: 'activity_sensitivity',

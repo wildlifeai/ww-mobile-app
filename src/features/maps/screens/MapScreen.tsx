@@ -266,9 +266,9 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 			{/* Custom Header with Hamburger Button - Top Left */}
 			<IconButton
 				icon="menu"
-				iconColor="white"
+				iconColor={colors.onSurface}
 				size={28}
-				style={[styles.menuFab, { top: insets.top + 8, backgroundColor: '#121212' }]}
+				style={[styles.menuFab, { top: insets.top + 8, backgroundColor: colors.surface }]}
 				onPress={() => setIsOpen(true)}
 			/>
 
@@ -281,8 +281,8 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 						<FAB
 							icon="filter"
 							label="Filter"
-							style={{ backgroundColor: (showActive || showEnded) ? '#4CAF50' : '#fff' }}
-							color={(showActive || showEnded) ? '#fff' : '#000'}
+							style={{ backgroundColor: (showActive || showEnded) ? colors.primary : colors.surface }}
+							color={(showActive || showEnded) ? colors.onPrimary : colors.onSurface}
 							onPress={() => setFilterMenuVisible(true)}
 							small
 						/>
