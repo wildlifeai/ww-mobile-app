@@ -31,7 +31,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
     const { data: activitySensitivities } = useGetActivitySensitivityQuery()
 
     // Status helpers
-    const isActive = deployment.deploymentStatusId === 1
+    const isActive = !deployment.deploymentEnd
     const statusLabel = isActive ? 'Active' : (deployment.deploymentStatusId === 2 ? 'Ended' : 'Failed')
     const statusColor = isActive ? '#4CAF50' : '#FF9800'
 
