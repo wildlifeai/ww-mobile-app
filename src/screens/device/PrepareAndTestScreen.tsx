@@ -116,7 +116,7 @@ export const PrepareAndTestScreen = () => {
     const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, disableCamera, runDisconnect, runDfu, runSelfTest, flashLed, clearGpsLocation } = useBleCommands()
     const { write } = useBle()
     const bleDevice = useAppSelector((state) => state.devices[bleDeviceId])
-    const logs = useAppSelector(state => state.logs[bleDeviceId || ''] || "")
+    const logs = useAppSelector(state => state.logs[bleDeviceId || ''] || [])
 
     // Camera capture hook
     const { capturedImageUri, isCapturing: isCapturingImage, startCapture } = useCapturePreview({
@@ -231,7 +231,8 @@ export const PrepareAndTestScreen = () => {
 
         return new Promise((resolve, reject) => {
             const check = () => {
-                const newLogs = logsRef.current.substring(startOffset)
+                // Reconstruct string from new entries
+                const newLogs = logsRef.current.slice(startOffset).map(e => e.content).join('')
                 const match = newLogs.match(regex)
                 if (match) {
                     console.log(`[PrepareTest] Found log match for: ${regex}`)
@@ -354,16 +355,16 @@ export const PrepareAndTestScreen = () => {
     }
 
     // Parse BLE logs for command responses
+    // Parse BLE logs for command responses
     useEffect(() => {
-        if (!logs) return
+        if (!logs || logs.length === 0) return
 
-        // Log incoming data for debugging
-        if (logs.length > 0) {
-            // console.log('[PrepareTest] BLE logs updated, length:', logs.length)
-        }
+        // Construct string from recent logs (last 50 entries) to ensure we catch split packets
+        // but avoid scanning massive history.
+        const recentLogsString = logs.slice(-50).map(e => e.content).join('')
 
         // Parse battery response: "Battery = 5482mV 73%"
-        const batteryMatch = logs.match(/Battery\s*=\s*\d+mV\s+(\d+)%/)
+        const batteryMatch = recentLogsString.match(/Battery\s*=\s*\d+mV\s+(\d+)%/)
         if (batteryMatch && batteryLevel === null) {
             const percent = parseInt(batteryMatch[1])
             console.log('[PrepareTest] Parsed battery level:', percent + '%')
@@ -377,15 +378,11 @@ export const PrepareAndTestScreen = () => {
 
         // Parse SD card response: "30515200 K total drive space." and "30512400 K available."
         // Also handling: "K total", "k total", possible extra spaces
-        const totalMatch = logs.match(/(\d+)\s*[Kk]\s*total\s*drive\s*space/i)
-        const availMatch = logs.match(/(\d+)\s*[Kk]\s*available/i)
+        const totalMatch = recentLogsString.match(/(\d+)\s*[Kk]\s*total\s*drive\s*space/i)
+        const availMatch = recentLogsString.match(/(\d+)\s*[Kk]\s*available/i)
 
-        if (logs.length > 0 && !sdCardStatus && (logs.toLowerCase().includes('total') || logs.toLowerCase().includes('available'))) {
-            console.log('[PrepareTest] SD keywords found but match failed? Logs snippet:', logs.substring(Math.max(0, logs.length - 300)))
-        }
-
-        if (logs.includes('K total') || logs.includes('K available')) {
-            // console.log('[PrepareTest] SD card keywords detected')
+        if (recentLogsString.length > 0 && !sdCardStatus && (recentLogsString.toLowerCase().includes('total') || recentLogsString.toLowerCase().includes('available'))) {
+            // console.log('[PrepareTest] SD keywords found?')
         }
 
         if (totalMatch && availMatch && sdCardStatus === null) {
@@ -402,7 +399,7 @@ export const PrepareAndTestScreen = () => {
 
         // Parse firmware version response: "BLE: v0.10.0", "WW500-A00 V 00.11.01", "Version: 0.10.0"
         // Matches: "V 00.11.01", "Ver: 1.0", "BLE: v1.0"
-        const versionMatch = logs.match(/(?:V|Ver|Version|BLE)[:\s]+v?(\d+\.\d+\.\d+)/i)
+        const versionMatch = recentLogsString.match(/(?:V|Ver|Version|BLE)[:\s]+v?(\d+\.\d+\.\d+)/i)
         if (versionMatch && deviceFirmwareVersion === null && isCheckingFirmware) {
             const version = versionMatch[1]
             console.log('[PrepareTest] Parsed device firmware version:', version)

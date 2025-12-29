@@ -24,7 +24,7 @@ import {
 	deviceLoading,
 	deviceUpdate,
 } from "../redux/slices/devicesSlice"
-import { deviceLogChange } from "../redux/slices/logsSlice"
+import { clearLogs } from "../redux/slices/logsSlice"
 import { scanError, scanStart } from "../redux/slices/scanningSlice"
 import { useInterval } from "../hooks/useInterval"
 import { clearAllDeviceIntervals, writeToDevice } from "../utils/helpers"
@@ -277,7 +277,7 @@ export const useBle = (): ReturnType => {
 					// log(`Device ${deviceIdentification} will try to connect`)
 
 					// Clear logs BEFORE starting connection/notifications to ensure we don't wipe early firmware messages
-					dispatch(deviceLogChange({ id: newPeripheral.id, log: "" }))
+					dispatch(clearLogs({ id: newPeripheral.id }))
 					dispatch(deviceConfigClear({ id: newPeripheral.id }))
 
 					// if (Platform.OS === "android") {

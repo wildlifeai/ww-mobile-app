@@ -278,8 +278,8 @@ export const DeploymentDetailsStep = () => {
                     await new Promise(r => setTimeout(r, 1500))
 
                     // Check recent logs for error
-                    const recentLogs = logs.slice(currentLogLength) as any[]
-                    const hasOpError = recentLogs.some(l => (l.content || l).includes('Error: index') || (l.content || l).includes('Error: bits'))
+                    const recentLogs = logs.slice(currentLogLength)
+                    const hasOpError = recentLogs.some(l => l.content.includes('Error: index') || l.content.includes('Error: bits'))
 
                     if (hasOpError) {
                         console.log('[Deployment] Device returned error for OP20. Extended OPs likely not supported.')
@@ -304,7 +304,7 @@ export const DeploymentDetailsStep = () => {
                     }
                     if (!deploymentIdSet) {
                         // Double check logs again just in case valid ops failed
-                        const errorCheck = (logs as any[]).slice(-20).some(l => (l.content || l).includes('Error: index'))
+                        const errorCheck = logs.slice(-20).some(l => l.content.includes('Error: index'))
                         if (errorCheck) {
                             throw new Error('Device rejected Extended OPs during write sequence')
                         }
