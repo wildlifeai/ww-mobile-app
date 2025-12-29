@@ -15,6 +15,7 @@ import {
     Text,
     useTheme,
     Button,
+    IconButton,
 } from 'react-native-paper'
 import { WWScreenView } from './WWScreenView'
 import { OfflineIndicator } from './OfflineIndicator'
@@ -137,12 +138,12 @@ export function StandardizedListLayout<T>({
             <OfflineIndicator />
 
             {/* Hamburger Menu Button */}
-            <FAB
+            <IconButton
                 icon="menu"
-                style={[styles.menuFab, { top: insets.top + 16 }]}
+                iconColor={theme.colors.onSurface}
+                size={28}
+                style={[styles.menuFab, { top: insets.top + 8, backgroundColor: 'transparent', elevation: 0 }]}
                 onPress={() => setIsOpen(true)}
-                color="#000"
-                small
             />
 
             {/* Search Bar */}

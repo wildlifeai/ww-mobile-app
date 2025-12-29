@@ -16,7 +16,7 @@ import {
 	deviceSignalChanged,
 	deviceUpdate,
 } from "./../redux/slices/devicesSlice"
-import { deviceLogChange } from "./../redux/slices/logsSlice"
+import { logAdded } from "./../redux/slices/logsSlice"
 import { useInterval } from "../hooks/useInterval"
 import { scanStop } from "../redux/slices/scanningSlice"
 import { parseLogs } from "../ble/parser"
@@ -190,9 +190,13 @@ export const useBleListeners = () => {
 			const finishedLog = currentLog + formattedText
 
 			dispatch(
-				deviceLogChange({
+				logAdded({
 					id: peripheral,
-					log: finishedLog,
+					log: {
+						timestamp: Date.now(),
+						content: formattedText,
+						type: isLocal ? "tx" : "rx",
+					},
 				}),
 			)
 

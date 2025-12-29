@@ -363,7 +363,7 @@ export const COMMANDS: {
 	},
 	[CommandNames.setgps]: {
 		name: CommandNames.setgps,
-		writeCommand: (gpsString?: string) => `setgps "${gpsString || ''}"`,
+		writeCommand: (gpsString?: string) => `setgps ${gpsString || ''}`,
 		description: "Set GPS location from phone",
 		type: 'command',
 	},

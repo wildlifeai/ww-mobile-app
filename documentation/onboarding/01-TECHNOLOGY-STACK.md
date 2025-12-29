@@ -605,13 +605,20 @@ await write(device, ['Battery']) // Never do this!
 3. Tested in Engineer Console
 4. Reused across all screens
 
+**Critical Timing Constraints**:
+- Device enters Deep Power Down (DPD) after 1000ms inactivity
+- Commands sent during wake-up require 200ms stabilization delay
+- GPS format must be space-separated values without quotes: `"0 0 0"`
+- Single-slot command buffer means rapid commands get discarded
+
 **Why This Matters**:
 - Update battery check once → propagates to all screens automatically
 - No duplicate BLE logic
 - Consistent behavior everywhere
 - Engineer Console serves as live documentation
+- Firmware-validated timing ensures reliable communication
 
-**See**: [BLE Architecture Guide](../ble-architecture-guide.md) for complete patterns and examples.
+**See**: [BLE Architecture Guide](../app-technical-guides/ble-architecture-guide.md) for complete patterns, timing requirements, and firmware constraints.
 
 
 ### Firmware Updates (react-native-nordic-dfu)

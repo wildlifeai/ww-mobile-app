@@ -6,14 +6,16 @@
 
 import React, { useState, useEffect, useMemo } from "react"
 import { StyleSheet, View, Text, ActivityIndicator } from "react-native"
-import { FAB } from "react-native-paper"
-import { Marker, Callout } from "react-native-maps"
+import { FAB, IconButton, Menu, Divider } from "react-native-paper"
+import { Marker } from "react-native-maps"
 import { withObservables } from '@nozbe/watermelondb/react'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { BasicMapView } from "../components/BasicMapView"
 import { MapControls } from "../components/MapControls"
 import { LocationPermissionPrompt } from "../components/LocationPermissionPrompt"
+import { DeploymentCard } from "../components/DeploymentCard"
+import { DeploymentMarker } from "../components/DeploymentMarker"
 import { useLocation } from "../hooks/useLocation"
 import { useMapRegion } from "../hooks/useMapRegion"
 import { MapType } from "../types"
@@ -45,24 +47,32 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 	// Default to hybrid, no selector shown
 	const [mapType, setMapType] = useState<MapType>("hybrid")
 	const [initialLoad, setInitialLoad] = useState(true)
-	const [showActiveOnly, setShowActiveOnly] = useState(false)
+	const [showActive, setShowActive] = useState(true)
+	const [showEnded, setShowEnded] = useState(false)
+	const [filterMenuVisible, setFilterMenuVisible] = useState(false)
+	const [selectedDeploymentId, setSelectedDeploymentId] = useState<string | null>(null)
+
 	const navigation = useAppNavigation()
 
-	// Check if there is ANY active deployment (status_id = 1, based on service constant)
-	// Service says: 1 = deployed (Active), 2 = recovery (Ended)
-	// Model has: deploymentStatusId
+	// Check if there is ANY active deployment (based on missing end date)
 	const hasActiveDeployment = useMemo(() => {
-		return deployments.some(d => d.deploymentStatusId === 1)
+		return deployments.some(d => !d.deploymentEnd)
 	}, [deployments])
 
-	// Filter deployments based on active/all toggle
+	// Filter deployments based on filter mode
 	const filteredDeployments = useMemo(() => {
-		if (showActiveOnly) {
-			// Status ID 1 = active deployments
-			return deployments.filter(d => d.deploymentStatusId === 1)
-		}
-		return deployments
-	}, [deployments, showActiveOnly])
+		return deployments.filter(d => {
+			const isActive = !d.deploymentEnd
+			if (isActive) return showActive
+			return showEnded
+		})
+	}, [deployments, showActive, showEnded])
+
+	// Get selected deployment object for the card
+	const selectedDeployment = useMemo(() => {
+		if (!selectedDeploymentId) return null
+		return deployments.find(d => d.id === selectedDeploymentId) || null
+	}, [deployments, selectedDeploymentId])
 
 	// Navigation Drawer Control
 	const { setIsOpen } = useAppDrawer()
@@ -114,80 +124,33 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 	}
 
 	/**
-	 * Get marker color based on deployment status ID
-	 * 1 = Active, 2 = Ended/Recovery, 3 = Failed
-	 * Request: Green (#4CAF50) for active, Grey for ended.
+	 * Handle deployment marker selection
 	 */
-	const getMarkerColor = (statusId?: number | null) => {
-		switch (statusId) {
-			case 1: // active
-				return '#4CAF50' // Green
-			case 2: // ended
-				return '#616161' // Grey 700
-			case 3: // failed
-				return '#F44336' // Red
-			default:
-				return '#757575' // Gray
+	const handleMarkerPress = React.useCallback((deploymentId: string) => {
+		console.log('[MapScreen] Deployment marker selected:', deploymentId)
+		setSelectedDeploymentId(deploymentId)
+	}, [])
+
+	/**
+	 * Handle tapping on map (deselect)
+	 */
+	const handleMapPress = React.useCallback(() => {
+		if (selectedDeploymentId) {
+			console.log('[MapScreen] Map tapped, deselecting')
+			setSelectedDeploymentId(null)
 		}
-	}
+	}, [selectedDeploymentId])/* selectedDeploymentId dependency is fine here as it only runs when map is pressed, not passed to markers */
 
 	/**
-	 * Get status label from ID
+	 * Handle view details from card
 	 */
-	const getStatusLabel = (statusId?: number | null) => {
-		switch (statusId) {
-			case 1:
-				return 'Active'
-			case 2:
-				return 'Ended'
-			case 3:
-				return 'Failed'
-			default:
-				return 'Unknown'
+	const handleViewDetails = React.useCallback(() => {
+		if (selectedDeploymentId) {
+			console.log('[MapScreen] Navigating to details:', selectedDeploymentId)
+			navigation.navigate('DeploymentDetails', { deploymentId: selectedDeploymentId })
+			setSelectedDeploymentId(null)
 		}
-	}
-
-	/**
-	 * Helper to render custom marker icon
-	 */
-	const renderMarkerIcon = (statusId?: number | null) => {
-		const color = getMarkerColor(statusId)
-		// Use 'camera' for both as requested
-		const iconName = 'camera'
-
-		// Ended status transparency logic
-		// "10% transparent" requested - interpreted as slightly transparent (0.9 opacity)
-		// or potentially "10% opacity" (0.1). 
-		// Using 0.6 as a reasonable visual indication for "ended/inactive".
-		const opacity = statusId === 2 ? 0.6 : 1.0
-
-		return (
-			<View style={{
-				backgroundColor: 'white',
-				borderRadius: 15,
-				padding: 4,
-				borderWidth: 2,
-				borderColor: color,
-				elevation: 4,
-				shadowColor: '#000',
-				shadowOffset: { width: 0, height: 2 },
-				shadowOpacity: 0.25,
-				shadowRadius: 2,
-				opacity: opacity
-			}}>
-				<MaterialCommunityIcons name={iconName} size={20} color={color} />
-			</View>
-		)
-	}
-
-	/**
-	 * Handle deployment marker/callout press
-	 */
-	const handleMarkerPress = (deploymentId: string) => {
-		console.log('[MapScreen] Deployment marker pressed:', deploymentId)
-		// Navigate to deployment details
-		navigation.navigate('DeploymentDetails', { deploymentId })
-	}
+	}, [selectedDeploymentId, navigation])
 
 	/**
 	 * Show map with permission prompt overlay if needed
@@ -204,39 +167,16 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 				mapType={mapType}
 				mapRef={mapRef}
 				config={{ showsUserLocation: showMapUserLocation }}
+				onPress={handleMapPress}
 			>
 				{/* Deployment Markers */}
-				{filteredDeployments.map((deployment) => {
-					if (!deployment.latitude || !deployment.longitude) return null
-
-					return (
-						<Marker
-							key={deployment.id}
-							coordinate={{
-								latitude: deployment.latitude,
-								longitude: deployment.longitude,
-							}}
-						// Do NOT attach onPress to Marker if we want Callout to show on tap.
-						// Usually default behavior is toggle callout.
-						// If we want to navigate on "icon tap", we use onPress here.
-						// Request: "pop up message should have a link". 
-						// So we let default behavior happen (show callout), and put link in callout.
-						>
-							{renderMarkerIcon(deployment.deploymentStatusId)}
-							<Callout tooltip onPress={() => handleMarkerPress(deployment.id)}>
-								<View style={styles.callout}>
-									<Text style={styles.calloutTitle}>{deployment.name || 'Unnamed Deployment'}</Text>
-									<Text style={styles.calloutText}>Status: {getStatusLabel(deployment.deploymentStatusId)}</Text>
-									<Text style={styles.calloutText}>Location: {deployment.locationName}</Text>
-									<View style={styles.linkContainer}>
-										<Text style={styles.linkText}>View Details</Text>
-										<MaterialCommunityIcons name="chevron-right" size={14} color="#2196F3" />
-									</View>
-								</View>
-							</Callout>
-						</Marker>
-					)
-				})}
+				{filteredDeployments.map((deployment) => (
+					<DeploymentMarker
+						key={deployment.id}
+						deployment={deployment}
+						onPress={handleMarkerPress}
+					/>
+				))}
 			</BasicMapView>
 
 			{/* Permission Prompt Overlay */}
@@ -259,24 +199,48 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 				showZoomControls={false}
 			/>
 
+			{/* Header Background Gradient/Overlay - Status Bar Only */}
+			<View style={[styles.headerBackground, { height: insets.top }]} />
+
 			{/* Custom Header with Hamburger Button - Top Left */}
-			<FAB
+			<IconButton
 				icon="menu"
-				style={[styles.menuFab, { top: insets.top + 16 }]}
+				iconColor={colors.onSurface}
+				size={28}
+				style={[styles.menuFab, { top: insets.top + 8, backgroundColor: colors.surface }]}
 				onPress={() => setIsOpen(true)}
-				color="#000"
-				small
 			/>
 
 			{/* Layer Filter Toggle - Top Right */}
-			<FAB
-				icon={showActiveOnly ? "filter" : "filter-outline"}
-				label={showActiveOnly ? "Active" : "All"}
-				style={[styles.filterFab, { backgroundColor: showActiveOnly ? '#2196F3' : '#fff', top: insets.top + 16 }]}
-				color={showActiveOnly ? '#fff' : '#000'}
-				onPress={() => setShowActiveOnly(!showActiveOnly)}
-				small
-			/>
+			<View style={[styles.filterFab, { top: insets.top + 16 }]}>
+				<Menu
+					visible={filterMenuVisible}
+					onDismiss={() => setFilterMenuVisible(false)}
+					anchor={
+						<FAB
+							icon="filter"
+							label="Filter"
+							style={{ backgroundColor: (showActive || showEnded) ? colors.primary : colors.surface }}
+							color={(showActive || showEnded) ? colors.onPrimary : colors.onSurface}
+							onPress={() => setFilterMenuVisible(true)}
+							small
+						/>
+					}
+				>
+					<Menu.Item title="Deployments" disabled />
+					<Divider />
+					<Menu.Item
+						onPress={() => setShowActive(!showActive)}
+						title="Active"
+						leadingIcon={showActive ? "check" : undefined}
+					/>
+					<Menu.Item
+						onPress={() => setShowEnded(!showEnded)}
+						title="Ended"
+						leadingIcon={showEnded ? "check" : undefined}
+					/>
+				</Menu>
+			</View>
 
 			{/* Center on User Location - Bottom Left */}
 			<FAB
@@ -312,6 +276,14 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 					}}
 				/>
 			)}
+
+			{/* Custom Deployment Details Card Overlay */}
+			<DeploymentCard
+				deployment={selectedDeployment}
+				isVisible={!!selectedDeploymentId}
+				onClose={() => setSelectedDeploymentId(null)}
+				onPress={handleViewDetails}
+			/>
 
 			{/* Loading Indicator */}
 			{locationLoading && (
@@ -381,37 +353,6 @@ const styles = StyleSheet.create({
 		fontWeight: "600",
 		textAlign: "center",
 	},
-	// Deployment Callout
-	callout: {
-		padding: 10,
-		minWidth: 150,
-		backgroundColor: 'white', // Ensure background for tooltip
-		borderRadius: 8,
-	},
-	calloutTitle: {
-		fontSize: 14,
-		fontWeight: "600",
-		marginBottom: 4,
-	},
-	calloutText: {
-		fontSize: 12,
-		color: "#666",
-		marginBottom: 2,
-	},
-	linkContainer: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		marginTop: 6,
-		paddingTop: 4,
-		borderTopWidth: 1,
-		borderTopColor: '#EEE'
-	},
-	linkText: {
-		color: '#2196F3',
-		fontSize: 12,
-		fontWeight: 'bold',
-		marginRight: 2
-	},
 	// Overlay Buttons
 	menuFab: {
 		position: "absolute",
@@ -435,6 +376,14 @@ const styles = StyleSheet.create({
 		position: "absolute",
 		bottom: 16,
 		right: 16,
+	},
+	headerBackground: {
+		position: "absolute",
+		top: 0,
+		left: 0,
+		right: 0,
+		backgroundColor: '#121212', // Black background to match bottom nav
+		zIndex: 1, // Ensure it sits below buttons but above map
 	},
 })
 

@@ -30,8 +30,8 @@ export const NavigationBar = ({
 			) : (
 				<Appbar.Action
 					iconColor={onBackground}
-					icon={isOpen ? "backburger" : "forwardburger"}
-					onPress={() => setIsOpen(isOpen ? false : true)}
+					icon="menu"
+					onPress={() => setIsOpen(!isOpen)}
 				/>
 			)}
 			<View style={{ flex: 1, alignItems: "center" }}>

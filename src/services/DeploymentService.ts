@@ -245,6 +245,21 @@ export const DeploymentService = {
     },
 
     /**
+     * Get last ended deployment for a device
+     */
+    getLastEndedDeploymentForDeviceId: async (deviceId: string): Promise<Deployment | undefined> => {
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        const deployments = await deploymentsCollection.query(
+            Q.on('device_preparation', 'device_id', deviceId),
+            Q.where('deployment_status_id', Q.notEq(DEPLOYMENT_STATUS.DEPLOYED)), // Ended or Failed
+            Q.sortBy('deployment_end', Q.desc),
+            Q.take(1)
+        ).fetch()
+
+        return deployments[0]
+    },
+
+    /**
      * Observe all deployments (sorted by creation date)
      */
     observeDeployments: () => {

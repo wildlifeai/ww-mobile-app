@@ -52,9 +52,14 @@ export const useBleCommands = () => {
     }, [write])
 
     const runDisconnect = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.dis, { control: CommandControlTypes.WRITE }]])
-        // Also trigger app-side disconnect
-        await disconnectDevice(peripheral)
+        try {
+            await write(peripheral, [[CommandNames.dis, { control: CommandControlTypes.WRITE }]])
+        } catch (e) {
+            console.warn('[runDisconnect] BLE write failed, proceeding to local disconnect:', e)
+        } finally {
+            // Always trigger app-side disconnect
+            await disconnectDevice(peripheral)
+        }
     }, [write, disconnectDevice])
 
     const setUtc = useCallback(async (peripheral: ExtendedPeripheral) => {
@@ -154,8 +159,8 @@ export const useBleCommands = () => {
 
     const clearGpsLocation = useCallback(async (peripheral: ExtendedPeripheral) => {
         console.log('[BLE CMD] Clearing GPS location on device:', peripheral.id)
-        // Sending setgps "" which firmware handles by clearing/zeroing
-        await write(peripheral, [[CommandNames.setgps, { control: CommandControlTypes.WRITE, value: "" }]])
+        // Sending setgps "0 0 0" to clear (firmware expects 3 args)
+        await write(peripheral, [[CommandNames.setgps, { control: CommandControlTypes.WRITE, value: "0 0 0" }]])
     }, [write])
 
     const setMotionDetectInterval = useCallback(async (peripheral: ExtendedPeripheral, intervalMs: number) => {
@@ -199,8 +204,14 @@ export const useBleCommands = () => {
                 // Reuse existing setOperationalParam logic manually to avoid hook recursion issues if any
                 // or just call write directly
                 await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]])
-                // Small delay to prevent buffer overflow on slow devices
-                await new Promise(r => setTimeout(r, 100))
+
+                // The first command (OP20) might wake the device from DPD.
+                // If we send the next command too fast (global PAUSE is 50ms), the firmware might drop it.
+                // We add an explicit delay after the first chunk to allow for wake-up.
+                if (i === 0) {
+                    console.log('[BLE CMD] Pausing for device wake-up (optimized)...')
+                    await new Promise(r => setTimeout(r, 200))
+                }
             }
             console.log('[BLE CMD] Deployment ID OPs sent successfully')
         },

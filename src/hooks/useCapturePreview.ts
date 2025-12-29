@@ -2,12 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Alert } from 'react-native'
 import { imageReassemblerEmitter } from '../ble/emitters'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
+import { LogEntry } from '../redux/slices/logsSlice'
 
 interface UseCapturePreviewOptions {
     /** BLE device to capture from */
     device: ExtendedPeripheral | undefined
     /** BLE logs to monitor for capture completion */
-    logs: string
+    logs: LogEntry[]
     /** Write function from useBle hook */
     write: (peripheral: ExtendedPeripheral, commands: string[]) => Promise<void>
     /** Optional callback when capture starts */
@@ -63,7 +64,7 @@ export const useCapturePreview = ({
     const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null)
     const [isCapturing, setIsCapturing] = useState(false)
     const downloadRequested = useRef(false)
-    const lastProcessedLog = useRef<string>('')
+    const lastProcessedLength = useRef<number>(0)
 
     // Listen for image download completion
     useEffect(() => {
@@ -89,34 +90,29 @@ export const useCapturePreview = ({
     // Auto-trigger download when "Captured" detected in logs
     //  This uses the EXACT logic from the old working Engineer Console implementation
     useEffect(() => {
-        console.log('[useCapturePreview] useEffect running, isCapturing:', isCapturing, 'logs length:', logs.length)
+        // console.log('[useCapturePreview] useEffect running, isCapturing:', isCapturing, 'logs length:', logs.length)
 
         // Don't process if logs haven't changed
-        if (logs === lastProcessedLog.current) {
-            console.log('[useCapturePreview] Logs unchanged, skipping')
+        if (logs.length === lastProcessedLength.current) {
+            // console.log('[useCapturePreview] Logs unchanged, skipping')
             return
         }
 
-        // Split current and previous logs into lines
-        const currentLines = logs.split('\n').filter(line => line.trim())
-        const previousLines = lastProcessedLog.current.split('\n').filter(line => line.trim())
-
-        // Extract the new lines that weren't in the previous log
-        const newLines = currentLines.slice(previousLines.length)
+        // Extract the new entries
+        const newEntries = logs.slice(lastProcessedLength.current)
 
         // Update the last processed log reference
-        lastProcessedLog.current = logs
+        lastProcessedLength.current = logs.length
 
-        console.log('[useCapturePreview] New log lines:', newLines.length)
+        console.log('[useCapturePreview] New log entries:', newEntries.length)
 
         // Only process if there are actually new lines
-        if (newLines.length === 0) {
-            console.log('[useCapturePreview] No new lines to process')
+        if (newEntries.length === 0) {
             return
         }
 
         // Check for automation triggers in the new lines
-        const combinedNewLogs = newLines.join('\n')
+        const combinedNewLogs = newEntries.map(e => e.content).join('\n')
         console.log('[useCapturePreview] Combined new logs includes "Captured":', combinedNewLogs.includes("Captured"))
         console.log('[useCapturePreview] State check - isCapturing:', isCapturing, 'downloadRequested:', downloadRequested.current, 'hasDevice:', !!device)
 

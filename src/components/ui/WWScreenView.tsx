@@ -2,13 +2,13 @@ import { PropsWithChildren } from "react"
 import {
 	Keyboard,
 	Platform,
-	ScrollView,
 	ScrollViewProps,
 	StyleSheet,
 	TouchableWithoutFeedback,
 	View,
 	ViewProps,
 } from "react-native"
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view"
 import { useExtendedTheme } from "../../theme"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -30,7 +30,7 @@ export const WWScreenView = ({
 	return (
 		<TouchableWithoutFeedback style={styles.view} onPress={Keyboard.dismiss}>
 			{scrollable ? (
-				<ScrollView
+				<KeyboardAwareScrollView
 					style={styles.scrollView}
 					contentContainerStyle={[
 						{ padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
@@ -38,9 +38,13 @@ export const WWScreenView = ({
 						props.style,
 					]}
 					keyboardShouldPersistTaps="handled"
+					enableOnAndroid={true}
+					enableAutomaticScroll={true}
+					extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
+					showsVerticalScrollIndicator={false}
 				>
 					{children}
-				</ScrollView>
+				</KeyboardAwareScrollView>
 			) : (
 				<View
 					style={[

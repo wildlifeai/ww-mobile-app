@@ -16,7 +16,7 @@ interface UseMapRegionReturn {
 	zoomIn: () => void
 	zoomOut: () => void
 	resetToUserLocation: (location: UserLocation | null) => void
-	mapRef: React.RefObject<MapView>
+	mapRef: React.RefObject<MapView | null>
 }
 
 const DEFAULT_REGION: MapRegion = {

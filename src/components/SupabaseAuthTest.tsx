@@ -63,7 +63,7 @@ export const SupabaseAuthTest: React.FC = () => {
 	const handleRegister = async () => {
 		try {
 			await register({
-				username: username,
+				name: username,
 				email: email,
 				password: password,
 			})

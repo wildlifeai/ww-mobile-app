@@ -533,9 +533,23 @@ class ProjectService {
 			Q.on('device_preparation', 'project_id', model.id)
 		).fetchCount()
 
-		// TODO: Calculate distinct LoRaWAN devices from deployments if needed
-		// For now keeping it 0 to match previous behavior (or could query deployments where device_id != null)
-		const lorawanDeviceCount = 0
+		// Count active deployments
+		// Status ID 1 = Deployed (Active), but relying on deployment_end is safer/consistent with MapScreen
+		const activeDeploymentCount = await database.get('deployments').query(
+			Q.on('device_preparation', 'project_id', model.id),
+			Q.where('deployment_end', null)
+		).fetchCount()
+
+		// Calculate distinct Devices from DevicePreparations (devices allocated to this project)
+		const devicePreparations = await database.collections.get('device_preparation')
+			.query(
+				Q.where('project_id', model.id)
+			)
+			.fetch()
+
+		// Count unique device IDs
+		const uniqueDeviceIds = new Set(devicePreparations.map((dp: any) => dp.deviceId))
+		const lorawanDeviceCount = uniqueDeviceIds.size
 
 		return {
 			id: model.id,
@@ -560,6 +574,7 @@ class ProjectService {
 			// Computed fields
 			member_count: memberCount,
 			deployment_count: deploymentCount,
+			active_deployment_count: activeDeploymentCount,
 			lorawan_device_count: lorawanDeviceCount,
 		}
 	}

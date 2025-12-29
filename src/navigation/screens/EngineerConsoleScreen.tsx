@@ -32,6 +32,8 @@ import BleManager, { Peripheral } from 'react-native-ble-manager'
  */
 const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> => {
     return new Promise((resolve, reject) => {
+        let timeout: NodeJS.Timeout
+
         const eventEmitter = BleManager.addListener(
             'BleManagerDiscoverPeripheral',
             (peripheral: Peripheral) => {
@@ -53,23 +55,20 @@ const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> =>
         )
 
         // Start scanning
-        BleManager.scan([], timeoutMs / 1000) // Convert to seconds
-            .then(() => {
-                console.log('[scanForBootloader] Scan started for DfuTarg')
-            })
-            .catch(err => {
-                console.error('[scanForBootloader] Scan failed:', err)
-                eventEmitter.remove()
-                reject(err)
-            })
+        BleManager.scan([], 5, true).catch(err => {
+            console.error('[scanForBootloader] Scan failed:', err)
+            reject(err)
+        })
 
-        // Timeout if not found
-        const timeout = setTimeout(() => {
-            console.log('[scanForBootloader] Scan timeout, bootloader not found')
-            BleManager.stopScan().catch(err => console.warn('Failed to stop scan:', err))
+        // Set timeout
+        timeout = setTimeout(() => {
+            console.log('[scanForBootloader] Scan timed out')
+            BleManager.stopScan().catch(() => { })
             eventEmitter.remove()
             resolve(null)
         }, timeoutMs)
+
+
     })
 }
 
@@ -80,8 +79,8 @@ export const EngineerConsoleScreen = () => {
     const deviceId = route.params?.deviceId
 
     const device = useAppSelector(state => state.devices[deviceId || ''])
-    const logs = useAppSelector(state => state.logs[deviceId || ''] || "")
-
+    const logs = useAppSelector(state => state.logs[deviceId || ''] || [])
+    // ... (rest of hooks) ...
     const { write, disconnectDevice, connectDevice } = useBle()
     // Destructure all the new commands
     const {
@@ -111,40 +110,36 @@ export const EngineerConsoleScreen = () => {
     // GPS location hook for SET_GPS command
     const { location, isGettingLocation, getLocation } = useGPSLocation()
 
-    const lastProcessedLog = React.useRef<string>("")
+    const lastProcessedLogLength = React.useRef<number>(0)
 
     // Image preview state
     const [showPreviewModal, setShowPreviewModal] = useState(false)
 
     // Monitor logs and update console history
     useEffect(() => {
-        if (!logs || logs === lastProcessedLog.current) return
+        if (!logs || logs.length === lastProcessedLogLength.current) return
 
-        // Split current and previous logs into lines
-        const currentLines = logs.split('\n').filter(line => line.trim())
-        const previousLines = lastProcessedLog.current.split('\n').filter(line => line.trim())
-
-        // Find only the new lines that weren't in the previous log
-        const newLines = currentLines.slice(previousLines.length)
+        // Find only the new entries
+        const newEntries = logs.slice(lastProcessedLogLength.current)
 
         // Update the last processed log reference
-        lastProcessedLog.current = logs
+        lastProcessedLogLength.current = logs.length
 
         // Only process if there are actually new lines
-        if (newLines.length === 0) return
+        if (newEntries.length === 0) return
 
         // Add new lines to console history
-        const newEntries: ConsoleEntry[] = newLines.map(line => ({
+        const historyEntries: ConsoleEntry[] = newEntries.map(entry => ({
             id: Date.now().toString() + Math.random(),
-            timestamp: new Date(),
-            type: 'response',
-            content: line
+            timestamp: new Date(entry.timestamp),
+            type: entry.type === 'tx' ? 'command' : 'response',
+            content: entry.content
         }))
 
-        setConsoleHistory(prev => [...prev, ...newEntries])
+        setConsoleHistory(prev => [...prev, ...historyEntries])
 
         // Check for automation triggers in the new lines
-        const combinedNewLogs = newLines.join('\n')
+        const combinedNewLogs = newEntries.map(e => e.content).join('\n')
 
         // Automation: Handle Firmware Wakeup Logic
         if (isWaitingForCapture) {
@@ -387,7 +382,7 @@ export const EngineerConsoleScreen = () => {
                                 if (error || !data) throw new Error(`Download failed: ${error?.message}`)
 
                                 // 3. Save to file
-                                const localPath = `${FileSystem.cacheDirectory}ble_firmware_${Date.now()}.zip`
+                                const localPath = (FileSystem as any).cacheDirectory + 'last_image.jpg_' + Date.now() + '.zip'
                                 const reader = new FileReader()
                                 reader.readAsDataURL(data)
                                 reader.onloadend = async () => {
@@ -397,7 +392,7 @@ export const EngineerConsoleScreen = () => {
                                     await FileSystem.writeAsStringAsync(
                                         localPath,
                                         base64Content,
-                                        { encoding: FileSystem.EncodingType.Base64 }
+                                        { encoding: (FileSystem as any).EncodingType.Base64, }
                                     )
 
 

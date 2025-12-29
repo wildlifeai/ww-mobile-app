@@ -14,7 +14,7 @@ import Toast, {
 import { useBluetoothStatus } from "../hooks/useBluetoothStatus"
 import { useLocationStatus } from "../hooks/useLocationStatus"
 import { useSetupBLELibrary } from "../hooks/useSetupBLELibrary"
-import { useAppDispatch } from "../redux"
+import { useAppDispatch, useAppSelector } from "../redux"
 
 import ProjectService from "../services/ProjectService"
 import ReferenceDataService from "../services/ReferenceDataService"
@@ -25,16 +25,9 @@ interface ExtendedToastConfigParams extends ToastConfigParams<any> {
 	numberOfLines?: number
 }
 
-/**
- * Sets up different listeners and a basic permission layer
- * so that the app can respond to system events.
- *
- * At the moment the BLE library is set up, bluetooth and
- * location service status is being tracked, closest
- * VSS servers are pulled via ICMP (ping).
- */
 export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 	const dispatch = useAppDispatch()
+	const user = useAppSelector((state) => state.authentication.user)
 
 	// Add loading state to wait for Supabase initialization
 	const [isSupabaseReady, setIsSupabaseReady] = React.useState(false)
@@ -72,14 +65,23 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 		console.log("🔄 Starting Supabase Sync Service...")
 		SupabaseSyncService.resetSyncState().then(() => {
 			SupabaseSyncService.startRealtimeSubscription()
-			SupabaseSyncService.sync() // Initial sync
+			// Initial sync attempt (might fail if no user)
+			SupabaseSyncService.sync()
 		})
 
 		return () => {
 			console.log("🛑 Stopping Supabase Sync Service...")
 			SupabaseSyncService.stopRealtimeSubscription()
 		}
-	}, [isSupabaseReady])  // Depend on ready state
+	}, [isSupabaseReady])
+
+	// Trigger Sync on Login
+	React.useEffect(() => {
+		if (isSupabaseReady && user) {
+			console.log("👤 User authenticated - triggering data sync...")
+			SupabaseSyncService.sync()
+		}
+	}, [isSupabaseReady, user?.id]) // Depend on user ID change
 
 	// Show loading screen while initializing
 	if (!isSupabaseReady) {

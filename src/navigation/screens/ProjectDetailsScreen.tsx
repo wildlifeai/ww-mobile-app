@@ -487,6 +487,7 @@ export const ProjectDetailsScreen = () => {
 									style={{ color: theme.colors.onSurfaceVariant }}
 								>
 									Deployments
+									{` (${project.active_deployment_count || 0} active)`}
 								</Text>
 							</Card.Content>
 						</Card>

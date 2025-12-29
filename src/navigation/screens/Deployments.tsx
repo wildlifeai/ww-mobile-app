@@ -5,7 +5,7 @@ import { withObservables } from '@nozbe/watermelondb/react'
 import { FAB } from 'react-native-paper'
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { DeploymentCard } from "../../components/DeploymentCard"
-import type { Deployment } from "../../types/api.types"
+import type Deployment from "../../database/models/Deployment"
 import { StandardizedListLayout } from "../../components/ui/StandardizedListLayout"
 import { useExtendedTheme } from "../../theme"
 import { DeploymentService } from "../../services/DeploymentService"

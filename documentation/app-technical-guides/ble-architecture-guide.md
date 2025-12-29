@@ -229,6 +229,141 @@ if (project.capture_method_id === 1) {
 2. Complete preparation
 3. Check device stats: Index 11 = 1000, Index 7 = 0, Index 10 = 0 ✅
 
+## BLE Timing Requirements & Firmware Constraints
+
+> **⚠️ CRITICAL**: Understanding these timing requirements is essential for reliable BLE communication with Wildlife Watcher devices.
+
+### Deep Power Down (DPD) Wake Cycle
+
+The AI processor enters **Deep Power Down mode** after 1000ms of inactivity to conserve battery. This has critical implications for command sequences:
+
+**Firmware Behavior** (from `aiProcessor.c`):
+- **Inactivity Timer**: 1000ms (hardware-enforced, cannot be changed from app)
+- **Wake Mechanism**: First command after DPD triggers a wake pulse
+- **Wake Process**: ~200-500ms for AI processor to fully wake and become responsive
+- **State Tracking**: Firmware tracks `aiIsAwake` boolean
+
+**Command Queueing**:
+```c
+// From aiProcessor.c line 702-708
+if (i2cTxPendingMsg != NULL) {
+    LOG("Discarding message as there is already one pending");
+}
+```
+- **Single-slot buffer**: Only ONE pending command allowed during wake
+- **Dropped commands**: Rapid-fire commands during wake-up get discarded
+- **Retry mechanism**: Commands sent while asleep are queued and retried after "Wake" message
+
+### Critical Timing Parameters
+
+**Global BLE Write Pause** (`useBle.ts`):
+```typescript
+const PAUSE = 20  // milliseconds between queued BLE writes
+```
+- Optimized from original 500ms → 50ms → 20ms
+- Ensures 8-command sequence completes within 1000ms window
+- Prevents device from entering DPD mid-sequence
+
+**Wake-Up Delay** (`useBleCommands.ts: setDeploymentIdAsOps`):
+```typescript
+if (i === 0) {
+    await new Promise(r => setTimeout(r, 200))  // Wake delay after first setop
+}
+```
+- 200ms delay after FIRST `setop` command
+- Allows AI processor to transition from DPD → Awake
+- Prevents subsequent commands from being discarded
+
+**Stabilization Delay** (End Deployment):
+```typescript
+await disableCamera(bleDevice)
+await new Promise(r => setTimeout(r, 1000))  // Stabilization delay
+```
+- 1000ms delay after `disableCamera` command
+- `disableCamera` wakes the AI processor
+- Subsequent config changes need device fully awake
+
+### Command Format Requirements
+
+**GPS String Format**:
+```typescript
+// ❌ WRONG - Firmware does NOT strip quotes
+await write(device, [[CommandNames.setgps, { value: '"0 0 0"' }]])
+
+// ✅ CORRECT - Send raw values
+await write(device, [[CommandNames.setgps, { value: "0 0 0" }]])
+```
+
+**Evidence from `ble_commands.c:processSetGps()`**:
+```c
+// Line 1098: Direct string copy without quote stripping
+snprintf(gpsString, GPSSTRINGLENGTH, "%s", p_gpsString);
+```
+
+**Format**: `latitude longitude altitude` (space-separated, no quotes)
+- Valid: `"20.123 -100.456 120.5"`
+- Valid (clear): `"0 0 0"`
+- Invalid: `""` (empty string)
+- Invalid: `"\"0 0 0\""` (quoted values)
+
+### Best Practices for Command Sequencing
+
+**✅ DO**:
+1. **Use existing hooks**: `setDeploymentIdAsOps` includes optimized timing
+2. **Serialize multi-command operations**: Wait for completion before starting next flow
+3. **Add stabilization delays**: 1000ms after wake-triggering commands
+4. **Use `clearGpsLocation` hook**: Sends correct `"0 0 0"` format
+
+**❌ DON'T**:
+1. **Send rapid commands**: Violates firmware's single-slot buffer
+2. **Skip wake delays**: Commands will be discarded
+3. **Hardcode timing**: Use hooks that encapsulate correct delays
+4. **Send quoted GPS values**: Firmware doesn't parse quotes
+
+### Example: Correct Preparation Flow
+
+```typescript
+// From PrepareAndTestScreen.tsx
+const runBleInitialization = async () => {
+    // Step 0: Disable camera (wakes device)
+    await disableCamera(bleDevice)
+    await new Promise(r => setTimeout(r, 1000))  // Stabilization
+
+    // Step 1: Selftest (device now awake)
+    await runSelfTest(bleDevice)
+    await waitForLogMatch(/Error\s*bits/, 3000)
+
+    // Step 2: Set UTC
+    await setUtc(bleDevice)
+    await waitForLogMatch(/UTC is:/, 2000)
+
+    //Step 3: Clear deployment ID (uses optimized hook with 200ms wake delay)
+    await setDeploymentIdAsOps(bleDevice, null)
+
+    // Step 4: Clear GPS (uses correct format)
+    await clearGpsLocation(bleDevice)
+}
+```
+
+### Debugging Command Issues
+
+**Symptoms of Timing Violations**:
+- Log message: `"Discarding message as there is already one pending"`
+- Commands appear sent but device doesn't respond
+- Intermittent failures that succeed on retry
+
+**Solutions**:
+1. Add delays between command sequences (200-1000ms)
+2. Use `setDeploymentIdAsOps` instead of manual loops
+3. Serialize operations (don't send concurrent commands)
+4. Check firmware logs for wake/sleep cycles
+
+**Firmware Log Indicators**:
+```
+AI processor is awake at '2025-12-29T10:07:56Z'  // Device ready
+AI processor is in DPD (sends parameters).       // Device sleeping
+```
+
 ## Best Practices
 
 ### ✅ DO:

@@ -102,11 +102,13 @@ The record includes:
 #### 8. Sync Deployment ID to Device
 
 To ensure photos can be linked back to this specific deployment:
-1. **Extended OP Check**: App first tests if device supports OP 20+ by sending `AI setop 20 0`
-2. **UUID Splitting**: The 128-bit UUID is parsed into 8 x 16-bit integers
-3. **Transmission**: App sends 8 separate `AI setop <index> <value>` commands (OP 20-27)
-4. **Retry Logic**: Up to 3 attempts with 1-second delays if transmission fails
-5. **Validation**: Each command is logged and verified
+1. **UUID Splitting**: The 128-bit UUID is parsed into 8 x 16-bit integers
+2. **Optimized Transmission**: Uses `setDeploymentIdAsOps()` hook which:
+   - Sends 8 separate `AI setop <index> <value>` commands (OP 20-27)
+   - Includes 200ms wake delay after FIRST command (if device was in Deep Power Down)
+   - Global 20ms pause between commands ensures completion within 1000ms window
+3. **Retry Logic**: Up to 3 attempts with 1-second delays if transmission fails
+4. **Validation**: Each command is logged and verified
 
 **Example:**
 ```
@@ -114,10 +116,13 @@ Deployment ID: 11f59ca9-5aca-4dd3-a101-92205ca07384
 Parsed to: [4597, 40105, 23242, 19923, 41217, 37408, 23712, 29572]
 Sent as:
   AI setop 20 4597
+  [200ms wake delay]
   AI setop 21 40105
   ...
   AI setop 27 29572
 ```
+
+> **Timing Critical**: Device has 1000ms inactivity timer. All 8 commands must complete before device sleeps. See [BLE Architecture Guide](../app-technical-guides/ble-architecture-guide.md#ble-timing-requirements--firmware-constraints).
 
 #### 9. Configure Capture Method
 
@@ -208,13 +213,15 @@ When user taps "End Deployment", the app executes the following sequence:
 
 **Step 2: Clear Deployment ID**
 - Sends 8 commands to clear OPs 20-27: `AI setop <index> 0`
+- Uses `setDeploymentIdAsOps(null)` with optimized 200ms wake delay
 - Wipes the deployment UUID from device memory
 - Retry logic: Up to 3 attempts with 1-second delays
 - If fails: Shows warning but continues (user must manually reset device)
 - Status: "Clearing Config..."
 
-**Step 3: Clear GPS Location (Legacy Support)**
-- Sends `setgps ""` to reset GPS data for next deployment
+**Step 3: Clear GPS Location**
+- Sends `setgps 0 0 0` to reset GPS data for next deployment
+- **Note**: GPS values are unquoted, space-separated (not empty string)
 - Ensures old location data doesn't persist
 - Non-blocking: Logs warning if fails but continues
 - Status: "Checking Firmware..."

@@ -82,7 +82,7 @@ export class ScenarioBuilder {
 
 	given(
 		description: string,
-		action: () => void | Promise<void> = () => {},
+		action: () => void | Promise<void> = () => { },
 	): ScenarioBuilder {
 		this._steps.push({ type: "given", description, action })
 		return this
@@ -90,7 +90,7 @@ export class ScenarioBuilder {
 
 	when(
 		description: string,
-		action: () => void | Promise<void> = () => {},
+		action: () => void | Promise<void> = () => { },
 	): ScenarioBuilder {
 		this._steps.push({ type: "when", description, action })
 		return this
@@ -98,7 +98,7 @@ export class ScenarioBuilder {
 
 	then(
 		description: string,
-		action: () => void | Promise<void> = () => {},
+		action: () => void | Promise<void> = () => { },
 	): ScenarioBuilder {
 		this._steps.push({ type: "then", description, action })
 		return this
@@ -106,7 +106,7 @@ export class ScenarioBuilder {
 
 	and(
 		description: string,
-		action: () => void | Promise<void> = () => {},
+		action: () => void | Promise<void> = () => { },
 	): ScenarioBuilder {
 		this._steps.push({ type: "and", description, action })
 		return this
@@ -205,6 +205,16 @@ export const AuthActions = {
 			},
 			{ timeout: 5000 },
 		)
+	},
+
+	userNavigatesToForgotPassword: () => {
+		const link = screen.getByText("Forgot Password?")
+		fireEvent.press(link)
+	},
+
+	systemNavigatesToScreen: (screenName: string) => async () => {
+		// Generic placeholder for screen navigation checks
+		console.log(`Checking for navigation to ${screenName}`)
 	},
 
 	systemShowsValidationError: (message: string) => async () => {

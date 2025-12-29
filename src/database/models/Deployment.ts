@@ -7,6 +7,8 @@ export default class Deployment extends Model {
         projects: { type: 'belongs_to', key: 'project_id' },
         users: { type: 'belongs_to', key: 'setup_by' },
         device_preparation: { type: 'belongs_to', key: 'device_preparation_id' },
+        capture_methods: { type: 'belongs_to', key: 'capture_method_id' },
+        activity_sensitivity: { type: 'belongs_to', key: 'activity_detection_sensitivity_id' },
     } as const
 
     @field('project_id') projectId!: string
@@ -34,8 +36,8 @@ export default class Deployment extends Model {
     @field('camera_height') cameraHeight?: number
 
     // Lifecycle
-    @date('deployment_start') deploymentStart!: number
-    @date('deployment_end') deploymentEnd!: number
+    @date('deployment_start') deploymentStart!: Date
+    @date('deployment_end') deploymentEnd?: Date | null
 
     // Comments
     @text('start_deployment_comments') startDeploymentComments?: string
@@ -49,11 +51,13 @@ export default class Deployment extends Model {
 
     @field('modified_by') modifiedBy!: string
 
-    @readonly @date('created_at') createdAt!: number
-    @readonly @date('updated_at') updatedAt!: number
-    @readonly @date('deleted_at') deletedAt!: number
+    @readonly @date('created_at') createdAt!: Date
+    @readonly @date('updated_at') updatedAt!: Date
+    @readonly @date('deleted_at') deletedAt?: Date | null
 
     @relation('projects', 'project_id') project: any
     @relation('users', 'setup_by') user: any
     @relation('device_preparation', 'device_preparation_id') devicePreparation: any
+    @relation('capture_methods', 'capture_method_id') captureMethod: any
+    @relation('activity_sensitivity', 'activity_detection_sensitivity_id') activityDetectionSensitivity: any
 }

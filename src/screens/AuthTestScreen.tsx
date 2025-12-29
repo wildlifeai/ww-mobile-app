@@ -54,7 +54,7 @@ export const AuthTestScreen: React.FC = () => {
 	const handleRegister = async () => {
 		setIsSubmitting(true)
 		try {
-			const authResponse = await register({ email, password, username })
+			const authResponse = await register({ email, password, name: username })
 
 			// Check if this is a pending confirmation response
 			if ((authResponse as any).isPendingConfirmation) {

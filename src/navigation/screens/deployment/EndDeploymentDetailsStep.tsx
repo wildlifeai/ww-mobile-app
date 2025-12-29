@@ -8,14 +8,13 @@ import { WWScreenView } from '../../../components/ui/WWScreenView'
 import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
 import { RootStackParamList } from '../../../navigation'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { DeploymentService } from '../../../services/DeploymentService'
 import { useBleCommands } from '../../../hooks/useBleCommands'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { withObservables } from '@nozbe/watermelondb/react'
 import { selectCurrentUser } from '../../../redux/slices/authSlice'
 import type Deployment from '../../../database/models/Deployment'
-
-// ... existing imports ...
 
 type EndDeploymentDetailsStepRouteProp = RouteProp<RootStackParamList, 'EndDeploymentDetailsStep'>
 
@@ -25,8 +24,10 @@ interface InnerProps {
     bleDeviceId: string
 }
 
-const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, deviceId, bleDeviceId }) => {
-    const navigation = useNavigation()
+const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment }) => {
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
+    const route = useRoute<EndDeploymentDetailsStepRouteProp>()
+    const { deviceId = '', bleDeviceId = '' } = route.params || {}
     const { disconnectDevice } = useBleActions()
     const { getBatteryLevel, setOperationalParam, disableCamera, runDisconnect, setDeploymentIdAsOps, clearGpsLocation, flashLed } = useBleCommands()
 
@@ -36,17 +37,30 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
     // Get full device object for BLE commands
     const devices = useAppSelector(state => state.devices)
 
+    console.log(`[EndDeployment] Rendering (Fixed). Params from route:: bleDeviceId=${bleDeviceId}, deviceId=${deviceId}`);
+
     // Robust lookup: Try direct match, then case-insensitive, then fallback
     const bleDevice = useMemo(() => {
-        if (devices[bleDeviceId]) return devices[bleDeviceId];
+        let device: any = devices[bleDeviceId];
 
-        const match = Object.values(devices).find(d => d.id?.toLowerCase() === bleDeviceId?.toLowerCase());
-        if (match) return match;
+        if (!device) {
+            device = Object.values(devices).find(d => d.id?.toLowerCase() === bleDeviceId?.toLowerCase());
+        }
 
-        // Fallback: If we assume it is connected but missing from store (edge case),
-        // we construct a minimal object so commands can still be attempted.
-        console.warn(`[EndDeployment] Device ${bleDeviceId} not found in store. Using fallback. Available keys: ${Object.keys(devices).join(', ')}`);
-        return { id: bleDeviceId, connected: true } as any;
+        console.log(`[EndDeployment] Validating device from store. bleDeviceId=${bleDeviceId}, Found=${!!device}, ID=${device?.id}, Connected=${device?.connected}`);
+
+        if (device) {
+            // Use actual device state from store
+            return device;
+        }
+
+        // Fallback: Construct a minimal defined object
+        console.warn(`[EndDeployment] Device ${bleDeviceId} not found in store. Using fallback (disconnected).`);
+        return {
+            id: bleDeviceId,
+            connected: false, // Default to false if not found in store
+            name: 'Fallback Device',
+        };
     }, [devices, bleDeviceId]);
 
     // Local state
@@ -58,6 +72,40 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
     // We assume connection is passed from previous step.
 
     const handleEndDeployment = async () => {
+        // Sanity Check: Ensure BLE is still connected (unless it's a forced cleanup)
+        // If bleDevice is a fallback/disconnected object, we should warn.
+        // We forced connected=true in the useMemo above if found in store, so check the REAL store object or just proceed with caution?
+        // Actually, bleDevice from useMemo might be a fallback.
+        // Let's check the real store device if possible, or trust the bleDevice.connected prop which we might have forced.
+        // Better: Check if the device exists in the 'devices' store AND is connected.
+        const realDevice = devices[bleDeviceId]
+        if (!realDevice || !realDevice.connected) {
+            Alert.alert(
+                'Connection Lost',
+                'The device appears to be disconnected. You cannot end the deployment on the device without a connection.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Force End (Database Only)',
+                        style: 'destructive',
+                        onPress: async () => {
+                            // Allow forcing end if device is lost/damaged, but warn heavily
+                            setIsEnding(true)
+                            try {
+                                const userId = user?.id || null
+                                await DeploymentService.endDeployment(deployment.id, userId, retrievalNotes)
+                                navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
+                            } catch (e) { Alert.alert('Error', 'Failed to force end') }
+                            finally { setIsEnding(false) }
+                        }
+                    }
+                ]
+            )
+            // Ideally we return here unless user chose Force End. But Alert is non-blocking in logic flow if not promised.
+            // So we return immediately and let the Alert callbacks handle logic.
+            return
+        }
+
         setIsEnding(true)
         try {
             // 1. Send BLE command to stop camera
@@ -65,13 +113,12 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
                 setBleStatus('Disabling Camera...')
                 try {
                     await disableCamera(bleDevice)
-                    console.log('[EndDeployment] Camera disabled')
+                    console.log('[EndDeployment] Camera disabled, waiting for device wake/stabilize...')
+                    // Vital delay: disableCamera wakes the device, we must wait before flooding it with OPs
+                    await new Promise(r => setTimeout(r, 1000))
                 } catch (e) {
                     console.warn('[EndDeployment] Failed to disable camera:', e)
-                    // Continue anyway to ensure DB update happens
                 }
-            } else {
-                console.warn('[EndDeployment] No BLE device found in store, skipping camera disable')
             }
 
             // 1.5 Clear Deployment ID
@@ -83,7 +130,6 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
                 while (!idCleared && attempts < 3) {
                     try {
                         attempts++
-                        // Pass null to clear the ID (sends zeros to OPs)
                         await setDeploymentIdAsOps(bleDevice, null)
                         console.log('[EndDeployment] Deployment ID cleared successfully')
                         idCleared = true
@@ -92,25 +138,21 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
                         if (attempts < 3) await new Promise(r => setTimeout(r, 1000))
                     }
                 }
+                
+                // Warn user if clearing failed after all retries
                 if (!idCleared) {
                     Alert.alert(
                         'Warning',
-                        'Failed to clear Deployment ID on the device. Please manually reset the device configuration if you plan to redeploy it immediately.'
+                        'Failed to clear Deployment ID on the device. The deployment has been ended in the database, but you may need to manually reset the device configuration before redeploying it.',
+                        [{ text: 'OK' }]
                     )
                 }
 
-                // 1.6 Check if legacy firmware (no extended OPs) and clear GPS
-                setBleStatus('Checking Firmware...')
+                // Clear GPS (Legacy/Safety)
                 try {
-                    // Legacy devices don't support OP 20-27, so if we successfully set them above,
-                    // the device is modern. We can also check by trying to read OP 20, but for simplicity,
-                    // we'll just always clear GPS for safety after ending deployment
-                    console.log('[EndDeployment] Clearing GPS location for next deployment...')
                     await clearGpsLocation(bleDevice)
-                    console.log('[EndDeployment] GPS location cleared successfully')
                 } catch (e) {
-                    console.warn('[EndDeployment] Failed to clear GPS location:', e)
-                    // Non-critical, continue
+                    console.warn('[EndDeployment] Failed to clear GPS:', e)
                 }
             }
 
@@ -124,18 +166,26 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
                 setBleStatus('Confirming...')
                 console.log('[EndDeployment] Starting LED confirmation sequence...')
                 try {
-                    // Sequence: Green (1s) → Blue (1s) → Red (1s) → Green (4s)
+                    // Sequence with delays matching duration
+                    // Green (1s)
                     await flashLed(bleDevice, 'green', 1000, 1)
-                    await new Promise(r => setTimeout(r, 100)) // Small delay between colors
+                    await new Promise(r => setTimeout(r, 1000))
+
+                    // Blue (1s)
                     await flashLed(bleDevice, 'blue', 1000, 1)
-                    await new Promise(r => setTimeout(r, 100))
+                    await new Promise(r => setTimeout(r, 1000))
+
+                    // Red (1s)
                     await flashLed(bleDevice, 'red', 1000, 1)
-                    await new Promise(r => setTimeout(r, 100))
+                    await new Promise(r => setTimeout(r, 1000))
+
+                    // Green (4s) - Final confirmation
                     await flashLed(bleDevice, 'green', 4000, 1)
+                    await new Promise(r => setTimeout(r, 4000))
+
                     console.log('[EndDeployment] LED confirmation sequence complete')
                 } catch (e) {
                     console.warn('[EndDeployment] Failed to complete LED sequence:', e)
-                    // Non-critical, continue to disconnect
                 }
             }
 
@@ -144,25 +194,22 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
             if (bleDevice) {
                 try {
                     await runDisconnect(bleDevice)
-                    console.log('[EndDeployment] Device disconnected')
                 } catch (e) {
                     console.warn('[EndDeployment] Failed to disconnect:', e)
                 }
             }
 
+            // 4. Navigate to Home (Deployments Tab)
             Alert.alert(
                 "Deployment Ended",
                 "The deployment has been successfully ended.",
                 [{
-                    text: "View Details",
+                    text: "Done",
                     onPress: () => {
-                        // Navigate to details (and replace history so they can't go back to wizard)
+                        // Reset navigation stack to Home
                         navigation.reset({
-                            index: 1,
-                            routes: [
-                                { name: 'Home' },
-                                { name: 'DeploymentDetails', params: { deploymentId: deployment.id } },
-                            ],
+                            index: 0,
+                            routes: [{ name: 'Home' }],
                         })
                     }
                 }]
@@ -186,35 +233,30 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
 
     return (
         <WWScreenView scrollable>
-            <Appbar.Header>
-                <Appbar.BackAction onPress={() => navigation.goBack()} />
-                <Appbar.Content title="End Deployment" />
-            </Appbar.Header>
+
 
             <View style={styles.container}>
-                <View style={styles.headerSection}>
-                    <WWText variant="headlineMedium" style={styles.title}>End Deployment</WWText>
-                    <WWText variant="bodyMedium" style={styles.subtitle}>
-                        Confirm you are ending the correct deployment.
-                    </WWText>
-                </View>
-
+                {/* Deployment Info Card */}
                 <Card style={styles.card}>
+                    <Card.Title
+                        title="Deployment Info"
+                        left={(props) => <Appbar.Action {...props} icon="information" />}
+                    />
                     <Card.Content>
-                        <View style={styles.column}>
-                            <WWText variant="labelLarge" style={styles.label}>Deployment Name</WWText>
-                            <WWText variant="headlineSmall">{deployment.name}</WWText>
+                        <View style={styles.infoRow}>
+                            <WWText variant="labelMedium">Deployment Name:</WWText>
+                            <WWText variant="bodyLarge">{deployment.name}</WWText>
                         </View>
-                        <View style={styles.divider} />
-                        <View style={styles.row}>
-                            <WWText variant="labelLarge">Started:</WWText>
+                        <View style={styles.infoRow}>
+                            <WWText variant="labelMedium">Started:</WWText>
                             <WWText variant="bodyLarge">{new Date(deployment.deploymentStart).toLocaleDateString()}</WWText>
                         </View>
                     </Card.Content>
                 </Card>
 
-                <View style={styles.inputSection}>
-                    <WWText variant="titleMedium" style={styles.sectionTitle}>Retrieval Notes</WWText>
+                {/* Retrieval Notes Input */}
+                <View>
+                    <WWText variant="titleMedium" style={{ marginBottom: 8 }}>Retrieval Notes</WWText>
                     <TextInput
                         mode="outlined"
                         placeholder="e.g. SD card full, Battery low, Device damaged..."
@@ -227,14 +269,14 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
                     />
                 </View>
 
-                <View style={styles.actionSection}>
+                {/* Action Buttons */}
+                <View style={styles.footer}>
                     <WWButton
                         mode="contained"
-                        color="#D32F2F" // Red for destructive action
+                        style={styles.endButton}
                         onPress={handleEndDeployment}
                         loading={isEnding}
                         disabled={isEnding}
-                        style={styles.endButton}
                     >
                         {isEnding ? bleStatus : "End Deployment"}
                     </WWButton>
@@ -255,56 +297,28 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment, d
 
 const styles = StyleSheet.create({
     container: {
-        padding: 16,
+        flex: 1,
+        gap: 16,
+        padding: 16
     },
-    headerSection: {
-        marginBottom: 24,
+    card: { marginBottom: 16 },
+    infoRow: { marginBottom: 8 },
+    footer: {
+        marginTop: 24,
+        marginBottom: 32
     },
-    title: {
-        marginBottom: 8,
+    endButton: {
+        backgroundColor: '#D32F2F',
+        paddingVertical: 8
     },
-    subtitle: {
-        color: '#666',
-    },
-    card: {
-        marginBottom: 24,
-    },
-    row: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-    },
-    column: {
-        marginBottom: 8,
-    },
-    label: {
-        marginBottom: 4,
-        color: '#666',
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#eee',
-        marginVertical: 8,
-    },
-    inputSection: {
-        marginBottom: 24,
-    },
-    sectionTitle: {
-        marginBottom: 8,
+    cancelButton: {
+        borderColor: '#666',
+        marginTop: 12
     },
     input: {
         backgroundColor: '#fff',
         minHeight: 120,
     },
-    actionSection: {
-        gap: 12,
-    },
-    endButton: {
-        backgroundColor: '#D32F2F',
-    },
-    cancelButton: {
-        borderColor: '#666',
-    }
 })
 
 // Wrapper to fetch deployment

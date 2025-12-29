@@ -433,9 +433,9 @@ export const {
 } = enhancedApi
 
 // Role-based query helpers
-export const createRoleBasedQuery = (state: RootState): RoleBasedQuery => ({
+export const createRoleBasedQuery = (state: AuthRootState): RoleBasedQuery => ({
 	organisation_id: state.authentication.currentOrganisation?.id,
-	user_role: state.authentication.user?.role || "project_member",
+	user_role: (state.authentication.user?.role || "project_member") as "ww_admin" | "project_admin" | "project_member",
 	user_id: state.authentication.user?.id || "",
 })
 

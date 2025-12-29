@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { RootStackParamList } from '../../navigation'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppSelector } from '../../redux'
 import { useBle } from '../../hooks/useBle'
@@ -11,12 +13,13 @@ import { AppParams } from '../types'
 import { BleConsoleOutput, ConsoleEntry } from '../../components/BleConsoleOutput'
 
 export const DevicePreparationScreen = () => {
-    const navigation = useNavigation()
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
     const route = useRoute<AppParams<'DevicePreparation'>>()
-    const { deviceId } = route.params
+    const params = route.params as { deviceId: string } | undefined
+    const deviceId = params?.deviceId as string // Force cast as we check for it or it's dead code
 
     const device = useAppSelector(state => state.devices[deviceId])
-    const logs = useAppSelector(state => state.logs[deviceId] || "")
+    const logs = useAppSelector(state => state.logs[deviceId] || [])
     const currentUser = useAppSelector(state => state.authentication.user)
 
     const { connectDevice, disconnectDevice } = useBle()
@@ -32,26 +35,33 @@ export const DevicePreparationScreen = () => {
     const [lorawanInfo, setLorawanInfo] = useState<{ rssi: number, snr: number } | undefined>()
     const [firmwareVersion, setFirmwareVersion] = useState<string | undefined>()
 
+    const lastProcessedLength = React.useRef<number>(0)
+
     // Monitor logs to parse responses (simplified for now, ideally use parser.ts output)
     useEffect(() => {
-        if (!logs) return
+        if (!logs || logs.length === lastProcessedLength.current) return
+
+        const newEntries = logs.slice(lastProcessedLength.current)
+        lastProcessedLength.current = logs.length
+
+        if (newEntries.length === 0) return
 
         // Add to console history for visibility
-        const newEntry: ConsoleEntry = {
+        const historyEntries: ConsoleEntry[] = newEntries.map(e => ({
             id: Date.now().toString() + Math.random(),
-            timestamp: new Date(),
-            type: 'response',
-            content: logs
-        }
-        setConsoleHistory(prev => {
-            const last = prev[prev.length - 1]
-            if (last && last.type === 'response' && last.content === logs) return prev
-            return [...prev, newEntry]
-        })
+            timestamp: new Date(e.timestamp),
+            type: e.type === 'tx' ? 'command' : 'response',
+            content: e.content
+        }))
+
+        setConsoleHistory(prev => [...prev, ...historyEntries])
+
+        // Parse new logs strings
+        const combinedLogs = newEntries.map(e => e.content).join('\n')
 
         // Basic parsing for demo purposes (real parsing should be in parser.ts/useBleCommands)
-        if (logs.includes('Battery =')) {
-            const match = logs.match(/Battery = (\d+)mV (\d+)%/)
+        if (combinedLogs.includes('Battery =')) {
+            const match = combinedLogs.match(/Battery = (\d+)mV (\d+)%/)
             if (match) {
                 setBatteryInfo({ voltage: parseInt(match[1]), level: parseInt(match[2]) })
                 if (preparationId) {
@@ -60,8 +70,8 @@ export const DevicePreparationScreen = () => {
             }
         }
 
-        if (logs.includes('total drive space')) {
-            const match = logs.match(/(\d+)\s*K\s*total\s*drive\s*space[\s\S]*?(\d+)\s*K\s*available/)
+        if (combinedLogs.includes('total drive space')) {
+            const match = combinedLogs.match(/(\d+)\s*K\s*total\s*drive\s*space[\s\S]*?(\d+)\s*K\s*available/)
             if (match) {
                 setSdCardInfo({ total: parseInt(match[1]) * 1024, available: parseInt(match[2]) * 1024 })
                 if (preparationId) {
@@ -70,8 +80,8 @@ export const DevicePreparationScreen = () => {
             }
         }
 
-        if (logs.includes('RSSI=')) {
-            const match = logs.match(/RSSI=(-?\d+),\s*SNR=(-?\d+(?:\.\d+)?)/)
+        if (combinedLogs.includes('RSSI=')) {
+            const match = combinedLogs.match(/RSSI=(-?\d+),\s*SNR=(-?\d+(?:\.\d+)?)/)
             if (match) {
                 setLorawanInfo({ rssi: parseInt(match[1]), snr: parseFloat(match[2]) })
                 if (preparationId) {
@@ -185,7 +195,7 @@ export const DevicePreparationScreen = () => {
 
                         <TouchableOpacity
                             style={[styles.actionButton, styles.secondaryButton]}
-                            onPress={() => navigation.navigate('EngineerConsole', { deviceId })}
+                            onPress={() => navigation.navigate('EngineerConsoleScreen', { deviceId })}
                         >
                             <Ionicons name="terminal" size={20} color="#2196F3" style={styles.actionIcon} />
                             <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Open Engineer Console</Text>

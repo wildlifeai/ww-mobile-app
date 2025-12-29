@@ -17,7 +17,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
     const theme = useTheme()
     const { write } = useBle()
     // Need full logs for capture logic
-    const logs = useAppSelector(state => state.logs[device?.id || ''] || '')
+    const logs = useAppSelector(state => state.logs[device?.id || ''] || [])
 
     const {
         startCapture,

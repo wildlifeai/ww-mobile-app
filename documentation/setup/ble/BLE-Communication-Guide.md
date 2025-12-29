@@ -366,6 +366,54 @@ describe('BLE Service', () => {
 4. Try manual download command
 5. Check Metro logs for download errors
 
+## Firmware Timing Constraints
+
+> **⚠️ CRITICAL**: Wildlife Watcher cameras use an AI processor that enters **Deep Power Down (DPD)** after 1000ms of inactivity to conserve battery. This creates specific timing requirements for BLE communication.
+
+### Key Constraints Summary
+
+**The Problem:**
+- Device sleeps after 1000ms idle → First command wakes it (~200ms wake time)
+- Firmware has **single-slot command buffer** → Rapid commands get discarded
+- GPS format is **unquoted space-separated** → Quotes cause "malformed" errors
+
+**The Solution:**
+- ✅ Use optimized hooks (`setDeploymentIdAsOps`, `clearGpsLocation`)
+- ✅ Serialize write commands with 200ms-1000ms delays
+- ✅ Send GPS as `"0 0 0"` not `"\"0 0 0\""`
+
+**Quick Example:**
+```typescript
+// ✅ CORRECT: Serialized with stabilization delay
+await disableCamera(device)              // Wakes device
+await new Promise(r => setTimeout(r, 1000))  // Stabilization
+await setDeploymentIdAsOps(device, id)   // Has built-in 200ms wake delay
+
+// ❌ WRONG: Rapid commands get discarded
+for (let i = 0; i < 8; i++) {
+    await setop(device, i, value)  // Only first may succeed!
+}
+```
+
+### 📚 Detailed Documentation
+
+**For complete firmware timing specifications, implementation details, and troubleshooting:**
+
+👉 **[BLE Architecture Guide - Firmware Timing Requirements](../app-technical-guides/ble-architecture-guide.md#ble-timing-requirements--firmware-constraints)**
+
+This comprehensive guide covers:
+- Deep Power Down wake cycles and activity windows
+- Command queueing behavior (with firmware source references)
+- All critical timing parameters (20ms pause, 200ms wake, 1000ms stabilization)
+- GPS string format requirements (with firmware evidence)
+- Complete DO/DON'T examples with code
+- Debugging symptoms and solutions
+- Firmware log indicators
+
+**Flow-Specific Timing:**
+- [Device Preparation Flow](../onboarding/02-DEVICE-PREPARATION.md) - Initialization sequence timing
+- [Deployment Flow](../onboarding/03-DEPLOYMENT-FLOW.md) - Start/End deployment timing
+
 ## Best Practices
 
 ### Connection Management
@@ -432,18 +480,28 @@ bleService.startScan()  // Never stops
 
 ### Batch Commands
 
+> **⚠️ Note**: The Wildlife Watcher firmware has timing constraints. Parallel commands work for **read-only** operations. For **write operations** (setop, setgps, etc.), you **must serialize** with delays. See "Firmware Timing Constraints" above.
+
 ```typescript
-// ✅ GOOD: Send multiple commands efficiently
+// ✅ GOOD: Parallel reads (no timing issues)
 const [status, config, time] = await Promise.all([
     bleService.sendCommand('GET_STATUS'),
     bleService.sendCommand('GET_CONFIG'),
     bleService.sendCommand('GET_TIME')
 ])
 
-// ❌ BAD: Sequential commands
-const status = await bleService.sendCommand('GET_STATUS')
-const config = await bleService.sendCommand('GET_CONFIG')
-const time = await bleService.sendCommand('GET_TIME')
+// ❌ BAD: Parallel writes (firmware will discard)
+await Promise.all([
+    bleService.sendCommand('setop', { index: 20, value: 0 }),
+    bleService.sendCommand('setop', { index: 21, value: 0 }),
+    // Only first command may succeed!
+])
+
+// ✅ GOOD: Sequential writes with timing
+for (let i = 20; i <= 27; i++) {
+    await bleService.sendCommand('setop', { index: i, value: 0 })
+    if (i === 20) await new Promise(r => setTimeout(r,  200))  // Wake delay
+}
 ```
 
 ## Security Considerations

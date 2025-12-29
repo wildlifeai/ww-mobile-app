@@ -12,6 +12,7 @@ import DevicePreparation from '../database/models/DevicePreparation'
 import NetInfo from '@react-native-community/netinfo'
 import type { RootState } from '../redux'
 import { generateUUID } from '../utils/uuid'
+import type Deployment from '../database/models/Deployment'
 
 class SupabaseSyncService {
     private realtimeChannel: RealtimeChannel | null = null
@@ -25,6 +26,25 @@ class SupabaseSyncService {
      */
     async resetSyncState() {
         console.log('🔄 Resetting sync state...')
+
+        // INTEGRITY CHECK: Detect DB Reset (e.g. after migration failure)
+        // If the DB is missing the timestamp record but AsyncStorage has it, we interpret this as a reset/inconsistency.
+        try {
+            const lastPullTs = await SyncStateService.getLastPullTimestamp()
+            if (lastPullTs > 0) {
+                const dbRecords = await database.get('sync_state')
+                    .query(Q.where('key', SYNC_STATE_KEYS.LAST_PULL_TIMESTAMP))
+                    .fetch()
+
+                if (dbRecords.length === 0) {
+                    console.warn('⚠️ [SupabaseSyncService] Detected zombie LAST_PULL_TIMESTAMP in cache (missing in DB). Clearing AsyncStorage sync cache.')
+                    await SyncStateService.clearAllState()
+                }
+            }
+        } catch (e) {
+            console.error('⚠️ [SupabaseSyncService] Failed to check integrity:', e)
+        }
+
         this.isSyncing = false
         if (this.syncDebounceTimer) {
             clearTimeout(this.syncDebounceTimer)
@@ -145,6 +165,7 @@ class SupabaseSyncService {
             await this.syncProjects()
             await this.syncDevices()
             await this.syncDevicePreparation()
+            await this.syncDeployments()
 
             // ================================================================
             // STEP 3: UPDATE SYNC TIMESTAMPS
@@ -1035,6 +1056,149 @@ class SupabaseSyncService {
         })
 
         console.log('✅ Device preparation sync complete')
+    }
+
+    /**
+     * Sync deployments (incremental pull)
+     */
+    private async syncDeployments(): Promise<void> {
+        const LAST_PULLED_KEY = SYNC_STATE_KEYS.DEPLOYMENTS_LAST_PULLED_AT
+        const lastPulledStr = await SyncStateService.get(LAST_PULLED_KEY)
+        const lastPulledAt = lastPulledStr ? new Date(parseInt(lastPulledStr, 10)).toISOString() : new Date(0).toISOString()
+
+        console.log('⛺ Syncing deployments since', lastPulledAt)
+
+        const client = getSupabaseClient()
+        const { data, error } = await client
+            .from('deployments')
+            .select('*')
+            .gt('updated_at', lastPulledAt)
+
+        if (error) {
+            console.error('❌ Failed to sync deployments:', error)
+            return
+        }
+
+        if (!data || data.length === 0) {
+            console.log('✅ No new deployment changes')
+            return
+        }
+
+        console.log(`📥 Received ${data.length} deployment updates`)
+
+        await database.write(async () => {
+            const collection = database.get<Deployment>('deployments')
+
+            for (const row of data) {
+                // Skip if deleted on server
+                if (row.deleted_at) {
+                    try {
+                        const existing = await collection.find(row.id)
+                        if (!existing._raw._status.includes('deleted')) {
+                            await existing.markAsDeleted()
+                        }
+                    } catch (e) {
+                        // Doesn't exist locally, skip
+                    }
+                    continue
+                }
+
+                try {
+                    const existing = await collection.find(row.id)
+                    await existing.update((rec) => {
+                        rec.projectId = row.project_id || ''
+                        rec.deviceId = row.device_id || ''
+                        rec.devicePreparationId = row.device_preparation_id || ''
+
+                        rec.deploymentStatusId = row.deployment_status_id ?? undefined
+                        rec.captureMethodId = row.capture_method_id ?? undefined
+                        rec.activityDetectionSensitivityId = row.activity_detection_sensitivity_id ?? undefined
+                        rec.timelapseIntervalSeconds = row.timelapse_interval_seconds ?? undefined
+
+                        rec.name = row.name ?? undefined
+                        rec.setupBy = row.setup_by || ''
+                        rec.endedBy = row.ended_by ?? undefined
+
+                        rec.locationName = row.location_name || ''
+                        rec.location = row.location
+                        rec.latitude = row.latitude ?? undefined
+                        rec.longitude = row.longitude ?? undefined
+                        rec.altitude = row.altitude ?? undefined
+                        rec.accuracy = row.accuracy ?? undefined
+                        rec.locationDescription = row.location_description ?? undefined
+
+                        rec.cameraLocationImagePaths = row.camera_location_image_paths
+                        rec.cameraHeight = row.camera_height ?? undefined
+
+                        rec.deploymentStart = row.deployment_start ? new Date(row.deployment_start) : rec.deploymentStart
+                        rec.deploymentEnd = row.deployment_end ? new Date(row.deployment_end) : null
+
+                        rec.startDeploymentComments = row.start_deployment_comments ?? undefined
+                        rec.endDeploymentComments = row.end_deployment_comments ?? undefined
+
+                        const raw = rec._raw as any;
+                        raw.updated_at = this.parseDateToTimestamp(row.updated_at);
+                    })
+                } catch (e) {
+                    // Not found, create
+                    await collection.create((rec) => {
+                        rec._raw.id = row.id // Use server ID
+
+                        rec.projectId = row.project_id || ''
+                        rec.deviceId = row.device_id || ''
+                        rec.devicePreparationId = row.device_preparation_id || ''
+
+                        rec.deploymentStatusId = row.deployment_status_id ?? undefined
+                        rec.captureMethodId = row.capture_method_id ?? undefined
+                        rec.activityDetectionSensitivityId = row.activity_detection_sensitivity_id ?? undefined
+                        rec.timelapseIntervalSeconds = row.timelapse_interval_seconds ?? undefined
+
+                        rec.name = row.name ?? undefined
+                        rec.setupBy = row.setup_by || ''
+                        rec.endedBy = row.ended_by ?? undefined
+
+                        rec.locationName = row.location_name || ''
+                        rec.location = row.location
+                        rec.latitude = row.latitude ?? undefined
+                        rec.longitude = row.longitude ?? undefined
+                        rec.altitude = row.altitude ?? undefined
+                        rec.accuracy = row.accuracy ?? undefined
+                        rec.locationDescription = row.location_description ?? undefined
+
+                        rec.cameraLocationImagePaths = row.camera_location_image_paths
+                        rec.cameraHeight = row.camera_height ?? undefined
+
+                        rec.deploymentStart = new Date(row.deployment_start)
+                        rec.deploymentEnd = row.deployment_end ? new Date(row.deployment_end) : null
+
+                        rec.startDeploymentComments = row.start_deployment_comments ?? undefined
+                        rec.endDeploymentComments = row.end_deployment_comments ?? undefined
+
+                        const raw = rec._raw as any;
+                        raw.created_at = this.parseDateToTimestamp(row.created_at);
+                        raw.updated_at = this.parseDateToTimestamp(row.updated_at);
+                    })
+                }
+            }
+
+            // Update timestamp
+            const maxTimestamp = Math.max(...data.map((d: any) => this.parseDateToTimestamp(d.updated_at)))
+            await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
+        })
+
+        console.log('✅ Deployments sync complete')
+    }
+
+    private parseDateToTimestamp(dateInput: any): number {
+        try {
+            if (!dateInput) return Date.now()
+            if (typeof dateInput === 'number') return dateInput
+            if (typeof dateInput === 'string') return new Date(dateInput).getTime()
+            if (dateInput instanceof Date) return dateInput.getTime()
+            return Date.now()
+        } catch (e) {
+            return Date.now()
+        }
     }
 
 
