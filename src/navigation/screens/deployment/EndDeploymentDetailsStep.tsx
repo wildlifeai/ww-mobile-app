@@ -138,6 +138,15 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                         if (attempts < 3) await new Promise(r => setTimeout(r, 1000))
                     }
                 }
+                
+                // Warn user if clearing failed after all retries
+                if (!idCleared) {
+                    Alert.alert(
+                        'Warning',
+                        'Failed to clear Deployment ID on the device. The deployment has been ended in the database, but you may need to manually reset the device configuration before redeploying it.',
+                        [{ text: 'OK' }]
+                    )
+                }
 
                 // Clear GPS (Legacy/Safety)
                 try {

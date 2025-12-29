@@ -368,149 +368,51 @@ describe('BLE Service', () => {
 
 ## Firmware Timing Constraints
 
-> **⚠️ CRITICAL**: Wildlife Watcher cameras use an AI processor that enters Deep Power Down (DPD) mode to conserve battery. Understanding these timing constraints is essential for reliable BLE communication.
+> **⚠️ CRITICAL**: Wildlife Watcher cameras use an AI processor that enters **Deep Power Down (DPD)** after 1000ms of inactivity to conserve battery. This creates specific timing requirements for BLE communication.
 
-### Deep Power Down Wake Cycle
+### Key Constraints Summary
 
-**Hardware Behavior:**
-- **Inactivity Timer**: AI processor enters DPD after 1000ms of inactivity
-- **Wake on Command**: First command after DPD triggers a wake pulse
-- **Wake Duration**: ~200-500ms for AI processor to become fully responsive
-- **Activity Window**: Commands must complete within 1000ms or device sleeps mid-sequence
+**The Problem:**
+- Device sleeps after 1000ms idle → First command wakes it (~200ms wake time)
+- Firmware has **single-slot command buffer** → Rapid commands get discarded
+- GPS format is **unquoted space-separated** → Quotes cause "malformed" errors
 
-**Command Queueing (from firmware `aiProcessor.c`):**
-```c
-// Single-slot buffer - only ONE pending command allowed
-if (i2cTxPendingMsg != NULL) {
-    LOG("Discarding message as there is already one pending");
+**The Solution:**
+- ✅ Use optimized hooks (`setDeploymentIdAsOps`, `clearGpsLocation`)
+- ✅ Serialize write commands with 200ms-1000ms delays
+- ✅ Send GPS as `"0 0 0"` not `"\"0 0 0\""`
+
+**Quick Example:**
+```typescript
+// ✅ CORRECT: Serialized with stabilization delay
+await disableCamera(device)              // Wakes device
+await new Promise(r => setTimeout(r, 1000))  // Stabilization
+await setDeploymentIdAsOps(device, id)   // Has built-in 200ms wake delay
+
+// ❌ WRONG: Rapid commands get discarded
+for (let i = 0; i < 8; i++) {
+    await setop(device, i, value)  // Only first may succeed!
 }
 ```
 
-**Implications:**
-- ❌ Rapid-fire commands during wake-up get **discarded**
-- ❌ Sending 8 commands simultaneously will drop 7 of them
-- ✅ Must serialize commands with appropriate delays
-- ✅ Use optimized hooks that handle timing (`setDeploymentIdAsOps`)
+### 📚 Detailed Documentation
 
-### Critical Timing Parameters
+**For complete firmware timing specifications, implementation details, and troubleshooting:**
 
-**Global BLE Write Pause**: 20ms between queued commands
-```typescript
-// In useBle.ts
-const PAUSE = 20  // Ensures 8-command sequence completes in <1000ms
-```
+👉 **[BLE Architecture Guide - Firmware Timing Requirements](../app-technical-guides/ble-architecture-guide.md#ble-timing-requirements--firmware-constraints)**
 
-**Wake-Up Delay**: 200ms after first command
-```typescript
-// In useBleCommands.ts: setDeploymentIdAsOps
-if (i === 0) {
-    await new Promise(r => setTimeout(r, 200))  // AI processor wakes
-}
-```
+This comprehensive guide covers:
+- Deep Power Down wake cycles and activity windows
+- Command queueing behavior (with firmware source references)
+- All critical timing parameters (20ms pause, 200ms wake, 1000ms stabilization)
+- GPS string format requirements (with firmware evidence)
+- Complete DO/DON'T examples with code
+- Debugging symptoms and solutions
+- Firmware log indicators
 
-**Stabilization Delay**: 1000ms after wake-triggering commands
-```typescript
-await disableCamera(bleDevice)  // Wakes AI processor
-await new Promise(r => setTimeout(r, 1000))  // Full stabilization
-// Now safe to send config commands
-```
-
-### GPS String Format Requirement
-
-**Firmware expects unquoted, space-separated values:**
-
-```typescript
-// ❌ WRONG - Firmware does NOT strip quotes
-await bleService.sendCommand('setgps', { value: '"0 0 0"' })
-// Device logs: "GPS string malformed"
-
-// ✅ CORRECT - Send raw space-separated values
-await bleService.sendCommand('setgps', { value: '0 0 0' })
-// Device logs: "Location is: 0 0 0"
-```
-
-**Format**: `latitude longitude altitude`
-- Valid: `"20.123 -100.456 120.5"`
-- Valid (clear): `"0 0 0"`
-- Invalid: `""` (empty string causes error)
-- Invalid: `"\"0 0 0\""` (quotes break parser)
-
-**Evidence from firmware** (`ble_commands.c:processSetGps`):
-```c
-// Line 1098: Direct copy without quote stripping
-snprintf(gpsString, GPSSTRINGLENGTH, "%s", p_gpsString);
-```
-
-### Best Practices for Command Sequencing
-
-**✅ DO:**
-1. **Serialize Multi-Command Operations**
-   ```typescript
-   // Correct: Sequential with delays
-   await disableCamera(device)
-   await new Promise(r => setTimeout(r, 1000))
-   await setDeploymentIdAsOps(device, deploymentId)
-   ```
-
-2. **Use Optimized Hooks**
-   ```typescript
-   // Hooks encapsulate correct timing
-   const { setDeploymentIdAsOps, clearGpsLocation } = useBleCommands()
-   ```
-
-3. **Wait for Device Wake After Long Idle**
-   ```typescript
-   // If device might be asleep, allow wake time
-   await firstCommand(device)
-   await new Promise(r => setTimeout(r, 200))
-   await nextCommand(device)
-   ```
-
-**❌ DON'T:**
-1. **Send Rapid Commands**
-   ```typescript
-   // BAD: These will be discarded by firmware
-   for (let i = 0; i < 8; i++) {
-       await setop(device, i, value)  // Only first may succeed
-   }
-   ```
-
-2. **Skip Stabilization Delays**
-   ```typescript
-   // BAD: Config commands may be dropped
-   await disableCamera(device)
-   await setDeploymentId(device, id)  // Too soon! Device still waking
-   ```
-
-3. **Hardcode Command Strings**
-   ```typescript
-   // BAD: Bypasses timing logic
-   await bleWrite(device, 'setgps "0 0 0"')  // Malformed + no timing
-   ```
-
-### Debugging Timing Issues
-
-**Symptoms:**
-- Log: `"Discarding message as there is already one pending"`
-- Commands sent but device doesn't respond
-- Intermittent failures (works on retry)
-
-**Solutions:**
-1. Add 200-1000ms delays between command sequences
-2. Use `setDeploymentIdAsOps` instead of manual loops
-3. Check firmware logs for wake/sleep indicators:
-   ```
-   AI processor is awake at '2025-12-29T10:07:56Z'  ← Ready
-   AI processor is in DPD (sends parameters).       ← Sleeping
-   ```
-4. Ensure all 8-command sequences complete in <1000ms
-
-### Documentation Cross-Reference
-
-For comprehensive firmware timing details, see:
-- **[BLE Architecture Guide](../app-technical-guides/ble-architecture-guide.md#ble-timing-requirements--firmware-constraints)** - Complete timing specifications
-- **[Device Preparation Flow](../onboarding/02-DEVICE-PREPARATION.md)** - Initialization timing
-- **[Deployment Flow](../onboarding/03-DEPLOYMENT-FLOW.md)** - Start/End deployment timing
+**Flow-Specific Timing:**
+- [Device Preparation Flow](../onboarding/02-DEVICE-PREPARATION.md) - Initialization sequence timing
+- [Deployment Flow](../onboarding/03-DEPLOYMENT-FLOW.md) - Start/End deployment timing
 
 ## Best Practices
 
