@@ -15,6 +15,7 @@ import { WWIcon } from '../../components/ui/WWIcon'
 import { CommandNames } from '../../ble/types'
 import { useBleCommands } from '../../hooks/useBleCommands'
 import { useBleActions } from '../../providers/BleEngineProvider'
+import { useDeviceSettings } from '../../hooks/useDeviceSettings'
 
 import { LoRaWANSection } from './sections/LoRaWANSection'
 import { CameraViewSection } from './sections/CameraViewSection'
@@ -35,11 +36,14 @@ export const DeploymentDetailsStep = () => {
     const { devicePreparationId, deviceId, bleDeviceId } = route.params || {}
 
     // BLE Hooks
-    const { getUtc, setUtc, setDeploymentIdAsOps, disconnectDevice, enableCamera, runDisconnect, getStatus, setMotionDetectInterval, disableMotionDetect, setTimelapseInterval, disableTimelapse, flashLed, setOperationalParam, setGpsLocation } = useBleCommands()
+    const { getUtc, setUtc, setDeploymentIdAsOps, disconnectDevice, enableCamera, runDisconnect, runReset, getStatus, flashLed, setOperationalParam, setGpsLocation } = useBleCommands()
     const { isBleConnecting } = useBleActions()
 
     const devices = useAppSelector(state => state.devices)
     const bleDevice = devices[bleDeviceId]
+
+    const { updateSettings: updateDeviceSettings } = useDeviceSettings({ device: bleDevice })
+
     const logs = useAppSelector(state => state.logs[bleDeviceId] || [])
     const deviceConfig = useAppSelector(state => state.configuration[bleDeviceId])
     const user = useAppSelector(state => state.authentication.user)
@@ -336,40 +340,46 @@ export const DeploymentDetailsStep = () => {
                 console.error('[Deployment] GPS set failed:', gpsError)
             }
 
-            // 3.5 Configure Capture Method
-            console.log('[Deployment] Configuring Capture Method:', captureMethodName)
-            try {
-                const method = captureMethodName.toLowerCase().replace(/[^a-z]/g, '') // "activitydetection", "timelapse"
-
-                if (method.includes('activity') || method.includes('motion')) {
-                    console.log('[Deployment] Mode: Activity Detection. Setting motion interval to 1000ms & disabling timelapse.')
-                    await setMotionDetectInterval(bleDevice, 1000)
-                    await disableTimelapse(bleDevice)
-                } else if (method.includes('time') || method.includes('lapse')) {
-                    const interval = project.timelapse_interval_seconds || 900 // Default 15min if missing
-                    console.log(`[Deployment] Mode: Timelapse. Setting interval to ${interval}s & disabling motion.`)
-                    await setTimelapseInterval(bleDevice, interval)
-                    await disableMotionDetect(bleDevice)
-                } else {
-                    console.warn('[Deployment] Unknown capture method:', captureMethodName, '- No specific BLE config sent.')
-                }
-            } catch (e) {
-                console.error('[Deployment] Failed to configure capture settings:', e)
-                Alert.alert('Warning', 'Failed to configure device capture settings (Motion/Timelapse). Device may use previous defaults.')
-            }
-
-            // 4. Enable Camera
+            // 3.5 Enable Camera FIRST (before capture configuration)
+            // Critical: Must send this before other commands to ensure it doesn't get lost in disconnect
             if (bleDevice?.connected) {
                 console.log('[Deployment] Enabling Camera...')
                 try {
                     await enableCamera(bleDevice)
-                    await new Promise(r => setTimeout(r, 500)) // Wait for cam to wake
+                    // Wait for BLE write to actually transmit before moving on
+                    await new Promise(r => setTimeout(r, 500))
                     console.log('[Deployment] Camera enabled successfully')
                 } catch (e) {
                     console.error('[Deployment] Failed to enable camera:', e)
                 }
             } else {
                 console.warn('[Deployment] Skipping Camera enable - Device disconnected.')
+            }
+
+            // 4. Configure Capture Method
+            console.log('[Deployment] Configuring Capture Method:', captureMethodName)
+            try {
+                const method = captureMethodName.toLowerCase().replace(/[^a-z]/g, '') // "activitydetection", "timelapse"
+
+                if (method.includes('activity') || method.includes('motion')) {
+                    console.log('[Deployment] Mode: Activity Detection. Setting motion interval to 1000ms & disabling timelapse.')
+                    await updateDeviceSettings({
+                        motionDetectInterval: 1000,
+                        timelapseInterval: 0  // 0 = disabled
+                    })
+                } else if (method.includes('time') || method.includes('lapse')) {
+                    const interval = project.timelapse_interval_seconds || 900 // Default 15min if missing
+                    console.log(`[Deployment] Mode: Timelapse. Setting interval to ${interval}s & disabling motion.`)
+                    await updateDeviceSettings({
+                        timelapseInterval: interval,
+                        motionDetectInterval: 0  // 0 = disabled
+                    })
+                } else {
+                    console.warn('[Deployment] Unknown capture method:', captureMethodName, '- No specific BLE config sent.')
+                }
+            } catch (e) {
+                console.error('[Deployment] Failed to configure capture settings:', e)
+                Alert.alert('Warning', 'Failed to configure device capture settings (Motion/Timelapse). Device may use previous defaults.')
             }
 
             // 4.5 Flash Green LED (Success Confirmation)
@@ -382,12 +392,16 @@ export const DeploymentDetailsStep = () => {
                 }
             }
 
-            // 5. Disconnect
-            console.log('[Deployment] Disconnecting device...')
+            // 5. Reset & Disconnect
+            console.log('[Deployment] Resetting device to activate motion detection...')
             try {
-                // Use runDisconnect to send 'dis' command and clean up
+                // Reset is CRITICAL - forces device to reboot and enter motion detection mode
+                await runReset(bleDevice)
+                await new Promise(r => setTimeout(r, 500)) // Wait for reset command to process
+
+                console.log('[Deployment] Disconnecting device...')
                 await runDisconnect(bleDevice)
-                console.log('[Deployment] Device disconnected')
+                console.log('[Deployment] Device disconnected - motion detection will activate on reboot')
             } catch (e) {
                 console.error('[Deployment] Failed to disconnect:', e)
             }

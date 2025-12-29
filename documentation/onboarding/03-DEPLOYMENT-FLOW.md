@@ -140,13 +140,20 @@ The device is configured according to the project's capture requirements.
 - Sets motion detection interval: `AI setop 11 1000`
 - Sets timelapse interval: `AI setop 7 <seconds>`
 
-#### 10. Enable Camera & Disconnect
+#### 10. Enable Camera, Reset & Disconnect
 
 1. **Enable Camera**: Sends `AI setop 10 1` to activate the camera and AI system
-2. **Visual Confirmation**: Flashes green LED (2 times, 500ms, 1000ms duration)
-3. **Disconnect**: Sends `dis` command to gracefully close BLE connection
+2. **Visual Confirmation**: Flashes green LED (5 times, 500ms each)
+3. **Reset Device**: Sends `reset` command (**CRITICAL** - forces device to reboot and enter motion detection mode)
+4. **Disconnect**: Sends `dis` command to gracefully close BLE connection
 
-The device enters low-power monitoring state and begins capturing according to the configured method.
+> [!IMPORTANT]
+> **The reset command is essential!** Without it, the device stays in DPD and never enters motion detection mode. The reset causes the HiMAX processor to:
+> - Read the updated CONFIG.TXT parameters
+> - Initialize the camera in motion detection mode (Mode 2)
+> - Begin monitoring for motion/timelapse triggers
+
+The device reboots and enters low-power monitoring state, capturing according to the configured method.
 
 ### Success State
 

@@ -260,7 +260,19 @@ export const PrepareAndTestScreen = () => {
 
             const errors: { selftest?: string; setUtc?: string } = {}
 
-            // 0. Disable camera to ensure clean state
+            // 0. Wait for HiMAX processor to boot + verify BLE communication
+            try {
+                console.log('[PrepareTest] Waiting for HiMAX processor to boot after connection...')
+                await new Promise(r => setTimeout(r, 2000))  // 2s for HiMAX boot
+
+                console.log('[PrepareTest] Verifying BLE communication with version check...')
+                await getDeviceVer(bleDevice)  // Non-AI command to verify Nordic BLE is responsive
+                await new Promise(r => setTimeout(r, 500))  // Let it process
+            } catch (err) {
+                console.warn('[PrepareTest] Initial BLE verification had issues:', err)
+            }
+
+            // 1. Disable camera to ensure clean state
             try {
                 console.log('[PrepareTest] Disabling camera to ensure clean state...')
                 await disableCamera(bleDevice)
@@ -286,8 +298,9 @@ export const PrepareAndTestScreen = () => {
             try {
                 console.log('[PrepareTest] Setting UTC time...')
                 await setUtc(bleDevice)
-                // Wait for UTC echo
-                await waitForLogMatch(/UTC is:/, 2000)
+                // Wait for firmware confirmation - setutc responds with "RTC set to ..." not "UTC is:"
+                // Firmware can take ~1885ms to process, so wait 4000ms total
+                await waitForLogMatch(/RTC set to/, 4000)
                 console.log('[PrepareTest] UTC time set')
             } catch (err) {
                 console.error('[PrepareTest] Failed to set UTC:', err)
