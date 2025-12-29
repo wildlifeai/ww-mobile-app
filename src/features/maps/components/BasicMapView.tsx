@@ -16,7 +16,7 @@ interface BasicMapViewProps {
 	onRegionChangeComplete?: (region: MapRegion) => void
 	mapType?: MapType
 	config?: Partial<MapViewConfig>
-	mapRef?: React.RefObject<MapView>
+	mapRef?: React.RefObject<MapView | null>
 	children?: React.ReactNode
 }
 

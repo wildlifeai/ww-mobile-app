@@ -28,6 +28,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
     const route = useRoute<EndDeploymentDetailsStepRouteProp>()
     const { deviceId = '', bleDeviceId = '' } = route.params || {}
+    const { disconnectDevice } = useBleActions()
     const { getBatteryLevel, setOperationalParam, disableCamera, runDisconnect, setDeploymentIdAsOps, clearGpsLocation, flashLed } = useBleCommands()
 
     // Get current user
@@ -40,7 +41,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
     // Robust lookup: Try direct match, then case-insensitive, then fallback
     const bleDevice = useMemo(() => {
-        let device = devices[bleDeviceId];
+        let device: any = devices[bleDeviceId];
 
         if (!device) {
             device = Object.values(devices).find(d => d.id?.toLowerCase() === bleDeviceId?.toLowerCase());
@@ -50,20 +51,16 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
         if (device) {
             // FORCE connected: true. If we are on this screen, we assume we are connected.
-            // If Redux says false (stale), we still want to try sending commands.
-            // BleManager will throw if really disconnected, which is better than silent failure.
             return { ...device, connected: true };
         }
 
-        // Fallback: If we assume it is connected but missing from store (edge case),
-        // we construct a minimal object so commands can still be attempted.
+        // Fallback: Construct a minimal defined object
         console.warn(`[EndDeployment] Device ${bleDeviceId} not found in store. Using fallback.`);
         return {
             id: bleDeviceId,
             connected: true,
-            name: 'Unknown Device',
-            services: undefined, // writeToDevice handles undefined services by using default UUIDs
-        } as any;
+            name: 'Fallback Device',
+        };
     }, [devices, bleDeviceId]);
 
     // Local state

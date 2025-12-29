@@ -12,6 +12,7 @@ import DevicePreparation from '../database/models/DevicePreparation'
 import NetInfo from '@react-native-community/netinfo'
 import type { RootState } from '../redux'
 import { generateUUID } from '../utils/uuid'
+import type Deployment from '../database/models/Deployment'
 
 class SupabaseSyncService {
     private realtimeChannel: RealtimeChannel | null = null
@@ -1135,8 +1136,6 @@ class SupabaseSyncService {
                         rec.startDeploymentComments = row.start_deployment_comments ?? undefined
                         rec.endDeploymentComments = row.end_deployment_comments ?? undefined
 
-                        rec.modifiedBy = row.modified_by || '';
-
                         const raw = rec._raw as any;
                         raw.updated_at = this.parseDateToTimestamp(row.updated_at);
                     })
@@ -1174,8 +1173,6 @@ class SupabaseSyncService {
 
                         rec.startDeploymentComments = row.start_deployment_comments ?? undefined
                         rec.endDeploymentComments = row.end_deployment_comments ?? undefined
-
-                        rec.modifiedBy = row.modified_by || '';
 
                         const raw = rec._raw as any;
                         raw.created_at = this.parseDateToTimestamp(row.created_at);
