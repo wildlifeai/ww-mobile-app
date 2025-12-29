@@ -1130,8 +1130,8 @@ class SupabaseSyncService {
                         rec.cameraLocationImagePaths = row.camera_location_image_paths
                         rec.cameraHeight = row.camera_height ?? undefined
 
-                        rec.deploymentStart = row.deployment_start ? new Date(row.deployment_start) : new Date(0)
-                        rec.deploymentEnd = row.deployment_end ? new Date(row.deployment_end) : new Date(0)
+                        rec.deploymentStart = new Date(row.deployment_start)
+                        rec.deploymentEnd = row.deployment_end ? new Date(row.deployment_end) : null
 
                         rec.startDeploymentComments = row.start_deployment_comments ?? undefined
                         rec.endDeploymentComments = row.end_deployment_comments ?? undefined
@@ -1168,8 +1168,8 @@ class SupabaseSyncService {
                         rec.cameraLocationImagePaths = row.camera_location_image_paths
                         rec.cameraHeight = row.camera_height ?? undefined
 
-                        rec.deploymentStart = row.deployment_start ? new Date(row.deployment_start) : new Date(0)
-                        rec.deploymentEnd = row.deployment_end ? new Date(row.deployment_end) : new Date(0)
+                        rec.deploymentStart = new Date(row.deployment_start)
+                        rec.deploymentEnd = row.deployment_end ? new Date(row.deployment_end) : null
 
                         rec.startDeploymentComments = row.start_deployment_comments ?? undefined
                         rec.endDeploymentComments = row.end_deployment_comments ?? undefined

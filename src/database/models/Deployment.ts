@@ -37,7 +37,7 @@ export default class Deployment extends Model {
 
     // Lifecycle
     @date('deployment_start') deploymentStart!: Date
-    @date('deployment_end') deploymentEnd!: Date
+    @date('deployment_end') deploymentEnd?: Date | null
 
     // Comments
     @text('start_deployment_comments') startDeploymentComments?: string
@@ -53,7 +53,7 @@ export default class Deployment extends Model {
 
     @readonly @date('created_at') createdAt!: Date
     @readonly @date('updated_at') updatedAt!: Date
-    @readonly @date('deleted_at') deletedAt!: Date
+    @readonly @date('deleted_at') deletedAt?: Date | null
 
     @relation('projects', 'project_id') project: any
     @relation('users', 'setup_by') user: any
