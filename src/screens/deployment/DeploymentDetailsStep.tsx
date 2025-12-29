@@ -268,72 +268,56 @@ export const DeploymentDetailsStep = () => {
             // 3. Send Deployment ID to Device via BLE
             console.log('[Deployment] Sending Deployment ID to device:', newDeployment.id)
             try {
-                // Try setting OP20 first to see if device supports it (Feature Detection)
-                console.log('[Deployment] Testing if device supports extended OPs (OP20)...')
-                try {
-                    const currentLogLength = logs.length
-                    await setOperationalParam(bleDevice, 20, '0') // Dummy write
+                // Direct write strategy to avoid inactivity timeouts (device sleeps after 1s idle)
+                console.log('[Deployment] Writing Deployment ID (Extended OPs)...')
 
-                    // Wait for response to appear in logs
-                    await new Promise(r => setTimeout(r, 1500))
-
-                    // Check recent logs for error
-                    const recentLogs = logs.slice(currentLogLength)
-                    const hasOpError = recentLogs.some(l => l.content.includes('Error: index') || l.content.includes('Error: bits'))
-
-                    if (hasOpError) {
-                        console.log('[Deployment] Device returned error for OP20. Extended OPs likely not supported.')
-                        throw new Error('Device rejected OP20')
-                    }
-
-                    // If successful, proceed to write actual ID
-                    console.log('[Deployment] Extended OPs supported (no error found). Writing Deployment ID...')
-
-                    let deploymentIdSet = false
-                    let attempts = 0
-                    while (!deploymentIdSet && attempts < 3) {
-                        try {
-                            attempts++
-                            await setDeploymentIdAsOps(bleDevice, newDeployment.id)
-                            console.log('[Deployment] Deployment ID set successfully on attempt', attempts)
-                            deploymentIdSet = true
-                        } catch (bleError) {
-                            console.error(`[Deployment] Failed to set Deployment ID (attempt ${attempts}):`, bleError)
-                            if (attempts < 3) await new Promise(r => setTimeout(r, 1000))
-                        }
-                    }
-                    if (!deploymentIdSet) {
-                        // Double check logs again just in case valid ops failed
-                        const errorCheck = logs.slice(-20).some(l => l.content.includes('Error: index'))
-                        if (errorCheck) {
-                            throw new Error('Device rejected Extended OPs during write sequence')
-                        }
-                        console.warn('[Deployment] Failed to set ID despite OP support.')
-                        Alert.alert(
-                            'Warning',
-                            'Deployment created locally, but failed to send Deployment ID to the device. The device may not tag images correctly.\n\nPlease verify connection and try "Engineer Device" > "Set Deployment ID" manually if needed.'
-                        );
-                    }
-                } catch (opError) {
-                    console.log('[Deployment] Device does not support extended OPs or write failed. Falling back to SET_GPS...', opError)
-
-                    // Fallback to SET_GPS command for older firmware
+                let deploymentIdSet = false
+                let attempts = 0
+                while (!deploymentIdSet && attempts < 3) {
                     try {
-                        const { latitude, longitude, altitude } = formState.location
-                        // Use 0,0 if location is empty to at least clear it/set valid GPS format
-                        const lat = latitude || 0
-                        const lng = longitude || 0
-                        const alt = altitude || 0
-
-                        await setGpsLocation(bleDevice, lat, lng, alt)
-                        console.log('[Deployment] GPS location set successfully as fallback.')
-
-                    } catch (gpsError) {
-                        console.error('[Deployment] GPS fallback failed:', gpsError)
+                        attempts++
+                        await setDeploymentIdAsOps(bleDevice, newDeployment.id)
+                        console.log('[Deployment] Deployment ID set successfully on attempt', attempts)
+                        deploymentIdSet = true
+                    } catch (bleError) {
+                        console.error(`[Deployment] Failed to set Deployment ID (attempt ${attempts}):`, bleError)
+                        if (attempts < 3) await new Promise(r => setTimeout(r, 500))
                     }
                 }
-            } catch (e) {
-                console.error('[Deployment] Error during Deployment ID setup:', e)
+
+                if (!deploymentIdSet) {
+                    // Check logs for specific error indicating unsupported feature
+                    const hasOpError = logs.slice(-20).some(l => l.content.includes('Error: index') || l.content.includes('Error: bits'))
+
+                    if (hasOpError) {
+                        console.log('[Deployment] Device returned error for OPs. Likely Legacy Firmware. GPS will be set below.')
+                        // Don't throw, just warn and proceed to GPS
+                    } else {
+                        console.warn('[Deployment] Failed to set ID despite no explicit refusal.')
+                        Alert.alert(
+                            'Warning',
+                            'Deployment created locally, but failed to send Deployment ID to the device. Please verify connection.'
+                        );
+                    }
+                }
+            } catch (opError) {
+                console.log('[Deployment] Error setting Deployment ID:', opError)
+            }
+
+            // 3.1 Send GPS Location (Always)
+            try {
+                const { latitude, longitude, altitude } = formState.location
+                // Use 0,0 if location is empty to at least clear it/set valid GPS format
+                const lat = latitude || 0
+                const lng = longitude || 0
+                const alt = altitude || 0
+
+                console.log('[Deployment] Setting GPS Location...', { lat, lng, alt })
+                await setGpsLocation(bleDevice, lat, lng, alt)
+                console.log('[Deployment] GPS location set successfully.')
+
+            } catch (gpsError) {
+                console.error('[Deployment] GPS set failed:', gpsError)
             }
 
             // 3.5 Configure Capture Method

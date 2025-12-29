@@ -18,6 +18,7 @@ interface BasicMapViewProps {
 	config?: Partial<MapViewConfig>
 	mapRef?: React.RefObject<MapView | null>
 	children?: React.ReactNode
+	onPress?: (e: any) => void
 }
 
 const DEFAULT_CONFIG: MapViewConfig = {
@@ -39,6 +40,7 @@ export const BasicMapView: React.FC<BasicMapViewProps> = ({
 	config = {},
 	mapRef,
 	children,
+	onPress,
 }) => {
 	const finalConfig = { ...DEFAULT_CONFIG, ...config }
 
@@ -75,6 +77,7 @@ export const BasicMapView: React.FC<BasicMapViewProps> = ({
 				mapType={mapType}
 				onRegionChange={onRegionChange}
 				onRegionChangeComplete={handleRegionChangeComplete}
+				onPress={onPress}
 				// User location
 				showsUserLocation={finalConfig.showsUserLocation}
 				showsMyLocationButton={finalConfig.showsMyLocationButton}

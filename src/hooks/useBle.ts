@@ -65,8 +65,10 @@ type FunctionEngine = {
 
 /**
  * These commands can have a bigger pause implemented after they're executed.
+ * Reduced to 50ms to prevent device timeouts (1000ms watchdog) during bulk operations.
  */
-const PAUSE = 500
+const PAUSE = 50
+
 
 /**
  * This special command will be ignored by the engine if

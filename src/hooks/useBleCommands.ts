@@ -204,8 +204,6 @@ export const useBleCommands = () => {
                 // Reuse existing setOperationalParam logic manually to avoid hook recursion issues if any
                 // or just call write directly
                 await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]])
-                // Small delay to prevent buffer overflow on slow devices
-                await new Promise(r => setTimeout(r, 100))
             }
             console.log('[BLE CMD] Deployment ID OPs sent successfully')
         },

@@ -287,7 +287,7 @@ export const PrepareAndTestScreen = () => {
                 errors.setUtc = err instanceof Error ? err.message : 'Unknown error'
             }
 
-            // 3. Clear deployment ID (OPs 20-27) - only if firmware supports extended OPs
+            // 3. Clear deployment ID (OPs 20-27)
             try {
                 console.log('[PrepareTest] Testing if device supports extended OPs...')
                 // Try setting OP20 as a feature detection test
@@ -300,7 +300,7 @@ export const PrepareAndTestScreen = () => {
                 // Clear remaining OPs 21-27
                 for (let i = 21; i <= 27; i++) {
                     await setOperationalParam(bleDevice, i, '0')
-                    // Wait for each to be set for robustness
+                    // Wait for each to be set for robustness (short timeout)
                     await waitForLogMatch(new RegExp(`Op\\[${i}\\] = 0`), 500).catch(e => {
                         console.warn(`[PrepareTest] Target OP ${i} set confirmation not found, but continuing...`)
                     })
@@ -311,15 +311,16 @@ export const PrepareAndTestScreen = () => {
                 console.log('[PrepareTest] Device does not support extended OPs (20-27) or timed out, skipping deployment ID clear')
             }
 
-            // 4. Clear GPS location
+            // 4. Clear GPS location (Always run this, independent of ID clear success)
             try {
                 console.log('[PrepareTest] Clearing GPS location...')
                 await clearGpsLocation(bleDevice)
                 // Wait for confirmation if possible (setgps usually echo's)
-                await waitForLogMatch(/Location is:|setgps/, 1000).catch(() => {
+                await waitForLogMatch(/Location is:|setgps/i, 1000).catch(() => {
                     // Ignore timeout for GPS clear as it's non-critical if echo is missing
+                    console.log('[PrepareTest] GPS clear confirmation missing, but command sent.')
                 })
-                console.log('[PrepareTest] GPS location cleared')
+                console.log('[PrepareTest] GPS location clear command sequence finished')
             } catch (err) {
                 console.error('[PrepareTest] Failed to clear GPS location:', err)
             }
@@ -339,10 +340,15 @@ export const PrepareAndTestScreen = () => {
     // Parse BLE logs for command responses
 
     // Helper to compare version strings: "00.13.00" vs "0.13.0"
+    // Helper to compare version strings: "00.13.00" vs "0.13.0"
     const compareVersions = (v1: string, v2: string) => {
+        // Remove build suffixes (anything after -)
+        const cleanV1 = v1.split('-')[0]
+        const cleanV2 = v2.split('-')[0]
+
         // Strip non-numeric/dot characters just in case
-        const norm1 = v1.replace(/[^0-9.]/g, '').split('.').map(Number)
-        const norm2 = v2.replace(/[^0-9.]/g, '').split('.').map(Number)
+        const norm1 = cleanV1.replace(/[^0-9.]/g, '').split('.').map(Number)
+        const norm2 = cleanV2.replace(/[^0-9.]/g, '').split('.').map(Number)
 
         const len = Math.max(norm1.length, norm2.length)
         for (let i = 0; i < len; i++) {

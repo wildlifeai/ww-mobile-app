@@ -133,8 +133,14 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                         <View style={styles.statusBadgeContainer}>
                             <Chip
                                 icon={isActive ? "circle" : "check-circle"}
-                                style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}
-                                textStyle={{ color: statusColor, fontWeight: 'bold' }}
+                                style={[
+                                    styles.statusBadge,
+                                    { backgroundColor: isActive ? colors.primaryContainer : colors.errorContainer }
+                                ]}
+                                textStyle={{
+                                    color: isActive ? colors.onPrimaryContainer : colors.onErrorContainer,
+                                    fontWeight: 'bold'
+                                }}
                             >
                                 {statusLabel}
                             </Chip>
