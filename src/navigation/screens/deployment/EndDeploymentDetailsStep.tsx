@@ -50,15 +50,15 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         console.log(`[EndDeployment] Validating device from store. bleDeviceId=${bleDeviceId}, Found=${!!device}, ID=${device?.id}, Connected=${device?.connected}`);
 
         if (device) {
-            // FORCE connected: true. If we are on this screen, we assume we are connected.
-            return { ...device, connected: true };
+            // Use actual device state from store
+            return device;
         }
 
         // Fallback: Construct a minimal defined object
-        console.warn(`[EndDeployment] Device ${bleDeviceId} not found in store. Using fallback.`);
+        console.warn(`[EndDeployment] Device ${bleDeviceId} not found in store. Using fallback (disconnected).`);
         return {
             id: bleDeviceId,
-            connected: true,
+            connected: false, // Default to false if not found in store
             name: 'Fallback Device',
         };
     }, [devices, bleDeviceId]);
@@ -72,6 +72,40 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     // We assume connection is passed from previous step.
 
     const handleEndDeployment = async () => {
+        // Sanity Check: Ensure BLE is still connected (unless it's a forced cleanup)
+        // If bleDevice is a fallback/disconnected object, we should warn.
+        // We forced connected=true in the useMemo above if found in store, so check the REAL store object or just proceed with caution?
+        // Actually, bleDevice from useMemo might be a fallback.
+        // Let's check the real store device if possible, or trust the bleDevice.connected prop which we might have forced.
+        // Better: Check if the device exists in the 'devices' store AND is connected.
+        const realDevice = devices[bleDeviceId]
+        if (!realDevice || !realDevice.connected) {
+            Alert.alert(
+                'Connection Lost',
+                'The device appears to be disconnected. You cannot end the deployment on the device without a connection.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Force End (Database Only)',
+                        style: 'destructive',
+                        onPress: async () => {
+                            // Allow forcing end if device is lost/damaged, but warn heavily
+                            setIsEnding(true)
+                            try {
+                                const userId = user?.id || null
+                                await DeploymentService.endDeployment(deployment.id, userId, retrievalNotes)
+                                navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
+                            } catch (e) { Alert.alert('Error', 'Failed to force end') }
+                            finally { setIsEnding(false) }
+                        }
+                    }
+                ]
+            )
+            // Ideally we return here unless user chose Force End. But Alert is non-blocking in logic flow if not promised.
+            // So we return immediately and let the Alert callbacks handle logic.
+            return
+        }
+
         setIsEnding(true)
         try {
             // 1. Send BLE command to stop camera
@@ -79,7 +113,9 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 setBleStatus('Disabling Camera...')
                 try {
                     await disableCamera(bleDevice)
-                    console.log('[EndDeployment] Camera disabled')
+                    console.log('[EndDeployment] Camera disabled, waiting for device wake/stabilize...')
+                    // Vital delay: disableCamera wakes the device, we must wait before flooding it with OPs
+                    await new Promise(r => setTimeout(r, 1000))
                 } catch (e) {
                     console.warn('[EndDeployment] Failed to disable camera:', e)
                 }
@@ -188,10 +224,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
     return (
         <WWScreenView scrollable>
-            <Appbar.Header>
-                <Appbar.BackAction onPress={() => navigation.goBack()} />
-                <Appbar.Content title="End Deployment" />
-            </Appbar.Header>
+
 
             <View style={styles.container}>
                 {/* Deployment Info Card */}

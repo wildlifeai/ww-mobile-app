@@ -113,7 +113,7 @@ export const PrepareAndTestScreen = () => {
     const isNavigatingAway = useRef(false)
 
     // BLE command hooks
-    const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, disableCamera, runDisconnect, runDfu, runSelfTest, flashLed, clearGpsLocation } = useBleCommands()
+    const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, disableCamera, runDisconnect, runDfu, runSelfTest, flashLed, clearGpsLocation, setDeploymentIdAsOps } = useBleCommands()
     const { write } = useBle()
     const bleDevice = useAppSelector((state) => state.devices[bleDeviceId])
     const logs = useAppSelector(state => state.logs[bleDeviceId || ''] || [])
@@ -197,18 +197,15 @@ export const PrepareAndTestScreen = () => {
         checkBleFirmware()
     }, [device, bleDevice?.connected]) // Re-run when device connects
 
-    // Disable camera on mount to ensure clean state
+    // Cleanup: Disconnect on unmount ONLY if we are not intentionally navigating to another flow
     useEffect(() => {
-        if (bleDevice) {
-            console.log('[PrepareTest] Disabling camera on mount to ensure clean state')
-            disableCamera(bleDevice).catch(err => console.error('[PrepareTest] Failed to disable camera on mount:', err))
-        }
-
-        // Cleanup: Disconnect on unmount
         return () => {
-            if (bleDevice && bleDevice.connected) {
-                console.log('[PrepareTest] Unmounting - Disconnecting device...')
+            // Use ref to check if navigating away
+            if (bleDevice && bleDevice.connected && !isNavigatingAway.current) {
+                console.log('[PrepareTest] Unmounting and NOT navigating away - Disconnecting device...')
                 runDisconnect(bleDevice).catch(err => console.error('[PrepareTest] Failed to disconnect on unmount:', err))
+            } else {
+                console.log('[PrepareTest] Unmounting but navigation is active (or device disconnected) - Skipping disconnect')
             }
         }
     }, [])
@@ -263,6 +260,16 @@ export const PrepareAndTestScreen = () => {
 
             const errors: { selftest?: string; setUtc?: string } = {}
 
+            // 0. Disable camera to ensure clean state
+            try {
+                console.log('[PrepareTest] Disabling camera to ensure clean state...')
+                await disableCamera(bleDevice)
+                // Wait for wake/stabilize
+                await new Promise(r => setTimeout(r, 1000))
+            } catch (err) {
+                console.warn('[PrepareTest] Failed to disable camera (non-fatal):', err)
+            }
+
             // 1. Run selftest
             try {
                 console.log('[PrepareTest] Running selftest...')
@@ -287,28 +294,13 @@ export const PrepareAndTestScreen = () => {
                 errors.setUtc = err instanceof Error ? err.message : 'Unknown error'
             }
 
-            // 3. Clear deployment ID (OPs 20-27)
+            // 3. Clear deployment ID
             try {
-                console.log('[PrepareTest] Testing if device supports extended OPs...')
-                // Try setting OP20 as a feature detection test
-                await setOperationalParam(bleDevice, 20, '0')
-                // Wait for response to detect support/error
-                await waitForLogMatch(/Op\[20\] = 0/, 1000)
-
-                // If we get here without error, firmware supports extended OPs
-                console.log('[PrepareTest] Device supports extended OPs, clearing deployment ID...')
-                // Clear remaining OPs 21-27
-                for (let i = 21; i <= 27; i++) {
-                    await setOperationalParam(bleDevice, i, '0')
-                    // Wait for each to be set for robustness (short timeout)
-                    await waitForLogMatch(new RegExp(`Op\\[${i}\\] = 0`), 500).catch(e => {
-                        console.warn(`[PrepareTest] Target OP ${i} set confirmation not found, but continuing...`)
-                    })
-                }
+                console.log('[PrepareTest] Clearing deployment ID...')
+                await setDeploymentIdAsOps(bleDevice, null)
                 console.log('[PrepareTest] Deployment ID cleared')
             } catch (err) {
-                // Silently skip if firmware doesn't support extended OPs or timeout
-                console.log('[PrepareTest] Device does not support extended OPs (20-27) or timed out, skipping deployment ID clear')
+                console.error('[PrepareTest] Failed to clear deployment ID:', err)
             }
 
             // 4. Clear GPS location (Always run this, independent of ID clear success)
@@ -773,8 +765,13 @@ export const PrepareAndTestScreen = () => {
             return
         }
 
-        if (!bleDevice) {
-            Alert.alert('Error', 'Device connection lost')
+        // Sanity Check: Ensure BLE is still connected
+        if (!bleDevice || !bleDevice.connected) {
+            Alert.alert(
+                'Connection Lost',
+                'The device is not connected. Please reconnect to finish preparation.',
+                [{ text: 'OK' }]
+            )
             return
         }
 
@@ -851,7 +848,10 @@ export const PrepareAndTestScreen = () => {
                     [{
                         text: 'OK',
                         onPress: async () => {
-                            // Mark as navigating away to suppress Connection Lost alert
+                            // Check for nextRoute (start deployment flow)
+                            const { nextRoute } = route.params || {}
+
+                            // Mark as navigating away to suppress Connection Lost alert AND cleanup disconnect
                             isNavigatingAway.current = true
 
                             // Flash green LED 2x to confirm preparation complete
@@ -864,13 +864,15 @@ export const PrepareAndTestScreen = () => {
                                     console.warn('[PrepareTest] Failed to flash LED:', e)
                                 }
 
-                                // Disconnect BLE after LED flash
-                                console.log('[PrepareTest] Finishing - Disconnecting device...')
-                                await runDisconnect(bleDevice).catch(e => console.error('Failed to disconnect:', e))
+                                // Disconnect BLE ONLY if we are NOT proceeding to deployment
+                                if (!nextRoute) {
+                                    console.log('[PrepareTest] Finishing (No next route) - Disconnecting device...')
+                                    await runDisconnect(bleDevice).catch(e => console.error('Failed to disconnect:', e))
+                                } else {
+                                    console.log('[PrepareTest] Finishing with next route - KEEPING connection alive for:', nextRoute)
+                                }
                             }
 
-                            // Check for nextRoute (start deployment flow)
-                            const { nextRoute } = route.params || {}
                             if (nextRoute) {
                                 (navigation as any).navigate(nextRoute, {
                                     devicePreparationId: preparation.id,

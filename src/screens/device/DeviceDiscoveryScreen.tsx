@@ -220,9 +220,22 @@ export const DeviceDiscoveryScreen = () => {
 
                             // Check preparation status
                             const lastPrep = await DevicePreparationService.getLastCompletedPreparation(dbDevice.id)
+                            const lastEndedDeployment = await DeploymentService.getLastEndedDeploymentForDeviceId(dbDevice.id)
 
-                            // Better logic: Is there a preparation that is completed AND marked is_deployment_ready?
-                            if (lastPrep && lastPrep.isDeploymentReady) {
+                            console.log(`[DeviceDiscovery] Prep Check: LastPrep=${lastPrep?.createdAt}, LastEnded=${lastEndedDeployment?.deploymentEnd}`)
+
+                            // LOGIC from DeviceCard.tsx:
+                            // Valid if:
+                            // 1. Has preparation
+                            // 2. AND (No previous deployment OR Preparation is NEWER than last deployment end)
+                            const isFreshlyPrepared = lastPrep && (
+                                !lastEndedDeployment ||
+                                !lastEndedDeployment.deploymentEnd ||
+                                lastPrep.createdAt > lastEndedDeployment.deploymentEnd
+                            )
+
+                            // Also require isDeploymentReady flag for safety
+                            if (isFreshlyPrepared && lastPrep.isDeploymentReady) {
                                 // Go to Step 2: Deployment Details
                                 console.log(`Device ${dbDevice.id} is prepared. Proceeding to details.`);
 
@@ -237,7 +250,7 @@ export const DeviceDiscoveryScreen = () => {
                                 console.log(`Device ${dbDevice.id} not fully prepared. Redirecting to preparation.`)
                                 Alert.alert(
                                     "Device Not Prepared",
-                                    "You cannot deploy a device that has not been prepared/verified.\n\nPlease prepare the device first.",
+                                    "This device has not been prepared since its last deployment.\n\nPlease prepare and test the device before deploying.",
                                     [
                                         {
                                             text: "Go to Preparation", onPress: () => {

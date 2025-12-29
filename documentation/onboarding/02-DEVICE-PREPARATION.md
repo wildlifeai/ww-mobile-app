@@ -106,12 +106,19 @@ The device's green LED flashes twice to confirm preparation is complete. The dev
 ## Technical Flow Reference
 
 ### On Mount (Automatic)
-| Step | Command | Purpose |
-|------|---------|---------|
-| 1 | `disable_camera` | Clean state |
-| 2 | `selftest` | Hardware check |
-| 3 | `setutc <timestamp>` | Time sync |
-| 4 | `setop 20 0` | Feature detection (extended OPs) |
+
+The app executes these commands **sequentially** with optimized timing:
+
+| Step | Command | Purpose | Timing Note |
+|------|---------|---------|-------------|
+| 0    | `disable_camera` | Clean state, wake AI processor | Wakes device from DPD |
+| 0a   | *Wait 1000ms* | Stabilization delay | AI processor fully awake |
+| 1    | `selftest` | Hardware check | Device now responsive |
+| 2    | `setutc <timestamp>` | Time sync | - |
+| 3    | `setDeploymentIdAsOps(null)` | Clear old deployment ID | 200ms wake delay after 1st setop |
+| 4    | `clearGpsLocation` | Clear GPS (`0 0 0`) | - |
+
+> **Why Sequential?** The firmware has a single-slot command buffer. Rapid commands during device wake-up get discarded. See [BLE Architecture Guide](../app-technical-guides/ble-architecture-guide.md#ble-timing-requirements--firmware-constraints) for details.
 
 ### User Actions
 | Action | Command |
@@ -123,13 +130,17 @@ The device's green LED flashes twice to confirm preparation is complete. The dev
 | Camera Test | `capture 1 0` → Image data via BLE notifications |
 
 ### On Finish (Automatic)
-| Step | Command |
-|------|---------|
-| 1 | `setutc <timestamp>` |
-| 2 | `setop 7 <timelapse>` / `setop 11 <motion>` |
-| 3 | `disable_camera` |
-| 4 | `flashg 2 500` (green LED 2x) |
-| 5 | `dis` (disconnect) |
+
+| Step | Command | Notes |
+|------|---------|-------|
+| 1 | `setutc <timestamp>` | Final time sync |
+| 2a | Motion Detection: `setop 11 1000`, `setop 7 0` | Enable motion, disable timelapse |
+| 2b | Timelapse: `setop 7 <interval>`, `setop 11 0` | Enable timelapse, disable motion |
+| 3 | `disable_camera` | Saves battery during transport |
+| 4 | `flashg 2 500` | Green LED 2x confirmation |
+| 5 | `dis` | Graceful disconnect |
+
+> **GPS Format**: Commands use unquoted space-separated values, e.g., `setgps 0 0 0` to clear.
 
 ## Troubleshooting
 

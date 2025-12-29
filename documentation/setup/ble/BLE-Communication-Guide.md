@@ -366,6 +366,152 @@ describe('BLE Service', () => {
 4. Try manual download command
 5. Check Metro logs for download errors
 
+## Firmware Timing Constraints
+
+> **⚠️ CRITICAL**: Wildlife Watcher cameras use an AI processor that enters Deep Power Down (DPD) mode to conserve battery. Understanding these timing constraints is essential for reliable BLE communication.
+
+### Deep Power Down Wake Cycle
+
+**Hardware Behavior:**
+- **Inactivity Timer**: AI processor enters DPD after 1000ms of inactivity
+- **Wake on Command**: First command after DPD triggers a wake pulse
+- **Wake Duration**: ~200-500ms for AI processor to become fully responsive
+- **Activity Window**: Commands must complete within 1000ms or device sleeps mid-sequence
+
+**Command Queueing (from firmware `aiProcessor.c`):**
+```c
+// Single-slot buffer - only ONE pending command allowed
+if (i2cTxPendingMsg != NULL) {
+    LOG("Discarding message as there is already one pending");
+}
+```
+
+**Implications:**
+- ❌ Rapid-fire commands during wake-up get **discarded**
+- ❌ Sending 8 commands simultaneously will drop 7 of them
+- ✅ Must serialize commands with appropriate delays
+- ✅ Use optimized hooks that handle timing (`setDeploymentIdAsOps`)
+
+### Critical Timing Parameters
+
+**Global BLE Write Pause**: 20ms between queued commands
+```typescript
+// In useBle.ts
+const PAUSE = 20  // Ensures 8-command sequence completes in <1000ms
+```
+
+**Wake-Up Delay**: 200ms after first command
+```typescript
+// In useBleCommands.ts: setDeploymentIdAsOps
+if (i === 0) {
+    await new Promise(r => setTimeout(r, 200))  // AI processor wakes
+}
+```
+
+**Stabilization Delay**: 1000ms after wake-triggering commands
+```typescript
+await disableCamera(bleDevice)  // Wakes AI processor
+await new Promise(r => setTimeout(r, 1000))  // Full stabilization
+// Now safe to send config commands
+```
+
+### GPS String Format Requirement
+
+**Firmware expects unquoted, space-separated values:**
+
+```typescript
+// ❌ WRONG - Firmware does NOT strip quotes
+await bleService.sendCommand('setgps', { value: '"0 0 0"' })
+// Device logs: "GPS string malformed"
+
+// ✅ CORRECT - Send raw space-separated values
+await bleService.sendCommand('setgps', { value: '0 0 0' })
+// Device logs: "Location is: 0 0 0"
+```
+
+**Format**: `latitude longitude altitude`
+- Valid: `"20.123 -100.456 120.5"`
+- Valid (clear): `"0 0 0"`
+- Invalid: `""` (empty string causes error)
+- Invalid: `"\"0 0 0\""` (quotes break parser)
+
+**Evidence from firmware** (`ble_commands.c:processSetGps`):
+```c
+// Line 1098: Direct copy without quote stripping
+snprintf(gpsString, GPSSTRINGLENGTH, "%s", p_gpsString);
+```
+
+### Best Practices for Command Sequencing
+
+**✅ DO:**
+1. **Serialize Multi-Command Operations**
+   ```typescript
+   // Correct: Sequential with delays
+   await disableCamera(device)
+   await new Promise(r => setTimeout(r, 1000))
+   await setDeploymentIdAsOps(device, deploymentId)
+   ```
+
+2. **Use Optimized Hooks**
+   ```typescript
+   // Hooks encapsulate correct timing
+   const { setDeploymentIdAsOps, clearGpsLocation } = useBleCommands()
+   ```
+
+3. **Wait for Device Wake After Long Idle**
+   ```typescript
+   // If device might be asleep, allow wake time
+   await firstCommand(device)
+   await new Promise(r => setTimeout(r, 200))
+   await nextCommand(device)
+   ```
+
+**❌ DON'T:**
+1. **Send Rapid Commands**
+   ```typescript
+   // BAD: These will be discarded by firmware
+   for (let i = 0; i < 8; i++) {
+       await setop(device, i, value)  // Only first may succeed
+   }
+   ```
+
+2. **Skip Stabilization Delays**
+   ```typescript
+   // BAD: Config commands may be dropped
+   await disableCamera(device)
+   await setDeploymentId(device, id)  // Too soon! Device still waking
+   ```
+
+3. **Hardcode Command Strings**
+   ```typescript
+   // BAD: Bypasses timing logic
+   await bleWrite(device, 'setgps "0 0 0"')  // Malformed + no timing
+   ```
+
+### Debugging Timing Issues
+
+**Symptoms:**
+- Log: `"Discarding message as there is already one pending"`
+- Commands sent but device doesn't respond
+- Intermittent failures (works on retry)
+
+**Solutions:**
+1. Add 200-1000ms delays between command sequences
+2. Use `setDeploymentIdAsOps` instead of manual loops
+3. Check firmware logs for wake/sleep indicators:
+   ```
+   AI processor is awake at '2025-12-29T10:07:56Z'  ← Ready
+   AI processor is in DPD (sends parameters).       ← Sleeping
+   ```
+4. Ensure all 8-command sequences complete in <1000ms
+
+### Documentation Cross-Reference
+
+For comprehensive firmware timing details, see:
+- **[BLE Architecture Guide](../app-technical-guides/ble-architecture-guide.md#ble-timing-requirements--firmware-constraints)** - Complete timing specifications
+- **[Device Preparation Flow](../onboarding/02-DEVICE-PREPARATION.md)** - Initialization timing
+- **[Deployment Flow](../onboarding/03-DEPLOYMENT-FLOW.md)** - Start/End deployment timing
+
 ## Best Practices
 
 ### Connection Management
@@ -432,18 +578,28 @@ bleService.startScan()  // Never stops
 
 ### Batch Commands
 
+> **⚠️ Note**: The Wildlife Watcher firmware has timing constraints. Parallel commands work for **read-only** operations. For **write operations** (setop, setgps, etc.), you **must serialize** with delays. See "Firmware Timing Constraints" above.
+
 ```typescript
-// ✅ GOOD: Send multiple commands efficiently
+// ✅ GOOD: Parallel reads (no timing issues)
 const [status, config, time] = await Promise.all([
     bleService.sendCommand('GET_STATUS'),
     bleService.sendCommand('GET_CONFIG'),
     bleService.sendCommand('GET_TIME')
 ])
 
-// ❌ BAD: Sequential commands
-const status = await bleService.sendCommand('GET_STATUS')
-const config = await bleService.sendCommand('GET_CONFIG')
-const time = await bleService.sendCommand('GET_TIME')
+// ❌ BAD: Parallel writes (firmware will discard)
+await Promise.all([
+    bleService.sendCommand('setop', { index: 20, value: 0 }),
+    bleService.sendCommand('setop', { index: 21, value: 0 }),
+    // Only first command may succeed!
+])
+
+// ✅ GOOD: Sequential writes with timing
+for (let i = 20; i <= 27; i++) {
+    await bleService.sendCommand('setop', { index: i, value: 0 })
+    if (i === 20) await new Promise(r => setTimeout(r,  200))  // Wake delay
+}
 ```
 
 ## Security Considerations

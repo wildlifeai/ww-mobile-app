@@ -229,6 +229,22 @@ export const DeploymentDetailsStep = () => {
             return
         }
 
+        // Sanity Check: Ensure BLE is still connected
+        if (!bleDevice || !bleDevice.connected) {
+            Alert.alert(
+                'Connection Lost',
+                'The device is not connected. Please reconnect to start the deployment.',
+                [{
+                    text: 'Go Back',
+                    onPress: () => {
+                        isNavigatingAway.current = true
+                        navigation.goBack()
+                    }
+                }]
+            )
+            return
+        }
+
         setSubmitting(true)
         isStartDeploymentInProgress.current = true // Suppress disconnect alerts
 

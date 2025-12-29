@@ -36,7 +36,7 @@ export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose
         }
     }, [isVisible, deployment])
 
-    if (!deployment && !isVisible) return null
+    if (!isVisible || !deployment) return null
 
     // Status helper (duplicated from MapScreen, could be shared util)
     const getStatusInfo = (statusId?: number | null) => {

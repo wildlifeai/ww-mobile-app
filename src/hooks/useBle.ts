@@ -67,7 +67,7 @@ type FunctionEngine = {
  * These commands can have a bigger pause implemented after they're executed.
  * Reduced to 50ms to prevent device timeouts (1000ms watchdog) during bulk operations.
  */
-const PAUSE = 50
+const PAUSE = 20
 
 
 /**
@@ -312,8 +312,8 @@ export const useBle = (): ReturnType => {
 					)
 					log("Discovered services: " + JSON.stringify(services))
 
-					// Cast to any to access .services property if type is unknown
-					const peripheralInfo = services as any
+					// Cast to correct type
+					const peripheralInfo = services as PeripheralInfo
 					newPeripheral.services = extractServiceAndCharacteristic(peripheralInfo)
 
 					const {
