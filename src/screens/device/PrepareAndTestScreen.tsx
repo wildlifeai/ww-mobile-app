@@ -217,20 +217,20 @@ export const PrepareAndTestScreen = () => {
     }, [logs])
 
     /**
-     * Helper to wait for a specific log response since the start of the call
-     * This is much more robust than arbitrary timeouts.
+     * Helper to wait for a specific log response since a given offset (or start of call)
+     * This is much more robust than arbitrary timeouts and avoids missing bursts.
      */
-    const waitForLogMatch = useCallback(async (regex: RegExp, timeoutMs: number = 5000): Promise<RegExpMatchArray> => {
-        console.log(`[PrepareTest] Waiting for log match: ${regex}`)
+    const waitForLogMatch = useCallback(async (regex: RegExp, timeoutMs: number = 5000, customOffset?: number): Promise<RegExpMatchArray> => {
+        console.log(`[PrepareTest] Waiting for log match: ${regex} (timeout ${timeoutMs}ms)`)
         const startTime = Date.now()
-        // Capture initial log length to only look at NEW logs
-        const startOffset = logsRef.current.length
+        // Capture initial log length to only look at NEW logs (unless offset provided)
+        const startOffset = customOffset !== undefined ? customOffset : logsRef.current.length
 
         return new Promise((resolve, reject) => {
             const check = () => {
-                // Reconstruct string from new entries
-                const newLogs = logsRef.current.slice(startOffset).map(e => e.content).join('')
-                const match = newLogs.match(regex)
+                // Reconstruct string from entries since startOffset
+                const sectionLogs = logsRef.current.slice(startOffset).map(e => e.content).join('')
+                const match = sectionLogs.match(regex)
                 if (match) {
                     console.log(`[PrepareTest] Found log match for: ${regex}`)
                     resolve(match)
@@ -282,29 +282,48 @@ export const PrepareAndTestScreen = () => {
                 console.warn('[PrepareTest] Failed to disable camera (non-fatal):', err)
             }
 
-            // 1. Run selftest
+            // 1. Set UTC time
+            let utcSuccess = false
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    const preUtcOffset = logsRef.current.length
+                    console.log(`[PrepareTest] Setting UTC time (Attempt ${attempt})...`)
+                    await setUtc(bleDevice)
+                    // Firmware can take ~1600ms to process. We use 6000ms timeout for safety.
+                    await waitForLogMatch(/RTC set to/, 6000, preUtcOffset)
+                    console.log('[PrepareTest] UTC time set')
+                    utcSuccess = true
+                    // Vital delay: Wait 500ms after time sync log match (bus is free)
+                    await new Promise(r => setTimeout(r, 500))
+                    break // Success, exit loop
+                } catch (err) {
+                    console.warn(`[PrepareTest] SET_UTC attempt ${attempt} failed:`, err)
+                    if (attempt === 1) {
+                        console.log('[PrepareTest] Retrying SET_UTC to clear potential buffer corruption...')
+                        await new Promise(r => setTimeout(r, 1000))
+                    } else {
+                        console.error('[PrepareTest] Failed to set UTC:', err)
+                        errors.setUtc = err instanceof Error ? err.message : 'Unknown error'
+                    }
+                }
+            }
+
+            // 2. Run selftest
             try {
+                const preSelftestOffset = logsRef.current.length
                 console.log('[PrepareTest] Running selftest...')
                 await runSelfTest(bleDevice)
                 // Wait for Error bits response
-                await waitForLogMatch(/Error\s*bits\s*=\s*(0x[0-9A-Fa-f]+)/, 3000)
+                // Wait for Error bits response
+                await waitForLogMatch(/Error\s*bits\s*=\s*(0x[0-9A-Fa-f]+)/, 4000, preSelftestOffset)
                 console.log('[PrepareTest] Selftest completed')
+
+                // Wait 1s after selftest before next command (ID OPs)
+                await new Promise(r => setTimeout(r, 1000))
+
             } catch (err) {
                 console.error('[PrepareTest] Selftest failed or timed out:', err)
                 errors.selftest = err instanceof Error ? err.message : 'Unknown error'
-            }
-
-            // 2. Set UTC time
-            try {
-                console.log('[PrepareTest] Setting UTC time...')
-                await setUtc(bleDevice)
-                // Wait for firmware confirmation - setutc responds with "RTC set to ..." not "UTC is:"
-                // Firmware can take ~1885ms to process, so wait 4000ms total
-                await waitForLogMatch(/RTC set to/, 4000)
-                console.log('[PrepareTest] UTC time set')
-            } catch (err) {
-                console.error('[PrepareTest] Failed to set UTC:', err)
-                errors.setUtc = err instanceof Error ? err.message : 'Unknown error'
             }
 
             // 3. Clear deployment ID
@@ -792,14 +811,44 @@ export const PrepareAndTestScreen = () => {
             setLoading(true)
             const errors: string[] = []
 
-            // 1. Set UTC time
+            // 0. FLUSH: Ensure device is awake and buffer is clean
+            // This prevents "ghost packets" from previous commands (like selftest) from corrupting the setUtc response
             try {
-                await setUtc(bleDevice)
-                await new Promise(resolve => setTimeout(resolve, 1000))
-                console.log('[PrepareTest] SET_UTC completed')
-            } catch (error) {
-                console.error('[PrepareTest] SET_UTC failed:', error)
-                errors.push('Failed to sync device time')
+                console.log('[PrepareTest] Disabling camera to ensure clean state (Flush)...')
+                await disableCamera(bleDevice)
+                // Wait for wake/stabilize
+                await new Promise(r => setTimeout(r, 1000))
+            } catch (err) {
+                console.warn('[PrepareTest] Flush (disableCamera) failed:', err)
+            }
+
+            // 1. Set UTC time
+            let utcSuccess = false
+            // Retry loop: The first attempt might be corrupted by a delayed "selfTest" packet
+            // from the previous step. If that happens, the second attempt will succeed.
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    const preUtcOffset = logsRef.current.length
+                    console.log(`[PrepareTest] Setting UTC time (Attempt ${attempt})...`)
+                    await setUtc(bleDevice)
+                    // Robust wait: 6000ms timeout
+                    await waitForLogMatch(/RTC set to/, 6000, preUtcOffset)
+                    console.log('[PrepareTest] SET_UTC completed')
+                    utcSuccess = true
+
+                    // Wait 500ms to clear I2C bus buffer
+                    await new Promise(r => setTimeout(r, 500))
+                    break
+                } catch (error) {
+                    console.warn(`[PrepareTest] SET_UTC attempt ${attempt} failed:`, error)
+                    if (attempt === 1) {
+                        console.log('[PrepareTest] Retrying SET_UTC to clear potential buffer corruption...')
+                        await new Promise(r => setTimeout(r, 1000))
+                    } else {
+                        console.error('[PrepareTest] SET_UTC finally failed:', error)
+                        errors.push('Failed to sync device time')
+                    }
+                }
             }
 
             // 2. Configure device settings based on selected project
@@ -824,9 +873,7 @@ export const PrepareAndTestScreen = () => {
                     })
 
                     console.log('[PrepareTest] Device settings configured successfully')
-
-                    // Explicitly disable camera again just to be safe
-                    await disableCamera(bleDevice)
+                    // Redundant disableCamera removed - updateDeviceSettings handles cameraEnabled state
 
                 } else {
                     console.log('[PrepareTest] No project selected or found, skipping settings configuration')
