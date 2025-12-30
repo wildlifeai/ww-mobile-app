@@ -129,20 +129,23 @@ Sent as:
 The device is configured according to the project's capture requirements.
 
 **For Activity Detection:**
+- **Enables Camera**: `AI setop 10 1` (Must be enabled for value to persist)
 - Sets motion detection interval: `AI setop 11 1000` (1000ms)
 - Disables timelapse: `AI setop 7 0`
 
 **For Timelapse:**
+- **Enables Camera**: `AI setop 10 1`
 - Sets timelapse interval: `AI setop 7 <seconds>` (from project config)
 - Disables motion detection: `AI setop 11 0`
 
 **For Both (Activity + Timelapse):**
+- **Enables Camera**: `AI setop 10 1`
 - Sets motion detection interval: `AI setop 11 1000`
 - Sets timelapse interval: `AI setop 7 <seconds>`
 
 #### 10. Enable Camera, Reset & Disconnect
 
-1. **Enable Camera**: Sends `AI setop 10 1` to activate the camera and AI system
+1. **Enable Camera**: Explicitly ensures camera is enabled (`AI setop 10 1`) if not already set.
 2. **Visual Confirmation**: Flashes green LED (5 times, 500ms each)
 3. **Reset Device**: Sends `reset` command (**CRITICAL** - forces device to reboot and enter motion detection mode)
 4. **Disconnect**: Sends `dis` command to gracefully close BLE connection
@@ -300,9 +303,9 @@ Tapping "View Details" navigates to the deployment record showing:
 | 4 | Time Check | `getutc`, `setutc [timestamp]` | - |
 | 5 | DB Create | - | Create deployment record with snapshots |
 | 6 | ID Sync | `AI setop 20 [value]` × 8 (retry 3x) | - |
-| 7 | Configure | Activity: `AI setop 11 1000`, `AI setop 7 0` | - |
-| | | Timelapse: `AI setop 7 [secs]`, `AI setop 11 0` | - |
-| 8 | Enable | `AI setop 10 1` | - |
+| 7 | Configure | Activity: `AI setop 10 1`, `AI setop 11 1000`, `AI setop 7 0` | - |
+| | | Timelapse: `AI setop 10 1`, `AI setop 7 [secs]`, `AI setop 11 0` | - |
+| 8 | Enable | `AI setop 10 1` (Redundant check) | - |
 | 9 | Confirm | `flashg 2 500 1000` | - |
 | 10 | Disconnect | `dis` | Mark device as deployed |
 | 11 | Sync | - | Push to Supabase via SupabaseSyncService |
