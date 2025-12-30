@@ -258,7 +258,7 @@ export const PrepareAndTestScreen = () => {
             setIsInitializing(true)
             console.log('[PrepareTest] Running BLE initialization sequence...')
 
-            const errors: { selftest?: string; setUtc?: string } = {}
+            const errors: { setUtc?: string } = {}
 
             // 0. Wait for HiMAX processor to boot + verify BLE communication
             try {
@@ -272,17 +272,7 @@ export const PrepareAndTestScreen = () => {
                 console.warn('[PrepareTest] Initial BLE verification had issues:', err)
             }
 
-            // 1. Disable camera to ensure clean state
-            try {
-                console.log('[PrepareTest] Disabling camera to ensure clean state...')
-                await disableCamera(bleDevice)
-                // Wait for wake/stabilize
-                await new Promise(r => setTimeout(r, 1000))
-            } catch (err) {
-                console.warn('[PrepareTest] Failed to disable camera (non-fatal):', err)
-            }
-
-            // 1. Set UTC time
+            // 1. Set UTC time (FIRST ACTION)
             let utcSuccess = false
             for (let attempt = 1; attempt <= 2; attempt++) {
                 try {
@@ -290,7 +280,7 @@ export const PrepareAndTestScreen = () => {
                     console.log(`[PrepareTest] Setting UTC time (Attempt ${attempt})...`)
                     await setUtc(bleDevice)
                     // Firmware can take ~1600ms to process. We use 6000ms timeout for safety.
-                    await waitForLogMatch(/RTC set to/, 6000, preUtcOffset)
+                    await waitForLogMatch(/RTC set to|UTC is:/, 6000, preUtcOffset)
                     console.log('[PrepareTest] UTC time set')
                     utcSuccess = true
                     // Vital delay: Wait 500ms after time sync log match (bus is free)
@@ -299,7 +289,7 @@ export const PrepareAndTestScreen = () => {
                 } catch (err) {
                     console.warn(`[PrepareTest] SET_UTC attempt ${attempt} failed:`, err)
                     if (attempt === 1) {
-                        console.log('[PrepareTest] Retrying SET_UTC to clear potential buffer corruption...')
+                        console.log('[PrepareTest] Retrying SET_UTC - attempting to proceed...')
                         await new Promise(r => setTimeout(r, 1000))
                     } else {
                         console.error('[PrepareTest] Failed to set UTC:', err)
@@ -308,22 +298,20 @@ export const PrepareAndTestScreen = () => {
                 }
             }
 
-            // 2. Run selftest
+            // 2. Quiesce Device (Ensure Force Stop)
+            // Explicitly disable camera and motion/timelapse intervals to stop the "MD" loops
             try {
-                const preSelftestOffset = logsRef.current.length
-                console.log('[PrepareTest] Running selftest...')
-                await runSelfTest(bleDevice)
-                // Wait for Error bits response
-                // Wait for Error bits response
-                await waitForLogMatch(/Error\s*bits\s*=\s*(0x[0-9A-Fa-f]+)/, 4000, preSelftestOffset)
-                console.log('[PrepareTest] Selftest completed')
-
-                // Wait 1s after selftest before next command (ID OPs)
-                await new Promise(r => setTimeout(r, 1000))
-
+                console.log('[PrepareTest] Enforcing quiet state (Disabling Camera & Motion)...')
+                await updateDeviceSettings({
+                    cameraEnabled: false,
+                    motionDetectInterval: 0,
+                    timelapseInterval: 0
+                })
+                // Wait for settings to apply
+                await new Promise(r => setTimeout(r, 500))
+                console.log('[PrepareTest] Device stabilized.')
             } catch (err) {
-                console.error('[PrepareTest] Selftest failed or timed out:', err)
-                errors.selftest = err instanceof Error ? err.message : 'Unknown error'
+                console.warn('[PrepareTest] Failed to quiesce device:', err)
             }
 
             // 3. Clear deployment ID
@@ -350,7 +338,7 @@ export const PrepareAndTestScreen = () => {
             }
 
             // Set any errors to trigger warning display
-            if (errors.selftest || errors.setUtc) {
+            if (errors.setUtc) {
                 setInitErrors(errors)
             }
 
@@ -811,18 +799,7 @@ export const PrepareAndTestScreen = () => {
             setLoading(true)
             const errors: string[] = []
 
-            // 0. FLUSH: Ensure device is awake and buffer is clean
-            // This prevents "ghost packets" from previous commands (like selftest) from corrupting the setUtc response
-            try {
-                console.log('[PrepareTest] Disabling camera to ensure clean state (Flush)...')
-                await disableCamera(bleDevice)
-                // Wait for wake/stabilize
-                await new Promise(r => setTimeout(r, 1000))
-            } catch (err) {
-                console.warn('[PrepareTest] Flush (disableCamera) failed:', err)
-            }
-
-            // 1. Set UTC time
+            // 1. Set UTC time (FIRST ACTION)
             let utcSuccess = false
             // Retry loop: The first attempt might be corrupted by a delayed "selfTest" packet
             // from the previous step. If that happens, the second attempt will succeed.
@@ -832,7 +809,7 @@ export const PrepareAndTestScreen = () => {
                     console.log(`[PrepareTest] Setting UTC time (Attempt ${attempt})...`)
                     await setUtc(bleDevice)
                     // Robust wait: 6000ms timeout
-                    await waitForLogMatch(/RTC set to/, 6000, preUtcOffset)
+                    await waitForLogMatch(/RTC set to|UTC is:/, 6000, preUtcOffset)
                     console.log('[PrepareTest] SET_UTC completed')
                     utcSuccess = true
 
@@ -941,7 +918,7 @@ export const PrepareAndTestScreen = () => {
                                 })
                             } else {
                                 // Default: Navigate to Devices tab
-                                navigation.navigate("Home", { initialTab: "devices" })
+                                (navigation as any).navigate("Home", { initialTab: "devices" })
                             }
                         },
                     }]

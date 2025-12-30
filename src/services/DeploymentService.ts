@@ -61,7 +61,7 @@ export const DeploymentService = {
                     deployment.deviceId = data.deviceId
                     deployment.devicePreparationId = data.devicePreparationId
                     deployment.setupBy = data.setupBy
-                    deployment.deploymentStart = new Date().getTime()
+                    deployment.deploymentStart = new Date()
                     deployment.deploymentStatusId = DEPLOYMENT_STATUS.DEPLOYED
 
                     // Add capture method if provided
@@ -171,7 +171,7 @@ export const DeploymentService = {
             // 1. Prepare update
             const updateOp = deployment.prepareUpdate((record) => {
                 record.deploymentStatusId = DEPLOYMENT_STATUS.RECOVERY
-                record.deploymentEnd = new Date().getTime()
+                record.deploymentEnd = new Date()
                 record.endedBy = endedBy ?? undefined
                 record.endDeploymentComments = notes
             })
@@ -284,7 +284,7 @@ function mapModelToPayload(model: Deployment): any {
         setup_by: model.setupBy,
         deployment_start: new Date(model.deploymentStart).toISOString(),
         ended_by: model.endedBy || null,
-        deployment_end: (model.deploymentEnd && model.deploymentEnd > 1000) ? new Date(model.deploymentEnd).toISOString() : null,
+        deployment_end: (model.deploymentEnd && model.deploymentEnd.getTime() > 1000) ? new Date(model.deploymentEnd).toISOString() : null,
         deployment_status_id: model.deploymentStatusId,
         capture_method_id: model.captureMethodId || null,
         activity_detection_sensitivity_id: model.activityDetectionSensitivityId || null,

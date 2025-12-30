@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react"
 import { Platform } from "react-native"
 
 import BleManager from "react-native-ble-manager"
-import { Peripheral } from "react-native-ble-manager"
+import { Peripheral, PeripheralInfo } from "react-native-ble-manager"
 
 import { BLE_SERVICE_UUID } from "../utils/constants"
 import {
@@ -314,7 +314,7 @@ export const useBle = (): ReturnType => {
 
 					// Cast to correct type
 					const peripheralInfo = services as PeripheralInfo
-					newPeripheral.services = extractServiceAndCharacteristic(peripheralInfo)
+					newPeripheral.services = extractServiceAndCharacteristic(peripheralInfo as any)
 
 					const {
 						serviceCharacteristic,

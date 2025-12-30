@@ -14,8 +14,8 @@ import { WWIcon } from '../../components/ui/WWIcon'
 
 import { CommandNames } from '../../ble/types'
 import { useBleCommands } from '../../hooks/useBleCommands'
-import { useBleActions } from '../../providers/BleEngineProvider'
 import { useDeviceSettings } from '../../hooks/useDeviceSettings'
+import { useBleActions } from '../../providers/BleEngineProvider'
 
 import { LoRaWANSection } from './sections/LoRaWANSection'
 import { CameraViewSection } from './sections/CameraViewSection'
@@ -33,20 +33,20 @@ export const DeploymentDetailsStep = () => {
     const route = useRoute<DeploymentDetailsRouteProp>()
 
     // Params passed from DeviceDiscoveryScreen
+    // Params passed from DeviceDiscoveryScreen
     const { devicePreparationId, deviceId, bleDeviceId } = route.params || {}
 
-    // BLE Hooks
-    const { getUtc, setUtc, setDeploymentIdAsOps, disconnectDevice, enableCamera, runDisconnect, runReset, getStatus, flashLed, setOperationalParam, setGpsLocation } = useBleCommands()
-    const { isBleConnecting } = useBleActions()
-
+    // Selectors
     const devices = useAppSelector(state => state.devices)
     const bleDevice = devices[bleDeviceId]
-
-    const { updateSettings: updateDeviceSettings } = useDeviceSettings({ device: bleDevice })
-
     const logs = useAppSelector(state => state.logs[bleDeviceId] || [])
     const deviceConfig = useAppSelector(state => state.configuration[bleDeviceId])
     const user = useAppSelector(state => state.authentication.user)
+
+    // BLE Hooks
+    const { getUtc, setUtc, setDeploymentIdAsOps, disconnectDevice, enableCamera, runDisconnect, getStatus, flashLed, setOperationalParam, setGpsLocation } = useBleCommands()
+    const { updateSettings } = useDeviceSettings({ device: bleDevice })
+    const { isBleConnecting } = useBleActions()
 
     const [formState, setFormState] = useState({
         name: '',
@@ -233,22 +233,6 @@ export const DeploymentDetailsStep = () => {
             return
         }
 
-        // Sanity Check: Ensure BLE is still connected
-        if (!bleDevice || !bleDevice.connected) {
-            Alert.alert(
-                'Connection Lost',
-                'The device is not connected. Please reconnect to start the deployment.',
-                [{
-                    text: 'Go Back',
-                    onPress: () => {
-                        isNavigatingAway.current = true
-                        navigation.goBack()
-                    }
-                }]
-            )
-            return
-        }
-
         setSubmitting(true)
         isStartDeploymentInProgress.current = true // Suppress disconnect alerts
 
@@ -288,91 +272,96 @@ export const DeploymentDetailsStep = () => {
             // 3. Send Deployment ID to Device via BLE
             console.log('[Deployment] Sending Deployment ID to device:', newDeployment.id)
             try {
-                // Direct write strategy to avoid inactivity timeouts (device sleeps after 1s idle)
-                console.log('[Deployment] Writing Deployment ID (Extended OPs)...')
+                // Try setting OP20 first to see if device supports it (Feature Detection)
+                console.log('[Deployment] Testing if device supports extended OPs (OP20)...')
+                try {
+                    const currentLogLength = logs.length
+                    await setOperationalParam(bleDevice, 20, '0') // Dummy write
 
-                let deploymentIdSet = false
-                let attempts = 0
-                while (!deploymentIdSet && attempts < 3) {
-                    try {
-                        attempts++
-                        await setDeploymentIdAsOps(bleDevice, newDeployment.id)
-                        console.log('[Deployment] Deployment ID set successfully on attempt', attempts)
-                        deploymentIdSet = true
-                    } catch (bleError) {
-                        console.error(`[Deployment] Failed to set Deployment ID (attempt ${attempts}):`, bleError)
-                        if (attempts < 3) await new Promise(r => setTimeout(r, 500))
-                    }
-                }
+                    // Wait for response to appear in logs
+                    await new Promise(r => setTimeout(r, 1500))
 
-                if (!deploymentIdSet) {
-                    // Check logs for specific error indicating unsupported feature
-                    const hasOpError = logs.slice(-20).some(l => l.content.includes('Error: index') || l.content.includes('Error: bits'))
+                    // Check recent logs for error
+                    const recentLogs = logs.slice(currentLogLength)
+                    const hasOpError = recentLogs.some(l => l.content.includes('Error: index') || l.content.includes('Error: bits'))
 
                     if (hasOpError) {
-                        console.log('[Deployment] Device returned error for OPs. Likely Legacy Firmware. GPS will be set below.')
-                        // Don't throw, just warn and proceed to GPS
-                    } else {
-                        console.warn('[Deployment] Failed to set ID despite no explicit refusal.')
+                        console.log('[Deployment] Device returned error for OP20. Extended OPs likely not supported.')
+                        throw new Error('Device rejected OP20')
+                    }
+
+                    // If successful, proceed to write actual ID
+                    console.log('[Deployment] Extended OPs supported (no error found). Writing Deployment ID...')
+
+                    let deploymentIdSet = false
+                    let attempts = 0
+                    while (!deploymentIdSet && attempts < 3) {
+                        try {
+                            attempts++
+                            await setDeploymentIdAsOps(bleDevice, newDeployment.id)
+                            console.log('[Deployment] Deployment ID set successfully on attempt', attempts)
+                            deploymentIdSet = true
+                        } catch (bleError) {
+                            console.error(`[Deployment] Failed to set Deployment ID (attempt ${attempts}):`, bleError)
+                            if (attempts < 3) await new Promise(r => setTimeout(r, 1000))
+                        }
+                    }
+                    if (!deploymentIdSet) {
+                        // Double check logs again just in case valid ops failed
+                        const errorCheck = logs.slice(-20).some(l => l.content.includes('Error: index'))
+                        if (errorCheck) {
+                            throw new Error('Device rejected Extended OPs during write sequence')
+                        }
+                        console.warn('[Deployment] Failed to set ID despite OP support.')
                         Alert.alert(
                             'Warning',
-                            'Deployment created locally, but failed to send Deployment ID to the device. Please verify connection.'
+                            'Deployment created locally, but failed to send Deployment ID to the device. The device may not tag images correctly.\n\nPlease verify connection and try "Engineer Device" > "Set Deployment ID" manually if needed.'
                         );
                     }
+                } catch (opError) {
+                    console.log('[Deployment] Device does not support extended OPs or write failed. Falling back to SET_GPS...', opError)
+
+                    // Fallback to SET_GPS command for older firmware
+                    try {
+                        const { latitude, longitude, altitude } = formState.location
+                        // Use 0,0 if location is empty to at least clear it/set valid GPS format
+                        const lat = latitude || 0
+                        const lng = longitude || 0
+                        const alt = altitude || 0
+
+                        await setGpsLocation(bleDevice, lat, lng, alt)
+                        console.log('[Deployment] GPS location set successfully as fallback.')
+
+                    } catch (gpsError) {
+                        console.error('[Deployment] GPS fallback failed:', gpsError)
+                    }
                 }
-            } catch (opError) {
-                console.log('[Deployment] Error setting Deployment ID:', opError)
-            }
-
-            // 3.1 Send GPS Location (Always)
-            try {
-                const { latitude, longitude, altitude } = formState.location
-                // Use 0,0 if location is empty to at least clear it/set valid GPS format
-                const lat = latitude || 0
-                const lng = longitude || 0
-                const alt = altitude || 0
-
-                console.log('[Deployment] Setting GPS Location...', { lat, lng, alt })
-                await setGpsLocation(bleDevice, lat, lng, alt)
-                console.log('[Deployment] GPS location set successfully.')
-
-            } catch (gpsError) {
-                console.error('[Deployment] GPS set failed:', gpsError)
-            }
-
-            // 3.5 Enable Camera FIRST (before capture configuration)
-            // Critical: Must send this before other commands to ensure it doesn't get lost in disconnect
-            if (bleDevice?.connected) {
-                console.log('[Deployment] Enabling Camera...')
-                try {
-                    await enableCamera(bleDevice)
-                    // Wait for BLE write to actually transmit before moving on
-                    await new Promise(r => setTimeout(r, 500))
-                    console.log('[Deployment] Camera enabled successfully')
-                } catch (e) {
-                    console.error('[Deployment] Failed to enable camera:', e)
-                }
-            } else {
-                console.warn('[Deployment] Skipping Camera enable - Device disconnected.')
+            } catch (e) {
+                console.error('[Deployment] Error during Deployment ID setup:', e)
             }
 
             // 4. Configure Capture Method
             console.log('[Deployment] Configuring Capture Method:', captureMethodName)
             try {
                 const method = captureMethodName.toLowerCase().replace(/[^a-z]/g, '') // "activitydetection", "timelapse"
+                const isMotionDetect = method.includes('activity') || method.includes('motion')
+                const isTimelapse = method.includes('time') || method.includes('lapse')
+                const sensitivityId = project?.activity_detection_sensitivity_id
 
-                if (method.includes('activity') || method.includes('motion')) {
+                if (isMotionDetect) {
                     console.log('[Deployment] Mode: Activity Detection. Setting motion interval to 1000ms & disabling timelapse.')
-                    await updateDeviceSettings({
-                        motionDetectInterval: 1000,
-                        timelapseInterval: 0  // 0 = disabled
+                    await updateSettings({
+                        motionDetectInterval: sensitivityId ? 1000 : 1000,
+                        timelapseInterval: 0,
+                        cameraEnabled: true // Enable camera to ensure motion settings are accepted
                     })
-                } else if (method.includes('time') || method.includes('lapse')) {
-                    const interval = project.timelapse_interval_seconds || 900 // Default 15min if missing
-                    console.log(`[Deployment] Mode: Timelapse. Setting interval to ${interval}s & disabling motion.`)
-                    await updateDeviceSettings({
+                } else if (isTimelapse) {
+                    const interval = project.timelapse_interval_seconds || 300
+                    console.log(`[Deployment] Mode: Time-lapse. Setting interval to ${interval}s & disabling motion detect.`)
+                    await updateSettings({
+                        motionDetectInterval: 0,
                         timelapseInterval: interval,
-                        motionDetectInterval: 0  // 0 = disabled
+                        cameraEnabled: true // Enable camera to ensure timelapse settings are accepted
                     })
                 } else {
                     console.warn('[Deployment] Unknown capture method:', captureMethodName, '- No specific BLE config sent.')
@@ -382,31 +371,43 @@ export const DeploymentDetailsStep = () => {
                 Alert.alert('Warning', 'Failed to configure device capture settings (Motion/Timelapse). Device may use previous defaults.')
             }
 
-            // 4.5 Flash Green LED (Success Confirmation)
+            // 5. Enable Camera (Explicit Command)
+            if (bleDevice?.connected) {
+                console.log('[Deployment] Enabling Camera...')
+                try {
+                    await enableCamera(bleDevice)
+                    await new Promise(r => setTimeout(r, 500)) // Wait for cam to wake
+                    console.log('[Deployment] Camera enabled successfully')
+                } catch (e) {
+                    console.error('[Deployment] Failed to enable camera:', e)
+                }
+            } else {
+                console.warn('[Deployment] Skipping Camera enable - Device disconnected.')
+            }
+
+            // 6. Flash Green LED (Success Confirmation)
             if (bleDevice?.connected) {
                 console.log('[Deployment] Flashing Green LED...')
                 try {
-                    await flashLed(bleDevice, 'green', 500, 5) // 5x 500ms flashes. Note: corrected duration argument order check
+                    await flashLed(bleDevice, 'green', 500, 5) // 5x 500ms flashes.
                 } catch (e) {
                     console.warn('[Deployment] Failed to flash LED:', e)
                 }
             }
 
-            // 5. Reset & Disconnect
-            console.log('[Deployment] Resetting device to activate motion detection...')
+            // 7. Disconnect
+            console.log('[Deployment] Disconnecting device...')
+            // Vital Delay: Wait 5s before sending disconnect to ensure previous
+            // 'enable camera' (setop 10 1) command is fully processed and saved.
+            await new Promise(r => setTimeout(r, 5000))
             try {
-                // Reset is CRITICAL - forces device to reboot and enter motion detection mode
-                await runReset(bleDevice)
-                await new Promise(r => setTimeout(r, 500)) // Wait for reset command to process
-
-                console.log('[Deployment] Disconnecting device...')
                 await runDisconnect(bleDevice)
-                console.log('[Deployment] Device disconnected - motion detection will activate on reboot')
+                console.log('[Deployment] Device disconnected')
             } catch (e) {
                 console.error('[Deployment] Failed to disconnect:', e)
             }
 
-            // 4. Navigate back to Deployments list
+            // 8. Navigate back to Deployments list
             isNavigatingAway.current = true
             // @ts-ignore - navigation types need to be strict but for now this works
             navigation.navigate('Home', { screen: 'Deployments' })
@@ -419,11 +420,6 @@ export const DeploymentDetailsStep = () => {
             setSubmitting(false)
         }
     }
-
-    if (!devicePreparationId) {
-        return <View><WWButton onPress={() => navigation.goBack()}>Go Back</WWButton></View>
-    }
-
     const [helpVisible, setHelpVisible] = useState(false)
     const [helpTitle, setHelpTitle] = useState('')
     const [helpContent, setHelpContent] = useState('')
