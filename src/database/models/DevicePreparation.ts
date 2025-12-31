@@ -27,6 +27,15 @@ export default class DevicePreparation extends Model {
 
     @field('modified_by') modifiedBy!: string
 
+    // Detailed check metrics
+    @field('camera_model') cameraModel?: string
+    @field('battery_level_at_check') batteryLevelAtCheck?: number
+    @field('sd_card_total_kb_at_check') sdCardTotalKbAtCheck?: number
+    @field('sd_card_available_kb_at_check') sdCardAvailableKbAtCheck?: number
+
+    // Timestamps
+    @date('completed_at') completedAt?: Date
+
     @readonly @date('created_at') createdAt!: Date
     @date('updated_at') updatedAt!: Date
     @date('deleted_at') deletedAt?: Date

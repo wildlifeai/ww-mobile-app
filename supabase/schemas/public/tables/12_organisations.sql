@@ -1,4 +1,4 @@
-CREATE TABLE organisations (
+CREATE TABLE public.organisations (
   id uuid PRIMARY KEY NOT NULL DEFAULT (gen_random_uuid()),
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),

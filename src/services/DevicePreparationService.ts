@@ -103,7 +103,12 @@ export const DevicePreparationService = {
             firmwareId: string
             deviceEui: string
             lorawanNetwork: string
-            projectId: string // <--- Added optional projectId
+            projectId: string
+            // New metrics
+            cameraModel: string
+            batteryLevelAtCheck: number
+            sdCardTotalKbAtCheck: number
+            sdCardAvailableKbAtCheck: number
         }>
     ): Promise<DevicePreparation> => {
         console.log('[DevPrepService] Updating preparation:', preparationId, updates)
@@ -124,7 +129,13 @@ export const DevicePreparationService = {
                 if (updates.firmwareId) prep.bleFirmwareId = updates.firmwareId
                 if (updates.deviceEui) prep.deviceEui = updates.deviceEui
                 if (updates.lorawanNetwork) prep.lorawanNetwork = updates.lorawanNetwork
-                if (updates.projectId) prep.projectId = updates.projectId // <--- Ensure projectId is updated
+                if (updates.projectId) prep.projectId = updates.projectId
+
+                // New metrics
+                if (updates.cameraModel) prep.cameraModel = updates.cameraModel
+                if (updates.batteryLevelAtCheck !== undefined) prep.batteryLevelAtCheck = updates.batteryLevelAtCheck
+                if (updates.sdCardTotalKbAtCheck !== undefined) prep.sdCardTotalKbAtCheck = updates.sdCardTotalKbAtCheck
+                if (updates.sdCardAvailableKbAtCheck !== undefined) prep.sdCardAvailableKbAtCheck = updates.sdCardAvailableKbAtCheck
             })
 
             // 2. Prepare outbox record
@@ -162,7 +173,8 @@ export const DevicePreparationService = {
             const prepUpdate = preparation.prepareUpdate((prep) => {
                 prep.status = 'completed'
                 prep.isDeploymentReady = isDeploymentReady
-                if (projectId) prep.projectId = projectId // <--- Crucial fix: Ensure projectId is present when completing
+                prep.completedAt = new Date() // Set completion timestamp
+                if (projectId) prep.projectId = projectId
             })
 
             // 2. Prepare outbox record
@@ -389,6 +401,13 @@ function mapModelToPayload(model: DevicePreparation): any {
             firmware_check_passed: model.firmwareCheckPassed,
             sd_card_check_passed: model.sdCardCheckPassed,
             firmware_updated: model.firmwareUpdated,
+
+            // Metrics
+            battery_level_at_check: model.batteryLevelAtCheck || null,
+            sd_card_total_kb_at_check: model.sdCardTotalKbAtCheck || null,
+            sd_card_available_kb_at_check: model.sdCardAvailableKbAtCheck || null,
+            camera_model: model.cameraModel || null,
+            completed_at: model.completedAt ? new Date(model.completedAt).toISOString() : null,
 
             // LoRaWAN
             device_eui: model.deviceEui || null,

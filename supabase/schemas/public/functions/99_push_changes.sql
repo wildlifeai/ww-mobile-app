@@ -1,15 +1,9 @@
--- Complete push_changes RPC including devices and device_preparation logic
--- FIX: Includes devices, device_preparation, projects, and deployments
--- FIX: Handles deletes as string arrays
--- FIX: Handles silent sync failure by properly processing all tables
--- FIX: Added missing columns for deployments, devices, and device_preparation
-
 CREATE OR REPLACE FUNCTION public.push_changes(changes jsonb)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = extensions, public, pg_temp
-AS $$
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'extensions', 'public', 'pg_temp'
+AS $function$
 DECLARE
     _projects_created jsonb;
     _projects_updated jsonb;
@@ -126,13 +120,7 @@ BEGIN
                 bluetooth_id,
                 organisation_id,
                 name,
-                ble_firmware_id,
-                himax_firmware_id,
-                config_firmware_id,
                 device_eui,
-                battery_level,
-                last_battery_check,
-                last_sd_card_check,
                 modified_by,
                 created_at,
                 updated_at
@@ -142,13 +130,7 @@ BEGIN
                 _item->>'bluetooth_id',
                 (_item->>'organisation_id')::uuid,
                 _item->>'name',
-                (_item->>'ble_firmware_id')::uuid,
-                (_item->>'himax_firmware_id')::uuid,
-                (_item->>'config_firmware_id')::uuid,
                 _item->>'device_eui',
-                (_item->>'battery_level')::int,
-                (_item->>'last_battery_check')::timestamptz,
-                (_item->>'last_sd_card_check')::timestamptz,
                 (_item->>'modified_by')::uuid,
                 (_item->>'created_at')::timestamptz,
                 (_item->>'updated_at')::timestamptz
@@ -167,13 +149,7 @@ BEGIN
                 bluetooth_id = _item->>'bluetooth_id',
                 organisation_id = (_item->>'organisation_id')::uuid,
                 name = _item->>'name',
-                ble_firmware_id = (_item->>'ble_firmware_id')::uuid,
-                himax_firmware_id = (_item->>'himax_firmware_id')::uuid,
-                config_firmware_id = (_item->>'config_firmware_id')::uuid,
                 device_eui = _item->>'device_eui',
-                battery_level = (_item->>'battery_level')::int,
-                last_battery_check = (_item->>'last_battery_check')::timestamptz,
-                last_sd_card_check = (_item->>'last_sd_card_check')::timestamptz,
                 modified_by = (_item->>'modified_by')::uuid,
                 updated_at = (_item->>'updated_at')::timestamptz
             WHERE id = (_item->>'id')::uuid;
@@ -351,7 +327,7 @@ BEGIN
                 (_item->>'deployment_end')::timestamptz,
                 (_item->>'ended_by')::uuid,
                 (_item->>'deployment_status_id')::int,
-                (_item->>'deployment_status_id')::int,
+                (_item->>'capture_method_id')::int,
                 _item->>'location_name',
                 COALESCE(_item->>'location_description', _item->>'camera_location_description'),
                 public.safe_to_double(NULLIF(_item->>'latitude', '')),
@@ -439,4 +415,4 @@ BEGIN
         'conflicts', _conflicts
     );
 END;
-$$;
+$function$;

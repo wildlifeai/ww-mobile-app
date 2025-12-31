@@ -98,6 +98,7 @@ export const PrepareAndTestScreen = () => {
     const [cameraTestPassed, setCameraTestPassed] = useState(false)
     const [firmwareUpToDate, setFirmwareUpToDate] = useState(true)
     const [aiModelMatches, setAiModelMatches] = useState(true)
+    const [cameraModelName, setCameraModelName] = useState<string | null>(null)
 
     // BLE firmware state
     const [latestBleFirmware, setLatestBleFirmware] = useState<Firmware | null>(null)
@@ -113,7 +114,7 @@ export const PrepareAndTestScreen = () => {
     const isNavigatingAway = useRef(false)
 
     // BLE command hooks
-    const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, disableCamera, runDisconnect, runDfu, runSelfTest, flashLed, clearGpsLocation, setDeploymentIdAsOps } = useBleCommands()
+    const { getBatteryLevel, checkSdCard, captureTestImage, setUtc, setOperationalParam, getDeviceVer, getDeviceName, disableCamera, runDisconnect, runDfu, runSelfTest, flashLed, clearGpsLocation, setDeploymentIdAsOps } = useBleCommands()
     const { write } = useBle()
     const bleDevice = useAppSelector((state) => state.devices[bleDeviceId])
     const logs = useAppSelector(state => state.logs[bleDeviceId || ''] || [])
@@ -129,6 +130,7 @@ export const PrepareAndTestScreen = () => {
             if (preparation) {
                 DevicePreparationService.updatePreparation(preparation.id, {
                     cameraViewTestPassed: true,
+                    cameraModel: cameraModelName || 'WW500' // Use fetched name or default
                 }).catch(error => console.error('Failed to update preparation:', error))
             }
         }
@@ -184,9 +186,9 @@ export const PrepareAndTestScreen = () => {
                     handleFirmwareCheck()
                 }
 
-                if (device && latest && device.bleFirmwareId) {
-                    // Check based on DB record first if available (fallback)
-                    const updateAvailable = device.bleFirmwareId !== latest.id
+                if (preparation && latest && preparation.bleFirmwareId) {
+                    // Check based on preparation record first if available (fallback)
+                    const updateAvailable = preparation.bleFirmwareId !== latest.id
                     // ... logic continues ...
                 }
             } catch (error) {
@@ -267,6 +269,10 @@ export const PrepareAndTestScreen = () => {
 
                 console.log('[PrepareTest] Verifying BLE communication with version check...')
                 await getDeviceVer(bleDevice)  // Non-AI command to verify Nordic BLE is responsive
+                await new Promise(r => setTimeout(r, 200))
+
+                console.log('[PrepareTest] Fetching device model name...')
+                await getDeviceName(bleDevice)
                 await new Promise(r => setTimeout(r, 500))  // Let it process
             } catch (err) {
                 console.warn('[PrepareTest] Initial BLE verification had issues:', err)
@@ -352,7 +358,6 @@ export const PrepareAndTestScreen = () => {
     // Parse BLE logs for command responses
 
     // Helper to compare version strings: "00.13.00" vs "0.13.0"
-    // Helper to compare version strings: "00.13.00" vs "0.13.0"
     const compareVersions = (v1: string, v2: string) => {
         // Remove build suffixes (anything after -)
         const cleanV1 = v1.split('-')[0]
@@ -373,7 +378,6 @@ export const PrepareAndTestScreen = () => {
     }
 
     // Parse BLE logs for command responses
-    // Parse BLE logs for command responses
     useEffect(() => {
         if (!logs || logs.length === 0) return
 
@@ -389,7 +393,8 @@ export const PrepareAndTestScreen = () => {
             setBatteryLevel(percent)
             if (preparation) {
                 DevicePreparationService.updatePreparation(preparation.id, {
-                    batteryCheckPassed: percent > 30
+                    batteryCheckPassed: percent > 30,
+                    batteryLevelAtCheck: percent
                 })
             }
         }
@@ -410,7 +415,9 @@ export const PrepareAndTestScreen = () => {
             setSdCardStatus({ total: totalKB, free: availableKB })
             if (preparation) {
                 DevicePreparationService.updatePreparation(preparation.id, {
-                    sdCardCheckPassed: availableKB > (totalKB * 0.1)
+                    sdCardCheckPassed: availableKB > (totalKB * 0.1),
+                    sdCardTotalKbAtCheck: totalKB,
+                    sdCardAvailableKbAtCheck: availableKB
                 })
             }
         }
@@ -439,9 +446,26 @@ export const PrepareAndTestScreen = () => {
                     comparisonResult: comparison,
                     updateAvailable
                 })
+
+                if (!updateAvailable && preparation) {
+                    // If up to date, link the specific firmware version
+                    DevicePreparationService.updatePreparation(preparation.id, {
+                        firmwareCheckPassed: true,
+                        firmwareId: latestBleFirmware.id
+                    })
+                }
             }
         }
-    }, [logs, batteryLevel, sdCardStatus, preparation, deviceFirmwareVersion, isCheckingFirmware, latestBleFirmware])
+
+        // Parse device name response: "Device: WW500-A00"
+        // Matches: "Device: WW500", "Device: WW500-A00"
+        const deviceNameMatch = recentLogsString.match(/Device:\s*([A-Za-z0-9-]+)/i)
+        if (deviceNameMatch && cameraModelName === null) {
+            const name = deviceNameMatch[1]
+            console.log('[PrepareTest] Parsed device model name:', name)
+            setCameraModelName(name)
+        }
+    }, [logs, batteryLevel, sdCardStatus, preparation, deviceFirmwareVersion, isCheckingFirmware, latestBleFirmware, cameraModelName])
 
     // Store initialization errors from route params
     useEffect(() => {
@@ -664,12 +688,14 @@ export const PrepareAndTestScreen = () => {
                                 (progress) => setFirmwareUpdateProgress(progress)
                             )
 
-                            // Update device firmware_id in database
-                            await database.write(async () => {
-                                await device.update(d => {
-                                    d.bleFirmwareId = latestBleFirmware.id
+                            // Update preparation firmware_id in database
+                            if (preparation) {
+                                await database.write(async () => {
+                                    await preparation.update(p => {
+                                        p.bleFirmwareId = latestBleFirmware.id
+                                    })
                                 })
-                            })
+                            }
 
                             setFirmwareUpdateProgress(100)
                             Alert.alert('Update Complete', 'Device is rebooting. Verifying new version...')

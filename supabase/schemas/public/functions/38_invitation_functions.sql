@@ -139,7 +139,8 @@ AS $$
 DECLARE
   v_user_email TEXT;
 BEGIN
-  SELECT email INTO v_user_email FROM auth.users WHERE id = auth.uid();
+  -- FIX: Aliased auth.users to 'au' and used 'au.id' to resolve ambiguity
+  SELECT email INTO v_user_email FROM auth.users au WHERE au.id = auth.uid();
   
   RETURN QUERY
   SELECT

@@ -208,8 +208,7 @@ if (project.capture_method_id === 1) {
 **Why Disable Camera?**
 - Prevents accidental captures during transport
 - Saves battery
-- Prevents accidental captures during transport
-- Saves battery
+
 - Settings are preserved in CONFIG.TXT
 
 > **IMPORTANT**:

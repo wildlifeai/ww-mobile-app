@@ -34,3 +34,6 @@ END;
 $$;
 
 COMMENT ON FUNCTION has_system_role IS 'OPTIMIZED: Context7 evidence-based system role checker. Uses auth.uid() caching pattern and SECURITY DEFINER to prevent RLS circular dependencies.';
+
+-- Ensure authenticated users can execute
+GRANT EXECUTE ON FUNCTION public.has_system_role(uuid, text) TO authenticated;

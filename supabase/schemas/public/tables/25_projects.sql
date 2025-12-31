@@ -33,4 +33,9 @@ COMMENT ON COLUMN projects.website IS 'External website associated with the proj
 COMMENT ON COLUMN projects.timelapse_interval_seconds IS 'Timelapse interval in seconds (only for timelapse capture method)';
 COMMENT ON COLUMN projects.deleted_at IS 'Soft delete timestamp - NULL means active';
 
+
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+
+-- Ensure authenticated users can select (RLS will still apply)
+GRANT SELECT ON public.projects TO authenticated;
+

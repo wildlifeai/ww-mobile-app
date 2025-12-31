@@ -306,7 +306,7 @@ Tapping "View Details" navigates to the deployment record showing:
 | 7 | Configure | Activity: `AI setop 10 1`, `AI setop 11 1000`, `AI setop 7 0` | - |
 | | | Timelapse: `AI setop 10 1`, `AI setop 7 [secs]`, `AI setop 11 0` | - |
 | 8 | Enable | `AI setop 10 1` (Redundant check) | - |
-| 9 | Confirm | `flashg 2 500 1000` | - |
+| 9 | Confirm | `flashg 5 500` | - |
 | 10 | Disconnect | `dis` | Mark device as deployed |
 | 11 | Sync | - | Push to Supabase via SupabaseSyncService |
 

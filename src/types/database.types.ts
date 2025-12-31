@@ -769,93 +769,39 @@ export type Database = {
       }
       devices: {
         Row: {
-          battery_level: number | null
-          ble_firmware_id: string | null
-          ble_firmware_updated_at: string | null
           bluetooth_id: string
-          config_firmware_id: string | null
-          config_firmware_updated_at: string | null
           created_at: string | null
           deleted_at: string | null
           device_eui: string | null
-          himax_firmware_id: string | null
-          himax_firmware_updated_at: string | null
           id: string
-          last_battery_check: string | null
-          last_sd_card_check: string | null
           modified_by: string
           name: string
           organisation_id: string | null
-          sd_card_capacity_total_kb: number | null
-          sd_card_capacity_used_kb: number | null
           updated_at: string | null
         }
         Insert: {
-          battery_level?: number | null
-          ble_firmware_id?: string | null
-          ble_firmware_updated_at?: string | null
           bluetooth_id: string
-          config_firmware_id?: string | null
-          config_firmware_updated_at?: string | null
           created_at?: string | null
           deleted_at?: string | null
           device_eui?: string | null
-          himax_firmware_id?: string | null
-          himax_firmware_updated_at?: string | null
           id?: string
-          last_battery_check?: string | null
-          last_sd_card_check?: string | null
           modified_by: string
           name: string
           organisation_id?: string | null
-          sd_card_capacity_total_kb?: number | null
-          sd_card_capacity_used_kb?: number | null
           updated_at?: string | null
         }
         Update: {
-          battery_level?: number | null
-          ble_firmware_id?: string | null
-          ble_firmware_updated_at?: string | null
           bluetooth_id?: string
-          config_firmware_id?: string | null
-          config_firmware_updated_at?: string | null
           created_at?: string | null
           deleted_at?: string | null
           device_eui?: string | null
-          himax_firmware_id?: string | null
-          himax_firmware_updated_at?: string | null
           id?: string
-          last_battery_check?: string | null
-          last_sd_card_check?: string | null
           modified_by?: string
           name?: string
           organisation_id?: string | null
-          sd_card_capacity_total_kb?: number | null
-          sd_card_capacity_used_kb?: number | null
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "devices_ble_firmware_id_fkey"
-            columns: ["ble_firmware_id"]
-            isOneToOne: false
-            referencedRelation: "firmware"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "devices_config_firmware_id_fkey"
-            columns: ["config_firmware_id"]
-            isOneToOne: false
-            referencedRelation: "firmware"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "devices_himax_firmware_id_fkey"
-            columns: ["himax_firmware_id"]
-            isOneToOne: false
-            referencedRelation: "firmware"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "devices_organisation_id_fkey"
             columns: ["organisation_id"]
@@ -1470,8 +1416,11 @@ export type Database = {
     Views: {
       deployment_overview: {
         Row: {
+          accuracy: number | null
+          altitude: number | null
           ble_firmware_id: string | null
           bluetooth_id: string | null
+          camera_height: number | null
           camera_location_image_paths: Json | null
           config_firmware_id: string | null
           created_at: string | null
@@ -1489,6 +1438,7 @@ export type Database = {
           geolocation: unknown
           himax_firmware_id: string | null
           latitude: number | null
+          location_description: string | null
           location_name: string | null
           longitude: number | null
           organisation_id: string | null
@@ -1501,21 +1451,21 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "devices_ble_firmware_id_fkey"
+            foreignKeyName: "device_preparation_ble_firmware_id_fkey"
             columns: ["ble_firmware_id"]
             isOneToOne: false
             referencedRelation: "firmware"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "devices_config_firmware_id_fkey"
+            foreignKeyName: "device_preparation_config_firmware_id_fkey"
             columns: ["config_firmware_id"]
             isOneToOne: false
             referencedRelation: "firmware"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "devices_himax_firmware_id_fkey"
+            foreignKeyName: "device_preparation_himax_firmware_id_fkey"
             columns: ["himax_firmware_id"]
             isOneToOne: false
             referencedRelation: "firmware"
@@ -1989,7 +1939,6 @@ export type Database = {
             }
             Returns: string
           }
-      check_user_exists: { Args: { p_email: string }; Returns: boolean }
       check_user_uploader_role: {
         Args: { p_org_id: string; p_user_id: string }
         Returns: boolean

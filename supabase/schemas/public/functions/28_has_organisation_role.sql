@@ -55,3 +55,6 @@ END;
 $$;
 
 COMMENT ON FUNCTION has_organisation_role IS 'OPTIMIZED: Context7 evidence-based organisation role checker. System admins (ww_admin) have unrestricted access to all organisations. Updated 2025-11-28 to fix ww_admin scoping.';
+
+-- Ensure authenticated users can execute
+GRANT EXECUTE ON FUNCTION public.has_organisation_role(uuid, uuid, text) TO authenticated;

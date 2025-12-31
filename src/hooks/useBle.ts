@@ -313,8 +313,7 @@ export const useBle = (): ReturnType => {
 					log("Discovered services: " + JSON.stringify(services))
 
 					// Cast to correct type
-					const peripheralInfo = services as PeripheralInfo
-					newPeripheral.services = extractServiceAndCharacteristic(peripheralInfo as any)
+					newPeripheral.services = extractServiceAndCharacteristic(services as unknown as Services)
 
 					const {
 						serviceCharacteristic,

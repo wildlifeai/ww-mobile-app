@@ -43,6 +43,23 @@ export const DeploymentDetailsStep = () => {
     const deviceConfig = useAppSelector(state => state.configuration[bleDeviceId])
     const user = useAppSelector(state => state.authentication.user)
 
+    // Sanity Check: Ensure required params are present
+    if (!devicePreparationId) {
+        return (
+            <WWScreenView>
+                <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                    <Text variant="headlineMedium" style={{ marginBottom: 16 }}>Error</Text>
+                    <Text variant="bodyLarge" style={{ marginBottom: 24, textAlign: 'center' }}>
+                        Missing Device Preparation ID. Unable to proceed with deployment.
+                    </Text>
+                    <Button mode="contained" onPress={() => navigation.goBack()}>
+                        Go Back
+                    </Button>
+                </View>
+            </WWScreenView>
+        )
+    }
+
     // BLE Hooks
     const { getUtc, setUtc, setDeploymentIdAsOps, disconnectDevice, enableCamera, runDisconnect, getStatus, flashLed, setOperationalParam, setGpsLocation } = useBleCommands()
     const { updateSettings } = useDeviceSettings({ device: bleDevice })
@@ -228,6 +245,16 @@ export const DeploymentDetailsStep = () => {
             return
         }
 
+        // Connection Sanity Check
+        if (!bleDevice?.connected) {
+            Alert.alert(
+                'Device Disconnected',
+                'Please ensure the device is connected before starting the deployment.',
+                [{ text: 'OK' }]
+            )
+            return
+        }
+
         if (!project || !user) {
             Alert.alert('Error', 'Missing project or user information. Please wait for data to load.')
             return
@@ -351,7 +378,7 @@ export const DeploymentDetailsStep = () => {
                 if (isMotionDetect) {
                     console.log('[Deployment] Mode: Activity Detection. Setting motion interval to 1000ms & disabling timelapse.')
                     await updateSettings({
-                        motionDetectInterval: sensitivityId ? 1000 : 1000,
+                        motionDetectInterval: 1000,
                         timelapseInterval: 0,
                         cameraEnabled: true // Enable camera to ensure motion settings are accepted
                     })
