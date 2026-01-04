@@ -148,7 +148,7 @@ BEGIN
     pi.project_id,
     p.name AS project_name,
     pi.inviter_id,
-    u.email AS inviter_email,
+    u.email::TEXT AS inviter_email,
     COALESCE(up.firstname || ' ' || up.surname, 'Unknown') AS inviter_name,
     pi.role,
     pi.created_at,

@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 99,
+    version: 104,
     tables: [
         tableSchema({
             name: 'activity_sensitivity',
@@ -101,6 +101,20 @@ export default appSchema({
                 { name: 'is_active', type: 'boolean' },
                 { name: 'value', type: 'string' },
                 { name: 'server_id', type: 'number', isIndexed: true },
+                // System & Sync Fields
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+                { name: 'modified_by', type: 'string' },
+            ],
+        }),
+        tableSchema({
+            name: 'debug_storage_logs',
+            columns: [
+                { name: 'details', type: 'string', isOptional: true },
+                { name: 'message', type: 'string', isOptional: true },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },

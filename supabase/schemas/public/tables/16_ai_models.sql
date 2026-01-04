@@ -39,3 +39,43 @@ CREATE POLICY "Enable read access for authenticated users" ON "public"."ai_model
 AS PERMISSIVE FOR SELECT
 TO authenticated
 USING (true);
+
+CREATE POLICY "Organisation managers can manage their models" ON "public"."ai_models"
+AS PERMISSIVE FOR ALL
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = auth.uid()
+      AND role = 'organisation_manager'
+      AND scope_type = 'organisation'
+      AND scope_id = ai_models.organisation_id
+      AND is_active = true
+      AND deleted_at IS NULL
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = auth.uid()
+      AND role = 'organisation_manager'
+      AND scope_type = 'organisation'
+      AND scope_id = ai_models.organisation_id
+      AND is_active = true
+      AND deleted_at IS NULL
+  )
+);
+
+CREATE POLICY "System admins can manage all models" ON "public"."ai_models"
+AS PERMISSIVE FOR ALL
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = auth.uid()
+      AND role = 'ww_admin'
+      AND scope_type = 'system'
+      AND is_active = true
+      AND deleted_at IS NULL
+  )
+);

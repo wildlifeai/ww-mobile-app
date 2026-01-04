@@ -54,5 +54,10 @@ COMMENT ON COLUMN user_roles.modified_by IS 'ID of the user who last modified th
 
 ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY "Users can view their own roles" ON "public"."user_roles"
+AS PERMISSIVE FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
+
 -- Ensure authenticated users can select (RLS will still apply)
 GRANT SELECT ON public.user_roles TO authenticated;

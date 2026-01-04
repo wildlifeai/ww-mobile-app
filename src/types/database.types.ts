@@ -386,6 +386,27 @@ export type Database = {
         }
         Relationships: []
       }
+      debug_storage_logs: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          id: string
+          message: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          message?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          message?: string | null
+        }
+        Relationships: []
+      }
       deployment_statuses: {
         Row: {
           created_at: string | null
@@ -1515,6 +1536,24 @@ export type Database = {
         }
         Relationships: []
       }
+      my_model_upload_permissions: {
+        Row: {
+          role: string | null
+          scope_id_text: string | null
+          scope_type: string | null
+        }
+        Insert: {
+          role?: string | null
+          scope_id_text?: never
+          scope_type?: string | null
+        }
+        Update: {
+          role?: string | null
+          scope_id_text?: never
+          scope_type?: string | null
+        }
+        Relationships: []
+      }
       organisation_members_detailed: {
         Row: {
           is_ww_admin: boolean | null
@@ -1943,6 +1982,7 @@ export type Database = {
         Args: { p_org_id: string; p_user_id: string }
         Returns: boolean
       }
+      debug_get_policies: { Args: never; Returns: Json }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -2841,6 +2881,10 @@ export type Database = {
       st_wrapx: {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
+      }
+      storage_can_upload_model: {
+        Args: { bucket_id: string; object_name: string }
+        Returns: boolean
       }
       to_timestamp_ms: { Args: { epoch_ms: number }; Returns: string }
       unlockrows: { Args: { "": string }; Returns: number }
