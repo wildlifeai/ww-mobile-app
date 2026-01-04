@@ -208,7 +208,20 @@ if (project.capture_method_id === 1) {
 **Why Disable Camera?**
 - Prevents accidental captures during transport
 - Saves battery
+
 - Settings are preserved in CONFIG.TXT
+
+> **IMPORTANT**:
+> While **Preparation** disables the camera (`cameraEnabled: false`), **Deployment** MUST enable it (`cameraEnabled: true`) during the configuration phase. This is because setting `MD_INTERVAL` (Op 11) while the camera is disabled causes the setting to be ignored by the firmware.
+>
+> **Deployment Logic:**
+> ```typescript
+> await updateSettings({
+>     cameraEnabled: true,  // MUST be true for Op 11 to persist
+>     motionDetectInterval: 1000,
+>     timelapseInterval: 0
+> })
+> ```
 
 **Step 6:** Save preparation record to WatermelonDB
 

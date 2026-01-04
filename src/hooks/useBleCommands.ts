@@ -159,8 +159,10 @@ export const useBleCommands = () => {
 
     const clearGpsLocation = useCallback(async (peripheral: ExtendedPeripheral) => {
         console.log('[BLE CMD] Clearing GPS location on device:', peripheral.id)
-        // Sending setgps "0 0 0" to clear (firmware expects 3 args)
-        await write(peripheral, [[CommandNames.setgps, { control: CommandControlTypes.WRITE, value: "0 0 0" }]])
+        // Use formatGPSString to generate properly formatted DMS string
+        // Firmware expects format like: "0°0'0.00\"_N_0°0'0.00\"_E_0.00_Above"
+        const gpsString = formatGPSString(0, 0, 0)
+        await write(peripheral, [[CommandNames.setgps, { control: CommandControlTypes.WRITE, value: gpsString }]])
     }, [write])
 
     const setMotionDetectInterval = useCallback(async (peripheral: ExtendedPeripheral, intervalMs: number) => {
@@ -195,22 +197,24 @@ export const useBleCommands = () => {
                 ops = parseUuidToOps(id)
             }
 
-            // Send 8 commands
-            // Start index 20
+            // Send 8 commands with delays between each
+            // The device enters DPD after each command completes, so EVERY command wakes it
             for (let i = 0; i < 8; i++) {
                 const opIndex = 20 + i
                 const value = ops[i]
                 console.log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
-                // Reuse existing setOperationalParam logic manually to avoid hook recursion issues if any
-                // or just call write directly
+
                 await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]])
 
-                // The first command (OP20) might wake the device from DPD.
-                // If we send the next command too fast (global PAUSE is 50ms), the firmware might drop it.
-                // We add an explicit delay after the first chunk to allow for wake-up.
-                if (i === 0) {
-                    console.log('[BLE CMD] Pausing for device wake-up (optimized)...')
-                    await new Promise(r => setTimeout(r, 200))
+                // Add delay after each command except the last one
+                // Device sleeps after processing each setop (~100-200ms), then next command wakes it
+                // We need to ensure previous command fully completes before next arrives
+                if (i < 7) {  // Don't delay after the last command
+                    // CRITICAL: First command needs MUCH longer delay (device waking from DPD)
+                    // Subsequent commands can use shorter delays as device stays awake
+                    const delay = i === 0 ? 600 : 150  // 600ms first wake, 150ms for subsequent
+                    console.log(`[BLE CMD] Inter-command delay: ${delay}ms (preventing firmware discard)`)
+                    await new Promise(r => setTimeout(r, delay))
                 }
             }
             console.log('[BLE CMD] Deployment ID OPs sent successfully')
@@ -255,9 +259,5 @@ export const useBleCommands = () => {
         setOperationalParam,
         setGpsLocation,
         clearGpsLocation,
-        setMotionDetectInterval,
-        disableMotionDetect,
-        setTimelapseInterval,
-        disableTimelapse,
     }
 }

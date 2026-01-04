@@ -227,7 +227,7 @@ export const ProjectMembersScreen: React.FC = () => {
 			await InvitationService.sendInvitation(
 				projectId,
 				inviteEmail.trim(),
-				inviteRole
+				inviteRole as "project_admin" | "project_member"
 			)
 
 			Alert.alert("Success", "Invitation sent successfully")

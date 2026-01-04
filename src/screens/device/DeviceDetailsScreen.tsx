@@ -91,7 +91,7 @@ export const DeviceDetailsScreen = () => {
     }
 
 
-    const { device, status, activeDeployment, preparedDate } = deviceWithStatus
+    const { device, status, activeDeployment, lastPreparation, preparedDate } = deviceWithStatus
 
     const isValidDate = (date: any) => {
         if (!date) return false
@@ -140,13 +140,13 @@ export const DeviceDetailsScreen = () => {
                             </WWText>
                         </View>
 
-                        {(device.bleFirmwareId || device.himaxFirmwareId) && (
+                        {(lastPreparation?.bleFirmwareId || lastPreparation?.himaxFirmwareId) && (
                             <View style={styles.infoRow}>
                                 <WWText variant="bodySmall" style={styles.label}>Firmware:</WWText>
                                 <WWText variant="bodyMedium" style={styles.value}>
-                                    {device.bleFirmwareId ? `BLE: ${device.bleFirmwareId}` : ''}
-                                    {device.bleFirmwareId && device.himaxFirmwareId ? '\n' : ''}
-                                    {device.himaxFirmwareId ? `Himax: ${device.himaxFirmwareId}` : ''}
+                                    {lastPreparation?.bleFirmwareId ? `BLE: ${lastPreparation.bleFirmwareId}` : ''}
+                                    {lastPreparation?.bleFirmwareId && lastPreparation?.himaxFirmwareId ? '\n' : ''}
+                                    {lastPreparation?.himaxFirmwareId ? `Himax: ${lastPreparation.himaxFirmwareId}` : ''}
                                 </WWText>
                             </View>
                         )}
@@ -156,7 +156,7 @@ export const DeviceDetailsScreen = () => {
                                 <View style={styles.infoRow}>
                                     <WWText variant="bodySmall" style={styles.label}>Battery Level:</WWText>
                                     <WWText variant="bodyMedium" style={styles.value}>
-                                        {device.batteryLevel !== undefined && device.batteryLevel !== null ? `🔋 ${device.batteryLevel}%` : 'Unknown'}
+                                        {lastPreparation?.batteryLevelAtCheck !== undefined && lastPreparation?.batteryLevelAtCheck !== null ? `🔋 ${lastPreparation.batteryLevelAtCheck}%` : 'Unknown'}
                                     </WWText>
                                 </View>
 

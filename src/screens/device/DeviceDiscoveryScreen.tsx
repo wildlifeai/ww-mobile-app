@@ -255,7 +255,7 @@ export const DeviceDiscoveryScreen = () => {
                                         {
                                             text: "Go to Preparation", onPress: () => {
                                                 (navigation as any).navigate('PrepareAndTest', {
-                                                    deviceId: dbDevice.id,
+                                                    deviceId: dbDevice!.id,
                                                     bleDeviceId: connectedDevice.id,
                                                     nextRoute: 'DeploymentDetailsStep' // Pass next route to auto-navigate after prep
                                                 })

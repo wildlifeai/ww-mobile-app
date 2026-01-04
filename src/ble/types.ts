@@ -460,7 +460,7 @@ export type Services = {
 	characteristics: Characteristic[]
 	services: Service[]
 	advertising: Advertising
-	name: string
+	name?: string
 	rssi: number
 	id: string
 }

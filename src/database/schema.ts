@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 70,
+    version: 104,
     tables: [
         tableSchema({
             name: 'activity_sensitivity',
@@ -101,6 +101,20 @@ export default appSchema({
                 { name: 'is_active', type: 'boolean' },
                 { name: 'value', type: 'string' },
                 { name: 'server_id', type: 'number', isIndexed: true },
+                // System & Sync Fields
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+                { name: 'modified_by', type: 'string' },
+            ],
+        }),
+        tableSchema({
+            name: 'debug_storage_logs',
+            columns: [
+                { name: 'details', type: 'string', isOptional: true },
+                { name: 'message', type: 'string', isOptional: true },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },
@@ -204,21 +218,10 @@ export default appSchema({
         tableSchema({
             name: 'devices',
             columns: [
-                { name: 'battery_level', type: 'number', isOptional: true },
-                { name: 'ble_firmware_id', type: 'string', isOptional: true, isIndexed: true },
-                { name: 'ble_firmware_updated_at', type: 'string', isOptional: true },
                 { name: 'bluetooth_id', type: 'string', isIndexed: true },
-                { name: 'config_firmware_id', type: 'string', isOptional: true, isIndexed: true },
-                { name: 'config_firmware_updated_at', type: 'string', isOptional: true },
                 { name: 'device_eui', type: 'string', isOptional: true },
-                { name: 'himax_firmware_id', type: 'string', isOptional: true, isIndexed: true },
-                { name: 'himax_firmware_updated_at', type: 'string', isOptional: true },
-                { name: 'last_battery_check', type: 'string', isOptional: true },
-                { name: 'last_sd_card_check', type: 'string', isOptional: true },
                 { name: 'name', type: 'string' },
                 { name: 'organisation_id', type: 'string', isOptional: true, isIndexed: true },
-                { name: 'sd_card_capacity_total_kb', type: 'number', isOptional: true },
-                { name: 'sd_card_capacity_used_kb', type: 'number', isOptional: true },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },

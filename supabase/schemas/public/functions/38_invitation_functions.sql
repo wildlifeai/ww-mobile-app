@@ -139,7 +139,8 @@ AS $$
 DECLARE
   v_user_email TEXT;
 BEGIN
-  SELECT email INTO v_user_email FROM auth.users WHERE id = auth.uid();
+  -- FIX: Aliased auth.users to 'au' and used 'au.id' to resolve ambiguity
+  SELECT email INTO v_user_email FROM auth.users au WHERE au.id = auth.uid();
   
   RETURN QUERY
   SELECT
@@ -147,7 +148,7 @@ BEGIN
     pi.project_id,
     p.name AS project_name,
     pi.inviter_id,
-    u.email AS inviter_email,
+    u.email::TEXT AS inviter_email,
     COALESCE(up.firstname || ' ' || up.surname, 'Unknown') AS inviter_name,
     pi.role,
     pi.created_at,

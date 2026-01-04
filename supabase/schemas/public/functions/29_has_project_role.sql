@@ -84,3 +84,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION has_project_role IS 'OPTIMIZED: Context7 evidence-based project role checker with complete hierarchy (direct/org/system). System admins (ww_admin) have unrestricted access. Updated 2025-11-28 to fix ww_admin scoping.';
+
+-- Ensure authenticated users can execute
+GRANT EXECUTE ON FUNCTION public.has_project_role(uuid, uuid, text) TO authenticated;
+

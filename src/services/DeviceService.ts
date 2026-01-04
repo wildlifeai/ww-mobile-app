@@ -180,7 +180,7 @@ export const DeviceService = {
             name: device.name,
             bluetoothId: device.bluetoothId,
             status: deviceWithStatus?.status || 'needs_preparation',
-            batteryLevel: device.batteryLevel || undefined,
+            batteryLevel: deviceWithStatus?.lastPreparation?.batteryLevelAtCheck || undefined,
             deploymentName: deviceWithStatus?.activeDeployment?.name || lastDeployment?.name,
             deploymentId: deviceWithStatus?.activeDeployment?.id || lastDeployment?.id,
             deploymentEndDate: (deviceWithStatus?.activeDeployment?.deploymentEnd || lastDeployment?.deploymentEnd)
@@ -207,12 +207,6 @@ export const DeviceService = {
                 device.bluetoothId = bluetoothId
                 device.name = name
                 device.organisationId = organisationId
-                device.batteryLevel = 0 // Default
-                device.bleFirmwareId = '' // Default
-                device.configFirmwareId = ''
-                device.himaxFirmwareId = ''
-                device.lastBatteryCheck = ''
-                device.lastSdCardCheck = ''
             })
 
             const outboxOp = OutboxService.recordOperation({
@@ -224,13 +218,6 @@ export const DeviceService = {
                     bluetooth_id: bluetoothId,
                     name: name,
                     organisation_id: organisationId || null,
-                    battery_level: 0,
-                    ble_firmware_id: null,
-                    config_firmware_id: null,
-                    himax_firmware_id: null,
-                    last_battery_check: null,
-                    last_sd_card_check: null,
-                    // Timestamps will be handled by backend or defaults
                     modified_by: userId
                 }
             })

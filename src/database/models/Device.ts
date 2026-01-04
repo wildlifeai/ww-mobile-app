@@ -6,13 +6,8 @@ export default class Device extends Model {
 
     @field('bluetooth_id') bluetoothId!: string
     @field('name') name!: string
-    @field('battery_level') batteryLevel!: number
     @field('organisation_id') organisationId!: string
-    @field('ble_firmware_id') bleFirmwareId?: string
-    @field('config_firmware_id') configFirmwareId?: string
-    @field('himax_firmware_id') himaxFirmwareId?: string
-    @field('last_battery_check') lastBatteryCheck!: string
-    @field('last_sd_card_check') lastSdCardCheck!: string
+    @field('device_eui') deviceEui?: string
     @field('modified_by') modifiedBy!: string
 
     @readonly @date('created_at') createdAt!: Date

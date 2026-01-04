@@ -129,24 +129,34 @@ Sent as:
 The device is configured according to the project's capture requirements.
 
 **For Activity Detection:**
+- **Enables Camera**: `AI setop 10 1` (Must be enabled for value to persist)
 - Sets motion detection interval: `AI setop 11 1000` (1000ms)
 - Disables timelapse: `AI setop 7 0`
 
 **For Timelapse:**
+- **Enables Camera**: `AI setop 10 1`
 - Sets timelapse interval: `AI setop 7 <seconds>` (from project config)
 - Disables motion detection: `AI setop 11 0`
 
 **For Both (Activity + Timelapse):**
+- **Enables Camera**: `AI setop 10 1`
 - Sets motion detection interval: `AI setop 11 1000`
 - Sets timelapse interval: `AI setop 7 <seconds>`
 
-#### 10. Enable Camera & Disconnect
+#### 10. Enable Camera, Reset & Disconnect
 
-1. **Enable Camera**: Sends `AI setop 10 1` to activate the camera and AI system
-2. **Visual Confirmation**: Flashes green LED (2 times, 500ms, 1000ms duration)
-3. **Disconnect**: Sends `dis` command to gracefully close BLE connection
+1. **Enable Camera**: Explicitly ensures camera is enabled (`AI setop 10 1`) if not already set.
+2. **Visual Confirmation**: Flashes green LED (5 times, 500ms each)
+3. **Reset Device**: Sends `reset` command (**CRITICAL** - forces device to reboot and enter motion detection mode)
+4. **Disconnect**: Sends `dis` command to gracefully close BLE connection
 
-The device enters low-power monitoring state and begins capturing according to the configured method.
+> [!IMPORTANT]
+> **The reset command is essential!** Without it, the device stays in DPD and never enters motion detection mode. The reset causes the HiMAX processor to:
+> - Read the updated CONFIG.TXT parameters
+> - Initialize the camera in motion detection mode (Mode 2)
+> - Begin monitoring for motion/timelapse triggers
+
+The device reboots and enters low-power monitoring state, capturing according to the configured method.
 
 ### Success State
 
@@ -293,10 +303,10 @@ Tapping "View Details" navigates to the deployment record showing:
 | 4 | Time Check | `getutc`, `setutc [timestamp]` | - |
 | 5 | DB Create | - | Create deployment record with snapshots |
 | 6 | ID Sync | `AI setop 20 [value]` × 8 (retry 3x) | - |
-| 7 | Configure | Activity: `AI setop 11 1000`, `AI setop 7 0` | - |
-| | | Timelapse: `AI setop 7 [secs]`, `AI setop 11 0` | - |
-| 8 | Enable | `AI setop 10 1` | - |
-| 9 | Confirm | `flashg 2 500 1000` | - |
+| 7 | Configure | Activity: `AI setop 10 1`, `AI setop 11 1000`, `AI setop 7 0` | - |
+| | | Timelapse: `AI setop 10 1`, `AI setop 7 [secs]`, `AI setop 11 0` | - |
+| 8 | Enable | `AI setop 10 1` (Redundant check) | - |
+| 9 | Confirm | `flashg 5 500` | - |
 | 10 | Disconnect | `dis` | Mark device as deployed |
 | 11 | Sync | - | Push to Supabase via SupabaseSyncService |
 

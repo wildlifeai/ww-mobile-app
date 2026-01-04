@@ -66,4 +66,9 @@ COMMENT ON COLUMN deployments.capture_method_id IS 'Mode of capture (timelapse, 
 COMMENT ON COLUMN deployments.project_id IS 'Project this deployment belongs to.';
 COMMENT ON COLUMN deployments.device_id IS 'Device used in this deployment.';
 COMMENT ON COLUMN deployments.location_data IS 'Raw JSON location data from the mobile app.';
+
 ALTER TABLE deployments ENABLE ROW LEVEL SECURITY;
+
+-- Ensure authenticated users can select (RLS will still apply)
+GRANT SELECT ON public.deployments TO authenticated;
+

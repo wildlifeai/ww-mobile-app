@@ -433,12 +433,7 @@ class SupabaseSyncService {
                                                     bluetooth_id: localDevice.bluetoothId,
                                                     name: localDevice.name,
                                                     organisation_id: localDevice.organisationId || null,
-                                                    battery_level: localDevice.batteryLevel,
-                                                    ble_firmware_id: localDevice.bleFirmwareId || null,
-                                                    config_firmware_id: localDevice.configFirmwareId || null,
-                                                    himax_firmware_id: localDevice.himaxFirmwareId || null,
-                                                    last_battery_check: localDevice.lastBatteryCheck || null,
-                                                    last_sd_card_check: localDevice.lastSdCardCheck || null,
+                                                    device_eui: localDevice.deviceEui || null,
                                                     modified_by: currentUserId
                                                 })
                                                 op.version = 0
@@ -929,13 +924,8 @@ class SupabaseSyncService {
                     await existing.update((rec) => {
                         rec.bluetoothId = row.bluetooth_id
                         rec.name = row.name
-                        rec.batteryLevel = row.battery_level ?? 0
                         rec.organisationId = row.organisation_id ?? ''
-                        rec.bleFirmwareId = row.ble_firmware_id ?? undefined
-                        rec.configFirmwareId = row.config_firmware_id ?? undefined
-                        rec.himaxFirmwareId = row.himax_firmware_id ?? undefined
-                        rec.lastBatteryCheck = row.last_battery_check ?? ''
-                        rec.lastSdCardCheck = row.last_sd_card_check ?? ''
+                        rec.deviceEui = row.device_eui ?? undefined
                         rec.updatedAt = new Date(row.updated_at ?? Date.now())
                     })
                 } catch (e) {
@@ -944,13 +934,8 @@ class SupabaseSyncService {
                         rec._raw.id = row.id || '' // Use server ID
                         rec.bluetoothId = row.bluetooth_id
                         rec.name = row.name
-                        rec.batteryLevel = row.battery_level ?? 0
                         rec.organisationId = row.organisation_id ?? ''
-                        rec.bleFirmwareId = row.ble_firmware_id ?? undefined
-                        rec.configFirmwareId = row.config_firmware_id ?? undefined
-                        rec.himaxFirmwareId = row.himax_firmware_id ?? undefined
-                        rec.lastBatteryCheck = row.last_battery_check ?? ''
-                        rec.lastSdCardCheck = row.last_sd_card_check ?? '';
+                        rec.deviceEui = row.device_eui ?? undefined;
                         // Use _raw to bypass @readonly check
                         (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
                         rec.updatedAt = new Date(row.updated_at ?? Date.now())

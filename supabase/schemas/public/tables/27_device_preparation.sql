@@ -79,3 +79,7 @@ COMMENT ON COLUMN device_preparation.modified_by IS 'User who last modified this
 COMMENT ON COLUMN device_preparation.deleted_at IS 'Soft delete timestamp - NULL means active';
 
 ALTER TABLE device_preparation ENABLE ROW LEVEL SECURITY;
+
+-- Ensure authenticated users can select (RLS will still apply)
+GRANT SELECT ON public.device_preparation TO authenticated;
+
