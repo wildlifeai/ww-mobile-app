@@ -253,7 +253,7 @@ export const useBleCommands = () => {
             }
             console.log('[BLE CMD] Deployment ID OPs sent successfully')
         },
-        [write] // Keep dependency for linter, though we use direct import
+        [] // No dependencies needed as we use direct import
     )
 
     return {

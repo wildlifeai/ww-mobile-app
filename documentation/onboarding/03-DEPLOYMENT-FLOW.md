@@ -264,7 +264,7 @@ LED sequence provides clear visual feedback that deployment has ended:
 - Wait 2.5s -> OP 19 -> Wait 1.5s
 - Status: "Finalizing..."
 
-**Step 6: Disconnect**
+**Step 7: Disconnect**
 - Sends `dis` command to device
 - Closes BLE connection gracefully
 - Status: "Disconnecting..."
@@ -327,10 +327,10 @@ Tapping "View Details" navigates to the deployment record showing:
 | 3 | Clear ID | `AI setop 20 0` × 8 (retry 3x) | - |
 | 4 | Clear GPS | `setgps ""` | - |
 | 5 | DB Update | - | Set deployment_end, ended_by, comments |
-| 5 | DB Update | - | Set deployment_end, ended_by, comments |
-| 6 | Latch | **DPD Latch Cycle** | *Persist Stop Settings* |
-| 7 | Disconnect | `dis` | Mark device as available |
-| 8 | Sync | - | Push to Supabase via SupabaseSyncService |
+| 6 | LED Sequence | `flashg 1 1000`, `flashb 1 1000`, `flashr 1 1000`, `flashg 1 4000` | - |
+| 7 | Latch | **DPD Latch Cycle** | *Persist Stop Settings* |
+| 8 | Disconnect | `dis` | Mark device as available |
+| 9 | Sync | - | Push to Supabase via SupabaseSyncService |
 
 ---
 

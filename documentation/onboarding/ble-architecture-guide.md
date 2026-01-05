@@ -260,8 +260,7 @@ The AI processor enters **Deep Power Down mode** after 1000ms of inactivity to c
 ```c
 // From aiProcessor.c line 702-708
 if (i2cTxPendingMsg != NULL) {
-// From aiProcessor.c line 702-708
-if (i2cTxPendingMsg != NULL) {
+
     LOG("Discarding message as there is already one pending");
 }
 ```

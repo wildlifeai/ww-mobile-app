@@ -258,7 +258,6 @@ export const EngineerConsoleScreen = () => {
                 case 'Heartbeat': await getHeartbeat(device); break;
                 case 'Flash Red': await flashLed(device, 'red', 1000, 3); break;
                 case 'Flash Green': await flashLed(device, 'green', 1000, 3); break;
-                case 'Flash Green': await flashLed(device, 'green', 1000, 3); break;
                 case 'Flash Blue': await flashLed(device, 'blue', 1000, 3); break;
 
                 // --- Maintenance ---
