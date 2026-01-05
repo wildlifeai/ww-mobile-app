@@ -113,7 +113,8 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword(credentials);
+      const client = getSupabaseClient();
+      const { data, error } = await client.auth.signInWithPassword(credentials);
       if (error) throw error;
       return data.user;
     } catch (error: any) {

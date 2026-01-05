@@ -288,7 +288,7 @@ Google Maps SDK (Android) / MapKit (iOS)
 
 The app uses Supabase for backend communication and WatermelonDB for local persistence.
 
-> **✅ Integration Status**: This app is fully integrated with Supabase. The backend project is located at `~/dev/wildlifeai/wildlife-watcher-backend`. We use the Supabase JS client for Auth and WatermelonDB's Sync Engine for offline-first data synchronization.
+> **✅ Integration Status**: This app is fully integrated with Supabase. The backend project is located at `~/dev/wildlifeai/wildlife-watcher-backend`. We use the Supabase JS client via a **factory pattern** (`getSupabaseClient()`) for Auth and WatermelonDB's Sync Engine for offline-first data synchronization.
 
 ## Development Workflow Integration
 

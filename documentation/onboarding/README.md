@@ -91,7 +91,7 @@ These documents explain the functional workflows of the app:
 **Find where authentication happens**:
 - `src/redux/slices/authSlice.ts` - Redux state
 - `src/services/auth.ts` - Authentication service
-- `src/services/supabase.ts` - Supabase client
+- `src/services/supabase.ts` - Supabase client (factory)
 
 **Understand offline sync**:
 - `src/services/SupabaseSyncService.ts` - Main sync logic
@@ -107,7 +107,7 @@ These documents explain the functional workflows of the app:
 **Work with the API**:
 - `src/redux/api/` - RTK Query API definitions
 - `src/services/database.ts` - Typed Supabase operations
-- `src/types/supabase.ts` - Generated TypeScript types
+- `src/types/database.types.ts` - Generated TypeScript types
 
 **Work with BLE Commands**:
 - [BLE Architecture Guide](../ble-architecture-guide.md) - **Read this first!**

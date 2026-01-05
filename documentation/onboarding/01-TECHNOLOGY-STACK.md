@@ -4,7 +4,7 @@ Complete guide to the technologies powering Wildlife Watcher, with real examples
 
 ## Core Technologies
 
-### React Native 0.74.5
+### React Native 0.81.5
 
 **What it is**: Framework for building native mobile apps using React.
 
@@ -102,7 +102,7 @@ export const useAppDispatch = () => useDispatch<AppDispatch>()
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector
 ```
 
-### Expo SDK 51
+### Expo SDK 54
 
 **What it is**: Tools and libraries that make React Native development easier.
 
@@ -369,14 +369,12 @@ export default class Project extends Model {
 
 **What it is**: Open-source Firebase alternative providing PostgreSQL database, authentication, and storage.
 
-**Client Setup**: src/services/supabase.ts
+**Client Setup**: `src/services/supabase.ts`
 ```typescript
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from './src/services/supabase';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Always use the factory function
+const supabase = getSupabaseClient();
 ```
 
 **Typed Operations**: src/services/database.ts:16-56
