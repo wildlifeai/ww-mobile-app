@@ -1,2 +1,0 @@
-# Exclude implementation spec from Claude Code context to reduce token usage
-project-context/development-context/MVP2/implementation-spec-v1.4.md

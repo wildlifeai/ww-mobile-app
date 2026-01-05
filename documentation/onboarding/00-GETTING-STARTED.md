@@ -241,7 +241,7 @@ Start exploring the codebase with these essential files:
 3. **`src/navigation/index.tsx`** - Navigation structure
 4. **`src/services/SupabaseSyncService.ts`** - Core sync logic
 5. **`src/database/models/Project.ts`** - Example data model
-6. **`src/types/supabase.ts`** - Generated TypeScript types from database schema
+6. **`src/types/database.types.ts`** - Generated TypeScript types from database schema
 
 ## Development Environment
 
@@ -276,7 +276,7 @@ npm run test
 npm run lint
 
 # Generate Supabase types (when backend changes)
-npm run supabase:types
+npm run types:cloud-dev
 ```
 
 ## Common Patterns You'll See

@@ -15,7 +15,7 @@ The Wildlife Watcher mobile app uses Supabase as its backend-as-a-service platfo
 
 ### Key Files
 - **Client:** `src/services/supabase.ts`
-- **Types:** `src/types/supabase.ts`
+- **Types:** `src/types/database.types.ts`
 - **Auth Service:** `src/services/auth.ts`
 - **Database Setup:** `src/database/index.ts`
 - **Sync Service:** `src/services/SupabaseSyncService.ts`
@@ -92,7 +92,9 @@ The backend provides 10 core tables for wildlife monitoring:
 ### Basic Usage
 
 ```typescript
-import { supabase } from '../services/supabase';
+import { getSupabaseClient } from '../services/supabase';
+
+const supabase = getSupabaseClient();
 
 // Query data
 const { data, error } = await supabase
@@ -111,7 +113,7 @@ const { data, error } = await supabase
 All operations are fully typed using generated TypeScript definitions:
 
 ```typescript
-import type { Database } from '../types/supabase';
+import type { Database } from '../types/database.types';
 
 // Fully typed table operations
 type Project = Database['public']['Tables']['projects']['Row'];

@@ -227,7 +227,7 @@ const store = configureStore({
 ```
 services/
 ├── auth.ts                # Authentication service
-├── supabase.ts            # Supabase client
+├── supabase.ts            # Supabase client (factory)
 ├── database.ts            # Typed Supabase operations
 ├── ProjectService.ts      # Project operations
 ├── ProjectMemberService.ts # Member management
@@ -264,7 +264,7 @@ export class ProjectService {
 ```
 types/
 ├── index.ts               # Barrel exports
-├── supabase.ts            # Generated from database schema
+├── database.types.ts      # Generated from database schema
 ├── offline.ts             # Offline operation types
 ├── api.types.ts           # API request/response types
 ├── database.types.ts      # Database entity types
@@ -272,7 +272,7 @@ types/
 └── expo-constants.d.ts    # Expo type declarations
 ```
 
-**Generated Types**: `src/types/supabase.ts`
+**Generated Types**: `src/types/database.types.ts`
 ```typescript
 // Auto-generated from Supabase schema
 export interface Database {
@@ -382,9 +382,9 @@ project-context/
     "lint": "eslint ."
   },
   "dependencies": {
-    "react": "18.2.0",
-    "react-native": "0.74.5",
-    "expo": "~51.0.0",
+    "react": "18.3.1",
+    "react-native": "0.81.5",
+    "expo": "~54.0.0",
     "@reduxjs/toolkit": "^2.2.1",
     "@supabase/supabase-js": "^2.53.0",
     "expo-sqlite": "~14.0.6",
@@ -417,7 +417,7 @@ project-context/
 ### "Where is the authentication logic?"
 - **Redux State**: `src/redux/slices/authSlice.ts`
 - **Service Layer**: `src/services/auth.ts`
-- **Supabase**: `src/services/supabase.ts`
+- **Supabase**: `src/services/supabase.ts` (use `getSupabaseClient()`)
 
 ### "Where are the project screens?"
 - **List Screen**: `src/navigation/screens/Projects.tsx` (if exists) or check `src/navigation/BottomTabs.tsx`
@@ -432,7 +432,7 @@ project-context/
 - **Deep Links**: `src/navigation/linking.ts`
 
 ### "Where are the TypeScript types?"
-- **Generated**: `src/types/supabase.ts` (from database schema)
+- **Generated**: `src/types/database.types.ts` (from database schema)
 - **Custom**: `src/types/*.ts` files
 - **Inline**: Within component files
 

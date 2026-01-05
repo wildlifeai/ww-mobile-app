@@ -46,13 +46,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const client = getSupabaseClient();
+    client.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = client.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
         setLoading(false);
@@ -139,7 +140,8 @@ export const useDeepLinking = () => {
         const refreshToken = urlObj.searchParams.get('refresh_token');
         
         if (accessToken && refreshToken) {
-          supabase.auth.setSession({
+          const client = getSupabaseClient();
+          client.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
@@ -169,13 +171,11 @@ export const useDeepLinking = () => {
 
 ```tsx
 import 'react-native-url-polyfill/auto';
-import { createClient } from '@supabase/supabase-js';
-import { Database } from '../types/supabase';
+import { getSupabaseClient } from '../services/supabase';
+import { Database } from '../types/database.types';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
-
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+// The client is managed by EnvironmentManager and supabase.ts
+const supabase = getSupabaseClient();
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -238,7 +238,8 @@ const onSubmit = async (data: LoginFormData) => {
   setLoading(true);
   setError(null);
   
-  const { error } = await supabase.auth.signInWithPassword({
+  const client = getSupabaseClient();
+  const { error } = await client.auth.signInWithPassword({
     email: data.email,
     password: data.password,
   });
@@ -265,7 +266,8 @@ const onSubmit = async (data: RegisterFormData) => {
   setLoading(true);
   setError(null);
   
-  const { data: authData, error } = await supabase.auth.signUp({
+  const client = getSupabaseClient();
+  const { data: authData, error } = await client.auth.signUp({
     email: data.email,
     password: data.password,
     options: {
@@ -301,7 +303,8 @@ const handleResetPassword = async (data: ForgotPasswordFormData) => {
   setMessage(null);
   setError(null);
   
-  const { error } = await supabase.auth.resetPasswordForEmail(
+  const client = getSupabaseClient();
+  const { error } = await client.auth.resetPasswordForEmail(
     data.email,
     {
       redirectTo: 'wildlifewatcher://forgot-password',
@@ -325,7 +328,8 @@ const handleResetPassword = async (data: ForgotPasswordFormData) => {
 ```tsx
 export class AuthService {
   static async signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const client = getSupabaseClient();
+    const { data, error } = await client.auth.signInWithPassword({
       email,
       password,
     });
@@ -335,7 +339,8 @@ export class AuthService {
   }
   
   static async signUp(email: string, password: string, metadata?: any) {
-    const { data, error } = await supabase.auth.signUp({
+    const client = getSupabaseClient();
+    const { data, error } = await client.auth.signUp({
       email,
       password,
       options: {
@@ -348,12 +353,14 @@ export class AuthService {
   }
   
   static async signOut() {
-    const { error } = await supabase.auth.signOut();
+    const client = getSupabaseClient();
+    const { error } = await client.auth.signOut();
     if (error) throw error;
   }
   
   static async resetPassword(email: string, redirectTo?: string) {
-    const { error } = await supabase.auth.resetPasswordForEmail(
+    const client = getSupabaseClient();
+    const { error } = await client.auth.resetPasswordForEmail(
       email,
       { redirectTo }
     );
@@ -362,7 +369,8 @@ export class AuthService {
   }
   
   static async updatePassword(password: string) {
-    const { error } = await supabase.auth.updateUser({
+    const client = getSupabaseClient();
+    const { error } = await client.auth.updateUser({
       password,
     });
     

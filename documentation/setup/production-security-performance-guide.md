@@ -115,18 +115,26 @@ curl http://127.0.0.1:8081/json/list
 ```typescript
 // ✅ CORRECT: Cleanup in useEffect
 useEffect(() => {
-  const subscription = supabase
-    .channel('realtime-updates')
-    .on('postgres_changes', { event: '*', schema: 'public' }, handleChange)
-    .subscribe();
+  let subscription: any;
+  let timer: any;
+  let listener: any;
 
-  const timer = setInterval(syncOfflineQueue, 30000);
-  const listener = DeviceEventEmitter.addListener('event', handler);
+  const init = async () => {
+    const client = getSupabaseClient();
+    subscription = client
+      .channel('realtime-updates')
+      .on('postgres_changes', { event: '*', schema: 'public' }, handleChange)
+      .subscribe();
+  };
+
+  init();
+  timer = setInterval(syncOfflineQueue, 30000);
+  listener = DeviceEventEmitter.addListener('event', handler);
 
   return () => {
-    subscription.unsubscribe();
+    subscription?.unsubscribe();
     clearInterval(timer);
-    listener.remove();
+    listener?.remove();
   };
 }, []);
 
@@ -357,42 +365,14 @@ const credentials = await EncryptedStorage.getItem('user_credentials');
 
 ### API Key Management in Expo
 
-**app.config.js - Dynamic Environment Variables:**
-```javascript
-export default ({ config }) => {
-  const isProduction = process.env.APP_ENV === 'production';
+// ⚠️ DEPRECATED: Standard app.config.js for static variables
+// MODERN: Use app.config.ts + src/config/environments.ts
 
-  return {
-    ...config,
-    extra: {
-      // ✅ CORRECT: Environment-based configuration
-      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
-      supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+// Accessing settings in feature code:
+import { getEnvironmentConfig } from "../config/EnvironmentManager";
 
-      // ❌ NEVER: Hardcode production credentials
-      // supabaseUrl: "https://your-project.supabase.co",
-
-      // ✅ CORRECT: Different configs per environment
-      apiBaseUrl: isProduction
-        ? 'https://api.wildlifewatcher.com'
-        : 'http://localhost:54321',
-    },
-    // ✅ CORRECT: Platform-specific overrides
-    android: {
-      config: {
-        googleMaps: {
-          apiKey: process.env.GOOGLE_MAPS_API_KEY_ANDROID,
-        },
-      },
-    },
-    ios: {
-      config: {
-        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY_IOS,
-      },
-    },
-  };
-};
-```
+const config = await getEnvironmentConfig();
+const supabaseUrl = config.supabaseUrl;
 
 **Environment Files:**
 ```bash
@@ -411,22 +391,13 @@ EXPO_PUBLIC_SUPABASE_URL=https://staging-project.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=staging-anon-key
 ```
 
-**Accessing Environment Variables:**
+**Accessing Env Config (New Pattern):**
 ```typescript
-import Constants from 'expo-constants';
+import { getEnvironmentConfig } from "../config/EnvironmentManager";
 
-// ✅ CORRECT: Access via Constants.expoConfig.extra
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl;
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey;
-
-// ✅ CORRECT: Type-safe access
-type AppConfig = {
-  supabaseUrl: string;
-  supabaseAnonKey: string;
-  apiBaseUrl: string;
-};
-
-export const config: AppConfig = Constants.expoConfig?.extra as AppConfig;
+// Type-safe access
+const config = await getEnvironmentConfig();
+const { supabaseUrl, supabaseAnonKey } = config;
 ```
 
 ### RLS Policy Patterns in Supabase

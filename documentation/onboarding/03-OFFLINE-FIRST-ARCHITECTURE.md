@@ -182,7 +182,8 @@ await database.write(async () => {
 // User sees: "Project created"
 
 // Step 2: Sync to server (RLS ENFORCES)
-const { error } = await supabase
+const client = getSupabaseClient();
+const { error } = await client
     .from('projects')
     .insert({ 
         name: "My Project", 
@@ -317,7 +318,8 @@ private async uploadOutbox() {
   }
 
   // Send to server via RPC
-  const { data, error } = await supabase.rpc('push_changes', { changes })
+  const client = getSupabaseClient();
+  const { data, error } = await client.rpc('push_changes', { changes })
 
   if (error) {
     // Mark operations as failed
@@ -337,7 +339,8 @@ private async pullRemoteChanges() {
   )
 
   // Fetch changes since last sync
-  const { data, error } = await supabase.rpc('pull_changes', {
+  const client = getSupabaseClient();
+  const { data, error } = await client.rpc('pull_changes', {
     last_pulled_at: lastPulledAt || 0
   })
 
@@ -589,7 +592,7 @@ export default appSchema({
 
 1. Explore [04-REDUX-STATE-MANAGEMENT.md](./04-REDUX-STATE-MANAGEMENT.md) for Redux patterns
 2. Study [02-PROJECT-STRUCTURE.md](./02-PROJECT-STRUCTURE.md) to find offline code
-3. Read [Supabase-Integration-Guide.md](../app-technical-guides/Supabase-Integration-Guide.md) for API details
+3. Read [Supabase-Integration-Guide.md](../../archive/documentation/Supabase-Integration-Guide.md) for API details
 
 ## Resources
 
