@@ -1,1 +1,0 @@
-When anwsering, always provide the full updated answer again. Always use the existing codebase in your context as a reference and don't make up new code when possible. always use the latest ts best practices, prefer types to interfaces.
