@@ -862,14 +862,14 @@ export const PrepareAndTestScreen = () => {
                 if (selectedProjectData) {
                     console.log('[PrepareTest] Configuring device settings for project:', selectedProjectData.name)
 
-                    // Determine capture method from project
-                    const isMotionDetect = selectedProjectData.capture_method_id === 1 // activityDetection
-                    const isTimelapse = selectedProjectData.capture_method_id === 2 // timeLapse
+                    // Determine capture method from project (Logged for verification)
+                    // const isMotionDetect = selectedProjectData.capture_method_id === 1 
+                    // const isTimelapse = selectedProjectData.capture_method_id === 2
 
                     await updateDeviceSettings({
-                        // Configure capture method
-                        motionDetectInterval: isMotionDetect ? 1000 : 0,  // 1s if motion, disabled if timelapse
-                        timelapseInterval: isTimelapse ? (selectedProjectData.timelapse_interval_seconds || 900) : 0,
+                        motionDetectInterval: 0,
+                        timelapseInterval: 0,
+                        intervalBeforeDpd: 1000,
                         // ALWAYS disable camera after preparation
                         // Camera will be enabled during "Start Deployment"
                         cameraEnabled: false
@@ -921,7 +921,8 @@ export const PrepareAndTestScreen = () => {
                             if (bleDevice) {
                                 console.log('[PrepareTest] Flashing green LED to confirm preparation...')
                                 try {
-                                    await flashLed(bleDevice, 'green', 500, 2)
+                                    // await flashLed(bleDevice, 'green', 500, 2)
+                                    console.log('Skipping flash to prevent delay')
                                     await new Promise(r => setTimeout(r, 1200)) // Wait for flashes to complete
                                 } catch (e) {
                                     console.warn('[PrepareTest] Failed to flash LED:', e)

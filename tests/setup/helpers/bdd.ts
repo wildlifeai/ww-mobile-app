@@ -147,6 +147,11 @@ export const AuthActions = {
 		fireEvent.changeText(emailInput, email)
 	},
 
+	userChecksRememberMe: () => {
+		const checkbox = screen.getByText("Remember me")
+		fireEvent.press(checkbox)
+	},
+
 	userEntersPassword: (password: string) => () => {
 		const passwordInput = screen.getByPlaceholderText("Password")
 		fireEvent.changeText(passwordInput, password)

@@ -98,7 +98,7 @@ export const testRoles = {
 	wwAdmin: "ww_admin",
 	projectAdmin: "project_admin",
 	projectMember: "project_member",
-}
+} as const
 
 /**
  * Role IDs (from seed data)

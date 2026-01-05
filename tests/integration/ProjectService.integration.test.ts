@@ -178,28 +178,37 @@ describe("ProjectService Integration Tests", () => {
 				.from("projects")
 				.delete()
 				.in("id", [org1ProjectId, org2ProjectId])
+
+			// Clean up roles
+			await adminSupabase
+				.from("user_roles")
+				.delete()
+				.eq("scope_type", "project")
+				.in("scope_id", [org1ProjectId, org2ProjectId])
 		})
 
 		it("should only return projects from user org", async () => {
 			// Sign in as org1 admin
-			await signInTestUser(
+			const { user } = await signInTestUser(
 				testUsers.org1Admin.email,
 				testUsers.org1Admin.password,
 			)
+			const currentUserId = user?.id || org1AdminId
 
-			const projects = await ProjectService.getUserProjects(org1Id)
+			const projects = await ProjectService.getProjectsForUserInOrganisation(currentUserId, org1Id)
 
 			expect(projects).toHaveLength(1)
 			expect(projects[0].id).toBe(org1ProjectId)
 			expect(projects[0].organisation_id).toBe(org1Id)
-			expect(projects.every((p) => p.organisation_id === org1Id)).toBe(true)
+			expect(projects.every((p: any) => p.organisation_id === org1Id)).toBe(true)
 		})
 
 		it("should enforce org-scoped access for WW Admin", async () => {
 			// Sign in as WW Admin (assigned to org1)
-			await signInTestUser(testUsers.wwAdmin.email, testUsers.wwAdmin.password)
+			const result = await signInTestUser(testUsers.wwAdmin.email, testUsers.wwAdmin.password)
+			const currentUserId = result.user?.id || wwAdminId
 
-			const projects = await ProjectService.getUserProjects(org1Id)
+			const projects = await ProjectService.getProjectsForUserInOrganisation(currentUserId, org1Id)
 
 			// WW Admin should only see org1 projects (org-scoped, not global)
 			expect(projects).toHaveLength(1)
@@ -326,8 +335,9 @@ describe("ProjectService Integration Tests", () => {
 			await ProjectService.deleteProject(project.id)
 
 			// Verify project no longer in getUserProjects()
-			const projects = await ProjectService.getUserProjects(org1Id)
-			expect(projects.find((p) => p.id === project.id)).toBeUndefined()
+			// ProjectService uses getProjectsForUserInOrganisation
+			const projects = await ProjectService.getProjectsForUserInOrganisation(org1AdminId, org1Id)
+			expect(projects.find((p: any) => p.id === project.id)).toBeUndefined()
 
 			// Verify project still exists but has deleted_at set
 			const { data: deletedProject } = await adminSupabase
@@ -362,11 +372,12 @@ describe("ProjectService Integration Tests", () => {
 		})
 
 		afterEach(async () => {
-			// Clean up project and members
+			// Clean up project and roles
 			await adminSupabase
-				.from("project_members")
+				.from("user_roles")
 				.delete()
-				.eq("project_id", projectId)
+				.eq("scope_type", "project")
+				.eq("scope_id", projectId)
 			await adminSupabase.from("projects").delete().eq("id", projectId)
 		})
 
@@ -374,8 +385,8 @@ describe("ProjectService Integration Tests", () => {
 			// Add org1 member to project
 			await ProjectService.addProjectMember(
 				projectId,
-				org1MemberId,
-				roleIds.projectMember,
+				testUsers.org1Member.email,
+				testRoles.projectMember as any,
 			)
 
 			// Verify member added
@@ -385,7 +396,7 @@ describe("ProjectService Integration Tests", () => {
 			expect(addedMember).toBeDefined()
 			expect(addedMember!.project_id).toBe(projectId)
 			expect(addedMember!.user_id).toBe(org1MemberId)
-			expect(addedMember!.role_id).toBe(roleIds.projectMember)
+			expect(addedMember!.role).toBe(testRoles.projectMember)
 			expect(addedMember!.user_profile?.name).toBe(testUsers.org1Member.name)
 		})
 
@@ -394,8 +405,8 @@ describe("ProjectService Integration Tests", () => {
 			await expect(
 				ProjectService.addProjectMember(
 					projectId,
-					org2AdminId,
-					roleIds.projectMember,
+					testUsers.org2Admin.email,
+					testRoles.projectMember,
 				),
 			).rejects.toThrow(/same organisation/i)
 		})
@@ -404,8 +415,8 @@ describe("ProjectService Integration Tests", () => {
 			// Add member first
 			await ProjectService.addProjectMember(
 				projectId,
-				org1MemberId,
-				roleIds.projectMember,
+				testUsers.org1Member.email,
+				testRoles.projectMember as any,
 			)
 
 			// Verify member exists
@@ -424,8 +435,8 @@ describe("ProjectService Integration Tests", () => {
 			// Add org1 member to project
 			await ProjectService.addProjectMember(
 				projectId,
-				org1MemberId,
-				roleIds.projectMember,
+				testUsers.org1Member.email,
+				testRoles.projectMember as any,
 			)
 
 			const members = await ProjectService.getProjectMembers(projectId)
@@ -434,7 +445,7 @@ describe("ProjectService Integration Tests", () => {
 			expect(members[0].user_profile).toBeDefined()
 			expect(members[0].role).toBeDefined()
 			expect(members[0].user_profile?.name).toBeDefined()
-			expect(members[0].role?.value).toBeDefined()
+			expect(members[0].role).toBeDefined()
 		})
 	})
 
@@ -456,11 +467,12 @@ describe("ProjectService Integration Tests", () => {
 		})
 
 		afterEach(async () => {
-			// Clean up
+			// Clean up project and roles
 			await adminSupabase
-				.from("project_members")
+				.from("user_roles")
 				.delete()
-				.eq("project_id", projectId)
+				.eq("scope_type", "project")
+				.eq("scope_id", projectId)
 			await adminSupabase.from("projects").delete().eq("id", projectId)
 		})
 
@@ -468,19 +480,20 @@ describe("ProjectService Integration Tests", () => {
 			// Add 2 members
 			await ProjectService.addProjectMember(
 				projectId,
-				org1MemberId,
-				roleIds.projectMember,
+				testUsers.org1Member.email,
+				testRoles.projectMember as any,
 			)
 			await ProjectService.addProjectMember(
 				projectId,
-				wwAdminId,
-				roleIds.projectMember,
+				testUsers.wwAdmin.email,
+				testRoles.projectMember as any,
 			)
 
 			const project = await ProjectService.getProjectById(projectId)
+			const projectData = project;
 
 			expect(project).toBeDefined()
-			expect(project!.member_count).toBe(2)
+			expect(projectData?.member_count).toBe(2)
 		})
 
 		it("should return deployment_count", async () => {
@@ -577,8 +590,8 @@ describe("ProjectService Integration Tests", () => {
 			await expect(
 				ProjectService.addProjectMember(
 					project.id,
-					org2AdminId,
-					roleIds.projectMember,
+					testUsers.org2Admin.email,
+					testRoles.projectMember,
 				),
 			).rejects.toThrow(/same organisation/i)
 

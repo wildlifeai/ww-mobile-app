@@ -11,6 +11,7 @@ import { RootStackParamList } from '../../../navigation'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { DeploymentService } from '../../../services/DeploymentService'
 import { useBleCommands } from '../../../hooks/useBleCommands'
+import { useDeviceSettings } from '../../../hooks/useDeviceSettings'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { withObservables } from '@nozbe/watermelondb/react'
 import { selectCurrentUser } from '../../../redux/slices/authSlice'
@@ -31,11 +32,14 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const { disconnectDevice } = useBleActions()
     const { getBatteryLevel, setOperationalParam, disableCamera, runDisconnect, setDeploymentIdAsOps, clearGpsLocation, flashLed } = useBleCommands()
 
+    // Get full device object for BLE commands
+    const devices = useAppSelector(state => state.devices)
+    const storeDevice = devices[bleDeviceId]
+    const { updateSettings } = useDeviceSettings({ device: storeDevice })
+
     // Get current user
     const user = useAppSelector(selectCurrentUser)
 
-    // Get full device object for BLE commands
-    const devices = useAppSelector(state => state.devices)
 
     console.log(`[EndDeployment] Rendering (Fixed). Params from route:: bleDeviceId=${bleDeviceId}, deviceId=${deviceId}`);
 
@@ -68,16 +72,8 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const [isEnding, setIsEnding] = useState(false)
     const [bleStatus, setBleStatus] = useState<string>('Connected')
 
-    // Initial BLE interaction just to ensure connection is alive?
-    // We assume connection is passed from previous step.
-
     const handleEndDeployment = async () => {
         // Sanity Check: Ensure BLE is still connected (unless it's a forced cleanup)
-        // If bleDevice is a fallback/disconnected object, we should warn.
-        // We forced connected=true in the useMemo above if found in store, so check the REAL store object or just proceed with caution?
-        // Actually, bleDevice from useMemo might be a fallback.
-        // Let's check the real store device if possible, or trust the bleDevice.connected prop which we might have forced.
-        // Better: Check if the device exists in the 'devices' store AND is connected.
         const realDevice = devices[bleDeviceId]
         if (!realDevice || !realDevice.connected) {
             Alert.alert(
@@ -101,28 +97,35 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                     }
                 ]
             )
-            // Ideally we return here unless user chose Force End. But Alert is non-blocking in logic flow if not promised.
-            // So we return immediately and let the Alert callbacks handle logic.
             return
         }
 
         setIsEnding(true)
         try {
-            // 1. Send BLE command to stop camera
+            // 1. Quiesce Device (Stop Camera & Sensors)
             if (bleDevice) {
-                setBleStatus('Disabling Camera...')
+                setBleStatus('Resetting Device...')
+                console.log('[EndDeployment] Resetting device settings (Stop Camera, Disable MD/Timelapse)...')
                 try {
-                    await disableCamera(bleDevice)
-                    console.log('[EndDeployment] Camera disabled, waiting for device wake/stabilize...')
-                    // Vital delay: disableCamera wakes the device, we must wait before flooding it with OPs
-                    await new Promise(r => setTimeout(r, 1000))
-                } catch (e) {
-                    console.warn('[EndDeployment] Failed to disable camera:', e)
-                }
-            }
+                    // Use single update to reset all critical parameters
+                    // This is CRITICAL to stop the "Wake Loop" (PIR interrupt still firing if MD not 0)
+                    await updateSettings({
+                        cameraEnabled: false,
+                        motionDetectInterval: 0,
+                        timelapseInterval: 0,
+                        // Interval Before DPD is NOT reset here to avoid confusing the firmware timer state.
+                        // Rely on sensors being disabled.
+                    })
 
-            // 1.5 Clear Deployment ID
-            if (bleDevice) {
+                    console.log('[EndDeployment] Device settings reset. Camera & Sensors disabled.')
+                    await new Promise(r => setTimeout(r, 500))
+
+                } catch (e) {
+                    console.warn('[EndDeployment] Failed to reset device settings:', e)
+                    Alert.alert('Warning', 'Failed to fully reset device settings. Sensor may remain active.')
+                }
+
+                // 2. Clear Deployment ID
                 setBleStatus('Clearing Config...')
                 console.log('[EndDeployment] Clearing Deployment ID on device...')
                 let idCleared = false
@@ -138,7 +141,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                         if (attempts < 3) await new Promise(r => setTimeout(r, 1000))
                     }
                 }
-                
+
                 // Warn user if clearing failed after all retries
                 if (!idCleared) {
                     Alert.alert(
@@ -161,31 +164,14 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             const userId = user?.id || null
             await DeploymentService.endDeployment(deployment.id, userId, retrievalNotes)
 
-            // 2.5 Visual Confirmation Sequence (LED Flashes)
+            // 2.5 Visual Confirmation (LEDs Skipped for Speed/Safety)
             if (bleDevice) {
                 setBleStatus('Confirming...')
-                console.log('[EndDeployment] Starting LED confirmation sequence...')
+                console.log('[EndDeployment] Skipping LED confirmation to speed up disconnect.')
                 try {
-                    // Sequence with delays matching duration
-                    // Green (1s)
-                    await flashLed(bleDevice, 'green', 1000, 1)
-                    await new Promise(r => setTimeout(r, 1000))
-
-                    // Blue (1s)
-                    await flashLed(bleDevice, 'blue', 1000, 1)
-                    await new Promise(r => setTimeout(r, 1000))
-
-                    // Red (1s)
-                    await flashLed(bleDevice, 'red', 1000, 1)
-                    await new Promise(r => setTimeout(r, 1000))
-
-                    // Green (4s) - Final confirmation
-                    await flashLed(bleDevice, 'green', 4000, 1)
-                    await new Promise(r => setTimeout(r, 4000))
-
-                    console.log('[EndDeployment] LED confirmation sequence complete')
+                    await new Promise(r => setTimeout(r, 500))
                 } catch (e) {
-                    console.warn('[EndDeployment] Failed to complete LED sequence:', e)
+                    console.warn('[EndDeployment] Error waiting:', e)
                 }
             }
 

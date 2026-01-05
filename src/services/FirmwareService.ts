@@ -51,20 +51,21 @@ class FirmwareService {
             const supabase = getSupabaseClient()
             console.log(`Getting signed URL for path: ${firmware.locationPath}`)
 
-            // Use getPublicUrl as the bucket is verified to be public and signed URL generation was failing
-            const { data } = supabase.storage
+            // Use createSignedUrl now that RLS policies are fixed (TO public)
+            // This allows authenticated users to download from the private firmware bucket
+            const { data, error } = await supabase.storage
                 .from('firmware')
-                .getPublicUrl(firmware.locationPath)
+                .createSignedUrl(firmware.locationPath, 60) // 60 seconds validity
 
-            if (!data?.publicUrl) {
-                throw new Error('Could not get public URL for firmware')
+            if (error || !data?.signedUrl) {
+                throw new Error(`Could not get signed URL: ${error?.message}`)
             }
 
-            console.log(`Got public URL: ${data.publicUrl}, starting download...`)
+            console.log(`Got signed URL, starting download...`)
 
             // Use new File.downloadFileAsync API
             const downloadedFile = await File.downloadFileAsync(
-                data.publicUrl,
+                data.signedUrl,
                 localFile,
                 { idempotent: true }
             )

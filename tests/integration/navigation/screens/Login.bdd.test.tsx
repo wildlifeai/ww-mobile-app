@@ -49,12 +49,8 @@ describe("Login Screen - User Stories", () => {
 			.soThat("I can access the app features and manage my projects")
 			.scenario("Valid credentials provided")
 			.given("I am on the login screen", AuthActions.userIsOnLoginScreen)
-			.when("I enter a valid email address", () =>
-				AuthActions.userEntersEmail(TestData.validUser.email),
-			)
-			.and("I enter a valid password", () =>
-				AuthActions.userEntersPassword(TestData.validUser.password),
-			)
+			.when("I enter a valid email address", AuthActions.userEntersEmail(TestData.validUser.email))
+			.and("I enter a valid password", AuthActions.userEntersPassword(TestData.validUser.password))
 			.and("I submit the login form", AuthActions.userSubmitsLoginForm)
 			.then(
 				"I should be authenticated successfully",
@@ -79,13 +75,13 @@ describe("Login Screen - User Stories", () => {
 			.then(
 				"I should see an email required error",
 				AuthActions.systemShowsValidationError(
-					ValidationMessages.emailRequired,
+					ValidationMessages.EMAIL_REQUIRED,
 				),
 			)
 			.and(
 				"I should see a password required error",
 				AuthActions.systemShowsValidationError(
-					ValidationMessages.passwordRequired,
+					ValidationMessages.PASSWORD_REQUIRED,
 				),
 			)
 			.executeAll()
@@ -100,16 +96,12 @@ describe("Login Screen - User Stories", () => {
 			.soThat("I can enter a correctly formatted email address")
 			.scenario("Invalid email format")
 			.given("I am on the login screen", AuthActions.userIsOnLoginScreen)
-			.when("I enter an invalid email format", () =>
-				AuthActions.userEntersEmail(TestData.invalidUser.email),
-			)
-			.and("I enter a valid password", () =>
-				AuthActions.userEntersPassword(TestData.validUser.password),
-			)
+			.when("I enter an invalid email format", AuthActions.userEntersEmail(TestData.invalidUser.email))
+			.and("I enter a valid password", AuthActions.userEntersPassword(TestData.validUser.password))
 			.and("I submit the form", AuthActions.userSubmitsLoginForm)
 			.then(
 				"I should see an invalid email error",
-				AuthActions.systemShowsValidationError(ValidationMessages.emailInvalid),
+				AuthActions.systemShowsValidationError(ValidationMessages.INVALID_EMAIL),
 			)
 			.executeAll()
 	})
@@ -123,17 +115,13 @@ describe("Login Screen - User Stories", () => {
 			.soThat("I can enter a password that meets the security requirements")
 			.scenario("Password too short")
 			.given("I am on the login screen", AuthActions.userIsOnLoginScreen)
-			.when("I enter a valid email", () =>
-				AuthActions.userEntersEmail(TestData.validUser.email),
-			)
-			.and("I enter a password that is too short", () =>
-				AuthActions.userEntersPassword(TestData.invalidUser.password),
-			)
+			.when("I enter a valid email", AuthActions.userEntersEmail(TestData.validUser.email))
+			.and("I enter a password that is too short", AuthActions.userEntersPassword(TestData.invalidUser.password))
 			.and("I submit the form", AuthActions.userSubmitsLoginForm)
 			.then(
 				"I should see a password too short error",
 				AuthActions.systemShowsValidationError(
-					ValidationMessages.passwordTooShort,
+					ValidationMessages.PASSWORD_TOO_SHORT,
 				),
 			)
 			.executeAll()
@@ -173,7 +161,7 @@ describe("Login Screen - User Stories", () => {
 			.given("I am on the login screen", AuthActions.userIsOnLoginScreen)
 			.when(
 				"I click on the registration link",
-				AuthActions.userNavigatesToRegister,
+				AuthActions.userTapsGoToRegisterLink,
 			)
 			.then(
 				"I should be navigated to the registration screen",
@@ -213,8 +201,8 @@ describe("Login Screen - User Stories", () => {
 			.scenario("Login with remember me checked")
 			.given("I am on the login screen", AuthActions.userIsOnLoginScreen)
 			.when("I enter valid credentials", () => {
-				AuthActions.userEntersEmail(TestData.validUser.email)
-				AuthActions.userEntersPassword(TestData.validUser.password)
+				AuthActions.userEntersEmail(TestData.validUser.email)()
+				AuthActions.userEntersPassword(TestData.validUser.password)()
 			})
 			.and("I check the remember me option", AuthActions.userChecksRememberMe)
 			.and("I submit the form", AuthActions.userSubmitsLoginForm)

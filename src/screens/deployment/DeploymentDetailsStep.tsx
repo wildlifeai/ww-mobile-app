@@ -14,7 +14,7 @@ import { WWIcon } from '../../components/ui/WWIcon'
 
 import { CommandNames } from '../../ble/types'
 import { useBleCommands } from '../../hooks/useBleCommands'
-import { useDeviceSettings } from '../../hooks/useDeviceSettings'
+import { useDeviceSettings, OP_PARAMETER } from '../../hooks/useDeviceSettings'
 import { useBleActions } from '../../providers/BleEngineProvider'
 
 import { LoRaWANSection } from './sections/LoRaWANSection'
@@ -376,18 +376,20 @@ export const DeploymentDetailsStep = () => {
                 const sensitivityId = project?.activity_detection_sensitivity_id
 
                 if (isMotionDetect) {
-                    console.log('[Deployment] Mode: Activity Detection. Setting motion interval to 1000ms & disabling timelapse.')
+                    console.log('[Deployment] Mode: Activity Detection. Setting motion interval to 1000ms, timeout to 30s & disabling timelapse.')
                     await updateSettings({
                         motionDetectInterval: 1000,
                         timelapseInterval: 0,
+                        intervalBeforeDpd: 1000, // Short timeout to force DPD Latch Cycle
                         cameraEnabled: true // Enable camera to ensure motion settings are accepted
                     })
                 } else if (isTimelapse) {
                     const interval = project.timelapse_interval_seconds || 300
-                    console.log(`[Deployment] Mode: Time-lapse. Setting interval to ${interval}s & disabling motion detect.`)
+                    console.log(`[Deployment] Mode: Time-lapse. Setting interval to ${interval}s, timeout to 30s & disabling motion detect.`)
                     await updateSettings({
                         motionDetectInterval: 0,
                         timelapseInterval: interval,
+                        intervalBeforeDpd: 1000,
                         cameraEnabled: true // Enable camera to ensure timelapse settings are accepted
                     })
                 } else {
@@ -398,35 +400,54 @@ export const DeploymentDetailsStep = () => {
                 Alert.alert('Warning', 'Failed to configure device capture settings (Motion/Timelapse). Device may use previous defaults.')
             }
 
-            // 5. Enable Camera (Explicit Command)
+            // 5. Enable Camera (Explicit Command - Safety Check)
+            // Restore explicit call to ensure the Enable signal is definitively received
             if (bleDevice?.connected) {
-                console.log('[Deployment] Enabling Camera...')
+                console.log('[Deployment] Sending explicit Enable Camera command...')
                 try {
                     await enableCamera(bleDevice)
-                    await new Promise(r => setTimeout(r, 500)) // Wait for cam to wake
-                    console.log('[Deployment] Camera enabled successfully')
+                    console.log('[Deployment] Explicit enable command sent.')
                 } catch (e) {
-                    console.error('[Deployment] Failed to enable camera:', e)
+                    console.warn('[Deployment] Failed to send explicit enable command:', e)
                 }
             } else {
-                console.warn('[Deployment] Skipping Camera enable - Device disconnected.')
+                console.warn('[Deployment] Device disconnected during explicit enable.')
+            }
+
+            // 5.5 DPD Latch Cycle (Hypothesis: Config applies after Wake from DPD)
+            // Instead of keeping it awake, we LET IT SLEEP (fast timeout), then WAKE it up to latch settings.
+            if (bleDevice?.connected) {
+                console.log('[Deployment] 5.5 Initiating DPD Latch Cycle to apply settings...')
+
+                // 1. ALLOW SLEEP: Wait for device to enter DPD (Timeout is 1000ms, wait 2.5s to be safe)
+                // The device was configured with intervalBeforeDpd=1000 above.
+                console.log('[Deployment] Waiting 2.5s for device to enter DPD...')
+                await new Promise(r => setTimeout(r, 2500))
+
+                // 2. WAKE UP: Ping Himax to wake it. It should read the new config now.
+                console.log('[Deployment] Waking Himax to latch configuration...')
+                try {
+                    await setOperationalParam(bleDevice, OP_PARAMETER.WAKE_UP_EVENT, '0') // OP_PARAMETER.WAKE_UP_EVENT
+                } catch (e) {
+                    console.warn('[Deployment] Failed to wake device:', e)
+                }
+
+                // 3. STABILIZE: Wait for it to wake and process
+                await new Promise(r => setTimeout(r, 1500))
+                console.log('[Deployment] Device latched. Proceeding to disconnect.')
             }
 
             // 6. Flash Green LED (Success Confirmation)
+            // 6. Flash Green LED (Success Confirmation)
+            // REMOVED: The long flash sequence (2.5s) exceeds the strict 1000ms inactivity timeout
+            // preventing the device from transitioning to Active Mode if the firmware doesn't apply the 30s override immediately.
             if (bleDevice?.connected) {
-                console.log('[Deployment] Flashing Green LED...')
-                try {
-                    await flashLed(bleDevice, 'green', 500, 5) // 5x 500ms flashes.
-                } catch (e) {
-                    console.warn('[Deployment] Failed to flash LED:', e)
-                }
+                console.log('[Deployment] Skipping LED flash to prevent inactivity timeout.')
             }
 
             // 7. Disconnect
             console.log('[Deployment] Disconnecting device...')
-            // Vital Delay: Wait 5s before sending disconnect to ensure previous
-            // 'enable camera' (setop 10 1) command is fully processed and saved.
-            await new Promise(r => setTimeout(r, 5000))
+            // Removed 5s delay to allow immediate disconnect after Latch Cycle
             try {
                 await runDisconnect(bleDevice)
                 console.log('[Deployment] Device disconnected')
