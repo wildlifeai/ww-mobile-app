@@ -13,6 +13,7 @@ import { DeploymentService } from '../../../services/DeploymentService'
 import { useBleCommands } from '../../../hooks/useBleCommands'
 import { useDeviceSettings } from '../../../hooks/useDeviceSettings'
 import { useBleActions } from '../../../providers/BleEngineProvider'
+import { useDeviceLatch } from '../../../hooks/useDeviceLatch'
 import { withObservables } from '@nozbe/watermelondb/react'
 import { selectCurrentUser } from '../../../redux/slices/authSlice'
 import type Deployment from '../../../database/models/Deployment'
@@ -31,6 +32,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const { deviceId = '', bleDeviceId = '' } = route.params || {}
     const { disconnectDevice } = useBleActions()
     const { getBatteryLevel, setOperationalParam, disableCamera, runDisconnect, setDeploymentIdAsOps, clearGpsLocation, flashLed } = useBleCommands()
+    const { triggerDpdLatch } = useDeviceLatch()
 
     // Get full device object for BLE commands
     const devices = useAppSelector(state => state.devices)
@@ -166,12 +168,12 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
             // 2.5 Visual Confirmation (LEDs Skipped for Speed/Safety)
             if (bleDevice) {
-                setBleStatus('Confirming...')
-                console.log('[EndDeployment] Skipping LED confirmation to speed up disconnect.')
+                setBleStatus('Finalizing...')
+                console.log('[EndDeployment] Triggering DPD Latch to ensure "STOP" persists...')
                 try {
-                    await new Promise(r => setTimeout(r, 500))
+                    await triggerDpdLatch(bleDevice, '[EndDeployment]')
                 } catch (e) {
-                    console.warn('[EndDeployment] Error waiting:', e)
+                    console.warn('[EndDeployment] Latch error:', e)
                 }
             }
 

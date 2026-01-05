@@ -115,8 +115,10 @@ The app executes these commands **sequentially** with optimized timing:
 | 0a   | *Wait 1000ms* | Stabilization delay | AI processor fully awake |
 | 1    | `selftest` | Hardware check | Device now responsive |
 | 2    | `setutc <timestamp>` | Time sync | - |
-| 3    | `setDeploymentIdAsOps(null)` | Clear old deployment ID | 200ms wake delay after 1st setop |
-| 4    | `clearGpsLocation` | Clear GPS (`0 0 0`) | - |
+| 3    | `setop 11 0`, `setop 7 0`, `setop 10 0` | Quiesce Device | 500ms delay between commands to ensure processing |
+| 4    | **DPD Latch Cycle** | Latch Config | Wait 2.5s -> OP 19 -> Wait 1.5s |
+| 5    | `setDeploymentIdAsOps(null)` | Clear old deployment ID | 600ms wake delay, 150ms inter-command delay |
+| 6    | `clearGpsLocation` | Clear GPS (`0 0 0`) | - |
 
 > **Why Sequential?** The firmware has a single-slot command buffer. Rapid commands during device wake-up get discarded. See [BLE Architecture Guide](../app-technical-guides/ble-architecture-guide.md#ble-timing-requirements--firmware-constraints) for details.
 
