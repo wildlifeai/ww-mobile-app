@@ -147,7 +147,10 @@ The device is configured according to the project's capture requirements.
 
 1. **Enable Camera**: Explicitly ensures camera is enabled (`AI setop 10 1`) if not already set.
 2. **Visual Confirmation**: Flashes green LED (5 times, 500ms each)
-3. **Reset Device**: Sends `reset` command (**CRITICAL** - forces device to reboot and enter motion detection mode)
+3. **DPD Latch Cycle**:
+   - Wait 2500ms (Enter DPD)
+   - `setop 19 0` (Wake Up & Latch Config)
+   - Wait 1500ms (Stabilize)
 4. **Disconnect**: Sends `dis` command to gracefully close BLE connection
 
 > [!IMPORTANT]
@@ -256,7 +259,12 @@ LED sequence provides clear visual feedback that deployment has ended:
 8. Total duration: ~7.3 seconds
 - Status: "Confirming..."
 
-**Step 6: Disconnect**
+**Step 6: DPD Latch Cycle (Finalize)**
+- Triggers latch cycle to ensure "Stop" settings (camera disabled) are persisted
+- Wait 2.5s -> OP 19 -> Wait 1.5s
+- Status: "Finalizing..."
+
+**Step 7: Disconnect**
 - Sends `dis` command to device
 - Closes BLE connection gracefully
 - Status: "Disconnecting..."
@@ -306,7 +314,7 @@ Tapping "View Details" navigates to the deployment record showing:
 | 7 | Configure | Activity: `AI setop 10 1`, `AI setop 11 1000`, `AI setop 7 0` | - |
 | | | Timelapse: `AI setop 10 1`, `AI setop 7 [secs]`, `AI setop 11 0` | - |
 | 8 | Enable | `AI setop 10 1` (Redundant check) | - |
-| 9 | Confirm | `flashg 5 500` | - |
+| 9 | Latch | **DPD Latch Cycle** (Wait -> OP 19 -> Wait) | *Ensures Config Applied* |
 | 10 | Disconnect | `dis` | Mark device as deployed |
 | 11 | Sync | - | Push to Supabase via SupabaseSyncService |
 
@@ -320,8 +328,9 @@ Tapping "View Details" navigates to the deployment record showing:
 | 4 | Clear GPS | `setgps ""` | - |
 | 5 | DB Update | - | Set deployment_end, ended_by, comments |
 | 6 | LED Sequence | `flashg 1 1000`, `flashb 1 1000`, `flashr 1 1000`, `flashg 1 4000` | - |
-| 7 | Disconnect | `dis` | Mark device as available |
-| 8 | Sync | - | Push to Supabase via SupabaseSyncService |
+| 7 | Latch | **DPD Latch Cycle** | *Persist Stop Settings* |
+| 8 | Disconnect | `dis` | Mark device as available |
+| 9 | Sync | - | Push to Supabase via SupabaseSyncService |
 
 ---
 

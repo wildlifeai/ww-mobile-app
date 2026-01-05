@@ -260,12 +260,30 @@ The AI processor enters **Deep Power Down mode** after 1000ms of inactivity to c
 ```c
 // From aiProcessor.c line 702-708
 if (i2cTxPendingMsg != NULL) {
+
     LOG("Discarding message as there is already one pending");
 }
 ```
 - **Single-slot buffer**: Only ONE pending command allowed during wake
 - **Dropped commands**: Rapid-fire commands during wake-up get discarded
 - **Retry mechanism**: Commands sent while asleep are queued and retried after "Wake" message
+
+### DPD Latch Cycle (Configuration Persistence)
+
+When changing critical configuration parameters (Camera Enable, Motion Interval, etc.), the device requires a "DPD Latch Cycle" to ensure these settings are read from flash and applied by the HiMAX processor.
+
+**The Cycle:**
+1.  **Wait for DPD (Sleep)**: Allow the device to time out and enter Deep Power Down (typically 1000ms inactivity). We wait **2500ms** to be safe.
+2.  **Wake Up Event (OP 19)**: Send `setop 19 0` (Wake Up Event). This pings the device, causing it to wake, read the new `CONFIG.TXT` values, and re-initialize the sensor state machine.
+3.  **Stabilize**: Wait **1500ms** for the processor to boot and stabilize.
+
+**Why is this needed?**
+Writing to `CONFIG.TXT` (via `setop`) updates the file on the SD card, but the running firmware program only reads this file on boot. The Latch Cycle forces a soft-reboot of the application logic without losing the BLE connection.
+
+**Usage:**
+- **Start Deployment**: Ensures motion/timelapse settings are active.
+- **Stop Deployment**: Ensures camera is disabled and device remains quiet.
+- **Preparation**: Ensures device is in a known quiesced state.
 
 ### Critical Timing Parameters
 

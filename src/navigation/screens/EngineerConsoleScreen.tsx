@@ -6,6 +6,7 @@ import { Modal, Portal, IconButton, Button, useTheme } from 'react-native-paper'
 import { useAppSelector } from '../../redux'
 import { useBle } from '../../hooks/useBle'
 import { useBleCommands } from '../../hooks/useBleCommands'
+import { useDeviceLatch } from '../../hooks/useDeviceLatch'
 import { useGPSLocation } from '../../hooks/useGPSLocation'
 import { formatGPSString } from '../../utils/gpsUtils'
 import { useCapturePreview } from '../../hooks/useCapturePreview'
@@ -90,6 +91,7 @@ export const EngineerConsoleScreen = () => {
         getDevEui, getAppEui, getAppKey, getHeartbeat, flashLed,
         captureTestImage
     } = useBleCommands()
+    const { triggerDpdLatch } = useDeviceLatch()
 
     const [inputText, setInputText] = useState('')
     const [consoleHistory, setConsoleHistory] = useState<ConsoleEntry[]>([])
@@ -257,6 +259,9 @@ export const EngineerConsoleScreen = () => {
                 case 'Flash Red': await flashLed(device, 'red', 1000, 3); break;
                 case 'Flash Green': await flashLed(device, 'green', 1000, 3); break;
                 case 'Flash Blue': await flashLed(device, 'blue', 1000, 3); break;
+
+                // --- Maintenance ---
+                case 'Latch (Wake)': await triggerDpdLatch(device); break;
 
                 default:
                     return

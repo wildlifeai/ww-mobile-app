@@ -18,6 +18,7 @@ import { useBleCommands } from '../../hooks/useBleCommands'
 import { useBle } from '../../hooks/useBle'
 import { useCapturePreview } from '../../hooks/useCapturePreview'
 import { useDeviceSettings } from '../../hooks/useDeviceSettings'
+import { useDeviceLatch } from '../../hooks/useDeviceLatch'
 import { useGetProjectsQuery } from '../../redux/api/projectsApi'
 import { useAppSelector } from '../../redux'
 import Device from '../../database/models/Device'
@@ -144,6 +145,7 @@ export const PrepareAndTestScreen = () => {
             Alert.alert('Settings Error', error.message)
         }
     })
+    const { triggerDpdLatch } = useDeviceLatch()
 
     // Initialization errors from connection
     const [initErrors, setInitErrors] = useState<{ selftest?: string; setUtc?: string }>({})
@@ -318,6 +320,13 @@ export const PrepareAndTestScreen = () => {
                 console.log('[PrepareTest] Device stabilized.')
             } catch (err) {
                 console.warn('[PrepareTest] Failed to quiesce device:', err)
+            }
+
+            // 2.5 DPD Latch Cycle (New Hook) - Ensure settings stick
+            try {
+                await triggerDpdLatch(bleDevice, '[PrepareTest]')
+            } catch (e) {
+                console.warn('[PrepareTest] Latch warning:', e)
             }
 
             // 3. Clear deployment ID

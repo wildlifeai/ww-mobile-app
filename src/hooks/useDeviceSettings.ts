@@ -134,8 +134,8 @@ export const useDeviceSettings = ({
             for (const { index, value } of updates) {
                 console.log(`[useDeviceSettings] Setting parameter ${index} to ${value}`)
                 await setOperationalParam(device, index, value.toString())
-                // Small delay between commands
-                await new Promise(resolve => setTimeout(resolve, 200))
+                // Small delay between commands (Increased to 500ms for robust DPD wake/sleep handling)
+                await new Promise(resolve => setTimeout(resolve, 500))
             }
 
             console.log('[useDeviceSettings] All settings updated successfully')

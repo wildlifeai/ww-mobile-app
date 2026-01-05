@@ -114,12 +114,27 @@ export const useBleCommands = () => {
 
     const enableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
         console.log('[BLE CMD] Sending enable camera command to:', peripheral.id)
-        await write(peripheral, [[CommandNames.ENABLE_CAMERA, { control: CommandControlTypes.WRITE }]])
+        // Bypass queue for immediate execution
+        const { writeToDevice } = require('../utils/helpers')
+        try {
+            await writeToDevice(peripheral, `AI ${CommandNames.ENABLE_CAMERA}`)
+        } catch (error) {
+            // Fallback to queue if direct write fails (unlikely but safe) or just throw
+            console.error('[BLE CMD] Direct write failed for enableCamera:', error)
+            await write(peripheral, [[CommandNames.ENABLE_CAMERA, { control: CommandControlTypes.WRITE }]])
+        }
     }, [write])
 
     const disableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
         console.log('[BLE CMD] Sending disable camera command to:', peripheral.id)
-        await write(peripheral, [[CommandNames.DISABLE_CAMERA, { control: CommandControlTypes.WRITE }]])
+        // Bypass queue for immediate execution
+        const { writeToDevice } = require('../utils/helpers')
+        try {
+            await writeToDevice(peripheral, `AI ${CommandNames.DISABLE_CAMERA}`)
+        } catch (error) {
+            console.error('[BLE CMD] Direct write failed for disableCamera:', error)
+            await write(peripheral, [[CommandNames.DISABLE_CAMERA, { control: CommandControlTypes.WRITE }]])
+        }
     }, [write])
 
     const getHeartbeat = useCallback(async (peripheral: ExtendedPeripheral) => {
@@ -137,7 +152,16 @@ export const useBleCommands = () => {
     }, [write])
 
     const setOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number, value: string) => {
-        await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]])
+        // Bypass queue for immediate execution to support robust timing in loops (e.g. useDeviceSettings)
+        const { writeToDevice } = require('../utils/helpers')
+        const commandStr = `AI setop ${index} ${value}`
+        try {
+            console.log(`[BLE CMD] Direct write: ${commandStr}`)
+            await writeToDevice(peripheral, commandStr)
+        } catch (error) {
+            console.error(`[BLE CMD] Direct write failed for setop ${index}:`, error)
+            await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]])
+        }
     }, [write])
 
     const setGpsLocation = useCallback(
@@ -197,29 +221,39 @@ export const useBleCommands = () => {
                 ops = parseUuidToOps(id)
             }
 
-            // Send 8 commands with delays between each
-            // The device enters DPD after each command completes, so EVERY command wakes it
+            // IMPORT WARNING: We need writeToDevice from helpers to bypass the useBle queue
+            // The useBle queue batches commands with 20ms delays, which is too fast for the
+            // firmware's wake/sleep cycle during this specific operation.
+            const { writeToDevice } = require('../utils/helpers')
+
+            // Send 8 commands with strict delays between each
             for (let i = 0; i < 8; i++) {
                 const opIndex = 20 + i
                 const value = ops[i]
+                const commandStr = `AI setop ${opIndex} ${value}`
+
                 console.log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
 
-                await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]])
+                // Use direct writeToDevice to ensure we await the actual BLE transmission
+                // and bypass the 500ms polling queue of useBle hook.
+                try {
+                    await writeToDevice(peripheral, commandStr)
+                } catch (error) {
+                    console.error(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
+                    throw error
+                }
 
-                // Add delay after each command except the last one
-                // Device sleeps after processing each setop (~100-200ms), then next command wakes it
-                // We need to ensure previous command fully completes before next arrives
-                if (i < 7) {  // Don't delay after the last command
-                    // CRITICAL: First command needs MUCH longer delay (device waking from DPD)
-                    // Subsequent commands can use shorter delays as device stays awake
-                    const delay = i === 0 ? 600 : 150  // 600ms first wake, 150ms for subsequent
-                    console.log(`[BLE CMD] Inter-command delay: ${delay}ms (preventing firmware discard)`)
+                // Add delay after each command to allow firmware to process/sleep/wake
+                if (i < 7) {
+                    // CRITICAL: First command (Wake) needs longer delay.
+                    // Subsequent commands need enough time to process before next wake cycle triggers
+                    const delay = i === 0 ? 600 : 150
                     await new Promise(r => setTimeout(r, delay))
                 }
             }
             console.log('[BLE CMD] Deployment ID OPs sent successfully')
         },
-        [write]
+        [] // No dependencies needed as we use direct import
     )
 
     return {

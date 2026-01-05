@@ -23,6 +23,7 @@ import { LocationSection } from './sections/LocationSection'
 // import { PhotosSection } from './sections/PhotosSection'
 import { MetadataSection } from './sections/MetadataSection'
 import { HelpDialog } from '../../components/ui/HelpDialog'
+import { useDeviceLatch } from '../../hooks/useDeviceLatch'
 
 type DeploymentDetailsRouteProp = RouteProp<RootStackParamList, 'DeploymentDetailsStep'>;
 
@@ -63,6 +64,7 @@ export const DeploymentDetailsStep = () => {
     // BLE Hooks
     const { getUtc, setUtc, setDeploymentIdAsOps, disconnectDevice, enableCamera, runDisconnect, getStatus, flashLed, setOperationalParam, setGpsLocation } = useBleCommands()
     const { updateSettings } = useDeviceSettings({ device: bleDevice })
+    const { triggerDpdLatch } = useDeviceLatch()
     const { isBleConnecting } = useBleActions()
 
     const [formState, setFormState] = useState({
@@ -414,27 +416,9 @@ export const DeploymentDetailsStep = () => {
                 console.warn('[Deployment] Device disconnected during explicit enable.')
             }
 
-            // 5.5 DPD Latch Cycle (Hypothesis: Config applies after Wake from DPD)
-            // Instead of keeping it awake, we LET IT SLEEP (fast timeout), then WAKE it up to latch settings.
+            // 5.5 DPD Latch Cycle (New Hook)
             if (bleDevice?.connected) {
-                console.log('[Deployment] 5.5 Initiating DPD Latch Cycle to apply settings...')
-
-                // 1. ALLOW SLEEP: Wait for device to enter DPD (Timeout is 1000ms, wait 2.5s to be safe)
-                // The device was configured with intervalBeforeDpd=1000 above.
-                console.log('[Deployment] Waiting 2.5s for device to enter DPD...')
-                await new Promise(r => setTimeout(r, 2500))
-
-                // 2. WAKE UP: Ping Himax to wake it. It should read the new config now.
-                console.log('[Deployment] Waking Himax to latch configuration...')
-                try {
-                    await setOperationalParam(bleDevice, OP_PARAMETER.WAKE_UP_EVENT, '0') // OP_PARAMETER.WAKE_UP_EVENT
-                } catch (e) {
-                    console.warn('[Deployment] Failed to wake device:', e)
-                }
-
-                // 3. STABILIZE: Wait for it to wake and process
-                await new Promise(r => setTimeout(r, 1500))
-                console.log('[Deployment] Device latched. Proceeding to disconnect.')
+                await triggerDpdLatch(bleDevice, '[Deployment]')
             }
 
             // 6. Flash Green LED (Success Confirmation)
