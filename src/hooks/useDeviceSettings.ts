@@ -22,6 +22,7 @@ export const OP_PARAMETER = {
     MD_INTERVAL: 11,
     FLASH_DURATION: 12,
     FLASH_LED: 13,
+    WAKE_UP_EVENT: 19, // Used exclusively to wake Himax from DPD (Index 20-27 reserved for Deployment ID)
 } as const
 
 /**

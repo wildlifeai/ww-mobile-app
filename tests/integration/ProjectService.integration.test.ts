@@ -406,7 +406,7 @@ describe("ProjectService Integration Tests", () => {
 				ProjectService.addProjectMember(
 					projectId,
 					testUsers.org2Admin.email,
-					testRoles.projectMember as any,
+					testRoles.projectMember,
 				),
 			).rejects.toThrow(/same organisation/i)
 		})
@@ -490,10 +490,10 @@ describe("ProjectService Integration Tests", () => {
 			)
 
 			const project = await ProjectService.getProjectById(projectId)
-			const projectData = project as any; // Cast for now if interface mismatch
+			const projectData = project;
 
 			expect(project).toBeDefined()
-			expect(projectData.member_count).toBe(2)
+			expect(projectData?.member_count).toBe(2)
 		})
 
 		it("should return deployment_count", async () => {
@@ -591,7 +591,7 @@ describe("ProjectService Integration Tests", () => {
 				ProjectService.addProjectMember(
 					project.id,
 					testUsers.org2Admin.email,
-					testRoles.projectMember as any,
+					testRoles.projectMember,
 				),
 			).rejects.toThrow(/same organisation/i)
 

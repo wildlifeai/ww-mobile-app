@@ -204,9 +204,7 @@ describe("Login Screen - User Stories", () => {
 				AuthActions.userEntersEmail(TestData.validUser.email)()
 				AuthActions.userEntersPassword(TestData.validUser.password)()
 			})
-			.and("I check the remember me option", () => {
-				// No action yet in bdd.ts, just placeholder
-			})
+			.and("I check the remember me option", AuthActions.userChecksRememberMe)
 			.and("I submit the form", AuthActions.userSubmitsLoginForm)
 			.then("My credentials should be saved for next time", async () => {
 				// Check AsyncStorage was called to save credentials

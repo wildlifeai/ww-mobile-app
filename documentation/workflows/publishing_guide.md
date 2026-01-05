@@ -21,7 +21,7 @@ To use `eas submit`, you need a Google Service Account Key.
 4.  Navigate to **IAM & Admin** > **Service Accounts**.
 5.  Click **Create Service Account**:
     *   **Name**: `eas-submit`
-    *   **Role**: Service Account User (or owner if unsure)
+    *   **Role**: Service Account User
 6.  Click on the created Service Account > **Keys** > **Add Key** > **Create new key** > **JSON**.
 7.  Save this file securely as `google-play-service-account.json` (Do NOT commit this to Git).
 8.  Go to the [Google Play Console](https://play.google.com/console/).

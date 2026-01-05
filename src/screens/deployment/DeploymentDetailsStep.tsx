@@ -14,7 +14,7 @@ import { WWIcon } from '../../components/ui/WWIcon'
 
 import { CommandNames } from '../../ble/types'
 import { useBleCommands } from '../../hooks/useBleCommands'
-import { useDeviceSettings } from '../../hooks/useDeviceSettings'
+import { useDeviceSettings, OP_PARAMETER } from '../../hooks/useDeviceSettings'
 import { useBleActions } from '../../providers/BleEngineProvider'
 
 import { LoRaWANSection } from './sections/LoRaWANSection'
@@ -427,7 +427,7 @@ export const DeploymentDetailsStep = () => {
                 // 2. WAKE UP: Ping Himax to wake it. It should read the new config now.
                 console.log('[Deployment] Waking Himax to latch configuration...')
                 try {
-                    await setOperationalParam(bleDevice, 20, '0') // OP_PARAMETER.WAKE_UP_EVENT
+                    await setOperationalParam(bleDevice, OP_PARAMETER.WAKE_UP_EVENT, '0') // OP_PARAMETER.WAKE_UP_EVENT
                 } catch (e) {
                     console.warn('[Deployment] Failed to wake device:', e)
                 }
