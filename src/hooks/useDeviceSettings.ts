@@ -32,6 +32,7 @@ export interface DeviceSettings {
     numPictures?: number              // Index 5 - Images per trigger (default: 3)
     pictureInterval?: number           // Index 6 - Interval between images in ms (default: 1500)
     timelapseInterval?: number         // Index 7 - Timelapse interval in seconds, 0=disabled (default: 60)
+    intervalBeforeDpd?: number         // Index 8 - Inactivity timeout in ms (default: 1000)
     ledBrightness?: number             // Index 9 - LED brightness 0-100%, 0=off (default: 5)
     cameraEnabled?: boolean            // Index 10 - 0=disabled, 1=enabled (default: 1)
     motionDetectInterval?: number      // Index 11 - Motion detection interval in ms, 0=disabled (default: 1000)
@@ -107,11 +108,11 @@ export const useDeviceSettings = ({
             if (settings.timelapseInterval !== undefined) {
                 updates.push({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: settings.timelapseInterval })
             }
+            if (settings.intervalBeforeDpd !== undefined) {
+                updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: settings.intervalBeforeDpd })
+            }
             if (settings.ledBrightness !== undefined) {
                 updates.push({ index: OP_PARAMETER.LED_BRIGHTNESS, value: settings.ledBrightness })
-            }
-            if (settings.cameraEnabled !== undefined) {
-                updates.push({ index: OP_PARAMETER.CAMERA_ENABLED, value: settings.cameraEnabled ? 1 : 0 })
             }
             if (settings.motionDetectInterval !== undefined) {
                 updates.push({ index: OP_PARAMETER.MD_INTERVAL, value: settings.motionDetectInterval })
@@ -121,6 +122,11 @@ export const useDeviceSettings = ({
             }
             if (settings.flashLed !== undefined) {
                 updates.push({ index: OP_PARAMETER.FLASH_LED, value: settings.flashLed })
+            }
+
+            // ALWAYS set Camera Enabled LAST to ensure it picks up the intervals set above
+            if (settings.cameraEnabled !== undefined) {
+                updates.push({ index: OP_PARAMETER.CAMERA_ENABLED, value: settings.cameraEnabled ? 1 : 0 })
             }
 
             // Send each update with a small delay to avoid overwhelming the device
