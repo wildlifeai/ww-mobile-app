@@ -17,7 +17,7 @@
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { EventEmitter } from "events"
+import EventEmitter from "eventemitter3"
 import type { Database } from "../types/database.types"
 import {
 	getEnvironmentConfig,
