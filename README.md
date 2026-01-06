@@ -161,7 +161,7 @@ npx eas build --clear-cache --profile development --platform ios
 ### Production Build & Submit (Android)
 To build and automatically submit to the Google Play Console (Internal Track):
 1.  **Configure Service Account**: Ensure your `eas.json` points to a valid Google Play Service Account JSON key (e.g., `./wwmap-443023-....json`).
-2.  **Versioning**: Bump version in `package.json` and build code (`android.versionCode`) in `app.config.ts`.
+2.  **Versioning**: Bump the `version` in `package.json` before creating a production build.
 3.  **Run Command**:
     ```bash
     eas build --platform android --profile production --auto-submit

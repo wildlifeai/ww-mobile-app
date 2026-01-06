@@ -179,9 +179,7 @@ npx expo start --dev-client --tunnel
 1. **Test production builds** before store submission
 2. **Use semantic versioning** for releases
 3. **Configure auto-increment** for build numbers
-1. **Test production builds** before store submission
-2. **Use semantic versioning** for releases
-3. **Configure auto-increment** for build numbers
+
 4. **Set up proper app signing** for distribution
 
 ### Android Versioning & Submission
