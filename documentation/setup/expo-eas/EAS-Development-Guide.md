@@ -56,6 +56,23 @@ eas env:create --name VAR_NAME --value "value" --environment development --visib
 eas env:update --name VAR_NAME --value "new_value" --environment development
 ```
 
+#### Handling Sensitive Credentials (EAS Secrets)
+For sensitive values (like API Keys, Apple IDs), **never** commit them to `eas.json` or git.
+
+1.  **Create EAS Secret** (Cloud):
+    ```bash
+    eas secret:create --scope project --name APPLE_ID --value "your@email.com"
+    ```
+2.  **Reference in `eas.json`**:
+    Use `${VAR_NAME}` syntax in `eas.json`.
+3.  **Local Validation Requirement**:
+    Even though the build happens in the cloud, the **local EAS CLI** needs to see these variables to validate the `eas.json` structure before upload.
+    *   **Option A (Temporary)**: Export in shell before running build:
+        ```powershell
+        $env:APPLE_ID="value"; eas build ...
+        ```
+    *   **Option B (Local .env)**: Maintain a local `.env` file (gitignored) and ensure your shell sources it. Note that `eas build` does *not* automatically load `.env` files for CLI validation; you must load them into your shell environment first.
+
 ### 3. Building
 
 #### Development Builds

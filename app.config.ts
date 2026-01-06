@@ -90,6 +90,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 }
             }
         ],
-        "expo-localization"
+        "expo-localization",
+        [
+            "expo-location",
+            {
+                "isAndroidBackgroundLocationEnabled": true,
+                "isAndroidMockLocationEnabled": false
+            }
+        ],
+        "./plugins/withOptionalCompass.js",
+        "./plugins/withReactNativeMapsModularHeaders.js"
     ]
 });
