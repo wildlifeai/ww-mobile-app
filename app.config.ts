@@ -67,7 +67,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     updates: {
         url: "https://u.expo.dev/eb6d9e5f-0daa-4451-8e6d-813330e0c557"
     },
-    runtimeVersion: "1.0.0",
+    runtimeVersion: pkg.version,
     extra: {
         eas: {
             projectId: "eb6d9e5f-0daa-4451-8e6d-813330e0c557"

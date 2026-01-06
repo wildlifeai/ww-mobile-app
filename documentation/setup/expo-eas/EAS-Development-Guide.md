@@ -72,7 +72,10 @@ eas build --profile development --platform all
 
 #### Production Builds
 ```bash
-# Android production build
+# Android production build (Auto Submit)
+eas build --platform android --profile production --auto-submit
+
+# Android production build (Manual Submit)
 eas build --profile production --platform android
 
 # iOS production build
@@ -176,7 +179,15 @@ npx expo start --dev-client --tunnel
 1. **Test production builds** before store submission
 2. **Use semantic versioning** for releases
 3. **Configure auto-increment** for build numbers
+1. **Test production builds** before store submission
+2. **Use semantic versioning** for releases
+3. **Configure auto-increment** for build numbers
 4. **Set up proper app signing** for distribution
+
+### Android Versioning & Submission
+*   **Version Name**: We modified `android/app/build.gradle` to read the version directly from `package.json`. Always update `package.json` version before a release.
+*   **Version Code**: Handled automatically by EAS (`autoIncrement: true` in `eas.json`).
+*   **New App Submission**: If the app is still in "Draft" state on Google Play (incomplete store listing), you must set `"releaseStatus": "draft"` in `eas.json`.
 
 ## Quick Reference
 

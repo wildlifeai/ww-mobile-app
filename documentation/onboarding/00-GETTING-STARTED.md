@@ -251,6 +251,7 @@ Start exploring the codebase with these essential files:
 - Android Studio (for Android development, SDK 35)
 - Xcode (for iOS development - Mac only)
 - Expo CLI (installed via npx)
+- **Google Play Service Account Key** (for automated store submissions)
 
 ### Quick Start
 ```bash

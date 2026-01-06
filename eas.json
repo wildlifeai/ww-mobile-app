@@ -35,8 +35,11 @@
       }
     },
     "production": {
+      "autoIncrement": true,
       "env": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
+        "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
       },
       "ios": {
         "resourceClass": "m-medium",
@@ -50,8 +53,14 @@
   "submit": {
     "production": {
       "android": {
-        "serviceAccountKeyPath": "${GOOGLE_PLAY_SERVICE_ACCOUNT_KEY_PATH}",
-        "track": "internal"
+        "serviceAccountKeyPath": "./wwmap-443023-3ed6207e2aa0.json",
+        "track": "internal",
+        "releaseStatus": "draft"
+      },
+      "ios": {
+        "appleId": "victor@wildlife.ai",
+        "ascAppId": "6479951661",
+        "appleTeamId": "7399889N9Z"
       }
     }
   }

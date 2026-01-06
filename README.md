@@ -158,6 +158,19 @@ To build for iOS (on Windows) or generic cloud builds:
 npx eas build --clear-cache --profile development --platform ios
 ```
 
+### Production Build & Submit (Android)
+To build and automatically submit to the Google Play Console (Internal Track):
+1.  **Configure Service Account**: Ensure your `eas.json` points to a valid Google Play Service Account JSON key (e.g., `./wwmap-443023-....json`).
+2.  **Versioning**: Bump version in `package.json` and build code (`android.versionCode`) in `app.config.ts`.
+3.  **Run Command**:
+    ```bash
+    eas build --platform android --profile production --auto-submit
+    ```
+
+> [!IMPORTANT]
+> **Signing Key**: Ensure your EAS Signing Key (SHA1 fingerprint) matches the one registered in the Google Play Console. Use `eas credentials` to verify or upload the correct keystore.
+
+
 ## Troubleshooting
 
 ### "useLegacyImplementation" or "useAnimatedGestureHandler" Errors
