@@ -56,6 +56,23 @@ eas env:create --name VAR_NAME --value "value" --environment development --visib
 eas env:update --name VAR_NAME --value "new_value" --environment development
 ```
 
+#### Handling Sensitive Credentials (EAS Secrets)
+For sensitive values (like API Keys, Apple IDs), **never** commit them to `eas.json` or git.
+
+1.  **Create EAS Secret** (Cloud):
+    ```bash
+    eas secret:create --scope project --name APPLE_ID --value "your@email.com"
+    ```
+2.  **Reference in `eas.json`**:
+    Use `${VAR_NAME}` syntax in `eas.json`.
+3.  **Local Validation Requirement**:
+    Even though the build happens in the cloud, the **local EAS CLI** needs to see these variables to validate the `eas.json` structure before upload.
+    *   **Option A (Temporary)**: Export in shell before running build:
+        ```powershell
+        $env:APPLE_ID="value"; eas build ...
+        ```
+    *   **Option B (Local .env)**: Maintain a local `.env` file (gitignored) and ensure your shell sources it. Note that `eas build` does *not* automatically load `.env` files for CLI validation; you must load them into your shell environment first.
+
 ### 3. Building
 
 #### Development Builds
@@ -72,7 +89,10 @@ eas build --profile development --platform all
 
 #### Production Builds
 ```bash
-# Android production build
+# Android production build (Auto Submit)
+eas build --platform android --profile production --auto-submit
+
+# Android production build (Manual Submit)
 eas build --profile production --platform android
 
 # iOS production build
@@ -176,7 +196,13 @@ npx expo start --dev-client --tunnel
 1. **Test production builds** before store submission
 2. **Use semantic versioning** for releases
 3. **Configure auto-increment** for build numbers
+
 4. **Set up proper app signing** for distribution
+
+### Android Versioning & Submission
+*   **Version Name**: We modified `android/app/build.gradle` to read the version directly from `package.json`. Always update `package.json` version before a release.
+*   **Version Code**: Handled automatically by EAS (`autoIncrement: true` in `eas.json`).
+*   **New App Submission**: If the app is still in "Draft" state on Google Play (incomplete store listing), you must set `"releaseStatus": "draft"` in `eas.json`.
 
 ## Quick Reference
 

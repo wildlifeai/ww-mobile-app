@@ -605,7 +605,7 @@ await write(device, ['Battery']) // Never do this!
 
 **Critical Timing Constraints**:
 - Device enters Deep Power Down (DPD) after 1000ms inactivity
-- Commands sent during wake-up require 200ms stabilization delay
+- **Command Interval**: Minimum **500ms** delay between commands to prevent DPD race conditions
 - GPS format must be space-separated values without quotes: `"0 0 0"`
 - Single-slot command buffer means rapid commands get discarded
 

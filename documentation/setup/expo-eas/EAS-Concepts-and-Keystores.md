@@ -285,6 +285,15 @@ eas credentials
 eas credentials --clear-cache
 ```
 
+### **"SHA1 Fingerprint Mismatch" (Google Play Error)**
+This happens when your EAS signing key doesn't match the one registered in Google Play.
+**Fix:**
+1.  **Check EAS Key**: Run `eas credentials` and look for the SHA1 Fingerprint.
+2.  **Check Play Console**: Go to **Release > Setup > App Integrity** and check the "App signing key certificate".
+3.  **Resolve**:
+    *   **Option A (`.ks` available)**: Upload your local keystore to EAS using `eas credentials`.
+    *   **Option B (Lost key)**: Download the certificate from EAS (`eas credentials`), then request a "Reset Upload Key" in Google Play form.
+
 ### **"Signing config not found" Errors:**
 - Ensure conditional keystore loading in `build.gradle`
 - Verify keystore properties file format
