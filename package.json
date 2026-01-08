@@ -1,6 +1,6 @@
 {
   "name": "wildlifewatcher",
-  "version": "0.0.24",
+  "version": "0.0.25",
   "private": true,
   "scripts": {
     "android": "npm run types:cloud-dev && npm run db:sync-schema && npm run schema:generate && npx expo run:android",
