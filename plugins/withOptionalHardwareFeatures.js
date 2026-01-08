@@ -3,18 +3,18 @@ const { withAndroidManifest } = require('@expo/config-plugins');
 /**
  * Config plugin to mark hardware features as optional in AndroidManifest.xml.
  * This prevents Google Play from filtering out devices that lack specific sensors
- * (e.g., compass, gyroscope) while still allowing the app to function.
+ * (e.g., compass, gyroscope, camera) while still allowing the app to function.
  * 
  * @param {ExpoConfig} config - The Expo config object
  * @returns {ExpoConfig} Modified config with optional hardware features
  */
-module.exports = function withOptionalCompass(config) {
+module.exports = function withOptionalHardwareFeatures(config) {
     return withAndroidManifest(config, async (config) => {
         const androidManifest = config.modResults;
 
         // Validate manifest structure
         if (!androidManifest || !androidManifest.manifest) {
-            console.warn('[withOptionalCompass] Invalid AndroidManifest structure, skipping');
+            console.warn('[withOptionalHardwareFeatures] Invalid AndroidManifest structure, skipping');
             return config;
         }
 
@@ -80,10 +80,10 @@ module.exports = function withOptionalCompass(config) {
 
         // Log summary
         if (modifiedFeatures.length > 0) {
-            console.log(`[withOptionalCompass] Modified ${modifiedFeatures.length} hardware features:`);
+            console.log(`[withOptionalHardwareFeatures] Modified ${modifiedFeatures.length} hardware features:`);
             modifiedFeatures.forEach(feature => console.log(`  - ${feature}`));
         } else {
-            console.log('[withOptionalCompass] All hardware features already properly configured');
+            console.log('[withOptionalHardwareFeatures] All hardware features already properly configured');
         }
 
         return config;

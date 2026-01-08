@@ -98,7 +98,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 "isAndroidMockLocationEnabled": false
             }
         ],
-        "./plugins/withOptionalCompass.js",
+        "./plugins/withOptionalHardwareFeatures.js",
         "./plugins/withReactNativeMapsModularHeaders.js"
     ]
 });

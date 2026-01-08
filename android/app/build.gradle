@@ -97,6 +97,9 @@ android {
         def packageJsonFile = new File(rootProject.projectDir.parentFile, 'package.json')
         def packageJson = new groovy.json.JsonSlurper().parseText(packageJsonFile.text)
         versionName packageJson.version
+        
+        // Dynamically set expo_runtime_version to match package.json version
+        resValue "string", "expo_runtime_version", packageJson.version
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 
