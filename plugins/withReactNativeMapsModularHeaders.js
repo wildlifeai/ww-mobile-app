@@ -39,7 +39,7 @@ function withReactNativeMapsModularHeaders(config) {
     # MODULAR_HEADERS_FIX_APPLIED
     # Fix for react-native-maps and static frameworks with New Architecture
     # This MUST apply to all targets due to transitive React Core dependencies
-    puts "🔧 [Podfile] Applying modular headers fix for static frameworks..."
+    puts "[Podfile] Applying modular headers fix for static frameworks..."
     
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
@@ -53,35 +53,44 @@ function withReactNativeMapsModularHeaders(config) {
         # Suppress documentation warnings that can cause issues
         config.build_settings['CLANG_WARN_DOCUMENTATION_COMMENTS'] = 'NO'
         
-        # For particularly problematic pods, suppress ALL warnings
+        
+        # Suppress warnings for all map-related pods
         if target.name.include?('react-native-maps') || 
            target.name.include?('react-native-google-maps') ||
            target.name.include?('Google-Maps')
           config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+        end
+
+        # Disable modules ONLY for the RN wrappers to fix the RCTViewManager import issue
+        # We MUST exclude Google-Maps-iOS-Utils because it is Swift and needs modules!
+        if (target.name.include?('react-native-maps') || target.name.include?('react-native-google-maps')) && !target.name.include?('Utils')
+           config.build_settings['DEFINES_MODULE'] = 'NO'
         end
       end
     end
     
     puts "✅ [Podfile] Applied modular headers fix to #{installer.pods_project.targets.count} targets"
 `;
-
-      // More robust regex that handles various Podfile formats
-      const postInstallRegex = /(post_install\s+do\s+\|[^|]+\|)([\s\S]*?)(^\s*end\s*$)/m;
       
-      if (postInstallRegex.test(podfileContent)) {
-        podfileContent = podfileContent.replace(postInstallRegex, (match, opening, body, closing) => {
-          return `${opening}${body}${fixCode}\n${closing}`;
-        });
-        
+      // Strategy: Insert at the BEGINNING of post_install block
+      // This is the safest approach to avoid syntax errors with matching parentheses of other calls.
+      // Although running after standard setup is ideal, running before is usually sufficient for Pod target settings.
+      if (podfileContent.includes('post_install do')) {
+        console.log('[withReactNativeMapsModularHeaders] 🔍 Found post_install block');
+        podfileContent = podfileContent.replace(
+          /(post_install\s+do\s+\|.*?\|)/,
+          `$1\n${fixCode}`
+        );
         fs.writeFileSync(podfilePath, podfileContent, 'utf-8');
-        console.log('[withReactNativeMapsModularHeaders] ✅ Successfully injected fix into existing post_install hook');
-      } else {
-        // Fallback: Create new post_install hook
+        console.log('[withReactNativeMapsModularHeaders] ✅ Injected fix at start of post_install block');
+      }
+      // Strategy 2: If no post_install block found, append new one.
+      else {
+        console.log('[withReactNativeMapsModularHeaders] ⚠️ No post_install block found. Appending new one.');
         const newPostInstall = `\npost_install do |installer|${fixCode}\nend\n`;
-        podfileContent = podfileContent.replace(/^end\s*$/m, `${newPostInstall}end`);
-        
+        podfileContent += newPostInstall;
         fs.writeFileSync(podfilePath, podfileContent, 'utf-8');
-        console.log('[withReactNativeMapsModularHeaders] ✅ Created new post_install hook with modular headers fix');
+        console.log('[withReactNativeMapsModularHeaders] ✅ Appended new post_install hook');
       }
 
       console.log('[withReactNativeMapsModularHeaders] 🎉 Podfile modifications complete');
