@@ -79,7 +79,7 @@ function withReactNativeMapsModularHeaders(config) {
         console.log('[withReactNativeMapsModularHeaders] 🔍 Found post_install block');
         podfileContent = podfileContent.replace(
           /(post_install\s+do\s+\|.*?\|)/,
-          `$1\n${fixCode}`
+          `$1${fixCode}`
         );
         fs.writeFileSync(podfilePath, podfileContent, 'utf-8');
         console.log('[withReactNativeMapsModularHeaders] ✅ Injected fix at start of post_install block');
