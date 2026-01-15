@@ -87,7 +87,7 @@ function withReactNativeMapsModularHeaders(config) {
       // Strategy 2: If no post_install block found, append new one.
       else {
         console.log('[withReactNativeMapsModularHeaders] ⚠️ No post_install block found. Appending new one.');
-        const newPostInstall = `\npost_install do |installer|${fixCode}\nend\n`;
+        const newPostInstall = `\npost_install do |installer|${fixCode}end\n`;
         podfileContent += newPostInstall;
         fs.writeFileSync(podfilePath, podfileContent, 'utf-8');
         console.log('[withReactNativeMapsModularHeaders] ✅ Appended new post_install hook');
