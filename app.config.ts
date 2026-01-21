@@ -99,6 +99,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             }
         ],
         "./plugins/withOptionalHardwareFeatures.js",
-        "./plugins/withReactNativeMapsModularHeaders.js"
+        "./plugins/withReactNativeMapsModularHeaders.js",
+        [
+            "./plugins/withGoogleMapsKey.js",
+            {
+                "iosApiKey": process.env.GOOGLE_MAPS_API_KEY_IOS
+            }
+        ]
     ]
 });

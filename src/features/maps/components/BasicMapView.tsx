@@ -51,7 +51,28 @@ export const BasicMapView: React.FC<BasicMapViewProps> = ({
 		console.log("[BasicMapView] Initializing with region:", region)
 		console.log("[BasicMapView] Map type:", mapType)
 		console.log("[BasicMapView] Config:", finalConfig)
+		console.log("[BasicMapView] Platform:", Platform.OS)
 	}, [])
+
+	/**
+	 * Handle map errors
+	 */
+	const handleMapError = (error: any) => {
+		console.error("[BasicMapView] Map Error:", error)
+		if (Platform.OS === 'ios') {
+			// On iOS, this might be a Google Maps API key issue
+			console.error("[BasicMapView] iOS Map Error - Check Google Maps API Key configuration")
+			console.error("[BasicMapView] Error details:", JSON.stringify(error, null, 2))
+		}
+	}
+
+	/**
+	 * Handle map ready event
+	 */
+	const handleMapReady = () => {
+		console.log("[BasicMapView] Map is ready!")
+	}
+
 
 	/**
 	 * Handle region change with gesture detection
@@ -98,6 +119,9 @@ export const BasicMapView: React.FC<BasicMapViewProps> = ({
 				loadingEnabled={true}
 				loadingBackgroundColor="#E5E5E5"
 				loadingIndicatorColor="#007AFF"
+				// Error handling
+				onMapReady={handleMapReady}
+				onError={handleMapError}
 				// Android specific
 				toolbarEnabled={false} // Disable default Android toolbar
 				moveOnMarkerPress={false}
