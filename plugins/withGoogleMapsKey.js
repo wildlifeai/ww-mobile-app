@@ -1,6 +1,11 @@
 const { withAppDelegate, withInfoPlist } = require('@expo/config-plugins');
 
 const withGoogleMapsKey = (config, { iosApiKey }) => {
+  if (!iosApiKey) {
+    console.warn('[withGoogleMapsKey] iosApiKey is missing. Google Maps may not work on iOS. Skipping plugin.');
+    return config;
+  }
+
   // 1. Add API Key to Info.plist (redundant if app.config.ts does it, but safe)
   config = withInfoPlist(config, (config) => {
     config.modResults.GoogleMapsApiKey = iosApiKey;
@@ -10,10 +15,10 @@ const withGoogleMapsKey = (config, { iosApiKey }) => {
   // 2. Inject import and initialization into AppDelegate
   config = withAppDelegate(config, (config) => {
     const { language, contents } = config.modResults;
+    let newContents = contents;
 
     if (language === 'swift') {
       // --- SWIFT LOGIC ---
-      let newContents = contents;
 
       // Add Import
       if (!newContents.includes('import GoogleMaps')) {
@@ -40,11 +45,9 @@ const withGoogleMapsKey = (config, { iosApiKey }) => {
           );
         }
       }
-      config.modResults.contents = newContents;
 
     } else {
       // --- OBJECTIVE-C / C++ LOGIC ---
-      let newContents = contents;
       
       // Add Import
       if (!newContents.includes('#import <GoogleMaps/GoogleMaps.h>')) {
@@ -70,9 +73,9 @@ const withGoogleMapsKey = (config, { iosApiKey }) => {
           );
         }
       }
-      config.modResults.contents = newContents;
     }
 
+    config.modResults.contents = newContents;
     return config;
   });
 
