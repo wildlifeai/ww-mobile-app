@@ -57,14 +57,14 @@
   "submit": {
     "production": {
       "android": {
-        "serviceAccountKeyPath": "./wwmap-443023-3ed6207e2aa0.json",
+        "serviceAccountKeyPath": "${GOOGLE_PLAY_SERVICE_ACCOUNT_KEY_PATH}",
         "track": "internal",
         "releaseStatus": "draft"
       },
       "ios": {
-        "appleId": "victor@wildlife.ai",
-        "ascAppId": "6479951661",
-        "appleTeamId": "7399889N9Z"
+        "appleId": "${APPLE_ID}",
+        "ascAppId": "${ASC_APP_ID}",
+        "appleTeamId": "${APPLE_TEAM_ID}"
       }
     }
   }
