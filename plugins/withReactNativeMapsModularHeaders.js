@@ -79,7 +79,7 @@ function withReactNativeMapsModularHeaders(config) {
         console.log('[withReactNativeMapsModularHeaders] 🔍 Found post_install block');
         podfileContent = podfileContent.replace(
           /(post_install\s+do\s+\|.*?\|)/,
-          `$1\n${fixCode}`
+          `$1${fixCode}`
         );
         fs.writeFileSync(podfilePath, podfileContent, 'utf-8');
         console.log('[withReactNativeMapsModularHeaders] ✅ Injected fix at start of post_install block');
@@ -87,7 +87,7 @@ function withReactNativeMapsModularHeaders(config) {
       // Strategy 2: If no post_install block found, append new one.
       else {
         console.log('[withReactNativeMapsModularHeaders] ⚠️ No post_install block found. Appending new one.');
-        const newPostInstall = `\npost_install do |installer|${fixCode}\nend\n`;
+        const newPostInstall = `\npost_install do |installer|${fixCode}end\n`;
         podfileContent += newPostInstall;
         fs.writeFileSync(podfilePath, podfileContent, 'utf-8');
         console.log('[withReactNativeMapsModularHeaders] ✅ Appended new post_install hook');
