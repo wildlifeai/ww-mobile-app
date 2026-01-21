@@ -10,7 +10,9 @@
       "env": {
         "NODE_ENV": "development",
         "EXPO_PUBLIC_SUPABASE_URL": "https://nuhwmubvygxyddkycmpa.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd",
+        "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
+        "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
       },
       "ios": {
         "resourceClass": "m-medium"
@@ -24,7 +26,9 @@
       "env": {
         "NODE_ENV": "development",
         "EXPO_PUBLIC_SUPABASE_URL": "https://nuhwmubvygxyddkycmpa.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd",
+        "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
+        "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
       },
       "ios": {
         "resourceClass": "m-medium",
