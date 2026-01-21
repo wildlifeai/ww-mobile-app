@@ -1,4 +1,4 @@
-import { View, ScrollView, RefreshControl, Alert } from "react-native"
+import { View, ScrollView, RefreshControl, Alert, StyleSheet } from "react-native"
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWText } from "../../components/ui/WWText"
 import { Card, Button, Chip, useTheme, ActivityIndicator, Text } from "react-native-paper"
@@ -14,7 +14,7 @@ export const Notifications = () => {
 	const [refreshing, setRefreshing] = useState(false)
 	const [processingId, setProcessingId] = useState<string | null>(null)
 
-	const loadInvitations = async () => {
+	const loadInvitations = useCallback(async () => {
 		setLoading(true)
 		try {
 			// Sync first to get latest
@@ -26,21 +26,21 @@ export const Notifications = () => {
 		} finally {
 			setLoading(false)
 		}
-	}
+	}, [])
 
 	useFocusEffect(
 		useCallback(() => {
 			loadInvitations()
-		}, [])
+		}, [loadInvitations])
 	)
 
-	const onRefresh = async () => {
+	const onRefresh = useCallback(async () => {
 		setRefreshing(true)
 		await loadInvitations()
 		setRefreshing(false)
-	}
+	}, [loadInvitations])
 
-	const handleRespond = async (invitationId: string, accept: boolean) => {
+	const handleRespond = useCallback(async (invitationId: string, accept: boolean) => {
 		setProcessingId(invitationId)
 		try {
 			await InvitationService.respondToInvitation(invitationId, accept)
@@ -53,7 +53,9 @@ export const Notifications = () => {
 		} finally {
 			setProcessingId(null)
 		}
-	}
+	}, [])
+
+	const renderCardLeft = useCallback((props: any) => <Chip icon="email-outline" {...props} onPress={() => { }}>Invite</Chip>, [])
 
 	return (
 		<WWScreenView>
@@ -61,31 +63,31 @@ export const Notifications = () => {
 				refreshControl={
 					<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
 				}
-				contentContainerStyle={{ padding: 16 }}
+				contentContainerStyle={styles.scrollContent}
 			>
-				<WWText variant="titleMedium" style={{ marginBottom: 16 }}>
+				<WWText variant="titleMedium" style={styles.header}>
 					Pending Invitations
 				</WWText>
 
 				{loading && !refreshing && invitations.length === 0 ? (
-					<ActivityIndicator style={{ marginTop: 20 }} />
+					<ActivityIndicator style={styles.loading} />
 				) : invitations.length === 0 ? (
-					<View style={{ alignItems: "center", marginTop: 40, opacity: 0.6 }}>
+					<View style={styles.emptyContainer}>
 						<WWText>No pending invitations</WWText>
 					</View>
 				) : (
 					invitations.map((invite) => (
-						<Card key={invite.id || invite.remoteId} style={{ marginBottom: 16 }}>
+						<Card key={invite.id || invite.remoteId} style={styles.card}>
 							<Card.Title
 								title="Project Invitation"
 								subtitle={`Role: ${invite.role === 'project_admin' ? 'Admin' : 'Member'}`}
-								left={(props) => <Chip icon="email-outline" {...props} onPress={() => { }}>Invite</Chip>}
+								left={renderCardLeft}
 							/>
 							<Card.Content>
 								<Text variant="bodyMedium">
 									You have been invited to join a project.
 								</Text>
-								<Text variant="bodySmall" style={{ marginTop: 8, color: theme.colors.outline }}>
+								<Text variant="bodySmall" style={[styles.expiryText, { color: theme.colors.outline }]}>
 									Expires: {new Date(invite.expiresAt).toLocaleDateString()}
 								</Text>
 							</Card.Content>
@@ -113,3 +115,26 @@ export const Notifications = () => {
 		</WWScreenView>
 	)
 }
+
+const styles = StyleSheet.create({
+	scrollContent: {
+		padding: 16,
+	},
+	header: {
+		marginBottom: 16,
+	},
+	loading: {
+		marginTop: 20,
+	},
+	emptyContainer: {
+		alignItems: "center",
+		marginTop: 40,
+		opacity: 0.6,
+	},
+	card: {
+		marginBottom: 16,
+	},
+	expiryText: {
+		marginTop: 8,
+	},
+})

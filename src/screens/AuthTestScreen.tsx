@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from "react"
-import { View, ScrollView, Alert } from "react-native"
+﻿import React, { useState, useEffect, useCallback } from "react"
+import { View, ScrollView, Alert, StyleSheet } from "react-native"
 import {
 	Button,
 	Card,
 	Text,
 	TextInput,
 	Chip,
-	ActivityIndicator,
-	Divider,
 } from "react-native-paper"
 import { useSupabaseAuth } from "../hooks/useSupabaseAuth"
-import { getSupabaseClient } from "../services/supabase"
 import * as apiTestSuite from "../services/tests/apiTest"
 
 /**
@@ -36,6 +33,16 @@ export const AuthTestScreen: React.FC = () => {
 		resetPassword,
 	} = useSupabaseAuth()
 
+	const clearTestResults = useCallback(() => {
+		setTestResults([])
+	}, [])
+
+	const renderCardTitleRight = useCallback((props: any) => (
+		<Button {...props} onPress={clearTestResults} compact>
+			Clear
+		</Button>
+	), [clearTestResults])
+
 	// Form state
 	const [email, setEmail] = useState("test@example.com")
 	const [password, setPassword] = useState("testpassword123")
@@ -44,14 +51,14 @@ export const AuthTestScreen: React.FC = () => {
 	const [testResults, setTestResults] = useState<string[]>([])
 
 	// Add test result
-	const addTestResult = (result: string) => {
-		setTestResults((prev) => [
+	const addTestResult = useCallback((result: string) => {
+		setTestResults((prev: string[]) => [
 			...prev,
 			`${new Date().toLocaleTimeString()}: ${result}`,
 		])
-	}
+	}, [])
 
-	const handleRegister = async () => {
+	const handleRegister = useCallback(async () => {
 		setIsSubmitting(true)
 		try {
 			const authResponse = await register({ email, password, name: username })
@@ -59,7 +66,7 @@ export const AuthTestScreen: React.FC = () => {
 			// Check if this is a pending confirmation response
 			if ((authResponse as any).isPendingConfirmation) {
 				addTestResult(
-					`📧 Registration successful! Please check your email to confirm your account.`,
+					`✉️ Registration successful! Please check your email to confirm your account.`,
 				)
 				Alert.alert(
 					"Check Your Email",
@@ -77,9 +84,9 @@ export const AuthTestScreen: React.FC = () => {
 		} finally {
 			setIsSubmitting(false)
 		}
-	}
+	}, [email, password, register, username, addTestResult])
 
-	const handleLogin = async () => {
+	const handleLogin = useCallback(async () => {
 		setIsSubmitting(true)
 		try {
 			await login({ identifier: email, password })
@@ -92,9 +99,9 @@ export const AuthTestScreen: React.FC = () => {
 		} finally {
 			setIsSubmitting(false)
 		}
-	}
+	}, [email, password, login, addTestResult])
 
-	const handleLogout = async () => {
+	const handleLogout = useCallback(async () => {
 		try {
 			await logout()
 			addTestResult("✅ Logout successful")
@@ -104,9 +111,9 @@ export const AuthTestScreen: React.FC = () => {
 			addTestResult(`❌ Logout failed: ${message}`)
 			Alert.alert("Logout Failed", message)
 		}
-	}
+	}, [logout, addTestResult])
 
-	const handleCheckAuthStatus = async () => {
+	const handleCheckAuthStatus = useCallback(async () => {
 		try {
 			const isAuth = await checkAuthStatus()
 			addTestResult(
@@ -118,9 +125,9 @@ export const AuthTestScreen: React.FC = () => {
 				error instanceof Error ? error.message : "Auth check failed"
 			addTestResult(`❌ Auth check failed: ${message}`)
 		}
-	}
+	}, [checkAuthStatus, addTestResult])
 
-	const handleRefreshSession = async () => {
+	const handleRefreshSession = useCallback(async () => {
 		try {
 			await refreshSession()
 			addTestResult("✅ Session refresh successful")
@@ -129,9 +136,9 @@ export const AuthTestScreen: React.FC = () => {
 				error instanceof Error ? error.message : "Session refresh failed"
 			addTestResult(`❌ Session refresh failed: ${message}`)
 		}
-	}
+	}, [refreshSession, addTestResult])
 
-	const handleResetPassword = async () => {
+	const handleResetPassword = useCallback(async () => {
 		try {
 			await resetPassword(email)
 			addTestResult(`✅ Password reset email sent to ${email}`)
@@ -142,9 +149,9 @@ export const AuthTestScreen: React.FC = () => {
 			addTestResult(`❌ Password reset failed: ${message}`)
 			Alert.alert("Reset Failed", message)
 		}
-	}
+	}, [email, resetPassword, addTestResult])
 
-	const runConnectivityTests = async () => {
+	const runConnectivityTests = useCallback(async () => {
 		addTestResult("🚀 Starting API connectivity tests...")
 
 		try {
@@ -179,11 +186,7 @@ export const AuthTestScreen: React.FC = () => {
 				error instanceof Error ? error.message : "API tests failed"
 			addTestResult(`❌ API tests failed: ${message}`)
 		}
-	}
-
-	const clearTestResults = () => {
-		setTestResults([])
-	}
+	}, [isLoggedIn, addTestResult])
 
 	// Test auth state on mount
 	useEffect(() => {
@@ -193,28 +196,23 @@ export const AuthTestScreen: React.FC = () => {
 		} else {
 			addTestResult("ℹ️ No active authentication session")
 		}
-	}, [])
+	}, [addTestResult, isLoggedIn, user?.email])
 
 	return (
-		<ScrollView style={{ flex: 1, padding: 16 }}>
+		<ScrollView style={styles.container}>
 			<Text
 				variant="headlineMedium"
-				style={{ marginBottom: 16, textAlign: "center" }}
+				style={styles.title}
 			>
-				🔐 Supabase Auth Test
+				🔍 Supabase Auth Test
 			</Text>
 
 			{/* Auth Status Card */}
-			<Card style={{ marginBottom: 16 }}>
+			<Card style={styles.card}>
 				<Card.Title title="Authentication Status" />
 				<Card.Content>
 					<View
-						style={{
-							flexDirection: "row",
-							flexWrap: "wrap",
-							gap: 8,
-							marginBottom: 8,
-						}}
+						style={styles.chipContainer}
 					>
 						<Chip
 							icon={isLoggedIn ? "check" : "close"}
@@ -233,13 +231,13 @@ export const AuthTestScreen: React.FC = () => {
 					{user && (
 						<View>
 							<Text>
-								<Text style={{ fontWeight: "bold" }}>Email:</Text> {user.email}
+								<Text style={styles.boldText}>Email:</Text> {user.email}
 							</Text>
 							<Text>
-								<Text style={{ fontWeight: "bold" }}>ID:</Text> {user.id}
+								<Text style={styles.boldText}>ID:</Text> {user.id}
 							</Text>
 							<Text>
-								<Text style={{ fontWeight: "bold" }}>Role:</Text> {user.role}
+								<Text style={styles.boldText}>Role:</Text> {user.role}
 							</Text>
 						</View>
 					)}
@@ -247,7 +245,7 @@ export const AuthTestScreen: React.FC = () => {
 			</Card>
 
 			{/* Registration/Login Form */}
-			<Card style={{ marginBottom: 16 }}>
+			<Card style={styles.card}>
 				<Card.Title title="Authentication Actions" />
 				<Card.Content>
 					<TextInput
@@ -256,7 +254,7 @@ export const AuthTestScreen: React.FC = () => {
 						onChangeText={setEmail}
 						keyboardType="email-address"
 						autoCapitalize="none"
-						style={{ marginBottom: 8 }}
+						style={styles.input}
 					/>
 
 					<TextInput
@@ -264,7 +262,7 @@ export const AuthTestScreen: React.FC = () => {
 						value={password}
 						onChangeText={setPassword}
 						secureTextEntry
-						style={{ marginBottom: 8 }}
+						style={styles.input}
 					/>
 
 					<TextInput
@@ -272,15 +270,15 @@ export const AuthTestScreen: React.FC = () => {
 						value={username}
 						onChangeText={setUsername}
 						autoCapitalize="none"
-						style={{ marginBottom: 16 }}
+						style={styles.inputLargeMargin}
 					/>
 
-					<View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+					<View style={styles.buttonRow}>
 						<Button
 							mode="contained"
 							onPress={handleRegister}
 							disabled={isSubmitting || loading}
-							style={{ flex: 1 }}
+							style={styles.flex1}
 						>
 							{isSubmitting ? "Registering..." : "Register"}
 						</Button>
@@ -289,7 +287,7 @@ export const AuthTestScreen: React.FC = () => {
 							mode="outlined"
 							onPress={handleLogin}
 							disabled={isSubmitting || loading}
-							style={{ flex: 1 }}
+							style={styles.flex1}
 						>
 							{isSubmitting ? "Logging in..." : "Login"}
 						</Button>
@@ -299,17 +297,17 @@ export const AuthTestScreen: React.FC = () => {
 						<Button
 							mode="contained-tonal"
 							onPress={handleLogout}
-							style={{ marginBottom: 8 }}
+							style={styles.input}
 						>
 							Logout
 						</Button>
 					)}
 
-					<View style={{ flexDirection: "row", gap: 8 }}>
+					<View style={styles.gapRow}>
 						<Button
 							mode="outlined"
 							onPress={handleCheckAuthStatus}
-							style={{ flex: 1 }}
+							style={styles.flex1}
 							compact
 						>
 							Check Status
@@ -318,7 +316,7 @@ export const AuthTestScreen: React.FC = () => {
 						<Button
 							mode="outlined"
 							onPress={handleRefreshSession}
-							style={{ flex: 1 }}
+							style={styles.flex1}
 							compact
 						>
 							Refresh Session
@@ -328,7 +326,7 @@ export const AuthTestScreen: React.FC = () => {
 					<Button
 						mode="text"
 						onPress={handleResetPassword}
-						style={{ marginTop: 8 }}
+						style={styles.textButton}
 					>
 						Reset Password
 					</Button>
@@ -336,36 +334,32 @@ export const AuthTestScreen: React.FC = () => {
 			</Card>
 
 			{/* API Tests */}
-			<Card style={{ marginBottom: 16 }}>
+			<Card style={styles.card}>
 				<Card.Title title="API Connectivity Tests" />
 				<Card.Content>
 					<Button
 						mode="contained"
 						onPress={runConnectivityTests}
-						style={{ marginBottom: 8 }}
+						style={styles.input}
 					>
 						Run All API Tests
 					</Button>
 
-					<Text variant="bodySmall" style={{ color: "#666" }}>
+					<Text variant="bodySmall" style={styles.mutedText}>
 						Tests database connection, authentication, and real-time features
 					</Text>
 				</Card.Content>
 			</Card>
 
 			{/* Test Results */}
-			<Card style={{ marginBottom: 32 }}>
+			<Card style={styles.resultsCard}>
 				<Card.Title
 					title="Test Results"
-					right={(props) => (
-						<Button {...props} onPress={clearTestResults} compact>
-							Clear
-						</Button>
-					)}
+					right={renderCardTitleRight}
 				/>
 				<Card.Content>
 					{testResults.length === 0 ? (
-						<Text style={{ fontStyle: "italic", color: "#666" }}>
+						<Text style={styles.resultsPlaceholder}>
 							No test results yet. Run some tests above!
 						</Text>
 					) : (
@@ -373,16 +367,14 @@ export const AuthTestScreen: React.FC = () => {
 							{testResults.map((result, index) => (
 								<Text
 									key={index}
-									style={{
-										fontSize: 12,
-										fontFamily: "monospace",
-										marginBottom: 4,
-										color: result.includes("❌")
-											? "#F44336"
+									style={[
+										styles.resultItem,
+										result.includes("❌")
+											? styles.resultError
 											: result.includes("✅")
-												? "#4CAF50"
-												: "#333",
-									}}
+												? styles.resultSuccess
+												: styles.resultNormal,
+									]}
 								>
 									{result}
 								</Text>
@@ -394,3 +386,71 @@ export const AuthTestScreen: React.FC = () => {
 		</ScrollView>
 	)
 }
+
+const styles = StyleSheet.create({
+	container: {
+		flex: 1,
+		padding: 16,
+	},
+	title: {
+		marginBottom: 16,
+		textAlign: "center",
+	},
+	card: {
+		marginBottom: 16,
+	},
+	chipContainer: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+		gap: 8,
+		marginBottom: 8,
+	},
+	boldText: {
+		fontWeight: "bold",
+	},
+	input: {
+		marginBottom: 8,
+	},
+	inputLargeMargin: {
+		marginBottom: 16,
+	},
+	buttonRow: {
+		flexDirection: "row",
+		gap: 8,
+		marginBottom: 16,
+	},
+	gapRow: {
+		flexDirection: "row",
+		gap: 8,
+	},
+	flex1: {
+		flex: 1,
+	},
+	textButton: {
+		marginTop: 8,
+	},
+	mutedText: {
+		color: "#666",
+	},
+	resultsCard: {
+		marginBottom: 32,
+	},
+	resultsPlaceholder: {
+		fontStyle: "italic",
+		color: "#666",
+	},
+	resultItem: {
+		fontSize: 12,
+		fontFamily: "monospace",
+		marginBottom: 4,
+	},
+	resultError: {
+		color: "#F44336",
+	},
+	resultSuccess: {
+		color: "#4CAF50",
+	},
+	resultNormal: {
+		color: "#333",
+	},
+})

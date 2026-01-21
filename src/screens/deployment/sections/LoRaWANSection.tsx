@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { Card, Button, Text, ActivityIndicator, useTheme } from 'react-native-paper'
+import { Card, Button, Text, useTheme } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useBleCommands } from '../../../hooks/useBleCommands'
 import { WWIcon } from '../../../components/ui/WWIcon'
@@ -16,15 +16,12 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
     const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'failed'>('idle')
     const [message, setMessage] = useState('')
 
-    const handlePing = async () => {
+    const handlePing = useCallback(async () => {
         if (!device) return
         setStatus('testing')
         setMessage('Sending ping...')
         try {
             await pingNetwork(device)
-            // In a real scenario, we might wait for an event/log confirms success.
-            // For now, assume if write succeeds, the test command was sent.
-            // We can check logs in a more advanced version.
             setStatus('success')
             setMessage('Ping command sent successfully. Verify reception on server.')
         } catch (error) {
@@ -32,18 +29,34 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
             setStatus('failed')
             setMessage('Failed to send ping command.')
         }
-    }
+    }, [device, pingNetwork])
+
+    const dynamicStyles = useMemo(() => ({
+        statusText: { flex: 1, color: theme.colors.onSurface },
+        messageText: { color: theme.colors.outline }
+    }), [theme])
+
+    const renderLeft = useCallback((props: any) => <WWIcon {...props} source="wifi" />, [])
+    const renderRight = useCallback((props: any) => (
+        <Button
+            {...props}
+            icon="help-circle-outline"
+            onPress={() => onShowHelp('LoRaWAN Signal Test', 'Sends a ping through the LoRaWAN network to verify the device can transmit data to the gateway.')}
+        >
+            Help
+        </Button>
+    ), [onShowHelp])
 
     return (
         <Card style={styles.card}>
             <Card.Title
                 title="LoRaWAN Signal Test"
-                left={(props) => <WWIcon {...props} source="wifi" />}
-                right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => onShowHelp('LoRaWAN Signal Test', 'Sends a ping through the LoRaWAN network to verify the device can transmit data to the gateway.')}>Help</Button>}
+                left={renderLeft}
+                right={renderRight}
             />
             <Card.Content style={styles.content}>
                 <View style={styles.statusRow}>
-                    <Text variant="bodyMedium" style={{ flex: 1 }}>
+                    <Text variant="bodyMedium" style={dynamicStyles.statusText}>
                         Status: {status === 'idle' ? 'Not Tested' :
                             status === 'testing' ? 'Testing...' :
                                 status === 'success' ? 'Command Sent' : 'Failed'}
@@ -52,7 +65,7 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
                     {status === 'failed' && <WWIcon source="alert-circle" color={theme.colors.error} size={24} />}
                 </View>
 
-                {message ? <Text variant="bodySmall" style={{ color: theme.colors.outline }}>{message}</Text> : null}
+                {message ? <Text variant="bodySmall" style={dynamicStyles.messageText}>{message}</Text> : null}
 
                 <Button
                     mode="outlined"

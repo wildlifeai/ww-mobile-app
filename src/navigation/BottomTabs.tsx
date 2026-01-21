@@ -57,7 +57,7 @@ export const BottomTabs = () => {
 			setIndex(3)
 			navigation.setParams({ initialTab: undefined })
 		}
-	}, [route.params?.initialTab])
+	}, [route.params?.initialTab, navigation])
 
 
 	return (

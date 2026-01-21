@@ -359,7 +359,7 @@ export const useBle = (): ReturnType => {
 
 			return newPeripheral
 		},
-		[initialized, scanning.isScanning, dispatch, write, disconnectDevice],
+		[initialized, scanning.isScanning, dispatch, disconnectDevice],
 	)
 
 	const removeLeftoverDevices = useCallback(() => {

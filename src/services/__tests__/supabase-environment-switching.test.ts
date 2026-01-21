@@ -98,7 +98,7 @@ describe("Supabase Client Environment Switching", () => {
 				}),
 			)
 			expect(client).toBeDefined()
-			expect(client._isTestClient).toBe(true)
+			expect((client as any)._isTestClient).toBe(true)
 		})
 
 		it("should store client instance for later retrieval", async () => {
@@ -157,7 +157,7 @@ describe("Supabase Client Environment Switching", () => {
 			const client = getSupabaseClient()
 
 			expect(client).toBeDefined()
-			expect(client._isTestClient).toBe(true)
+			expect((client as any)._isTestClient).toBe(true)
 		})
 
 		it("should return same instance on multiple calls", async () => {
@@ -172,7 +172,7 @@ describe("Supabase Client Environment Switching", () => {
 	describe("reconnectSupabase", () => {
 		it("should cleanup old client before creating new one", async () => {
 			const client1 = await initializeSupabaseClient()
-			const mockRemoveSubscriptions = client1.removeAllSubscriptions as jest.Mock
+			const mockRemoveSubscriptions = (client1 as any).removeAllSubscriptions as jest.Mock
 
 			await reconnectSupabase()
 
@@ -213,7 +213,7 @@ describe("Supabase Client Environment Switching", () => {
 
 		it("should handle errors during cleanup gracefully", async () => {
 			const client1 = await initializeSupabaseClient()
-			const mockRemoveSubscriptions = client1.removeAllSubscriptions as jest.Mock
+			const mockRemoveSubscriptions = (client1 as any).removeAllSubscriptions as jest.Mock
 			mockRemoveSubscriptions.mockRejectedValueOnce(new Error("Cleanup error"))
 
 			// Should not throw, but should log error
@@ -381,7 +381,7 @@ describe("Supabase Client Environment Switching", () => {
 			const client2 = await reconnectSupabase()
 
 			// Verify cleanup and recreation
-			expect(client1.removeAllSubscriptions).toHaveBeenCalled()
+			expect((client1 as any).removeAllSubscriptions).toHaveBeenCalled()
 			expect((client2 as any)._url).toBe("https://cloud.supabase.co")
 			expect(callback).toHaveBeenCalled()
 
@@ -456,8 +456,8 @@ describe("Supabase Client Environment Switching", () => {
 			const client2 = getSupabaseClient()
 			await reconnectSupabase()
 
-			expect(client1.removeAllSubscriptions).toHaveBeenCalledTimes(1)
-			expect(client2.removeAllSubscriptions).toHaveBeenCalledTimes(1)
+			expect((client1 as any).removeAllSubscriptions).toHaveBeenCalledTimes(1)
+			expect((client2 as any).removeAllSubscriptions).toHaveBeenCalledTimes(1)
 		})
 	})
 })

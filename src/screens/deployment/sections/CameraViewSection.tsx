@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useCallback, useMemo } from 'react'
 import { StyleSheet, View, Image } from 'react-native'
 import { Card, Button, Text, useTheme } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
@@ -28,21 +28,36 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
         device: device || undefined,
         logs,
         write,
-        onImageReceived: (uri) => {
-            onImageCaptured(uri)
-        },
+        onImageReceived: onImageCaptured,
         onError: (err) => {
             console.error('Capture error:', err)
             // Error handling UI could be added here
         }
     })
 
+    const dynamicStyles = useMemo(() => ({
+        placeholderText: { textAlign: 'center' as const, marginBottom: 8, color: theme.colors.outline },
+        previewImage: { ...styles.previewImage, backgroundColor: theme.colors.surfaceVariant },
+        placeholderContainer: { ...styles.placeholderContainer, backgroundColor: theme.colors.surfaceVariant }
+    }), [theme])
+
+    const renderLeft = useCallback((props: any) => <WWIcon {...props} source="camera" />, [])
+    const renderRight = useCallback((props: any) => (
+        <Button
+            {...props}
+            icon="help-circle-outline"
+            onPress={() => onShowHelp('Camera Preview', 'Take a test photo to ensure the camera is pointing at the desired target and the view is unobstructed.')}
+        >
+            Help
+        </Button>
+    ), [onShowHelp])
+
     return (
         <Card style={styles.card}>
             <Card.Title
                 title="Camera Preview"
-                left={(props) => <WWIcon {...props} source="camera" />}
-                right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => onShowHelp('Camera Preview', 'Take a test photo to ensure the camera is pointing at the desired target and the view is unobstructed.')}>Help</Button>}
+                left={renderLeft}
+                right={renderRight}
             />
             <Card.Content style={styles.content}>
                 {capturedImageUri ? (
@@ -51,8 +66,8 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                         <Button mode="text" onPress={clearImage} icon="refresh">Retake</Button>
                     </View>
                 ) : (
-                    <View style={styles.placeholderContainer}>
-                        <Text variant="bodySmall" style={{ textAlign: 'center', marginBottom: 8, color: theme.colors.outline }}>
+                    <View style={dynamicStyles.placeholderContainer}>
+                        <Text variant="bodySmall" style={dynamicStyles.placeholderText}>
                             Capture a test image to verify camera angle and FOV.
                         </Text>
                         <Button
@@ -75,6 +90,6 @@ const styles = StyleSheet.create({
     card: { marginBottom: 16 },
     content: { gap: 12 },
     imageContainer: { alignItems: 'center', gap: 8 },
-    previewImage: { width: '100%', height: 200, backgroundColor: '#f0f0f0', borderRadius: 8 },
-    placeholderContainer: { alignItems: 'center', padding: 16, backgroundColor: '#f9f9f9', borderRadius: 8 }
+    previewImage: { width: '100%', height: 200, borderRadius: 8 },
+    placeholderContainer: { alignItems: 'center', padding: 16, borderRadius: 8 }
 })

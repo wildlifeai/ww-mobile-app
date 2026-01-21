@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { StyleSheet, View, TouchableOpacity } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { WWText } from './ui/WWText'
 import { Button } from 'react-native-paper'
 

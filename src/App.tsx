@@ -1,5 +1,6 @@
 // Import gesture handler FIRST before any other imports  
 import 'react-native-gesture-handler'
+import { StyleSheet } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { StatusBar } from 'expo-status-bar'
 
@@ -22,7 +23,7 @@ import { AuthProvider } from "./providers/AuthProvider"
 
 export const App = () => {
 	return (
-		<GestureHandlerRootView style={{ flex: 1 }}>
+		<GestureHandlerRootView style={styles.container}>
 			<SafeAreaProvider>
 				<StatusBar style="light" backgroundColor="#000000" />
 				<Suspense fallback={<Text>Loading...</Text>}>
@@ -48,3 +49,8 @@ export const App = () => {
 		</GestureHandlerRootView>
 	)
 }
+const styles = StyleSheet.create({
+	container: {
+		flex: 1,
+	},
+})

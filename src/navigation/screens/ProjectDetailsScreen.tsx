@@ -11,7 +11,7 @@
  * - Loading states: Proper skeleton/spinner for data fetching
  */
 
-import React, { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import { StyleSheet, View, ScrollView, Alert } from "react-native"
 import { useForm, Controller } from "react-hook-form"
 import {
@@ -160,7 +160,7 @@ export const ProjectDetailsScreen = () => {
 	}, [selectedMethod])
 
 	// Reset form when project data loads
-	React.useEffect(() => {
+	useEffect(() => {
 		if (project) {
 			reset({
 				name: project.name,
@@ -209,8 +209,8 @@ export const ProjectDetailsScreen = () => {
 
 				setIsEditMode(false)
 				refetch()
-			} catch (error) {
-				console.error("Failed to update project:", error)
+			} catch (err) {
+				console.error("Failed to update project:", err)
 				Alert.alert(
 					"Update Failed",
 					"Failed to update project. Please try again.",
@@ -226,8 +226,8 @@ export const ProjectDetailsScreen = () => {
 			await deleteProject(projectId).unwrap()
 			setShowDeleteDialog(false)
 			navigation.goBack()
-		} catch (error) {
-			console.error("Failed to delete project:", error)
+		} catch (err) {
+			console.error("Failed to delete project:", err)
 			Alert.alert(
 				"Delete Failed",
 				"Failed to delete project. Please try again.",
@@ -249,8 +249,8 @@ export const ProjectDetailsScreen = () => {
 						onPress: async () => {
 							try {
 								await removeMember({ projectId, userId }).unwrap()
-							} catch (error) {
-								console.error("Failed to remove member:", error)
+							} catch (err) {
+								console.error("Failed to remove member:", err)
 								Alert.alert("Error", "Failed to remove member")
 							}
 						},
@@ -264,10 +264,33 @@ export const ProjectDetailsScreen = () => {
 
 
 	// Helper to get label for ID
-	const getLabel = (options: { label: string; value: string }[], value?: string | number | null) => {
+	const getLabel = useCallback((options: { label: string; value: string }[], value?: string | number | null) => {
 		if (!value) return null
 		return options.find(o => o.value === value.toString())?.label || value
-	}
+	}, [])
+
+	const dynamicStyles = useMemo(() => ({
+		loadingLabel: { color: theme.colors.onSurfaceVariant },
+		errorHeader: { color: theme.colors.error },
+		errorMessage: { color: theme.colors.onSurfaceVariant },
+		projectTitle: { color: theme.colors.onSurface },
+		orgName: { color: theme.colors.onSurfaceVariant, marginTop: 4 },
+		description: { color: theme.colors.onSurfaceVariant },
+		noDescription: { color: theme.colors.onSurfaceDisabled },
+		statValue: { color: theme.colors.onSurface },
+		statLabel: { color: theme.colors.onSurfaceVariant },
+		sectionTitle: { color: theme.colors.onSurface },
+		settingLabel: { color: theme.colors.onSurfaceVariant },
+		settingValue: { color: theme.colors.onSurface },
+		websiteValue: { color: theme.colors.primary },
+		memberInitialBg: { backgroundColor: theme.colors.primaryContainer },
+		memberInitialLabel: { color: theme.colors.onPrimaryContainer, fontSize: 12 },
+		memberNameAdmin: { color: theme.colors.onSurface, fontWeight: 'bold' as const },
+		memberNameMember: { color: theme.colors.onSurface, fontWeight: 'normal' as const },
+		memberRoleText: { color: theme.colors.onSurfaceVariant },
+		membersEmpty: { color: theme.colors.onSurfaceVariant },
+		membersTitle: { color: theme.colors.onSurface },
+	}), [theme])
 
 	// Loading state
 	if (isLoading) {
@@ -279,7 +302,7 @@ export const ProjectDetailsScreen = () => {
 						variant="bodyMedium"
 						style={[
 							styles.loadingText,
-							{ color: theme.colors.onSurfaceVariant },
+							dynamicStyles.loadingLabel,
 						]}
 					>
 						Loading project...
@@ -296,7 +319,7 @@ export const ProjectDetailsScreen = () => {
 				<View style={styles.centerContainer}>
 					<Text
 						variant="headlineSmall"
-						style={[styles.errorTitle, { color: theme.colors.error }]}
+						style={[styles.errorTitle, dynamicStyles.errorHeader]}
 					>
 						Failed to load project
 					</Text>
@@ -304,7 +327,7 @@ export const ProjectDetailsScreen = () => {
 						variant="bodyMedium"
 						style={[
 							styles.errorMessage,
-							{ color: theme.colors.onSurfaceVariant },
+							dynamicStyles.errorMessage,
 						]}
 					>
 						{error && typeof error === "object" && "error" in error
@@ -362,17 +385,14 @@ export const ProjectDetailsScreen = () => {
 								<View style={styles.flex1}>
 									<Text
 										variant="headlineMedium"
-										style={{ color: theme.colors.onSurface }}
+										style={dynamicStyles.projectTitle}
 									>
 										{project.name}
 									</Text>
 									{project.organisation?.name && (
 										<Text
 											variant="bodyMedium"
-											style={{
-												color: theme.colors.onSurfaceVariant,
-												marginTop: 4,
-											}}
+											style={dynamicStyles.orgName}
 										>
 											{project.organisation.name}
 										</Text>
@@ -425,7 +445,7 @@ export const ProjectDetailsScreen = () => {
 								variant="bodyMedium"
 								style={[
 									styles.description,
-									{ color: theme.colors.onSurfaceVariant },
+									dynamicStyles.description,
 								]}
 							>
 								{project.description}
@@ -435,7 +455,7 @@ export const ProjectDetailsScreen = () => {
 								variant="bodyMedium"
 								style={[
 									styles.description,
-									{ color: theme.colors.onSurfaceDisabled },
+									dynamicStyles.noDescription,
 								]}
 							>
 								No description
@@ -456,13 +476,13 @@ export const ProjectDetailsScreen = () => {
 								/>
 								<Text
 									variant="headlineSmall"
-									style={{ color: theme.colors.onSurface }}
+									style={dynamicStyles.statValue}
 								>
 									{project.member_count || 0}
 								</Text>
 								<Text
 									variant="bodySmall"
-									style={{ color: theme.colors.onSurfaceVariant }}
+									style={dynamicStyles.statLabel}
 								>
 									Members
 								</Text>
@@ -478,13 +498,13 @@ export const ProjectDetailsScreen = () => {
 								/>
 								<Text
 									variant="headlineSmall"
-									style={{ color: theme.colors.onSurface }}
+									style={dynamicStyles.statValue}
 								>
 									{project.deployment_count || 0}
 								</Text>
 								<Text
 									variant="bodySmall"
-									style={{ color: theme.colors.onSurfaceVariant }}
+									style={dynamicStyles.statLabel}
 								>
 									Deployments
 									{` (${project.active_deployment_count || 0} active)`}
@@ -501,13 +521,13 @@ export const ProjectDetailsScreen = () => {
 								/>
 								<Text
 									variant="headlineSmall"
-									style={{ color: theme.colors.onSurface }}
+									style={dynamicStyles.statValue}
 								>
 									{project.lorawan_device_count || 0}
 								</Text>
 								<Text
 									variant="bodySmall"
-									style={{ color: theme.colors.onSurfaceVariant }}
+									style={dynamicStyles.statLabel}
 								>
 									Devices
 								</Text>
@@ -521,7 +541,7 @@ export const ProjectDetailsScreen = () => {
 					<Card.Content>
 						<Text
 							variant="titleMedium"
-							style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
+							style={[styles.sectionTitle, dynamicStyles.sectionTitle]}
 						>
 							Settings
 						</Text>
@@ -650,13 +670,13 @@ export const ProjectDetailsScreen = () => {
 									<View style={styles.settingRow}>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurfaceVariant }}
+											style={dynamicStyles.settingLabel}
 										>
 											Sampling Design:
 										</Text>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurface }}
+											style={dynamicStyles.settingValue}
 										>
 											{getLabel(samplingDesignOptions, project.sampling_design_id)}
 										</Text>
@@ -667,13 +687,13 @@ export const ProjectDetailsScreen = () => {
 									<View style={styles.settingRow}>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurfaceVariant }}
+											style={dynamicStyles.settingLabel}
 										>
 											Capture Method:
 										</Text>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurface }}
+											style={dynamicStyles.settingValue}
 										>
 											{getLabel(captureMethodOptions, project.capture_method_id)}
 										</Text>
@@ -684,13 +704,13 @@ export const ProjectDetailsScreen = () => {
 									<View style={styles.settingRow}>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurfaceVariant }}
+											style={dynamicStyles.settingLabel}
 										>
 											Motion Sensitivity:
 										</Text>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurface }}
+											style={dynamicStyles.settingValue}
 										>
 											{getLabel(sensitivityOptions, project.activity_detection_sensitivity_id)}
 										</Text>
@@ -701,13 +721,13 @@ export const ProjectDetailsScreen = () => {
 									<View style={styles.settingRow}>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurfaceVariant }}
+											style={dynamicStyles.settingLabel}
 										>
 											Time-lapse Interval:
 										</Text>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurface }}
+											style={dynamicStyles.settingValue}
 										>
 											{project.timelapse_interval_seconds}s
 										</Text>
@@ -718,13 +738,13 @@ export const ProjectDetailsScreen = () => {
 									<View style={styles.settingRow}>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurfaceVariant }}
+											style={dynamicStyles.settingLabel}
 										>
 											AI Model:
 										</Text>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurface }}
+											style={dynamicStyles.settingValue}
 										>
 											{getLabel(aiModelOptions, project.model_id)}
 										</Text>
@@ -735,13 +755,13 @@ export const ProjectDetailsScreen = () => {
 									<View style={styles.settingRow}>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurfaceVariant }}
+											style={dynamicStyles.settingLabel}
 										>
 											Website:
 										</Text>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.primary }}
+											style={dynamicStyles.websiteValue}
 										>
 											{project.website}
 										</Text>
@@ -757,7 +777,7 @@ export const ProjectDetailsScreen = () => {
 										/>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurface }}
+											style={dynamicStyles.settingValue}
 										>
 											Using Bait
 										</Text>
@@ -773,7 +793,7 @@ export const ProjectDetailsScreen = () => {
 										/>
 										<Text
 											variant="bodyMedium"
-											style={{ color: theme.colors.onSurface }}
+											style={dynamicStyles.settingValue}
 										>
 											Monitoring Marked Individuals
 										</Text>
@@ -791,7 +811,7 @@ export const ProjectDetailsScreen = () => {
 							<View style={styles.sectionHeader}>
 								<Text
 									variant="titleMedium"
-									style={{ color: theme.colors.onSurface }}
+									style={dynamicStyles.membersTitle}
 								>
 									Members
 								</Text>
@@ -827,7 +847,7 @@ export const ProjectDetailsScreen = () => {
 												: "Me")
 											: (member.user_profile?.name || "Unknown User")
 
-										const initials = displayName
+										const initials = (displayName || "")
 											.split(" ")
 											.map(n => n[0])
 											.join("")
@@ -843,20 +863,20 @@ export const ProjectDetailsScreen = () => {
 													<Avatar.Text
 														size={32}
 														label={initials}
-														style={{ backgroundColor: theme.colors.primaryContainer }}
-														labelStyle={{ color: theme.colors.onPrimaryContainer, fontSize: 12 }}
+														style={dynamicStyles.memberInitialBg}
+														labelStyle={dynamicStyles.memberInitialLabel}
 													/>
 													<View style={styles.memberDetails}>
 														<Text
 															variant="bodyMedium"
-															style={{ color: theme.colors.onSurface, fontWeight: isMe ? 'bold' : 'normal' }}
+															style={isMe ? dynamicStyles.memberNameAdmin : dynamicStyles.memberNameMember}
 														>
 															{displayName} {isMe && "(You)"}
 														</Text>
 														{member.role && (
 															<Text
 																variant="bodySmall"
-																style={{ color: theme.colors.onSurfaceVariant }}
+																style={dynamicStyles.memberRoleText}
 															>
 																{member.role === 'project_admin' ? 'Admin' : 'Member'}
 															</Text>
@@ -879,7 +899,7 @@ export const ProjectDetailsScreen = () => {
 							) : (
 								<Text
 									variant="bodyMedium"
-									style={{ color: theme.colors.onSurfaceVariant }}
+									style={dynamicStyles.membersEmpty}
 								>
 									No members yet
 								</Text>

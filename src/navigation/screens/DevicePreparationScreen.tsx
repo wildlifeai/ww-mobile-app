@@ -63,9 +63,9 @@ export const DevicePreparationScreen = () => {
         if (combinedLogs.includes('Battery =')) {
             const match = combinedLogs.match(/Battery = (\d+)mV (\d+)%/)
             if (match) {
-                setBatteryInfo({ voltage: parseInt(match[1]), level: parseInt(match[2]) })
+                setBatteryInfo({ voltage: parseInt(match[1], 10), level: parseInt(match[2], 10) })
                 if (preparationId) {
-                    DevicePreparationService.recordBatteryCheck(preparationId, parseInt(match[2]) > 20)
+                    DevicePreparationService.recordBatteryCheck(preparationId, parseInt(match[2], 10) > 20)
                 }
             }
         }
@@ -73,7 +73,7 @@ export const DevicePreparationScreen = () => {
         if (combinedLogs.includes('total drive space')) {
             const match = combinedLogs.match(/(\d+)\s*K\s*total\s*drive\s*space[\s\S]*?(\d+)\s*K\s*available/)
             if (match) {
-                setSdCardInfo({ total: parseInt(match[1]) * 1024, available: parseInt(match[2]) * 1024 })
+                setSdCardInfo({ total: parseInt(match[1], 10) * 1024, available: parseInt(match[2], 10) * 1024 })
                 if (preparationId) {
                     DevicePreparationService.recordSdCardCheck(preparationId, true)
                 }
@@ -83,7 +83,7 @@ export const DevicePreparationScreen = () => {
         if (combinedLogs.includes('RSSI=')) {
             const match = combinedLogs.match(/RSSI=(-?\d+),\s*SNR=(-?\d+(?:\.\d+)?)/)
             if (match) {
-                setLorawanInfo({ rssi: parseInt(match[1]), snr: parseFloat(match[2]) })
+                setLorawanInfo({ rssi: parseInt(match[1], 10), snr: parseFloat(match[2]) })
                 if (preparationId) {
                     DevicePreparationService.recordLoRaWANCheck(preparationId, true)
                 }

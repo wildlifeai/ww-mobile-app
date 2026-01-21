@@ -4,10 +4,7 @@ import { Card, Text, useTheme } from "react-native-paper"
 import { Deployment } from "../types/api.types"
 import { WWIcon } from "./ui/WWIcon"
 
-type Props = {
-	deployment: Deployment & { device_id?: string }
-	onPress?: (deploymentId: string) => void
-}
+
 
 // Helper to safely access fields from either API type (snake_case) or Model (camelCase)
 const getField = (obj: any, snake: string, camel: string) => obj[snake] ?? obj[camel]
@@ -19,7 +16,6 @@ export const DeploymentCard = memo<{ deployment: any, onPress?: (id: string) => 
 	const deploymentEnd = getField(deployment, 'deployment_end', 'deploymentEnd')
 	const deploymentName = deployment.name || getField(deployment, 'name', 'name')
 	const locationName = getField(deployment, 'location_name', 'locationName')
-	const deviceId = getField(deployment, 'device_id', 'deviceId')
 
 	const getStatusColor = () => {
 		if (!deploymentStart) return theme.colors.onSurfaceDisabled

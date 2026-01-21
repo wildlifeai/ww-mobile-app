@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Image, PermissionsAndroid } from 'react-native'
-import { useNavigation, useRoute } from '@react-navigation/native'
+﻿import { useState, useEffect, useRef } from 'react'
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, PermissionsAndroid } from 'react-native'
+import { useRoute } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
-import { Modal, Portal, IconButton, Button, useTheme } from 'react-native-paper'
+import { Modal, Portal, Button, useTheme } from 'react-native-paper'
 import { useAppSelector } from '../../redux'
 import { useBle } from '../../hooks/useBle'
 import { useBleCommands } from '../../hooks/useBleCommands'
@@ -11,10 +11,7 @@ import { useGPSLocation } from '../../hooks/useGPSLocation'
 import { formatGPSString } from '../../utils/gpsUtils'
 import { useCapturePreview } from '../../hooks/useCapturePreview'
 import { BleConsoleOutput, ConsoleEntry } from '../../components/BleConsoleOutput'
-import { AppParams } from '../types'
 import { CommandControlTypes, CommandNames, COMMANDS } from '../../ble/types'
-import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
-import { imageReassemblerEmitter } from '../../ble/emitters'
 import { CommandReferenceModal } from '../../components/CommandReferenceModal'
 import { ImagePreviewModal } from '../../components/ImagePreviewModal'
 import * as FileSystem from 'expo-file-system'
@@ -22,7 +19,6 @@ import { DfuService } from '../../services/DfuService'
 import ReferenceDataService from '../../services/ReferenceDataService'
 import { getSupabaseClient } from '../../services/supabase'
 import { Alert } from 'react-native'
-import database from '../../database'
 import BleManager, { Peripheral } from 'react-native-ble-manager'
 
 /**
@@ -74,7 +70,6 @@ const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> =>
 }
 
 export const EngineerConsoleScreen = () => {
-    const navigation = useNavigation()
     const route = useRoute<any>()
     const theme = useTheme()
     const deviceId = route.params?.deviceId
@@ -89,7 +84,6 @@ export const EngineerConsoleScreen = () => {
         getDeviceVer, getDeviceName, getDeviceId, getStatus,
         runDfu, runReset, runErase, runDisconnect, setUtc,
         getDevEui, getAppEui, getAppKey, getHeartbeat, flashLed,
-        captureTestImage
     } = useBleCommands()
     const { triggerDpdLatch } = useDeviceLatch()
 
@@ -110,9 +104,9 @@ export const EngineerConsoleScreen = () => {
     })
 
     // GPS location hook for SET_GPS command
-    const { location, isGettingLocation, getLocation } = useGPSLocation()
+    const { getLocation } = useGPSLocation()
 
-    const lastProcessedLogLength = React.useRef<number>(0)
+    const lastProcessedLogLength = useRef<number>(0)
 
     // Image preview state
     const [showPreviewModal, setShowPreviewModal] = useState(false)
@@ -138,7 +132,7 @@ export const EngineerConsoleScreen = () => {
             content: entry.content
         }))
 
-        setConsoleHistory(prev => [...prev, ...historyEntries])
+        setConsoleHistory((prev: ConsoleEntry[]) => [...prev, ...historyEntries])
 
         // Check for automation triggers in the new lines
         const combinedNewLogs = newEntries.map(e => e.content).join('\n')
@@ -152,7 +146,7 @@ export const EngineerConsoleScreen = () => {
                     type: 'info',
                     content: 'Device waking up... Waiting for firmware to auto-send.'
                 }
-                setConsoleHistory(prev => {
+                setConsoleHistory((prev: ConsoleEntry[]) => {
                     const last = prev[prev.length - 1]
                     if (last && last.content === infoEntry.content) return prev
                     return [...prev, infoEntry]
@@ -166,7 +160,7 @@ export const EngineerConsoleScreen = () => {
                     type: 'info',
                     content: 'Command queued. Waiting...'
                 }
-                setConsoleHistory(prev => {
+                setConsoleHistory((prev: ConsoleEntry[]) => {
                     const last = prev[prev.length - 1]
                     if (last && last.content === infoEntry.content) return prev
                     return [...prev, infoEntry]
@@ -189,7 +183,7 @@ export const EngineerConsoleScreen = () => {
             type: 'command',
             content: commandToSend
         }
-        setConsoleHistory(prev => [...prev, newEntry])
+        setConsoleHistory((prev: ConsoleEntry[]) => [...prev, newEntry])
 
         try {
             await write(device, [commandToSend])
@@ -200,7 +194,7 @@ export const EngineerConsoleScreen = () => {
                 type: 'error',
                 content: `Error sending command: ${error}`
             }
-            setConsoleHistory(prev => [...prev, errorEntry])
+            setConsoleHistory((prev: ConsoleEntry[]) => [...prev, errorEntry])
         }
     }
 
@@ -227,7 +221,7 @@ export const EngineerConsoleScreen = () => {
                     await write(device, ['AI txfile .'])
                     break
                 case 'Clear':
-                    setConsoleHistory([])
+                    setConsoleHistory((_prev: ConsoleEntry[]) => [])
                     return
 
                 // --- System ---
@@ -273,7 +267,7 @@ export const EngineerConsoleScreen = () => {
                 type: 'command',
                 content: `[Action] ${commandDisplay}`
             }
-            setConsoleHistory(prev => [...prev, newEntry])
+            setConsoleHistory((prev: ConsoleEntry[]) => [...prev, newEntry])
 
         } catch (error) {
             const errorEntry: ConsoleEntry = {
@@ -282,11 +276,10 @@ export const EngineerConsoleScreen = () => {
                 type: 'error',
                 content: `Error executing ${action}: ${error}`
             }
-            setConsoleHistory(prev => [...prev, errorEntry])
+            setConsoleHistory((prev: ConsoleEntry[]) => [...prev, errorEntry])
         }
     }
 
-    const [lastImage, setLastImage] = useState<string | null>(null)
     const [isImageModalVisible, setIsImageModalVisible] = useState(false)
 
 
@@ -301,7 +294,7 @@ export const EngineerConsoleScreen = () => {
                 type: 'info',
                 content: 'Connected to device'
             }
-            setConsoleHistory(prev => [...prev, entry])
+            setConsoleHistory((prev: ConsoleEntry[]) => [...prev, entry])
         } catch (error) {
             const entry: ConsoleEntry = {
                 id: Date.now().toString(),
@@ -309,7 +302,7 @@ export const EngineerConsoleScreen = () => {
                 type: 'error',
                 content: `Connection failed: ${error}`
             }
-            setConsoleHistory(prev => [...prev, entry])
+            setConsoleHistory((prev: ConsoleEntry[]) => [...prev, entry])
         } finally {
             setIsConnecting(false)
         }
@@ -370,7 +363,7 @@ export const EngineerConsoleScreen = () => {
                                     type: 'info',
                                     content: 'Starting Firmware Update...'
                                 }
-                                setConsoleHistory(prev => [...prev, entry])
+                                setConsoleHistory((prev: ConsoleEntry[]) => [...prev, entry])
 
                                 // 1. Get latest firmware info
                                 const latestBleFirmware = await ReferenceDataService.getLatestFirmware('ble')
@@ -403,7 +396,7 @@ export const EngineerConsoleScreen = () => {
 
 
                                     // 4. Trigger DFU Mode on device
-                                    setConsoleHistory(prev => [...prev, {
+                                    setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
                                         id: Date.now().toString(),
                                         timestamp: new Date(),
                                         type: 'info',
@@ -445,7 +438,7 @@ export const EngineerConsoleScreen = () => {
                                     }
 
                                     // 6. Scan for bootloader ("DfuTarg")
-                                    setConsoleHistory(prev => [...prev, {
+                                    setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
                                         id: Date.now().toString(),
                                         timestamp: new Date(),
                                         type: 'info',
@@ -457,7 +450,7 @@ export const EngineerConsoleScreen = () => {
                                         bootloaderAddress = await scanForBootloader(10000) // 10s scan
                                         if (bootloaderAddress) {
                                             console.log(`[EngineerConsole] Found bootloader at: ${bootloaderAddress}`)
-                                            setConsoleHistory(prev => [...prev, {
+                                            setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
                                                 id: Date.now().toString(),
                                                 timestamp: new Date(),
                                                 type: 'info',
@@ -471,7 +464,7 @@ export const EngineerConsoleScreen = () => {
                                     }
 
                                     // 7. Start DFU with bootloader address
-                                    setConsoleHistory(prev => [...prev, {
+                                    setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
                                         id: Date.now().toString(),
                                         timestamp: new Date(),
                                         type: 'info',
@@ -483,7 +476,7 @@ export const EngineerConsoleScreen = () => {
                                         localPath,
                                         (progress) => {
                                             if (progress % 10 === 0) { // Log every 10%
-                                                setConsoleHistory(prev => [...prev, {
+                                                setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
                                                     id: Date.now().toString(),
                                                     timestamp: new Date(),
                                                     type: 'info',
@@ -497,7 +490,7 @@ export const EngineerConsoleScreen = () => {
                                     // Use watermelonDB directly since we have the ID but need the record
                                     // Actually we can't easily update the Redux device in DB without fetching the Model first.
                                     // But we can trigger a sync or just rely on next connect.
-                                    setConsoleHistory(prev => [...prev, {
+                                    setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
                                         id: Date.now().toString(),
                                         timestamp: new Date(),
                                         type: 'info',
@@ -516,7 +509,7 @@ export const EngineerConsoleScreen = () => {
                                     type: 'error',
                                     content: `DFU Failed: ${e}`
                                 }
-                                setConsoleHistory(prev => [...prev, errorEntry])
+                                setConsoleHistory((prev: ConsoleEntry[]) => [...prev, errorEntry])
                                 Alert.alert('Error', `Update failed: ${e}`)
                             }
                         }
@@ -564,13 +557,13 @@ export const EngineerConsoleScreen = () => {
                     <Text style={styles.deviceId}>{device.id}</Text>
                 </View>
                 <View style={styles.statusContainer}>
-                    <View style={[styles.statusDot, { backgroundColor: device.connected ? '#4CAF50' : '#F44336' }]} />
+                    <View style={[styles.statusDot, device.connected ? styles.statusDotConnected : styles.statusDotDisconnected]} />
                     <Text style={styles.statusText}>{device.connected ? 'Connected' : 'Disconnected'}</Text>
                     <Button
                         mode="outlined"
                         compact
                         onPress={() => setIsHelpVisible(true)}
-                        style={{ marginLeft: 8 }}
+                        style={styles.helpButton}
                     >
                         Command Reference
                     </Button>
@@ -622,20 +615,15 @@ export const EngineerConsoleScreen = () => {
                     onRunCommand={onRunHelpCommand}
                 />
 
-                <Modal visible={isImageModalVisible} onDismiss={() => setIsImageModalVisible(false)} contentContainerStyle={styles.modalContent}>
-                    <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 8, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 18, marginBottom: 10, fontWeight: 'bold' }}>Received Image</Text>
-                        {lastImage && (
-                            <Image
-                                source={{ uri: `data:image/jpeg;base64,${lastImage}` }}
-                                style={{ width: 300, height: 300, resizeMode: 'contain', backgroundColor: '#eee' }}
-                            />
-                        )}
+                <Modal visible={isImageModalVisible} onDismiss={() => setIsImageModalVisible(false)} contentContainerStyle={styles.imageModalContainer}>
+                    <View style={styles.imageModalContent}>
+                        <Text style={styles.imageModalTitle}>Received Image</Text>
+                        {/* lastImage was removed as it was unused and and potentially confusing with startCapture flow */}
                         <TouchableOpacity
-                            style={{ marginTop: 20, padding: 10, backgroundColor: '#2196F3', borderRadius: 5 }}
+                            style={styles.imageModalCloseButton}
                             onPress={() => setIsImageModalVisible(false)}
                         >
-                            <Text style={{ color: 'white' }}>Close</Text>
+                            <Text style={styles.imageModalCloseText}>Close</Text>
                         </TouchableOpacity>
                     </View>
                 </Modal>
@@ -653,11 +641,6 @@ export const EngineerConsoleScreen = () => {
 }
 
 const styles = StyleSheet.create({
-    modalContent: {
-        padding: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
     container: {
         flex: 1,
         backgroundColor: '#F5F5F5',
@@ -695,6 +678,12 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: 4,
         marginRight: 6,
+    },
+    statusDotConnected: {
+        backgroundColor: '#4CAF50',
+    },
+    statusDotDisconnected: {
+        backgroundColor: '#F44336',
     },
     statusText: {
         fontSize: 14,
@@ -762,6 +751,34 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: '#BDBDBD',
+    },
+    helpButton: {
+        marginLeft: 8,
+    },
+    imageModalContainer: {
+        padding: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    imageModalContent: {
+        backgroundColor: 'white',
+        padding: 20,
+        borderRadius: 8,
+        alignItems: 'center'
+    },
+    imageModalTitle: {
+        fontSize: 18,
+        marginBottom: 10,
+        fontWeight: 'bold'
+    },
+    imageModalCloseButton: {
+        marginTop: 20,
+        padding: 10,
+        backgroundColor: '#2196F3',
+        borderRadius: 5
+    },
+    imageModalCloseText: {
+        color: 'white'
     },
     errorText: {
         color: '#F44336',

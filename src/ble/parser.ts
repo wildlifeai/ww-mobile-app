@@ -231,7 +231,7 @@ export const parseLogs = (finishedLog: string, lastLog: string) => {
 		if (matches) {
 			const [, total, available] = matches
 			results.push({
-				value: JSON.stringify({ total: parseInt(total), available: parseInt(available) }),
+				value: JSON.stringify({ total: parseInt(total, 10), available: parseInt(available, 10) }),
 				command: COMMANDS.aiinfo,
 			})
 		}

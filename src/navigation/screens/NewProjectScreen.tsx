@@ -12,7 +12,7 @@
  * - Accessible form controls
  */
 
-import React, { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { StyleSheet, View, ScrollView } from "react-native"
 import { useForm, Controller } from "react-hook-form"
 import {
@@ -65,7 +65,7 @@ export const NewProjectScreen = () => {
 	const user = useAppSelector(selectCurrentUser)
 
 	// Auto-select organisation if missing but user has access to one
-	React.useEffect(() => {
+	useEffect(() => {
 		if (!currentOrganisation && user?.organisations?.length) {
 			console.log('🔄 NewProjectScreen: Auto-selecting default organisation')
 			const defaultOrg = user.organisations[0]
@@ -110,13 +110,13 @@ export const NewProjectScreen = () => {
 	const selectedCaptureMethodId = watch("capture_method_id")
 
 	// Set defaults when reference data loads
-	React.useEffect(() => {
+	useEffect(() => {
 		if (samplingDesigns?.length && !watch("sampling_design_id")) {
 			setValue("sampling_design_id", samplingDesigns[0].id.toString())
 		}
-	}, [samplingDesigns])
+	}, [samplingDesigns, watch, setValue])
 
-	React.useEffect(() => {
+	useEffect(() => {
 		if (captureMethods?.length && !watch("capture_method_id")) {
 			// Prefer 'Motion Detection' or 'activityDetection'
 			const defaultMethod = captureMethods.find(
@@ -124,21 +124,21 @@ export const NewProjectScreen = () => {
 			) || captureMethods[0]
 			setValue("capture_method_id", defaultMethod.id.toString())
 		}
-	}, [captureMethods])
+	}, [captureMethods, watch, setValue])
 
-	React.useEffect(() => {
+	useEffect(() => {
 		if (activitySensitivities?.length && !watch("activity_detection_sensitivity_id")) {
 			// Prefer 'Medium'
 			const defaultSens = activitySensitivities.find(s => s.value === 'Medium') || activitySensitivities[0]
 			setValue("activity_detection_sensitivity_id", defaultSens.id.toString())
 		}
-	}, [activitySensitivities])
+	}, [activitySensitivities, watch, setValue])
 
-	React.useEffect(() => {
+	useEffect(() => {
 		if (aiModels?.length && !watch("model_id")) {
 			setValue("model_id", aiModels[0].id)
 		}
-	}, [aiModels])
+	}, [aiModels, watch, setValue])
 
 	// Options for Select components
 	const captureMethodOptions = useMemo(
@@ -194,7 +194,7 @@ export const NewProjectScreen = () => {
 		return method?.value === "Time-lapse" || method?.value === "timeLapse"
 	}, [captureMethods, selectedCaptureMethodId])
 
-	const onSubmit = async (data: ProjectFormData) => {
+	const onSubmit = useCallback(async (data: ProjectFormData) => {
 		console.log("🔍 NewProjectScreen - onSubmit called")
 		console.log("  currentOrganisation:", currentOrganisation)
 		console.log("  currentOrganisation?.id:", currentOrganisation?.id)
@@ -245,7 +245,7 @@ export const NewProjectScreen = () => {
 			)
 			setShowError(true)
 		}
-	}
+	}, [currentOrganisation, createProject, navigation])
 
 	return (
 		<WWScreenView scrollable={true}>
@@ -256,7 +256,7 @@ export const NewProjectScreen = () => {
 				<View style={styles.section}>
 					<Text
 						variant="titleMedium"
-						style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
+						style={styles.sectionTitle}
 					>
 						Basic Information
 					</Text>
@@ -332,7 +332,7 @@ export const NewProjectScreen = () => {
 				<View style={styles.section}>
 					<Text
 						variant="titleMedium"
-						style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
+						style={styles.sectionTitle}
 					>
 						Project Settings
 					</Text>
@@ -488,11 +488,11 @@ export const NewProjectScreen = () => {
 					<Dialog
 						visible={samplingHelpVisible}
 						onDismiss={() => setSamplingHelpVisible(false)}
-						style={{ maxHeight: "80%" }}
+						style={styles.dialog}
 					>
 						<Dialog.Title>Sampling Designs</Dialog.Title>
 						<Dialog.ScrollArea>
-							<ScrollView contentContainerStyle={{ paddingVertical: 16 }}>
+							<ScrollView contentContainerStyle={styles.dialogScrollContent}>
 								<Text style={styles.helpItem}>
 									<Text style={styles.bold}>Simple random:</Text> random
 									distribution of sampling locations
@@ -545,11 +545,11 @@ export const NewProjectScreen = () => {
 					<Dialog
 						visible={captureHelpVisible}
 						onDismiss={() => setCaptureHelpVisible(false)}
-						style={{ maxHeight: "80%" }}
+						style={styles.dialog}
 					>
 						<Dialog.Title>Capture Methods</Dialog.Title>
 						<Dialog.ScrollArea>
-							<ScrollView contentContainerStyle={{ paddingVertical: 16 }}>
+							<ScrollView contentContainerStyle={styles.dialogScrollContent}>
 								<Text style={styles.helpItem}>
 									<Text style={styles.bold}>activityDetection:</Text> The camera
 									uses the motion-detection sensor to record photos
@@ -620,5 +620,11 @@ const styles = StyleSheet.create({
 	submitButton: {
 		marginTop: 8,
 		marginBottom: 32,
+	},
+	dialog: {
+		maxHeight: "80%",
+	},
+	dialogScrollContent: {
+		paddingVertical: 16,
 	},
 })

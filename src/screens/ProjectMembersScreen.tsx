@@ -12,7 +12,7 @@
  * - Only project admins can add/remove/change roles
  */
 
-import React, { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import {
 	View,
 	ScrollView,
@@ -35,15 +35,12 @@ import {
 	Divider,
 	Portal,
 	Dialog,
-	RadioButton,
 	ActivityIndicator,
-	Searchbar,
-	Checkbox,
 	Appbar,
 	SegmentedButtons,
 	useTheme,
 } from "react-native-paper"
-import { useRoute, RouteProp, useNavigation } from "@react-navigation/native"
+import { useRoute, RouteProp } from "@react-navigation/native"
 
 // UI Helper Functions
 const getRoleBadgeColor = (role: ProjectRole): string => {
@@ -82,23 +79,18 @@ const getRoleDescription = (role: ProjectRole): string => {
 // Real service imports
 import {
 	getProjectMembers,
-	getOrganizationUsers,
-	addProjectMember,
 	updateProjectMemberRole,
 	removeProjectMember,
 } from "../services/UserRoleService"
 import { useAppSelector } from "../redux"
 import {
 	selectCurrentUser,
-	selectCurrentOrganisation,
 } from "../redux/slices/authSlice"
 
 import type {
 	ProjectMember,
 	ProjectRole,
-	OrganizationUser,
 } from "../services/UserRoleService"
-import ProjectService from "../services/ProjectService"
 import InvitationService from "../services/InvitationService"
 import type ProjectInvitation from "../database/models/ProjectInvitation"
 
@@ -109,17 +101,15 @@ type RouteParams = {
 	}
 }
 
-export const ProjectMembersScreen: React.FC = () => {
+export const ProjectMembersScreen = () => {
 	const route =
 		useRoute<RouteProp<{ params: RouteParams["params"] }, "params">>()
-	const navigation = useNavigation()
 	const theme = useTheme()
 
 	const { projectId, projectName } = route.params || {}
 
 	// Redux selectors
 	const user = useAppSelector(selectCurrentUser)
-	const currentOrg = useAppSelector(selectCurrentOrganisation)
 
 	// State
 	const [members, setMembers] = useState<ProjectMember[]>([])
@@ -150,12 +140,7 @@ export const ProjectMembersScreen: React.FC = () => {
 		user &&
 		(currentUserProjectRole === "project_admin" || user.role === "ww_admin")
 
-	// Load data
-	useEffect(() => {
-		loadMembers()
-	}, [projectId])
-
-	const loadMembers = async () => {
+	const loadMembers = useCallback(async () => {
 		if (!user) {
 			console.error("❌ Missing user context")
 			Alert.alert("Error", "User authentication required")
@@ -167,11 +152,11 @@ export const ProjectMembersScreen: React.FC = () => {
 			console.log("📋 Loading members for project:", projectId)
 
 			// Load project members (with authorization handling)
-			let members: ProjectMember[] = []
+			let projectMembers: ProjectMember[] = []
 			try {
-				members = await getProjectMembers(projectId, user.id)
-				setMembers(members)
-				console.log(`✅ Loaded ${members.length} project members`)
+				projectMembers = await getProjectMembers(projectId, user.id)
+				setMembers(projectMembers)
+				console.log(`✅ Loaded ${projectMembers.length} project members`)
 			} catch (error: any) {
 				if (error?.message?.includes("Unauthorized")) {
 					// User not authorized to view members - show empty list
@@ -192,15 +177,20 @@ export const ProjectMembersScreen: React.FC = () => {
 		} finally {
 			setLoading(false)
 		}
-	}
+	}, [projectId, user])
 
-	const handleRefresh = async () => {
+	// Load data
+	useEffect(() => {
+		loadMembers()
+	}, [loadMembers])
+
+	const handleRefresh = useCallback(async () => {
 		setRefreshing(true)
 		await loadMembers()
 		setRefreshing(false)
-	}
+	}, [loadMembers])
 
-	const handleInviteMember = async () => {
+	const handleInviteMember = useCallback(async () => {
 		if (!inviteEmail.trim()) {
 			Alert.alert("Error", "Please enter an email address")
 			return
@@ -239,17 +229,17 @@ export const ProjectMembersScreen: React.FC = () => {
 			setShowAddMemberDialog(false)
 			setInviteEmail("")
 			setInviteRole("project_member")
-		} catch (error: any) {
-			console.error("❌ Error sending invitation:", error)
-			Alert.alert("Error", error.message || "Failed to send invitation")
+		} catch (err: any) {
+			console.error("❌ Error sending invitation:", err)
+			Alert.alert("Error", err.message || "Failed to send invitation")
 		} finally {
 			setLoading(false)
 		}
-	}
+	}, [inviteEmail, user, projectId, inviteRole, loadMembers])
 
 
 
-	const handleChangeRole = async () => {
+	const handleChangeRole = useCallback(async () => {
 		if (!selectedMember || !user) return
 
 		setLoading(true)
@@ -274,15 +264,15 @@ export const ProjectMembersScreen: React.FC = () => {
 			Alert.alert("Success", "Role updated successfully")
 			setShowRoleChangeDialog(false)
 			setSelectedMember(null)
-		} catch (error) {
-			console.error("❌ Error changing role:", error)
+		} catch (err) {
+			console.error("❌ Error changing role:", err)
 			Alert.alert("Error", "Failed to update role")
 		} finally {
 			setLoading(false)
 		}
-	}
+	}, [selectedMember, user, projectId, selectedRole, loadMembers])
 
-	const handleRemoveMember = async () => {
+	const handleRemoveMember = useCallback(async () => {
 		if (!selectedMember || !user) return
 
 		// Check if this is the last admin
@@ -316,44 +306,71 @@ export const ProjectMembersScreen: React.FC = () => {
 			Alert.alert("Success", "Member removed successfully")
 			setShowRemoveDialog(false)
 			setSelectedMember(null)
-		} catch (error) {
-			console.error("❌ Error removing member:", error)
+		} catch (err) {
+			console.error("❌ Error removing member:", err)
 			Alert.alert("Error", "Failed to remove member")
 		} finally {
 			setLoading(false)
 		}
-	}
+	}, [selectedMember, user, members, projectId, loadMembers])
 
-	const openMenu = (memberId: string) => {
+	const openMenu = useCallback((memberId: string) => {
 		setMenuVisible({ [memberId]: true })
-	}
+	}, [])
 
-	const closeMenu = (memberId: string) => {
+	const closeMenu = useCallback((memberId: string) => {
 		setMenuVisible({ [memberId]: false })
-	}
+	}, [])
 
-	const handleMenuChangeRole = (member: ProjectMember) => {
+	const handleMenuChangeRole = useCallback((member: ProjectMember) => {
 		setSelectedMember(member)
 		setSelectedRole(
 			member.role === "project_admin" ? "project_member" : "project_admin",
 		)
 		setShowRoleChangeDialog(true)
 		closeMenu(member.id)
-	}
+	}, [closeMenu])
 
-	const handleMenuRemove = (member: ProjectMember) => {
+	const handleMenuRemove = useCallback((member: ProjectMember) => {
 		setSelectedMember(member)
 		setShowRemoveDialog(true)
 		closeMenu(member.id)
-	}
+	}, [closeMenu])
 
 
+
+	const dynamicStyles = useMemo(() => ({
+		loadingText: { marginTop: 16 },
+		subtitleColor: { color: theme.colors.onSurfaceVariant },
+		subtitlePlus: { color: theme.colors.onSurfaceVariant, marginTop: 4 },
+		inviteSection: { paddingHorizontal: 16, marginBottom: 8 },
+		inviteTitle: { marginBottom: 8, color: theme.colors.onSurfaceVariant },
+		inviteCard: { marginBottom: 8, backgroundColor: theme.colors.surfaceVariant },
+		inviteContent: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const, paddingVertical: 8 },
+		inviteEmail: { fontWeight: 'bold' as const },
+		inviteDivider: { marginVertical: 8 },
+		memberSurface: { color: theme.colors.onSurface },
+		memberSurfaceVariant: { color: theme.colors.onSurfaceVariant },
+		chipText: { fontSize: 12 },
+		chipStyle: { marginTop: 8, alignSelf: 'flex-start' as const },
+		modalBg: { backgroundColor: theme.colors.background },
+		modalPadding: { flex: 1, padding: 16 },
+		modalDesc: { marginBottom: 16 },
+		inputMargin: { marginBottom: 24 },
+		roleHint: { marginTop: 8, color: theme.colors.onSurfaceVariant },
+		dialogDesc: { marginBottom: 16 },
+		bold: { fontWeight: 'bold' as const },
+		roleLabelSub: { color: theme.colors.onSurfaceVariant },
+		roleChip: { marginTop: 4 },
+		roleMarginLarge: { marginTop: 16, color: theme.colors.onSurfaceVariant },
+		errorText: { marginTop: 16, color: theme.colors.error },
+	}), [theme])
 
 	if (loading && members.length === 0) {
 		return (
 			<View style={styles.loadingContainer}>
 				<ActivityIndicator size="large" />
-				<Text style={{ marginTop: 16 }}>Loading project members...</Text>
+				<Text style={dynamicStyles.loadingText}>Loading project members...</Text>
 			</View>
 		)
 	}
@@ -369,14 +386,14 @@ export const ProjectMembersScreen: React.FC = () => {
 					variant="bodyMedium"
 					style={[
 						styles.headerSubtitle,
-						{ color: theme.colors.onSurfaceVariant },
+						dynamicStyles.subtitleColor,
 					]}
 				>
 					{projectName}
 				</Text>
 				<Text
 					variant="bodySmall"
-					style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}
+					style={dynamicStyles.subtitlePlus}
 				>
 					{members.length} {members.length === 1 ? "member" : "members"}
 				</Text>
@@ -398,22 +415,22 @@ export const ProjectMembersScreen: React.FC = () => {
 
 			{/* Pending Invitations List (Admin Only) */}
 			{canManageMembers && pendingInvitations.length > 0 && (
-				<View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
-					<Text variant="titleSmall" style={{ marginBottom: 8, color: theme.colors.onSurfaceVariant }}>
+				<View style={dynamicStyles.inviteSection}>
+					<Text variant="titleSmall" style={dynamicStyles.inviteTitle}>
 						Pending Invitations ({pendingInvitations.length})
 					</Text>
 					{pendingInvitations.map((invite) => (
-						<Card key={invite.id || invite.remoteId} style={{ marginBottom: 8, backgroundColor: theme.colors.surfaceVariant }}>
-							<Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 }}>
+						<Card key={invite.id || invite.remoteId} style={dynamicStyles.inviteCard}>
+							<Card.Content style={dynamicStyles.inviteContent}>
 								<View>
-									<Text variant="bodyMedium" style={{ fontWeight: 'bold' }}>{invite.inviteeEmail}</Text>
+									<Text variant="bodyMedium" style={dynamicStyles.inviteEmail}>{invite.inviteeEmail}</Text>
 									<Text variant="bodySmall">{getRoleDisplayName(invite.role as ProjectRole)} • Expires {new Date(invite.expiresAt).toLocaleDateString()}</Text>
 								</View>
 								<Chip icon="clock-outline" compact>Pending</Chip>
 							</Card.Content>
 						</Card>
 					))}
-					<Divider style={{ marginVertical: 8 }} />
+					<Divider style={dynamicStyles.inviteDivider} />
 				</View>
 			)}
 
@@ -451,24 +468,23 @@ export const ProjectMembersScreen: React.FC = () => {
 									<View style={styles.memberInfo}>
 										<Text
 											variant="titleMedium"
-											style={{ color: theme.colors.onSurface }}
+											style={dynamicStyles.memberSurface}
 										>
 											{member.name}
 										</Text>
 										<Text
 											variant="bodySmall"
-											style={{ color: theme.colors.onSurfaceVariant }}
+											style={dynamicStyles.memberSurfaceVariant}
 										>
 											{member.email}
 										</Text>
 										<Chip
 											mode="flat"
-											textStyle={{ fontSize: 12 }}
-											style={{
-												marginTop: 8,
-												alignSelf: "flex-start",
-												backgroundColor: getRoleBadgeColor(member.role as ProjectRole) + "20",
-											}}
+											textStyle={dynamicStyles.chipText}
+											style={[
+												dynamicStyles.chipStyle,
+												{ backgroundColor: getRoleBadgeColor(member.role as ProjectRole) + "20" }
+											]}
 										>
 											{getRoleDisplayName(member.role as ProjectRole)}
 										</Chip>
@@ -531,7 +547,7 @@ export const ProjectMembersScreen: React.FC = () => {
 				<SafeAreaView
 					style={[
 						styles.modalContainer,
-						{ backgroundColor: theme.colors.background },
+						dynamicStyles.modalBg,
 					]}
 				>
 					{/* Header with back button */}
@@ -549,8 +565,8 @@ export const ProjectMembersScreen: React.FC = () => {
 						</Button>
 					</Appbar.Header>
 
-					<ScrollView style={{ flex: 1, padding: 16 }}>
-						<Text variant="bodyMedium" style={{ marginBottom: 16 }}>
+					<ScrollView style={dynamicStyles.modalPadding}>
+						<Text variant="bodyMedium" style={dynamicStyles.modalDesc}>
 							Enter the email address of the user you want to invite to this project.
 						</Text>
 
@@ -561,7 +577,7 @@ export const ProjectMembersScreen: React.FC = () => {
 							keyboardType="email-address"
 							autoCapitalize="none"
 							autoCorrect={false}
-							style={{ marginBottom: 24 }}
+							style={dynamicStyles.inputMargin}
 						/>
 
 						{/* Role Selection with Segmented Buttons - GREEN THEME */}
@@ -603,7 +619,7 @@ export const ProjectMembersScreen: React.FC = () => {
 								}}
 								style={styles.segmentedButtons}
 							/>
-							<Text variant="bodySmall" style={{ marginTop: 8, color: theme.colors.onSurfaceVariant }}>
+							<Text variant="bodySmall" style={dynamicStyles.roleHint}>
 								{getRoleDescription(inviteRole)}
 							</Text>
 						</View>
@@ -621,9 +637,9 @@ export const ProjectMembersScreen: React.FC = () => {
 					<Dialog.Content>
 						{selectedMember && (
 							<>
-								<Text variant="bodyLarge" style={{ marginBottom: 16 }}>
+								<Text variant="bodyLarge" style={dynamicStyles.dialogDesc}>
 									Change role for{" "}
-									<Text style={{ fontWeight: "bold" }}>
+									<Text style={dynamicStyles.bold}>
 										{selectedMember.name}
 									</Text>
 									?
@@ -632,11 +648,11 @@ export const ProjectMembersScreen: React.FC = () => {
 									<View>
 										<Text
 											variant="bodySmall"
-											style={{ color: theme.colors.onSurfaceVariant }}
+											style={dynamicStyles.roleLabelSub}
 										>
 											Current:
 										</Text>
-										<Chip style={{ marginTop: 4 }}>
+										<Chip style={dynamicStyles.roleChip}>
 											{getRoleDisplayName(selectedMember.role as ProjectRole)}
 										</Chip>
 									</View>
@@ -644,15 +660,15 @@ export const ProjectMembersScreen: React.FC = () => {
 									<View>
 										<Text
 											variant="bodySmall"
-											style={{ color: theme.colors.onSurfaceVariant }}
+											style={dynamicStyles.roleLabelSub}
 										>
 											New:
 										</Text>
 										<Chip
-											style={{
-												marginTop: 4,
-												backgroundColor: getRoleBadgeColor(selectedRole) + "20",
-											}}
+											style={[
+												dynamicStyles.roleChip,
+												{ backgroundColor: getRoleBadgeColor(selectedRole) + "20" }
+											]}
 										>
 											{getRoleDisplayName(selectedRole)}
 										</Chip>
@@ -660,10 +676,7 @@ export const ProjectMembersScreen: React.FC = () => {
 								</View>
 								<Text
 									variant="bodySmall"
-									style={{
-										marginTop: 16,
-										color: theme.colors.onSurfaceVariant,
-									}}
+									style={dynamicStyles.roleMarginLarge}
 								>
 									{getRoleDescription(selectedRole)}
 								</Text>
@@ -693,14 +706,14 @@ export const ProjectMembersScreen: React.FC = () => {
 							<>
 								<Text variant="bodyLarge">
 									Are you sure you want to remove{" "}
-									<Text style={{ fontWeight: "bold" }}>
+									<Text style={dynamicStyles.bold}>
 										{selectedMember.name}
 									</Text>{" "}
 									from this project?
 								</Text>
 								<Text
 									variant="bodySmall"
-									style={{ marginTop: 16, color: theme.colors.error }}
+									style={dynamicStyles.errorText}
 								>
 									This action cannot be undone. They will lose access to all
 									project resources.

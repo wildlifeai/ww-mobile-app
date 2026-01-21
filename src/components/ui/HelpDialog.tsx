@@ -1,4 +1,4 @@
-import React from 'react'
+
 import { Portal, Dialog, Button, Text } from 'react-native-paper'
 
 interface Props {

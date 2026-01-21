@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import { useState } from "react"
 import { StyleSheet, View, Platform, PermissionsAndroid } from "react-native"
 import { Button } from "react-native-paper"
 import DocumentPicker from "react-native-document-picker"

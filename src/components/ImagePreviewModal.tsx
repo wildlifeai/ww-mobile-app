@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, View, Image, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { IconButton, Text, Surface, useTheme as usePaperTheme } from 'react-native-paper';
 
@@ -16,6 +16,17 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
     onDismiss,
 }) => {
     const theme = usePaperTheme();
+    const dynamicStyles = useMemo(() => ({
+        content: {
+            backgroundColor: theme.colors.surface
+        },
+        header: {
+            backgroundColor: theme.colors.primary
+        },
+        filename: {
+            color: theme.colors.onSurfaceVariant
+        }
+    }), [theme])
 
     if (!imageUri) return null;
 
@@ -29,15 +40,15 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
             <View style={styles.container}>
                 {/* Backdrop */}
                 <TouchableOpacity
-                    style={[styles.backdrop, { backgroundColor: 'rgba(0, 0, 0, 0.9)' }]}
+                    style={styles.backdrop}
                     activeOpacity={1}
                     onPress={onDismiss}
                 />
 
                 {/* Content */}
-                <Surface style={[styles.content, { backgroundColor: theme.colors.surface }]}>
+                <Surface style={[styles.content, dynamicStyles.content]}>
                     {/* Header */}
-                    <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
+                    <View style={[styles.header, dynamicStyles.header]}>
                         <Text style={styles.title}>Image Preview</Text>
                         <IconButton
                             icon="close"
@@ -58,7 +69,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
                     {/* Footer with filename */}
                     <View style={styles.footer}>
-                        <Text style={[styles.filename, { color: theme.colors.onSurfaceVariant }]}>
+                        <Text style={[styles.filename, dynamicStyles.filename]}>
                             {imageUri.startsWith('data:') ? 'Captured Image' : imageUri.split('/').pop()}
                         </Text>
                     </View>
@@ -80,6 +91,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
     },
     content: {
         width: SCREEN_WIDTH * 0.9,

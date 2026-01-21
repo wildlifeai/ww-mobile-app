@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react"
-import { View, ScrollView, Alert } from "react-native"
+import React, { useState, useEffect, useCallback } from "react"
+import { View, ScrollView, Alert, StyleSheet } from "react-native"
 import { Button, Card, Text, Chip, ActivityIndicator } from "react-native-paper"
 import { getSupabaseClient } from "../services/supabase"
 import type {
@@ -33,12 +33,12 @@ export const SupabaseConnectivityTest: React.FC = () => {
 	const [subscription, setSubscription] = useState<any>(null)
 
 	const updateTest = (name: string, updates: Partial<TestResult>) => {
-		setTests((prev) =>
+		setTests((prev: TestResult[]) =>
 			prev.map((test) => (test.name === name ? { ...test, ...updates } : test)),
 		)
 	}
 
-	const initializeTests = () => {
+	const initializeTests = useCallback(() => {
 		const initialTests: TestResult[] = [
 			{ name: "Basic Connection", status: "pending", message: "Not started" },
 			{ name: "Database Schema", status: "pending", message: "Not started" },
@@ -58,17 +58,20 @@ export const SupabaseConnectivityTest: React.FC = () => {
 			{ name: "Performance Test", status: "pending", message: "Not started" },
 		]
 		setTests(initialTests)
-	}
+	}, [])
 
 	useEffect(() => {
 		initializeTests()
+	}, [initializeTests])
+
+	useEffect(() => {
 		return () => {
-			// Cleanup subscription on unmount
+			// Cleanup subscription on unmount or when it changes
 			if (subscription) {
 				subscription.unsubscribe()
 			}
 		}
-	}, [])
+	}, [subscription])
 
 	const runTest = async (testName: string, testFn: () => Promise<void>) => {
 		const startTime = Date.now()
@@ -317,12 +320,12 @@ export const SupabaseConnectivityTest: React.FC = () => {
 	}
 
 	return (
-		<ScrollView style={{ padding: 16 }}>
-			<Text variant="headlineMedium" style={{ marginBottom: 16 }}>
+		<ScrollView style={styles.container}>
+			<Text variant="headlineMedium" style={styles.title}>
 				Supabase Connectivity Test
 			</Text>
 
-			<Card style={{ marginBottom: 16 }}>
+			<Card style={styles.card}>
 				<Card.Title title="Test Suite" />
 				<Card.Content>
 					<Text>
@@ -334,7 +337,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 						mode="contained"
 						onPress={runAllTests}
 						disabled={isRunning}
-						style={{ marginTop: 8 }}
+						style={styles.runButton}
 					>
 						{isRunning ? "Running Tests..." : "Run All Tests"}
 					</Button>
@@ -342,19 +345,15 @@ export const SupabaseConnectivityTest: React.FC = () => {
 			</Card>
 
 			{tests.map((test, index) => (
-				<Card key={index} style={{ marginBottom: 8 }}>
+				<Card key={index} style={styles.testCard}>
 					<Card.Content>
 						<View
-							style={{
-								flexDirection: "row",
-								alignItems: "center",
-								marginBottom: 8,
-							}}
+							style={styles.testHeader}
 						>
-							<Text style={{ fontSize: 20, marginRight: 8 }}>
+							<Text style={styles.testIcon}>
 								{getStatusIcon(test.status)}
 							</Text>
-							<Text variant="titleMedium" style={{ flex: 1 }}>
+							<Text variant="titleMedium" style={styles.testName}>
 								{test.name}
 							</Text>
 							{test.duration && (
@@ -364,15 +363,15 @@ export const SupabaseConnectivityTest: React.FC = () => {
 							)}
 						</View>
 						<Text
-							style={{
-								color: getStatusColor(test.status),
-								fontSize: 12,
-							}}
+							style={[
+								styles.testMessage,
+								{ color: getStatusColor(test.status) }
+							]}
 						>
 							{test.message}
 						</Text>
 						{test.status === "running" && (
-							<ActivityIndicator size="small" style={{ marginTop: 8 }} />
+							<ActivityIndicator size="small" style={styles.loader} />
 						)}
 					</Card.Content>
 				</Card>
@@ -380,3 +379,39 @@ export const SupabaseConnectivityTest: React.FC = () => {
 		</ScrollView>
 	)
 }
+
+const styles = StyleSheet.create({
+	container: {
+		padding: 16,
+	},
+	title: {
+		marginBottom: 16,
+	},
+	card: {
+		marginBottom: 16,
+	},
+	runButton: {
+		marginTop: 8,
+	},
+	testCard: {
+		marginBottom: 8,
+	},
+	testHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 8,
+	},
+	testIcon: {
+		fontSize: 20,
+		marginRight: 8,
+	},
+	testName: {
+		flex: 1,
+	},
+	testMessage: {
+		fontSize: 12,
+	},
+	loader: {
+		marginTop: 8,
+	},
+})

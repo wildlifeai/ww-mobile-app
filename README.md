@@ -48,7 +48,7 @@ User Interface ← Local DB ← Pull Sync ← Supabase Changes
 
 ## BLE Features
 
-> **Important:** When working with BLE commands, please read the [BLE Architecture Guide](./documentation/ble-architecture-guide.md) to understand our hook-based command system and avoid code duplication.
+> **Important:** When working with BLE commands, please read the [BLE Architecture Guide](./documentation/onboarding/ble-architecture-guide.md) to understand our hook-based command system and avoid code duplication.
 
 ### Camera Communication
 
@@ -265,7 +265,7 @@ For local development, use the Expo development server:
 npm start
 ```
 
-Building and releasing is managed through EAS Build service. See the app configuration in `app.config.js` for build settings.
+Building and releasing is managed through EAS Build service. See the app configuration in `app.config.ts` for build settings.
 
 ## Database Migrations
 

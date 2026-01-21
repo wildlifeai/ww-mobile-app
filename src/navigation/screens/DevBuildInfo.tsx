@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import {
 	ScrollView,
 	StyleSheet,
@@ -37,7 +37,7 @@ export const DevBuildInfo = () => {
 	const isDevelopment = __DEV__
 
 	// Load database status on mount
-	React.useEffect(() => {
+	useEffect(() => {
 		const loadDbStatus = async () => {
 			try {
 				const status = await getDatabaseStatus()
@@ -85,7 +85,7 @@ export const DevBuildInfo = () => {
 	}
 
 	// Handle database reset
-	const handleDatabaseReset = () => {
+	const handleDatabaseReset = useCallback(() => {
 		Alert.alert(
 			"Reset Database",
 			"This will delete ALL local data and recreate the database schema. You'll need to re-authenticate.\n\nAre you sure?",
@@ -118,10 +118,10 @@ export const DevBuildInfo = () => {
 				},
 			],
 		)
-	}
+	}, [])
 
 	// Handle database clear
-	const handleDatabaseClear = () => {
+	const handleDatabaseClear = useCallback(() => {
 		Alert.alert(
 			"Clear Database Data",
 			"This will delete ALL local data but keep the database schema. You'll need to re-authenticate.\n\nAre you sure?",
@@ -151,10 +151,10 @@ export const DevBuildInfo = () => {
 				},
 			],
 		)
-	}
+	}, [])
 
 	// Key native modules we care about - checking multiple possible names
-	const keyModules = {
+	const keyModules = useMemo(() => ({
 		"BLE Manager": checkModule(
 			!!NativeModules.BleManager,
 			"react-native-ble-manager",
@@ -183,19 +183,54 @@ export const DevBuildInfo = () => {
 			!!NativeModules.RNBluetoothStateManager,
 			"react-native-bluetooth-state-manager",
 		),
-	}
+	}), [])
+
+	const dynamicStyles = useMemo(() => ({
+		surface: { padding: appPadding, paddingTop: appPadding + top },
+		header: { marginBottom: spacing * 2 },
+		chip: { marginTop: spacing },
+		divider: { marginVertical: spacing },
+		nativeModuleChip: {
+			backgroundColor: nativeModuleCount === 0 ? "#ffeb3b" : "#4caf50",
+		},
+		nativeModuleChipText: {
+			color: nativeModuleCount === 0 ? "#000" : "#fff",
+		},
+		moduleList: { paddingHorizontal: spacing * 2, marginBottom: spacing },
+		moduleRow: {
+			flexDirection: "row" as const,
+			justifyContent: "space-between" as const,
+			paddingVertical: spacing / 2,
+		},
+		moduleStatus: (color: string) => ({ color, fontSize: 12, flex: 1, textAlign: "right" as const }),
+		dbActionContainer: { paddingHorizontal: spacing * 2, gap: spacing },
+		devNotice: { textAlign: "center" as const, opacity: 0.7, paddingTop: spacing },
+		footer: { marginTop: spacing * 3 },
+	}), [appPadding, top, spacing, nativeModuleCount])
+
+	const renderIcon = useCallback((iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />, [])
+	const renderTotalNativeModulesRight = useCallback(() => (
+		<Chip
+			mode="flat"
+			compact
+			style={dynamicStyles.nativeModuleChip}
+			textStyle={dynamicStyles.nativeModuleChipText}
+		>
+			{nativeModuleCount === 0 ? "Debug" : "OK"}
+		</Chip>
+	), [dynamicStyles, nativeModuleCount])
 
 	return (
 		<ScrollView style={styles.container}>
 			<Surface
 				style={[
 					styles.surface,
-					{ padding: appPadding, paddingTop: appPadding + top },
+					dynamicStyles.surface,
 				]}
 			>
-				<View style={[styles.header, { marginBottom: spacing * 2 }]}>
+				<View style={[styles.header, dynamicStyles.header]}>
 					<WWText variant="titleLarge">Development Build Info</WWText>
-					<Chip icon="developer-board" style={{ marginTop: spacing }}>
+					<Chip icon="developer-board" style={dynamicStyles.chip}>
 						Expo Dev Client
 					</Chip>
 				</View>
@@ -205,96 +240,80 @@ export const DevBuildInfo = () => {
 					<List.Item
 						title="Build Type"
 						description={isDevelopment ? "Development" : "Production"}
-						left={(props) => <List.Icon {...props} icon="wrench" />}
+						left={renderIcon("wrench")}
 					/>
 					<List.Item
 						title="Bundle Identifier"
 						description={bundleId}
-						left={(props) => <List.Icon {...props} icon="package-variant" />}
+						left={renderIcon("package-variant")}
 					/>
 					<List.Item
 						title="App Version"
 						description={`${appVersion} (${buildNumber})`}
-						left={(props) => <List.Icon {...props} icon="tag" />}
+						left={renderIcon("tag")}
 					/>
 					<List.Item
 						title="Readable Version"
 						description={readableVersion}
-						left={(props) => <List.Icon {...props} icon="information" />}
+						left={renderIcon("information")}
 					/>
 				</List.Section>
 
-				<Divider style={{ marginVertical: spacing }} />
+				<Divider style={dynamicStyles.divider} />
 
 				<List.Section>
 					<List.Subheader>Expo Information</List.Subheader>
 					<List.Item
 						title="Expo SDK Version"
 						description={expoSdkVersion}
-						left={(props) => <List.Icon {...props} icon="rocket" />}
+						left={renderIcon("rocket")}
 					/>
 					<List.Item
 						title="Expo Client"
 						description="Development Client"
-						left={(props) => <List.Icon {...props} icon="cellphone" />}
+						left={renderIcon("cellphone")}
 					/>
 					<List.Item
 						title="Metro Bundler"
 						description="Connected via WSL2"
-						left={(props) => <List.Icon {...props} icon="wifi" />}
+						left={renderIcon("wifi")}
 					/>
 				</List.Section>
 
-				<Divider style={{ marginVertical: spacing }} />
+				<Divider style={dynamicStyles.divider} />
 
 				<List.Section>
 					<List.Subheader>Platform Information</List.Subheader>
 					<List.Item
 						title="Platform"
 						description={Platform.OS}
-						left={(props) => <List.Icon {...props} icon="cellphone" />}
+						left={renderIcon("cellphone")}
 					/>
 					<List.Item
 						title="Platform Version"
 						description={`API ${Platform.Version}`}
-						left={(props) => (
-							<List.Icon {...props} icon="information-outline" />
-						)}
+						left={renderIcon("information-outline")}
 					/>
 					<List.Item
 						title="React Native Version"
 						description={rnVersionString}
-						left={(props) => <List.Icon {...props} icon="react" />}
+						left={renderIcon("react")}
 					/>
 				</List.Section>
 
-				<Divider style={{ marginVertical: spacing }} />
+				<Divider style={dynamicStyles.divider} />
 
 				<List.Section>
 					<List.Subheader>Native Modules</List.Subheader>
 					<List.Item
 						title="Total Native Modules"
 						description={`${nativeModuleCount} modules loaded`}
-						left={(props) => <List.Icon {...props} icon="puzzle" />}
-						right={() => (
-							<Chip
-								mode="flat"
-								compact
-								style={{
-									backgroundColor:
-										nativeModuleCount === 0 ? "#ffeb3b" : "#4caf50",
-								}}
-								textStyle={{
-									color: nativeModuleCount === 0 ? "#000" : "#fff",
-								}}
-							>
-								{nativeModuleCount === 0 ? "Debug" : "OK"}
-							</Chip>
-						)}
+						left={renderIcon("puzzle")}
+						right={renderTotalNativeModulesRight}
 					/>
 				</List.Section>
 
-				<View style={{ paddingHorizontal: spacing * 2, marginBottom: spacing }}>
+				<View style={dynamicStyles.moduleList}>
 					{Object.entries(keyModules).map(([module, moduleInfo]) => {
 						const getStatusDisplay = (info: any) => {
 							switch (info.status) {
@@ -317,16 +336,12 @@ export const DevBuildInfo = () => {
 						return (
 							<View
 								key={module}
-								style={{
-									flexDirection: "row",
-									justifyContent: "space-between",
-									paddingVertical: spacing / 2,
-								}}
+								style={dynamicStyles.moduleRow}
 							>
 								<WWText variant="bodyMedium">{module}</WWText>
 								<WWText
 									variant="bodyMedium"
-									style={{ color, fontSize: 12, flex: 1, textAlign: "right" }}
+									style={dynamicStyles.moduleStatus(color)}
 								>
 									{text}
 								</WWText>
@@ -335,14 +350,14 @@ export const DevBuildInfo = () => {
 					})}
 				</View>
 
-				<Divider style={{ marginVertical: spacing }} />
+				<Divider style={dynamicStyles.divider} />
 
 				<List.Section>
 					<List.Subheader>Database (Dev Tools)</List.Subheader>
 					<List.Item
 						title="Database Adapter"
 						description={dbStatus ? dbStatus.adapter : "Loading..."}
-						left={(props) => <List.Icon {...props} icon="database" />}
+						left={renderIcon("database")}
 					/>
 					<List.Item
 						title="Supabase Instance"
@@ -355,11 +370,11 @@ export const DevBuildInfo = () => {
 										: "Unknown"
 								: "Loading..."
 						}
-						left={(props) => <List.Icon {...props} icon="cloud" />}
+						left={renderIcon("cloud")}
 					/>
 				</List.Section>
 
-				<View style={{ paddingHorizontal: spacing * 2, gap: spacing }}>
+				<View style={dynamicStyles.dbActionContainer}>
 					<Button
 						mode="outlined"
 						onPress={handleDatabaseClear}
@@ -382,43 +397,37 @@ export const DevBuildInfo = () => {
 					</Button>
 					<WWText
 						variant="bodySmall"
-						style={{ textAlign: "center", opacity: 0.7, paddingTop: spacing }}
+						style={dynamicStyles.devNotice}
 					>
 						⚠️ Dev Only: These actions will delete all local data
 					</WWText>
 				</View>
 
-				<Divider style={{ marginVertical: spacing }} />
+				<Divider style={dynamicStyles.divider} />
 
 				<List.Section>
 					<List.Subheader>Migration Status</List.Subheader>
 					<List.Item
 						title="Migration"
 						description="Expo SDK 51 Migration Complete"
-						left={(props) => (
-							<List.Icon {...props} icon="check-circle" color="green" />
-						)}
+						left={renderIcon("check-circle")}
 					/>
 					<List.Item
 						title="EAS Build"
 						description="Development Client Active"
-						left={(props) => (
-							<List.Icon {...props} icon="cloud-check" color="green" />
-						)}
+						left={renderIcon("cloud-check")}
 					/>
 					<List.Item
 						title="Native Modules"
 						description="BLE, Maps, Nordic DFU Working"
-						left={(props) => (
-							<List.Icon {...props} icon="check-all" color="green" />
-						)}
+						left={renderIcon("check-all")}
 					/>
 				</List.Section>
 
-				<View style={[styles.footer, { marginTop: spacing * 3 }]}>
+				<View style={[styles.footer, dynamicStyles.footer]}>
 					<WWText
 						variant="bodySmall"
-						style={{ textAlign: "center", opacity: 0.7 }}
+						style={dynamicStyles.devNotice}
 					>
 						This screen is only visible in development builds
 					</WWText>

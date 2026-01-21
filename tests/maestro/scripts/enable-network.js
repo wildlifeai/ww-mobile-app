@@ -44,15 +44,17 @@ function enableNetwork() {
   }
 }
 
-// Execute network enable
-const success = enableNetwork();
-if (!success) {
-  throw new Error('Failed to enable network connectivity');
-}
-
-// Wait for network stabilization
-setTimeout(() => {
-  console.log('Network connectivity restored');
-}, 2000);
-
-return { networkEnabled: true };
+// Execute in IIFE to allow return
+(function() {
+  const success = enableNetwork();
+  if (!success) {
+    throw new Error('Failed to enable network connectivity');
+  }
+  
+  // Wait for network stabilization
+  setTimeout(() => {
+    console.log('Network connectivity restored');
+  }, 2000);
+  
+  return { networkEnabled: true };
+})();
