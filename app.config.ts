@@ -27,7 +27,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         supportsTablet: true,
         bundleIdentifier: BUNDLE_ID,
         config: {
-            googleMapsApiKey: process.env['GOOGLE_MAPS_API_KEY_IOS'],
+            googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY_IOS,
         },
         infoPlist: {
             NSLocationWhenInUseUsageDescription: "We need your location to set GPS coordinates on camera devices for accurate wildlife tracking and habitat mapping.",
@@ -48,7 +48,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
         config: {
             googleMaps: {
-                apiKey: process.env['GOOGLE_MAPS_API_KEY_ANDROID'],
+                apiKey: process.env.GOOGLE_MAPS_API_KEY_ANDROID,
             },
         },
         permissions: [

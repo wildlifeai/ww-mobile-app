@@ -167,7 +167,7 @@ export const useBleListeners = () => {
 			// Example: "10361 bytes in TL000019.JPG"
 			const imageStartMatch = text.match(/(\d+) bytes in (.+)/)
 			if (imageStartMatch) {
-				const size = parseInt(imageStartMatch[1])
+				const size = parseInt(imageStartMatch[1], 10)
 				const filename = imageStartMatch[2]
 				log(`Detected image transfer start: ${filename} (${size} bytes)`)
 				ImageReassembler.getInstance().initialize(size)
@@ -322,7 +322,7 @@ export const useBleListeners = () => {
 
 		dispatch(scanStop())
 		// log("Scan stopped.")
-	}, [disconnectDevice, dispatch, pingsPause])
+	}, [dispatch, pingsPause])
 
 	useEffect(() => {
 		const discoverDeviceFunc = getBleManagerEmitter().addListener(

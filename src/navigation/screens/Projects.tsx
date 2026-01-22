@@ -13,7 +13,7 @@
  * - Navigation to project details and new project creation
  */
 
-import React, { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { ListRenderItemInfo } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
 import { useGetProjectsQuery } from "../../redux/api/projectsApi"

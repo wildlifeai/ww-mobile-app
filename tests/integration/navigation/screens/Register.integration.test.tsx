@@ -177,10 +177,7 @@ describe("Register Screen Integration Tests", () => {
 		const registerButton = screen.getByTestId("register-button")
 
 		// Fill other required fields to focus on password validation
-		fireEvent.changeText(
-			screen.getByTestId("username-input"),
-			validRegisterCredentials.username,
-		)
+
 		fireEvent.changeText(
 			screen.getByTestId("email-input"),
 			validRegisterCredentials.email,
@@ -218,10 +215,7 @@ describe("Register Screen Integration Tests", () => {
 		const registerButton = screen.getByTestId("register-button")
 
 		// Fill valid form data except password confirmation
-		fireEvent.changeText(
-			screen.getByTestId("username-input"),
-			validRegisterCredentials.username,
-		)
+
 		fireEvent.changeText(
 			screen.getByTestId("email-input"),
 			validRegisterCredentials.email,

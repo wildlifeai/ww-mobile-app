@@ -1,9 +1,8 @@
-
-import React, { useState, useEffect, useMemo } from 'react'
-import { View, StyleSheet, ScrollView, Alert } from 'react-native'
+import React, { useState, useMemo, useCallback } from 'react'
+import { View, StyleSheet, Alert } from 'react-native'
 import { useAppSelector } from '../../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
-import { Appbar, TextInput, Card, ActivityIndicator } from 'react-native-paper'
+import { Appbar, TextInput, Card } from 'react-native-paper'
 import { WWScreenView } from '../../../components/ui/WWScreenView'
 import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
@@ -30,8 +29,8 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
     const route = useRoute<EndDeploymentDetailsStepRouteProp>()
     const { deviceId = '', bleDeviceId = '' } = route.params || {}
-    const { disconnectDevice } = useBleActions()
-    const { getBatteryLevel, setOperationalParam, disableCamera, runDisconnect, setDeploymentIdAsOps, clearGpsLocation, flashLed } = useBleCommands()
+    useBleActions()
+    const { runDisconnect, setDeploymentIdAsOps, clearGpsLocation } = useBleCommands()
     const { triggerDpdLatch } = useDeviceLatch()
 
     // Get full device object for BLE commands
@@ -74,7 +73,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const [isEnding, setIsEnding] = useState(false)
     const [bleStatus, setBleStatus] = useState<string>('Connected')
 
-    const handleEndDeployment = async () => {
+    const handleEndDeployment = useCallback(async () => {
         // Sanity Check: Ensure BLE is still connected (unless it's a forced cleanup)
         const realDevice = devices[bleDeviceId]
         if (!realDevice || !realDevice.connected) {
@@ -209,7 +208,9 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         } finally {
             setIsEnding(false)
         }
-    }
+    }, [devices, bleDeviceId, bleDevice, user, deployment.id, retrievalNotes, navigation, updateSettings, setDeploymentIdAsOps, clearGpsLocation, triggerDpdLatch, runDisconnect])
+
+    const renderInfoLeft = useCallback((props: any) => <Appbar.Action {...props} icon="information" />, [])
 
     if (!deployment) {
         return (
@@ -221,14 +222,12 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
     return (
         <WWScreenView scrollable>
-
-
             <View style={styles.container}>
                 {/* Deployment Info Card */}
                 <Card style={styles.card}>
                     <Card.Title
                         title="Deployment Info"
-                        left={(props) => <Appbar.Action {...props} icon="information" />}
+                        left={renderInfoLeft}
                     />
                     <Card.Content>
                         <View style={styles.infoRow}>
@@ -244,7 +243,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
                 {/* Retrieval Notes Input */}
                 <View>
-                    <WWText variant="titleMedium" style={{ marginBottom: 8 }}>Retrieval Notes</WWText>
+                    <WWText variant="titleMedium" style={styles.notesTitle}>Retrieval Notes</WWText>
                     <TextInput
                         mode="outlined"
                         placeholder="e.g. SD card full, Battery low, Device damaged..."
@@ -307,6 +306,9 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         minHeight: 120,
     },
+    notesTitle: {
+        marginBottom: 8
+    }
 })
 
 // Wrapper to fetch deployment

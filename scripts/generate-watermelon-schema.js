@@ -188,7 +188,7 @@ function generateSchema() {
     // 3. Inject Local Infrastructure Tables (Not in Supabase Types)
 
     // SyncOutbox
-    tables['sync_outbox'] = [
+    tables.sync_outbox = [
         { name: 'operation_id', type: 'string', isIndexed: true },
         { name: 'operation_type', type: 'string' },
         { name: 'table_name', type: 'string', isIndexed: true },
@@ -204,13 +204,13 @@ function generateSchema() {
     ];
 
     // SyncState
-    tables['sync_state'] = [
+    tables.sync_state = [
         { name: 'key', type: 'string', isIndexed: true },
         { name: 'value', type: 'string' }, // JSON
     ];
 
     // ProjectInvitation (Missing from backend types or local-only)
-    tables['project_invitations'] = [
+    tables.project_invitations = [
         { name: 'remote_id', type: 'string', isIndexed: true },
         { name: 'project_id', type: 'string', isIndexed: true },
         { name: 'inviter_id', type: 'string' },
@@ -223,8 +223,8 @@ function generateSchema() {
     ];
 
     // Patch missing boolean check fields for device_preparation (missing in Supabase types but required by Model)
-    if (tables['device_preparation']) {
-        const existingNames = new Set(tables['device_preparation'].map(c => c.name));
+    if (tables.device_preparation) {
+        const existingNames = new Set(tables.device_preparation.map(c => c.name));
         const missingFields = [
             { name: 'battery_check_passed', type: 'boolean' },
             { name: 'camera_view_test_passed', type: 'boolean' },
@@ -235,7 +235,7 @@ function generateSchema() {
 
         missingFields.forEach(field => {
             if (!existingNames.has(field.name)) {
-                tables['device_preparation'].push(field);
+                tables.device_preparation.push(field);
             }
         });
     }
@@ -264,8 +264,8 @@ function generateSchema() {
     });
 
     // Patch missing fields for deployments (Model has fields not in Supabase types yet)
-    if (tables['deployments']) {
-        const existingNames = new Set(tables['deployments'].map(c => c.name));
+    if (tables.deployments) {
+        const existingNames = new Set(tables.deployments.map(c => c.name));
         const missingFields = [
             { name: 'altitude', type: 'number', isOptional: true },
             { name: 'accuracy', type: 'number', isOptional: true },
@@ -282,13 +282,13 @@ function generateSchema() {
 
         missingFields.forEach(field => {
             if (!existingNames.has(field.name)) {
-                tables['deployments'].push(field);
+                tables.deployments.push(field);
             }
         });
 
         // Override types for timestamps that come as string from Supabase but are number in Model (@date)
         const timestampFields = ['deployment_start', 'deployment_end'];
-        tables['deployments'] = tables['deployments'].map(col => {
+        tables.deployments = tables.deployments.map(col => {
             if (timestampFields.includes(col.name)) {
                 return { ...col, type: 'number' };
             }

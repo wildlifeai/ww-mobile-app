@@ -1,6 +1,5 @@
-import React, { memo, useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { ListRenderItemInfo, View, StyleSheet } from "react-native"
-import { useFocusEffect } from "@react-navigation/native"
 import { withObservables } from '@nozbe/watermelondb/react'
 import { FAB } from 'react-native-paper'
 import { useAppNavigation } from "../../hooks/useAppNavigation"

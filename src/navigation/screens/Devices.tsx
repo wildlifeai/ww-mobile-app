@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Alert } from 'react-native'
 import { useTheme } from 'react-native-paper'
 import { DeviceCard } from '../../components/DeviceCard'
 import { DeviceService } from '../../services/DeviceService'
 import { DeviceListItem } from '../../types/device'
 import { useNavigation, useFocusEffect } from '@react-navigation/native'
-import { useCallback } from 'react'
 import { useSelector } from 'react-redux'
 import { RootState } from '../../redux'
 import { StandardizedListLayout } from '../../components/ui/StandardizedListLayout'
@@ -21,7 +20,7 @@ export const Devices = () => {
 	// Get current user ID from Redux
 	const userId = useSelector((state: RootState) => state.authentication.user?.id)
 
-	const loadDevices = async () => {
+	const loadDevices = useCallback(async () => {
 		try {
 			if (!userId) {
 				console.log('No user ID available, cannot load devices')
@@ -39,12 +38,12 @@ export const Devices = () => {
 			setLoading(false)
 			setRefreshing(false)
 		}
-	}
+	}, [userId])
 
 	useFocusEffect(
 		useCallback(() => {
 			loadDevices()
-		}, [userId])
+		}, [loadDevices])
 	)
 
 	const handleRefresh = () => {

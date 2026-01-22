@@ -15,6 +15,7 @@ memory/e2e/
 
 # Development tooling (not production code)
 project-context/development-context/project-progress-tracker/
+archive/
 
 # Environment files
 .env

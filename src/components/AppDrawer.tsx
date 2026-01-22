@@ -25,7 +25,7 @@ export const useAppDrawer = () => useContext(DrawerContext)
 
 export const AppDrawer = ({ children }: PropsWithChildren<unknown>) => {
 	const [isOpen, setIsOpen] = useState(false)
-	const { appPadding, spacing } = useExtendedTheme()
+	const { appPadding } = useExtendedTheme()
 	const { user } = useAppSelector((state) => state.authentication)
 	const { top } = useSafeAreaInsets()
 

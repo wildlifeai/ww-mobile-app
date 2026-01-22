@@ -1,5 +1,4 @@
-import * as React from "react"
-import { PropsWithChildren } from "react"
+import { PropsWithChildren, useState, useEffect } from "react"
 
 import { StyleSheet, View, Text, ActivityIndicator } from "react-native"
 
@@ -14,9 +13,8 @@ import Toast, {
 import { useBluetoothStatus } from "../hooks/useBluetoothStatus"
 import { useLocationStatus } from "../hooks/useLocationStatus"
 import { useSetupBLELibrary } from "../hooks/useSetupBLELibrary"
-import { useAppDispatch, useAppSelector } from "../redux"
+import { useAppSelector } from "../redux"
 
-import ProjectService from "../services/ProjectService"
 import ReferenceDataService from "../services/ReferenceDataService"
 import { initializeSupabaseClient } from "../services/supabase"
 import SupabaseSyncService from "../services/SupabaseSyncService"
@@ -26,18 +24,17 @@ interface ExtendedToastConfigParams extends ToastConfigParams<any> {
 }
 
 export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
-	const dispatch = useAppDispatch()
 	const user = useAppSelector((state) => state.authentication.user)
 
 	// Add loading state to wait for Supabase initialization
-	const [isSupabaseReady, setIsSupabaseReady] = React.useState(false)
+	const [isSupabaseReady, setIsSupabaseReady] = useState(false)
 
 	useSetupBLELibrary()
 	useBluetoothStatus()
 	useLocationStatus()
 
 	// Initialize Supabase client and then sync reference data
-	React.useEffect(() => {
+	useEffect(() => {
 		console.log("🔧 Initializing Supabase client...")
 		initializeSupabaseClient()
 			.then(() => {
@@ -59,7 +56,7 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 	}, [])
 
 	// Initialize Supabase Sync Service
-	React.useEffect(() => {
+	useEffect(() => {
 		if (!isSupabaseReady) return  // Wait for Supabase
 
 		console.log("🔄 Starting Supabase Sync Service...")
@@ -76,19 +73,19 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 	}, [isSupabaseReady])
 
 	// Trigger Sync on Login
-	React.useEffect(() => {
+	useEffect(() => {
 		if (isSupabaseReady && user) {
 			console.log("👤 User authenticated - triggering data sync...")
 			SupabaseSyncService.sync()
 		}
-	}, [isSupabaseReady, user?.id]) // Depend on user ID change
+	}, [isSupabaseReady, user]) // Depend on user ID change
 
 	// Show loading screen while initializing
 	if (!isSupabaseReady) {
 		return (
-			<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+			<View style={styles.loadingContainer}>
 				<ActivityIndicator size="large" color="#2e7d32" />
-				<Text style={{ marginTop: 16, fontSize: 16, color: '#333' }}>Initializing...</Text>
+				<Text style={styles.loadingText}>Initializing...</Text>
 			</View>
 		)
 	}
@@ -111,6 +108,17 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 }
 
 const styles = StyleSheet.create({
+	loadingContainer: {
+		flex: 1,
+		justifyContent: 'center',
+		alignItems: 'center',
+		backgroundColor: '#ffffff',
+	},
+	loadingText: {
+		marginTop: 16,
+		fontSize: 16,
+		color: '#333333',
+	},
 	toast: { borderRadius: 0 },
 	text: { fontSize: 14 },
 	description: { fontSize: 12 },

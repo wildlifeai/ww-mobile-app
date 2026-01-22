@@ -48,7 +48,7 @@ User Interface ← Local DB ← Pull Sync ← Supabase Changes
 
 ## BLE Features
 
-> **Important:** When working with BLE commands, please read the [BLE Architecture Guide](./documentation/ble-architecture-guide.md) to understand our hook-based command system and avoid code duplication.
+> **Important:** When working with BLE commands, please read the [BLE Architecture Guide](./documentation/onboarding/ble-architecture-guide.md) to understand our hook-based command system and avoid code duplication.
 
 ### Camera Communication
 
@@ -65,6 +65,17 @@ User Interface ← Local DB ← Pull Sync ← Supabase Changes
 3. App automatically initiates download
 4. Image displays in modal popup
 5. User can save or discard preview
+
+## Critical Version Requirements (Expo SDK 54)
+> [!IMPORTANT]
+> This project has **STRICT** version requirements to avoid compilation errors (specifically `Unresolved reference 'extensions'`).
+>
+> - **Gradle**: Must be **8.14.3** (Configured in `android/gradle/wrapper/gradle-wrapper.properties`).
+> - **Kotlin**: Version is managed by Expo autolinking (currently **2.1.20**), do NOT manually override in `build.gradle` unless necessary.
+> - **React Native**: **0.81.5**
+> - **React**: **19.1.0**
+>
+> A validation script (`scripts/validate-build-env.js`) runs automatically before builds to enforce these versions.
 
 ## Prerequisites
 
@@ -265,7 +276,7 @@ For local development, use the Expo development server:
 npm start
 ```
 
-Building and releasing is managed through EAS Build service. See the app configuration in `app.config.js` for build settings.
+Building and releasing is managed through EAS Build service. See the app configuration in `app.config.ts` for build settings.
 
 ## Database Migrations
 

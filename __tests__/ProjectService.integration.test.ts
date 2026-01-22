@@ -15,7 +15,7 @@ import { supabase } from "../src/services/supabase"
 describe("ProjectService Integration - Live Backend", () => {
 	beforeAll(async () => {
 		// Verify Supabase connection
-		const { data: healthCheck, error } = await supabase
+		const { error } = await supabase
 			.from("users")
 			.select("count")
 			.limit(1)
@@ -32,7 +32,7 @@ describe("ProjectService Integration - Live Backend", () => {
 
 	describe("Live Backend Connection", () => {
 		it("should connect to live backend at http://127.0.0.1:54321", async () => {
-			const { data, error } = await supabase.auth.getSession()
+			const { error } = await supabase.auth.getSession()
 
 			// Backend is accessible (may not have session, that's OK)
 			expect(error).toBeNull()
@@ -110,9 +110,7 @@ describe("ProjectService Integration - Live Backend", () => {
 
 	describe("Environment Configuration", () => {
 		it("should use local dev backend URL", async () => {
-			const {
-				data: { session },
-			} = await supabase.auth.getSession()
+			await supabase.auth.getSession()
 
 			// Verify configuration is pointing to local backend
 			const url = (process.env as any).EXPO_PUBLIC_SUPABASE_URL

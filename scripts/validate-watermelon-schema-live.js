@@ -444,10 +444,10 @@ function generateReport(results, env) {
 
     if (results.errors.length > 0) {
         console.log(`${colors.red}❌ Schema validation FAILED!${colors.reset}`);
-        console.log(`${colors.yellow}Action required: Update src/database/schema.ts${colors.reset}\n`);
-        console.log(`Quick sync workflow:`);
+        console.log(`Action required: Regenerate WatermelonDB schema`);
+        console.log(`\nQuick sync workflow:`);
         console.log(`  1. Review differences above`);
-        console.log(`  2. Update src/database/schema.ts manually`);
+        console.log(`  2. Run: npm run schema:generate`);
         console.log(`  3. Re-run: npm run schema:validate:live -- --env=${env}\n`);
         return false;
     }

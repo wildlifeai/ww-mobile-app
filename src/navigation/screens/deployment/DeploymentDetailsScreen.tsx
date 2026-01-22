@@ -1,7 +1,7 @@
-import React, { useLayoutEffect, useMemo } from 'react'
-import { View, StyleSheet, ScrollView, Linking, Platform } from 'react-native'
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
-import { Appbar, Card, Chip, IconButton, Menu, Divider } from 'react-native-paper'
+import React, { useLayoutEffect, useMemo, useCallback } from 'react'
+import { View, StyleSheet, Linking, Platform } from 'react-native'
+import { useNavigation, RouteProp } from '@react-navigation/native'
+import { Card, Chip, IconButton, Menu, Divider } from 'react-native-paper'
 import { withObservables } from '@nozbe/watermelondb/react'
 import { WWScreenView } from '../../../components/ui/WWScreenView'
 import { WWText } from '../../../components/ui/WWText'
@@ -36,7 +36,6 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
     // Status helpers
     const isActive = !deployment.deploymentEnd
     const statusLabel = isActive ? 'Active' : (deployment.deploymentStatusId === 2 ? 'Ended' : 'Failed')
-    const statusColor = isActive ? colors.primary : colors.error // Used error for failed/ended differentiation if needed, or stick to map logic
 
     // Lookup names
     const captureMethodName = useMemo(() => {
@@ -58,7 +57,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
         return !isNaN(d.getTime()) && d.getTime() > 946684800000 // > Year 2000
     }
 
-    const getDurationString = (start: any, end: any) => {
+    const getDurationString = useCallback((start: any, end: any) => {
         if (!isValidDate(start)) return ''
         const startDate = new Date(start)
         const endDate = isValidDate(end) ? new Date(end) : new Date()
@@ -72,36 +71,42 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
         if (days > 0) return `${days} day${days !== 1 ? 's' : ''}, ${hours} hour${hours !== 1 ? 's' : ''}`
         if (hours > 0) return `${hours} hr ${minutes} min${minutes !== 1 ? 's' : ''}`
         return `${minutes} min${minutes !== 1 ? 's' : ''}`
-    }
+    }, [])
 
     // Calculate duration
     const duration = useMemo(() => {
         return getDurationString(deployment.deploymentStart, deployment.deploymentEnd)
-    }, [deployment.deploymentStart, deployment.deploymentEnd])
+    }, [deployment.deploymentStart, deployment.deploymentEnd, getDurationString])
+
+    const renderHeaderRight = useCallback(() => (
+        isActive ? (
+            <Menu
+                visible={menuVisible}
+                onDismiss={() => setMenuVisible(false)}
+                anchor={<IconButton icon="dots-vertical" onPress={() => setMenuVisible(true)} />}
+            >
+                <Menu.Item
+                    onPress={() => {
+                        setMenuVisible(false)
+                        navigation.navigate('EndDeploymentWizard', { mode: 'end_deployment' } as any)
+                    }}
+                    title="End Deployment"
+                    leadingIcon="stop"
+                />
+            </Menu>
+        ) : null
+    ), [isActive, menuVisible, navigation])
 
     // Configure header menu
     useLayoutEffect(() => {
         navigation.setOptions({
-            headerRight: () => (
-                isActive ? (
-                    <Menu
-                        visible={menuVisible}
-                        onDismiss={() => setMenuVisible(false)}
-                        anchor={<IconButton icon="dots-vertical" onPress={() => setMenuVisible(true)} />}
-                    >
-                        <Menu.Item
-                            onPress={() => {
-                                setMenuVisible(false)
-                                navigation.navigate('EndDeploymentWizard', { mode: 'end_deployment' } as any)
-                            }}
-                            title="End Deployment"
-                            leadingIcon="stop"
-                        />
-                    </Menu>
-                ) : null
-            ),
+            headerRight: renderHeaderRight,
         })
-    }, [navigation, isActive, menuVisible])
+    }, [navigation, renderHeaderRight])
+
+    const renderProjectDetailsLeft = useCallback((props: any) => <WWIcon {...props} source="cog" size={24} color={colors.onSurface} />, [colors.onSurface])
+    const renderLocationLeft = useCallback((props: any) => <WWIcon {...props} source="map-marker" size={24} color={colors.onSurface} />, [colors.onSurface])
+    const renderNotesLeft = useCallback((props: any) => <WWIcon {...props} source="note-text" size={24} color={colors.onSurface} />, [colors.onSurface])
 
     const openInMaps = () => {
         if (!deployment.latitude || !deployment.longitude) return
@@ -137,10 +142,10 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                                     styles.statusBadge,
                                     { backgroundColor: isActive ? colors.primaryContainer : colors.errorContainer }
                                 ]}
-                                textStyle={{
-                                    color: isActive ? colors.onPrimaryContainer : colors.onErrorContainer,
-                                    fontWeight: 'bold'
-                                }}
+                                textStyle={[
+                                    styles.statusBadgeText,
+                                    { color: isActive ? colors.onPrimaryContainer : colors.onErrorContainer }
+                                ]}
                             >
                                 {statusLabel}
                             </Chip>
@@ -194,7 +199,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                     <Card.Title
                         title="Project details"
                         titleStyle={styles.cardTitle}
-                        left={(props) => <WWIcon {...props} source="cog" size={24} color={colors.onSurface} />}
+                        left={renderProjectDetailsLeft}
                     />
                     <Card.Content>
                         <View style={styles.deviceInfo}>
@@ -245,7 +250,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                     <Card.Title
                         title="Location"
                         titleStyle={styles.cardTitle}
-                        left={(props) => <WWIcon {...props} source="map-marker" size={24} color={colors.onSurface} />}
+                        left={renderLocationLeft}
                     />
                     <Card.Content>
                         {deployment.locationName ? (
@@ -302,7 +307,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                         <Card.Title
                             title="Notes & Comments"
                             titleStyle={styles.cardTitle}
-                            left={(props) => <WWIcon {...props} source="note-text" size={24} color={colors.onSurface} />}
+                            left={renderNotesLeft}
                         />
                         <Card.Content>
                             {deployment.startDeploymentComments && (
@@ -379,6 +384,9 @@ const createStyles = (theme: any) => StyleSheet.create({
     statusBadge: {
         paddingHorizontal: 0,
         height: 32,
+    },
+    statusBadgeText: {
+        fontWeight: 'bold'
     },
     deploymentName: {
         fontWeight: 'bold',

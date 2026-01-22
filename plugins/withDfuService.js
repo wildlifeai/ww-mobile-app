@@ -13,7 +13,7 @@ const withDfuService = (config) => {
         // Helper to add or update a service
         const addOrUpdateService = (serviceName) => {
             let service = mainApplication.service.find(
-                (s) => s['$']['android:name'] === serviceName
+                (s) => s.$['android:name'] === serviceName
             );
 
             if (!service) {
@@ -26,7 +26,7 @@ const withDfuService = (config) => {
                 };
                 mainApplication.service.push(service);
             } else {
-                service['$']['android:foregroundServiceType'] = 'connectedDevice';
+                service.$['android:foregroundServiceType'] = 'connectedDevice';
             }
         };
 

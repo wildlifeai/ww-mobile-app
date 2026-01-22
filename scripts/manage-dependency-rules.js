@@ -115,7 +115,7 @@ class DependencyRulesManager {
 		if (selection.toLowerCase() === "all") {
 			packagesToAdd = unmanaged
 		} else {
-			const indices = selection.split(",").map((s) => parseInt(s.trim()) - 1)
+			const indices = selection.split(",").map((s) => parseInt(s.trim(), 10) - 1)
 			packagesToAdd = indices.map((i) => unmanaged[i]).filter(Boolean)
 		}
 
@@ -145,7 +145,7 @@ class DependencyRulesManager {
 		)
 		let requiredVersion
 
-		const choiceIndex = parseInt(versionChoice) - 1
+		const choiceIndex = parseInt(versionChoice, 10) - 1
 		if (choiceIndex >= 0 && choiceIndex < versionSuggestions.length) {
 			requiredVersion = versionSuggestions[choiceIndex].format
 		} else {
@@ -160,7 +160,7 @@ class DependencyRulesManager {
 
 		const severityChoice = await this.question("Choose severity (1-3): ")
 		const severities = ["error", "warning", "info"]
-		const severity = severities[parseInt(severityChoice) - 1] || "warning"
+		const severity = severities[parseInt(severityChoice, 10) - 1] || "warning"
 
 		// Get reason
 		const reason = await this.question("Reason for this rule (optional): ")
@@ -206,7 +206,7 @@ class DependencyRulesManager {
 		const choice = await this.question(
 			`\nSelect rule to modify (1-${packages.length}): `,
 		)
-		const packageIndex = parseInt(choice) - 1
+		const packageIndex = parseInt(choice, 10) - 1
 
 		if (packageIndex < 0 || packageIndex >= packages.length) {
 			console.log("❌ Invalid selection")
@@ -247,7 +247,7 @@ class DependencyRulesManager {
 				console.log("1. error  2. warning  3. info")
 				const sevChoice = await this.question("New severity (1-3): ")
 				const severities = ["error", "warning", "info"]
-				const newSeverity = severities[parseInt(sevChoice) - 1]
+				const newSeverity = severities[parseInt(sevChoice, 10) - 1]
 				if (newSeverity) rule.severity = newSeverity
 				break
 
@@ -301,7 +301,7 @@ class DependencyRulesManager {
 		const choice = await this.question(
 			`Select property to remove (1-${properties.length}): `,
 		)
-		const propIndex = parseInt(choice) - 1
+		const propIndex = parseInt(choice, 10) - 1
 
 		if (propIndex >= 0 && propIndex < properties.length) {
 			const propToRemove = properties[propIndex]
@@ -326,7 +326,7 @@ class DependencyRulesManager {
 		const choice = await this.question(
 			`\nSelect rule to remove (1-${packages.length}): `,
 		)
-		const packageIndex = parseInt(choice) - 1
+		const packageIndex = parseInt(choice, 10) - 1
 
 		if (packageIndex < 0 || packageIndex >= packages.length) {
 			console.log("❌ Invalid selection")
@@ -444,7 +444,7 @@ class DependencyRulesManager {
 		const cleanVersion = version.replace(/^[~^]/, "")
 		const majorVersion = cleanVersion.split(".")[0]
 		suggestions.push({
-			format: `>=${cleanVersion} <${parseInt(majorVersion) + 1}.0.0`,
+			format: `>=${cleanVersion} <${parseInt(majorVersion, 10) + 1}.0.0`,
 			description: "Range within major version",
 		})
 

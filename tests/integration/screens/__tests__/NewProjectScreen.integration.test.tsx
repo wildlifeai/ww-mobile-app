@@ -41,7 +41,7 @@ jest.mock("@react-navigation/native", () => ({
 const createTestStore = (initialState = {}) => {
 	return configureStore({
 		reducer: {
-			authentication: authReducer,
+			authentication: authReducer as any,
 			[aiModelsApi.reducerPath]: aiModelsApi.reducer,
 			[projectsApi.reducerPath]: projectsApi.reducer,
 		},

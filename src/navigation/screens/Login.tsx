@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form"
-import { StyleSheet, View, Image, Alert, ScrollView } from "react-native"
+import { StyleSheet, View, Image, Alert } from "react-native"
 import { Button, Checkbox } from "react-native-paper"
 // import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView" - REMOVED
 import { WWScreenView } from "../../components/ui/WWScreenView"

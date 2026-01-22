@@ -47,11 +47,13 @@ function disableNetwork() {
   }
 }
 
-// Execute network disable
-const success = disableNetwork();
-if (!success) {
-  throw new Error('Failed to disable network connectivity');
-}
-
-console.log('Network connectivity disabled for offline testing');
-return { networkDisabled: true };
+// Execute in IIFE to allow return
+(function() {
+  const success = disableNetwork();
+  if (!success) {
+    throw new Error('Failed to disable network connectivity');
+  }
+  
+  console.log('Network connectivity disabled for offline testing');
+  return { networkDisabled: true };
+})();

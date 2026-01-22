@@ -34,7 +34,7 @@ export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose
                 useNativeDriver: true
             }).start()
         }
-    }, [isVisible, deployment])
+    }, [isVisible, deployment, slideAnim])
 
     if (!isVisible || !deployment) return null
 

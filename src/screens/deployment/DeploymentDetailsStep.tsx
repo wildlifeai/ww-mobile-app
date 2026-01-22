@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { StyleSheet, View, Alert, Platform } from 'react-native'
+import { StyleSheet, View, Alert } from 'react-native'
 import { useAppSelector } from '../../redux'
-import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navigation/native'
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWButton } from '../../components/ui/WWButton'
 import { RootStackParamList } from '../../navigation'
@@ -14,7 +14,7 @@ import { WWIcon } from '../../components/ui/WWIcon'
 
 import { CommandNames } from '../../ble/types'
 import { useBleCommands } from '../../hooks/useBleCommands'
-import { useDeviceSettings, OP_PARAMETER } from '../../hooks/useDeviceSettings'
+import { useDeviceSettings } from '../../hooks/useDeviceSettings'
 import { useBleActions } from '../../providers/BleEngineProvider'
 
 import { LoRaWANSection } from './sections/LoRaWANSection'
@@ -44,28 +44,13 @@ export const DeploymentDetailsStep = () => {
     const deviceConfig = useAppSelector(state => state.configuration[bleDeviceId])
     const user = useAppSelector(state => state.authentication.user)
 
-    // Sanity Check: Ensure required params are present
-    if (!devicePreparationId) {
-        return (
-            <WWScreenView>
-                <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                    <Text variant="headlineMedium" style={{ marginBottom: 16 }}>Error</Text>
-                    <Text variant="bodyLarge" style={{ marginBottom: 24, textAlign: 'center' }}>
-                        Missing Device Preparation ID. Unable to proceed with deployment.
-                    </Text>
-                    <Button mode="contained" onPress={() => navigation.goBack()}>
-                        Go Back
-                    </Button>
-                </View>
-            </WWScreenView>
-        )
-    }
+
 
     // BLE Hooks
-    const { getUtc, setUtc, setDeploymentIdAsOps, disconnectDevice, enableCamera, runDisconnect, getStatus, flashLed, setOperationalParam, setGpsLocation } = useBleCommands()
+    const { getUtc, setUtc, setDeploymentIdAsOps, enableCamera, runDisconnect, getStatus, setOperationalParam, setGpsLocation } = useBleCommands()
     const { updateSettings } = useDeviceSettings({ device: bleDevice })
     const { triggerDpdLatch } = useDeviceLatch()
-    const { isBleConnecting } = useBleActions()
+    useBleActions()
 
     const [formState, setFormState] = useState({
         name: '',
@@ -83,11 +68,11 @@ export const DeploymentDetailsStep = () => {
     })
 
     const [submitting, setSubmitting] = useState(false)
-    const [preparation, setPreparation] = useState<any>(null)
+    const [, setPreparation] = useState<any>(null)
     const [project, setProject] = useState<any>(null)
     const [captureMethodName, setCaptureMethodName] = useState<string>('')
     const [sensitivityLabel, setSensitivityLabel] = useState<string>('')
-    const [timeCheckStatus, setTimeCheckStatus] = useState<'pending' | 'ok' | 'correcting' | 'failed'>('pending')
+    const [, setTimeCheckStatus] = useState<'pending' | 'ok' | 'correcting' | 'failed'>('pending')
 
     // Connection Guard Refs
     const isNavigatingAway = useRef(false)
@@ -102,82 +87,7 @@ export const DeploymentDetailsStep = () => {
         return () => clearTimeout(timer)
     }, [])
 
-    useEffect(() => {
-        if (devicePreparationId) {
-            loadPreparationAndProject()
-        }
-    }, [devicePreparationId])
-
-    // Initial Time Check on Mount
-    useEffect(() => {
-        if (bleDevice && bleDevice.connected) {
-            checkAndCorrectTime()
-        }
-    }, [bleDevice?.connected])
-
-    // Check Device Status (Prevent Double Deployment)
-    const hasCheckedStatus = React.useRef(false)
-    useEffect(() => {
-        if (bleDevice?.connected && !hasCheckedStatus.current) {
-            console.log('[Deployment] Checking device status...')
-            getStatus(bleDevice)
-            hasCheckedStatus.current = true
-        }
-    }, [bleDevice?.connected])
-
-    // Monitor Status Response
-    useEffect(() => {
-        const statusValue = deviceConfig?.[CommandNames.status]?.value
-        if (statusValue === 'enabled') {
-            console.log('[Deployment] Device reported active sensor!')
-            Alert.alert(
-                'Device Already Active',
-                'This device appears to be already deployed (Sensor Enabled).\n\nStarting a new deployment will overwrite the current configuration.',
-                [
-                    {
-                        text: 'Cancel',
-                        onPress: () => {
-                            isNavigatingAway.current = true
-                            navigation.goBack()
-                        },
-                        style: 'cancel'
-                    },
-                    {
-                        text: 'Continue Anyway',
-                        onPress: () => console.log('[Deployment] User chose to continue despite active status'),
-                        style: 'destructive'
-                    }
-                ]
-            )
-        }
-    }, [deviceConfig?.[CommandNames.status]?.value])
-
-    // Time Check Logic
-    useEffect(() => {
-        const timeValue = deviceConfig?.[CommandNames.getutc]?.value
-        if (timeValue) {
-            validateAndCorrectTime(timeValue)
-        }
-    }, [deviceConfig?.[CommandNames.getutc]?.value])
-
-
-    // Robust Connection Lost Alert
-    useEffect(() => {
-        if (!isInitializing.current && !submitting && bleDevice && !bleDevice.connected && !isNavigatingAway.current && !isStartDeploymentInProgress.current) {
-            Alert.alert(
-                'Connection Lost',
-                'Device disconnected unexpectedly during deployment setup.',
-                [{
-                    text: 'OK', onPress: () => {
-                        isNavigatingAway.current = true
-                        navigation.goBack()
-                    }
-                }]
-            )
-        }
-    }, [bleDevice?.connected, submitting])
-
-    const validateAndCorrectTime = async (timeString: string) => {
+    const validateAndCorrectTime = useCallback(async (timeString: string) => {
         try {
             // value comes from regex group: "2024-01-01T12:00:00Z"
             const deviceTime = new Date(timeString).getTime()
@@ -200,9 +110,9 @@ export const DeploymentDetailsStep = () => {
             console.error('[TimeCheck] Parse error:', e)
             setTimeCheckStatus('failed')
         }
-    }
+    }, [bleDevice, setUtc])
 
-    const checkAndCorrectTime = async () => {
+    const checkAndCorrectTime = useCallback(async () => {
         if (!bleDevice) return
         console.log('[Deployment] Checking device time...')
         try {
@@ -211,9 +121,9 @@ export const DeploymentDetailsStep = () => {
         } catch (e) {
             console.error('Failed to get UTC:', e)
         }
-    }
+    }, [bleDevice, getUtc])
 
-    const loadPreparationAndProject = async () => {
+    const loadPreparationAndProject = useCallback(async () => {
         try {
             const prep = await DevicePreparationService.getPreparationById(devicePreparationId as string)
             setPreparation(prep)
@@ -239,9 +149,84 @@ export const DeploymentDetailsStep = () => {
         } catch (error) {
             console.error(error)
         }
-    }
+    }, [devicePreparationId])
 
-    const handleStartDeployment = async () => {
+    useEffect(() => {
+        if (devicePreparationId) {
+            loadPreparationAndProject()
+        }
+    }, [devicePreparationId, loadPreparationAndProject])
+
+    // Initial Time Check on Mount
+    useEffect(() => {
+        if (bleDevice && bleDevice.connected) {
+            checkAndCorrectTime()
+        }
+    }, [bleDevice, checkAndCorrectTime])
+
+    // Check Device Status (Prevent Double Deployment)
+    const hasCheckedStatus = React.useRef(false)
+    useEffect(() => {
+        if (bleDevice?.connected && !hasCheckedStatus.current) {
+            console.log('[Deployment] Checking device status...')
+            getStatus(bleDevice)
+            hasCheckedStatus.current = true
+        }
+    }, [bleDevice, getStatus])
+
+    // Monitor Status Response
+    const statusValue = deviceConfig?.[CommandNames.status]?.value
+    useEffect(() => {
+        if (statusValue === 'enabled') {
+            console.log('[Deployment] Device reported active sensor!')
+            Alert.alert(
+                'Device Already Active',
+                'This device appears to be already deployed (Sensor Enabled).\n\nStarting a new deployment will overwrite the current configuration.',
+                [
+                    {
+                        text: 'Cancel',
+                        onPress: () => {
+                            isNavigatingAway.current = true
+                            navigation.goBack()
+                        },
+                        style: 'cancel'
+                    },
+                    {
+                        text: 'Continue Anyway',
+                        onPress: () => console.log('[Deployment] User chose to continue despite active status'),
+                        style: 'destructive'
+                    }
+                ]
+            )
+        }
+    }, [statusValue, navigation])
+
+    // Time Check Logic
+    const utcValue = deviceConfig?.[CommandNames.getutc]?.value
+    useEffect(() => {
+        if (utcValue) {
+            validateAndCorrectTime(utcValue)
+        }
+    }, [utcValue, validateAndCorrectTime])
+
+
+    // Robust Connection Lost Alert
+    useEffect(() => {
+        if (!isInitializing.current && !submitting && bleDevice && !bleDevice.connected && !isNavigatingAway.current && !isStartDeploymentInProgress.current) {
+            Alert.alert(
+                'Connection Lost',
+                'Device disconnected unexpectedly during deployment setup.',
+                [{
+                    text: 'OK', onPress: () => {
+                        isNavigatingAway.current = true
+                        navigation.goBack()
+                    }
+                }]
+            )
+        }
+    }, [bleDevice, submitting, navigation])
+
+    const handleStartDeployment = useCallback(async () => {
         if (!formState.name) {
             Alert.alert('Missing Information', 'Please enter a deployment name')
             return
@@ -375,7 +360,6 @@ export const DeploymentDetailsStep = () => {
                 const method = captureMethodName.toLowerCase().replace(/[^a-z]/g, '') // "activitydetection", "timelapse"
                 const isMotionDetect = method.includes('activity') || method.includes('motion')
                 const isTimelapse = method.includes('time') || method.includes('lapse')
-                const sensitivityId = project?.activity_detection_sensitivity_id
 
                 if (isMotionDetect) {
                     console.log('[Deployment] Mode: Activity Detection. Setting motion interval to 1000ms, timeout to 30s & disabling timelapse.')
@@ -451,15 +435,45 @@ export const DeploymentDetailsStep = () => {
         } finally {
             setSubmitting(false)
         }
-    }
+    }, [formState.name, formState.locationName, formState.locationDescription, formState.cameraHeight, formState.location, formState.notes, bleDevice, project, user, checkAndCorrectTime, deviceId, devicePreparationId, logs, setOperationalParam, setDeploymentIdAsOps, setGpsLocation, captureMethodName, updateSettings, enableCamera, triggerDpdLatch, runDisconnect, navigation])
+
     const [helpVisible, setHelpVisible] = useState(false)
     const [helpTitle, setHelpTitle] = useState('')
     const [helpContent, setHelpContent] = useState('')
 
-    const showHelp = (title: string, content: string) => {
+    const showHelp = useCallback((title: string, content: string) => {
         setHelpTitle(title)
         setHelpContent(content)
         setHelpVisible(true)
+    }, [])
+
+    const handleDismissHelp = useCallback(() => {
+        setHelpVisible(false)
+    }, [])
+
+    const renderProjectSettingsLeft = useCallback((props: any) => <WWIcon {...props} source="tune" />, [])
+    const renderProjectSettingsRight = useCallback((props: any) => (
+        <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Project settings', 'Project and Capture Method are set during Project Creation and Device Preparation. To change these, you must restart the preparation.')}>
+            Help
+        </Button>
+    ), [showHelp])
+
+
+    // Sanity Check: Ensure required params are present
+    if (!devicePreparationId) {
+        return (
+            <WWScreenView>
+                <View style={styles.errorContainer}>
+                    <Text variant="headlineMedium" style={styles.errorTitle}>Error</Text>
+                    <Text variant="bodyLarge" style={styles.errorMessage}>
+                        Missing Device Preparation ID. Unable to proceed with deployment.
+                    </Text>
+                    <Button mode="contained" onPress={() => navigation.goBack()}>
+                        Go Back
+                    </Button>
+                </View>
+            </WWScreenView>
+        )
     }
 
     return (
@@ -469,8 +483,8 @@ export const DeploymentDetailsStep = () => {
                 <Card style={styles.card}>
                     <Card.Title
                         title="Project settings"
-                        left={(props) => <WWIcon {...props} source="tune" />}
-                        right={(props) => <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Project settings', 'Project and Capture Method are set during Project Creation and Device Preparation. To change these, you must restart the preparation.')}>Help</Button>}
+                        left={renderProjectSettingsLeft}
+                        right={renderProjectSettingsRight}
                     />
                     <Card.Content>
                         <View style={styles.infoRow}>
@@ -503,7 +517,7 @@ export const DeploymentDetailsStep = () => {
                                         nextRoute: 'DeploymentDetailsStep'
                                     })
                             }}
-                            style={{ marginTop: 12 }}
+                            style={styles.editButton}
                             icon="cog"
                         >
                             Edit Project Settings
@@ -555,7 +569,7 @@ export const DeploymentDetailsStep = () => {
                 visible={helpVisible}
                 title={helpTitle}
                 content={helpContent}
-                onDismiss={() => setHelpVisible(false)}
+                onDismiss={handleDismissHelp}
             />
         </WWScreenView>
     )
@@ -574,6 +588,26 @@ const styles = StyleSheet.create({
     deployButton: {
         paddingVertical: 8
     },
-    card: { marginBottom: 16 },
-    infoRow: { marginBottom: 4 }
+    card: {
+        marginBottom: 16
+    },
+    infoRow: {
+        marginBottom: 4
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 16
+    },
+    errorTitle: {
+        marginBottom: 16
+    },
+    errorMessage: {
+        marginBottom: 24,
+        textAlign: 'center'
+    },
+    editButton: {
+        marginTop: 12
+    }
 })

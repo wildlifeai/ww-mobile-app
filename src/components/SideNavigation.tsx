@@ -1,26 +1,43 @@
+import { useState, useEffect, useMemo, Dispatch, SetStateAction } from "react"
 import { StyleSheet, View } from "react-native"
-import { Button, Divider } from "react-native-paper"
+import { Button, Divider, Badge } from "react-native-paper"
 import { useAppNavigation } from "../hooks/useAppNavigation"
 import { useExtendedTheme } from "../theme"
-import { Dispatch } from "react"
 import { useAppDispatch } from "../redux"
 import { logout } from "../redux/slices/authSlice"
 import { OrgSwitcher } from "./OrgSwitcher"
 import { useUserOrganisations } from "../hooks/useUserOrganisations"
-import { Badge } from "react-native-paper"
-import { useState, useEffect } from "react"
 import InvitationService from "../services/InvitationService"
 import { useAppSelector } from "../redux"
 import { selectCurrentUser } from "../redux/slices/authSlice"
 
 type Props = {
-	drawerControls: Dispatch<React.SetStateAction<boolean>>
+	drawerControls: Dispatch<SetStateAction<boolean>>
 }
 
 export const SideNavigation = ({ drawerControls }: Props) => {
 	const navigation = useAppNavigation()
 	const dispatch = useAppDispatch()
 	const { spacing, colors, appPadding } = useExtendedTheme()
+
+	const dynamicStyles = useMemo(() => ({
+		container: {
+			marginVertical: appPadding
+		},
+		divider: {
+			marginVertical: spacing
+		},
+		link: {
+			margin: spacing
+		},
+		badge: {
+			backgroundColor: colors.error
+		},
+		separator: {
+			backgroundColor: colors.outline,
+			marginVertical: spacing
+		}
+	}), [spacing, colors, appPadding])
 
 	const { canSwitchOrganisations } = useUserOrganisations()
 	const user = useAppSelector(selectCurrentUser)
@@ -37,7 +54,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 		loadCount()
 
 		// Subscribe to realtime updates
-		const channel = InvitationService.subscribeToInvitations(user.email, () => {
+		InvitationService.subscribeToInvitations(user.email, () => {
 			loadCount()
 		})
 
@@ -57,19 +74,19 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 	}
 
 	return (
-		<View style={[styles.list, { marginVertical: appPadding }]}>
+		<View style={[styles.list, dynamicStyles.container]}>
 			{/* Organisation Switcher (WW Admin or multi-org users only) */}
 			{canSwitchOrganisations && (
 				<>
 					<OrgSwitcher />
-					<Divider style={{ marginVertical: spacing }} />
+					<Divider style={dynamicStyles.divider} />
 				</>
 			)}
 
 			<View>
 				<Button
 					textColor={colors.onBackground}
-					style={[{ margin: spacing }, styles.link]}
+					style={[dynamicStyles.link, styles.link]}
 					icon="bell"
 					onPress={() => goTo("Notifications")}
 				>
@@ -78,12 +95,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 				{invitationCount > 0 && (
 					<Badge
 						size={20}
-						style={{
-							position: 'absolute',
-							top: 5,
-							right: 10,
-							backgroundColor: colors.error
-						}}
+						style={[styles.badge, dynamicStyles.badge]}
 					>
 						{invitationCount}
 					</Badge>
@@ -91,7 +103,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 			</View>
 			<Button
 				textColor={colors.onBackground}
-				style={[{ margin: spacing }, styles.link]}
+				style={[dynamicStyles.link, styles.link]}
 				icon="account"
 				onPress={() => goTo("Profile")}
 			>
@@ -99,7 +111,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 			</Button>
 			<Button
 				textColor={colors.onBackground}
-				style={[{ margin: spacing }, styles.link]}
+				style={[dynamicStyles.link, styles.link]}
 				icon="cog"
 				onPress={() => goTo("Settings")}
 			>
@@ -107,7 +119,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 			</Button>
 			<Button
 				textColor={colors.onBackground}
-				style={[{ margin: spacing }, styles.link]}
+				style={[dynamicStyles.link, styles.link]}
 				icon="logout"
 				onPress={onLogout}
 			>
@@ -116,16 +128,11 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 			{__DEV__ && (
 				<>
 					<View
-						style={{
-							height: 1,
-							backgroundColor: colors.outline,
-							marginVertical: spacing,
-							width: "100%",
-						}}
+						style={[styles.separator, dynamicStyles.separator]}
 					/>
 					<Button
 						textColor={colors.primary}
-						style={[{ margin: spacing }, styles.link]}
+						style={[dynamicStyles.link, styles.link]}
 						icon="developer-board"
 						onPress={() => goTo("DevBuildInfo")}
 					>
@@ -133,7 +140,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 					</Button>
 					<Button
 						textColor={colors.primary}
-						style={[{ margin: spacing }, styles.link]}
+						style={[dynamicStyles.link, styles.link]}
 						icon="shield-key"
 						onPress={() => goTo("AuthTestScreen")}
 					>
@@ -152,5 +159,14 @@ const styles = StyleSheet.create({
 	},
 	link: {
 		margin: 10,
+	},
+	badge: {
+		position: 'absolute',
+		top: 5,
+		right: 10,
+	},
+	separator: {
+		height: 1,
+		width: "100%",
 	},
 })

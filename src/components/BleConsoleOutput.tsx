@@ -1,7 +1,6 @@
 import React, { useRef, useEffect } from 'react'
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
-import { Ionicons } from '@expo/vector-icons'
 
 export interface ConsoleEntry {
     id: string

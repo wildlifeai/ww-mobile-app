@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native'
 import { Card, useTheme } from 'react-native-paper'
 import { WWScreenView } from '../../components/ui/WWScreenView'
