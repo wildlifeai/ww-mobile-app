@@ -66,6 +66,17 @@ User Interface ← Local DB ← Pull Sync ← Supabase Changes
 4. Image displays in modal popup
 5. User can save or discard preview
 
+## Critical Version Requirements (Expo SDK 54)
+> [!IMPORTANT]
+> This project has **STRICT** version requirements to avoid compilation errors (specifically `Unresolved reference 'extensions'`).
+>
+> - **Gradle**: Must be **8.14.3** (Configured in `android/gradle/wrapper/gradle-wrapper.properties`).
+> - **Kotlin**: Version is managed by Expo autolinking (currently **2.1.20**), do NOT manually override in `build.gradle` unless necessary.
+> - **React Native**: **0.81.5**
+> - **React**: **19.1.0**
+>
+> A validation script (`scripts/validate-build-env.js`) runs automatically before builds to enforce these versions.
+
 ## Prerequisites
 
 This app uses **Expo SDK 54** with a managed workflow (prebuild enabled). Ensure you have:
