@@ -212,24 +212,43 @@ export const PrepareAndTestScreen = () => {
         })
     }, [])
 
+    // Track if preparation has been initiated to prevent duplicates
+    const hasStartedPreparation = useRef(false)
+
     const loadDeviceAndPreparation = useCallback(async () => {
+        if (hasStartedPreparation.current) return
+        hasStartedPreparation.current = true
+
         try {
             const deviceData = await DeviceService.getDeviceById(deviceId)
             setDevice(deviceData)
 
-            // Get last prep to pre-fill project
+            // Determine initial project ID
+            let initialProjectId = ''
+            
+            // 1. Try to use last used project from previous preparation
             if (deviceData) {
                 const lastPrep = await DevicePreparationService.getLastCompletedPreparation(deviceId)
-                if (lastPrep) {
-                    setSelectedProject(lastPrep.projectId)
+                if (lastPrep && lastPrep.projectId) {
+                    initialProjectId = lastPrep.projectId
                 }
+            }
+
+            // 2. Fallback to first available project if no last prep or last prep project invalid
+            if (!initialProjectId && projects && projects.length > 0) {
+                initialProjectId = projects[0].id
+            }
+
+            // Update state (this won't re-trigger this function now)
+            if (initialProjectId) {
+                setSelectedProject(initialProjectId)
             }
 
             // Create new preparation record (startPreparation handles cleanup)
             if (user?.id) {
                 const newPrep = await DevicePreparationService.startPreparation(
                     deviceId,
-                    selectedProject || (projects && projects.length > 0 ? projects[0].id : ''),
+                    initialProjectId,
                     user.id
                 )
                 setPreparation(newPrep)
@@ -237,10 +256,11 @@ export const PrepareAndTestScreen = () => {
         } catch (error) {
             console.error('Error loading device:', error)
             Alert.alert('Error', 'Failed to load device information')
+            hasStartedPreparation.current = false // Allow retry on error?
         } finally {
             setLoading(false)
         }
-    }, [deviceId, projects, user?.id, selectedProject])
+    }, [deviceId, projects, user?.id]) // Removed selectedProject from dependencies
 
     const handleProjectChange = useCallback(async (projectId: string) => {
         if (projectId === 'create_new') {
@@ -635,7 +655,7 @@ export const PrepareAndTestScreen = () => {
                         } catch (error) {
                             console.error('[PrepareTest] Firmware update failed:', error)
                             Alert.alert('Update Failed', error instanceof Error ? error.message : 'Unknown error')
-                            setFirmwareUpToDate(false) // Assume failed
+                            // setFirmwareUpToDate(false) - Removed undefined function
                         } finally {
                             setIsUpdatingFirmware(false)
                             isDfuInProgress.current = false // Re-enable connection monitoring
@@ -878,7 +898,7 @@ export const PrepareAndTestScreen = () => {
                 const updateAvailable = comparison < 0 // Only update if device version is LOWER
 
                 setBleFirmwareUpdateAvailable(updateAvailable)
-                setFirmwareUpToDate(!updateAvailable)
+                // setFirmwareUpToDate(!updateAvailable) - Removed undefined function
                 console.log('[PrepareTest] Firmware comparison:', {
                     deviceVersion: version,
                     latestVersion: latestBleFirmware.version,

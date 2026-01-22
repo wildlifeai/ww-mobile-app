@@ -36,7 +36,8 @@ const requiredVersions = {
     'react': '19.1.0',
     'expo': '~54.0.0', // Allow small patch variations
     'typescript': '~5.9.2',
-    '@types/react': '~19.1.10'
+    '@types/react': '~19.1.10',
+    'react-native-worklets': '0.7.1'
 };
 
 let depErrors = false;
