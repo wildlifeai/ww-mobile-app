@@ -22,9 +22,9 @@ jobs:
 
       - name: Validate type system not empty
         run: |
-          if [ ! -s src/types/supabase.ts ] || [ $(wc -c < src/types/supabase.ts) -lt 51200 ]; then
+          if [ ! -s src/types/database.types.ts ] || [ $(wc -c < src/types/database.types.ts) -lt 51200 ]; then
             echo "❌ Type system is empty or suspiciously small"
-            echo "Expected: 50-100KB, Found: $(wc -c < src/types/supabase.ts) bytes"
+            echo "Expected: 50-100KB, Found: $(wc -c < src/types/database.types.ts) bytes"
             exit 1
           fi
 
