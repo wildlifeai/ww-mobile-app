@@ -12,13 +12,14 @@
  */
 
 import { getSupabaseClient } from "./supabase"
-import type { Database } from "../types/database.types"
+import { log, logError } from "../utils/logger"
+
 import database from '../database'
 import Project from '../database/models/Project'
 import UserRole from '../database/models/UserRole'
 import { Q } from '@nozbe/watermelondb'
 
-type UserRoleRow = Database["public"]["Tables"]["user_roles"]["Row"]
+
 
 export type ProjectRole = "project_admin" | "project_member" | "viewer"
 
@@ -91,7 +92,7 @@ export const getOrganizationUsers = async (
 			})
 
 		if (error) {
-			console.error("❌ Error fetching organization users:", error)
+			logError(error.message)
 			throw new Error(error.message)
 		}
 
@@ -105,10 +106,14 @@ export const getOrganizationUsers = async (
 			is_in_project: u.is_in_project
 		}))
 
-		console.log(`✅ Fetched ${transformedUsers.length} users from organization ${organisationId}`)
+		log(`✅ Fetched ${transformedUsers.length} users from organization ${organisationId}`)
 		return transformedUsers as OrganizationUser[]
 	} catch (error) {
-		console.error("❌ Exception fetching organization users:", error)
+		if (error instanceof Error) {
+			logError(error)
+		} else {
+			logError(String(error))
+		}
 		throw error
 	}
 }
@@ -143,7 +148,7 @@ export const getProjectMembers = async (
 			// Check for missing users and fetch them
 			const missingUserIds = userIds.filter(id => !userMap.has(id))
 			if (missingUserIds.length > 0) {
-				console.log(`⚠️ Missing ${missingUserIds.length} users locally, fetching from Cloud...`)
+				log(`⚠️ Missing ${missingUserIds.length} users locally, fetching from Cloud...`)
 				try {
 					const { data: remoteUsers, error } = await getSupabaseClient()
 						.from('users')
@@ -171,10 +176,10 @@ export const getProjectMembers = async (
 
 						// Add to map for immediate display
 						remoteUsers.forEach(u => userMap.set(u.id, u))
-						console.log(`✅ Synced ${remoteUsers.length} missing users to local DB`)
+						log(`✅ Synced ${remoteUsers.length} missing users to local DB`)
 					}
 				} catch (err) {
-					console.error("Failed to fetch missing users:", err)
+					logError("Failed to fetch missing users: " + JSON.stringify(err))
 				}
 			}
 
@@ -200,7 +205,7 @@ export const getProjectMembers = async (
 				}
 			})
 
-			console.log(`✅ Fetched ${members.length} members from local DB for project ${projectId}`)
+			log(`✅ Fetched ${members.length} members from local DB for project ${projectId}`)
 			return members
 		}
 
@@ -208,7 +213,7 @@ export const getProjectMembers = async (
 		try {
 			const project = await database.get<Project>('projects').find(projectId)
 			if (project && project.createdBy === requestingUserId) {
-				console.log(`✅ Optimistic check: Current user is creator of project ${projectId}`)
+				log(`✅ Optimistic check: Current user is creator of project ${projectId}`)
 
 				// Fetch my user details if available
 				let name = "Me"
@@ -244,7 +249,7 @@ export const getProjectMembers = async (
 			})
 
 		if (error) {
-			console.error("❌ Error fetching project members:", error)
+			logError("❌ Error fetching project members: " + error.message)
 			throw new Error(error.message)
 		}
 
@@ -259,10 +264,10 @@ export const getProjectMembers = async (
 			granted_by_name: m.granted_by_name || "Unknown"
 		}))
 
-		console.log(`✅ Fetched ${members.length} members from project ${projectId}`)
+		log(`✅ Fetched ${members.length} members from project ${projectId}`)
 		return members
 	} catch (error) {
-		console.error("❌ Exception fetching project members:", error)
+		logError("❌ Exception fetching project members: " + (error instanceof Error ? error.message : String(error)))
 		throw error
 	}
 }
@@ -274,7 +279,7 @@ export const addProjectMember = async (
 	request: AddMemberRequest,
 ): Promise<MemberOperationResponse> => {
 	try {
-		console.log("➕ Adding project member:", request)
+		log("➕ Adding project member: " + JSON.stringify(request))
 
 		// Insert into user_roles
 		const { data, error } = await getSupabaseClient()
@@ -292,7 +297,7 @@ export const addProjectMember = async (
 			.single()
 
 		if (error) {
-			console.error("❌ Error adding project member:", error)
+			logError("❌ Error adding project member: " + JSON.stringify(error))
 			return {
 				success: false,
 				user_id: request.user_id,
@@ -301,7 +306,7 @@ export const addProjectMember = async (
 			}
 		}
 
-		console.log("✅ Successfully added project member:", data)
+		log("✅ Successfully added project member: " + JSON.stringify(data))
 		return {
 			success: true,
 			user_id: request.user_id,
@@ -310,7 +315,7 @@ export const addProjectMember = async (
 			new_role: request.role
 		}
 	} catch (error: any) {
-		console.error("❌ Exception adding project member:", error)
+		logError("❌ Exception adding project member: " + JSON.stringify(error))
 		return {
 			success: false,
 			user_id: request.user_id,
@@ -327,7 +332,7 @@ export const updateProjectMemberRole = async (
 	request: UpdateRoleRequest,
 ): Promise<MemberOperationResponse> => {
 	try {
-		console.log("🔄 Updating project member role:", request)
+		log("🔄 Updating project member role: " + JSON.stringify(request))
 
 		// Update user_roles
 		// We need to find the active role for this user in this project
@@ -345,7 +350,7 @@ export const updateProjectMemberRole = async (
 			.single()
 
 		if (error) {
-			console.error("❌ Error updating project member role:", error)
+			logError("❌ Error updating project member role: " + JSON.stringify(error))
 			return {
 				success: false,
 				user_id: request.user_id,
@@ -354,7 +359,7 @@ export const updateProjectMemberRole = async (
 			}
 		}
 
-		console.log("✅ Successfully updated project member role:", data)
+		log("✅ Successfully updated project member role: " + JSON.stringify(data))
 		return {
 			success: true,
 			user_id: request.user_id,
@@ -362,7 +367,7 @@ export const updateProjectMemberRole = async (
 			new_role: request.new_role
 		}
 	} catch (error: any) {
-		console.error("❌ Exception updating project member role:", error)
+		logError("❌ Exception updating project member role: " + JSON.stringify(error))
 		return {
 			success: false,
 			user_id: request.user_id,
@@ -379,7 +384,7 @@ export const removeProjectMember = async (
 	request: RemoveMemberRequest,
 ): Promise<MemberOperationResponse> => {
 	try {
-		console.log("➖ Removing project member:", request)
+		log("➖ Removing project member: " + JSON.stringify(request))
 
 		// Soft delete or hard delete from user_roles?
 		// Usually we set is_active = false or delete. Let's assume delete for now to match previous behavior, 
@@ -395,7 +400,7 @@ export const removeProjectMember = async (
 			.eq("scope_id", request.project_id)
 
 		if (error) {
-			console.error("❌ Error removing project member:", error)
+			logError("❌ Error removing project member: " + JSON.stringify(error))
 			return {
 				success: false,
 				user_id: request.user_id,
@@ -404,14 +409,14 @@ export const removeProjectMember = async (
 			}
 		}
 
-		console.log("✅ Successfully removed project member")
+		log("✅ Successfully removed project member")
 		return {
 			success: true,
 			user_id: request.user_id,
 			project_id: request.project_id
 		}
 	} catch (error: any) {
-		console.error("❌ Exception removing project member:", error)
+		logError("❌ Exception removing project member: " + JSON.stringify(error))
 		return {
 			success: false,
 			user_id: request.user_id,
@@ -469,14 +474,14 @@ export const getUserProjectRole = async (
 
 		if (error) {
 			if (error.code !== 'PGRST116') { // Not found
-				console.error("❌ Error checking user project role:", error)
+				logError("❌ Error checking user project role: " + JSON.stringify(error))
 			}
 			return null
 		}
 
 		return data?.role as ProjectRole || null
 	} catch (error) {
-		console.error("❌ Exception checking user project role:", error)
+		logError("❌ Exception checking user project role: " + (error instanceof Error ? error.message : String(error)))
 		return null
 	}
 }
@@ -517,13 +522,13 @@ export const isProjectAdmin = async (
 			.single()
 
 		if (error && error.code !== 'PGRST116') {
-			console.error("❌ Error checking project admin role:", error)
+			logError("❌ Error checking project admin role: " + JSON.stringify(error))
 			return false
 		}
 
 		return !!data
 	} catch (error) {
-		console.error("❌ Exception checking project admin role:", error)
+		logError("❌ Exception checking project admin role: " + (error instanceof Error ? error.message : String(error)))
 		return false
 	}
 }
@@ -559,13 +564,13 @@ export const isWWAdmin = async (userId: string): Promise<boolean> => {
 			.single()
 
 		if (error && error.code !== 'PGRST116') {
-			console.error("❌ Error checking WW admin role:", error)
+			logError("❌ Error checking WW admin role: " + JSON.stringify(error))
 			return false
 		}
 
 		return !!data
 	} catch (error) {
-		console.error("❌ Exception checking WW admin role:", error)
+		logError("❌ Exception checking WW admin role: " + (error instanceof Error ? error.message : String(error)))
 		return false
 	}
 }

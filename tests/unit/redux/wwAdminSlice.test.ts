@@ -110,9 +110,6 @@ describe("wwAdminSlice - Read-Only + Web Portal Architecture", () => {
 		},
 	]
 
-	type RootState = {
-		wwAdmin: WWAdminState
-	}
 
 	beforeEach(() => {
 		store = configureStore({

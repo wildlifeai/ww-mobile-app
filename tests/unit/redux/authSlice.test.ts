@@ -7,8 +7,8 @@ import { configureStore } from "@reduxjs/toolkit"
 import authReducer, {
 	setCredentials,
 	logout,
-	setInitialState,
-	setUserRole,
+
+
 	setCurrentOrganisation,
 	updateUserProfile,
 } from "../../../src/redux/slices/authSlice"

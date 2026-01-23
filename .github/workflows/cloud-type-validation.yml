@@ -7,7 +7,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'src/types/supabase.ts'
+      - 'src/types/database.types.ts'
       - 'src/**/*.ts'
       - 'src/**/*.tsx'
       - '.github/workflows/cloud-type-validation.yml'
@@ -76,7 +76,7 @@ jobs:
         id: compare
         run: |
           echo "Comparing generated types with committed types..."
-          if diff -u src/types/supabase.ts /tmp/cloud-dev-types.ts > /tmp/type-diff.txt; then
+          if diff -u src/types/database.types.ts /tmp/cloud-dev-types.ts > /tmp/type-diff.txt; then
             echo "✅ Types are synchronized with cloud-dev"
             echo "status=success" >> $GITHUB_OUTPUT
           else
@@ -86,7 +86,7 @@ jobs:
             echo "  npm run types:cloud-dev"
             echo ""
             echo "Then commit the updated types:"
-            echo "  git add src/types/supabase.ts"
+            echo "  git add src/types/database.types.ts"
             echo "  git commit -m 'chore(types): sync with cloud-dev schema'"
             echo ""
             echo "First 30 lines of diff:"
