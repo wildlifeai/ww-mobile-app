@@ -179,7 +179,7 @@ export const getProjectMembers = async (
 						log(`✅ Synced ${remoteUsers.length} missing users to local DB`)
 					}
 				} catch (err) {
-					logError("Failed to fetch missing users: " + JSON.stringify(err))
+					logError("Failed to fetch missing users: " + (err instanceof Error ? err.message : String(err)))
 				}
 			}
 
@@ -315,7 +315,7 @@ export const addProjectMember = async (
 			new_role: request.role
 		}
 	} catch (error: any) {
-		logError("❌ Exception adding project member: " + JSON.stringify(error))
+		logError("❌ Exception adding project member: " + (error instanceof Error ? error.message : String(error)))
 		return {
 			success: false,
 			user_id: request.user_id,
@@ -367,7 +367,7 @@ export const updateProjectMemberRole = async (
 			new_role: request.new_role
 		}
 	} catch (error: any) {
-		logError("❌ Exception updating project member role: " + JSON.stringify(error))
+		logError("❌ Exception updating project member role: " + (error instanceof Error ? error.message : String(error)))
 		return {
 			success: false,
 			user_id: request.user_id,
@@ -416,7 +416,7 @@ export const removeProjectMember = async (
 			project_id: request.project_id
 		}
 	} catch (error: any) {
-		logError("❌ Exception removing project member: " + JSON.stringify(error))
+		logError("❌ Exception removing project member: " + (error instanceof Error ? error.message : String(error)))
 		return {
 			success: false,
 			user_id: request.user_id,
