@@ -11,7 +11,7 @@
 #
 # Dependencies:
 #   - Supabase CLI (must be authenticated to the project)
-#   - Project must be linked: `supabase link --project-ref <ref>`
+#   - Project must be linked: `supabase link --project-id <ref>`
 #
 # Exit Codes:
 #   0 = Types are aligned with cloud environment
@@ -83,7 +83,7 @@ trap "rm -f $TEMP_TYPES" EXIT
 
 # Generate types from cloud instance
 echo "📡 Generating types from $ENVIRONMENT (this may take a few seconds)..."
-if ! npx supabase gen types typescript --linked --project-ref "$PROJECT_REF" > "$TEMP_TYPES" 2>/dev/null; then
+if ! npx supabase gen types typescript --linked --project-id "$PROJECT_REF" > "$TEMP_TYPES" 2>/dev/null; then
   echo ""
   echo "❌ Error: Failed to generate types from $ENVIRONMENT"
   echo ""
@@ -94,7 +94,7 @@ if ! npx supabase gen types typescript --linked --project-ref "$PROJECT_REF" > "
   echo "  4. Project ref is incorrect"
   echo ""
   echo "To authenticate: npx supabase login"
-  echo "To link project:  npx supabase link --project-ref $PROJECT_REF"
+  echo "To link project:  npx supabase link --project-id $PROJECT_REF"
   exit 1
 fi
 
