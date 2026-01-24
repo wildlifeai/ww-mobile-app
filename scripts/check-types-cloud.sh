@@ -83,7 +83,7 @@ trap "rm -f $TEMP_TYPES" EXIT
 
 # Generate types from cloud instance
 echo "📡 Generating types from $ENVIRONMENT (this may take a few seconds)..."
-if ! npx supabase gen types typescript --linked --project-id "$PROJECT_REF" > "$TEMP_TYPES" 2>/dev/null; then
+if ! npx supabase gen types typescript --project-id "$PROJECT_REF" > "$TEMP_TYPES" 2>/dev/null; then
   echo ""
   echo "❌ Error: Failed to generate types from $ENVIRONMENT"
   echo ""

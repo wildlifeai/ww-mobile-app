@@ -66,7 +66,7 @@ jobs:
       - name: Generate fresh types from cloud-dev
         run: |
           echo "Generating types from cloud-dev Supabase instance..."
-          npx supabase gen types typescript --linked --project-id nuhwmubvygxyddkycmpa > /tmp/cloud-dev-types.ts
+          npx supabase gen types typescript --project-id nuhwmubvygxyddkycmpa > /tmp/cloud-dev-types.ts
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
