@@ -36,6 +36,8 @@ export enum CommandNames {
 	getop = "getop",
 	getops = "getops",
 	ai_ver = "ai_ver",
+	erasemodel = "erasemodel",
+	loadmodel = "loadmodel",
 
 	// Process commands (UPPERCASE - app-specific workflows)
 	SET_UTC = "SET_UTC",
@@ -283,6 +285,18 @@ export const COMMANDS: {
 		name: CommandNames.ai_ver,
 		readCommand: "AI ver",
 		description: "Get AI processor version",
+		type: 'command',
+	},
+	[CommandNames.erasemodel]: {
+		name: CommandNames.erasemodel,
+		writeCommand: () => "AI erasemodel",
+		description: "Erases the model and write 0, 0 to the CONFIG.TXT lines 14 & 15",
+		type: 'command',
+	},
+	[CommandNames.loadmodel]: {
+		name: CommandNames.loadmodel,
+		writeCommand: (id?: string, ver?: string) => `AI loadmodel ${id || '0'} ${ver || '0'}`,
+		description: "Load model <id> <ver> from SD (e.g. 1V1.TFL) and update lines 14 & 15 of CONFIG.TXT",
 		type: 'command',
 	},
 	// Preset Operational Parameter Commands

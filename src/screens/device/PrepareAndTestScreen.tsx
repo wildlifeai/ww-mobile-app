@@ -7,6 +7,7 @@ import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
 import { WWSelect } from '../../components/ui/WWSelect'
 import { WWProgressBar } from '../../components/ui/WWProgressBar'
+import { WWIcon } from '../../components/ui/WWIcon'
 import { DeviceService } from '../../services/DeviceService'
 import { DevicePreparationService } from '../../services/DevicePreparationService'
 import ReferenceDataService from '../../services/ReferenceDataService'
@@ -121,6 +122,7 @@ export const PrepareAndTestScreen = () => {
     const [firmwareUpdateProgress, setFirmwareUpdateProgress] = useState<number>(0)
     const [isUpdatingFirmware, setIsUpdatingFirmware] = useState(false)
     const [isCheckingFirmware, setIsCheckingFirmware] = useState(false)
+    const [isVerifyingUpdate, setIsVerifyingUpdate] = useState(false)
 
     // Ref to track DFU in progress (prevents Connection Lost alert during expected disconnection)
     const isDfuInProgress = useRef(false)
@@ -151,7 +153,7 @@ export const PrepareAndTestScreen = () => {
     })
 
     // Device settings hook
-    const { updateSettings: updateDeviceSettings } = useDeviceSettings({
+    const { updateSettings: updateDeviceSettings, quiesceDevice } = useDeviceSettings({
         device: bleDevice,
         onError: (error) => {
             console.error('[PrepareTest] Settings update failed:', error)
@@ -168,11 +170,6 @@ export const PrepareAndTestScreen = () => {
 
     // Load user projects using RTK Query (consistent with Projects screen)
     const currentOrganisation = useAppSelector((state) => state.authentication.currentOrganisation)
-    const { data: projects = [] } = useGetProjectsQuery(
-        { userId: user?.id!, organisationId: currentOrganisation?.id! },
-        { skip: !user?.id || !currentOrganisation?.id }
-    )
-
     // Using ref to track latest logs for the robust initialization sequence
     const logsRef = useRef(logs)
     useEffect(() => {
@@ -214,29 +211,63 @@ export const PrepareAndTestScreen = () => {
 
     // Track if preparation has been initiated to prevent duplicates
     const hasStartedPreparation = useRef(false)
+    const activeDeviceId = useRef<string | null>(null)
+
+    // Reset started flag if deviceId changes
+    useEffect(() => {
+        if (activeDeviceId.current !== deviceId) {
+            hasStartedPreparation.current = false
+            activeDeviceId.current = deviceId
+        }
+    }, [deviceId])
+
+    // Get loading state from projects query
+    const { data: projects = [], isLoading: isLoadingProjects } = useGetProjectsQuery(
+        { userId: user?.id!, organisationId: currentOrganisation?.id! },
+        { skip: !user?.id || !currentOrganisation?.id }
+    )
 
     const loadDeviceAndPreparation = useCallback(async () => {
-        if (hasStartedPreparation.current) return
+        // Wait for user and projects to be ready
+        if (!user?.id || isLoadingProjects) {
+            console.log('[PrepareTest] Waiting for data dependencies (user/projects)...')
+            return
+        }
+
+        // Only skip if we have ALREADY started for this flow
+        if (hasStartedPreparation.current) {
+            console.log('[PrepareTest] Preparation already started/loaded, skipping duplicate init.')
+            return
+        }
+        
         hasStartedPreparation.current = true
+        console.log('[PrepareTest] Loading data for device:', deviceId)
 
         try {
             const deviceData = await DeviceService.getDeviceById(deviceId)
+            if (!deviceData) {
+                console.error('[PrepareTest] Device not found in record for ID:', deviceId)
+                // Don't set hasStarted true here so we can retry if needed? 
+                // Actually, if it's not in DB, it won't appear magically without a re-pair.
+                setLoading(false)
+                return
+            }
             setDevice(deviceData)
 
             // Determine initial project ID
             let initialProjectId = ''
             
             // 1. Try to use last used project from previous preparation
-            if (deviceData) {
-                const lastPrep = await DevicePreparationService.getLastCompletedPreparation(deviceId)
-                if (lastPrep && lastPrep.projectId) {
-                    initialProjectId = lastPrep.projectId
-                }
+            const lastPrep = await DevicePreparationService.getLastCompletedPreparation(deviceId)
+            if (lastPrep && lastPrep.projectId) {
+                initialProjectId = lastPrep.projectId
+                console.log('[PrepareTest] Using last used project ID:', initialProjectId)
             }
 
             // 2. Fallback to first available project if no last prep or last prep project invalid
             if (!initialProjectId && projects && projects.length > 0) {
                 initialProjectId = projects[0].id
+                console.log('[PrepareTest] Defaulting to first available project:', projects[0].name)
             }
 
             // Update state (this won't re-trigger this function now)
@@ -245,22 +276,22 @@ export const PrepareAndTestScreen = () => {
             }
 
             // Create new preparation record (startPreparation handles cleanup)
-            if (user?.id) {
-                const newPrep = await DevicePreparationService.startPreparation(
-                    deviceId,
-                    initialProjectId,
-                    user.id
-                )
-                setPreparation(newPrep)
-            }
+            console.log('[PrepareTest] Starting preparation record...')
+            const newPrep = await DevicePreparationService.startPreparation(
+                deviceId,
+                initialProjectId,
+                user.id
+            )
+            setPreparation(newPrep)
+            console.log('[PrepareTest] Data loading complete.')
         } catch (error) {
-            console.error('Error loading device:', error)
-            Alert.alert('Error', 'Failed to load device information')
-            hasStartedPreparation.current = false // Allow retry on error?
+            console.error('[PrepareTest] Error loading device data:', error)
+            Alert.alert('Loading Error', 'Failed to initialize the preparation session.')
+            hasStartedPreparation.current = false // Allow retry on re-render
         } finally {
             setLoading(false)
         }
-    }, [deviceId, projects, user?.id]) // Removed selectedProject from dependencies
+    }, [deviceId, projects, user?.id, isLoadingProjects])
 
     const handleProjectChange = useCallback(async (projectId: string) => {
         if (projectId === 'create_new') {
@@ -313,32 +344,9 @@ export const PrepareAndTestScreen = () => {
             setLoading(true)
             const errors: string[] = []
 
-            // 1. Set UTC time (FIRST ACTION)
-            // Retry loop: The first attempt might be corrupted by a delayed "selfTest" packet
-            // from the previous step. If that happens, the second attempt will succeed.
-            for (let attempt = 1; attempt <= 2; attempt++) {
-                try {
-                    const preUtcOffset = logsRef.current.length
-                    console.log(`[PrepareTest] Setting UTC time (Attempt ${attempt})...`)
-                    await setUtc(bleDevice)
-                    // Robust wait: 6000ms timeout
-                    await waitForLogMatch(/RTC set to|UTC is:/, 6000, preUtcOffset)
-                    console.log('[PrepareTest] SET_UTC completed')
-
-                    // Wait 500ms to clear I2C bus buffer
-                    await new Promise(r => setTimeout(r, 500))
-                    break
-                } catch (error) {
-                    console.warn(`[PrepareTest] SET_UTC attempt ${attempt} failed:`, error)
-                    if (attempt === 1) {
-                        console.log('[PrepareTest] Retrying SET_UTC to clear potential buffer corruption...')
-                        await new Promise(r => setTimeout(r, 1000))
-                    } else {
-                        console.error('[PrepareTest] SET_UTC finally failed:', error)
-                        errors.push('Failed to sync device time')
-                    }
-                }
-            }
+            // 1. Set UTC time (REMOVED: Done during initialization)
+            // We rely on the initialization sequence to have set the time.
+            // Re-running it here adds unnecessary delay.
 
             // 2. Configure device settings based on selected project
             try {
@@ -346,24 +354,16 @@ export const PrepareAndTestScreen = () => {
                 const selectedProjectData = projects?.find(p => p.id === selectedProject)
 
                 if (selectedProjectData) {
-                    console.log('[PrepareTest] Configuring device settings for project:', selectedProjectData.name)
+                    console.log('[PrepareTest] Configuring final device settings for project:', selectedProjectData.name)
 
-                    // Determine capture method from project (Logged for verification)
-                    // const isMotionDetect = selectedProjectData.capture_method_id === 1 
-                    // const isTimelapse = selectedProjectData.capture_method_id === 2
+                    // ENFORCE SAFE SEQUENCE: Enable -> Clear -> Disable
+                    await quiesceDevice('[PrepareTest]')
 
-                    await updateDeviceSettings({
-                        motionDetectInterval: 0,
-                        timelapseInterval: 0,
-                        intervalBeforeDpd: 1000,
-                        // ALWAYS disable camera after preparation
-                        // Camera will be enabled during "Start Deployment"
-                        cameraEnabled: false
-                    })
-
+                    // Additionally ensure intervalBeforeDpd is set correctly (quiesce doesn't convert this)
+                    // Although default is usually 1000, we can enforce it if needed.
+                    // For now, quiesceDevice handles the critical stopping.
+                    
                     console.log('[PrepareTest] Device settings configured successfully')
-                    // Redundant disableCamera removed - updateDeviceSettings handles cameraEnabled state
-
                 } else {
                     console.log('[PrepareTest] No project selected or found, skipping settings configuration')
                 }
@@ -607,11 +607,11 @@ export const PrepareAndTestScreen = () => {
                             }
 
                             setFirmwareUpdateProgress(100)
-                            Alert.alert('Update Complete', 'Device is rebooting. Verifying new version...')
-
+                            
                             // Reset state for verification
                             setDeviceFirmwareVersion(null)
                             setIsCheckingFirmware(true)
+                            setIsVerifyingUpdate(true)
                             setBleFirmwareUpdateAvailable(false) // Optimistically hide until verified
 
                             // Wait for reboot (approx 5-8s)
@@ -619,8 +619,6 @@ export const PrepareAndTestScreen = () => {
                             await new Promise(r => setTimeout(r, 8000))
 
                             // Reconnect and check
-                            // We need to trigger the hook's scan/connect logic
-                            // But since we are likely disconnected, we can try to "nudge" it or manually connect
                             console.log('[PrepareTest] Attempting to reconnect for verification...')
                             if (bleDevice) {
                                 // Manual connect attempt
@@ -628,27 +626,11 @@ export const PrepareAndTestScreen = () => {
                                     // Make sure we're disconnected first to clean up
                                     await runDisconnect(bleDevice).catch(() => { })
 
-                                    // Reconnect
-                                    // The main useBle hook needs to handle this, but we can try invoking connectDevice from here 
-                                    // if we had access to it. Since we only have 'write', we rely on the screen's focus effect or manual trigger.
-                                    // For now, let's trigger the handleFirmwareCheck which has safety checks
-
-                                    // We need to actually perform the connection here since we are in a function
-                                    // Using a helper or just letting the user press "Test Again" if auto-reconnect fails
-                                    // But let's try to simulate the flow:
-
-                                    Alert.alert(
-                                        'Verification Required',
-                                        'Please ensure the device has restarted (green LED flashing). If it is not connected, tap "Test Again" or go back and reconnect.',
-                                        [
-                                            {
-                                                text: 'Verify Now',
-                                                onPress: () => handleFirmwareCheck()
-                                            }
-                                        ]
-                                    )
+                                    // Trigger the firmware check automatically
+                                    handleFirmwareCheck()
                                 } catch (reconnectErr) {
                                     console.warn('[PrepareTest] Reconnect failed:', reconnectErr)
+                                    setIsVerifyingUpdate(false)
                                 }
                             }
 
@@ -735,19 +717,14 @@ export const PrepareAndTestScreen = () => {
             const errors: { setUtc?: string } = {}
 
             // 0. Wait for HiMAX processor to boot + verify BLE communication
+            // 0. Wait for HiMAX processor to boot after connection
+            // We remove redundant ver/name checks to streamline the process.
+            // Just a small safety delay to ensure bus stability if we just connected.
             try {
-                console.log('[PrepareTest] Waiting for HiMAX processor to boot after connection...')
-                await new Promise(r => setTimeout(r, 2000))  // 2s for HiMAX boot
-
-                console.log('[PrepareTest] Verifying BLE communication with version check...')
-                await getDeviceVer(bleDevice)  // Non-AI command to verify Nordic BLE is responsive
-                await new Promise(r => setTimeout(r, 200))
-
-                console.log('[PrepareTest] Fetching device model name...')
-                await getDeviceName(bleDevice)
-                await new Promise(r => setTimeout(r, 500))  // Let it process
+                console.log('[PrepareTest] Stabilization delay (500ms)...')
+                await new Promise(r => setTimeout(r, 500))
             } catch (err) {
-                console.warn('[PrepareTest] Initial BLE verification had issues:', err)
+                console.warn('[PrepareTest] Stabilization error:', err)
             }
 
             // 1. Set UTC time (FIRST ACTION)
@@ -777,15 +754,8 @@ export const PrepareAndTestScreen = () => {
             // 2. Quiesce Device (Ensure Force Stop)
             // Explicitly disable camera and motion/timelapse intervals to stop the "MD" loops
             try {
-                console.log('[PrepareTest] Enforcing quiet state (Disabling Camera & Motion)...')
-                await updateDeviceSettings({
-                    cameraEnabled: false,
-                    motionDetectInterval: 0,
-                    timelapseInterval: 0
-                })
-                // Wait for settings to apply
-                await new Promise(r => setTimeout(r, 500))
-                console.log('[PrepareTest] Device stabilized.')
+                // Use the centralized safe sequence
+                await quiesceDevice('[PrepareTest]')
             } catch (err) {
                 console.warn('[PrepareTest] Failed to quiesce device:', err)
             }
@@ -820,6 +790,18 @@ export const PrepareAndTestScreen = () => {
                 console.error('[PrepareTest] Failed to clear GPS location:', err)
             }
 
+            // 5. Auto-trigger Status Checks (Battery & SD Card)
+            // This ensures the user sees values immediately when the UI unlocks.
+            // Note: handleSdCardCheck includes a 4s wait for AI wake.
+            try {
+                console.log('[PrepareTest] Auto-triggering status checks...')
+                await handleBatteryCheck()
+                await new Promise(r => setTimeout(r, 500)) // Safety buffer
+                await handleSdCardCheck()
+            } catch (err) {
+                console.error('[PrepareTest] Auto-checks failed:', err)
+            }
+
             // Set any errors to trigger warning display
             if (errors.setUtc) {
                 setInitErrors(errors)
@@ -830,7 +812,7 @@ export const PrepareAndTestScreen = () => {
         }
 
         runBleInitialization()
-    }, [bleDevice, getDeviceVer, getDeviceName, setUtc, waitForLogMatch, updateDeviceSettings, triggerDpdLatch, setDeploymentIdAsOps, clearGpsLocation])
+    }, [bleDevice, getDeviceVer, getDeviceName, setUtc, waitForLogMatch, updateDeviceSettings, quiesceDevice, triggerDpdLatch, setDeploymentIdAsOps, clearGpsLocation, handleBatteryCheck, handleSdCardCheck])
 
     // Parse BLE logs for command responses
 
@@ -912,6 +894,20 @@ export const PrepareAndTestScreen = () => {
                         firmwareCheckPassed: true,
                         firmwareId: latestBleFirmware.id
                     })
+
+                    // If we just finished an update, show final success notification
+                    if (isVerifyingUpdate) {
+                        setIsVerifyingUpdate(false)
+                        Alert.alert(
+                            'Update Successful',
+                            `Your device has been updated to version ${version}.`,
+                            [{ text: 'OK' }]
+                        )
+                    }
+                } else if (isVerifyingUpdate && updateAvailable) {
+                    // Still reporting old version or update failed
+                    console.warn('[PrepareTest] Update reported old version after reboot')
+                    // We keep isVerifyingUpdate true for a bit longer or let user retry
                 }
             }
         }
@@ -973,7 +969,7 @@ export const PrepareAndTestScreen = () => {
 
 
 
-    if (loading || !device) {
+    if (loading) {
         return (
             <WWScreenView>
                 <View style={styles.loadingContainer}>
@@ -981,6 +977,29 @@ export const PrepareAndTestScreen = () => {
                     <WWText variant="bodyMedium" style={styles.loadingText}>
                         Loading device...
                     </WWText>
+                </View>
+            </WWScreenView>
+        )
+    }
+
+    if (!device) {
+        return (
+            <WWScreenView>
+                <View style={styles.loadingContainer}>
+                    <WWIcon source="alert-circle-outline" size={64} color={theme.colors.error} />
+                    <WWText variant="headlineSmall" style={[styles.loadingText, { color: theme.colors.error }]}>
+                        Device Not Found
+                    </WWText>
+                    <WWText variant="bodyMedium" style={{ textAlign: 'center', marginTop: 8, paddingHorizontal: 32 }}>
+                        Could not find device details in the local database. Please try pairing again.
+                    </WWText>
+                    <WWButton 
+                        mode="contained" 
+                        onPress={() => navigation.goBack()} 
+                        style={{ marginTop: 24 }}
+                    >
+                        Go Back
+                    </WWButton>
                 </View>
             </WWScreenView>
         )
@@ -998,6 +1017,14 @@ export const PrepareAndTestScreen = () => {
                     <WWText variant="bodySmall" style={styles.deviceId}>
                         {device.bluetoothId}
                     </WWText>
+                    {isInitializing && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 }}>
+                            <ActivityIndicator size="small" color={theme.colors.primary} />
+                            <Text variant="bodySmall" style={{ color: theme.colors.primary }}>
+                                Initializing device...
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* Initialization Errors */}
@@ -1060,12 +1087,12 @@ export const PrepareAndTestScreen = () => {
                                     {batteryLevel > 30 ? 'Battery level sufficient' : 'Battery level low - charge before deployment'}
                                 </WWText>
                             </View>
-                            <WWButton mode="outlined" onPress={handleBatteryCheck} style={styles.statusButton}>
+                            <WWButton mode="outlined" onPress={handleBatteryCheck} style={styles.statusButton} disabled={isInitializing || !bleDevice?.connected}>
                                 Check Again
                             </WWButton>
                         </View>
                     ) : (
-                        <WWButton mode="outlined" onPress={handleBatteryCheck}>
+                        <WWButton mode="outlined" onPress={handleBatteryCheck} disabled={isInitializing || !bleDevice?.connected}>
                             Check Battery Level
                         </WWButton>
                     )}
@@ -1088,12 +1115,12 @@ export const PrepareAndTestScreen = () => {
                                         : 'SD card is nearly full - free up space'}
                                 </WWText>
                             </View>
-                            <WWButton mode="outlined" onPress={handleSdCardCheck} style={styles.statusButton}>
+                            <WWButton mode="outlined" onPress={handleSdCardCheck} style={styles.statusButton} disabled={isInitializing || !bleDevice?.connected}>
                                 Check Again
                             </WWButton>
                         </View>
                     ) : (
-                        <WWButton mode="outlined" onPress={handleSdCardCheck}>
+                        <WWButton mode="outlined" onPress={handleSdCardCheck} disabled={isInitializing || !bleDevice?.connected}>
                             Check SD Card
                         </WWButton>
                     )}
@@ -1121,7 +1148,7 @@ export const PrepareAndTestScreen = () => {
                     <WWButton
                         mode="outlined"
                         onPress={handleCameraTest}
-                        disabled={sdCardStatus === null || isCapturingImage}
+                        disabled={sdCardStatus === null || isCapturingImage || isInitializing || !bleDevice?.connected}
                         loading={isCapturingImage}
                     >
                         {isCapturingImage ? 'Capturing & Downloading...' : (cameraTestPassed ? 'Test Again' : 'Test Camera View')}
@@ -1155,6 +1182,7 @@ export const PrepareAndTestScreen = () => {
                         <WWButton
                             mode="outlined"
                             onPress={handleFirmwareCheck}
+                            disabled={isInitializing || !bleDevice?.connected}
                             style={styles.checkFirmwareButton}
                         >
                             Check Firmware Version
@@ -1170,12 +1198,12 @@ export const PrepareAndTestScreen = () => {
                     {isUpdatingFirmware ? (
                         <>
                             <WWProgressBar
-                                progress={firmwareUpdateProgress / 100}
+                                progress={isVerifyingUpdate ? 1 : firmwareUpdateProgress / 100}
                                 showLabel
-                                label={`Updating: ${firmwareUpdateProgress}%`}
+                                label={isVerifyingUpdate ? 'Rebooting & Verifying...' : `Updating: ${firmwareUpdateProgress}%`}
                             />
                             <WWText variant="bodySmall" style={styles.statusHint}>
-                                Do not disconnect the device...
+                                {isVerifyingUpdate ? 'Waiting for device to finish restart...' : 'Do not disconnect the device...'}
                             </WWText>
                         </>
                     ) : deviceFirmwareVersion && bleFirmwareUpdateAvailable ? (

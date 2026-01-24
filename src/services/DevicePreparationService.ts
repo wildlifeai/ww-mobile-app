@@ -13,21 +13,18 @@ export const DevicePreparationService = {
      */
     startPreparation: async (deviceId: string, projectId: string, modifiedBy: string): Promise<DevicePreparation> => {
         // 1. Try to clean server state (best effort, handles zombie records)
-        await DevicePreparationService.ensureServerStateClean(deviceId)
+        // CRITICAL FIX: Do NOT await this. It can hang on slow/unstable networks, blocking the UI.
+        DevicePreparationService.ensureServerStateClean(deviceId).catch(err => 
+            console.warn('[DevPrepService] background server cleanup failed:', err)
+        )
 
         // 2. Cancel any existing in-progress preparations locally
         await DevicePreparationService.cancelInProgressPreparations(deviceId)
 
-        // 3. CRITICAL: Trigger sync to push cancellations to server BEFORE creating new preparation
-        // This prevents race condition where server still has old in_progress record
-        console.log('[DevPrepService] Triggering sync to push cancellations before creating new preparation')
-        try {
-            await SupabaseSyncService.sync()
-            console.log('[DevPrepService] Sync complete, proceeding with new preparation creation')
-        } catch (syncErr) {
-            console.warn('[DevPrepService] Sync failed, proceeding anyway:', syncErr)
-            // Continue even if sync fails - the server cleanup should have handled it
-        }
+        // 3. Trigger background sync
+        // We no longer await this to ensure the UI transition happens immediately.
+        // Sync handles pushing the cancellations in the background.
+        SupabaseSyncService.debouncedSync()
 
         // 4. Create new preparation
         return await DevicePreparationService.createPreparation(deviceId, projectId, modifiedBy)
