@@ -110,7 +110,7 @@ android {
                 def envFile = file("${projectRoot}/.env")
                 if (envFile.exists()) {
                     envFile.eachLine { line ->
-                        def matcher = (line =~ /^\s*GOOGLE_MAPS_API_KEY_ANDROID\s*=\s*['"]?(.*?)['"]?\s*$/)
+                        def matcher = (line =~ /^\s*GOOGLE_MAPS_API_KEY_ANDROID\s*=\s*['"]?([^#\s'"]+)['"]?/)
                         if (matcher) {
                             googleMapsApiKey = matcher[0][1]
                         }

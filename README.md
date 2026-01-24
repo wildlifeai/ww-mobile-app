@@ -186,9 +186,9 @@ To build and automatically submit to the Google Play Console (Internal Track):
 
 ### "useLegacyImplementation" or "useAnimatedGestureHandler" Errors
 These are caused by incompatibility between `react-native-drawer-layout` and Reanimated 4.
-**Fix:** We upgraded `react-native-drawer-layout` to v4.2.1+. Ensure you are using the latest version:
+**Fix:** We upgraded `react-native-drawer-layout` to v4.2.1+. Ensure you are using a compatible version:
 ```bash
-npm install react-native-drawer-layout@latest
+npm install react-native-drawer-layout@^4.2.1
 npx expo start --clear
 ```
 
@@ -342,30 +342,6 @@ npm run test:e2e
 - `npm run deps` - Interactive dependency management CLI
 - `npm run type-check` - Run TypeScript type checking
 
-## Troubleshooting
-
-### Sync Issues
-
-If sync isn't working:
-1. Check network connectivity
-2. Verify Supabase credentials in `.env`
-3. Check Metro logs for sync errors
-4. Clear app data and reinstall if needed
-
-### BLE Connection Issues
-
-If camera won't connect:
-1. Ensure Bluetooth is enabled
-2. Check camera is powered on and in range
-3. Reset camera if needed
-4. Check Metro logs for BLE errors
-
-### Database Issues
-
-If local database is corrupted:
-1. Clear app data
-2. Reinstall app
-3. Data will re-sync from Supabase on next login
 
 ## Contributing
 
