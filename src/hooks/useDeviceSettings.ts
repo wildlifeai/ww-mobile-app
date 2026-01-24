@@ -50,6 +50,7 @@ export interface UseDeviceSettingsOptions {
 export interface UseDeviceSettingsReturn {
     updateSettings: (settings: Partial<DeviceSettings>) => Promise<void>
     applyPreset: (preset: 'default' | 'motion-detect' | 'timelapse') => Promise<void>
+    quiesceDevice: (logPrefix?: string) => Promise<void>
     isUpdating: boolean
 }
 
@@ -161,49 +162,79 @@ export const useDeviceSettings = ({
     const applyPreset = useCallback(async (preset: 'default' | 'motion-detect' | 'timelapse') => {
         console.log(`[useDeviceSettings] Applying preset: ${preset}`)
 
-        let settings: Partial<DeviceSettings>
+        const settings: Partial<DeviceSettings> = {
+            numPictures: 3,
+            pictureInterval: 1500,
+            timelapseInterval: 60,
+            ledBrightness: 5,
+            cameraEnabled: true,
+            motionDetectInterval: 1000,
+            flashDuration: 100,
+            flashLed: 0
+        }
 
-        switch (preset) {
-            case 'default':
-                settings = {
-                    numPictures: 3,
-                    pictureInterval: 1500,
-                    timelapseInterval: 60,
-                    ledBrightness: 5,
-                    cameraEnabled: true,
-                    motionDetectInterval: 1000,
-                    flashDuration: 100,
-                    flashLed: 0
-                }
-                break
-
-            case 'motion-detect':
-                settings = {
-                    motionDetectInterval: 1000,  // 1 second
-                    timelapseInterval: 0,         // Disabled
-                    cameraEnabled: true,
-                    numPictures: 3,
-                    pictureInterval: 500
-                }
-                break
-
-            case 'timelapse':
-                settings = {
-                    motionDetectInterval: 0,      // Disabled
-                    timelapseInterval: 900,       // 15 minutes
-                    cameraEnabled: true,
-                    numPictures: 1,
-                    pictureInterval: 0
-                }
-                break
+        if (preset === 'motion-detect') {
+            Object.assign(settings, {
+                motionDetectInterval: 1000,
+                timelapseInterval: 0,
+                cameraEnabled: true,
+                numPictures: 3,
+                pictureInterval: 500
+            })
+        } else if (preset === 'timelapse') {
+            Object.assign(settings, {
+                motionDetectInterval: 0,
+                timelapseInterval: 900,
+                cameraEnabled: true,
+                numPictures: 1,
+                pictureInterval: 0
+            })
         }
 
         await updateSettings(settings)
     }, [updateSettings])
 
+    /**
+     * Safely quiesces the device (stops all capture activities).
+     * Enforces the sequence: Enable Camera -> Clear Intervals -> Disable Camera.
+     * This ensures the firmware accepts the "Stop" commands even if the camera was previously disabled.
+     */
+    const quiesceDevice = useCallback(async (logPrefix: string = '[DeviceSettings]') => {
+        if (!device) return
+
+        console.log(`${logPrefix} Quiescing device (Safe Sequence)...`)
+        try {
+            // 1. Enable Camera to unlock parameters (Op 10 = 1)
+            console.log(`${logPrefix} 1. Enabling camera to allow interval writes...`)
+            await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '1')
+            await new Promise(r => setTimeout(r, 500))
+
+            // 2. Clear Intervals (Op 11 = 0, Op 7 = 0)
+            console.log(`${logPrefix} 2. Clearing Motion & Timelapse intervals...`)
+            await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
+            await new Promise(r => setTimeout(r, 200)) 
+            await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
+            
+            // BUS SAFETY: Wait 1500ms for potential "Stats" message from Himax
+            console.log(`${logPrefix} Waiting 1.5s for bus stabilization...`)
+            await new Promise(r => setTimeout(r, 1500))
+
+            // 3. Disable Camera (Op 10 = 0)
+            console.log(`${logPrefix} 3. Disabling camera...`)
+            await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '0')
+            await new Promise(r => setTimeout(r, 500))
+
+            console.log(`${logPrefix} Device quiesced successfully.`)
+        } catch (error) {
+            console.error(`${logPrefix} Error quiescing device:`, error)
+            throw error
+        }
+    }, [device, setOperationalParam])
+
     return {
         updateSettings,
         applyPreset,
+        quiesceDevice,
         isUpdating
     }
 }

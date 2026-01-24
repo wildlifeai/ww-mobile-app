@@ -36,7 +36,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     // Get full device object for BLE commands
     const devices = useAppSelector(state => state.devices)
     const storeDevice = devices[bleDeviceId]
-    const { updateSettings } = useDeviceSettings({ device: storeDevice })
+    const { updateSettings, quiesceDevice } = useDeviceSettings({ device: storeDevice })
 
     // Get current user
     const user = useAppSelector(selectCurrentUser)
@@ -106,21 +106,9 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             // 1. Quiesce Device (Stop Camera & Sensors)
             if (bleDevice) {
                 setBleStatus('Resetting Device...')
-                console.log('[EndDeployment] Resetting device settings (Stop Camera, Disable MD/Timelapse)...')
                 try {
-                    // Use single update to reset all critical parameters
-                    // This is CRITICAL to stop the "Wake Loop" (PIR interrupt still firing if MD not 0)
-                    await updateSettings({
-                        cameraEnabled: false,
-                        motionDetectInterval: 0,
-                        timelapseInterval: 0,
-                        // Interval Before DPD is NOT reset here to avoid confusing the firmware timer state.
-                        // Rely on sensors being disabled.
-                    })
-
-                    console.log('[EndDeployment] Device settings reset. Camera & Sensors disabled.')
-                    await new Promise(r => setTimeout(r, 500))
-
+                    // Use centralized safe sequence to stop all capture
+                    await quiesceDevice('[EndDeployment]')
                 } catch (e) {
                     console.warn('[EndDeployment] Failed to reset device settings:', e)
                     Alert.alert('Warning', 'Failed to fully reset device settings. Sensor may remain active.')
@@ -208,7 +196,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         } finally {
             setIsEnding(false)
         }
-    }, [devices, bleDeviceId, bleDevice, user, deployment.id, retrievalNotes, navigation, updateSettings, setDeploymentIdAsOps, clearGpsLocation, triggerDpdLatch, runDisconnect])
+    }, [devices, bleDeviceId, bleDevice, user, deployment.id, retrievalNotes, navigation, updateSettings, quiesceDevice, setDeploymentIdAsOps, clearGpsLocation, triggerDpdLatch, runDisconnect])
 
     const renderInfoLeft = useCallback((props: any) => <Appbar.Action {...props} icon="information" />, [])
 
