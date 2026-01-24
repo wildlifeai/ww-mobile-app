@@ -185,17 +185,13 @@ export const useDeviceSettings = ({
 
         if (preset === 'motion-detect') {
             Object.assign(settings, {
-                motionDetectInterval: 1000,
                 timelapseInterval: 0,
-                cameraEnabled: true,
-                numPictures: 3,
                 pictureInterval: 500
             })
         } else if (preset === 'timelapse') {
             Object.assign(settings, {
                 motionDetectInterval: 0,
                 timelapseInterval: 900,
-                cameraEnabled: true,
                 numPictures: 1,
                 pictureInterval: 0
             })
