@@ -296,7 +296,7 @@ export const COMMANDS: {
 	[CommandNames.loadmodel]: {
 		name: CommandNames.loadmodel,
 		writeCommand: (id?: string, ver?: string) => `AI loadmodel ${id || '0'} ${ver || '0'}`,
-		description: "Load model <id> <ver> from SD (e.g. 1V1.TFL) and update CONFIG.TXT",
+description: "Load model <id> <ver> from SD (e.g. 1V1.TFL) and update lines 14 & 15 of CONFIG.TXT",
 		type: 'command',
 	},
 	// Preset Operational Parameter Commands
