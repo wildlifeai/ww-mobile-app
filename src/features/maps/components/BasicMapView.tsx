@@ -44,15 +44,7 @@ export const BasicMapView: React.FC<BasicMapViewProps> = ({
 }) => {
 	const finalConfig = React.useMemo(() => ({ ...DEFAULT_CONFIG, ...config }), [config])
 
-	/**
-	 * Debug logging for map initialization
-	 */
-	useEffect(() => {
-		console.log("[BasicMapView] Initializing with region:", region)
-		console.log("[BasicMapView] Map type:", mapType)
-		console.log("[BasicMapView] Config:", finalConfig)
-		console.log("[BasicMapView] Platform:", Platform.OS)
-	}, [region, mapType, finalConfig])
+
 
 	/**
 	 * Handle map errors
