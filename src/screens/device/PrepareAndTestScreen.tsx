@@ -170,11 +170,6 @@ export const PrepareAndTestScreen = () => {
 
     // Load user projects using RTK Query (consistent with Projects screen)
     const currentOrganisation = useAppSelector((state) => state.authentication.currentOrganisation)
-    const { data: projects = [] } = useGetProjectsQuery(
-        { userId: user?.id!, organisationId: currentOrganisation?.id! },
-        { skip: !user?.id || !currentOrganisation?.id }
-    )
-
     // Using ref to track latest logs for the robust initialization sequence
     const logsRef = useRef(logs)
     useEffect(() => {
@@ -216,17 +211,35 @@ export const PrepareAndTestScreen = () => {
 
     // Track if preparation has been initiated to prevent duplicates
     const hasStartedPreparation = useRef(false)
+    const activeDeviceId = useRef<string | null>(null)
+
+    // Reset started flag if deviceId changes
+    useEffect(() => {
+        if (activeDeviceId.current !== deviceId) {
+            hasStartedPreparation.current = false
+            activeDeviceId.current = deviceId
+        }
+    }, [deviceId])
+
+    // Get loading state from projects query
+    const { data: projects = [], isLoading: isLoadingProjects } = useGetProjectsQuery(
+        { userId: user?.id!, organisationId: currentOrganisation?.id! },
+        { skip: !user?.id || !currentOrganisation?.id }
+    )
 
     const loadDeviceAndPreparation = useCallback(async () => {
-        // Only skip if we have both SUCCESSFUL loading signals
-        if (hasStartedPreparation.current && device && preparation) return
-        
-        // If user isn't logged in yet, we MUST wait or we'll fail to create the prep record
-        if (!user?.id) {
-            console.log('[PrepareTest] Waiting for user session...')
+        // Wait for user and projects to be ready
+        if (!user?.id || isLoadingProjects) {
+            console.log('[PrepareTest] Waiting for data dependencies (user/projects)...')
             return
         }
 
+        // Only skip if we have ALREADY started for this flow
+        if (hasStartedPreparation.current) {
+            console.log('[PrepareTest] Preparation already started/loaded, skipping duplicate init.')
+            return
+        }
+        
         hasStartedPreparation.current = true
         console.log('[PrepareTest] Loading data for device:', deviceId)
 
@@ -278,7 +291,7 @@ export const PrepareAndTestScreen = () => {
         } finally {
             setLoading(false)
         }
-    }, [deviceId, projects, user?.id, device, preparation])
+    }, [deviceId, projects, user?.id, isLoadingProjects])
 
     const handleProjectChange = useCallback(async (projectId: string) => {
         if (projectId === 'create_new') {

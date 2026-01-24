@@ -26,6 +26,16 @@ export const OP_PARAMETER = {
 } as const
 
 /**
+ * Delays for quiesceDevice sequence (in ms)
+ */
+const QUIESCE_DELAYS = {
+    CAMERA_ENABLE: 500,
+    PARAM_CLEAR: 200,
+    BUS_STABILIZATION: 1500,
+    CAMERA_DISABLE: 500,
+} as const
+
+/**
  * Device settings interface
  * Only includes user-configurable parameters (5-13)
  */
@@ -207,22 +217,22 @@ export const useDeviceSettings = ({
             // 1. Enable Camera to unlock parameters (Op 10 = 1)
             console.log(`${logPrefix} 1. Enabling camera to allow interval writes...`)
             await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '1')
-            await new Promise(r => setTimeout(r, 500))
+            await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_ENABLE))
 
             // 2. Clear Intervals (Op 11 = 0, Op 7 = 0)
             console.log(`${logPrefix} 2. Clearing Motion & Timelapse intervals...`)
             await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
-            await new Promise(r => setTimeout(r, 200)) 
+            await new Promise(r => setTimeout(r, QUIESCE_DELAYS.PARAM_CLEAR)) 
             await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
             
             // BUS SAFETY: Wait 1500ms for potential "Stats" message from Himax
-            console.log(`${logPrefix} Waiting 1.5s for bus stabilization...`)
-            await new Promise(r => setTimeout(r, 1500))
+            console.log(`${logPrefix} Waiting ${QUIESCE_DELAYS.BUS_STABILIZATION}ms for bus stabilization...`)
+            await new Promise(r => setTimeout(r, QUIESCE_DELAYS.BUS_STABILIZATION))
 
             // 3. Disable Camera (Op 10 = 0)
             console.log(`${logPrefix} 3. Disabling camera...`)
             await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '0')
-            await new Promise(r => setTimeout(r, 500))
+            await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_DISABLE))
 
             console.log(`${logPrefix} Device quiesced successfully.`)
         } catch (error) {
