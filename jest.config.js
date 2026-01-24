@@ -31,8 +31,8 @@ module.exports = {
 		// Root level tests
 		"<rootDir>/__tests__/**/*.{js,jsx,ts,tsx}",
 	],
-	testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/e2e/", "<rootDir>/project-context/"],
-	modulePathIgnorePatterns: ["<rootDir>/project-context/"],
+	testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/e2e/", "<rootDir>/project-context/", "<rootDir>/archive/"],
+	modulePathIgnorePatterns: ["<rootDir>/project-context/", "<rootDir>/archive/"],
 	collectCoverageFrom: [
 		"src/**/*.{ts,tsx}",
 		"!src/**/*.d.ts",
@@ -46,7 +46,7 @@ module.exports = {
 	coverageReporters: ["text", "lcov", "html"],
 	coverageDirectory: "<rootDir>/coverage",
 	clearMocks: true,
-	resetMocks: true,
+	resetMocks: false,
 	restoreMocks: true,
 	verbose: true,
 }

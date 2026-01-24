@@ -83,8 +83,14 @@ describe('ProjectService Unit Test', () => {
             getSupabaseClient: jest.fn(() => ({
                 auth: {
                     getUser: mockGetUser,
+                    getSession: jest.fn(() => Promise.resolve({ data: { session: { user: { id: 'test-user' } } }, error: null })),
                 },
             })),
+            initializeSupabaseClient: jest.fn(),
+            reconnectSupabase: jest.fn(),
+            onSupabaseClientChange: jest.fn(),
+            resetSupabaseClient: jest.fn(),
+            getCurrentEnvironment: jest.fn(),
         }));
 
         // Re-require modules

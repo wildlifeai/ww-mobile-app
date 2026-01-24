@@ -1,8 +1,48 @@
 console.log("Sanity setup loaded");
 
-// Setup fake timers
+// Setup fake timers and handle resetMocks: true
 beforeEach(() => {
     jest.useFakeTimers();
+
+    // Restore standard mock implementations that might be cleared by resetMocks: true
+    const { createClient } = require("@supabase/supabase-js");
+    if (createClient.mockImplementation) {
+        createClient.mockImplementation(() => ({
+            auth: {
+                getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+                getUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
+                onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
+                signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
+                signUp: jest.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
+                signOut: jest.fn(() => Promise.resolve({ error: null })),
+            },
+            from: jest.fn(() => ({
+                select: jest.fn().mockReturnThis(),
+                eq: jest.fn().mockReturnThis(),
+                in: jest.fn().mockReturnThis(),
+                order: jest.fn().mockReturnThis(),
+                limit: jest.fn().mockReturnThis(),
+                is: jest.fn().mockReturnThis(),
+                gt: jest.fn().mockReturnThis(),
+                single: jest.fn().mockResolvedValue({ data: null, error: null }),
+            })),
+            rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+            removeAllChannels: jest.fn().mockResolvedValue([]),
+            channel: jest.fn(() => ({
+                subscribe: jest.fn(),
+                on: jest.fn().mockReturnThis(),
+            })),
+        }));
+    }
+
+    const supabaseService = require("../../src/services/supabase");
+    const mockClient = createClient();
+    if (supabaseService.getSupabaseClient.mockImplementation) {
+        supabaseService.getSupabaseClient.mockImplementation(() => mockClient);
+        supabaseService.initializeSupabaseClient.mockImplementation(() => Promise.resolve(mockClient));
+        supabaseService.reconnectSupabase.mockImplementation(() => Promise.resolve(mockClient));
+        supabaseService.onSupabaseClientChange.mockImplementation(() => jest.fn());
+    }
 });
 
 afterEach(() => {
@@ -197,6 +237,36 @@ jest.mock("react-native-paper-dropdown", () => ({
             React.createElement(Text, null, value || "")
         );
     },
+}));
+
+// Mock Supabase JS Client Factory
+jest.mock("@supabase/supabase-js", () => ({
+    createClient: jest.fn(() => ({
+        auth: {
+            getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+            getUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
+            onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
+            signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
+            signUp: jest.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
+            signOut: jest.fn(() => Promise.resolve({ error: null })),
+        },
+        from: jest.fn(() => ({
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            in: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            is: jest.fn().mockReturnThis(),
+            gt: jest.fn().mockReturnThis(),
+            single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        })),
+        rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+        removeAllChannels: jest.fn().mockResolvedValue([]),
+        channel: jest.fn(() => ({
+            subscribe: jest.fn(),
+            on: jest.fn().mockReturnThis(),
+        })),
+    })),
 }));
 
 // Mock Supabase Service
