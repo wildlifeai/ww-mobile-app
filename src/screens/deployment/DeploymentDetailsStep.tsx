@@ -125,16 +125,22 @@ export const DeploymentDetailsStep = () => {
 
     const loadPreparationAndProject = useCallback(async () => {
         try {
+            console.log('[DeploymentDetails] Loading preparation:', devicePreparationId);
             const prep = await DevicePreparationService.getPreparationById(devicePreparationId as string)
             setPreparation(prep)
+            console.log('[DeploymentDetails] Prep loaded:', prep?.id, 'projectId:', prep?.projectId);
 
             if (prep && prep.projectId) {
+                console.log('[DeploymentDetails] Loading project:', prep.projectId);
                 const proj = await ProjectService.getProjectById(prep.projectId)
+                console.log('[DeploymentDetails] Project loaded:', proj?.name, 'capture_method_id:', proj?.capture_method_id);
                 setProject(proj)
 
                 if (proj && proj.capture_method_id) {
+                    console.log('[DeploymentDetails] Resolving capture method name for ID:', proj.capture_method_id);
                     const methods = await ReferenceDataService.getCaptureMethods()
                     const method = methods.find(m => m.id === proj.capture_method_id)
+                    console.log('[DeploymentDetails] Method resolved:', method?.value);
                     setCaptureMethodName(method ? method.value : 'Unknown')
 
                     if (proj.activity_detection_sensitivity_id) {
@@ -143,11 +149,14 @@ export const DeploymentDetailsStep = () => {
                         setSensitivityLabel(sensitivity ? sensitivity.value : 'Unknown')
                     }
                 } else {
+                    console.log('[DeploymentDetails] No capture method ID on project');
                     setCaptureMethodName('Not Set')
                 }
+            } else {
+                console.warn('[DeploymentDetails] Prep found but missing projectId');
             }
         } catch (error) {
-            console.error(error)
+            console.error('[DeploymentDetails] Error in loadPreparationAndProject:', error)
         }
     }, [devicePreparationId])
 
