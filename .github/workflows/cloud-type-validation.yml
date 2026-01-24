@@ -52,11 +52,9 @@ jobs:
           echo "Authenticating to Supabase cloud..."
           if [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ]; then
             echo "⚠️  Warning: SUPABASE_ACCESS_TOKEN not configured"
-            echo "This is required for cloud type validation"
-            echo "See: https://supabase.com/docs/guides/cli/managing-access-tokens"
             exit 1
           fi
-          echo "${{ secrets.SUPABASE_ACCESS_TOKEN }}" | npx supabase login --token -
+          npx supabase login --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
 
       - name: Link to cloud-dev project
         run: |
