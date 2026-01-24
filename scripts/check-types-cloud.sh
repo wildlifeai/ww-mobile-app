@@ -11,7 +11,7 @@
 #
 # Dependencies:
 #   - Supabase CLI (must be authenticated to the project)
-#   - Project must be linked: `supabase link --project-id <ref>`
+#   - Project must be linked: `supabase link --project-ref <ref>`
 #
 # Exit Codes:
 #   0 = Types are aligned with cloud environment
@@ -94,7 +94,7 @@ if ! npx supabase gen types typescript --linked --project-id "$PROJECT_REF" > "$
   echo "  4. Project ref is incorrect"
   echo ""
   echo "To authenticate: npx supabase login"
-  echo "To link project:  npx supabase link --project-id $PROJECT_REF"
+  echo "To link project:  npx supabase link --project-ref $PROJECT_REF"
   exit 1
 fi
 

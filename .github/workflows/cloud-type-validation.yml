@@ -59,7 +59,7 @@ jobs:
       - name: Link to cloud-dev project
         run: |
           echo "Linking to cloud-dev Supabase instance..."
-          npx supabase link --project-id nuhwmubvygxyddkycmpa
+          npx supabase link --project-ref nuhwmubvygxyddkycmpa
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
