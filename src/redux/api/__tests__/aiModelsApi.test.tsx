@@ -19,6 +19,11 @@ type AIModel = Database["public"]["Tables"]["ai_models"]["Row"]
 // Pattern: Factory function mock (fixes Jest module hoisting issue)
 jest.mock("../../../services/supabase", () => ({
 	getSupabaseClient: jest.fn(),
+	initializeSupabaseClient: jest.fn(),
+	reconnectSupabase: jest.fn(),
+	onSupabaseClientChange: jest.fn(),
+	resetSupabaseClient: jest.fn(),
+	getCurrentEnvironment: jest.fn(),
 }))
 
 // Import after mock to get the mocked version
