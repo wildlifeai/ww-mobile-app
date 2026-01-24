@@ -80,8 +80,8 @@ describe("useSupabaseClient", () => {
 
 			const { result } = renderHook(() => useSupabaseClient())
 
-			// Should throw during initialization
-			expect(() => result.current).toThrow("Supabase client is initializing")
+			// Should throw during initialization (captured in result.error in newer RTL)
+			expect(result.error?.message).toMatch(/Supabase client is initializing/)
 
 			// Wait for initialization
 			await waitFor(() => {

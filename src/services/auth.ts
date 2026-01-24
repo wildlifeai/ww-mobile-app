@@ -410,15 +410,12 @@ export const setupAuthListener = (
 
 				// Trigger sync after successful sign-in to pull projects and other data
 				if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-					// Import dynamically to avoid circular dependency
-					const { default: SupabaseSyncService } = await import('./SupabaseSyncService')
-					const { default: ReferenceDataService } = await import('./ReferenceDataService')
-
-					// Trigger sync after a short delay to ensure auth is fully set up
-					setTimeout(() => {
-						SupabaseSyncService.debouncedSync()
-						ReferenceDataService.syncReferenceData()
-					}, 1000)
+					// Use a safe import or event trigger to avoid circular dependencies
+					// For now, we use a custom event that various services can listen to
+					console.log("Triggering post-auth sync event...");
+					// @ts-ignore - dynamic require to break cycle without dynamic import ESM issues
+					const { triggerPostAuthSync } = require('./SyncTriggerService');
+					triggerPostAuthSync();
 				}
 			} else {
 				onAuthStateChange(null)

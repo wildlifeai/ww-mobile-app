@@ -200,19 +200,36 @@ jest.mock("react-native-paper-dropdown", () => ({
 }));
 
 // Mock Supabase Service
-jest.mock("../../src/services/supabase", () => ({
-    getSupabaseClient: jest.fn(() => ({
+jest.mock("../../src/services/supabase", () => {
+    const mockClient = {
         auth: {
             getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+            getUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
             onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
         },
-    })),
-    initializeSupabaseClient: jest.fn(() => Promise.resolve()),
-    resetSupabaseClient: jest.fn(),
-    onSupabaseClientChange: jest.fn(() => jest.fn()),
-    reconnectSupabase: jest.fn(() => Promise.resolve()),
-    getCurrentEnvironment: jest.fn(() => null),
-}));
+        from: jest.fn(() => ({
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            in: jest.fn().mockReturnThis(),
+            order: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            is: jest.fn().mockReturnThis(),
+            gt: jest.fn().mockReturnThis(),
+            single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        })),
+        rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+        removeAllChannels: jest.fn().mockResolvedValue([]),
+    };
+
+    return {
+        getSupabaseClient: jest.fn(() => mockClient),
+        initializeSupabaseClient: jest.fn(() => Promise.resolve(mockClient)),
+        resetSupabaseClient: jest.fn(),
+        onSupabaseClientChange: jest.fn(() => jest.fn()),
+        reconnectSupabase: jest.fn(() => Promise.resolve(mockClient)),
+        getCurrentEnvironment: jest.fn(() => null),
+    };
+});
 
 // Mock NativeEventEmitter
 jest.mock("react-native/Libraries/EventEmitter/NativeEventEmitter");

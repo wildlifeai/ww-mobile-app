@@ -65,6 +65,7 @@ import {
 	getSupabaseClient,
 	reconnectSupabase,
 	getCurrentEnvironment,
+	resetSupabaseClient,
 } from "../../src/services/supabase"
 import {
 	ENVIRONMENT_CONFIGS,
@@ -76,10 +77,9 @@ describe("Environment Switching Integration", () => {
 	const STORAGE_KEY = "@supabase_environment"
 
 	beforeEach(() => {
-		jest.clearAllMocks()
-		// Note:  has module resolution issues in Jest
-		// The function exists and works in runtime, but Jest hoisting causes import problems
-		// Tests are designed to work without explicit reset by using fresh mock values
+		resetSupabaseClient()
+		// Note: resetSupabaseClient is now properly mocked in setup
+		// Tests are designed to work with explicit reset by using fresh mock values
 		;(AsyncStorage.getItem as jest.Mock).mockResolvedValue(null)
 		;(AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined)
 		;(AsyncStorage.removeItem as jest.Mock).mockResolvedValue(undefined)
@@ -220,7 +220,7 @@ describe("Environment Switching Integration", () => {
 				
 
 				expect(() => getSupabaseClient()).toThrow(
-					"Supabase client not initialized",
+					/Supabase client not initialized/i,
 				)
 			})
 
