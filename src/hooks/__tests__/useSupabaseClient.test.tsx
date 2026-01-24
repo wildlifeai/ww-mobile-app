@@ -78,11 +78,11 @@ describe("useSupabaseClient", () => {
 			})
 			mockGetSupabaseClient.mockReturnValue(mockClient)
 
-			const { result } = renderHook(() => useSupabaseClient())
+			const { result } = renderHook(() => useSupabaseClient()) as any
 
-			const error = (result as any).error;
-			if (error) {
-				expect(error.message).toMatch(/Supabase client is initializing/);
+			// Check if an error occurred during render (stored in result.error)
+			if (result.error) {
+				expect(result.error.message).toMatch(/Supabase client is initializing/)
 			}
 
 			// Wait for initialization
@@ -92,7 +92,7 @@ describe("useSupabaseClient", () => {
 		})
 
 		it("should update client when environment changes", async () => {
-			const { result, rerender } = renderHook(() => useSupabaseClient())
+			const { result } = renderHook(() => useSupabaseClient())
 
 			const initialClient = result.current
 			expect(initialClient).toBe(mockClient)
@@ -139,7 +139,7 @@ describe("useSupabaseClient", () => {
 				.spyOn(console, "error")
 				.mockImplementation(() => { })
 
-			const { result } = renderHook(() => useSupabaseClient())
+			renderHook(() => useSupabaseClient())
 
 			await waitFor(() => {
 				expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -180,7 +180,7 @@ describe("useSupabaseClient", () => {
 		})
 
 		it("should update client when environment changes", async () => {
-			const { result, rerender } = renderHook(() => useSupabaseClientOptional())
+			const { result } = renderHook(() => useSupabaseClientOptional())
 
 			const initialClient = result.current
 			expect(initialClient).toBe(mockClient)
@@ -205,7 +205,7 @@ describe("useSupabaseClient", () => {
 		})
 
 		it("should return null if client change fails", async () => {
-			const { result, rerender } = renderHook(() => useSupabaseClientOptional())
+			const { result } = renderHook(() => useSupabaseClientOptional())
 
 			expect(result.current).toBe(mockClient)
 
@@ -293,10 +293,10 @@ describe("useSupabaseClient", () => {
 		})
 
 		it("should update all components when environment changes", async () => {
-			const { result: result1, rerender: rerender1 } = renderHook(() =>
+			const { result: result1 } = renderHook(() =>
 				useSupabaseClient(),
 			)
-			const { result: result2, rerender: rerender2 } = renderHook(() =>
+			const { result: result2 } = renderHook(() =>
 				useSupabaseClientOptional(),
 			)
 
@@ -318,8 +318,6 @@ describe("useSupabaseClient", () => {
 
 			// Wait for updates
 			await waitFor(() => {
-				rerender1({})
-				rerender2({})
 				expect(result1.current).toBe(newClient)
 				expect(result2.current).toBe(newClient)
 			})
