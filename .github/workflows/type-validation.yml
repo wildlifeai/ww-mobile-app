@@ -64,6 +64,8 @@ jobs:
 
       - name: Run tests
         run: npm test -- --passWithNoTests
+        env:
+          NODE_OPTIONS: "--experimental-vm-modules"
 
       - name: Stop Supabase
         if: always()

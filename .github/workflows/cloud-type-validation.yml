@@ -105,7 +105,9 @@ jobs:
         run: npm run type-check
 
       - name: Run tests
-        run: npm test -- --passWithNoTests
+        run: npm run test:unit -- --passWithNoTests
+        env:
+          NODE_OPTIONS: "--experimental-vm-modules"
 
   validate-cloud-prod:
     name: Validate Cloud Prod Types
