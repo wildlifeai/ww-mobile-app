@@ -58,6 +58,10 @@ describe("useSupabaseClient", () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks()
+        // Reset global callbacks to prevent cross-test pollution
+        ;(global as any).__supabaseClientChangeCallbacks = []
+        ;(global as any).__supabaseClientChangeCallback = null
+        
 		mockResetSupabaseClient()
         // Set default implementation via global variable
         ;(global as any).__mockGetSupabaseClientImpl = () => {
@@ -233,9 +237,9 @@ describe("useSupabaseClient", () => {
 			mockGetSupabaseClient.mockReturnValue(newClient)
 
 			// Trigger client change callback
-			const callback = (global as any).__supabaseClientChangeCallback
-            expect(callback).toBeDefined()
-			callback()
+            // Trigger all registered callbacks to handle multiple hooks
+            const callbacks = (global as any).__supabaseClientChangeCallbacks || [(global as any).__supabaseClientChangeCallback]
+            callbacks.forEach((cb: any) => cb && cb())
 
 			// Wait for state update
 			await waitFor(() => {

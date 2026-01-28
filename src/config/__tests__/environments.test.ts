@@ -15,6 +15,14 @@ import {
 	getAvailableEnvironments,
 	getEnvironmentDebugInfo,
 } from "../environments"
+import Constants from "expo-constants"
+
+// Mock expo-constants
+jest.mock("expo-constants", () => ({
+	expoConfig: {
+		extra: {},
+	},
+}))
 
 describe("Environment Configuration System", () => {
 	// Store original environment variables and __DEV__ flag
@@ -24,8 +32,10 @@ describe("Environment Configuration System", () => {
 	beforeEach(() => {
 		// Reset environment variables before each test
 		process.env = { ...originalEnv }
-			// Default to development mode
-			; (global as any).__DEV__ = true
+		// Default to development mode
+		;(global as any).__DEV__ = true
+		// Reset Constants mock
+		;(Constants as any).expoConfig = { extra: {} }
 	})
 
 	afterEach(() => {
@@ -83,8 +93,12 @@ describe("Environment Configuration System", () => {
 		})
 
 		it("should return cloud-dev when APP_VARIANT is development", () => {
-			; (global as any).__DEV__ = false
-				; (process.env as any).APP_VARIANT = "development"
+			;(global as any).__DEV__ = false
+			;(Constants as any).expoConfig = {
+				extra: {
+					isDevelopment: true,
+				},
+			}
 			expect(getDefaultEnvironment()).toBe("cloud-dev")
 		})
 
@@ -95,7 +109,11 @@ describe("Environment Configuration System", () => {
 		})
 
 		it("should respect EXPO_PUBLIC_SUPABASE_ENV override", () => {
-			; (process.env as any).EXPO_PUBLIC_SUPABASE_ENV = "local"
+			;(Constants as any).expoConfig = {
+				extra: {
+					supabaseEnv: "local",
+				},
+			}
 			expect(getDefaultEnvironment()).toBe("local")
 		})
 

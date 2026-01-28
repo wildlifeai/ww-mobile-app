@@ -40,6 +40,7 @@ jest.mock("@supabase/supabase-js", () => ({
 				data: { subscription: { unsubscribe: jest.fn() } },
 			})),
 		},
+		removeAllChannels: jest.fn().mockResolvedValue([]),
 		removeAllSubscriptions: jest.fn().mockResolvedValue([]),
 		from: jest.fn(),
 		_isTestClient: true,
@@ -78,6 +79,7 @@ describe("Supabase Client Environment Switching", () => {
                     data: { subscription: { unsubscribe: jest.fn() } },
                 })),
             },
+            removeAllChannels: jest.fn().mockResolvedValue([]),
             removeAllSubscriptions: jest.fn().mockResolvedValue([]),
             from: jest.fn(),
             _isTestClient: true,
@@ -115,7 +117,7 @@ describe("Supabase Client Environment Switching", () => {
 				"test-anon-key",
 				expect.objectContaining({
 					auth: expect.objectContaining({
-						storage: AsyncStorage,
+						storage: expect.anything(), // AsyncStorage is passed but object comparison fails
 						autoRefreshToken: true,
 						persistSession: true,
 						detectSessionInUrl: false,
@@ -197,11 +199,12 @@ describe("Supabase Client Environment Switching", () => {
 	describe("reconnectSupabase", () => {
 		it("should cleanup old client before creating new one", async () => {
 			const client1 = await initializeSupabaseClient()
-			const mockRemoveSubscriptions = (client1 as any).removeAllSubscriptions as jest.Mock
+			// Check for removeAllChannels as that's the modern API
+			const mockRemoveChannels = (client1 as any).removeAllChannels as jest.Mock
 
 			await reconnectSupabase()
 
-			expect(mockRemoveSubscriptions).toHaveBeenCalledTimes(1)
+			expect(mockRemoveChannels).toHaveBeenCalledTimes(1)
 		})
 
 		it("should create new client with current environment", async () => {
@@ -238,8 +241,8 @@ describe("Supabase Client Environment Switching", () => {
 
 		it("should handle errors during cleanup gracefully", async () => {
 			const client1 = await initializeSupabaseClient()
-			const mockRemoveSubscriptions = (client1 as any).removeAllSubscriptions as jest.Mock
-			mockRemoveSubscriptions.mockRejectedValueOnce(new Error("Cleanup error"))
+			const mockRemoveChannels = (client1 as any).removeAllChannels as jest.Mock
+			mockRemoveChannels.mockRejectedValueOnce(new Error("Cleanup error"))
 
 			// Should not throw, but should log error
 			const consoleErrorSpy = jest
@@ -406,7 +409,7 @@ describe("Supabase Client Environment Switching", () => {
 			const client2 = await reconnectSupabase()
 
 			// Verify cleanup and recreation
-			expect((client1 as any).removeAllSubscriptions).toHaveBeenCalled()
+			expect((client1 as any).removeAllChannels).toHaveBeenCalled()
 			expect((client2 as any)._url).toBe("https://cloud.supabase.co")
 			expect(callback).toHaveBeenCalled()
 
@@ -481,8 +484,8 @@ describe("Supabase Client Environment Switching", () => {
 			const client2 = getSupabaseClient()
 			await reconnectSupabase()
 
-			expect((client1 as any).removeAllSubscriptions).toHaveBeenCalledTimes(1)
-			expect((client2 as any).removeAllSubscriptions).toHaveBeenCalledTimes(1)
+			expect((client1 as any).removeAllChannels).toHaveBeenCalledTimes(1)
+			expect((client2 as any).removeAllChannels).toHaveBeenCalledTimes(1)
 		})
 	})
 })

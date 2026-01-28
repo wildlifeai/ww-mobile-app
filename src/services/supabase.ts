@@ -269,7 +269,11 @@ export function resetSupabaseClient(): void {
  * @internal
  */
 function emitClientChanged(): void {
-	clientEvents.emit(CLIENT_CHANGED_EVENT)
+	try {
+		clientEvents.emit(CLIENT_CHANGED_EVENT)
+	} catch (error) {
+		console.error("❌ Error notifying listeners of client change:", error)
+	}
 }
 
 // ============================================================================
