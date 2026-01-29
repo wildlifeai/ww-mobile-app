@@ -16,6 +16,85 @@ The Wildlife Watcher mobile app uses a **centralized BLE command architecture** 
 - Always use or create reusable hooks
 - Update hooks to propagate changes everywhere
 
+## Modern BLE Architecture
+
+### Command Manager (`src/ble/commandManager.ts`)
+
+The **BLE Command Manager** is a centralized service that tracks all outgoing commands and matches incoming responses:
+
+**Key Features:**
+- **Serialized Queue**: Commands execute sequentially to prevent firmware buffer overflow
+- **Response Matching**: Matches responses to pending commands using `readRegex` patterns in `types.ts`
+- **Race Condition Protection**: Sets the "pending command" and starts the timeout *before* writing to the device, ensuring fast echoes/responses are caught
+- **Timeout Management**: 3s default timeout with configurable overrides (e.g., 10s for slow AI commands)
+- **Unsolicited Routing**: Routes async messages (Wake, Error bits) to subscribers without resolving pending commands
+- **AI NACK Recovery**: Retries commands that receive AI NACK errors after waiting for a wake sequence
+
+**Usage:**
+```typescript
+import { bleCommandManager } from '../ble/commandManager'
+
+// Wait for a specific message pattern (e.g., selftest completion)
+const message = await bleCommandManager.waitForMessage(/Error bits = 0x/, 5000)
+```
+
+### Message Classifier (`src/ble/messageClassifier.ts`)
+
+The **Message Classifier** categorizes incoming BLE messages into three types:
+
+| Type | Description | Examples |
+|------|-------------|----------|
+| `RESPONSE` | Direct responses matching a command's `readRegex` | `Battery = 100%`, `Set OpParam 10 = 0`, `RTC set to...` |
+| `UNSOLICITED` | Async messages or command echoes | `Wake`, `Error bits = 0x0...`, `Sleep`, `AI setop 10 0` (Echo) |
+| `ERROR` | Error messages from firmware | `AI NACK`, `I2C error: address NACK` |
+
+**Why Classification Matters:**
+- Prevents "orphaned response" warnings in logs
+- Enables intelligent message routing
+- Improves debugging clarity
+- Separates command echoes from confirmations
+
+**Example:**
+```typescript
+import { classifyMessage, MessageType } from '../ble/messageClassifier'
+
+const msg = classifyMessage('RTC set to 2026-01-29T03:41:24Z')
+// Returns: { type: 'RESPONSE', content: '...', timestamp: ... }
+```
+
+### Standard BLE Initialization (`src/hooks/useBleInitialization.ts`)
+
+All connection flows (Prepare, Start Deployment, End Deployment) use a **single-trigger standardized initialization**:
+
+1. **Set UTC**: App sends `setutc <timestamp>` immediately on connection
+2. **Himax Wake**: Firmware auto-wakes the AI processor to process the setting
+3. **Stabilize**: App waits for `RTC set to` confirmation (10s timeout)
+4. **Health Check**: App waits for `Error bits = 0xXXXX` self-test result (3s timeout)
+
+**Hook Usage:**
+```typescript
+const { initialize } = useBleInitialization()
+
+const result = await initialize(bleDevice, {
+  onProgress: (step, progress) => {
+    console.log(`${step} (${Math.round(progress * 100)}%)`)
+  },
+  onError: (errors) => {
+    if (errors.deviceHealth) console.warn('Hardware issues:', errors.deviceHealth)
+  }
+})
+
+if (result.success) {
+  // Device is synchronized and ready for configuration
+}
+```
+
+**Benefits:**
+- Consistent behavior across all screens
+- Automatic hardware health checks
+- Definitive confirmation waiting (prevents race conditions)
+- Single source of truth for initialization logic
+
 ## Architecture Components
 
 ### Command Reference (`src/ble/types.ts`)
@@ -242,31 +321,43 @@ if (project.capture_method_id === 1) {
 2. Complete preparation
 3. Check device stats: Index 11 = 1000, Index 7 = 0, Index 10 = 0 ✅
 
-## BLE Timing Requirements & Firmware Constraints
+### Modern Synchronization Strategy
 
-> **⚠️ CRITICAL**: Understanding these timing requirements is essential for reliable BLE communication with Wildlife Watcher devices.
+The app now uses **definitive hardware confirmation** matching to prevent race conditions:
 
-### Deep Power Down (DPD) Wake Cycle
-
-The AI processor enters **Deep Power Down mode** after 1000ms of inactivity to conserve battery. This has critical implications for command sequences:
-
-**Firmware Behavior** (from `aiProcessor.c`):
-- **Inactivity Timer**: 1000ms (hardware-enforced, cannot be changed from app)
-- **Wake Mechanism**: First command after DPD triggers a wake pulse
-- **Wake Process**: ~200-500ms for AI processor to fully wake and become responsive
-- **State Tracking**: Firmware tracks `aiIsAwake` boolean
-
-**Command Queueing**:
-```c
-// From aiProcessor.c line 702-708
-if (i2cTxPendingMsg != NULL) {
-
-    LOG("Discarding message as there is already one pending");
-}
+**Old Approach (Problematic):**
+```typescript
+// Resolved too early on initial acknowledgment
+await setUtc(device)
+// Himax still busy updating RTC → next command collides on I2C bus
 ```
-- **Single-slot buffer**: Only ONE pending command allowed during wake
-- **Dropped commands**: Rapid-fire commands during wake-up get discarded
-- **Retry mechanism**: Commands sent while asleep are queued and retried after "Wake" message
+
+**New Approach (Robust):**
+```typescript
+// Wait for FINAL hardware confirmation
+SET_UTC: {
+  readRegex: /RTC\s+set\s+to[\s:]+(.*)/i  // Matches "RTC set to 2026-01-29..."
+}
+// Himax has finished RTC update → safe to send next command
+```
+
+**Key Improvements:**
+- `setutc`: Waits for `RTC set to` (Matched via `CommandNames.SET_UTC` regex)
+- `setgps`: Waits for `Device GPS set` (Matched via `CommandNames.setgps` regex)
+- `AI setop`: Waits for `Set OpParam X = Y` (Matched via `CommandNames.setop` regex)
+- `dis`: Waits for `Disconnecting` (Matched via `CommandNames.dis` regex)
+- Camera commands: 10s timeout to accommodate slow Himax responses
+
+**Command Echoes vs. Confirmations:**
+```
+App Sends:    setutc 2026-01-29T03:41:24Z
+Echo (Info):  setutc 2026-01-29T03:41:24Z        [Unsolicited - Nordic echoes command]
+Ack (Info):   UTC is: 2026-01-29T03:41:24Z      [Unsolicited - Nordic acknowledges]
+✓ Response:   RTC set to 2026-01-29T03:41:24Z   [Response - Himax confirms completion]
+```
+
+The Command Manager waits for the **Response**, not the **Echo** or **Ack**.
+
 
 ### DPD Latch Cycle (Configuration Persistence)
 
@@ -354,25 +445,19 @@ snprintf(gpsString, GPSSTRINGLENGTH, "%s", p_gpsString);
 ### Example: Correct Preparation Flow
 
 ```typescript
-// From PrepareAndTestScreen.tsx
-const runBleInitialization = async () => {
-    // Step 0: Disable camera (wakes device)
-    await disableCamera(bleDevice)
-    await new Promise(r => setTimeout(r, 1000))  // Stabilization
+// From PrepareAndTestScreen.tsx (using standard hook)
+const { initialize } = useBleInitialization()
+const { quiesceDevice } = useDeviceSettings({ device })
 
-    // Step 1: Selftest (device now awake)
-    await runSelfTest(bleDevice)
-    await waitForLogMatch(/Error\s*bits/, 3000)
+const runFlow = async () => {
+    // Standard Init (Syncs time, checks health)
+    const init = await initialize(device)
+    if (!init.success) throw new Error('Init failed')
 
-    // Step 2: Set UTC
-    await setUtc(bleDevice)
-    await waitForLogMatch(/UTC is:/, 2000)
+    // Prepare UI... (Projects, Battery, SD info)
 
-    //Step 3: Clear deployment ID (uses optimized hook with 200ms wake delay)
-    await setDeploymentIdAsOps(bleDevice, null)
-
-    // Step 4: Clear GPS (uses correct format)
-    await clearGpsLocation(bleDevice)
+    // On Finish: Quiesce Device (Safe sequence: Camera On -> Clear -> Camera Off)
+    await quiesceDevice()
 }
 ```
 
@@ -468,17 +553,26 @@ AI processor is in DPD (sends parameters).       // Device sleeping
 ```
 src/
 ├── ble/
-│   ├── types.ts              # Command definitions (SOURCE OF TRUTH)
-│   ├── parser.ts             # Response parsing
-│   └── emitters.ts           # Event emitters
+│   ├── types.ts                  # Command definitions (SOURCE OF TRUTH)
+│   ├── commandManager.ts         # Command queue & response tracking
+│   ├── messageClassifier.ts      # Message categorization system
+│   ├── parser.ts                 # Response parsing
+│   └── emitters.ts               # Event emitters
 ├── hooks/
-│   ├── useBle.ts             # Low-level BLE operations
-│   ├── useBleCommands.ts     # Individual commands
-│   ├── useCapturePreview.ts  # CAPTURE_PREVIEW process
-│   └── ...                   # Other process hooks
-└── navigation/screens/
-    └── EngineerConsoleScreen.tsx  # Testing ground & reference
+│   ├── useBle.ts                 # Low-level BLE operations
+│   ├── useBleCommands.ts         # Individual commands
+│   ├── useBleInitialization.ts   # Standard init flow (wake/stabilize/setutc)
+│   ├── useCapturePreview.ts      # CAPTURE_PREVIEW process
+│   ├── useDeviceSettings.ts      # Operational parameter management
+│   └── ...                       # Other process hooks
+└── screens/
+    ├── device/
+    │   └── PrepareAndTestScreen.tsx  # Uses standard initialization
+    ├── deployment/
+    │   └── DeploymentDetailsStep.tsx  # Uses standard initialization
+    └── EngineerConsoleScreen.tsx     # Testing ground & reference
 ```
+
 
 ## Common Patterns
 

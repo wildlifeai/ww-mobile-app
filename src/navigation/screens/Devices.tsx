@@ -30,7 +30,21 @@ export const Devices = () => {
 
 			// Use filtered method to get only devices user has access to
 			const devicesList = await DeviceService.getDevicesForUser(userId)
-			setDevices(devicesList)
+
+			// Sort by latest activity (maximum of preparedDate and lastDeploymentDate)
+			const sortedDevices = [...devicesList].sort((a, b) => {
+				const timeA = Math.max(
+					a.preparedDate ? new Date(a.preparedDate).getTime() : 0,
+					a.lastDeploymentDate ? new Date(a.lastDeploymentDate).getTime() : 0
+				)
+				const timeB = Math.max(
+					b.preparedDate ? new Date(b.preparedDate).getTime() : 0,
+					b.lastDeploymentDate ? new Date(b.lastDeploymentDate).getTime() : 0
+				)
+				return timeB - timeA
+			})
+
+			setDevices(sortedDevices)
 		} catch (error) {
 			console.error('Error loading devices:', error)
 			Alert.alert('Error', 'Failed to load devices')

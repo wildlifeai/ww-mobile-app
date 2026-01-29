@@ -2,18 +2,16 @@
 
 ## What is Device Preparation?
 
-Device preparation configures your Wildlife Watcher camera for field deployment. It ensures the device is:
-- ✅ **Connected** via Bluetooth
-- ✅ **Initialized** (selftest, time sync, clear old deployment)
+Device preparation configures your Wildlife Watcher camera for field deployment. It ensures the device has:
+- ✅ **Connect** via Bluetooth
+- ✅ **Track actual time and date**
 - ✅ **Updated** with the latest firmware
-- ✅ **Configured** for your specific Project (Motion vs Timelapse)
-- ✅ **Tested** (Battery, SD Card, Camera View)
-- ✅ **Ready** for deployment
+- ✅ **Associated with a Project** 
+- ✅ **Battery, SD Card, and Camera View Tested**
+
 
 ## Prerequisites
 
-- [ ] Charged Wildlife Watcher device (>30% battery recommended)
-- [ ] SD card inserted
 - [ ] Mobile app installed and logged in
 - [ ] Project created in the app
 - [ ] Device within Bluetooth range
@@ -24,23 +22,43 @@ Device preparation configures your Wildlife Watcher camera for field deployment.
 
 1. Open the **Wildlife Watcher** app.
 2. Go to the **Devices** tab.
-3. Tap on a device card (or scan for a new one).
-4. Select the **"Prepare & Test"** option.
+3. Select the **"Prepare & Test"** option.
+4. Tap on a device to pair.
 
 > **Note**: If the device has an active deployment, you must end it before preparing.
 
 ### 2. Connect & Initialize
 
-The app connects and automatically runs initialization commands:
+On connection, the app executes a three-phase automated sequence to ensure the device is in a known-good state.
 
-| Command | Purpose |
-|---------|---------|
-| `disable_camera` | Ensures camera is off during preparation |
-| `selftest` | Internal hardware check (non-blocking alert if fails) |
-| `setutc` | Syncs device RTC to current UTC time |
-| `setop 20 0` (test) | Checks if firmware supports extended OPs |
+#### Phase A: Standard Initialization
+*Triggered by a single `setutc` command.*
 
-> **Initialization Warnings**: Any selftest or time sync failures appear as non-blocking warnings. You can still proceed with preparation.
+| Step | Action | Purpose |
+|------|--------|--------|
+| 1 | **Time Sync** | Aligns device clock with current UTC time. |
+| 2 | **System Wake** | Device auto-wakes Himax processor to process time sync. |
+| 3 | **Stabilization** | App waits for `RTC set to` confirmation (10s timeout). |
+| 4 | **Health Check** | Decodes `Error bits` for hardware status warnings. |
+
+> [!NOTE]
+> This foundation sequence runs on **all** main connection flows (Prepare, Start, and End Deployment) for consistency.
+
+#### Phase B: Screen-Specific Setup
+*The app resets the environment for a fresh preparation flow.*
+
+*   **Camera Lock**: `setop 10 0` (Prevents accidental triggers during setup).
+*   **GPS Zeroing**: Resets coordinates to default `0,0`.
+*   **ID Cleanup**: Clears OPs 20–27 to remove any stale deployment markers.
+
+#### Phase C: Automated Diagnostics
+*Once initialized, the app automatically pulls current metrics:*
+
+*   🔋 **Battery Level**: Verifies power status (30% threshold).
+*   💾 **SD Card**: Checks local storage health and available space.
+*   🏷️ **Firmware**: Confirms version compatibility.
+
+
 
 ### 3. Project Association (Required)
 
@@ -79,21 +97,17 @@ Verify the camera lens is working:
 1. Point the camera at a subject.
 2. Tap **Test Camera View**.
 3. The device captures a low-res preview image.
-4. Verify the image is clear.
+4. Verify the image and field of view are clear.
 
 > **Note**: Requires SD card check to pass first.
 
 ### 7. Finish Preparation
 
-Once all checks pass, tap **"Finish Preparation & Testing"**. The app will:
+Once all checks pass, tap **"Finish Preparation & Testing"**. The app runs a **Safe Quiesce Sequence** to ensure the device is in a known good state for transport:
 
-1. **Sync time**: `setutc` (final time sync)
-2. **Configure capture method**: 
-   - Motion: `setop 11 1000` (1s interval), `setop 7 0` (disable timelapse)
-   - Timelapse: `setop 7 <interval>`, `setop 11 0` (disable motion)
-3. **Disable camera**: `disable_camera` (saves battery during transport)
-4. **Confirm with LED**: Green LED flashes 2x
-5. **Disconnect**: Clean BLE disconnect
+1.  **Set Deployment ID**: `setop 20 <deployment_id>`, `setop 21 <deployment_id>` ... `setop 27 <deployment_id>`
+2.  **Confirm**: Green LED flashes
+3.  **Disconnect**: Clean BLE disconnect `dis`
 
 ### Success State
 
@@ -105,44 +119,56 @@ The device's green LED flashes twice to confirm preparation is complete. The dev
 
 ## Technical Flow Reference
 
-### On Mount (Automatic)
+### On Mount (The Three-Phase Flow)
 
-The app executes these commands **sequentially** with optimized timing:
+The app uses the **`useBleInitialization` hook** and screen logic to drive the startup sequence:
 
-| Step | Command | Purpose | Timing Note |
-|------|---------|---------|-------------|
-| 0    | `disable_camera` | Clean state, wake AI processor | Wakes device from DPD |
-| 0a   | *Wait 1000ms* | Stabilization delay | AI processor fully awake |
-| 1    | `selftest` | Hardware check | Device now responsive |
-| 2    | `setutc <timestamp>` | Time sync | - |
-| 3    | `setop 11 0`, `setop 7 0`, `setop 10 0` | Quiesce Device | 500ms delay between commands to ensure processing |
-| 4    | **DPD Latch Cycle** | Latch Config | Wait 2.5s -> OP 19 -> Wait 1.5s |
-| 5    | `setDeploymentIdAsOps(null)` | Clear old deployment ID | 600ms wake delay, 150ms inter-command delay |
-| 6    | `clearGpsLocation` | Clear GPS (`0 0 0`) | - |
+#### Phase A: Standard Initialization (useBleInitialization)
+| Step | Action | Technical Details |
+|------|--------|------------------|
+| 1 | **Set UTC** | Sends `setutc <timestamp>` immediately. |
+| 2 | **Confirmation** | Manager matching: `RTC set to` (Regex). |
+| 3 | **Health Check** | Manager matching: `Error bits = 0xXXXX` (3s timeout). |
 
-> **Why Sequential?** The firmware has a single-slot command buffer. Rapid commands during device wake-up get discarded. See [BLE Architecture Guide](../app-technical-guides/ble-architecture-guide.md#ble-timing-requirements--firmware-constraints) for details.
+**Why Standardized?**
+- **Single Trigger**: `setutc` is the only command sent; firmware handles the rest.
+- **Reliability**: Manager handles request-response correlation to avoid races.
+- **Consistency**: Used in Prepare, Start Deployment, and End Deployment.
+
+#### Phase B: Preparation Setup (PrepareAndTestScreen)
+*Executed linearly after Phase A succeeds:*
+1. **Disable Camera**: `AI setop 10 0` (via `disableCamera`).
+2. **Reset GPS**: `setgps 0°0'0.00"_N_0°0'0.00"_E...` (via `clearGpsLocation`).
+3. **Clear IDs**: `AI setop 20 0` through `27 0` (via `setDeploymentIdAsOps(null)`).
+
+#### Phase C: Automated Diagnostics
+*Triggered concurrently at the end of setup:*
+1. **Battery Level**: Calls `getBatteryLevel` -> Parses `Battery = ...%`.
+2. **SD Card Info**: Calls `checkSdCard` (AI info) -> Parses space.
+3. **Firmware Check**: Calls `getDeviceVer` (ver) -> Parses string.
+
+
 
 ### User Actions
-| Action | Command |
-|--------|---------|
-| Check Battery | `battery` → Parses `Battery = XXXXmV YY%` |
-| Check SD Card | `AI info` → Parses total/available space |
-| Check Firmware | `ver` → Parses `WW500-A00 V XX.YY.ZZ` |
-| Update Firmware | `dfu` → DFU mode → Nordic DFU process |
-| Camera Test | `capture 1 0` → Image data via BLE notifications |
+| Action | Command | Result |
+|--------|---------|--------|
+| Check Battery | `battery` | Parses `Battery = XXXXmV YY%` |
+| Check SD Card | `AI info` | Parses total/available space |
+| Check Firmware | `ver` | Parses `WW500-A00 V XX.YY.ZZ` |
+| Update Firmware | `dfu` | reboots into Bootloader mode |
+| Camera Test | `AI capture 1 0` | Image data via notifications + `txfile` |
 
-### On Finish (Automatic)
+### On Finish (Safe Quiesce Sequence)
 
-| Step | Command | Notes |
-|------|---------|-------|
-| 1 | `setutc <timestamp>` | Final time sync |
-| 2a | Motion Detection: `setop 11 1000`, `setop 7 0` | Enable motion, disable timelapse |
-| 2b | Timelapse: `setop 7 <interval>`, `setop 11 0` | Enable timelapse, disable motion |
-| 3 | `disable_camera` | Saves battery during transport |
-| 4 | `flashg 2 500` | Green LED 2x confirmation |
-| 5 | `dis` | Graceful disconnect |
+When tapping **"Finish Preparation"**, the app executes this hardware-first sequence:
 
-> **GPS Format**: Commands use unquoted space-separated values, e.g., `setgps 0 0 0` to clear.
+| Step | Action | Detail |
+|------|--------|--------|
+| 1 | **Set ID** | `AI setop 20 <val>` ... `27 <val>` (Stores Preparation ID) |
+| 2 | **Confirm** | `flashg 2 500` (Green LED double flash) |
+| 3 | **Disconnect** | `dis` (Graceful BLE closure) |
+
+
 
 ## Troubleshooting
 
@@ -161,6 +187,10 @@ The app executes these commands **sequentially** with optimized timing:
 ### "Connection Lost" during DFU
 - **Note**: This is expected! The device disconnects during firmware updates.
 - **Wait**: The app handles reconnection after DFU completes.
+
+### "Command Timeout" (App Error)
+- **Cause**: Low signal or momentary I2C bus congestion on the device.
+- **Fix**: The app has built-in **Command Reliability** logic to catch fast responses. If it persists, try reconnecting or moving closer to the device.
 
 ## What's Next?
 

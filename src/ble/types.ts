@@ -38,6 +38,7 @@ export enum CommandNames {
 	ai_ver = "ai_ver",
 	erasemodel = "erasemodel",
 	loadmodel = "loadmodel",
+	wake = "wake",
 
 	// Process commands (UPPERCASE - app-specific workflows)
 	SET_UTC = "SET_UTC",
@@ -78,17 +79,31 @@ export type Command = {
 }
 
 export const getCommandByName = (name: CommandNames | string) => {
-	if (typeof name === "string" && !(name in CommandNames)) {
-		return null
+	if (!name) return null
+
+	// Normalized lookup: Handle "AI info" or "AI setop" by looking for the last part
+	// and handle common prefixes
+	const parts = name.toString().toLowerCase().split(' ')
+	const candidates = [
+		name.toString(),
+		parts[parts.length - 1], // "info" from "AI info"
+		parts.join(''), // "aiinfo" 
+		parts.slice(1).join(''), // "info" from "AI info"
+	]
+
+	for (const candidate of candidates) {
+		// Exact match in Enum values
+		const enumValue = Object.values(CommandNames).find(v => v.toLowerCase() === candidate.toLowerCase())
+		if (enumValue && COMMANDS[enumValue as CommandNames]) {
+			return COMMANDS[enumValue as CommandNames]
+		}
+		// Exact match in Enum keys
+		if (candidate.toUpperCase() in CommandNames) {
+			return COMMANDS[CommandNames[candidate.toUpperCase() as keyof typeof CommandNames]]
+		}
 	}
 
-	const response = COMMANDS[name as CommandNames]
-
-	if (!response) {
-		return null
-	}
-
-	return response
+	return null
 }
 
 export enum CommandControlTypes {
@@ -99,6 +114,48 @@ export enum CommandControlTypes {
 export type CommandConstructOptions = {
 	control: CommandControlTypes
 	value?: string
+}
+
+/**
+ * Options for BLE command execution with response tracking
+ */
+export interface BleCommandOptions {
+	/** Timeout in milliseconds (default: 3000) */
+	timeout?: number
+	/** Retry command if AI NACK received (default: true) */
+	retryOnNack?: boolean
+	/** Maximum number of retries (default: 1) */
+	maxRetries?: number
+	/** Wait for Wake + Error bits sequence before considering complete (default: false) */
+	waitForWake?: boolean
+	/** Expected response pattern to prioritize over regex matching (optional) */
+	expectedPattern?: RegExp
+}
+
+/**
+ * Represents a command waiting for a response
+ */
+export interface PendingCommand {
+	/** Unique request ID */
+	id: string
+	/** Command name from CommandNames enum */
+	commandName: CommandNames | string
+	/** Actual command string sent to device */
+	commandString: string
+	/** Timestamp when command was sent */
+	sentAt: number
+	/** Timeout in milliseconds */
+	timeoutMs: number
+	/** Resolve promise with response */
+	resolve: (response: string) => void
+	/** Reject promise with error */
+	reject: (error: Error) => void
+	/** Number of times this command has been retried */
+	retryCount: number
+	/** Maximum retries allowed */
+	maxRetries: number
+	/** Expected response pattern (optional) */
+	expectedPattern?: RegExp
 }
 
 export const COMMANDS: {
@@ -113,6 +170,8 @@ export const COMMANDS: {
 	[CommandNames.ver]: {
 		name: CommandNames.ver,
 		readCommand: "ver",
+		// Matches "WW500-A00 V 00.20.07 22:30:18 Jan 28 2026"
+		readRegex: /WW500-[a-zA-Z0-9]+\s+V\s+(\d+\.\d+\.\d+)/i,
 		description: "Device, firmware version, build date",
 		type: 'command',
 	},
@@ -188,6 +247,7 @@ export const COMMANDS: {
 	[CommandNames.dis]: {
 		name: CommandNames.dis,
 		writeCommand: () => "dis",
+		readRegex: /^Disconnecting$/i,
 		description: "BLE disconnect",
 		type: 'command',
 	},
@@ -207,6 +267,8 @@ export const COMMANDS: {
 	[CommandNames.aiinfo]: {
 		name: CommandNames.aiinfo,
 		writeCommand: () => "AI info",
+		// Matches total and available drive space response
+		readRegex: /(\d+)\s*[Kk]\s*total\s*drive\s*space/i,
 		description: "Get AI module info (label, serial, total/available drive space in KB)",
 		type: 'command',
 	},
@@ -225,20 +287,23 @@ export const COMMANDS: {
 	},
 	[CommandNames.flashr]: {
 		name: CommandNames.flashr,
-		writeCommand: (count?: string, duration?: string) => `flashr ${count || '2'} ${duration || '1000'}`,
-		description: "Flash red LED 2 times for 1 second each (count duration_ms)",
+		writeCommand: (value?: string) => `flashr ${value || '2 500'}`,
+		readRegex: /Flashing\s+(\d+)ms\s+(\d+)\s+times/i,
+		description: "Flash red LED (count duration_ms)",
 		type: 'command',
 	},
 	[CommandNames.flashg]: {
 		name: CommandNames.flashg,
-		writeCommand: (count?: string, duration?: string) => `flashg ${count || '2'} ${duration || '1000'}`,
-		description: "Flash green LED 2 times for 1 second each (count duration_ms)",
+		writeCommand: (value?: string) => `flashg ${value || '2 500'}`,
+		readRegex: /Flashing\s+(\d+)ms\s+(\d+)\s+times/i,
+		description: "Flash green LED (count duration_ms)",
 		type: 'command',
 	},
 	[CommandNames.flashb]: {
 		name: CommandNames.flashb,
-		writeCommand: (count?: string, duration?: string) => `flashb ${count || '2'} ${duration || '1000'}`,
-		description: "Flash blue LED 2 times for 1 second each (count duration_ms)",
+		writeCommand: (value?: string) => `flashb ${value || '2 500'}`,
+		readRegex: /Flashing\s+(\d+)ms\s+(\d+)\s+times/i,
+		description: "Flash blue LED (count duration_ms)",
 		type: 'command',
 	},
 	[CommandNames.SET_UTC]: {
@@ -251,7 +316,7 @@ export const COMMANDS: {
 			const timestamp = iso.split('.')[0] + 'Z'
 			return `setutc ${timestamp}`
 		},
-		readRegex: /UTC is: (.*)/,
+		readRegex: /RTC\s+set\s+to[\s:]+(.*)/i,
 		description: "Set system time from UTC string",
 		type: 'process',
 	},
@@ -263,6 +328,7 @@ export const COMMANDS: {
 	[CommandNames.setop]: {
 		name: CommandNames.setop,
 		writeCommand: (index?: string, value?: string) => `AI setop ${index || ''} ${value || ''}`.trim(),
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set Operational Parameter <index> to <value> (Advanced)",
 		type: 'command',
 	},
@@ -270,7 +336,7 @@ export const COMMANDS: {
 		name: CommandNames.getop,
 		readCommand: "AI getop",
 		writeCommand: (index?: string) => `AI getop ${index || ''}`.trim(),
-		readRegex: /Op\[(\d+)\] = (.+)/,
+		readRegex: /^Op\[(\d+)\] = (.+)$/i,
 		description: "Get Operational Parameter <index> (Advanced)",
 		type: 'command',
 	},
@@ -297,6 +363,13 @@ export const COMMANDS: {
 		name: CommandNames.loadmodel,
 		writeCommand: (id?: string, ver?: string) => `AI loadmodel ${id || '0'} ${ver || '0'}`,
 		description: "Load model <id> <ver> from SD (e.g. 1V1.TFL) and update lines 14 & 15 of CONFIG.TXT",
+		type: 'command',
+	},
+	[CommandNames.wake]: {
+		name: CommandNames.wake,
+		writeCommand: () => 'wake',
+		readRegex: /AI processor is (awake|Waking AI processor)/,
+		description: "Wake AI processor from Deep Power Down (firmware v0.8.14+)",
 		type: 'command',
 	},
 	// Preset Operational Parameter Commands
@@ -339,12 +412,14 @@ export const COMMANDS: {
 	[CommandNames.ENABLE_CAMERA]: {
 		name: CommandNames.ENABLE_CAMERA,
 		writeCommand: () => 'AI setop 10 1',
+		readRegex: /Set\s+OpParam\s+10\s+=\s+1/i,
 		description: "Enable camera and AI system",
 		type: 'process',
 	},
 	[CommandNames.DISABLE_CAMERA]: {
 		name: CommandNames.DISABLE_CAMERA,
 		writeCommand: () => 'AI setop 10 0',
+		readRegex: /Set\s+OpParam\s+10\s+=\s+0/i,
 		description: "Disable camera and AI system",
 		type: 'process',
 	},
@@ -378,6 +453,7 @@ export const COMMANDS: {
 	[CommandNames.setgps]: {
 		name: CommandNames.setgps,
 		writeCommand: (gpsString?: string) => `setgps ${gpsString || ''}`,
+		readRegex: /Device\s+GPS\s+set/i,
 		description: "Set GPS location from phone",
 		type: 'command',
 	},

@@ -72,7 +72,7 @@ export const DeviceDiscoveryScreen = () => {
         }, 30 * 1000)
 
         return () => {
-            console.log('Clearing scan interval.')
+
             clearInterval(interval)
         }
     }, [isScanning, isBleConnecting, isBleBusy, startScan, isFocused])

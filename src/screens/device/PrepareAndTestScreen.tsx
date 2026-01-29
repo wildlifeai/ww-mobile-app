@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { View, ScrollView, StyleSheet, Alert, Image, PermissionsAndroid, Platform } from 'react-native'
+import { View, StyleSheet, Alert, PermissionsAndroid, Platform } from 'react-native'
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
-import { WWSelect } from '../../components/ui/WWSelect'
-import { WWProgressBar } from '../../components/ui/WWProgressBar'
 import { WWIcon } from '../../components/ui/WWIcon'
+import { InitializationHeader } from './sections/InitializationHeader'
+import { ProjectSelectionSection } from './sections/ProjectSelectionSection'
+import { DiagnosticsSection } from './sections/DiagnosticsSection'
+import { FirmwareSection } from './sections/FirmwareSection'
+import { HardwareBetaSection } from './sections/HardwareBetaSection'
 import { DeviceService } from '../../services/DeviceService'
 import { DevicePreparationService } from '../../services/DevicePreparationService'
 import ReferenceDataService from '../../services/ReferenceDataService'
@@ -15,8 +18,9 @@ import { DfuService } from '../../services/DfuService'
 import FirmwareService from '../../services/FirmwareService'
 import { useBleCommands } from '../../hooks/useBleCommands'
 import { useBle } from '../../hooks/useBle'
+import { useBleInitialization } from '../../hooks/useBleInitialization'
 import { useCapturePreview } from '../../hooks/useCapturePreview'
-import { useDeviceSettings } from '../../hooks/useDeviceSettings'
+import { useDeviceSettings, OP_PARAMETER } from '../../hooks/useDeviceSettings'
 import { useDeviceLatch } from '../../hooks/useDeviceLatch'
 import { useGetProjectsQuery } from '../../redux/api/projectsApi'
 import { useAppSelector } from '../../redux'
@@ -130,7 +134,8 @@ export const PrepareAndTestScreen = () => {
     const isNavigatingAway = useRef(false)
 
     // BLE command hooks
-    const { getBatteryLevel, checkSdCard, setUtc, getDeviceVer, getDeviceName, runDisconnect, runDfu, setDeploymentIdAsOps, clearGpsLocation } = useBleCommands()
+    const { getBatteryLevel, checkSdCard, setUtc, getDeviceVer, getDeviceName, runDisconnect, runDfu, setDeploymentIdAsOps, clearGpsLocation, setOperationalParam, getHeartbeat, disableCamera, flashLed } = useBleCommands()
+    const { initialize: runBleStandardInit } = useBleInitialization()
     const { write } = useBle()
     const bleDevice = useAppSelector((state) => state.devices[bleDeviceId])
     const logs = useAppSelector(state => state.logs[bleDeviceId || ''] || [])
@@ -153,7 +158,7 @@ export const PrepareAndTestScreen = () => {
     })
 
     // Device settings hook
-    const { updateSettings: updateDeviceSettings, quiesceDevice } = useDeviceSettings({
+    const { updateSettings: updateDeviceSettings } = useDeviceSettings({
         device: bleDevice,
         onError: (error) => {
             console.error('[PrepareTest] Settings update failed:', error)
@@ -163,9 +168,11 @@ export const PrepareAndTestScreen = () => {
     const { triggerDpdLatch } = useDeviceLatch()
 
     // Initialization errors from connection
-    const [initErrors, setInitErrors] = useState<{ selftest?: string; setUtc?: string }>({})
+    const [initErrors, setInitErrors] = useState<{ selftest?: string; setUtc?: string; deviceHealth?: string[] }>({})
     // Track whether BLE initialization has run
     const [isInitializing, setIsInitializing] = useState(false)
+    const [initStep, setInitStep] = useState<string>('')
+    const [initProgress, setInitProgress] = useState(0)
     const hasInitialized = useRef(false)
 
     // Load user projects using RTK Query (consistent with Projects screen)
@@ -319,6 +326,10 @@ export const PrepareAndTestScreen = () => {
             return
         }
 
+        // Set navigation flag immediately to suppress connection-lost alerts
+        // during intentional disconnect/navigation
+        isNavigatingAway.current = true
+
         // Check if SD card check has passed
         const isSdCardOk = sdCardStatus?.total && sdCardStatus.total > 0
         if (!isSdCardOk) {
@@ -348,28 +359,32 @@ export const PrepareAndTestScreen = () => {
             // We rely on the initialization sequence to have set the time.
             // Re-running it here adds unnecessary delay.
 
-            // 2. Configure device settings based on selected project
+            // 2. SAFE QUIESCE SEQUENCE
             try {
-                // Find the selected project
-                const selectedProjectData = projects?.find(p => p.id === selectedProject)
+                if (preparation && bleDevice) {
+                    // Step 1: Set Deployment ID (Op 20-27)
+                    console.log('[PrepareTest] [Safe Quiesce] 1. Setting Deployment ID:', preparation.id)
+                    await setDeploymentIdAsOps(bleDevice, preparation.id)
 
-                if (selectedProjectData) {
-                    console.log('[PrepareTest] Configuring final device settings for project:', selectedProjectData.name)
-
-                    // ENFORCE SAFE SEQUENCE: Enable -> Clear -> Disable
-                    await quiesceDevice('[PrepareTest]')
-
-                    // Additionally ensure intervalBeforeDpd is set correctly (quiesce doesn't convert this)
-                    // Although default is usually 1000, we can enforce it if needed.
-                    // For now, quiesceDevice handles the critical stopping.
+                    // Step 2: Confirm (Green LED flash)
+                    console.log('[PrepareTest] [Safe Quiesce] 2. Flashing confirmation LED...')
+                    await flashLed(bleDevice, 'green', 2, 500) // 2 flashes, 500ms each
                     
-                    console.log('[PrepareTest] Device settings configured successfully')
-                } else {
-                    console.log('[PrepareTest] No project selected or found, skipping settings configuration')
+                    // Small delay to ensure LED command is received before potentially disconnecting
+                    await new Promise(r => setTimeout(r, 1200))
+
+                    // Step 3: Disconnect (if not proceeding to start deployment immediately)
+                    const { nextRoute } = route.params || {}
+                    if (!nextRoute) {
+                        console.log('[PrepareTest] [Safe Quiesce] 3. Disconnecting device...')
+                        await runDisconnect(bleDevice).catch(e => console.error('Disconnect failed:', e))
+                    } else {
+                        console.log('[PrepareTest] [Safe Quiesce] 3. Skipping disconnect, proceeding to:', nextRoute)
+                    }
                 }
             } catch (error) {
-                console.error('[PrepareTest] Failed to configure device settings:', error)
-                errors.push('Failed to configure device settings')
+                console.error('[PrepareTest] Safe Quiesce Sequence failed:', error)
+                errors.push('Final hardware configuration failed')
             }
 
             // 3. Check for errors
@@ -382,47 +397,20 @@ export const PrepareAndTestScreen = () => {
                 return
             }
 
-            // 4. Mark preparation as complete
+            // 4. Mark preparation as complete in database
             if (preparation) {
-                // Checks enforced above, so isReady is effectively true if we get here
-                // But keeping the variable for clarity in case we add non-blocking checks later
                 const isReady = true
-
                 await DevicePreparationService.completePreparation(preparation.id, isReady, selectedProject)
+
+                // (Flag set at start of function)
 
                 Alert.alert(
                     'Preparation Complete',
                     'Device ready to be deployed',
-
                     [{
                         text: 'OK',
                         onPress: async () => {
-                            // Check for nextRoute (start deployment flow)
                             const { nextRoute } = route.params || {}
-
-                            // Mark as navigating away to suppress Connection Lost alert AND cleanup disconnect
-                            isNavigatingAway.current = true
-
-                            // Flash green LED 2x to confirm preparation complete
-                            if (bleDevice) {
-                                console.log('[PrepareTest] Flashing green LED to confirm preparation...')
-                                try {
-                                    // await flashLed(bleDevice, 'green', 500, 2)
-                                    console.log('Skipping flash to prevent delay')
-                                    await new Promise(r => setTimeout(r, 1200)) // Wait for flashes to complete
-                                } catch (e) {
-                                    console.warn('[PrepareTest] Failed to flash LED:', e)
-                                }
-
-                                // Disconnect BLE ONLY if we are NOT proceeding to deployment
-                                if (!nextRoute) {
-                                    console.log('[PrepareTest] Finishing (No next route) - Disconnecting device...')
-                                    await runDisconnect(bleDevice).catch(e => console.error('Failed to disconnect:', e))
-                                } else {
-                                    console.log('[PrepareTest] Finishing with next route - KEEPING connection alive for:', nextRoute)
-                                }
-                            }
-
                             if (nextRoute) {
                                 (navigation as any).navigate(nextRoute, {
                                     devicePreparationId: preparation.id,
@@ -430,10 +418,10 @@ export const PrepareAndTestScreen = () => {
                                     bleDeviceId: bleDeviceId
                                 })
                             } else {
-                                // Default: Navigate to Devices tab
-                                (navigation as any).navigate("Home", { initialTab: "devices" })
+                                // Redirect to Devices tab instead of just going back
+                                (navigation as any).navigate('Home', { initialTab: 'devices' })
                             }
-                        },
+                        }
                     }]
                 )
             }
@@ -471,13 +459,6 @@ export const PrepareAndTestScreen = () => {
         try {
             console.log('[PrepareTest] Sending SD card check command (AI info)...')
             await checkSdCard(bleDevice)
-
-            // The AI processor is in Deep Power Down (DPD) mode to save battery.
-            // First command wakes it and it processes the request automatically.
-            // Based on working firmware logs, wake + response takes ~3-4 seconds total.
-            console.log('[PrepareTest] Waiting 4s for AI processor to wake and respond...')
-            await new Promise(resolve => setTimeout(resolve, 4000))
-
             console.log('[PrepareTest] Response should be in logs now')
 
             // Response will be parsed from logs in useEffect  
@@ -498,13 +479,7 @@ export const PrepareAndTestScreen = () => {
             setDeviceFirmwareVersion(null) // Reset to allow re-parsing
             console.log('[PrepareTest] Sending firmware version command...')
             await getDeviceVer(bleDevice)
-            console.log('[PrepareTest] Firmware version command sent, waiting for response in logs')
-
-            // Wait for device to respond
-            await new Promise(resolve => setTimeout(resolve, 2500))
-
-            // If still checking after timeout, assume failure or parse from existing logs if missed
-            console.log('[PrepareTest] Wait period complete.')
+            console.log('[PrepareTest] Firmware version command sent and resolved.')
             setIsCheckingFirmware(false)
         } catch (error) {
             console.error('Firmware check failed:', error)
@@ -671,11 +646,14 @@ export const PrepareAndTestScreen = () => {
                 const latest = await ReferenceDataService.getLatestFirmware('ble')
                 setLatestBleFirmware(latest)
 
-                // Auto-trigger device check if connected and not yet checked
+                // Auto-triggering of firmware check on mount removed to simplify sequence.
+                // Re-enable only if explicitly requested as part of init.
+                /*
                 if (bleDevice && bleDevice.connected && !deviceFirmwareVersion && !isCheckingFirmware) {
                     console.log('[PrepareTest] Auto-triggering firmware check on mount...')
                     handleFirmwareCheck()
                 }
+                */
 
                 if (preparation && latest && preparation.bleFirmwareId) {
                     // Check based on preparation record first if available (fallback)
@@ -703,116 +681,133 @@ export const PrepareAndTestScreen = () => {
         }
     }, [bleDevice, runDisconnect])
 
+    // Heartbeat: Ping device every 20 seconds to keep it awake during preparation
+    useEffect(() => {
+        if (!bleDevice || !bleDevice.connected || isInitializing || loading) return
+
+        console.log('[PrepareTest] Starting keep-alive heartbeat (20s interval)')
+        const interval = setInterval(async () => {
+            if (bleDevice && bleDevice.connected && !isNavigatingAway.current) {
+                console.log('[PrepareTest] Heartbeat ping...')
+                try {
+                    await getHeartbeat(bleDevice)
+                } catch (e) {
+                    console.warn('[PrepareTest] Heartbeat failed:', e)
+                }
+            }
+        }, 20000)
+
+        return () => {
+            console.log('[PrepareTest] Stopping heartbeat')
+            clearInterval(interval)
+        }
+    }, [bleDevice, bleDevice?.connected, isInitializing, loading, getHeartbeat])
 
 
-    // BLE Initialization on mount: selftest, setUtc, clear deployment ID
+
+    // BLE Initialization on mount: wake, stabilization, utc, quiesce, latch, clear id/gps
     useEffect(() => {
         const runBleInitialization = async () => {
             if (!bleDevice || !bleDevice.connected || hasInitialized.current) return
 
             hasInitialized.current = true
             setIsInitializing(true)
+            setInitProgress(0.05)
             console.log('[PrepareTest] Running BLE initialization sequence...')
 
-            const errors: { setUtc?: string } = {}
+            const errors: { setUtc?: string; deviceHealth?: string[]; cameraDisable?: string } = {}
 
-            // 0. Wait for HiMAX processor to boot + verify BLE communication
-            // 0. Wait for HiMAX processor to boot after connection
-            // We remove redundant ver/name checks to streamline the process.
-            // Just a small safety delay to ensure bus stability if we just connected.
-            try {
-                console.log('[PrepareTest] Stabilization delay (500ms)...')
-                await new Promise(r => setTimeout(r, 500))
-            } catch (err) {
-                console.warn('[PrepareTest] Stabilization error:', err)
-            }
-
-            // 1. Set UTC time (FIRST ACTION)
-            for (let attempt = 1; attempt <= 2; attempt++) {
-                try {
-                    const preUtcOffset = logsRef.current.length
-                    console.log(`[PrepareTest] Setting UTC time (Attempt ${attempt})...`)
-                    await setUtc(bleDevice)
-                    // Firmware can take ~1600ms to process. We use 6000ms timeout for safety.
-                    await waitForLogMatch(/RTC set to|UTC is:/, 6000, preUtcOffset)
-                    console.log('[PrepareTest] UTC time set')
-                    // Vital delay: Wait 500ms after time sync log match (bus is free)
-                    await new Promise(r => setTimeout(r, 500))
-                    break // Success, exit loop
-                } catch (err) {
-                    console.warn(`[PrepareTest] SET_UTC attempt ${attempt} failed:`, err)
-                    if (attempt === 1) {
-                        console.log('[PrepareTest] Retrying SET_UTC - attempting to proceed...')
-                        await new Promise(r => setTimeout(r, 1000))
-                    } else {
-                        console.error('[PrepareTest] Failed to set UTC:', err)
-                        errors.setUtc = err instanceof Error ? err.message : 'Unknown error'
-                    }
+            // Step 1-2: Standard BLE initialization (wake -> stabilize -> setutc)
+            const initResult = await runBleStandardInit(bleDevice, {
+                onProgress: (step, progress) => {
+                    setInitStep(step)
+                    setInitProgress(progress * 0.5) // Use first 50% for standard init
+                },
+                onError: (initErrors) => {
+                    if (initErrors.setUtc) errors.setUtc = initErrors.setUtc
+                    if (initErrors.deviceHealth) errors.deviceHealth = initErrors.deviceHealth
                 }
+            })
+
+            if (!initResult.success) {
+                console.error('[PrepareTest] Standard initialization failed')
             }
 
-            // 2. Quiesce Device (Ensure Force Stop)
-            // Explicitly disable camera and motion/timelapse intervals to stop the "MD" loops
+            // Step 3. Disable Camera (AI setop 10 0)
             try {
-                // Use the centralized safe sequence
-                await quiesceDevice('[PrepareTest]')
+                setInitStep('Disabling camera...')
+                setInitProgress(0.6)
+                console.log('[PrepareTest] Disabling camera for preparation flow...')
+                await disableCamera(bleDevice)
+                // Confirmation handled by Command Manager regex
             } catch (err) {
-                console.warn('[PrepareTest] Failed to quiesce device:', err)
+                console.error('[PrepareTest] Failed to disable camera:', err)
+                errors.cameraDisable = 'Failed to disable camera (Op 10=0)'
             }
 
-            // 2.5 DPD Latch Cycle (New Hook) - Ensure settings stick
+            // Step 4. Reset GPS location to default
             try {
-                await triggerDpdLatch(bleDevice, '[PrepareTest]')
-            } catch (e) {
-                console.warn('[PrepareTest] Latch warning:', e)
+                setInitStep('Resetting location...')
+                setInitProgress(0.8)
+                console.log('[PrepareTest] Resetting GPS location to default...')
+                await clearGpsLocation(bleDevice)
+                // Confirmation handled by Command Manager regex
+            } catch (err) {
+                console.error('[PrepareTest] Failed to reset GPS:', err)
             }
 
-            // 3. Clear deployment ID
+            // Step 5. Clear Deployment ID (Op 20-27)
             try {
-                console.log('[PrepareTest] Clearing deployment ID...')
+                setInitStep('Clearing old IDs...')
+                setInitProgress(0.85)
+                console.log('[PrepareTest] Clearing any existing deployment IDs...')
                 await setDeploymentIdAsOps(bleDevice, null)
-                console.log('[PrepareTest] Deployment ID cleared')
             } catch (err) {
                 console.error('[PrepareTest] Failed to clear deployment ID:', err)
             }
 
-            // 4. Clear GPS location (Always run this, independent of ID clear success)
+            // Step 6. Automated Hardware Checks
             try {
-                console.log('[PrepareTest] Clearing GPS location...')
-                await clearGpsLocation(bleDevice)
-                // Wait for confirmation if possible (setgps usually echo's)
-                await waitForLogMatch(/Location is:|setgps/i, 1000).catch(() => {
-                    // Ignore timeout for GPS clear as it's non-critical if echo is missing
-                    console.log('[PrepareTest] GPS clear confirmation missing, but command sent.')
-                })
-                console.log('[PrepareTest] GPS location clear command sequence finished')
-            } catch (err) {
-                console.error('[PrepareTest] Failed to clear GPS location:', err)
-            }
-
-            // 5. Auto-trigger Status Checks (Battery & SD Card)
-            // This ensures the user sees values immediately when the UI unlocks.
-            // Note: handleSdCardCheck includes a 4s wait for AI wake.
-            try {
-                console.log('[PrepareTest] Auto-triggering status checks...')
+                // 6a. Battery Check
+                setInitStep('Checking battery...')
+                setInitProgress(0.9)
+                console.log('[PrepareTest] Auto-triggering battery check...')
                 await handleBatteryCheck()
-                await new Promise(r => setTimeout(r, 500)) // Safety buffer
+
+                // 6b. SD Card Check
+                setInitStep('Checking SD card...')
+                setInitProgress(0.94)
+                console.log('[PrepareTest] Auto-triggering SD card check...')
                 await handleSdCardCheck()
+
+                // 6c. Firmware Check
+                setInitStep('Verifying firmware...')
+                setInitProgress(0.98)
+                console.log('[PrepareTest] Auto-triggering firmware check...')
+                await handleFirmwareCheck()
             } catch (err) {
-                console.error('[PrepareTest] Auto-checks failed:', err)
+                console.error('[PrepareTest] One or more automated checks failed:', err)
             }
 
-            // Set any errors to trigger warning display
-            if (errors.setUtc) {
-                setInitErrors(errors)
+            setInitErrors(errors)
+            
+            // If critical steps failed, alert the user
+            if (errors.setUtc || errors.cameraDisable) {
+                Alert.alert(
+                    'Initialization Warning',
+                    `Some setup steps failed:\n${errors.setUtc ? `• ${errors.setUtc}\n` : ''}${errors.cameraDisable ? `• ${errors.cameraDisable}` : ''}\n\nYou may need to retry initialization.`,
+                    [{ text: 'OK' }]
+                )
             }
 
+            setInitProgress(1)
+            setInitStep('Ready')
             setIsInitializing(false)
             console.log('[PrepareTest] BLE initialization complete')
         }
 
         runBleInitialization()
-    }, [bleDevice, getDeviceVer, getDeviceName, setUtc, waitForLogMatch, updateDeviceSettings, quiesceDevice, triggerDpdLatch, setDeploymentIdAsOps, clearGpsLocation, handleBatteryCheck, handleSdCardCheck])
+    }, [bleDevice, setUtc, waitForLogMatch, triggerDpdLatch, setDeploymentIdAsOps, clearGpsLocation, handleBatteryCheck, handleSdCardCheck])
 
     // Parse BLE logs for command responses
 
@@ -975,7 +970,7 @@ export const PrepareAndTestScreen = () => {
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" />
                     <WWText variant="bodyMedium" style={styles.loadingText}>
-                        Loading device...
+                        Preparing device...
                     </WWText>
                 </View>
             </WWScreenView>
@@ -1006,269 +1001,63 @@ export const PrepareAndTestScreen = () => {
     }
 
     return (
-        <WWScreenView>
-            <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <WWText variant="titleLarge">Prepare & Test</WWText>
-                    <WWText variant="bodyMedium" style={styles.deviceName}>
-                        {device.name}
-                    </WWText>
-                    <WWText variant="bodySmall" style={styles.deviceId}>
-                        {device.bluetoothId}
-                    </WWText>
-                    {isInitializing && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 }}>
-                            <ActivityIndicator size="small" color={theme.colors.primary} />
-                            <Text variant="bodySmall" style={{ color: theme.colors.primary }}>
-                                Initializing device...
-                            </Text>
-                        </View>
-                    )}
-                </View>
+        <WWScreenView scrollable={true} style={{ paddingTop: 0 }}>
+            <InitializationHeader
+                device={device}
+                isInitializing={isInitializing}
+                initProgress={initProgress}
+                initStep={initStep}
+                initErrors={initErrors}
+                theme={theme}
+            />
 
-                {/* Initialization Errors */}
-                {(initErrors.selftest || initErrors.setUtc) && (
-                    <View style={[styles.errorSection, { backgroundColor: theme.colors.errorContainer, borderLeftColor: theme.colors.error }]}>
-                        <Text variant="titleMedium" style={[styles.errorTitle, { color: theme.colors.onErrorContainer }]}>
-                            ⚠️ Initialization Warnings
-                        </Text>
-                        {initErrors.selftest && (
-                            <Text variant="bodySmall" style={[styles.errorText, { color: theme.colors.onErrorContainer }]}>
-                                • Selftest: {initErrors.selftest}
-                            </Text>
-                        )}
-                        {initErrors.setUtc && (
-                            <Text variant="bodySmall" style={[styles.errorText, { color: theme.colors.onErrorContainer }]}>
-                                • Time Sync: {initErrors.setUtc}
-                            </Text>
-                        )}
-                        <Text variant="bodySmall" style={[styles.errorHint, { color: theme.colors.onErrorContainer }]}>
-                            You can still proceed with preparation, but address these issues before deployment.
-                        </Text>
-                    </View>
-                )}
+            <ProjectSelectionSection
+                selectedProject={selectedProject}
+                handleProjectChange={handleProjectChange}
+                isInitializing={isInitializing}
+                projects={projects}
+                theme={theme}
+            />
 
-                {/* Project Association */}
-                <View style={styles.section}>
-                    <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                        Project Association
-                    </Text>
-                    <WWSelect
-                        label="Project"
-                        value={selectedProject}
-                        onChange={handleProjectChange}
-                        options={[
-                            { label: 'Select a project...', value: '' },
-                            // Only show "Create New Project" if there are NO existing projects
-                            // OR if the user explicitly needs it (but user said it's not required if others exist)
-                            ...((!projects || projects.length === 0) ? [{ label: '➕ Create New Project', value: 'create_new' }] : []),
-                            ...(projects?.map((p) => ({ label: p.name, value: p.id })) || []),
-                        ]}
+            <DiagnosticsSection
+                batteryLevel={batteryLevel}
+                handleBatteryCheck={handleBatteryCheck}
+                sdCardStatus={sdCardStatus}
+                handleSdCardCheck={handleSdCardCheck}
+                capturedImageUri={capturedImageUri}
+                handleCameraTest={handleCameraTest}
+                isCapturingImage={isCapturingImage}
+                cameraTestPassed={cameraTestPassed}
+                isInitializing={isInitializing}
+                bleDeviceConnected={!!bleDevice?.connected}
+                theme={theme}
+            />
 
-                    />
-                    {!selectedProject && (
-                        <Text variant="bodySmall" style={[styles.warningText, { color: theme.colors.error }]}>
-                            ⚠️ Project selection required
-                        </Text>
-                    )}
-                </View>
+            <FirmwareSection
+                latestBleFirmware={latestBleFirmware}
+                deviceFirmwareVersion={deviceFirmwareVersion}
+                bleFirmwareUpdateAvailable={bleFirmwareUpdateAvailable}
+                firmwareUpdateProgress={firmwareUpdateProgress}
+                isUpdatingFirmware={isUpdatingFirmware}
+                isCheckingFirmware={isCheckingFirmware}
+                isVerifyingUpdate={isVerifyingUpdate}
+                handleFirmwareCheck={handleFirmwareCheck}
+                handleBleFirmwareUpdate={handleBleFirmwareUpdate}
+                isInitializing={isInitializing}
+                bleDeviceConnected={!!bleDevice?.connected}
+                batteryLevel={batteryLevel}
+                theme={theme}
+            />
 
-                {/* Battery Check */}
-                <View style={styles.section}>
-                    <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                        Battery Level
-                    </Text>
-                    {batteryLevel !== null ? (
-                        <View>
-                            <View style={styles.statusDisplay}>
-                                <WWText variant="bodyLarge">🔋 {batteryLevel}%</WWText>
-                                <WWText variant="bodySmall" style={styles.statusHint}>
-                                    {batteryLevel > 30 ? 'Battery level sufficient' : 'Battery level low - charge before deployment'}
-                                </WWText>
-                            </View>
-                            <WWButton mode="outlined" onPress={handleBatteryCheck} style={styles.statusButton} disabled={isInitializing || !bleDevice?.connected}>
-                                Check Again
-                            </WWButton>
-                        </View>
-                    ) : (
-                        <WWButton mode="outlined" onPress={handleBatteryCheck} disabled={isInitializing || !bleDevice?.connected}>
-                            Check Battery Level
-                        </WWButton>
-                    )}
-                </View>
+            <HardwareBetaSection theme={theme} />
 
-                {/* SD Card Check */}
-                <View style={styles.section}>
-                    <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                        SD Card Status
-                    </Text>
-                    {sdCardStatus !== null ? (
-                        <View>
-                            <View style={styles.statusDisplay}>
-                                <WWText variant="bodyLarge">
-                                    💾 {Math.round((sdCardStatus.free / sdCardStatus.total) * 100)}% available of {Math.round(sdCardStatus.total / 1024 / 1024)}GB
-                                </WWText>
-                                <WWText variant="bodySmall" style={styles.statusHint}>
-                                    {(sdCardStatus.free / sdCardStatus.total) > 0.1
-                                        ? 'SD card has sufficient space'
-                                        : 'SD card is nearly full - free up space'}
-                                </WWText>
-                            </View>
-                            <WWButton mode="outlined" onPress={handleSdCardCheck} style={styles.statusButton} disabled={isInitializing || !bleDevice?.connected}>
-                                Check Again
-                            </WWButton>
-                        </View>
-                    ) : (
-                        <WWButton mode="outlined" onPress={handleSdCardCheck} disabled={isInitializing || !bleDevice?.connected}>
-                            Check SD Card
-                        </WWButton>
-                    )}
-                </View>
-
-                {/* Camera View Test */}
-                <View style={styles.section}>
-                    <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                        Camera View Test
-                    </Text>
-                    <WWText variant="bodySmall" style={styles.sectionDescription}>
-                        Capture a test photo to verify camera positioning
-                    </WWText>
-
-                    {capturedImageUri && (
-                        <View style={styles.imagePreviewContainer}>
-                            <Image
-                                source={{ uri: capturedImageUri }}
-                                style={styles.imagePreview}
-                                resizeMode="contain"
-                            />
-                        </View>
-                    )}
-
-                    <WWButton
-                        mode="outlined"
-                        onPress={handleCameraTest}
-                        disabled={sdCardStatus === null || isCapturingImage || isInitializing || !bleDevice?.connected}
-                        loading={isCapturingImage}
-                    >
-                        {isCapturingImage ? 'Capturing & Downloading...' : (cameraTestPassed ? 'Test Again' : 'Test Camera View')}
-                    </WWButton>
-                    {sdCardStatus === null && (
-                        <Text variant="bodySmall" style={[styles.warningText, { color: theme.colors.error }]}>
-                            Check SD card first
-                        </Text>
-                    )}
-                </View>
-
-                {/* BLE Firmware Status */}
-                <View style={styles.section}>
-                    <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                        BLE Firmware
-                    </Text>
-
-                    {latestBleFirmware && (
-                        <WWText variant="bodyMedium" style={styles.firmwareVersionText}>
-                            Latest Available: {latestBleFirmware.version}
-                        </WWText>
-                    )}
-
-                    {deviceFirmwareVersion && (
-                        <WWText variant="bodyMedium" style={styles.firmwareVersionText}>
-                            Device Version: {deviceFirmwareVersion}
-                        </WWText>
-                    )}
-
-                    {!deviceFirmwareVersion && !isCheckingFirmware && (
-                        <WWButton
-                            mode="outlined"
-                            onPress={handleFirmwareCheck}
-                            disabled={isInitializing || !bleDevice?.connected}
-                            style={styles.checkFirmwareButton}
-                        >
-                            Check Firmware Version
-                        </WWButton>
-                    )}
-
-                    {isCheckingFirmware && (
-                        <WWText variant="bodySmall" style={styles.statusHint}>
-                            Checking firmware version...
-                        </WWText>
-                    )}
-
-                    {isUpdatingFirmware ? (
-                        <>
-                            <WWProgressBar
-                                progress={isVerifyingUpdate ? 1 : firmwareUpdateProgress / 100}
-                                showLabel
-                                label={isVerifyingUpdate ? 'Rebooting & Verifying...' : `Updating: ${firmwareUpdateProgress}%`}
-                            />
-                            <WWText variant="bodySmall" style={styles.statusHint}>
-                                {isVerifyingUpdate ? 'Waiting for device to finish restart...' : 'Do not disconnect the device...'}
-                            </WWText>
-                        </>
-                    ) : deviceFirmwareVersion && bleFirmwareUpdateAvailable ? (
-                        <>
-                            <Text variant="bodySmall" style={[styles.warningText, { color: theme.colors.error }]}>
-                                ⚠️ Update available
-                            </Text>
-                            <WWButton
-                                mode="outlined"
-                                onPress={handleBleFirmwareUpdate}
-                            >
-                                Update BLE Firmware
-                            </WWButton>
-                            {batteryLevel !== null && batteryLevel < 30 && (
-                                <Text variant="bodySmall" style={[styles.warningText, { color: theme.colors.error }]}>
-                                    ⚠️ Battery level low - update at your own risk
-                                </Text>
-                            )}
-                        </>
-                    ) : deviceFirmwareVersion && !bleFirmwareUpdateAvailable ? (
-                        <Text variant="bodyMedium" style={{ color: theme.colors.primary }}>
-                            ✓ Firmware is up to date
-                        </Text>
-                    ) : null}
-                </View>
-
-                {/* AI Model */}
-                <View style={styles.section}>
-                    <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                        AI Model
-                    </Text>
-                    <WWText variant="bodySmall" style={styles.infoText}>
-                        🚧 AI Model verification coming soon
-                    </WWText>
-                    <WWText variant="bodySmall" style={styles.sectionDescription}>
-                        For Beta: Manually update AI model via SD card, then use "Verify Model" button to confirm installation.
-                    </WWText>
-                    <WWButton mode="outlined" disabled>
-                        Verify Model (In Progress)
-                    </WWButton>
-                </View>
-
-                {/* LoRaWAN Verification */}
-                <View style={styles.section}>
-                    <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                        LoRaWAN Network
-                    </Text>
-                    <WWText variant="bodySmall" style={styles.infoText}>
-                        🚧 LoRaWAN ping test coming soon
-                    </WWText>
-                    <WWText variant="bodySmall" style={styles.sectionDescription}>
-                        Will use "ping" BLE command to verify network connectivity and display RSSI/SNR signal strength.
-                    </WWText>
-                    <WWButton mode="outlined" disabled>
-                        Ping Network (In Progress)
-                    </WWButton>
-                </View>
-
-                {/* Finish Preparation Button */}
+            {/* Finish Preparation Button */}
                 <View style={styles.footer}>
                     <WWButton
                         mode="contained"
                         onPress={handleFinish}
                         style={styles.finishButton}
-                        disabled={!selectedProject}
+                        disabled={!selectedProject || isInitializing}
                     >
                         Finish Preparation & Testing
                     </WWButton>
@@ -1276,18 +1065,11 @@ export const PrepareAndTestScreen = () => {
                         Cancel
                     </WWButton>
                 </View>
-            </ScrollView>
-        </WWScreenView >
+        </WWScreenView>
     )
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    content: {
-        padding: 16,
-    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -1296,82 +1078,6 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 16,
     },
-    statusButton: {
-        marginTop: 8,
-    },
-    firmwareVersionText: {
-        marginBottom: 8,
-    },
-    checkFirmwareButton: {
-        marginBottom: 12,
-    },
-    header: {
-        marginBottom: 24,
-    },
-    deviceName: {
-        marginTop: 8,
-        fontWeight: '600',
-    },
-    deviceId: {
-        marginTop: 4,
-        opacity: 0.6,
-    },
-    section: {
-        marginBottom: 24,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    sectionTitle: {
-        fontWeight: '600',
-        marginBottom: 16,
-    },
-    sectionDescription: {
-        opacity: 0.6,
-        marginBottom: 12,
-    },
-    statusCheck: {
-        fontSize: 24,
-    },
-    statusDisplay: {
-        gap: 4,
-        marginTop: 8,
-    },
-    statusHint: {
-        opacity: 0.6,
-        marginTop: 4,
-        fontSize: 12,
-    },
-    warningText: {
-        marginTop: 8,
-    },
-    successText: {
-        marginTop: 8,
-    },
-    infoText: {
-        marginBottom: 8,
-    },
-    errorSection: {
-        marginBottom: 16,
-        padding: 16,
-        borderRadius: 8,
-        borderLeftWidth: 4,
-    },
-    errorTitle: {
-        marginBottom: 8,
-        fontWeight: '600',
-    },
-    errorText: {
-        marginBottom: 4,
-    },
-    errorHint: {
-        marginTop: 8,
-        fontStyle: 'italic',
-        fontSize: 12,
-    },
     footer: {
         marginTop: 16,
         gap: 12,
@@ -1379,15 +1085,5 @@ const styles = StyleSheet.create({
     },
     finishButton: {
         marginTop: 8,
-    },
-    imagePreviewContainer: {
-        marginVertical: 12,
-        borderRadius: 8,
-        overflow: 'hidden',
-        backgroundColor: '#000',
-    },
-    imagePreview: {
-        width: '100%',
-        height: 300,
     },
 })

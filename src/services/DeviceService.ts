@@ -146,7 +146,7 @@ export const DeviceService = {
             status,
             activeDeployment,
             lastPreparation,
-            preparedDate: lastPreparation?.createdAt,
+            preparedDate: lastPreparation?.completedAt || lastPreparation?.createdAt,
         }
     },
 

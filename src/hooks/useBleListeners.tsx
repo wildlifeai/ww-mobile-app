@@ -39,6 +39,7 @@ export const getBleManagerEmitter = () => {
 }
 
 import { readlineParserEmitter } from "../ble/emitters"
+import { bleCommandManager } from "../ble/commandManager"
 export { readlineParserEmitter }
 
 export type UpdateValueEventType = {
@@ -163,6 +164,9 @@ export const useBleListeners = () => {
 
 			const text = Buffer.from(value).toString()
 
+			// Feed to Command Manager for response tracking
+			bleCommandManager.handleIncomingMessage(text)
+
 			// Check for Image Transfer Start Message
 			// Example: "10361 bytes in TL000019.JPG"
 			const imageStartMatch = text.match(/(\d+) bytes in (.+)/)
@@ -284,7 +288,7 @@ export const useBleListeners = () => {
 		)
 
 		const filteredPeripherals = peripherals.filter((p) => {
-			console.log("p", p.name)
+
 			return p.name && isOurDevice(p.name)
 		})
 

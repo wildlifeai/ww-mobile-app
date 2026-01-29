@@ -10,7 +10,7 @@ interface UseCapturePreviewOptions {
     /** BLE logs to monitor for capture completion */
     logs: LogEntry[]
     /** Write function from useBle hook */
-    write: (peripheral: ExtendedPeripheral, commands: string[]) => Promise<void>
+    write: (peripheral: ExtendedPeripheral, data: (string | [any, any])[], options?: any) => Promise<string[]>
     /** Optional callback when capture starts */
     onCaptureStart?: () => void
     /** Optional callback when image is received */

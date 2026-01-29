@@ -14,6 +14,7 @@ import { WWIcon } from '../../components/ui/WWIcon'
 
 import { CommandNames } from '../../ble/types'
 import { useBleCommands } from '../../hooks/useBleCommands'
+import { useBleInitialization } from '../../hooks/useBleInitialization'
 import { useDeviceSettings } from '../../hooks/useDeviceSettings'
 import { useBleActions } from '../../providers/BleEngineProvider'
 
@@ -48,6 +49,7 @@ export const DeploymentDetailsStep = () => {
 
     // BLE Hooks
     const { getUtc, setUtc, setDeploymentIdAsOps, enableCamera, runDisconnect, getStatus, setOperationalParam, setGpsLocation } = useBleCommands()
+    const { initialize: runBleStandardInit } = useBleInitialization()
     const { updateSettings } = useDeviceSettings({ device: bleDevice })
     const { triggerDpdLatch } = useDeviceLatch()
     useBleActions()
@@ -79,13 +81,33 @@ export const DeploymentDetailsStep = () => {
     const isStartDeploymentInProgress = useRef(false)
     const isInitializing = useRef(true)
 
-    // Mark initialization as done after mount
+    // Standard BLE initialization plus initialization guard
+    const hasRunInitialization = useRef(false)
     useEffect(() => {
-        const timer = setTimeout(() => {
-            isInitializing.current = false
-        }, INITIALIZATION_GUARD_TIMEOUT)
-        return () => clearTimeout(timer)
-    }, [])
+        const initializeDevice = async () => {
+            if (!bleDevice?.connected || hasRunInitialization.current) return
+            hasRunInitialization.current = true
+            isInitializing.current = true
+
+            console.log('[Deployment] Running standard BLE initialization...')
+            const result = await runBleStandardInit(bleDevice, {
+                onProgress: (step, progress) => {
+                    console.log(`[Deployment Init] ${step} (${Math.round(progress * 100)}%)`)
+                }
+            })
+
+            if (!result.success) {
+                console.warn('[Deployment] BLE initialization had errors:', result.errors)
+            }
+
+            // Mark initialization as done
+            const timer = setTimeout(() => {
+                isInitializing.current = false
+            }, INITIALIZATION_GUARD_TIMEOUT)
+        }
+
+        initializeDevice()
+    }, [bleDevice?.connected, runBleStandardInit])
 
     const validateAndCorrectTime = useCallback(async (timeString: string) => {
         try {

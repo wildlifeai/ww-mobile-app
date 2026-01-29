@@ -1,9 +1,11 @@
-﻿import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, PermissionsAndroid } from 'react-native'
-import { useRoute } from '@react-navigation/native'
+import { useRoute, useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
-import { Modal, Portal, Button, useTheme } from 'react-native-paper'
+import { Modal, Portal, Button, useTheme, Appbar } from 'react-native-paper'
 import { useAppSelector } from '../../redux'
+import { useExtendedTheme } from '../../theme'
+import { BackHandler } from 'react-native'
 import { useBle } from '../../hooks/useBle'
 import { useBleCommands } from '../../hooks/useBleCommands'
 import { useDeviceLatch } from '../../hooks/useDeviceLatch'
@@ -71,7 +73,9 @@ const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> =>
 
 export const EngineerConsoleScreen = () => {
     const route = useRoute<any>()
+    const navigation = useNavigation<any>()
     const theme = useTheme()
+    const { colors } = useExtendedTheme()
     const deviceId = route.params?.deviceId
 
     const device = useAppSelector(state => state.devices[deviceId || ''])
@@ -103,6 +107,45 @@ export const EngineerConsoleScreen = () => {
         }
     })
 
+    const handleBack = async () => {
+        if (device && device.connected) {
+            console.log('Disconnecting device on back press...')
+            try {
+                // Determine if we need to call disconnectDevice or if removing from redundancy is enough
+                // But disconnectDevice is safe
+                await disconnectDevice(device)
+            } catch (e) {
+                console.warn('Disconnect error:', e)
+            }
+        }
+        // Return to Devices tab
+        navigation.navigate('Home', { initialTab: 'devices' })
+    }
+
+    // Handle Hardware Back Button
+    useEffect(() => {
+        const backHandler = BackHandler.addEventListener(
+            'hardwareBackPress',
+            () => {
+                handleBack()
+                return true
+            }
+        )
+        return () => backHandler.remove()
+    }, [device])
+
+    // Handle Header Back Button
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            headerLeft: () => (
+                <Appbar.BackAction
+                    iconColor={colors.onBackground}
+                    onPress={handleBack}
+                />
+            ),
+        })
+    }, [navigation, device])
+
     // GPS location hook for SET_GPS command
     const { getLocation } = useGPSLocation()
 
@@ -125,12 +168,22 @@ export const EngineerConsoleScreen = () => {
         if (newEntries.length === 0) return
 
         // Add new lines to console history
-        const historyEntries: ConsoleEntry[] = newEntries.map(entry => ({
-            id: Date.now().toString() + Math.random(),
-            timestamp: new Date(entry.timestamp),
-            type: entry.type === 'tx' ? 'command' : 'response',
-            content: entry.content
-        }))
+        const historyEntries: ConsoleEntry[] = newEntries.map(entry => {
+            let type: 'command' | 'response' | 'error' | 'info' = 'response'
+            
+            // Map redux log types to console types
+            if (entry.type === 'tx') type = 'command'
+            else if (entry.type === 'rx') type = 'response'
+            else if (entry.type === 'error') type = 'error'
+            else if (entry.type === 'info') type = 'info'
+            
+            return {
+                id: Date.now().toString() + Math.random(),
+                timestamp: new Date(entry.timestamp),
+                type,
+                content: entry.content
+            }
+        })
 
         setConsoleHistory((prev: ConsoleEntry[]) => [...prev, ...historyEntries])
 
