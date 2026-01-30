@@ -581,10 +581,10 @@ private async setupNetworkMonitoring(): Promise<void> {
 ```typescript
 // ✅ CORRECT - Use centralized hooks
 import { useBleCommands } from '../hooks/useBleCommands'
-import { useCapturePreview } from '../hooks/useCapturePreview'
+import { useDeploymentConfiguration } from '../hooks/useDeploymentConfiguration'
 
-const { getBatteryLevel, checkSdCard } = useBleCommands()
-await getBatteryLevel(device)
+const { configure } = useDeploymentConfiguration()
+await configure(device, config)
 
 // ❌ WRONG - Don't hardcode commands or duplicate logic
 await write(device, ['Battery']) // Never do this!
@@ -593,6 +593,7 @@ await write(device, ['Battery']) // Never do this!
 **Key Components**:
 - **`useBle`** - Low-level BLE operations (connect, write, read)
 - **`useBleCommands`** - Individual command functions (battery, SD card, etc.)
+- **`useDeploymentConfiguration`** - Atomic, optimized deployment setup
 - **`useCapturePreview`** - Complete image capture process
 - **`src/ble/types.ts`** - Single source of truth for all command definitions
 - **Engineer Console** - Testing ground and reference implementation

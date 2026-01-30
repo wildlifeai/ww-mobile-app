@@ -137,7 +137,7 @@ The app uses the **`useBleInitialization` hook** and screen logic to drive the s
 
 #### Phase B: Preparation Setup (PrepareAndTestScreen)
 *Executed linearly after Phase A succeeds:*
-1. **Disable Camera**: `AI setop 10 0` (via `disableCamera`).
+1. **Disable Camera**: `AI setop 10 0` (via `useDeviceSettings`).
 2. **Reset GPS**: `setgps 0°0'0.00"_N_0°0'0.00"_E...` (via `clearGpsLocation`).
 3. **Clear IDs**: `AI setop 20 0` through `27 0` (via `setDeploymentIdAsOps(null)`).
 

@@ -248,11 +248,32 @@ SET_NUM_PICTURES            // Set images per trigger (default: 3)
 SET_PICTURE_INTERVAL        // Set interval between images (default: 1500ms)
 ```
 
-All preset commands:
 - Appear as 'process' type in Command Reference
 - Use correct `AI setop <index> <value>` format
 - Include sensible defaults
 - Can be tested in Engineer Console
+
+### Specialized Deployment Configuration (`useDeploymentConfiguration`)
+
+For **Deployments**, we use a dedicated hook that handles the complexities of setting the Deployment ID (OP 20-27) and the Capture Method (Motion vs Timelapse) in a robust, atomic operation.
+
+```typescript
+const { configure } = useDeploymentConfiguration()
+
+await configure(bleDevice, {
+    deploymentId: newDeployment.id,
+    captureMethod: 'activity', // or 'timelapse'
+    motionInterval: 1000,
+    timelapseInterval: 0,
+    location: { ... }
+})
+```
+
+**Why a Specialized Hook?**
+- **Atomic Operation**: Handles ID fallback (GPS vs standard) and OPs in one flow.
+- **Optimization**: Encapsulates efficient command sequencing (no redundant enables).
+- **Error Handling**: Centralizes failure logic for deployment configuration.
+
 
 ### Device Preparation Flow
 
@@ -291,16 +312,13 @@ if (project.capture_method_id === 1) {
 - Settings are preserved in CONFIG.TXT
 
 > **IMPORTANT**:
-> While **Preparation** disables the camera (`cameraEnabled: false`), **Deployment** MUST enable it (`cameraEnabled: true`) during the configuration phase. This is because setting `MD_INTERVAL` (Op 11) while the camera is disabled causes the setting to be ignored by the firmware.
+> While **Preparation** disables the camera (`cameraEnabled: false`), **Start Deployment** MUST enable it. The `useDeploymentConfiguration` hook handles this automatically.
 >
-> **Deployment Logic:**
-> ```typescript
-> await updateSettings({
->     cameraEnabled: true,  // MUST be true for Op 11 to persist
->     motionDetectInterval: 1000,
->     timelapseInterval: 0
-> })
-> ```
+> **Optimized Deployment Logic:**
+> - **No Redundant Commands**: We do NOT send a separate "Enable Camera" command after configuration. The configuration step itself sets `OP 10 = 1`, and the device confirms this.
+> - **No 'Latch' Needed**: The initial configuration write is sufficient to wake and apply settings. We removed the explicit "DPD Latch" (Wake Up Event) from the start flow to reduce traffic.
+> - **Safe Enable**: The hook ensures `MD_INTERVAL` (Op 11) is set correctly ensuring the camera is enabled.
+
 
 **Step 6:** Save preparation record to WatermelonDB
 
@@ -566,11 +584,12 @@ src/
 │   ├── useDeviceSettings.ts      # Operational parameter management
 │   └── ...                       # Other process hooks
 └── screens/
-    ├── device/
+    ├── Devices/
     │   └── PrepareAndTestScreen.tsx  # Uses standard initialization
-    ├── deployment/
+    ├── Deployments/
     │   └── DeploymentDetailsStep.tsx  # Uses standard initialization
-    └── EngineerConsoleScreen.tsx     # Testing ground & reference
+    └── Devices/
+        └── EngineerConsoleScreen.tsx     # Testing ground & reference
 ```
 
 

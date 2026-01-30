@@ -67,6 +67,7 @@ User Interface ← Local DB ← Pull Sync ← Supabase Changes
 - **One-Tap Diagnostics**: Immediate feedback on battery health, SD card space, and firmware version on connection.
 - **Image Preview**: Remote `AI capture` with automatic BLE background download.
 - **Safe Quiesce Sequence**: Hardware-first finish flow (Set ID → LED Confirmation → Graceful Disconnect).
+- **Optimized Deployment Handshake**: Robust, atomic configuration flow that eliminates redundant commands ("Latch" cycle) for faster, reliable field deployments.
 - **Firmware Updates**: Integrated OTA firmware updates via Nordic DFU.
 
 

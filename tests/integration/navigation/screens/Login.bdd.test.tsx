@@ -5,7 +5,7 @@
  */
 
 import React from "react"
-import { Login } from "../../../../src/navigation/screens/Login"
+import { Login } from "../../../../src/navigation/screens/auth/LoginScreen"
 import {
 	renderWithProviders,
 	createTestStore,
@@ -26,7 +26,7 @@ import {
 // Logo image is automatically mocked by Jest moduleNameMapper
 
 // Mock the TestDeepLink component
-jest.mock("../../../../src/components/TestDeepLink", () => ({
+jest.mock("../../../../src/components/ui/TestDeepLink", () => ({
 	TestDeepLink: () => null,
 }))
 

@@ -75,7 +75,7 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 			const sanitizedData = data.replace(/[\r\n]+$/, "")
 			// Revert: Firmware rejects newline (treats as extra char causing mismatch)
 			const byteArray = [...Buffer.from(sanitizedData)]
-			console.log('DEBUG: byteArray content:', byteArray)
+			// console.log('DEBUG: byteArray content:', byteArray)
 			log(`TX Hex: ${Buffer.from(byteArray).toString("hex")}`)
 
 			// Push a LF-CR (LF = 10, CR = 13 in decimal) to local listener for UI feedback

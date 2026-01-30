@@ -57,6 +57,9 @@ const UNSOLICITED_PATTERNS = [
   /^battery$/i,
   /^get heartbeat$/i,
   /^flash[rgb]\s+\d+\s+\d+$/i,
+  /^selftest$/i,
+  /^status$/i,
+  /^getutc$/i,
 ]
 
 /**

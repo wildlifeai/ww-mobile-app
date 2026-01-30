@@ -74,13 +74,14 @@ Review the settings automatically inherited from the project:
 
 These settings are **snapshotted** to the deployment record and stored in `capture_method_id`, `activity_detection_sensitivity_id`, and `timelapse_interval_seconds` fields.
 
-#### 6. Final Device Time Check
+#### 6. Final Time Check
 
 The device's internal clock is synchronized with the phone to ensure accurate photo timestamps:
 1. App sends `getutc` command to verify device time
-2. Checks if device time is within acceptable threshold
+2. Checks if device time is within acceptable threshold (±5 seconds)
 3. If needed, sends `setutc` command with current UTC timestamp in ISO 8601 format
 4. Validates the update was successful
+5. Waits 2 seconds for BLE round-trip completion
 
 #### 7. Create Deployment Record
 
@@ -99,16 +100,21 @@ The record includes:
 - **Audit**: setup_by (user ID)
 - **Status**: deployment_status_id = 1 (Active/Deployed)
 
-#### 8. Sync Deployment ID to Device
+#### 8. Configure Device
+
+The device is configured using the `useDeploymentConfiguration` hook which handles:
+
+**8a. Set Deployment ID**
 
 To ensure photos can be linked back to this specific deployment:
 1. **UUID Splitting**: The 128-bit UUID is parsed into 8 x 16-bit integers
-2. **Optimized Transmission**: Uses `setDeploymentIdAsOps()` hook which:
-   - Sends 8 separate `AI setop <index> <value>` commands (OP 20-27)
-   - Includes 200ms wake delay after FIRST command (if device was in Deep Power Down)
-   - Global 20ms pause between commands ensures completion within 1000ms window
-3. **Retry Logic**: Up to 3 attempts with 1-second delays if transmission fails
-4. **Validation**: Each command is logged and verified
+2. **Transmission**: Sends 8 separate `AI setop <index> <value>` commands (OP 20-27)
+3. **GPS Fallback**: If AI NACK error occurs:
+   - Falls back to GPS-only mode (skips deployment ID)
+   - Sets `setgps` with location data instead
+   - Logs warning for later review
+4. **Retry Logic**: Up to 3 attempts with 1-second delays if transmission fails
+5. **Error Handling**: Errors from `write` function are now properly propagated
 
 **Example:**
 ```
@@ -116,20 +122,17 @@ Deployment ID: 11f59ca9-5aca-4dd3-a101-92205ca07384
 Parsed to: [4597, 40105, 23242, 19923, 41217, 37408, 23712, 29572]
 Sent as:
   AI setop 20 4597
-  [200ms wake delay]
   AI setop 21 40105
   ...
   AI setop 27 29572
 ```
 
-> **Timing Critical**: Device has 1000ms inactivity timer. All 8 commands must complete before device sleeps. See [BLE Architecture Guide](../app-technical-guides/ble-architecture-guide.md#ble-timing-requirements--firmware-constraints).
-
-#### 9. Configure Capture Method
+**8b. Configure Capture Method**
 
 The device is configured according to the project's capture requirements.
 
 **For Activity Detection:**
-- **Enables Camera**: `AI setop 10 1` (Must be enabled for value to persist)
+- **Enables Camera**: `AI setop 10 1`
 - Sets motion detection interval: `AI setop 11 1000` (1000ms)
 - Disables timelapse: `AI setop 7 0`
 
@@ -143,21 +146,17 @@ The device is configured according to the project's capture requirements.
 - Sets motion detection interval: `AI setop 11 1000`
 - Sets timelapse interval: `AI setop 7 <seconds>`
 
-#### 10. Enable Camera, Reset & Disconnect
+> **Note**: Camera is automatically enabled during capture method configuration. No separate enable step needed.
 
-1. **Enable Camera**: Explicitly ensures camera is enabled (`AI setop 10 1`) if not already set.
-2. **Visual Confirmation**: Flashes green LED (5 times, 500ms each)
-3. **DPD Latch Cycle**:
-   - Wait 2500ms (Enter DPD)
-   - `setop 19 0` (Wake Up & Latch Config)
-   - Wait 1500ms (Stabilize)
-4. **Disconnect**: Sends `dis` command to gracefully close BLE connection
+#### 9. Disconnect
 
-> [!IMPORTANT]
-> **The reset command is essential!** Without it, the device stays in DPD and never enters motion detection mode. The reset causes the HiMAX processor to:
-> - Read the updated CONFIG.TXT parameters
-> - Initialize the camera in motion detection mode (Mode 2)
-> - Begin monitoring for motion/timelapse triggers
+1. **Disconnect**: Sends `dis` command to gracefully close BLE connection
+2. **Success**: Device disconnects and enters low-power monitoring state
+
+> [!NOTE]
+> **LED Flash and Latch cycles have been removed** for optimization:
+> - LED flash (5 × 500ms green) was removed to prevent inactivity timeout issues
+> - DPD Latch cycle removed as it's unnecessary - device automatically applies configuration
 
 The device reboots and enters low-power monitoring state, capturing according to the configured method.
 
@@ -219,55 +218,49 @@ Enter optional **Retrieval Notes**:
 
 When user taps "End Deployment", the app executes the following sequence:
 
-**Step 1: Disable Camera**
-- Sends `AI setop 10 0` to stop camera and AI system
-- Prevents further photo captures
-- Status: "Disabling Camera..."
+**Step 1: Initialize & Sync Time**
+- Sends `setutc` command with current UTC timestamp
+- Ensures device clock is accurate for final captures
+- Non-blocking: Logs warning if fails but continues
+- Status: "Synchronizing..."
 
-**Step 2: Clear Deployment ID**
+**Step 2: Quiesce Device (Stop Camera)**
+- Sends `AI setop 10 0` to disable camera and AI system
+- Uses optimized quiesce mode (skips redundant enable/clear-intervals)
+- Prevents further photo captures
+- Status: "Resetting device..."
+
+**Step 3: Clear Deployment ID**
 - Sends 8 commands to clear OPs 20-27: `AI setop <index> 0`
-- Uses `setDeploymentIdAsOps(null)` with optimized 200ms wake delay
+- Uses `setDeploymentIdAsOps(null)`
 - Wipes the deployment UUID from device memory
 - Retry logic: Up to 3 attempts with 1-second delays
 - If fails: Shows warning but continues (user must manually reset device)
-- Status: "Clearing Config..."
+- Status: "Clearing config..."
 
-**Step 3: Clear GPS Location**
+**Step 4: Clear GPS Location**
 - Sends `setgps 0 0 0` to reset GPS data for next deployment
-- **Note**: GPS values are unquoted, space-separated (not empty string)
+- **Note**: GPS values are numeric zeros, space-separated
 - Ensures old location data doesn't persist
 - Non-blocking: Logs warning if fails but continues
-- Status: "Checking Firmware..."
 
-**Step 4: Update Database**
+**Step 5: Update Database**
 - Sets `deployment_end` to current timestamp
 - Sets `ended_by` to current user ID
 - Stores `end_deployment_comments` (retrieval notes)
 - Updates `deployment_status_id` to ended/retrieved status
 - Marks device as available for re-preparation
-- Status: "Updating Record..."
+- Status: "Updating record..."
 
-**Step 5: Visual Confirmation Sequence**
-LED sequence provides clear visual feedback that deployment has ended:
-1. Flash **Green** LED (1 second, 1 time)
-2. Wait 100ms
-3. Flash **Blue** LED (1 second, 1 time)
-4. Wait 100ms
-5. Flash **Red** LED (1 second, 1 time)
-6. Wait 100ms
-7. Flash **Green** LED (4 seconds, 1 time) - Final confirmation
-8. Total duration: ~7.3 seconds
-- Status: "Confirming..."
-
-**Step 6: DPD Latch Cycle (Finalize)**
-- Triggers latch cycle to ensure "Stop" settings (camera disabled) are persisted
-- Wait 2.5s -> OP 19 -> Wait 1.5s
-- Status: "Finalizing..."
-
-**Step 7: Disconnect**
+**Step 6: Disconnect**
 - Sends `dis` command to device
 - Closes BLE connection gracefully
 - Status: "Disconnecting..."
+
+> [!NOTE]
+> **LED sequences and Latch cycles have been removed** for optimization:
+> - Multi-color LED sequence (green, blue, red) was removed to speed up the process
+> - DPD Latch cycle removed as it's unnecessary for clearing configuration
 
 #### 5. Success Confirmation
 
@@ -310,27 +303,25 @@ Tapping "View Details" navigates to the deployment record showing:
 | 3 | Location | - | Capture GPS via expo-location |
 | 4 | Time Check | `getutc`, `setutc [timestamp]` | - |
 | 5 | DB Create | - | Create deployment record with snapshots |
-| 6 | ID Sync | `AI setop 20 [value]` × 8 (retry 3x) | - |
-| 7 | Configure | Activity: `AI setop 10 1`, `AI setop 11 1000`, `AI setop 7 0` | - |
-| | | Timelapse: `AI setop 10 1`, `AI setop 7 [secs]`, `AI setop 11 0` | - |
-| 8 | Enable | `AI setop 10 1` (Redundant check) | - |
-| 9 | Latch | **DPD Latch Cycle** (Wait -> OP 19 -> Wait) | *Ensures Config Applied* |
-| 10 | Disconnect | `dis` | Mark device as deployed |
-| 11 | Sync | - | Push to Supabase via SupabaseSyncService |
+| 6 | Configure | `useDeploymentConfiguration` hook: | - |
+|   | ID Sync | `AI setop 20-27 [value]` (retry 3x, GPS fallback on NACK) | - |
+|   | Capture Settings | Activity: `setop 10 1`, `setop 11 1000`, `setop 7 0` | - |
+|   |  | Timelapse: `setop 10 1`, `setop 7 [secs]`, `setop 11 0` | - |
+| 7 | Disconnect | `dis` | Mark device as deployed |
+| 8 | Sync | - | Push to Supabase via SupabaseSyncService |
 
 ### End Deployment Flow
 
 | Step | Action | BLE Commands | Database Operations |
 |------|--------|--------------|---------------------|
 | 1 | Validation | - | Check device has active deployment |
-| 2 | Disable | `AI setop 10 0` | - |
-| 3 | Clear ID | `AI setop 20 0` × 8 (retry 3x) | - |
-| 4 | Clear GPS | `setgps ""` | - |
-| 5 | DB Update | - | Set deployment_end, ended_by, comments |
-| 6 | LED Sequence | `flashg 1 1000`, `flashb 1 1000`, `flashr 1 1000`, `flashg 1 4000` | - |
-| 7 | Latch | **DPD Latch Cycle** | *Persist Stop Settings* |
-| 8 | Disconnect | `dis` | Mark device as available |
-| 9 | Sync | - | Push to Supabase via SupabaseSyncService |
+| 2 | Init & Time Sync | `setutc [timestamp]` | - |
+| 3 | Quiesce (Optimized) | `AI setop 10 0` | - |
+| 4 | Clear ID | `AI setop 20-27 0` (retry 3x) | - |
+| 5 | Clear GPS | `setgps 0 0 0` | - |
+| 6 | DB Update | - | Set deployment_end, ended_by, comments |
+| 7 | Disconnect | `dis` | Mark device as available |
+| 8 | Sync | - | Push to Supabase via SupabaseSyncService |
 
 ---
 
@@ -351,8 +342,8 @@ Tapping "View Details" navigates to the deployment record showing:
 - **Fix**: Go through preparation flow first (see [02-DEVICE-PREPARATION.md](./02-DEVICE-PREPARATION.md)).
 
 **"Failed to Set Deployment ID"**
-- **Cause**: BLE connection unstable or device doesn't support extended OPs.
-- **Fix**: Keep phone within 1 meter. Retry. If persistent, check device firmware version.
+- **Cause**: BLE write error or AI NACK from device.
+- **Fix**: Keep phone within 1 meter. App automatically falls back to GPS-only mode if persistent. Check logs for "GPS Fallback" message.
 
 **"Write Failed"**
 - **Cause**: BLE connection unstable.
@@ -388,5 +379,5 @@ Tapping "View Details" navigates to the deployment record showing:
 
 ---
 
-**Last Updated**: December 2025  
+**Last Updated**: January 2026  
 **Maintained By**: Wildlife Watcher Development Team

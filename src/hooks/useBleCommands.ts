@@ -25,8 +25,9 @@ export const useBleCommands = () => {
         await write(peripheral, [[CommandNames.id, { control: CommandControlTypes.READ }]])
     }, [write])
 
-    const getStatus = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.status, { control: CommandControlTypes.READ }]])
+    const getStatus = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
+        const responses = await write(peripheral, [[CommandNames.status, { control: CommandControlTypes.READ }]])
+        return responses[0] || ''
     }, [write])
 
     const getOps = useCallback(async (peripheral: ExtendedPeripheral) => {
@@ -66,8 +67,9 @@ export const useBleCommands = () => {
         await write(peripheral, [[CommandNames.SET_UTC, { control: CommandControlTypes.WRITE }]], { timeout: 10000 })
     }, [write])
 
-    const getUtc = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.getutc, { control: CommandControlTypes.READ }]])
+    const getUtc = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
+        const responses = await write(peripheral, [[CommandNames.getutc, { control: CommandControlTypes.READ }]])
+        return responses[0] || ''
     }, [write])
 
 
@@ -108,8 +110,9 @@ export const useBleCommands = () => {
 
 
     // --- Debug ---
-    const runSelfTest = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.selftest, { control: CommandControlTypes.WRITE }]])
+    const runSelfTest = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
+        const responses = await write(peripheral, [[CommandNames.selftest, { control: CommandControlTypes.WRITE }]])
+        return responses[0] || ''
     }, [write])
 
     const enableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
@@ -123,7 +126,10 @@ export const useBleCommands = () => {
     }, [write])
 
     const getHeartbeat = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.heartbeat, { control: CommandControlTypes.READ }]])
+        // Use 'wake' command instead of 'heartbeat' to ensure AI processor inactivity timer is reset
+        // 'heartbeat' command only checks the BLE/MCU status but doesn't necessarily wake the AI
+        console.log('[BLE CMD] Sending keep-alive (wake) to:', peripheral.id)
+        await write(peripheral, [[CommandNames.wake, { control: CommandControlTypes.WRITE }]], { timeout: 8000 })
     }, [write])
 
     /**
@@ -211,7 +217,12 @@ export const useBleCommands = () => {
 
                 // Use the new serialized write method instead of raw writeToDevice
                 try {
-                    await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]])
+                    const results = await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]])
+                    // Check if write returned an error string (since useBle swallows errors)
+                    const result = results[0]
+                    if (result && typeof result === 'string' && result.startsWith('ERROR:')) {
+                        throw new Error(result)
+                    }
                 } catch (error) {
                     console.error(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
                     throw error

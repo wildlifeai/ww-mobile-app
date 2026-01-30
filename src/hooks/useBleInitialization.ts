@@ -1,7 +1,6 @@
 import { useCallback, useRef } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { useBleCommands } from './useBleCommands'
-import { bleCommandManager } from '../ble/commandManager'
 import { extractErrorBits } from '../ble/messageClassifier'
 
 export interface BleInitOptions {
@@ -29,7 +28,7 @@ export interface BleInitResult {
  * The hook does NOT handle connection itself - the device must already be connected.
  */
 export const useBleInitialization = () => {
-  const { setUtc } = useBleCommands()
+  const { setUtc, runSelfTest } = useBleCommands()
   const isInitializing = useRef(false)
 
   const initialize = useCallback(async (
@@ -46,34 +45,26 @@ export const useBleInitialization = () => {
     const errors: { setUtc?: string; deviceHealth?: string[] } = {}
 
     try {
-      // Single-step initialization: SET UTC
-      // This triggers the full sequence: wake -> stabilize -> setutc -> selftest
-      // The device responds with:
-      // 1. "UTC is:" (Nordic acknowledgment)
-      // 2. "Wake" (Himax wakes up)
-      // 3. "RTC set to" (Himax confirms time sync)
-      // 4. "Error bits = 0xXXXX" (Himax selftest result)
-      
       options?.onProgress?.('Synchronizing time...', 0.5)
       console.log('[BLE Init] Setting UTC time...')
 
       try {
-        // RACE CONDITION FIX: Start listening for error bits BEFORE sending setUtc.
-        // The error bits arrive very soon after the "RTC set to" response,
-        // often before the app has a chance to start the next listener.
-        const errorBitsPromise = bleCommandManager.waitForMessage(/Error bits = 0x/, 5000)
-
-        // Call setUtc - Command Manager waits for "RTC set to" automatically
+        // 1. Set UTC Time
         await setUtc(device)
         console.log('[BLE Init] UTC time synchronized')
         
-        // Wait for the error bits that arrive after RTC confirmation
+        // 2. Check Hardware Status explicitly
+        // We use runSelfTest because it returns the specific "Error bits = ..." response
+        // whereas getStatus only returns the sensor status string.
         options?.onProgress?.('Checking hardware...', 0.75)
         
-        const errorMsg = await errorBitsPromise
+        // This will throw if the response regex doesn't match, so we wrap it
+        // The regex defined in types.ts for selftest is: /Error\s*bits\s*=\s*(0x[0-9A-Fa-f]+)/
+        const statusMsg = await runSelfTest(device)
+        console.log('[BLE Init] Self-test result:', statusMsg)
         
         // Check for hardware warnings
-        const hexBits = extractErrorBits(errorMsg)
+        const hexBits = extractErrorBits(statusMsg)
         if (hexBits) {
           const bits = parseInt(hexBits, 16)
           if (bits !== 0) {
@@ -122,7 +113,7 @@ export const useBleInitialization = () => {
       isInitializing.current = false
       return { success: false, errors: { setUtc: 'Initialization failed unexpectedly' } }
     }
-  }, [setUtc])
+  }, [setUtc, runSelfTest])
 
   return { initialize }
 }

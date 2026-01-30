@@ -368,7 +368,7 @@ export const COMMANDS: {
 	[CommandNames.wake]: {
 		name: CommandNames.wake,
 		writeCommand: () => 'wake',
-		readRegex: /AI processor is (awake|Waking AI processor)/,
+		readRegex: /(AI processor is awake|Waking AI processor|Wake)/i,
 		description: "Wake AI processor from Deep Power Down (firmware v0.8.14+)",
 		type: 'command',
 	},

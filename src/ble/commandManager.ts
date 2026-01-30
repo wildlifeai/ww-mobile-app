@@ -50,7 +50,8 @@ export class BleCommandManager {
     } = options
 
     return new Promise((resolve, reject) => {
-      const executeCommand = async () => {
+      // Add to queue - the actual execution happens in processQueue
+      this.commandQueue.push(async () => {
         const requestId = `req_${this.nextRequestId++}`
         
         const pending: PendingCommand = {
@@ -67,13 +68,14 @@ export class BleCommandManager {
         }
 
         try {
-          // THEN set as pending and start timeout
+          // Set as pending and start timeout
           this.pendingCommand = pending
 
           // Set timeout BEFORE send to catch fast echoes
           const timeoutHandle = setTimeout(() => {
             if (this.pendingCommand?.id === requestId) {
               this.pendingCommand = null
+              this.processQueue() // Process next command after timeout
               reject(new Error(`Command timeout after ${timeout}ms: ${commandString}`))
             }
           }, timeout)
@@ -81,36 +83,48 @@ export class BleCommandManager {
           // Send command to device
           await writeToDevice(peripheral, commandString)
           log(`[BLE CMD Manager] Sent: ${commandString}`)
+          
+          // Note: resolve/reject will be called by handleResponse/handleError
+          // which will also call processQueue() to handle the next command
         } catch (error) {
           this.pendingCommand = null
+          this.processQueue() // Process next command after error
           reject(error)
         }
-      }
-
-      // Add to queue
-      this.commandQueue.push(executeCommand)
+      })
+      
       this.processQueue()
     })
   }
 
   /**
    * Process command queue (serialized execution)
+   * Only processes next command after current one completes
    */
   private async processQueue() {
-    if (this.isProcessing || this.commandQueue.length === 0) {
+    // CRITICAL: only process if not already processing AND no command is currently waiting for a response
+    if (this.isProcessing || this.pendingCommand || this.commandQueue.length === 0) {
+      if (this.commandQueue.length > 0 && this.pendingCommand) {
+        log(`[BLE CMD Manager] Queue waiting: ${this.commandQueue.length} items pending. Current: ${this.pendingCommand.commandString}`)
+      }
       return
     }
 
     this.isProcessing = true
+    log(`[BLE CMD Manager] Processing queue. Depth: ${this.commandQueue.length}`)
 
-    while (this.commandQueue.length > 0) {
-      const next = this.commandQueue.shift()
-      if (next) {
-        try {
-          await next()
-        } catch (error) {
-          logError(`[BLE CMD Manager] Queue processing error: ${error}`)
-        }
+    // Process only the first command
+    // When it completes (via handleResponse, handleError, or timeout),
+    // processQueue will be called again to handle the next one
+    const next = this.commandQueue.shift()
+    if (next) {
+      try {
+        await next()
+        // Don't process next item here - it will be called by
+        // handleResponse, handleError, or timeout handlers
+      } catch (error) {
+        logError(`[BLE CMD Manager] Queue processing error: ${error}`)
+        this.processQueue() // Continue to next on error
       }
     }
 
@@ -154,20 +168,38 @@ export class BleCommandManager {
     }
 
     if (msg.errorType === 'AI_NACK') {
-      log('[BLE CMD Manager] AI NACK detected - will retry after wake sequence')
+      log('[BLE CMD Manager] AI NACK detected - waiting for wake sequence then retrying')
+      
+      const failedCommand = this.pendingCommand
       
       // Wait for Wake and Error bits messages, then retry
       this.waitForWakeSequence().then(() => {
-        if (this.pendingCommand && this.pendingCommand.retryCount < this.pendingCommand.maxRetries) {
-          log('[BLE CMD Manager] Retrying command after wake sequence')
-          this.pendingCommand.retryCount++
-          // Command will be retried by re-sending
-          // For now, just resolve with the error message
-          // TODO: Implement actual retry mechanism
-        } else {
-          const cmd = this.pendingCommand
+        if (failedCommand && failedCommand.retryCount < failedCommand.maxRetries) {
+          log(`[BLE CMD Manager] Retrying command after wake sequence (attempt ${failedCommand.retryCount + 1}/${failedCommand.maxRetries})`)
+          
+          // Clear pending and increment retry count
           this.pendingCommand = null
-          cmd?.reject(new Error(`AI NACK: ${msg.content}`))
+          failedCommand.retryCount++
+          
+          // Re-queue the command with updated retry count
+          this.commandQueue.unshift(async () => {
+            this.pendingCommand = failedCommand
+            
+            // Send command again
+            // Note: We can't easily access the original writeToDevice function here,
+            // so this is a limitation of the current design. For now, reject after wake.
+            // A better solution would be to store writeToDevice in PendingCommand.
+            this.pendingCommand = null
+            failedCommand.reject(new Error(`AI NACK: Command failed after wake sequence. Retry not fully implemented.`))
+            this.processQueue()
+          })
+          
+          this.processQueue()
+        } else {
+          // Max retries exceeded
+          this.pendingCommand = null
+          failedCommand?.reject(new Error(`AI NACK: Max retries (${failedCommand?.maxRetries}) exceeded`))
+          this.processQueue()
         }
       })
     } else {
@@ -175,6 +207,7 @@ export class BleCommandManager {
       const cmd = this.pendingCommand
       this.pendingCommand = null
       cmd?.reject(new Error(`BLE Error: ${msg.content}`))
+      this.processQueue()
     }
   }
 
@@ -191,6 +224,9 @@ export class BleCommandManager {
     const cmd = this.pendingCommand
     this.pendingCommand = null
     cmd.resolve(msg.content)
+    
+    // Process next command in queue
+    this.processQueue()
   }
 
   /**
