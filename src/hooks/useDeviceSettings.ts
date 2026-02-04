@@ -22,7 +22,6 @@ export const OP_PARAMETER = {
     MD_INTERVAL: 11,
     FLASH_DURATION: 12,
     FLASH_LED: 13,
-    WAKE_UP_EVENT: 19, // Used exclusively to wake Himax from DPD (Index 20-27 reserved for Deployment ID)
 } as const
 
 /**
@@ -60,7 +59,7 @@ export interface UseDeviceSettingsOptions {
 export interface UseDeviceSettingsReturn {
     updateSettings: (settings: Partial<DeviceSettings>) => Promise<void>
     applyPreset: (preset: 'default' | 'motion-detect' | 'timelapse') => Promise<void>
-    quiesceDevice: (logPrefix?: string) => Promise<void>
+    quiesceDevice: (logPrefix?: string, optimized?: boolean) => Promise<void>
     isUpdating: boolean
 }
 
@@ -205,23 +204,35 @@ export const useDeviceSettings = ({
      * Enforces the sequence: Enable Camera -> Clear Intervals -> Disable Camera.
      * This ensures the firmware accepts the "Stop" commands even if the camera was previously disabled.
      */
-    const quiesceDevice = useCallback(async (logPrefix: string = '[DeviceSettings]') => {
+    /**
+     * Safely quiesces the device (stops all capture activities).
+     * 
+     * @param logPrefix Custom prefix for logs
+     * @param optimized If true, skips the "Enable -> Clear -> Disable" sequence and just disables.
+     *                  Use ONLY when fast stop is required (e.g. End Deployment).
+     *                  Use FALSE for Preparation to ensure clean slate.
+     */
+    const quiesceDevice = useCallback(async (logPrefix: string = '[DeviceSettings]', optimized: boolean = false) => {
         if (!device) return
 
-        console.log(`${logPrefix} Quiescing device (Safe Sequence)...`)
+        console.log(`${logPrefix} Quiescing device (Optimized: ${optimized})...`)
         try {
-            // 1. Enable Camera to unlock parameters (Op 10 = 1)
-            console.log(`${logPrefix} 1. Enabling camera to allow interval writes...`)
-            await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '1')
-            await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_ENABLE))
+            if (!optimized) {
+                // 1. Enable Camera to unlock parameters (Op 10 = 1)
+                console.log(`${logPrefix} 1. Enabling camera to allow interval writes...`)
+                await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '1')
+                await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_ENABLE))
+            } else {
+                console.log(`${logPrefix} Skipped camera enable step (Optimized Mode)`)
+            }
 
-            // 2. Clear Intervals (Op 11 = 0, Op 7 = 0)
+            // 2. Clear Intervals (Op 11 = 0, Op 7 = 0) - ALWAYS do this
             console.log(`${logPrefix} 2. Clearing Motion & Timelapse intervals...`)
             await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
             await new Promise(r => setTimeout(r, QUIESCE_DELAYS.PARAM_CLEAR)) 
             await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
             
-            // BUS SAFETY: Wait 1500ms for potential "Stats" message from Himax
+            // BUS SAFETY: Wait for potential "Stats" message from Himax
             console.log(`${logPrefix} Waiting ${QUIESCE_DELAYS.BUS_STABILIZATION}ms for bus stabilization...`)
             await new Promise(r => setTimeout(r, QUIESCE_DELAYS.BUS_STABILIZATION))
 

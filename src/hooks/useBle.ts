@@ -29,6 +29,7 @@ import { scanError, scanStart } from "../redux/slices/scanningSlice"
 import { useInterval } from "../hooks/useInterval"
 import { clearAllDeviceIntervals, writeToDevice } from "../utils/helpers"
 import {
+	BleCommandOptions,
 	CommandConstructOptions,
 	CommandControlTypes,
 	CommandNames,
@@ -36,6 +37,8 @@ import {
 	Services,
 } from "../ble/types"
 import { constructCommandString } from "../ble/parser"
+import { bleCommandManager } from "../ble/commandManager"
+import { getCommandByName } from "../ble/types"
 
 export type WriteData = [CommandNames, CommandConstructOptions]
 
@@ -50,31 +53,15 @@ export type ReturnType = {
 	write: (
 		peripheral: ExtendedPeripheral,
 		data: (string | WriteData)[],
-	) => Promise<void>
+		options?: BleCommandOptions,
+	) => Promise<string[]>
 	enginePause: (toggle: boolean) => void
 	pingsPause: (toggle: boolean) => void
 	enginePaused: React.MutableRefObject<boolean>
 	pingsPaused: React.MutableRefObject<boolean>
 }
 
-type FunctionEngine = {
-	fun: Function
-	canBeIgnored?: boolean
-	pausesTheEngine?: boolean
-}
-
-/**
- * These commands can have a bigger pause implemented after they're executed.
- * Reduced to 50ms to prevent device timeouts (1000ms watchdog) during bulk operations.
- */
 const PAUSE = 20
-
-
-/**
- * This special command will be ignored by the engine if
- * BLE is writing any information at that moment.
- */
-const PING_REQUEST: string[] = []
 
 export const useBle = (): ReturnType => {
 	const { initialized } = useAppSelector((state) => state.bleLibrary)
@@ -86,51 +73,21 @@ export const useBle = (): ReturnType => {
 
 	const dispatch = useAppDispatch()
 
-	const bleWriteFunctionsToCall = useRef<FunctionEngine[]>([])
-	const isBleWriting = useRef(false)
 	const enginePauseRef = useRef(false)
 	const pingsPauseRef = useRef(false)
 
-	const clearPings = () => {
-		bleWriteFunctionsToCall.current = bleWriteFunctionsToCall.current.filter(
-			({ canBeIgnored }) => !canBeIgnored,
-		)
-	}
-
 	/**
-	 * Heart of the BLE - device bridge. It makes sure functions are
-	 * called with a delay, it's actually possible to be faster then
-	 * the device buffer.
+	 * Wrapper for writeToDevice to match BleCommandManager signature
 	 */
-	useInterval(async () => {
-		if (enginePauseRef.current) {
-			clearPings()
-			return
-		}
+	const writeToDeviceWrapper = useCallback(
+		async (p: ExtendedPeripheral, s: string) => {
+			const err = await writeToDevice(p, s)
+			if (err) throw err
+		},
+		[],
+	)
 
-		if (isBleWriting.current) {
-			return
-		}
-
-		isBleWriting.current = true
-		if (bleWriteFunctionsToCall.current.length > 0) {
-			while (bleWriteFunctionsToCall.current.length > 0) {
-				const next = bleWriteFunctionsToCall.current.shift()
-				if (next) {
-					const { fun, canBeIgnored } = next
-
-					if (pingsPauseRef.current && canBeIgnored) {
-						// log(`Pinging paused`)
-					} else {
-						await fun()
-
-						await sleep(PAUSE)
-					}
-				}
-			}
-		}
-		isBleWriting.current = false
-	}, 500)
+	// Removed legacy useInterval polling queue. BleCommandManager handles serialization now.
 
 	const enginePause = useCallback((toggle: boolean) => {
 		// log(`Engine turning: ${toggle ? "off" : "on"}`)
@@ -164,7 +121,7 @@ export const useBle = (): ReturnType => {
 	const disconnectDevice = useCallback(
 		async (peripheral: Peripheral | ExtendedPeripheral) => {
 			if (!initialized) return
-			bleWriteFunctionsToCall.current = []
+			bleCommandManager.clear()
 			await guard(() => BleManager.disconnect(peripheral.id))
 			dispatch(deviceDisconnect({ id: peripheral.id }))
 		},
@@ -172,8 +129,12 @@ export const useBle = (): ReturnType => {
 	)
 
 	const write = useCallback(
-		async (peripheral: ExtendedPeripheral, data: (WriteData | string)[]) => {
-			if (!initialized) return
+		async (
+			peripheral: ExtendedPeripheral,
+			data: (WriteData | string)[],
+			options: BleCommandOptions = {},
+		): Promise<string[]> => {
+			if (!initialized) return []
 
 			const currentPeripheral = devices[peripheral.id]
 
@@ -190,52 +151,49 @@ export const useBle = (): ReturnType => {
 				)
 			}
 
-			/**
-			 * Simply maps the data in preparation for the BLE functions
-			 * engine.
-			 */
-			interface MappedData extends Omit<FunctionEngine, "fun"> {
-				str: string | undefined
+			const results: string[] = []
+
+			for (const strOrCommand of data) {
+				let commandString: string | undefined
+
+				if (typeof strOrCommand === "string") {
+					commandString = strOrCommand
+				} else {
+					const [commandName, constructOptions] = strOrCommand
+					commandString = constructCommandString(commandName, constructOptions)
+				}
+
+				if (commandString) {
+					try {
+						// Look up command definition for regex pattern if not already provided
+						let lookupName = typeof strOrCommand === "string" ? strOrCommand : strOrCommand[0]
+						const cmdDef = getCommandByName(lookupName)
+						const cmdOptions = { ...options }
+						if (!cmdOptions.expectedPattern && cmdDef?.readRegex) {
+							cmdOptions.expectedPattern = cmdDef.readRegex
+						}
+
+						const response = await bleCommandManager.sendCommand(
+							peripheral,
+							commandString,
+							writeToDeviceWrapper,
+							cmdOptions,
+						)
+						results.push(response)
+						// Add small delay between commands to be nice to firmware
+						await sleep(PAUSE)
+					} catch (error) {
+						logError(`Error writing command ${commandString}: ${error}`)
+						results.push(`ERROR: ${error}`)
+						// On critical error, we might want to disconnect or stop processing
+						// disconnectDevice(peripheral) 
+					}
+				}
 			}
 
-			const mappedData: MappedData[] = data.map((strOrCommand) => {
-				if (typeof strOrCommand === "string")
-					return {
-						str: strOrCommand,
-						canBeIgnored: PING_REQUEST.includes(strOrCommand),
-					}
-				const [commandName, options] = strOrCommand
-
-				return {
-					str: constructCommandString(commandName, options),
-					canBeIgnored: PING_REQUEST.includes(commandName),
-				}
-			})
-
-			mappedData.forEach(({ str, ...rest }) => {
-				bleWriteFunctionsToCall.current.push({
-					fun: () =>
-						writeToDevice(peripheral, str)
-							.then((e?: Error) => {
-								if (e) {
-									log(
-										`Disconnecting device ${peripheral.id
-										} due to an error (${JSON.stringify(e)})`,
-									)
-									disconnectDevice(peripheral)
-								}
-							})
-							.catch(() => {
-								log(
-									`Disconnecting device ${peripheral.id} due to an error while calling writeToDevice`,
-								)
-								disconnectDevice(peripheral)
-							}),
-					...rest,
-				})
-			})
+			return results
 		},
-		[devices, disconnectDevice, dispatch, initialized],
+		[devices, dispatch, initialized],
 	)
 
 	const isDeviceReconnecting = useRef<{ [x: string]: boolean }>({})
@@ -310,7 +268,7 @@ export const useBle = (): ReturnType => {
 						"BleManager.retrieveServices",
 						timeout,
 					)
-					log("Discovered services: " + JSON.stringify(services))
+					// log("Discovered services: " + JSON.stringify(services))
 
 					// Cast to correct type
 					newPeripheral.services = extractServiceAndCharacteristic(services as unknown as Services)
@@ -334,8 +292,6 @@ export const useBle = (): ReturnType => {
 					log(`Notifications started for ${readCharacteristic}`)
 
 					await BleManager.readRSSI(newPeripheral.id)
-
-					// Logs cleared at start, so we don't clear here anymore
 
 					log(`Device ${deviceIdentification} connected`)
 
@@ -379,7 +335,7 @@ export const useBle = (): ReturnType => {
 			results.map(async (peripheral) => {
 				// Prevent disconnecting devices that are already handled by the app state
 				if (devices[peripheral.id]?.connected) {
-					log(`Skipping cleanup for already connected device: ${peripheral.id}`)
+					// log(`Skipping cleanup for already connected device: ${peripheral.id}`)
 					return
 				}
 

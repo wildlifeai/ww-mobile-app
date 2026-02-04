@@ -8,7 +8,7 @@ import React from "react"
 import { Alert } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { fireEvent, waitFor, screen } from "@testing-library/react-native"
-import { Login } from "../../../../src/navigation/screens/Login"
+import { Login } from "../../../../src/navigation/screens/auth/LoginScreen"
 import {
 	renderWithProviders,
 	createTestStore,
@@ -37,7 +37,7 @@ const mockAlert = jest.spyOn(Alert, "alert").mockImplementation(() => {})
 // Logo image is automatically mocked by Jest moduleNameMapper
 
 // Mock the TestDeepLink component
-jest.mock("../../../../src/components/TestDeepLink", () => ({
+jest.mock("../../../../src/components/ui/TestDeepLink", () => ({
 	TestDeepLink: () => null,
 }))
 

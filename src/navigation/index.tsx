@@ -2,38 +2,55 @@ import { useEffect } from "react"
 import { ParamListBase, RouteProp } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { useAppSelector } from "../redux"
-import { BluetoothProblems } from "./screens/BluetoothProblems"
-import { LocationProblems } from "./screens/LocationProblems"
-import { BleProblems } from "./screens/BleProblems"
+// System screens
+import { BluetoothProblems } from "./screens/system/BluetoothProblemsScreen"
+import { LocationProblems } from "./screens/system/LocationProblemsScreen"
+import { BleProblems } from "./screens/system/BleProblemsScreen"
 import * as SplashScreen from "expo-splash-screen"
 import { NavigationBar } from "../components/NavigationBar"
-import { AppLoading } from "./screens/AppLoading"
+import { AppLoading } from "./screens/system/AppLoadingScreen"
 import { AppDrawer } from "../components/AppDrawer"
-import { Notifications } from "./screens/Notifications"
-import { Profile } from "./screens/Profile"
-import { Settings } from "./screens/Settings"
-import { DfuScreen } from "./screens/DfuScreen"
-import { Login } from "./screens/Login"
-import { Register } from "./screens/Register"
-import { ForgotPassword } from "./screens/ForgotPassword"
-import { AddDeployment } from "./screens/AddDeployment"
+
+// User screens
+import { Notifications } from "./screens/user/NotificationsScreen"
+import { Profile } from "./screens/user/ProfileScreen"
+import { Settings } from "./screens/user/SettingsScreen"
+
+// Auth screens
+import { Login } from "./screens/auth/LoginScreen"
+import { Register } from "./screens/auth/RegisterScreen"
+import { ForgotPassword } from "./screens/auth/ForgotPasswordScreen"
+
+// Project screens
 import type { Option } from "../components/ui/WWSelect"
-import { NewProjectScreen } from "./screens/NewProjectScreen"
-import { ProjectDetailsScreen } from "./screens/ProjectDetailsScreen"
-import { ProjectMembersScreen } from "../screens/ProjectMembersScreen"
+import { Projects as ProjectsListScreen } from "../screens/Projects/ProjectsListScreen"
+import { NewProjectScreen } from "../screens/Projects/NewProjectScreen"
+import { ProjectDetailsScreen } from "../screens/Projects/ProjectDetailsScreen"
+import { ProjectMembersScreen } from "../screens/Projects/ProjectMembersScreen"
+
+// Deployment screens
+import { Deployments as DeploymentsListScreen } from "../screens/Deployments/DeploymentsListScreen"
+import { AddDeployment } from "../screens/Deployments/AddDeploymentScreen"
+import { DeploymentDetailsScreen } from "../screens/Deployments/DeploymentDetailsScreen"
+import { DeploymentDetailsStep } from "../screens/Deployments/StartDeploymentScreen"
+import { EndDeploymentDetailsStep } from "../screens/Deployments/EndDeploymentScreen"
+
+// Device screens
+import { Devices as DevicesListScreen } from "../screens/Devices/DevicesListScreen"
+import { DeviceDiscoveryScreen } from "../screens/Devices/DeviceDiscoveryScreen"
+import { DeviceDetailsScreen } from "../screens/Devices/DeviceDetailsScreen"
+import { PrepareAndTestScreen } from "../screens/Devices/PrepareAndTestScreen"
+import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
+import { DfuScreen } from "../screens/Devices/DfuScreen"
+
+// Developer screens
+import { DevBuildInfo } from "./screens/developer/DevBuildInfoScreen"
+import { AuthTestScreen } from "./screens/developer/AuthTestScreen"
+import { DeveloperSettingsScreen } from "./screens/developer/DeveloperSettingsScreen"
+
+// Other
 import { BottomTabs } from "./BottomTabs"
-import { DevBuildInfo } from "./screens/DevBuildInfo"
-import { AuthTestScreen } from "../screens/AuthTestScreen"
-import { DeveloperSettingsScreen } from "../screens/DeveloperSettingsScreen"
 import { useDeepLinking } from "../hooks/useDeepLinking"
-import { DeviceDiscoveryScreen } from "../screens/device/DeviceDiscoveryScreen"
-import { DeploymentDetailsStep } from "../screens/deployment/DeploymentDetailsStep"
-import { DeviceDetailsScreen } from "../screens/device/DeviceDetailsScreen"
-import { EngineerConsoleScreen } from "./screens/EngineerConsoleScreen"
-import { PrepareAndTestScreen } from "../screens/device/PrepareAndTestScreen"
-// Import new screens
-import { DeploymentDetailsScreen } from '../navigation/screens/deployment/DeploymentDetailsScreen'
-import { EndDeploymentDetailsStep } from '../navigation/screens/deployment/EndDeploymentDetailsStep'
 
 export interface RootStackParamList extends ParamListBase {
 	Notifications: undefined

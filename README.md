@@ -48,23 +48,36 @@ User Interface ← Local DB ← Pull Sync ← Supabase Changes
 
 ## BLE Features
 
-> **Important:** When working with BLE commands, please read the [BLE Architecture Guide](./documentation/onboarding/ble-architecture-guide.md) to understand our hook-based command system and avoid code duplication.
+> **Important:** When working with BLE commands, please read the [BLE Architecture Guide](./documentation/onboarding/ble-architecture-guide.md) to understand our **Command Manager architecture**, standardized initialization flow, and message classification system.
+
+### Modern BLE Architecture
+
+- **Command Manager**: Centralized command queue with automatic request-response matching and timeout protection.
+- **Message Classifier**: Intelligently categorizes device logs as **Responses** (matching commands), **Unsolicited** (events/echoes), or **Errors**.
+- **Three-Phase Initialization**:
+    - **Phase A (Standard)**: Global sync triggered by `setutc`. Wakes AI, stabilizes bus, and checks hardware health.
+    - **Phase B (Setup)**: Screen-specific resets (Camera lock, GPS zeroing, ID cleanup).
+    - **Phase C (Diagnostics)**: Automated one-tap hardware data collection (Battery, SD, Firmware).
+- **Definitive Confirmation**: Commands wait for final hardware confirmation strings (e.g., `Set OpParam`) to prevent race conditions.
 
 ### Camera Communication
 
-- **Device Discovery**: Scan and connect to Wildlife Watcher cameras via Bluetooth
-- **Command System**: Send configuration and control commands to cameras
-- **Image Preview**: Capture and download preview images from camera
-- **Firmware Updates**: OTA firmware updates via BLE
-- **Status Monitoring**: Real-time camera status and battery level
+- **Device Discovery**: Securely scan and connect to Wildlife Watcher cameras.
+- **Standardized Foundation**: Automatic wake/stabilize/time-sync foundation used across all connection flows.
+- **One-Tap Diagnostics**: Immediate feedback on battery health, SD card space, and firmware version on connection.
+- **Image Preview**: Remote `AI capture` with automatic BLE background download.
+- **Safe Quiesce Sequence**: Hardware-first finish flow (Set ID → LED Confirmation → Graceful Disconnect).
+- **Optimized Deployment Handshake**: Robust, atomic configuration flow that eliminates redundant commands ("Latch" cycle) for faster, reliable field deployments.
+- **Firmware Updates**: Integrated OTA firmware updates via Nordic DFU.
+
 
 ### Image Preview Flow
 
-1. Send `CAPTURE_PREVIEW` command to camera
-2. Camera captures image and stores in memory
-3. App automatically initiates download
-4. Image displays in modal popup
-5. User can save or discard preview
+1. Send `AI capture 1 0` command to device.
+2. Camera captures image and stores in internal buffer.
+3. App automatically detects capture log and initiates BLE chunked download.
+4. Image displays in interactive modal.
+5. User can save, share, or discard the preview.
 
 ## Critical Version Requirements (Expo SDK 54)
 > [!IMPORTANT]
@@ -218,11 +231,12 @@ If sync isn't working:
 
 ### BLE Connection Issues
 
-If camera won't connect:
-1. Ensure Bluetooth is enabled
-2. Check camera is powered on and in range
-3. Reset camera if needed
-4. Check Metro logs for BLE errors
+If camera won't connect or initializes with warnings:
+1. **Bluetooth**: Ensure Bluetooth is enabled and permissions are granted.
+2. **Range**: Ensure camera is powered and within 5 meters.
+3. **Initialization**: If it hangs at "Setting UTC", the I2C bus may be busy. Wait 5s or reset the camera.
+4. **Health Warnings**: Check the "System Health" bits in the app. A non-zero bit (e.g., `0x0800`) indicates a hardware issue (like a missing SD card) rather than a connection failure.
+5. **Logs**: Check Metro logs for `[BLE CMD Manager]` activity to see raw hardware responses.
 
 ### Database Issues
 
