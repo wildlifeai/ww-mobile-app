@@ -22,7 +22,9 @@ export const NavigationBar = ({
 
 	return (
 		<Appbar.Header mode="center-aligned">
-			{back ? (
+			{options.headerLeft ? (
+				options.headerLeft({ canGoBack: !!back })
+			) : back ? (
 				<Appbar.BackAction
 					iconColor={onBackground}
 					onPress={navigation.goBack}

@@ -4,7 +4,7 @@ import { StyleSheet, View } from "react-native"
 
 import { useAndroidPermissions } from "../hooks/useAndroidPermissions"
 import { useAppSelector } from "../redux"
-import { NoAndroidPermissions } from "../navigation/screens/NoAndroidPermissions"
+import { NoAndroidPermissions } from "../navigation/screens/system/NoAndroidPermissionsScreen"
 import * as SplashScreen from "expo-splash-screen"
 import { ActivityIndicator } from "react-native-paper"
 import { Stack } from "../navigation"

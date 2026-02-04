@@ -4,346 +4,150 @@
 
 You're joining the development team for the **Wildlife Watcher Mobile App** - a React Native application that helps conservation researchers deploy and manage wildlife monitoring cameras in remote locations worldwide.
 
-This guide will give you the essential context to understand what you're building and why it matters.
+This guide is your single entry point to understanding the project, setting up your environment, and learning our core architecture.
 
-## What is Wildlife Watcher?
+---
 
-### The Problem We're Solving
+## 📚 Documentation Roadmap
 
-Conservation researchers need to deploy camera traps (wildlife cameras) in remote wilderness areas to monitor animal populations and behavior. These deployments face unique challenges:
+This folder contains specialized guides for each area of the app:
 
-- **No cellular connectivity** in remote wilderness areas
-- **Teams working offline** for days or weeks at a time
-- **Collaborative research** across international teams
-- **Critical data integrity** - can't lose deployment records
-- **Real-time status updates** via LoRaWAN when in range
+1. **[01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md)**: Deep dive into React Native, Expo, and our core libraries.
+2. **[02-PROJECT-STRUCTURE.md](./02-PROJECT-STRUCTURE.md)**: Folder organization and naming conventions.
+3. **[03-OFFLINE-FIRST-ARCHITECTURE.md](./03-OFFLINE-FIRST-ARCHITECTURE.md)**: The heart of the app - WatermelonDB and Sync.
+4. **[04-REDUX-STATE-MANAGEMENT.md](./04-REDUX-STATE-MANAGEMENT.md)**: How we use RTK for UI and session state.
+5. **[05-REACT-NATIVE-PATTERNS.md](./05-REACT-NATIVE-PATTERNS.md)**: UI patterns, navigation, and styling.
+6. **[06-DEVELOPMENT-WORKFLOW.md](./06-DEVELOPMENT-WORKFLOW.md)**: Detailed environment, testing, and git flows.
+7. **[03-DEPLOYMENT-FLOW.md](./03-DEPLOYMENT-FLOW.md)**: Technical guide to the field deployment process.
 
-### Our Solution
+---
 
-The Wildlife Watcher Mobile App is an **offline-first field deployment tool** that enables:
+## 🚀 Step 1: Choose Your Setup
 
-1. **Complete offline operation** - All features work without internet
-2. **Bluetooth camera configuration** - Configure Wildlife Watcher cameras via BLE
-3. **Intelligent sync** - Automatic synchronization when connectivity returns
-4. **Team collaboration** - Multi-user projects with role-based permissions
-5. **Remote monitoring** - LoRaWAN status updates (battery, SD card usage)
+| Scenario | Recommended Approach | Why |
+|----------|---------------------|-----|
+| **Team Development** | 🐳 Docker | Identical environments, 5-min setup |
+| **Windows (Native)** | 🐳 Docker | Avoids complex WSL2/Environment issues |
+| **Solo / Performance** | 💻 Native | Maximum build speed, direct system access |
+| **iOS Development** | 💻 Native on macOS | Xcode requires macOS |
 
-## High-Level Architecture
+### 🐳 Option A: Docker Setup (Recommended)
+1. **Prerequisites**: Docker Desktop, Android device (USB Debugging), Expo account.
+2. **Setup**:
+   ```bash
+   git clone [REPO_URL] && cd wildlife-watcher-mobile-app
+   docker-compose -f docker-compose.dev.yml up -d
+   docker-compose -f docker-compose.dev.yml exec wildlife-watcher-dev bash
+   # Inside container:
+   npm install --ignore-scripts
+   npx expo start
+   ```
 
-### The Stack at a Glance
+### 💻 Option B: Native Setup
+1. **Install Node.js 20.19.4** (exact version required):
+   - Use `nvm install 20.19.4 && nvm use 20.19.4`.
+2. **Install CLI Tools**:
+   - `npm install -g eas-cli@latest`.
+3. **Setup Android Debug Bridge (ADB)**:
+   - Required for physical device testing. Available in Windows (WSL2), macOS, and Linux.
+4. **Clone and Install**:
+   ```bash
+   git clone [REPO_URL] && cd wildlife-watcher-mobile-app
+   npm install --ignore-scripts
+   npm run db:sync-schema
+   npx expo start
+   ```
 
-```
-┌─────────────────────────────────────────────────────┐
-│           React Native + Expo SDK 54                 │
-│    (Cross-platform iOS & Android from one codebase) │
-└─────────────────────────────────────────────────────┘
-                         │
-          ┌──────────────┴──────────────┐
-          │                             │
-┌─────────▼─────────┐        ┌──────────▼─────────┐
-│   Local Storage    │        │   Cloud Backend     │
-│                    │        │                     │
-│  WatermelonDB      │◄──────►│  Supabase           │
-│  (Reactive DB)     │  Sync  │  (PostgreSQL +      │
-│                    │        │   Auth + Storage)   │
-└────────────────────┘        └─────────────────────┘
-```
+---
 
-### Key Technologies
+## ✅ Step 2: Verification Checkpoints
 
-- **React Native 0.81.5** - Mobile UI framework
-- **TypeScript** - Type-safe JavaScript
-- **Redux Toolkit** - State management (UI & Session)
-- **Expo SDK 54** - Development tools and APIs
-- **WatermelonDB** - High-performance reactive local database
-- **Supabase** - Backend (PostgreSQL, Auth, Storage)
-- **React Navigation** - Screen navigation
-- **React Native Paper** - UI component library
+To ensure your environment is configured correctly, verify these checkpoints:
 
-## Core Concepts You Need to Know
+1. **Tool Versions**:
+   - `node -v` → should show `v20.19.4`.
+   - `npx @expo/cli --version` → should show `0.18.31`.
+   - `eas --version` → should show `16.17.3`.
+2. **Android Connection**:
+   - `adb devices` → your device should appear (not "unauthorized").
+3. **App Launch**:
+   - The app should open on your phone via the Development Build.
+   - Hot reload should work when you save changes in `src/App.tsx`.
 
-### 1. Offline-First Architecture
+---
 
-**This is not a web app with offline support - it's an offline app with sync capabilities.**
+## 📱 Step 3: Get the App on Your Device
 
-Key principles:
-- **WatermelonDB as Source of Truth** - UI observes local DB
-- **Background Sync** - Supabase Sync Engine handles data transfer
-- **Conflict Resolution** - "Last Write Wins" or custom strategies
+1. **Fastest**: Download the [Latest Development APK](https://expo.dev/accounts/apps_wildlife/projects/wildlife-watcher-expo/builds/12fa61c8-cf82-47c5-a8b1-f92fea0a04ca).
+2. **Manual**: Run `eas build --platform android --profile development`.
+3. **Note on Expo Go**: BLE and other native modules **will not work** in Expo Go. You must use the Development Build for full functionality.
 
-**Example Flow:**
-```
-User creates project → Write to WatermelonDB → UI updates automatically (Reactive)
-                                ↓
-                         (Background Sync)
-                                ↓
-                    Push Changes → Supabase API → Pull Changes
-```
+---
 
-### 2. Redux for State Management
+## 🏗️ High-Level Architecture
 
-We use **Redux Toolkit (RTK)** for managing app state, but **NOT** for domain data (projects, deployments).
+The Wildlife Watcher app is an **offline-first field tool**. It is built on the principle that **connectivity is the exception, not the rule.**
 
-- **Slices** organize UI state (modals, themes) and Session state (Auth).
-- **Async thunks** handle non-DB async operations (like Auth).
-- **Typed hooks** (`useAppSelector`, `useAppDispatch`) for TypeScript safety.
+### The Tech Stack
+- **React Native 0.81.5** + **Expo SDK 54**
+- **WatermelonDB**: High-performance local reactive database (The source of truth).
+- **Supabase**: Cloud backend (PostgreSQL, Auth, Sync).
+- **Redux Toolkit**: UI state and session management (Auth).
 
-**Example: Auth State**
-```typescript
-// src/redux/slices/authSlice.ts
-const authSlice = createSlice({
-  name: 'authentication',
-  initialState: {
-    user: null,
-    isAuthenticated: false,
-  },
-  reducers: {
-    setUser: (state, action) => {
-      state.user = action.payload;
-      state.isAuthenticated = true;
-    },
-    logout: (state) => {
-      state.user = null;
-      state.isAuthenticated = false;
-    }
-  }
-});
+### Component Observation Pattern
+Instead of fetching data in `useEffect`, our components **observe** the local database. When data changes (even via background sync), the UI updates automatically.
+
+```mermaid
+graph TD
+    UI[React Component] -->|Observes| DB[(WatermelonDB Local)]
+    DB -->|Reactive Update| UI
+    Sync[Sync Engine] <-->|Bidirectional| DB
+    Sync <-->|HTTPS/Websockets| Cloud[Supabase Cloud]
 ```
 
-### 3. React Native vs Web Development
+---
 
-If you're coming from web development, here are the key differences:
-
-| Web | React Native |
-|-----|--------------|
-| `<div>`, `<span>` | `<View>`, `<Text>` |
-| CSS files | StyleSheet or inline styles |
-| HTML semantics | Component semantics |
-| Browser APIs | Native APIs via Expo |
-| `onClick` | `onPress` |
-| Flexbox (optional) | Flexbox (default) |
-
-**Example: Simple Component**
-```tsx
-// Web way
-<div className="container" onClick={handleClick}>
-  <h1>Hello</h1>
-</div>
-
-// React Native way
-<View style={styles.container}>
-  <TouchableOpacity onPress={handlePress}>
-    <Text style={styles.title}>Hello</Text>
-  </TouchableOpacity>
-</View>
-```
-
-### 4. Navigation Patterns
-
-We use **React Navigation** with a stack-based approach:
-
-- **Bottom Tabs** - Main app sections (Maps, Projects, Deployments, Devices)
-- **Stack Navigator** - Drill-down screens
-- **Drawer** - Side menu for settings and profile
-- **Type-safe routing** - TypeScript types for all routes
-
-**Navigation Structure:**
-```
-App
-├── Bottom Tabs
-│   ├── Maps (Home)
-│   ├── Projects
-│   ├── Deployments
-│   └── Devices
-├── Modal Screens
-│   ├── Add Project
-│   ├── Start Deployment
-│   └── Project Details
-└── Drawer Menu
-    ├── Profile
-    ├── Settings
-    └── Sign Out
-```
-
-## Project Organization
+## 📁 Project Organization
 
 ```
-wildlife-watcher-mobile-app/
-├── src/                          # All source code
-│   ├── components/               # Reusable UI components
-│   ├── screens/                  # Screen components (not in navigation/)
-│   ├── navigation/               # Navigation setup
-│   │   ├── index.tsx            # Main navigation config
-│   │   ├── BottomTabs.tsx       # Bottom tab navigation
-│   │   └── types.ts             # Navigation TypeScript types
-│   ├── redux/                    # State management (UI/Auth)
-│   │   ├── index.ts             # Store configuration
-│   │   ├── slices/              # Redux slices
-│   │   ├── api/                 # RTK Query APIs
-│   │   └── middleware/          # Custom middleware
-│   ├── database/                 # WatermelonDB Setup
-│   │   ├── index.ts             # Database instance
-│   │   ├── schema.ts            # Database schema
-│   │   └── models/              # Data models
-│   ├── services/                 # Business logic
-│   │   ├── auth.ts              # Authentication
-│   │   ├── SupabaseSyncService.ts # Sync Engine
-│   │   └── supabase.ts          # Supabase client
-│   ├── types/                    # TypeScript definitions
-│   ├── hooks/                    # Custom React hooks
-│   ├── utils/                    # Utility functions
-│   └── App.tsx                   # Root component
-├── tests/                        # Test files
-├── documentation/                # This documentation
-└── project-context/              # Project specs and planning
-
+src/
+├── components/ui/       # WW-prefixed UI components (The Design System)
+├── screens/             # Organized by domain: Projects, Deployments, Devices
+├── navigation/          # React Navigation stacks and types
+├── redux/               # RTK Slices and API definitions
+├── database/            # WatermelonDB schema and models
+├── services/            # Business logic (Sync, Auth, Deployment)
+├── hooks/               # Custom hooks (useBle, useDeviceSettings)
+└── ble/                 # BLE command definitions and classifiers
 ```
 
-## Understanding the User Flow
+---
 
-### Authentication
-1. User opens app
-2. Check for existing session (AsyncStorage)
-3. If no session → Show login screen
-4. After login → Store session + navigate to home
+## 🛠️ Daily Development Commands
 
-### Creating a Deployment (Offline Scenario)
-1. User taps "Start Deployment" FAB on Maps screen
-2. Select project (or create new one)
-3. Scan for nearby Wildlife Watcher cameras via Bluetooth
-4. Configure deployment (location, capture method, etc.)
-5. Test camera snapshot
-6. Save deployment → **Writes to WatermelonDB immediately**
-7. UI updates instantly via Observables
-8. When network returns → **Supabase Sync Engine pushes changes**
-
-(See full details in **[03-DEPLOYMENT-FLOW.md](./03-DEPLOYMENT-FLOW.md)**)
-
-### Data Sync Flow
-```
-WatermelonDB (Local)
-   ↓
-Network Monitor detects connectivity
-   ↓
-Supabase Sync Engine triggers
-   ↓
-1. PUSH local changes to Supabase
-2. PULL remote changes from Supabase
-3. Apply updates to local DB
-```
-
-## Key Files to Explore
-
-Start exploring the codebase with these essential files:
-
-1. **`src/App.tsx`** - Application root with providers
-2. **`src/database/index.ts`** - WatermelonDB configuration
-3. **`src/navigation/index.tsx`** - Navigation structure
-4. **`src/services/SupabaseSyncService.ts`** - Core sync logic
-5. **`src/database/models/Project.ts`** - Example data model
-6. **`src/types/database.types.ts`** - Generated TypeScript types from database schema
-
-## Development Environment
-
-### Prerequisites
-- Node.js 20+ (check with `node --version`)
-- npm
-- Android Studio (for Android development, SDK 35)
-- Xcode (for iOS development - Mac only)
-- Expo CLI (installed via npx)
-- **Google Play Service Account Key** (for automated store submissions)
-
-### Quick Start
 ```bash
-# Install dependencies
-# On Windows:
-npm install --ignore-scripts
-# On macOS/Linux:
-npm install
-
-# Start development server
-npm start
+npx expo start        # Start dev server
+npm run android       # Run on Android device
+npm run lint          # Run linter
+npm run type-check    # Run TypeScript check
+npm test              # Run Jest tests
 ```
 
-### Useful Commands
-```bash
-# TypeScript type checking
-npm run type-check
+### Troubleshooting Quick Fixes
+- **Clear Cache**: `npx expo start --clear`
+- **ADB Issues**: `adb kill-server && adb start-server`
+- **Native Reinstall**: `rm -rf node_modules && npm install`
 
-# Run tests
-npm run test
+---
 
-# Linting
-npm run lint
+## 💡 Key Tips for Success
 
-# Generate Supabase types (when backend changes)
-npm run types:cloud-dev
-```
+1. **Think Offline**: Always consider what happens if the user has no signal.
+2. **BLE Safety**: Our BLE queue uses 500ms intervals to prevent device overflow.
+3. **Type Safety**: TypeScript is mandatory. Use existing types from `src/types/`.
+4. **Custom Components**: Always check `src/components/ui/` before building a custom element (Buttons, Text, Icons).
 
-## Common Patterns You'll See
+**Ready to dive deeper?** Move on to **[01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md)**. 🚀
 
-### 1. Custom Hooks for Logic Reuse
-```typescript
-// src/hooks/useOfflineSync.ts
-export const useOfflineSync = () => {
-  const isOnline = useAppSelector(state => state.network.isOnline);
-
-  useEffect(() => {
-    if (isOnline) {
-      SupabaseSyncService.sync();
-    }
-  }, [isOnline]);
-};
-```
-
-### 2. Typed Redux Selectors
-```typescript
-// Component usage
-const isSidebarOpen = useAppSelector(state => state.ui.isSidebarOpen);
-const user = useAppSelector(state => state.authentication.user);
-```
-
-### 3. Service Layer Pattern
-```typescript
-// src/services/ProjectService.ts
-export class ProjectService {
-  async createProject(data: ProjectCreate): Promise<Project> {
-    // Write directly to WatermelonDB
-    await database.write(async () => {
-      await projectsCollection.create(project => {
-        project.name = data.name;
-        // ...
-      });
-    });
-    // Sync happens automatically in background
-  }
-}
-```
-
-## What Makes This App Unique
-
-1. **True offline-first** - Not just "works offline sometimes"
-2. **Complex sync logic** - Role-based sync filtering, conflict resolution
-3. **Organisation multi-tenancy** - Data isolation across organisations
-4. **Bluetooth integration** - Real BLE device communication
-5. **LoRaWAN integration** - Remote status updates from deployed cameras
-6. **Role-based permissions** - WW Admin, Project Admin, Project Member roles
-
-## Next Steps
-
-Now that you understand the basics:
-
-1. ✅ Read [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) for deep dives into each technology
-2. ✅ Explore [02-PROJECT-STRUCTURE.md](./02-PROJECT-STRUCTURE.md) to navigate the codebase
-3. ✅ Study [03-OFFLINE-FIRST-ARCHITECTURE.md](./03-OFFLINE-FIRST-ARCHITECTURE.md) - this is the heart of the app
-4. ✅ Learn Redux patterns in [04-REDUX-STATE-MANAGEMENT.md](./04-REDUX-STATE-MANAGEMENT.md)
-5. ✅ Set up your dev environment with [06-DEVELOPMENT-WORKFLOW.md](./06-DEVELOPMENT-WORKFLOW.md)
-
-## Questions?
-
-- Check the other onboarding docs for specific topics
-- Search the codebase for examples
-- Ask the team in Slack/Teams
-- Pair program with experienced developers
-
-Welcome aboard! 🚀
+---
+*Last Updated: January 30, 2026*

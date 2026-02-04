@@ -2,10 +2,10 @@ import { useState, useEffect } from "react"
 import { BottomNavigation } from "react-native-paper"
 import { useRoute, RouteProp } from "@react-navigation/native"
 import { RootStackParamList } from "./index"
-import { Deployments } from "./screens/Deployments"
-import { Maps } from "./screens/Maps"
-import { Projects } from "./screens/Projects"
-import { Devices } from "./screens/Devices"
+import { Deployments } from "../screens/Deployments/DeploymentsListScreen"
+import { Maps } from "./screens/MapsScreen"
+import { Projects } from "../screens/Projects/ProjectsListScreen"
+import { Devices } from "../screens/Devices/DevicesListScreen"
 import { useExtendedTheme } from "../theme"
 import InvitationService from "../services/InvitationService"
 import { getSupabaseClient } from "../services/supabase"
@@ -55,6 +55,9 @@ export const BottomTabs = () => {
 	useEffect(() => {
 		if (route.params?.initialTab === "devices") {
 			setIndex(3)
+			navigation.setParams({ initialTab: undefined })
+		} else if (route.params?.initialTab === "deployment") {
+			setIndex(2)
 			navigation.setParams({ initialTab: undefined })
 		}
 	}, [route.params?.initialTab, navigation])

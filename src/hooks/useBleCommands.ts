@@ -25,8 +25,9 @@ export const useBleCommands = () => {
         await write(peripheral, [[CommandNames.id, { control: CommandControlTypes.READ }]])
     }, [write])
 
-    const getStatus = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.status, { control: CommandControlTypes.READ }]])
+    const getStatus = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
+        const responses = await write(peripheral, [[CommandNames.status, { control: CommandControlTypes.READ }]])
+        return responses[0] || ''
     }, [write])
 
     const getOps = useCallback(async (peripheral: ExtendedPeripheral) => {
@@ -63,11 +64,12 @@ export const useBleCommands = () => {
     }, [write, disconnectDevice])
 
     const setUtc = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.SET_UTC, { control: CommandControlTypes.WRITE }]])
+        await write(peripheral, [[CommandNames.SET_UTC, { control: CommandControlTypes.WRITE }]], { timeout: 10000 })
     }, [write])
 
-    const getUtc = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.getutc, { control: CommandControlTypes.READ }]])
+    const getUtc = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
+        const responses = await write(peripheral, [[CommandNames.getutc, { control: CommandControlTypes.READ }]])
+        return responses[0] || ''
     }, [write])
 
 
@@ -108,40 +110,34 @@ export const useBleCommands = () => {
 
 
     // --- Debug ---
-    const runSelfTest = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.selftest, { control: CommandControlTypes.WRITE }]])
+    const runSelfTest = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
+        const responses = await write(peripheral, [[CommandNames.selftest, { control: CommandControlTypes.WRITE }]])
+        return responses[0] || ''
     }, [write])
 
     const enableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
         console.log('[BLE CMD] Sending enable camera command to:', peripheral.id)
-        // Bypass queue for immediate execution
-        const { writeToDevice } = require('../utils/helpers')
-        try {
-            await writeToDevice(peripheral, `AI ${CommandNames.ENABLE_CAMERA}`)
-        } catch (error) {
-            // Fallback to queue if direct write fails (unlikely but safe) or just throw
-            console.error('[BLE CMD] Direct write failed for enableCamera:', error)
-            await write(peripheral, [[CommandNames.ENABLE_CAMERA, { control: CommandControlTypes.WRITE }]])
-        }
+        await write(peripheral, [[CommandNames.ENABLE_CAMERA, { control: CommandControlTypes.WRITE }]], { timeout: 10000 })
     }, [write])
-
+    
     const disableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
         console.log('[BLE CMD] Sending disable camera command to:', peripheral.id)
-        // Bypass queue for immediate execution
-        const { writeToDevice } = require('../utils/helpers')
-        try {
-            await writeToDevice(peripheral, `AI ${CommandNames.DISABLE_CAMERA}`)
-        } catch (error) {
-            console.error('[BLE CMD] Direct write failed for disableCamera:', error)
-            await write(peripheral, [[CommandNames.DISABLE_CAMERA, { control: CommandControlTypes.WRITE }]])
-        }
+        await write(peripheral, [[CommandNames.DISABLE_CAMERA, { control: CommandControlTypes.WRITE }]], { timeout: 10000 })
     }, [write])
 
     const getHeartbeat = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.heartbeat, { control: CommandControlTypes.READ }]])
+        // Use 'wake' command instead of 'heartbeat' to ensure AI processor inactivity timer is reset
+        // 'heartbeat' command only checks the BLE/MCU status but doesn't necessarily wake the AI
+        console.log('[BLE CMD] Sending keep-alive (wake) to:', peripheral.id)
+        await write(peripheral, [[CommandNames.wake, { control: CommandControlTypes.WRITE }]], { timeout: 8000 })
     }, [write])
 
-    const flashLed = useCallback(async (peripheral: ExtendedPeripheral, color: 'red' | 'green' | 'blue', durationMs: number = 100, count: number = 5) => {
+    /**
+     * Flash one of the device LEDs
+     * @param count Number of times to flash
+     * @param durationMs Duration of each flash in milliseconds
+     */
+    const flashLed = useCallback(async (peripheral: ExtendedPeripheral, color: 'red' | 'green' | 'blue', count: number = 2, durationMs: number = 500) => {
         const value = `${count} ${durationMs}`
         let commandName = CommandNames.flashr
         switch (color) {
@@ -152,16 +148,8 @@ export const useBleCommands = () => {
     }, [write])
 
     const setOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number, value: string) => {
-        // Bypass queue for immediate execution to support robust timing in loops (e.g. useDeviceSettings)
-        const { writeToDevice } = require('../utils/helpers')
-        const commandStr = `AI setop ${index} ${value}`
-        try {
-            console.log(`[BLE CMD] Direct write: ${commandStr}`)
-            await writeToDevice(peripheral, commandStr)
-        } catch (error) {
-            console.error(`[BLE CMD] Direct write failed for setop ${index}:`, error)
-            await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]])
-        }
+        // Use structured command so useBle can find the correct regex pattern automatically
+        await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]])
     }, [write])
 
     const setGpsLocation = useCallback(
@@ -205,8 +193,6 @@ export const useBleCommands = () => {
         await write(peripheral, [[CommandNames.DISABLE_TIMELAPSE, { control: CommandControlTypes.WRITE }]])
     }, [write])
 
-
-
     const setDeploymentIdAsOps = useCallback(
         async (peripheral: ExtendedPeripheral, id: string | null) => {
             console.log('[BLE CMD] Sending Deployment ID via OPs (20-27). ID:', id)
@@ -221,11 +207,6 @@ export const useBleCommands = () => {
                 ops = parseUuidToOps(id)
             }
 
-            // IMPORT WARNING: We need writeToDevice from helpers to bypass the useBle queue
-            // The useBle queue batches commands with 20ms delays, which is too fast for the
-            // firmware's wake/sleep cycle during this specific operation.
-            const { writeToDevice } = require('../utils/helpers')
-
             // Send 8 commands with strict delays between each
             for (let i = 0; i < 8; i++) {
                 const opIndex = 20 + i
@@ -234,10 +215,14 @@ export const useBleCommands = () => {
 
                 console.log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
 
-                // Use direct writeToDevice to ensure we await the actual BLE transmission
-                // and bypass the 500ms polling queue of useBle hook.
+                // Use the new serialized write method instead of raw writeToDevice
                 try {
-                    await writeToDevice(peripheral, commandStr)
+                    const results = await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]])
+                    // Check if write returned an error string (since useBle swallows errors)
+                    const result = results[0]
+                    if (result && typeof result === 'string' && result.startsWith('ERROR:')) {
+                        throw new Error(result)
+                    }
                 } catch (error) {
                     console.error(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
                     throw error
@@ -245,15 +230,14 @@ export const useBleCommands = () => {
 
                 // Add delay after each command to allow firmware to process/sleep/wake
                 if (i < 7) {
-                    // CRITICAL: First command (Wake) needs longer delay.
-                    // Subsequent commands need enough time to process before next wake cycle triggers
-                    const delay = i === 0 ? 600 : 150
-                    await new Promise(r => setTimeout(r, delay))
+                    const delayMs = i === 0 ? 600 : 150
+                    const { sleep } = require('../utils/helpers')
+                    await sleep(delayMs)
                 }
             }
             console.log('[BLE CMD] Deployment ID OPs sent successfully')
         },
-        [] // No dependencies needed as we use direct import
+        [write]
     )
 
     return {
@@ -281,6 +265,10 @@ export const useBleCommands = () => {
         // AI
         checkSdCard,
         captureTestImage,
+        setMotionDetectInterval,
+        disableMotionDetect,
+        setTimelapseInterval,
+        disableTimelapse,
         // Debug
         runSelfTest,
         getHeartbeat,

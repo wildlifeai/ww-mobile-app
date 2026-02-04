@@ -115,8 +115,18 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project, onPress }) =>
 
 ```
 screens/
-├── AuthTestScreen.tsx         # Auth testing (dev only)
-└── ProjectMembersScreen.tsx   # Project members management
+├── Deployments/           # Deployment-related screens
+│   ├── StartDeploymentScreen.tsx
+│   ├── EndDeploymentScreen.tsx
+│   └── ...
+├── Devices/               # Device management screens
+│   ├── PrepareAndTestScreen.tsx
+│   ├── DeviceDiscoveryScreen.tsx
+│   └── ...
+├── Projects/              # Project management screens
+│   ├── ProjectDetailsScreen.tsx
+│   └── ...
+└── AuthTestScreen.tsx     # Auth testing (dev only)
 ```
 
 **Example Screen**:
@@ -151,11 +161,10 @@ navigation/
 ├── BottomTabs.tsx         # Bottom tab navigation
 ├── types.ts               # Navigation TypeScript types
 ├── linking.ts             # Deep linking configuration
-└── screens/               # Screen components
+└── screens/               # Auth & Utility screens
     ├── Login.tsx
-    ├── AddDeployment.tsx
     ├── Profile.tsx
-    └── ... more screens
+    └── ...
 ```
 
 **Navigation Types**: `src/navigation/types.ts` or `index.tsx:33-52`
@@ -420,10 +429,10 @@ project-context/
 - **Supabase**: `src/services/supabase.ts` (use `getSupabaseClient()`)
 
 ### "Where are the project screens?"
-- **List Screen**: `src/navigation/screens/Projects.tsx` (if exists) or check `src/navigation/BottomTabs.tsx`
-- **Details Screen**: `src/navigation/screens/ProjectDetailsScreen.tsx`
-- **Members Screen**: `src/screens/ProjectMembersScreen.tsx`
-- **Create Screen**: `src/navigation/screens/AddProject.tsx` or `NewProjectScreen.tsx`
+- **List Screen**: `src/screens/Projects/ProjectsListScreen.tsx`
+- **Details Screen**: `src/screens/Projects/ProjectDetailsScreen.tsx`
+- **Members Screen**: `src/screens/Projects/ProjectMembersScreen.tsx`
+- **Create Screen**: `src/screens/Projects/AddProjectScreen.tsx`
 
 ### "Where is navigation configured?"
 - **Main Nav**: `src/navigation/index.tsx`
@@ -487,7 +496,7 @@ import { OfflineOperation, ProjectCreate } from '../types';
 | TypeScript types | `src/types/` |
 | Custom hooks | `src/hooks/` |
 | Reusable components | `src/components/` |
-| Screens | `src/navigation/screens/` or `src/screens/` |
+| Screens | `src/screens/{Feature}/` |
 | Business logic | `src/services/` |
 | Tests | `tests/` |
 | Configuration | Root directory (`*.json`, `*.config.js`) |
