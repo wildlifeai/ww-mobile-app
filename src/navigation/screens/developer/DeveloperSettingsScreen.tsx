@@ -34,7 +34,7 @@ try {
 	Updates = require("expo-updates")
 } catch (e) {
 	// expo-updates not available (Expo Go or development build without native module)
-	console.warn("expo-updates not available - using manual restart instructions")
+	logWarn("expo-updates not available - using manual restart instructions")
 }
 
 import { WWText } from "../../../components/ui/WWText"
@@ -51,6 +51,8 @@ import {
 	canSwitchEnvironment,
 } from "../../../config/EnvironmentManager"
 import { reconnectSupabase } from "../../../services/supabase"
+import { log, logError, logWarn } from '../../../utils/logger'
+
 
 /**
  * Connection status for each environment
@@ -109,14 +111,14 @@ export const DeveloperSettingsScreen: React.FC = () => {
 	// Load current environment from storage on mount
 	useEffect(() => {
 		const loadEnvironment = async () => {
-			console.log("📱 [DeveloperSettings] Loading current environment...")
+			log("📱 [DeveloperSettings] Loading current environment...")
 			try {
 				const env = await getEnvironment()
-				console.log(`📱 [DeveloperSettings] Loaded environment: ${env}`)
+				log(`📱 [DeveloperSettings] Loaded environment: ${env}`)
 				setCurrentEnvironment(env)
 				setSelectedEnvironment(env)
 			} catch (error) {
-				console.error("📱 [DeveloperSettings] Failed to load environment:", error)
+				logError("📱 [DeveloperSettings] Failed to load environment:", error)
 				// Fallback to default
 				const defaultEnv = getDefaultEnvironment()
 				setCurrentEnvironment(defaultEnv)
@@ -144,16 +146,16 @@ export const DeveloperSettingsScreen: React.FC = () => {
 		try {
 			const config = ENVIRONMENT_CONFIGS[env]
 
-			console.log(`🔍 [${env}] Testing connection...`)
-			console.log(`🔍 [${env}] URL: ${config.supabaseUrl}`)
-			console.log(`🔍 [${env}] Anon Key Length: ${config.supabaseAnonKey.length}`)
-			console.log(
+			log(`🔍 [${env}] Testing connection...`)
+			log(`🔍 [${env}] URL: ${config.supabaseUrl}`)
+			log(`🔍 [${env}] Anon Key Length: ${config.supabaseAnonKey.length}`)
+			log(
 				`🔍 [${env}] Anon Key Prefix: ${config.supabaseAnonKey.substring(0, 20)}...`,
 			)
 
 			// Basic health check: attempt to query Supabase
 			const testUrl = `${config.supabaseUrl}/rest/v1/`
-			console.log(`🔍 [${env}] Test URL: ${testUrl}`)
+			log(`🔍 [${env}] Test URL: ${testUrl}`)
 
 			const response = await fetch(testUrl, {
 				method: "HEAD",
@@ -163,30 +165,30 @@ export const DeveloperSettingsScreen: React.FC = () => {
 				},
 			})
 
-			console.log(`📡 [${env}] Response Status: ${response.status}`)
-			console.log(`📡 [${env}] Response OK: ${response.ok}`)
-			console.log(`📡 [${env}] Response Headers:`, {
+			log(`📡 [${env}] Response Status: ${response.status}`)
+			log(`📡 [${env}] Response OK: ${response.ok}`)
+			log(`📡 [${env}] Response Headers:`, {
 				contentType: response.headers.get("content-type"),
 				server: response.headers.get("server"),
 				"sb-gateway-version": response.headers.get("sb-gateway-version"),
 			})
 
 			if (response.ok) {
-				console.log(`✅ [${env}] Connection successful!`)
+				log(`✅ [${env}] Connection successful!`)
 				setConnectionStatus((prev) => ({
 					...prev,
 					[env]: "connected",
 				}))
 			} else {
-				console.error(
+				logError(
 					`❌ [${env}] Connection failed with status ${response.status}`,
 				)
 				// Try to get response body for more details
 				try {
 					const responseText = await response.text()
-					console.error(`❌ [${env}] Response body:`, responseText)
+					logError(`❌ [${env}] Response body:`, responseText)
 				} catch {
-					console.error(`❌ [${env}] Could not read response body`)
+					logError(`❌ [${env}] Could not read response body`)
 				}
 
 				setConnectionStatus((prev) => ({
@@ -195,7 +197,7 @@ export const DeveloperSettingsScreen: React.FC = () => {
 				}))
 			}
 		} catch (error) {
-			console.error(`❌ [${env}] Connection test exception:`, {
+			logError(`❌ [${env}] Connection test exception:`, {
 				message: error instanceof Error ? error.message : "Unknown error",
 				name: error instanceof Error ? error.name : "Unknown",
 				stack: error instanceof Error ? error.stack : undefined,
@@ -214,17 +216,17 @@ export const DeveloperSettingsScreen: React.FC = () => {
 	 * Prompts user for confirmation, updates environment, and restarts the app
 	 */
 	const handleApplyAndRestart = useCallback(async () => {
-		console.log("🔄 [Restart] Handle apply and restart called")
-		console.log(`🔄 [Restart] Selected: ${selectedEnvironment}`)
-		console.log(`🔄 [Restart] Current: ${currentEnvironment}`)
+		log("🔄 [Restart] Handle apply and restart called")
+		log(`🔄 [Restart] Selected: ${selectedEnvironment}`)
+		log(`🔄 [Restart] Current: ${currentEnvironment}`)
 
 		if (selectedEnvironment === currentEnvironment) {
-			console.log("⚠️ [Restart] No change - environments match")
+			log("⚠️ [Restart] No change - environments match")
 			Alert.alert("No Change", "Selected environment is already active.")
 			return
 		}
 
-		console.log("🔄 [Restart] Showing confirmation dialog")
+		log("🔄 [Restart] Showing confirmation dialog")
 
 		Alert.alert(
 			"Restart Required",
@@ -235,7 +237,7 @@ export const DeveloperSettingsScreen: React.FC = () => {
 					text: "Cancel",
 					style: "cancel",
 					onPress: () => {
-						console.log("❌ [Restart] User cancelled restart")
+						log("❌ [Restart] User cancelled restart")
 					},
 				},
 				{
@@ -243,23 +245,23 @@ export const DeveloperSettingsScreen: React.FC = () => {
 					style: "default",
 					onPress: async () => {
 						try {
-							console.log("🔄 [Restart] User confirmed restart")
-							console.log("🔄 [Restart] Setting isRestarting to true")
+							log("🔄 [Restart] User confirmed restart")
+							log("🔄 [Restart] Setting isRestarting to true")
 							setIsRestarting(true)
 
-							console.log("🔄 [Restart] Checking expo-updates availability")
-							console.log(`🔄 [Restart] Updates object:`, Updates)
-							console.log(
+							log("🔄 [Restart] Checking expo-updates availability")
+							log(`🔄 [Restart] Updates object:`, Updates)
+							log(
 								`🔄 [Restart] reloadAsync available:`,
 								!!Updates?.reloadAsync,
 							)
 
 							// Save environment selection to AsyncStorage
-							console.log(
+							log(
 								`🔄 [Restart] Saving environment: ${selectedEnvironment}`,
 							)
 							await setEnvironment(selectedEnvironment)
-							console.log("✅ [Restart] Environment saved to AsyncStorage")
+							log("✅ [Restart] Environment saved to AsyncStorage")
 
 							// Update local state to reflect the change
 							setCurrentEnvironment(selectedEnvironment)
@@ -267,9 +269,9 @@ export const DeveloperSettingsScreen: React.FC = () => {
 							// In development builds, Updates.reloadAsync() just reloads JS bundle
 							// without reinitializing native modules or recreating Supabase client.
 							// We need to manually trigger Supabase client recreation.
-							console.log("🔄 [Restart] Triggering Supabase client recreation...")
+							log("🔄 [Restart] Triggering Supabase client recreation...")
 							await reconnectSupabase()
-							console.log("✅ [Restart] Supabase client recreated with new environment")
+							log("✅ [Restart] Supabase client recreated with new environment")
 
 							// Stop loading spinner and show success
 							setIsRestarting(false)
@@ -283,13 +285,13 @@ export const DeveloperSettingsScreen: React.FC = () => {
 										text: "OK",
 										style: "default",
 										onPress: () => {
-											console.log("✅ [Restart] Environment switch complete")
+											log("✅ [Restart] Environment switch complete")
 										},
 									},
 								],
 							)
 						} catch (error) {
-							console.error("❌ [Restart] Error during restart:", {
+							logError("❌ [Restart] Error during restart:", {
 								message: error instanceof Error ? error.message : "Unknown error",
 								name: error instanceof Error ? error.name : "Unknown",
 								stack: error instanceof Error ? error.stack : undefined,

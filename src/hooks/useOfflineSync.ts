@@ -15,6 +15,8 @@ import {
 	selectEntitySyncStatus,
 } from "../redux/slices/syncSlice"
 import { selectIsOnline, selectCanSync } from "../redux/slices/networkSlice"
+import { logWarn } from '../utils/logger'
+
 
 export const useOfflineSync = () => {
 	// Network state
@@ -47,7 +49,7 @@ export const useOfflineSync = () => {
 	 * @deprecated Use WatermelonDB models directly instead
 	 */
 	const queueOperation = useCallback(async (operation: any) => {
-		console.warn("⚠️ queueOperation is deprecated. Use WatermelonDB models directly.")
+		logWarn("⚠️ queueOperation is deprecated. Use WatermelonDB models directly.")
 		// Return a mock fulfilled result for compatibility
 		return {
 			meta: {

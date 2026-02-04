@@ -20,12 +20,14 @@ import CaptureMethod from './models/CaptureMethod'
 import ActivitySensitivity from './models/ActivitySensitivity'
 import AiModel from './models/AiModel'
 import SamplingDesign from './models/SamplingDesign'
+import { logError } from '../utils/logger'
+
 
 const adapter = new SQLiteAdapter({
     schema,
     onSetUpError: error => {
         // Database failed to load -- offer the user to reload the app or log out
-        console.error('Database setup error:', error)
+        logError('Database setup error:', error)
     }
 })
 

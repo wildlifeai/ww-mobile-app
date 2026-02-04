@@ -16,6 +16,8 @@ type DeviceDetailsRouteProp = RouteProp<{ params: { deviceId: string } }, 'param
 
 import { RootStackParamList } from '../../navigation'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { logError } from '../../utils/logger'
+
 
 export const DeviceDetailsScreen = () => {
     const route = useRoute<DeviceDetailsRouteProp>()
@@ -40,7 +42,7 @@ export const DeviceDetailsScreen = () => {
             setDeviceWithStatus(details)
             setDeploymentHistory(history)
         } catch (error) {
-            console.error('Error loading device details:', error)
+            logError('Error loading device details:', error)
             Alert.alert('Error', 'Failed to load device details')
         } finally {
             setLoading(false)

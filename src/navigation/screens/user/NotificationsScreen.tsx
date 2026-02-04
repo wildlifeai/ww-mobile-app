@@ -6,6 +6,8 @@ import { useState, useCallback } from "react"
 import { useFocusEffect } from "@react-navigation/native"
 import InvitationService from "../../../services/InvitationService"
 import type ProjectInvitation from "../../../database/models/ProjectInvitation"
+import { logError } from '../../../utils/logger'
+
 
 export const Notifications = () => {
 	const theme = useTheme()
@@ -22,7 +24,7 @@ export const Notifications = () => {
 			const pending = await InvitationService.getLocalPendingInvitations()
 			setInvitations(pending)
 		} catch (error) {
-			console.error("Failed to load invitations:", error)
+			logError("Failed to load invitations:", error)
 		} finally {
 			setLoading(false)
 		}

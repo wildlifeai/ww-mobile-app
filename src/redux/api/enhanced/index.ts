@@ -7,6 +7,8 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react"
 // import type { RootState } from "../.." // Circular dependency
 import { getSupabaseClient } from "../../../services/supabase"
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js"
+import { log } from '../../../utils/logger'
+
 
 // Define local state type to avoid circular dependency
 interface AuthRootState {
@@ -396,7 +398,7 @@ export const enhancedApi = createApi({
 								>,
 							) => {
 								// This will trigger cache invalidation
-								console.log("Realtime update:", payload)
+								log("Realtime update:", payload)
 							},
 						)
 						.subscribe()

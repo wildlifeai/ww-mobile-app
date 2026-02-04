@@ -13,6 +13,8 @@ import { AppParams } from "../../navigation/index"
 import { useDispatch } from "react-redux"
 import { removeDevice } from "../../redux/slices/devicesSlice"
 import { WWProgressBar } from "../../components/ui/WWProgressBar"
+import { log, logError } from '../../utils/logger'
+
 
 export const DfuScreen = () => {
 	const [fileName, setFileName] = useState<string>()
@@ -28,13 +30,13 @@ export const DfuScreen = () => {
 	const isUpdating = dfuProgress > 0 && dfuProgress < 100
 
 	const handleFilePick = async () => {
-		console.log("🔍 DFU: Starting file pick process...")
-		console.log("🔍 DFU: FileSystem.cacheDirectory:", (FileSystem as any).cacheDirectory)
+		log("🔍 DFU: Starting file pick process...")
+		log("🔍 DFU: FileSystem.cacheDirectory:", (FileSystem as any).cacheDirectory)
 		try {
 			// Request necessary permissions first
 			if (Platform.OS === "android") {
 				try {
-					console.log("🔍 DFU: Requesting notification permission...")
+					log("🔍 DFU: Requesting notification permission...")
 					const granted = await PermissionsAndroid.request(
 						PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
 						{
@@ -46,19 +48,19 @@ export const DfuScreen = () => {
 							buttonPositive: "Allow",
 						},
 					)
-					console.log("🔍 DFU: Permission result:", granted)
+					log("🔍 DFU: Permission result:", granted)
 
 					if (granted === PermissionsAndroid.RESULTS.DENIED) {
-						console.log(
+						log(
 							"🔍 DFU: Permission denied, continuing without notifications...",
 						)
 						// Continue anyway - notification permission is not critical for file picking
 					} else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-						console.log("🔍 DFU: Permission permanently denied, continuing...")
+						log("🔍 DFU: Permission permanently denied, continuing...")
 						// Continue anyway - notification permission is not critical for file picking
 					}
 				} catch (err) {
-					console.log(
+					log(
 						"🔍 DFU: Permission request failed, continuing without notifications:",
 						err,
 					)
@@ -66,14 +68,14 @@ export const DfuScreen = () => {
 				}
 			}
 
-			console.log("🔍 DFU: Launching document picker...")
+			log("🔍 DFU: Launching document picker...")
 			const result = await DocumentPicker.pick({
 				type: Platform.select({
 					ios: ["public.archive"],
 					android: [DocumentPicker.types.allFiles],
 				}),
 			})
-			console.log("🔍 DFU: Document picker result:", result[0])
+			log("🔍 DFU: Document picker result:", result[0])
 
 			setFileName(result[0].name || "Unknown file")
 
@@ -88,7 +90,7 @@ export const DfuScreen = () => {
 			}
 
 			if (Platform.OS === "android") {
-				console.log(
+				log(
 					"🔍 DFU: Copying file from:",
 					result[0].uri,
 					"to:",
@@ -98,7 +100,7 @@ export const DfuScreen = () => {
 					from: result[0].uri,
 					to: localPath,
 				})
-				console.log("🔍 DFU: File copy completed successfully")
+				log("🔍 DFU: File copy completed successfully")
 			}
 
 			try {
@@ -113,14 +115,14 @@ export const DfuScreen = () => {
 				// Clean up file regardless of DFU success/failure
 				if (Platform.OS === "android") {
 					await FileSystem.deleteAsync(localPath, { idempotent: true }).catch(
-						console.error,
+						logError,
 					)
 				}
 			}
 		} catch (err) {
 			if (!DocumentPicker.isCancel(err)) {
-				console.error("🚨 DFU file pick failed:", err)
-				console.error("🚨 DFU error details:", {
+				logError("🚨 DFU file pick failed:", err)
+				logError("🚨 DFU error details:", {
 					message: err instanceof Error ? err.message : "Unknown error",
 					stack: err instanceof Error ? err.stack : undefined,
 					name: err instanceof Error ? err.name : undefined,
@@ -129,7 +131,7 @@ export const DfuScreen = () => {
 					err instanceof Error ? err.message : "Unknown error occurred",
 				)
 			} else {
-				console.log("🔍 DFU: User cancelled file picker")
+				log("🔍 DFU: User cancelled file picker")
 			}
 		}
 	}

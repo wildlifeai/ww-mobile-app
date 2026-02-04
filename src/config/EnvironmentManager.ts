@@ -17,6 +17,8 @@ import {
 	getDefaultEnvironment,
 	isValidEnvironment,
 } from "./environments"
+import { logError } from '../utils/logger'
+
 
 /** AsyncStorage key for persisting environment preference */
 const STORAGE_KEY = "@supabase_environment"
@@ -45,7 +47,7 @@ export async function getEnvironment(): Promise<SupabaseEnvironment> {
 		return getDefaultEnvironment()
 	} catch (error) {
 		// On storage error, fallback to default
-		console.error("Failed to read environment from storage:", error)
+		logError("Failed to read environment from storage:", error)
 		return getDefaultEnvironment()
 	}
 }

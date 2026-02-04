@@ -14,6 +14,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useState, useEffect } from "react"
 import { TestDeepLink } from "../../../components/TestDeepLink"
 import { KEYBOARD_AVOID_PADDING } from "../../../constants/layout"
+import { logError } from '../../../utils/logger'
+
 
 type FormData = {
 	email: string
@@ -48,7 +50,7 @@ export const Login = () => {
 				setRememberMe(true)
 			}
 		} catch (error) {
-			console.error("Failed to load saved credentials:", error)
+			logError("Failed to load saved credentials:", error)
 		}
 	}
 
@@ -73,7 +75,7 @@ export const Login = () => {
 
 			dispatch(setCredentials(response))
 		} catch (err) {
-			console.error("❌ Login failed - Full error details:", {
+			logError("❌ Login failed - Full error details:", {
 				message: err instanceof Error ? err.message : "Unknown error",
 				errorObject: err,
 				stack: err instanceof Error ? err.stack : undefined,

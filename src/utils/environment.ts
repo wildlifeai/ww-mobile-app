@@ -1,3 +1,5 @@
+import { logWarn } from './logger'
+
 // Lazy import to avoid NativeModule access during initialization
 let Constants: any = null
 
@@ -11,7 +13,7 @@ class EnvironmentConfig {
 			try {
 				Constants = require("expo-constants").default
 			} catch (e) {
-				console.warn(
+				logWarn(
 					"expo-constants failed to load, using fallback config:",
 					e instanceof Error ? e.message : "Unknown error",
 				)
@@ -39,7 +41,7 @@ class EnvironmentConfig {
 		try {
 			return this.getConstants().expoConfig?.extra || {}
 		} catch (e) {
-			console.warn("Could not access expo config, using fallback values:", e)
+			logWarn("Could not access expo config, using fallback values:", e)
 			return {
 				apiBase: "https://api.wildlifeai.org",
 				isDevelopment: true,

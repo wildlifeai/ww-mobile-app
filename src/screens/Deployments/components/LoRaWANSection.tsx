@@ -4,6 +4,8 @@ import { Card, Button, Text, useTheme } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useBleCommands } from '../../../hooks/useBleCommands'
 import { WWIcon } from '../../../components/ui/WWIcon'
+import { logError } from '../../../utils/logger'
+
 
 interface Props {
     device?: ExtendedPeripheral
@@ -25,7 +27,7 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
             setStatus('success')
             setMessage('Ping command sent successfully. Verify reception on server.')
         } catch (error) {
-            console.error('Ping failed:', error)
+            logError('Ping failed:', error)
             setStatus('failed')
             setMessage('Failed to send ping command.')
         }

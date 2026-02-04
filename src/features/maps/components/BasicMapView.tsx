@@ -9,6 +9,8 @@ import React, { useEffect } from "react"
 import { StyleSheet, View, Platform } from "react-native"
 import MapView, { PROVIDER_GOOGLE, Region, Details } from "react-native-maps"
 import { MapRegion, MapType, MapViewConfig } from "../types"
+import { log } from '../../../utils/logger'
+
 
 interface BasicMapViewProps {
 	region: MapRegion
@@ -55,7 +57,7 @@ export const BasicMapView: React.FC<BasicMapViewProps> = ({
 	 * Handle map ready event
 	 */
 	const handleMapReady = () => {
-		console.log("[BasicMapView] Map is ready!")
+		log("[BasicMapView] Map is ready!")
 	}
 
 
@@ -68,7 +70,7 @@ export const BasicMapView: React.FC<BasicMapViewProps> = ({
 		// This prevents infinite loops when updating the region programmatically
 		if (!details.isGesture) return
 
-		console.log("[BasicMapView] Region changed:", newRegion)
+		log("[BasicMapView] Region changed:", newRegion)
 		onRegionChangeComplete?.(newRegion as MapRegion)
 	}
 

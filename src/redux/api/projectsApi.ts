@@ -24,6 +24,8 @@ import type {
 } from "../../types/project"
 import { getSupabaseClient } from "../../services/supabase"
 import ReferenceDataService from "../../services/ReferenceDataService"
+import { log, logError, logWarn } from '../../utils/logger'
+
 
 // Define local state type to avoid circular dependency
 interface AuthRootState {
@@ -72,15 +74,15 @@ export const projectsApi = createApi({
 		// PHASE 3: Now reads from local database (works offline automatically)
 		getProjects: builder.query<ProjectWithDetails[], { userId: string; organisationId: string }>({
 			queryFn: async ({ userId, organisationId }, { getState }) => {
-				console.log("📂 RTK Query - getProjects (offline-first) - STARTING")
+				log("📂 RTK Query - getProjects (offline-first) - STARTING")
 
 				try {
 					if (!organisationId || !userId) {
-						console.warn("⚠️ No current organisation or user ID found")
+						logWarn("⚠️ No current organisation or user ID found")
 						return { data: [] }
 					}
 
-					console.log(
+					log(
 						`📂 RTK Query - Calling ProjectService.getProjectsForUserInOrganisation`,
 						{ userId, organisationId }
 					)
@@ -88,17 +90,17 @@ export const projectsApi = createApi({
 					// Call new filtered method
 					const data = await ProjectService.getProjectsForUserInOrganisation(userId, organisationId)
 
-					console.log(
+					log(
 						`✅ RTK Query - Retrieved ${data.length} projects from local database`,
 					)
-					console.log(
+					log(
 						"   Project names:",
 						data.map((p) => p.name),
 					)
 					return { data }
 				} catch (error) {
-					console.error("❌ RTK Query - getProjects failed:", error)
-					console.error("   Error details:", {
+					logError("❌ RTK Query - getProjects failed:", error)
+					logError("   Error details:", {
 						message: error instanceof Error ? error.message : "Unknown",
 						stack: error instanceof Error ? error.stack : undefined,
 					})
@@ -123,14 +125,14 @@ export const projectsApi = createApi({
 		// NOTE: This still uses Supabase view - will be migrated to local DB in future
 		getProjectById: builder.query<ProjectWithDetails | null, string>({
 			queryFn: async (projectId) => {
-				console.log("📂 RTK Query - getProjectById:", projectId)
+				log("📂 RTK Query - getProjectById:", projectId)
 
 				try {
 					// TODO Phase 3.5: Migrate to local database lookup
 					const data = await ProjectService.getProjectById(projectId)
 					return { data }
 				} catch (error) {
-					console.error("❌ getProjectById failed:", error)
+					logError("❌ getProjectById failed:", error)
 					return {
 						error: {
 							status: "CUSTOM_ERROR",
@@ -146,8 +148,8 @@ export const projectsApi = createApi({
 		// PHASE 3: Always saves locally first, then syncs (no offline parameter needed)
 		createProject: builder.mutation<ProjectWithDetails, CreateProjectInput>({
 			queryFn: async (input) => {
-				console.log("📤 RTK Query - createProject (offline-first)")
-				console.log("  Input:", input)
+				log("📤 RTK Query - createProject (offline-first)")
+				log("  Input:", input)
 
 				try {
 					// ProjectService now ALWAYS:
@@ -156,10 +158,10 @@ export const projectsApi = createApi({
 					// 3. Triggers background sync if online
 					const data = await ProjectService.createProject(input)
 
-					console.log("✅ RTK Query - createProject succeeded (saved locally)")
+					log("✅ RTK Query - createProject succeeded (saved locally)")
 					return { data }
 				} catch (error) {
-					console.error("❌ RTK Query - createProject failed:", error)
+					logError("❌ RTK Query - createProject failed:", error)
 					return {
 						error: {
 							status: "CUSTOM_ERROR",
@@ -178,15 +180,15 @@ export const projectsApi = createApi({
 			{ id: string; updates: Partial<ProjectWithDetails> }
 		>({
 			queryFn: async ({ id, updates }) => {
-				console.log("📤 RTK Query - updateProject (offline-first):", id)
+				log("📤 RTK Query - updateProject (offline-first):", id)
 
 				try {
 					// ProjectService now ALWAYS updates local database and queues sync
 					const data = await ProjectService.updateProject(id, updates)
-					console.log("✅ RTK Query - updateProject succeeded (saved locally)")
+					log("✅ RTK Query - updateProject succeeded (saved locally)")
 					return { data }
 				} catch (error) {
-					console.error("❌ RTK Query - updateProject failed:", error)
+					logError("❌ RTK Query - updateProject failed:", error)
 					return {
 						error: {
 							status: "CUSTOM_ERROR",
@@ -205,17 +207,17 @@ export const projectsApi = createApi({
 		// PHASE 3: Always deletes locally first, then syncs
 		deleteProject: builder.mutation<void, string>({
 			queryFn: async (projectId) => {
-				console.log("📤 RTK Query - deleteProject (offline-first):", projectId)
+				log("📤 RTK Query - deleteProject (offline-first):", projectId)
 
 				try {
 					// ProjectService now ALWAYS deletes from local database and queues sync
 					await ProjectService.deleteProject(projectId)
-					console.log(
+					log(
 						"✅ RTK Query - deleteProject succeeded (deleted locally)",
 					)
 					return { data: void 0 as void }
 				} catch (error) {
-					console.error("❌ RTK Query - deleteProject failed:", error)
+					logError("❌ RTK Query - deleteProject failed:", error)
 					return {
 						error: {
 							status: "CUSTOM_ERROR",

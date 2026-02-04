@@ -3,13 +3,15 @@ import { useBle } from "./useBle"
 import { CommandControlTypes, CommandNames } from "../ble/types"
 import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
 import { formatGPSString } from '../utils/gpsUtils'
+import { log, logError, logWarn } from '../utils/logger'
+
 
 export const useBleCommands = () => {
     const { write, disconnectDevice } = useBle()
 
     // --- Device Info ---
     const getBatteryLevel = useCallback(async (peripheral: ExtendedPeripheral) => {
-        console.log('[BLE CMD] Sending battery level request to device:', peripheral.id)
+        log('[BLE CMD] Sending battery level request to device:', peripheral.id)
         await write(peripheral, [[CommandNames.battery, { control: CommandControlTypes.READ }]])
     }, [write])
 
@@ -56,7 +58,7 @@ export const useBleCommands = () => {
         try {
             await write(peripheral, [[CommandNames.dis, { control: CommandControlTypes.WRITE }]])
         } catch (e) {
-            console.warn('[runDisconnect] BLE write failed, proceeding to local disconnect:', e)
+            logWarn('[runDisconnect] BLE write failed, proceeding to local disconnect:', e)
         } finally {
             // Always trigger app-side disconnect
             await disconnectDevice(peripheral)
@@ -93,13 +95,13 @@ export const useBleCommands = () => {
 
     // --- AI ---
     const checkSdCard = useCallback(async (peripheral: ExtendedPeripheral) => {
-        console.log('[BLE CMD] Sending SD card check request (aiinfo) to device:', peripheral.id)
+        log('[BLE CMD] Sending SD card check request (aiinfo) to device:', peripheral.id)
         try {
             // Send as raw string command like Engineer Console does
             await write(peripheral, ['AI info'])
-            console.log('[BLE CMD] aiinfo command write completed successfully')
+            log('[BLE CMD] aiinfo command write completed successfully')
         } catch (error) {
-            console.error('[BLE CMD] Failed to write aiinfo command:', error)
+            logError('[BLE CMD] Failed to write aiinfo command:', error)
             throw error
         }
     }, [write])
@@ -116,19 +118,19 @@ export const useBleCommands = () => {
     }, [write])
 
     const enableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
-        console.log('[BLE CMD] Sending enable camera command to:', peripheral.id)
+        log('[BLE CMD] Sending enable camera command to:', peripheral.id)
         await write(peripheral, [[CommandNames.ENABLE_CAMERA, { control: CommandControlTypes.WRITE }]], { timeout: 10000 })
     }, [write])
     
     const disableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
-        console.log('[BLE CMD] Sending disable camera command to:', peripheral.id)
+        log('[BLE CMD] Sending disable camera command to:', peripheral.id)
         await write(peripheral, [[CommandNames.DISABLE_CAMERA, { control: CommandControlTypes.WRITE }]], { timeout: 10000 })
     }, [write])
 
     const getHeartbeat = useCallback(async (peripheral: ExtendedPeripheral) => {
         // Use 'wake' command instead of 'heartbeat' to ensure AI processor inactivity timer is reset
         // 'heartbeat' command only checks the BLE/MCU status but doesn't necessarily wake the AI
-        console.log('[BLE CMD] Sending keep-alive (wake) to:', peripheral.id)
+        log('[BLE CMD] Sending keep-alive (wake) to:', peripheral.id)
         await write(peripheral, [[CommandNames.wake, { control: CommandControlTypes.WRITE }]], { timeout: 8000 })
     }, [write])
 
@@ -156,13 +158,13 @@ export const useBleCommands = () => {
         async (peripheral: ExtendedPeripheral, latitude: number, longitude: number, altitude: number) => {
             try {
                 const gpsString = formatGPSString(latitude, longitude, altitude)
-                console.log('[BLE] Setting GPS location:', { latitude, longitude, altitude, gpsString })
+                log('[BLE] Setting GPS location:', { latitude, longitude, altitude, gpsString })
 
                 await write(peripheral, [[CommandNames.setgps, { control: CommandControlTypes.WRITE, value: gpsString }]])
 
-                console.log('[BLE] GPS location set successfully')
+                log('[BLE] GPS location set successfully')
             } catch (error) {
-                console.error('[BLE] Failed to set GPS location:', error)
+                logError('[BLE] Failed to set GPS location:', error)
                 throw error
             }
         },
@@ -170,7 +172,7 @@ export const useBleCommands = () => {
     )
 
     const clearGpsLocation = useCallback(async (peripheral: ExtendedPeripheral) => {
-        console.log('[BLE CMD] Clearing GPS location on device:', peripheral.id)
+        log('[BLE CMD] Clearing GPS location on device:', peripheral.id)
         // Use formatGPSString to generate properly formatted DMS string
         // Firmware expects format like: "0°0'0.00\"_N_0°0'0.00\"_E_0.00_Above"
         const gpsString = formatGPSString(0, 0, 0)
@@ -195,7 +197,7 @@ export const useBleCommands = () => {
 
     const setDeploymentIdAsOps = useCallback(
         async (peripheral: ExtendedPeripheral, id: string | null) => {
-            console.log('[BLE CMD] Sending Deployment ID via OPs (20-27). ID:', id)
+            log('[BLE CMD] Sending Deployment ID via OPs (20-27). ID:', id)
 
             let ops: number[]
             if (!id) {
@@ -213,7 +215,7 @@ export const useBleCommands = () => {
                 const value = ops[i]
                 const commandStr = `AI setop ${opIndex} ${value}`
 
-                console.log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
+                log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
 
                 // Use the new serialized write method instead of raw writeToDevice
                 try {
@@ -224,7 +226,7 @@ export const useBleCommands = () => {
                         throw new Error(result)
                     }
                 } catch (error) {
-                    console.error(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
+                    logError(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
                     throw error
                 }
 
@@ -235,7 +237,7 @@ export const useBleCommands = () => {
                     await sleep(delayMs)
                 }
             }
-            console.log('[BLE CMD] Deployment ID OPs sent successfully')
+            log('[BLE CMD] Deployment ID OPs sent successfully')
         },
         [write]
     )

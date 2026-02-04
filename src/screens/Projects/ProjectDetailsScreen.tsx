@@ -49,6 +49,8 @@ import { Field } from "../../components/form/Field"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { useAppSelector } from "../../redux"
 import { AppParams } from "../../navigation/index"
+import { log, logError } from '../../utils/logger'
+
 
 
 interface ProjectFormData {
@@ -210,7 +212,7 @@ export const ProjectDetailsScreen = () => {
 				setIsEditMode(false)
 				refetch()
 			} catch (err) {
-				console.error("Failed to update project:", err)
+				logError("Failed to update project:", err)
 				Alert.alert(
 					"Update Failed",
 					"Failed to update project. Please try again.",
@@ -227,7 +229,7 @@ export const ProjectDetailsScreen = () => {
 			setShowDeleteDialog(false)
 			navigation.goBack()
 		} catch (err) {
-			console.error("Failed to delete project:", err)
+			logError("Failed to delete project:", err)
 			Alert.alert(
 				"Delete Failed",
 				"Failed to delete project. Please try again.",
@@ -250,7 +252,7 @@ export const ProjectDetailsScreen = () => {
 							try {
 								await removeMember({ projectId, userId }).unwrap()
 							} catch (err) {
-								console.error("Failed to remove member:", err)
+								logError("Failed to remove member:", err)
 								Alert.alert("Error", "Failed to remove member")
 							}
 						},

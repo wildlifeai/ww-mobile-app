@@ -6,6 +6,8 @@ import { useCapturePreview } from '../../../hooks/useCapturePreview'
 import { useBle } from '../../../hooks/useBle'
 import { useAppSelector } from '../../../redux'
 import { WWIcon } from '../../../components/ui/WWIcon'
+import { logError } from '../../../utils/logger'
+
 
 interface Props {
     device?: ExtendedPeripheral
@@ -30,7 +32,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
         write,
         onImageReceived: onImageCaptured,
         onError: (err) => {
-            console.error('Capture error:', err)
+            logError('Capture error:', err)
             // Error handling UI could be added here
         }
     })

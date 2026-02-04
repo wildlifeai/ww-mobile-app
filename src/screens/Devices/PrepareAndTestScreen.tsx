@@ -34,6 +34,8 @@ import database from '../../database'
 import { ActivityIndicator, Text, useTheme } from 'react-native-paper'
 import BleManager, { Peripheral } from 'react-native-ble-manager'
 import { extractErrorBits } from '../../ble/messageClassifier'
+import { log, logError, logWarn } from '../../utils/logger'
+
 
 /**
  * Scans for the Nordic DFU booth loader which advertises as "DfuTarg"
@@ -46,13 +48,13 @@ const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> =>
         const eventEmitter = BleManager.addListener(
             'BleManagerDiscoverPeripheral',
             (peripheral: Peripheral) => {
-                console.log('[scanForBootloader] Discovered:', peripheral.name, peripheral.id)
+                log('[scanForBootloader] Discovered:', peripheral.name, peripheral.id)
 
                 // Check if this is the bootloader (WW500_DFU or DfuTarg)
                 if (peripheral.name === 'WW500_DFU' || peripheral.name === 'DfuTarg') {
-                    console.log('[scanForBootloader] Found bootloader at:', peripheral.id)
+                    log('[scanForBootloader] Found bootloader at:', peripheral.id)
                     // Stop scanning
-                    BleManager.stopScan().catch(err => console.warn('Failed to stop scan:', err))
+                    BleManager.stopScan().catch(err => logWarn('Failed to stop scan:', err))
                     // Remove listener
                     eventEmitter.remove()
                     // Return the address
@@ -64,18 +66,18 @@ const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> =>
         // Start scanning
         BleManager.scan([], timeoutMs / 1000) // Convert to seconds
             .then(() => {
-                console.log('[scanForBootloader] Scan started for DfuTarg')
+                log('[scanForBootloader] Scan started for DfuTarg')
             })
             .catch(err => {
-                console.error('[scanForBootloader] Scan failed:', err)
+                logError('[scanForBootloader] Scan failed:', err)
                 eventEmitter.remove()
                 reject(err)
             })
 
         // Timeout if not found
         setTimeout(() => {
-            console.log('[scanForBootloader] Scan timeout, bootloader not found')
-            BleManager.stopScan().catch(err => console.warn('Failed to stop scan:', err))
+            log('[scanForBootloader] Scan timeout, bootloader not found')
+            BleManager.stopScan().catch(err => logWarn('Failed to stop scan:', err))
             eventEmitter.remove()
             resolve(null)
         }, timeoutMs)
@@ -192,13 +194,13 @@ export const PrepareAndTestScreen = () => {
         logs: logs,
         write: write,
         onImageReceived: (imageUri) => {
-            console.log('[PrepareTest] Image received:', imageUri)
+            log('[PrepareTest] Image received:', imageUri)
             setCameraTestPassed(true)
             if (preparation) {
                 DevicePreparationService.updatePreparation(preparation.id, {
                     cameraViewTestPassed: true,
                     cameraModel: cameraModelName || 'WW500' // Use fetched name or default
-                }).catch(error => console.error('Failed to update preparation:', error))
+                }).catch(error => logError('Failed to update preparation:', error))
             }
         }
     })
@@ -207,7 +209,7 @@ export const PrepareAndTestScreen = () => {
     const { updateSettings: updateDeviceSettings, quiesceDevice } = useDeviceSettings({
         device: bleDevice,
         onError: (error) => {
-            console.error('[PrepareTest] Settings update failed:', error)
+            logError('[PrepareTest] Settings update failed:', error)
             Alert.alert('Settings Error', error.message)
         }
     })
@@ -234,7 +236,7 @@ export const PrepareAndTestScreen = () => {
      * This is much more robust than arbitrary timeouts and avoids missing bursts.
      */
     const waitForLogMatch = useCallback(async (regex: RegExp, timeoutMs: number = 5000, customOffset?: number): Promise<RegExpMatchArray> => {
-        console.log(`[PrepareTest] Waiting for log match: ${regex} (timeout ${timeoutMs}ms)`)
+        log(`[PrepareTest] Waiting for log match: ${regex} (timeout ${timeoutMs}ms)`)
         const startTime = Date.now()
         // Capture initial log length to only look at NEW logs (unless offset provided)
         const startOffset = customOffset !== undefined ? customOffset : logsRef.current.length
@@ -245,7 +247,7 @@ export const PrepareAndTestScreen = () => {
                 const sectionLogs = logsRef.current.slice(startOffset).map(e => e.content).join('')
                 const match = sectionLogs.match(regex)
                 if (match) {
-                    console.log(`[PrepareTest] Found log match for: ${regex}`)
+                    log(`[PrepareTest] Found log match for: ${regex}`)
                     resolve(match)
                     return true
                 }
@@ -283,23 +285,23 @@ export const PrepareAndTestScreen = () => {
     const loadDeviceAndPreparation = useCallback(async () => {
         // Wait for user and projects to be ready
         if (!user?.id || isLoadingProjects) {
-            console.log('[PrepareTest] Waiting for data dependencies (user/projects)...')
+            log('[PrepareTest] Waiting for data dependencies (user/projects)...')
             return
         }
 
         // Only skip if we have ALREADY started for this flow
         if (hasStartedPreparation.current) {
-            console.log('[PrepareTest] Preparation already started/loaded, skipping duplicate init.')
+            log('[PrepareTest] Preparation already started/loaded, skipping duplicate init.')
             return
         }
         
         hasStartedPreparation.current = true
-        console.log('[PrepareTest] Loading data for device:', deviceId)
+        log('[PrepareTest] Loading data for device:', deviceId)
 
         try {
             const deviceData = await DeviceService.getDeviceById(deviceId)
             if (!deviceData) {
-                console.error('[PrepareTest] Device not found in record for ID:', deviceId)
+                logError('[PrepareTest] Device not found in record for ID:', deviceId)
                 // Don't set hasStarted true here so we can retry if needed? 
                 // Actually, if it's not in DB, it won't appear magically without a re-pair.
                 setLoading(false)
@@ -314,13 +316,13 @@ export const PrepareAndTestScreen = () => {
             const lastPrep = await DevicePreparationService.getLastCompletedPreparation(deviceId)
             if (lastPrep && lastPrep.projectId) {
                 initialProjectId = lastPrep.projectId
-                console.log('[PrepareTest] Using last used project ID:', initialProjectId)
+                log('[PrepareTest] Using last used project ID:', initialProjectId)
             }
 
             // 2. Fallback to first available project if no last prep or last prep project invalid
             if (!initialProjectId && projects && projects.length > 0) {
                 initialProjectId = projects[0].id
-                console.log('[PrepareTest] Defaulting to first available project:', projects[0].name)
+                log('[PrepareTest] Defaulting to first available project:', projects[0].name)
             }
 
             // Update state (this won't re-trigger this function now)
@@ -329,16 +331,16 @@ export const PrepareAndTestScreen = () => {
             }
 
             // Create new preparation record (startPreparation handles cleanup)
-            console.log('[PrepareTest] Starting preparation record...')
+            log('[PrepareTest] Starting preparation record...')
             const newPrep = await DevicePreparationService.startPreparation(
                 deviceId,
                 initialProjectId,
                 user.id
             )
             setPreparation(newPrep)
-            console.log('[PrepareTest] Data loading complete.')
+            log('[PrepareTest] Data loading complete.')
         } catch (error) {
-            console.error('[PrepareTest] Error loading device data:', error)
+            logError('[PrepareTest] Error loading device data:', error)
             Alert.alert('Loading Error', 'Failed to initialize the preparation session.')
             hasStartedPreparation.current = false // Allow retry on re-render
         } finally {
@@ -411,7 +413,7 @@ export const PrepareAndTestScreen = () => {
             try {
                 if (preparation && bleDevice) {
                     // Step 1: Set Deployment ID (Op 20-27)
-                    console.log('[PrepareTest] [Safe Quiesce] 1. Setting Deployment ID:', preparation.id)
+                    log('[PrepareTest] [Safe Quiesce] 1. Setting Deployment ID:', preparation.id)
                     setFinishStep('Saving Deployment ID...')
                     addFinishLog(`Sending Preparation ID: ${preparation.id.slice(0, 8)}...`)
                     await setDeploymentIdAsOps(bleDevice, preparation.id)
@@ -419,7 +421,7 @@ export const PrepareAndTestScreen = () => {
                     addFinishLog('Success: ID saved to hardware')
 
                     // Step 2: Confirm (Green LED flash)
-                    console.log('[PrepareTest] [Safe Quiesce] 2. Flashing confirmation LED...')
+                    log('[PrepareTest] [Safe Quiesce] 2. Flashing confirmation LED...')
                     setFinishStep('LED Confirmation...')
                     addFinishLog('Triggering confirmation flash...')
                     await flashLed(bleDevice, 'green', 2, 500) // 2 flashes, 500ms each
@@ -432,22 +434,22 @@ export const PrepareAndTestScreen = () => {
                     // Step 3: Disconnect (if not proceeding to start deployment immediately)
                     const { nextRoute } = route.params || {}
                     if (!nextRoute) {
-                        console.log('[PrepareTest] [Safe Quiesce] 3. Disconnecting device...')
+                        log('[PrepareTest] [Safe Quiesce] 3. Disconnecting device...')
                         setFinishStep('Disconnecting...')
                         addFinishLog('Closing BLE connection...')
                         await runDisconnect(bleDevice).catch(e => {
-                            console.error('Disconnect failed:', e)
+                            logError('Disconnect failed:', e)
                             addFinishLog('Warning: Cleanup disconnect failed')
                         })
                         setFinishProgress(0.9)
                         addFinishLog('Device disconnected')
                     } else {
-                        console.log('[PrepareTest] [Safe Quiesce] 3. Skipping disconnect, proceeding to:', nextRoute)
+                        log('[PrepareTest] [Safe Quiesce] 3. Skipping disconnect, proceeding to:', nextRoute)
                         addFinishLog(`Ready for: ${nextRoute}`)
                     }
                 }
             } catch (error) {
-                console.error('[PrepareTest] Safe Quiesce Sequence failed:', error)
+                logError('[PrepareTest] Safe Quiesce Sequence failed:', error)
                 errors.push('Final hardware configuration failed')
                 addFinishLog('Error: Hardware communication failure')
             }
@@ -477,7 +479,7 @@ export const PrepareAndTestScreen = () => {
                 return 
             }
         } catch (error) {
-            console.error('Error completing preparation:', error)
+            logError('Error completing preparation:', error)
             Alert.alert('Error', 'Failed to complete preparation')
             setIsFinishing(false) // Only reset on error
         }
@@ -499,33 +501,33 @@ export const PrepareAndTestScreen = () => {
     }, [navigation, route.params, preparation, deviceId, bleDeviceId])
 
     const handleBatteryCheck = useCallback(async () => {
-        console.log('[PrepareTest] Battery check requested, bleDevice:', bleDevice?.id, 'connected:', bleDevice?.connected)
+        log('[PrepareTest] Battery check requested, bleDevice:', bleDevice?.id, 'connected:', bleDevice?.connected)
         if (!bleDevice) {
-            console.warn('[PrepareTest] No BLE device available for battery check')
+            logWarn('[PrepareTest] No BLE device available for battery check')
             return
         }
         try {
-            console.log('[PrepareTest] Sending battery level command...')
+            log('[PrepareTest] Sending battery level command...')
             await getBatteryLevel(bleDevice)
-            console.log('[PrepareTest] Battery level command sent, waiting for response in logs')
+            log('[PrepareTest] Battery level command sent, waiting for response in logs')
             // Response will be parsed from logs in useEffect
         } catch (error) {
-            console.error('Battery check failed:', error)
+            logError('Battery check failed:', error)
             Alert.alert('Error', 'Failed to check battery level')
         }
     }, [bleDevice, getBatteryLevel])
 
     const handleSdCardCheck = useCallback(async () => {
-        console.log('[PrepareTest] SD card check requested, bleDevice:', bleDevice?.id, 'connected:', bleDevice?.connected)
+        log('[PrepareTest] SD card check requested, bleDevice:', bleDevice?.id, 'connected:', bleDevice?.connected)
         if (!bleDevice) {
-            console.warn('[PrepareTest] No BLE device available for SD card check')
+            logWarn('[PrepareTest] No BLE device available for SD card check')
             return
         }
         try {
             // 1. Run Self Test to check for hardware errors (Bit 11 = No SD Card)
-            console.log('[PrepareTest] Step 1: Checking SD card presence (selftest)...')
+            log('[PrepareTest] Step 1: Checking SD card presence (selftest)...')
             const statusMsg = await runSelfTest(bleDevice)
-            console.log('[PrepareTest] Self-test result:', statusMsg)
+            log('[PrepareTest] Self-test result:', statusMsg)
             
             const hexBits = extractErrorBits(statusMsg)
             if (hexBits) {
@@ -534,7 +536,7 @@ export const PrepareAndTestScreen = () => {
                 const NO_SD_CARD_MASK = 0x0800
                 
                 if ((errorBits & NO_SD_CARD_MASK) !== 0) {
-                    console.warn('[PrepareTest] SD Card Missing (Error bits set)')
+                    logWarn('[PrepareTest] SD Card Missing (Error bits set)')
                     Alert.alert(
                         'No SD Card Detected',
                         'The device reports that no SD card is inserted. Please insert a valid SD card and try again.',
@@ -546,32 +548,32 @@ export const PrepareAndTestScreen = () => {
             }
 
             // 2. If present, try to get space info (AI info)
-            console.log('[PrepareTest] Step 2: Checking SD card space (AI info)...')
+            log('[PrepareTest] Step 2: Checking SD card space (AI info)...')
             await checkSdCard(bleDevice)
-            console.log('[PrepareTest] Space check command sent. Waiting for logs...')
+            log('[PrepareTest] Space check command sent. Waiting for logs...')
 
             // Response will be parsed from logs in useEffect  
         } catch (error) {
-            console.error('SD card check failed:', error)
+            logError('SD card check failed:', error)
             Alert.alert('Error', 'Failed to check SD card status')
         }
     }, [bleDevice, checkSdCard, runSelfTest])
 
     const handleFirmwareCheck = useCallback(async () => {
-        console.log('[PrepareTest] Firmware check requested, bleDevice:', bleDevice?.id, 'connected:', bleDevice?.connected)
+        log('[PrepareTest] Firmware check requested, bleDevice:', bleDevice?.id, 'connected:', bleDevice?.connected)
         if (!bleDevice) {
-            console.warn('[PrepareTest] No BLE device available for firmware check')
+            logWarn('[PrepareTest] No BLE device available for firmware check')
             return
         }
         try {
             setIsCheckingFirmware(true)
             setDeviceFirmwareVersion(null) // Reset to allow re-parsing
-            console.log('[PrepareTest] Sending firmware version command...')
+            log('[PrepareTest] Sending firmware version command...')
             await getDeviceVer(bleDevice)
-            console.log('[PrepareTest] Firmware version command sent and resolved.')
+            log('[PrepareTest] Firmware version command sent and resolved.')
             setIsCheckingFirmware(false)
         } catch (error) {
-            console.error('Firmware check failed:', error)
+            logError('Firmware check failed:', error)
             setIsCheckingFirmware(false)
             Alert.alert('Error', 'Failed to check firmware version')
         }
@@ -606,29 +608,29 @@ export const PrepareAndTestScreen = () => {
                             setFirmwareUpdateProgress(0)
 
                             // Use FirmwareService to handle download and caching (supports offline updates)
-                            console.log('[PrepareTest] Ensuring firmware is available locally...')
+                            log('[PrepareTest] Ensuring firmware is available locally...')
                             const localUri = await FirmwareService.ensureFirmwareDownloaded(latestBleFirmware)
-                            console.log('[PrepareTest] Firmware ready at:', localUri)
+                            log('[PrepareTest] Firmware ready at:', localUri)
 
                             // Trigger DFU mode switch if connected
                             // This sends the "dfu" command, causing the device to reboot into DFU (Bootloader) mode
                             if (bleDevice.connected) {
-                                console.log('[PrepareTest] Sending DFU command to reset device into bootloader mode...')
+                                log('[PrepareTest] Sending DFU command to reset device into bootloader mode...')
                                 try {
                                     await runDfu(bleDevice)
-                                    console.log('[PrepareTest] DFU command sent. Waiting 500ms for firmware processing...')
+                                    log('[PrepareTest] DFU command sent. Waiting 500ms for firmware processing...')
 
                                     // CRITICAL: Wait for firmware to receive and process the 'dfu' command
                                     await new Promise(r => setTimeout(r, 500))
 
-                                    console.log('[PrepareTest] Disconnecting to trigger DFU mode switch...')
+                                    log('[PrepareTest] Disconnecting to trigger DFU mode switch...')
                                     await runDisconnect(bleDevice)
 
                                     // Give device time to reboot and advertise as DfuTarg
-                                    console.log('[PrepareTest] Waiting 5s for reboot...')
+                                    log('[PrepareTest] Waiting 5s for reboot...')
                                     await new Promise(r => setTimeout(r, 5000))
                                 } catch (e) {
-                                    console.warn('[PrepareTest] Failed to send DFU command (device might already be in DFU mode?):', e)
+                                    logWarn('[PrepareTest] Failed to send DFU command (device might already be in DFU mode?):', e)
                                 }
                             }
 
@@ -642,17 +644,17 @@ export const PrepareAndTestScreen = () => {
                                         throw new Error('Notification permission required for firmware update')
                                     }
                                 } catch (permErr) {
-                                    console.warn('[PrepareTest] Notification permission warning:', permErr)
+                                    logWarn('[PrepareTest] Notification permission warning:', permErr)
                                 }
                             }
 
                             // Scan for bootloader
-                            console.log('[PrepareTest] Scanning for bootloader...')
+                            log('[PrepareTest] Scanning for bootloader...')
                             const bootloaderAddress = await scanForBootloader(10000)
                             if (!bootloaderAddress) {
                                 throw new Error('Bootloader not found. Ensure device is in DFU mode (flashing red).')
                             }
-                            console.log('[PrepareTest] Found bootloader at:', bootloaderAddress)
+                            log('[PrepareTest] Found bootloader at:', bootloaderAddress)
 
                             // Start DFU process
                             await DfuService.startDFU(
@@ -679,11 +681,11 @@ export const PrepareAndTestScreen = () => {
                             setBleFirmwareUpdateAvailable(false) // Optimistically hide until verified
 
                             // Wait for reboot (approx 5-8s)
-                            console.log('[PrepareTest] Waiting for device reboot...')
+                            log('[PrepareTest] Waiting for device reboot...')
                             await new Promise(r => setTimeout(r, 8000))
 
                             // Reconnect and check
-                            console.log('[PrepareTest] Attempting to reconnect for verification...')
+                            log('[PrepareTest] Attempting to reconnect for verification...')
                             if (bleDevice) {
                                 // Manual connect attempt
                                 try {
@@ -693,13 +695,13 @@ export const PrepareAndTestScreen = () => {
                                     // Trigger the firmware check automatically
                                     handleFirmwareCheck()
                                 } catch (reconnectErr) {
-                                    console.warn('[PrepareTest] Reconnect failed:', reconnectErr)
+                                    logWarn('[PrepareTest] Reconnect failed:', reconnectErr)
                                     setIsVerifyingUpdate(false)
                                 }
                             }
 
                         } catch (error) {
-                            console.error('[PrepareTest] Firmware update failed:', error)
+                            logError('[PrepareTest] Firmware update failed:', error)
                             Alert.alert('Update Failed', error instanceof Error ? error.message : 'Unknown error')
                             // setFirmwareUpToDate(false) - Removed undefined function
                         } finally {
@@ -739,7 +741,7 @@ export const PrepareAndTestScreen = () => {
                 // Re-enable only if explicitly requested as part of init.
                 /*
                 if (bleDevice && bleDevice.connected && !deviceFirmwareVersion && !isCheckingFirmware) {
-                    console.log('[PrepareTest] Auto-triggering firmware check on mount...')
+                    log('[PrepareTest] Auto-triggering firmware check on mount...')
                     handleFirmwareCheck()
                 }
                 */
@@ -750,7 +752,7 @@ export const PrepareAndTestScreen = () => {
                     // ... logic continues ...
                 }
             } catch (error) {
-                console.error('[PrepareTest] Failed to check BLE firmware:', error)
+                logError('[PrepareTest] Failed to check BLE firmware:', error)
             }
         }
 
@@ -762,10 +764,10 @@ export const PrepareAndTestScreen = () => {
         return () => {
             // Use ref to check if navigating away
             if (bleDevice && bleDevice.connected && !isNavigatingAway.current) {
-                console.log('[PrepareTest] Unmounting and NOT navigating away - Disconnecting device...')
-                runDisconnect(bleDevice).catch(err => console.error('[PrepareTest] Failed to disconnect on unmount:', err))
+                log('[PrepareTest] Unmounting and NOT navigating away - Disconnecting device...')
+                runDisconnect(bleDevice).catch(err => logError('[PrepareTest] Failed to disconnect on unmount:', err))
             } else {
-                console.log('[PrepareTest] Unmounting but navigation is active (or device disconnected) - Skipping disconnect')
+                log('[PrepareTest] Unmounting but navigation is active (or device disconnected) - Skipping disconnect')
             }
         }
     }, [bleDevice, runDisconnect])
@@ -776,22 +778,22 @@ export const PrepareAndTestScreen = () => {
         const isConnected = !!bleDevice?.connected
         if (!isConnected || isInitializing || loading) return
 
-        console.log('[PrepareTest] Starting keep-alive heartbeat (20s interval)')
+        log('[PrepareTest] Starting keep-alive heartbeat (20s interval)')
         const interval = setInterval(async () => {
             // Use ref to access latest device state without resetting the interval
             const currentDevice = bleDeviceRef.current
             if (currentDevice && currentDevice.connected && !isNavigatingAway.current) {
-                console.log('[PrepareTest] Heartbeat ping...')
+                log('[PrepareTest] Heartbeat ping...')
                 try {
                     await getHeartbeat(currentDevice)
                 } catch (e) {
-                    console.warn('[PrepareTest] Heartbeat failed:', e)
+                    logWarn('[PrepareTest] Heartbeat failed:', e)
                 }
             }
         }, 20000)
 
         return () => {
-            console.log('[PrepareTest] Stopping heartbeat')
+            log('[PrepareTest] Stopping heartbeat')
             clearInterval(interval)
         }
     }, [!!bleDevice?.connected, isInitializing, loading, getHeartbeat])
@@ -806,7 +808,7 @@ export const PrepareAndTestScreen = () => {
             hasInitialized.current = true
             setIsInitializing(true)
             setInitProgress(0.05)
-            console.log('[PrepareTest] Running BLE initialization sequence...')
+            log('[PrepareTest] Running BLE initialization sequence...')
 
             const errors: { setUtc?: string; deviceHealth?: string[]; cameraDisable?: string } = {}
 
@@ -823,18 +825,18 @@ export const PrepareAndTestScreen = () => {
             })
 
             if (!initResult.success) {
-                console.error('[PrepareTest] Standard initialization failed')
+                logError('[PrepareTest] Standard initialization failed')
             }
 
             // Step 3. Disable Camera (AI setop 10 0)
             try {
                 setInitStep('Disabling camera...')
                 setInitProgress(0.6)
-                console.log('[PrepareTest] Stopping camera for preparation flow...')
+                log('[PrepareTest] Stopping camera for preparation flow...')
                 await quiesceDevice('[PrepareTest]', false)
                 // Confirmation handled by Command Manager regex
             } catch (err) {
-                console.error('[PrepareTest] Failed to disable camera:', err)
+                logError('[PrepareTest] Failed to disable camera:', err)
                 errors.cameraDisable = 'Failed to disable camera (Op 10=0)'
             }
 
@@ -842,21 +844,21 @@ export const PrepareAndTestScreen = () => {
             try {
                 setInitStep('Resetting location...')
                 setInitProgress(0.8)
-                console.log('[PrepareTest] Resetting GPS location to default...')
+                log('[PrepareTest] Resetting GPS location to default...')
                 await clearGpsLocation(bleDevice)
                 // Confirmation handled by Command Manager regex
             } catch (err) {
-                console.error('[PrepareTest] Failed to reset GPS:', err)
+                logError('[PrepareTest] Failed to reset GPS:', err)
             }
 
             // Step 5. Clear Deployment ID (Op 20-27)
             try {
                 setInitStep('Clearing old IDs...')
                 setInitProgress(0.85)
-                console.log('[PrepareTest] Clearing any existing deployment IDs...')
+                log('[PrepareTest] Clearing any existing deployment IDs...')
                 await setDeploymentIdAsOps(bleDevice, null)
             } catch (err) {
-                console.error('[PrepareTest] Failed to clear deployment ID:', err)
+                logError('[PrepareTest] Failed to clear deployment ID:', err)
             }
 
             // Step 6. Automated Hardware Checks
@@ -864,22 +866,22 @@ export const PrepareAndTestScreen = () => {
                 // 6a. Battery Check
                 setInitStep('Checking battery...')
                 setInitProgress(0.9)
-                console.log('[PrepareTest] Auto-triggering battery check...')
+                log('[PrepareTest] Auto-triggering battery check...')
                 await handleBatteryCheck()
 
                 // 6b. SD Card Check
                 setInitStep('Checking SD card...')
                 setInitProgress(0.94)
-                console.log('[PrepareTest] Auto-triggering SD card check...')
+                log('[PrepareTest] Auto-triggering SD card check...')
                 await handleSdCardCheck()
 
                 // 6c. Firmware Check
                 setInitStep('Verifying firmware...')
                 setInitProgress(0.98)
-                console.log('[PrepareTest] Auto-triggering firmware check...')
+                log('[PrepareTest] Auto-triggering firmware check...')
                 await handleFirmwareCheck()
             } catch (err) {
-                console.error('[PrepareTest] One or more automated checks failed:', err)
+                logError('[PrepareTest] One or more automated checks failed:', err)
             }
 
             setInitErrors(errors)
@@ -896,7 +898,7 @@ export const PrepareAndTestScreen = () => {
             setInitProgress(1)
             setInitStep('Ready')
             setIsInitializing(false)
-            console.log('[PrepareTest] BLE initialization complete')
+            log('[PrepareTest] BLE initialization complete')
         }
 
         runBleInitialization()
@@ -918,7 +920,7 @@ export const PrepareAndTestScreen = () => {
         const batteryMatch = recentLogsString.match(/Battery\s*=\s*\d+mV\s+(\d+)%/)
         if (batteryMatch && batteryLevel === null) {
             const percent = parseInt(batteryMatch[1], 10)
-            console.log('[PrepareTest] Parsed battery level:', percent + '%')
+            log('[PrepareTest] Parsed battery level:', percent + '%')
             setBatteryLevel(percent)
             if (preparation) {
                 DevicePreparationService.updatePreparation(preparation.id, {
@@ -934,13 +936,13 @@ export const PrepareAndTestScreen = () => {
         const availMatch = recentLogsString.match(/(\d+)\s*[Kk]\s*available/i)
 
         if (recentLogsString.length > 0 && !sdCardStatus && (recentLogsString.toLowerCase().includes('total') || recentLogsString.toLowerCase().includes('available'))) {
-            // console.log('[PrepareTest] SD keywords found?')
+            // log('[PrepareTest] SD keywords found?')
         }
 
         if (totalMatch && availMatch && sdCardStatus === null) {
             const totalKB = parseInt(totalMatch[1], 10)
             const availableKB = parseInt(availMatch[1], 10)
-            console.log('[PrepareTest] Parsed SD card:', { totalKB, availableKB })
+            log('[PrepareTest] Parsed SD card:', { totalKB, availableKB })
             setSdCardStatus({ total: totalKB, free: availableKB })
             if (preparation) {
                 DevicePreparationService.updatePreparation(preparation.id, {
@@ -956,7 +958,7 @@ export const PrepareAndTestScreen = () => {
         const versionMatch = recentLogsString.match(/(?:V|Ver|Version|BLE)[:\s]+v?(\d+\.\d+\.\d+)/i)
         if (versionMatch && deviceFirmwareVersion === null && isCheckingFirmware) {
             const version = versionMatch[1]
-            console.log('[PrepareTest] Parsed device firmware version:', version)
+            log('[PrepareTest] Parsed device firmware version:', version)
             setDeviceFirmwareVersion(version)
             setIsCheckingFirmware(false)
 
@@ -969,7 +971,7 @@ export const PrepareAndTestScreen = () => {
 
                 setBleFirmwareUpdateAvailable(updateAvailable)
                 // setFirmwareUpToDate(!updateAvailable) - Removed undefined function
-                console.log('[PrepareTest] Firmware comparison:', {
+                log('[PrepareTest] Firmware comparison:', {
                     deviceVersion: version,
                     latestVersion: latestBleFirmware.version,
                     comparisonResult: comparison,
@@ -994,7 +996,7 @@ export const PrepareAndTestScreen = () => {
                     }
                 } else if (isVerifyingUpdate && updateAvailable) {
                     // Still reporting old version or update failed
-                    console.warn('[PrepareTest] Update reported old version after reboot')
+                    logWarn('[PrepareTest] Update reported old version after reboot')
                     // We keep isVerifyingUpdate true for a bit longer or let user retry
                 }
             }
@@ -1005,7 +1007,7 @@ export const PrepareAndTestScreen = () => {
         const deviceNameMatch = recentLogsString.match(/Device:\s*([A-Za-z0-9-]+)/i)
         if (deviceNameMatch && cameraModelName === null) {
             const name = deviceNameMatch[1]
-            console.log('[PrepareTest] Parsed device model name:', name)
+            log('[PrepareTest] Parsed device model name:', name)
             setCameraModelName(name)
         }
     }, [logs, batteryLevel, sdCardStatus, preparation, deviceFirmwareVersion, isCheckingFirmware, latestBleFirmware, cameraModelName, handleFirmwareCheck])
@@ -1030,7 +1032,7 @@ export const PrepareAndTestScreen = () => {
             const isConnected = bleDevice?.connected
             if (!loading && bleDevice && !isDfuInProgress.current && !isNavigatingAway.current && !isInitializing) {
                 if (!isConnected) {
-                    console.log('[PrepareTest] Connection lost detected on focus')
+                    log('[PrepareTest] Connection lost detected on focus')
                     Alert.alert(
                         'Connection Lost',
                         'The device connection was lost. Please reconnect to continue preparation.',

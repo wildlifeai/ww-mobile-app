@@ -2,6 +2,8 @@ import { useCallback, useRef } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { useBleCommands } from './useBleCommands'
 import { extractErrorBits } from '../ble/messageClassifier'
+import { log, logError, logWarn } from '../utils/logger'
+
 
 export interface BleInitOptions {
   onProgress?: (step: string, progress: number) => void
@@ -37,7 +39,7 @@ export const useBleInitialization = () => {
   ): Promise<BleInitResult> => {
     // Prevent duplicate initialization
     if (isInitializing.current) {
-      console.warn('[BLE Init] Already initializing, skipping duplicate call')
+      logWarn('[BLE Init] Already initializing, skipping duplicate call')
       return { success: false, errors: {} }
     }
 
@@ -46,12 +48,12 @@ export const useBleInitialization = () => {
 
     try {
       options?.onProgress?.('Synchronizing time...', 0.5)
-      console.log('[BLE Init] Setting UTC time...')
+      log('[BLE Init] Setting UTC time...')
 
       try {
         // 1. Set UTC Time
         await setUtc(device)
-        console.log('[BLE Init] UTC time synchronized')
+        log('[BLE Init] UTC time synchronized')
         
         // 2. Check Hardware Status explicitly
         // We use runSelfTest because it returns the specific "Error bits = ..." response
@@ -61,14 +63,14 @@ export const useBleInitialization = () => {
         // This will throw if the response regex doesn't match, so we wrap it
         // The regex defined in types.ts for selftest is: /Error\s*bits\s*=\s*(0x[0-9A-Fa-f]+)/
         const statusMsg = await runSelfTest(device)
-        console.log('[BLE Init] Self-test result:', statusMsg)
+        log('[BLE Init] Self-test result:', statusMsg)
         
         // Check for hardware warnings
         const hexBits = extractErrorBits(statusMsg)
         if (hexBits) {
           const bits = parseInt(hexBits, 16)
           if (bits !== 0) {
-            console.warn(`[BLE Init] Non-zero error bits detected: ${hexBits} (${bits})`)
+            logWarn(`[BLE Init] Non-zero error bits detected: ${hexBits} (${bits})`)
             const warnings: string[] = []
 
             // Define known bit masks from selfTest.h
@@ -91,13 +93,13 @@ export const useBleInitialization = () => {
 
             errors.deviceHealth = warnings
           } else {
-            console.log('[BLE Init] Hardware check passed (error bits = 0x0000)')
+            log('[BLE Init] Hardware check passed (error bits = 0x0000)')
           }
         }
         
         await new Promise(r => setTimeout(r, 500))
       } catch (err) {
-        console.error('[BLE Init] Initialization failed:', err)
+        logError('[BLE Init] Initialization failed:', err)
         errors.setUtc = 'Device initialization failed. Check connection or device state.'
       }
 
@@ -109,7 +111,7 @@ export const useBleInitialization = () => {
       return { success, errors }
 
     } catch (err) {
-      console.error('[BLE Init] Initialization failed:', err)
+      logError('[BLE Init] Initialization failed:', err)
       isInitializing.current = false
       return { success: false, errors: { setUtc: 'Initialization failed unexpectedly' } }
     }

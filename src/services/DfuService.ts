@@ -1,5 +1,7 @@
 import { Platform } from "react-native"
 import ExpoNordicDfu from "@getquip/expo-nordic-dfu"
+import { logError } from '../utils/logger'
+
 
 export class DfuService {
 	static async startDFU(
@@ -26,7 +28,7 @@ export class DfuService {
 
 			return result
 		} catch (error) {
-			console.error("DFU failed:", error)
+			logError("DFU failed:", error)
 			throw error
 		} finally {
 			// Clean up listener

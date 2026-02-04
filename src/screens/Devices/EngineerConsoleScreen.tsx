@@ -22,6 +22,8 @@ import ReferenceDataService from '../../services/ReferenceDataService'
 import { getSupabaseClient } from '../../services/supabase'
 import { Alert } from 'react-native'
 import BleManager, { Peripheral } from 'react-native-ble-manager'
+import { log, logError, logWarn } from '../../utils/logger'
+
 
 /**
  * Scans for the Nordic DFU booth loader which advertises as "DfuTarg"
@@ -36,13 +38,13 @@ const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> =>
         const eventEmitter = BleManager.addListener(
             'BleManagerDiscoverPeripheral',
             (peripheral: Peripheral) => {
-                console.log('[scanForBootloader] Discovered:', peripheral.name, peripheral.id)
+                log('[scanForBootloader] Discovered:', peripheral.name, peripheral.id)
 
                 // Check if this is the bootloader (WW500_DFU or DfuTarg)
                 if (peripheral.name === 'WW500_DFU' || peripheral.name === 'DfuTarg') {
-                    console.log('[scanForBootloader] Found bootloader at:', peripheral.id)
+                    log('[scanForBootloader] Found bootloader at:', peripheral.id)
                     // Stop scanning
-                    BleManager.stopScan().catch(err => console.warn('Failed to stop scan:', err))
+                    BleManager.stopScan().catch(err => logWarn('Failed to stop scan:', err))
                     // Remove listener
                     eventEmitter.remove()
                     // Clear timeout
@@ -55,13 +57,13 @@ const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> =>
 
         // Start scanning
         BleManager.scan([], 5, true).catch(err => {
-            console.error('[scanForBootloader] Scan failed:', err)
+            logError('[scanForBootloader] Scan failed:', err)
             reject(err)
         })
 
         // Set timeout
         timeout = setTimeout(() => {
-            console.log('[scanForBootloader] Scan timed out')
+            log('[scanForBootloader] Scan timed out')
             BleManager.stopScan().catch(() => { })
             eventEmitter.remove()
             resolve(null)
@@ -102,20 +104,20 @@ export const EngineerConsoleScreen = () => {
         logs: logs,
         write: write,
         onImageReceived: (imageUri) => {
-            console.log('[EngineerConsole] Image received:', imageUri)
+            log('[EngineerConsole] Image received:', imageUri)
             setShowPreviewModal(true)
         }
     })
 
     const handleBack = async () => {
         if (device && device.connected) {
-            console.log('Disconnecting device on back press...')
+            log('Disconnecting device on back press...')
             try {
                 // Determine if we need to call disconnectDevice or if removing from redundancy is enough
                 // But disconnectDevice is safe
                 await disconnectDevice(device)
             } catch (e) {
-                console.warn('Disconnect error:', e)
+                logWarn('Disconnect error:', e)
             }
         }
         // Return to Devices tab
@@ -252,7 +254,7 @@ export const EngineerConsoleScreen = () => {
     }
 
     const handleQuickAction = async (action: string) => {
-        console.log('[EngineerConsole] handleQuickAction called with:', action)
+        log('[EngineerConsole] handleQuickAction called with:', action)
         if (!device) return
 
         let commandDisplay = action
@@ -262,11 +264,11 @@ export const EngineerConsoleScreen = () => {
                 case 'Capture & Download':
                     commandDisplay = 'AI capture 1 1 (Auto-download)'
                     try {
-                        console.log('[EngineerConsole] About to call startCapture()')
+                        log('[EngineerConsole] About to call startCapture()')
                         await startCapture()
-                        console.log('[EngineerConsole] startCapture() completed')
+                        log('[EngineerConsole] startCapture() completed')
                     } catch (error) {
-                        console.error('[EngineerConsole] startCapture() threw error:', error)
+                        logError('[EngineerConsole] startCapture() threw error:', error)
                     }
                     break
                 case 'Get Last Image':
@@ -365,13 +367,13 @@ export const EngineerConsoleScreen = () => {
 
         // Handle special command types
         if (cmdName === CommandNames.CAPTURE_PREVIEW) {
-            console.log('[EngineerConsole] CAPTURE_PREVIEW clicked, calling startCapture via hook')
+            log('[EngineerConsole] CAPTURE_PREVIEW clicked, calling startCapture via hook')
             startCapture()
             return
         }
 
         if (cmdName === CommandNames.SET_GPS) {
-            console.log('[EngineerConsole] SET_GPS clicked, getting phone location')
+            log('[EngineerConsole] SET_GPS clicked, getting phone location')
             try {
                 // Add timeout to prevent hanging
                 const locationPromise = getLocation()
@@ -382,18 +384,18 @@ export const EngineerConsoleScreen = () => {
                 const loc = await Promise.race([locationPromise, timeoutPromise])
 
                 if (!loc) {
-                    console.error('[EngineerConsole] Failed to get GPS location (returned null)')
+                    logError('[EngineerConsole] Failed to get GPS location (returned null)')
                     return
                 }
 
-                console.log('[EngineerConsole] Location received, formatting GPS string...')
+                log('[EngineerConsole] Location received, formatting GPS string...')
                 const gpsString = formatGPSString(loc.latitude, loc.longitude, loc.altitude)
-                console.log('[EngineerConsole] GPS string formatted:', gpsString)
+                log('[EngineerConsole] GPS string formatted:', gpsString)
 
                 await write(device, [[CommandNames.setgps, { control: CommandControlTypes.WRITE, value: gpsString }]])
-                console.log('[EngineerConsole] GPS command sent successfully:', { lat: loc.latitude, lon: loc.longitude, alt: loc.altitude })
+                log('[EngineerConsole] GPS command sent successfully:', { lat: loc.latitude, lon: loc.longitude, alt: loc.altitude })
             } catch (error) {
-                console.error('[EngineerConsole] GPS error:', error)
+                logError('[EngineerConsole] GPS error:', error)
                 Alert.alert('GPS Error', error instanceof Error ? error.message : 'Failed to set GPS location')
             }
             return
@@ -458,20 +460,20 @@ export const EngineerConsoleScreen = () => {
                                     // Send DFU command and wait for disconnect
                                     try {
                                         await write(device, ["dfu"])
-                                        console.log('[EngineerConsole] DFU command sent, waiting for firmware to process...')
+                                        log('[EngineerConsole] DFU command sent, waiting for firmware to process...')
 
                                         // CRITICAL: Wait for firmware to receive and process the 'dfu' command
                                         // The firmware needs to set the dfuRequest flag before we disconnect
                                         await new Promise(resolve => setTimeout(resolve, 500))
 
-                                        console.log('[EngineerConsole] Disconnecting to trigger DFU mode switch...')
+                                        log('[EngineerConsole] Disconnecting to trigger DFU mode switch...')
                                         // CRITICAL: Device waits for disconnect to enter DFU mode
                                         await disconnectDevice(device)
 
                                         // Wait enough time for device to reboot into bootloader
                                         await new Promise(resolve => setTimeout(resolve, 5000))
                                     } catch (err) {
-                                        console.warn("Failed to send DFU command or disconnect, attempting update anyway", err)
+                                        logWarn("Failed to send DFU command or disconnect, attempting update anyway", err)
                                     }
 
                                     // 5. Request notification permission (required for foreground service on Android 14+)
@@ -483,7 +485,7 @@ export const EngineerConsoleScreen = () => {
                                             if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
                                                 throw new Error('Notification permission required for firmware update')
                                             }
-                                            console.log('[EngineerConsole] Notification permission granted')
+                                            log('[EngineerConsole] Notification permission granted')
                                         } catch (permErr) {
                                             throw new Error(`Permission error: ${permErr}`)
                                         }
@@ -501,7 +503,7 @@ export const EngineerConsoleScreen = () => {
                                     try {
                                         bootloaderAddress = await scanForBootloader(10000) // 10s scan
                                         if (bootloaderAddress) {
-                                            console.log(`[EngineerConsole] Found bootloader at: ${bootloaderAddress}`)
+                                            log(`[EngineerConsole] Found bootloader at: ${bootloaderAddress}`)
                                             setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
                                                 id: Date.now().toString(),
                                                 timestamp: new Date(),

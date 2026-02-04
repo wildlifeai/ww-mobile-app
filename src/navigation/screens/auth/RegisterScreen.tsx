@@ -11,6 +11,8 @@ import { setCredentials } from "../../../redux/slices/authSlice"
 import { useAppNavigation } from "../../../hooks/useAppNavigation"
 import { WWText } from "../../../components/ui/WWText"
 import { KEYBOARD_AVOID_PADDING } from "../../../constants/layout"
+import { logError } from '../../../utils/logger'
+
 
 type FormData = {
 	name: string
@@ -64,7 +66,7 @@ export const Register = () => {
 
 			dispatch(setCredentials(response))
 		} catch (err) {
-			console.error("Registration failed:", JSON.stringify(err))
+			logError("Registration failed:", JSON.stringify(err))
 			Alert.alert(
 				"Registration Failed",
 				"Please check your information and try again.",

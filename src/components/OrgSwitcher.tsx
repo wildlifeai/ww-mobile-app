@@ -24,6 +24,8 @@ import {
 	useTheme,
 } from "react-native-paper"
 import { useUserOrganisations } from "../hooks/useUserOrganisations"
+import { logError } from '../utils/logger'
+
 
 export const OrgSwitcher = () => {
 	const theme = useTheme()
@@ -70,7 +72,7 @@ export const OrgSwitcher = () => {
 			await switchOrganisation(selectedOrgId)
 			handleCloseDialog()
 		} catch (err) {
-			console.error("Failed to switch organisation:", err)
+			logError("Failed to switch organisation:", err)
 			setError(
 				err instanceof Error
 					? err.message

@@ -10,6 +10,8 @@
  */
 
 import database from "../database"
+import { log, logError } from './logger'
+
 
 /**
  * Reset the WatermelonDB database completely
@@ -24,14 +26,14 @@ export async function resetDatabaseForDev(): Promise<void> {
 	}
 
 	try {
-		console.log("🔄 Starting WatermelonDB reset...")
+		log("🔄 Starting WatermelonDB reset...")
 		await database.write(async () => {
 			await database.unsafeResetDatabase()
 		})
-		console.log("✅ WatermelonDB reset complete")
-		console.log("ℹ️  You may need to restart the app or re-authenticate")
+		log("✅ WatermelonDB reset complete")
+		log("ℹ️  You may need to restart the app or re-authenticate")
 	} catch (error) {
-		console.error("❌ WatermelonDB reset failed:", error)
+		logError("❌ WatermelonDB reset failed:", error)
 		throw error
 	}
 }

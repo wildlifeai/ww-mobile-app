@@ -4,6 +4,8 @@ import database from '../database'
 import Deployment from '../database/models/Deployment'
 import OutboxService from './OutboxService'
 import SupabaseSyncService from './SupabaseSyncService'
+import { log, logError, logWarn } from '../utils/logger'
+
 
 // Deployment Status IDs based on backend schema
 // 1 = deployed (Active)
@@ -38,7 +40,7 @@ export const DeploymentService = {
             captureMethodId?: number
         }
     ): Promise<Deployment> => {
-        console.log('[DeploymentService] Creating deployment:', data.name)
+        log('[DeploymentService] Creating deployment:', data.name)
 
         // Fetch Project Settings for Snapshot
         const projectService = require('./ProjectService').default // Dynamic import to avoid cycles if any
@@ -53,7 +55,7 @@ export const DeploymentService = {
 
             try {
                 // 1. Prepare record
-                console.log('[DeploymentService] Step 1: Preparing deployment record')
+                log('[DeploymentService] Step 1: Preparing deployment record')
                 newDeployment = deploymentsCollection.prepareCreate((deployment) => {
                     deployment.name = data.name
                     deployment.projectId = data.projectId
@@ -96,23 +98,23 @@ export const DeploymentService = {
                     // Initialize required JSON fields to defaults to prevent schema validation errors
                     deployment.location = {}
                     deployment.deploymentPhotos = []
-                    console.log('[DeploymentService] Preparation function complete')
+                    log('[DeploymentService] Preparation function complete')
                 })
 
-                console.log('[DeploymentService] Step 1 complete: Record prepared with ID:', newDeployment.id)
+                log('[DeploymentService] Step 1 complete: Record prepared with ID:', newDeployment.id)
 
                 // 2. Prepare outbox record
-                console.log('[DeploymentService] Step 2: Mapping payload')
+                log('[DeploymentService] Step 2: Mapping payload')
                 let payload
                 try {
                     payload = mapModelToPayload(newDeployment)
-                    console.log('[DeploymentService] Payload mapped successfully')
+                    log('[DeploymentService] Payload mapped successfully')
                 } catch (mapErr) {
-                    console.error('[DeploymentService] Error mapping payload:', mapErr)
+                    logError('[DeploymentService] Error mapping payload:', mapErr)
                     throw mapErr
                 }
 
-                console.log('[DeploymentService] Step 3: Recording operation')
+                log('[DeploymentService] Step 3: Recording operation')
                 const outboxOp = OutboxService.recordOperation({
                     operation: 'CREATE',
                     tableName: 'deployments',
@@ -120,14 +122,14 @@ export const DeploymentService = {
                     payload,
                     userId: data.setupBy,
                 })
-                console.log('[DeploymentService] Step 3 complete: Outbox op prepared')
+                log('[DeploymentService] Step 3 complete: Outbox op prepared')
 
                 // 3. Execute batch
-                console.log('[DeploymentService] Step 4: Batching operations')
+                log('[DeploymentService] Step 4: Batching operations')
                 await database.batch(newDeployment, outboxOp)
-                console.log('[DeploymentService] Created deployment and outbox record:', newDeployment.id)
+                log('[DeploymentService] Created deployment and outbox record:', newDeployment.id)
             } catch (err) {
-                console.error('[DeploymentService] Critical error in createDeployment batch:', err)
+                logError('[DeploymentService] Critical error in createDeployment batch:', err)
                 throw err
             }
         })
@@ -143,9 +145,9 @@ export const DeploymentService = {
                     // (WatermelonDB models update updatedAt automatically on save)
                 })
             })
-            console.log('[DeploymentService] Touched device:', data.deviceId)
+            log('[DeploymentService] Touched device:', data.deviceId)
         } catch (e) {
-            console.warn('[DeploymentService] Failed to touch device:', e)
+            logWarn('[DeploymentService] Failed to touch device:', e)
         }
 
         // Trigger background sync
@@ -162,7 +164,7 @@ export const DeploymentService = {
         endedBy: string | null,
         notes?: string
     ): Promise<Deployment> => {
-        console.log('[DeploymentService] Ending deployment:', deploymentId)
+        log('[DeploymentService] Ending deployment:', deploymentId)
 
         return await database.write(async () => {
             const deploymentsCollection = database.get<Deployment>('deployments')
@@ -203,7 +205,7 @@ export const DeploymentService = {
             const deploymentsCollection = database.get<Deployment>('deployments')
             return await deploymentsCollection.find(id)
         } catch (error) {
-            console.log('[DeploymentService] Deployment not found locally:', id)
+            log('[DeploymentService] Deployment not found locally:', id)
             return undefined
         }
     },

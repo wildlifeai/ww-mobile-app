@@ -7,6 +7,8 @@ import {
 } from "../redux/slices/authSlice"
 import { getCurrentSession, setupAuthListener } from "../services/auth"
 import { AuthResponse } from "../redux/api/auth/types"
+import { logError } from '../utils/logger'
+
 
 export const AuthProvider = ({ children }: PropsWithChildren<unknown>) => {
 	const dispatch = useAppDispatch()
@@ -28,7 +30,7 @@ export const AuthProvider = ({ children }: PropsWithChildren<unknown>) => {
 					}
 				})
 			} catch (error) {
-				console.error("Auth initialization error:", error)
+				logError("Auth initialization error:", error)
 				dispatch(setInitialState(null))
 			}
 		}

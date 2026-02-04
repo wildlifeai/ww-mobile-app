@@ -1,7 +1,9 @@
 import { api } from ".."
 import { API_URLS } from "../urls"
 import { Device, DeviceCreate, DeviceUpdate, HttpMethod } from "../types"
-console.log("API_URLS: ", API_URLS.DEVICES)
+import { log } from '../../../utils/logger'
+
+log("API_URLS: ", API_URLS.DEVICES)
 export const devicesApi = api.injectEndpoints({
 	endpoints: (builder) => ({
 		getDevices: builder.query<Device[], void>({

@@ -22,6 +22,8 @@ import { DeviceService } from '../../services/DeviceService'
 import type Deployment from '../../database/models/Deployment'
 import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog'
 import { useBleInitialization } from '../../hooks/useBleInitialization'
+import { log, logError, logWarn } from '../../utils/logger'
+
 
 type EndDeploymentDetailsStepRouteProp = RouteProp<RootStackParamList, 'EndDeploymentDetailsStep'>
 
@@ -50,7 +52,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const user = useAppSelector(selectCurrentUser)
 
 
-    console.log(`[EndDeployment] Rendering (Fixed). Params from route:: bleDeviceId=${bleDeviceId}, deviceId=${deviceId}`);
+    log(`[EndDeployment] Rendering (Fixed). Params from route:: bleDeviceId=${bleDeviceId}, deviceId=${deviceId}`);
 
     // Robust lookup: Try direct match, then case-insensitive, then fallback
     const bleDevice = useMemo(() => {
@@ -60,7 +62,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             device = Object.values(devices).find(d => d.id?.toLowerCase() === bleDeviceId?.toLowerCase());
         }
 
-        console.log(`[EndDeployment] Validating device from store. bleDeviceId=${bleDeviceId}, Found=${!!device}, ID=${device?.id}, Connected=${device?.connected}`);
+        log(`[EndDeployment] Validating device from store. bleDeviceId=${bleDeviceId}, Found=${!!device}, ID=${device?.id}, Connected=${device?.connected}`);
 
         if (device) {
             // Use actual device state from store
@@ -68,7 +70,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         }
 
         // Fallback: Construct a minimal defined object
-        console.warn(`[EndDeployment] Device ${bleDeviceId} not found in store. Using fallback (disconnected).`);
+        logWarn(`[EndDeployment] Device ${bleDeviceId} not found in store. Using fallback (disconnected).`);
         return {
             id: bleDeviceId,
             connected: false, // Default to false if not found in store
@@ -116,7 +118,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             
             setInitStep('Initializing...')
             setInitProgress(0.2)
-            console.log('[EndDeployment] Running standard BLE initialization...')
+            log('[EndDeployment] Running standard BLE initialization...')
             
             const result = await initialize(bleDevice, {
                 onProgress: (step, progress) => {
@@ -126,13 +128,13 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             })
 
             if (!result.success) {
-                console.warn('[EndDeployment] BLE initialization had errors:', result.errors)
+                logWarn('[EndDeployment] BLE initialization had errors:', result.errors)
                 setInitErrors({
                     setUtc: result.errors.setUtc,
                     deviceHealth: result.errors.deviceHealth
                 })
             } else {
-                console.log('[EndDeployment] Initialization complete. Time set and hardware verified.')
+                log('[EndDeployment] Initialization complete. Time set and hardware verified.')
             }
 
             // Mark initialization as done
@@ -148,20 +150,20 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     useEffect(() => {
         if (!bleDevice?.connected || isEnding || isInitializing) return
 
-        console.log('[EndDeployment] Starting keep-alive heartbeat (20s interval)')
+        log('[EndDeployment] Starting keep-alive heartbeat (20s interval)')
         const interval = setInterval(async () => {
             if (bleDevice?.connected && !isEnding && !isNavigatingAway.current) {
-                console.log('[EndDeployment] Heartbeat ping...')
+                log('[EndDeployment] Heartbeat ping...')
                 try {
                     await getHeartbeat(bleDevice)
                 } catch (e) {
-                    console.warn('[EndDeployment] Heartbeat failed:', e)
+                    logWarn('[EndDeployment] Heartbeat failed:', e)
                 }
             }
         }, 20000)
 
         return () => {
-             console.log('[EndDeployment] Stopping heartbeat')
+             log('[EndDeployment] Stopping heartbeat')
              clearInterval(interval)
         }
     }, [bleDevice, bleDevice?.connected, isEnding, isInitializing, getHeartbeat])
@@ -176,7 +178,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             
             // Disconnect device
             if (bleDevice?.connected) {
-                console.log('[EndDeployment] Back button pressed - disconnecting device...')
+                log('[EndDeployment] Back button pressed - disconnecting device...')
                 isNavigatingAway.current = true
                 await runDisconnect(bleDevice)
             }
@@ -243,18 +245,18 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 setFinishStep('Clearing config...')
                 setFinishProgress(0.2)
                 
-                console.log('[EndDeployment] Clearing Deployment ID...')
+                log('[EndDeployment] Clearing Deployment ID...')
                 let idCleared = false
                 let attempts = 0
                 while (!idCleared && attempts < 3) {
                     try {
                         attempts++
                         await setDeploymentIdAsOps(bleDevice, null)
-                        console.log('[EndDeployment] ID cleared')
+                        log('[EndDeployment] ID cleared')
                         idCleared = true
                         addFinishLog('Configuration cleared')
                     } catch (e) {
-                        console.warn(`[EndDeployment] Clear ID failed (attempt ${attempts}):`, e)
+                        logWarn(`[EndDeployment] Clear ID failed (attempt ${attempts}):`, e)
                         if (attempts < 3) {
                             addFinishLog(`Retry ${attempts}/3...`)
                             await new Promise(r => setTimeout(r, 1000))
@@ -268,7 +270,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 try {
                     await clearGpsLocation(bleDevice)
                 } catch (e) {
-                    console.warn('[EndDeployment] Failed to clear GPS:', e)
+                    logWarn('[EndDeployment] Failed to clear GPS:', e)
                 }
             }
 
@@ -291,7 +293,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                     await quiesceDevice('[EndDeployment]', true)  // Use optimized mode (skip camera enable)
                     addFinishLog('Device stopped')
                 } catch (e) {
-                    console.warn('[EndDeployment] Final stop warning:', e)
+                    logWarn('[EndDeployment] Final stop warning:', e)
                     addFinishLog('Warning: Final stop incomplete')
                 }
             }
@@ -306,7 +308,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                     await runDisconnect(bleDevice)
                     addFinishLog('Device disconnected')
                 } catch (e) {
-                    console.warn('[EndDeployment] Disconnect error:', e)
+                    logWarn('[EndDeployment] Disconnect error:', e)
                 }
             }
 
@@ -317,7 +319,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             addFinishLog('Deployment ended successfully')
 
         } catch (error) {
-            console.error(error)
+            logError(error)
             setIsFinishing(false)
             Alert.alert("Error", "Failed to end deployment. Please try again.")
         } finally {

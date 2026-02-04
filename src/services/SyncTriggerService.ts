@@ -1,5 +1,7 @@
 import SupabaseSyncService from './SupabaseSyncService';
 import ReferenceDataService from './ReferenceDataService';
+import { log } from '../utils/logger'
+
 
 /**
  * Service to trigger synchronization tasks after authentication events.
@@ -7,12 +9,12 @@ import ReferenceDataService from './ReferenceDataService';
  * dynamic import issues in Jest.
  */
 export const triggerPostAuthSync = () => {
-  console.log('⏰ Post-auth sync triggered');
+  log('⏰ Post-auth sync triggered');
   
   // Trigger sync after a short delay to ensure auth is fully set up
   // and database connection is stable
   setTimeout(() => {
-    console.log('🚀 Starting background synchronization...');
+    log('🚀 Starting background synchronization...');
     SupabaseSyncService.debouncedSync();
     ReferenceDataService.syncReferenceData();
   }, 1000);

@@ -21,6 +21,8 @@ import type {
 } from "../types/project"
 import UserRoleService from './UserRoleService'
 import UserRole from '../database/models/UserRole'
+import { log, logError } from '../utils/logger'
+
 
 class ProjectService {
 	private readonly projectsCollection = database.collections.get<Project>('projects')
@@ -97,7 +99,7 @@ class ProjectService {
 			return await Promise.all(projects.map(p => this.enrichProjectWithDetails(p)))
 
 		} catch (error) {
-			console.error("❌ Failed to fetch user projects:", error)
+			logError("❌ Failed to fetch user projects:", error)
 			return []
 		}
 	}
@@ -111,7 +113,7 @@ class ProjectService {
 	 */
 	async getProjectsForUserInOrganisation(userId: string, organisationId: string): Promise<ProjectWithDetails[]> {
 		try {
-			console.log(`📂 Fetching projects for user ${userId} in org ${organisationId}`)
+			log(`📂 Fetching projects for user ${userId} in org ${organisationId}`)
 
 			// 1. Get user's roles
 			const userRolesCollection = database.collections.get<UserRole>('user_roles')
@@ -147,7 +149,7 @@ class ProjectService {
 			)
 
 			if (hasFullAccess) {
-				console.log("✅ User has full access (Admin), fetching all projects in org")
+				log("✅ User has full access (Admin), fetching all projects in org")
 				const allProjects = await this.projectsCollection.query(
 					Q.where('organisation_id', organisationId)
 				).fetch()
@@ -172,7 +174,7 @@ class ProjectService {
 				Q.where('is_active', true)
 			).fetch()
 
-			console.log(`✅ Found ${createdProjects.length} locally created projects`)
+			log(`✅ Found ${createdProjects.length} locally created projects`)
 
 			// 5. Fetch role-accessible projects
 			let roleProjects: Project[] = []
@@ -195,12 +197,12 @@ class ProjectService {
 
 			const uniqueProjects = Array.from(projectMap.values())
 
-			console.log(`✅ Total accessible projects (Roles + Created): ${uniqueProjects.length}`)
+			log(`✅ Total accessible projects (Roles + Created): ${uniqueProjects.length}`)
 
 			return await Promise.all(uniqueProjects.map(p => this.enrichProjectWithDetails(p)))
 
 		} catch (error) {
-			console.error("❌ Failed to fetch user projects:", error)
+			logError("❌ Failed to fetch user projects:", error)
 			return []
 		}
 	}
@@ -211,16 +213,16 @@ class ProjectService {
 	 */
 	async getProjectById(projectId: string): Promise<ProjectWithDetails | null> {
 		try {
-			console.log("📂 Reading project from WatermelonDB:", projectId)
+			log("📂 Reading project from WatermelonDB:", projectId)
 
 			const project = await this.projectsCollection.find(projectId)
 
 			if (!project) {
-				console.log("❌ Project not found in WatermelonDB:", projectId)
+				log("❌ Project not found in WatermelonDB:", projectId)
 				return null
 			}
 
-			console.log("✅ Found project in WatermelonDB:", project.name)
+			log("✅ Found project in WatermelonDB:", project.name)
 
 			const details = await this.enrichProjectWithDetails(project)
 
@@ -230,13 +232,13 @@ class ProjectService {
 				const role = await UserRoleService.getUserProjectRole(projectId, currentUserId)
 				if (role) {
 					details.role = role
-					console.log(`✅ User role for project ${projectId}: ${role}`)
+					log(`✅ User role for project ${projectId}: ${role}`)
 				}
 			}
 
 			return details
 		} catch (error) {
-			console.error("❌ Failed to fetch project from WatermelonDB:", error)
+			logError("❌ Failed to fetch project from WatermelonDB:", error)
 			// WatermelonDB throws if record not found
 			return null
 		}
@@ -251,7 +253,7 @@ class ProjectService {
 		if (!currentUserId) throw new Error("User not authenticated")
 
 		try {
-			console.log("🛠️ Creating project in WatermelonDB:", input.name)
+			log("🛠️ Creating project in WatermelonDB:", input.name)
 
 			let newProject: Project | undefined
 
@@ -277,7 +279,7 @@ class ProjectService {
 
 
 				// 2. Prepare outbox record
-				console.log("📦 Preparing outbox record for project:", newProject.id)
+				log("📦 Preparing outbox record for project:", newProject.id)
 
 				try {
 					const outboxOp = OutboxService.recordOperation({
@@ -288,14 +290,14 @@ class ProjectService {
 						userId: currentUserId,
 					})
 
-					console.log("✅ Outbox record prepared, executing batch...")
+					log("✅ Outbox record prepared, executing batch...")
 
 					// 3. Execute batch
 					await database.batch(newProject, outboxOp)
 
-					console.log("✅ Batch executed successfully - project and outbox record created")
+					log("✅ Batch executed successfully - project and outbox record created")
 				} catch (outboxError) {
-					console.error("❌ Failed to create outbox record:", outboxError)
+					logError("❌ Failed to create outbox record:", outboxError)
 					throw new Error(`Outbox creation failed: ${outboxError instanceof Error ? outboxError.message : String(outboxError)}`)
 				}
 
@@ -303,14 +305,14 @@ class ProjectService {
 
 			if (!newProject) throw new Error("Failed to create project instance")
 
-			console.log("✅ Project created locally:", newProject.id)
+			log("✅ Project created locally:", newProject.id)
 
 			// Trigger background sync (debounced to batch operations)
 			SupabaseSyncService.debouncedSync()
 
 			return this.mapModelToType(newProject)
 		} catch (error) {
-			console.error("❌ Failed to create project:", error)
+			logError("❌ Failed to create project:", error)
 			throw new Error(
 				`Failed to create project: ${error instanceof Error ? error.message : String(error)}`
 			)
@@ -326,7 +328,7 @@ class ProjectService {
 		updates: Partial<ProjectType>,
 	): Promise<ProjectType> {
 		try {
-			console.log("🛠️ Updating project in WatermelonDB:", projectId)
+			log("🛠️ Updating project in WatermelonDB:", projectId)
 
 			const project = await this.projectsCollection.find(projectId)
 			const currentUserId = await this.getCurrentUserId()
@@ -361,14 +363,14 @@ class ProjectService {
 				await database.batch(projectUpdate, outboxOp)
 			})
 
-			console.log("✅ Project updated locally:", projectId)
+			log("✅ Project updated locally:", projectId)
 
 			// Trigger background sync
 			SupabaseSyncService.debouncedSync()
 
 			return this.mapModelToType(project)
 		} catch (error) {
-			console.error("❌ Failed to update project:", error)
+			logError("❌ Failed to update project:", error)
 			throw new Error(
 				`Failed to update project: ${error instanceof Error ? error.message : String(error)}`
 			)
@@ -381,7 +383,7 @@ class ProjectService {
 	 */
 	async deleteProject(projectId: string): Promise<void> {
 		try {
-			console.log("🗑️ Deleting project in WatermelonDB:", projectId)
+			log("🗑️ Deleting project in WatermelonDB:", projectId)
 
 			const project = await this.projectsCollection.find(projectId)
 			const currentUserId = await this.getCurrentUserId()
@@ -403,12 +405,12 @@ class ProjectService {
 				await database.batch(projectDelete, outboxOp)
 			})
 
-			console.log("✅ Project marked as deleted locally:", projectId)
+			log("✅ Project marked as deleted locally:", projectId)
 
 			// Trigger background sync
 			SupabaseSyncService.debouncedSync()
 		} catch (error) {
-			console.error("❌ Failed to delete project:", error)
+			logError("❌ Failed to delete project:", error)
 			throw new Error(
 				`Failed to delete project: ${error instanceof Error ? error.message : String(error)}`
 			)
@@ -441,7 +443,7 @@ class ProjectService {
 				}
 			})) as ProjectMemberWithProfile[]
 		} catch (error) {
-			console.error("Failed to fetch project members:", error)
+			logError("Failed to fetch project members:", error)
 			return []
 		}
 	}
@@ -482,7 +484,7 @@ class ProjectService {
 				throw new Error(result.error || "Failed to add project member")
 			}
 		} catch (error) {
-			console.error("Failed to add project member:", error)
+			logError("Failed to add project member:", error)
 			throw error
 		}
 	}
@@ -506,7 +508,7 @@ class ProjectService {
 				throw new Error(result.error || "Failed to remove project member")
 			}
 		} catch (error) {
-			console.error("Failed to remove project member:", error)
+			logError("Failed to remove project member:", error)
 			throw error
 		}
 	}

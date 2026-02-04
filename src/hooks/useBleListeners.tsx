@@ -283,9 +283,9 @@ export const useBleListeners = () => {
 	const scanStoppedEvent = useCallback(async () => {
 		pingsPause(false)
 
-		const peripherals: Peripheral[] = await guard(() =>
+		const peripherals: Peripheral[] = (await guard(() =>
 			BleManager.getDiscoveredPeripherals(),
-		)
+		)) as Peripheral[]
 
 		const filteredPeripherals = peripherals.filter((p) => {
 

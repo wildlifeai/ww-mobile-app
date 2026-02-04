@@ -29,6 +29,8 @@ import { HelpDialog } from '../../components/ui/HelpDialog'
 import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog'
 
 import { useDeploymentConfiguration } from '../../hooks/useDeploymentConfiguration'
+import { log, logError, logWarn } from '../../utils/logger'
+
 
 type DeploymentDetailsRouteProp = RouteProp<RootStackParamList, 'DeploymentDetailsStep'>;
 
@@ -124,7 +126,7 @@ export const DeploymentDetailsStep = () => {
             // This reuses the shared hook for consistency
             setInitStep('Initializing...')
             setInitProgress(0.2)
-            console.log('[Deployment] Step 2: Running standard BLE initialization...')
+            log('[Deployment] Step 2: Running standard BLE initialization...')
             
             const result = await runBleStandardInit(bleDevice, {
                 onProgress: (step, progress) => {
@@ -134,13 +136,13 @@ export const DeploymentDetailsStep = () => {
             })
 
             if (!result.success) {
-                console.warn('[Deployment] BLE initialization had errors:', result.errors)
+                logWarn('[Deployment] BLE initialization had errors:', result.errors)
                 setInitErrors({
                     setUtc: result.errors.setUtc,
                     deviceHealth: result.errors.deviceHealth
                 })
             } else {
-                 console.log('[Deployment] Initialization complete. Time set and hardware verified.')
+                 log('[Deployment] Initialization complete. Time set and hardware verified.')
                  // Implicitly we know UTC is set, so we can set TimeCheckStatus to ok
                  setTimeCheckStatus('ok')
             }
@@ -159,21 +161,21 @@ export const DeploymentDetailsStep = () => {
         const isConnected = !!bleDevice?.connected
         if (!isConnected || isInitializing) return
 
-        console.log('[Deployment] Starting keep-alive heartbeat (20s interval)')
+        log('[Deployment] Starting keep-alive heartbeat (20s interval)')
         const interval = setInterval(async () => {
             const currentDevice = bleDeviceRef.current
             if (currentDevice && currentDevice.connected && !isNavigatingAway.current) {
-                console.log('[Deployment] Heartbeat ping...')
+                log('[Deployment] Heartbeat ping...')
                 try {
                     await getHeartbeat(currentDevice)
                 } catch (e) {
-                    console.warn('[Deployment] Heartbeat failed:', e)
+                    logWarn('[Deployment] Heartbeat failed:', e)
                 }
             }
         }, 20000)
 
         return () => {
-            console.log('[Deployment] Stopping heartbeat')
+            log('[Deployment] Stopping heartbeat')
             clearInterval(interval)
         }
     }, [!!bleDevice?.connected, isInitializing, getHeartbeat])
@@ -185,20 +187,20 @@ export const DeploymentDetailsStep = () => {
             const phoneTime = new Date().getTime()
             const diff = Math.abs(phoneTime - deviceTime)
 
-            console.log(`[TimeCheck] Device: ${timeString}, Phone: ${new Date().toISOString()}, Diff: ${diff}ms`)
+            log(`[TimeCheck] Device: ${timeString}, Phone: ${new Date().toISOString()}, Diff: ${diff}ms`)
 
             if (diff > 5000) { // 5 seconds tolerance
-                console.log('[TimeCheck] Time mismatch. Setting UTC...')
+                log('[TimeCheck] Time mismatch. Setting UTC...')
                 setTimeCheckStatus('correcting')
                 await setUtc(bleDevice)
                 // Optionally request verify again?
                 setTimeCheckStatus('ok') // Assume success for now
             } else {
-                console.log('[TimeCheck] Time is correct.')
+                log('[TimeCheck] Time is correct.')
                 setTimeCheckStatus('ok')
             }
         } catch (e) {
-            console.error('[TimeCheck] Parse error:', e)
+            logError('[TimeCheck] Parse error:', e)
             setTimeCheckStatus('failed')
         }
     }, [bleDevice, setUtc])
@@ -212,7 +214,7 @@ export const DeploymentDetailsStep = () => {
 
     const loadPreparationAndProject = useCallback(async () => {
         try {
-            console.log('[DeploymentDetails] Loading preparation:', devicePreparationId);
+            log('[DeploymentDetails] Loading preparation:', devicePreparationId);
             
             // Parallel load
             const [prep, deviceData] = await Promise.all([
@@ -222,19 +224,19 @@ export const DeploymentDetailsStep = () => {
             
             setPreparation(prep)
             setDevice(deviceData)
-            console.log('[DeploymentDetails] Prep loaded:', prep?.id, 'projectId:', prep?.projectId);
+            log('[DeploymentDetails] Prep loaded:', prep?.id, 'projectId:', prep?.projectId);
 
             if (prep && prep.projectId) {
-                console.log('[DeploymentDetails] Loading project:', prep.projectId);
+                log('[DeploymentDetails] Loading project:', prep.projectId);
                 const proj = await ProjectService.getProjectById(prep.projectId)
-                console.log('[DeploymentDetails] Project loaded:', proj?.name, 'capture_method_id:', proj?.capture_method_id);
+                log('[DeploymentDetails] Project loaded:', proj?.name, 'capture_method_id:', proj?.capture_method_id);
                 setProject(proj)
 
                 if (proj && proj.capture_method_id) {
-                    console.log('[DeploymentDetails] Resolving capture method name for ID:', proj.capture_method_id);
+                    log('[DeploymentDetails] Resolving capture method name for ID:', proj.capture_method_id);
                     const methods = await ReferenceDataService.getCaptureMethods()
                     const method = methods.find(m => m.id === proj.capture_method_id)
-                    console.log('[DeploymentDetails] Method resolved:', method?.value);
+                    log('[DeploymentDetails] Method resolved:', method?.value);
                     setCaptureMethodName(method ? method.value : 'Unknown')
 
                     if (proj.activity_detection_sensitivity_id) {
@@ -243,14 +245,14 @@ export const DeploymentDetailsStep = () => {
                         setSensitivityLabel(sensitivity ? sensitivity.value : 'Unknown')
                     }
                 } else {
-                    console.log('[DeploymentDetails] No capture method ID on project');
+                    log('[DeploymentDetails] No capture method ID on project');
                     setCaptureMethodName('Not Set')
                 }
             } else {
-                console.warn('[DeploymentDetails] Prep found but missing projectId');
+                logWarn('[DeploymentDetails] Prep found but missing projectId');
             }
         } catch (error) {
-            console.error('[DeploymentDetails] Error in loadPreparationAndProject:', error)
+            logError('[DeploymentDetails] Error in loadPreparationAndProject:', error)
         }
     }, [devicePreparationId])
 
@@ -279,14 +281,14 @@ export const DeploymentDetailsStep = () => {
                 // Prevent default behavior (which would just pop to DeviceDiscovery)
                 e.preventDefault()
 
-                console.log('[Deployment] Intercepting back navigation. Disconnecting and redirecting to Deployments.')
+                log('[Deployment] Intercepting back navigation. Disconnecting and redirecting to Deployments.')
                 
                 // Mark as properly navigating away to suppress connection lost alerts
                 isNavigatingAway.current = true
 
                 // 1. Disconnect Device
                 if (bleDevice) {
-                    runDisconnect(bleDevice).catch(err => console.warn('[Deployment] Auto-disconnect failed:', err))
+                    runDisconnect(bleDevice).catch(err => logWarn('[Deployment] Auto-disconnect failed:', err))
                 }
 
                 // 2. Redirect to Deployments Screen/Tab
@@ -305,20 +307,20 @@ export const DeploymentDetailsStep = () => {
         // or if not connected
         if (!bleDevice?.connected || isInitializing || submitting) return
 
-        console.log('[Deployment] Starting keep-alive heartbeat (20s interval)')
+        log('[Deployment] Starting keep-alive heartbeat (20s interval)')
         const interval = setInterval(async () => {
             if (bleDevice?.connected && !isNavigatingAway.current && !submitting) {
-                console.log('[Deployment] Heartbeat ping...')
+                log('[Deployment] Heartbeat ping...')
                 try {
                     await getHeartbeat(bleDevice)
                 } catch (e) {
-                    console.warn('[Deployment] Heartbeat failed:', e)
+                    logWarn('[Deployment] Heartbeat failed:', e)
                 }
             }
         }, 20000)
 
         return () => {
-            console.log('[Deployment] Stopping heartbeat')
+            log('[Deployment] Stopping heartbeat')
             clearInterval(interval)
         }
     }, [bleDevice, submitting, getHeartbeat])
@@ -420,7 +422,7 @@ export const DeploymentDetailsStep = () => {
             setFinishStep('Configuring device...')
             setFinishProgress(0.5)
             
-            console.log('[Deployment] Configuring device via standardized hook...')
+            log('[Deployment] Configuring device via standardized hook...')
             try {
                 // Determine capture method
                 const methodRaw = captureMethodName.toLowerCase().replace(/[^a-z]/g, '')
@@ -445,10 +447,10 @@ export const DeploymentDetailsStep = () => {
                 })
                 
                 addFinishLog('Device configuration successful')
-                console.log('[Deployment] Device configuration successful')
+                log('[Deployment] Device configuration successful')
 
             } catch (configError) {
-                console.error('[Deployment] Configuration failed:', configError)
+                logError('[Deployment] Configuration failed:', configError)
                 addFinishLog('Configuration warning: Verify settings in console')
                 // We continue to enable camera/disconnect as best effort
             }
@@ -460,17 +462,17 @@ export const DeploymentDetailsStep = () => {
                 addFinishLog('Enabling camera...')
                 setFinishStep('Enabling camera...')
                 setFinishProgress(0.7)
-                console.log('[Deployment] Sending explicit Enable Camera command...')
+                log('[Deployment] Sending explicit Enable Camera command...')
                 try {
                     await enableCamera(bleDevice)
                     addFinishLog('Camera enabled')
-                    console.log('[Deployment] Explicit enable command sent.')
+                    log('[Deployment] Explicit enable command sent.')
                 } catch (e) {
-                    console.warn('[Deployment] Failed to send explicit enable command:', e)
+                    logWarn('[Deployment] Failed to send explicit enable command:', e)
                     addFinishLog('Warning: Failed to confirm camera enable')
                 }
             } else {
-                console.warn('[Deployment] Device disconnected during explicit enable.')
+                logWarn('[Deployment] Device disconnected during explicit enable.')
                 addFinishLog('Warning: Device disconnected before camera enable')
             }
             */
@@ -489,7 +491,7 @@ export const DeploymentDetailsStep = () => {
                     await flashLed(bleDevice, 'green', 3, 300)
                     addFinishLog('LED signal sent')
                 } catch (e) {
-                    console.warn('[Deployment] LED flash failed:', e)
+                    logWarn('[Deployment] LED flash failed:', e)
                     addFinishLog('Warning: LED signal failed')
                 }
             }
@@ -498,14 +500,14 @@ export const DeploymentDetailsStep = () => {
             addFinishLog('Disconnecting...')
             setFinishStep('Disconnecting...')
             setFinishProgress(0.95)
-            console.log('[Deployment] Disconnecting device...')
+            log('[Deployment] Disconnecting device...')
             
             try {
                 await runDisconnect(bleDevice)
                 addFinishLog('Device disconnected')
-                console.log('[Deployment] Device disconnected')
+                log('[Deployment] Device disconnected')
             } catch (e) {
-                console.error('[Deployment] Failed to disconnect:', e)
+                logError('[Deployment] Failed to disconnect:', e)
                 addFinishLog('Warning: Clean disconnect failed')
             }
 
@@ -516,7 +518,7 @@ export const DeploymentDetailsStep = () => {
             addFinishLog('Deployment started successfully')
 
         } catch (error) {
-            console.error('Deployment failed:', error)
+            logError('Deployment failed:', error)
             setIsFinishing(false) // Hide dialog on error to show alert
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false // Re-enable alerts on failure

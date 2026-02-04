@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Q } from '@nozbe/watermelondb'
 import database from '../database'
 import SyncState from '../database/models/SyncState'
+import { logError } from '../utils/logger'
+
 
 /**
  * SyncStateService
@@ -68,7 +70,7 @@ class SyncStateService {
 
             return null
         } catch (error) {
-            console.error(`[SyncStateService] Error getting key ${key}:`, error)
+            logError(`[SyncStateService] Error getting key ${key}:`, error)
             return null
         }
     }
@@ -100,7 +102,7 @@ class SyncStateService {
             // Update AsyncStorage cache
             await AsyncStorage.setItem(this.getStorageKey(key), value)
         } catch (error) {
-            console.error(`[SyncStateService] Error setting key ${key}:`, error)
+            logError(`[SyncStateService] Error setting key ${key}:`, error)
             throw error
         }
     }
@@ -125,7 +127,7 @@ class SyncStateService {
             // Remove from AsyncStorage
             await AsyncStorage.removeItem(this.getStorageKey(key))
         } catch (error) {
-            console.error(`[SyncStateService] Error deleting key ${key}:`, error)
+            logError(`[SyncStateService] Error deleting key ${key}:`, error)
             throw error
         }
     }

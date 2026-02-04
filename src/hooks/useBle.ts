@@ -12,7 +12,7 @@ import {
 	isOurDevice,
 	sleep,
 } from "../utils/helpers"
-import { guard, log, logError } from "../utils/logger"
+import { guard, log, logError, logWarn } from '../utils/logger'
 import { useAppDispatch, useAppSelector } from "../redux"
 import {
 	deviceConfigClear,
@@ -259,7 +259,7 @@ export const useBle = (): ReturnType => {
 								timeout,
 							)
 						} catch (mtuError) {
-							console.warn("MTU negotiation failed, proceeding with default speed:", mtuError)
+							logWarn("MTU negotiation failed, proceeding with default speed:", mtuError)
 						}
 					}
 

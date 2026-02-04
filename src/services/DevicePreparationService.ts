@@ -4,6 +4,8 @@ import DevicePreparation from '../database/models/DevicePreparation'
 import OutboxService from './OutboxService'
 import SupabaseSyncService from './SupabaseSyncService'
 import { getSupabaseClient } from './supabase'
+import { log, logError, logWarn } from '../utils/logger'
+
 
 export const DevicePreparationService = {
     // ... existing methods ...
@@ -15,7 +17,7 @@ export const DevicePreparationService = {
         // 1. Try to clean server state (best effort, handles zombie records)
         // CRITICAL FIX: Do NOT await this. It can hang on slow/unstable networks, blocking the UI.
         DevicePreparationService.ensureServerStateClean(deviceId).catch(err => 
-            console.warn('[DevPrepService] background server cleanup failed:', err)
+            logWarn('[DevPrepService] background server cleanup failed:', err)
         )
 
         // 2. Cancel any existing in-progress preparations locally
@@ -36,7 +38,7 @@ export const DevicePreparationService = {
      * Create a new device preparation record
      */
     createPreparation: async (deviceId: string, projectId: string, modifiedBy: string): Promise<DevicePreparation> => {
-        console.log('[DevPrepService] Creating preparation for device:', deviceId, 'project:', projectId)
+        log('[DevPrepService] Creating preparation for device:', deviceId, 'project:', projectId)
 
         let newPrep: DevicePreparation | undefined
 
@@ -58,10 +60,10 @@ export const DevicePreparationService = {
                 preparation.lorawanRegistrationCompleted = false
             })
 
-            console.log('[DevPrepService] Record prepared, mapping to payload...')
+            log('[DevPrepService] Record prepared, mapping to payload...')
             // 2. Prepare outbox record
             const payload = mapModelToPayload(newPrep)
-            console.log('[DevPrepService] Payload mapped successfully:', JSON.stringify(payload))
+            log('[DevPrepService] Payload mapped successfully:', JSON.stringify(payload))
 
             const outboxOp = OutboxService.recordOperation({
                 operation: 'CREATE',
@@ -73,7 +75,7 @@ export const DevicePreparationService = {
 
             // 3. Execute batch
             await database.batch(newPrep, outboxOp)
-            console.log('[DevPrepService] Created preparation and outbox record:', newPrep.id)
+            log('[DevPrepService] Created preparation and outbox record:', newPrep.id)
         })
 
         if (!newPrep) throw new Error("Failed to create preparation instance")
@@ -108,7 +110,7 @@ export const DevicePreparationService = {
             sdCardAvailableKbAtCheck: number
         }>
     ): Promise<DevicePreparation> => {
-        console.log('[DevPrepService] Updating preparation:', preparationId, updates)
+        log('[DevPrepService] Updating preparation:', preparationId, updates)
 
         await database.write(async () => {
             const preparationsCollection = database.get<DevicePreparation>('device_preparation')
@@ -160,7 +162,7 @@ export const DevicePreparationService = {
      * Complete a device preparation
      */
     completePreparation: async (preparationId: string, isDeploymentReady: boolean, projectId?: string): Promise<DevicePreparation> => {
-        console.log('[DevPrepService] Completing preparation:', preparationId, 'ready:', isDeploymentReady, 'projectId:', projectId)
+        log('[DevPrepService] Completing preparation:', preparationId, 'ready:', isDeploymentReady, 'projectId:', projectId)
 
         await database.write(async () => {
             const preparationsCollection = database.get<DevicePreparation>('device_preparation')
@@ -185,7 +187,7 @@ export const DevicePreparationService = {
 
             // 3. Execute batch
             await database.batch(prepUpdate, outboxOp)
-            console.log('[DevPrepService] Preparation completed and queued for sync:', preparation.id)
+            log('[DevPrepService] Preparation completed and queued for sync:', preparation.id)
         })
 
         // Trigger background sync
@@ -249,7 +251,7 @@ export const DevicePreparationService = {
             const preparationsCollection = database.get<DevicePreparation>('device_preparation')
             return await preparationsCollection.find(id)
         } catch (error) {
-            console.log('[DevPrepService] Preparation not found:', id)
+            log('[DevPrepService] Preparation not found:', id)
             return undefined
         }
     },
@@ -333,7 +335,7 @@ export const DevicePreparationService = {
      */
     ensureServerStateClean: async (deviceId: string): Promise<void> => {
         try {
-            console.log(`[DevPrepService] Unconditionally cancelling any in_progress preparations for device: ${deviceId}`)
+            log(`[DevPrepService] Unconditionally cancelling any in_progress preparations for device: ${deviceId}`)
             const supabase = getSupabaseClient()
 
             // 1. Try RPC first (e.g. force_cancel_active_preparation) if available
@@ -343,11 +345,11 @@ export const DevicePreparationService = {
             })
 
             if (!rpcError) {
-                console.log('[DevPrepService] ✅ Force-cancelled preparations via RPC')
+                log('[DevPrepService] ✅ Force-cancelled preparations via RPC')
                 return
             }
 
-            console.warn('[DevPrepService] RPC failed (migration likely missing), falling back to direct update:', rpcError.message)
+            logWarn('[DevPrepService] RPC failed (migration likely missing), falling back to direct update:', rpcError.message)
 
             // 2. Fallback: Direct UPDATE (subject to RLS visibility)
             const { error: updateError, data } = await supabase
@@ -359,17 +361,17 @@ export const DevicePreparationService = {
                 .select('id')
 
             if (updateError) {
-                console.error('[DevPrepService] Failed to cancel server preparations:', updateError)
+                logError('[DevPrepService] Failed to cancel server preparations:', updateError)
             } else {
                 const count = data?.length || 0
                 if (count > 0) {
-                    console.log(`[DevPrepService] ✅ Cancelled ${count} in_progress preparation(s) on server (Direct Update)`)
+                    log(`[DevPrepService] ✅ Cancelled ${count} in_progress preparation(s) on server (Direct Update)`)
                 } else {
-                    console.log('[DevPrepService] No in_progress preparations found to cancel (clean state)')
+                    log('[DevPrepService] No in_progress preparations found to cancel (clean state)')
                 }
             }
         } catch (e) {
-            console.error('[DevPrepService] Exception in ensureServerStateClean:', e)
+            logError('[DevPrepService] Exception in ensureServerStateClean:', e)
             // Don't block flow if offline or error
         }
     },
@@ -380,7 +382,7 @@ export const DevicePreparationService = {
  */
 function mapModelToPayload(model: DevicePreparation): any {
     try {
-        console.log('[DevPrepService] mapModelToPayload for model:', model.id)
+        log('[DevPrepService] mapModelToPayload for model:', model.id)
         const payload = {
             id: model.id,
             device_id: model.deviceId,
@@ -416,10 +418,10 @@ function mapModelToPayload(model: DevicePreparation): any {
             updated_at: model.updatedAt ? new Date(model.updatedAt).toISOString() : new Date().toISOString(),
             deleted_at: model.deletedAt ? new Date(model.deletedAt).toISOString() : null,
         }
-        console.log('[DevPrepService] mapModelToPayload successful')
+        log('[DevPrepService] mapModelToPayload successful')
         return payload
     } catch (err) {
-        console.error('[DevPrepService] mapModelToPayload failed:', err)
+        logError('[DevPrepService] mapModelToPayload failed:', err)
         throw err
     }
 }

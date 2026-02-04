@@ -33,6 +33,8 @@ import {
 	initializeSupabaseClient,
 	onSupabaseClientChange,
 } from "../services/supabase"
+import { logError } from '../utils/logger'
+
 
 /**
  * Hook to access the Supabase client with automatic environment switching support.
@@ -65,7 +67,7 @@ export function useSupabaseClient(): SupabaseClient<Database> {
 					setClient(initializedClient)
 				})
 				.catch((error) => {
-					console.error("Failed to initialize Supabase client:", error)
+					logError("Failed to initialize Supabase client:", error)
 					// Rethrow to let error boundary handle it
 					throw error
 				})
@@ -77,7 +79,7 @@ export function useSupabaseClient(): SupabaseClient<Database> {
 				const newClient = getSupabaseClient()
 				setClient(newClient)
 			} catch (error) {
-				console.error("Failed to update Supabase client:", error)
+				logError("Failed to update Supabase client:", error)
 			}
 		})
 
@@ -132,7 +134,7 @@ export function useSupabaseClientOptional(): SupabaseClient<Database> | null {
 					setClient(initializedClient)
 				})
 				.catch((error) => {
-					console.error("Failed to initialize Supabase client:", error)
+					logError("Failed to initialize Supabase client:", error)
 				})
 		}
 
@@ -142,7 +144,7 @@ export function useSupabaseClientOptional(): SupabaseClient<Database> | null {
 				const newClient = getSupabaseClient()
 				setClient(newClient)
 			} catch (error) {
-				console.error("Failed to update Supabase client:", error)
+				logError("Failed to update Supabase client:", error)
 				setClient(null)
 			}
 		})

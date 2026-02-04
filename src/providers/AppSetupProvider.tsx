@@ -18,6 +18,8 @@ import { useAppSelector } from "../redux"
 import ReferenceDataService from "../services/ReferenceDataService"
 import { initializeSupabaseClient } from "../services/supabase"
 import SupabaseSyncService from "../services/SupabaseSyncService"
+import { log, logError } from '../utils/logger'
+
 
 interface ExtendedToastConfigParams extends ToastConfigParams<any> {
 	numberOfLines?: number
@@ -35,21 +37,21 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 
 	// Initialize Supabase client and then sync reference data
 	useEffect(() => {
-		console.log("🔧 Initializing Supabase client...")
+		log("🔧 Initializing Supabase client...")
 		initializeSupabaseClient()
 			.then(() => {
-				console.log("✅ Supabase client initialized successfully")
+				log("✅ Supabase client initialized successfully")
 				setIsSupabaseReady(true)  // Mark as ready
 
 				// Sync reference data only after Supabase client is ready
-				console.log("📚 Syncing reference data...")
+				log("📚 Syncing reference data...")
 				return ReferenceDataService.syncReferenceData()
 			})
 			.then(() => {
-				console.log("✅ Reference data sync complete")
+				log("✅ Reference data sync complete")
 			})
 			.catch((error) => {
-				console.error("❌ Failed to initialize Supabase or sync data:", error)
+				logError("❌ Failed to initialize Supabase or sync data:", error)
 				// Still mark as ready so app doesn't hang forever
 				setIsSupabaseReady(true)
 			})
@@ -59,7 +61,7 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 	useEffect(() => {
 		if (!isSupabaseReady) return  // Wait for Supabase
 
-		console.log("🔄 Starting Supabase Sync Service...")
+		log("🔄 Starting Supabase Sync Service...")
 		SupabaseSyncService.resetSyncState().then(() => {
 			SupabaseSyncService.startRealtimeSubscription()
 			// Initial sync attempt (might fail if no user)
@@ -67,7 +69,7 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 		})
 
 		return () => {
-			console.log("🛑 Stopping Supabase Sync Service...")
+			log("🛑 Stopping Supabase Sync Service...")
 			SupabaseSyncService.stopRealtimeSubscription()
 		}
 	}, [isSupabaseReady])
@@ -75,7 +77,7 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 	// Trigger Sync on Login
 	useEffect(() => {
 		if (isSupabaseReady && user) {
-			console.log("👤 User authenticated - triggering data sync...")
+			log("👤 User authenticated - triggering data sync...")
 			SupabaseSyncService.sync()
 		}
 	}, [isSupabaseReady, user]) // Depend on user ID change
