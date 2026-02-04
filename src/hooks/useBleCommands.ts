@@ -3,15 +3,13 @@ import { useBle } from "./useBle"
 import { CommandControlTypes, CommandNames } from "../ble/types"
 import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
 import { formatGPSString } from '../utils/gpsUtils'
-import { log } from '../utils/logger'
-
 
 export const useBleCommands = () => {
     const { write, disconnectDevice } = useBle()
 
     // --- Device Info ---
     const getBatteryLevel = useCallback(async (peripheral: ExtendedPeripheral) => {
-        log('[BLE CMD] Sending battery level request to device:', peripheral.id)
+        console.log('[BLE CMD] Sending battery level request to device:', peripheral.id)
         await write(peripheral, [[CommandNames.battery, { control: CommandControlTypes.READ }]])
     }, [write])
 
@@ -57,7 +55,7 @@ export const useBleCommands = () => {
         try {
             await write(peripheral, [[CommandNames.dis, { control: CommandControlTypes.WRITE }]])
         } catch (e) {
-            logWarn('[runDisconnect] BLE write failed, proceeding to local disconnect:', e)
+            console.warn('[runDisconnect] BLE write failed, proceeding to local disconnect:', e)
         } finally {
             // Always trigger app-side disconnect
             await disconnectDevice(peripheral)
@@ -93,13 +91,13 @@ export const useBleCommands = () => {
 
     // --- AI ---
     const checkSdCard = useCallback(async (peripheral: ExtendedPeripheral) => {
-        log('[BLE CMD] Sending SD card check request (aiinfo) to device:', peripheral.id)
+        console.log('[BLE CMD] Sending SD card check request (aiinfo) to device:', peripheral.id)
         try {
             // Send as raw string command like Engineer Console does
             await write(peripheral, ['AI info'])
-            log('[BLE CMD] aiinfo command write completed successfully')
+            console.log('[BLE CMD] aiinfo command write completed successfully')
         } catch (error) {
-            logError('[BLE CMD] Failed to write aiinfo command:', error)
+            console.error('[BLE CMD] Failed to write aiinfo command:', error)
             throw error
         }
     }, [write])
@@ -115,26 +113,26 @@ export const useBleCommands = () => {
     }, [write])
 
     const enableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
-        log('[BLE CMD] Sending enable camera command to:', peripheral.id)
+        console.log('[BLE CMD] Sending enable camera command to:', peripheral.id)
         // Bypass queue for immediate execution
         const { writeToDevice } = require('../utils/helpers')
         try {
             await writeToDevice(peripheral, `AI ${CommandNames.ENABLE_CAMERA}`)
         } catch (error) {
             // Fallback to queue if direct write fails (unlikely but safe) or just throw
-            logError('[BLE CMD] Direct write failed for enableCamera:', error)
+            console.error('[BLE CMD] Direct write failed for enableCamera:', error)
             await write(peripheral, [[CommandNames.ENABLE_CAMERA, { control: CommandControlTypes.WRITE }]])
         }
     }, [write])
 
     const disableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
-        log('[BLE CMD] Sending disable camera command to:', peripheral.id)
+        console.log('[BLE CMD] Sending disable camera command to:', peripheral.id)
         // Bypass queue for immediate execution
         const { writeToDevice } = require('../utils/helpers')
         try {
             await writeToDevice(peripheral, `AI ${CommandNames.DISABLE_CAMERA}`)
         } catch (error) {
-            logError('[BLE CMD] Direct write failed for disableCamera:', error)
+            console.error('[BLE CMD] Direct write failed for disableCamera:', error)
             await write(peripheral, [[CommandNames.DISABLE_CAMERA, { control: CommandControlTypes.WRITE }]])
         }
     }, [write])
@@ -158,10 +156,10 @@ export const useBleCommands = () => {
         const { writeToDevice } = require('../utils/helpers')
         const commandStr = `AI setop ${index} ${value}`
         try {
-            log(`[BLE CMD] Direct write: ${commandStr}`)
+            console.log(`[BLE CMD] Direct write: ${commandStr}`)
             await writeToDevice(peripheral, commandStr)
         } catch (error) {
-            logError(`[BLE CMD] Direct write failed for setop ${index}:`, error)
+            console.error(`[BLE CMD] Direct write failed for setop ${index}:`, error)
             await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]])
         }
     }, [write])
@@ -170,13 +168,13 @@ export const useBleCommands = () => {
         async (peripheral: ExtendedPeripheral, latitude: number, longitude: number, altitude: number) => {
             try {
                 const gpsString = formatGPSString(latitude, longitude, altitude)
-                log('[BLE] Setting GPS location:', { latitude, longitude, altitude, gpsString })
+                console.log('[BLE] Setting GPS location:', { latitude, longitude, altitude, gpsString })
 
                 await write(peripheral, [[CommandNames.setgps, { control: CommandControlTypes.WRITE, value: gpsString }]])
 
-                log('[BLE] GPS location set successfully')
+                console.log('[BLE] GPS location set successfully')
             } catch (error) {
-                logError('[BLE] Failed to set GPS location:', error)
+                console.error('[BLE] Failed to set GPS location:', error)
                 throw error
             }
         },
@@ -184,7 +182,7 @@ export const useBleCommands = () => {
     )
 
     const clearGpsLocation = useCallback(async (peripheral: ExtendedPeripheral) => {
-        log('[BLE CMD] Clearing GPS location on device:', peripheral.id)
+        console.log('[BLE CMD] Clearing GPS location on device:', peripheral.id)
         // Use formatGPSString to generate properly formatted DMS string
         // Firmware expects format like: "0°0'0.00\"_N_0°0'0.00\"_E_0.00_Above"
         const gpsString = formatGPSString(0, 0, 0)
@@ -211,7 +209,7 @@ export const useBleCommands = () => {
 
     const setDeploymentIdAsOps = useCallback(
         async (peripheral: ExtendedPeripheral, id: string | null) => {
-            log('[BLE CMD] Sending Deployment ID via OPs (20-27). ID:', id)
+            console.log('[BLE CMD] Sending Deployment ID via OPs (20-27). ID:', id)
 
             let ops: number[]
             if (!id) {
@@ -234,14 +232,14 @@ export const useBleCommands = () => {
                 const value = ops[i]
                 const commandStr = `AI setop ${opIndex} ${value}`
 
-                log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
+                console.log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
 
                 // Use direct writeToDevice to ensure we await the actual BLE transmission
                 // and bypass the 500ms polling queue of useBle hook.
                 try {
                     await writeToDevice(peripheral, commandStr)
                 } catch (error) {
-                    logError(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
+                    console.error(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
                     throw error
                 }
 
@@ -253,7 +251,7 @@ export const useBleCommands = () => {
                     await new Promise(r => setTimeout(r, delay))
                 }
             }
-            log('[BLE CMD] Deployment ID OPs sent successfully')
+            console.log('[BLE CMD] Deployment ID OPs sent successfully')
         },
         [] // No dependencies needed as we use direct import
     )

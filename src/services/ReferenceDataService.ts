@@ -6,7 +6,6 @@ import AiModel from '../database/models/AiModel'
 import SamplingDesign from '../database/models/SamplingDesign'
 import Firmware from '../database/models/Firmware'
 import { getSupabaseClient } from './supabase'
-import { log, logError, logWarn } from '../utils/logger'
 
 /**
  * ReferenceDataService
@@ -26,7 +25,7 @@ class ReferenceDataService {
      * Called on app startup if online, or when user manually syncs
      */
     async syncReferenceData(): Promise<void> {
-        log('📚 Syncing reference data from Supabase...')
+        console.log('📚 Syncing reference data from Supabase...')
 
         const client = getSupabaseClient()
 
@@ -43,29 +42,29 @@ class ReferenceDataService {
 
             attempts++
             if (attempts < MAX_ATTEMPTS) {
-                log(`📚 Auth user check attempt ${attempts} failed, retrying in ${RETRY_DELAY_MS}ms...`)
+                console.log(`📚 Auth user check attempt ${attempts} failed, retrying in ${RETRY_DELAY_MS}ms...`)
                 await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS))
             }
         }
 
         if (!user) {
-            log('📚 No authenticated user found after retries - skipping reference data sync')
+            console.log('📚 No authenticated user found after retries - skipping reference data sync')
             return
         }
 
         try {
-            log('📚 Starting parallel sync of reference tables...')
+            console.log('📚 Starting parallel sync of reference tables...')
             await Promise.all([
-                (async () => { log('📚 Syncing capture methods...'); await this.syncCaptureMethods() })(),
-                (async () => { log('📚 Syncing activity sensitivity...'); await this.syncActivitySensitivity() })(),
-                (async () => { log('📚 Syncing AI models...'); await this.syncAiModels() })(),
-                (async () => { log('📚 Syncing sampling designs...'); await this.syncSamplingDesigns() })(),
-                (async () => { log('📚 Syncing firmware...'); await this.syncFirmware() })(),
+                (async () => { console.log('📚 Syncing capture methods...'); await this.syncCaptureMethods() })(),
+                (async () => { console.log('📚 Syncing activity sensitivity...'); await this.syncActivitySensitivity() })(),
+                (async () => { console.log('📚 Syncing AI models...'); await this.syncAiModels() })(),
+                (async () => { console.log('📚 Syncing sampling designs...'); await this.syncSamplingDesigns() })(),
+                (async () => { console.log('📚 Syncing firmware...'); await this.syncFirmware() })(),
             ])
 
-            log('✅ Reference data sync complete')
+            console.log('✅ Reference data sync complete')
         } catch (error) {
-            logError('❌ Reference data sync failed:', error)
+            console.error('❌ Reference data sync failed:', error)
             // Don't throw - app can continue with stale data
         }
     }
@@ -83,7 +82,7 @@ class ReferenceDataService {
             .order('id')
 
         if (error) {
-            logError('Failed to fetch capture methods:', error)
+            console.error('Failed to fetch capture methods:', error)
             return
         }
 
@@ -118,7 +117,7 @@ class ReferenceDataService {
             }
         })
 
-        log(`   ✅ Synced ${data.length} capture methods`)
+        console.log(`   ✅ Synced ${data.length} capture methods`)
     }
 
     async getCaptureMethods(): Promise<Array<{ id: number; value: string; description: string }>> {
@@ -144,7 +143,7 @@ class ReferenceDataService {
             .order('id')
 
         if (error) {
-            logError('Failed to fetch activity sensitivity:', error)
+            console.error('Failed to fetch activity sensitivity:', error)
             return
         }
 
@@ -181,7 +180,7 @@ class ReferenceDataService {
             }
         })
 
-        log(`   ✅ Synced ${data.length} activity sensitivity levels`)
+        console.log(`   ✅ Synced ${data.length} activity sensitivity levels`)
     }
 
     async getActivitySensitivity(): Promise<Array<{ id: number; value: string; description: string }>> {
@@ -208,7 +207,7 @@ class ReferenceDataService {
             .order('name')
 
         if (error) {
-            logError('Failed to fetch AI models:', error)
+            console.error('Failed to fetch AI models:', error)
             return
         }
 
@@ -247,7 +246,7 @@ class ReferenceDataService {
             }
         })
 
-        log(`   ✅ Synced ${data.length} AI models`)
+        console.log(`   ✅ Synced ${data.length} AI models`)
     }
 
     async getAiModels(): Promise<Array<{ id: string; name: string; version: string; description: string | null }>> {
@@ -274,7 +273,7 @@ class ReferenceDataService {
             .order('id')
 
         if (error) {
-            logError('Failed to fetch sampling designs:', error)
+            console.error('Failed to fetch sampling designs:', error)
             return
         }
 
@@ -311,7 +310,7 @@ class ReferenceDataService {
             }
         })
 
-        log(`   ✅ Synced ${data.length} sampling designs`)
+        console.log(`   ✅ Synced ${data.length} sampling designs`)
     }
 
     async getSamplingDesigns(): Promise<Array<{ id: number; value: string; description: string }>> {
@@ -332,7 +331,7 @@ class ReferenceDataService {
     public async syncFirmware(): Promise<void> {
         const supabase = getSupabaseClient()
         // Sync all active firmware metadata
-        log('[RefData] Syncing firmware...')
+        console.log('[RefData] Syncing firmware...')
         const { data, error } = await supabase
             .from('firmware')
             .select('*')
@@ -341,33 +340,33 @@ class ReferenceDataService {
             .order('version', { ascending: false })
 
         if (error) {
-            logError('[RefData] Failed to fetch firmware:', error)
+            console.error('[RefData] Failed to fetch firmware:', error)
             return
         }
 
         if (!data || data.length === 0) {
-            log('[RefData] No firmware data received from server')
+            console.log('[RefData] No firmware data received from server')
             return
         }
 
         await database.write(async () => {
             const collection = database.get<Firmware>('firmware')
             const existingRecords = await collection.query().fetch()
-            log('[RefData] Local firmware records before sync:', existingRecords.length)
+            console.log('[RefData] Local firmware records before sync:', existingRecords.length)
 
             // Firmware uses UUID (string) for ID, not number like other ref tables
             const existingMap = new Map(existingRecords.map(r => [r.id, r]))
             const serverIds = new Set(data.map(d => d.id))
 
             // Upsert
-            log(`[RefData] Raw firmware data:`, JSON.stringify(data))
+            console.log(`[RefData] Raw firmware data:`, JSON.stringify(data))
             for (const row of data) {
                 try {
                     if (!row) {
-                        logError('[RefData] Found undefined row in firmware data!')
+                        console.error('[RefData] Found undefined row in firmware data!')
                         continue
                     }
-                    log(`[RefData] Processing firmware row: ${row.id}, type=${row.type}`)
+                    console.log(`[RefData] Processing firmware row: ${row.id}, type=${row.type}`)
                     const existing = existingMap.get(row.id)
                     if (existing) {
                         await existing.update(rec => {
@@ -392,7 +391,7 @@ class ReferenceDataService {
                         })
                     }
                 } catch (err) {
-                    logError(`[RefData] Failed to process firmware row ${row?.id}:`, err)
+                    console.error(`[RefData] Failed to process firmware row ${row?.id}:`, err)
                 }
             }
 
@@ -403,10 +402,10 @@ class ReferenceDataService {
                 }
             }
 
-            log('[RefData] Firmware sync complete.')
+            console.log('[RefData] Firmware sync complete.')
         })
 
-        log(`   ✅ Synced ${data.length} firmware records`)
+        console.log(`   ✅ Synced ${data.length} firmware records`)
     }
 
     /**
@@ -427,7 +426,7 @@ class ReferenceDataService {
             return versionB.localeCompare(versionA, undefined, { numeric: true, sensitivity: 'base' })
         })
 
-        log(`[RefData] getLatestFirmware(${type}) found:`, sorted.length, sorted[0]?._raw)
+        console.log(`[RefData] getLatestFirmware(${type}) found:`, sorted.length, sorted[0]?._raw)
         return sorted.length > 0 ? sorted[0] : null
     }
 }

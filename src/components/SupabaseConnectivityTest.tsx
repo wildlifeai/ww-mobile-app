@@ -8,8 +8,6 @@ import type {
 } from "@supabase/supabase-js"
 import { useSupabaseAuth } from "../hooks/useSupabaseAuth"
 import type { Tables } from "../types/database.types"
-import { log } from '../utils/logger'
-
 
 type TestResult = {
 	name: string
@@ -153,7 +151,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 
 			// If this succeeds without proper filtering, RLS might not be working
 			if (data && data.length > 1) {
-				logWarn(
+				console.warn(
 					"RLS might not be properly configured - returned multiple users",
 				)
 			}
@@ -184,7 +182,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 						"postgres_changes",
 						{ event: "*", schema: "public", table: "devices" },
 						(payload: RealtimePostgresChangesPayload<Tables<"devices">>) => {
-							log("Real-time update received:", payload)
+							console.log("Real-time update received:", payload)
 							clearTimeout(timeoutId)
 							channel.unsubscribe()
 							resolve()
@@ -193,7 +191,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 					.subscribe((status: `${REALTIME_SUBSCRIBE_STATES}`) => {
 						if (status === "SUBSCRIBED") {
 							// Subscription established successfully
-							log("Real-time subscription established")
+							console.log("Real-time subscription established")
 
 							// Set timeout to resolve after a short wait (no changes expected)
 							timeoutId = setTimeout(() => {

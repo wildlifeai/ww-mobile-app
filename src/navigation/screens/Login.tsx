@@ -48,7 +48,7 @@ export const Login = () => {
 				setRememberMe(true)
 			}
 		} catch (error) {
-			logError("Failed to load saved credentials:", error)
+			console.error("Failed to load saved credentials:", error)
 		}
 	}
 
@@ -73,7 +73,7 @@ export const Login = () => {
 
 			dispatch(setCredentials(response))
 		} catch (err) {
-			logError("❌ Login failed - Full error details:", {
+			console.error("❌ Login failed - Full error details:", {
 				message: err instanceof Error ? err.message : "Unknown error",
 				errorObject: err,
 				stack: err instanceof Error ? err.stack : undefined,

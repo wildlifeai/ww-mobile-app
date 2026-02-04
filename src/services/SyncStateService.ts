@@ -68,7 +68,7 @@ class SyncStateService {
 
             return null
         } catch (error) {
-            logError(`[SyncStateService] Error getting key ${key}:`, error)
+            console.error(`[SyncStateService] Error getting key ${key}:`, error)
             return null
         }
     }
@@ -100,7 +100,7 @@ class SyncStateService {
             // Update AsyncStorage cache
             await AsyncStorage.setItem(this.getStorageKey(key), value)
         } catch (error) {
-            logError(`[SyncStateService] Error setting key ${key}:`, error)
+            console.error(`[SyncStateService] Error setting key ${key}:`, error)
             throw error
         }
     }
@@ -125,7 +125,7 @@ class SyncStateService {
             // Remove from AsyncStorage
             await AsyncStorage.removeItem(this.getStorageKey(key))
         } catch (error) {
-            logError(`[SyncStateService] Error deleting key ${key}:`, error)
+            console.error(`[SyncStateService] Error deleting key ${key}:`, error)
             throw error
         }
     }

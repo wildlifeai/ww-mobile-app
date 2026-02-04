@@ -24,8 +24,6 @@ import { useAppDrawer } from "../../../components/AppDrawer"
 import { useExtendedTheme } from "../../../theme"
 import { DeploymentService } from "../../../services/DeploymentService"
 import type Deployment from "../../../database/models/Deployment"
-import { log } from '../../../utils/logger'
-
 
 interface Props {
 	deployments: Deployment[]
@@ -84,11 +82,11 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 	 * Debug logging
 	 */
 	useEffect(() => {
-		log("[MapScreen] Permission status:", permissions.foreground)
-		log("[MapScreen] Location loading:", locationLoading)
-		log("[MapScreen] Has location:", !!location)
-		log("[MapScreen] Error:", locationError)
-		log("[MapScreen] Deployments count:", filteredDeployments.length)
+		console.log("[MapScreen] Permission status:", permissions.foreground)
+		console.log("[MapScreen] Location loading:", locationLoading)
+		console.log("[MapScreen] Has location:", !!location)
+		console.log("[MapScreen] Error:", locationError)
+		console.log("[MapScreen] Deployments count:", filteredDeployments.length)
 	}, [permissions.foreground, locationLoading, location, locationError, filteredDeployments.length])
 
 	/**
@@ -96,7 +94,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 	 */
 	useEffect(() => {
 		if (location && initialLoad) {
-			log("[MapScreen] Centering on user location:", location)
+			console.log("[MapScreen] Centering on user location:", location)
 			resetToUserLocation(location)
 			setInitialLoad(false)
 		}
@@ -107,7 +105,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 	 */
 	useEffect(() => {
 		if (permissions.foreground === "undetermined") {
-			log(
+			console.log(
 				"[MapScreen] Location permission undetermined - showing prompt",
 			)
 		}
@@ -129,7 +127,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 	 * Handle deployment marker selection
 	 */
 	const handleMarkerPress = React.useCallback((deploymentId: string) => {
-		log('[MapScreen] Deployment marker selected:', deploymentId)
+		console.log('[MapScreen] Deployment marker selected:', deploymentId)
 		setSelectedDeploymentId(deploymentId)
 	}, [])
 
@@ -138,7 +136,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 	 */
 	const handleMapPress = React.useCallback(() => {
 		if (selectedDeploymentId) {
-			log('[MapScreen] Map tapped, deselecting')
+			console.log('[MapScreen] Map tapped, deselecting')
 			setSelectedDeploymentId(null)
 		}
 	}, [selectedDeploymentId])/* selectedDeploymentId dependency is fine here as it only runs when map is pressed, not passed to markers */
@@ -148,7 +146,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 	 */
 	const handleViewDetails = React.useCallback(() => {
 		if (selectedDeploymentId) {
-			log('[MapScreen] Navigating to details:', selectedDeploymentId)
+			console.log('[MapScreen] Navigating to details:', selectedDeploymentId)
 			navigation.navigate('DeploymentDetails', { deploymentId: selectedDeploymentId })
 			setSelectedDeploymentId(null)
 		}
@@ -273,7 +271,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 					color="#000"
 					small // Make it smaller to distinguish importance? Or keep regular. Let's keep regular but stacked.
 					onPress={() => {
-						log('[MapScreen] End Deployment pressed')
+						console.log('[MapScreen] End Deployment pressed')
 						navigation.navigate('EndDeploymentWizard', { mode: 'end_deployment' } as any)
 					}}
 				/>

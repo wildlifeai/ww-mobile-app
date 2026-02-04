@@ -2,30 +2,28 @@ import { useEffect } from "react"
 import * as Linking from "expo-linking"
 import { useNavigation } from "@react-navigation/native"
 import { useAppNavigation } from "./useAppNavigation"
-import { log } from '../utils/logger'
-
 
 export const useDeepLinking = () => {
 	const navigation = useAppNavigation()
 
 	useEffect(() => {
-		log("useDeepLinking hook initialized")
+		console.log("useDeepLinking hook initialized")
 		// Handle initial URL if app was opened by link
 		const handleInitialURL = async () => {
 			const url = await Linking.getInitialURL()
 			if (url) {
-				log("App opened with URL:", url)
+				console.log("App opened with URL:", url)
 				handleDeepLink(url)
 			}
 		}
 
 		// Handle deep link
 		const handleDeepLink = (url: string) => {
-			log("Processing deep link:", url)
+			console.log("Processing deep link:", url)
 
 			// Parse the URL
 			const { hostname, path, queryParams } = Linking.parse(url)
-			log("Parsed URL:", { hostname, path, queryParams })
+			console.log("Parsed URL:", { hostname, path, queryParams })
 
 			// Parse fragment parameters (Supabase uses # instead of ?)
 			let fragmentParams: Record<string, string> = {}
@@ -38,17 +36,17 @@ export const useDeepLinking = () => {
 						fragmentParams[key] = decodeURIComponent(value)
 					}
 				})
-				log("Parsed fragment params:", fragmentParams)
+				console.log("Parsed fragment params:", fragmentParams)
 			}
 
 			// Merge query and fragment params (fragment takes priority)
 			const allParams = { ...queryParams, ...fragmentParams }
 
 			// Handle auth routes
-			log("Checking if path includes auth routes:", path)
+			console.log("Checking if path includes auth routes:", path)
 
 			if (path?.includes("reset-password")) {
-				log("Found reset-password in path")
+				console.log("Found reset-password in path")
 				// Support multiple token formats
 				const token = (allParams.access_token ||
 					allParams.token_hash ||
@@ -56,21 +54,21 @@ export const useDeepLinking = () => {
 				const type = allParams.type as string
 				const refreshToken = allParams.refresh_token as string
 
-				log("Token and type from params:", {
+				console.log("Token and type from params:", {
 					token: token?.substring(0, 20) + "...",
 					type,
 					hasRefreshToken: !!refreshToken,
 				})
 
 				if (token && type === "recovery") {
-					log("Navigating to ForgotPassword with token")
+					console.log("Navigating to ForgotPassword with token")
 					navigation.navigate("ForgotPassword", {
 						token,
 						refreshToken,
 						mode: "reset",
 					})
 				} else {
-					log("Token or type missing/invalid, params:", allParams)
+					console.log("Token or type missing/invalid, params:", allParams)
 				}
 			} else if (
 				path?.includes("auth/callback") ||
@@ -81,7 +79,7 @@ export const useDeepLinking = () => {
 				const type = queryParams?.type as string
 
 				if (token && type === "signup") {
-					log("Email confirmed, navigating to Login")
+					console.log("Email confirmed, navigating to Login")
 					navigation.navigate("Login", {
 						confirmed: true,
 					})
@@ -90,9 +88,9 @@ export const useDeepLinking = () => {
 		}
 
 		// Set up listener for new URLs
-		log("Setting up deep link listener in useDeepLinking...")
+		console.log("Setting up deep link listener in useDeepLinking...")
 		const subscription = Linking.addEventListener("url", ({ url }) => {
-			log("New URL received in useDeepLinking:", url)
+			console.log("New URL received in useDeepLinking:", url)
 			handleDeepLink(url)
 		})
 

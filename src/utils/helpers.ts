@@ -75,7 +75,7 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 			const sanitizedData = data.replace(/[\r\n]+$/, "")
 			// Revert: Firmware rejects newline (treats as extra char causing mismatch)
 			const byteArray = [...Buffer.from(sanitizedData)]
-			log('DEBUG: byteArray content:', byteArray)
+			console.log('DEBUG: byteArray content:', byteArray)
 			log(`TX Hex: ${Buffer.from(byteArray).toString("hex")}`)
 
 			// Push a LF-CR (LF = 10, CR = 13 in decimal) to local listener for UI feedback
@@ -230,7 +230,7 @@ export const storeDataToStorage = async <T>(key: string, value: T) => {
 		const jsonValue = JSON.stringify(value)
 		await AsyncStorage.setItem(key, jsonValue)
 	} catch (e: any) {
-		logError(`Could not save to storage. Reason: ${e.message}`)
+		console.error(`Could not save to storage. Reason: ${e.message}`)
 	}
 }
 
@@ -239,7 +239,7 @@ export const getStorageData = async <T>(key: string): Promise<T | null> => {
 		const jsonValue = await AsyncStorage.getItem(key)
 		return jsonValue != null ? JSON.parse(jsonValue) : null
 	} catch (e: any) {
-		logError(`Could not read from storage. Reason: ${e.message}`)
+		console.error(`Could not read from storage. Reason: ${e.message}`)
 		return null
 	}
 }

@@ -22,7 +22,7 @@ export const Notifications = () => {
 			const pending = await InvitationService.getLocalPendingInvitations()
 			setInvitations(pending)
 		} catch (error) {
-			logError("Failed to load invitations:", error)
+			console.error("Failed to load invitations:", error)
 		} finally {
 			setLoading(false)
 		}

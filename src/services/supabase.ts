@@ -23,8 +23,6 @@ import {
 	getEnvironmentConfig,
 } from "../config/EnvironmentManager"
 import type { EnvironmentConfig } from "../config/environments"
-import { log } from '../utils/logger'
-
 
 // ============================================================================
 // Internal State
@@ -88,7 +86,7 @@ export async function initializeSupabaseClient(
 			)
 		}
 
-		log("DEBUG: initializeSupabaseClient config:", config)
+		console.log("DEBUG: initializeSupabaseClient config:", config)
 
 		// Create new client with environment config
 		const client = createClient<Database>(
@@ -105,13 +103,13 @@ export async function initializeSupabaseClient(
 			},
 		)
 
-		log("DEBUG: initializeSupabaseClient client:", client)
+		console.log("DEBUG: initializeSupabaseClient client:", client)
 
 		// Store client and config
 		supabaseClient = client
 		currentEnvironment = config
 
-		log("✅ Supabase client initialized:", {
+		console.log("✅ Supabase client initialized:", {
 			environment: config.displayName,
 			url: config.supabaseUrl,
 			isProduction: config.isProduction,
@@ -119,7 +117,7 @@ export async function initializeSupabaseClient(
 
 		return client
 	} catch (error) {
-		logError("❌ Failed to initialize Supabase client:", error)
+		console.error("❌ Failed to initialize Supabase client:", error)
 		throw error
 	}
 }
@@ -175,29 +173,29 @@ export async function reconnectSupabase(): Promise<SupabaseClient<Database>> {
 	try {
 		// Step 1: Cleanup old client
 		if (supabaseClient) {
-			log("🔄 Cleaning up old Supabase client...")
+			console.log("🔄 Cleaning up old Supabase client...")
 
 			try {
 				// Remove all realtime subscriptions
 				await supabaseClient.removeAllChannels()
-				log("✅ Removed all subscriptions")
+				console.log("✅ Removed all subscriptions")
 			} catch (error) {
 				// Non-fatal: log but continue
-				logError("⚠️ Error cleaning up old Supabase client:", error)
+				console.error("⚠️ Error cleaning up old Supabase client:", error)
 			}
 		}
 
 		// Step 2: Create new client
-		log("🔄 Reconnecting Supabase client...")
+		console.log("🔄 Reconnecting Supabase client...")
 		const newClient = await initializeSupabaseClient()
 
 		// Step 3: Emit event for React components
 		emitClientChanged()
 
-		log("✅ Supabase client reconnected successfully")
+		console.log("✅ Supabase client reconnected successfully")
 		return newClient
 	} catch (error) {
-		logError("❌ Failed to reconnect Supabase client:", error)
+		console.error("❌ Failed to reconnect Supabase client:", error)
 		throw error
 	}
 }
@@ -240,8 +238,8 @@ export function onSupabaseClientChange(callback: () => void): () => void {
  * @example
  * ```typescript
  * const env = getCurrentEnvironment();
- * log('Connected to:', env?.displayName);
- * log('Production mode:', env?.isProduction);
+ * console.log('Connected to:', env?.displayName);
+ * console.log('Production mode:', env?.isProduction);
  * ```
  */
 export function getCurrentEnvironment(): EnvironmentConfig | null {
@@ -274,7 +272,7 @@ function emitClientChanged(): void {
 	try {
 		clientEvents.emit(CLIENT_CHANGED_EVENT)
 	} catch (error) {
-		logError("❌ Error notifying listeners of client change:", error)
+		console.error("❌ Error notifying listeners of client change:", error)
 	}
 }
 
@@ -320,7 +318,7 @@ export const supabase = new Proxy(
 
 			// Issue deprecation warning in development for all other property usage
 			if (__DEV__) {
-				logWarn(
+				console.warn(
 					"⚠️ DEPRECATED: Direct 'supabase' export is deprecated. " +
 					"Use getSupabaseClient() instead. " +
 					"See SUPABASE-CLIENT-MIGRATION-GUIDE.md for migration instructions.",
@@ -329,7 +327,7 @@ export const supabase = new Proxy(
 
 			// Return undefined for client not initialized (matches Proxy behavior)
 			if (!supabaseClient) {
-				logError(
+				console.error(
 					"❌ Supabase client not initialized. Call initializeSupabaseClient() first.",
 				)
 				return undefined
@@ -371,14 +369,14 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
 		const { data, error } = await client.from("users").select("count").limit(1)
 
 		if (error) {
-			logWarn("Supabase connection check failed:", error.message)
+			console.warn("Supabase connection check failed:", error.message)
 			return false
 		}
 
-		log("✅ Supabase connection successful")
+		console.log("✅ Supabase connection successful")
 		return true
 	} catch (error) {
-		logError("❌ Supabase connection error:", error)
+		console.error("❌ Supabase connection error:", error)
 		return false
 	}
 }

@@ -3,8 +3,6 @@ import { NetworkStatus } from "../../types/offline"
 import SupabaseSyncService from "../SupabaseSyncService"
 import store from "../../redux"
 import { networkOnline, networkOffline } from "../../redux/slices/networkSlice"
-import { log } from '../../utils/logger'
-
 
 /**
  * OfflineService - Network status monitoring
@@ -44,13 +42,13 @@ export class OfflineService {
 		// Get initial network state
 		const initialState = await NetInfo.fetch()
 		this.updateNetworkStatus(initialState)
-		log("📡 Initial network state:", this.networkStatus)
+		console.log("📡 Initial network state:", this.networkStatus)
 
 		// Listen for network changes
 		this.networkUnsubscribe = NetInfo.addEventListener(
 			(state: NetInfoState) => {
 				if (!state) {
-					logWarn("📡 Received undefined network state from NetInfo")
+					console.warn("📡 Received undefined network state from NetInfo")
 					return
 				}
 
@@ -58,17 +56,17 @@ export class OfflineService {
 				this.updateNetworkStatus(state)
 				const isNowOnline = this.networkStatus.isConnected
 
-				log("📡 ============ NETWORK STATE CHANGE ============")
-				log("📡 Was offline:", wasOffline)
-				log("📡 Is now online:", isNowOnline)
-				log("📡 Network type:", this.networkStatus.type)
+				console.log("📡 ============ NETWORK STATE CHANGE ============")
+				console.log("📡 Was offline:", wasOffline)
+				console.log("📡 Is now online:", isNowOnline)
+				console.log("📡 Network type:", this.networkStatus.type)
 
 				// Trigger sync when coming online
 				if (wasOffline && isNowOnline) {
-					log("📡 🔄 TRANSITIONING FROM OFFLINE → ONLINE")
-					log("📡 Triggering WatermelonDB sync...")
+					console.log("📡 🔄 TRANSITIONING FROM OFFLINE → ONLINE")
+					console.log("📡 Triggering WatermelonDB sync...")
 					SupabaseSyncService.sync().catch((error) => {
-						logError("📡 ❌ Failed to trigger sync:", error)
+						console.error("📡 ❌ Failed to trigger sync:", error)
 					})
 				}
 			},
@@ -80,7 +78,7 @@ export class OfflineService {
 	 */
 	private updateNetworkStatus(state: NetInfoState): void {
 		if (!state) {
-			logWarn("📡 updateNetworkStatus called with undefined state")
+			console.warn("📡 updateNetworkStatus called with undefined state")
 			return
 		}
 
@@ -111,7 +109,7 @@ export class OfflineService {
 	// but they should be removed from callers.
 
 	async queueOperation(operation: any): Promise<void> {
-		logWarn("⚠️ queueOperation is deprecated. Use WatermelonDB models directly.")
+		console.warn("⚠️ queueOperation is deprecated. Use WatermelonDB models directly.")
 	}
 }
 

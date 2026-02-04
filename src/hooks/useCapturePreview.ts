@@ -3,8 +3,6 @@ import { Alert } from 'react-native'
 import { imageReassemblerEmitter } from '../ble/emitters'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { LogEntry } from '../redux/slices/logsSlice'
-import { log } from '../utils/logger'
-
 
 interface UseCapturePreviewOptions {
     /** BLE device to capture from */
@@ -47,7 +45,7 @@ interface UseCapturePreviewReturn {
  *   device: bleDevice,
  *   logs: bleDeviceLogs,
  *   write: bleWrite,
- *   onImageReceived: (uri) => log('Image received:', uri)
+ *   onImageReceived: (uri) => console.log('Image received:', uri)
  * })
  * 
  * // In your component
@@ -71,7 +69,7 @@ export const useCapturePreview = ({
     // Listen for image download completion
     useEffect(() => {
         const handleImageComplete = (base64: string) => {
-            log('[useCapturePreview] Image download complete, base64 length:', base64?.length)
+            console.log('[useCapturePreview] Image download complete, base64 length:', base64?.length)
             setIsCapturing(false)
             // Convert base64 to URI format for React Native Image component
             const imageUri = `data:image/jpeg;base64,${base64}`
@@ -92,11 +90,11 @@ export const useCapturePreview = ({
     // Auto-trigger download when "Captured" detected in logs
     //  This uses the EXACT logic from the old working Engineer Console implementation
     useEffect(() => {
-        // log('[useCapturePreview] useEffect running, isCapturing:', isCapturing, 'logs length:', logs.length)
+        // console.log('[useCapturePreview] useEffect running, isCapturing:', isCapturing, 'logs length:', logs.length)
 
         // Don't process if logs haven't changed
         if (logs.length === lastProcessedLength.current) {
-            // log('[useCapturePreview] Logs unchanged, skipping')
+            // console.log('[useCapturePreview] Logs unchanged, skipping')
             return
         }
 
@@ -106,7 +104,7 @@ export const useCapturePreview = ({
         // Update the last processed log reference
         lastProcessedLength.current = logs.length
 
-        log('[useCapturePreview] New log entries:', newEntries.length)
+        console.log('[useCapturePreview] New log entries:', newEntries.length)
 
         // Only process if there are actually new lines
         if (newEntries.length === 0) {
@@ -115,22 +113,22 @@ export const useCapturePreview = ({
 
         // Check for automation triggers in the new lines
         const combinedNewLogs = newEntries.map(e => e.content).join('\n')
-        log('[useCapturePreview] Combined new logs includes "Captured":', combinedNewLogs.includes("Captured"))
-        log('[useCapturePreview] State check - isCapturing:', isCapturing, 'downloadRequested:', downloadRequested.current, 'hasDevice:', !!device)
+        console.log('[useCapturePreview] Combined new logs includes "Captured":', combinedNewLogs.includes("Captured"))
+        console.log('[useCapturePreview] State check - isCapturing:', isCapturing, 'downloadRequested:', downloadRequested.current, 'hasDevice:', !!device)
 
         // Automation: If waiting for capture and log contains "Captured", trigger download
         if (isCapturing && combinedNewLogs.includes("Captured") && !downloadRequested.current && device) {
-            log('[useCapturePreview] Capture confirmed, auto-triggering download...')
+            console.log('[useCapturePreview] Capture confirmed, auto-triggering download...')
             downloadRequested.current = true
 
             const autoEntry = {
                 message: 'Capture complete. Requesting file...',
                 timestamp: new Date()
             }
-            log('[useCapturePreview]', autoEntry.message)
+            console.log('[useCapturePreview]', autoEntry.message)
 
             write(device, ['AI txfile .']).catch((error) => {
-                logError('[useCapturePreview] Failed to request image download:', error)
+                console.error('[useCapturePreview] Failed to request image download:', error)
                 setIsCapturing(false)
                 downloadRequested.current = false
 
@@ -147,7 +145,7 @@ export const useCapturePreview = ({
     const startCapture = useCallback(async () => {
         if (!device) {
             const error = new Error('No device connected')
-            logError('[useCapturePreview]', error.message)
+            console.error('[useCapturePreview]', error.message)
             if (onError) {
                 onError(error)
             } else {
@@ -156,7 +154,7 @@ export const useCapturePreview = ({
             return
         }
 
-        log('[useCapturePreview] startCapture called, device:', device?.name || 'undefined')
+        console.log('[useCapturePreview] startCapture called, device:', device?.name || 'undefined')
 
         try {
             setIsCapturing(true)
@@ -164,17 +162,17 @@ export const useCapturePreview = ({
             downloadRequested.current = false
 
             if (onCaptureStart) {
-                log('[useCapturePreview] Calling onCaptureStart callback')
+                console.log('[useCapturePreview] Calling onCaptureStart callback')
                 onCaptureStart()
             }
 
-            log('[useCapturePreview] Starting capture & download flow')
+            console.log('[useCapturePreview] Starting capture & download flow')
             // Use the actual capture command from types (AI capture 1 0, not AI capture 1 1)
             await write(device, ['AI capture 1 0'])
-            log('[useCapturePreview] Capture command sent, waiting for response...')
+            console.log('[useCapturePreview] Capture command sent, waiting for response...')
         } catch (error) {
             const err = error as Error
-            logError('[useCapturePreview] Capture failed:', err)
+            console.error('[useCapturePreview] Capture failed:', err)
             setIsCapturing(false)
             downloadRequested.current = false
 

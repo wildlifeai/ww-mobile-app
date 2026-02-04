@@ -16,8 +16,6 @@ import { useDeviceLatch } from '../../../hooks/useDeviceLatch'
 import { withObservables } from '@nozbe/watermelondb/react'
 import { selectCurrentUser } from '../../../redux/slices/authSlice'
 import type Deployment from '../../../database/models/Deployment'
-import { log } from '../../../utils/logger'
-
 
 type EndDeploymentDetailsStepRouteProp = RouteProp<RootStackParamList, 'EndDeploymentDetailsStep'>
 
@@ -44,7 +42,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const user = useAppSelector(selectCurrentUser)
 
 
-    log(`[EndDeployment] Rendering (Fixed). Params from route:: bleDeviceId=${bleDeviceId}, deviceId=${deviceId}`);
+    console.log(`[EndDeployment] Rendering (Fixed). Params from route:: bleDeviceId=${bleDeviceId}, deviceId=${deviceId}`);
 
     // Robust lookup: Try direct match, then case-insensitive, then fallback
     const bleDevice = useMemo(() => {
@@ -54,7 +52,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             device = Object.values(devices).find(d => d.id?.toLowerCase() === bleDeviceId?.toLowerCase());
         }
 
-        log(`[EndDeployment] Validating device from store. bleDeviceId=${bleDeviceId}, Found=${!!device}, ID=${device?.id}, Connected=${device?.connected}`);
+        console.log(`[EndDeployment] Validating device from store. bleDeviceId=${bleDeviceId}, Found=${!!device}, ID=${device?.id}, Connected=${device?.connected}`);
 
         if (device) {
             // Use actual device state from store
@@ -62,7 +60,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         }
 
         // Fallback: Construct a minimal defined object
-        logWarn(`[EndDeployment] Device ${bleDeviceId} not found in store. Using fallback (disconnected).`);
+        console.warn(`[EndDeployment] Device ${bleDeviceId} not found in store. Using fallback (disconnected).`);
         return {
             id: bleDeviceId,
             connected: false, // Default to false if not found in store
@@ -112,23 +110,23 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                     // Use centralized safe sequence to stop all capture
                     await quiesceDevice('[EndDeployment]')
                 } catch (e) {
-                    logWarn('[EndDeployment] Failed to reset device settings:', e)
+                    console.warn('[EndDeployment] Failed to reset device settings:', e)
                     Alert.alert('Warning', 'Failed to fully reset device settings. Sensor may remain active.')
                 }
 
                 // 2. Clear Deployment ID
                 setBleStatus('Clearing Config...')
-                log('[EndDeployment] Clearing Deployment ID on device...')
+                console.log('[EndDeployment] Clearing Deployment ID on device...')
                 let idCleared = false
                 let attempts = 0
                 while (!idCleared && attempts < 3) {
                     try {
                         attempts++
                         await setDeploymentIdAsOps(bleDevice, null)
-                        log('[EndDeployment] Deployment ID cleared successfully')
+                        console.log('[EndDeployment] Deployment ID cleared successfully')
                         idCleared = true
                     } catch (e) {
-                        logWarn(`[EndDeployment] Failed to clear Deployment ID (attempt ${attempts}):`, e)
+                        console.warn(`[EndDeployment] Failed to clear Deployment ID (attempt ${attempts}):`, e)
                         if (attempts < 3) await new Promise(r => setTimeout(r, 1000))
                     }
                 }
@@ -146,7 +144,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 try {
                     await clearGpsLocation(bleDevice)
                 } catch (e) {
-                    logWarn('[EndDeployment] Failed to clear GPS:', e)
+                    console.warn('[EndDeployment] Failed to clear GPS:', e)
                 }
             }
 
@@ -158,11 +156,11 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             // 2.5 Visual Confirmation (LEDs Skipped for Speed/Safety)
             if (bleDevice) {
                 setBleStatus('Finalizing...')
-                log('[EndDeployment] Triggering DPD Latch to ensure "STOP" persists...')
+                console.log('[EndDeployment] Triggering DPD Latch to ensure "STOP" persists...')
                 try {
                     await triggerDpdLatch(bleDevice, '[EndDeployment]')
                 } catch (e) {
-                    logWarn('[EndDeployment] Latch error:', e)
+                    console.warn('[EndDeployment] Latch error:', e)
                 }
             }
 
@@ -172,7 +170,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 try {
                     await runDisconnect(bleDevice)
                 } catch (e) {
-                    logWarn('[EndDeployment] Failed to disconnect:', e)
+                    console.warn('[EndDeployment] Failed to disconnect:', e)
                 }
             }
 
@@ -193,7 +191,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             )
 
         } catch (error) {
-            logError(error)
+            console.error(error)
             Alert.alert("Error", "Failed to end deployment. Please try again.")
         } finally {
             setIsEnding(false)

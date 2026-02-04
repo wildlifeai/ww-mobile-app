@@ -1,8 +1,6 @@
 import { File, Directory, Paths } from 'expo-file-system'
 import Firmware from '../database/models/Firmware'
 import { getSupabaseClient } from './supabase'
-import { log } from '../utils/logger'
-
 
 const FIRMWARE_DIR = new Directory(Paths.document, 'firmware')
 /** Tolerance in bytes when comparing file sizes (accounts for minor filesystem differences) */
@@ -39,19 +37,19 @@ class FirmwareService {
             const fileSize = localFile.size
             // Verify size if possible (approximate check)
             if (fileSize !== null && Math.abs(fileSize - firmware.fileSizeBytes) < FILE_SIZE_TOLERANCE_BYTES) {
-                log(`✅ Firmware already downloaded: ${localFile.uri}`)
+                console.log(`✅ Firmware already downloaded: ${localFile.uri}`)
                 return localFile.uri
             } else {
-                log(`⚠️ File size mismatch (Expected: ${firmware.fileSizeBytes}, Got: ${fileSize}). Re-downloading...`)
+                console.log(`⚠️ File size mismatch (Expected: ${firmware.fileSizeBytes}, Got: ${fileSize}). Re-downloading...`)
                 localFile.delete()
             }
         }
 
-        log(`⬇️ Downloading firmware to ${localFile.uri}...`)
+        console.log(`⬇️ Downloading firmware to ${localFile.uri}...`)
 
         try {
             const supabase = getSupabaseClient()
-            log(`Getting signed URL for path: ${firmware.locationPath}`)
+            console.log(`Getting signed URL for path: ${firmware.locationPath}`)
 
             // Use createSignedUrl now that RLS policies are fixed (TO public)
             // This allows authenticated users to download from the private firmware bucket
@@ -63,7 +61,7 @@ class FirmwareService {
                 throw new Error(`Could not get signed URL: ${error?.message}`)
             }
 
-            log(`Got signed URL, starting download...`)
+            console.log(`Got signed URL, starting download...`)
 
             // Use new File.downloadFileAsync API
             const downloadedFile = await File.downloadFileAsync(
@@ -72,17 +70,17 @@ class FirmwareService {
                 { idempotent: true }
             )
 
-            log(`✅ Firmware downloaded successfully`)
+            console.log(`✅ Firmware downloaded successfully`)
             return downloadedFile.uri
         } catch (error) {
-            logError('❌ Firmware download failed:', error)
+            console.error('❌ Firmware download failed:', error)
             // Cleanup partial file if needed (wrap in try-catch to preserve original error)
             try {
                 if (localFile.exists) {
                     localFile.delete()
                 }
             } catch (cleanupError) {
-                logError('❌ Failed to cleanup partial firmware file:', cleanupError)
+                console.error('❌ Failed to cleanup partial firmware file:', cleanupError)
             }
             throw error
         }

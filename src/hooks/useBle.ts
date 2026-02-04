@@ -301,7 +301,7 @@ export const useBle = (): ReturnType => {
 								timeout,
 							)
 						} catch (mtuError) {
-							logWarn("MTU negotiation failed, proceeding with default speed:", mtuError)
+							console.warn("MTU negotiation failed, proceeding with default speed:", mtuError)
 						}
 					}
 

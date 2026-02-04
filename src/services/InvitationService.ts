@@ -13,8 +13,6 @@ import database from '../database'
 import ProjectInvitation from '../database/models/ProjectInvitation'
 import { getSupabaseClient } from './supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { log } from '../utils/logger'
-
 
 interface PendingInvitation {
     id: string
@@ -41,7 +39,7 @@ class InvitationService {
         role: 'project_admin' | 'project_member' = 'project_member'
     ): Promise<string> {
         try {
-            log('📨 Sending invitation:', { projectId, inviteeEmail, role })
+            console.log('📨 Sending invitation:', { projectId, inviteeEmail, role })
 
             const supabase = getSupabaseClient()
             const { data, error } = await supabase.rpc('send_project_invitation' as any, {
@@ -52,14 +50,14 @@ class InvitationService {
 
             if (error) throw error
 
-            log('✅ Invitation sent successfully:', data)
+            console.log('✅ Invitation sent successfully:', data)
 
             // Trigger sync to update local invitation list
             await this.syncInvitations()
 
             return data as string // invitation ID
         } catch (error) {
-            logError('❌ Failed to send invitation:', error)
+            console.error('❌ Failed to send invitation:', error)
             throw error
         }
     }
@@ -79,7 +77,7 @@ class InvitationService {
 
             return !!data
         } catch (error) {
-            logError('❌ Failed to check user existence:', error)
+            console.error('❌ Failed to check user existence:', error)
             throw error
         }
     }
@@ -89,7 +87,7 @@ class InvitationService {
      */
     async getProjectPendingInvitations(projectId: string): Promise<ProjectInvitation[]> {
         try {
-            log('📥 Fetching pending invitations for project:', projectId)
+            console.log('📥 Fetching pending invitations for project:', projectId)
 
             const supabase = getSupabaseClient()
             const { data, error } = await supabase.rpc('get_project_pending_invitations' as any, {
@@ -98,10 +96,10 @@ class InvitationService {
 
             if (error) throw error
 
-            log(`✅ Found ${data?.length || 0} pending invitations for project`)
+            console.log(`✅ Found ${data?.length || 0} pending invitations for project`)
             return (data || []) as any[]
         } catch (error) {
-            logError('❌ Failed to fetch project pending invitations:', error)
+            console.error('❌ Failed to fetch project pending invitations:', error)
             return []
         }
     }
@@ -111,18 +109,18 @@ class InvitationService {
      */
     async getMyPendingInvitations(): Promise<PendingInvitation[]> {
         try {
-            log('📥 Fetching pending invitations...')
+            console.log('📥 Fetching pending invitations...')
 
             const supabase = getSupabaseClient()
             const { data, error } = await supabase.rpc('get_my_pending_invitations' as any)
 
             if (error) throw error
 
-            log(`✅ Found ${data?.length || 0} pending invitations`)
+            console.log(`✅ Found ${data?.length || 0} pending invitations`)
 
             return (data || []) as PendingInvitation[]
         } catch (error) {
-            logError('❌ Failed to fetch pending invitations:', error)
+            console.error('❌ Failed to fetch pending invitations:', error)
             throw error
         }
     }
@@ -139,11 +137,11 @@ class InvitationService {
                 )
                 .fetch()
 
-            log(`✅ Found ${invitations.length} pending invitations in local DB`)
+            console.log(`✅ Found ${invitations.length} pending invitations in local DB`)
 
             return invitations
         } catch (error) {
-            logError('❌ Failed to fetch local invitations:', error)
+            console.error('❌ Failed to fetch local invitations:', error)
             return []
         }
     }
@@ -156,7 +154,7 @@ class InvitationService {
         accept: boolean
     ): Promise<void> {
         try {
-            log(`${accept ? '✅' : '❌'} Responding to invitation:`, invitationId)
+            console.log(`${accept ? '✅' : '❌'} Responding to invitation:`, invitationId)
 
             const supabase = getSupabaseClient()
             const { error } = await supabase.rpc('respond_to_invitation' as any, {
@@ -166,12 +164,12 @@ class InvitationService {
 
             if (error) throw error
 
-            log('✅ Invitation response recorded')
+            console.log('✅ Invitation response recorded')
 
             // Clean up local invitation
             await this.removeLocalInvitation(invitationId)
         } catch (error) {
-            logError('❌ Failed to respond to invitation:', error)
+            console.error('❌ Failed to respond to invitation:', error)
             throw error
         }
     }
@@ -182,13 +180,13 @@ class InvitationService {
      */
     async syncInvitations(): Promise<void> {
         try {
-            log('🔄 Syncing invitations from Supabase...')
+            console.log('🔄 Syncing invitations from Supabase...')
 
             const supabase = getSupabaseClient()
             const { data: { user } } = await supabase.auth.getUser()
 
             if (!user) {
-                logWarn('⚠️ No user session, skipping invitation sync.')
+                console.warn('⚠️ No user session, skipping invitation sync.')
                 return
             }
 
@@ -197,7 +195,7 @@ class InvitationService {
 
             if (error) throw error
 
-            log(`📦 Syncing ${remoteInvitations?.length || 0} invitations to local DB`)
+            console.log(`📦 Syncing ${remoteInvitations?.length || 0} invitations to local DB`)
 
             // Sync to local DB
             await database.write(async () => {
@@ -227,9 +225,9 @@ class InvitationService {
                 }
             })
 
-            log('✅ Invitations synced successfully')
+            console.log('✅ Invitations synced successfully')
         } catch (error) {
-            logError('❌ Failed to sync invitations:', error)
+            console.error('❌ Failed to sync invitations:', error)
             throw error
         }
     }
@@ -239,7 +237,7 @@ class InvitationService {
      * This enables instant in-app notifications when invitations are received
      */
     subscribeToInvitations(userEmail: string, callback: (payload: any) => void): RealtimeChannel {
-        log('🔔 Setting up realtime invitation subscription for:', userEmail)
+        console.log('🔔 Setting up realtime invitation subscription for:', userEmail)
 
         const supabase = getSupabaseClient()
 
@@ -259,7 +257,7 @@ class InvitationService {
                     filter: `invitee_email=eq.${userEmail}`,
                 },
                 async (payload) => {
-                    log('🔔 New invitation received:', payload)
+                    console.log('🔔 New invitation received:', payload)
 
                     // Sync the new invitation to local DB
                     await this.syncInvitations()
@@ -269,7 +267,7 @@ class InvitationService {
                 }
             )
             .subscribe((status) => {
-                log('📡 Realtime subscription status:', status)
+                console.log('📡 Realtime subscription status:', status)
             })
 
         return this.realtimeChannel
@@ -280,7 +278,7 @@ class InvitationService {
      */
     unsubscribeFromInvitations(): void {
         if (this.realtimeChannel) {
-            log('🔕 Unsubscribing from invitation notifications')
+            console.log('🔕 Unsubscribing from invitation notifications')
             this.realtimeChannel.unsubscribe()
             this.realtimeChannel = null
         }
@@ -299,10 +297,10 @@ class InvitationService {
                 await database.write(async () => {
                     await localInvitations[0].markAsDeleted()
                 })
-                log('✅ Local invitation removed')
+                console.log('✅ Local invitation removed')
             }
         } catch (error) {
-            logError('❌ Failed to remove local invitation:', error)
+            console.error('❌ Failed to remove local invitation:', error)
         }
     }
 
@@ -314,7 +312,7 @@ class InvitationService {
             const invitations = await this.getLocalPendingInvitations()
             return invitations.length
         } catch (error) {
-            logError('❌ Failed to get invitation count:', error)
+            console.error('❌ Failed to get invitation count:', error)
             return 0
         }
     }

@@ -13,7 +13,6 @@ import NetInfo from '@react-native-community/netinfo'
 import type { RootState } from '../redux'
 import { generateUUID } from '../utils/uuid'
 import type Deployment from '../database/models/Deployment'
-import { log, logError, logWarn } from '../utils/logger'
 
 class SupabaseSyncService {
     private realtimeChannel: RealtimeChannel | null = null
@@ -26,7 +25,7 @@ class SupabaseSyncService {
      * Clears any stuck "in progress" flags from previous crashes
      */
     async resetSyncState() {
-        log('🔄 Resetting sync state...')
+        console.log('🔄 Resetting sync state...')
 
         // INTEGRITY CHECK: Detect DB Reset (e.g. after migration failure)
         // If the DB is missing the timestamp record but AsyncStorage has it, we interpret this as a reset/inconsistency.
@@ -38,12 +37,12 @@ class SupabaseSyncService {
                     .fetch()
 
                 if (dbRecords.length === 0) {
-                    logWarn('⚠️ [SupabaseSyncService] Detected zombie LAST_PULL_TIMESTAMP in cache (missing in DB). Clearing AsyncStorage sync cache.')
+                    console.warn('⚠️ [SupabaseSyncService] Detected zombie LAST_PULL_TIMESTAMP in cache (missing in DB). Clearing AsyncStorage sync cache.')
                     await SyncStateService.clearAllState()
                 }
             }
         } catch (e) {
-            logError('⚠️ [SupabaseSyncService] Failed to check integrity:', e)
+            console.error('⚠️ [SupabaseSyncService] Failed to check integrity:', e)
         }
 
         this.isSyncing = false
@@ -55,7 +54,7 @@ class SupabaseSyncService {
         await database.write(async () => {
             await SyncStateService.set(SYNC_STATE_KEYS.SYNC_IN_PROGRESS, 'false')
         })
-        log('✅ Sync state reset complete')
+        console.log('✅ Sync state reset complete')
     }
 
     /**
@@ -70,11 +69,11 @@ class SupabaseSyncService {
 
         // Set new timer
         this.syncDebounceTimer = setTimeout(() => {
-            log('⏰ Debounce timer expired, triggering sync...')
+            console.log('⏰ Debounce timer expired, triggering sync...')
             this.sync()
         }, this.SYNC_DEBOUNCE_MS)
 
-        log(`⏳ Sync debounced (will trigger in ${this.SYNC_DEBOUNCE_MS}ms)`)
+        console.log(`⏳ Sync debounced (will trigger in ${this.SYNC_DEBOUNCE_MS}ms)`)
     }
 
     /**
@@ -84,7 +83,7 @@ class SupabaseSyncService {
         // Check if sync already in progress (via SyncStateService)
         const inProgress = await SyncStateService.isSyncInProgress()
         if (inProgress || this.isSyncing) {
-            log('⏳ Sync already in progress, skipping.')
+            console.log('⏳ Sync already in progress, skipping.')
             return
         }
 
@@ -102,23 +101,23 @@ class SupabaseSyncService {
                 const netState = await NetInfo.fetch()
                 const netInfoOnline = netState.isConnected === true
                 if (netInfoOnline) {
-                    log(`🌐 Network check: Redux says OFFLINE but NetInfo says ONLINE - using NetInfo`)
+                    console.log(`🌐 Network check: Redux says OFFLINE but NetInfo says ONLINE - using NetInfo`)
                     isOnline = true
                 } else {
-                    log(`🌐 Network check (Redux): OFFLINE`)
+                    console.log(`🌐 Network check (Redux): OFFLINE`)
                 }
             } else {
-                log(`🌐 Network check (Redux): ONLINE`)
+                console.log(`🌐 Network check (Redux): ONLINE`)
             }
         } catch (e) {
             // Fallback to NetInfo if Redux not available
             const netState = await NetInfo.fetch()
             isOnline = netState.isConnected === true
-            log(`🌐 Network check (NetInfo fallback): ${isOnline ? 'ONLINE' : 'OFFLINE'}`)
+            console.log(`🌐 Network check (NetInfo fallback): ${isOnline ? 'ONLINE' : 'OFFLINE'}`)
         }
 
         if (!isOnline) {
-            log('⏸️ Device is offline - skipping sync')
+            console.log('⏸️ Device is offline - skipping sync')
             return
         }
 
@@ -137,13 +136,13 @@ class SupabaseSyncService {
 
             attempts++
             if (attempts < MAX_ATTEMPTS) {
-                log(`👤 Auth user check attempt ${attempts} failed, retrying in ${RETRY_DELAY_MS}ms...`)
+                console.log(`👤 Auth user check attempt ${attempts} failed, retrying in ${RETRY_DELAY_MS}ms...`)
                 await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS))
             }
         }
 
         if (!user) {
-            log('👤 No authenticated user found after retries - skipping sync')
+            console.log('👤 No authenticated user found after retries - skipping sync')
             return
         }
 
@@ -185,11 +184,11 @@ class SupabaseSyncService {
                 const syncCount = currentCount ? parseInt(currentCount, 10) + 1 : 1
                 await SyncStateService.set(SYNC_STATE_KEYS.TOTAL_SYNCS, syncCount.toString())
 
-                log(`✅ Sync completed successfully in ${syncDuration}ms (total syncs: ${syncCount})`)
+                console.log(`✅ Sync completed successfully in ${syncDuration}ms (total syncs: ${syncCount})`)
             })
 
         } catch (error) {
-            logError('❌ Sync failed:', error)
+            console.error('❌ Sync failed:', error)
 
             // Log error to sync state
             const errorMessage = error instanceof Error ? error.message : String(error)
@@ -216,11 +215,11 @@ class SupabaseSyncService {
             .fetch()
 
         if (pendingOps.length === 0) {
-            log('✅ Sync complete - no pending operations')
+            console.log('✅ Sync complete - no pending operations')
             return
         }
 
-        log(`📤 Uploading ${pendingOps.length} pending operations...`)
+        console.log(`📤 Uploading ${pendingOps.length} pending operations...`)
 
         // Mark operations as syncing
         await database.write(async () => {
@@ -276,26 +275,26 @@ class SupabaseSyncService {
                         if (payload[field] && payload[field] !== currentUserId) {
                             // Don't patch created_by on updates if it's already a valid lookin UUID 
                             // (actually in this specific app context, patching is safer to bridge environment gaps)
-                            log(`🔧 Patching ${tableName}.${field} from ${payload[field]} to ${currentUserId}`)
+                            console.log(`🔧 Patching ${tableName}.${field} from ${payload[field]} to ${currentUserId}`)
                             payload[field] = currentUserId
                             patched = true
                         }
                     })
 
                     if (patched) {
-                        log(`✅ Patched audit fields for ${tableName} ${operationType} (internal ID: ${op.recordId})`)
+                        console.log(`✅ Patched audit fields for ${tableName} ${operationType} (internal ID: ${op.recordId})`)
                     }
                 }
 
                 // SECURITY/CRITICAL: Ensure deployments does NOT have modified_by as it's missing on server
                 if (tableName === 'deployments') {
-                    log(`🔍 Processing deployments payload. Has modified_by: ${'modified_by' in payload}`)
+                    console.log(`🔍 Processing deployments payload. Has modified_by: ${'modified_by' in payload}`)
                     if ('modified_by' in payload) {
-                        log(`🔧 Removing modified_by from deployments payload (value was: ${payload.modified_by})`)
+                        console.log(`🔧 Removing modified_by from deployments payload (value was: ${payload.modified_by})`)
                         delete payload.modified_by
-                        log(`✅ modified_by removed. Still present: ${'modified_by' in payload}`)
+                        console.log(`✅ modified_by removed. Still present: ${'modified_by' in payload}`)
                     } else {
-                        log(`ℹ️ No modified_by in payload for deployments. Keys: ${Object.keys(payload).join(', ')}`)
+                        console.log(`ℹ️ No modified_by in payload for deployments. Keys: ${Object.keys(payload).join(', ')}`)
                     }
                 }
 
@@ -341,13 +340,13 @@ class SupabaseSyncService {
 
             if (tableOps.length === 0) continue
 
-            log(`📤 Uploading batch for table: ${tableName} (${tableOps.length} ops)`)
+            console.log(`📤 Uploading batch for table: ${tableName} (${tableOps.length} ops)`)
 
             // Build changes object just for this table
             // We pass the full structure but only populate the current table
             const changes = populateChanges(tableOps, currentUserId)
 
-            log(`🔍 DEBUG: Payload for ${tableName}:`, JSON.stringify(changes))
+            console.log(`🔍 DEBUG: Payload for ${tableName}:`, JSON.stringify(changes))
 
             // CRITICAL FIX: Remove modified_by from deployments at batch level (server-side adds it)
             if (tableName === 'deployments') {
@@ -355,7 +354,7 @@ class SupabaseSyncService {
                     if (changes.deployments[opType]) {
                         changes.deployments[opType].forEach((record: any) => {
                             if ('modified_by' in record) {
-                                log(`🔧 [BATCH-LEVEL] Removing modified_by from deployment ${record.id}`)
+                                console.log(`🔧 [BATCH-LEVEL] Removing modified_by from deployment ${record.id}`)
                                 delete record.modified_by
                             }
                         })
@@ -367,10 +366,10 @@ class SupabaseSyncService {
                 const { data, error } = await (client as any).rpc('push_changes', { changes })
 
                 // IMPORTANT DEBUG: Log processed count to detect silent failures
-                log(`✅ Server processed ${data?.processed ?? '?'} operations for ${tableName}`)
+                console.log(`✅ Server processed ${data?.processed ?? '?'} operations for ${tableName}`)
 
                 if (error) {
-                    logError(`❌ Push failed for ${tableName}:`, error)
+                    console.error(`❌ Push failed for ${tableName}:`, error)
                     anyFailures = true
 
                     // Mark these specific ops as failed
@@ -388,7 +387,7 @@ class SupabaseSyncService {
                     // If device_preparation fails because device doesn't exist on server, 
                     // check if we have it locally and queue a creation for it.
                     if (tableName === 'device_preparation' && error.code === '23503') {
-                        log('🚑 Attempting self-healing for missing device dependency...')
+                        console.log('🚑 Attempting self-healing for missing device dependency...')
                         const devicesCollection = database.get<Device>('devices')
                         const missingDeviceIds = new Set<string>()
 
@@ -418,7 +417,7 @@ class SupabaseSyncService {
                                     ).fetch()
 
                                     if (existingOps.length === 0) {
-                                        log(`🚑 Self-healing: Queueing CREATE for missing device ${deviceId}`)
+                                        console.log(`🚑 Self-healing: Queueing CREATE for missing device ${deviceId}`)
                                         await database.write(async () => {
                                             // Re-queue device creation properly
                                             // We use direct interaction with OutboxService logic here to avoid circular dep if possible,
@@ -444,7 +443,7 @@ class SupabaseSyncService {
                                             })
                                         })
                                     } else {
-                                        log(`ℹ️ Pending CREATE op already exists for device ${deviceId}, it normally should have run first.`)
+                                        console.log(`ℹ️ Pending CREATE op already exists for device ${deviceId}, it normally should have run first.`)
                                         // If it exists but we still failed, maybe it failed too? 
                                         // The loop logic processes 'devices' before 'device_preparation', so if it failed, it would have stopped chain.
                                         // If it succeeded, we shouldn't be here. 
@@ -453,21 +452,21 @@ class SupabaseSyncService {
                                 }
                             } catch (e) {
                                 // Device not found locally, cannot heal
-                                log(`⚠️ Cannot heal device ${deviceId} - not found locally (Caught error: ${e})`)
+                                console.log(`⚠️ Cannot heal device ${deviceId} - not found locally (Caught error: ${e})`)
                             }
                         }
                     }
 
                     // Stop processing subsequent dependent tables if a dependency failed
-                    logWarn(`⚠️ Stopping upload chain due to failure in ${tableName}`)
+                    console.warn(`⚠️ Stopping upload chain due to failure in ${tableName}`)
                     break
                 }
 
-                log(`✅ Server processed ${data.processed} operations for ${tableName}`)
+                console.log(`✅ Server processed ${data.processed} operations for ${tableName}`)
 
                 // Handle conflicts
                 if (data.conflicts > 0) {
-                    logWarn(`⚠️ ${data.conflicts} conflicts in ${tableName}:`, data.conflict_details)
+                    console.warn(`⚠️ ${data.conflicts} conflicts in ${tableName}:`, data.conflict_details)
                     await database.write(async () => {
                         for (const conflict of data.conflict_details) {
                             const conflictOp = tableOps.find(op => op.operationId === conflict.operation_id)
@@ -496,7 +495,7 @@ class SupabaseSyncService {
                 })
 
             } catch (err) {
-                logError(`❌ Exception during push for ${tableName}:`, err)
+                console.error(`❌ Exception during push for ${tableName}:`, err)
                 anyFailures = true
                 break
             }
@@ -506,7 +505,7 @@ class SupabaseSyncService {
             throw new Error('One or more sync batches failed')
         }
 
-        log('✅ All sync batches completed successfully')
+        console.log('✅ All sync batches completed successfully')
     }
 
     /**
@@ -516,7 +515,7 @@ class SupabaseSyncService {
         const lastPulledStr = await SyncStateService.get(SYNC_STATE_KEYS.LAST_PULL_TIMESTAMP)
         const lastPulledAt = lastPulledStr ? parseInt(lastPulledStr, 10) : 0
 
-        log('🔽 Pulling changes since', lastPulledAt)
+        console.log('🔽 Pulling changes since', lastPulledAt)
         const client = getSupabaseClient()
 
         const { data, error } = await (client as any).rpc('pull_changes', {
@@ -524,7 +523,7 @@ class SupabaseSyncService {
         })
 
         if (error) {
-            logError('❌ Pull changes failed:', error)
+            console.error('❌ Pull changes failed:', error)
             throw error
         }
 
@@ -533,7 +532,7 @@ class SupabaseSyncService {
         // ================================================================
         // CRITICAL: Filter out records with pending local changes
         // ================================================================
-        log('🔍 Filtering pending local changes from server updates...')
+        console.log('🔍 Filtering pending local changes from server updates...')
 
         // Get all pending operations from outbox
         const pendingOps = await database.get<SyncOutbox>('sync_outbox')
@@ -554,10 +553,10 @@ class SupabaseSyncService {
             }
         }
 
-        log(`📦 Found ${pendingOps.length} pending operations in outbox:`)
+        console.log(`📦 Found ${pendingOps.length} pending operations in outbox:`)
         for (const [table, ids] of Object.entries(pendingByTable)) {
             if (ids.size > 0) {
-                log(`   - ${table}: ${ids.size} pending`)
+                console.log(`   - ${table}: ${ids.size} pending`)
             }
         }
 
@@ -567,21 +566,21 @@ class SupabaseSyncService {
                 created: (rawChanges.projects?.created || []).filter((p: any) => {
                     const isPending = pendingByTable.projects.has(p.id)
                     if (isPending) {
-                        log(`   ⚠️ Filtered project CREATED: ${p.id} (has pending changes)`)
+                        console.log(`   ⚠️ Filtered project CREATED: ${p.id} (has pending changes)`)
                     }
                     return !isPending
                 }),
                 updated: (rawChanges.projects?.updated || []).filter((p: any) => {
                     const isPending = pendingByTable.projects.has(p.id)
                     if (isPending) {
-                        log(`   ⚠️ Filtered project UPDATED: ${p.id} (has pending changes)`)
+                        console.log(`   ⚠️ Filtered project UPDATED: ${p.id} (has pending changes)`)
                     }
                     return !isPending
                 }),
                 deleted: (rawChanges.projects?.deleted || []).filter((id: string) => {
                     const isPending = pendingByTable.projects.has(id)
                     if (isPending) {
-                        log(`   ⚠️ Filtered project DELETED: ${id} (has pending changes)`)
+                        console.log(`   ⚠️ Filtered project DELETED: ${id} (has pending changes)`)
                     }
                     return !isPending
                 }),
@@ -590,21 +589,21 @@ class SupabaseSyncService {
                 created: (rawChanges.deployments?.created || []).filter((d: any) => {
                     const isPending = pendingByTable.deployments.has(d.id)
                     if (isPending) {
-                        log(`   ⚠️ Filtered deployment CREATED: ${d.id} (has pending changes)`)
+                        console.log(`   ⚠️ Filtered deployment CREATED: ${d.id} (has pending changes)`)
                     }
                     return !isPending
                 }),
                 updated: (rawChanges.deployments?.updated || []).filter((d: any) => {
                     const isPending = pendingByTable.deployments.has(d.id)
                     if (isPending) {
-                        log(`   ⚠️ Filtered deployment UPDATED: ${d.id} (has pending changes)`)
+                        console.log(`   ⚠️ Filtered deployment UPDATED: ${d.id} (has pending changes)`)
                     }
                     return !isPending
                 }),
                 deleted: (rawChanges.deployments?.deleted || []).filter((id: string) => {
                     const isPending = pendingByTable.deployments.has(id)
                     if (isPending) {
-                        log(`   ⚠️ Filtered deployment DELETED: ${id} (has pending changes)`)
+                        console.log(`   ⚠️ Filtered deployment DELETED: ${id} (has pending changes)`)
                     }
                     return !isPending
                 }),
@@ -613,21 +612,21 @@ class SupabaseSyncService {
                 created: (rawChanges.device_preparation?.created || []).filter((dp: any) => {
                     const isPending = pendingByTable.device_preparation.has(dp.id)
                     if (isPending) {
-                        log(`   ⚠️ Filtered device_preparation CREATED: ${dp.id} (has pending changes)`)
+                        console.log(`   ⚠️ Filtered device_preparation CREATED: ${dp.id} (has pending changes)`)
                     }
                     return !isPending
                 }),
                 updated: (rawChanges.device_preparation?.updated || []).filter((dp: any) => {
                     const isPending = pendingByTable.device_preparation.has(dp.id)
                     if (isPending) {
-                        log(`   ⚠️ Filtered device_preparation UPDATED: ${dp.id} (has pending changes)`)
+                        console.log(`   ⚠️ Filtered device_preparation UPDATED: ${dp.id} (has pending changes)`)
                     }
                     return !isPending
                 }),
                 deleted: (rawChanges.device_preparation?.deleted || []).filter((id: string) => {
                     const isPending = pendingByTable.device_preparation.has(id)
                     if (isPending) {
-                        log(`   ⚠️ Filtered device_preparation DELETED: ${id} (has pending changes)`)
+                        console.log(`   ⚠️ Filtered device_preparation DELETED: ${id} (has pending changes)`)
                     }
                     return !isPending
                 }),
@@ -636,21 +635,21 @@ class SupabaseSyncService {
                 created: (rawChanges.devices?.created || []).filter((d: any) => {
                     const isPending = pendingByTable.devices.has(d.id)
                     if (isPending) {
-                        log(`   ⚠️ Filtered device CREATED: ${d.id} (has pending changes)`)
+                        console.log(`   ⚠️ Filtered device CREATED: ${d.id} (has pending changes)`)
                     }
                     return !isPending
                 }),
                 updated: (rawChanges.devices?.updated || []).filter((d: any) => {
                     const isPending = pendingByTable.devices.has(d.id)
                     if (isPending) {
-                        log(`   ⚠️ Filtered device UPDATED: ${d.id} (has pending changes)`)
+                        console.log(`   ⚠️ Filtered device UPDATED: ${d.id} (has pending changes)`)
                     }
                     return !isPending
                 }),
                 deleted: (rawChanges.devices?.deleted || []).filter((id: string) => {
                     const isPending = pendingByTable.devices.has(id)
                     if (isPending) {
-                        log(`   ⚠️ Filtered device DELETED: ${id} (has pending changes)`)
+                        console.log(`   ⚠️ Filtered device DELETED: ${id} (has pending changes)`)
                     }
                     return !isPending
                 }),
@@ -673,14 +672,14 @@ class SupabaseSyncService {
             (rawChanges.devices?.deleted?.length || 0) - (safeChanges.devices.deleted.length)
 
         if (totalFiltered > 0) {
-            log(`✅ Filtered ${totalFiltered} server changes with pending local modifications`)
+            console.log(`✅ Filtered ${totalFiltered} server changes with pending local modifications`)
         } else {
-            log('✅ No pending changes, applying all server updates')
+            console.log('✅ No pending changes, applying all server updates')
         }
 
         // Handle conflicts (if any)
         if (conflicts && conflicts.length > 0) {
-            logWarn(`⚠️ ${conflicts.length} conflicts detected:`, conflicts)
+            console.warn(`⚠️ ${conflicts.length} conflicts detected:`, conflicts)
             // TODO: Store conflicts for user resolution
             // For now, just log them
         }
@@ -693,7 +692,7 @@ class SupabaseSyncService {
             )
         })
 
-        log(`✅ Pull complete - timestamp updated to ${timestamp}`)
+        console.log(`✅ Pull complete - timestamp updated to ${timestamp}`)
     }
 
     /**
@@ -705,7 +704,7 @@ class SupabaseSyncService {
         const lastPulledStr = await SyncStateService.get(LAST_PULLED_KEY)
         const lastPulledAt = lastPulledStr ? new Date(parseInt(lastPulledStr, 10)).toISOString() : new Date(0).toISOString()
 
-        log('👥 Syncing user roles since', lastPulledAt)
+        console.log('👥 Syncing user roles since', lastPulledAt)
 
         const client = getSupabaseClient()
         const { data, error } = await client
@@ -714,16 +713,16 @@ class SupabaseSyncService {
             .gt('updated_at', lastPulledAt)
 
         if (error) {
-            logError('❌ Failed to sync user roles:', error)
+            console.error('❌ Failed to sync user roles:', error)
             return
         }
 
         if (!data || data.length === 0) {
-            log('✅ No new user role changes')
+            console.log('✅ No new user role changes')
             return
         }
 
-        log(`📥 Received ${data.length} user role updates`)
+        console.log(`📥 Received ${data.length} user role updates`)
 
         await database.write(async () => {
             const collection = database.get<UserRole>('user_roles')
@@ -765,7 +764,7 @@ class SupabaseSyncService {
             await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
         })
 
-        log('✅ User roles sync complete')
+        console.log('✅ User roles sync complete')
     }
 
     /**
@@ -777,14 +776,14 @@ class SupabaseSyncService {
         const lastPulledStr = await SyncStateService.get(LAST_PULLED_KEY)
         const lastPulledAt = lastPulledStr ? new Date(parseInt(lastPulledStr, 10)).toISOString() : new Date(0).toISOString()
 
-        log('📂 Syncing projects since', lastPulledAt)
+        console.log('📂 Syncing projects since', lastPulledAt)
 
         const client = getSupabaseClient()
 
         // Get current user
         const { data: { user } } = await client.auth.getUser()
         if (!user) {
-            log('⚠️ No authenticated user, skipping project sync')
+            console.log('⚠️ No authenticated user, skipping project sync')
             return
         }
 
@@ -795,16 +794,16 @@ class SupabaseSyncService {
             .gt('updated_at', lastPulledAt)
 
         if (error) {
-            logError('❌ Failed to sync projects:', error)
+            console.error('❌ Failed to sync projects:', error)
             return
         }
 
         if (!data || data.length === 0) {
-            log('✅ No new project changes')
+            console.log('✅ No new project changes')
             return
         }
 
-        log(`📥 Received ${data.length} project updates`)
+        console.log(`📥 Received ${data.length} project updates`)
 
         const collection = database.collections.get<Project>('projects')
 
@@ -875,7 +874,7 @@ class SupabaseSyncService {
             await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
         })
 
-        log('✅ Projects sync complete')
+        console.log('✅ Projects sync complete')
     }
 
     /**
@@ -886,7 +885,7 @@ class SupabaseSyncService {
         const lastPulledStr = await SyncStateService.get(LAST_PULLED_KEY)
         const lastPulledAt = lastPulledStr ? new Date(parseInt(lastPulledStr, 10)).toISOString() : new Date(0).toISOString()
 
-        log('📷 Syncing devices since', lastPulledAt)
+        console.log('📷 Syncing devices since', lastPulledAt)
 
         const client = getSupabaseClient()
         const { data, error } = await client
@@ -895,16 +894,16 @@ class SupabaseSyncService {
             .gt('updated_at', lastPulledAt)
 
         if (error) {
-            logError('❌ Failed to sync devices:', error)
+            console.error('❌ Failed to sync devices:', error)
             return
         }
 
         if (!data || data.length === 0) {
-            log('✅ No new device changes')
+            console.log('✅ No new device changes')
             return
         }
 
-        log(`📥 Received ${data.length} device updates`)
+        console.log(`📥 Received ${data.length} device updates`)
 
         await database.write(async () => {
             const collection = database.get<Device>('devices')
@@ -914,10 +913,10 @@ class SupabaseSyncService {
 
             for (const row of data as DeviceRow[]) {
                 if (!row) {
-                    logError('[Sync] Found undefined row in devices data!')
+                    console.error('[Sync] Found undefined row in devices data!')
                     continue
                 }
-                log(`[Sync] Processing device row: ${row.id}`) // Debug for TypeError
+                console.log(`[Sync] Processing device row: ${row.id}`) // Debug for TypeError
 
                 // Check if exists
                 try {
@@ -948,7 +947,7 @@ class SupabaseSyncService {
             await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
         })
 
-        log('✅ Devices sync complete')
+        console.log('✅ Devices sync complete')
     }
 
     /**
@@ -959,7 +958,7 @@ class SupabaseSyncService {
         const lastPulledStr = await SyncStateService.get(LAST_PULLED_KEY)
         const lastPulledAt = lastPulledStr ? new Date(parseInt(lastPulledStr, 10)).toISOString() : new Date(0).toISOString()
 
-        log('📷 Syncing device_preparation since', lastPulledAt)
+        console.log('📷 Syncing device_preparation since', lastPulledAt)
 
         const client = getSupabaseClient()
         const { data, error } = await client
@@ -968,16 +967,16 @@ class SupabaseSyncService {
             .gt('updated_at', lastPulledAt)
 
         if (error) {
-            logError('❌ Failed to sync device_preparation:', error)
+            console.error('❌ Failed to sync device_preparation:', error)
             return
         }
 
         if (!data || data.length === 0) {
-            log('✅ No new device preparation changes')
+            console.log('✅ No new device preparation changes')
             return
         }
 
-        log(`📥 Received ${data.length} device preparation updates`)
+        console.log(`📥 Received ${data.length} device preparation updates`)
 
         await database.write(async () => {
             const collection = database.get<DevicePreparation>('device_preparation')
@@ -1041,7 +1040,7 @@ class SupabaseSyncService {
             await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
         })
 
-        log('✅ Device preparation sync complete')
+        console.log('✅ Device preparation sync complete')
     }
 
     /**
@@ -1052,7 +1051,7 @@ class SupabaseSyncService {
         const lastPulledStr = await SyncStateService.get(LAST_PULLED_KEY)
         const lastPulledAt = lastPulledStr ? new Date(parseInt(lastPulledStr, 10)).toISOString() : new Date(0).toISOString()
 
-        log('⛺ Syncing deployments since', lastPulledAt)
+        console.log('⛺ Syncing deployments since', lastPulledAt)
 
         const client = getSupabaseClient()
         const { data, error } = await client
@@ -1061,16 +1060,16 @@ class SupabaseSyncService {
             .gt('updated_at', lastPulledAt)
 
         if (error) {
-            logError('❌ Failed to sync deployments:', error)
+            console.error('❌ Failed to sync deployments:', error)
             return
         }
 
         if (!data || data.length === 0) {
-            log('✅ No new deployment changes')
+            console.log('✅ No new deployment changes')
             return
         }
 
-        log(`📥 Received ${data.length} deployment updates`)
+        console.log(`📥 Received ${data.length} deployment updates`)
 
         await database.write(async () => {
             const collection = database.get<Deployment>('deployments')
@@ -1172,7 +1171,7 @@ class SupabaseSyncService {
             await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
         })
 
-        log('✅ Deployments sync complete')
+        console.log('✅ Deployments sync complete')
     }
 
     private parseDateToTimestamp(dateInput: any): number {
@@ -1203,14 +1202,14 @@ class SupabaseSyncService {
                 'postgres_changes',
                 { event: '*', schema: 'public' },
                 (payload) => {
-                    log('📡 Realtime change received:', payload.table, payload.eventType)
+                    console.log('📡 Realtime change received:', payload.table, payload.eventType)
                     // Use debounced sync to avoid thrashing
                     this.debouncedSync()
                 }
             )
             .subscribe()
 
-        log('📡 Realtime subscription started (debounced)')
+        console.log('📡 Realtime subscription started (debounced)')
     }
 
     async stopRealtimeSubscription() {
@@ -1225,7 +1224,7 @@ class SupabaseSyncService {
             this.syncDebounceTimer = null
         }
 
-        log('📡 Realtime subscription stopped')
+        console.log('📡 Realtime subscription stopped')
     }
 }
 

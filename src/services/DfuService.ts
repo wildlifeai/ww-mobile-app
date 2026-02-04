@@ -26,7 +26,7 @@ export class DfuService {
 
 			return result
 		} catch (error) {
-			logError("DFU failed:", error)
+			console.error("DFU failed:", error)
 			throw error
 		} finally {
 			// Clean up listener

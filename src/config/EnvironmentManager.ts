@@ -45,7 +45,7 @@ export async function getEnvironment(): Promise<SupabaseEnvironment> {
 		return getDefaultEnvironment()
 	} catch (error) {
 		// On storage error, fallback to default
-		logError("Failed to read environment from storage:", error)
+		console.error("Failed to read environment from storage:", error)
 		return getDefaultEnvironment()
 	}
 }

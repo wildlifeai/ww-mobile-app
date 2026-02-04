@@ -25,7 +25,7 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
             setStatus('success')
             setMessage('Ping command sent successfully. Verify reception on server.')
         } catch (error) {
-            logError('Ping failed:', error)
+            console.error('Ping failed:', error)
             setStatus('failed')
             setMessage('Failed to send ping command.')
         }

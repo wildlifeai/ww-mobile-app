@@ -16,8 +16,6 @@ import { selectCurrentOrganisation } from '../../redux/slices/authSlice'
 import { RootStackParamList } from '../../navigation'
 import { DevicePreparationService } from '../../services/DevicePreparationService'
 import { DeploymentService } from '../../services/DeploymentService'
-import { log } from '../../utils/logger'
-
 
 type DeviceDiscoveryScreenRouteProp = RouteProp<RootStackParamList, 'DeviceDiscovery'>
 
@@ -69,12 +67,12 @@ export const DeviceDiscoveryScreen = () => {
             if (!isBleBusy && isFocused) {
                 startScan(10)
             } else {
-                log('Scanning already taking place, skipping.')
+                console.log('Scanning already taking place, skipping.')
             }
         }, 30 * 1000)
 
         return () => {
-            log('Clearing scan interval.')
+            console.log('Clearing scan interval.')
             clearInterval(interval)
         }
     }, [isScanning, isBleConnecting, isBleBusy, startScan, isFocused])
@@ -83,7 +81,7 @@ export const DeviceDiscoveryScreen = () => {
         if (!isBleBusy && !isScanning) {
             startScan()
         } else {
-            log('Scanning already taking place, skipping.')
+            console.log('Scanning already taking place, skipping.')
         }
     }
 
@@ -92,17 +90,17 @@ export const DeviceDiscoveryScreen = () => {
     const handleDeviceSelect = useCallback(
         async (device: ExtendedPeripheral) => {
             if (processing) return
-            log(`Device selected: ${device.id}, mode: ${mode}`)
+            console.log(`Device selected: ${device.id}, mode: ${mode}`)
             setProcessing(true)
             try {
                 // 1. Connect to the device
-                log(`Connecting to device ${device.id}...`)
+                console.log(`Connecting to device ${device.id}...`)
                 const connectedDevice = await connectDevice(device)
-                log(`Connect result: ${connectedDevice.connected}`)
+                console.log(`Connect result: ${connectedDevice.connected}`)
 
                 if (connectedDevice.connected) {
                     // 4. Mode-specific logic
-                    log(`Proceeding with mode: ${mode}`)
+                    console.log(`Proceeding with mode: ${mode}`)
 
                     if (mode === 'engineer') {
                         // Navigate to Engineer Console (Terminal) directly - NO DB interaction
@@ -114,14 +112,14 @@ export const DeviceDiscoveryScreen = () => {
 
                     // For 'prepare' and 'end_deployment', we need the device in the DB
                     // 2. Check if device exists in DB
-                    log(`Checking DB for device ${device.id}...`)
+                    console.log(`Checking DB for device ${device.id}...`)
                     let dbDevice = await DeviceService.getDeviceByBluetoothId(device.id)
-                    log(`DB Device found: ${!!dbDevice}`)
+                    console.log(`DB Device found: ${!!dbDevice}`)
 
                     // 3. If not found, create it
                     if (!dbDevice) {
                         if (currentOrganisation?.id && user?.id) {
-                            log(`Creating device in DB for org ${currentOrganisation.id}...`)
+                            console.log(`Creating device in DB for org ${currentOrganisation.id}...`)
                             try {
                                 dbDevice = await DeviceService.createDevice(
                                     device.id,
@@ -129,14 +127,14 @@ export const DeviceDiscoveryScreen = () => {
                                     currentOrganisation.id,
                                     user.id
                                 )
-                                log(`Device created: ${dbDevice?.id}`)
+                                console.log(`Device created: ${dbDevice?.id}`)
                             } catch (error) {
-                                logError('Error creating device in DB:', error)
+                                console.error('Error creating device in DB:', error)
                                 // If creation fails, it might be because it was just created. Try fetching again.
                                 dbDevice = await DeviceService.getDeviceByBluetoothId(device.id)
                             }
                         } else {
-                            log('No organisation or user selected')
+                            console.log('No organisation or user selected')
                             Alert.alert('Error', 'No organisation selected or user not logged in. Cannot create device.')
                             await disconnectDevice(device)
                             setProcessing(false)
@@ -149,7 +147,7 @@ export const DeviceDiscoveryScreen = () => {
                             const activeDeployment = await DeploymentService.getActiveDeploymentForDeviceId(dbDevice.id)
 
                             if (!activeDeployment) {
-                                log(`Device ${dbDevice.id} has no active deployment.`)
+                                console.log(`Device ${dbDevice.id} has no active deployment.`)
                                 Alert.alert(
                                     'No Active Deployment',
                                     'This device is not part of an active deployment.',
@@ -160,7 +158,7 @@ export const DeviceDiscoveryScreen = () => {
                             }
 
                             // Proceed to End Deployment Step 2
-                            log(`activeDeployment found: ${activeDeployment.id}. Proceeding to End Deployment details.`);
+                            console.log(`activeDeployment found: ${activeDeployment.id}. Proceeding to End Deployment details.`);
                             (navigation as any).navigate('EndDeploymentDetailsStep', {
                                 deploymentId: activeDeployment.id,
                                 deviceId: dbDevice.id,
@@ -224,7 +222,7 @@ export const DeviceDiscoveryScreen = () => {
                             const lastPrep = await DevicePreparationService.getLastCompletedPreparation(dbDevice.id)
                             const lastEndedDeployment = await DeploymentService.getLastEndedDeploymentForDeviceId(dbDevice.id)
 
-                            log(`[DeviceDiscovery] Prep Check: LastPrep=${lastPrep?.createdAt}, LastEnded=${lastEndedDeployment?.deploymentEnd}`)
+                            console.log(`[DeviceDiscovery] Prep Check: LastPrep=${lastPrep?.createdAt}, LastEnded=${lastEndedDeployment?.deploymentEnd}`)
 
                             // LOGIC from DeviceCard.tsx:
                             // Valid if:
@@ -239,7 +237,7 @@ export const DeviceDiscoveryScreen = () => {
                             // Also require isDeploymentReady flag for safety
                             if (isFreshlyPrepared && lastPrep.isDeploymentReady) {
                                 // Go to Step 2: Deployment Details
-                                log(`Device ${dbDevice.id} is prepared. Proceeding to details.`);
+                                console.log(`Device ${dbDevice.id} is prepared. Proceeding to details.`);
 
                                 // We need to pass the preparation ID to the next step
                                 (navigation as any).navigate('DeploymentDetailsStep', {
@@ -249,7 +247,7 @@ export const DeviceDiscoveryScreen = () => {
                                 })
                             } else {
                                 // Not prepared -> Validated Preparation Step
-                                log(`Device ${dbDevice.id} not fully prepared. Redirecting to preparation.`)
+                                console.log(`Device ${dbDevice.id} not fully prepared. Redirecting to preparation.`)
                                 Alert.alert(
                                     "Device Not Prepared",
                                     "This device has not been prepared since its last deployment.\n\nPlease prepare and test the device before deploying.",
@@ -275,7 +273,7 @@ export const DeviceDiscoveryScreen = () => {
                     }
                 }
             } catch (error) {
-                logError('Error connecting to device:', error)
+                console.error('Error connecting to device:', error)
                 Alert.alert('Connection Failed', 'Could not connect to device. It might be in DFU mode or out of range.')
             } finally {
                 setProcessing(false)
@@ -285,7 +283,7 @@ export const DeviceDiscoveryScreen = () => {
     )
 
     const handleDisconnect = useCallback(async (device: ExtendedPeripheral) => {
-        log(`Disconnecting from ${device.id}`)
+        console.log(`Disconnecting from ${device.id}`)
         await disconnectDevice(device)
     }, [disconnectDevice])
 

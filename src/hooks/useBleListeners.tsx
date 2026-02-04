@@ -284,7 +284,7 @@ export const useBleListeners = () => {
 		)
 
 		const filteredPeripherals = peripherals.filter((p) => {
-			log("p", p.name)
+			console.log("p", p.name)
 			return p.name && isOurDevice(p.name)
 		})
 

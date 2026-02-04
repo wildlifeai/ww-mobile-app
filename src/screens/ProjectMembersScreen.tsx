@@ -142,25 +142,25 @@ export const ProjectMembersScreen = () => {
 
 	const loadMembers = useCallback(async () => {
 		if (!user) {
-			logError("❌ Missing user context")
+			console.error("❌ Missing user context")
 			Alert.alert("Error", "User authentication required")
 			return
 		}
 
 		setLoading(true)
 		try {
-			log("📋 Loading members for project:", projectId)
+			console.log("📋 Loading members for project:", projectId)
 
 			// Load project members (with authorization handling)
 			let projectMembers: ProjectMember[] = []
 			try {
 				projectMembers = await getProjectMembers(projectId, user.id)
 				setMembers(projectMembers)
-				log(`✅ Loaded ${projectMembers.length} project members`)
+				console.log(`✅ Loaded ${projectMembers.length} project members`)
 			} catch (error: any) {
 				if (error?.message?.includes("Unauthorized")) {
 					// User not authorized to view members - show empty list
-					log("⚠️ User not authorized to view project members")
+					console.log("⚠️ User not authorized to view project members")
 					setMembers([])
 
 					return
@@ -172,7 +172,7 @@ export const ProjectMembersScreen = () => {
 			const pending = await InvitationService.getProjectPendingInvitations(projectId)
 			setPendingInvitations(pending)
 		} catch (error) {
-			logError("❌ Error loading members:", error)
+			console.error("❌ Error loading members:", error)
 			Alert.alert("Error", "Failed to load project members")
 		} finally {
 			setLoading(false)
@@ -203,7 +203,7 @@ export const ProjectMembersScreen = () => {
 
 		setLoading(true)
 		try {
-			log(`📧 Inviting ${inviteEmail}...`)
+			console.log(`📧 Inviting ${inviteEmail}...`)
 
 			// 1. Check if user exists
 			const exists = await InvitationService.checkUserExists(inviteEmail.trim())
@@ -230,7 +230,7 @@ export const ProjectMembersScreen = () => {
 			setInviteEmail("")
 			setInviteRole("project_member")
 		} catch (err: any) {
-			logError("❌ Error sending invitation:", err)
+			console.error("❌ Error sending invitation:", err)
 			Alert.alert("Error", err.message || "Failed to send invitation")
 		} finally {
 			setLoading(false)
@@ -244,7 +244,7 @@ export const ProjectMembersScreen = () => {
 
 		setLoading(true)
 		try {
-			log(`🔄 Changing role for ${selectedMember.name}...`)
+			console.log(`🔄 Changing role for ${selectedMember.name}...`)
 
 			const result = await updateProjectMemberRole({
 				project_id: projectId,
@@ -265,7 +265,7 @@ export const ProjectMembersScreen = () => {
 			setShowRoleChangeDialog(false)
 			setSelectedMember(null)
 		} catch (err) {
-			logError("❌ Error changing role:", err)
+			console.error("❌ Error changing role:", err)
 			Alert.alert("Error", "Failed to update role")
 		} finally {
 			setLoading(false)
@@ -287,7 +287,7 @@ export const ProjectMembersScreen = () => {
 
 		setLoading(true)
 		try {
-			log(`➖ Removing member ${selectedMember.name}...`)
+			console.log(`➖ Removing member ${selectedMember.name}...`)
 
 			const result = await removeProjectMember({
 				project_id: projectId,
@@ -307,7 +307,7 @@ export const ProjectMembersScreen = () => {
 			setShowRemoveDialog(false)
 			setSelectedMember(null)
 		} catch (err) {
-			logError("❌ Error removing member:", err)
+			console.error("❌ Error removing member:", err)
 			Alert.alert("Error", "Failed to remove member")
 		} finally {
 			setLoading(false)

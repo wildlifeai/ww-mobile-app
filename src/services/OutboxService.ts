@@ -4,8 +4,6 @@ import database from '../database'
 import SyncOutbox from '../database/models/SyncOutbox'
 import SyncStateService from './SyncStateService'
 import { generateUUID } from '../utils/uuid'
-import { log } from '../utils/logger'
-
 
 /**
  * OutboxService
@@ -77,10 +75,10 @@ class OutboxService {
                 op.deviceId = deviceId
             })
 
-            log(`📦 Prepared ${operation} operation for ${tableName}:${recordId} (clock: ${lamportClock})`)
+            console.log(`📦 Prepared ${operation} operation for ${tableName}:${recordId} (clock: ${lamportClock})`)
             return outboxRecord
         } catch (error) {
-            logError('[OutboxService] Error preparing operation:', error)
+            console.error('[OutboxService] Error preparing operation:', error)
             throw error
         }
     }
@@ -99,7 +97,7 @@ class OutboxService {
 
             return operations
         } catch (error) {
-            logError('[OutboxService] Error getting pending operations:', error)
+            console.error('[OutboxService] Error getting pending operations:', error)
             return []
         }
     }
@@ -119,7 +117,7 @@ class OutboxService {
 
             return operations
         } catch (error) {
-            logError(`[OutboxService] Error getting pending operations for ${tableName}:`, error)
+            console.error(`[OutboxService] Error getting pending operations for ${tableName}:`, error)
             return []
         }
     }
@@ -140,7 +138,7 @@ class OutboxService {
 
             return operations
         } catch (error) {
-            logError(`[OutboxService] Error getting pending operations for ${tableName}:${recordId}:`, error)
+            console.error(`[OutboxService] Error getting pending operations for ${tableName}:${recordId}:`, error)
             return []
         }
     }
@@ -173,7 +171,7 @@ class OutboxService {
                 }
             })
         } catch (error) {
-            logError('[OutboxService] Error marking operations as syncing:', error)
+            console.error('[OutboxService] Error marking operations as syncing:', error)
         }
     }
 
@@ -197,9 +195,9 @@ class OutboxService {
                 }
             })
 
-            log(`✅ Marked ${operationIds.length} operations as synced`)
+            console.log(`✅ Marked ${operationIds.length} operations as synced`)
         } catch (error) {
-            logError('[OutboxService] Error marking operations as synced:', error)
+            console.error('[OutboxService] Error marking operations as synced:', error)
         }
     }
 
@@ -223,9 +221,9 @@ class OutboxService {
                 }
             })
 
-            logWarn(`⚠️ Marked operation ${operationId} as failed: ${errorMessage}`)
+            console.warn(`⚠️ Marked operation ${operationId} as failed: ${errorMessage}`)
         } catch (error) {
-            logError('[OutboxService] Error marking operation as failed:', error)
+            console.error('[OutboxService] Error marking operation as failed:', error)
         }
     }
 
@@ -247,9 +245,9 @@ class OutboxService {
                 }
             })
 
-            logWarn(`⚠️ Marked operation ${operationId} as conflict`)
+            console.warn(`⚠️ Marked operation ${operationId} as conflict`)
         } catch (error) {
-            logError('[OutboxService] Error marking operation as conflict:', error)
+            console.error('[OutboxService] Error marking operation as conflict:', error)
         }
     }
 
@@ -271,9 +269,9 @@ class OutboxService {
                 }
             })
 
-            log(`🔄 Reset operation ${operationId} to pending for retry`)
+            console.log(`🔄 Reset operation ${operationId} to pending for retry`)
         } catch (error) {
-            logError('[OutboxService] Error retrying operation:', error)
+            console.error('[OutboxService] Error retrying operation:', error)
         }
     }
 
@@ -286,7 +284,7 @@ class OutboxService {
                 .query(Q.where('status', 'failed'))
                 .fetch()
         } catch (error) {
-            logError('[OutboxService] Error getting failed operations:', error)
+            console.error('[OutboxService] Error getting failed operations:', error)
             return []
         }
     }
@@ -300,7 +298,7 @@ class OutboxService {
                 .query(Q.where('status', 'conflict'))
                 .fetch()
         } catch (error) {
-            logError('[OutboxService] Error getting conflict operations:', error)
+            console.error('[OutboxService] Error getting conflict operations:', error)
             return []
         }
     }
@@ -326,10 +324,10 @@ class OutboxService {
                 }
             })
 
-            log(`🧹 Cleaned up ${syncedOps.length} synced operations older than ${olderThanDays} days`)
+            console.log(`🧹 Cleaned up ${syncedOps.length} synced operations older than ${olderThanDays} days`)
             return syncedOps.length
         } catch (error) {
-            logError('[OutboxService] Error cleaning up synced operations:', error)
+            console.error('[OutboxService] Error cleaning up synced operations:', error)
             return 0
         }
     }
@@ -359,7 +357,7 @@ class OutboxService {
 
             return stats
         } catch (error) {
-            logError('[OutboxService] Error getting statistics:', error)
+            console.error('[OutboxService] Error getting statistics:', error)
             return {
                 pending: 0,
                 syncing: 0,
@@ -386,9 +384,9 @@ class OutboxService {
                 }
             })
 
-            log(`🗑️ Deleted operation ${operationId}`)
+            console.log(`🗑️ Deleted operation ${operationId}`)
         } catch (error) {
-            logError('[OutboxService] Error deleting operation:', error)
+            console.error('[OutboxService] Error deleting operation:', error)
         }
     }
 
@@ -404,9 +402,9 @@ class OutboxService {
                 }
             })
 
-            logWarn('⚠️🗑️ Cleared all outbox operations')
+            console.warn('⚠️🗑️ Cleared all outbox operations')
         } catch (error) {
-            logError('[OutboxService] Error clearing all operations:', error)
+            console.error('[OutboxService] Error clearing all operations:', error)
         }
     }
 }

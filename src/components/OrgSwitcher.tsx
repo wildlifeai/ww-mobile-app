@@ -70,7 +70,7 @@ export const OrgSwitcher = () => {
 			await switchOrganisation(selectedOrgId)
 			handleCloseDialog()
 		} catch (err) {
-			logError("Failed to switch organisation:", err)
+			console.error("Failed to switch organisation:", err)
 			setError(
 				err instanceof Error
 					? err.message

@@ -455,7 +455,7 @@ export const getUserProjectRole = async (
 		try {
 			const project = await database.get<Project>('projects').find(projectId)
 			if (project && project.createdBy === userId) {
-				log(`✅ Optimistic check (getUserProjectRole): Current user is creator of project ${projectId}`)
+				console.log(`✅ Optimistic check (getUserProjectRole): Current user is creator of project ${projectId}`)
 				return "project_admin"
 			}
 		} catch (e) {

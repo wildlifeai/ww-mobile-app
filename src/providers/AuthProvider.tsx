@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }: PropsWithChildren<unknown>) => {
 					}
 				})
 			} catch (error) {
-				logError("Auth initialization error:", error)
+				console.error("Auth initialization error:", error)
 				dispatch(setInitialState(null))
 			}
 		}

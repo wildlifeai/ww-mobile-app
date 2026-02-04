@@ -8,8 +8,6 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import { useSelector } from 'react-redux'
 import { RootState } from '../../redux'
 import { StandardizedListLayout } from '../../components/ui/StandardizedListLayout'
-import { log } from '../../utils/logger'
-
 
 export const Devices = () => {
 	const theme = useTheme()
@@ -25,7 +23,7 @@ export const Devices = () => {
 	const loadDevices = useCallback(async () => {
 		try {
 			if (!userId) {
-				log('No user ID available, cannot load devices')
+				console.log('No user ID available, cannot load devices')
 				setDevices([])
 				return
 			}
@@ -34,7 +32,7 @@ export const Devices = () => {
 			const devicesList = await DeviceService.getDevicesForUser(userId)
 			setDevices(devicesList)
 		} catch (error) {
-			logError('Error loading devices:', error)
+			console.error('Error loading devices:', error)
 			Alert.alert('Error', 'Failed to load devices')
 		} finally {
 			setLoading(false)

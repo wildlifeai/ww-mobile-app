@@ -1,12 +1,10 @@
 import { LinkingOptions } from "@react-navigation/native"
 import * as Linking from "expo-linking"
 import { getStateFromPath } from "@react-navigation/native"
-import { log } from '../utils/logger'
-
 
 const prefix = Linking.createURL("/")
 
-log("Linking prefix:", prefix)
+console.log("Linking prefix:", prefix)
 
 export const linking: LinkingOptions<any> = {
 	prefixes: [
@@ -27,8 +25,8 @@ export const linking: LinkingOptions<any> = {
 	},
 	// Handle the auth tokens from deep links - DISABLED to avoid conflict with useDeepLinking hook
 	getStateFromPath: (path, config) => {
-		log("Deep link received:", path)
-		log("Full URL being processed:", path)
+		console.log("Deep link received:", path)
+		console.log("Full URL being processed:", path)
 
 		// Let useDeepLinking hook handle auth routes to avoid conflicts
 		if (
@@ -42,8 +40,8 @@ export const linking: LinkingOptions<any> = {
 			const tokenHash = params.get("token_hash")
 			const type = params.get("type")
 
-			log("Parsed params:", { tokenHash, type })
-			log("Deferring to useDeepLinking hook for navigation")
+			console.log("Parsed params:", { tokenHash, type })
+			console.log("Deferring to useDeepLinking hook for navigation")
 
 			// Return undefined to let useDeepLinking hook handle the navigation
 			return undefined
@@ -54,21 +52,21 @@ export const linking: LinkingOptions<any> = {
 	},
 	// Subscribe to incoming links
 	subscribe: (listener) => {
-		log("Setting up deep link listener...")
+		console.log("Setting up deep link listener...")
 		const linkingSubscription = Linking.addEventListener("url", ({ url }) => {
-			log("Link received via event:", url)
-			log("Calling listener with URL:", url)
+			console.log("Link received via event:", url)
+			console.log("Calling listener with URL:", url)
 			listener(url)
 		})
 
 		return () => {
-			log("Removing deep link listener")
+			console.log("Removing deep link listener")
 			linkingSubscription.remove()
 		}
 	},
 	getInitialURL: async () => {
 		const url = await Linking.getInitialURL()
-		log("Initial URL:", url)
+		console.log("Initial URL:", url)
 		return url
 	},
 }

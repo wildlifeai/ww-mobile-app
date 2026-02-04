@@ -94,53 +94,53 @@ export const DeploymentDetailsStep = () => {
             const phoneTime = new Date().getTime()
             const diff = Math.abs(phoneTime - deviceTime)
 
-            log(`[TimeCheck] Device: ${timeString}, Phone: ${new Date().toISOString()}, Diff: ${diff}ms`)
+            console.log(`[TimeCheck] Device: ${timeString}, Phone: ${new Date().toISOString()}, Diff: ${diff}ms`)
 
             if (diff > 5000) { // 5 seconds tolerance
-                log('[TimeCheck] Time mismatch. Setting UTC...')
+                console.log('[TimeCheck] Time mismatch. Setting UTC...')
                 setTimeCheckStatus('correcting')
                 await setUtc(bleDevice)
                 // Optionally request verify again?
                 setTimeCheckStatus('ok') // Assume success for now
             } else {
-                log('[TimeCheck] Time is correct.')
+                console.log('[TimeCheck] Time is correct.')
                 setTimeCheckStatus('ok')
             }
         } catch (e) {
-            logError('[TimeCheck] Parse error:', e)
+            console.error('[TimeCheck] Parse error:', e)
             setTimeCheckStatus('failed')
         }
     }, [bleDevice, setUtc])
 
     const checkAndCorrectTime = useCallback(async () => {
         if (!bleDevice) return
-        log('[Deployment] Checking device time...')
+        console.log('[Deployment] Checking device time...')
         try {
             setTimeCheckStatus('pending')
             await getUtc(bleDevice)
         } catch (e) {
-            logError('Failed to get UTC:', e)
+            console.error('Failed to get UTC:', e)
         }
     }, [bleDevice, getUtc])
 
     const loadPreparationAndProject = useCallback(async () => {
         try {
-            log('[DeploymentDetails] Loading preparation:', devicePreparationId);
+            console.log('[DeploymentDetails] Loading preparation:', devicePreparationId);
             const prep = await DevicePreparationService.getPreparationById(devicePreparationId as string)
             setPreparation(prep)
-            log('[DeploymentDetails] Prep loaded:', prep?.id, 'projectId:', prep?.projectId);
+            console.log('[DeploymentDetails] Prep loaded:', prep?.id, 'projectId:', prep?.projectId);
 
             if (prep && prep.projectId) {
-                log('[DeploymentDetails] Loading project:', prep.projectId);
+                console.log('[DeploymentDetails] Loading project:', prep.projectId);
                 const proj = await ProjectService.getProjectById(prep.projectId)
-                log('[DeploymentDetails] Project loaded:', proj?.name, 'capture_method_id:', proj?.capture_method_id);
+                console.log('[DeploymentDetails] Project loaded:', proj?.name, 'capture_method_id:', proj?.capture_method_id);
                 setProject(proj)
 
                 if (proj && proj.capture_method_id) {
-                    log('[DeploymentDetails] Resolving capture method name for ID:', proj.capture_method_id);
+                    console.log('[DeploymentDetails] Resolving capture method name for ID:', proj.capture_method_id);
                     const methods = await ReferenceDataService.getCaptureMethods()
                     const method = methods.find(m => m.id === proj.capture_method_id)
-                    log('[DeploymentDetails] Method resolved:', method?.value);
+                    console.log('[DeploymentDetails] Method resolved:', method?.value);
                     setCaptureMethodName(method ? method.value : 'Unknown')
 
                     if (proj.activity_detection_sensitivity_id) {
@@ -149,14 +149,14 @@ export const DeploymentDetailsStep = () => {
                         setSensitivityLabel(sensitivity ? sensitivity.value : 'Unknown')
                     }
                 } else {
-                    log('[DeploymentDetails] No capture method ID on project');
+                    console.log('[DeploymentDetails] No capture method ID on project');
                     setCaptureMethodName('Not Set')
                 }
             } else {
-                logWarn('[DeploymentDetails] Prep found but missing projectId');
+                console.warn('[DeploymentDetails] Prep found but missing projectId');
             }
         } catch (error) {
-            logError('[DeploymentDetails] Error in loadPreparationAndProject:', error)
+            console.error('[DeploymentDetails] Error in loadPreparationAndProject:', error)
         }
     }, [devicePreparationId])
 
@@ -177,7 +177,7 @@ export const DeploymentDetailsStep = () => {
     const hasCheckedStatus = React.useRef(false)
     useEffect(() => {
         if (bleDevice?.connected && !hasCheckedStatus.current) {
-            log('[Deployment] Checking device status...')
+            console.log('[Deployment] Checking device status...')
             getStatus(bleDevice)
             hasCheckedStatus.current = true
         }
@@ -187,7 +187,7 @@ export const DeploymentDetailsStep = () => {
     const statusValue = deviceConfig?.[CommandNames.status]?.value
     useEffect(() => {
         if (statusValue === 'enabled') {
-            log('[Deployment] Device reported active sensor!')
+            console.log('[Deployment] Device reported active sensor!')
             Alert.alert(
                 'Device Already Active',
                 'This device appears to be already deployed (Sensor Enabled).\n\nStarting a new deployment will overwrite the current configuration.',
@@ -202,7 +202,7 @@ export const DeploymentDetailsStep = () => {
                     },
                     {
                         text: 'Continue Anyway',
-                        onPress: () => log('[Deployment] User chose to continue despite active status'),
+                        onPress: () => console.log('[Deployment] User chose to continue despite active status'),
                         style: 'destructive'
                     }
                 ]
@@ -260,7 +260,7 @@ export const DeploymentDetailsStep = () => {
         isStartDeploymentInProgress.current = true // Suppress disconnect alerts
 
         // 1. Final Time Check
-        log('[Deployment] Performing final time check...')
+        console.log('[Deployment] Performing final time check...')
         await checkAndCorrectTime()
         // Wait 2s to allow BLE round trip / correction
         await new Promise(resolve => setTimeout(resolve, 2000))
@@ -293,10 +293,10 @@ export const DeploymentDetailsStep = () => {
 
 
             // 3. Send Deployment ID to Device via BLE
-            log('[Deployment] Sending Deployment ID to device:', newDeployment.id)
+            console.log('[Deployment] Sending Deployment ID to device:', newDeployment.id)
             try {
                 // Try setting OP20 first to see if device supports it (Feature Detection)
-                log('[Deployment] Testing if device supports extended OPs (OP20)...')
+                console.log('[Deployment] Testing if device supports extended OPs (OP20)...')
                 try {
                     const currentLogLength = logs.length
                     await setOperationalParam(bleDevice, 20, '0') // Dummy write
@@ -309,12 +309,12 @@ export const DeploymentDetailsStep = () => {
                     const hasOpError = recentLogs.some(l => l.content.includes('Error: index') || l.content.includes('Error: bits'))
 
                     if (hasOpError) {
-                        log('[Deployment] Device returned error for OP20. Extended OPs likely not supported.')
+                        console.log('[Deployment] Device returned error for OP20. Extended OPs likely not supported.')
                         throw new Error('Device rejected OP20')
                     }
 
                     // If successful, proceed to write actual ID
-                    log('[Deployment] Extended OPs supported (no error found). Writing Deployment ID...')
+                    console.log('[Deployment] Extended OPs supported (no error found). Writing Deployment ID...')
 
                     let deploymentIdSet = false
                     let attempts = 0
@@ -322,10 +322,10 @@ export const DeploymentDetailsStep = () => {
                         try {
                             attempts++
                             await setDeploymentIdAsOps(bleDevice, newDeployment.id)
-                            log('[Deployment] Deployment ID set successfully on attempt', attempts)
+                            console.log('[Deployment] Deployment ID set successfully on attempt', attempts)
                             deploymentIdSet = true
                         } catch (bleError) {
-                            logError(`[Deployment] Failed to set Deployment ID (attempt ${attempts}):`, bleError)
+                            console.error(`[Deployment] Failed to set Deployment ID (attempt ${attempts}):`, bleError)
                             if (attempts < 3) await new Promise(r => setTimeout(r, 1000))
                         }
                     }
@@ -335,14 +335,14 @@ export const DeploymentDetailsStep = () => {
                         if (errorCheck) {
                             throw new Error('Device rejected Extended OPs during write sequence')
                         }
-                        logWarn('[Deployment] Failed to set ID despite OP support.')
+                        console.warn('[Deployment] Failed to set ID despite OP support.')
                         Alert.alert(
                             'Warning',
                             'Deployment created locally, but failed to send Deployment ID to the device. The device may not tag images correctly.\n\nPlease verify connection and try "Engineer Device" > "Set Deployment ID" manually if needed.'
                         );
                     }
                 } catch (opError) {
-                    log('[Deployment] Device does not support extended OPs or write failed. Falling back to SET_GPS...', opError)
+                    console.log('[Deployment] Device does not support extended OPs or write failed. Falling back to SET_GPS...', opError)
 
                     // Fallback to SET_GPS command for older firmware
                     try {
@@ -353,25 +353,25 @@ export const DeploymentDetailsStep = () => {
                         const alt = altitude || 0
 
                         await setGpsLocation(bleDevice, lat, lng, alt)
-                        log('[Deployment] GPS location set successfully as fallback.')
+                        console.log('[Deployment] GPS location set successfully as fallback.')
 
                     } catch (gpsError) {
-                        logError('[Deployment] GPS fallback failed:', gpsError)
+                        console.error('[Deployment] GPS fallback failed:', gpsError)
                     }
                 }
             } catch (e) {
-                logError('[Deployment] Error during Deployment ID setup:', e)
+                console.error('[Deployment] Error during Deployment ID setup:', e)
             }
 
             // 4. Configure Capture Method
-            log('[Deployment] Configuring Capture Method:', captureMethodName)
+            console.log('[Deployment] Configuring Capture Method:', captureMethodName)
             try {
                 const method = captureMethodName.toLowerCase().replace(/[^a-z]/g, '') // "activitydetection", "timelapse"
                 const isMotionDetect = method.includes('activity') || method.includes('motion')
                 const isTimelapse = method.includes('time') || method.includes('lapse')
 
                 if (isMotionDetect) {
-                    log('[Deployment] Mode: Activity Detection. Setting motion interval to 1000ms, timeout to 30s & disabling timelapse.')
+                    console.log('[Deployment] Mode: Activity Detection. Setting motion interval to 1000ms, timeout to 30s & disabling timelapse.')
                     await updateSettings({
                         motionDetectInterval: 1000,
                         timelapseInterval: 0,
@@ -380,7 +380,7 @@ export const DeploymentDetailsStep = () => {
                     })
                 } else if (isTimelapse) {
                     const interval = project.timelapse_interval_seconds || 300
-                    log(`[Deployment] Mode: Time-lapse. Setting interval to ${interval}s, timeout to 30s & disabling motion detect.`)
+                    console.log(`[Deployment] Mode: Time-lapse. Setting interval to ${interval}s, timeout to 30s & disabling motion detect.`)
                     await updateSettings({
                         motionDetectInterval: 0,
                         timelapseInterval: interval,
@@ -388,25 +388,25 @@ export const DeploymentDetailsStep = () => {
                         cameraEnabled: true // Enable camera to ensure timelapse settings are accepted
                     })
                 } else {
-                    logWarn('[Deployment] Unknown capture method:', captureMethodName, '- No specific BLE config sent.')
+                    console.warn('[Deployment] Unknown capture method:', captureMethodName, '- No specific BLE config sent.')
                 }
             } catch (e) {
-                logError('[Deployment] Failed to configure capture settings:', e)
+                console.error('[Deployment] Failed to configure capture settings:', e)
                 Alert.alert('Warning', 'Failed to configure device capture settings (Motion/Timelapse). Device may use previous defaults.')
             }
 
             // 5. Enable Camera (Explicit Command - Safety Check)
             // Restore explicit call to ensure the Enable signal is definitively received
             if (bleDevice?.connected) {
-                log('[Deployment] Sending explicit Enable Camera command...')
+                console.log('[Deployment] Sending explicit Enable Camera command...')
                 try {
                     await enableCamera(bleDevice)
-                    log('[Deployment] Explicit enable command sent.')
+                    console.log('[Deployment] Explicit enable command sent.')
                 } catch (e) {
-                    logWarn('[Deployment] Failed to send explicit enable command:', e)
+                    console.warn('[Deployment] Failed to send explicit enable command:', e)
                 }
             } else {
-                logWarn('[Deployment] Device disconnected during explicit enable.')
+                console.warn('[Deployment] Device disconnected during explicit enable.')
             }
 
             // 5.5 DPD Latch Cycle (New Hook)
@@ -419,17 +419,17 @@ export const DeploymentDetailsStep = () => {
             // REMOVED: The long flash sequence (2.5s) exceeds the strict 1000ms inactivity timeout
             // preventing the device from transitioning to Active Mode if the firmware doesn't apply the 30s override immediately.
             if (bleDevice?.connected) {
-                log('[Deployment] Skipping LED flash to prevent inactivity timeout.')
+                console.log('[Deployment] Skipping LED flash to prevent inactivity timeout.')
             }
 
             // 7. Disconnect
-            log('[Deployment] Disconnecting device...')
+            console.log('[Deployment] Disconnecting device...')
             // Removed 5s delay to allow immediate disconnect after Latch Cycle
             try {
                 await runDisconnect(bleDevice)
-                log('[Deployment] Device disconnected')
+                console.log('[Deployment] Device disconnected')
             } catch (e) {
-                logError('[Deployment] Failed to disconnect:', e)
+                console.error('[Deployment] Failed to disconnect:', e)
             }
 
             // 8. Navigate back to Deployments list
@@ -438,7 +438,7 @@ export const DeploymentDetailsStep = () => {
             navigation.navigate('Home', { screen: 'Deployments' })
 
         } catch (error) {
-            logError('Deployment failed:', error)
+            console.error('Deployment failed:', error)
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false // Re-enable alerts on failure
         } finally {
