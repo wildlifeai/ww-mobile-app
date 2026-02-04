@@ -64,7 +64,7 @@ export const Register = () => {
 
 			dispatch(setCredentials(response))
 		} catch (err) {
-			console.error("Registration failed:", JSON.stringify(err))
+			logError("Registration failed:", JSON.stringify(err))
 			Alert.alert(
 				"Registration Failed",
 				"Please check your information and try again.",

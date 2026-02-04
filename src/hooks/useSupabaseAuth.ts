@@ -58,7 +58,7 @@ export const useSupabaseAuth = () => {
 			await logout()
 			dispatch(logoutAction())
 		} catch (error) {
-			console.error("Logout error:", error)
+			logError("Logout error:", error)
 			// Even if logout fails, clear local state
 			dispatch(logoutAction())
 		}
@@ -68,7 +68,7 @@ export const useSupabaseAuth = () => {
 		try {
 			return await isAuthenticated()
 		} catch (error) {
-			console.error("Auth status check error:", error)
+			logError("Auth status check error:", error)
 			return false
 		}
 	}, [])
@@ -82,7 +82,7 @@ export const useSupabaseAuth = () => {
 				dispatch(logoutAction())
 			}
 		} catch (error) {
-			console.error("Refresh session error:", error)
+			logError("Refresh session error:", error)
 			dispatch(logoutAction())
 		}
 	}, [dispatch])

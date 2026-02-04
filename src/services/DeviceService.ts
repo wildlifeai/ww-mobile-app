@@ -7,6 +7,8 @@ import { DeviceStatus, DeviceWithStatus, DeviceListItem } from '../types/device'
 import OutboxService from './OutboxService'
 
 import ProjectService from './ProjectService'
+import { log } from '../utils/logger'
+
 
 export const DeviceService = {
     /**
@@ -253,7 +255,7 @@ export const DeviceService = {
 
         // 2. Extract Project IDs
         const projectIds = new Set(userProjects.map(p => p.id))
-        console.log(`[DeviceService] Found ${projectIds.size} accessible projects for user ${userId}`)
+        log(`[DeviceService] Found ${projectIds.size} accessible projects for user ${userId}`)
 
         if (projectIds.size === 0) {
             // Even if no projects, check if user is Global Admin to see ALL devices?
@@ -295,7 +297,7 @@ export const DeviceService = {
             // Deployment model has deviceId field.
             if (d.deviceId) deviceIds.add(d.deviceId)
         })
-        console.log(`[DeviceService] Found ${projectDeployments.length} deployments, cumulative devices: ${deviceIds.size}`)
+        log(`[DeviceService] Found ${projectDeployments.length} deployments, cumulative devices: ${deviceIds.size}`)
 
         // 4. Get device IDs from device_preparation in these projects
         const preparationsCollection = database.get<DevicePreparation>('device_preparation')
@@ -303,7 +305,7 @@ export const DeviceService = {
             Q.where('project_id', Q.oneOf(Array.from(projectIds)))
         ).fetch()
         projectPreparations.forEach(p => deviceIds.add(p.deviceId))
-        console.log(`[DeviceService] Found ${projectPreparations.length} preparations, cumulative devices: ${deviceIds.size}`)
+        log(`[DeviceService] Found ${projectPreparations.length} preparations, cumulative devices: ${deviceIds.size}`)
 
         if (deviceIds.size === 0) {
             // Also check for Org Admin access to unassigned devices?

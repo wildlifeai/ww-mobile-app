@@ -23,6 +23,8 @@ import {
 	clearDatabaseDataForDev,
 	getDatabaseStatus,
 } from "../../utils/devDatabaseReset"
+import { log } from '../../utils/logger'
+
 
 export const DevBuildInfo = () => {
 	const { appPadding, spacing } = useExtendedTheme()
@@ -43,7 +45,7 @@ export const DevBuildInfo = () => {
 				const status = await getDatabaseStatus()
 				setDbStatus(status)
 			} catch (error) {
-				console.error("Failed to load database status:", error)
+				logError("Failed to load database status:", error)
 			}
 		}
 		loadDbStatus()
@@ -65,7 +67,7 @@ export const DevBuildInfo = () => {
 
 	// Debug: Log available native modules in development
 	if (__DEV__) {
-		console.log("Available Native Modules:", nativeModuleKeys.sort())
+		log("Available Native Modules:", nativeModuleKeys.sort())
 	}
 
 	// Check if module is detected via NativeModules or exists in package.json

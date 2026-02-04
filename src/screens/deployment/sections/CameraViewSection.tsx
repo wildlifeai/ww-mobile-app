@@ -30,7 +30,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
         write,
         onImageReceived: onImageCaptured,
         onError: (err) => {
-            console.error('Capture error:', err)
+            logError('Capture error:', err)
             // Error handling UI could be added here
         }
     })

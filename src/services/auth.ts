@@ -14,6 +14,7 @@ import {
 } from "../redux/api/auth/types"
 
 import type { Tables } from "../types/database.types"
+import { log, logError, logWarn } from "../utils/logger"
 
 /**
  * Supabase Authentication Service
@@ -42,7 +43,7 @@ const fetchUserOrganisations = async (userId: string) => {
 			data: { session },
 			error: sessionError,
 		} = await supabase().auth.getSession()
-		console.log("🔍 JWT DEBUG:", {
+		log("🔍 JWT DEBUG:", {
 			hasSession: !!session,
 			userId: session?.user?.id,
 			email: session?.user?.email,
@@ -54,7 +55,7 @@ const fetchUserOrganisations = async (userId: string) => {
 		})
 
 		if (!session || !session.user) {
-			console.error("❌ No active session - JWT token missing or expired")
+			logError("❌ No active session - JWT token missing or expired")
 			return {
 				organisations: [],
 				role: "project_member" as const,
@@ -63,14 +64,14 @@ const fetchUserOrganisations = async (userId: string) => {
 		}
 
 		if (session.user.id !== userId) {
-			console.error("⚠️ User ID mismatch:", {
+			logError("⚠️ User ID mismatch:", {
 				tokenUserId: session.user.id,
 				paramUserId: userId,
 			})
 		}
 
 		// Step 1: Get user roles (replaces user_organisations)
-		console.log("📋 Querying user_roles for userId:", userId)
+		log("📋 Querying user_roles for userId:", userId)
 		const { data: userRoles, error: rolesError } = await supabase()
 			.from("user_roles")
 			.select("role, scope_type, scope_id")
@@ -78,7 +79,7 @@ const fetchUserOrganisations = async (userId: string) => {
 			.eq("is_active", true)
 
 		if (rolesError) {
-			console.error("❌ Error fetching user_roles:", {
+			logError("❌ Error fetching user_roles:", {
 				message: rolesError.message,
 				details: rolesError.details,
 				hint: rolesError.hint,
@@ -92,7 +93,7 @@ const fetchUserOrganisations = async (userId: string) => {
 		}
 
 		if (!userRoles || userRoles.length === 0) {
-			console.warn("⚠️ No roles found for user:", userId)
+			logWarn("⚠️ No roles found for user:", userId)
 			return {
 				organisations: [],
 				role: "project_member" as const,
@@ -100,21 +101,21 @@ const fetchUserOrganisations = async (userId: string) => {
 			}
 		}
 
-		console.log("✅ Found", userRoles.length, "user roles")
+		log("✅ Found", userRoles.length, "user roles")
 
 		// Step 2: Get organisation details
 		// Extract unique organisation IDs from roles
 		const orgIds = [...new Set(userRoles
 			.filter(r => r.scope_type === 'organisation' && r.scope_id)
 			.map(r => r.scope_id as string))]
-		console.log("📋 Querying organisations table for IDs:", orgIds)
+		log("📋 Querying organisations table for IDs:", orgIds)
 		const { data: orgs, error: orgsError } = await supabase()
 			.from("organisations")
 			.select("id, name, slug")
 			.in("id", orgIds)
 
 		if (orgsError) {
-			console.error("❌ Error fetching organisations:", {
+			logError("❌ Error fetching organisations:", {
 				message: orgsError.message,
 				details: orgsError.details,
 				hint: orgsError.hint,
@@ -127,7 +128,7 @@ const fetchUserOrganisations = async (userId: string) => {
 			}
 		}
 
-		console.log("✅ Found", orgs?.length || 0, "organisations")
+		log("✅ Found", orgs?.length || 0, "organisations")
 
 		// Step 3: Combine the data
 		const organisations = orgIds.map((orgId) => {
@@ -169,7 +170,7 @@ const fetchUserOrganisations = async (userId: string) => {
 		// Get default organisation (first one for now)
 		const organisationId = orgIds.length > 0 ? orgIds[0] : null
 
-		console.log("✅ Fetched user organisations:", {
+		log("✅ Fetched user organisations:", {
 			organisations,
 			role,
 			organisationId,
@@ -179,7 +180,7 @@ const fetchUserOrganisations = async (userId: string) => {
 
 		return { organisations, role, organisationId }
 	} catch (error) {
-		console.error("❌ Exception in fetchUserOrganisations:", {
+		logError("❌ Exception in fetchUserOrganisations:", {
 			message: error instanceof Error ? error.message : "Unknown error",
 			error: error,
 			stack: error instanceof Error ? error.stack : undefined,
@@ -223,7 +224,7 @@ export const login = async (
 	credentials: LoginRequest,
 ): Promise<AuthResponse> => {
 	try {
-		console.log("🔐 Auth Service: Starting login for:", credentials.identifier)
+		log("🔐 Auth Service: Starting login for:", credentials.identifier)
 
 		const { data, error } = await supabase().auth.signInWithPassword({
 			email: credentials.identifier, // Assume identifier is email
@@ -231,7 +232,7 @@ export const login = async (
 		})
 
 		if (error) {
-			console.error("❌ Supabase Auth Error:", {
+			logError("❌ Supabase Auth Error:", {
 				message: error.message,
 				status: error.status,
 				name: error.name,
@@ -242,17 +243,17 @@ export const login = async (
 		}
 
 		if (!data.user || !data.session) {
-			console.error("❌ No user or session returned from Supabase")
+			logError("❌ No user or session returned from Supabase")
 			throw new Error("Login failed: No user or session data returned")
 		}
 
-		console.log("✅ Supabase auth successful, transforming user data...")
+		log("✅ Supabase auth successful, transforming user data...")
 		const authResponse = await transformSupabaseUser(data.user, data.session)
-		console.log("✅ Login complete for:", data.user.email)
+		log("✅ Login complete for:", data.user.email)
 
 		return authResponse
 	} catch (error) {
-		console.error("❌ Login error (final catch):", {
+		logError("❌ Login error (final catch):", {
 			message: error instanceof Error ? error.message : "Unknown error",
 			error: error,
 			stack: error instanceof Error ? error.stack : undefined,
@@ -290,7 +291,7 @@ export const register = async (
 
 		// If no session, user needs to confirm email first
 		if (!data.session) {
-			console.log("Registration successful - email confirmation required")
+			log("Registration successful - email confirmation required")
 			// Don't throw an error - this is a success case that requires email confirmation
 			// Instead, return a special response indicating email confirmation is needed
 			const pendingAuthResponse: AuthResponse = {
@@ -311,7 +312,7 @@ export const register = async (
 
 		return await transformSupabaseUser(data.user, data.session)
 	} catch (error) {
-		console.error("Registration error:", error)
+		logError("Registration error:", error)
 		throw error
 	}
 }
@@ -326,7 +327,7 @@ export const logout = async (): Promise<void> => {
 			throw new Error(error.message)
 		}
 	} catch (error) {
-		console.error("Logout error:", error)
+		logError("Logout error:", error)
 		throw error
 	}
 }
@@ -342,7 +343,7 @@ export const getCurrentSession = async (): Promise<AuthResponse | null> => {
 		} = await supabase().auth.getSession()
 
 		if (error) {
-			console.error("Get session error:", error)
+			logError("Get session error:", error)
 			return null
 		}
 
@@ -352,7 +353,7 @@ export const getCurrentSession = async (): Promise<AuthResponse | null> => {
 
 		return transformSupabaseUser(session.user, session)
 	} catch (error) {
-		console.error("Get current session error:", error)
+		logError("Get current session error:", error)
 		return null
 	}
 }
@@ -376,7 +377,7 @@ export const refreshSession = async (): Promise<AuthResponse | null> => {
 		} = await supabase().auth.refreshSession()
 
 		if (error) {
-			console.error("Refresh session error:", error)
+			logError("Refresh session error:", error)
 			return null
 		}
 
@@ -386,7 +387,7 @@ export const refreshSession = async (): Promise<AuthResponse | null> => {
 
 		return transformSupabaseUser(session.user, session)
 	} catch (error) {
-		console.error("Refresh session error:", error)
+		logError("Refresh session error:", error)
 		return null
 	}
 }
@@ -402,7 +403,7 @@ export const setupAuthListener = (
 		data: { subscription },
 	} = supabase().auth.onAuthStateChange(
 		async (event: AuthChangeEvent, session: Session | null) => {
-			console.log("Auth state changed:", event, session?.user?.email)
+			log("Auth state changed:", event, session?.user?.email)
 
 			if (session && session.user) {
 				const authResponse = await transformSupabaseUser(session.user, session)
@@ -412,7 +413,7 @@ export const setupAuthListener = (
 				if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
 					// Use a safe import or event trigger to avoid circular dependencies
 					// For now, we use a custom event that various services can listen to
-					console.log("Triggering post-auth sync event...");
+					log("Triggering post-auth sync event...");
 					// @ts-ignore - dynamic require to break cycle without dynamic import ESM issues
 					const { triggerPostAuthSync } = require('./SyncTriggerService');
 					triggerPostAuthSync();
@@ -442,7 +443,7 @@ export const resetPassword = async (email: string): Promise<void> => {
 			throw new Error(error.message)
 		}
 	} catch (error) {
-		console.error("Reset password error:", error)
+		logError("Reset password error:", error)
 		throw error
 	}
 }
@@ -460,7 +461,7 @@ export const updatePassword = async (newPassword: string): Promise<void> => {
 			throw new Error(error.message)
 		}
 	} catch (error) {
-		console.error("Update password error:", error)
+		logError("Update password error:", error)
 		throw error
 	}
 }
@@ -480,7 +481,7 @@ export const updatePasswordWithToken = async (
 		// If we have both access_token and refresh_token from URL fragment,
 		// set the session directly (Supabase already validated via redirect)
 		if (refreshToken) {
-			console.log("Setting session from access_token and refresh_token")
+			log("Setting session from access_token and refresh_token")
 			const { error: sessionError } = await supabase().auth.setSession({
 				access_token: token,
 				refresh_token: refreshToken,
@@ -491,7 +492,7 @@ export const updatePasswordWithToken = async (
 			}
 		} else {
 			// Legacy path: verify OTP token_hash from email
-			console.log("Verifying OTP with token_hash")
+			log("Verifying OTP with token_hash")
 			const { error: verifyError } = await supabase().auth.verifyOtp({
 				token_hash: token,
 				type: "recovery",
@@ -511,9 +512,9 @@ export const updatePasswordWithToken = async (
 			throw new Error(updateError.message)
 		}
 
-		console.log("Password updated successfully")
+		log("Password updated successfully")
 	} catch (error) {
-		console.error("Update password with token error:", error)
+		logError("Update password with token error:", error)
 		throw error
 	}
 }
@@ -529,13 +530,13 @@ export const getCurrentUser = async (): Promise<User | null> => {
 		} = await supabase().auth.getUser()
 
 		if (error) {
-			console.error("Get user error:", error)
+			logError("Get user error:", error)
 			return null
 		}
 
 		return user
 	} catch (error) {
-		console.error("Get current user error:", error)
+		logError("Get current user error:", error)
 		return null
 	}
 }

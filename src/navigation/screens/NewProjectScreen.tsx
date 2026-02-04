@@ -67,7 +67,7 @@ export const NewProjectScreen = () => {
 	// Auto-select organisation if missing but user has access to one
 	useEffect(() => {
 		if (!currentOrganisation && user?.organisations?.length) {
-			console.log('🔄 NewProjectScreen: Auto-selecting default organisation')
+			log('🔄 NewProjectScreen: Auto-selecting default organisation')
 			const defaultOrg = user.organisations[0]
 			dispatch(setCurrentOrganisation(defaultOrg.id))
 		}
@@ -195,12 +195,12 @@ export const NewProjectScreen = () => {
 	}, [captureMethods, selectedCaptureMethodId])
 
 	const onSubmit = useCallback(async (data: ProjectFormData) => {
-		console.log("🔍 NewProjectScreen - onSubmit called")
-		console.log("  currentOrganisation:", currentOrganisation)
-		console.log("  currentOrganisation?.id:", currentOrganisation?.id)
+		log("🔍 NewProjectScreen - onSubmit called")
+		log("  currentOrganisation:", currentOrganisation)
+		log("  currentOrganisation?.id:", currentOrganisation?.id)
 
 		if (!currentOrganisation?.id) {
-			console.error("❌ No organisation selected")
+			logError("❌ No organisation selected")
 			setErrorMessage(
 				"No organisation selected. Please select an organisation first.",
 			)
@@ -208,7 +208,7 @@ export const NewProjectScreen = () => {
 			return
 		}
 
-		console.log("✅ Organisation check passed, creating project...")
+		log("✅ Organisation check passed, creating project...")
 		try {
 			const input: CreateProjectInput = {
 				name: data.name.trim(),
@@ -237,7 +237,7 @@ export const NewProjectScreen = () => {
 			// Navigate back to projects list
 			navigation.goBack()
 		} catch (error) {
-			console.error("Failed to create project:", error)
+			logError("Failed to create project:", error)
 			setErrorMessage(
 				error && typeof error === "object" && "error" in error
 					? String(error.error)

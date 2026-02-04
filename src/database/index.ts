@@ -25,7 +25,7 @@ const adapter = new SQLiteAdapter({
     schema,
     onSetUpError: error => {
         // Database failed to load -- offer the user to reload the app or log out
-        console.error('Database setup error:', error)
+        logError('Database setup error:', error)
     }
 })
 

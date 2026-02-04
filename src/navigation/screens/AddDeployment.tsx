@@ -11,6 +11,8 @@ import { AppParams } from ".."
 import { useGetProjectsQuery } from "../../redux/api/projectsApi"
 import { useCallback } from "react"
 import { useAppSelector } from "../../redux"
+import { log } from '../../utils/logger'
+
 
 type FormData = {
 	project: string
@@ -48,7 +50,7 @@ export const AddDeployment = () => {
 	)
 
 	const onSubmit = async (data: FormData) => {
-		console.log("Form data:", data)
+		log("Form data:", data)
 		// TODO: Handle form submission
 	}
 

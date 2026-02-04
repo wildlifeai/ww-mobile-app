@@ -2,6 +2,8 @@ import { useCallback, useState } from 'react'
 import { Alert } from 'react-native'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { useBleCommands } from './useBleCommands'
+import { log } from '../utils/logger'
+
 
 /**
  * Operational Parameter Indices
@@ -71,7 +73,7 @@ export interface UseDeviceSettingsReturn {
  * ```tsx
  * const { updateSettings, applyPreset, isUpdating } = useDeviceSettings({
  *     device: bleDevice,
- *     onSettingsUpdated: () => console.log('Settings updated!'),
+ *     onSettingsUpdated: () => log('Settings updated!'),
  *     onError: (err) => Alert.alert('Error', err.message)
  * })
  * 
@@ -106,7 +108,7 @@ export const useDeviceSettings = ({
 
         try {
             setIsUpdating(true)
-            console.log('[useDeviceSettings] Updating settings:', settings)
+            log('[useDeviceSettings] Updating settings:', settings)
 
             // Map settings to parameter index/value pairs
             const updates: Array<{ index: number; value: number }> = []
@@ -143,18 +145,18 @@ export const useDeviceSettings = ({
 
             // Send each update with a small delay to avoid overwhelming the device
             for (const { index, value } of updates) {
-                console.log(`[useDeviceSettings] Setting parameter ${index} to ${value}`)
+                log(`[useDeviceSettings] Setting parameter ${index} to ${value}`)
                 await setOperationalParam(device, index, value.toString())
                 // Small delay between commands (Increased to 500ms for robust DPD wake/sleep handling)
                 await new Promise(resolve => setTimeout(resolve, 500))
             }
 
-            console.log('[useDeviceSettings] All settings updated successfully')
+            log('[useDeviceSettings] All settings updated successfully')
             if (onSettingsUpdated) {
                 onSettingsUpdated()
             }
         } catch (error) {
-            console.error('[useDeviceSettings] Error updating settings:', error)
+            logError('[useDeviceSettings] Error updating settings:', error)
             const err = error instanceof Error ? error : new Error('Failed to update settings')
             if (onError) {
                 onError(err)
@@ -170,7 +172,7 @@ export const useDeviceSettings = ({
      * Apply a preset configuration
      */
     const applyPreset = useCallback(async (preset: 'default' | 'motion-detect' | 'timelapse') => {
-        console.log(`[useDeviceSettings] Applying preset: ${preset}`)
+        log(`[useDeviceSettings] Applying preset: ${preset}`)
 
         const settings: Partial<DeviceSettings> = {
             numPictures: 3,
@@ -208,31 +210,31 @@ export const useDeviceSettings = ({
     const quiesceDevice = useCallback(async (logPrefix: string = '[DeviceSettings]') => {
         if (!device) return
 
-        console.log(`${logPrefix} Quiescing device (Safe Sequence)...`)
+        log(`${logPrefix} Quiescing device (Safe Sequence)...`)
         try {
             // 1. Enable Camera to unlock parameters (Op 10 = 1)
-            console.log(`${logPrefix} 1. Enabling camera to allow interval writes...`)
+            log(`${logPrefix} 1. Enabling camera to allow interval writes...`)
             await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '1')
             await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_ENABLE))
 
             // 2. Clear Intervals (Op 11 = 0, Op 7 = 0)
-            console.log(`${logPrefix} 2. Clearing Motion & Timelapse intervals...`)
+            log(`${logPrefix} 2. Clearing Motion & Timelapse intervals...`)
             await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
             await new Promise(r => setTimeout(r, QUIESCE_DELAYS.PARAM_CLEAR)) 
             await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
             
             // BUS SAFETY: Wait 1500ms for potential "Stats" message from Himax
-            console.log(`${logPrefix} Waiting ${QUIESCE_DELAYS.BUS_STABILIZATION}ms for bus stabilization...`)
+            log(`${logPrefix} Waiting ${QUIESCE_DELAYS.BUS_STABILIZATION}ms for bus stabilization...`)
             await new Promise(r => setTimeout(r, QUIESCE_DELAYS.BUS_STABILIZATION))
 
             // 3. Disable Camera (Op 10 = 0)
-            console.log(`${logPrefix} 3. Disabling camera...`)
+            log(`${logPrefix} 3. Disabling camera...`)
             await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '0')
             await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_DISABLE))
 
-            console.log(`${logPrefix} Device quiesced successfully.`)
+            log(`${logPrefix} Device quiesced successfully.`)
         } catch (error) {
-            console.error(`${logPrefix} Error quiescing device:`, error)
+            logError(`${logPrefix} Error quiescing device:`, error)
             throw error
         }
     }, [device, setOperationalParam])

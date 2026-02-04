@@ -1,3 +1,5 @@
+import { log } from './logger'
+
 /**
  * GPS Utilities
  * 
@@ -73,11 +75,11 @@ export const parseGPSResponse = (
 
         // Basic validation - firmware format expected
         // This is a placeholder for future implementation if needed
-        console.log('[GPS] Received GPS string:', normalized)
+        log('[GPS] Received GPS string:', normalized)
 
         return null // Not implemented yet
     } catch (error) {
-        console.error('[GPS] Failed to parse GPS string:', error)
+        logError('[GPS] Failed to parse GPS string:', error)
         return null
     }
 }

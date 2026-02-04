@@ -39,7 +39,7 @@ export const DeviceDetailsScreen = () => {
             setDeviceWithStatus(details)
             setDeploymentHistory(history)
         } catch (error) {
-            console.error('Error loading device details:', error)
+            logError('Error loading device details:', error)
             Alert.alert('Error', 'Failed to load device details')
         } finally {
             setLoading(false)

@@ -13,6 +13,8 @@ import { useState, useEffect } from "react"
 import { useRoute } from "@react-navigation/native"
 import { useAppDispatch } from "../../redux"
 import { setCredentials } from "../../redux/slices/authSlice"
+import { log } from '../../utils/logger'
+
 
 type FormData = {
 	email: string
@@ -31,18 +33,18 @@ export const ForgotPassword = () => {
 	const [isEmailSent, setIsEmailSent] = useState(false)
 	// Initialize reset mode based on route params - check once
 	const [isResetMode, setIsResetMode] = useState(() => {
-		console.log("ForgotPassword: Initial route.params:", route.params)
+		log("ForgotPassword: Initial route.params:", route.params)
 		return !!(route.params?.token || route.params?.mode === "reset")
 	})
 
 	// Only update reset mode if it changes from false to true (not back and forth)
 	useEffect(() => {
-		console.log("ForgotPassword: route.params changed:", route.params)
+		log("ForgotPassword: route.params changed:", route.params)
 		if (
 			!isResetMode &&
 			(route.params?.token || route.params?.mode === "reset")
 		) {
-			console.log("ForgotPassword: Setting reset mode to true")
+			log("ForgotPassword: Setting reset mode to true")
 			setIsResetMode(true)
 		}
 	}, [route.params?.token, route.params?.mode, isResetMode])
@@ -80,7 +82,7 @@ export const ForgotPassword = () => {
 				],
 			)
 		} catch (error) {
-			console.error("Password reset failed:", error)
+			logError("Password reset failed:", error)
 			Alert.alert(
 				"Reset Failed",
 				"There was an error sending the reset email. Please check your email address and try again.",
@@ -133,7 +135,7 @@ export const ForgotPassword = () => {
 				],
 			)
 		} catch (error) {
-			console.error("Password update failed:", error)
+			logError("Password update failed:", error)
 			Alert.alert(
 				"Update Failed",
 				"There was an error updating your password. The reset link may have expired. Please request a new password reset.",

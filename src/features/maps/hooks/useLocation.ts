@@ -13,6 +13,8 @@ import {
 	UserLocation,
 	LocationTrackingOptions,
 } from "../types"
+import { log } from '../../../utils/logger'
+
 
 interface UseLocationReturn {
 	location: UserLocation | null
@@ -48,7 +50,7 @@ export const useLocation = (): UseLocationReturn => {
 				canAskAgain: foregroundStatus.canAskAgain,
 			})
 		} catch (err) {
-			console.error("[useLocation] Error checking permissions:", err)
+			logError("[useLocation] Error checking permissions:", err)
 			setError("Failed to check location permissions")
 		}
 	}
@@ -80,7 +82,7 @@ export const useLocation = (): UseLocationReturn => {
 				timestamp: position.timestamp,
 			})
 		} catch (err) {
-			console.error("[useLocation] Error getting current location:", err)
+			logError("[useLocation] Error getting current location:", err)
 			setError("Failed to get current location")
 		} finally {
 			setLoading(false)
@@ -119,7 +121,7 @@ export const useLocation = (): UseLocationReturn => {
 
 			return false
 		} catch (err) {
-			console.error("[useLocation] Error requesting permissions:", err)
+			logError("[useLocation] Error requesting permissions:", err)
 			setError("Failed to request location permissions")
 			return false
 		} finally {
@@ -150,7 +152,7 @@ export const useLocation = (): UseLocationReturn => {
 	 */
 	useEffect(() => {
 		if (permissions.foreground === "granted" && !location && !loading) {
-			console.log("[useLocation] Permission granted, auto-fetching location...")
+			log("[useLocation] Permission granted, auto-fetching location...")
 			getCurrentLocation()
 		}
 	}, [permissions.foreground, location, loading, getCurrentLocation])
@@ -197,7 +199,7 @@ export const useLocation = (): UseLocationReturn => {
 
 				setSubscription(newSubscription)
 			} catch (err) {
-				console.error("[useLocation] Error starting location tracking:", err)
+				logError("[useLocation] Error starting location tracking:", err)
 				setError("Failed to start location tracking")
 			} finally {
 				setLoading(false)
