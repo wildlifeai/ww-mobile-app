@@ -11,6 +11,9 @@
  * @group integration
  */
 
+// Skip integration tests in CI environment where local Supabase depends on
+const describeIntegration = process.env.CI ? describe.skip : describe
+
 jest.unmock("@supabase/supabase-js")
 jest.unmock("../../src/services/supabase")
 
@@ -35,7 +38,7 @@ import {
 } from "../fixtures/project-test-data"
 import type { Project, ProjectWithDetails } from "../../src/types/project"
 
-describe("ProjectService Integration Tests", () => {
+describeIntegration("ProjectService Integration Tests", () => {
 	let org1Id: string
 	let org2Id: string
 	let org1AdminId: string

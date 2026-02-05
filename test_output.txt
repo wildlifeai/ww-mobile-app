@@ -1,0 +1,103 @@
+
+> wildlifewatcher@0.0.28 test
+> jest src/hooks/__tests__/useSupabaseClient.test.tsx
+
+  console.log
+    mockGetSupabaseClient wrapper called
+
+      at log (src/hooks/__tests__/useSupabaseClient.test.tsx:74:21)
+
+  console.log
+    mockGetSupabaseClient wrapper called
+
+      at log (src/hooks/__tests__/useSupabaseClient.test.tsx:74:21)
+
+  console.log
+    mockGetSupabaseClient wrapper called
+
+      at log (src/hooks/__tests__/useSupabaseClient.test.tsx:74:21)
+
+  console.log
+    mockGetSupabaseClient wrapper called
+
+      at log (src/hooks/__tests__/useSupabaseClient.test.tsx:74:21)
+
+  console.log
+    mockGetSupabaseClient wrapper called
+
+      at log (src/hooks/__tests__/useSupabaseClient.test.tsx:74:21)
+
+  console.log
+    mockGetSupabaseClient wrapper called
+
+      at log (src/hooks/__tests__/useSupabaseClient.test.tsx:74:21)
+
+  console.log
+    mockGetSupabaseClient wrapper called
+
+      at log (src/hooks/__tests__/useSupabaseClient.test.tsx:74:21)
+
+  console.log
+    mockGetSupabaseClient wrapper called
+
+      at log (src/hooks/__tests__/useSupabaseClient.test.tsx:74:21)
+
+  console.log
+    mockGetSupabaseClient wrapper called
+
+      at log (src/hooks/__tests__/useSupabaseClient.test.tsx:74:21)
+
+FAIL src/hooks/__tests__/useSupabaseClient.test.tsx
+  useSupabaseClient
+    useSupabaseClient
+      √ should return existing client if already initialized (34 ms)
+      √ should update client when environment changes (9 ms)
+      √ should cleanup subscription on unmount (4 ms)
+      ○ skipped should initialize client if not initialized
+      ○ skipped should handle initialization errors
+    useSupabaseClientOptional
+      √ should return existing client if already initialized (7 ms)
+      × should update client when environment changes (17 ms)
+      √ should cleanup subscription on unmount (2 ms)
+      ○ skipped should return null during initialization
+      ○ skipped should return null if client change fails
+      ○ skipped should handle initialization errors gracefully
+    Integration scenarios
+      √ should handle multiple components using the same client (5 ms)
+      ○ skipped should update all components when environment changes
+
+  ● useSupabaseClient › useSupabaseClientOptional › should update client when environment changes
+
+    expect(received).toBe(expected) // Object.is equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+    -   "_isNewClient": true,
+    +   "_isTestClient": true,
+        "auth": Object {
+          "getSession": [Function mockConstructor],
+        },
+        "from": [Function mockConstructor],
+      }
+
+    [0m [90m 244 |[39m
+     [90m 245 |[39m 			[90m// Wait for state update[39m
+    [31m[1m>[22m[39m[90m 246 |[39m 			[36mawait[39m waitFor(() [33m=>[39m {
+     [90m     |[39m 			             [31m[1m^[22m[39m
+     [90m 247 |[39m 				[90m// rerender happens automatically[39m
+     [90m 248 |[39m 				expect(result[33m.[39mcurrent)[33m.[39mtoBe(newClient)
+     [90m 249 |[39m 			})[0m
+
+      at Object.<anonymous> (src/hooks/__tests__/useSupabaseClient.test.tsx:246:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 6 skipped, 6 passed, 13 total
+Snapshots:   0 total
+Time:        0.646 s, estimated 1 s
+Ran all test suites matching /src\\hooks\\__tests__\\useSupabaseClient.test.tsx/i.
