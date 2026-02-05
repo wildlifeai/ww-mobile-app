@@ -43,7 +43,7 @@ jobs:
       - name: Compare with committed types
         run: |
           echo "Comparing generated types with committed types..."
-          if ! diff -u src/types/supabase.ts /tmp/fresh-types.ts; then
+          if ! diff -u src/types/database.types.ts /tmp/fresh-types.ts; then
             echo ""
             echo "❌ ERROR: Types are out of sync with backend schema"
             echo ""
@@ -51,7 +51,7 @@ jobs:
             echo "  npm run types:local"
             echo ""
             echo "Then commit the updated types:"
-            echo "  git add src/types/supabase.ts"
+            echo "  git add src/types/database.types.ts"
             echo "  git commit -m 'chore: sync database types'"
             echo ""
             exit 1

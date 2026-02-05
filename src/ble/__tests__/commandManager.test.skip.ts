@@ -190,14 +190,17 @@ describe('BleCommandManager', () => {
       }
     })
 
-    it('should clear command queue', () => {
-      manager.sendCommand(mockPeripheral, 'ver', mockWriteToDevice)
-      manager.sendCommand(mockPeripheral, 'battery', mockWriteToDevice)
+    it('should clear command queue', async () => {
+      const promise1 = manager.sendCommand(mockPeripheral, 'ver', mockWriteToDevice).catch(() => {})
+      const promise2 = manager.sendCommand(mockPeripheral, 'battery', mockWriteToDevice).catch(() => {})
 
       manager.clear()
 
       // Queue should be empty
       expect(mockWriteToDevice).toHaveBeenCalledTimes(1) // Only first command sent
+      
+      // Wait for promises to be rejected
+      await Promise.allSettled([promise1, promise2])
     })
   })
 })
