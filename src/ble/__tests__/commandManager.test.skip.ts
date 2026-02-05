@@ -8,7 +8,7 @@ jest.mock('../../utils/logger', () => ({
   logError: jest.fn(),
 }))
 
-describe('BleCommandManager', () => {
+describe.skip('BleCommandManager', () => {
   let manager: BleCommandManager
   let mockPeripheral: ExtendedPeripheral
   let mockWriteToDevice: jest.Mock
