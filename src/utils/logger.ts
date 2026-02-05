@@ -12,13 +12,13 @@ export const log = (...args: any[]) => {
 }
 
 export const logError = (...args: any[]) => {
-	if (__DEV__ && !isTest) {
+	if (__DEV__) {
 		console.error(...args)
 	}
 }
 
 export const logWarn = (...args: any[]) => {
-	if (__DEV__ && !isTest) {
+	if (__DEV__) {
 		console.warn(...args)
 	}
 }

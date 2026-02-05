@@ -4,7 +4,7 @@ import { configureStore } from "@reduxjs/toolkit"
 import { NewProjectScreen } from "../../../../src/screens/Projects/NewProjectScreen"
 import { aiModelsApi } from "../../../../src/redux/api/aiModelsApi"
 import { projectsApi } from "../../../../src/redux/api/projectsApi"
-import authReducer from "../../../../src/redux/slices/authSlice"
+import authReducer, { UserRole } from "../../../../src/redux/slices/authSlice"
 import type { Database } from "../../../../src/types/database.types"
 
 type AIModel = Database["public"]["Tables"]["ai_models"]["Row"]
@@ -33,22 +33,44 @@ const createTestStore = (initialState = {}) => {
 		middleware: (getDefaultMiddleware) =>
 			getDefaultMiddleware({
 				serializableCheck: false,
-			}).concat(aiModelsApi.middleware, projectsApi.middleware),
+			}).concat(aiModelsApi.middleware).concat(projectsApi.middleware),
 		preloadedState: {
 			authentication: {
 				user: {
 					id: "user-123",
 					email: "test@example.com",
+					role: "project_admin" as UserRole,
+					organisation_id: "org-123",
+					organisations: [
+						{
+							id: "org-123",
+							name: "Test Organisation",
+							role: "project_admin" as UserRole,
+						}
+					],
 				},
 				currentOrganisation: {
 					id: "org-123",
 					name: "Test Organisation",
+					role: "project_admin" as UserRole,
 				},
-				session: { access_token: "fake-token" },
-				isAuthenticated: true,
-				isLoading: false,
-				error: null,
-				userOrganisations: [],
+				token: "fake-token",
+				permissions: {
+					canManageUsers: false,
+					canAccessAllOrganisations: false,
+					canCreateProjects: true,
+					canManageProjects: true,
+					canDeleteProjects: true,
+					canViewProjects: true,
+					canManageDeployments: true,
+					canViewDeployments: true,
+					canManageDevices: true,
+					canViewDevices: true,
+				},
+				loading: false,
+				initialLoad: false,
+				sessionPersisted: true,
+				error: undefined,
 			},
 			...initialState,
 		},

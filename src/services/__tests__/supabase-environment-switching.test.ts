@@ -316,8 +316,8 @@ describe("Supabase Client Environment Switching", () => {
 			})
 			const validCallback = jest.fn()
 
-			onSupabaseClientChange(errorCallback)
 			onSupabaseClientChange(validCallback)
+			onSupabaseClientChange(errorCallback)
 
 			const consoleErrorSpy = jest
 				.spyOn(console, "error")

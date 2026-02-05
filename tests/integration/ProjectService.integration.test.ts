@@ -7,8 +7,12 @@
  * - Database migrations applied
  * - Seed data loaded (roles, etc.)
  *
+ *
  * @group integration
  */
+
+jest.unmock("@supabase/supabase-js")
+jest.unmock("../../src/services/supabase")
 
 import ProjectService from "../../src/services/ProjectService"
 import {
