@@ -23,20 +23,20 @@ import { ForgotPassword } from "./screens/auth/ForgotPasswordScreen"
 
 // Project screens
 import type { Option } from "../components/ui/WWSelect"
-import { Projects as ProjectsListScreen } from "../screens/Projects/ProjectsListScreen"
+// import { Projects as ProjectsListScreen } from "../screens/Projects/ProjectsListScreen"
 import { NewProjectScreen } from "../screens/Projects/NewProjectScreen"
 import { ProjectDetailsScreen } from "../screens/Projects/ProjectDetailsScreen"
 import { ProjectMembersScreen } from "../screens/Projects/ProjectMembersScreen"
 
 // Deployment screens
-import { Deployments as DeploymentsListScreen } from "../screens/Deployments/DeploymentsListScreen"
+// import { Deployments as DeploymentsListScreen } from "../screens/Deployments/DeploymentsListScreen"
 import { AddDeployment } from "../screens/Deployments/AddDeploymentScreen"
 import { DeploymentDetailsScreen } from "../screens/Deployments/DeploymentDetailsScreen"
 import { DeploymentDetailsStep } from "../screens/Deployments/StartDeploymentScreen"
 import { EndDeploymentDetailsStep } from "../screens/Deployments/EndDeploymentScreen"
 
 // Device screens
-import { Devices as DevicesListScreen } from "../screens/Devices/DevicesListScreen"
+// import { Devices as DevicesListScreen } from "../screens/Devices/DevicesListScreen"
 import { DeviceDiscoveryScreen } from "../screens/Devices/DeviceDiscoveryScreen"
 import { DeviceDetailsScreen } from "../screens/Devices/DeviceDetailsScreen"
 import { PrepareAndTestScreen } from "../screens/Devices/PrepareAndTestScreen"
@@ -89,6 +89,8 @@ export type AppParams<T extends keyof RootStackParamList> = RouteProp<
 >
 
 export const Stack = createNativeStackNavigator<RootStackParamList>()
+
+const renderHeader = (props: any) => <NavigationBar {...props} />
 
 export const MainNavigation = () => {
 	const { status, initialLoad: blLoading } = useAppSelector(
@@ -163,11 +165,7 @@ export const MainNavigation = () => {
 				) : (
 					<Stack.Group
 						screenOptions={{
-							header: (props) => (
-								<NavigationBar
-									{...props}
-								/>
-							),
+							header: renderHeader,
 						}}
 					>
 						<Stack.Screen

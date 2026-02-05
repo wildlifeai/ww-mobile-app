@@ -49,7 +49,7 @@ import { Field } from "../../components/form/Field"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { useAppSelector } from "../../redux"
 import { AppParams } from "../../navigation/index"
-import { log, logError } from '../../utils/logger'
+import { logError } from '../../utils/logger'
 
 
 

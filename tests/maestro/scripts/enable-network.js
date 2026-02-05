@@ -1,3 +1,4 @@
+/* global Android, iOS, maestro */
 // Enable network connectivity after offline testing
 
 function enableNetwork() {

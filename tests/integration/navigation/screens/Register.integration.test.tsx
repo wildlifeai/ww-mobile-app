@@ -4,14 +4,12 @@
  * API integration, navigation, and state management
  */
 
-import React from "react"
 import { Alert } from "react-native"
 import { fireEvent, waitFor, screen, act } from "@testing-library/react-native"
 import { Register } from "../../../../src/navigation/screens/auth/RegisterScreen"
 import {
 	renderWithProviders,
 	createTestStore,
-	waitForAsync,
 } from "../../../setup/utils/testUtils"
 import {
 	mockAuthSuccess,
@@ -21,11 +19,9 @@ import {
 } from "../../../__mocks__/supabase"
 import {
 	validRegisterCredentials,
-	invalidRegisterCredentials,
 	existingUserRegisterCredentials,
 	formValidationCases,
 	authErrorMessages,
-	pendingConfirmationAuthResponse,
 } from "../../../setup/fixtures/auth"
 
 // Mock navigation
@@ -319,7 +315,7 @@ describe("Register Screen Integration Tests", () => {
 	})
 
 	test("should handle registration with email confirmation required", async () => {
-		const { mockSupabaseClient } = require("../../../__mocks__/supabase")
+
 
 		renderWithProviders(<Register />, { store })
 
@@ -370,7 +366,7 @@ describe("Register Screen Integration Tests", () => {
 	}, 10000)
 
 	test("should handle registration failure with existing email", async () => {
-		const { mockSupabaseClient } = require("../../../__mocks__/supabase")
+
 
 		renderWithProviders(<Register />, { store })
 
@@ -494,7 +490,7 @@ describe("Register Screen Integration Tests", () => {
 	})
 
 	test("should trim empty organization field before submission", async () => {
-		const { mockSupabaseClient } = require("../../../__mocks__/supabase")
+
 		mockAuthSuccess()
 
 		renderWithProviders(<Register />, { store })
@@ -559,7 +555,7 @@ describe("Register Screen Integration Tests", () => {
 	})
 
 	test("should handle API error messages in UI", async () => {
-		const { mockSupabaseClient } = require("../../../__mocks__/supabase")
+
 
 		renderWithProviders(<Register />, { store })
 

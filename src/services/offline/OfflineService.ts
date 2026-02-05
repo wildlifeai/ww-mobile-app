@@ -110,7 +110,7 @@ export class OfflineService {
 	// Deprecated methods stubs to prevent immediate crashes if called, 
 	// but they should be removed from callers.
 
-	async queueOperation(operation: any): Promise<void> {
+	async queueOperation(_operation: any): Promise<void> {
 		logWarn("⚠️ queueOperation is deprecated. Use WatermelonDB models directly.")
 	}
 }

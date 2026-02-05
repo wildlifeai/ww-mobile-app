@@ -26,9 +26,9 @@ export const DeviceDiscoveryScreen = () => {
     const route = useRoute<DeviceDiscoveryScreenRouteProp>()
     const isFocused = useIsFocused()
     const { isBleConnecting, startScan, connectDevice, disconnectDevice } = useBleActions()
-    const { runSelfTest, setUtc } = useBleCommands()
+    // const { runSelfTest, setUtc } = useBleCommands()
     const devices = useAppSelector((state) => state.devices)
-    const logs = useAppSelector((state) => state.logs)
+    // const logs = useAppSelector((state) => state.logs)
     const { isScanning } = useAppSelector((state) => state.scanning)
     const currentOrganisation = useAppSelector(selectCurrentOrganisation)
     const user = useAppSelector((state) => state.authentication.user)
@@ -281,7 +281,7 @@ export const DeviceDiscoveryScreen = () => {
                 setProcessing(false)
             }
         },
-        [connectDevice, disconnectDevice, navigation, currentOrganisation, mode, processing]
+        [connectDevice, disconnectDevice, navigation, currentOrganisation, mode, processing, user?.id]
     )
 
     const handleDisconnect = useCallback(async (device: ExtendedPeripheral) => {

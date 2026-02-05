@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { StyleSheet } from 'react-native'
 import { Card, Button } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
@@ -11,25 +11,39 @@ interface HardwareBetaSectionProps {
 }
 
 export const HardwareBetaSection: React.FC<HardwareBetaSectionProps> = ({
-    theme,
+    // theme,
     onShowHelp
 }) => {
+    const renderAiIcon = useCallback((props: any) => <WWIcon {...props} source="brain" />, [])
+    const renderAiHelp = useCallback((props: any) => (
+        <Button 
+            {...props} 
+            icon="help-circle-outline" 
+            onPress={() => onShowHelp('AI Model', 'Verify the installed AI model for object detection. (Beta Feature)')}
+        >
+            Help
+        </Button>
+    ), [onShowHelp])
+
+    const renderLoraIcon = useCallback((props: any) => <WWIcon {...props} source="access-point-network" />, [])
+    const renderLoraHelp = useCallback((props: any) => (
+        <Button 
+            {...props} 
+            icon="help-circle-outline" 
+            onPress={() => onShowHelp('LoRaWAN Network', 'Test LoRaWAN connectivity using a ping command. (Beta Feature)')}
+        >
+            Help
+        </Button>
+    ), [onShowHelp])
+
     return (
         <>
             {/* AI Model */}
             <Card style={styles.card}>
                 <Card.Title
                     title="AI Model"
-                    left={(props) => <WWIcon {...props} source="brain" />} // Assuming 'brain' exists or fallback to 'flask'
-                    right={(props) => (
-                        <Button 
-                            {...props} 
-                            icon="help-circle-outline" 
-                            onPress={() => onShowHelp('AI Model', 'Verify the installed AI model for object detection. (Beta Feature)')}
-                        >
-                            Help
-                        </Button>
-                    )}
+                    left={renderAiIcon}
+                    right={renderAiHelp}
                 />
                 <Card.Content>
                     <WWText variant="bodySmall" style={styles.infoText}>
@@ -48,16 +62,8 @@ export const HardwareBetaSection: React.FC<HardwareBetaSectionProps> = ({
             <Card style={styles.card}>
                 <Card.Title
                     title="LoRaWAN Network"
-                    left={(props) => <WWIcon {...props} source="access-point-network" />}
-                    right={(props) => (
-                        <Button 
-                            {...props} 
-                            icon="help-circle-outline" 
-                            onPress={() => onShowHelp('LoRaWAN Network', 'Test LoRaWAN connectivity using a ping command. (Beta Feature)')}
-                        >
-                            Help
-                        </Button>
-                    )}
+                    left={renderLoraIcon}
+                    right={renderLoraHelp}
                 />
                 <Card.Content>
                     <WWText variant="bodySmall" style={styles.infoText}>

@@ -59,6 +59,103 @@ import { log, logError, logWarn } from '../../../utils/logger'
  */
 type ConnectionStatus = "unknown" | "testing" | "connected" | "failed"
 
+interface EnvironmentItemProps {
+    env: SupabaseEnvironment
+    currentEnvironment: SupabaseEnvironment
+    selectedEnvironment: SupabaseEnvironment
+    connectionStatus: ConnectionStatus
+    onSelect: (env: SupabaseEnvironment) => void
+    onTest: (env: SupabaseEnvironment) => void
+    spacing: number
+}
+
+const EnvironmentItem = React.memo(({ 
+    env, 
+    currentEnvironment, 
+    selectedEnvironment, 
+    connectionStatus, 
+    onSelect, 
+    onTest,
+    spacing 
+}: EnvironmentItemProps) => {
+    const config = ENVIRONMENT_CONFIGS[env]
+    const status = connectionStatus
+    const statusIndicator = STATUS_INDICATORS[status]
+    const isActive = env === currentEnvironment
+    
+    // Stable render functions
+    const renderLeft = useCallback((props: any) => (
+         <RadioButton.Android
+             value={env}
+             status={selectedEnvironment === env ? "checked" : "unchecked"}
+             onPress={() => onSelect(env)}
+             testID={`radio-${env}`}
+             accessibilityLabel={`Select ${config.displayName}`}
+             accessibilityRole="radio"
+             {...props}
+         />
+    ), [env, selectedEnvironment, config.displayName, onSelect])
+
+    const renderRight = useCallback((props: any) => (
+         <View style={styles.environmentActions} {...props}>
+             <WWText
+                 testID={`connection-status-${env}`}
+                 style={styles.statusIndicator}
+                 accessibilityLabel={`Connection status: ${status}`}
+             >
+                 {statusIndicator}
+             </WWText>
+         </View>
+    ), [env, status, statusIndicator])
+
+    return (
+        <View style={styles.environmentItem}>
+            <List.Item
+                title={
+                    <View style={styles.environmentTitle}>
+                        <WWText variant="bodyLarge">{config.displayName}</WWText>
+                        {isActive && (
+                            <View style={styles.activeBadge}>
+                                <WWText style={styles.activeBadgeText}>ACTIVE</WWText>
+                            </View>
+                        )}
+                    </View>
+                }
+                description={config.description}
+                left={renderLeft}
+                right={renderRight}
+                onPress={() => onSelect(env)}
+            />
+
+            <View
+                style={[
+                    styles.environmentDetails,
+                    { paddingHorizontal: spacing * 2 },
+                ]}
+            >
+                <WWText variant="bodySmall" style={styles.urlText}>
+                    URL: {config.supabaseUrl}
+                </WWText>
+
+                <Button
+                    mode="outlined"
+                    onPress={() => onTest(env)}
+                    disabled={status === "testing"}
+                    icon="wifi"
+                    style={styles.testButton}
+                    testID={`test-connection-${env}`}
+                    accessibilityLabel={`Test connection to ${config.displayName}`}
+                    accessibilityRole="button"
+                >
+                    {status === "testing" ? "Testing..." : "Test Connection"}
+                </Button>
+            </View>
+
+            <Divider style={{ marginVertical: spacing }} />
+        </View>
+    )
+})
+
 /**
  * Map of connection status to emoji indicators
  */
@@ -84,7 +181,7 @@ export const DeveloperSettingsScreen: React.FC = () => {
 		useState<SupabaseEnvironment>(getDefaultEnvironment())
 
 	// Loading state for environment initialization
-	const [isLoadingEnvironment, setIsLoadingEnvironment] = useState(true)
+	// const [isLoadingEnvironment, setIsLoadingEnvironment] = useState(true)
 
 	// Selected environment (may differ from current until "Apply & Restart" is pressed)
 	const [selectedEnvironment, setSelectedEnvironment] =
@@ -124,7 +221,7 @@ export const DeveloperSettingsScreen: React.FC = () => {
 				setCurrentEnvironment(defaultEnv)
 				setSelectedEnvironment(defaultEnv)
 			} finally {
-				setIsLoadingEnvironment(false)
+				// setIsLoadingEnvironment(false)
 			}
 		}
 
@@ -310,82 +407,6 @@ export const DeveloperSettingsScreen: React.FC = () => {
 		)
 	}, [selectedEnvironment, currentEnvironment])
 
-	/**
-	 * Render environment selection item
-	 */
-	const renderEnvironmentItem = (env: SupabaseEnvironment) => {
-		const config = ENVIRONMENT_CONFIGS[env]
-		const status = connectionStatus[env]
-		const statusIndicator = STATUS_INDICATORS[status]
-		const isActive = env === currentEnvironment
-
-		return (
-			<View key={env} style={styles.environmentItem}>
-				<List.Item
-					title={
-						<View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-							<WWText variant="bodyLarge">{config.displayName}</WWText>
-							{isActive && (
-								<View style={styles.activeBadge}>
-									<WWText style={styles.activeBadgeText}>ACTIVE</WWText>
-								</View>
-							)}
-						</View>
-					}
-					description={config.description}
-					left={() => (
-						<RadioButton.Android
-							value={env}
-							status={selectedEnvironment === env ? "checked" : "unchecked"}
-							onPress={() => setSelectedEnvironment(env)}
-							testID={`radio-${env}`}
-							accessibilityLabel={`Select ${config.displayName}`}
-							accessibilityRole="radio"
-						/>
-					)}
-					right={() => (
-						<View style={styles.environmentActions}>
-							<WWText
-								testID={`connection-status-${env}`}
-								style={styles.statusIndicator}
-								accessibilityLabel={`Connection status: ${status}`}
-							>
-								{statusIndicator}
-							</WWText>
-						</View>
-					)}
-					onPress={() => setSelectedEnvironment(env)}
-				/>
-
-				<View
-					style={[
-						styles.environmentDetails,
-						{ paddingHorizontal: spacing * 2 },
-					]}
-				>
-					<WWText variant="bodySmall" style={styles.urlText}>
-						URL: {config.supabaseUrl}
-					</WWText>
-
-					<Button
-						mode="outlined"
-						onPress={() => testConnection(env)}
-						disabled={status === "testing"}
-						icon="wifi"
-						style={styles.testButton}
-						testID={`test-connection-${env}`}
-						accessibilityLabel={`Test connection to ${config.displayName}`}
-						accessibilityRole="button"
-					>
-						{status === "testing" ? "Testing..." : "Test Connection"}
-					</Button>
-				</View>
-
-				<Divider style={{ marginVertical: spacing }} />
-			</View>
-		)
-	}
-
 	// Production build - show not available message
 	if (!canSwitch) {
 		return (
@@ -462,7 +483,18 @@ export const DeveloperSettingsScreen: React.FC = () => {
 						}
 						value={selectedEnvironment}
 					>
-						{availableEnvironments.map(renderEnvironmentItem)}
+						{availableEnvironments.map(env => (
+                            <EnvironmentItem
+                                key={env}
+                                env={env}
+                                currentEnvironment={currentEnvironment}
+                                selectedEnvironment={selectedEnvironment}
+                                connectionStatus={connectionStatus[env]}
+                                onSelect={setSelectedEnvironment}
+                                onTest={testConnection}
+                                spacing={spacing}
+                            />
+                        ))}
 					</RadioButton.Group>
 				</List.Section>
 
@@ -567,6 +599,11 @@ const styles = StyleSheet.create({
 		color: "white",
 		fontSize: 10,
 		fontWeight: "700",
+	},
+	environmentTitle: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
 	},
 	environmentDetails: {
 		marginTop: 8,

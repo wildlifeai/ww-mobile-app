@@ -10,14 +10,13 @@
  */
 
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
-import { PendingCommand, BleCommandOptions, CommandNames } from './types'
+import { PendingCommand, BleCommandOptions } from './types'
 import {
   classifyMessage,
   ClassifiedMessage,
   MessageType,
   isWakeMessage,
   isErrorBitsMessage,
-  isAiNackError,
 } from './messageClassifier'
 import { log, logError } from '../utils/logger'
 
@@ -44,9 +43,9 @@ export class BleCommandManager {
   ): Promise<string> {
     const {
       timeout = DEFAULT_TIMEOUT,
-      retryOnNack = true,
+      // retryOnNack = true,
       maxRetries = DEFAULT_MAX_RETRIES,
-      waitForWake = false,
+      // waitForWake = false,
     } = options
 
     return new Promise((resolve, reject) => {
@@ -79,6 +78,7 @@ export class BleCommandManager {
               reject(new Error(`Command timeout after ${timeout}ms: ${commandString}`))
             }
           }, timeout)
+          pending.timeoutHandle = timeoutHandle
 
           // Send command to device
           await writeToDevice(peripheral, commandString)
@@ -145,6 +145,9 @@ export class BleCommandManager {
     // Handle based on message type
     switch (classified.type) {
       case MessageType.ERROR:
+        if (this.pendingCommand?.timeoutHandle) {
+          clearTimeout(this.pendingCommand.timeoutHandle)
+        }
         this.handleError(classified)
         break
 
@@ -153,6 +156,9 @@ export class BleCommandManager {
         break
 
       case MessageType.RESPONSE:
+        if (this.pendingCommand?.timeoutHandle) {
+          clearTimeout(this.pendingCommand.timeoutHandle)
+        }
         this.handleResponse(classified)
         break
     }

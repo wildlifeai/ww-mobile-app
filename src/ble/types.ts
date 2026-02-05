@@ -156,6 +156,8 @@ export interface PendingCommand {
 	maxRetries: number
 	/** Expected response pattern (optional) */
 	expectedPattern?: RegExp
+	/** Timeout handle to clear when command completes */
+	timeoutHandle?: any 
 }
 
 export const COMMANDS: {

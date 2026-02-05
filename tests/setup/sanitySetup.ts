@@ -510,17 +510,6 @@ jest.mock("react-native/Libraries/Utilities/NativePlatformConstantsIOS", () => (
     }),
 }));
 
-// Mock Database to prevent SQLiteAdapter crash
-const mockDatabase = {
-    collections: {
-        get: jest.fn(() => ({
-            query: jest.fn(() => ({ fetch: jest.fn(() => []) })),
-            create: jest.fn(),
-            prepareCreate: jest.fn(),
-        })),
-    },
-    write: jest.fn((cb) => cb()),
-    batch: jest.fn(),
-}
+
 
 

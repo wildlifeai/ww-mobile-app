@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react"
 import { Platform } from "react-native"
 
 import BleManager from "react-native-ble-manager"
-import { Peripheral, PeripheralInfo } from "react-native-ble-manager"
+import { Peripheral } from "react-native-ble-manager"
 
 import { BLE_SERVICE_UUID } from "../utils/constants"
 import {
@@ -26,14 +26,14 @@ import {
 } from "../redux/slices/devicesSlice"
 import { clearLogs } from "../redux/slices/logsSlice"
 import { scanError, scanStart } from "../redux/slices/scanningSlice"
-import { useInterval } from "../hooks/useInterval"
+// import { useInterval } from "../hooks/useInterval"
 import { clearAllDeviceIntervals, writeToDevice } from "../utils/helpers"
 import {
 	BleCommandOptions,
 	CommandConstructOptions,
-	CommandControlTypes,
+	// CommandControlTypes,
 	CommandNames,
-	COMMANDS,
+	// COMMANDS,
 	Services,
 } from "../ble/types"
 import { constructCommandString } from "../ble/parser"
@@ -193,7 +193,7 @@ export const useBle = (): ReturnType => {
 
 			return results
 		},
-		[devices, dispatch, initialized],
+		[devices, dispatch, initialized, writeToDeviceWrapper],
 	)
 
 	const isDeviceReconnecting = useRef<{ [x: string]: boolean }>({})

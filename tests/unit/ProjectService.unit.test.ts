@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '../../src/services/supabase';
+
 
 describe('ProjectService Unit Test', () => {
     let ProjectService: any;

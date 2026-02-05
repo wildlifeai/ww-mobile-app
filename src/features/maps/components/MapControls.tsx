@@ -5,14 +5,12 @@
  * Zero dependencies on other MVP2 features
  */
 
-import React from "react"
 import { StyleSheet, View, TouchableOpacity, Text } from "react-native"
 import { MapType } from "../types"
 
 interface MapControlsProps {
 	onZoomIn: () => void
 	onZoomOut: () => void
-	onCenterUser: () => void
 	onMapTypeChange: (type: MapType) => void
 	currentMapType: MapType
 	showMapTypeSelector?: boolean
@@ -22,7 +20,6 @@ interface MapControlsProps {
 export const MapControls: React.FC<MapControlsProps> = ({
 	onZoomIn,
 	onZoomOut,
-	onCenterUser,
 	onMapTypeChange,
 	currentMapType,
 	showMapTypeSelector = true,

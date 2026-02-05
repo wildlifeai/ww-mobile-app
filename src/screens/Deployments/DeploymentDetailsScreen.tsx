@@ -107,6 +107,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
     const renderProjectDetailsLeft = useCallback((props: any) => <WWIcon {...props} source="cog" size={24} color={colors.onSurface} />, [colors.onSurface])
     const renderLocationLeft = useCallback((props: any) => <WWIcon {...props} source="map-marker" size={24} color={colors.onSurface} />, [colors.onSurface])
     const renderNotesLeft = useCallback((props: any) => <WWIcon {...props} source="note-text" size={24} color={colors.onSurface} />, [colors.onSurface])
+    const renderDeviceIcon = useCallback((props: any) => <WWIcon {...props} source="cellphone" size={24} color={colors.onSurface} />, [colors.onSurface])
 
     const openInMaps = () => {
         if (!deployment.latitude || !deployment.longitude) return
@@ -199,7 +200,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                     <Card.Title
                         title="Device"
                         titleStyle={styles.cardTitle}
-                        left={(props) => <WWIcon {...props} source="cellphone" size={24} color={colors.onSurface} />}
+                        left={renderDeviceIcon}
                     />
                     <Card.Content>
                         <View style={styles.infoRow}>

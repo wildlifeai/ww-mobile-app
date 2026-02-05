@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react"
-import { useEffect, useRef } from "react"
+// import { useEffect, useRef } from "react"
 import {
 	Command,
 	CommandConstructOptions,
@@ -8,10 +8,10 @@ import {
 } from "../ble/types"
 import { useAppDispatch, useAppSelector } from "../redux"
 import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
-import { logError, log } from "../utils/logger"
+import { logError } from "../utils/logger"
 import { useBleActions } from "../providers/BleEngineProvider"
 import {
-	ConfigKey,
+	// ConfigKey,
 	deviceConfigChanged,
 } from "../redux/slices/configurationSlice"
 
@@ -20,11 +20,11 @@ type Props = {
 	command: Command
 }
 
-const INTERVAL = 1000 * 7
-const TIMEOUT = 1000 * 10
+// const INTERVAL = 1000 * 7
+// const TIMEOUT = 1000 * 10
 
 export const useCommand = ({ deviceId, command }: Props) => {
-	const [goal, setGoal] = useState<number | string>()
+	const [_goal, setGoal] = useState<number | string>()
 	const [commandLoading, setCommandLoading] = useState(
 		!!(command.readRegex || command.readCommand),
 	)

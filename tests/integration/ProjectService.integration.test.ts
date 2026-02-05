@@ -34,10 +34,10 @@ import {
 	testUsers,
 	testOrganisations,
 	sampleProjectInputs,
-	roleIds,
+
 	testRoles,
 } from "../fixtures/project-test-data"
-import type { Project, ProjectWithDetails } from "../../src/types/project"
+
 
 describeIntegration("ProjectService Integration Tests", () => {
 	let org1Id: string

@@ -1,7 +1,7 @@
 import React from 'react'
 import { StyleSheet, View, ScrollView } from 'react-native'
 import { Modal, Portal, Card, Text, ProgressBar, Button, IconButton, useTheme } from 'react-native-paper'
-import { WWIcon } from '../../../components/ui/WWIcon'
+// import { WWIcon } from '../../../components/ui/WWIcon'
 
 interface FinishProgressDialogProps {
     visible: boolean

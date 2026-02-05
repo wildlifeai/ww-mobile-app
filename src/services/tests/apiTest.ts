@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "../supabase"
-import { DeviceService } from "../DeviceService"
+
 import ReferenceDataService from "../ReferenceDataService"
 import SupabaseSyncService from "../SupabaseSyncService"
 import database from "../../database"

@@ -37,22 +37,22 @@ export const Login = () => {
 
 	// Load saved credentials on component mount
 	useEffect(() => {
-		loadSavedCredentials()
-	}, [])
+		const loadSavedCredentials = async () => {
+			try {
+				const savedEmail = await AsyncStorage.getItem("rememberedEmail")
+				const savedRememberMe = await AsyncStorage.getItem("rememberMe")
 
-	const loadSavedCredentials = async () => {
-		try {
-			const savedEmail = await AsyncStorage.getItem("rememberedEmail")
-			const savedRememberMe = await AsyncStorage.getItem("rememberMe")
-
-			if (savedEmail && savedRememberMe === "true") {
-				setValue("email", savedEmail)
-				setRememberMe(true)
+				if (savedEmail && savedRememberMe === "true") {
+					setValue("email", savedEmail)
+					setRememberMe(true)
+				}
+			} catch (loadError) {
+				logError("Failed to load saved credentials:", loadError)
 			}
-		} catch (error) {
-			logError("Failed to load saved credentials:", error)
 		}
-	}
+
+		loadSavedCredentials()
+	}, [setValue])
 
 	const onSubmit = async (data: FormData) => {
 		try {

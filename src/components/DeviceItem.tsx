@@ -1,4 +1,4 @@
-import React from "react"
+
 import { StyleSheet, View } from "react-native"
 import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
 import { ActivityIndicator, Text, TouchableRipple } from "react-native-paper"

@@ -1,3 +1,4 @@
+/* eslint-disable no-bitwise */
 import { useCallback, useRef } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { useBleCommands } from './useBleCommands'

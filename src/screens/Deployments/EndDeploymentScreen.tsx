@@ -4,7 +4,7 @@ import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { Appbar, TextInput, Card, useTheme } from 'react-native-paper'
 import { WWScreenView } from '../../components/ui/WWScreenView'
-import { TestDeepLink } from '../../components/TestDeepLink'
+// import { TestDeepLink } from '../../components/TestDeepLink'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
 import { RootStackParamList } from '../../navigation'
@@ -46,7 +46,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     // Get full device object for BLE commands
     const devices = useAppSelector(state => state.devices)
     const storeDevice = devices[bleDeviceId]
-    const { updateSettings, quiesceDevice } = useDeviceSettings({ device: storeDevice })
+    const { quiesceDevice } = useDeviceSettings({ device: storeDevice })
 
     // Get current user
     const user = useAppSelector(selectCurrentUser)
@@ -81,7 +81,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     // Local state
     const [retrievalNotes, setRetrievalNotes] = useState('')
     const [isEnding, setIsEnding] = useState(false)
-    const [bleStatus, setBleStatus] = useState<string>('Connected')
+    const [bleStatus] = useState<string>('Connected')
     
     // Progress Dialog State
     const [finishProgress, setFinishProgress] = useState(0)
@@ -90,8 +90,8 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const [isFinishing, setIsFinishing] = useState(false)
     const [isEndDeploymentSuccess, setIsEndDeploymentSuccess] = useState(false)
 
-    const addFinishLog = useCallback((log: string) => {
-        setFinishLogs(prev => [...prev, log])
+    const addFinishLog = useCallback((message: string) => {
+        setFinishLogs(prev => [...prev, message])
     }, [])
     
     // Initialization State (for InitializationHeader)
@@ -144,7 +144,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         }
 
         initializeDevice()
-    }, [bleDevice?.connected, initialize])
+    }, [bleDevice, initialize])
 
     // Heartbeat: Ping device every 20 seconds to keep it awake
     useEffect(() => {
@@ -325,7 +325,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         } finally {
             setIsEnding(false)
         }
-    }, [devices, bleDeviceId, bleDevice, user, deployment.id, retrievalNotes, navigation, updateSettings, quiesceDevice, setDeploymentIdAsOps, clearGpsLocation, runDisconnect, addFinishLog, initialize])
+    }, [devices, bleDeviceId, bleDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsOps, clearGpsLocation, runDisconnect, addFinishLog])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)
@@ -349,7 +349,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     }
 
     return (
-        <WWScreenView scrollable style={{ paddingTop: 0 }}>
+        <WWScreenView scrollable style={styles.screenView}>
             <View style={styles.container}>
                 {/* Initialization Header (Set UTC, Hardware Check) */}
                  {(deviceDb || bleDevice) && (
@@ -436,6 +436,9 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 }
 
 const styles = StyleSheet.create({
+    screenView: {
+        paddingTop: 0
+    },
     container: {
         flex: 1,
         gap: 16,

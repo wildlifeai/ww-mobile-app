@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { View, StyleSheet, Image } from 'react-native'
 import { Card, Button, Text } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
@@ -34,22 +34,47 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
     theme,
     onShowHelp
 }) => {
+    const renderBatteryIcon = useCallback((props: any) => <WWIcon {...props} source="battery-charging" />, [])
+    const renderBatteryHelp = useCallback((props: any) => (
+        <Button 
+            {...props} 
+            icon="help-circle-outline" 
+            onPress={() => onShowHelp('Battery Level', 'Check the device battery level. It must be above 30% for deployment.')}
+        >
+            Help
+        </Button>
+    ), [onShowHelp])
+
+    const renderSdCardIcon = useCallback((props: any) => <WWIcon {...props} source="sd" />, [])
+    const renderSdCardHelp = useCallback((props: any) => (
+        <Button 
+            {...props} 
+            icon="help-circle-outline" 
+            onPress={() => onShowHelp('SD Card Status', 'Verifies SD card space. Ensure sufficient space is available for recordings.')}
+        >
+            Help
+        </Button>
+    ), [onShowHelp])
+
+    const renderCameraIcon = useCallback((props: any) => <WWIcon {...props} source="camera" />, [])
+    const renderCameraHelp = useCallback((props: any) => (
+        <Button 
+            {...props} 
+            icon="help-circle-outline" 
+            onPress={() => onShowHelp('Camera View Test', 'Take a test photo to verify camera positioning and function.')}
+        >
+            Help
+        </Button>
+    ), [onShowHelp])
+
     return (
         <>
             {/* Battery Check */}
             <Card style={styles.card}>
                 <Card.Title
                     title="Battery Level"
-                    left={(props) => <WWIcon {...props} source="battery-charging" />}
-                    right={(props) => (
-                        <Button 
-                            {...props} 
-                            icon="help-circle-outline" 
-                            onPress={() => onShowHelp('Battery Level', 'Check the device battery level. It must be above 30% for deployment.')}
-                        >
-                            Help
-                        </Button>
-                    )}
+                    left={renderBatteryIcon}
+                    right={renderBatteryHelp}
                 />
                 <Card.Content>
                     {batteryLevel !== null ? (
@@ -76,16 +101,8 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
             <Card style={styles.card}>
                 <Card.Title
                     title="SD Card Status"
-                    left={(props) => <WWIcon {...props} source="sd" />}
-                    right={(props) => (
-                        <Button 
-                            {...props} 
-                            icon="help-circle-outline" 
-                            onPress={() => onShowHelp('SD Card Status', 'Verifies SD card space. Ensure sufficient space is available for recordings.')}
-                        >
-                            Help
-                        </Button>
-                    )}
+                    left={renderSdCardIcon}
+                    right={renderSdCardHelp}
                 />
                 <Card.Content>
                     {sdCardStatus !== null ? (
@@ -116,16 +133,8 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
             <Card style={styles.card}>
                 <Card.Title
                     title="Camera View Test"
-                    left={(props) => <WWIcon {...props} source="camera" />}
-                    right={(props) => (
-                        <Button 
-                            {...props} 
-                            icon="help-circle-outline" 
-                            onPress={() => onShowHelp('Camera View Test', 'Take a test photo to verify camera positioning and function.')}
-                        >
-                            Help
-                        </Button>
-                    )}
+                    left={renderCameraIcon}
+                    right={renderCameraHelp}
                 />
                 <Card.Content>
                     <WWText variant="bodySmall" style={styles.sectionDescription}>

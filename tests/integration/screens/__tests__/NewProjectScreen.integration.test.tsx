@@ -301,24 +301,7 @@ describe("NewProjectScreen - AI Model Integration", () => {
 
 	it("should allow project creation without AI model selection", async () => {
 		// Arrange
-		const mockModels: AIModel[] = [
-			{
-				id: "123e4567-e89b-12d3-a456-426614174000",
-				name: "General Wildlife Model",
-				version: "1.0",
-				organisation_id: "org-123",
-				created_at: "2025-01-01T00:00:00Z",
-				updated_at: "2025-01-01T00:00:00Z",
-				deleted_at: null,
-				description: "General model for wildlife classification",
-				modified_by: "user-123",
-				storage_path: "models/test-model.onnx",
-				detection_capabilities: ["animal", "person"],
-				file_size_bytes: 1024,
-				file_type: "onnx",
-				uploaded_by: "user-123",
-			},
-		]
+
 
 		const store = createTestStore()
 

@@ -123,13 +123,8 @@ class ProjectService {
 			).fetch()
 
 			// 2. Check for Admin privileges
-			const isGlobalAdmin = userRoles.some(r => r.scopeType === 'global')
-			const isOrgAdmin = userRoles.some(r =>
-				r.scopeType === 'organisation' &&
-				r.scopeId === organisationId &&
-				r.role === 'project_admin' // Assuming 'project_admin' at org level means Org Admin, or if there's a specific 'organisation_admin' role check?
-				// Based on logs: role is 'organisation_member'. I should check for 'organisation_admin' or 'ww_admin'
-			)
+
+
 			// Checking UserRole definition: role is 'ww_admin' | 'project_admin' | 'project_member'
 			// Typically admin is handled via specific checks.
 			// Let's assume 'ww_admin' is global.

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { Card, Button, Text } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
@@ -40,20 +40,23 @@ export const FirmwareSection: React.FC<FirmwareSectionProps> = ({
     theme,
     onShowHelp
 }) => {
+    const renderIcon = useCallback((props: any) => <WWIcon {...props} source="bluetooth" />, [])
+    const renderHelp = useCallback((props: any) => (
+        <Button 
+            {...props} 
+            icon="help-circle-outline" 
+            onPress={() => onShowHelp('BLE Firmware', 'Manage device firmware. Ensure the device is running the latest version for best performance.')}
+        >
+            Help
+        </Button>
+    ), [onShowHelp])
+
     return (
         <Card style={styles.card}>
             <Card.Title
                 title="BLE Firmware"
-                left={(props) => <WWIcon {...props} source="bluetooth" />}
-                right={(props) => (
-                    <Button 
-                        {...props} 
-                        icon="help-circle-outline" 
-                        onPress={() => onShowHelp('BLE Firmware', 'Manage device firmware. Ensure the device is running the latest version for best performance.')}
-                    >
-                        Help
-                    </Button>
-                )}
+                left={renderIcon}
+                right={renderHelp}
             />
             <Card.Content>
                 {latestBleFirmware && (
@@ -117,7 +120,7 @@ export const FirmwareSection: React.FC<FirmwareSectionProps> = ({
                     </>
                 ) : deviceFirmwareVersion && !bleFirmwareUpdateAvailable ? (
                     <View>
-                        <Text variant="bodyMedium" style={[{ color: theme.colors.primary, marginBottom: 12 }]}>
+                        <Text variant="bodyMedium" style={[styles.successText, { color: theme.colors.primary }]}>
                             ✓ Firmware is up to date
                         </Text>
                         <WWButton
@@ -155,5 +158,8 @@ const styles = StyleSheet.create({
     },
     warningText: {
         marginTop: 8,
+    },
+    successText: {
+        marginBottom: 12,
     },
 })

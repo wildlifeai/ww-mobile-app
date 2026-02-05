@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { View, StyleSheet, Alert, PermissionsAndroid, Platform } from 'react-native'
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native'
-import type { RouteProp } from '@react-navigation/native'
+// import type { RouteProp } from '@react-navigation/native'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
@@ -23,7 +23,7 @@ import { useBleCommands } from '../../hooks/useBleCommands'
 import { useBle } from '../../hooks/useBle'
 import { useBleInitialization } from '../../hooks/useBleInitialization'
 import { useCapturePreview } from '../../hooks/useCapturePreview'
-import { useDeviceSettings, OP_PARAMETER } from '../../hooks/useDeviceSettings'
+import { useDeviceSettings } from '../../hooks/useDeviceSettings'
 
 import { useGetProjectsQuery } from '../../redux/api/projectsApi'
 import { useAppSelector } from '../../redux'
@@ -31,7 +31,7 @@ import Device from '../../database/models/Device'
 import DevicePreparation from '../../database/models/DevicePreparation'
 import Firmware from '../../database/models/Firmware'
 import database from '../../database'
-import { ActivityIndicator, Text, useTheme } from 'react-native-paper'
+import { ActivityIndicator, useTheme } from 'react-native-paper'
 import BleManager, { Peripheral } from 'react-native-ble-manager'
 import { extractErrorBits } from '../../ble/messageClassifier'
 import { log, logError, logWarn } from '../../utils/logger'
@@ -128,8 +128,8 @@ export const PrepareAndTestScreen = () => {
     const [finishStep, setFinishStep] = useState('')
     const [finishLogs, setFinishLogs] = useState<string[]>([])
 
-    const addFinishLog = useCallback((log: string) => {
-        setFinishLogs(prev => [...prev, log])
+    const addFinishLog = useCallback((message: string) => {
+        setFinishLogs(prev => [...prev, message])
     }, [])
 
     // BLE firmware state
@@ -167,14 +167,14 @@ export const PrepareAndTestScreen = () => {
         checkSdCard, 
         setUtc, 
         getDeviceVer, 
-        getDeviceName, 
+        // getDeviceName, 
         runDisconnect, 
         runDfu, 
         setDeploymentIdAsOps, 
         clearGpsLocation, 
-        setOperationalParam, 
+        // setOperationalParam, 
         getHeartbeat, 
-        disableCamera, 
+        // disableCamera, 
         flashLed,
         runSelfTest 
     } = useBleCommands()
@@ -206,7 +206,7 @@ export const PrepareAndTestScreen = () => {
     })
 
     // Device settings hook
-    const { updateSettings: updateDeviceSettings, quiesceDevice } = useDeviceSettings({
+    const { quiesceDevice } = useDeviceSettings({
         device: bleDevice,
         onError: (error) => {
             logError('[PrepareTest] Settings update failed:', error)
@@ -483,7 +483,7 @@ export const PrepareAndTestScreen = () => {
             Alert.alert('Error', 'Failed to complete preparation')
             setIsFinishing(false) // Only reset on error
         }
-    }, [selectedProject, sdCardStatus, bleDevice, setUtc, waitForLogMatch, projects, updateDeviceSettings, preparation, route.params, navigation, deviceId, bleDeviceId, runDisconnect])
+    }, [selectedProject, sdCardStatus, bleDevice, preparation, route.params, runDisconnect, setDeploymentIdAsOps, flashLed, addFinishLog])
 
     const handleFinishComplete = useCallback(() => {
         setIsFinishing(false)
@@ -535,6 +535,7 @@ export const PrepareAndTestScreen = () => {
                 // Bit 11 (0x0800): Device has no SD card detected
                 const NO_SD_CARD_MASK = 0x0800
                 
+                // eslint-disable-next-line no-bitwise
                 if ((errorBits & NO_SD_CARD_MASK) !== 0) {
                     logWarn('[PrepareTest] SD Card Missing (Error bits set)')
                     Alert.alert(
@@ -796,7 +797,7 @@ export const PrepareAndTestScreen = () => {
             log('[PrepareTest] Stopping heartbeat')
             clearInterval(interval)
         }
-    }, [!!bleDevice?.connected, isInitializing, loading, getHeartbeat])
+    }, [bleDevice?.connected, isInitializing, loading, getHeartbeat])
 
 
 
@@ -818,9 +819,9 @@ export const PrepareAndTestScreen = () => {
                     setInitStep(step)
                     setInitProgress(progress * 0.5) // Use first 50% for standard init
                 },
-                onError: (initErrors) => {
-                    if (initErrors.setUtc) errors.setUtc = initErrors.setUtc
-                    if (initErrors.deviceHealth) errors.deviceHealth = initErrors.deviceHealth
+                onError: (errorsResult) => {
+                    if (errorsResult.setUtc) errors.setUtc = errorsResult.setUtc
+                    if (errorsResult.deviceHealth) errors.deviceHealth = errorsResult.deviceHealth
                 }
             })
 
@@ -902,7 +903,7 @@ export const PrepareAndTestScreen = () => {
         }
 
         runBleInitialization()
-    }, [bleDevice, setUtc, waitForLogMatch, setDeploymentIdAsOps, clearGpsLocation, handleBatteryCheck, handleSdCardCheck])
+    }, [bleDevice, setUtc, waitForLogMatch, setDeploymentIdAsOps, clearGpsLocation, handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, runBleStandardInit, quiesceDevice])
 
     // Parse BLE logs for command responses
 
@@ -1010,7 +1011,7 @@ export const PrepareAndTestScreen = () => {
             log('[PrepareTest] Parsed device model name:', name)
             setCameraModelName(name)
         }
-    }, [logs, batteryLevel, sdCardStatus, preparation, deviceFirmwareVersion, isCheckingFirmware, latestBleFirmware, cameraModelName, handleFirmwareCheck])
+    }, [logs, batteryLevel, sdCardStatus, preparation, deviceFirmwareVersion, isCheckingFirmware, latestBleFirmware, cameraModelName, handleFirmwareCheck, isVerifyingUpdate])
 
     // Store initialization errors from route params
     useEffect(() => {
@@ -1080,13 +1081,13 @@ export const PrepareAndTestScreen = () => {
                     <WWText variant="headlineSmall" style={[styles.loadingText, { color: theme.colors.error }]}>
                         Device Not Found
                     </WWText>
-                    <WWText variant="bodyMedium" style={{ textAlign: 'center', marginTop: 8, paddingHorizontal: 32 }}>
+                    <WWText variant="bodyMedium" style={styles.errorText}>
                         Could not find device details in the local database. Please try pairing again.
                     </WWText>
                     <WWButton 
                         mode="contained" 
                         onPress={() => navigation.goBack()} 
-                        style={{ marginTop: 24 }}
+                        style={styles.goBackButton}
                     >
                         Go Back
                     </WWButton>
@@ -1096,7 +1097,7 @@ export const PrepareAndTestScreen = () => {
     }
 
     return (
-        <WWScreenView scrollable={true} style={{ paddingTop: 0 }}>
+        <WWScreenView scrollable={true} style={styles.screenView}>
             <View style={styles.container}>
                 <InitializationHeader
                     device={device}
@@ -1160,7 +1161,7 @@ export const PrepareAndTestScreen = () => {
                 />
 
                 {/* Finish Preparation Button */}
-                <View style={[styles.footer, isFinishing && { opacity: 0.5 }]}>
+                <View style={[styles.footer, isFinishing && styles.dimmed]}>
                     <WWButton
                         mode="contained"
                         onPress={handleFinish}
@@ -1206,5 +1207,19 @@ const styles = StyleSheet.create({
     },
     finishButton: {
         marginTop: 8,
+    },
+    errorText: {
+        textAlign: 'center',
+        marginTop: 8,
+        paddingHorizontal: 32,
+    },
+    goBackButton: {
+        marginTop: 24,
+    },
+    screenView: {
+        paddingTop: 0,
+    },
+    dimmed: {
+        opacity: 0.5,
     },
 })

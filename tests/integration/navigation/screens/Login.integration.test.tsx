@@ -4,7 +4,6 @@
  * API integration, navigation, and state management
  */
 
-import React from "react"
 import { Alert } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { fireEvent, waitFor, screen, act } from "@testing-library/react-native"
@@ -13,18 +12,14 @@ import { Login } from "../../../../src/navigation/screens/auth/LoginScreen"
 import {
 	renderWithProviders,
 	createTestStore,
-	waitForAsync,
 } from "../../../setup/utils/testUtils"
 import {
 	mockAuthSuccess,
-	mockAuthError,
 	resetSupabaseMocks,
 } from "../../../__mocks__/supabase"
 import {
 	validLoginCredentials,
 	invalidLoginCredentials,
-	formValidationCases,
-	authErrorMessages,
 } from "../../../setup/fixtures/auth"
 
 // Mock AsyncStorage
@@ -66,7 +61,6 @@ jest.mock("../../../../src/components/TestDeepLink", () => ({
 
 describe("Login Screen Integration Tests", () => {
 	let store: ReturnType<typeof createTestStore>
-	let mockAlert: jest.SpyInstance
 
 	beforeEach(() => {
 		store = createTestStore()
@@ -74,7 +68,7 @@ describe("Login Screen Integration Tests", () => {
 		jest.clearAllMocks()
 		mockNavigate.mockClear()
 		mockGoBack.mockClear()
-		mockAlert = jest.spyOn(Alert, "alert").mockImplementation(() => {})
+		jest.spyOn(Alert, "alert").mockImplementation(() => {})
 
 		// Reset AsyncStorage mocks
 		mockAsyncStorage.getItem.mockResolvedValue(null)
@@ -129,7 +123,7 @@ describe("Login Screen Integration Tests", () => {
 		expect(screen.getByTestId("email-input")).toBeTruthy()
 		expect(screen.getByTestId("login-button")).toBeTruthy()
 
-		const emailInput = screen.getByTestId("email-input")
+
 		const loginButton = screen.getByTestId("login-button")
 
 		// Test empty email validation workflow
@@ -160,7 +154,7 @@ describe("Login Screen Integration Tests", () => {
 	})
 
 	test("should handle successful login flow", async () => {
-		const mockAuthResponse = mockAuthSuccess()
+		mockAuthSuccess()
 
 		renderWithProviders(<Login />, { store })
 
@@ -264,7 +258,7 @@ describe("Login Screen Integration Tests", () => {
 	})
 
 	test("should navigate to forgot password screen", () => {
-		const { store } = renderWithProviders(<Login />)
+		renderWithProviders(<Login />)
 
 		const forgotPasswordButton = screen.getByTestId("forgot-password-button")
 		fireEvent.press(forgotPasswordButton)
@@ -274,7 +268,7 @@ describe("Login Screen Integration Tests", () => {
 	})
 
 	test("should navigate to register screen", () => {
-		const { store } = renderWithProviders(<Login />)
+		renderWithProviders(<Login />)
 
 		const registerButton = screen.getByTestId("register-button")
 		fireEvent.press(registerButton)

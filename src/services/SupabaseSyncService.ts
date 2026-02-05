@@ -232,16 +232,10 @@ class SupabaseSyncService {
             }
         })
 
-        // Group operations by table and operation type
-        const allChanges: any = {
-            projects: { created: [], updated: [], deleted: [] },
-            devices: { created: [], updated: [], deleted: [] },
-            device_preparation: { created: [], updated: [], deleted: [] },
-            deployments: { created: [], updated: [], deleted: [] },
-        }
+
 
         // Helper to populate changes object
-        const populateChanges = (ops: SyncOutbox[], currentUserId?: string) => {
+        const populateChanges = (ops: SyncOutbox[], userId?: string) => {
             const result: any = {
                 projects: { created: [], updated: [], deleted: [] },
                 devices: { created: [], updated: [], deleted: [] },
@@ -259,7 +253,7 @@ class SupabaseSyncService {
 
                 // ROBUSTNESS: Patch audit fields with current user ID to prevent FK violations
                 // This handles cases where local data has stale UUIDs (e.g. after a backend reset)
-                if (currentUserId) {
+                if (userId) {
                     const auditFields = ['modified_by', 'created_by', 'setup_by', 'granted_by', 'managed_by']
                     let patched = false
 
@@ -274,11 +268,11 @@ class SupabaseSyncService {
 
                         // For CREATE: Always ensure we own it
                         // For UPDATE: We are the one modifying it, so we should be the modified_by
-                        if (payload[field] && payload[field] !== currentUserId) {
+                        if (payload[field] && payload[field] !== userId) {
                             // Don't patch created_by on updates if it's already a valid lookin UUID 
                             // (actually in this specific app context, patching is safer to bridge environment gaps)
-                            log(`🔧 Patching ${tableName}.${field} from ${payload[field]} to ${currentUserId}`)
-                            payload[field] = currentUserId
+                            log(`🔧 Patching ${tableName}.${field} from ${payload[field]} to ${userId}`)
+                            payload[field] = userId
                             patched = true
                         }
                     })

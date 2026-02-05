@@ -6,7 +6,7 @@ import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { DeploymentCard } from "../../components/DeploymentCard"
 import type Deployment from "../../database/models/Deployment"
 import { StandardizedListLayout } from "../../components/ui/StandardizedListLayout"
-import { useExtendedTheme } from "../../theme"
+// import { useExtendedTheme } from "../../theme"
 import { DeploymentService } from "../../services/DeploymentService"
 
 type Props = {
@@ -15,7 +15,7 @@ type Props = {
 
 const DeploymentsComponent = ({ deployments }: Props) => {
 	const navigation = useAppNavigation()
-	const theme = useExtendedTheme()
+	// const theme = useExtendedTheme()
 
 
 	// Search & Filter state
@@ -122,7 +122,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 				<FAB
 					icon="stop"
 					label="End Deployment"
-					style={[styles.fab, { backgroundColor: '#FFAB00' }]}
+					style={[styles.fab, styles.endDeploymentFab]}
 					color="#000"
 					onPress={() => navigation.navigate("EndDeploymentWizard", { mode: 'end_deployment' } as any)}
 				/>
@@ -140,6 +140,9 @@ const styles = StyleSheet.create({
 		margin: 16,
 		right: 0,
 		bottom: 80, // Stack above the standard Primary Action FAB (usually at bottom: 16)
+	},
+	endDeploymentFab: {
+		backgroundColor: '#FFAB00',
 	}
 })
 

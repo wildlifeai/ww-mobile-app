@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react'
+import React from 'react'
 import {
     View,
     FlatList,
@@ -17,7 +17,7 @@ import {
     Button,
     IconButton,
 } from 'react-native-paper'
-import { WWScreenView } from './WWScreenView'
+
 import { OfflineIndicator } from './OfflineIndicator'
 import { useAppDrawer } from '../AppDrawer'
 
@@ -80,7 +80,7 @@ export function StandardizedListLayout<T>({
     onSecondaryAction,
     secondaryActionIcon = 'wrench',
     secondaryActionColor,
-    filterActions,
+    filterActions: _filterActions,
     emptyStateTitle,
     emptyStateMessage,
     emptySearchMessage,
@@ -142,7 +142,7 @@ export function StandardizedListLayout<T>({
                 icon="menu"
                 iconColor={theme.colors.onSurface}
                 size={28}
-                style={[styles.menuFab, { top: insets.top + 8, backgroundColor: 'transparent', elevation: 0 }]}
+                style={[styles.menuFab, { top: insets.top + 8 }]}
                 onPress={() => setIsOpen(true)}
             />
 
@@ -192,7 +192,7 @@ export function StandardizedListLayout<T>({
                     }
                     ListEmptyComponent={
                         <View style={styles.centerContainer}>
-                            <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
+                            <Text variant="bodyLarge" style={[styles.emptySearchText, { color: theme.colors.onSurfaceVariant }]}>
                                 {emptySearchMessage || `No items found matching "${searchQuery}"`}
                             </Text>
                         </View>
@@ -263,8 +263,8 @@ const styles = StyleSheet.create({
     menuFab: {
         position: 'absolute',
         left: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        elevation: 4,
+        backgroundColor: 'transparent',
+        elevation: 0,
         zIndex: 1000,
     },
     listContent: {
@@ -315,5 +315,8 @@ const styles = StyleSheet.create({
         margin: 16,
         right: 0,
         bottom: 70, // Stack above primary FAB
+    },
+    emptySearchText: {
+        textAlign: 'center',
     },
 })

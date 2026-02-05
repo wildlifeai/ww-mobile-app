@@ -11,7 +11,7 @@
  * - Clears RTK Query cache after switch
  */
 
-import React, { useState } from "react"
+import { useState, useCallback } from "react"
 import { StyleSheet, View } from "react-native"
 import {
 	List,
@@ -41,6 +41,9 @@ export const OrgSwitcher = () => {
 	const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState<string>("")
+
+	const renderLeftIcon = useCallback((props: any) => <List.Icon {...props} icon="swap-horizontal" />, [])
+	const renderRightIcon = useCallback((props: any) => <List.Icon {...props} icon="chevron-right" />, [])
 
 	// Don't render if user can't switch organisations
 	if (!canSwitchOrganisations) {
@@ -83,14 +86,16 @@ export const OrgSwitcher = () => {
 		}
 	}
 
+
+
 	return (
 		<>
 			{/* Organisation Switcher List Item */}
 			<List.Item
 				title="Switch Organisation"
 				description={currentOrganisation?.name || "No organisation selected"}
-				left={(props) => <List.Icon {...props} icon="swap-horizontal" />}
-				right={(props) => <List.Icon {...props} icon="chevron-right" />}
+				left={renderLeftIcon}
+				right={renderRightIcon}
 				onPress={handleOpenDialog}
 				testID="org-switcher-button"
 				accessibilityLabel={`Current organisation: ${

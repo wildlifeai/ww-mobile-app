@@ -22,8 +22,8 @@ export const DevicePreparationScreen = () => {
     const logs = useAppSelector(state => state.logs[deviceId] || [])
     const currentUser = useAppSelector(state => state.authentication.user)
 
-    const { connectDevice, disconnectDevice } = useBle()
-    const { getBatteryLevel, checkSdCard, pingNetwork, runSelfTest } = useBleCommands()
+    const { connectDevice } = useBle()
+    const { getBatteryLevel, checkSdCard, pingNetwork } = useBleCommands()
 
     const [isConnecting, setIsConnecting] = useState(false)
     const [preparationId, setPreparationId] = useState<string | null>(null)
@@ -33,7 +33,7 @@ export const DevicePreparationScreen = () => {
     const [batteryInfo, setBatteryInfo] = useState<{ level: number, voltage: number } | undefined>()
     const [sdCardInfo, setSdCardInfo] = useState<{ total: number, available: number } | undefined>()
     const [lorawanInfo, setLorawanInfo] = useState<{ rssi: number, snr: number } | undefined>()
-    const [firmwareVersion, setFirmwareVersion] = useState<string | undefined>()
+    const [firmwareVersion, _setFirmwareVersion] = useState<string | undefined>()
 
     const lastProcessedLength = React.useRef<number>(0)
 

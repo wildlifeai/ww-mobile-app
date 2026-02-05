@@ -11,7 +11,7 @@ interface Props {
     onPress: () => void
 }
 
-const { width } = Dimensions.get('window')
+
 
 export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose, onPress }) => {
     const { colors } = useExtendedTheme()

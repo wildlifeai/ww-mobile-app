@@ -4,7 +4,7 @@
  * and alignment with user stories
  */
 
-import React from "react"
+
 import { Login } from "../../../../src/navigation/screens/auth/LoginScreen"
 import {
 	renderWithProviders,
@@ -12,7 +12,6 @@ import {
 } from "../../../setup/utils/testUtils"
 import {
 	mockAuthSuccess,
-	mockAuthError,
 	resetSupabaseMocks,
 } from "../../../__mocks__/supabase"
 import {
@@ -21,8 +20,7 @@ import {
 	TestData,
 	ValidationMessages,
 } from "../../../setup/helpers/bdd"
-import AsyncStorage from "@react-native-async-storage/async-storage"
-import { screen, fireEvent, act, waitFor } from "@testing-library/react-native"
+import { screen, waitFor } from "@testing-library/react-native"
 
 // Mock AsyncStorage locally to ensure identity consistency
 const mockAsyncStorage = {

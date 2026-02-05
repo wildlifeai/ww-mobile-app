@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native'
 import { Card, useTheme } from 'react-native-paper'
 import { WWScreenView } from '../../components/ui/WWScreenView'
@@ -29,11 +29,7 @@ export const DeviceDetailsScreen = () => {
     const [deploymentHistory, setDeploymentHistory] = useState<Deployment[]>([])
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        loadDeviceDetails()
-    }, [deviceId])
-
-    const loadDeviceDetails = async () => {
+    const loadDeviceDetails = useCallback(async () => {
         try {
             const [details, history] = await Promise.all([
                 DeviceService.getDeviceWithStatus(deviceId),
@@ -47,7 +43,11 @@ export const DeviceDetailsScreen = () => {
         } finally {
             setLoading(false)
         }
-    }
+    }, [deviceId])
+
+    useEffect(() => {
+        loadDeviceDetails()
+    }, [loadDeviceDetails])
 
     const handlePrepareAndTest = () => {
         navigation.navigate('DeviceDiscovery', { mode: 'prepare' })
@@ -90,7 +90,7 @@ export const DeviceDetailsScreen = () => {
     }
 
 
-    const { device, status, activeDeployment, lastPreparation, preparedDate } = deviceWithStatus
+    const { device, status, activeDeployment } = deviceWithStatus
 
     const isValidDate = (date: any) => {
         if (!date) return false
