@@ -68,6 +68,15 @@ jest.mock("@react-native-async-storage/async-storage", () => mockAsyncStorage)
 expect(mockAsyncStorage.setItem).toHaveBeenCalledWith("key", "value")
 ```
 
+#### Global Singleton Mock
+A manual mock is also available at `tests/__mocks__/@react-native-async-storage/async-storage.js`. It exposes a singleton instance as `global.mockAsyncStorage` which can be used to check calls made by the implementation if you don't need a custom local mock.
+
+```typescript
+// Any test
+const mockAS = (global as any).mockAsyncStorage
+expect(mockAS.setItem).toHaveBeenCalledWith("rememberedEmail", "test@example.com")
+```
+
 ### 2. Supabase
 Supabase is mocked globally but can be overridden or reset per test.
 *   **Reset Mocks**: `resetSupabaseMocks()` in `beforeEach`.
