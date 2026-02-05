@@ -135,7 +135,7 @@ export function createUserStory(title: string): UserStory {
 // Common authentication actions for BDD tests
 export const AuthActions = {
 	userIsOnLoginScreen: () => {
-		expect(screen.getByText("Sign In")).toBeTruthy()
+		expect(screen.getByText("Login")).toBeTruthy()
 	},
 
 	userIsOnRegisterScreen: () => {
