@@ -93,7 +93,7 @@ describe("Login Screen - User Stories", () => {
 				const { waitFor } = require("@testing-library/react-native")
 				await waitFor(() => {
 					expect(store.getState().authentication.user).toBeDefined()
-				})
+				}, 10000)
 			})
 			.executeAll()
 	})

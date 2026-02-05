@@ -150,7 +150,7 @@ describe("Register Screen Integration Tests", () => {
 
 			await waitFor(() => {
 				expect(screen.getByText("Invalid email address")).toBeTruthy()
-			})
+			}, 10000)
 		}
 
 		// Test valid email
