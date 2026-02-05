@@ -2,7 +2,6 @@ name: Quality Gate Validation
 
 on:
   pull_request:
-    branches: [main, dev-mvp2-development]
 
 jobs:
   quality-gates:

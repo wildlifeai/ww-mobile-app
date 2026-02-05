@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     curl \
     unzip \
-    openjdk-11-jdk \
+    openjdk-17-jdk \
     android-tools-adb \
     android-tools-fastboot \
     vim \
