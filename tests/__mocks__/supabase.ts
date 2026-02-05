@@ -148,6 +148,8 @@ export const mockAuthSuccess = (
 		data: { user, session },
 		error: null,
 	})
+
+	return response
 }
 
 export const mockAuthError = (message = "Authentication failed") => {
@@ -167,6 +169,8 @@ export const mockAuthError = (message = "Authentication failed") => {
 	// Configure the mock functions to return the error response
 	mockSupabaseClient.auth.signInWithPassword.mockResolvedValue(response)
 	mockSupabaseClient.auth.signUp.mockResolvedValue(response)
+
+	return response
 }
 
 export const mockAuthSignOut = () => {

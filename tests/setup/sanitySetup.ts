@@ -1,4 +1,4 @@
-console.log("Sanity setup loaded");
+// Sanity setup loaded
 
 // Setup fake timers and handle resetMocks: true
 beforeEach(() => {
@@ -114,19 +114,46 @@ jest.mock("react-native-safe-area-context", () => ({
 // Mock React Native Vector Icons
 jest.mock("react-native-vector-icons/MaterialIcons", () => "MaterialIcon");
 jest.mock("react-native-vector-icons/FontAwesome", () => "FontAwesome");
+jest.mock("react-native-vector-icons/MaterialCommunityIcons", () => "MaterialCommunityIcons");
 
 // Mock Expo File System
-jest.mock("expo-file-system", () => ({
-    documentDirectory: "/mock/documents/",
-    downloadAsync: jest.fn(),
-    readAsStringAsync: jest.fn(),
-    writeAsStringAsync: jest.fn(),
-    deleteAsync: jest.fn(),
-    getInfoAsync: jest.fn(),
-    makeDirectoryAsync: jest.fn(),
-    copyAsync: jest.fn(),
-    moveAsync: jest.fn(),
-}));
+jest.mock("expo-file-system", () => {
+    const documentDirectory = "/mock/documents/";
+    return {
+        documentDirectory,
+        Paths: {
+            document: documentDirectory,
+            cache: "/mock/cache/",
+        },
+        Directory: class MockDirectory {
+            exists = true;
+            uri = "";
+            constructor(parent: any, name: string) {
+                this.uri = typeof parent === 'string' ? parent + name : parent.uri + "/" + name;
+            }
+            create = jest.fn();
+            delete = jest.fn();
+        },
+        File: class MockFile {
+            exists = true;
+            uri = "";
+            size = 1000;
+            constructor(parent: any, name: string) {
+                this.uri = parent.uri + "/" + name;
+            }
+            delete = jest.fn();
+            static downloadFileAsync: any = jest.fn(() => Promise.resolve({ uri: "mock-uri" }));
+        },
+        downloadAsync: jest.fn(),
+        readAsStringAsync: jest.fn(),
+        writeAsStringAsync: jest.fn(),
+        deleteAsync: jest.fn(),
+        getInfoAsync: jest.fn(),
+        makeDirectoryAsync: jest.fn(),
+        copyAsync: jest.fn(),
+        moveAsync: jest.fn(),
+    };
+});
 
 // Mock Expo Constants
 jest.mock("expo-constants", () => ({
@@ -137,18 +164,68 @@ jest.mock("expo-constants", () => ({
     },
 }));
 
-// Mock React Navigation (simplified)
-jest.mock("@react-navigation/native", () => ({
-    NavigationContainer: ({ children }: { children: any }) => children,
-    useNavigation: () => ({
-        navigate: jest.fn(),
-        goBack: jest.fn(),
-        addListener: jest.fn(),
-        setOptions: jest.fn(),
-    }),
-    useRoute: () => ({ params: {} }),
-    useFocusEffect: jest.fn(),
+// Mock React Native Device Info
+jest.mock("react-native-device-info", () => ({
+    getReadableVersion: jest.fn(() => "1.0.0"),
+    getBundleId: jest.fn(() => "com.wildlifeai.wildlifewatcher"),
+    getDeviceType: jest.fn(() => "Handset"),
+    isTablet: jest.fn(() => false),
 }));
+
+// Mock Expo Linking
+jest.mock("expo-linking", () => ({
+    createURL: jest.fn(() => "wildlifewatcher://"),
+    openURL: jest.fn(),
+    canOpenURL: jest.fn(() => Promise.resolve(true)),
+    addEventListener: jest.fn(() => ({ remove: jest.fn() })),
+    useURL: jest.fn(() => "wildlifewatcher://"),
+}));
+// Mock React Native Reanimated
+jest.mock("react-native-reanimated", () => {
+    const View = require("react-native").View;
+    return {
+        Value: jest.fn(),
+        event: jest.fn(),
+        add: jest.fn(),
+        eq: jest.fn(),
+        set: jest.fn(),
+        cond: jest.fn(),
+        interpolate: jest.fn(),
+        View: View,
+        Extrapolate: { CLAMP: "clamp" },
+        Transition: {
+            In: { Type: "in" },
+            Out: { Type: "out" },
+            Together: { Type: "together" },
+        },
+        useSharedValue: jest.fn(() => ({ value: 0 })),
+        useAnimatedStyle: jest.fn(() => ({})),
+        withTiming: jest.fn(),
+        withSpring: jest.fn(),
+        default: {
+            call: jest.fn(),
+        },
+    };
+});
+
+// Mock React Navigation (more complete)
+jest.mock("@react-navigation/native", () => {
+    return {
+        NavigationContainer: ({ children }: { children: any }) => children,
+        useNavigation: () => ({
+            navigate: jest.fn(),
+            goBack: jest.fn(),
+            addListener: jest.fn(() => jest.fn()),
+            setOptions: jest.fn(),
+            isFocused: jest.fn(() => true),
+            dispatch: jest.fn(),
+        }),
+        useRoute: () => ({ params: {} }),
+        useFocusEffect: jest.fn(),
+        createNavigatorFactory: jest.fn((navigator: any) => () => navigator),
+        DefaultTheme: { colors: {} },
+    };
+});
 
 // Mock React Native Gesture Handler
 jest.mock("react-native-gesture-handler", () => ({
@@ -195,6 +272,7 @@ jest.mock("react-native-paper", () => ({
             disabled
         }, React.createElement(Text, null, children));
     },
+    IconButton: "IconButton",
     Checkbox: Object.assign((props: any) => {
         const React = require("react");
         const { View } = require("react-native");
@@ -218,25 +296,42 @@ jest.mock("react-native-paper", () => ({
     Portal: Object.assign(({ children }: { children: any }) => children, { Host: "Portal.Host" }),
     Dialog: Object.assign(({ children }: { children: any }) => children, { Title: "Dialog.Title", Content: "Dialog.Content", Actions: "Dialog.Actions", ScrollArea: "Dialog.ScrollArea" }),
     Paragraph: "Paragraph",
+    Snackbar: "Snackbar",
     TouchableRipple: ({ children }: { children: any }) => children,
     Switch: "Switch",
+    BottomNavigation: {
+        SceneMap: jest.fn((obj) => (props: any) => obj[props.route.key](props)),
+    },
     adaptNavigationTheme: jest.fn(() => ({ LightTheme: {}, DarkTheme: {} })),
 }));
 
 // Mock React Native Paper Dropdown
 jest.mock("react-native-paper-dropdown", () => ({
-    Dropdown: ({ testID, label, value, disabled }: { testID?: string; label?: string; value?: string; disabled?: boolean }) => {
+    Dropdown: ({ testID, label, value, disabled, options }: { testID?: string; label?: string; value?: string; disabled?: boolean; options?: any[] }) => {
         const React = require("react");
-        const { View, Text } = require("react-native");
+        const { View, Text, TouchableOpacity } = require("react-native");
         return React.createElement(View, {
             testID,
             accessibilityState: { disabled },
             disabled
         },
             React.createElement(Text, null, label || "Dropdown"),
-            React.createElement(Text, null, value || "")
+            React.createElement(Text, null, value || ""),
+            options?.map((opt: any) => 
+                React.createElement(TouchableOpacity, { 
+                    key: opt.value, 
+                    onPress: () => {} 
+                }, 
+                    React.createElement(Text, null, opt.label)
+                )
+            )
         );
     },
+}));
+
+// Mock React Native Keyboard Aware Scroll View
+jest.mock("react-native-keyboard-aware-scroll-view", () => ({
+    KeyboardAwareScrollView: ({ children }: { children: any }) => children,
 }));
 
 // Mock Supabase JS Client Factory
@@ -302,7 +397,87 @@ jest.mock("../../src/services/supabase", () => {
 });
 
 // Mock NativeEventEmitter
-jest.mock("react-native/Libraries/EventEmitter/NativeEventEmitter");
+jest.mock("react-native/Libraries/EventEmitter/NativeEventEmitter")
+
+// Mock expo-modules-core
+jest.mock("expo-modules-core", () => {
+	class EventEmitter {
+		addListener = jest.fn(() => ({ remove: jest.fn() }))
+		removeListener = jest.fn()
+		removeAllListeners = jest.fn()
+		emit = jest.fn()
+	}
+	return {
+		EventEmitter,
+		LegacyEventEmitter: EventEmitter,
+		NativeModule: {},
+		ProxyNativeModule: {},
+		requireOptionalNativeModule: jest.fn(),
+		requireNativeModule: jest.fn(),
+		requireNativeViewManager: jest.fn(),
+		createPermissionHook: jest.fn(() => () => [null, jest.fn(), jest.fn()]),
+		PermissionStatus: {
+			GRANTED: "granted",
+			UNDETERMINED: "undetermined",
+			DENIED: "denied",
+		},
+		UnavailabilityError: class UnavailabilityError extends Error {
+			constructor(moduleName: string, methodName: string) {
+				super(`The method or property ${moduleName}.${methodName} is not available on the current platform`);
+				this.name = "UnavailabilityError";
+			}
+		},
+	}
+})
+
+
+// Mock react-native-bluetooth-state-manager
+jest.mock("react-native-bluetooth-state-manager", () => ({
+	getState: jest.fn(() => Promise.resolve("PoweredOn")),
+	onStateChange: jest.fn(() => ({ remove: jest.fn() })),
+	enable: jest.fn(() => Promise.resolve()),
+	disable: jest.fn(() => Promise.resolve()),
+	openSettings: jest.fn(),
+	EVENT_BLUETOOTH_STATE_CHANGE: "EVENT_BLUETOOTH_STATE_CHANGE",
+}))
+
+// Mock react-native-document-picker
+jest.mock("react-native-document-picker", () => ({
+	pick: jest.fn(),
+	pickSingle: jest.fn(),
+	types: {},
+	isCancel: jest.fn(),
+}))
+
+// Mock expo-clipboard
+jest.mock("expo-clipboard", () => ({
+	setStringAsync: jest.fn(() => Promise.resolve(true)),
+	getStringAsync: jest.fn(() => Promise.resolve("")),
+}))
+
+// Mock expo-location
+jest.mock("expo-location", () => ({
+	requestForegroundPermissionsAsync: jest.fn(() => Promise.resolve({ status: "granted" })),
+	getCurrentPositionAsync: jest.fn(() => Promise.resolve({
+		coords: {
+			latitude: 0,
+			longitude: 0,
+			altitude: 0,
+			accuracy: 0,
+			altitudeAccuracy: 0,
+			heading: 0,
+			speed: 0,
+		},
+		timestamp: Date.now(),
+	})),
+	installWebGeolocationPolyfill: jest.fn(),
+}))
+
+// Mock expo-splash-screen
+jest.mock("expo-splash-screen", () => ({
+	preventAutoHideAsync: jest.fn(() => Promise.resolve(true)),
+	hideAsync: jest.fn(() => Promise.resolve(true)),
+}))
 
 // Mock NativePlatformConstantsIOS
 jest.mock("react-native/Libraries/Utilities/NativePlatformConstantsIOS", () => ({

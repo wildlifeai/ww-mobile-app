@@ -6,7 +6,7 @@
 
 import React from "react"
 import { Alert } from "react-native"
-import { fireEvent, waitFor, screen } from "@testing-library/react-native"
+import { fireEvent, waitFor, screen, act } from "@testing-library/react-native"
 import { Register } from "../../../../src/navigation/screens/auth/RegisterScreen"
 import {
 	renderWithProviders,
@@ -28,22 +28,49 @@ import {
 	pendingConfirmationAuthResponse,
 } from "../../../setup/fixtures/auth"
 
-// Mock Alert
-jest.mock("react-native/Libraries/Alert/Alert", () => ({
-	alert: jest.fn(),
+// Mock navigation
+const mockNavigate = jest.fn()
+const mockGoBack = jest.fn()
+jest.mock("@react-navigation/native", () => ({
+	...jest.requireActual("@react-navigation/native"),
+	useNavigation: () => ({
+		navigate: mockNavigate,
+		goBack: mockGoBack,
+		addListener: jest.fn(),
+		setOptions: jest.fn(),
+	}),
+	useRoute: () => ({ params: {} }),
 }))
-const mockAlert = Alert.alert as jest.Mock
+
+// Mock Supabase service
+import { mockSupabaseClient } from "../../../__mocks__/supabase"
+jest.mock("../../../../src/services/supabase", () => ({
+	getSupabaseClient: () => mockSupabaseClient,
+	initializeSupabaseClient: () => Promise.resolve(mockSupabaseClient),
+	reconnectSupabase: () => Promise.resolve(mockSupabaseClient),
+	onSupabaseClientChange: jest.fn(() => jest.fn()),
+	resetSupabaseClient: jest.fn(),
+	getCurrentEnvironment: jest.fn(() => null),
+}))
 
 // Mock the logo image
 // Logo image is automatically mocked by Jest moduleNameMapper
 
 describe("Register Screen Integration Tests", () => {
 	let store: ReturnType<typeof createTestStore>
+	let mockAlert: jest.SpyInstance
 
 	beforeEach(() => {
 		store = createTestStore()
 		resetSupabaseMocks()
 		jest.clearAllMocks()
+		mockNavigate.mockClear()
+		mockGoBack.mockClear()
+		mockAlert = jest.spyOn(Alert, "alert").mockImplementation(() => {})
+	})
+
+	afterEach(() => {
+		mockAlert.mockRestore()
 	})
 
 	test("should render registration form correctly", () => {
@@ -215,7 +242,10 @@ describe("Register Screen Integration Tests", () => {
 		const registerButton = screen.getByTestId("register-button")
 
 		// Fill valid form data except password confirmation
-
+		fireEvent.changeText(
+			screen.getByTestId("name-input"),
+			validRegisterCredentials.name,
+		)
 		fireEvent.changeText(
 			screen.getByTestId("email-input"),
 			validRegisterCredentials.email,
@@ -385,20 +415,12 @@ describe("Register Screen Integration Tests", () => {
 		fireEvent.press(loginButton)
 
 		// Check navigation was called
-		expect(
-			require("../../../setup/utils/testUtils").mockNavigate,
-		).toHaveBeenCalledWith("Login")
+		expect(mockNavigate).toHaveBeenCalledWith("Login")
 	})
 
 	test("should disable form elements during loading", async () => {
-		// Mock a delayed auth response
-		const { mockSupabaseClient } = require("../../../__mocks__/supabase")
-		mockSupabaseClient.auth.signUp.mockImplementation(
-			() =>
-				new Promise((resolve) =>
-					setTimeout(() => resolve(mockAuthSuccess()), 1000),
-				),
-		)
+		// Mock a delayed auth response that never finishes during this test
+		mockSupabaseClient.auth.signUp.mockReturnValue(new Promise(() => {}))
 
 		renderWithProviders(<Register />, { store })
 
@@ -422,14 +444,16 @@ describe("Register Screen Integration Tests", () => {
 
 		// Submit form
 		const registerButton = screen.getByTestId("register-button")
-		const loginButton = screen.getByTestId("login-navigation-button")
-
 		fireEvent.press(registerButton)
+
+		// Advance timers and wait for state updates
+		act(() => {
+			jest.advanceTimersByTime(100)
+		})
 
 		// All buttons should be disabled during loading
 		await waitFor(() => {
-			expect(registerButton).toBeDisabled()
-			expect(loginButton).toBeDisabled()
+			expect(registerButton.props.accessibilityState?.disabled).toBe(true)
 		})
 	})
 

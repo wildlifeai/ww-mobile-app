@@ -10,7 +10,7 @@ module.exports = {
 		"^.+\\.(ts|tsx)$": "babel-jest",
 	},
 	transformIgnorePatterns: [
-		"node_modules/(?!(react-native|@react-native|@supabase|expo|@expo|react-redux|@reduxjs|@react-native-community))",
+		"node_modules/(?!(react-native|@react-native|@supabase|expo|@expo|react-redux|@reduxjs|@react-native-community|@getquip))",
 	],
 	moduleNameMapper: {
 		"^@/(.*)$": "<rootDir>/src/$1",
@@ -19,7 +19,7 @@ module.exports = {
 		"expo-updates": "<rootDir>/tests/__mocks__/expo-updates.ts",
 		"@react-native-community/netinfo":
 			"<rootDir>/tests/__mocks__/@react-native-community/netinfo.ts",
-		"\\.(png|jpg|jpeg|gif|svg)$": "<rootDir>/tests/__mocks__/fileMock.js",
+		"\\.(png|jpg|jpeg|gif|svg|ttf|otf)$": "<rootDir>/tests/__mocks__/fileMock.js",
 	},
 	testMatch: [
 		// Co-located unit tests (following React Native conventions)

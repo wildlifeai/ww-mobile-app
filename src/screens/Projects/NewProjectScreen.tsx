@@ -1,4 +1,4 @@
-/**
+﻿/**
  * NewProjectScreen
  * Form for creating new projects with validation
  *
@@ -24,14 +24,9 @@ import {
 	Dialog,
 	Button,
 	Divider,
+	ActivityIndicator,
 } from "react-native-paper"
-import {
-	useCreateProjectMutation,
-	useGetCaptureMethodsQuery,
-	useGetActivitySensitivityQuery,
-	useGetAiModelsQuery,
-	useGetSamplingDesignsQuery,
-} from "../../redux/api/projectsApi"
+import { projectsApi } from "../../redux/api/projectsApi"
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWTextInput } from "../../components/ui/WWTextInput"
 import { WWButton } from "../../components/ui/WWButton"
@@ -75,17 +70,17 @@ export const NewProjectScreen = () => {
 		}
 	}, [currentOrganisation, user, dispatch])
 
-	const [createProject, { isLoading }] = useCreateProjectMutation()
+	const [createProject, { isLoading }] = projectsApi.useCreateProjectMutation()
 	const [errorMessage, setErrorMessage] = useState<string>("")
 	const [showError, setShowError] = useState(false)
 	const [samplingHelpVisible, setSamplingHelpVisible] = useState(false)
 	const [captureHelpVisible, setCaptureHelpVisible] = useState(false)
 
 	// Reference Data Queries
-	const { data: captureMethods } = useGetCaptureMethodsQuery()
-	const { data: activitySensitivities } = useGetActivitySensitivityQuery()
-	const { data: aiModels } = useGetAiModelsQuery()
-	const { data: samplingDesigns } = useGetSamplingDesignsQuery()
+	const { data: captureMethods } = projectsApi.useGetCaptureMethodsQuery()
+	const { data: activitySensitivities } = projectsApi.useGetActivitySensitivityQuery()
+	const { data: aiModels, isLoading: isLoadingModels, error: modelsError } = projectsApi.useGetAiModelsQuery()
+	const { data: samplingDesigns } = projectsApi.useGetSamplingDesignsQuery()
 
 	const {
 		control,
@@ -164,7 +159,7 @@ export const NewProjectScreen = () => {
 	const aiModelOptions = useMemo(
 		() =>
 			aiModels?.map((m) => ({
-				label: `${m.name} (${m.version})`,
+				label: `${m.name} v${m.version}`,
 				value: m.id,
 			})) || [],
 		[aiModels],
@@ -423,13 +418,38 @@ export const NewProjectScreen = () => {
 					)}
 
 					<Field control={control} name="model_id" label="Default AI Model (Optional)">
-						{(field) => (
-							<WWSelect
-								{...field}
-								options={aiModelOptions}
-								label="Default AI Model"
-							/>
-						)}
+						{(field) => {
+							if (isLoadingModels) {
+								return (
+									<View testID="ai-model-select-loading">
+										<ActivityIndicator testID="ai-model-select-loading-placeholder" />
+										<Text>Loading AI models...</Text>
+									</View>
+								)
+							}
+							if (modelsError) {
+								return (
+									<View testID="ai-model-select-error">
+										<Text>Failed to connect to database</Text>
+									</View>
+								)
+							}
+							if (!aiModels?.length) {
+								return (
+									<View testID="ai-model-select-empty">
+										<Text>No AI models available for this organisation</Text>
+									</View>
+								)
+							}
+							return (
+								<WWSelect
+									{...field}
+									testID="ai-model-select-dropdown"
+									options={aiModelOptions}
+									label="Default AI Model"
+								/>
+							)
+						}}
 					</Field>
 
 					{/* Checkboxes */}

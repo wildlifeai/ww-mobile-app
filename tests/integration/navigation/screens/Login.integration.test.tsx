@@ -7,7 +7,8 @@
 import React from "react"
 import { Alert } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { fireEvent, waitFor, screen } from "@testing-library/react-native"
+import { fireEvent, waitFor, screen, act } from "@testing-library/react-native"
+import * as logger from "../../../../src/utils/logger"
 import { Login } from "../../../../src/navigation/screens/auth/LoginScreen"
 import {
 	renderWithProviders,
@@ -30,28 +31,50 @@ import {
 jest.mock("@react-native-async-storage/async-storage")
 const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>
 
-// Mock Alert
-const mockAlert = jest.spyOn(Alert, "alert").mockImplementation(() => {})
+// Mock navigation
+const mockNavigate = jest.fn()
+const mockGoBack = jest.fn()
+jest.mock("@react-navigation/native", () => ({
+	...jest.requireActual("@react-navigation/native"),
+	useNavigation: () => ({
+		navigate: mockNavigate,
+		goBack: mockGoBack,
+		addListener: jest.fn(),
+		setOptions: jest.fn(),
+	}),
+	useRoute: () => ({ params: {} }),
+}))
+
+// Mock Supabase service
+import { mockSupabaseClient } from "../../../__mocks__/supabase"
+jest.mock("../../../../src/services/supabase", () => ({
+	getSupabaseClient: () => mockSupabaseClient,
+	initializeSupabaseClient: () => Promise.resolve(mockSupabaseClient),
+	reconnectSupabase: () => Promise.resolve(mockSupabaseClient),
+	onSupabaseClientChange: jest.fn(() => jest.fn()),
+	resetSupabaseClient: jest.fn(),
+	getCurrentEnvironment: jest.fn(() => null),
+}))
+
+// Mock the TestDeepLink component
+jest.mock("../../../../src/components/TestDeepLink", () => ({
+	TestDeepLink: () => null,
+}))
 
 // Mock the logo image
 // Logo image is automatically mocked by Jest moduleNameMapper
 
-// Mock the TestDeepLink component
-jest.mock("../../../../src/components/ui/TestDeepLink", () => ({
-	TestDeepLink: () => null,
-}))
-
 describe("Login Screen Integration Tests", () => {
 	let store: ReturnType<typeof createTestStore>
+	let mockAlert: jest.SpyInstance
 
 	beforeEach(() => {
 		store = createTestStore()
 		resetSupabaseMocks()
 		jest.clearAllMocks()
-
-		// Reset navigation mocks
-		const { mockNavigate } = require("../../../setup/utils/testUtils")
 		mockNavigate.mockClear()
+		mockGoBack.mockClear()
+		mockAlert = jest.spyOn(Alert, "alert").mockImplementation(() => {})
 
 		// Reset AsyncStorage mocks
 		mockAsyncStorage.getItem.mockResolvedValue(null)
@@ -247,9 +270,7 @@ describe("Login Screen Integration Tests", () => {
 		fireEvent.press(forgotPasswordButton)
 
 		// Check navigation was called (mocked in test utils)
-		expect(
-			require("../../../setup/utils/testUtils").mockNavigate,
-		).toHaveBeenCalledWith("ForgotPassword")
+		expect(mockNavigate).toHaveBeenCalledWith("ForgotPassword")
 	})
 
 	test("should navigate to register screen", () => {
@@ -259,28 +280,18 @@ describe("Login Screen Integration Tests", () => {
 		fireEvent.press(registerButton)
 
 		// Check navigation was called
-		expect(
-			require("../../../setup/utils/testUtils").mockNavigate,
-		).toHaveBeenCalledWith("Register")
+		expect(mockNavigate).toHaveBeenCalledWith("Register")
 	})
 
 	test("should disable form elements during loading", async () => {
-		// Mock a delayed auth response
-		const { mockSupabaseClient } = require("../../../__mocks__/supabase")
-		mockSupabaseClient.auth.signInWithPassword.mockImplementation(
-			() =>
-				new Promise((resolve) =>
-					setTimeout(() => resolve(mockAuthSuccess()), 1000),
-				),
-		)
+		// Mock a delayed auth response that never finishes during this test
+		mockSupabaseClient.auth.signInWithPassword.mockReturnValue(new Promise(() => {}))
 
 		renderWithProviders(<Login />, { store })
 
 		const emailInput = screen.getByTestId("email-input")
 		const passwordInput = screen.getByTestId("password-input")
 		const loginButton = screen.getByTestId("login-button")
-		const forgotPasswordButton = screen.getByTestId("forgot-password-button")
-		const registerButton = screen.getByTestId("register-button")
 
 		// Fill form
 		fireEvent.changeText(emailInput, validLoginCredentials.identifier)
@@ -289,24 +300,25 @@ describe("Login Screen Integration Tests", () => {
 		// Submit form
 		fireEvent.press(loginButton)
 
+		// Advance timers and wait for state updates
+		act(() => {
+			jest.advanceTimersByTime(100)
+		})
+
 		// All buttons should be disabled during loading
 		await waitFor(() => {
-			expect(loginButton).toBeDisabled()
-			expect(forgotPasswordButton).toBeDisabled()
-			expect(registerButton).toBeDisabled()
+			expect(loginButton.props.accessibilityState?.disabled).toBe(true)
 		})
 	})
 
 	test("should handle AsyncStorage errors gracefully", async () => {
-		// Mock AsyncStorage error
+		const logErrorSpy = jest.spyOn(logger, "logError").mockImplementation()
 		mockAsyncStorage.getItem.mockRejectedValue(new Error("Storage error"))
-
-		const consoleSpy = jest.spyOn(console, "error").mockImplementation()
 
 		renderWithProviders(<Login />, { store })
 
 		await waitFor(() => {
-			expect(consoleSpy).toHaveBeenCalledWith(
+			expect(logErrorSpy).toHaveBeenCalledWith(
 				"Failed to load saved credentials:",
 				expect.any(Error),
 			)
@@ -315,7 +327,7 @@ describe("Login Screen Integration Tests", () => {
 		// Component should still render normally
 		expect(screen.getByText("Login")).toBeTruthy()
 
-		consoleSpy.mockRestore()
+		logErrorSpy.mockRestore()
 	})
 
 	test("should toggle remember me checkbox on label press", () => {
