@@ -100,3 +100,8 @@ useLoginMutation.mockReturnValue([
 *   **TestIDs**: Use `testID` props on components for robust selection (`screen.getByTestId`).
 *   **Error Handling**: If a test involves a feature that might fail silently (like AsyncStorage), ensure the implementation code handles errors gracefully (e.g., `try/catch`) to avoid crashing the test runner.
 *   **State Reset**: Always clear mocks and reset the store in `beforeEach`.
+
+## Known Issues
+
+*   **BLE Command Manager Tests**: `src/ble/__tests__/commandManager.test.ts` is currently skipped (`.skip.ts`) due to infrastructure issues causing Jest worker crashes (unhandled promise rejections). This needs a dedicated refactor.
+
