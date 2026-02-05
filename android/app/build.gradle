@@ -110,16 +110,11 @@ android {
                 def envFile = file("${projectRoot}/.env")
                 if (envFile.exists()) {
                     envFile.eachLine { line ->
-                        def matcher = (line =~ /^\s*GOOGLE_MAPS_API_KEY_ANDROID\s*=\s*(.*)/)
+                        def matcher = (line =~ /^\s*GOOGLE_MAPS_API_KEY_ANDROID\s*=\s*("([^"]*)"|'([^']*)'|([^#\s]+))/)
                         if (matcher) {
-                            def rawValue = matcher[0][1].trim()
-                            // Remove optional surrounding quotes
-                            if ((rawValue.startsWith('"') && rawValue.endsWith('"')) || (rawValue.startsWith("'") && rawValue.endsWith("'"))) {
-                                googleMapsApiKey = rawValue.substring(1, rawValue.length() - 1)
-                            } else {
-                                // For unquoted values, trim any trailing comments
-                                googleMapsApiKey = rawValue.split('#')[0].trim()
-                            }
+                            // Handle double-quoted, single-quoted, or unquoted values
+                            // For unquoted values, stop at first '#' or whitespace
+                            googleMapsApiKey = matcher[0][2] ?: matcher[0][3] ?: matcher[0][4]
                         }
                     }
                 }

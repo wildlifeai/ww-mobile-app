@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NewProjectScreen
  * Form for creating new projects with validation
  *
