@@ -182,7 +182,12 @@ describe('BleCommandManager', () => {
 
       manager.clear()
 
-      await expect(commandPromise).rejects.toThrow('Command manager cleared')
+      try {
+        await commandPromise
+        fail('Should have rejected')
+      } catch (error: any) {
+        expect(error.message).toBe('Command manager cleared')
+      }
     })
 
     it('should clear command queue', () => {

@@ -21,6 +21,15 @@ import {
 	TestData,
 	ValidationMessages,
 } from "../../../setup/helpers/bdd"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+
+// Mock AsyncStorage
+jest.mock("@react-native-async-storage/async-storage", () => ({
+	setItem: jest.fn(),
+	getItem: jest.fn(),
+	removeItem: jest.fn(),
+	clear: jest.fn(),
+}))
 
 // Mock the logo image
 // Logo image is automatically mocked by Jest moduleNameMapper
@@ -205,7 +214,6 @@ describe("Login Screen - User Stories", () => {
 			.and("I submit the form", AuthActions.userSubmitsLoginForm)
 			.then("My credentials should be saved for next time", async () => {
 				// Check AsyncStorage was called to save credentials
-				const AsyncStorage = require("@react-native-async-storage/async-storage")
 				expect(AsyncStorage.setItem).toHaveBeenCalledWith(
 					"rememberedEmail",
 					TestData.validUser.email,
@@ -251,7 +259,7 @@ describe("Login Screen - User Stories", () => {
 
 	test("User Story: Loading State During Login", async () => {
 		// Mock a delayed response
-		const { mockSupabaseClient } = require("../../../test/mocks/supabase")
+		const { mockSupabaseClient } = require("../../../__mocks__/supabase")
 		mockSupabaseClient.auth.signInWithPassword.mockImplementation(
 			() =>
 				new Promise((resolve) =>

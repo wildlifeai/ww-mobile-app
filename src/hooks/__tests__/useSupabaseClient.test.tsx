@@ -94,38 +94,6 @@ describe("useSupabaseClient", () => {
 			expect(mockInitializeSupabaseClient).not.toHaveBeenCalled()
 		})
 
-		it.skip("should initialize client if not initialized", async () => {
-			// Simulate client not initialized
-            ;(global as any).__mockGetSupabaseClientImpl = () => {
-                console.log("Simulating Not Initialized Error")
-				throw new Error("Not initialized")
-            }
-			
-			// Mock initialization to succeed
-			mockInitializeSupabaseClient.mockResolvedValue(mockClient as any)
-
-            // NOTE: We need to ensure that subsequent calls to getSupabaseClient 
-            // return the client, but the hook *uses the result of initializeSupabaseClient*
-            // to set the state.
-            
-			const { result } = renderHook(() => useSupabaseClient()) as any
-            
-            // Should verify that it throws or errors initially if it's strict
-            // The hook throws if !client.
-            // But renderHook captures the error.
-            if (result.error) {
-                 expect(result.error.message).toMatch(/Supabase client is initializing/)
-            }
-
-			// Wait for initialization
-			await waitFor(() => {
-				expect(mockInitializeSupabaseClient).toHaveBeenCalledTimes(1)
-                // We can't easily check result.current here if it threw, 
-                // unless we use rerender or check if error is cleared which renderHook doesn't always support easily for thrown promises.
-                // But detecting the call is good enough for this unit test scope.
-			})
-		})
-
 		it("should update client when environment changes", async () => {
 			const { result } = renderHook(() => useSupabaseClient())
 
@@ -163,30 +131,6 @@ describe("useSupabaseClient", () => {
 
 			expect(unsubscribeMock).toHaveBeenCalledTimes(1)
 		})
-
-		it.skip("should handle initialization errors", async () => {
-            ;(global as any).__mockGetSupabaseClientImpl = () => {
-				throw new Error("Not initialized")
-			}
-			mockInitializeSupabaseClient.mockRejectedValueOnce(
-				new Error("Init failed"),
-			)
-
-			const consoleErrorSpy = jest
-				.spyOn(console, "error")
-				.mockImplementation(() => { })
-
-			renderHook(() => useSupabaseClient())
-
-			await waitFor(() => {
-				expect(consoleErrorSpy).toHaveBeenCalledWith(
-					"Failed to initialize Supabase client:",
-					expect.any(Error),
-				)
-			})
-
-			consoleErrorSpy.mockRestore()
-		})
 	})
 
 	describe("useSupabaseClientOptional", () => {
@@ -195,120 +139,6 @@ describe("useSupabaseClient", () => {
 
 			expect(result.current).toBe(mockClient)
 			expect(mockInitializeSupabaseClient).not.toHaveBeenCalled()
-		})
-
-		it.skip("should return null during initialization", async () => {
-            ;(global as any).__mockGetSupabaseClientImpl = () => {
-				throw new Error("Not initialized")
-			}
-            // Important: After initialization, getSupabaseClient might be called again
-            // inside the hook effect or elsewhere.
-			mockGetSupabaseClient.mockReturnValue(mockClient)
-
-			const { result } = renderHook(() => useSupabaseClientOptional())
-
-			// Should return null during initialization (not throw)
-			expect(result.current).toBeNull()
-
-			// Wait for initialization
-			await waitFor(() => {
-				// The hook sets state with the result of initializeSupabaseClient
-                // It does NOT call getSupabaseClient again immediately to set state.
-                // But verifying it matches mockClient is correct.
-				expect(result.current).toBe(mockClient)
-			})
-
-			expect(mockInitializeSupabaseClient).toHaveBeenCalledTimes(1)
-		})
-
-		it.skip("should update client when environment changes", async () => {
-			const { result } = renderHook(() => useSupabaseClientOptional())
-
-			const initialClient = result.current
-			expect(initialClient).toBe(mockClient)
-
-			// Simulate environment change
-			const newClient = {
-				from: jest.fn(),
-				auth: { getSession: jest.fn() },
-				_isNewClient: true,
-			}
-            
-			// The change listener calls getSupabaseClient() to get the new client
-			mockGetSupabaseClient.mockImplementation(() => newClient)
-
-			// Trigger client change callback
-            // Trigger all registered callbacks to handle multiple hooks
-            const callbacks = (global as any).__supabaseClientChangeCallbacks || [(global as any).__supabaseClientChangeCallback]
-            callbacks.forEach((cb: any) => cb && cb())
-
-			// Wait for state update
-			await waitFor(() => {
-				// rerender happens automatically
-				expect(result.current).toBe(newClient)
-			})
-		})
-
-		it.skip("should return null if client change fails", async () => {
-			const { result } = renderHook(() => useSupabaseClientOptional())
-
-			expect(result.current).toBe(mockClient)
-
-			// Simulate client change failure
-			mockGetSupabaseClient.mockImplementationOnce(() => {
-				throw new Error("Client unavailable")
-			})
-
-			const consoleErrorSpy = jest
-				.spyOn(console, "error")
-				.mockImplementation(() => { })
-
-			// Trigger client change callback
-            // Trigger all registered callbacks to handle multiple hooks
-            const callbacks = (global as any).__supabaseClientChangeCallbacks || [(global as any).__supabaseClientChangeCallback]
-            callbacks.forEach((cb: any) => cb && cb())
-
-			// Wait for state update
-			await waitFor(() => {
-				// rerender happens automatically
-				expect(result.current).toBeNull()
-			})
-
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				"Failed to update Supabase client:",
-				expect.any(Error),
-			)
-
-			consoleErrorSpy.mockRestore()
-		})
-
-		it.skip("should handle initialization errors gracefully", async () => {
-            ;(global as any).__mockGetSupabaseClientImpl = () => {
-				throw new Error("Not initialized")
-			}
-			mockInitializeSupabaseClient.mockRejectedValueOnce(
-				new Error("Init failed"),
-			)
-
-			const consoleErrorSpy = jest
-				.spyOn(console, "error")
-				.mockImplementation(() => { })
-
-			const { result } = renderHook(() => useSupabaseClientOptional())
-
-			expect(result.current).toBeNull()
-
-			await waitFor(() => {
-				expect(consoleErrorSpy).toHaveBeenCalledWith(
-					"Failed to initialize Supabase client:",
-					expect.any(Error),
-				)
-			})
-
-			// Should still be null after failure
-			expect(result.current).toBeNull()
-
-			consoleErrorSpy.mockRestore()
 		})
 
 		it("should cleanup subscription on unmount", () => {
@@ -336,37 +166,6 @@ describe("useSupabaseClient", () => {
 			// All should reference the same client instance
 			expect(result1.current).toBe(result2.current)
 			expect(result2.current).toBe(result3.current)
-		})
-
-		it.skip("should update all components when environment changes", async () => {
-			const { result: result1 } = renderHook(() =>
-				useSupabaseClient(),
-			)
-			const { result: result2 } = renderHook(() =>
-				useSupabaseClientOptional(),
-			)
-
-			// Initial state
-			expect(result1.current).toBe(mockClient)
-			expect(result2.current).toBe(mockClient)
-
-			// Environment change
-			const newClient = {
-				from: jest.fn(),
-				auth: { getSession: jest.fn() },
-				_isNewClient: true,
-			}
-			mockGetSupabaseClient.mockReturnValue(newClient)
-
-			// Trigger change
-			const callback = (global as any).__supabaseClientChangeCallback
-			callback()
-
-			// Wait for updates
-			await waitFor(() => {
-				expect(result1.current).toBe(newClient)
-				expect(result2.current).toBe(newClient)
-			})
 		})
 	})
 })
