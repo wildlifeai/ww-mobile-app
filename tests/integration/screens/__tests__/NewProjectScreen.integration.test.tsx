@@ -295,7 +295,7 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		// Assert
 		await waitFor(() => {
 			expect(screen.getByTestId("ai-model-select-error")).toBeOnTheScreen()
-			expect(screen.getByText("Failed to connect to database")).toBeOnTheScreen()
+			expect(screen.getByText("Error loading AI models.")).toBeOnTheScreen()
 		})
 	})
 
