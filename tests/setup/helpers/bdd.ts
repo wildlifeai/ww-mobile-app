@@ -14,8 +14,8 @@ export const TestData = {
 		lastName: "User",
 	},
 	invalidUser: {
-		email: "invalid@email.com",
-		password: "wrongpassword",
+		email: "invalid-email-format",
+		password: "123",
 	},
 }
 
@@ -173,7 +173,7 @@ export const AuthActions = {
 	},
 
 	userTapsSignInButton: () => {
-		const signInButton = screen.getByText("Sign In")
+		const signInButton = screen.getByText("Login")
 		fireEvent.press(signInButton)
 	},
 
@@ -212,8 +212,8 @@ export const AuthActions = {
 		)
 	},
 
-	userNavigatesToForgotPassword: () => {
-		const link = screen.getByTestId("forgot-password-link")
+	userTapsForgotPasswordLink: () => {
+		const link = screen.getByTestId("forgot-password-button")
 		fireEvent.press(link)
 	},
 

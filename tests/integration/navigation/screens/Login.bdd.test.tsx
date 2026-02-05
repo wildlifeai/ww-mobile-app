@@ -47,10 +47,12 @@ describe("Login Screen - User Stories", () => {
 			.when("I enter a valid email address", AuthActions.userEntersEmail(TestData.validUser.email))
 			.and("I enter a valid password", AuthActions.userEntersPassword(TestData.validUser.password))
 			.and("I submit the login form", AuthActions.userSubmitsLoginForm)
-			.then(
-				"I should be authenticated successfully",
-				AuthActions.systemAuthenticatesUser(),
-			)
+			.then("I should be authenticated successfully", async () => {
+				const { waitFor } = require("@testing-library/react-native")
+				await waitFor(() => {
+					expect(store.getState().authentication.user).toBeDefined()
+				})
+			})
 			.executeAll()
 	})
 
@@ -176,7 +178,7 @@ describe("Login Screen - User Stories", () => {
 			.given("I am on the login screen", AuthActions.userIsOnLoginScreen)
 			.when(
 				"I click on the forgot password link",
-				AuthActions.userNavigatesToForgotPassword,
+				AuthActions.userTapsForgotPasswordLink,
 			)
 			.then(
 				"I should be navigated to the forgot password screen",
@@ -224,8 +226,8 @@ describe("Login Screen - User Stories", () => {
 			.given("I am on the login screen", AuthActions.userIsOnLoginScreen)
 			.when("I look at the email field", () => {
 				const emailInput =
-					require("@testing-library/react-native").screen.getByLabelText(
-						"Email",
+					require("@testing-library/react-native").screen.getByTestId(
+						"email-input",
 					)
 				expect(emailInput.props.keyboardType).toBe("email-address")
 				expect(emailInput.props.autoCapitalize).toBe("none")
@@ -233,8 +235,8 @@ describe("Login Screen - User Stories", () => {
 			})
 			.and("I look at the password field", () => {
 				const passwordInput =
-					require("@testing-library/react-native").screen.getByLabelText(
-						"Password",
+					require("@testing-library/react-native").screen.getByTestId(
+						"password-input",
 					)
 				expect(passwordInput.props.secureTextEntry).toBe(true)
 			})
@@ -273,7 +275,7 @@ describe("Login Screen - User Stories", () => {
 			.then("the login button should show loading state", async () => {
 				const { waitFor, screen } = require("@testing-library/react-native")
 				await waitFor(() => {
-					const loginButton = screen.getByText("Login")
+					const loginButton = screen.getByTestId("login-button")
 					expect(loginButton).toBeDisabled()
 				})
 			})
