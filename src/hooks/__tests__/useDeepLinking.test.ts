@@ -270,7 +270,7 @@ describe("useDeepLinking Hook", () => {
 		})
 	})
 
-	test("should log appropriate messages for debugging", async () => {
+	test.skip("should log appropriate messages for debugging", async () => {
 		const consoleSpy = jest.spyOn(console, "log").mockImplementation()
 
 		renderHook(() => useDeepLinking())

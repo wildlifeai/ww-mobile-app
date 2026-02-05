@@ -25,11 +25,6 @@ import {
 // Mock the logo image
 // Logo image is automatically mocked by Jest moduleNameMapper
 
-// Mock the TestDeepLink component
-jest.mock("../../../../src/components/ui/TestDeepLink", () => ({
-	TestDeepLink: () => null,
-}))
-
 describe("Login Screen - User Stories", () => {
 	let store: ReturnType<typeof createTestStore>
 
