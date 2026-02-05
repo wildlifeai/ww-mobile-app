@@ -108,9 +108,12 @@ describe("Register Screen Integration Tests", () => {
 		const nameInput = screen.getByTestId("name-input")
 		const registerButton = screen.getByTestId("register-button")
 
+
 		// Test too short name
-		fireEvent.changeText(nameInput, "ab")
-		fireEvent.press(registerButton)
+		await act(async () => {
+			fireEvent.changeText(nameInput, "ab")
+			fireEvent.press(registerButton)
+		})
 
 		await waitFor(() => {
 			expect(
@@ -119,10 +122,11 @@ describe("Register Screen Integration Tests", () => {
 		})
 
 		// Test valid name
-		fireEvent.changeText(nameInput, formValidationCases.name.valid[0])
-
-		// Clear the error by submitting again with valid input
-		fireEvent.press(registerButton)
+		await act(async () => {
+			fireEvent.changeText(nameInput, formValidationCases.name.valid[0])
+			// Clear the error by submitting again with valid input
+			fireEvent.press(registerButton)
+		})
 
 		await waitFor(() => {
 			// Name validation error should be gone
