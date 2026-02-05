@@ -143,7 +143,7 @@ export const AuthActions = {
 	},
 
 	userEntersEmail: (email: string) => () => {
-		const emailInput = screen.getByPlaceholderText("Email")
+		const emailInput = screen.getByTestId("email-input")
 		fireEvent.changeText(emailInput, email)
 	},
 
@@ -153,7 +153,7 @@ export const AuthActions = {
 	},
 
 	userEntersPassword: (password: string) => () => {
-		const passwordInput = screen.getByPlaceholderText("Password")
+		const passwordInput = screen.getByTestId("password-input")
 		fireEvent.changeText(passwordInput, password)
 	},
 
@@ -183,37 +183,37 @@ export const AuthActions = {
 	},
 
 	userSubmitsLoginForm: () => {
-		const submitButton = screen.getByText("Sign In")
+		const submitButton = screen.getByText("Login")
 		fireEvent.press(submitButton)
 	},
 
 	systemAuthenticatesUser: () => async () => {
 		await waitFor(() => {
-			expect(screen.queryByText("Sign In")).toBeNull()
+			expect(screen.queryByText("Login")).toBeNull()
 		})
 	},
 
 	userTapsGoToRegisterLink: () => {
-		const registerLink = screen.getByText("Don't have an account? Sign up")
+		const registerLink = screen.getByText("Don't have an account? Register")
 		fireEvent.press(registerLink)
 	},
 
 	userTapsGoToLoginLink: () => {
-		const loginLink = screen.getByText("Already have an account? Sign in")
+		const loginLink = screen.getByText("Already have an account? Login")
 		fireEvent.press(loginLink)
 	},
 
 	systemNavigatesToHomeScreen: async () => {
 		await waitFor(
 			() => {
-				expect(screen.queryByText("Sign In")).toBeNull()
+				expect(screen.queryByTestId("login-screen-title")).toBeNull()
 			},
-			{ timeout: 5000 },
+			{ timeout: 3000 },
 		)
 	},
 
 	userNavigatesToForgotPassword: () => {
-		const link = screen.getByText("Forgot Password?")
+		const link = screen.getByTestId("forgot-password-link")
 		fireEvent.press(link)
 	},
 
