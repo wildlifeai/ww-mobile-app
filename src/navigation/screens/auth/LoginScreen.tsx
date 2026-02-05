@@ -12,7 +12,6 @@ import { useAppNavigation } from "../../../hooks/useAppNavigation"
 import { WWText } from "../../../components/ui/WWText"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useState, useEffect } from "react"
-import { TestDeepLink } from "../../../components/TestDeepLink"
 import { KEYBOARD_AVOID_PADDING } from "../../../constants/layout"
 import { logError } from '../../../utils/logger'
 
@@ -214,8 +213,6 @@ export const Login = () => {
 						Don't have an account? Register
 					</Button>
 
-					{/* Temporary test component for deep linking */}
-					{__DEV__ && <TestDeepLink />}
 				</View>
 			</View>
 		</WWScreenView>

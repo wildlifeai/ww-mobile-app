@@ -391,7 +391,7 @@ describe("AIModelSelect", () => {
 				},
 			]
 
-			testCases.forEach(({ name, mockReturn, expectedTestIDs }) => {
+			testCases.forEach(({ name: _name, mockReturn, expectedTestIDs }) => {
 				// Arrange
 				mockUseGetAIModelsQuery.mockReturnValue(mockReturn as any)
 

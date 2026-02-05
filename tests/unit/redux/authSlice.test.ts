@@ -300,7 +300,10 @@ describe("Enhanced Auth Slice - TDD Tests", () => {
 			expect(state.user).toBeUndefined()
 			expect(state.token).toBeUndefined()
 			expect(state.currentOrganisation).toBeUndefined()
-			expect(state.permissions).toEqual({})
+			expect(state.permissions).toMatchObject({
+				canManageUsers: false,
+				canViewProjects: false
+			})
 		})
 
 		test("should handle loading states during authentication", () => {

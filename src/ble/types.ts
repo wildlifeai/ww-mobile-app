@@ -122,12 +122,8 @@ export type CommandConstructOptions = {
 export interface BleCommandOptions {
 	/** Timeout in milliseconds (default: 3000) */
 	timeout?: number
-	/** Retry command if AI NACK received (default: true) */
-	retryOnNack?: boolean
 	/** Maximum number of retries (default: 1) */
 	maxRetries?: number
-	/** Wait for Wake + Error bits sequence before considering complete (default: false) */
-	waitForWake?: boolean
 	/** Expected response pattern to prioritize over regex matching (optional) */
 	expectedPattern?: RegExp
 }

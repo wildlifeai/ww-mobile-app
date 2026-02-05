@@ -1,6 +1,4 @@
 import {
-	AuthError,
-	AuthResponse as SupabaseAuthResponse,
 	Session,
 	User,
 	AuthChangeEvent,
@@ -13,7 +11,6 @@ import {
 	UserRole,
 } from "../redux/api/auth/types"
 
-import type { Tables } from "../types/database.types"
 import { log, logError, logWarn } from '../utils/logger'
 
 

@@ -20,7 +20,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 
 	// Search & Filter state
 	const [searchQuery, setSearchQuery] = useState("")
-	const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'ended'>('all')
+	const [statusFilter, _setStatusFilter] = useState<'all' | 'active' | 'ended'>('all')
 
 	// Filter deployments based on search query and status
 	const filteredDeployments = useMemo(() => {
@@ -89,26 +89,6 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 				searchPlaceholder="Search deployments..."
 				primaryActionLabel="New Deployment"
 				onPrimaryAction={handleAddDeployment}
-				// We render End Deployment manually via FAB below
-
-				/* Filter Actions */
-				filterActions={[
-					{
-						label: "All",
-						selected: statusFilter === 'all',
-						onPress: () => setStatusFilter('all')
-					},
-					{
-						label: "Active",
-						selected: statusFilter === 'active',
-						onPress: () => setStatusFilter('active')
-					},
-					{
-						label: "Ended",
-						selected: statusFilter === 'ended',
-						onPress: () => setStatusFilter('ended')
-					}
-				]}
 
 				emptyStateTitle="No deployments found"
 				emptyStateMessage={

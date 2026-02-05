@@ -146,7 +146,7 @@ export const DevicePreparationScreen = () => {
             <View style={styles.header}>
                 <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
                 <View style={styles.statusContainer}>
-                    <View style={[styles.statusDot, { backgroundColor: device.connected ? '#4CAF50' : '#F44336' }]} />
+                    <View style={[styles.statusDot, device.connected ? styles.statusDotConnected : styles.statusDotDisconnected]} />
                     <Text style={styles.statusText}>{device.connected ? 'Connected' : 'Disconnected'}</Text>
                 </View>
             </View>
@@ -247,6 +247,12 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: 4,
         marginRight: 6,
+    },
+    statusDotConnected: {
+        backgroundColor: '#4CAF50',
+    },
+    statusDotDisconnected: {
+        backgroundColor: '#F44336',
     },
     statusText: {
         fontSize: 14,

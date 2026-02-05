@@ -12,6 +12,9 @@ type SettingsNavigationProp = NativeStackNavigationProp<
 	"Settings"
 >
 
+const DevIcon = (props: any) => <List.Icon {...props} icon="developer-board" />
+const ChevronIcon = (props: any) => <List.Icon {...props} icon="chevron-right" />
+
 export const Settings = () => {
 	const navigation = useNavigation<SettingsNavigationProp>()
 	const { spacing } = useExtendedTheme()
@@ -29,8 +32,8 @@ export const Settings = () => {
 							<List.Item
 								title="Developer Settings"
 								description="Runtime environment switching and debug tools"
-								left={(props) => <List.Icon {...props} icon="developer-board" />}
-								right={(props) => <List.Icon {...props} icon="chevron-right" />}
+								left={DevIcon}
+								right={ChevronIcon}
 								onPress={() => navigation.navigate("DeveloperSettings")}
 								testID="developer-settings-button"
 								accessibilityLabel="Open Developer Settings"

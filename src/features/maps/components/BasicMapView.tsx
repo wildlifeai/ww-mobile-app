@@ -5,7 +5,7 @@
  * Zero dependencies on other MVP2 features
  */
 
-import React, { useEffect } from "react"
+import React from "react"
 import { StyleSheet, View, Platform } from "react-native"
 import MapView, { PROVIDER_GOOGLE, Region, Details } from "react-native-maps"
 import { MapRegion, MapType, MapViewConfig } from "../types"

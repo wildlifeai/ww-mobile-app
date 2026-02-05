@@ -88,10 +88,9 @@ describe("Login Screen - User Stories", () => {
 			.and("I enter a valid password", AuthActions.userEntersPassword(TestData.validUser.password))
 			.and("I submit the login form", AuthActions.userSubmitsLoginForm)
 			.then("I should be authenticated successfully", async () => {
-				const { waitFor } = require("@testing-library/react-native")
 				await waitFor(() => {
 					expect(store.getState().authentication.user).toBeDefined()
-				}, 10000)
+				}, { timeout: 10000 })
 			})
 			.executeAll()
 	}, 10000)
@@ -244,6 +243,7 @@ describe("Login Screen - User Stories", () => {
 			.executeAll()
 	})
 
+	// eslint-disable-next-line jest/no-disabled-tests
 	test.skip("User Story: Remember Me Functionality", async () => {
 		const store = createTestStore()
 		mockAuthSuccess()

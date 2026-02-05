@@ -115,7 +115,7 @@ export const DeviceDetailsScreen = () => {
     }
 
     return (
-        <WWScreenView style={{ paddingTop: 0 }}>
+        <WWScreenView style={styles.screenView}>
             <ScrollView style={styles.container} contentContainerStyle={styles.content}>
                 {/* Device Overview Card */}
                 <Card mode="outlined" style={styles.card}>
@@ -216,6 +216,9 @@ export const DeviceDetailsScreen = () => {
 }
 
 const styles = StyleSheet.create({
+    screenView: {
+        paddingTop: 0,
+    },
     container: {
         flex: 1,
     },

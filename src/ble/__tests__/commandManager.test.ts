@@ -8,6 +8,7 @@ jest.mock('../../utils/logger', () => ({
   logError: jest.fn(),
 }))
 
+// eslint-disable-next-line jest/no-disabled-tests
 describe.skip('BleCommandManager', () => {
   let manager: BleCommandManager
   let mockPeripheral: ExtendedPeripheral

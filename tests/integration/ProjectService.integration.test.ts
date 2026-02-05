@@ -11,8 +11,22 @@
  * @group integration
  */
 
-// Skip integration tests in CI environment where local Supabase depends on
-// Skip integration tests as they require local Supabase which is not available in CI
+// TODO: Re-enable ProjectService integration tests
+// These tests are currently skipped because they require a local Supabase instance
+// which is not available in the CI environment. This represents significant regression
+// in test coverage for a critical service that handles database interactions and RLS policies.
+//
+// To re-enable these tests:
+// 1. Set up Supabase in CI pipeline (e.g., using Docker compose or Supabase CLI)
+// 2. Ensure database migrations and seed data are applied before test execution
+// 3. Configure test environment variables for local Supabase URL and keys
+// 4. Change `describe.skip` back to `describe` and verify all tests pass
+//
+// Related: These tests validate critical functionality including:
+// - Organisation-scoped data isolation (RLS policies)
+// - Project CRUD operations with proper permissions
+// - Cross-organisation access prevention
+// - Member management and role assignments
 const describeIntegration = describe.skip
 
 jest.unmock("@supabase/supabase-js")

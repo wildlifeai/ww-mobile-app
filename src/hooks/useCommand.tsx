@@ -24,7 +24,6 @@ type Props = {
 // const TIMEOUT = 1000 * 10
 
 export const useCommand = ({ deviceId, command }: Props) => {
-	const [_goal, setGoal] = useState<number | string>()
 	const [commandLoading, setCommandLoading] = useState(
 		!!(command.readRegex || command.readCommand),
 	)
@@ -72,7 +71,6 @@ export const useCommand = ({ deviceId, command }: Props) => {
 	const set = useCallback(
 		async (data?: string) => {
 			setCommandLoading(true)
-			setGoal(data)
 
 			try {
 				await sendCommand(CommandControlTypes.WRITE, data)
@@ -116,7 +114,6 @@ export const useCommand = ({ deviceId, command }: Props) => {
 		if (!command.readCommand) return
 
 		setCommandLoading(true)
-		setGoal(undefined)
 
 		try {
 			await sendCommand(CommandControlTypes.READ)

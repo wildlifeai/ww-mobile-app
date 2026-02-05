@@ -22,22 +22,9 @@ import type {
 	CreateProjectInput,
 	ProjectMemberWithProfile,
 } from "../../types/project"
-import { getSupabaseClient } from "../../services/supabase"
 import ReferenceDataService from "../../services/ReferenceDataService"
 import { log, logError, logWarn } from '../../utils/logger'
 
-
-// Define local state type to avoid circular dependency
-interface AuthRootState {
-	authentication: {
-		user: any
-		token: string | null
-		currentOrganisation: {
-			id: string
-			name: string
-		} | null
-	}
-}
 
 // Define return types for reference data
 export interface CaptureMethod {
@@ -73,7 +60,7 @@ export const projectsApi = createApi({
 		// Get all projects for organisation (RLS auto-filters by user's org)
 		// PHASE 3: Now reads from local database (works offline automatically)
 		getProjects: builder.query<ProjectWithDetails[], { userId: string; organisationId: string }>({
-			queryFn: async ({ userId, organisationId }, { getState }) => {
+			queryFn: async ({ userId, organisationId }, { getState: _getState }) => {
 				log("📂 RTK Query - getProjects (offline-first) - STARTING")
 
 				try {
@@ -215,7 +202,7 @@ export const projectsApi = createApi({
 					log(
 						"✅ RTK Query - deleteProject succeeded (deleted locally)",
 					)
-					return { data: void 0 as void }
+					return { data: undefined }
 				} catch (error) {
 					logError("❌ RTK Query - deleteProject failed:", error)
 					return {

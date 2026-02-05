@@ -1,4 +1,3 @@
-import { Platform } from "react-native"
 import ExpoNordicDfu from "@getquip/expo-nordic-dfu"
 import { logError } from '../utils/logger'
 

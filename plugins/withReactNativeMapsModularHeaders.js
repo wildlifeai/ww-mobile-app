@@ -16,12 +16,12 @@ const path = require('path');
 function withReactNativeMapsModularHeaders(config) {
   return withDangerousMod(config, [
     'ios',
-    async (config) => {
-      const podfilePath = path.join(config.modRequest.platformProjectRoot, 'Podfile');
+    async (modConfig) => {
+      const podfilePath = path.join(modConfig.modRequest.platformProjectRoot, 'Podfile');
       
       if (!fs.existsSync(podfilePath)) {
         console.warn('[withReactNativeMapsModularHeaders] ⚠️  Podfile not found at:', podfilePath);
-        return config;
+        return modConfig;
       }
 
       console.log('[withReactNativeMapsModularHeaders] 📝 Reading Podfile from:', podfilePath);
@@ -30,7 +30,7 @@ function withReactNativeMapsModularHeaders(config) {
       // Check if we've already added the fix (idempotent)
       if (podfileContent.includes('# MODULAR_HEADERS_FIX_APPLIED')) {
         console.log('[withReactNativeMapsModularHeaders] ✅ Fix already applied, skipping');
-        return config;
+        return modConfig;
       }
 
       // Comprehensive fix for static frameworks + New Architecture
@@ -94,7 +94,7 @@ function withReactNativeMapsModularHeaders(config) {
       }
 
       console.log('[withReactNativeMapsModularHeaders] 🎉 Podfile modifications complete');
-      return config;
+      return modConfig;
     },
   ]);
 }

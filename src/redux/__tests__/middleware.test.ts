@@ -5,6 +5,7 @@
  * TODO: Investigate Redux store initialization issues in test environment
  */
 
+// eslint-disable-next-line jest/no-disabled-tests
 describe.skip("Redux Store Initialization", () => {
 	it("should create store without errors", () => {
 		// Dynamic import to avoid top-level store initialization issues

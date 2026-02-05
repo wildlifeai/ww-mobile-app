@@ -43,9 +43,7 @@ export class BleCommandManager {
   ): Promise<string> {
     const {
       timeout = DEFAULT_TIMEOUT,
-      // retryOnNack = true,
       maxRetries = DEFAULT_MAX_RETRIES,
-      // waitForWake = false,
     } = options
 
     return new Promise((resolve, reject) => {

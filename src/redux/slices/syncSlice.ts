@@ -192,7 +192,7 @@ const syncSlice = createSlice({
 		},
 
 		// Reset sync status (useful for logout)
-		resetSyncStatus: (state) => {
+		resetSyncStatus: (_state) => {
 			return initialState
 		},
 

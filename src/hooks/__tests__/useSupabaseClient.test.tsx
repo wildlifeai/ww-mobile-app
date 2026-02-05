@@ -70,7 +70,7 @@ describe("useSupabaseClient", () => {
         }
 
         // Ensure the mock calls the global impl (restore factory behavior if lost)
-		mockGetSupabaseClient.mockImplementation((...args) => {
+		mockGetSupabaseClient.mockImplementation((..._args) => {
             console.log("mockGetSupabaseClient wrapper called")
             return mockClient
         })
