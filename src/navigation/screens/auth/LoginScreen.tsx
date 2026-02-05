@@ -27,7 +27,7 @@ export const Login = () => {
 	const navigation = useAppNavigation()
 	const [login, { isLoading, error }] = useLoginMutation()
 	const [rememberMe, setRememberMe] = useState(false)
-
+	
 	const { control, handleSubmit, setValue } = useForm<FormData>({
 		defaultValues: {
 			email: "",
@@ -64,13 +64,18 @@ export const Login = () => {
 
 			const response = await login(loginData).unwrap()
 
-			// Save credentials if remember me is checked
-			if (rememberMe) {
-				await AsyncStorage.setItem("rememberedEmail", data.email)
-				await AsyncStorage.setItem("rememberMe", "true")
-			} else {
-				await AsyncStorage.removeItem("rememberedEmail")
-				await AsyncStorage.removeItem("rememberMe")
+			try {
+				// Save credentials if remember me is checked
+				if (rememberMe) {
+					await AsyncStorage.setItem("rememberedEmail", data.email)
+					await AsyncStorage.setItem("rememberMe", "true")
+				} else {
+					await AsyncStorage.removeItem("rememberedEmail")
+					await AsyncStorage.removeItem("rememberMe")
+				}
+			} catch (storageError) {
+				console.error("Failed to update credentials storage:", storageError)
+				// Continue with login even if storage fails
 			}
 
 			dispatch(setCredentials(response))
@@ -165,6 +170,7 @@ export const Login = () => {
 						<WWText
 							style={styles.checkboxLabel}
 							onPress={() => setRememberMe(!rememberMe)}
+							testID="remember-me-label"
 						>
 							Remember me
 						</WWText>

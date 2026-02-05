@@ -3,15 +3,18 @@
  * Provides Given-When-Then pattern helpers for more readable tests
  */
 
-import { fireEvent, screen, waitFor } from "@testing-library/react-native"
+import { screen, fireEvent, waitFor, act } from "@testing-library/react-native"
 
 // Test data for common scenarios
 export const TestData = {
 	validUser: {
+		id: "user-123",
 		email: "test@wildlifeai.org",
 		password: "password123",
 		firstName: "Test",
 		lastName: "User",
+		role: "project_member",
+		organisation_id: "org-123",
 	},
 	invalidUser: {
 		email: "invalid-email-format",
@@ -147,9 +150,11 @@ export const AuthActions = {
 		fireEvent.changeText(emailInput, email)
 	},
 
-	userChecksRememberMe: () => {
-		const checkbox = screen.getByText("Remember me")
-		fireEvent.press(checkbox)
+	userChecksRememberMe: async () => {
+		const checkboxLabel = screen.getByTestId("remember-me-label")
+		await act(async () => {
+			fireEvent.press(checkboxLabel)
+		})
 	},
 
 	userEntersPassword: (password: string) => () => {
