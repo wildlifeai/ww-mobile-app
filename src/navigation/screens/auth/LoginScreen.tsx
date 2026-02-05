@@ -74,7 +74,7 @@ export const Login = () => {
 					await AsyncStorage.removeItem("rememberMe")
 				}
 			} catch (storageError) {
-				console.error("Failed to update credentials storage:", storageError)
+				logError("Failed to update credentials storage:", storageError)
 				// Continue with login even if storage fails
 			}
 

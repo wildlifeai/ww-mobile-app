@@ -428,9 +428,10 @@ export const NewProjectScreen = () => {
 								)
 							}
 							if (modelsError) {
+								logError("Failed to load AI models:", modelsError)
 								return (
 									<View testID="ai-model-select-error">
-										<Text>Failed to connect to database</Text>
+										<Text>Error loading AI models.</Text>
 									</View>
 								)
 							}

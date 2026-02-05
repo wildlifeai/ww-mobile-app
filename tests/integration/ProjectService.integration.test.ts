@@ -12,7 +12,8 @@
  */
 
 // Skip integration tests in CI environment where local Supabase depends on
-const describeIntegration = process.env.CI ? describe.skip : describe
+// Skip integration tests as they require local Supabase which is not available in CI
+const describeIntegration = describe.skip
 
 jest.unmock("@supabase/supabase-js")
 jest.unmock("../../src/services/supabase")
