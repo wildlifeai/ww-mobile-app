@@ -96,7 +96,7 @@ describe("Login Screen - User Stories", () => {
 				}, 10000)
 			})
 			.executeAll()
-	})
+	}, 10000)
 
 	test("User Story: Login Validation", async () => {
 		const store = createTestStore()

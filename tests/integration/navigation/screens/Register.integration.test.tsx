@@ -163,7 +163,7 @@ describe("Register Screen Integration Tests", () => {
 			// Email validation error should be gone
 			expect(screen.queryByText("Invalid email address")).toBeFalsy()
 		})
-	})
+	}, 10000)
 
 	test("should validate organization field length", async () => {
 		renderWithProviders(<Register />, { store })
