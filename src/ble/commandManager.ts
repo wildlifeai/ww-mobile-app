@@ -27,7 +27,7 @@ const DEFAULT_MAX_RETRIES = 1
 
 export class BleCommandManager {
   private pendingCommand: PendingCommand | null = null
-  private commandQueue: Array<() => Promise<void>> = []
+  private commandQueue: Array<{ execute: () => Promise<void>; reject: (reason?: any) => void }> = []
   private unsolicitedListeners: Set<UnsolicitedMessageCallback> = new Set()
   private nextRequestId = 1
   private isProcessing = false
@@ -48,46 +48,51 @@ export class BleCommandManager {
 
     return new Promise((resolve, reject) => {
       // Add to queue - the actual execution happens in processQueue
-      this.commandQueue.push(async () => {
-        const requestId = `req_${this.nextRequestId++}`
-        
-        const pending: PendingCommand = {
-          id: requestId,
-          commandName: commandString,
-          commandString,
-          sentAt: Date.now(),
-          timeoutMs: timeout,
-          resolve,
-          reject,
-          retryCount: 0,
-          maxRetries,
-          expectedPattern: options.expectedPattern,
-        }
-
-        try {
-          // Set as pending and start timeout
-          this.pendingCommand = pending
-
-          // Set timeout BEFORE send to catch fast echoes
-          const timeoutHandle = setTimeout(() => {
-            if (this.pendingCommand?.id === requestId) {
-              this.pendingCommand = null
-              this.processQueue() // Process next command after timeout
-              reject(new Error(`Command timeout after ${timeout}ms: ${commandString}`))
-            }
-          }, timeout)
-          pending.timeoutHandle = timeoutHandle
-
-          // Send command to device
-          await writeToDevice(peripheral, commandString)
-          log(`[BLE CMD Manager] Sent: ${commandString}`)
+      this.commandQueue.push({
+        execute: async () => {
+          const requestId = `req_${this.nextRequestId++}`
           
-          // Note: resolve/reject will be called by handleResponse/handleError
-          // which will also call processQueue() to handle the next command
-        } catch (error) {
-          this.pendingCommand = null
-          this.processQueue() // Process next command after error
-          reject(error)
+          const pending: PendingCommand = {
+            id: requestId,
+            commandName: commandString,
+            commandString,
+            sentAt: Date.now(),
+            timeoutMs: timeout,
+            resolve,
+            reject,
+            retryCount: 0,
+            maxRetries,
+            expectedPattern: options.expectedPattern,
+          }
+
+          try {
+            // Set as pending and start timeout
+            this.pendingCommand = pending
+
+            // Set timeout BEFORE send to catch fast echoes
+            const timeoutHandle = setTimeout(() => {
+              if (this.pendingCommand?.id === requestId) {
+                this.pendingCommand = null
+                this.processQueue() // Process next command after timeout
+                reject(new Error(`Command timeout after ${timeout}ms: ${commandString}`))
+              }
+            }, timeout)
+            pending.timeoutHandle = timeoutHandle
+
+            // Send command to device
+            await writeToDevice(peripheral, commandString)
+            log(`[BLE CMD Manager] Sent: ${commandString}`)
+            
+            // Note: resolve/reject will be called by handleResponse/handleError
+            // which will also call processQueue() to handle the next command
+          } catch (error) {
+            this.pendingCommand = null
+            this.processQueue() // Process next command after error
+            reject(error)
+          }
+        },
+        reject: (reason) => {
+          reject(reason)
         }
       })
       
@@ -114,10 +119,10 @@ export class BleCommandManager {
     // Process only the first command
     // When it completes (via handleResponse, handleError, or timeout),
     // processQueue will be called again to handle the next one
-    const next = this.commandQueue.shift()
-    if (next) {
+    const nextItem = this.commandQueue.shift()
+    if (nextItem) {
       try {
-        await next()
+        await nextItem.execute()
         // Don't process next item here - it will be called by
         // handleResponse, handleError, or timeout handlers
       } catch (error) {
@@ -186,16 +191,21 @@ export class BleCommandManager {
           failedCommand.retryCount++
           
           // Re-queue the command with updated retry count
-          this.commandQueue.unshift(async () => {
-            this.pendingCommand = failedCommand
-            
-            // Send command again
-            // Note: We can't easily access the original writeToDevice function here,
-            // so this is a limitation of the current design. For now, reject after wake.
-            // A better solution would be to store writeToDevice in PendingCommand.
-            this.pendingCommand = null
-            failedCommand.reject(new Error(`AI NACK: Command failed after wake sequence. Retry not fully implemented.`))
-            this.processQueue()
+          this.commandQueue.unshift({
+            execute: async () => {
+              this.pendingCommand = failedCommand
+              
+              // Send command again
+              // Note: We can't easily access the original writeToDevice function here,
+              // so this is a limitation of the current design. For now, reject after wake.
+              // A better solution would be to store writeToDevice in PendingCommand.
+              this.pendingCommand = null
+              failedCommand.reject(new Error(`AI NACK: Command failed after wake sequence. Retry not fully implemented.`))
+              this.processQueue()
+            },
+            reject: (reason: any) => {
+              failedCommand.reject(reason)
+            }
           })
           
           this.processQueue()
@@ -322,6 +332,9 @@ export class BleCommandManager {
       this.pendingCommand.reject(new Error('Command manager cleared'))
       this.pendingCommand = null
     }
+    this.commandQueue.forEach(item => {
+      item.reject(new Error('Command manager cleared'))
+    })
     this.commandQueue = []
   }
 }

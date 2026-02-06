@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react"
 import { ListRenderItemInfo, View, StyleSheet } from "react-native"
 import { withObservables } from '@nozbe/watermelondb/react'
-import { FAB } from 'react-native-paper'
+import { FAB, Chip } from 'react-native-paper'
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { DeploymentCard } from "../../components/DeploymentCard"
 import type Deployment from "../../database/models/Deployment"
@@ -20,7 +20,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 
 	// Search & Filter state
 	const [searchQuery, setSearchQuery] = useState("")
-	const [statusFilter, _setStatusFilter] = useState<'all' | 'active' | 'ended'>('all')
+	const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'ended'>('all')
 
 	// Filter deployments based on search query and status
 	const filteredDeployments = useMemo(() => {
@@ -89,7 +89,34 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 				searchPlaceholder="Search deployments..."
 				primaryActionLabel="New Deployment"
 				onPrimaryAction={handleAddDeployment}
-
+				filterActions={
+					<>
+						<Chip
+							selected={statusFilter === 'all'}
+							onPress={() => setStatusFilter('all')}
+							showSelectedCheck={false}
+							style={styles.filterChip}
+						>
+							All
+						</Chip>
+						<Chip
+							selected={statusFilter === 'active'}
+							onPress={() => setStatusFilter('active')}
+							showSelectedCheck={false}
+							style={styles.filterChip}
+						>
+							Active
+						</Chip>
+						<Chip
+							selected={statusFilter === 'ended'}
+							onPress={() => setStatusFilter('ended')}
+							showSelectedCheck={false}
+							style={styles.filterChip}
+						>
+							Ended
+						</Chip>
+					</>
+				}
 				emptyStateTitle="No deployments found"
 				emptyStateMessage={
 					statusFilter === 'all'
@@ -114,6 +141,9 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
+	},
+	filterChip: {
+		marginRight: 4,
 	},
 	fab: {
 		position: 'absolute',

@@ -51,6 +51,7 @@ interface StandardizedListLayoutProps<T> {
     emptySearchMessage?: string
 
     // Customization
+    filterActions?: React.ReactNode
     fabStyle?: ViewStyle
     contentContainerStyle?: ViewStyle
 }
@@ -76,6 +77,7 @@ export function StandardizedListLayout<T>({
     emptyStateTitle,
     emptyStateMessage,
     emptySearchMessage,
+    filterActions,
     fabStyle,
     contentContainerStyle,
 }: StandardizedListLayoutProps<T>) {
@@ -147,6 +149,13 @@ export function StandardizedListLayout<T>({
                     style={styles.searchbar}
                 />
             </View>
+            
+            {/* Filter Actions */}
+            {filterActions && (
+                <View style={styles.filterContainer}>
+                    {filterActions}
+                </View>
+            )}
 
             {/* Main Content */}
             {showEmptyState ? (
@@ -294,5 +303,12 @@ const styles = StyleSheet.create({
     },
     emptySearchText: {
         textAlign: 'center',
+    },
+    filterContainer: {
+        paddingHorizontal: 16,
+        paddingBottom: 8,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
     },
 })
