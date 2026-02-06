@@ -10,7 +10,7 @@ module.exports = {
 		"^.+\\.(ts|tsx)$": "babel-jest",
 	},
 	transformIgnorePatterns: [
-		"node_modules/(?!(react-native|@react-native|@supabase|expo|@expo|react-redux|@reduxjs|@react-native-community|@getquip))",
+		"node_modules/(?!(react-native|@react-native|@supabase|expo|@expo|react-redux|@reduxjs|@react-native-community|@getquip|react-native-drawer-layout|react-native-paper))",
 	],
 	moduleNameMapper: {
 		"^@/(.*)$": "<rootDir>/src/$1",
