@@ -29,26 +29,38 @@ jobs:
         with:
           version: latest
 
-      - name: Start Supabase local instance
+      - name: Authenticate to Supabase
         run: |
-          supabase start
-          echo "Waiting for Supabase services to be ready..."
-          sleep 10
+          echo "Authenticating to Supabase cloud..."
+          if [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ]; then
+            echo "⚠️  Warning: SUPABASE_ACCESS_TOKEN not configured"
+            exit 1
+          fi
+          npx supabase login --token "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
 
-      - name: Generate fresh types from database
+      - name: Link to cloud-dev project
         run: |
-          echo "Generating types from local Supabase instance..."
-          supabase gen types typescript --local > /tmp/fresh-types.ts
+          echo "Linking to cloud-dev Supabase instance..."
+          npx supabase link --project-ref nuhwmubvygxyddkycmpa
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Generate fresh types from cloud-dev
+        run: |
+          echo "Generating types from cloud-dev Supabase instance..."
+          npx supabase gen types typescript --project-id nuhwmubvygxyddkycmpa > /tmp/fresh-types.ts
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Compare with committed types
         run: |
           echo "Comparing generated types with committed types..."
           if ! diff -u src/types/database.types.ts /tmp/fresh-types.ts; then
             echo ""
-            echo "❌ ERROR: Types are out of sync with backend schema"
+            echo "❌ ERROR: Types are out of sync with cloud-dev schema"
             echo ""
             echo "To fix this issue, run the following command:"
-            echo "  npm run types:local"
+            echo "  npm run types:cloud-dev"
             echo ""
             echo "Then commit the updated types:"
             echo "  git add src/types/database.types.ts"
@@ -65,10 +77,6 @@ jobs:
         run: npm test -- --passWithNoTests
         env:
           NODE_OPTIONS: "--experimental-vm-modules"
-
-      - name: Stop Supabase
-        if: always()
-        run: supabase stop --no-backup
 
   summary:
     name: Validation Summary
