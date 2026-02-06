@@ -225,7 +225,7 @@ The app supports **runtime environment switching** between three Supabase instan
 ### Type Synchronization Strategy
 
 - **Git pre-commit hook**: Validates types before commits (local only)
-- **GitHub Actions**: Validates types on PRs (prevents drift)
+- **GitHub Actions**: Validates types on PRs and push to main (prevents drift) - **Checks against Cloud Dev**
 - **Pre-build scripts**: Validates types before EAS builds
 - **Manual checks**: Run `npm run types:check-*` anytime
 
@@ -235,7 +235,7 @@ The app supports **runtime environment switching** between three Supabase instan
 2. **Coordination Messages**: Backend manually creates schema change notifications
 3. **Mobile Inbox Check**: Daily manual check for coordination messages
 4. **Mobile Pre-Commit**: Blocks commits with stale types
-5. **GitHub Actions**: Blocks PR merge on type drift
+5. **GitHub Actions**: Blocks PR merge and validates main branch commits against Cloud Dev
 
 **Coverage**: 80% automated, 99% prevention rate
 
