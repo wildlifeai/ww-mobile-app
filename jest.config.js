@@ -7,7 +7,7 @@ module.exports = {
 	],
 	testEnvironment: "node",
 	transform: {
-		"^.+\\.(ts|tsx)$": "babel-jest",
+		"^.+\\.(js|jsx|ts|tsx)$": "babel-jest",
 	},
 	transformIgnorePatterns: [
 		"node_modules/(?!(react-native|@react-native|@supabase|expo|@expo|expo-status-bar|expo-.*|react-redux|@reduxjs|@react-native-community|@getquip|react-native-drawer-layout|react-native-paper|react-native-reanimated|react-native-gesture-handler|react-native-safe-area-context|@react-navigation)/)",
