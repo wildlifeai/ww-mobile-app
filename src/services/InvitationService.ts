@@ -75,26 +75,6 @@ class InvitationService {
     }
 
     /**
-     * Check if a user exists by email
-     * Used for validation before sending an invitation
-     */
-    async checkUserExists(email: string): Promise<boolean> {
-        try {
-            const supabase = getSupabaseClient()
-            const { data, error } = await supabase.rpc('check_user_exists' as any, {
-                p_email: email
-            })
-
-            if (error) throw error
-
-            return !!data
-        } catch (error) {
-            logError('❌ Failed to check user existence:', error)
-            throw error
-        }
-    }
-
-    /**
      * Get pending invitations for a specific project (for Project Admins)
      */
     async getProjectPendingInvitations(projectId: string): Promise<ProjectInvitation[]> {

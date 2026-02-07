@@ -207,15 +207,7 @@ export const ProjectMembersScreen = () => {
 		try {
 			log(`📧 Inviting ${inviteEmail}...`)
 
-			// 1. Check if user exists
-			const exists = await InvitationService.checkUserExists(inviteEmail.trim())
-			if (!exists) {
-				Alert.alert("Error", "No user associated with this email address")
-				setLoading(false)
-				return
-			}
-
-			// 2. Send invitation
+			// Send invitation directly - backend handles user existence check
 			await InvitationService.sendInvitation(
 				projectId,
 				inviteEmail.trim(),
@@ -798,9 +790,6 @@ const styles = StyleSheet.create({
 	searchSection: {
 		backgroundColor: "#F5F5F5",
 		padding: 16,
-		borderRadius: 8,
-		marginBottom: 16,
-		marginHorizontal: 24,
 	},
 	searchBar: {
 		elevation: 0,
