@@ -10,13 +10,16 @@ module.exports = {
 		"^.+\\.(js|jsx|ts|tsx)$": "babel-jest",
 	},
 	transformIgnorePatterns: [
-		"node_modules/(?!(react-native|@react-native|@supabase|expo|@expo|expo-status-bar|expo-.*|react-redux|@reduxjs|@react-native-community|@getquip|react-native-drawer-layout|react-native-paper|react-native-reanimated|react-native-gesture-handler|react-native-safe-area-context|@react-navigation)/)",
+		"node_modules/(?!(react-native|@react-native|@supabase|expo|@expo|expo-status-bar|expo-.*|react-redux|@reduxjs|@react-native-community|@getquip|react-native-drawer-layout|react-native-paper|react-native-reanimated|react-native-gesture-handler|react-native-safe-area-context|@react-navigation|react-native-maps)/)",
 	],
 	moduleNameMapper: {
 		"^@/(.*)$": "<rootDir>/src/$1",
 		"^@test/(.*)$": "<rootDir>/tests/setup/$1",
 		"expo-sqlite": "<rootDir>/tests/__mocks__/expo-sqlite.ts",
 		"expo-updates": "<rootDir>/tests/__mocks__/expo-updates.ts",
+		"react-native-drawer-layout": "<rootDir>/tests/__mocks__/react-native-drawer-layout.tsx",
+		"react-native-maps": "<rootDir>/tests/__mocks__/react-native-maps.tsx",
+		"react-native-toast-message": "<rootDir>/tests/__mocks__/react-native-toast-message.tsx",
 		"@react-native-community/netinfo":
 			"<rootDir>/tests/__mocks__/@react-native-community/netinfo.ts",
 		"\\.(png|jpg|jpeg|gif|svg|ttf|otf)$": "<rootDir>/tests/__mocks__/fileMock.js",
