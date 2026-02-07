@@ -16,7 +16,6 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
 
     // Calculate status message based on user's logic
     const statusInfo = useMemo(() => {
-        const now = new Date()
         const prepDate = device.preparedDate ? new Date(device.preparedDate) : null
         const deployEndDate = device.deploymentEndDate ? new Date(device.deploymentEndDate) : null
         const lastDeployDate = device.lastDeploymentDate ? new Date(device.lastDeploymentDate) : null

@@ -1,11 +1,7 @@
-import * as React from "react"
-import { PropsWithChildren } from "react"
+import React from "react"
 import { useBleListeners } from "../hooks/useBleListeners"
 
-export const ListenToBleEngineProvider = ({
-	children,
-}: PropsWithChildren<{}>) => {
+export const ListenToBleEngineProvider = ({ children }: { children: React.ReactNode }) => {
 	useBleListeners()
-
-	return <>{children}</>
+	return children
 }

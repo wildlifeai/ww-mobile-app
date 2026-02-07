@@ -1,5 +1,5 @@
 import { Model } from '@nozbe/watermelondb'
-import { field, text, date, children, readonly } from '@nozbe/watermelondb/decorators'
+import { field, text, date, readonly } from '@nozbe/watermelondb/decorators'
 
 export default class Project extends Model {
     static table = 'projects'

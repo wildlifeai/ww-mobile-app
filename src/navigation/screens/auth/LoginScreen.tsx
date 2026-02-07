@@ -10,9 +10,8 @@ import { useAppDispatch } from "../../../redux"
 import { setCredentials } from "../../../redux/slices/authSlice"
 import { useAppNavigation } from "../../../hooks/useAppNavigation"
 import { WWText } from "../../../components/ui/WWText"
-import AsyncStorage from "@react-native-async-storage/async-storage"
+import * as SecureStore from 'expo-secure-store'
 import { useState, useEffect } from "react"
-import { TestDeepLink } from "../../../components/TestDeepLink"
 import { KEYBOARD_AVOID_PADDING } from "../../../constants/layout"
 import { logError } from '../../../utils/logger'
 
@@ -27,7 +26,7 @@ export const Login = () => {
 	const navigation = useAppNavigation()
 	const [login, { isLoading, error }] = useLoginMutation()
 	const [rememberMe, setRememberMe] = useState(false)
-
+	
 	const { control, handleSubmit, setValue } = useForm<FormData>({
 		defaultValues: {
 			email: "",
@@ -37,22 +36,22 @@ export const Login = () => {
 
 	// Load saved credentials on component mount
 	useEffect(() => {
-		loadSavedCredentials()
-	}, [])
+		const loadSavedCredentials = async () => {
+			try {
+				const savedEmail = await SecureStore.getItemAsync("rememberedEmail")
+				const savedRememberMe = await SecureStore.getItemAsync("rememberMe")
 
-	const loadSavedCredentials = async () => {
-		try {
-			const savedEmail = await AsyncStorage.getItem("rememberedEmail")
-			const savedRememberMe = await AsyncStorage.getItem("rememberMe")
-
-			if (savedEmail && savedRememberMe === "true") {
-				setValue("email", savedEmail)
-				setRememberMe(true)
+				if (savedEmail && savedRememberMe === "true") {
+					setValue("email", savedEmail)
+					setRememberMe(true)
+				}
+			} catch (loadError) {
+				logError("Failed to load saved credentials:", loadError)
 			}
-		} catch (error) {
-			logError("Failed to load saved credentials:", error)
 		}
-	}
+
+		loadSavedCredentials()
+	}, [setValue])
 
 	const onSubmit = async (data: FormData) => {
 		try {
@@ -64,13 +63,18 @@ export const Login = () => {
 
 			const response = await login(loginData).unwrap()
 
-			// Save credentials if remember me is checked
-			if (rememberMe) {
-				await AsyncStorage.setItem("rememberedEmail", data.email)
-				await AsyncStorage.setItem("rememberMe", "true")
-			} else {
-				await AsyncStorage.removeItem("rememberedEmail")
-				await AsyncStorage.removeItem("rememberMe")
+			try {
+				// Save credentials if remember me is checked
+				if (rememberMe) {
+					await SecureStore.setItemAsync("rememberedEmail", data.email)
+					await SecureStore.setItemAsync("rememberMe", "true")
+				} else {
+					await SecureStore.deleteItemAsync("rememberedEmail")
+					await SecureStore.deleteItemAsync("rememberMe")
+				}
+			} catch (storageError) {
+				logError("Failed to update credentials storage:", storageError)
+				// Continue with login even if storage fails
 			}
 
 			dispatch(setCredentials(response))
@@ -165,6 +169,7 @@ export const Login = () => {
 						<WWText
 							style={styles.checkboxLabel}
 							onPress={() => setRememberMe(!rememberMe)}
+							testID="remember-me-label"
 						>
 							Remember me
 						</WWText>
@@ -208,8 +213,6 @@ export const Login = () => {
 						Don't have an account? Register
 					</Button>
 
-					{/* Temporary test component for deep linking */}
-					{__DEV__ && <TestDeepLink />}
 				</View>
 			</View>
 		</WWScreenView>

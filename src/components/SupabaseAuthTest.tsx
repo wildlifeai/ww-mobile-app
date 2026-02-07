@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { View, Alert } from "react-native"
+import { View, Alert, StyleSheet } from "react-native"
 import { Button, TextInput, Text, Card } from "react-native-paper"
 import { useSupabaseAuth } from "../hooks/useSupabaseAuth"
 import { getSupabaseClient } from "../services/supabase"
@@ -101,20 +101,20 @@ export const SupabaseAuthTest: React.FC = () => {
 	}
 
 	return (
-		<View style={{ padding: 20 }}>
-			<Text variant="headlineMedium" style={{ marginBottom: 20 }}>
+		<View style={styles.container}>
+			<Text variant="headlineMedium" style={styles.headline}>
 				Supabase Auth Test
 			</Text>
 
 			{/* Connection Test */}
-			<Card style={{ marginBottom: 16 }}>
+			<Card style={styles.card}>
 				<Card.Title title="Connection Test" />
 				<Card.Content>
 					<Text>Status: {connectionStatus}</Text>
 					<Button
 						mode="outlined"
 						onPress={handleTestConnection}
-						style={{ marginTop: 8 }}
+						style={styles.buttonTop}
 					>
 						Test Connection
 					</Button>
@@ -122,7 +122,7 @@ export const SupabaseAuthTest: React.FC = () => {
 			</Card>
 
 			{/* Auth Status */}
-			<Card style={{ marginBottom: 16 }}>
+			<Card style={styles.card}>
 				<Card.Title title="Auth Status" />
 				<Card.Content>
 					<Text>Logged In: {isLoggedIn ? "Yes" : "No"}</Text>
@@ -132,7 +132,7 @@ export const SupabaseAuthTest: React.FC = () => {
 					<Button
 						mode="outlined"
 						onPress={handleCheckAuthStatus}
-						style={{ marginTop: 8 }}
+						style={styles.buttonTop}
 					>
 						Check Auth Status
 					</Button>
@@ -141,41 +141,41 @@ export const SupabaseAuthTest: React.FC = () => {
 
 			{/* Login/Register Form */}
 			{!isLoggedIn && (
-				<Card style={{ marginBottom: 16 }}>
+				<Card style={styles.card}>
 					<Card.Title title="Authentication" />
 					<Card.Content>
 						<TextInput
 							label="Username"
 							value={username}
 							onChangeText={setUsername}
-							style={{ marginBottom: 8 }}
+							style={styles.input}
 						/>
 						<TextInput
 							label="Email"
 							value={email}
 							onChangeText={setEmail}
 							keyboardType="email-address"
-							style={{ marginBottom: 8 }}
+							style={styles.input}
 						/>
 						<TextInput
 							label="Password"
 							value={password}
 							onChangeText={setPassword}
 							secureTextEntry
-							style={{ marginBottom: 16 }}
+							style={styles.inputLast}
 						/>
-						<View style={{ flexDirection: "row", gap: 8 }}>
+						<View style={styles.row}>
 							<Button
 								mode="contained"
 								onPress={handleLogin}
-								style={{ flex: 1 }}
+								style={styles.flex}
 							>
 								Login
 							</Button>
 							<Button
 								mode="outlined"
 								onPress={handleRegister}
-								style={{ flex: 1 }}
+								style={styles.flex}
 							>
 								Register
 							</Button>
@@ -193,7 +193,7 @@ export const SupabaseAuthTest: React.FC = () => {
 						<Button
 							mode="contained"
 							onPress={handleLogout}
-							style={{ marginTop: 8 }}
+							style={styles.buttonTop}
 						>
 							Logout
 						</Button>
@@ -203,3 +203,31 @@ export const SupabaseAuthTest: React.FC = () => {
 		</View>
 	)
 }
+
+const styles = StyleSheet.create({
+	container: {
+		padding: 20,
+	},
+	headline: {
+		marginBottom: 20,
+	},
+	card: {
+		marginBottom: 16,
+	},
+	buttonTop: {
+		marginTop: 8,
+	},
+	input: {
+		marginBottom: 8,
+	},
+	inputLast: {
+		marginBottom: 16,
+	},
+	row: {
+		flexDirection: "row",
+		gap: 8,
+	},
+	flex: {
+		flex: 1,
+	},
+})

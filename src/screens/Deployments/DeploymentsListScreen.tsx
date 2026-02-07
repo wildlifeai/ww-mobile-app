@@ -1,12 +1,12 @@
 import { useState, useMemo, useCallback } from "react"
 import { ListRenderItemInfo, View, StyleSheet } from "react-native"
 import { withObservables } from '@nozbe/watermelondb/react'
-import { FAB } from 'react-native-paper'
+import { FAB, Chip } from 'react-native-paper'
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { DeploymentCard } from "../../components/DeploymentCard"
 import type Deployment from "../../database/models/Deployment"
 import { StandardizedListLayout } from "../../components/ui/StandardizedListLayout"
-import { useExtendedTheme } from "../../theme"
+// import { useExtendedTheme } from "../../theme"
 import { DeploymentService } from "../../services/DeploymentService"
 
 type Props = {
@@ -15,7 +15,7 @@ type Props = {
 
 const DeploymentsComponent = ({ deployments }: Props) => {
 	const navigation = useAppNavigation()
-	const theme = useExtendedTheme()
+	// const theme = useExtendedTheme()
 
 
 	// Search & Filter state
@@ -89,27 +89,34 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 				searchPlaceholder="Search deployments..."
 				primaryActionLabel="New Deployment"
 				onPrimaryAction={handleAddDeployment}
-				// We render End Deployment manually via FAB below
-
-				/* Filter Actions */
-				filterActions={[
-					{
-						label: "All",
-						selected: statusFilter === 'all',
-						onPress: () => setStatusFilter('all')
-					},
-					{
-						label: "Active",
-						selected: statusFilter === 'active',
-						onPress: () => setStatusFilter('active')
-					},
-					{
-						label: "Ended",
-						selected: statusFilter === 'ended',
-						onPress: () => setStatusFilter('ended')
-					}
-				]}
-
+				filterActions={
+					<>
+						<Chip
+							selected={statusFilter === 'all'}
+							onPress={() => setStatusFilter('all')}
+							showSelectedCheck={false}
+							style={styles.filterChip}
+						>
+							All
+						</Chip>
+						<Chip
+							selected={statusFilter === 'active'}
+							onPress={() => setStatusFilter('active')}
+							showSelectedCheck={false}
+							style={styles.filterChip}
+						>
+							Active
+						</Chip>
+						<Chip
+							selected={statusFilter === 'ended'}
+							onPress={() => setStatusFilter('ended')}
+							showSelectedCheck={false}
+							style={styles.filterChip}
+						>
+							Ended
+						</Chip>
+					</>
+				}
 				emptyStateTitle="No deployments found"
 				emptyStateMessage={
 					statusFilter === 'all'
@@ -122,7 +129,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 				<FAB
 					icon="stop"
 					label="End Deployment"
-					style={[styles.fab, { backgroundColor: '#FFAB00' }]}
+					style={[styles.fab, styles.endDeploymentFab]}
 					color="#000"
 					onPress={() => navigation.navigate("EndDeploymentWizard", { mode: 'end_deployment' } as any)}
 				/>
@@ -135,11 +142,17 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 	},
+	filterChip: {
+		marginRight: 4,
+	},
 	fab: {
 		position: 'absolute',
 		margin: 16,
 		right: 0,
 		bottom: 80, // Stack above the standard Primary Action FAB (usually at bottom: 16)
+	},
+	endDeploymentFab: {
+		backgroundColor: '#FFAB00',
 	}
 })
 

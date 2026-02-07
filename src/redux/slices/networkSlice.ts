@@ -76,7 +76,7 @@ const networkSlice = createSlice({
 		},
 
 		// Reset network state
-		resetNetworkState: (state) => {
+		resetNetworkState: (_state) => {
 			return initialState
 		},
 	},

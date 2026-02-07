@@ -7,8 +7,8 @@ import { Maps } from "./screens/MapsScreen"
 import { Projects } from "../screens/Projects/ProjectsListScreen"
 import { Devices } from "../screens/Devices/DevicesListScreen"
 import { useExtendedTheme } from "../theme"
-import InvitationService from "../services/InvitationService"
-import { getSupabaseClient } from "../services/supabase"
+// import InvitationService from "../services/InvitationService"
+// import { getSupabaseClient } from "../services/supabase"
 import { useAppNavigation } from "../hooks/useAppNavigation"
 
 const routes = [
@@ -47,7 +47,7 @@ const renderScene = BottomNavigation.SceneMap({
 
 export const BottomTabs = () => {
 	const [index, setIndex] = useState(0) // Start with Maps tab active
-	const [invitationCount, setInvitationCount] = useState(0)
+	// const [invitationCount, setInvitationCount] = useState(0)
 	const { colors } = useExtendedTheme()
 	const navigation = useAppNavigation()
 	const route = useRoute<RouteProp<RootStackParamList, "Home">>()

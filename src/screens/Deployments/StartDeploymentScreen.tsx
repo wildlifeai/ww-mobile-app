@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { StyleSheet, View, Alert } from 'react-native'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
@@ -17,7 +17,7 @@ import { DeviceService } from '../../services/DeviceService'
 
 import { useBleCommands } from '../../hooks/useBleCommands'
 import { useBleInitialization } from '../../hooks/useBleInitialization'
-import { useDeviceSettings } from '../../hooks/useDeviceSettings'
+// // import { useDeviceSettings } from '../../hooks/useDeviceSettings'
 import { useBleActions } from '../../providers/BleEngineProvider'
 
 import { LoRaWANSection } from './components/LoRaWANSection'
@@ -48,18 +48,19 @@ export const DeploymentDetailsStep = () => {
     // Selectors
     const devices = useAppSelector(state => state.devices)
     const bleDevice = devices[bleDeviceId]
-    const logs = useAppSelector(state => state.logs[bleDeviceId] || [])
-    const deviceConfig = useAppSelector(state => state.configuration[bleDeviceId])
+    // const logs = useAppSelector(state => state.logs[bleDeviceId] || [])
+    // const deviceConfig = useAppSelector(state => state.configuration[bleDeviceId])
     const user = useAppSelector(state => state.authentication.user)
 
 
 
     // BLE Hooks
     // BLE Hooks
-    const { getUtc, setUtc, setDeploymentIdAsOps, enableCamera, runDisconnect, getStatus, setOperationalParam, setGpsLocation, getHeartbeat, flashLed } = useBleCommands()
+    const { setUtc, runDisconnect, getHeartbeat, flashLed } = useBleCommands()
     const { initialize: runBleStandardInit } = useBleInitialization()
-    const { updateSettings } = useDeviceSettings({ device: bleDevice })
+    // const { updateSettings } = useDeviceSettings({ device: bleDevice })
 
+    // const { updateSettings } = useDeviceSettings({ device: bleDevice })
     const { configure: configureDeployment } = useDeploymentConfiguration()
     useBleActions()
 
@@ -99,8 +100,8 @@ export const DeploymentDetailsStep = () => {
     const [isFinishing, setIsFinishing] = useState(false)
     const [isDeploymentSuccess, setIsDeploymentSuccess] = useState(false)
 
-    const addFinishLog = useCallback((log: string) => {
-        setFinishLogs(prev => [...prev, log])
+    const addFinishLog = useCallback((message: string) => {
+        setFinishLogs(prev => [...prev, message])
     }, [])
 
     // Connection Guard Refs
@@ -148,13 +149,13 @@ export const DeploymentDetailsStep = () => {
             }
 
             // Mark initialization as done
-            const timer = setTimeout(() => {
+            setTimeout(() => {
                 setIsInitializing(false)
             }, INITIALIZATION_GUARD_TIMEOUT)
         }
 
         initializeDevice()
-    }, [bleDevice?.connected, runBleStandardInit, navigation])
+    }, [bleDevice, runBleStandardInit, navigation])
 
     // Heartbeat: Ping device every 20 seconds to keep it awake during deployment
     useEffect(() => {
@@ -178,8 +179,9 @@ export const DeploymentDetailsStep = () => {
             log('[Deployment] Stopping heartbeat')
             clearInterval(interval)
         }
-    }, [!!bleDevice?.connected, isInitializing, getHeartbeat])
+    }, [bleDevice?.connected, isInitializing, getHeartbeat])
 
+    /*
     const validateAndCorrectTime = useCallback(async (timeString: string) => {
         try {
             // value comes from regex group: "2024-01-01T12:00:00Z"
@@ -204,6 +206,7 @@ export const DeploymentDetailsStep = () => {
             setTimeCheckStatus('failed')
         }
     }, [bleDevice, setUtc])
+    */
 
     // Removed Check And Correct Time - Replaced by runBleStandardInit
     const startCheckAndCorrectTime = useCallback(async () => {
@@ -254,7 +257,7 @@ export const DeploymentDetailsStep = () => {
         } catch (error) {
             logError('[DeploymentDetails] Error in loadPreparationAndProject:', error)
         }
-    }, [devicePreparationId])
+    }, [devicePreparationId, deviceId])
 
     useEffect(() => {
         if (devicePreparationId) {
@@ -323,7 +326,7 @@ export const DeploymentDetailsStep = () => {
             log('[Deployment] Stopping heartbeat')
             clearInterval(interval)
         }
-    }, [bleDevice, submitting, getHeartbeat])
+    }, [bleDevice, submitting, getHeartbeat, isInitializing])
 
 
     // Status and Time Check Logic - Removed Redux monitoring
@@ -344,7 +347,7 @@ export const DeploymentDetailsStep = () => {
                 }]
             )
         }
-    }, [bleDevice, submitting, navigation])
+    }, [bleDevice, submitting, navigation, isInitializing])
 
     const handleStartDeployment = useCallback(async () => {
         if (!formState.name) {
@@ -523,7 +526,7 @@ export const DeploymentDetailsStep = () => {
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false // Re-enable alerts on failure
         }
-    }, [formState.name, formState.locationName, formState.locationDescription, formState.cameraHeight, formState.location, formState.notes, bleDevice, project, user, startCheckAndCorrectTime, deviceId, devicePreparationId, logs, setOperationalParam, setDeploymentIdAsOps, setGpsLocation, captureMethodName, updateSettings, enableCamera, runDisconnect, navigation, configureDeployment, addFinishLog])
+    }, [formState.name, formState.locationName, formState.locationDescription, formState.cameraHeight, formState.location, formState.notes, bleDevice, project, user, startCheckAndCorrectTime, deviceId, devicePreparationId, captureMethodName, runDisconnect, configureDeployment, addFinishLog, flashLed])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)
@@ -574,7 +577,7 @@ export const DeploymentDetailsStep = () => {
     }
 
     return (
-        <WWScreenView style={{ paddingTop: 0 }}>
+        <WWScreenView style={styles.screenView}>
             <View style={styles.container}>
                 {/* Device Synchronization Header */}
                 {(device || bleDevice) && (
@@ -696,6 +699,9 @@ export const DeploymentDetailsStep = () => {
 }
 
 const styles = StyleSheet.create({
+    screenView: {
+        paddingTop: 0
+    },
     container: {
         flex: 1,
         gap: 16,

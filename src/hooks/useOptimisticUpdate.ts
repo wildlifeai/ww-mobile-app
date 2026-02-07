@@ -49,7 +49,6 @@ export const useOptimisticUpdate = <T = any>() => {
 				const {
 					operation,
 					optimisticData,
-					rollbackData,
 					onSuccess,
 					onError,
 					onRollback,

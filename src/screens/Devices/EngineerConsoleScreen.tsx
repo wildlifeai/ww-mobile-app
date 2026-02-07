@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+﻿import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react'
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, PermissionsAndroid } from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
@@ -33,7 +33,7 @@ import { log, logError, logWarn } from '../../utils/logger'
  */
 const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> => {
     return new Promise((resolve, reject) => {
-        let timeout: NodeJS.Timeout
+        let timeout: ReturnType<typeof setTimeout>
 
         const eventEmitter = BleManager.addListener(
             'BleManagerDiscoverPeripheral',
@@ -109,7 +109,7 @@ export const EngineerConsoleScreen = () => {
         }
     })
 
-    const handleBack = async () => {
+    const handleBack = useCallback(async () => {
         if (device && device.connected) {
             log('Disconnecting device on back press...')
             try {
@@ -122,7 +122,7 @@ export const EngineerConsoleScreen = () => {
         }
         // Return to Devices tab
         navigation.navigate('Home', { initialTab: 'devices' })
-    }
+    }, [device, disconnectDevice, navigation])
 
     // Handle Hardware Back Button
     useEffect(() => {
@@ -134,19 +134,21 @@ export const EngineerConsoleScreen = () => {
             }
         )
         return () => backHandler.remove()
-    }, [device])
+    }, [handleBack])
+
+    const headerLeft = useCallback(() => (
+        <Appbar.BackAction
+            iconColor={colors.onBackground}
+            onPress={handleBack}
+        />
+    ), [colors.onBackground, handleBack])
 
     // Handle Header Back Button
     useLayoutEffect(() => {
         navigation.setOptions({
-            headerLeft: () => (
-                <Appbar.BackAction
-                    iconColor={colors.onBackground}
-                    onPress={handleBack}
-                />
-            ),
+            headerLeft: headerLeft,
         })
-    }, [navigation, device])
+    }, [navigation, headerLeft])
 
     // GPS location hook for SET_GPS command
     const { getLocation } = useGPSLocation()

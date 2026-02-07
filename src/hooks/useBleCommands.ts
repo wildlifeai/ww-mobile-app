@@ -213,7 +213,6 @@ export const useBleCommands = () => {
             for (let i = 0; i < 8; i++) {
                 const opIndex = 20 + i
                 const value = ops[i]
-                const commandStr = `AI setop ${opIndex} ${value}`
 
                 log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
 

@@ -55,7 +55,7 @@ export class ImageReassembler {
         // data[1] is PacketNum (e.g. 0x01, 0x02...)
         // data[2] is Length (1 byte, e.g. 0xF1 = 241)
 
-        const packetNum = data[1]
+
         const payloadLen = data[2]
 
         // Safety check on length

@@ -218,7 +218,6 @@ describe("Environment Configuration System", () => {
 		it("should return array of SupabaseEnvironment types", () => {
 			const available = getAvailableEnvironments()
 			available.forEach((env) => {
-				const config = ENVIRONMENT_CONFIGS[env]
 				expect(isValidEnvironment(env)).toBe(true)
 			})
 		})

@@ -41,9 +41,9 @@ switch (command) {
 		showHelp()
 }
 
-function addRuleForPackage(packageName) {
+function addRuleForPackage(pkgName) {
 	// For specific package, pre-populate the manager
-	console.log(`🎯 Adding rule for ${packageName}...`)
+	console.log(`🎯 Adding rule for ${pkgName}...`)
 
 	// This would require extending the manager to accept package names
 	// For now, fallback to interactive mode

@@ -368,7 +368,7 @@ export const supabaseConfig = {
 export const checkSupabaseConnection = async (): Promise<boolean> => {
 	try {
 		const client = getSupabaseClient()
-		const { data, error } = await client.from("users").select("count").limit(1)
+		const { error } = await client.from("users").select("count").limit(1)
 
 		if (error) {
 			logWarn("Supabase connection check failed:", error.message)

@@ -7,28 +7,27 @@ const withGoogleMapsKey = (config, { iosApiKey }) => {
   }
 
   // 1. Add API Key to Info.plist (redundant if app.config.ts does it, but safe)
-  config = withInfoPlist(config, (config) => {
-    config.modResults.GoogleMapsApiKey = iosApiKey;
-    return config;
+  config = withInfoPlist(config, (innerConfig) => {
+    innerConfig.modResults.GoogleMapsApiKey = iosApiKey;
+    return innerConfig;
   });
 
-  // 2. Inject import and initialization into AppDelegate
-  config = withAppDelegate(config, (config) => {
-    const { language, contents } = config.modResults;
+  config = withAppDelegate(config, (innerConfig) => {
+    // CRITICAL: Ensure 'language' is available for conditional logic
+    const { language, contents } = innerConfig.modResults;
     let newContents = contents;
 
     if (language === 'swift') {
       // --- SWIFT LOGIC ---
-
       // Add Import
       if (!newContents.includes('import GoogleMaps')) {
         // Try to add after 'import Expo' or 'import UIKit'
         if (newContents.includes('import Expo')) {
           newContents = newContents.replace('import Expo', 'import Expo\nimport GoogleMaps');
         } else if (newContents.includes('import UIKit')) {
-           newContents = newContents.replace('import UIKit', 'import UIKit\nimport GoogleMaps');
+          newContents = newContents.replace('import UIKit', 'import UIKit\nimport GoogleMaps');
         } else {
-           newContents = `import GoogleMaps\n${newContents}`;
+          newContents = `import GoogleMaps\n${newContents}`;
         }
       }
 
@@ -45,10 +44,8 @@ const withGoogleMapsKey = (config, { iosApiKey }) => {
           );
         }
       }
-
     } else {
       // --- OBJECTIVE-C / C++ LOGIC ---
-      
       // Add Import
       if (!newContents.includes('#import <GoogleMaps/GoogleMaps.h>')) {
         if (/#import ["<]AppDelegate.h[">]/.test(newContents)) {
@@ -68,15 +65,15 @@ const withGoogleMapsKey = (config, { iosApiKey }) => {
         
         if (objCMethodRegex.test(newContents)) {
           newContents = newContents.replace(
-             objCMethodRegex,
-             `$1\n  [GMSServices provideAPIKey:@"${iosApiKey}"];`
+            objCMethodRegex,
+            `$1\n  [GMSServices provideAPIKey:@"${iosApiKey}"];`
           );
         }
       }
     }
 
-    config.modResults.contents = newContents;
-    return config;
+    innerConfig.modResults.contents = newContents;
+    return innerConfig;
   });
 
   return config;

@@ -48,6 +48,9 @@ jest.mock("@supabase/supabase-js", () => ({
 	})),
 }))
 
+// Unmock service to test real logic
+jest.unmock("../../src/services/supabase")
+
 // Mock fetch for connection tests
 global.fetch = jest.fn() as jest.Mock
 

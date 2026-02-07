@@ -142,7 +142,7 @@ export const enhancedApi = createApi({
 				},
 			}),
 			providesTags: ["Project"],
-			transformResponse: (response: any[], meta) => ({
+			transformResponse: (response: any[], _meta) => ({
 				data: response,
 				count: response.length,
 				page: 1,

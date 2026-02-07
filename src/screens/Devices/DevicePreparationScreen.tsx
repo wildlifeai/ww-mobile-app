@@ -22,8 +22,8 @@ export const DevicePreparationScreen = () => {
     const logs = useAppSelector(state => state.logs[deviceId] || [])
     const currentUser = useAppSelector(state => state.authentication.user)
 
-    const { connectDevice, disconnectDevice } = useBle()
-    const { getBatteryLevel, checkSdCard, pingNetwork, runSelfTest } = useBleCommands()
+    const { connectDevice } = useBle()
+    const { getBatteryLevel, checkSdCard, pingNetwork } = useBleCommands()
 
     const [isConnecting, setIsConnecting] = useState(false)
     const [preparationId, setPreparationId] = useState<string | null>(null)
@@ -33,7 +33,7 @@ export const DevicePreparationScreen = () => {
     const [batteryInfo, setBatteryInfo] = useState<{ level: number, voltage: number } | undefined>()
     const [sdCardInfo, setSdCardInfo] = useState<{ total: number, available: number } | undefined>()
     const [lorawanInfo, setLorawanInfo] = useState<{ rssi: number, snr: number } | undefined>()
-    const [firmwareVersion, setFirmwareVersion] = useState<string | undefined>()
+    const [firmwareVersion, _setFirmwareVersion] = useState<string | undefined>()
 
     const lastProcessedLength = React.useRef<number>(0)
 
@@ -146,7 +146,7 @@ export const DevicePreparationScreen = () => {
             <View style={styles.header}>
                 <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
                 <View style={styles.statusContainer}>
-                    <View style={[styles.statusDot, { backgroundColor: device.connected ? '#4CAF50' : '#F44336' }]} />
+                    <View style={[styles.statusDot, device.connected ? styles.statusDotConnected : styles.statusDotDisconnected]} />
                     <Text style={styles.statusText}>{device.connected ? 'Connected' : 'Disconnected'}</Text>
                 </View>
             </View>
@@ -247,6 +247,12 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: 4,
         marginRight: 6,
+    },
+    statusDotConnected: {
+        backgroundColor: '#4CAF50',
+    },
+    statusDotDisconnected: {
+        backgroundColor: '#F44336',
     },
     statusText: {
         fontSize: 14,

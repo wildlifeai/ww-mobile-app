@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form"
-import { StyleSheet, View, Image, Alert, ScrollView } from "react-native"
+import { StyleSheet, View, Image, Alert } from "react-native"
 import { Button } from "react-native-paper"
 // import { CustomKeyboardAvoidingView } from "../../../components/CustomKeyboardAvoidingView"
 import { WWScreenView } from "../../../components/ui/WWScreenView"
@@ -47,7 +47,7 @@ export const ForgotPassword = () => {
 			log("ForgotPassword: Setting reset mode to true")
 			setIsResetMode(true)
 		}
-	}, [route.params?.token, route.params?.mode, isResetMode])
+	}, [route.params, isResetMode])
 
 	const { control, handleSubmit } = useForm<FormData>({
 		defaultValues: {

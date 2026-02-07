@@ -1,5 +1,5 @@
-import React from 'react'
-import { View, StyleSheet } from 'react-native'
+import React, { useCallback } from 'react'
+import { StyleSheet } from 'react-native'
 import { Button, Card, Text, Divider } from 'react-native-paper'
 import { WWSelect } from '../../../components/ui/WWSelect'
 import { WWButton } from '../../../components/ui/WWButton'
@@ -22,20 +22,23 @@ export const ProjectSelectionSection: React.FC<ProjectSelectionSectionProps> = (
     theme,
     onShowHelp
 }) => {
+    const renderIcon = useCallback((props: any) => <WWIcon {...props} source="tune" />, [])
+    const renderHelp = useCallback((props: any) => (
+        <Button 
+            {...props} 
+            icon="help-circle-outline" 
+            onPress={() => onShowHelp('Project Association', 'Select the project that this device will appear in. You can also create a new project here.')}
+        >
+            Help
+        </Button>
+    ), [onShowHelp])
+
     return (
         <Card style={styles.card}>
             <Card.Title
                 title="Project Association"
-                left={(props) => <WWIcon {...props} source="tune" />}
-                right={(props) => (
-                    <Button 
-                        {...props} 
-                        icon="help-circle-outline" 
-                        onPress={() => onShowHelp('Project Association', 'Select the project that this device will appear in. You can also create a new project here.')}
-                    >
-                        Help
-                    </Button>
-                )}
+                left={renderIcon}
+                right={renderHelp}
             />
             <Card.Content>
                 <WWSelect

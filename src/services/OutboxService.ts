@@ -2,7 +2,6 @@ import { Q } from '@nozbe/watermelondb'
 // import * as Crypto from 'expo-crypto' // Removed to use standardized helper
 import database from '../database'
 import SyncOutbox from '../database/models/SyncOutbox'
-import SyncStateService from './SyncStateService'
 import { generateUUID } from '../utils/uuid'
 import { log, logError, logWarn } from '../utils/logger'
 
@@ -21,7 +20,6 @@ import { log, logError, logWarn } from '../utils/logger'
  */
 
 export type OperationType = 'CREATE' | 'UPDATE' | 'DELETE'
-export type OperationStatus = 'pending' | 'syncing' | 'synced' | 'failed' | 'conflict'
 
 interface RecordOperationParams {
     operation: OperationType

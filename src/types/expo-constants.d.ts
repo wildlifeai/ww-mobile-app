@@ -1,4 +1,4 @@
-import { ExpoConfig } from "expo/config"
+
 
 declare module "expo-constants" {
 	interface ExpoConfig {

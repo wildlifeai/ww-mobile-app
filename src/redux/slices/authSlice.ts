@@ -117,11 +117,24 @@ const calculatePermissions = (role: UserRole): UserPermissions => {
 	}
 }
 
+const emptyPermissions: UserPermissions = {
+	canManageUsers: false,
+	canAccessAllOrganisations: false,
+	canCreateProjects: false,
+	canManageProjects: false,
+	canDeleteProjects: false,
+	canViewProjects: false,
+	canManageDeployments: false,
+	canViewDeployments: false,
+	canManageDevices: false,
+	canViewDevices: false,
+}
+
 const initialState: AuthState = {
 	loading: false,
 	initialLoad: true,
 	sessionPersisted: false,
-	permissions: {} as UserPermissions,
+	permissions: emptyPermissions,
 }
 
 export const authSlice = createSlice({
@@ -163,7 +176,7 @@ export const authSlice = createSlice({
 			state.refreshToken = undefined
 			state.user = undefined
 			state.currentOrganisation = undefined
-			state.permissions = {} as UserPermissions
+			state.permissions = emptyPermissions
 			state.loading = false
 			state.initialLoad = false
 			state.sessionPersisted = false

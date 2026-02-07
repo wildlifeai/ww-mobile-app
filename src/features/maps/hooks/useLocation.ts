@@ -145,7 +145,7 @@ export const useLocation = (): UseLocationReturn => {
 				subscription.remove()
 			}
 		}
-	}, [])
+	}, [subscription])
 
 	/**
 	 * Auto-fetch location when permission becomes granted

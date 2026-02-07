@@ -3,19 +3,22 @@
  * Provides Given-When-Then pattern helpers for more readable tests
  */
 
-import { fireEvent, screen, waitFor } from "@testing-library/react-native"
+import { screen, fireEvent, waitFor, act } from "@testing-library/react-native"
 
 // Test data for common scenarios
 export const TestData = {
 	validUser: {
+		id: "user-123",
 		email: "test@wildlifeai.org",
 		password: "password123",
 		firstName: "Test",
 		lastName: "User",
+		role: "project_member",
+		organisation_id: "org-123",
 	},
 	invalidUser: {
-		email: "invalid@email.com",
-		password: "wrongpassword",
+		email: "invalid-email-format",
+		password: "123",
 	},
 }
 
@@ -135,7 +138,7 @@ export function createUserStory(title: string): UserStory {
 // Common authentication actions for BDD tests
 export const AuthActions = {
 	userIsOnLoginScreen: () => {
-		expect(screen.getByText("Sign In")).toBeTruthy()
+		expect(screen.getByText("Login")).toBeTruthy()
 	},
 
 	userIsOnRegisterScreen: () => {
@@ -143,17 +146,19 @@ export const AuthActions = {
 	},
 
 	userEntersEmail: (email: string) => () => {
-		const emailInput = screen.getByPlaceholderText("Email")
+		const emailInput = screen.getByTestId("email-input")
 		fireEvent.changeText(emailInput, email)
 	},
 
-	userChecksRememberMe: () => {
-		const checkbox = screen.getByText("Remember me")
-		fireEvent.press(checkbox)
+	userChecksRememberMe: async () => {
+		const checkboxLabel = screen.getByTestId("remember-me-label")
+		await act(async () => {
+			fireEvent.press(checkboxLabel)
+		})
 	},
 
 	userEntersPassword: (password: string) => () => {
-		const passwordInput = screen.getByPlaceholderText("Password")
+		const passwordInput = screen.getByTestId("password-input")
 		fireEvent.changeText(passwordInput, password)
 	},
 
@@ -173,7 +178,7 @@ export const AuthActions = {
 	},
 
 	userTapsSignInButton: () => {
-		const signInButton = screen.getByText("Sign In")
+		const signInButton = screen.getByText("Login")
 		fireEvent.press(signInButton)
 	},
 
@@ -183,37 +188,37 @@ export const AuthActions = {
 	},
 
 	userSubmitsLoginForm: () => {
-		const submitButton = screen.getByText("Sign In")
+		const submitButton = screen.getByText("Login")
 		fireEvent.press(submitButton)
 	},
 
 	systemAuthenticatesUser: () => async () => {
 		await waitFor(() => {
-			expect(screen.queryByText("Sign In")).toBeNull()
+			expect(screen.queryByText("Login")).toBeNull()
 		})
 	},
 
 	userTapsGoToRegisterLink: () => {
-		const registerLink = screen.getByText("Don't have an account? Sign up")
+		const registerLink = screen.getByText("Don't have an account? Register")
 		fireEvent.press(registerLink)
 	},
 
 	userTapsGoToLoginLink: () => {
-		const loginLink = screen.getByText("Already have an account? Sign in")
+		const loginLink = screen.getByText("Already have an account? Login")
 		fireEvent.press(loginLink)
 	},
 
 	systemNavigatesToHomeScreen: async () => {
 		await waitFor(
 			() => {
-				expect(screen.queryByText("Sign In")).toBeNull()
+				expect(screen.queryByTestId("login-screen-title")).toBeNull()
 			},
-			{ timeout: 5000 },
+			{ timeout: 3000 },
 		)
 	},
 
-	userNavigatesToForgotPassword: () => {
-		const link = screen.getByText("Forgot Password?")
+	userTapsForgotPasswordLink: () => {
+		const link = screen.getByTestId("forgot-password-button")
 		fireEvent.press(link)
 	},
 

@@ -1,3 +1,4 @@
+import groovy.json.JsonSlurper
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
@@ -110,9 +111,11 @@ android {
                 def envFile = file("${projectRoot}/.env")
                 if (envFile.exists()) {
                     envFile.eachLine { line ->
-                        def matcher = (line =~ /^\s*GOOGLE_MAPS_API_KEY_ANDROID\s*=\s*['"]?([^#\s'"]+)['"]?/)
+                        def matcher = (line =~ /^\s*GOOGLE_MAPS_API_KEY_ANDROID\s*=\s*("([^"]*)"|'([^']*)'|([^#\s]+))/)
                         if (matcher) {
-                            googleMapsApiKey = matcher[0][1]
+                            // Handle double-quoted, single-quoted, or unquoted values
+                            // For unquoted values, stop at first '#' or whitespace
+                            googleMapsApiKey = matcher[0][2] ?: matcher[0][3] ?: matcher[0][4]
                         }
                     }
                 }

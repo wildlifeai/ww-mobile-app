@@ -48,7 +48,7 @@ export const useOfflineSync = () => {
 	 * Queue operation (deprecated - kept for compatibility)
 	 * @deprecated Use WatermelonDB models directly instead
 	 */
-	const queueOperation = useCallback(async (operation: any) => {
+	const queueOperation = useCallback(async (_operation: any) => {
 		logWarn("⚠️ queueOperation is deprecated. Use WatermelonDB models directly.")
 		// Return a mock fulfilled result for compatibility
 		return {

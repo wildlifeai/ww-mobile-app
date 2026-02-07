@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react'
+import React from 'react'
 import {
     View,
     FlatList,
@@ -17,7 +17,7 @@ import {
     Button,
     IconButton,
 } from 'react-native-paper'
-import { WWScreenView } from './WWScreenView'
+
 import { OfflineIndicator } from './OfflineIndicator'
 import { useAppDrawer } from '../AppDrawer'
 
@@ -45,19 +45,13 @@ interface StandardizedListLayoutProps<T> {
     secondaryActionIcon?: string
     secondaryActionColor?: string
 
-    // Filters
-    filterActions?: {
-        label: string
-        selected: boolean
-        onPress: () => void
-    }[]
-
     // Empty States
     emptyStateTitle: string
     emptyStateMessage: string
     emptySearchMessage?: string
 
     // Customization
+    filterActions?: React.ReactNode
     fabStyle?: ViewStyle
     contentContainerStyle?: ViewStyle
 }
@@ -80,10 +74,10 @@ export function StandardizedListLayout<T>({
     onSecondaryAction,
     secondaryActionIcon = 'wrench',
     secondaryActionColor,
-    filterActions,
     emptyStateTitle,
     emptyStateMessage,
     emptySearchMessage,
+    filterActions,
     fabStyle,
     contentContainerStyle,
 }: StandardizedListLayoutProps<T>) {
@@ -142,7 +136,7 @@ export function StandardizedListLayout<T>({
                 icon="menu"
                 iconColor={theme.colors.onSurface}
                 size={28}
-                style={[styles.menuFab, { top: insets.top + 8, backgroundColor: 'transparent', elevation: 0 }]}
+                style={[styles.menuFab, { top: insets.top + 8 }]}
                 onPress={() => setIsOpen(true)}
             />
 
@@ -155,6 +149,13 @@ export function StandardizedListLayout<T>({
                     style={styles.searchbar}
                 />
             </View>
+            
+            {/* Filter Actions */}
+            {filterActions && (
+                <View style={styles.filterContainer}>
+                    {filterActions}
+                </View>
+            )}
 
             {/* Main Content */}
             {showEmptyState ? (
@@ -192,7 +193,7 @@ export function StandardizedListLayout<T>({
                     }
                     ListEmptyComponent={
                         <View style={styles.centerContainer}>
-                            <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
+                            <Text variant="bodyLarge" style={[styles.emptySearchText, { color: theme.colors.onSurfaceVariant }]}>
                                 {emptySearchMessage || `No items found matching "${searchQuery}"`}
                             </Text>
                         </View>
@@ -243,28 +244,12 @@ const styles = StyleSheet.create({
         elevation: 0,
         flex: 1,
     },
-    filterContainer: {
-        maxHeight: 50,
-        marginBottom: 8,
-    },
-    filterContent: {
-        paddingHorizontal: 16,
-        gap: 8,
-    },
-    filterChip: {
-        borderRadius: 20,
-    },
-    filterChipLabel: {
-        fontSize: 12,
-        marginHorizontal: 8,
-        marginVertical: 2,
-    },
 
     menuFab: {
         position: 'absolute',
         left: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        elevation: 4,
+        backgroundColor: 'transparent',
+        elevation: 0,
         zIndex: 1000,
     },
     listContent: {
@@ -315,5 +300,15 @@ const styles = StyleSheet.create({
         margin: 16,
         right: 0,
         bottom: 70, // Stack above primary FAB
+    },
+    emptySearchText: {
+        textAlign: 'center',
+    },
+    filterContainer: {
+        paddingHorizontal: 16,
+        paddingBottom: 8,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
     },
 })

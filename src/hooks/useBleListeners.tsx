@@ -59,7 +59,7 @@ export type UpdateValueEventType = {
 export const useBleListeners = () => {
 	const devices = useAppSelector((state) => state.devices)
 	const configuration = useAppSelector((state) => state.configuration)
-	const { disconnectDevice, pingsPause } = useBleActions()
+	const { pingsPause } = useBleActions()
 
 	const dispatch = useAppDispatch()
 	/*

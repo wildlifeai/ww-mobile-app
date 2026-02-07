@@ -1,3 +1,4 @@
+/* global Android, iOS, maestro */
 // Disable network connectivity for offline testing
 // This script simulates network disconnection
 

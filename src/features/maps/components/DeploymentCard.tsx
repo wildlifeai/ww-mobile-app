@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import { StyleSheet, View, Text, TouchableOpacity, Animated, Dimensions } from 'react-native'
+import { StyleSheet, View, Text, TouchableOpacity, Animated } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useExtendedTheme } from '../../../theme'
 import type Deployment from '../../../database/models/Deployment'
@@ -11,7 +11,7 @@ interface Props {
     onPress: () => void
 }
 
-const { width } = Dimensions.get('window')
+
 
 export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose, onPress }) => {
     const { colors } = useExtendedTheme()

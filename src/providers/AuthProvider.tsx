@@ -6,7 +6,6 @@ import {
 	setInitialState,
 } from "../redux/slices/authSlice"
 import { getCurrentSession, setupAuthListener } from "../services/auth"
-import { AuthResponse } from "../redux/api/auth/types"
 import { logError } from '../utils/logger'
 
 

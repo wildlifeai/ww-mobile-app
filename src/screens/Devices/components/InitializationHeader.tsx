@@ -34,8 +34,8 @@ export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
                 <Card.Content>
                     <View style={[styles.header, isInitializing && styles.headerInitializing]}>
                         <View style={styles.headerTitleRow}>
-                            <View style={{ flex: 1 }}>
-                                <WWText variant="titleMedium" style={{ marginBottom: 4 }}>Device ID</WWText>
+                            <View style={styles.headerTitleColumn}>
+                                <WWText variant="titleMedium" style={styles.headerLabel}>Device ID</WWText>
                                 <WWText variant="bodyMedium" style={styles.deviceName}>
                                     {device.name}
                                 </WWText>
@@ -108,6 +108,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+    },
+    headerTitleColumn: {
+        flex: 1,
+    },
+    headerLabel: {
+        marginBottom: 4,
     },
     deviceName: {
         marginTop: 8,

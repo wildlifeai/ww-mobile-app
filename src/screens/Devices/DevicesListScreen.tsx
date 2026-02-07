@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Alert } from 'react-native'
 import { useTheme } from 'react-native-paper'
 import { DeviceCard } from '../../components/DeviceCard'

@@ -1,6 +1,5 @@
 import { useEffect } from "react"
 import * as Linking from "expo-linking"
-import { useNavigation } from "@react-navigation/native"
 import { useAppNavigation } from "./useAppNavigation"
 import { log } from '../utils/logger'
 
@@ -24,8 +23,8 @@ export const useDeepLinking = () => {
 			log("Processing deep link:", url)
 
 			// Parse the URL
-			const { hostname, path, queryParams } = Linking.parse(url)
-			log("Parsed URL:", { hostname, path, queryParams })
+			const { path, queryParams } = Linking.parse(url)
+			log("Parsed URL:", { path, queryParams })
 
 			// Parse fragment parameters (Supabase uses # instead of ?)
 			let fragmentParams: Record<string, string> = {}

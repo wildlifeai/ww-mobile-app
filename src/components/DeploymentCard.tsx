@@ -1,7 +1,6 @@
 import { memo } from "react"
 import { StyleSheet, View } from "react-native"
 import { Card, Text, useTheme } from "react-native-paper"
-import { Deployment } from "../types/api.types"
 import { WWIcon } from "./ui/WWIcon"
 
 

@@ -9,8 +9,8 @@ const { withAndroidManifest } = require('@expo/config-plugins');
  * @returns {ExpoConfig} Modified config with optional hardware features
  */
 module.exports = function withOptionalHardwareFeatures(config) {
-    return withAndroidManifest(config, async (config) => {
-        const androidManifest = config.modResults;
+    return withAndroidManifest(config, async (manifestConfig) => {
+        const androidManifest = manifestConfig.modResults;
 
         // Validate manifest structure
         if (!androidManifest || !androidManifest.manifest) {
@@ -86,6 +86,6 @@ module.exports = function withOptionalHardwareFeatures(config) {
             console.log('[withOptionalHardwareFeatures] All hardware features already properly configured');
         }
 
-        return config;
+        return manifestConfig;
     });
 };

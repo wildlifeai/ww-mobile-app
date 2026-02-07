@@ -37,14 +37,7 @@ export const mockSession: Session = {
 }
 
 // Mock authentication responses
-let mockAuthResponse = {
-	data: { user: mockUser, session: mockSession },
-	error: null,
-}
 
-let mockSignOutResponse = {
-	error: null,
-}
 
 // Mock Supabase client
 export const mockSupabaseClient = {
@@ -58,7 +51,7 @@ export const mockSupabaseClient = {
 		resetPasswordForEmail: jest.fn(),
 		updateUser: jest.fn(),
 		verifyOtp: jest.fn(),
-		onAuthStateChange: jest.fn((callback) => ({
+		onAuthStateChange: jest.fn((_callback) => ({
 			data: { subscription: { unsubscribe: jest.fn() } },
 		})),
 	},
@@ -148,6 +141,8 @@ export const mockAuthSuccess = (
 		data: { user, session },
 		error: null,
 	})
+
+	return response
 }
 
 export const mockAuthError = (message = "Authentication failed") => {
@@ -167,6 +162,8 @@ export const mockAuthError = (message = "Authentication failed") => {
 	// Configure the mock functions to return the error response
 	mockSupabaseClient.auth.signInWithPassword.mockResolvedValue(response)
 	mockSupabaseClient.auth.signUp.mockResolvedValue(response)
+
+	return response
 }
 
 export const mockAuthSignOut = () => {

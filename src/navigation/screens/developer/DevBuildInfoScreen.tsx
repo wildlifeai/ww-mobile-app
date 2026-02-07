@@ -25,6 +25,26 @@ import {
 } from "../../../utils/devDatabaseReset"
 import { log, logError } from '../../../utils/logger'
 
+// Component for List icons to avoid unstable nested components warning
+const ListItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
+
+const Icons = {
+	wrench: ListItemIcon("wrench"),
+	package: ListItemIcon("package-variant"),
+	tag: ListItemIcon("tag"),
+	info: ListItemIcon("information"),
+	rocket: ListItemIcon("rocket"),
+	cellphone: ListItemIcon("cellphone"),
+	wifi: ListItemIcon("wifi"),
+	infoOutline: ListItemIcon("information-outline"),
+	react: ListItemIcon("react"),
+	puzzle: ListItemIcon("puzzle"),
+	database: ListItemIcon("database"),
+	cloud: ListItemIcon("cloud"),
+	checkCircle: ListItemIcon("check-circle"),
+	cloudCheck: ListItemIcon("cloud-check"),
+	checkAll: ListItemIcon("check-all"),
+}
 
 export const DevBuildInfo = () => {
 	const { appPadding, spacing } = useExtendedTheme()
@@ -210,8 +230,7 @@ export const DevBuildInfo = () => {
 		footer: { marginTop: spacing * 3 },
 	}), [appPadding, top, spacing, nativeModuleCount])
 
-	const renderIcon = useCallback((iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />, [])
-	const renderTotalNativeModulesRight = useCallback(() => (
+	const TotalNativeModulesRight = useCallback(() => (
 		<Chip
 			mode="flat"
 			compact
@@ -242,22 +261,22 @@ export const DevBuildInfo = () => {
 					<List.Item
 						title="Build Type"
 						description={isDevelopment ? "Development" : "Production"}
-						left={renderIcon("wrench")}
+						left={Icons.wrench}
 					/>
 					<List.Item
 						title="Bundle Identifier"
 						description={bundleId}
-						left={renderIcon("package-variant")}
+						left={Icons.package}
 					/>
 					<List.Item
 						title="App Version"
 						description={`${appVersion} (${buildNumber})`}
-						left={renderIcon("tag")}
+						left={Icons.tag}
 					/>
 					<List.Item
 						title="Readable Version"
 						description={readableVersion}
-						left={renderIcon("information")}
+						left={Icons.info}
 					/>
 				</List.Section>
 
@@ -268,17 +287,17 @@ export const DevBuildInfo = () => {
 					<List.Item
 						title="Expo SDK Version"
 						description={expoSdkVersion}
-						left={renderIcon("rocket")}
+						left={Icons.rocket}
 					/>
 					<List.Item
 						title="Expo Client"
 						description="Development Client"
-						left={renderIcon("cellphone")}
+						left={Icons.cellphone}
 					/>
 					<List.Item
 						title="Metro Bundler"
 						description="Connected via WSL2"
-						left={renderIcon("wifi")}
+						left={Icons.wifi}
 					/>
 				</List.Section>
 
@@ -289,17 +308,17 @@ export const DevBuildInfo = () => {
 					<List.Item
 						title="Platform"
 						description={Platform.OS}
-						left={renderIcon("cellphone")}
+						left={Icons.cellphone}
 					/>
 					<List.Item
 						title="Platform Version"
 						description={`API ${Platform.Version}`}
-						left={renderIcon("information-outline")}
+						left={Icons.infoOutline}
 					/>
 					<List.Item
 						title="React Native Version"
 						description={rnVersionString}
-						left={renderIcon("react")}
+						left={Icons.react}
 					/>
 				</List.Section>
 
@@ -310,8 +329,8 @@ export const DevBuildInfo = () => {
 					<List.Item
 						title="Total Native Modules"
 						description={`${nativeModuleCount} modules loaded`}
-						left={renderIcon("puzzle")}
-						right={renderTotalNativeModulesRight}
+						left={Icons.puzzle}
+						right={TotalNativeModulesRight}
 					/>
 				</List.Section>
 
@@ -359,7 +378,7 @@ export const DevBuildInfo = () => {
 					<List.Item
 						title="Database Adapter"
 						description={dbStatus ? dbStatus.adapter : "Loading..."}
-						left={renderIcon("database")}
+						left={Icons.database}
 					/>
 					<List.Item
 						title="Supabase Instance"
@@ -372,7 +391,7 @@ export const DevBuildInfo = () => {
 										: "Unknown"
 								: "Loading..."
 						}
-						left={renderIcon("cloud")}
+						left={Icons.cloud}
 					/>
 				</List.Section>
 
@@ -412,17 +431,17 @@ export const DevBuildInfo = () => {
 					<List.Item
 						title="Migration"
 						description="Expo SDK 51 Migration Complete"
-						left={renderIcon("check-circle")}
+						left={Icons.checkCircle}
 					/>
 					<List.Item
 						title="EAS Build"
 						description="Development Client Active"
-						left={renderIcon("cloud-check")}
+						left={Icons.cloudCheck}
 					/>
 					<List.Item
 						title="Native Modules"
 						description="BLE, Maps, Nordic DFU Working"
-						left={renderIcon("check-all")}
+						left={Icons.checkAll}
 					/>
 				</List.Section>
 

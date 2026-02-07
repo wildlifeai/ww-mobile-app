@@ -7,9 +7,7 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { StyleSheet, View, Text, ActivityIndicator } from "react-native"
 import { FAB, IconButton, Menu, Divider } from "react-native-paper"
-import { Marker } from "react-native-maps"
 import { withObservables } from '@nozbe/watermelondb/react'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { BasicMapView } from "../components/BasicMapView"
 import { MapControls } from "../components/MapControls"
@@ -269,7 +267,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 				<FAB
 					icon="stop"
 					label="End Deployment"
-					style={[styles.actionFab, { backgroundColor: '#FFAB00', bottom: 80 }]} // Stacked above New Deployment
+					style={[styles.actionFab, styles.endDeploymentFab]} // Stacked above New Deployment
 					color="#000"
 					small // Make it smaller to distinguish importance? Or keep regular. Let's keep regular but stacked.
 					onPress={() => {
@@ -378,6 +376,10 @@ const styles = StyleSheet.create({
 		position: "absolute",
 		bottom: 16,
 		right: 16,
+	},
+	endDeploymentFab: {
+		backgroundColor: '#FFAB00',
+		bottom: 80,
 	},
 	headerBackground: {
 		position: "absolute",

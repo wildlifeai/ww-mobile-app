@@ -1,8 +1,8 @@
 const { withAndroidManifest } = require('@expo/config-plugins');
 
 const withDfuService = (config) => {
-    return withAndroidManifest(config, async (config) => {
-        const androidManifest = config.modResults;
+    return withAndroidManifest(config, async (manifestConfig) => {
+        const androidManifest = manifestConfig.modResults;
         const mainApplication = androidManifest.manifest.application[0];
 
         // Ensure services array exists

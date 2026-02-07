@@ -35,7 +35,6 @@ import {
 	validRegisterCredentials,
 	invalidRegisterCredentials,
 	authErrorMessages,
-	pendingConfirmationAuthResponse,
 } from "../../setup/fixtures/auth"
 
 // Mock the Supabase service

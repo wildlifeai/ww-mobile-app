@@ -4,7 +4,7 @@
  * Foundational types for map functionality (zero dependencies on other features)
  */
 
-import { LatLng, Region } from "react-native-maps"
+import { Region } from "react-native-maps"
 
 /**
  * Map region with viewport bounds
