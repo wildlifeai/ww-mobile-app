@@ -15,7 +15,6 @@ import {
 	BLE_SERVICE_UUID,
 	BLE_CHARACTERISTIC_WRITE_UUID,
 	BLE_CHARACTERISTIC_READ_UUID,
-	BLE_DFU_SERVICE_UUID,
 	DEVICE_NAMES,
 } from "../constants"
 import { readlineParserEmitter } from "../../ble/emitters"

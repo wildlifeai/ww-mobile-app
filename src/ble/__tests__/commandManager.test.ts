@@ -61,6 +61,7 @@ describe('BleCommandManager', () => {
     })
 
     // TODO: Fix timing issues with fake timers in this test
+    // eslint-disable-next-line jest/no-disabled-tests
     it.skip('should serialize multiple commands', async () => {
       const command1 = manager.sendCommand(mockPeripheral, 'ver', mockWriteToDevice)
       const command2 = manager.sendCommand(mockPeripheral, 'battery', mockWriteToDevice)
@@ -117,6 +118,7 @@ describe('BleCommandManager', () => {
     })
 
     // TODO: Fix timing issues with wake sequence timeout in this test
+    // eslint-disable-next-line jest/no-disabled-tests
     it.skip('should handle ERROR messages', async () => {
       const commandPromise = manager.sendCommand(
         mockPeripheral,

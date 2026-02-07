@@ -240,7 +240,7 @@ describe("Login Screen - User Stories", () => {
 			.executeAll()
 	})
 
-	// eslint-disable-next-line jest/no-disabled-tests
+
 	test("User Story: Remember Me Functionality", async () => {
 		const store = createTestStore()
 		mockAuthSuccess()
