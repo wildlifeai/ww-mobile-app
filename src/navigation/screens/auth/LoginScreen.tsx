@@ -10,7 +10,7 @@ import { useAppDispatch } from "../../../redux"
 import { setCredentials } from "../../../redux/slices/authSlice"
 import { useAppNavigation } from "../../../hooks/useAppNavigation"
 import { WWText } from "../../../components/ui/WWText"
-import AsyncStorage from "@react-native-async-storage/async-storage"
+import * as SecureStore from 'expo-secure-store'
 import { useState, useEffect } from "react"
 import { KEYBOARD_AVOID_PADDING } from "../../../constants/layout"
 import { logError } from '../../../utils/logger'
@@ -38,8 +38,8 @@ export const Login = () => {
 	useEffect(() => {
 		const loadSavedCredentials = async () => {
 			try {
-				const savedEmail = await AsyncStorage.getItem("rememberedEmail")
-				const savedRememberMe = await AsyncStorage.getItem("rememberMe")
+				const savedEmail = await SecureStore.getItemAsync("rememberedEmail")
+				const savedRememberMe = await SecureStore.getItemAsync("rememberMe")
 
 				if (savedEmail && savedRememberMe === "true") {
 					setValue("email", savedEmail)
@@ -66,11 +66,11 @@ export const Login = () => {
 			try {
 				// Save credentials if remember me is checked
 				if (rememberMe) {
-					await AsyncStorage.setItem("rememberedEmail", data.email)
-					await AsyncStorage.setItem("rememberMe", "true")
+					await SecureStore.setItemAsync("rememberedEmail", data.email)
+					await SecureStore.setItemAsync("rememberMe", "true")
 				} else {
-					await AsyncStorage.removeItem("rememberedEmail")
-					await AsyncStorage.removeItem("rememberMe")
+					await SecureStore.deleteItemAsync("rememberedEmail")
+					await SecureStore.deleteItemAsync("rememberMe")
 				}
 			} catch (storageError) {
 				logError("Failed to update credentials storage:", storageError)

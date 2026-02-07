@@ -21,15 +21,12 @@ import {
 	ValidationMessages,
 } from "../../../setup/helpers/bdd"
 import { screen, waitFor } from "@testing-library/react-native"
+import * as SecureStore from 'expo-secure-store'
 
-// Mock AsyncStorage locally to ensure identity consistency
-const mockAsyncStorage = {
-	setItem: jest.fn(() => Promise.resolve()),
-	getItem: jest.fn(() => Promise.resolve(null)),
-	removeItem: jest.fn(() => Promise.resolve()),
-	clear: jest.fn(() => Promise.resolve()),
-}
-jest.mock("@react-native-async-storage/async-storage", () => mockAsyncStorage)
+// Mock SecureStore locally to ensure identity consistency
+// Note: We use the manual mock defined in tests/__mocks__/expo-secure-store.ts
+// mapped in jest.config.js
+jest.mock("expo-secure-store")
 
 // Mock Supabase Service to use our mock client
 jest.mock("../../../../src/services/supabase", () => {
@@ -244,7 +241,7 @@ describe("Login Screen - User Stories", () => {
 	})
 
 	// eslint-disable-next-line jest/no-disabled-tests
-	test.skip("User Story: Remember Me Functionality", async () => {
+	test("User Story: Remember Me Functionality", async () => {
 		const store = createTestStore()
 		mockAuthSuccess()
 		renderWithProviders(<Login />, { store })
@@ -263,11 +260,11 @@ describe("Login Screen - User Stories", () => {
 			.and("I submit the form", AuthActions.userSubmitsLoginForm)
 			.then("My credentials should be saved for next time", async () => {
 				await waitFor(() => {
-					expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+					expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
 						"rememberedEmail",
 						TestData.validUser.email,
 					)
-					expect(mockAsyncStorage.setItem).toHaveBeenCalledWith("rememberMe", "true")
+					expect(SecureStore.setItemAsync).toHaveBeenCalledWith("rememberMe", "true")
 				})
 			})
 			.executeAll()
