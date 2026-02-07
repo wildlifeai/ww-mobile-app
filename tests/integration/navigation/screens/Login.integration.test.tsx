@@ -5,7 +5,7 @@
  */
 
 import { Alert } from "react-native"
-import AsyncStorage from "@react-native-async-storage/async-storage"
+
 import { fireEvent, waitFor, screen, act } from "@testing-library/react-native"
 import * as logger from "../../../../src/utils/logger"
 import { Login } from "../../../../src/navigation/screens/auth/LoginScreen"
@@ -22,9 +22,12 @@ import {
 	invalidLoginCredentials,
 } from "../../../setup/fixtures/auth"
 
-// Mock AsyncStorage
-jest.mock("@react-native-async-storage/async-storage")
-const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>
+import * as SecureStore from 'expo-secure-store'
+
+// Mock SecureStore
+// Note: We use the manual mock defined in tests/__mocks__/expo-secure-store.ts
+// mapped in jest.config.js
+jest.mock("expo-secure-store")
 
 // Mock navigation
 const mockNavigate = jest.fn()
@@ -70,10 +73,10 @@ describe("Login Screen Integration Tests", () => {
 		mockGoBack.mockClear()
 		jest.spyOn(Alert, "alert").mockImplementation(() => {})
 
-		// Reset AsyncStorage mocks
-		mockAsyncStorage.getItem.mockResolvedValue(null)
-		mockAsyncStorage.setItem.mockResolvedValue()
-		mockAsyncStorage.removeItem.mockResolvedValue()
+		// Reset SecureStore mocks
+		;(SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null)
+		;(SecureStore.setItemAsync as jest.Mock).mockResolvedValue(undefined)
+		;(SecureStore.deleteItemAsync as jest.Mock).mockResolvedValue(undefined)
 	})
 
 	test("should render login form correctly", () => {
@@ -88,7 +91,7 @@ describe("Login Screen Integration Tests", () => {
 	})
 
 	test("should load saved credentials on mount when remember me was checked", async () => {
-		mockAsyncStorage.getItem
+		;(SecureStore.getItemAsync as jest.Mock)
 			.mockResolvedValueOnce("saved@example.com")
 			.mockResolvedValueOnce("true")
 
@@ -99,12 +102,12 @@ describe("Login Screen Integration Tests", () => {
 			expect(emailInput).toBeTruthy()
 		})
 
-		expect(mockAsyncStorage.getItem).toHaveBeenCalledWith("rememberedEmail")
-		expect(mockAsyncStorage.getItem).toHaveBeenCalledWith("rememberMe")
+		expect(SecureStore.getItemAsync).toHaveBeenCalledWith("rememberedEmail")
+		expect(SecureStore.getItemAsync).toHaveBeenCalledWith("rememberMe")
 	})
 
 	test("should not load saved credentials when remember me was not checked", async () => {
-		mockAsyncStorage.getItem
+		;(SecureStore.getItemAsync as jest.Mock)
 			.mockResolvedValueOnce("saved@example.com")
 			.mockResolvedValueOnce("false")
 
@@ -222,11 +225,11 @@ describe("Login Screen Integration Tests", () => {
 		fireEvent.press(loginButton)
 
 		await waitFor(() => {
-			expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+			expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
 				"rememberedEmail",
 				validLoginCredentials.identifier,
 			)
-			expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+			expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
 				"rememberMe",
 				"true",
 			)
@@ -250,10 +253,10 @@ describe("Login Screen Integration Tests", () => {
 		fireEvent.press(loginButton)
 
 		await waitFor(() => {
-			expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith(
+			expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(
 				"rememberedEmail",
 			)
-			expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith("rememberMe")
+			expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith("rememberMe")
 		})
 	})
 
@@ -305,9 +308,9 @@ describe("Login Screen Integration Tests", () => {
 		})
 	})
 
-	test("should handle AsyncStorage errors gracefully", async () => {
+	test("should handle SecureStore errors gracefully", async () => {
 		const logErrorSpy = jest.spyOn(logger, "logError").mockImplementation()
-		mockAsyncStorage.getItem.mockRejectedValue(new Error("Storage error"))
+		;(SecureStore.getItemAsync as jest.Mock).mockRejectedValue(new Error("Storage error"))
 
 		renderWithProviders(<Login />, { store })
 
