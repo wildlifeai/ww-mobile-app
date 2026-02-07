@@ -14,6 +14,7 @@ import ProjectInvitation from '../database/models/ProjectInvitation'
 import { getSupabaseClient } from './supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { log, logError, logWarn } from '../utils/logger'
+import { invokeWithTimeout } from '../utils/helpers'
 
 
 interface PendingInvitation {
@@ -44,18 +45,27 @@ class InvitationService {
             log('📨 Sending invitation:', { projectId, inviteeEmail, role })
 
             const supabase = getSupabaseClient()
-            const { data, error } = await supabase.rpc('send_project_invitation' as any, {
-                p_project_id: projectId,
-                p_invitee_email: inviteeEmail,
-                p_role: role,
-            })
+            
+            // Wrap in timeout to prevent hanging UI
+            const result = await invokeWithTimeout(
+                () => supabase.rpc('send_project_invitation' as any, {
+                    p_project_id: projectId,
+                    p_invitee_email: inviteeEmail,
+                    p_role: role,
+                }),
+                'send_project_invitation',
+                15000 // 15s timeout
+            ) as { data: unknown, error: any }
+
+            const { data, error } = result
 
             if (error) throw error
 
             log('✅ Invitation sent successfully:', data)
 
             // Trigger sync to update local invitation list
-            await this.syncInvitations()
+            // Don't await this to prevent blocking UI if sync is slow
+            this.syncInvitations().catch(err => logError('Background sync failed after invite:', err))
 
             return data as string // invitation ID
         } catch (error) {
@@ -239,6 +249,12 @@ class InvitationService {
      * This enables instant in-app notifications when invitations are received
      */
     subscribeToInvitations(userEmail: string, callback: (payload: any) => void): RealtimeChannel {
+        // Prevent redundant subscriptions if already connected/connecting
+        if (this.realtimeChannel && (this.realtimeChannel.state === 'joined' || this.realtimeChannel.state === 'joining')) {
+             log('🔔 Subscription already active/joining for invitations')
+             return this.realtimeChannel
+        }
+
         log('🔔 Setting up realtime invitation subscription for:', userEmail)
 
         const supabase = getSupabaseClient()
@@ -270,6 +286,9 @@ class InvitationService {
             )
             .subscribe((status) => {
                 log('📡 Realtime subscription status:', status)
+                if (status === 'CHANNEL_ERROR') {
+                    logWarn('⚠️ Realtime channel error. Check connection or RLS policies.')
+                }
             })
 
         return this.realtimeChannel
