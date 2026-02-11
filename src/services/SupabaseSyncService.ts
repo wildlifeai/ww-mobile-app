@@ -16,11 +16,18 @@ import type Deployment from '../database/models/Deployment'
 import { log, logError, logWarn } from '../utils/logger'
 
 
+import { setGlobalSyncing } from '../redux/slices/syncSlice'
+
 class SupabaseSyncService {
     private realtimeChannel: RealtimeChannel | null = null
     private isSyncing = false
     private syncDebounceTimer: NodeJS.Timeout | null = null
     private readonly SYNC_DEBOUNCE_MS = 2000 // 2 seconds
+    private store: any = null
+
+    public setStore(store: any) {
+        this.store = store
+    }
 
     /**
      * Reset sync state on app startup
@@ -94,28 +101,33 @@ class SupabaseSyncService {
         // This handles the race condition where Redux hasn't initialized yet
         let isOnline = false
         try {
-            const { default: store } = require('../redux')
-            const state: RootState = store.getState()
-            isOnline = state.network.isOnline
+            // Use injected store if available, otherwise check NetInfo directly
+            if (this.store) {
+                const state: RootState = this.store.getState()
+                isOnline = state.network.isOnline
 
-            // If Redux says offline, double-check with NetInfo (handles initialization race)
-            if (!isOnline) {
-                const netState = await NetInfo.fetch()
-                const netInfoOnline = netState.isConnected === true
-                if (netInfoOnline) {
-                    log(`🌐 Network check: Redux says OFFLINE but NetInfo says ONLINE - using NetInfo`)
-                    isOnline = true
+                // If Redux says offline, double-check with NetInfo
+                if (!isOnline) {
+                    const netState = await NetInfo.fetch()
+                    if (netState.isConnected === true) {
+                        log(`🌐 Network check: Redux says OFFLINE but NetInfo says ONLINE - using NetInfo`)
+                        isOnline = true
+                    } else {
+                        log(`🌐 Network check (Redux): OFFLINE`)
+                    }
                 } else {
-                    log(`🌐 Network check (Redux): OFFLINE`)
+                    log(`🌐 Network check (Redux): ONLINE`)
                 }
             } else {
-                log(`🌐 Network check (Redux): ONLINE`)
+                // Fallback if store not yet injected
+                const netState = await NetInfo.fetch()
+                isOnline = netState.isConnected === true
+                log(`🌐 Network check (No Store): ${isOnline ? 'ONLINE' : 'OFFLINE'}`)
             }
         } catch (e) {
-            // Fallback to NetInfo if Redux not available
+            logError('⚠️ Error checking network state:', e)
             const netState = await NetInfo.fetch()
             isOnline = netState.isConnected === true
-            log(`🌐 Network check (NetInfo fallback): ${isOnline ? 'ONLINE' : 'OFFLINE'}`)
         }
 
         if (!isOnline) {
@@ -151,12 +163,12 @@ class SupabaseSyncService {
         this.isSyncing = true
         
         // Dispatch global sync start
-        try {
-            const { setGlobalSyncing } = require('../redux/slices/syncSlice')
-            const { default: store } = require('../redux')
-            store.dispatch(setGlobalSyncing(true))
-        } catch (e) {
-            logWarn('⚠️ [SupabaseSyncService] Failed to dispatch sync start:', e)
+        if (this.store) {
+            try {
+                this.store.dispatch(setGlobalSyncing(true))
+            } catch (e) {
+                logWarn('⚠️ [SupabaseSyncService] Failed to dispatch sync start:', e)
+            }
         }
 
         await database.write(async () => {
@@ -217,12 +229,12 @@ class SupabaseSyncService {
             })
 
             // Dispatch global sync end
-            try {
-                const { setGlobalSyncing } = require('../redux/slices/syncSlice')
-                const { default: store } = require('../redux')
-                store.dispatch(setGlobalSyncing(false))
-            } catch (e) {
-                logWarn('⚠️ [SupabaseSyncService] Failed to dispatch sync end:', e)
+            if (this.store) {
+                try {
+                    this.store.dispatch(setGlobalSyncing(false))
+                } catch (e) {
+                    logWarn('⚠️ [SupabaseSyncService] Failed to dispatch sync end:', e)
+                }
             }
         }
     }

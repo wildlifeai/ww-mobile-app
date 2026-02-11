@@ -94,6 +94,8 @@ import type {
 import InvitationService from "../../services/InvitationService"
 import type ProjectInvitation from "../../database/models/ProjectInvitation"
 import { log, logError } from '../../utils/logger'
+import { UserProfile } from "../../types/UserProfile"
+import { getDisplayName } from "../../utils/userUtils"
 
 
 type RouteParams = {
@@ -163,16 +165,15 @@ export const ProjectMembersScreen = () => {
 					if (isMe) {
 						if (!m.name || m.name === "Unknown User" || m.name === "Me") {
 							// Try various property names that might be in Redux
-							const profile = user!.profile as any
-							const fName = profile?.first_name || profile?.firstname || ""
-							const lName = profile?.last_name || profile?.surname || ""
-							const pName = `${fName} ${lName}`.trim()
+							// Try various property names that might be in Redux
+							const profile = user!.profile as UserProfile
+							const pName = getDisplayName(profile)
 							
 							return {
 								...m,
 								name: pName ? `${pName} (You)` : "Me (You)",
-								firstname: fName || m.firstname,
-								surname: lName || m.surname,
+								firstname: profile.firstName || profile.firstname || m.firstname,
+								surname: profile.lastName || profile.surname || m.surname,
 								email: user!.email || m.email
 							}
 						}
@@ -468,17 +469,12 @@ export const ProjectMembersScreen = () => {
 
 					const isMe = user && String(member.id).toLowerCase() === String(user.id).toLowerCase()
 
-					const firstName = member.firstname || ""
-					const surname = member.surname || ""
-					const memberName = member.name || ""
 
-					const displayName = (firstName || surname)
-						? `${firstName} ${surname}`.trim()
-						: (memberName && memberName !== "Unknown" && memberName !== "Unknown User"
-							? memberName
-							: (isMe ? "Me (You)" : (member.email || "Unknown User")))
+					const displayName = getDisplayName(member, isMe)
 
 					const initials = displayName
+						.replace("(You)", "")
+						.trim()
 						.split(" ")
 						.filter((n) => n.length > 0)
 						.map((n) => n[0])

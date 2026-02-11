@@ -86,7 +86,8 @@ const syncSlice = createSlice({
 			if (action.payload) {
 				state.overall = "syncing"
 			} else if (state.queue.pending === 0 && state.queue.failed === 0) {
-				// Only set to synced if no pending items in queue
+				// Only set to synced if no pending items in queue AND we are not in global sync (though payload=false implies that)
+				// But let's be explicit:
 				state.overall = "synced"
 			}
 		},
@@ -219,7 +220,7 @@ const syncSlice = createSlice({
 			state.queue.failed = action.payload.failed
 
 			// Update overall status based on queue
-			if (state.queue.pending === 0 && state.queue.failed === 0) {
+			if (state.queue.pending === 0 && state.queue.failed === 0 && !state.isGlobalSyncing) {
 				state.overall = "synced"
 			} else if (state.queue.pending > 0) {
 				state.overall = "pending"

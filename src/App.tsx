@@ -12,7 +12,11 @@ import { Provider as ReduxProvider } from "react-redux"
 import { AndroidPermissionsProvider } from "./providers/AndroidPermissionsProvider"
 import { AppSetupProvider } from "./providers/AppSetupProvider"
 import { BleEngineProvider } from "./providers/BleEngineProvider"
-import store from "./redux"
+import store from './redux'
+import SupabaseSyncService from './services/SupabaseSyncService'
+
+// Inject store into SyncService to avoid circular dependency
+SupabaseSyncService.setStore(store)
 import { MainNavigation } from "./navigation"
 import { NavigationContainer } from "@react-navigation/native"
 import { linking } from "./navigation/linking"

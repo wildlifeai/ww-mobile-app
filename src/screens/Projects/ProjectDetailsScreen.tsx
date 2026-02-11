@@ -50,6 +50,7 @@ import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { useAppSelector } from "../../redux"
 import { AppParams } from "../../navigation/index"
 import { logError } from '../../utils/logger'
+import { getDisplayName } from "../../utils/userUtils"
 
 
 
@@ -844,14 +845,10 @@ export const ProjectDetailsScreen = () => {
 									{members.map((member, index) => {
 										const isMe = member.user_id === currentUser?.id
 										const displayName = isMe
-											? (currentUser.profile?.first_name
-												? `${currentUser.profile.first_name} ${currentUser.profile.last_name || ""}`.trim()
+											? ((currentUser as any)?.profile?.first_name
+												? `${(currentUser as any).profile.first_name} ${(currentUser as any).profile.last_name || ""}`.trim()
 												: "Me")
-											: (member.user_profile?.firstname || member.user_profile?.surname
-												? `${member.user_profile.firstname || ""} ${member.user_profile.surname || ""}`.trim()
-												: (member.user_profile?.name && member.user_profile.name !== "Unknown" && member.user_profile.name !== "Unknown User"
-													? member.user_profile.name
-													: (member.user_profile?.email || "Unknown User")))
+											: getDisplayName(member.user_profile || (member.user_profile as any)?.profile, false)
 
 										const initials = (displayName || "")
 											.split(" ")

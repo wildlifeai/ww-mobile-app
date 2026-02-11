@@ -298,11 +298,6 @@ export const getProjectMembers = async (
 			return await fetchMembersFromCloud(projectId, requestingUserId)
 		} catch (cloudError) {
 			log("⚠️ Cloud fetch failed, returning enriched local members")
-			// The local logic already populated 'members' in the block above
-			// But that variable is not accessible here. 
-			// However, since we've already tried local roles at the start of the function,
-			// if we reached here, local roles were empty. 
-			// If local roles were found, the function would have returned already.
 			throw cloudError
 		}
 	} catch (error) {
@@ -373,6 +368,14 @@ export const fetchMembersFromCloud = async (
  * Manual fallback to fetch project members when RPC is broken
  * Queries tables individually and joins in memory
  */
+/**
+ * Manual fallback to fetch project members when RPC is broken
+ * Queries tables individually and joins in memory
+ * 
+ * SECURITY NOTE: This fallback does NOT fetch emails from auth.users
+ * to avoid granting direct access to the auth schema.
+ * Emails will only be available if the RPC functions are used.
+ */
 const fetchMembersFromCloudManual = async (projectId: string, requestingUserId: string): Promise<ProjectMember[]> => {
 	try {
 		log(`🔍 Manually fetching members for project ${projectId} (requestingUser: ${requestingUserId})...`)
@@ -402,44 +405,27 @@ const fetchMembersFromCloudManual = async (projectId: string, requestingUserId: 
 
 		const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
 
-		// 3. Fetch email addresses from auth.users
-		const { data: authUsers } = await supabase
-			.from('auth.users')
-			.select('id, email')
-			.in('id', userIds)
+		// 3. (Removed) Fetching emails from auth.users is NOT PERMITTED for security reasons.
+        // Use the RPC function get_project_members to retrieve emails securely.
 
-		const emailMap = new Map(authUsers?.map(u => [u.id, u.email]) || [])
-
-		log(`🔍 DIAGNOSTIC: Manual fetch - profiles: ${profiles?.length || 0}, emails: ${authUsers?.length || 0}`)
+		log(`🔍 DIAGNOSTIC: Manual fetch - profiles: ${profiles?.length || 0} (Emails unavailable in manual mode)`)
 
 		// 4. Join and map
 		const members: ProjectMember[] = roles.map(role => {
 			const profile = profileMap.get(role.user_id)
-			const email = emailMap.get(role.user_id) || ""
 			const isMe = String(role.user_id).toLowerCase() === String(requestingUserId).toLowerCase()
 			
 			let name = isMe ? "Me" : "Unknown User"
+            let email = "" // Cannot fetch email manually securely
 			
 			if (profile) {
 				const profileName = `${profile.firstname || ""} ${profile.surname || ""}`.trim()
 				if (profileName) {
 					name = isMe ? `${profileName} (You)` : profileName
-				} else if (email) {
-					name = isMe ? `${email} (You)` : email
 				}
 			} else if (isMe) {
 				name = "Me (You)"
-			} else if (email) {
-				name = email
 			}
-
-			log(`🔍 DIAGNOSTIC: Manual fetch member ${role.user_id}:`, {
-				hasProfile: !!profile,
-				firstname: profile?.firstname,
-				surname: profile?.surname,
-				email: email,
-				computedName: name
-			})
 
 			return {
 				id: role.user_id,
@@ -449,12 +435,12 @@ const fetchMembersFromCloudManual = async (projectId: string, requestingUserId: 
 				email: email,
 				role: role.role,
 				granted_at: role.granted_at,
-				granted_by: role.granted_by,
+				granted_by: role.granted_by || "",
 				granted_by_name: "Unknown"
 			}
 		})
 
-		log(`✅ Manually fetched ${members.length} members from cloud`)
+		log(`✅ Manually fetched ${members.length} members from cloud (Note: emails hidden in fallback mode)`)
 		return members
 	} catch (error) {
 		logError("Manual cloud fetch failed: " + (error instanceof Error ? error.message : String(error)))
