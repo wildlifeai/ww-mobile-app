@@ -8,6 +8,8 @@ CREATE OR REPLACE FUNCTION get_organisation_users(
 RETURNS TABLE (
   id UUID,
   name TEXT,
+  firstname TEXT,
+  surname TEXT,
   email TEXT,
   roles JSONB,
   is_in_project BOOLEAN
@@ -50,7 +52,9 @@ BEGIN
   RETURN QUERY
   SELECT
     u.id,
-    u.name,
+    (u.firstname || ' ' || u.surname) AS name,
+    u.firstname,
+    u.surname,
     au.email::text,
     COALESCE(
       jsonb_agg(
@@ -76,8 +80,8 @@ BEGIN
     AND ur.is_active = true
     AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
   WHERE u.deleted_at IS NULL
-  GROUP BY u.id, u.name, au.email
-  ORDER BY u.name;
+  GROUP BY u.id, u.firstname, u.surname, au.email
+  ORDER BY u.firstname, u.surname;
 END;
 $$;
 

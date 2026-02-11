@@ -9,6 +9,8 @@ The Wildlife Watcher mobile app is a React Native application that connects to w
 - **Firmware Updates**: Update device firmware using Nordic DFU (Device Firmware Update)
 - **Project Management**: Create and manage wildlife monitoring projects
 - **Deployment Tracking**: Track where devices are deployed with GPS coordinates
+- **User Collaboration**: Invite team members to projects with granular roles (Admin/Member) and manage pending invitations
+- **Sync & Offline**: Full offline support with manual pull-to-refresh synchronization for Projects, Deployments, and Devices
 - **Maps Integration**: Visualize device deployments on interactive maps
 - **Data Collection**: Monitor device status, battery levels, and sensor readings
 

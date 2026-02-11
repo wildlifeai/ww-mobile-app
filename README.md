@@ -27,6 +27,7 @@ The app uses an **offline-first architecture** that allows full functionality wi
 - **Local Database**: WatermelonDB stores all data locally (projects, deployments, user roles, reference data)
 - **Outbox Pattern**: All create/update/delete operations are queued in an outbox for sync
 - **Bidirectional Sync**: Changes sync from device → Supabase and Supabase → device
+- **Manual Refresh**: Users can trigger a sync via pull-to-refresh on Projects, Deployments, and Devices screens
 - **Conflict Resolution**: Server-side conflict detection with timestamp-based resolution
 - **Network Detection**: Automatic sync when connectivity is restored
 
@@ -40,11 +41,11 @@ User Interface ← Local DB ← Pull Sync ← Supabase Changes
 
 ### Key Components
 
-- **`SupabaseSyncService`**: Manages bidirectional sync, outbox upload, and pull changes
+- **`SupabaseSyncService`**: Manages bidirectional sync, outbox upload, and fetches user profiles for new project members
 - **`OutboxService`**: Records offline operations for later sync
 - **`OfflineService`**: Monitors network state and triggers sync
-- **`ProjectService`**: Handles project CRUD with automatic outbox queueing
-- **RTK Query**: Provides optimistic UI updates with local-first data
+- **`ProjectService`**: Handles project CRUD with automatic outbox queueing and member invitations
+- **RTK Query**: Provides optimistic UI updates with local-first data for project lists
 
 ## BLE Features
 

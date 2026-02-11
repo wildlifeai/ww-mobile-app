@@ -23,6 +23,7 @@ export type ProjectMember = {
 	id: string
 	project_id: string
 	user_id: string
+	email?: string
 	role: string
 	created_at: string
 	updated_at: string
@@ -40,6 +41,9 @@ export type UserRole = Tables<"user_roles">
 // User profile type (from public.users extension table)
 export interface UserProfile {
 	name: string
+	firstname?: string
+	surname?: string
+	email?: string
 }
 
 // Extended types with computed/joined fields

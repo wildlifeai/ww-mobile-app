@@ -10,6 +10,8 @@ CREATE OR REPLACE FUNCTION public.get_project_members(
 RETURNS TABLE (
   id UUID,
   name TEXT,
+  firstname TEXT,
+  surname TEXT,
   email TEXT,
   role TEXT,
   granted_at TIMESTAMPTZ,
@@ -49,12 +51,14 @@ BEGIN
   RETURN QUERY
   SELECT
     u.id,
-    u.name,
+    (u.firstname || ' ' || u.surname) AS name,
+    u.firstname,
+    u.surname,
     au.email::text,
     ur.role,
     ur.granted_at,
     ur.granted_by,
-    granter.name AS granted_by_name
+    (granter.firstname || ' ' || granter.surname) AS granted_by_name
   FROM public.user_roles ur
   JOIN public.users u ON ur.user_id = u.id
   JOIN auth.users au ON u.id = au.id
@@ -72,7 +76,8 @@ BEGIN
       WHEN 'project_member' THEN 2
       ELSE 3
     END,
-    u.name;
+    u.firstname,
+    u.surname;
 END;
 $$;
 

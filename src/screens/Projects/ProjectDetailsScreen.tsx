@@ -847,7 +847,11 @@ export const ProjectDetailsScreen = () => {
 											? (currentUser.profile?.first_name
 												? `${currentUser.profile.first_name} ${currentUser.profile.last_name || ""}`.trim()
 												: "Me")
-											: (member.user_profile?.name || "Unknown User")
+											: (member.user_profile?.firstname || member.user_profile?.surname
+												? `${member.user_profile.firstname || ""} ${member.user_profile.surname || ""}`.trim()
+												: (member.user_profile?.name && member.user_profile.name !== "Unknown" && member.user_profile.name !== "Unknown User"
+													? member.user_profile.name
+													: (member.user_profile?.email || "Unknown User")))
 
 										const initials = (displayName || "")
 											.split(" ")
@@ -875,6 +879,14 @@ export const ProjectDetailsScreen = () => {
 														>
 															{displayName} {isMe && "(You)"}
 														</Text>
+														{!isMe && member.user_profile?.email && member.user_profile.email !== displayName && (
+															<Text
+																variant="bodySmall"
+																style={dynamicStyles.memberRoleText}
+															>
+																{member.user_profile.email}
+															</Text>
+														)}
 														{member.role && (
 															<Text
 																variant="bodySmall"

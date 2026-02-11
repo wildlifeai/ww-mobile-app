@@ -15,14 +15,24 @@
 -- The complex privilege escalation prevention below is technically correct but
 -- represents unused code paths in MVP2's single-organisation model.
 
--- SELECT: Simple, non-recursive role visibility policy
+-- SELECT: Role visibility (Self + Project Peers)
 CREATE POLICY "user_roles_select_policy"
   ON user_roles
   FOR SELECT
   TO authenticated
   USING (
     deleted_at IS NULL
-    AND user_id = auth.uid()
+    AND (
+      -- Can see own roles
+      user_id = auth.uid()
+      OR 
+      -- Can see roles of others in projects where I am a member
+      -- Uses SECURITY DEFINER function to avoid recursion
+      (
+        scope_type = 'project' 
+        AND has_project_role((SELECT auth.uid()), scope_id, 'project_member')
+      )
+    )
   );
 
 -- INSERT: Role assignment with privilege escalation prevention
