@@ -4,14 +4,11 @@
 -- SECURITY: DEFINER with proper authorization check
 -- PERFORMANCE: STABLE for query optimization
 CREATE OR REPLACE FUNCTION public.get_project_members(
-  p_project_id UUID,
-  p_requesting_user_id UUID DEFAULT NULL
+  p_project_id UUID
 )
 RETURNS TABLE (
   id UUID,
   name TEXT,
-  firstname TEXT,
-  surname TEXT,
   email TEXT,
   role TEXT,
   granted_at TIMESTAMPTZ,
@@ -26,8 +23,8 @@ AS $$
 DECLARE
   check_user_id UUID;
 BEGIN
-  -- Resolve requesting user (default to authenticated user)
-  check_user_id := COALESCE(p_requesting_user_id, (SELECT auth.uid()));
+  -- Get authenticated user
+  check_user_id := auth.uid();
 
   -- Validation: Ensure user and project are provided
   IF check_user_id IS NULL THEN
@@ -52,8 +49,6 @@ BEGIN
   SELECT
     u.id,
     (u.firstname || ' ' || u.surname) AS name,
-    u.firstname,
-    u.surname,
     au.email::text,
     ur.role,
     ur.granted_at,
@@ -76,9 +71,8 @@ BEGIN
       WHEN 'project_member' THEN 2
       ELSE 3
     END,
-    u.firstname,
-    u.surname;
+    (u.firstname || ' ' || u.surname);
 END;
 $$;
 
-COMMENT ON FUNCTION public.get_project_members IS 'Task 13: Returns active project members with role details and granter information. Security: DEFINER with permission check (project_member or ww_admin). Performance: STABLE for caching.';
+COMMENT ON FUNCTION public.get_project_members IS 'Task 13: Returns active project members with role details and granter information. Security: DEFINER with permission check (project_member or ww_admin). Performance: STABLE for caching. Updated 2026-02-11 to use firstname/surname and remove user impersonation vulnerability.';

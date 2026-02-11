@@ -2154,16 +2154,27 @@ export type Database = {
           projects: Json
         }[]
       }
-      get_organisation_users: {
-        Args: { p_organisation_id: string; p_requesting_user_id?: string }
-        Returns: {
-          email: string
-          id: string
-          is_in_project: boolean
-          name: string
-          roles: Json
-        }[]
-      }
+      get_organisation_users:
+        | {
+            Args: { p_organisation_id: string }
+            Returns: {
+              email: string
+              id: string
+              is_in_project: boolean
+              name: string
+              roles: Json
+            }[]
+          }
+        | {
+            Args: { p_organisation_id: string; p_requesting_user_id?: string }
+            Returns: {
+              email: string
+              id: string
+              is_in_project: boolean
+              name: string
+              roles: Json
+            }[]
+          }
       get_project_health_report: {
         Args: { p_organisation_id?: string }
         Returns: {
@@ -2179,18 +2190,31 @@ export type Database = {
           project_name: string
         }[]
       }
-      get_project_members: {
-        Args: { p_project_id: string; p_requesting_user_id?: string }
-        Returns: {
-          email: string
-          granted_at: string
-          granted_by: string
-          granted_by_name: string
-          id: string
-          name: string
-          role: string
-        }[]
-      }
+      get_project_members:
+        | {
+            Args: { p_project_id: string }
+            Returns: {
+              email: string
+              granted_at: string
+              granted_by: string
+              granted_by_name: string
+              id: string
+              name: string
+              role: string
+            }[]
+          }
+        | {
+            Args: { p_project_id: string; p_requesting_user_id?: string }
+            Returns: {
+              email: string
+              granted_at: string
+              granted_by: string
+              granted_by_name: string
+              id: string
+              name: string
+              role: string
+            }[]
+          }
       get_project_pending_invitations: {
         Args: { p_project_id: string }
         Returns: {

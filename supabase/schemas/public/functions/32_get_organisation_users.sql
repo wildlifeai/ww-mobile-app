@@ -2,14 +2,11 @@
 -- EVIDENCE: Official Supabase SECURITY DEFINER pattern with auth.uid() caching
 -- PURPOSE: Returns all users in an organisation with their roles for project member selection
 CREATE OR REPLACE FUNCTION get_organisation_users(
-  p_organisation_id UUID,
-  p_requesting_user_id UUID DEFAULT NULL
+  p_organisation_id UUID
 )
 RETURNS TABLE (
   id UUID,
   name TEXT,
-  firstname TEXT,
-  surname TEXT,
   email TEXT,
   roles JSONB,
   is_in_project BOOLEAN
@@ -22,8 +19,8 @@ AS $$
 DECLARE
   check_user_id uuid;
 BEGIN
-  -- EVIDENCE: Use (select auth.uid()) pattern from Context7 for caching
-  check_user_id := COALESCE(p_requesting_user_id, (SELECT auth.uid()));
+  -- Get authenticated user
+  check_user_id := auth.uid();
 
   -- Input validation
   IF p_organisation_id IS NULL THEN
@@ -53,8 +50,6 @@ BEGIN
   SELECT
     u.id,
     (u.firstname || ' ' || u.surname) AS name,
-    u.firstname,
-    u.surname,
     au.email::text,
     COALESCE(
       jsonb_agg(
@@ -79,10 +74,20 @@ BEGIN
     AND ur.deleted_at IS NULL
     AND ur.is_active = true
     AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+    -- SECURITY FIX: Only include roles within this organisation
+    AND (
+      (ur.scope_type = 'organisation' AND ur.scope_id = p_organisation_id)
+      OR (ur.scope_type = 'project' AND EXISTS (
+        SELECT 1 FROM public.projects p 
+        WHERE p.id = ur.scope_id 
+        AND p.organisation_id = p_organisation_id
+        AND p.deleted_at IS NULL
+      ))
+    )
   WHERE u.deleted_at IS NULL
   GROUP BY u.id, u.firstname, u.surname, au.email
-  ORDER BY u.firstname, u.surname;
+  ORDER BY (u.firstname || ' ' || u.surname);
 END;
 $$;
 
-COMMENT ON FUNCTION get_organisation_users IS 'Task 13: Returns all users in an organisation with their active roles for project member selection in mobile app. Uses SECURITY DEFINER to aggregate data from auth.users and public tables. Only accessible by project admins and organisation managers. Updated 2025-11-27 to use user_roles table.';
+COMMENT ON FUNCTION get_organisation_users IS 'Task 13: Returns all users in an organisation with their active roles for project member selection in mobile app. Uses SECURITY DEFINER to aggregate data from auth.users and public tables. Only accessible by project admins and organisation managers. Updated 2026-02-11 to use firstname/surname, remove user impersonation vulnerability, and fix information leakage by filtering roles to organisation scope.';

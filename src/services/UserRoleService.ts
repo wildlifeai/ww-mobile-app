@@ -324,36 +324,44 @@ export const fetchMembersFromCloud = async (
 			})
 
 		if (error) {
-			// If backend is old and doesn't have the fixed RPC, we'll get "column u.name does not exist"
-			// Handle this gracefully by falling back to manual queries
-			if (error.message.includes("u.name") || error.message.includes("does not exist")) {
-				log("⚠️ Backend RPC is outdated, falling back to manual cloud fetch...")
-				return await fetchMembersFromCloudManual(projectId, requestingUserId)
-			}
-			throw new Error(error.message)
-		}
-
-		// Map RPC response to ProjectMember format
-		const members = (data || []).map((m: any) => {
-			const firstName = m.firstname || ""
-			const surname = m.surname || ""
-			const fullName = m.name || (firstName || surname ? `${firstName} ${surname}`.trim() : (m.email || "Unknown"))
-			const isMe = String(m.id).toLowerCase() === String(requestingUserId).toLowerCase()
-
-			return {
-				id: m.id,  // RPC returns 'id' not 'user_id'
-				name: isMe ? (fullName && fullName !== "Unknown" ? `${fullName} (You)` : "Me (You)") : fullName,
-				firstname: m.firstname,
-				surname: m.surname,
-				email: m.email || "",
-				role: m.role,
-				granted_at: m.granted_at,
-				granted_by: m.granted_by,
-				granted_by_name: m.granted_by_name || "Unknown"
-			}
+		// Log the actual error to understand why RPC is failing
+		log("🔍 DIAGNOSTIC: RPC get_project_members failed with error:", {
+			message: error.message,
+			code: error.code,
+			details: error.details,
+			hint: error.hint
 		})
-		log(`✅ Fetched ${members.length} members from cloud for project ${projectId}`)
-		return members
+		
+		// If backend is old and doesn't have the fixed RPC, we'll get "column u.name does not exist"
+		// Handle this gracefully by falling back to manual queries
+		if (error.message.includes("u.name") || error.message.includes("does not exist")) {
+			log("⚠️ Backend RPC is outdated, falling back to manual cloud fetch...")
+			return await fetchMembersFromCloudManual(projectId, requestingUserId)
+		}
+		throw new Error(error.message)
+	}
+
+	// Map RPC response to ProjectMember format
+	const members = (data || []).map((m: any) => {
+		const firstName = m.firstname || ""
+		const surname = m.surname || ""
+		const fullName = m.name || (firstName || surname ? `${firstName} ${surname}`.trim() : (m.email || "Unknown"))
+		const isMe = String(m.id).toLowerCase() === String(requestingUserId).toLowerCase()
+
+		return {
+			id: m.id,  // RPC returns 'id' not 'user_id'
+			name: isMe ? (fullName && fullName !== "Unknown" ? `${fullName} (You)` : "Me (You)") : fullName,
+			firstname: m.firstname,
+			surname: m.surname,
+			email: m.email || "",
+			role: m.role,
+			granted_at: m.granted_at,
+			granted_by: m.granted_by,
+			granted_by_name: m.granted_by_name || "Unknown"
+		}
+	})
+	log(`✅ Fetched ${members.length} members from cloud for project ${projectId}`)
+	return members
 	} catch (error) {
 		log("❌ Cloud RPC failed: " + (error instanceof Error ? error.message : String(error)))
 		// Final fallback: try manual fetch even if it wasn't a specific column error
@@ -394,13 +402,15 @@ const fetchMembersFromCloudManual = async (projectId: string, requestingUserId: 
 
 		const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
 
-		// 3. Fetch invitations to get email addresses
-		const { data: invitations } = await supabase
-			.from('project_invitations')
-			.select('invitee_id, invitee_email')
-			.eq('project_id', projectId)
+		// 3. Fetch email addresses from auth.users
+		const { data: authUsers } = await supabase
+			.from('auth.users')
+			.select('id, email')
+			.in('id', userIds)
 
-		const emailMap = new Map(invitations?.filter(i => i.invitee_id).map(i => [i.invitee_id, i.invitee_email]) || [])
+		const emailMap = new Map(authUsers?.map(u => [u.id, u.email]) || [])
+
+		log(`🔍 DIAGNOSTIC: Manual fetch - profiles: ${profiles?.length || 0}, emails: ${authUsers?.length || 0}`)
 
 		// 4. Join and map
 		const members: ProjectMember[] = roles.map(role => {
@@ -415,13 +425,21 @@ const fetchMembersFromCloudManual = async (projectId: string, requestingUserId: 
 				if (profileName) {
 					name = isMe ? `${profileName} (You)` : profileName
 				} else if (email) {
-					name = email
+					name = isMe ? `${email} (You)` : email
 				}
 			} else if (isMe) {
 				name = "Me (You)"
 			} else if (email) {
 				name = email
 			}
+
+			log(`🔍 DIAGNOSTIC: Manual fetch member ${role.user_id}:`, {
+				hasProfile: !!profile,
+				firstname: profile?.firstname,
+				surname: profile?.surname,
+				email: email,
+				computedName: name
+			})
 
 			return {
 				id: role.user_id,
