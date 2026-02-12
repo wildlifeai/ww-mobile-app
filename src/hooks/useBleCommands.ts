@@ -4,61 +4,26 @@ import { CommandControlTypes, CommandNames } from "../ble/types"
 import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
 import { formatGPSString } from '../utils/gpsUtils'
 import { log, logError, logWarn } from '../utils/logger'
+import { createCommand, createAction } from './useBleCommandFactory'
 
 
 export const useBleCommands = () => {
     const { write, disconnectDevice } = useBle()
 
-    // --- Device Info ---
-    const getBatteryLevel = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
-        log('[BLE CMD] Sending battery level request to device:', peripheral.id)
-        const responses = await write(peripheral, [[CommandNames.battery, { control: CommandControlTypes.READ }]])
-        return responses[0] || ''
-    }, [write])
-
-    const getDeviceVer = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
-        const responses = await write(peripheral, [[CommandNames.ver, { control: CommandControlTypes.READ }]])
-        return responses[0] || ''
-    }, [write])
-
-    const getDeviceName = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
-        const responses = await write(peripheral, [[CommandNames.device, { control: CommandControlTypes.READ }]])
-        return responses[0] || ''
-    }, [write])
-
-    const getDeviceId = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
-        const responses = await write(peripheral, [[CommandNames.id, { control: CommandControlTypes.READ }]])
-        return responses[0] || ''
-    }, [write])
-
-    const getStatus = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
-        const responses = await write(peripheral, [[CommandNames.status, { control: CommandControlTypes.READ }]])
-        return responses[0] || ''
-    }, [write])
-
-    const getOps = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
-        const responses = await write(peripheral, [[CommandNames.getops, { control: CommandControlTypes.READ }]])
-        return responses[0] || ''
-    }, [write])
-
-    const getAiVer = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
-        const responses = await write(peripheral, [[CommandNames.ai_ver, { control: CommandControlTypes.READ }]])
-        return responses[0] || ''
-    }, [write])
-
+    // --- Device Info (using factory) ---
+    const getBatteryLevel = createCommand(write, CommandNames.battery)
+    const getDeviceVer = createCommand(write, CommandNames.ver)
+    const getDeviceName = createCommand(write, CommandNames.device)
+    const getDeviceId = createCommand(write, CommandNames.id)
+    const getStatus = createCommand(write, CommandNames.status)
+    const getOps = createCommand(write, CommandNames.getops)
+    const getAiVer = createCommand(write, CommandNames.ai_ver)
+    const getUtc = createCommand(write, CommandNames.getutc)
 
     // --- System Actions ---
-    const runDfu = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.dfu, { control: CommandControlTypes.WRITE }]])
-    }, [write])
-
-    const runReset = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.reset, { control: CommandControlTypes.WRITE }]])
-    }, [write])
-
-    const runErase = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.erase, { control: CommandControlTypes.WRITE }]])
-    }, [write])
+    const runDfu = createAction(write, CommandNames.dfu)
+    const runReset = createAction(write, CommandNames.reset)
+    const runErase = createAction(write, CommandNames.erase)
 
     const runDisconnect = useCallback(async (peripheral: ExtendedPeripheral) => {
         try {
@@ -71,32 +36,14 @@ export const useBleCommands = () => {
         }
     }, [write, disconnectDevice])
 
-    const setUtc = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.SET_UTC, { control: CommandControlTypes.WRITE }]], { timeout: 10000 })
-    }, [write])
-
-    const getUtc = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
-        const responses = await write(peripheral, [[CommandNames.getutc, { control: CommandControlTypes.READ }]])
-        return responses[0] || ''
-    }, [write])
+    const setUtc = createAction(write, CommandNames.SET_UTC, { timeout: 10000 })
 
 
     // --- LoRaWAN ---
-    const getDevEui = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.deveui, { control: CommandControlTypes.READ }]])
-    }, [write])
-
-    const getAppEui = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.appeui, { control: CommandControlTypes.READ }]])
-    }, [write])
-
-    const getAppKey = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.appkey, { control: CommandControlTypes.READ }]])
-    }, [write])
-
-    const pingNetwork = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.ping, { control: CommandControlTypes.WRITE }]])
-    }, [write])
+    const getDevEui = createCommand(write, CommandNames.deveui)
+    const getAppEui = createCommand(write, CommandNames.appeui)
+    const getAppKey = createCommand(write, CommandNames.appkey)
+    const pingNetwork = createAction(write, CommandNames.ping)
 
 
     // --- AI ---
@@ -134,20 +81,11 @@ export const useBleCommands = () => {
 
 
     // --- Debug ---
-    const runSelfTest = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
-        const responses = await write(peripheral, [[CommandNames.selftest, { control: CommandControlTypes.WRITE }]])
-        return responses[0] || ''
-    }, [write])
+    const runSelfTest = createCommand(write, CommandNames.selftest, { control: CommandControlTypes.WRITE })
 
-    const enableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
-        log('[BLE CMD] Sending enable camera command to:', peripheral.id)
-        await write(peripheral, [[CommandNames.ENABLE_CAMERA, { control: CommandControlTypes.WRITE }]], { timeout: 10000 })
-    }, [write])
+    const enableCamera = createAction(write, CommandNames.ENABLE_CAMERA, { timeout: 10000 })
     
-    const disableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
-        log('[BLE CMD] Sending disable camera command to:', peripheral.id)
-        await write(peripheral, [[CommandNames.DISABLE_CAMERA, { control: CommandControlTypes.WRITE }]], { timeout: 10000 })
-    }, [write])
+    const disableCamera = createAction(write, CommandNames.DISABLE_CAMERA, { timeout: 10000 })
 
     const getHeartbeat = useCallback(async (peripheral: ExtendedPeripheral) => {
         // Use 'wake' command instead of 'heartbeat' to ensure AI processor inactivity timer is reset
@@ -156,11 +94,7 @@ export const useBleCommands = () => {
         await write(peripheral, [[CommandNames.wake, { control: CommandControlTypes.WRITE }]], { timeout: 8000 })
     }, [write])
 
-    const wake = useCallback(async (peripheral: ExtendedPeripheral) => {
-        log('[BLE CMD] Sending wake to:', peripheral.id)
-        // Wake command takes time if device is in deep sleep
-        await write(peripheral, [[CommandNames.wake, { control: CommandControlTypes.WRITE }]], { timeout: 5000 })
-    }, [write])
+    const wake = createAction(write, CommandNames.wake, { timeout: 5000 })
 
     /**
      * Flash one of the device LEDs
@@ -255,13 +189,6 @@ export const useBleCommands = () => {
                 } catch (error) {
                     logError(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
                     throw error
-                }
-
-                // Add delay after each command to allow firmware to process/sleep/wake
-                if (i < 7) {
-                    const delayMs = i === 0 ? 600 : 150
-                    const { sleep } = require('../utils/helpers')
-                    await sleep(delayMs)
                 }
             }
             log('[BLE CMD] Deployment ID OPs sent successfully')

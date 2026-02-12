@@ -31,7 +31,7 @@ export interface BleInitResult {
  * The hook does NOT handle connection itself - the device must already be connected.
  */
 export const useBleInitialization = () => {
-  const { setUtc, runSelfTest, wake } = useBleCommands()
+  const { setUtc, runSelfTest } = useBleCommands()
   const isInitializing = useRef(false)
 
   const initialize = useCallback(async (
@@ -48,19 +48,8 @@ export const useBleInitialization = () => {
     const errors: { setUtc?: string; deviceHealth?: string[] } = {}
 
     try {
-      options?.onProgress?.('Waking device...', 0.1)
-      log('[BLE Init] Waking device...')
-      try {
-        await wake(device)
-      } catch (e) {
-        logWarn('[BLE Init] Wake command failed:', e)
-        // Proceed anyway, maybe it's already awake
-      }
-
-      options?.onProgress?.('Checking hardware...', 0.2)
-      log('[BLE Init] Checking hardware status prior to time sync...')
-
-      options?.onProgress?.('Checking hardware...', 0.2)
+      // 1. Check Hardware Status (Selftest)
+      options?.onProgress?.('Checking hardware...', 0.1)
       log('[BLE Init] Checking hardware status prior to time sync...')
 
       // 1. Check Hardware Status (Selftest) - FIRST
@@ -79,11 +68,11 @@ export const useBleInitialization = () => {
           if (hexBits) {
               bits = parseInt(hexBits, 16)
               // If high byte is FF (0xFF00, 0xFFFF), it usually means system offline/not ready
-              // But since we just sent Wake successfully, we assume it's just "Status Not Updated"
+              // This can happen if the selftest runs before the system has fully initialized
               const isSystemOffline = (bits & 0xFF00) === 0xFF00
               
               if (isSystemOffline) {
-                  logWarn(`[BLE Init] System reports initial state (${hexBits}). Assuming healthy based on Wake success.`)
+                  logWarn(`[BLE Init] System reports initial state (${hexBits}). Assuming temporary initialization state.`)
                   // We do NOT block here, as waiting for stats requires sleep (~1s) which we want to avoid blocking on.
                   // We clear the bits for the purpose of error reporting to avoid showing "All Hardware Failed" to user
                   bits = 0 
@@ -129,8 +118,6 @@ export const useBleInitialization = () => {
         log('[BLE Init] Setting UTC time...')
         await setUtc(device)
         log('[BLE Init] UTC time synchronized')
-        
-        await new Promise(r => setTimeout(r, 500))
       } catch (err) {
         logError('[BLE Init] Failed to set UTC:', err)
         errors.setUtc = 'Device initialization failed. Check connection or device state.'
@@ -148,7 +135,7 @@ export const useBleInitialization = () => {
       isInitializing.current = false
       return { success: false, errors: { setUtc: 'Initialization failed unexpectedly' } }
     }
-  }, [setUtc, runSelfTest, wake])
+  }, [setUtc, runSelfTest])
 
   return { initialize }
 }
