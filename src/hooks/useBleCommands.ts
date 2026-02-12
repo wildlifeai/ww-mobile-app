@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 import { useBle } from "./useBle"
 import { CommandControlTypes, CommandNames } from "../ble/types"
 import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
@@ -11,19 +11,19 @@ export const useBleCommands = () => {
     const { write, disconnectDevice } = useBle()
 
     // --- Device Info (using factory) ---
-    const getBatteryLevel = createCommand(write, CommandNames.battery)
-    const getDeviceVer = createCommand(write, CommandNames.ver)
-    const getDeviceName = createCommand(write, CommandNames.device)
-    const getDeviceId = createCommand(write, CommandNames.id)
-    const getStatus = createCommand(write, CommandNames.status)
-    const getOps = createCommand(write, CommandNames.getops)
-    const getAiVer = createCommand(write, CommandNames.ai_ver)
-    const getUtc = createCommand(write, CommandNames.getutc)
+    const getBatteryLevel = useMemo(() => createCommand(write, CommandNames.battery), [write])
+    const getDeviceVer = useMemo(() => createCommand(write, CommandNames.ver), [write])
+    const getDeviceName = useMemo(() => createCommand(write, CommandNames.device), [write])
+    const getDeviceId = useMemo(() => createCommand(write, CommandNames.id), [write])
+    const getStatus = useMemo(() => createCommand(write, CommandNames.status), [write])
+    const getOps = useMemo(() => createCommand(write, CommandNames.getops), [write])
+    const getAiVer = useMemo(() => createCommand(write, CommandNames.ai_ver), [write])
+    const getUtc = useMemo(() => createCommand(write, CommandNames.getutc), [write])
 
     // --- System Actions ---
-    const runDfu = createAction(write, CommandNames.dfu)
-    const runReset = createAction(write, CommandNames.reset)
-    const runErase = createAction(write, CommandNames.erase)
+    const runDfu = useMemo(() => createAction(write, CommandNames.dfu), [write])
+    const runReset = useMemo(() => createAction(write, CommandNames.reset), [write])
+    const runErase = useMemo(() => createAction(write, CommandNames.erase), [write])
 
     const runDisconnect = useCallback(async (peripheral: ExtendedPeripheral) => {
         try {
@@ -36,14 +36,16 @@ export const useBleCommands = () => {
         }
     }, [write, disconnectDevice])
 
-    const setUtc = createAction(write, CommandNames.SET_UTC, { timeout: 10000 })
+    const setUtc = useMemo(() => createAction(write, CommandNames.SET_UTC, { 
+        timeout: 10000 
+    }), [write])
 
 
     // --- LoRaWAN ---
-    const getDevEui = createCommand(write, CommandNames.deveui)
-    const getAppEui = createCommand(write, CommandNames.appeui)
-    const getAppKey = createCommand(write, CommandNames.appkey)
-    const pingNetwork = createAction(write, CommandNames.ping)
+    const getDevEui = useMemo(() => createCommand(write, CommandNames.deveui), [write])
+    const getAppEui = useMemo(() => createCommand(write, CommandNames.appeui), [write])
+    const getAppKey = useMemo(() => createCommand(write, CommandNames.appkey), [write])
+    const pingNetwork = useMemo(() => createAction(write, CommandNames.ping), [write])
 
 
     // --- AI ---
@@ -81,11 +83,11 @@ export const useBleCommands = () => {
 
 
     // --- Debug ---
-    const runSelfTest = createCommand(write, CommandNames.selftest, { control: CommandControlTypes.WRITE })
+    const runSelfTest = useMemo(() => createCommand(write, CommandNames.selftest, { control: CommandControlTypes.WRITE }), [write])
 
-    const enableCamera = createAction(write, CommandNames.ENABLE_CAMERA, { timeout: 10000 })
+    const enableCamera = useMemo(() => createAction(write, CommandNames.ENABLE_CAMERA, { timeout: 10000 }), [write])
     
-    const disableCamera = createAction(write, CommandNames.DISABLE_CAMERA, { timeout: 10000 })
+    const disableCamera = useMemo(() => createAction(write, CommandNames.DISABLE_CAMERA, { timeout: 10000 }), [write])
 
     const getHeartbeat = useCallback(async (peripheral: ExtendedPeripheral) => {
         // Use 'wake' command instead of 'heartbeat' to ensure AI processor inactivity timer is reset
@@ -94,7 +96,7 @@ export const useBleCommands = () => {
         await write(peripheral, [[CommandNames.wake, { control: CommandControlTypes.WRITE }]], { timeout: 8000 })
     }, [write])
 
-    const wake = createAction(write, CommandNames.wake, { timeout: 5000 })
+    const wake = useMemo(() => createAction(write, CommandNames.wake, { timeout: 5000 }), [write])
 
     /**
      * Flash one of the device LEDs
@@ -113,7 +115,9 @@ export const useBleCommands = () => {
 
     const setOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number, value: string) => {
         // Use structured command so useBle can find the correct regex pattern automatically
-        await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]])
+        // Optimization: Pass expectedPattern: false to skip waiting for regex match (fire-and-forget)
+        // This speeds up sequential writes significantly
+        await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]], { expectedPattern: false })
     }, [write])
 
     const setGpsLocation = useCallback(
@@ -180,7 +184,9 @@ export const useBleCommands = () => {
 
                 // Use the new serialized write method instead of raw writeToDevice
                 try {
-                    const results = await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]])
+                    // Optimization: Pass expectedPattern: false to skip regex waiting (fire-and-forget)
+                    // This prevents timeouts if the device response is slow or slightly mismatched
+                    const results = await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]], { expectedPattern: false })
                     // Check if write returned an error string (since useBle swallows errors)
                     const result = results[0]
                     if (result && typeof result === 'string' && result.startsWith('ERROR:')) {

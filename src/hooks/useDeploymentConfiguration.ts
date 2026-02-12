@@ -55,14 +55,13 @@ export const useDeploymentConfiguration = () => {
     }, [setDeploymentIdAsOps, setGpsLocation])
 
     /**
-     * Helper to apply updates sequentially with delays
+     * Helper to apply updates sequentially
      */
     const applyUpdates = useCallback(async (device: ExtendedPeripheral, updates: { index: number, value: number }[]) => {
         for (const { index, value } of updates) {
             log(`[DeployConfig] Setting parameter ${index} to ${value}`)
             await setOperationalParam(device, index, value.toString())
-            // Small delay between commands to avoid overwhelming the device
-            await new Promise(resolve => setTimeout(resolve, 500))
+            // Delay removed - relying on BLE queue serialization
         }
     }, [setOperationalParam])
 
@@ -130,4 +129,3 @@ export const useDeploymentConfiguration = () => {
         configureCaptureMethod
     }
 }
-

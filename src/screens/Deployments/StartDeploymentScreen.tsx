@@ -64,6 +64,8 @@ export const DeploymentDetailsStep = () => {
     const { configure: configureDeployment } = useDeploymentConfiguration()
     useBleActions()
 
+
+
     const [formState, setFormState] = useState({
         name: '',
         notes: '',
@@ -112,6 +114,44 @@ export const DeploymentDetailsStep = () => {
     // Standard BLE initialization plus initialization guard
     const hasRunInitialization = useRef(false)
     const bleDeviceRef = useRef(bleDevice)
+
+    
+    // Memoized handlers to prevent infinite loops in child components
+    const handleLocationChange = useCallback((loc: any) => {
+        setFormState(prev => {
+            // Optimization: Prevent re-render if location hasn't meaningfully changed
+            if (
+                prev.location.latitude === loc.latitude &&
+                prev.location.longitude === loc.longitude &&
+                prev.location.altitude === loc.altitude &&
+                prev.location.accuracy === loc.accuracy
+            ) {
+                return prev
+            }
+            return { ...prev, location: loc }
+        })
+    }, [])
+
+    const handleImageCaptured = useCallback((path: string) => {
+        setFormState(prev => ({ ...prev, testImagePath: path }))
+    }, [])
+
+    const handleNameChange = useCallback((name: string) => {
+        setFormState(prev => ({ ...prev, name }))
+    }, [])
+
+    const handleNotesChange = useCallback((notes: string) => {
+        setFormState(prev => ({ ...prev, notes }))
+    }, [])
+
+    const handleLocationDescriptionChange = useCallback((text: string) => {
+        setFormState(prev => ({ ...prev, locationDescription: text }))
+    }, [])
+
+    const handleCameraHeightChange = useCallback((text: string) => {
+        setFormState(prev => ({ ...prev, cameraHeight: text }))
+    }, [])
+
 
     useEffect(() => {
         bleDeviceRef.current = bleDevice
@@ -386,8 +426,8 @@ export const DeploymentDetailsStep = () => {
             setFinishProgress(0.1)
             
             await startCheckAndCorrectTime()
-            // Wait 2s to allow BLE round trip / correction
-            await new Promise(resolve => setTimeout(resolve, 2000))
+            // Delay removed - setUtc is now fire-and-forget and verified during init
+            // await new Promise(resolve => setTimeout(resolve, 2000))
             addFinishLog('Time check complete')
 
             // 2. Call DeploymentService.createDeployment
@@ -576,6 +616,9 @@ export const DeploymentDetailsStep = () => {
         )
     }
 
+
+
+
     return (
         <WWScreenView style={styles.screenView}>
             <View style={styles.container}>
@@ -644,12 +687,12 @@ export const DeploymentDetailsStep = () => {
 
                 <CameraViewSection
                     device={bleDevice}
-                    onImageCaptured={(path: string) => setFormState(prev => ({ ...prev, testImagePath: path }))}
+                    onImageCaptured={handleImageCaptured}
                     onShowHelp={showHelp}
                 />
 
                 <LocationSection
-                    onLocationChange={(loc) => setFormState(prev => ({ ...prev, location: loc }))}
+                    onLocationChange={handleLocationChange}
                     onShowHelp={showHelp}
                 />
 
@@ -658,10 +701,10 @@ export const DeploymentDetailsStep = () => {
                     notes={formState.notes}
                     locationDescription={formState.locationDescription}
                     cameraHeight={formState.cameraHeight}
-                    onNameChange={(name: string) => setFormState(prev => ({ ...prev, name }))}
-                    onNotesChange={(notes: string) => setFormState(prev => ({ ...prev, notes }))}
-                    onLocationDescriptionChange={(text: string) => setFormState(prev => ({ ...prev, locationDescription: text }))}
-                    onCameraHeightChange={(text: string) => setFormState(prev => ({ ...prev, cameraHeight: text }))}
+                    onNameChange={handleNameChange}
+                    onNotesChange={handleNotesChange}
+                    onLocationDescriptionChange={handleLocationDescriptionChange}
+                    onCameraHeightChange={handleCameraHeightChange}
                     onShowHelp={showHelp}
                 />
 

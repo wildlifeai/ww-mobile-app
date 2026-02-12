@@ -169,7 +169,7 @@ export const useBle = (): ReturnType => {
 						let lookupName = typeof strOrCommand === "string" ? strOrCommand : strOrCommand[0]
 						const cmdDef = getCommandByName(lookupName)
 						const cmdOptions = { ...options }
-						if (!cmdOptions.expectedPattern && cmdDef?.readRegex) {
+						if (cmdOptions.expectedPattern === undefined && cmdDef?.readRegex) {
 							cmdOptions.expectedPattern = cmdDef.readRegex
 						}
 
