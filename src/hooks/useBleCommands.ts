@@ -10,21 +10,25 @@ export const useBleCommands = () => {
     const { write, disconnectDevice } = useBle()
 
     // --- Device Info ---
-    const getBatteryLevel = useCallback(async (peripheral: ExtendedPeripheral) => {
+    const getBatteryLevel = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
         log('[BLE CMD] Sending battery level request to device:', peripheral.id)
-        await write(peripheral, [[CommandNames.battery, { control: CommandControlTypes.READ }]])
+        const responses = await write(peripheral, [[CommandNames.battery, { control: CommandControlTypes.READ }]])
+        return responses[0] || ''
     }, [write])
 
-    const getDeviceVer = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.ver, { control: CommandControlTypes.READ }]])
+    const getDeviceVer = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
+        const responses = await write(peripheral, [[CommandNames.ver, { control: CommandControlTypes.READ }]])
+        return responses[0] || ''
     }, [write])
 
-    const getDeviceName = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.device, { control: CommandControlTypes.READ }]])
+    const getDeviceName = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
+        const responses = await write(peripheral, [[CommandNames.device, { control: CommandControlTypes.READ }]])
+        return responses[0] || ''
     }, [write])
 
-    const getDeviceId = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.id, { control: CommandControlTypes.READ }]])
+    const getDeviceId = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
+        const responses = await write(peripheral, [[CommandNames.id, { control: CommandControlTypes.READ }]])
+        return responses[0] || ''
     }, [write])
 
     const getStatus = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
@@ -32,12 +36,14 @@ export const useBleCommands = () => {
         return responses[0] || ''
     }, [write])
 
-    const getOps = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.getops, { control: CommandControlTypes.READ }]])
+    const getOps = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
+        const responses = await write(peripheral, [[CommandNames.getops, { control: CommandControlTypes.READ }]])
+        return responses[0] || ''
     }, [write])
 
-    const getAiVer = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.ai_ver, { control: CommandControlTypes.READ }]])
+    const getAiVer = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
+        const responses = await write(peripheral, [[CommandNames.ai_ver, { control: CommandControlTypes.READ }]])
+        return responses[0] || ''
     }, [write])
 
 
@@ -94,12 +100,28 @@ export const useBleCommands = () => {
 
 
     // --- AI ---
-    const checkSdCard = useCallback(async (peripheral: ExtendedPeripheral) => {
+    const checkSdCard = useCallback(async (peripheral: ExtendedPeripheral): Promise<{ total: number; free: number } | null> => {
         log('[BLE CMD] Sending SD card check request (aiinfo) to device:', peripheral.id)
         try {
-            // Send as raw string command like Engineer Console does
-            await write(peripheral, ['AI info'])
-            log('[BLE CMD] aiinfo command write completed successfully')
+            // Use structured command to get response
+            // The readRegex in types.ts is: /(\d+)\s*[Kk]\s*total\s*drive\s*space/i
+            const responses = await write(peripheral, [[CommandNames.aiinfo, { control: CommandControlTypes.WRITE }]])
+            const response = responses[0]
+            
+            if (response) {
+                // Parse the response "15200 K total drive space" -> 15200
+                // Note: The regex in types.ts might capture just the first number.
+                // We should probably rely on the regex capture if available, but here we get the full string match usually.
+                const match = response.match(/(\d+)\s*[Kk]\s*total\s*drive\s*space/i)
+                if (match) {
+                    const total = parseInt(match[1], 10)
+                    // We don't get 'free' space from this specific command string usually, 
+                    // but let's assume if we get a valid total, the card is present.
+                    // If we want more details we might need to adjust the regex or command.
+                    return { total, free: 0 } 
+                }
+            }
+            return null
         } catch (error) {
             logError('[BLE CMD] Failed to write aiinfo command:', error)
             throw error
@@ -132,6 +154,12 @@ export const useBleCommands = () => {
         // 'heartbeat' command only checks the BLE/MCU status but doesn't necessarily wake the AI
         log('[BLE CMD] Sending keep-alive (wake) to:', peripheral.id)
         await write(peripheral, [[CommandNames.wake, { control: CommandControlTypes.WRITE }]], { timeout: 8000 })
+    }, [write])
+
+    const wake = useCallback(async (peripheral: ExtendedPeripheral) => {
+        log('[BLE CMD] Sending wake to:', peripheral.id)
+        // Wake command takes time if device is in deep sleep
+        await write(peripheral, [[CommandNames.wake, { control: CommandControlTypes.WRITE }]], { timeout: 5000 })
     }, [write])
 
     /**
@@ -273,6 +301,7 @@ export const useBleCommands = () => {
         // Debug
         runSelfTest,
         getHeartbeat,
+        wake,
         flashLed,
         disconnectDevice,
         enableCamera,
