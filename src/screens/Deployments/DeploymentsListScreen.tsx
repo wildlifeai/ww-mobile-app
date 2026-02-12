@@ -5,9 +5,12 @@ import { FAB, Chip } from 'react-native-paper'
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { DeploymentCard } from "../../components/DeploymentCard"
 import type Deployment from "../../database/models/Deployment"
+import { useAppSelector } from "../../redux"
 import { StandardizedListLayout } from "../../components/ui/StandardizedListLayout"
 // import { useExtendedTheme } from "../../theme"
 import { DeploymentService } from "../../services/DeploymentService"
+import SupabaseSyncService from "../../services/SupabaseSyncService"
+import { log, logError } from "../../utils/logger"
 
 type Props = {
 	deployments: Deployment[]
@@ -16,7 +19,11 @@ type Props = {
 const DeploymentsComponent = ({ deployments }: Props) => {
 	const navigation = useAppNavigation()
 	// const theme = useExtendedTheme()
+	
+	const isGlobalSyncing = useAppSelector((state) => state.sync.isGlobalSyncing)
 
+	// Refresh state for pull-to-refresh
+	const [isRefreshing, setIsRefreshing] = useState(false)
 
 	// Search & Filter state
 	const [searchQuery, setSearchQuery] = useState("")
@@ -59,6 +66,26 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 		navigation.navigate("StartDeploymentWizard", { mode: 'deployment' })
 	}, [navigation])
 
+	/**
+	 * Handle pull-to-refresh
+	 * Triggers a sync with Supabase to pull the latest deployment changes
+	 * Observable will automatically update local state when new data arrives
+	 */
+	const handleRefresh = useCallback(async () => {
+		setIsRefreshing(true)
+		try {
+			log('[DeploymentsListScreen] Syncing deployments with server...')
+			// Trigger full sync which includes pulling latest changes
+			// The observable will automatically trigger updates for components watching the data
+			await SupabaseSyncService.sync()
+			log('[DeploymentsListScreen] Sync completed successfully')
+		} catch (error) {
+			logError('[DeploymentsListScreen] Error syncing deployments:', error)
+		} finally {
+			setIsRefreshing(false)
+		}
+	}, [])
+
 	const renderItem = useCallback(
 		({ item }: ListRenderItemInfo<Deployment>) => (
 			<DeploymentCard
@@ -81,9 +108,9 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 				data={filteredDeployments}
 				renderItem={renderItem}
 				keyExtractor={keyExtractor}
-				isLoading={false}
-				isFetching={false}
-				// onRefresh={refetch} // No manual refresh needed with observables
+				isLoading={false || (isGlobalSyncing && (!deployments || deployments.length === 0))}
+				isFetching={isRefreshing || isGlobalSyncing}
+				onRefresh={handleRefresh}
 				searchQuery={searchQuery}
 				onSearchChange={setSearchQuery}
 				searchPlaceholder="Search deployments..."

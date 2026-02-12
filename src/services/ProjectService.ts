@@ -428,10 +428,16 @@ class ProjectService {
 				id: m.id, // Using user_id as ID for now, or we could fetch the user_role ID if needed
 				project_id: projectId,
 				user_id: m.id,
+				email: m.email,
 				role: m.role,
 				created_at: m.granted_at,
 				updated_at: m.granted_at,
-				user_profile: { name: m.name },
+				user_profile: { 
+					name: m.name,
+					firstname: m.firstname,
+					surname: m.surname,
+					email: m.email 
+				},
 				role_details: {
 					value: m.role,
 					description: m.role === 'project_admin' ? 'Project Admin' : 'Project Member'

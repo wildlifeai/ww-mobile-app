@@ -17,6 +17,7 @@ import { log, logError } from "../utils/logger"
 import database from '../database'
 import Project from '../database/models/Project'
 import UserRole from '../database/models/UserRole'
+import ProjectInvitation from '../database/models/ProjectInvitation'
 import { Q } from '@nozbe/watermelondb'
 
 
@@ -34,6 +35,8 @@ export interface OrganizationUser {
 export interface ProjectMember {
 	id: string // User ID
 	name: string
+	firstname?: string
+	surname?: string
 	email: string
 	role: string // ProjectRole
 	granted_at: string
@@ -139,6 +142,7 @@ export const getProjectMembers = async (
 		if (localRoles.length > 0) {
 			// Fetch user details for these roles
 			const userIds = localRoles.map(r => r.userId)
+
 			const users = await database.get<any>('users') // Use any to avoid import issues if User model not exported as value
 				.query(Q.where('id', Q.oneOf(userIds)))
 				.fetch()
@@ -148,7 +152,7 @@ export const getProjectMembers = async (
 			// Check for missing users and fetch them
 			const missingUserIds = userIds.filter(id => !userMap.has(id))
 			if (missingUserIds.length > 0) {
-				log(`⚠️ Missing ${missingUserIds.length} users locally, fetching from Cloud...`)
+				log(`⚠️ Missing ${missingUserIds.length} users locally: ${missingUserIds.join(', ')}`)
 				try {
 					const { data: remoteUsers, error } = await getSupabaseClient()
 						.from('users')
@@ -183,13 +187,42 @@ export const getProjectMembers = async (
 				}
 			}
 
+			// NEW: Fetch invitations to resolve email addresses for local users
+			let invitationMap = new Map<string, string>();
+			
+			try {
+				// Check local invitations
+				const invitations = await database.get<ProjectInvitation>('project_invitations')
+					.query(
+						Q.where('project_id', projectId)
+					).fetch();
+				invitations.forEach(inv => {
+					if (inv.inviteeId) invitationMap.set(inv.inviteeId, inv.inviteeEmail);
+				});
+			} catch (invError) {
+				log("Failed to enrich member data from invitations");
+			}
+
 			const members = localRoles.map(role => {
 				const user = userMap.get(role.userId)
-				let name = "Unknown User"
+				let email = invitationMap.get(role.userId) || ""
+				const isMe = String(role.userId).toLowerCase() === String(requestingUserId).toLowerCase()
+				let name = isMe ? "Me" : "Unknown User"
+
 				if (user) {
-					name = `${user.firstname} ${user.surname}`.trim() || "Unknown User"
-				} else if (role.userId === requestingUserId) {
-					name = "Me" // Fallback if local user is missing but it's the current user
+					const fullName = `${user.firstname || ""} ${user.surname || ""}`.trim()
+					if (fullName) {
+						name = isMe ? `${fullName} (You)` : fullName
+					} else if (email) {
+						name = isMe ? `${email} (You)` : email
+					}
+				} else if (email) {
+					name = isMe ? `${email} (You)` : email // Use invitation email as name if profile is missing
+				}
+
+				// If we still have "Unknown User" but it's me, make sure it says Me
+				if (name === "Unknown User" && isMe) {
+					name = "Me (You)"
 				}
 
 				// We might not have email locally if it's not in public.users or not synced
@@ -197,7 +230,9 @@ export const getProjectMembers = async (
 				return {
 					id: role.userId,
 					name: name,
-					email: "", // Email might be missing locally
+					firstname: user?.firstname || "",
+					surname: user?.surname || "",
+					email: email, // Enriched from invitations if available
 					role: role.role,
 					granted_at: (role.grantedAt && !isNaN(role.grantedAt.getTime())) ? role.grantedAt.toISOString() : new Date().toISOString(),
 					granted_by: role.grantedBy,
@@ -206,6 +241,22 @@ export const getProjectMembers = async (
 			})
 
 			log(`✅ Fetched ${members.length} members from local DB for project ${projectId}`)
+
+			// If any member is still "Unknown User", try to fetch from cloud to get better data
+			// (Note: This cloud call will fail until backend migration is pushed, but we handle the error gracefully)
+			const hasUnknown = members.some(m => m.name === "Unknown User")
+			if (hasUnknown) {
+				log(`⚠️ Found unknown members in local DB, attempting cloud fallback...`)
+				try {
+					const cloudMembers = await fetchMembersFromCloud(projectId, requestingUserId)
+					if (cloudMembers && cloudMembers.length > 0) {
+						return cloudMembers
+					}
+				} catch (e) {
+					log("Failed to fetch from cloud during fallback, returning local members")
+				}
+			}
+
 			return members
 		}
 
@@ -241,6 +292,25 @@ export const getProjectMembers = async (
 		}
 
 		// 2. Fallback to backend RPC
+		// If cloud fetch fails (likely due to u.name error on old backend),
+		// we still have the local members with enriched data from invitations.
+		try {
+			return await fetchMembersFromCloud(projectId, requestingUserId)
+		} catch (cloudError) {
+			log("⚠️ Cloud fetch failed, returning enriched local members")
+			throw cloudError
+		}
+	} catch (error) {
+		logError("❌ Exception fetching project members: " + (error instanceof Error ? error.message : String(error)))
+		throw error
+	}
+}
+
+export const fetchMembersFromCloud = async (
+	projectId: string,
+	requestingUserId: string
+): Promise<ProjectMember[]> => {
+	try {
 		// This bypasses RLS issues and provides proper data joins
 		const { data, error } = await getSupabaseClient()
 			.rpc("get_project_members", {
@@ -249,26 +319,132 @@ export const getProjectMembers = async (
 			})
 
 		if (error) {
-			logError("❌ Error fetching project members: " + error.message)
-			throw new Error(error.message)
+		// Log the actual error to understand why RPC is failing
+		log("🔍 DIAGNOSTIC: RPC get_project_members failed with error:", {
+			message: error.message,
+			code: error.code,
+			details: error.details,
+			hint: error.hint
+		})
+		
+		// If backend is old and doesn't have the fixed RPC, we'll get "column u.name does not exist"
+		// Handle this gracefully by falling back to manual queries
+		if (error.message.includes("u.name") || error.message.includes("does not exist")) {
+			log("⚠️ Backend RPC is outdated, falling back to manual cloud fetch...")
+			return await fetchMembersFromCloudManual(projectId, requestingUserId)
 		}
+		throw new Error(error.message)
+	}
 
-		// Map RPC response to ProjectMember format
-		const members = (data || []).map((m: any) => ({
+	// Map RPC response to ProjectMember format
+	const members = (data || []).map((m: any) => {
+		const firstName = m.firstname || ""
+		const surname = m.surname || ""
+		const fullName = m.name || (firstName || surname ? `${firstName} ${surname}`.trim() : (m.email || "Unknown"))
+		const isMe = String(m.id).toLowerCase() === String(requestingUserId).toLowerCase()
+
+		return {
 			id: m.id,  // RPC returns 'id' not 'user_id'
-			name: m.name || "Unknown",
+			name: isMe ? (fullName && fullName !== "Unknown" ? `${fullName} (You)` : "Me (You)") : fullName,
+			firstname: m.firstname,
+			surname: m.surname,
 			email: m.email || "",
 			role: m.role,
 			granted_at: m.granted_at,
 			granted_by: m.granted_by,
 			granted_by_name: m.granted_by_name || "Unknown"
-		}))
+		}
+	})
+	log(`✅ Fetched ${members.length} members from cloud for project ${projectId}`)
+	return members
+	} catch (error) {
+		log("❌ Cloud RPC failed: " + (error instanceof Error ? error.message : String(error)))
+		// Final fallback: try manual fetch even if it wasn't a specific column error
+		return await fetchMembersFromCloudManual(projectId, requestingUserId)
+	}
+}
 
-		log(`✅ Fetched ${members.length} members from project ${projectId}`)
+/**
+ * Manual fallback to fetch project members when RPC is broken
+ * Queries tables individually and joins in memory
+ */
+/**
+ * Manual fallback to fetch project members when RPC is broken
+ * Queries tables individually and joins in memory
+ * 
+ * SECURITY NOTE: This fallback does NOT fetch emails from auth.users
+ * to avoid granting direct access to the auth schema.
+ * Emails will only be available if the RPC functions are used.
+ */
+const fetchMembersFromCloudManual = async (projectId: string, requestingUserId: string): Promise<ProjectMember[]> => {
+	try {
+		log(`🔍 Manually fetching members for project ${projectId} (requestingUser: ${requestingUserId})...`)
+		const supabase = getSupabaseClient()
+
+		// 1. Fetch roles
+		const { data: roles, error: rolesError } = await supabase
+			.from('user_roles')
+			.select('*')
+			.eq('scope_type', 'project')
+			.eq('scope_id', projectId)
+			.eq('is_active', true)
+
+		if (rolesError || !roles) {
+			logError("Failed to fetch roles manually: " + rolesError?.message)
+			return []
+		}
+
+		const userIds = roles.map(r => r.user_id)
+		log(`   Found ${userIds.length} user IDs in project`)
+
+		// 2. Fetch user profiles (firstname and surname only)
+		const { data: profiles } = await supabase
+			.from('users')
+			.select('id, firstname, surname')
+			.in('id', userIds)
+
+		const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+
+		// 3. (Removed) Fetching emails from auth.users is NOT PERMITTED for security reasons.
+        // Use the RPC function get_project_members to retrieve emails securely.
+
+		log(`🔍 DIAGNOSTIC: Manual fetch - profiles: ${profiles?.length || 0} (Emails unavailable in manual mode)`)
+
+		// 4. Join and map
+		const members: ProjectMember[] = roles.map(role => {
+			const profile = profileMap.get(role.user_id)
+			const isMe = String(role.user_id).toLowerCase() === String(requestingUserId).toLowerCase()
+			
+			let name = isMe ? "Me" : "Unknown User"
+            let email = "" // Cannot fetch email manually securely
+			
+			if (profile) {
+				const profileName = `${profile.firstname || ""} ${profile.surname || ""}`.trim()
+				if (profileName) {
+					name = isMe ? `${profileName} (You)` : profileName
+				}
+			} else if (isMe) {
+				name = "Me (You)"
+			}
+
+			return {
+				id: role.user_id,
+				name: name,
+				firstname: profile?.firstname,
+				surname: profile?.surname,
+				email: email,
+				role: role.role,
+				granted_at: role.granted_at,
+				granted_by: role.granted_by || "",
+				granted_by_name: "Unknown"
+			}
+		})
+
+		log(`✅ Manually fetched ${members.length} members from cloud (Note: emails hidden in fallback mode)`)
 		return members
 	} catch (error) {
-		logError("❌ Exception fetching project members: " + (error instanceof Error ? error.message : String(error)))
-		throw error
+		logError("Manual cloud fetch failed: " + (error instanceof Error ? error.message : String(error)))
+		return []
 	}
 }
 

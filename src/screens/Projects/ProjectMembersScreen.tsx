@@ -94,6 +94,8 @@ import type {
 import InvitationService from "../../services/InvitationService"
 import type ProjectInvitation from "../../database/models/ProjectInvitation"
 import { log, logError } from '../../utils/logger'
+import { UserProfile } from "../../types/UserProfile"
+import { getDisplayName } from "../../utils/userUtils"
 
 
 type RouteParams = {
@@ -154,11 +156,33 @@ export const ProjectMembersScreen = () => {
 			log("📋 Loading members for project:", projectId)
 
 			// Load project members (with authorization handling)
-			let projectMembers: ProjectMember[] = []
 			try {
-				projectMembers = await getProjectMembers(projectId, user.id)
-				setMembers(projectMembers)
-				log(`✅ Loaded ${projectMembers.length} project members`)
+				const rawMembers = await getProjectMembers(projectId, user!.id)
+				
+				// Enrich members with current user info if missing
+				const enrichedMembers = rawMembers.map(m => {
+					const isMe = String(m.id).toLowerCase() === String(user!.id).toLowerCase()
+					if (isMe) {
+						if (!m.name || m.name === "Unknown User" || m.name === "Me") {
+							// Try various property names that might be in Redux
+							// Try various property names that might be in Redux
+							const profile = user!.profile as UserProfile
+							const pName = getDisplayName(profile)
+							
+							return {
+								...m,
+								name: pName ? `${pName} (You)` : "Me (You)",
+								firstname: profile.firstName || profile.firstname || m.firstname,
+								surname: profile.lastName || profile.surname || m.surname,
+								email: user!.email || m.email
+							}
+						}
+					}
+					return m
+				})
+
+				setMembers(enrichedMembers)
+				log(`✅ Loaded ${enrichedMembers.length} project members`)
 			} catch (error: any) {
 				if (error?.message?.includes("Unauthorized")) {
 					// User not authorized to view members - show empty list
@@ -207,15 +231,7 @@ export const ProjectMembersScreen = () => {
 		try {
 			log(`📧 Inviting ${inviteEmail}...`)
 
-			// 1. Check if user exists
-			const exists = await InvitationService.checkUserExists(inviteEmail.trim())
-			if (!exists) {
-				Alert.alert("Error", "No user associated with this email address")
-				setLoading(false)
-				return
-			}
-
-			// 2. Send invitation
+			// Send invitation
 			await InvitationService.sendInvitation(
 				projectId,
 				inviteEmail.trim(),
@@ -451,6 +467,21 @@ export const ProjectMembersScreen = () => {
 						member.role === "project_admin" && adminCount === 1
 					const canRemove = !isLastAdmin
 
+					const isMe = user && String(member.id).toLowerCase() === String(user.id).toLowerCase()
+
+
+					const displayName = getDisplayName(member, isMe)
+
+					const initials = displayName
+						.replace("(You)", "")
+						.trim()
+						.split(" ")
+						.filter((n) => n.length > 0)
+						.map((n) => n[0])
+						.join("")
+						.toUpperCase()
+						.substring(0, 2)
+
 					return (
 						<Card key={member.id} style={styles.memberCard}>
 							<Card.Content>
@@ -458,12 +489,7 @@ export const ProjectMembersScreen = () => {
 									{/* Avatar */}
 									<Avatar.Text
 										size={48}
-										label={member.name
-											.split(" ")
-											.filter((n) => n.length > 0)
-											.map((n) => n[0])
-											.join("")
-											.toUpperCase()}
+										label={initials}
 										style={{ backgroundColor: getRoleBadgeColor(member.role as ProjectRole) }}
 									/>
 
@@ -473,14 +499,16 @@ export const ProjectMembersScreen = () => {
 											variant="titleMedium"
 											style={dynamicStyles.memberSurface}
 										>
-											{member.name}
+											{displayName}
 										</Text>
-										<Text
-											variant="bodySmall"
-											style={dynamicStyles.memberSurfaceVariant}
-										>
-											{member.email}
-										</Text>
+										{member.email && member.email !== displayName && (
+											<Text
+												variant="bodySmall"
+												style={dynamicStyles.memberSurfaceVariant}
+											>
+												{member.email}
+											</Text>
+										)}
 										<Chip
 											mode="flat"
 											textStyle={dynamicStyles.chipText}

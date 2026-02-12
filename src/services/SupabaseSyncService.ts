@@ -16,11 +16,18 @@ import type Deployment from '../database/models/Deployment'
 import { log, logError, logWarn } from '../utils/logger'
 
 
+import { setGlobalSyncing } from '../redux/slices/syncSlice'
+
 class SupabaseSyncService {
     private realtimeChannel: RealtimeChannel | null = null
     private isSyncing = false
     private syncDebounceTimer: NodeJS.Timeout | null = null
     private readonly SYNC_DEBOUNCE_MS = 2000 // 2 seconds
+    private store: any = null
+
+    public setStore(store: any) {
+        this.store = store
+    }
 
     /**
      * Reset sync state on app startup
@@ -94,28 +101,33 @@ class SupabaseSyncService {
         // This handles the race condition where Redux hasn't initialized yet
         let isOnline = false
         try {
-            const { default: store } = require('../redux')
-            const state: RootState = store.getState()
-            isOnline = state.network.isOnline
+            // Use injected store if available, otherwise check NetInfo directly
+            if (this.store) {
+                const state: RootState = this.store.getState()
+                isOnline = state.network.isOnline
 
-            // If Redux says offline, double-check with NetInfo (handles initialization race)
-            if (!isOnline) {
-                const netState = await NetInfo.fetch()
-                const netInfoOnline = netState.isConnected === true
-                if (netInfoOnline) {
-                    log(`🌐 Network check: Redux says OFFLINE but NetInfo says ONLINE - using NetInfo`)
-                    isOnline = true
+                // If Redux says offline, double-check with NetInfo
+                if (!isOnline) {
+                    const netState = await NetInfo.fetch()
+                    if (netState.isConnected === true) {
+                        log(`🌐 Network check: Redux says OFFLINE but NetInfo says ONLINE - using NetInfo`)
+                        isOnline = true
+                    } else {
+                        log(`🌐 Network check (Redux): OFFLINE`)
+                    }
                 } else {
-                    log(`🌐 Network check (Redux): OFFLINE`)
+                    log(`🌐 Network check (Redux): ONLINE`)
                 }
             } else {
-                log(`🌐 Network check (Redux): ONLINE`)
+                // Fallback if store not yet injected
+                const netState = await NetInfo.fetch()
+                isOnline = netState.isConnected === true
+                log(`🌐 Network check (No Store): ${isOnline ? 'ONLINE' : 'OFFLINE'}`)
             }
         } catch (e) {
-            // Fallback to NetInfo if Redux not available
+            logError('⚠️ Error checking network state:', e)
             const netState = await NetInfo.fetch()
             isOnline = netState.isConnected === true
-            log(`🌐 Network check (NetInfo fallback): ${isOnline ? 'ONLINE' : 'OFFLINE'}`)
         }
 
         if (!isOnline) {
@@ -149,6 +161,16 @@ class SupabaseSyncService {
         }
 
         this.isSyncing = true
+        
+        // Dispatch global sync start
+        if (this.store) {
+            try {
+                this.store.dispatch(setGlobalSyncing(true))
+            } catch (e) {
+                logWarn('⚠️ [SupabaseSyncService] Failed to dispatch sync start:', e)
+            }
+        }
+
         await database.write(async () => {
             await SyncStateService.set(SYNC_STATE_KEYS.SYNC_IN_PROGRESS, 'true')
         })
@@ -205,6 +227,15 @@ class SupabaseSyncService {
             await database.write(async () => {
                 await SyncStateService.set(SYNC_STATE_KEYS.SYNC_IN_PROGRESS, 'false')
             })
+
+            // Dispatch global sync end
+            if (this.store) {
+                try {
+                    this.store.dispatch(setGlobalSyncing(false))
+                } catch (e) {
+                    logWarn('⚠️ [SupabaseSyncService] Failed to dispatch sync end:', e)
+                }
+            }
         }
     }
 
@@ -720,10 +751,15 @@ class SupabaseSyncService {
 
         log(`📥 Received ${data.length} user role updates`)
 
+        const usersToSync = new Set<string>()
+
         await database.write(async () => {
             const collection = database.get<UserRole>('user_roles')
+            const operations = []
 
             for (const row of data as any[]) {
+                usersToSync.add(row.user_id) // Track user ID for profile sync
+
                 // Check if exists
                 const existing = await collection.query(
                     Q.where('user_id', row.user_id),
@@ -739,7 +775,7 @@ class SupabaseSyncService {
                         rec.updatedAt = new Date(row.updated_at ?? Date.now())
                     })
                 } else {
-                    await collection.create((rec) => {
+                    const newRec = collection.prepareCreate((rec) => {
                         rec.userId = row.user_id
                         rec.role = row.role
                         rec.scopeType = row.scope_type
@@ -753,14 +789,75 @@ class SupabaseSyncService {
                         (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
                         rec.updatedAt = new Date(row.updated_at ?? Date.now())
                     })
+                    operations.push(newRec)
                 }
             }
+            if (operations.length > 0) {
+                await database.batch(operations)
+            }
+            
             // Update timestamp
-            const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
-            await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
+            if (data.length > 0) {
+                const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
+                await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
+            }
         })
 
+        // Sync missing user profiles
+        if (usersToSync.size > 0) {
+            await this.syncUserProfiles(Array.from(usersToSync))
+        }
+
         log('✅ User roles sync complete')
+    }
+
+    /**
+     * Fetch and store user profiles for a list of user IDs
+     * Ensures that we have name/email for all roles we just synced
+     */
+    private async syncUserProfiles(userIds: string[]): Promise<void> {
+        if (userIds.length === 0) return
+
+        try {
+            // Check which users we already have locally
+            const localUsers = await database.get('users').query(Q.where('id', Q.oneOf(userIds))).fetch()
+            const existingIds = new Set(localUsers.map(u => u.id))
+            const missingIds = userIds.filter(id => !existingIds.has(id))
+
+            if (missingIds.length === 0) return
+
+            log(`👤 Fetching ${missingIds.length} missing user profiles...`)
+
+            const { data: profiles, error } = await getSupabaseClient()
+                .from('users')
+                .select('*')
+                .in('id', missingIds)
+
+            if (error) {
+                logError('❌ Failed to fetch user profiles:', error)
+                return
+            }
+
+            if (profiles && profiles.length > 0) {
+                await database.write(async () => {
+                    const collection = database.collections.get('users')
+                    const operations = profiles.map(profile => 
+                        collection.prepareCreate((rec: any) => {
+                            rec._raw.id = profile.id
+                            rec.firstname = profile.firstname
+                            rec.surname = profile.surname
+                            rec.modifiedBy = profile.modified_by || 'system'
+                            rec._raw.created_at = new Date(profile.created_at || Date.now()).getTime()
+                            rec._raw.updated_at = new Date(profile.updated_at || Date.now()).getTime()
+                        })
+                    )
+                    await database.batch(operations)
+                })
+                log(`✅ Synced ${profiles.length} user profiles`)
+            }
+        } catch (e) {
+            logError('❌ Error syncing user profiles:', e)
+        }
     }
 
     /**

@@ -50,6 +50,7 @@ import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { useAppSelector } from "../../redux"
 import { AppParams } from "../../navigation/index"
 import { logError } from '../../utils/logger'
+import { getDisplayName } from "../../utils/userUtils"
 
 
 
@@ -844,10 +845,10 @@ export const ProjectDetailsScreen = () => {
 									{members.map((member, index) => {
 										const isMe = member.user_id === currentUser?.id
 										const displayName = isMe
-											? (currentUser.profile?.first_name
-												? `${currentUser.profile.first_name} ${currentUser.profile.last_name || ""}`.trim()
+											? ((currentUser as any)?.profile?.first_name
+												? `${(currentUser as any).profile.first_name} ${(currentUser as any).profile.last_name || ""}`.trim()
 												: "Me")
-											: (member.user_profile?.name || "Unknown User")
+											: getDisplayName(member.user_profile || (member.user_profile as any)?.profile, false)
 
 										const initials = (displayName || "")
 											.split(" ")
@@ -875,6 +876,14 @@ export const ProjectDetailsScreen = () => {
 														>
 															{displayName} {isMe && "(You)"}
 														</Text>
+														{!isMe && member.user_profile?.email && member.user_profile.email !== displayName && (
+															<Text
+																variant="bodySmall"
+																style={dynamicStyles.memberRoleText}
+															>
+																{member.user_profile.email}
+															</Text>
+														)}
 														{member.role && (
 															<Text
 																variant="bodySmall"

@@ -86,6 +86,7 @@ BEGIN
     SET is_active = true,
         deleted_at = NULL,
         granted_by = v_invitation.inviter_id,
+        modified_by = v_user_id,
         updated_at = NOW()
     WHERE user_id = v_user_id
       AND role = v_invitation.role
@@ -96,13 +97,14 @@ BEGIN
     -- If no record was found to reactivate, insert a new one
     -- We use ON CONFLICT to handle the rare race condition where two requests process same invitation
     IF NOT FOUND THEN
-      INSERT INTO public.user_roles (user_id, role, scope_type, scope_id, granted_by)
+      INSERT INTO public.user_roles (user_id, role, scope_type, scope_id, granted_by, modified_by)
       VALUES (
         v_user_id, 
         v_invitation.role, 
         'project', 
         v_invitation.project_id,
-        v_invitation.inviter_id
+        v_invitation.inviter_id,
+        v_user_id
       )
       ON CONFLICT (user_id, role, scope_type, (COALESCE(scope_id, '00000000-0000-0000-0000-000000000000'::uuid))) 
       WHERE deleted_at IS NULL AND is_active = true

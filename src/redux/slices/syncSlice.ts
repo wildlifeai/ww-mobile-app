@@ -31,6 +31,7 @@ export interface EntitySyncMap {
 
 // Sync state interface
 export interface SyncState {
+	isGlobalSyncing: boolean // Tracks if a global pull/sync is in progress
 	overall: "synced" | "syncing" | "pending" | "error"
 	entities: {
 		projects: EntitySyncMap
@@ -54,6 +55,7 @@ export interface SyncState {
 
 // Initial state
 const initialState: SyncState = {
+	isGlobalSyncing: false,
 	overall: "synced",
 	entities: {
 		projects: {},
@@ -77,6 +79,19 @@ const syncSlice = createSlice({
 	name: "sync",
 	initialState,
 	reducers: {
+		// Mark global sync as started/finished
+		setGlobalSyncing: (state, action: PayloadAction<boolean>) => {
+			state.isGlobalSyncing = action.payload
+			// Update overall status if we are syncing
+			if (action.payload) {
+				state.overall = "syncing"
+			} else if (state.queue.pending === 0 && state.queue.failed === 0) {
+				// Only set to synced if no pending items in queue AND we are not in global sync (though payload=false implies that)
+				// But let's be explicit:
+				state.overall = "synced"
+			}
+		},
+
 		// Mark entity as pending sync
 		markEntityPending: (
 			state,
@@ -205,7 +220,7 @@ const syncSlice = createSlice({
 			state.queue.failed = action.payload.failed
 
 			// Update overall status based on queue
-			if (state.queue.pending === 0 && state.queue.failed === 0) {
+			if (state.queue.pending === 0 && state.queue.failed === 0 && !state.isGlobalSyncing) {
 				state.overall = "synced"
 			} else if (state.queue.pending > 0) {
 				state.overall = "pending"
@@ -216,6 +231,7 @@ const syncSlice = createSlice({
 
 // Export actions
 export const {
+	setGlobalSyncing,
 	markEntityPending,
 	markEntitySyncing,
 	markEntitySynced,

@@ -13,7 +13,7 @@
  * - Navigation to project details and new project creation
  */
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { ListRenderItemInfo } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
 import { useGetProjectsQuery } from "../../redux/api/projectsApi"
@@ -29,6 +29,7 @@ export const Projects = () => {
 	// Query projects for current organisation
 	const userId = useAppSelector((state) => state.authentication.user?.id)
 	const organisationId = useAppSelector((state) => state.authentication.currentOrganisation?.id)
+	const isGlobalSyncing = useAppSelector((state) => state.sync.isGlobalSyncing)
 
 	const {
 		data: projects,
@@ -40,6 +41,13 @@ export const Projects = () => {
 		{ userId: userId!, organisationId: organisationId! },
 		{ skip: !userId || !organisationId }
 	)
+
+	// Refetch when global sync finishes
+	useEffect(() => {
+		if (!isGlobalSyncing) {
+			refetch()
+		}
+	}, [isGlobalSyncing, refetch])
 
 	// Refresh on focus
 	useFocusEffect(
@@ -91,8 +99,8 @@ export const Projects = () => {
 			data={filteredProjects}
 			renderItem={renderItem}
 			keyExtractor={keyExtractor}
-			isLoading={isLoading}
-			isFetching={isFetching}
+			isLoading={isLoading || (isGlobalSyncing && (!projects || projects.length === 0))}
+			isFetching={isFetching || isGlobalSyncing}
 			onRefresh={refetch}
 			error={error}
 			onRetry={refetch}

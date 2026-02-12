@@ -95,7 +95,7 @@ The Wildlife Watcher app is an **offline-first field tool**. It is built on the 
 - **Redux Toolkit**: UI state and session management (Auth).
 
 ### Component Observation Pattern
-Instead of fetching data in `useEffect`, our components **observe** the local database. When data changes (even via background sync), the UI updates automatically.
+Instead of fetching data in `useEffect`, our components **observe** the local database. When data changes (even via background sync or manual pull-to-refresh), the UI updates automatically.
 
 ```mermaid
 graph TD
@@ -103,6 +103,7 @@ graph TD
     DB -->|Reactive Update| UI
     Sync[Sync Engine] <-->|Bidirectional| DB
     Sync <-->|HTTPS/Websockets| Cloud[Supabase Cloud]
+    User[Pull-to-Refresh] -->|Triggers| Sync
 ```
 
 ---
