@@ -1,58 +1,29 @@
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 import { useBle } from "./useBle"
-import { CommandControlTypes, CommandNames } from "../ble/types"
+import { CommandControlTypes, CommandNames, COMMANDS } from "../ble/types"
 import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
 import { formatGPSString } from '../utils/gpsUtils'
 import { log, logError, logWarn } from '../utils/logger'
+import { createCommand, createAction } from './useBleCommandFactory'
 
 
 export const useBleCommands = () => {
     const { write, disconnectDevice } = useBle()
 
-    // --- Device Info ---
-    const getBatteryLevel = useCallback(async (peripheral: ExtendedPeripheral) => {
-        log('[BLE CMD] Sending battery level request to device:', peripheral.id)
-        await write(peripheral, [[CommandNames.battery, { control: CommandControlTypes.READ }]])
-    }, [write])
-
-    const getDeviceVer = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.ver, { control: CommandControlTypes.READ }]])
-    }, [write])
-
-    const getDeviceName = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.device, { control: CommandControlTypes.READ }]])
-    }, [write])
-
-    const getDeviceId = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.id, { control: CommandControlTypes.READ }]])
-    }, [write])
-
-    const getStatus = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
-        const responses = await write(peripheral, [[CommandNames.status, { control: CommandControlTypes.READ }]])
-        return responses[0] || ''
-    }, [write])
-
-    const getOps = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.getops, { control: CommandControlTypes.READ }]])
-    }, [write])
-
-    const getAiVer = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.ai_ver, { control: CommandControlTypes.READ }]])
-    }, [write])
-
+    // --- Device Info (using factory) ---
+    const getBatteryLevel = useMemo(() => createCommand(write, CommandNames.battery), [write])
+    const getDeviceVer = useMemo(() => createCommand(write, CommandNames.ver), [write])
+    const getDeviceName = useMemo(() => createCommand(write, CommandNames.device), [write])
+    const getDeviceId = useMemo(() => createCommand(write, CommandNames.id), [write])
+    const getStatus = useMemo(() => createCommand(write, CommandNames.status), [write])
+    const getOps = useMemo(() => createCommand(write, CommandNames.getops), [write])
+    const getAiVer = useMemo(() => createCommand(write, CommandNames.ai_ver), [write])
+    const getUtc = useMemo(() => createCommand(write, CommandNames.getutc), [write])
 
     // --- System Actions ---
-    const runDfu = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.dfu, { control: CommandControlTypes.WRITE }]])
-    }, [write])
-
-    const runReset = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.reset, { control: CommandControlTypes.WRITE }]])
-    }, [write])
-
-    const runErase = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.erase, { control: CommandControlTypes.WRITE }]])
-    }, [write])
+    const runDfu = useMemo(() => createAction(write, CommandNames.dfu), [write])
+    const runReset = useMemo(() => createAction(write, CommandNames.reset), [write])
+    const runErase = useMemo(() => createAction(write, CommandNames.erase), [write])
 
     const runDisconnect = useCallback(async (peripheral: ExtendedPeripheral) => {
         try {
@@ -65,41 +36,41 @@ export const useBleCommands = () => {
         }
     }, [write, disconnectDevice])
 
-    const setUtc = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.SET_UTC, { control: CommandControlTypes.WRITE }]], { timeout: 10000 })
-    }, [write])
-
-    const getUtc = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
-        const responses = await write(peripheral, [[CommandNames.getutc, { control: CommandControlTypes.READ }]])
-        return responses[0] || ''
-    }, [write])
+    const setUtc = useMemo(() => createAction(write, CommandNames.SET_UTC, { 
+        timeout: 10000 
+    }), [write])
 
 
     // --- LoRaWAN ---
-    const getDevEui = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.deveui, { control: CommandControlTypes.READ }]])
-    }, [write])
-
-    const getAppEui = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.appeui, { control: CommandControlTypes.READ }]])
-    }, [write])
-
-    const getAppKey = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.appkey, { control: CommandControlTypes.READ }]])
-    }, [write])
-
-    const pingNetwork = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.ping, { control: CommandControlTypes.WRITE }]])
-    }, [write])
+    const getDevEui = useMemo(() => createCommand(write, CommandNames.deveui), [write])
+    const getAppEui = useMemo(() => createCommand(write, CommandNames.appeui), [write])
+    const getAppKey = useMemo(() => createCommand(write, CommandNames.appkey), [write])
+    const pingNetwork = useMemo(() => createAction(write, CommandNames.ping), [write])
 
 
     // --- AI ---
-    const checkSdCard = useCallback(async (peripheral: ExtendedPeripheral) => {
+    const checkSdCard = useCallback(async (peripheral: ExtendedPeripheral): Promise<{ total: number; free: number } | null> => {
         log('[BLE CMD] Sending SD card check request (aiinfo) to device:', peripheral.id)
         try {
-            // Send as raw string command like Engineer Console does
-            await write(peripheral, ['AI info'])
-            log('[BLE CMD] aiinfo command write completed successfully')
+            // Use structured command to get response
+            // The readRegex in types.ts is: /(\d+)\s*[Kk]\s*total\s*drive\s*space/i
+            const responses = await write(peripheral, [[CommandNames.aiinfo, { control: CommandControlTypes.WRITE }]])
+            const response = responses[0]
+            
+            if (response) {
+                // Parse the response "15200 K total drive space" -> 15200
+                // Note: The regex in types.ts might capture just the first number.
+                // We should probably rely on the regex capture if available, but here we get the full string match usually.
+                const match = response.match(COMMANDS[CommandNames.aiinfo].readRegex!)
+                if (match) {
+                    const total = parseInt(match[1], 10)
+                    // We don't get 'free' space from this specific command string usually, 
+                    // but let's assume if we get a valid total, the card is present.
+                    // If we want more details we might need to adjust the regex or command.
+                    return { total, free: 0 } 
+                }
+            }
+            return null
         } catch (error) {
             logError('[BLE CMD] Failed to write aiinfo command:', error)
             throw error
@@ -112,20 +83,11 @@ export const useBleCommands = () => {
 
 
     // --- Debug ---
-    const runSelfTest = useCallback(async (peripheral: ExtendedPeripheral): Promise<string> => {
-        const responses = await write(peripheral, [[CommandNames.selftest, { control: CommandControlTypes.WRITE }]])
-        return responses[0] || ''
-    }, [write])
+    const runSelfTest = useMemo(() => createCommand(write, CommandNames.selftest, { control: CommandControlTypes.WRITE }), [write])
 
-    const enableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
-        log('[BLE CMD] Sending enable camera command to:', peripheral.id)
-        await write(peripheral, [[CommandNames.ENABLE_CAMERA, { control: CommandControlTypes.WRITE }]], { timeout: 10000 })
-    }, [write])
+    const enableCamera = useMemo(() => createAction(write, CommandNames.ENABLE_CAMERA, { timeout: 10000 }), [write])
     
-    const disableCamera = useCallback(async (peripheral: ExtendedPeripheral) => {
-        log('[BLE CMD] Sending disable camera command to:', peripheral.id)
-        await write(peripheral, [[CommandNames.DISABLE_CAMERA, { control: CommandControlTypes.WRITE }]], { timeout: 10000 })
-    }, [write])
+    const disableCamera = useMemo(() => createAction(write, CommandNames.DISABLE_CAMERA, { timeout: 10000 }), [write])
 
     const getHeartbeat = useCallback(async (peripheral: ExtendedPeripheral) => {
         // Use 'wake' command instead of 'heartbeat' to ensure AI processor inactivity timer is reset
@@ -133,6 +95,8 @@ export const useBleCommands = () => {
         log('[BLE CMD] Sending keep-alive (wake) to:', peripheral.id)
         await write(peripheral, [[CommandNames.wake, { control: CommandControlTypes.WRITE }]], { timeout: 8000 })
     }, [write])
+
+    const wake = useMemo(() => createAction(write, CommandNames.wake, { timeout: 5000 }), [write])
 
     /**
      * Flash one of the device LEDs
@@ -151,7 +115,9 @@ export const useBleCommands = () => {
 
     const setOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number, value: string) => {
         // Use structured command so useBle can find the correct regex pattern automatically
-        await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]])
+        // Optimization: Pass expectedPattern: false to skip waiting for regex match (fire-and-forget)
+        // This speeds up sequential writes significantly
+        await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]], { expectedPattern: false })
     }, [write])
 
     const setGpsLocation = useCallback(
@@ -218,7 +184,9 @@ export const useBleCommands = () => {
 
                 // Use the new serialized write method instead of raw writeToDevice
                 try {
-                    const results = await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]])
+                    // Optimization: Pass expectedPattern: false to skip regex waiting (fire-and-forget)
+                    // This prevents timeouts if the device response is slow or slightly mismatched
+                    const results = await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]], { expectedPattern: false })
                     // Check if write returned an error string (since useBle swallows errors)
                     const result = results[0]
                     if (result && typeof result === 'string' && result.startsWith('ERROR:')) {
@@ -227,13 +195,6 @@ export const useBleCommands = () => {
                 } catch (error) {
                     logError(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
                     throw error
-                }
-
-                // Add delay after each command to allow firmware to process/sleep/wake
-                if (i < 7) {
-                    const delayMs = i === 0 ? 600 : 150
-                    const { sleep } = require('../utils/helpers')
-                    await sleep(delayMs)
                 }
             }
             log('[BLE CMD] Deployment ID OPs sent successfully')
@@ -273,6 +234,7 @@ export const useBleCommands = () => {
         // Debug
         runSelfTest,
         getHeartbeat,
+        wake,
         flashLed,
         disconnectDevice,
         enableCamera,

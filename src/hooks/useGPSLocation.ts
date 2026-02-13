@@ -5,7 +5,7 @@
  * Handles permission requests and location fetching with error handling
  */
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import * as Location from 'expo-location'
 import { Alert } from 'react-native'
 import { log, logError } from '../utils/logger'
@@ -31,7 +31,7 @@ export const useGPSLocation = () => {
     const [isGettingLocation, setIsGettingLocation] = useState(false)
     const [location, setLocation] = useState<GPSLocation | null>(null)
 
-    const getLocation = async (): Promise<GPSLocation | null> => {
+    const getLocation = useCallback(async (): Promise<GPSLocation | null> => {
         log('[GPS] Starting location request...')
         setIsGettingLocation(true)
 
@@ -103,7 +103,7 @@ export const useGPSLocation = () => {
         } finally {
             setIsGettingLocation(false)
         }
-    }
+    }, []) // Empty deps - getLocation doesn't depend on any props or state
 
     return {
         location,

@@ -37,7 +37,7 @@ export const DevicePreparationScreen = () => {
 
     const lastProcessedLength = React.useRef<number>(0)
 
-    // Monitor logs to parse responses (simplified for now, ideally use parser.ts output)
+    // Monitor logs ONLY for LoRaWAN ping response (async event)
     useEffect(() => {
         if (!logs || logs.length === lastProcessedLength.current) return
 
@@ -56,30 +56,8 @@ export const DevicePreparationScreen = () => {
 
         setConsoleHistory(prev => [...prev, ...historyEntries])
 
-        // Parse new logs strings
+        // Parse LoRaWAN response (legitimate async event)
         const combinedLogs = newEntries.map(e => e.content).join('\n')
-
-        // Basic parsing for demo purposes (real parsing should be in parser.ts/useBleCommands)
-        if (combinedLogs.includes('Battery =')) {
-            const match = combinedLogs.match(/Battery = (\d+)mV (\d+)%/)
-            if (match) {
-                setBatteryInfo({ voltage: parseInt(match[1], 10), level: parseInt(match[2], 10) })
-                if (preparationId) {
-                    DevicePreparationService.recordBatteryCheck(preparationId, parseInt(match[2], 10) > 20)
-                }
-            }
-        }
-
-        if (combinedLogs.includes('total drive space')) {
-            const match = combinedLogs.match(/(\d+)\s*K\s*total\s*drive\s*space[\s\S]*?(\d+)\s*K\s*available/)
-            if (match) {
-                setSdCardInfo({ total: parseInt(match[1], 10) * 1024, available: parseInt(match[2], 10) * 1024 })
-                if (preparationId) {
-                    DevicePreparationService.recordSdCardCheck(preparationId, true)
-                }
-            }
-        }
-
         if (combinedLogs.includes('RSSI=')) {
             const match = combinedLogs.match(/RSSI=(-?\d+),\s*SNR=(-?\d+(?:\.\d+)?)/)
             if (match) {
@@ -124,10 +102,29 @@ export const DevicePreparationScreen = () => {
         }
 
         try {
-            await getBatteryLevel(device)
-            // Small delay between commands
-            setTimeout(async () => await checkSdCard(device), 1000)
-            setTimeout(async () => await pingNetwork(device), 2000)
+            // Battery check - use return value
+            const batteryResponse = await getBatteryLevel(device)
+            const batteryMatch = batteryResponse.match(/Battery = (\d+)mV (\d+)%/)
+            if (batteryMatch) {
+                const voltage = parseInt(batteryMatch[1], 10)
+                const level = parseInt(batteryMatch[2], 10)
+                setBatteryInfo({ voltage, level })
+                if (preparationId) {
+                    DevicePreparationService.recordBatteryCheck(preparationId, level > 20)
+                }
+            }
+
+            // SD card check - use return value
+            const sdResult = await checkSdCard(device)
+            if (sdResult && sdResult.total > 0) {
+                setSdCardInfo({ total: sdResult.total * 1024, available: sdResult.free * 1024 })
+                if (preparationId) {
+                    DevicePreparationService.recordSdCardCheck(preparationId, true)
+                }
+            }
+
+            // LoRaWAN check - still async (response comes via logs)
+            await pingNetwork(device)
         } catch (error) {
             Alert.alert('Error', 'Failed to run checks: ' + error)
         }

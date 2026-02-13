@@ -169,7 +169,7 @@ export const useBle = (): ReturnType => {
 						let lookupName = typeof strOrCommand === "string" ? strOrCommand : strOrCommand[0]
 						const cmdDef = getCommandByName(lookupName)
 						const cmdOptions = { ...options }
-						if (!cmdOptions.expectedPattern && cmdDef?.readRegex) {
+						if (cmdOptions.expectedPattern === undefined && cmdDef?.readRegex) {
 							cmdOptions.expectedPattern = cmdDef.readRegex
 						}
 
@@ -250,19 +250,6 @@ export const useBle = (): ReturnType => {
 						timeout,
 					)
 
-					if (Platform.OS === "android") {
-						// Tolerate MTU failure (Samsung devices/slow connections)
-						try {
-							await invokeWithTimeout(
-								() => BleManager.requestMTU(newPeripheral.id, 512),
-								"BleManager.requestMTU",
-								timeout,
-							)
-						} catch (mtuError) {
-							logWarn("MTU negotiation failed, proceeding with default speed:", mtuError)
-						}
-					}
-
 					const services = await invokeWithTimeout(
 						() => BleManager.retrieveServices(newPeripheral.id),
 						"BleManager.retrieveServices",
@@ -278,6 +265,9 @@ export const useBle = (): ReturnType => {
 						readCharacteristic,
 					} = newPeripheral.services
 
+					// CRITICAL: Enable notifications IMMEDIATELY after service discovery
+					// This triggers BLE_NUS_EVT_COMM_STARTED firmware event
+					// MTU negotiation is moved AFTER this to avoid blocking the GATT queue
 					await invokeWithTimeout(
 						() =>
 							BleManager.startNotification(
@@ -290,6 +280,21 @@ export const useBle = (): ReturnType => {
 					)
 
 					log(`Notifications started for ${readCharacteristic}`)
+
+					// MTU optimization - do this AFTER notifications to avoid blocking CCCD write
+					// This prevents the 8-second delay caused by MTU blocking the GATT queue
+					if (Platform.OS === "android") {
+						try {
+							await invokeWithTimeout(
+								() => BleManager.requestMTU(newPeripheral.id, 512),
+								"BleManager.requestMTU",
+								timeout,
+							)
+							log("MTU negotiated to 512 bytes")
+						} catch (mtuError) {
+							logWarn("MTU negotiation failed, using default:", mtuError)
+						}
+					}
 
 					await BleManager.readRSSI(newPeripheral.id)
 

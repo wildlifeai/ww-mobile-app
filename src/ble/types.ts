@@ -124,8 +124,8 @@ export interface BleCommandOptions {
 	timeout?: number
 	/** Maximum number of retries (default: 1) */
 	maxRetries?: number
-	/** Expected response pattern to prioritize over regex matching (optional) */
-	expectedPattern?: RegExp
+	/** Expected response pattern to prioritize over regex matching (optional). Set to false to disable default regex. */
+	expectedPattern?: RegExp | false
 }
 
 /**
@@ -151,7 +151,7 @@ export interface PendingCommand {
 	/** Maximum retries allowed */
 	maxRetries: number
 	/** Expected response pattern (optional) */
-	expectedPattern?: RegExp
+	expectedPattern?: RegExp | false
 	/** Timeout handle to clear when command completes */
 	timeoutHandle?: any 
 }

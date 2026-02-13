@@ -34,6 +34,7 @@ import database from '../../database'
 import { ActivityIndicator, useTheme } from 'react-native-paper'
 import BleManager, { Peripheral } from 'react-native-ble-manager'
 import { extractErrorBits } from '../../ble/messageClassifier'
+import { CommandNames, COMMANDS } from '../../ble/types'
 import { log, logError, logWarn } from '../../utils/logger'
 
 
@@ -230,39 +231,6 @@ export const PrepareAndTestScreen = () => {
     useEffect(() => {
         logsRef.current = logs
     }, [logs])
-
-    /**
-     * Helper to wait for a specific log response since a given offset (or start of call)
-     * This is much more robust than arbitrary timeouts and avoids missing bursts.
-     */
-    const waitForLogMatch = useCallback(async (regex: RegExp, timeoutMs: number = 5000, customOffset?: number): Promise<RegExpMatchArray> => {
-        log(`[PrepareTest] Waiting for log match: ${regex} (timeout ${timeoutMs}ms)`)
-        const startTime = Date.now()
-        // Capture initial log length to only look at NEW logs (unless offset provided)
-        const startOffset = customOffset !== undefined ? customOffset : logsRef.current.length
-
-        return new Promise((resolve, reject) => {
-            const check = () => {
-                // Reconstruct string from entries since startOffset
-                const sectionLogs = logsRef.current.slice(startOffset).map(e => e.content).join('')
-                const match = sectionLogs.match(regex)
-                if (match) {
-                    log(`[PrepareTest] Found log match for: ${regex}`)
-                    resolve(match)
-                    return true
-                }
-                if (Date.now() - startTime > timeoutMs) {
-                    reject(new Error(`Timeout waiting for log response: ${regex}`))
-                    return true
-                }
-                return false
-            }
-
-            const interval = setInterval(() => {
-                if (check()) clearInterval(interval)
-            }, 100)
-        })
-    }, [])
 
     // Track if preparation has been initiated to prevent duplicates
     const hasStartedPreparation = useRef(false)
@@ -508,9 +476,24 @@ export const PrepareAndTestScreen = () => {
         }
         try {
             log('[PrepareTest] Sending battery level command...')
-            await getBatteryLevel(bleDevice)
-            log('[PrepareTest] Battery level command sent, waiting for response in logs')
-            // Response will be parsed from logs in useEffect
+            // Use standard command response
+            const response = await getBatteryLevel(bleDevice)
+            log('[PrepareTest] Battery level response:', response)
+            
+            // Expected format: "Battery = 3305mV 100%" or similar
+            // We can parse it here or just store it.
+            // The existing logic likely used a regex on the log.
+            // Let's use the regex from types.ts to be safe: /\bBattery\s=\s(?:\d+mV\s)?(100|\d{1,3})%/
+            const match = response.match(COMMANDS[CommandNames.battery].readRegex!)
+            if (match) {
+                const level = parseInt(match[1], 10)
+                setBatteryLevel(level)
+                log('[PrepareTest] Battery level parsed:', level, '%')
+            } else {
+                logWarn('[PrepareTest] Failed to parse battery level from response:', response)
+                // If response is just the value (some firmware versions?), handle it?
+                // Assuming standard response for now.
+            }
         } catch (error) {
             logError('Battery check failed:', error)
             Alert.alert('Error', 'Failed to check battery level')
@@ -524,36 +507,51 @@ export const PrepareAndTestScreen = () => {
             return
         }
         try {
-            // 1. Run Self Test to check for hardware errors (Bit 11 = No SD Card)
-            log('[PrepareTest] Step 1: Checking SD card presence (selftest)...')
+            // 1. Check SD card space directly (AI info) - PRIMARY SOURCE OF TRUTH
+            log('[PrepareTest] Step 1: Checking SD card via AI Info...')
+            const sdStatus = await checkSdCard(bleDevice)
+            log('[PrepareTest] AI Info result:', sdStatus)
+
+            if (sdStatus && sdStatus.total > 0) {
+                 log('[PrepareTest] SD Card confirmed via AI Info')
+                 setSdCardStatus(sdStatus)
+                 return
+            }
+
+            // 2. If AI Info failed or returned 0, check Self Test as confirmation
+            log('[PrepareTest] Step 2: Confirmation via Self Test (Bit 11)...')
             const statusMsg = await runSelfTest(bleDevice)
-            log('[PrepareTest] Self-test result:', statusMsg)
-            
             const hexBits = extractErrorBits(statusMsg)
+            
             if (hexBits) {
                 const errorBits = parseInt(hexBits, 16)
                 // Bit 11 (0x0800): Device has no SD card detected
                 const NO_SD_CARD_MASK = 0x0800
-                
                 // eslint-disable-next-line no-bitwise
                 if ((errorBits & NO_SD_CARD_MASK) !== 0) {
-                    logWarn('[PrepareTest] SD Card Missing (Error bits set)')
+                    logWarn('[PrepareTest] SD Card Missing (Confirmed by Error Bit 11)')
                     Alert.alert(
                         'No SD Card Detected',
                         'The device reports that no SD card is inserted. Please insert a valid SD card and try again.',
                         [{ text: 'OK' }]
                     )
-                    setSdCardStatus(null) // Ensure status is cleared
-                    return // Stop here
+                    setSdCardStatus(null)
+                    return
                 }
             }
 
-            // 2. If present, try to get space info (AI info)
-            log('[PrepareTest] Step 2: Checking SD card space (AI info)...')
-            await checkSdCard(bleDevice)
-            log('[PrepareTest] Space check command sent. Waiting for logs...')
+            // 3. Ambiguous case: AI Info failed/empty but Bit 11 NOT set
+            // This might mean the card is present but filesystem issue or AI processor busy
+            if (!sdStatus) {
+                logWarn('[PrepareTest] SD Check ambiguous: AI Info failed but Bit 11 is 0')
+                Alert.alert(
+                    'SD Card Check Failed', 
+                    'Could not verify SD card storage. Please check if the card is formatted correctly.',
+                    [{ text: 'OK' }]
+                )
+                setSdCardStatus(null)
+            }
 
-            // Response will be parsed from logs in useEffect  
         } catch (error) {
             logError('SD card check failed:', error)
             Alert.alert('Error', 'Failed to check SD card status')
@@ -570,8 +568,20 @@ export const PrepareAndTestScreen = () => {
             setIsCheckingFirmware(true)
             setDeviceFirmwareVersion(null) // Reset to allow re-parsing
             log('[PrepareTest] Sending firmware version command...')
-            await getDeviceVer(bleDevice)
-            log('[PrepareTest] Firmware version command sent and resolved.')
+            const response = await getDeviceVer(bleDevice)
+            log('[PrepareTest] Firmware version response:', response)
+            
+            // Expected format: "WW500-A00 V 00.20.07 22:30:18 Jan 28 2026"
+            // Regex from types.ts: /WW500-[a-zA-Z0-9]+\s+V\s+(\d+\.\d+\.\d+)/i
+            const match = response.match(COMMANDS[CommandNames.ver].readRegex!)
+            if (match) {
+                const version = match[1]
+                setDeviceFirmwareVersion(version)
+                log('[PrepareTest] Firmware version parsed:', version)
+            } else {
+                logWarn('[PrepareTest] Failed to parse firmware version from response:', response)
+            }
+            
             setIsCheckingFirmware(false)
         } catch (error) {
             logError('Firmware check failed:', error)
@@ -903,7 +913,7 @@ export const PrepareAndTestScreen = () => {
         }
 
         runBleInitialization()
-    }, [bleDevice, setUtc, waitForLogMatch, setDeploymentIdAsOps, clearGpsLocation, handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, runBleStandardInit, quiesceDevice])
+    }, [bleDevice, setUtc, setDeploymentIdAsOps, clearGpsLocation, handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, runBleStandardInit, quiesceDevice])
 
     // Parse BLE logs for command responses
 

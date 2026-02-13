@@ -76,7 +76,7 @@ const ERROR_PATTERNS = [
  */
 export function classifyMessage(
   rawMessage: string,
-  expectedResponsePattern?: RegExp,
+  expectedResponsePattern?: RegExp | false,
 ): ClassifiedMessage {
   const content = rawMessage.trim()
   const timestamp = Date.now()
