@@ -8,7 +8,8 @@ import { useExtendedTheme } from '../../theme'
 import { BackHandler } from 'react-native'
 import { useBle } from '../../hooks/useBle'
 import { useBleCommands } from '../../hooks/useBleCommands'
-import { WWKeyboardAvoidingView } from '../../components/ui/WWKeyboardAvoidingView'
+import { KeyboardStickyView } from "react-native-keyboard-controller"
+import { WWScreenView } from '../../components/ui/WWScreenView'
 
 import { useGPSLocation } from '../../hooks/useGPSLocation'
 import { formatGPSString } from '../../utils/gpsUtils'
@@ -596,100 +597,103 @@ export const EngineerConsoleScreen = () => {
 
     if (!device) {
         return (
-            <View style={styles.centerContainer}>
+            <WWScreenView scrollable={false} style={styles.centerContainer}>
                 <Text style={styles.errorText}>Device not found</Text>
-            </View>
+            </WWScreenView>
         )
     }
 
     return (
-        <WWKeyboardAvoidingView style={styles.container}>
-            <View style={styles.header}>
-                <View>
-                    <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
-                    <Text style={styles.deviceId}>{device.id}</Text>
-                </View>
-                <View style={styles.statusContainer}>
-                    <View style={[styles.statusDot, device.connected ? styles.statusDotConnected : styles.statusDotDisconnected]} />
-                    <Text style={styles.statusText}>{device.connected ? 'Connected' : 'Disconnected'}</Text>
-                    <Button
-                        mode="outlined"
-                        compact
-                        onPress={() => setIsHelpVisible(true)}
-                        style={styles.helpButton}
-                    >
-                        Command Reference
-                    </Button>
-                </View>
-            </View>
-
-            {!device.connected && (
-                <Button
-                    mode="contained"
-                    onPress={handleConnect}
-                    disabled={isConnecting}
-                    style={styles.connectButton}
-                    buttonColor={theme.colors.primary}
-                    textColor="#FFFFFF"
-                    loading={isConnecting}
-                >
-                    Connect to Console
-                </Button>
-            )}
-
-            <View style={styles.consoleContainer}>
-                <BleConsoleOutput entries={consoleHistory} />
-            </View>
-
-            <View style={styles.inputContainer}>
-                <TextInput
-                    style={styles.input}
-                    value={inputText}
-                    onChangeText={setInputText}
-                    placeholder="Enter command..."
-                    placeholderTextColor="#666"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={device.connected}
-                />
-                <TouchableOpacity
-                    style={[styles.sendButton, (!inputText.trim() || !device.connected) && styles.sendButtonDisabled]}
-                    onPress={() => handleSend()}
-                    disabled={!inputText.trim() || !device.connected}
-                >
-                    <Ionicons name="send" size={20} color="#FFF" />
-                </TouchableOpacity>
-            </View>
-
-            <Portal>
-                <CommandReferenceModal
-                    visible={isHelpVisible}
-                    onDismiss={() => setIsHelpVisible(false)}
-                    onRunCommand={onRunHelpCommand}
-                />
-
-                <Modal visible={isImageModalVisible} onDismiss={() => setIsImageModalVisible(false)} contentContainerStyle={styles.imageModalContainer}>
-                    <View style={styles.imageModalContent}>
-                        <Text style={styles.imageModalTitle}>Received Image</Text>
-                        {/* lastImage was removed as it was unused and and potentially confusing with startCapture flow */}
-                        <TouchableOpacity
-                            style={styles.imageModalCloseButton}
-                            onPress={() => setIsImageModalVisible(false)}
+        <WWScreenView scrollable={false} style={{ padding: 0, paddingBottom: 0, paddingTop: 0 }}>
+             <View style={styles.container}> 
+                <View style={styles.header}>
+                    <View>
+                        <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
+                        <Text style={styles.deviceId}>{device.id}</Text>
+                    </View>
+                    <View style={styles.statusContainer}>
+                        <View style={[styles.statusDot, device.connected ? styles.statusDotConnected : styles.statusDotDisconnected]} />
+                        <Text style={styles.statusText}>{device.connected ? 'Connected' : 'Disconnected'}</Text>
+                        <Button
+                            mode="outlined"
+                            compact
+                            onPress={() => setIsHelpVisible(true)}
+                            style={styles.helpButton}
                         >
-                            <Text style={styles.imageModalCloseText}>Close</Text>
+                            Command Reference
+                        </Button>
+                    </View>
+                </View>
+
+                {!device.connected && (
+                    <Button
+                        mode="contained"
+                        onPress={handleConnect}
+                        disabled={isConnecting}
+                        style={styles.connectButton}
+                        buttonColor={theme.colors.primary}
+                        textColor="#FFFFFF"
+                        loading={isConnecting}
+                    >
+                        Connect to Console
+                    </Button>
+                )}
+
+                <View style={styles.consoleContainer}>
+                    <BleConsoleOutput entries={consoleHistory} />
+                </View>
+
+                {/* Input Container - Sticky to Keyboard */}
+                <KeyboardStickyView offset={{ closed: 0, opened: 0 }}> 
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            value={inputText}
+                            onChangeText={setInputText}
+                            placeholder="Enter command..."
+                            placeholderTextColor="#666"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            editable={device.connected}
+                        />
+                        <TouchableOpacity
+                            style={[styles.sendButton, (!inputText.trim() || !device.connected) && styles.sendButtonDisabled]}
+                            onPress={() => handleSend()}
+                            disabled={!inputText.trim() || !device.connected}
+                        >
+                            <Ionicons name="send" size={20} color="#FFF" />
                         </TouchableOpacity>
                     </View>
-                </Modal>
-            </Portal>
+                </KeyboardStickyView>
 
-            {/* Image Preview Modal */}
-            <ImagePreviewModal
-                visible={showPreviewModal}
-                imageUri={previewImageUri}
-                onDismiss={() => setShowPreviewModal(false)}
-            />
+                <Portal>
+                    <CommandReferenceModal
+                        visible={isHelpVisible}
+                        onDismiss={() => setIsHelpVisible(false)}
+                        onRunCommand={onRunHelpCommand}
+                    />
 
-        </WWKeyboardAvoidingView>
+                    <Modal visible={isImageModalVisible} onDismiss={() => setIsImageModalVisible(false)} contentContainerStyle={styles.imageModalContainer}>
+                        <View style={styles.imageModalContent}>
+                            <Text style={styles.imageModalTitle}>Received Image</Text>
+                            <TouchableOpacity
+                                style={styles.imageModalCloseButton}
+                                onPress={() => setIsImageModalVisible(false)}
+                            >
+                                <Text style={styles.imageModalCloseText}>Close</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Modal>
+                </Portal>
+
+                <ImagePreviewModal
+                    visible={showPreviewModal}
+                    imageUri={previewImageUri}
+                    onDismiss={() => setShowPreviewModal(false)}
+                />
+
+            </View>
+        </WWScreenView>
     )
 }
 

@@ -8,7 +8,7 @@ import {
 	View,
 	ViewProps,
 } from "react-native"
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { useExtendedTheme } from "../../theme"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -17,51 +17,49 @@ type Props = PropsWithChildren<ViewProps | ScrollViewProps> & {
 }
 
 export const WWScreenView = ({
-	children,
-	scrollable = true,
-	...props
+    children,
+    scrollable = true,
+    ...props
 }: Props) => {
-	const { appPadding } = useExtendedTheme()
-	const { bottom, top } = useSafeAreaInsets()
+    const { appPadding } = useExtendedTheme()
+    const { bottom, top } = useSafeAreaInsets()
 
-	// Robust Safe Area for Android: If top inset is 0, assume we might be behind a translucent bar and add decent padding.
-	const safeTop = top > 0 ? top : (Platform.OS === 'android' ? 30 : 0)
+    // Robust Safe Area: With 'pan', the window is full height.
+    // iOS and Android now behave similarly.
+    const safeTop = top > 0 ? top : (Platform.OS === 'android' ? 30 : 0)
 
-    // Note: We use enableOnAndroid={false} because we have set softwareKeyboardLayoutMode: "resize" in app.config.ts
-    // This allows the native Android system to handle the resizing of the window, which is smoother and more reliable
-    // than the JS-based handling in KeyboardAwareScrollView.
+    if (scrollable) {
+        return (
+            <TouchableWithoutFeedback style={styles.view} onPress={Keyboard.dismiss}>
+                <KeyboardAwareScrollView
+                    style={styles.scrollView}
+                    contentContainerStyle={[
+                        { padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
+                        styles.scrollContent,
+                        props.style,
+                    ]}
+                    keyboardShouldPersistTaps="handled" // bottomOffset removed (auto-handled or part of contentContainerStyle)
+                    showsVerticalScrollIndicator={false}
+                >
+                    {children}
+                </KeyboardAwareScrollView>
+            </TouchableWithoutFeedback>
+        )
+    }
 
-	return (
-		<TouchableWithoutFeedback style={styles.view} onPress={Keyboard.dismiss}>
-			{scrollable ? (
-				<KeyboardAwareScrollView
-					style={styles.scrollView}
-					contentContainerStyle={[
-						{ padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
-						styles.scrollContent,
-						props.style,
-					]}
-					keyboardShouldPersistTaps="handled"
-					enableOnAndroid={false}
-					enableAutomaticScroll={true}
-					extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
-					showsVerticalScrollIndicator={false}
-				>
-					{children}
-				</KeyboardAwareScrollView>
-			) : (
-				<View
-					style={[
-						{ padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
-						styles.view,
-						props.style,
-					]}
-				>
-					{children}
-				</View>
-			)}
-		</TouchableWithoutFeedback>
-	)
+    return (
+        <TouchableWithoutFeedback style={styles.view} onPress={Keyboard.dismiss}>
+            <View
+                style={[
+                    { padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
+                    styles.view,
+                    props.style,
+                ]}
+            >
+                {children}
+            </View>
+        </TouchableWithoutFeedback>
+    )
 }
 
 const styles = StyleSheet.create({

@@ -1,6 +1,6 @@
 {
   "name": "wildlifewatcher",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "private": true,
   "scripts": {
     "android": "npm run types:cloud-dev && npm run db:sync-schema && npm run schema:generate && npx expo run:android",
@@ -89,7 +89,7 @@
     "react-native-document-picker": "^9.3.1",
     "react-native-drawer-layout": "^4.2.1",
     "react-native-gesture-handler": "~2.28.0",
-    "react-native-keyboard-aware-scroll-view": "^0.9.5",
+    "react-native-keyboard-controller": "^1.20.7",
     "react-native-maps": "1.20.1",
     "react-native-paper": "^5.12.3",
     "react-native-paper-dropdown": "^2.3.1",

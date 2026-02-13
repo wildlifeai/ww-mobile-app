@@ -101,6 +101,7 @@ export const ForgotPassword = () => {
 
 		const token = route.params?.token
 		const refreshToken = route.params?.refreshToken
+
 		if (!token) {
 			Alert.alert(
 				"Error",
@@ -123,22 +124,23 @@ export const ForgotPassword = () => {
 
 			Alert.alert(
 				"Password Updated",
-				"Your password has been successfully updated. You're now logged in!",
+				"Your password has been successfully updated. Please log in with your new password.",
 				[
 					{
-						text: "Continue",
+						text: "Go to Login",
 						onPress: () => {
-							// User is now authenticated and Redux state is updated
-							// MainNavigation will automatically show the home screen
+                            // Navigate to Login screen
+                            navigation.navigate("Login")
 						},
 					},
 				],
 			)
 		} catch (error) {
 			logError("Password update failed:", error)
+            const errMsg = error instanceof Error ? error.message : "An unexpected error occurred";
 			Alert.alert(
 				"Update Failed",
-				"There was an error updating your password. The reset link may have expired. Please request a new password reset.",
+				errMsg,
 				[{ text: "OK" }],
 			)
 		} finally {

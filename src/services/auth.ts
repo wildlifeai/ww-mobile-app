@@ -470,17 +470,36 @@ export const updatePassword = async (newPassword: string): Promise<void> => {
  * @param newPassword - The new password to set
  * @param refreshToken - Optional refresh token from URL fragment
  */
+import { createClient } from "@supabase/supabase-js"
+import { getEnvironmentConfig } from "../config/EnvironmentManager"
+import { Alert } from "react-native"
+
 export const updatePasswordWithToken = async (
 	token: string,
 	newPassword: string,
 	refreshToken?: string,
 ): Promise<void> => {
 	try {
-		// If we have both access_token and refresh_token from URL fragment,
-		// set the session directly (Supabase already validated via redirect)
+        // 1. Get Config
+        const config = await getEnvironmentConfig()
+        
+        // 2. Create a TEMPORARY client with NO storage (memory only)
+        // This avoids AsyncStorage deadlocks which are causing the hang
+        const tempClient = createClient(
+            config.supabaseUrl, 
+            config.supabaseAnonKey,
+            {
+                auth: {
+                    persistSession: false, // CRITICAL: Do not lock AsyncStorage
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false
+                }
+            }
+        )
+
+		// If we have both access_token and refresh_token from URL fragment
 		if (refreshToken) {
-			log("Setting session from access_token and refresh_token")
-			const { error: sessionError } = await supabase().auth.setSession({
+			const { error: sessionError } = await tempClient.auth.setSession({
 				access_token: token,
 				refresh_token: refreshToken,
 			})
@@ -489,9 +508,8 @@ export const updatePasswordWithToken = async (
 				throw new Error(sessionError.message)
 			}
 		} else {
-			// Legacy path: verify OTP token_hash from email
-			log("Verifying OTP with token_hash")
-			const { error: verifyError } = await supabase().auth.verifyOtp({
+            // Legacy OTP
+			const { error: verifyError } = await tempClient.auth.verifyOtp({
 				token_hash: token,
 				type: "recovery",
 			})
@@ -501,16 +519,16 @@ export const updatePasswordWithToken = async (
 			}
 		}
 
-		// Now update the password with the established session
-		const { error: updateError } = await supabase().auth.updateUser({
+		// Now update the password using this temporary authenticated client
+		const { error: updateError } = await tempClient.auth.updateUser({
 			password: newPassword,
 		})
 
 		if (updateError) {
 			throw new Error(updateError.message)
 		}
-
-		log("Password updated successfully")
+        
+		log("Password updated successfully via temp client")
 	} catch (error) {
 		logError("Update password with token error:", error)
 		throw error

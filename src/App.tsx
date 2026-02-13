@@ -24,32 +24,35 @@ import { ListenToBleEngineProvider } from "./providers/ListenToBleEngineProvider
 import { PaperProvider } from "react-native-paper"
 import { CombinedDefaultTheme } from "./theme"
 import { AuthProvider } from "./providers/AuthProvider"
+import { KeyboardProvider } from "react-native-keyboard-controller"
 
 export const App = () => {
 	return (
 		<GestureHandlerRootView style={styles.container}>
-			<SafeAreaProvider>
-				<StatusBar style="light" backgroundColor="#000000" />
-				<Suspense fallback={<Text>Loading...</Text>}>
-					<ReduxProvider store={store}>
-						<PaperProvider theme={CombinedDefaultTheme}>
-							<NavigationContainer theme={CombinedDefaultTheme} linking={linking}>
-								<AndroidPermissionsProvider>
-									<AppSetupProvider>
-										<BleEngineProvider>
-											<ListenToBleEngineProvider>
-												<AuthProvider>
-													<MainNavigation />
-												</AuthProvider>
-											</ListenToBleEngineProvider>
-										</BleEngineProvider>
-									</AppSetupProvider>
-								</AndroidPermissionsProvider>
-							</NavigationContainer>
-						</PaperProvider>
-					</ReduxProvider>
-				</Suspense>
-			</SafeAreaProvider>
+			<KeyboardProvider>
+				<SafeAreaProvider>
+					<StatusBar style="light" backgroundColor="#000000" />
+					<Suspense fallback={<Text>Loading...</Text>}>
+						<ReduxProvider store={store}>
+							<PaperProvider theme={CombinedDefaultTheme}>
+								<NavigationContainer theme={CombinedDefaultTheme} linking={linking}>
+									<AndroidPermissionsProvider>
+										<AppSetupProvider>
+											<BleEngineProvider>
+												<ListenToBleEngineProvider>
+													<AuthProvider>
+														<MainNavigation />
+													</AuthProvider>
+												</ListenToBleEngineProvider>
+											</BleEngineProvider>
+										</AppSetupProvider>
+									</AndroidPermissionsProvider>
+								</NavigationContainer>
+							</PaperProvider>
+						</ReduxProvider>
+					</Suspense>
+				</SafeAreaProvider>
+			</KeyboardProvider>
 		</GestureHandlerRootView>
 	)
 }
