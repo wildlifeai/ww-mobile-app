@@ -15,6 +15,9 @@ beforeEach(() => {
                 signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
                 signUp: jest.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
                 signOut: jest.fn(() => Promise.resolve({ error: null })),
+                verifyOtp: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
+                setSession: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
+                updateUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
             },
             from: jest.fn(() => ({
                 select: jest.fn().mockReturnThis(),
@@ -337,9 +340,18 @@ jest.mock("react-native-paper-dropdown", () => ({
 }));
 
 // Mock React Native Keyboard Aware Scroll View
-jest.mock("react-native-keyboard-aware-scroll-view", () => ({
-    KeyboardAwareScrollView: ({ children }: { children: any }) => children,
-}));
+// Mock React Native Keyboard Controller
+jest.mock("react-native-keyboard-controller", () => {
+    const React = require("react");
+    const { View } = require("react-native");
+    return {
+        KeyboardProvider: ({ children }: { children: any }) => children,
+        KeyboardAwareScrollView: ({ children }: { children: any }) => children,
+        KeyboardAvoidingView: ({ children }: { children: any }) => children,
+        KeyboardStickyView: ({ children }: { children: any }) => React.createElement(View, {}, children),
+        useKeyboardHandler: jest.fn(),
+    };
+});
 
 // Mock Supabase JS Client Factory
 jest.mock("@supabase/supabase-js", () => ({
@@ -351,6 +363,9 @@ jest.mock("@supabase/supabase-js", () => ({
             signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
             signUp: jest.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
             signOut: jest.fn(() => Promise.resolve({ error: null })),
+            verifyOtp: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
+            setSession: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
+            updateUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
         },
         from: jest.fn(() => ({
             select: jest.fn().mockReturnThis(),

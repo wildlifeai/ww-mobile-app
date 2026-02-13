@@ -60,7 +60,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             "BLUETOOTH_SCAN",
             "ACCESS_BACKGROUND_LOCATION"
         ],
-        softwareKeyboardLayoutMode: "resize",
+        softwareKeyboardLayoutMode: "pan",
     },
     web: {
         favicon: "./assets/favicon.png"

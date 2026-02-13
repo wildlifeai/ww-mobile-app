@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react'
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Platform, PermissionsAndroid } from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
@@ -8,7 +8,8 @@ import { useExtendedTheme } from '../../theme'
 import { BackHandler } from 'react-native'
 import { useBle } from '../../hooks/useBle'
 import { useBleCommands } from '../../hooks/useBleCommands'
-import { WWKeyboardAvoidingView } from '../../components/ui/WWKeyboardAvoidingView'
+import { KeyboardStickyView } from "react-native-keyboard-controller"
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useGPSLocation } from '../../hooks/useGPSLocation'
 import { formatGPSString } from '../../utils/gpsUtils'
@@ -596,14 +597,14 @@ export const EngineerConsoleScreen = () => {
 
     if (!device) {
         return (
-            <View style={styles.centerContainer}>
+            <SafeAreaView style={styles.centerContainer} edges={['top', 'bottom']}>
                 <Text style={styles.errorText}>Device not found</Text>
-            </View>
+            </SafeAreaView>
         )
     }
 
     return (
-        <WWKeyboardAvoidingView style={styles.container}>
+        <View style={styles.container}>
             <View style={styles.header}>
                 <View>
                     <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
@@ -641,25 +642,28 @@ export const EngineerConsoleScreen = () => {
                 <BleConsoleOutput entries={consoleHistory} />
             </View>
 
-            <View style={styles.inputContainer}>
-                <TextInput
-                    style={styles.input}
-                    value={inputText}
-                    onChangeText={setInputText}
-                    placeholder="Enter command..."
-                    placeholderTextColor="#666"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={device.connected}
-                />
-                <TouchableOpacity
-                    style={[styles.sendButton, (!inputText.trim() || !device.connected) && styles.sendButtonDisabled]}
-                    onPress={() => handleSend()}
-                    disabled={!inputText.trim() || !device.connected}
-                >
-                    <Ionicons name="send" size={20} color="#FFF" />
-                </TouchableOpacity>
-            </View>
+            {/* Input Container - Sticky to Keyboard */}
+            <KeyboardStickyView offset={{ closed: 0, opened: 0 }}> 
+                <View style={styles.inputContainer}>
+                    <TextInput
+                        style={styles.input}
+                        value={inputText}
+                        onChangeText={setInputText}
+                        placeholder="Enter command..."
+                        placeholderTextColor="#666"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        editable={device.connected}
+                    />
+                    <TouchableOpacity
+                        style={[styles.sendButton, (!inputText.trim() || !device.connected) && styles.sendButtonDisabled]}
+                        onPress={() => handleSend()}
+                        disabled={!inputText.trim() || !device.connected}
+                    >
+                        <Ionicons name="send" size={20} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+            </KeyboardStickyView>
 
             <Portal>
                 <CommandReferenceModal
@@ -671,7 +675,6 @@ export const EngineerConsoleScreen = () => {
                 <Modal visible={isImageModalVisible} onDismiss={() => setIsImageModalVisible(false)} contentContainerStyle={styles.imageModalContainer}>
                     <View style={styles.imageModalContent}>
                         <Text style={styles.imageModalTitle}>Received Image</Text>
-                        {/* lastImage was removed as it was unused and and potentially confusing with startCapture flow */}
                         <TouchableOpacity
                             style={styles.imageModalCloseButton}
                             onPress={() => setIsImageModalVisible(false)}
@@ -682,14 +685,12 @@ export const EngineerConsoleScreen = () => {
                 </Modal>
             </Portal>
 
-            {/* Image Preview Modal */}
             <ImagePreviewModal
                 visible={showPreviewModal}
                 imageUri={previewImageUri}
                 onDismiss={() => setShowPreviewModal(false)}
             />
-
-        </WWKeyboardAvoidingView>
+        </View>
     )
 }
 
@@ -702,6 +703,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#F5F5F5',
     },
     header: {
         flexDirection: 'row',
