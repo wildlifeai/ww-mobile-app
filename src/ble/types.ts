@@ -39,6 +39,7 @@ export enum CommandNames {
 	erasemodel = "erasemodel",
 	loadmodel = "loadmodel",
 	wake = "wake",
+	camera_type = "camera_type",
 
 	// Process commands (UPPERCASE - app-specific workflows)
 	SET_UTC = "SET_UTC",
@@ -368,6 +369,13 @@ export const COMMANDS: {
 		writeCommand: () => 'wake',
 		readRegex: /(AI processor is awake|Waking AI processor|Wake)/i,
 		description: "Wake AI processor from Deep Power Down (firmware v0.8.14+)",
+		type: 'command',
+	},
+	[CommandNames.camera_type]: {
+		name: CommandNames.camera_type,
+		readCommand: "AI camera",
+        readRegex: /\b(HM0360|RP2|RP3)\b/i,
+		description: "Get connected camera type",
 		type: 'command',
 	},
 	// Preset Operational Parameter Commands
