@@ -15,7 +15,6 @@ import {
 	updatePassword,
 	updatePasswordWithToken,
 	getCurrentUser,
-	getCurrentUser,
 } from "../../../src/services/auth"
 import { createClient } from "@supabase/supabase-js"
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js"
