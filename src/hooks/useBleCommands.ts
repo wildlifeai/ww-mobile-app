@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react"
 import { useBle } from "./useBle"
-import { CommandControlTypes, CommandNames } from "../ble/types"
+import { CommandControlTypes, CommandNames, COMMANDS } from "../ble/types"
 import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
 import { formatGPSString } from '../utils/gpsUtils'
 import { log, logError, logWarn } from '../utils/logger'
@@ -61,7 +61,7 @@ export const useBleCommands = () => {
                 // Parse the response "15200 K total drive space" -> 15200
                 // Note: The regex in types.ts might capture just the first number.
                 // We should probably rely on the regex capture if available, but here we get the full string match usually.
-                const match = response.match(/(\d+)\s*[Kk]\s*total\s*drive\s*space/i)
+                const match = response.match(COMMANDS[CommandNames.aiinfo].readRegex!)
                 if (match) {
                     const total = parseInt(match[1], 10)
                     // We don't get 'free' space from this specific command string usually, 

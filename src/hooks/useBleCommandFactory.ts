@@ -1,10 +1,10 @@
-import { CommandNames, CommandControlTypes } from '../ble/types'
+import { CommandNames, CommandControlTypes, BleCommandOptions } from '../ble/types'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 
 export type WriteFunction = (
     peripheral: ExtendedPeripheral,
     data: (string | [CommandNames, any])[],
-    options?: any
+    options?: BleCommandOptions
 ) => Promise<string[]>
 
 /**

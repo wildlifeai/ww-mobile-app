@@ -88,20 +88,34 @@ export const useBleInitialization = () => {
               logWarn(`[BLE Init] Non-zero error bits detected: ${hexBits} (${bits})`)
               const warnings: string[] = []
 
-              // Define known bit masks from selfTest.h
-              if (bits & (1 << 0)) warnings.push("Low Battery detected (Bit 0)")
-              if (bits & (1 << 1)) warnings.push("AI Processor not responding (Bit 1)")
-              if (bits & (1 << 2)) warnings.push("LoRaWAN Error (Bit 2)")
-              if (bits & (1 << 3)) warnings.push("Watchdog Reset occurred (Bit 3)")
-              if (bits & (1 << 4)) warnings.push("Brownout Reset occurred (Bit 4)")
+              // Define known bit masks based on selfTest.h
+              const SelfTestErrorBits = {
+                  LOW_BATTERY: 1 << 0,
+                  AI_PROCESSOR_NO_RESPONSE: 1 << 1,
+                  LORAWAN_ERROR: 1 << 2,
+                  WATCHDOG_RESET: 1 << 3,
+                  BROWNOUT_RESET: 1 << 4,
+                  MAIN_CAMERA_ERROR: 1 << 8,
+                  MOTION_DETECTOR_ERROR: 1 << 9,
+                  LED_FLASH_FAILURE: 1 << 10,
+                  NO_SD_CARD: 1 << 11,
+                  PDM_MIC_FAILURE: 1 << 12,
+                  NEURAL_NETWORK_ERROR: 1 << 13,
+              }
+
+              if (bits & SelfTestErrorBits.LOW_BATTERY) warnings.push("Low Battery detected (Bit 0)")
+              if (bits & SelfTestErrorBits.AI_PROCESSOR_NO_RESPONSE) warnings.push("AI Processor not responding (Bit 1)")
+              if (bits & SelfTestErrorBits.LORAWAN_ERROR) warnings.push("LoRaWAN Error (Bit 2)")
+              if (bits & SelfTestErrorBits.WATCHDOG_RESET) warnings.push("Watchdog Reset occurred (Bit 3)")
+              if (bits & SelfTestErrorBits.BROWNOUT_RESET) warnings.push("Brownout Reset occurred (Bit 4)")
 
               // Bits 8-15 are AI processor errors
-              if (bits & (1 << 8)) warnings.push("Main Camera Error (Bit 8)")
-              if (bits & (1 << 9)) warnings.push("Motion Detector Camera Error (Bit 9)")
-              if (bits & (1 << 10)) warnings.push("LED Flash Circuit Failure (Bit 10)")
-              if (bits & (1 << 11)) warnings.push("Device has no SD card detected (Bit 11)")
-              if (bits & (1 << 12)) warnings.push("PDM Microphone Failure (Bit 12)")
-              if (bits & (1 << 13)) warnings.push("Neural Network Error (Bit 13)")
+              if (bits & SelfTestErrorBits.MAIN_CAMERA_ERROR) warnings.push("Main Camera Error (Bit 8)")
+              if (bits & SelfTestErrorBits.MOTION_DETECTOR_ERROR) warnings.push("Motion Detector Camera Error (Bit 9)")
+              if (bits & SelfTestErrorBits.LED_FLASH_FAILURE) warnings.push("LED Flash Circuit Failure (Bit 10)")
+              if (bits & SelfTestErrorBits.NO_SD_CARD) warnings.push("Device has no SD card detected (Bit 11)")
+              if (bits & SelfTestErrorBits.PDM_MIC_FAILURE) warnings.push("PDM Microphone Failure (Bit 12)")
+              if (bits & SelfTestErrorBits.NEURAL_NETWORK_ERROR) warnings.push("Neural Network Error (Bit 13)")
 
               // If we have bits but no mapped warnings
               if (warnings.length === 0) warnings.push(`Unknown hardware issue (Code: ${hexBits})`)

@@ -34,6 +34,7 @@ import database from '../../database'
 import { ActivityIndicator, useTheme } from 'react-native-paper'
 import BleManager, { Peripheral } from 'react-native-ble-manager'
 import { extractErrorBits } from '../../ble/messageClassifier'
+import { CommandNames, COMMANDS } from '../../ble/types'
 import { log, logError, logWarn } from '../../utils/logger'
 
 
@@ -483,7 +484,7 @@ export const PrepareAndTestScreen = () => {
             // We can parse it here or just store it.
             // The existing logic likely used a regex on the log.
             // Let's use the regex from types.ts to be safe: /\bBattery\s=\s(?:\d+mV\s)?(100|\d{1,3})%/
-            const match = response.match(/\bBattery\s=\s(?:\d+mV\s)?(100|\d{1,3})%/)
+            const match = response.match(COMMANDS[CommandNames.battery].readRegex!)
             if (match) {
                 const level = parseInt(match[1], 10)
                 setBatteryLevel(level)
@@ -525,8 +526,9 @@ export const PrepareAndTestScreen = () => {
             if (hexBits) {
                 const errorBits = parseInt(hexBits, 16)
                 // Bit 11 (0x0800): Device has no SD card detected
+                const NO_SD_CARD_MASK = 0x0800
                 // eslint-disable-next-line no-bitwise
-                if ((errorBits & 0x0800) !== 0) {
+                if ((errorBits & NO_SD_CARD_MASK) !== 0) {
                     logWarn('[PrepareTest] SD Card Missing (Confirmed by Error Bit 11)')
                     Alert.alert(
                         'No SD Card Detected',
@@ -571,7 +573,7 @@ export const PrepareAndTestScreen = () => {
             
             // Expected format: "WW500-A00 V 00.20.07 22:30:18 Jan 28 2026"
             // Regex from types.ts: /WW500-[a-zA-Z0-9]+\s+V\s+(\d+\.\d+\.\d+)/i
-            const match = response.match(/WW500-[a-zA-Z0-9]+\s+V\s+(\d+\.\d+\.\d+)/i)
+            const match = response.match(COMMANDS[CommandNames.ver].readRegex!)
             if (match) {
                 const version = match[1]
                 setDeviceFirmwareVersion(version)
