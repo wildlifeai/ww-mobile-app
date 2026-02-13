@@ -374,7 +374,7 @@ export const COMMANDS: {
 	[CommandNames.camera_type]: {
 		name: CommandNames.camera_type,
 		readCommand: "AI camera",
-		readRegex: /(HM0360|RP2|RP3)/i,
+        readRegex: /\b(HM0360|RP2|RP3)\b/i,
 		description: "Get connected camera type",
 		type: 'command',
 	},
