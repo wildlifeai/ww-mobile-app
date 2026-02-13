@@ -15,7 +15,9 @@ import {
 	updatePassword,
 	updatePasswordWithToken,
 	getCurrentUser,
+	getCurrentUser,
 } from "../../../src/services/auth"
+import { createClient } from "@supabase/supabase-js"
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js"
 
 import {
@@ -42,10 +44,16 @@ jest.mock("../../../src/services/supabase", () => ({
 	getSupabaseClient: () => mockSupabaseClient,
 }))
 
+// Mock Supabase JS client specifically for this test
+jest.mock("@supabase/supabase-js", () => ({
+	createClient: jest.fn(),
+}))
+
 // Clear mocks before each test
 beforeEach(() => {
 	resetSupabaseMocks()
-	jest.clearAllMocks()
+	jest.clearAllMocks();
+    (createClient as jest.Mock).mockReturnValue(mockSupabaseClient);
 })
 
 describe("Authentication Service", () => {

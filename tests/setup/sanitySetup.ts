@@ -15,6 +15,9 @@ beforeEach(() => {
                 signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
                 signUp: jest.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
                 signOut: jest.fn(() => Promise.resolve({ error: null })),
+                verifyOtp: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
+                setSession: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
+                updateUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
             },
             from: jest.fn(() => ({
                 select: jest.fn().mockReturnThis(),
@@ -360,6 +363,9 @@ jest.mock("@supabase/supabase-js", () => ({
             signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
             signUp: jest.fn(() => Promise.resolve({ data: { user: {}, session: {} }, error: null })),
             signOut: jest.fn(() => Promise.resolve({ error: null })),
+            verifyOtp: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
+            setSession: jest.fn(() => Promise.resolve({ data: { session: null, user: null }, error: null })),
+            updateUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
         },
         from: jest.fn(() => ({
             select: jest.fn().mockReturnThis(),
