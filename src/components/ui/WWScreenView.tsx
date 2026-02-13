@@ -28,38 +28,36 @@ export const WWScreenView = ({
     // iOS and Android now behave similarly.
     const safeTop = top > 0 ? top : (Platform.OS === 'android' ? 30 : 0)
 
-    if (scrollable) {
-        return (
-            <TouchableWithoutFeedback style={styles.view} onPress={Keyboard.dismiss}>
-                <KeyboardAwareScrollView
-                    style={styles.scrollView}
-                    contentContainerStyle={[
-                        { padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
-                        styles.scrollContent,
-                        props.style,
-                    ]}
-                    keyboardShouldPersistTaps="handled" // bottomOffset removed (auto-handled or part of contentContainerStyle)
-                    showsVerticalScrollIndicator={false}
-                >
-                    {children}
-                </KeyboardAwareScrollView>
-            </TouchableWithoutFeedback>
-        )
-    }
+    const content = scrollable ? (
+        <KeyboardAwareScrollView
+            style={styles.scrollView}
+            contentContainerStyle={[
+                { padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
+                styles.scrollContent,
+                props.style,
+            ]}
+            keyboardShouldPersistTaps="handled" // bottomOffset removed (auto-handled or part of contentContainerStyle)
+            showsVerticalScrollIndicator={false}
+        >
+            {children}
+        </KeyboardAwareScrollView>
+    ) : (
+        <View
+            style={[
+                { padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
+                styles.view,
+                props.style,
+            ]}
+        >
+            {children}
+        </View>
+    );
 
     return (
         <TouchableWithoutFeedback style={styles.view} onPress={Keyboard.dismiss}>
-            <View
-                style={[
-                    { padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
-                    styles.view,
-                    props.style,
-                ]}
-            >
-                {children}
-            </View>
+            {content}
         </TouchableWithoutFeedback>
-    )
+    );
 }
 
 const styles = StyleSheet.create({

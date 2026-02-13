@@ -9,7 +9,7 @@ import { BackHandler } from 'react-native'
 import { useBle } from '../../hooks/useBle'
 import { useBleCommands } from '../../hooks/useBleCommands'
 import { KeyboardStickyView } from "react-native-keyboard-controller"
-import { WWScreenView } from '../../components/ui/WWScreenView'
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useGPSLocation } from '../../hooks/useGPSLocation'
 import { formatGPSString } from '../../utils/gpsUtils'
@@ -597,14 +597,14 @@ export const EngineerConsoleScreen = () => {
 
     if (!device) {
         return (
-            <WWScreenView scrollable={false} style={styles.centerContainer}>
+            <SafeAreaView style={styles.centerContainer}>
                 <Text style={styles.errorText}>Device not found</Text>
-            </WWScreenView>
+            </SafeAreaView>
         )
     }
 
     return (
-        <WWScreenView scrollable={false} style={{ padding: 0, paddingBottom: 0, paddingTop: 0 }}>
+        <SafeAreaView style={styles.container}>
              <View style={styles.container}> 
                 <View style={styles.header}>
                     <View>
@@ -693,7 +693,7 @@ export const EngineerConsoleScreen = () => {
                 />
 
             </View>
-        </WWScreenView>
+        </SafeAreaView>
     )
 }
 

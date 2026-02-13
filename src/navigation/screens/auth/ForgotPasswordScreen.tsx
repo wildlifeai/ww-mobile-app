@@ -137,7 +137,7 @@ export const ForgotPassword = () => {
 			)
 		} catch (error) {
 			logError("Password update failed:", error)
-            const errMsg = error instanceof Error ? error.message : "An unexpected error occurred";
+            const errMsg = "There was an error updating your password. The reset link may have expired. Please request a new password reset.";
 			Alert.alert(
 				"Update Failed",
 				errMsg,
