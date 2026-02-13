@@ -11,8 +11,9 @@ import { useHeaderHeight } from "@react-navigation/elements"
 type Props = {
 	style?: StyleProp<ViewStyle>
 	/**
-	 * Additional vertical offset.
-	 * Default: headerHeight (if available) + bottom inset
+	 * Additional vertical offset to be added to the `keyboardVerticalOffset`.
+	 * On iOS, this is added to the header height when `useHeader` is true.
+	 * Default: 0
 	 */
 	offset?: number
     /**
