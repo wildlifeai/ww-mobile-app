@@ -14,19 +14,26 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 type Props = PropsWithChildren<ViewProps | ScrollViewProps> & {
 	scrollable?: boolean
+	/**
+	 * Set to true when this screen has a navigation header.
+	 * This prevents double top padding since the header already handles safe area.
+	 * @default true
+	 */
+	withHeader?: boolean
 }
 
 export const WWScreenView = ({
     children,
     scrollable = true,
+    withHeader = true, // Default to true since most screens have headers
     ...props
 }: Props) => {
     const { appPadding } = useExtendedTheme()
     const { bottom, top } = useSafeAreaInsets()
 
-    // Robust Safe Area: With 'pan', the window is full height.
-    // iOS and Android now behave similarly.
-    const safeTop = top > 0 ? top : (Platform.OS === 'android' ? 30 : 0)
+    // Only apply top safe area padding when there's NO navigation header
+    // When withHeader=true, the navigation header already handles the safe area
+    const safeTop = withHeader ? 0 : (top > 0 ? top : (Platform.OS === 'android' ? 30 : 0))
 
     const content = scrollable ? (
         <KeyboardAwareScrollView
@@ -36,7 +43,7 @@ export const WWScreenView = ({
                 styles.scrollContent,
                 props.style,
             ]}
-            keyboardShouldPersistTaps="handled" // bottomOffset removed (auto-handled or part of contentContainerStyle)
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
         >
             {children}

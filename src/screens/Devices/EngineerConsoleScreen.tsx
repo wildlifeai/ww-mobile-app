@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react'
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Platform, PermissionsAndroid } from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
@@ -597,103 +597,100 @@ export const EngineerConsoleScreen = () => {
 
     if (!device) {
         return (
-            <SafeAreaView style={styles.centerContainer}>
+            <SafeAreaView style={styles.centerContainer} edges={['top', 'bottom']}>
                 <Text style={styles.errorText}>Device not found</Text>
             </SafeAreaView>
         )
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-             <View style={styles.container}> 
-                <View style={styles.header}>
-                    <View>
-                        <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
-                        <Text style={styles.deviceId}>{device.id}</Text>
-                    </View>
-                    <View style={styles.statusContainer}>
-                        <View style={[styles.statusDot, device.connected ? styles.statusDotConnected : styles.statusDotDisconnected]} />
-                        <Text style={styles.statusText}>{device.connected ? 'Connected' : 'Disconnected'}</Text>
-                        <Button
-                            mode="outlined"
-                            compact
-                            onPress={() => setIsHelpVisible(true)}
-                            style={styles.helpButton}
-                        >
-                            Command Reference
-                        </Button>
-                    </View>
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <View>
+                    <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
+                    <Text style={styles.deviceId}>{device.id}</Text>
                 </View>
-
-                {!device.connected && (
+                <View style={styles.statusContainer}>
+                    <View style={[styles.statusDot, device.connected ? styles.statusDotConnected : styles.statusDotDisconnected]} />
+                    <Text style={styles.statusText}>{device.connected ? 'Connected' : 'Disconnected'}</Text>
                     <Button
-                        mode="contained"
-                        onPress={handleConnect}
-                        disabled={isConnecting}
-                        style={styles.connectButton}
-                        buttonColor={theme.colors.primary}
-                        textColor="#FFFFFF"
-                        loading={isConnecting}
+                        mode="outlined"
+                        compact
+                        onPress={() => setIsHelpVisible(true)}
+                        style={styles.helpButton}
                     >
-                        Connect to Console
+                        Command Reference
                     </Button>
-                )}
-
-                <View style={styles.consoleContainer}>
-                    <BleConsoleOutput entries={consoleHistory} />
                 </View>
+            </View>
 
-                {/* Input Container - Sticky to Keyboard */}
-                <KeyboardStickyView offset={{ closed: 0, opened: 0 }}> 
-                    <View style={styles.inputContainer}>
-                        <TextInput
-                            style={styles.input}
-                            value={inputText}
-                            onChangeText={setInputText}
-                            placeholder="Enter command..."
-                            placeholderTextColor="#666"
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            editable={device.connected}
-                        />
-                        <TouchableOpacity
-                            style={[styles.sendButton, (!inputText.trim() || !device.connected) && styles.sendButtonDisabled]}
-                            onPress={() => handleSend()}
-                            disabled={!inputText.trim() || !device.connected}
-                        >
-                            <Ionicons name="send" size={20} color="#FFF" />
-                        </TouchableOpacity>
-                    </View>
-                </KeyboardStickyView>
+            {!device.connected && (
+                <Button
+                    mode="contained"
+                    onPress={handleConnect}
+                    disabled={isConnecting}
+                    style={styles.connectButton}
+                    buttonColor={theme.colors.primary}
+                    textColor="#FFFFFF"
+                    loading={isConnecting}
+                >
+                    Connect to Console
+                </Button>
+            )}
 
-                <Portal>
-                    <CommandReferenceModal
-                        visible={isHelpVisible}
-                        onDismiss={() => setIsHelpVisible(false)}
-                        onRunCommand={onRunHelpCommand}
+            <View style={styles.consoleContainer}>
+                <BleConsoleOutput entries={consoleHistory} />
+            </View>
+
+            {/* Input Container - Sticky to Keyboard */}
+            <KeyboardStickyView offset={{ closed: 0, opened: 0 }}> 
+                <View style={styles.inputContainer}>
+                    <TextInput
+                        style={styles.input}
+                        value={inputText}
+                        onChangeText={setInputText}
+                        placeholder="Enter command..."
+                        placeholderTextColor="#666"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        editable={device.connected}
                     />
+                    <TouchableOpacity
+                        style={[styles.sendButton, (!inputText.trim() || !device.connected) && styles.sendButtonDisabled]}
+                        onPress={() => handleSend()}
+                        disabled={!inputText.trim() || !device.connected}
+                    >
+                        <Ionicons name="send" size={20} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+            </KeyboardStickyView>
 
-                    <Modal visible={isImageModalVisible} onDismiss={() => setIsImageModalVisible(false)} contentContainerStyle={styles.imageModalContainer}>
-                        <View style={styles.imageModalContent}>
-                            <Text style={styles.imageModalTitle}>Received Image</Text>
-                            <TouchableOpacity
-                                style={styles.imageModalCloseButton}
-                                onPress={() => setIsImageModalVisible(false)}
-                            >
-                                <Text style={styles.imageModalCloseText}>Close</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </Modal>
-                </Portal>
-
-                <ImagePreviewModal
-                    visible={showPreviewModal}
-                    imageUri={previewImageUri}
-                    onDismiss={() => setShowPreviewModal(false)}
+            <Portal>
+                <CommandReferenceModal
+                    visible={isHelpVisible}
+                    onDismiss={() => setIsHelpVisible(false)}
+                    onRunCommand={onRunHelpCommand}
                 />
 
-            </View>
-        </SafeAreaView>
+                <Modal visible={isImageModalVisible} onDismiss={() => setIsImageModalVisible(false)} contentContainerStyle={styles.imageModalContainer}>
+                    <View style={styles.imageModalContent}>
+                        <Text style={styles.imageModalTitle}>Received Image</Text>
+                        <TouchableOpacity
+                            style={styles.imageModalCloseButton}
+                            onPress={() => setIsImageModalVisible(false)}
+                        >
+                            <Text style={styles.imageModalCloseText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </Modal>
+            </Portal>
+
+            <ImagePreviewModal
+                visible={showPreviewModal}
+                imageUri={previewImageUri}
+                onDismiss={() => setShowPreviewModal(false)}
+            />
+        </View>
     )
 }
 
@@ -706,6 +703,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#F5F5F5',
     },
     header: {
         flexDirection: 'row',

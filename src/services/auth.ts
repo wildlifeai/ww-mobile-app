@@ -472,7 +472,7 @@ export const updatePassword = async (newPassword: string): Promise<void> => {
  */
 import { createClient } from "@supabase/supabase-js"
 import { getEnvironmentConfig } from "../config/EnvironmentManager"
-import { Alert } from "react-native"
+
 
 export const updatePasswordWithToken = async (
 	token: string,
