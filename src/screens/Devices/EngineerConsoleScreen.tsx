@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react'
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, PermissionsAndroid } from 'react-native'
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Platform, PermissionsAndroid } from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import { Modal, Portal, Button, useTheme, Appbar } from 'react-native-paper'
@@ -8,6 +8,7 @@ import { useExtendedTheme } from '../../theme'
 import { BackHandler } from 'react-native'
 import { useBle } from '../../hooks/useBle'
 import { useBleCommands } from '../../hooks/useBleCommands'
+import { WWKeyboardAvoidingView } from '../../components/ui/WWKeyboardAvoidingView'
 
 import { useGPSLocation } from '../../hooks/useGPSLocation'
 import { formatGPSString } from '../../utils/gpsUtils'
@@ -602,11 +603,7 @@ export const EngineerConsoleScreen = () => {
     }
 
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-        >
+        <WWKeyboardAvoidingView style={styles.container}>
             <View style={styles.header}>
                 <View>
                     <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
@@ -692,7 +689,7 @@ export const EngineerConsoleScreen = () => {
                 onDismiss={() => setShowPreviewModal(false)}
             />
 
-        </KeyboardAvoidingView>
+        </WWKeyboardAvoidingView>
     )
 }
 
