@@ -337,9 +337,18 @@ jest.mock("react-native-paper-dropdown", () => ({
 }));
 
 // Mock React Native Keyboard Aware Scroll View
-jest.mock("react-native-keyboard-aware-scroll-view", () => ({
-    KeyboardAwareScrollView: ({ children }: { children: any }) => children,
-}));
+// Mock React Native Keyboard Controller
+jest.mock("react-native-keyboard-controller", () => {
+    const React = require("react");
+    const { View } = require("react-native");
+    return {
+        KeyboardProvider: ({ children }: { children: any }) => children,
+        KeyboardAwareScrollView: ({ children }: { children: any }) => children,
+        KeyboardAvoidingView: ({ children }: { children: any }) => children,
+        KeyboardStickyView: ({ children }: { children: any }) => React.createElement(View, {}, children),
+        useKeyboardHandler: jest.fn(),
+    };
+});
 
 // Mock Supabase JS Client Factory
 jest.mock("@supabase/supabase-js", () => ({
