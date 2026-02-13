@@ -23,6 +23,31 @@ type Props = {
 }
 
 /**
+ * Sub-component to safely use the useHeaderHeight hook.
+ * This component is only rendered when useHeader is true and we are on iOS,
+ * preventing Rules of Hooks violations (conditional hook execution).
+ */
+const IOSKeyboardAvoidingViewWithHeader = ({ 
+    children, 
+    style, 
+    offset = 0 
+}: PropsWithChildren<Omit<Props, 'useHeader'>>) => {
+    // We assume that if this component is rendered, we are inside a NavigationContainer
+    // If not, useHeaderHeight might throw, which should be caught by an error boundary or avoided by passing useHeader={false}
+    const headerHeight = useHeaderHeight()
+    
+    return (
+        <KeyboardAvoidingView
+			style={[styles.view, style]}
+			behavior="padding"
+			keyboardVerticalOffset={headerHeight + offset}
+		>
+			{children}
+		</KeyboardAvoidingView>
+    )
+}
+
+/**
  * Standardized KeyboardAvoidingView for the application.
  * 
  * - iOS: Uses 'padding' behavior with automatic offset calculation (header + safe area).
@@ -35,31 +60,32 @@ export const WWKeyboardAvoidingView = ({
     offset = 0,
     useHeader = true,
 }: PropsWithChildren<Props>) => {
-    let headerHeight = 0
-    
-    try {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        headerHeight = useHeader ? useHeaderHeight() : 0
-    } catch (e) {
-        // useHeaderHeight might fail if not inside a navigation container
+
+    if (Platform.OS === 'ios') {
+        if (useHeader) {
+            return (
+                <IOSKeyboardAvoidingViewWithHeader style={style} offset={offset}>
+                    {children}
+                </IOSKeyboardAvoidingViewWithHeader>
+            )
+        }
+        
+        return (
+            <KeyboardAvoidingView
+                style={[styles.view, style]}
+                behavior="padding"
+                keyboardVerticalOffset={offset}
+            >
+                {children}
+            </KeyboardAvoidingView>
+        )
     }
 
-	const behavior = Platform.OS === "ios" ? "padding" : undefined
-    
-    // On iOS, we need to offset by the header height if it's translucent or absolute
-    // But usually with 'padding', we just need to account for the bottom inset if standard
-    // However, specifically for chat-like interfaces (Engineer Console), 
-    // 'padding' pushes the content up. 
-    
-    // For iOS 'padding':
-    // verticalOffset = height of elements covering the screen top (header)
-    const verticalOffset = Platform.OS === "ios" ? (headerHeight + offset) : 0
-
+    // Android & other platforms
 	return (
 		<KeyboardAvoidingView
 			style={[styles.view, style]}
-			behavior={behavior}
-			keyboardVerticalOffset={verticalOffset}
+			behavior={undefined}
 		>
 			{children}
 		</KeyboardAvoidingView>
