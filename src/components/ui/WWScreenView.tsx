@@ -27,6 +27,10 @@ export const WWScreenView = ({
 	// Robust Safe Area for Android: If top inset is 0, assume we might be behind a translucent bar and add decent padding.
 	const safeTop = top > 0 ? top : (Platform.OS === 'android' ? 30 : 0)
 
+    // Note: We use enableOnAndroid={false} because we have set softwareKeyboardLayoutMode: "resize" in app.config.ts
+    // This allows the native Android system to handle the resizing of the window, which is smoother and more reliable
+    // than the JS-based handling in KeyboardAwareScrollView.
+
 	return (
 		<TouchableWithoutFeedback style={styles.view} onPress={Keyboard.dismiss}>
 			{scrollable ? (
@@ -38,7 +42,7 @@ export const WWScreenView = ({
 						props.style,
 					]}
 					keyboardShouldPersistTaps="handled"
-					enableOnAndroid={true}
+					enableOnAndroid={false}
 					enableAutomaticScroll={true}
 					extraScrollHeight={Platform.OS === 'ios' ? 20 : 0}
 					showsVerticalScrollIndicator={false}
