@@ -14,7 +14,7 @@ export enum MessageType {
   INFO = 'INFO', // Successful status messages (Wake, Error bits check, etc.)
 }
 
-export type ErrorType = 'AI_NACK' | 'TIMEOUT' | 'I2C_ERROR' | 'UNKNOWN'
+export type ErrorType = 'AI_NACK' | 'TIMEOUT' | 'I2C_ERROR' | 'DEVICE_SLEEP' | 'UNKNOWN'
 
 export interface ClassifiedMessage {
   type: MessageType
@@ -36,7 +36,7 @@ export interface ClassifiedMessage {
 const UNSOLICITED_PATTERNS = [
   // Wake patterns moved to INFO_PATTERNS
   /Error bits = 0x[0-9A-Fa-f]+/i, 
-  /Sleep/i,
+  /Sleep(\s+.*)?/i,
   /MD\.\.\./i,
   /Retrying transmission/i,
   /RTC set to/i,
@@ -132,6 +132,44 @@ export function classifyMessage(
   // Check for unsolicited messages
   for (const pattern of UNSOLICITED_PATTERNS) {
     if (pattern.test(content)) {
+      // SPECIAL CASE: If this is a Sleep message and we are waiting for a getop response,
+      // we check if we can extract the value from the Sleep stats.
+      if (/^Sleep/i.test(content) && expectedResponsePattern) {
+        // Check if the expected pattern looks like a getop pattern: /^Op(?:Param\s+|\[)(\d+)\]?\s+=\s+(.+)$/i
+        const patternStr = expectedResponsePattern.toString()
+        if (patternStr.includes('Op') && patternStr.includes('=')) {
+          const match = content.match(/^Sleep\s+(.+)$/i)
+          if (match) {
+            const stats = match[1].split(/\s+/)
+            // We need to know WHICH op index was requested.
+            // The expectedPattern usually has the index hardcoded if it's from a specific command,
+            // OR it has a capture group for index.
+            const indexMatch = patternStr.match(/(\d+)/)
+            if (indexMatch) {
+              const opIndex = parseInt(indexMatch[1], 10)
+              if (opIndex >= 20 && opIndex <= 27 && stats[opIndex]) {
+                return {
+                  type: MessageType.RESPONSE,
+                  content: `Op[${opIndex}] = ${stats[opIndex]}`, // Map to expected format
+                  timestamp,
+                  raw: rawMessage,
+                }
+              }
+            }
+          }
+        }
+
+        // If we didn't extract a RESPONSE above, but we ARE waiting for a command,
+        // treat Sleep as a DEVICE_SLEEP error to trigger a retry.
+        return {
+          type: MessageType.ERROR,
+          content,
+          timestamp,
+          errorType: 'DEVICE_SLEEP',
+          raw: rawMessage,
+        }
+      }
+
       return {
         type: MessageType.UNSOLICITED,
         content,
@@ -179,4 +217,26 @@ export function extractErrorBits(message: string): string | null {
  */
 export function isAiNackError(message: string): boolean {
   return /^AI NACK$/i.test(message.trim())
+}
+
+/**
+ * Extract an Operational Parameter value from a Sleep status message
+ * Sleep messages can contain 28+ space-separated stats values.
+ * Ops 20-27 are at indices 20-27 in the stats payload.
+ */
+export function extractOpParamFromSleep(message: string, opIndex: number): string | null {
+  const trimmed = message.trim()
+  if (!/^Sleep\s+/i.test(trimmed)) return null
+
+  // Extract the stats part (everything after "Sleep")
+  const statsPart = trimmed.replace(/^Sleep\s+/i, '')
+  const stats = statsPart.split(/\s+/)
+
+  // Ops 20-27 are directly mapped to indices 20-27 in the array
+  if (opIndex >= 20 && opIndex <= 27) {
+    const value = stats[opIndex]
+    return value || null
+  }
+
+  return null
 }

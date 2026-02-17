@@ -114,7 +114,8 @@ export const useBleCommands = () => {
 
     const getOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number): Promise<string | null> => {
         // "AI getop <index>" -> Response: "Op[<index>] = <value>"
-        const responses = await write(peripheral, [[CommandNames.getop, { control: CommandControlTypes.WRITE, value: index.toString() }]])
+        // Enable retries for OpParams as they are often requested during state transitions
+        const responses = await write(peripheral, [[CommandNames.getop, { control: CommandControlTypes.WRITE, value: index.toString() }]], { maxRetries: 1 })
         const response = responses[0]
         if (response) {
              const match = response.match(COMMANDS[CommandNames.getop].readRegex!)
@@ -202,7 +203,8 @@ export const useBleCommands = () => {
                 log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
 
                 try {
-                    // Use the optimized setOperationalParam which now performs its own Read-Before-Write check
+                    // Use the optimized setOperationalParam which now performs its own Read-Before-Write check.
+                    // We allow retries here because writing 8 chunks is prone to racing with the device's summary stats (Sleep).
                     await setOperationalParam(peripheral, opIndex, value.toString())
                 } catch (error) {
                     logError(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)

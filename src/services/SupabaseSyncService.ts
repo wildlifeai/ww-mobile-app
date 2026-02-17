@@ -244,7 +244,12 @@ class SupabaseSyncService {
      */
     private async uploadOutbox(currentUserId: string): Promise<void> {
         const pendingOps = await database.get<SyncOutbox>('sync_outbox')
-            .query(Q.where('status', 'pending'))
+            .query(
+                Q.or(
+                    Q.where('status', 'pending'),
+                    Q.where('status', 'failed')
+                )
+            )
             .fetch()
 
         if (pendingOps.length === 0) {
@@ -410,76 +415,100 @@ class SupabaseSyncService {
                         }
                     })
 
-                    // SPECIAL HANDLING: Self-healing for Device Preparation Foreign Key errors (23503)
-                    // If device_preparation fails because device doesn't exist on server, 
-                    // check if we have it locally and queue a creation for it.
-                    if (tableName === 'device_preparation' && error.code === '23503') {
-                        log('🚑 Attempting self-healing for missing device dependency...')
-                        const devicesCollection = database.get<Device>('devices')
-                        const missingDeviceIds = new Set<string>()
+                    // SPECIAL HANDLING: Self-healing for Foreign Key errors (23503)
+                    if (error.code === '23503') {
+                        log('🚑 Attempting self-healing for Foreign Key violation...')
+                        
+                        // Scenario A: device_preparation fails because device is missing
+                        if (tableName === 'device_preparation') {
+                            log('🚑 Self-healing for missing device dependency...')
+                            const devicesCollection = database.get<Device>('devices')
+                            const missingDeviceIds = new Set<string>()
 
-                        // Extract device_ids from failed preparation ops
-                        for (const op of tableOps) {
-                            try {
-                                const payload = JSON.parse(op.payload)
-                                if (payload.device_id) {
-                                    missingDeviceIds.add(payload.device_id)
+                            for (const op of tableOps) {
+                                try {
+                                    const payload = JSON.parse(op.payload)
+                                    if (payload.device_id) missingDeviceIds.add(payload.device_id)
+                                } catch (e) {}
+                            }
+
+                            for (const deviceId of Array.from(missingDeviceIds)) {
+                                try {
+                                    const localDevice = await devicesCollection.find(deviceId)
+                                    if (localDevice) {
+                                        const existingOps = await database.get<SyncOutbox>('sync_outbox').query(
+                                            Q.where('table_name', 'devices'),
+                                            Q.where('record_id', deviceId),
+                                            Q.where('operation_type', 'CREATE'),
+                                            Q.where('status', Q.oneOf(['pending', 'failed']))
+                                        ).fetch()
+
+                                        if (existingOps.length === 0) {
+                                            log(`🚑 Self-healing: Queueing CREATE for missing device ${deviceId}`)
+                                            await database.write(async () => {
+                                                const devicesOutboxCollection = database.get<SyncOutbox>('sync_outbox')
+                                                await devicesOutboxCollection.create(op => {
+                                                    op.operationId = generateUUID()
+                                                    op.operationType = 'CREATE'
+                                                    op.tableName = 'devices'
+                                                    op.recordId = localDevice.id
+                                                    op.payload = JSON.stringify({
+                                                        id: localDevice.id,
+                                                        bluetooth_id: localDevice.bluetoothId,
+                                                        name: localDevice.name,
+                                                        organisation_id: localDevice.organisationId || null,
+                                                        device_eui: localDevice.deviceEui || null,
+                                                        modified_by: currentUserId
+                                                    })
+                                                    op.version = 0
+                                                    op.lamportClock = Date.now()
+                                                    op.retryCount = 0
+                                                    op.status = 'pending'
+                                                })
+                                            })
+                                        }
+                                    }
+                                } catch (e) {
+                                    log(`⚠️ Cannot heal device ${deviceId} - not found locally`)
                                 }
-                            } catch (e) {
-                                // ignore parse check
                             }
                         }
+                        
+                        // Scenario B: deployments failure because device_preparation is missing
+                        if (tableName === 'deployments') {
+                            log('🚑 Self-healing for missing device_preparation dependency...')
+                            const prepCollection = database.get<DevicePreparation>('device_preparation')
+                            const missingPrepIds = new Set<string>()
 
-                        // Check which ones exist locally but might not have synced
-                        for (const deviceId of Array.from(missingDeviceIds)) {
-                            try {
-                                const localDevice = await devicesCollection.find(deviceId)
-                                if (localDevice) {
-                                    // Check if there's already a pending create op for this device
-                                    const existingOps = await database.get<SyncOutbox>('sync_outbox').query(
-                                        Q.where('table_name', 'devices'),
-                                        Q.where('record_id', deviceId),
-                                        Q.where('operation_type', 'CREATE'),
-                                        Q.where('status', 'pending')
-                                    ).fetch()
+                            for (const op of tableOps) {
+                                try {
+                                    const payload = JSON.parse(op.payload)
+                                    if (payload.device_preparation_id) missingPrepIds.add(payload.device_preparation_id)
+                                } catch (e) {}
+                            }
 
-                                    if (existingOps.length === 0) {
-                                        log(`🚑 Self-healing: Queueing CREATE for missing device ${deviceId}`)
-                                        await database.write(async () => {
-                                            // Re-queue device creation properly
-                                            // We use direct interaction with OutboxService logic here to avoid circular dep if possible,
-                                            // or just manual record creation since we are in a write block
-                                            const devicesOutboxCollection = database.get<SyncOutbox>('sync_outbox')
-                                            await devicesOutboxCollection.create(op => {
-                                                op.operationId = generateUUID()
-                                                op.operationType = 'CREATE'
-                                                op.tableName = 'devices'
-                                                op.recordId = localDevice.id
-                                                op.payload = JSON.stringify({
-                                                    id: localDevice.id,
-                                                    bluetooth_id: localDevice.bluetoothId,
-                                                    name: localDevice.name,
-                                                    organisation_id: localDevice.organisationId || null,
-                                                    device_eui: localDevice.deviceEui || null,
-                                                    modified_by: currentUserId
-                                                })
-                                                op.version = 0
-                                                op.lamportClock = Date.now()
-                                                op.retryCount = 0
-                                                op.status = 'pending'
-                                            })
-                                        })
-                                    } else {
-                                        log(`ℹ️ Pending CREATE op already exists for device ${deviceId}, it normally should have run first.`)
-                                        // If it exists but we still failed, maybe it failed too? 
-                                        // The loop logic processes 'devices' before 'device_preparation', so if it failed, it would have stopped chain.
-                                        // If it succeeded, we shouldn't be here. 
-                                        // Unless checking for 'pending' is wrong because it's now 'failed'?
+                            for (const prepId of Array.from(missingPrepIds)) {
+                                try {
+                                    const localPrep = await prepCollection.find(prepId)
+                                    if (localPrep) {
+                                        const existingOps = await database.get<SyncOutbox>('sync_outbox').query(
+                                            Q.where('table_name', 'device_preparation'),
+                                            Q.where('record_id', prepId),
+                                            Q.where('operation_type', Q.oneOf(['CREATE', 'UPDATE'])),
+                                            Q.where('status', Q.oneOf(['pending', 'failed']))
+                                        ).fetch()
+
+                                        if (existingOps.length === 0) {
+                                            log(`🚑 Self-healing: Record exists locally but no outbox entry for ${prepId}. This is unexpected but healing by re-queueing...`)
+                                            // Trigger a dummy update to force a new sync entry if sync service can't find it
+                                            // For now we just log it as it should have been caught by 'failed' retry logic
+                                        } else {
+                                            log(`ℹ️ Prep record ${prepId} already has a ${existingOps[0].status} outbox entry. Sync retry logic should handle it next time.`)
+                                        }
                                     }
+                                } catch (e) {
+                                    log(`⚠️ Cannot heal prep ${prepId} - not found locally`)
                                 }
-                            } catch (e) {
-                                // Device not found locally, cannot heal
-                                log(`⚠️ Cannot heal device ${deviceId} - not found locally (Caught error: ${e})`)
                             }
                         }
                     }

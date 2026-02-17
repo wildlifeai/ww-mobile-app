@@ -76,6 +76,21 @@ export class BleCommandManager {
             const timeoutHandle = setTimeout(() => {
               if (this.pendingCommand?.id === requestId) {
                 const cmd = this.pendingCommand
+                
+                // If we have retries left, trigger a retry instead of failing immediately
+                if (cmd.retryCount < cmd.maxRetries) {
+                  logWarn(`[BLE CMD Manager] Command timeout after ${timeout}ms. Retrying (${cmd.retryCount + 1}/${cmd.maxRetries})...`)
+                  this.pendingCommand = null
+                  this.handleError({
+                    type: MessageType.ERROR,
+                    content: `Timeout after ${timeout}ms`,
+                    timestamp: Date.now(),
+                    errorType: 'TIMEOUT',
+                    raw: ''
+                  })
+                  return
+                }
+
                 this.pendingCommand = null
                 this.processQueue() // Resume queue processing
                 
@@ -243,8 +258,9 @@ export class BleCommandManager {
       return
     }
 
-    if (msg.errorType === 'AI_NACK') {
-      log('[BLE CMD Manager] AI NACK detected - waiting for wake sequence then retrying')
+    if (msg.errorType === 'AI_NACK' || msg.errorType === 'DEVICE_SLEEP' || msg.errorType === 'TIMEOUT') {
+      const reason = msg.errorType === 'AI_NACK' ? 'AI NACK' : (msg.errorType === 'DEVICE_SLEEP' ? 'Device Sleep' : 'Timeout')
+      log(`[BLE CMD Manager] ${reason} detected - waiting for wake sequence then retrying`)
       
       const failedCommand = this.pendingCommand
       
@@ -271,6 +287,21 @@ export class BleCommandManager {
                 // Restart timeout logic for the retry
                 const newTimeoutHandle = setTimeout(() => {
                   if (this.pendingCommand?.id === failedCommand.id) {
+                    const cmd = this.pendingCommand
+                    // RECURSIVE RETRY CHECK: If we still have retries, trigger another handleError for TIMEOUT
+                    if (cmd.retryCount < cmd.maxRetries) {
+                        logWarn(`[BLE CMD Manager] Retry timeout. Retrying again...`)
+                        this.pendingCommand = null
+                        this.handleError({
+                            type: MessageType.ERROR,
+                            content: `Retry Timeout`,
+                            timestamp: Date.now(),
+                            errorType: 'TIMEOUT',
+                            raw: ''
+                        })
+                        return
+                    }
+
                     this.pendingCommand = null
                     failedCommand.reject(new Error(`Retry timeout after ${failedCommand.timeoutMs}ms: ${this.redact(failedCommand.commandString)}`))
                     // Only process queue after rejection is handled
@@ -294,16 +325,13 @@ export class BleCommandManager {
             }
           })
           
-          // CRITICAL: Do NOT call processQueue() here. 
-          // The current command is still "stateless" (pendingCommand is null),
-          // so processQueue would try to run the next command immediately.
-          // But we want to run the RETRY command we just unshifted.
-          // So we call processQueue() which will pick up the unshifted command.
+          // CRITICAL: Do NOT call processQueue() here if we just unshifted?
+          // Actually, we need to call it to run the newly unshifted command.
           this.processQueue()
         } else {
           // Max retries exceeded
           this.pendingCommand = null
-          failedCommand?.reject(new Error(`AI NACK: Max retries (${failedCommand?.maxRetries}) exceeded`))
+          failedCommand?.reject(new Error(`${reason}: Max retries (${failedCommand?.maxRetries}) exceeded`))
           this.processQueue()
         }
       })
