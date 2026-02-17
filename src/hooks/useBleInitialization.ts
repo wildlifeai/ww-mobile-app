@@ -83,7 +83,9 @@ export const useBleInitialization = () => {
       } catch (e) {
           const errorMsg = e instanceof Error ? e.message : String(e)
           logWarn('[BLE Init] Self-test command failed:', errorMsg)
-          // Continue anyway - device might be initializing
+          // Add a warning to the errors object so the UI can be notified
+          if (!errors.deviceHealth) errors.deviceHealth = []
+          errors.deviceHealth.push('Hardware self-test failed to run.')
       }
 
       // Check for hardware warnings

@@ -96,11 +96,16 @@ export const useCapturePreview = ({
         const messageListener = (msg: string) => {
             // Check if we are expecting a download and receive the finish signal
             if (downloadRequested.current && msg.includes('Finished sending')) {
-                log('[useCapturePreview] "Finished sending" detected. Force finalizing.')
-                // Small delay to ensure last chunks are processed
+                const match = msg.match(/sending (\d+) bytes/)
+                const expectedBytes = match ? parseInt(match[1], 10) : 'unknown'
+                
+                log(`[useCapturePreview] "Finished sending" detected (expected ${expectedBytes} bytes). Waiting 500ms grace period for last packets...`)
+                
+                // Grace period to ensure last chunks are processed from the BLE queue
                 setTimeout(() => {
+                     log('[useCapturePreview] Grace period ended. Triggering force_finalize.')
                      imageReassemblerEmitter.emit('force_finalize')
-                }, 100)
+                }, 500)
             }
         }
 

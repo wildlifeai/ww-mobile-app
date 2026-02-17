@@ -26,6 +26,8 @@ export interface ClassifiedMessage {
   errorType?: ErrorType
   // Raw message for debugging
   raw: string
+  // Flag if this was designated as RESPONSE by fallback (no pattern matched)
+  isFallbackResponse?: boolean
 }
 
 /**
@@ -33,32 +35,32 @@ export interface ClassifiedMessage {
  */
 const UNSOLICITED_PATTERNS = [
   // Wake patterns moved to INFO_PATTERNS
-  /^Error bits = 0x[0-9A-Fa-f]+$/i, 
-  /^Sleep/i,
-  /^MD\.\.\./i,
-  /^Retrying transmission/i,
-  /^RTC set to/i,
-  /^UTC is:/i,
-  /^System time set successfully$/i,
-  /^Device GPS set$/i,
-  /^Location is:/i,
-  /^heartbeat is/i,
-  /^AI processor is in DPD/i,
-  /^AI processor not responding\. Waking it\.$/i,
-  /^Disconnecting$/i,
-  /^Failed to join\.?$/i,
+  /Error bits = 0x[0-9A-Fa-f]+/i, 
+  /Sleep/i,
+  /MD\.\.\./i,
+  /Retrying transmission/i,
+  /RTC set to/i,
+  /UTC is:/i,
+  /System time set successfully/i,
+  /Device GPS set/i,
+  /Location is:/i,
+  /heartbeat is/i,
+  /AI processor is in DPD/i,
+  /AI processor not responding\. Waking it\.$/i,
+  /Disconnecting/i,
+  /Failed to join\.?$/i,
   // Command Echoes (Treat as info, not resolution)
-  /^setutc\s+[0-9TZ:-]+$/i,
-  /^AI setop\s+\d+\s+\d+$/i,
-  /^setgps\s+.*$/i,
-  /^AI info$/i,
-  /^ver$/i,
-  /^battery$/i,
-  /^get heartbeat$/i,
-  /^flash[rgb]\s+\d+\s+\d+$/i,
-  /^selftest$/i,
-  /^status$/i,
-  /^getutc$/i,
+  /setutc\s+[0-9TZ:-]+$/i,
+  /AI setop\s+\d+\s+\d+$/i,
+  /setgps\s+.*$/i,
+  /AI info$/i,
+  /ver$/i,
+  /battery$/i,
+  /get heartbeat$/i,
+  /flash[rgb]\s+\d+\s+\d+$/i,
+  /selftest$/i,
+  /status$/i,
+  /getutc$/i,
 ]
 
 /**
@@ -146,6 +148,7 @@ export function classifyMessage(
     content,
     timestamp,
     raw: rawMessage,
+    isFallbackResponse: true, // Mark as fallback
   }
 }
 

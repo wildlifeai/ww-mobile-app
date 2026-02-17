@@ -33,7 +33,7 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 			const byteArray = [...Buffer.from(sanitizedData)]
 			
             // Check for sensitive data (PII/Secrets) to redact from logs
-            const isSensitive = /^(setgps|appkey|appeui|deveui|setutc)/i.test(sanitizedData)
+            const isSensitive = /\b(setgps|appkey|appeui|deveui|setutc)\b/i.test(sanitizedData)
             const logHex = isSensitive ? "[REDACTED]" : Buffer.from(byteArray).toString("hex")
             const logData = isSensitive ? "[REDACTED]" : sanitizedData
 
@@ -77,8 +77,8 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 			)
 
 			// We used to have logic here specifically for disconnection, 
-			// but we should always return the error for the caller to handle.
-			return error
+			// but we should always throw the error for the caller to handle.
+			throw error
 		}
 	}
 }

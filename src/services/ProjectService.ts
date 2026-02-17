@@ -524,61 +524,68 @@ class ProjectService {
 	}
 
 	private async enrichProjectWithDetails(model: Project): Promise<ProjectWithDetails> {
-		// Calculate counts
-		const memberCount = await database.collections.get('user_roles')
-			.query(
-				Q.where('scope_type', 'project'),
-				Q.where('scope_id', model.id)
-			)
-			.fetchCount()
+		try {
+			log(`[ProjectService] Enriching project: ${model.name} (${model.id})`)
 
-		const deploymentCount = await database.get('deployments').query(
-			Q.on('device_preparation', 'project_id', model.id)
-		).fetchCount()
+			// Fetch related counts in parallel for performance
+			const [memberCount, deploymentCount, activeDeploymentCount, devicePreparations] = await Promise.all([
+				database.collections.get('user_roles').query(
+					Q.where('scope_type', 'project'),
+					Q.where('scope_id', model.id),
+					Q.where('is_active', true)
+				).fetchCount(),
 
-		// Count active deployments
-		// Status ID 1 = Deployed (Active), but relying on deployment_end is safer/consistent with MapScreen
-		const activeDeploymentCount = await database.get('deployments').query(
-			Q.on('device_preparation', 'project_id', model.id),
-			Q.where('deployment_end', null)
-		).fetchCount()
+				database.collections.get('deployments').query(
+					Q.where('project_id', model.id)
+				).fetchCount(),
 
-		// Calculate distinct Devices from DevicePreparations (devices allocated to this project)
-		const devicePreparations = await database.collections.get('device_preparation')
-			.query(
-				Q.where('project_id', model.id)
-			)
-			.fetch()
+				database.collections.get('deployments').query(
+					Q.where('project_id', model.id),
+					Q.where('deployment_end', null)
+				).fetchCount(),
 
-		// Count unique device IDs
-		const uniqueDeviceIds = new Set(devicePreparations.map((dp: any) => dp.deviceId))
-		const lorawanDeviceCount = uniqueDeviceIds.size
+				database.collections.get('device_preparation').query(
+					Q.where('project_id', model.id),
+					Q.where('deleted_at', null)
+				).fetch()
+			])
 
-		return {
-			id: model.id,
-			name: model.name,
-			description: model.description || '',
-			organisation_id: model.organisationId,
-			created_at: new Date(model.createdAt).toISOString(),
-			updated_at: new Date(model.updatedAt).toISOString(),
-			deleted_at: model.deletedAt ? new Date(model.deletedAt).toISOString() : null,
-			sampling_design_id: model.samplingDesignId || null,
-			website: model.website || null,
-			created_by: model.createdBy || '',
-			modified_by: model.modifiedBy || '',
-			is_active: model.isActive,
-			timelapse_interval_seconds: model.timelapseIntervalSeconds || null,
-			activity_detection_sensitivity_id: model.activityDetectionSensitivityId || null,
-			capture_method_id: model.captureMethodId || null,
-			model_id: model.modelId || null,
-			is_baited: model.isBaited || false,
-			is_monitoring_marked_individuals: model.isMonitoringMarkedIndividuals || false,
-			project_image: model.projectImage || null,
-			// Computed fields
-			member_count: memberCount,
-			deployment_count: deploymentCount,
-			active_deployment_count: activeDeploymentCount,
-			lorawan_device_count: lorawanDeviceCount,
+			// Calculate distinct device count
+			const uniqueDeviceIds = new Set(devicePreparations.map((dp: any) => dp.deviceId))
+			const lorawanDeviceCount = uniqueDeviceIds.size
+
+			log(`[ProjectService] Enrichment complete for ${model.id}: ${deploymentCount} deployments, ${memberCount} members`)
+
+			return {
+				id: model.id,
+				name: model.name,
+				description: model.description || '',
+				organisation_id: model.organisationId,
+				created_at: new Date(model.createdAt).toISOString(),
+				updated_at: new Date(model.updatedAt).toISOString(),
+				deleted_at: model.deletedAt ? new Date(model.deletedAt).toISOString() : null,
+				sampling_design_id: model.samplingDesignId || null,
+				website: model.website || null,
+				created_by: model.createdBy || '',
+				modified_by: model.modifiedBy || '',
+				is_active: model.isActive,
+				timelapse_interval_seconds: model.timelapseIntervalSeconds || null,
+				activity_detection_sensitivity_id: model.activityDetectionSensitivityId || null,
+				capture_method_id: model.captureMethodId || null,
+				model_id: model.modelId || null,
+				is_baited: model.isBaited || false,
+				is_monitoring_marked_individuals: model.isMonitoringMarkedIndividuals || false,
+				project_image: model.projectImage || null,
+				// Computed fields
+				member_count: memberCount,
+				deployment_count: deploymentCount,
+				active_deployment_count: activeDeploymentCount,
+				lorawan_device_count: lorawanDeviceCount,
+			}
+		} catch (error) {
+			logError(`[ProjectService] Error enriching project ${model.id}:`, error)
+			// Return basic info as fallback
+			return this.mapModelToType(model) as ProjectWithDetails
 		}
 	}
 

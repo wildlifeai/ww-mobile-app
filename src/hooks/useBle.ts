@@ -150,10 +150,21 @@ export const useBle = (): ReturnType => {
 						// Add small delay between commands to be nice to firmware
 						await sleep(PAUSE)
 					} catch (error) {
-						logError(`Error writing command ${commandString}: ${error}`)
-						results.push(`ERROR: ${error}`)
-						// On critical error, we might want to disconnect or stop processing
-						// disconnectDevice(peripheral) 
+						const errMsg = error instanceof Error ? error.message : String(error)
+						logError(`Error writing command ${commandString}: ${errMsg}`)
+						results.push(`ERROR: ${errMsg}`)
+						
+						// Stop the sequence if the error is fatal (disconnection or cancelled)
+						const isFatal = 
+							errMsg.includes('Peripheral not found') || 
+							errMsg.includes('not connected') || 
+							errMsg.includes('Command manager cleared') ||
+							errMsg.includes('disconnected')
+
+						if (isFatal) {
+							logWarn(`[useBle] Fatal error detected, stopping command sequence: ${errMsg}`)
+							throw error
+						}
 					}
 				}
 			}

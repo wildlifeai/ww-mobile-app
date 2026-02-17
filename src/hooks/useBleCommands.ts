@@ -112,13 +112,6 @@ export const useBleCommands = () => {
         await write(peripheral, [[commandName, { control: CommandControlTypes.WRITE, value }]])
     }, [write])
 
-    const setOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number, value: string) => {
-        // Use structured command so useBle can find the correct regex pattern automatically
-        // Optimization: Pass expectedPattern: false to skip waiting for regex match (fire-and-forget)
-        // This speeds up sequential writes significantly
-        await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]], { expectedPattern: false })
-    }, [write])
-
     const getOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number): Promise<string | null> => {
         // "AI getop <index>" -> Response: "Op[<index>] = <value>"
         const responses = await write(peripheral, [[CommandNames.getop, { control: CommandControlTypes.WRITE, value: index.toString() }]])
@@ -131,6 +124,23 @@ export const useBleCommands = () => {
         }
         return null
     }, [write])
+
+    const setOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number, value: string) => {
+        // Optimization: Read current value first to avoid redundant writes
+        try {
+            const current = await getOperationalParam(peripheral, index)
+            if (current === value) {
+                log(`[BLE CMD] Parameter ${index} is already ${value}, skipping write.`)
+                return
+            }
+        } catch (e) {
+            logWarn(`[BLE CMD] Fetch failed for parameter ${index}, forcing write: ${e}`)
+        }
+
+        // Use structured command so useBle can find the correct regex pattern automatically
+        // We wait for the confirmation "Set OpParam X = Y" to ensure task completion.
+        await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]])
+    }, [write, getOperationalParam])
 
     const setGpsLocation = useCallback(
         async (peripheral: ExtendedPeripheral, latitude: number, longitude: number, altitude: number) => {
@@ -191,17 +201,9 @@ export const useBleCommands = () => {
 
                 log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
 
-                // Use the new serialized write method instead of raw writeToDevice
                 try {
-                    // Optimization: We previously skipped regex waiting, but this caused race conditions
-                    // with subsequent commands (e.g. battery check picking up setop response).
-                    // Now we wait for the confirmation "Set OpParam X = Y".
-                    const results = await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]])
-                    // Check if write returned an error string (since useBle swallows errors)
-                    const result = results[0]
-                    if (result && typeof result === 'string' && result.startsWith('ERROR:')) {
-                        throw new Error(result)
-                    }
+                    // Use the optimized setOperationalParam which now performs its own Read-Before-Write check
+                    await setOperationalParam(peripheral, opIndex, value.toString())
                 } catch (error) {
                     logError(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
                     throw error
@@ -209,7 +211,7 @@ export const useBleCommands = () => {
             }
             log('[BLE CMD] Deployment ID OPs sent successfully')
         },
-        [write]
+        [setOperationalParam] // Changed dependency from 'write' to 'setOperationalParam'
     )
 
     return {

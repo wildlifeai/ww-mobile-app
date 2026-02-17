@@ -136,7 +136,9 @@ export class ImageReassembler {
                 encoding: FileSystem.EncodingType.Base64
             })
 
-            log(`ImageReassembler: Image saved to ${fileUri}`)
+            const isComplete = this.totalExpectedBytes > 0 && this.totalBytesReceived >= this.totalExpectedBytes
+            const statusLabel = isComplete ? 'SUCCESS' : 'PARTIAL'
+            log(`ImageReassembler: Image saved to ${fileUri} [${statusLabel}] (${this.totalBytesReceived}/${this.totalExpectedBytes} bytes)`)
             this.emitter.emit('onImageComplete', fileUri)
             
         } catch (error) {

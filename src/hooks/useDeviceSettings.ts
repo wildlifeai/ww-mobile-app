@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert } from 'react-native'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { useBleCommands } from './useBleCommands'
@@ -32,7 +32,6 @@ export const OP_PARAMETER = {
 const QUIESCE_DELAYS = {
     CAMERA_ENABLE: 500,
     PARAM_CLEAR: 200,
-    BUS_STABILIZATION: 1500,
     CAMERA_DISABLE: 500,
 } as const
 
@@ -91,17 +90,20 @@ export const useDeviceSettings = ({
     const [isUpdating, setIsUpdating] = useState(false)
     const { setOperationalParam, getOperationalParam } = useBleCommands()
 
+    // Safety: Track if component is still mounted to avoid state updates/commands after unmount
+    const isMounted = useRef(true)
+    useEffect(() => {
+        isMounted.current = true
+        return () => { isMounted.current = false }
+    }, [])
+
     /**
      * Update multiple operational parameters on the device
      */
     const updateSettings = useCallback(async (settings: Partial<DeviceSettings>) => {
-        if (!device) {
+        if (!device || !device.connected) {
             const error = new Error('No device connected')
-            if (onError) {
-                onError(error)
-            } else {
-                Alert.alert('Error', 'No device connected')
-            }
+            if (onError) onError(error)
             return
         }
 
@@ -144,6 +146,11 @@ export const useDeviceSettings = ({
 
             // Send each update with a small delay to avoid overwhelming the device
             for (const { index, value } of updates) {
+                // Safety check before each step
+                if (!isMounted.current || !device.connected) {
+                    throw new Error('Update cancelled: Device disconnected or component unmounted')
+                }
+
                 log(`[useDeviceSettings] Setting parameter ${index} to ${value}`)
                 await setOperationalParam(device, index, value.toString())
                 // Small delay between commands (Increased to 500ms for robust DPD wake/sleep handling)
@@ -210,7 +217,10 @@ export const useDeviceSettings = ({
      *                  Use FALSE for Preparation to ensure clean slate.
      */
     const quiesceDevice = useCallback(async (logPrefix: string = '[DeviceSettings]', optimized: boolean = false) => {
-        if (!device) return
+        if (!device || !device.connected) {
+            logWarn(`${logPrefix} Skipping quiesce: Device not connected`)
+            return
+        }
 
         log(`${logPrefix} Quiescing device (Optimized: ${optimized})...`)
         try {
@@ -221,40 +231,31 @@ export const useDeviceSettings = ({
             // 2. Clear Intervals (Op 11 = 0, Op 7 = 0) - ALWAYS do this
             log(`${logPrefix} 2. Clearing Motion & Timelapse intervals...`)
 
-            // Optimization: Check current values first to avoid unnecessary writes
             try {
-                const currentMd = await getOperationalParam(device, OP_PARAMETER.MD_INTERVAL)
-                // log(`${logPrefix} Current MD Interval (Op 11): ${currentMd}`)
-                if (currentMd !== '0') {
-                    await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
-                    await new Promise(r => setTimeout(r, QUIESCE_DELAYS.PARAM_CLEAR)) 
-                } else {
-                     log(`${logPrefix} MD Interval already 0, skipping write.`)
-                }
-
-                const currentTl = await getOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL)
-                // log(`${logPrefix} Current Timelapse Interval (Op 7): ${currentTl}`)
-                if (currentTl !== '0') {
-                    await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
-                } else {
-                    log(`${logPrefix} Timelapse Interval already 0, skipping write.`)
-                }
-            } catch (readErr) {
-                logWarn(`${logPrefix} Failed to read current params, forcing clear...`, readErr)
-                // Fallback to forced write if read fails
+                if (!isMounted.current || !device.connected) return
                 await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
                 await new Promise(r => setTimeout(r, QUIESCE_DELAYS.PARAM_CLEAR)) 
+
+                if (!isMounted.current || !device.connected) return
                 await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
+            } catch (err) {
+                // If the error is fatal, we stop.
+                const errMsg = err instanceof Error ? err.message : String(err)
+                if (errMsg.includes('disconnected') || errMsg.includes('found') || errMsg.includes('cleared')) {
+                    throw err
+                }
+                logWarn(`${logPrefix} Failed to clear params:`, err)
             }
             
-            // BUS SAFETY: Wait for potential "Stats" message from Himax
-            log(`${logPrefix} Waiting ${QUIESCE_DELAYS.BUS_STABILIZATION}ms for bus stabilization...`)
-            await new Promise(r => setTimeout(r, QUIESCE_DELAYS.BUS_STABILIZATION))
-
+            if (!isMounted.current || !device.connected) return
+            
             // 3. Disable Camera (Op 10 = 0)
             log(`${logPrefix} 3. Disabling camera...`)
             try {
+                if (!isMounted.current || !device.connected) return
                 const currentCam = await getOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED)
+                
+                if (!isMounted.current || !device.connected) return
                 if (currentCam !== '0') {
                     await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '0')
                     await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_DISABLE))
@@ -262,7 +263,13 @@ export const useDeviceSettings = ({
                     log(`${logPrefix} Camera already disabled (Op 10=0), skipping write.`)
                 }
             } catch (err) {
+                 const errMsg = err instanceof Error ? err.message : String(err)
+                 if (errMsg.includes('disconnected') || errMsg.includes('found') || errMsg.includes('cleared')) {
+                     throw err
+                 }
+
                  logWarn(`${logPrefix} Check failed, forcing disable...`)
+                 if (!isMounted.current || !device.connected) return
                  await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '0')
                  await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_DISABLE))
             }

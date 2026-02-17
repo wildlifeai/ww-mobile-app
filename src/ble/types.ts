@@ -144,7 +144,7 @@ export type CommandConstructOptions = {
 export type WriteFunction = (
 	peripheral: ExtendedPeripheral,
 	data: string | undefined,
-) => Promise<Error | undefined>
+) => Promise<void>
 
 /**
  * Options for BLE command execution with response tracking
@@ -372,7 +372,7 @@ export const COMMANDS: {
 		name: CommandNames.getop,
 		readCommand: "AI getop",
 		writeCommand: (index?: string) => `AI getop ${index || ''}`.trim(),
-		readRegex: /^Op\[(\d+)\] = (.+)$/i,
+		readRegex: /^Op(?:Param\s+|\[)(\d+)\]?\s+=\s+(.+)$/i,
 		description: "Get Operational Parameter <index> (Advanced)",
 		type: 'command',
 	},
@@ -498,8 +498,8 @@ export const COMMANDS: {
 	[CommandNames.setgps]: {
 		name: CommandNames.setgps,
 		writeCommand: (gpsString?: string) => `setgps ${gpsString || ''}`,
-		readRegex: /Device\s+GPS\s+set/i,
-		description: "Set GPS location from phone",
+		readRegex: /Device GPS set/i,
+		description: "Set the GPS location",
 		type: 'command',
 	},
 	[CommandNames.getutc]: {
