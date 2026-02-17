@@ -106,9 +106,9 @@ describe('BleCommandManager', () => {
       expect(response).toBe('WW500-C02 V 00.08.14')
     })
 
-    it('should emit UNSOLICITED messages to listeners', (done) => {
+    it('should emit UNSOLICITED/INFO messages to listeners', (done) => {
       const unsubscribe = manager.onUnsolicitedMessage((msg) => {
-        expect(msg.type).toBe(MessageType.UNSOLICITED)
+        expect(msg.type).toBe(MessageType.INFO)
         expect(msg.content).toBe('Wake')
         unsubscribe()
         done()
@@ -175,13 +175,13 @@ describe('BleCommandManager', () => {
 
       expect(callback1).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: MessageType.UNSOLICITED,
+          type: MessageType.INFO,
           content: 'Wake',
         }),
       )
       expect(callback2).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: MessageType.UNSOLICITED,
+          type: MessageType.INFO,
           content: 'Wake',
         }),
       )

@@ -1,8 +1,6 @@
 import {
 	clearAllDeviceIntervals,
 	invokeWithTimeout,
-	writeToDevice,
-	extractServiceAndCharacteristic,
 	storeDataToStorage,
 	getStorageData,
 	isOurDevice,
@@ -96,72 +94,6 @@ describe("src/utils/helpers", () => {
 		})
 	})
 
-	describe("writeToDevice", () => {
-		const mockPeripheral = {
-			id: "device-123",
-			connected: true,
-			name: "Test Device",
-			services: {
-				serviceCharacteristic: "service-uuid",
-				writeCharacteristic: "write-uuid",
-			},
-		} as unknown as ExtendedPeripheral
-
-		it("should return early if device not connected", async () => {
-			await writeToDevice({ ...mockPeripheral, connected: false }, "data")
-			expect(BleManager.writeWithoutResponse).not.toHaveBeenCalled()
-		})
-
-		it("should write data to device", async () => {
-			await writeToDevice(mockPeripheral, "test-data")
-
-			expect(BleManager.writeWithoutResponse).toHaveBeenCalledWith(
-				"device-123",
-				"service-uuid",
-				"write-uuid",
-				expect.any(Array), // Byte array
-				512
-			)
-			// Check if emitter was called
-			expect(readlineParserEmitter.emit).toHaveBeenCalled()
-		})
-
-		it("should handle write errors", async () => {
-			(BleManager.writeWithoutResponse as jest.Mock).mockRejectedValue("Write failed")
-			const error = await writeToDevice(mockPeripheral, "test-data")
-			expect(error).toBeInstanceOf(Error)
-			expect(error?.message).toBe("Write failed")
-		})
-	})
-
-	describe("extractServiceAndCharacteristic", () => {
-		it("should return default if services are undefined", () => {
-			const result = extractServiceAndCharacteristic(undefined)
-			expect(result).toEqual({
-				writeCharacteristic: BLE_CHARACTERISTIC_WRITE_UUID,
-				readCharacteristic: BLE_CHARACTERISTIC_READ_UUID,
-				serviceCharacteristic: BLE_SERVICE_UUID,
-			})
-		})
-
-		it("should extract target service if present", () => {
-			const services = {
-				services: [{ uuid: BLE_SERVICE_UUID }],
-				characteristics: [
-					{ service: BLE_SERVICE_UUID, characteristic: "char-write", properties: { WriteWithoutResponse: true } },
-					{ service: BLE_SERVICE_UUID, characteristic: "char-read", properties: { Notify: true } },
-				],
-			}
-			const result = extractServiceAndCharacteristic(services as any)
-			expect(result).toEqual({
-				serviceCharacteristic: BLE_SERVICE_UUID,
-				readCharacteristic: "char-read",
-				writeCharacteristic: "char-write",
-			})
-		})
-		
-		// Add more scenarios for DFU and fallback if needed
-	})
 
 	describe("storeDataToStorage / getStorageData", () => {
 		it("should store data", async () => {

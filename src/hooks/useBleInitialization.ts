@@ -3,6 +3,7 @@ import { useCallback, useRef } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { useBleCommands } from './useBleCommands'
 import { extractErrorBits } from '../ble/messageClassifier'
+import { bleCommandManager } from '../ble/commandManager'
 import { log, logError, logWarn } from '../utils/logger'
 
 
@@ -53,8 +54,8 @@ export const useBleInitialization = () => {
       log('[BLE Init] Checking hardware status prior to time sync...')
 
       // 1. Check Hardware Status (Selftest) - FIRST
-      // We check once. If we get the "All Errors" (0xFF--) state but Wake succeeded,
-      // we assume the system is just initializing and hasn't reported stats yet.
+      // Add delay to allow device to stabilize after connection (especially if joining LoRaWAN)
+      await new Promise(resolve => setTimeout(resolve, 1500))
       
       let statusMsg = ''
       let hexBits: string | null = null
@@ -80,7 +81,9 @@ export const useBleInitialization = () => {
               }
           }
       } catch (e) {
-          logWarn('[BLE Init] Self-test command failed:', e)
+          const errorMsg = e instanceof Error ? e.message : String(e)
+          logWarn('[BLE Init] Self-test command failed:', errorMsg)
+          // Continue anyway - device might be initializing
       }
 
       // Check for hardware warnings

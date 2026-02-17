@@ -1,21 +1,21 @@
-import { File, Directory, Paths } from 'expo-file-system'
+import * as FileSystem from 'expo-file-system/legacy'
 import Firmware from '../database/models/Firmware'
 import { getSupabaseClient } from './supabase'
 import { log, logError } from '../utils/logger'
 
-
-const FIRMWARE_DIR = new Directory(Paths.document, 'firmware')
+const FIRMWARE_DIR = FileSystem.documentDirectory + 'firmware/'
 /** Tolerance in bytes when comparing file sizes (accounts for minor filesystem differences) */
 const FILE_SIZE_TOLERANCE_BYTES = 100
 
 class FirmwareService {
     private initialized = false
 
-    private init(): void {
+    private async init(): Promise<void> {
         if (this.initialized) return
 
-        if (!FIRMWARE_DIR.exists) {
-            FIRMWARE_DIR.create({ intermediates: true })
+        const dirInfo = await FileSystem.getInfoAsync(FIRMWARE_DIR)
+        if (!dirInfo.exists) {
+            await FileSystem.makeDirectoryAsync(FIRMWARE_DIR, { intermediates: true })
         }
         this.initialized = true
     }
@@ -26,35 +26,34 @@ class FirmwareService {
      * Returns the local file URI.
      */
     async ensureFirmwareDownloaded(firmware: Firmware): Promise<string> {
-        this.init()
+        await this.init()
 
-        // locationPath is typically "type/filename.zip" e.g., "ble/firmware_v1.0.0.zip"
-        // We use the full path structure locally to avoid filename collisions across types
-        // actually, flattening might be easier, but let's just use the filename for now
-        // assuming filenames are unique enough or we prepend type
+        // Construct unique local filename
+        // locationPath is typically "type/filename.zip"
         const filename = `${firmware.type}_${firmware.version}_${firmware.locationPath.split('/').pop()}`
-        const localFile = new File(FIRMWARE_DIR, filename)
+        const localUri = FIRMWARE_DIR + filename
 
-        if (localFile.exists) {
-            const fileSize = localFile.size
+        const fileInfo = await FileSystem.getInfoAsync(localUri)
+
+        if (fileInfo.exists) {
+            const fileSize = fileInfo.size
+            
             // Verify size if possible (approximate check)
-            if (fileSize !== null && Math.abs(fileSize - firmware.fileSizeBytes) < FILE_SIZE_TOLERANCE_BYTES) {
-                log(`✅ Firmware already downloaded: ${localFile.uri}`)
-                return localFile.uri
+            if (fileSize !== undefined && Math.abs(fileSize - firmware.fileSizeBytes) < FILE_SIZE_TOLERANCE_BYTES) {
+                log(`✅ Firmware already downloaded: ${localUri}`)
+                return localUri
             } else {
                 log(`⚠️ File size mismatch (Expected: ${firmware.fileSizeBytes}, Got: ${fileSize}). Re-downloading...`)
-                localFile.delete()
+                await FileSystem.deleteAsync(localUri, { idempotent: true })
             }
         }
 
-        log(`⬇️ Downloading firmware to ${localFile.uri}...`)
+        log(`⬇️ Downloading firmware to ${localUri}...`)
 
         try {
             const supabase = getSupabaseClient()
             log(`Getting signed URL for path: ${firmware.locationPath}`)
 
-            // Use createSignedUrl now that RLS policies are fixed (TO public)
-            // This allows authenticated users to download from the private firmware bucket
             const { data, error } = await supabase.storage
                 .from('firmware')
                 .createSignedUrl(firmware.locationPath, 60) // 60 seconds validity
@@ -65,22 +64,25 @@ class FirmwareService {
 
             log(`Got signed URL, starting download...`)
 
-            // Use new File.downloadFileAsync API
-            const downloadedFile = await File.downloadFileAsync(
+            const downloadResumable = FileSystem.createDownloadResumable(
                 data.signedUrl,
-                localFile,
-                { idempotent: true }
+                localUri,
+                {}
             )
 
-            log(`✅ Firmware downloaded successfully`)
-            return downloadedFile.uri
+            const result = await downloadResumable.downloadAsync()
+            
+            if (!result || !result.uri) {
+                throw new Error('Download failed to return a URI')
+            }
+
+            log(`✅ Firmware downloaded successfully: ${result.uri}`)
+            return result.uri
         } catch (error) {
             logError('❌ Firmware download failed:', error)
-            // Cleanup partial file if needed (wrap in try-catch to preserve original error)
+            // Cleanup partial file if needed
             try {
-                if (localFile.exists) {
-                    localFile.delete()
-                }
+                await FileSystem.deleteAsync(localUri, { idempotent: true })
             } catch (cleanupError) {
                 logError('❌ Failed to cleanup partial firmware file:', cleanupError)
             }
@@ -92,12 +94,10 @@ class FirmwareService {
      * Deletes a local firmware file
      */
     async deleteLocalFirmware(firmware: Firmware): Promise<void> {
-        this.init()
+        await this.init()
         const filename = `${firmware.type}_${firmware.version}_${firmware.locationPath.split('/').pop()}`
-        const localFile = new File(FIRMWARE_DIR, filename)
-        if (localFile.exists) {
-            localFile.delete()
-        }
+        const localUri = FIRMWARE_DIR + filename
+        await FileSystem.deleteAsync(localUri, { idempotent: true })
     }
 }
 

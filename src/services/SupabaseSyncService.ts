@@ -82,7 +82,7 @@ class SupabaseSyncService {
             this.sync()
         }, this.SYNC_DEBOUNCE_MS)
 
-        log(`⏳ Sync debounced (will trigger in ${this.SYNC_DEBOUNCE_MS}ms)`)
+        // log(`⏳ Sync debounced (will trigger in ${this.SYNC_DEBOUNCE_MS}ms)`)
     }
 
     /**
@@ -92,7 +92,7 @@ class SupabaseSyncService {
         // Check if sync already in progress (via SyncStateService)
         const inProgress = await SyncStateService.isSyncInProgress()
         if (inProgress || this.isSyncing) {
-            log('⏳ Sync already in progress, skipping.')
+            // log('⏳ Sync already in progress, skipping.')
             return
         }
 
@@ -110,13 +110,13 @@ class SupabaseSyncService {
                 if (!isOnline) {
                     const netState = await NetInfo.fetch()
                     if (netState.isConnected === true) {
-                        log(`🌐 Network check: Redux says OFFLINE but NetInfo says ONLINE - using NetInfo`)
+                        // log(`🌐 Network check: Redux says OFFLINE but NetInfo says ONLINE - using NetInfo`)
                         isOnline = true
                     } else {
-                        log(`🌐 Network check (Redux): OFFLINE`)
+                        // log(`🌐 Network check (Redux): OFFLINE`)
                     }
                 } else {
-                    log(`🌐 Network check (Redux): ONLINE`)
+                    // log(`🌐 Network check (Redux): ONLINE`)
                 }
             } else {
                 // Fallback if store not yet injected
@@ -131,7 +131,7 @@ class SupabaseSyncService {
         }
 
         if (!isOnline) {
-            log('⏸️ Device is offline - skipping sync')
+            // log('⏸️ Device is offline - skipping sync')
             return
         }
 
@@ -208,7 +208,7 @@ class SupabaseSyncService {
                 const syncCount = currentCount ? parseInt(currentCount, 10) + 1 : 1
                 await SyncStateService.set(SYNC_STATE_KEYS.TOTAL_SYNCS, syncCount.toString())
 
-                log(`✅ Sync completed successfully in ${syncDuration}ms (total syncs: ${syncCount})`)
+                // log(`✅ Sync completed successfully in ${syncDuration}ms (total syncs: ${syncCount})`)
             })
 
         } catch (error) {
@@ -248,11 +248,11 @@ class SupabaseSyncService {
             .fetch()
 
         if (pendingOps.length === 0) {
-            log('✅ Sync complete - no pending operations')
+            // log('✅ Sync complete - no pending operations')
             return
         }
 
-        log(`📤 Uploading ${pendingOps.length} pending operations...`)
+        // log(`📤 Uploading ${pendingOps.length} pending operations...`)
 
         // Mark operations as syncing
         await database.write(async () => {
@@ -373,7 +373,7 @@ class SupabaseSyncService {
             // We pass the full structure but only populate the current table
             const changes = populateChanges(tableOps, currentUserId)
 
-            log(`🔍 DEBUG: Payload for ${tableName}:`, JSON.stringify(changes))
+            // log(`🔍 DEBUG: Payload for ${tableName}:`, JSON.stringify(changes))
 
             // CRITICAL FIX: Remove modified_by from deployments at batch level (server-side adds it)
             if (tableName === 'deployments') {
@@ -393,7 +393,7 @@ class SupabaseSyncService {
                 const { data, error } = await (client as any).rpc('push_changes', { changes })
 
                 // IMPORTANT DEBUG: Log processed count to detect silent failures
-                log(`✅ Server processed ${data?.processed ?? '?'} operations for ${tableName}`)
+                // log(`✅ Server processed ${data?.processed ?? '?'} operations for ${tableName}`)
 
                 if (error) {
                     logError(`❌ Push failed for ${tableName}:`, error)
@@ -532,7 +532,7 @@ class SupabaseSyncService {
             throw new Error('One or more sync batches failed')
         }
 
-        log('✅ All sync batches completed successfully')
+        // log('✅ All sync batches completed successfully')
     }
 
     /**
@@ -542,7 +542,7 @@ class SupabaseSyncService {
         const lastPulledStr = await SyncStateService.get(SYNC_STATE_KEYS.LAST_PULL_TIMESTAMP)
         const lastPulledAt = lastPulledStr ? parseInt(lastPulledStr, 10) : 0
 
-        log('🔽 Pulling changes since', lastPulledAt)
+        // log('🔽 Pulling changes since', lastPulledAt)
         const client = getSupabaseClient()
 
         const { data, error } = await (client as any).rpc('pull_changes', {
@@ -559,7 +559,7 @@ class SupabaseSyncService {
         // ================================================================
         // CRITICAL: Filter out records with pending local changes
         // ================================================================
-        log('🔍 Filtering pending local changes from server updates...')
+        // log('🔍 Filtering pending local changes from server updates...')
 
         // Get all pending operations from outbox
         const pendingOps = await database.get<SyncOutbox>('sync_outbox')
@@ -719,7 +719,7 @@ class SupabaseSyncService {
             )
         })
 
-        log(`✅ Pull complete - timestamp updated to ${timestamp}`)
+        // log(`✅ Pull complete - timestamp updated to ${timestamp}`)
     }
 
     /**

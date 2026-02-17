@@ -1,3 +1,5 @@
+import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
+
 export type ParseCommands = {
 	value?: string
 	command?: Command | null
@@ -77,6 +79,7 @@ export type Command = {
 	readRegex?: RegExp
 	description?: string
 	type?: 'command' | 'process' | 'local'
+	timeout?: number
 }
 
 export const getCommandByName = (name: CommandNames | string) => {
@@ -107,6 +110,27 @@ export const getCommandByName = (name: CommandNames | string) => {
 	return null
 }
 
+export const constructCommandString = (
+	name: CommandNames | string,
+	options: CommandConstructOptions,
+) => {
+	const command = getCommandByName(name)
+
+	if (!command) {
+		return undefined
+	}
+
+	if (options.control === CommandControlTypes.WRITE && command.writeCommand) {
+		return command.writeCommand(options.value)
+	}
+
+	if (options.control === CommandControlTypes.READ && command.readCommand) {
+		return command.readCommand
+	}
+
+	return undefined
+}
+
 export enum CommandControlTypes {
 	READ = "read",
 	WRITE = "write",
@@ -116,6 +140,11 @@ export type CommandConstructOptions = {
 	control: CommandControlTypes
 	value?: string
 }
+
+export type WriteFunction = (
+	peripheral: ExtendedPeripheral,
+	data: string | undefined,
+) => Promise<Error | undefined>
 
 /**
  * Options for BLE command execution with response tracking
@@ -155,6 +184,12 @@ export interface PendingCommand {
 	expectedPattern?: RegExp | false
 	/** Timeout handle to clear when command completes */
 	timeoutHandle?: any 
+    /** Function to write to device (needed for retries) */
+    writeToDevice: WriteFunction
+    /** Peripheral to write to */
+    peripheral: ExtendedPeripheral
+    /** Whether the command echo has been received */
+    echoReceived?: boolean
 }
 
 export const COMMANDS: {
@@ -170,7 +205,7 @@ export const COMMANDS: {
 		name: CommandNames.ver,
 		readCommand: "ver",
 		// Matches "WW500-A00 V 00.20.07 22:30:18 Jan 28 2026"
-		readRegex: /WW500-[a-zA-Z0-9]+\s+V\s+(\d+\.\d+\.\d+)/i,
+		readRegex: /[a-zA-Z0-9-]+\s+V\s+(\d+\.\d+\.\d+(?:-[\w.-]+)?)/i,
 		description: "Device, firmware version, build date",
 		type: 'command',
 	},
@@ -267,7 +302,8 @@ export const COMMANDS: {
 		name: CommandNames.aiinfo,
 		writeCommand: () => "AI info",
 		// Matches total and available drive space response
-		readRegex: /(\d+)\s*[Kk]\s*total\s*drive\s*space/i,
+		// Example: "30515200 K total drive space.\n  30511056 K available."
+		readRegex: /(\d+)\s*[Kk]\s*total\s*drive\s*space\.\s*(\d+)\s*[Kk]\s*available/i,
 		description: "Get AI module info (label, serial, total/available drive space in KB)",
 		type: 'command',
 	},
@@ -315,7 +351,8 @@ export const COMMANDS: {
 			const timestamp = iso.split('.')[0] + 'Z'
 			return `setutc ${timestamp}`
 		},
-		readRegex: /RTC\s+set\s+to[\s:]+(.*)/i,
+		// Matches "RTC set to..." OR "System time set successfully" OR "UTC is: ..." (device echo/response variations)
+		readRegex: /(RTC\s+set\s+to|System\s+time\s+set\s+successfully|UTC\s+is:)/i,
 		description: "Set system time from UTC string",
 		type: 'process',
 	},
@@ -421,6 +458,7 @@ export const COMMANDS: {
 		readRegex: /Set\s+OpParam\s+10\s+=\s+1/i,
 		description: "Enable camera and AI system",
 		type: 'process',
+		timeout: 10000,
 	},
 	[CommandNames.DISABLE_CAMERA]: {
 		name: CommandNames.DISABLE_CAMERA,
@@ -428,6 +466,7 @@ export const COMMANDS: {
 		readRegex: /Set\s+OpParam\s+10\s+=\s+0/i,
 		description: "Disable camera and AI system",
 		type: 'process',
+		timeout: 10000,
 	},
 	[CommandNames.temp]: {
 		name: CommandNames.temp,

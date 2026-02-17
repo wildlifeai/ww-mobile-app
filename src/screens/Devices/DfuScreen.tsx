@@ -2,7 +2,7 @@ import { useState } from "react"
 import { StyleSheet, View, Platform, PermissionsAndroid } from "react-native"
 import { Button } from "react-native-paper"
 import DocumentPicker from "react-native-document-picker"
-import * as FileSystem from "expo-file-system"
+import * as FileSystem from "expo-file-system/legacy"
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWText } from "../../components/ui/WWText"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
@@ -31,7 +31,7 @@ export const DfuScreen = () => {
 
 	const handleFilePick = async () => {
 		log("🔍 DFU: Starting file pick process...")
-		log("🔍 DFU: FileSystem.cacheDirectory:", (FileSystem as any).cacheDirectory)
+		log("🔍 DFU: FileSystem.cacheDirectory:", FileSystem.cacheDirectory)
 		try {
 			// Request necessary permissions first
 			if (Platform.OS === "android") {
@@ -82,7 +82,7 @@ export const DfuScreen = () => {
 			const timestamp = Date.now()
 			const localPath = Platform.select({
 				ios: result[0].uri,
-				android: `${(FileSystem as any).cacheDirectory ?? ""}firmware_${timestamp}.zip`,
+				android: `${FileSystem.cacheDirectory ?? ""}firmware_${timestamp}.zip`,
 			})
 
 			if (!localPath) {

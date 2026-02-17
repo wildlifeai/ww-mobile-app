@@ -11,6 +11,7 @@ export enum MessageType {
   RESPONSE = 'RESPONSE',
   UNSOLICITED = 'UNSOLICITED',
   ERROR = 'ERROR',
+  INFO = 'INFO', // Successful status messages (Wake, Error bits check, etc.)
 }
 
 export type ErrorType = 'AI_NACK' | 'TIMEOUT' | 'I2C_ERROR' | 'UNKNOWN'
@@ -31,10 +32,8 @@ export interface ClassifiedMessage {
  * Patterns for unsolicited messages from firmware
  */
 const UNSOLICITED_PATTERNS = [
-  /^Wake$/i,
-  /^Waking AI processor\.?$/i,
-  /^AI processor is awake\.?$/i,
-  /^Error bits = 0x[0-9A-Fa-f]+$/i,
+  // Wake patterns moved to INFO_PATTERNS
+  /^Error bits = 0x[0-9A-Fa-f]+$/i, 
   /^Sleep/i,
   /^MD\.\.\./i,
   /^Retrying transmission/i,
@@ -47,7 +46,7 @@ const UNSOLICITED_PATTERNS = [
   /^AI processor is in DPD/i,
   /^AI processor not responding\. Waking it\.$/i,
   /^Disconnecting$/i,
-  /^Failed to join\.?$/i,
+  // /^Failed to join\.?$/i, // Moved to ERROR_PATTERNS
   // Command Echoes (Treat as info, not resolution)
   /^setutc\s+[0-9TZ:-]+$/i,
   /^AI setop\s+\d+\s+\d+$/i,
@@ -69,6 +68,17 @@ const ERROR_PATTERNS = [
   { pattern: /^AI NACK$/i, type: 'AI_NACK' as ErrorType },
   { pattern: /^I2C error: address NACK$/i, type: 'I2C_ERROR' as ErrorType },
   { pattern: /^Discarding message as there is already one pending$/i, type: 'I2C_ERROR' as ErrorType },
+  { pattern: /^Failed to join/i, type: 'I2C_ERROR' as ErrorType }, // Treat join failure as error
+]
+
+/**
+ * Patterns for successful status updates (treated as INFO)
+ */
+const INFO_PATTERNS = [
+  /^Wake$/i,
+  /^Waking AI processor\.?$/i,
+  /^AI processor is awake\.?$/i,
+  /^Error bits = 0x0000$/i, // Only 0x0000 is success
 ]
 
 /**
@@ -78,7 +88,8 @@ export function classifyMessage(
   rawMessage: string,
   expectedResponsePattern?: RegExp | false,
 ): ClassifiedMessage {
-  const content = rawMessage.trim()
+  // Remove null bytes and trim whitespace
+  const content = rawMessage.replace(/\0/g, '').trim()
   const timestamp = Date.now()
 
   // Check for errors first
@@ -103,6 +114,18 @@ export function classifyMessage(
       timestamp,
       raw: rawMessage,
     }
+  }
+
+  // Check for INFO messages (Success indicators) - moved AFTER expected check
+  for (const pattern of INFO_PATTERNS) {
+      if (pattern.test(content)) {
+          return {
+              type: MessageType.INFO,
+              content,
+              timestamp,
+              raw: rawMessage
+          }
+      }
   }
 
   // Check for unsolicited messages

@@ -7,6 +7,7 @@ import { getSupabaseClient } from './supabase'
 import { log, logError, logWarn } from '../utils/logger'
 
 
+
 export const DevicePreparationService = {
     // ... existing methods ...
 
@@ -38,7 +39,7 @@ export const DevicePreparationService = {
      * Create a new device preparation record
      */
     createPreparation: async (deviceId: string, projectId: string, modifiedBy: string): Promise<DevicePreparation> => {
-        log('[DevPrepService] Creating preparation for device:', deviceId, 'project:', projectId)
+        // log('[DevPrepService] Creating preparation for device:', deviceId, 'project:', projectId)
 
         let newPrep: DevicePreparation | undefined
 
@@ -60,10 +61,10 @@ export const DevicePreparationService = {
                 preparation.lorawanRegistrationCompleted = false
             })
 
-            log('[DevPrepService] Record prepared, mapping to payload...')
+            // log('[DevPrepService] Record prepared, mapping to payload...')
             // 2. Prepare outbox record
             const payload = mapModelToPayload(newPrep)
-            log('[DevPrepService] Payload mapped successfully:', JSON.stringify(payload))
+            // log('[DevPrepService] Payload mapped successfully:', JSON.stringify(payload))
 
             const outboxOp = OutboxService.recordOperation({
                 operation: 'CREATE',
@@ -75,7 +76,7 @@ export const DevicePreparationService = {
 
             // 3. Execute batch
             await database.batch(newPrep, outboxOp)
-            log('[DevPrepService] Created preparation and outbox record:', newPrep.id)
+            // log('[DevPrepService] Created preparation and outbox record:', newPrep.id)
         })
 
         if (!newPrep) throw new Error("Failed to create preparation instance")
@@ -110,7 +111,7 @@ export const DevicePreparationService = {
             sdCardAvailableKbAtCheck: number
         }>
     ): Promise<DevicePreparation> => {
-        log('[DevPrepService] Updating preparation:', preparationId, updates)
+        // log('[DevPrepService] Updating preparation:', preparationId, updates)
 
         await database.write(async () => {
             const preparationsCollection = database.get<DevicePreparation>('device_preparation')
@@ -162,7 +163,7 @@ export const DevicePreparationService = {
      * Complete a device preparation
      */
     completePreparation: async (preparationId: string, isDeploymentReady: boolean, projectId?: string): Promise<DevicePreparation> => {
-        log('[DevPrepService] Completing preparation:', preparationId, 'ready:', isDeploymentReady, 'projectId:', projectId)
+        // log('[DevPrepService] Completing preparation:', preparationId, 'ready:', isDeploymentReady, 'projectId:', projectId)
 
         await database.write(async () => {
             const preparationsCollection = database.get<DevicePreparation>('device_preparation')
@@ -187,7 +188,7 @@ export const DevicePreparationService = {
 
             // 3. Execute batch
             await database.batch(prepUpdate, outboxOp)
-            log('[DevPrepService] Preparation completed and queued for sync:', preparation.id)
+            // log('[DevPrepService] Preparation completed and queued for sync:', preparation.id)
         })
 
         // Trigger background sync
@@ -382,7 +383,7 @@ export const DevicePreparationService = {
  */
 function mapModelToPayload(model: DevicePreparation): any {
     try {
-        log('[DevPrepService] mapModelToPayload for model:', model.id)
+        // log('[DevPrepService] mapModelToPayload for model:', model.id)
         const payload = {
             id: model.id,
             device_id: model.deviceId,
@@ -418,7 +419,7 @@ function mapModelToPayload(model: DevicePreparation): any {
             updated_at: model.updatedAt ? new Date(model.updatedAt).toISOString() : new Date().toISOString(),
             deleted_at: model.deletedAt ? new Date(model.deletedAt).toISOString() : null,
         }
-        log('[DevPrepService] mapModelToPayload successful')
+        // log('[DevPrepService] mapModelToPayload successful')
         return payload
     } catch (err) {
         logError('[DevPrepService] mapModelToPayload failed:', err)

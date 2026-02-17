@@ -4,7 +4,6 @@ import { Card, Button, Text, useTheme } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useCapturePreview } from '../../../hooks/useCapturePreview'
 import { useBle } from '../../../hooks/useBle'
-import { useAppSelector } from '../../../redux'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { logError } from '../../../utils/logger'
 
@@ -18,8 +17,6 @@ interface Props {
 export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props) => {
     const theme = useTheme()
     const { write } = useBle()
-    // Need full logs for capture logic
-    const logs = useAppSelector(state => state.logs[device?.id || ''] || [])
 
     const {
         startCapture,
@@ -28,7 +25,6 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
         clearImage
     } = useCapturePreview({
         device: device || undefined,
-        logs,
         write,
         onImageReceived: onImageCaptured,
         onError: (err) => {

@@ -10,7 +10,7 @@
  */
 
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
-import { PendingCommand, BleCommandOptions } from './types'
+import { PendingCommand, BleCommandOptions, WriteFunction } from './types'
 import {
   classifyMessage,
   ClassifiedMessage,
@@ -18,7 +18,7 @@ import {
   isWakeMessage,
   isErrorBitsMessage,
 } from './messageClassifier'
-import { log, logError } from '../utils/logger'
+import { log, logError, logWarn } from '../utils/logger'
 
 type UnsolicitedMessageCallback = (msg: ClassifiedMessage) => void
 
@@ -29,6 +29,7 @@ export class BleCommandManager {
   private pendingCommand: PendingCommand | null = null
   private commandQueue: Array<{ execute: () => Promise<void>; reject: (reason?: any) => void }> = []
   private unsolicitedListeners: Set<UnsolicitedMessageCallback> = new Set()
+  private messageListeners: Set<(raw: string) => void> = new Set()
   private nextRequestId = 1
   private isProcessing = false
 
@@ -38,7 +39,7 @@ export class BleCommandManager {
   async sendCommand(
     peripheral: ExtendedPeripheral,
     commandString: string,
-    writeToDevice: (peripheral: ExtendedPeripheral, command: string) => Promise<void>,
+    writeToDevice: WriteFunction,
     options: BleCommandOptions = {},
   ): Promise<string> {
     const {
@@ -53,17 +54,19 @@ export class BleCommandManager {
           const requestId = `req_${this.nextRequestId++}`
           
           const pending: PendingCommand = {
-            id: requestId,
-            commandName: commandString,
-            commandString,
-            sentAt: Date.now(),
-            timeoutMs: timeout,
-            resolve,
-            reject,
-            retryCount: 0,
-            maxRetries,
-            expectedPattern: options.expectedPattern,
-          }
+          id: requestId.toString(),
+          commandName: 'UNKNOWN', // We don't have easy access to enum here without parsing
+          commandString,
+          sentAt: Date.now(),
+          timeoutMs: timeout,
+          resolve,
+          reject,
+          retryCount: 0,
+          maxRetries,
+          expectedPattern: options.expectedPattern,
+          writeToDevice,
+          peripheral
+        }
 
           try {
             // Set as pending and start timeout
@@ -72,9 +75,12 @@ export class BleCommandManager {
             // Set timeout BEFORE send to catch fast echoes
             const timeoutHandle = setTimeout(() => {
               if (this.pendingCommand?.id === requestId) {
+                const cmd = this.pendingCommand
                 this.pendingCommand = null
-                this.processQueue() // Process next command after timeout
-                reject(new Error(`Command timeout after ${timeout}ms: ${commandString}`))
+                this.processQueue() // Resume queue processing
+                
+                const notReceived = !cmd.echoReceived ? ' (No Echo Received)' : ''
+                reject(new Error(`Command timeout after ${timeout}ms: ${commandString}${notReceived}`))
               }
             }, timeout)
             pending.timeoutHandle = timeoutHandle
@@ -85,9 +91,16 @@ export class BleCommandManager {
             
             // Note: resolve/reject will be called by handleResponse/handleError
             // which will also call processQueue() to handle the next command
+
+            // Handle Fire-and-Forget (expectedPattern: false)
+            // UPDATED: We now WAIT for the echo even for fire-and-forget
+            if (options.expectedPattern === false) {
+               // log(`[BLE CMD Manager] Fire-and-forget: ${commandString} - Waiting for Echo...`)
+               // Do NOT resolve here. We wait for echo in handleIncomingMessage
+            }
           } catch (error) {
             this.pendingCommand = null
-            this.processQueue() // Process next command after error
+            // this.processQueue() // REMOVED: Managed by processQueue loop now
             reject(error)
           }
         },
@@ -114,36 +127,81 @@ export class BleCommandManager {
     }
 
     this.isProcessing = true
-    log(`[BLE CMD Manager] Processing queue. Depth: ${this.commandQueue.length}`)
+    // log(`[BLE CMD Manager] Processing queue. Depth: ${this.commandQueue.length}`)
 
-    // Process only the first command
-    // When it completes (via handleResponse, handleError, or timeout),
-    // processQueue will be called again to handle the next one
-    const nextItem = this.commandQueue.shift()
-    if (nextItem) {
-      try {
-        await nextItem.execute()
-        // Don't process next item here - it will be called by
-        // handleResponse, handleError, or timeout handlers
-      } catch (error) {
-        logError(`[BLE CMD Manager] Queue processing error: ${error}`)
-        this.processQueue() // Continue to next on error
+    try {
+      // Loop until queue is empty or we are waiting for a response
+      while (this.commandQueue.length > 0) {
+        // Double check not waiting (in case logic changed)
+        if (this.pendingCommand) {
+             break
+        }
+
+        const nextItem = this.commandQueue.shift()
+        if (nextItem) {
+          try {
+            await nextItem.execute()
+            
+            // If pendingCommand is set, it means we are waiting for response.
+            // Break loop and wait for handleResponse/timeout to call processQueue again.
+            if (this.pendingCommand) {
+                break
+            }
+            // If pendingCommand is null here, it means execute finished immediately.
+            // This is expected for fire-and-forget execution (error caught inside or F&F resolved).
+            // logWarn('[BLE CMD Manager] Command finished without pending state (write error?), processing next...')
+          } catch (error) {
+            logError(`[BLE CMD Manager] Queue processing error: ${error}`)
+            // Continue to next
+          }
+        }
       }
+    } finally {
+      this.isProcessing = false
     }
-
-    this.isProcessing = false
   }
 
   /**
    * Handle incoming message from device
    */
   handleIncomingMessage(rawMessage: string): void {
+    const trimmedMsg = rawMessage.trim()
+
+    // 1. ECHO CHECK (Strict Mode)
+    // Check if this is the echo of the pending command
+    if (this.pendingCommand && !this.pendingCommand.echoReceived) {
+        // Simple string match check. 
+        // Note: Sometimes echoes might have extra whitespace or be partial if not reading line-by-line correctly,
+        // but assuming full line messages here.
+        if (trimmedMsg === this.pendingCommand.commandString.trim()) {
+            log(`[BLE CMD Manager] Echo received: ${trimmedMsg}`)
+            this.pendingCommand.echoReceived = true
+
+            // If this was a Fire-and-Forget command, we can resolve now!
+            if (this.pendingCommand.expectedPattern === false) {
+                const cmd = this.pendingCommand
+                this.pendingCommand = null
+                cmd.resolve('Echo received (Fire-and-forget)')
+                this.processQueue()
+            }
+            
+            return // Stop processing this message (it's just an echo)
+        }
+    }
+
     const classified = classifyMessage(
       rawMessage,
       this.pendingCommand?.expectedPattern,
     )
 
-    log(`[BLE CMD Manager] Received [${classified.type}]: ${classified.content}`)
+    // log(`[BLE CMD Manager] Received [${classified.type}]: ${classified.content}`)
+
+    // Notify raw message listeners (used by waitForMessage)
+    // Clone set to ensure safety if listeners remove themselves during iteration
+    const listeners = [...this.messageListeners]
+    listeners.forEach(listener => {
+      try { listener(rawMessage) } catch { /* ignore */ }
+    })
 
     // Handle based on message type
     switch (classified.type) {
@@ -155,6 +213,7 @@ export class BleCommandManager {
         break
 
       case MessageType.UNSOLICITED:
+      case MessageType.INFO:
         this.emitUnsolicited(classified)
         break
 
@@ -191,23 +250,47 @@ export class BleCommandManager {
           failedCommand.retryCount++
           
           // Re-queue the command with updated retry count
+          // IMPORTANT: We use unshift to put it at the FRONT of the queue
           this.commandQueue.unshift({
             execute: async () => {
               this.pendingCommand = failedCommand
               
-              // Send command again
-              // Note: We can't easily access the original writeToDevice function here,
-              // so this is a limitation of the current design. For now, reject after wake.
-              // A better solution would be to store writeToDevice in PendingCommand.
-              this.pendingCommand = null
-              failedCommand.reject(new Error(`AI NACK: Command failed after wake sequence. Retry not fully implemented.`))
-              this.processQueue()
+              // Send command again using stored write function
+              try {
+                // Clear any previous timeout handle since we are restarting the command
+                if (failedCommand.timeoutHandle) clearTimeout(failedCommand.timeoutHandle)
+                
+                // Restart timeout logic for the retry
+                const newTimeoutHandle = setTimeout(() => {
+                  if (this.pendingCommand?.id === failedCommand.id) {
+                    this.pendingCommand = null
+                    failedCommand.reject(new Error(`Retry timeout after ${failedCommand.timeoutMs}ms: ${failedCommand.commandString}`))
+                    // Only process queue after rejection is handled
+                    this.processQueue()
+                  }
+                }, failedCommand.timeoutMs)
+                failedCommand.timeoutHandle = newTimeoutHandle
+
+                await failedCommand.writeToDevice(failedCommand.peripheral, failedCommand.commandString)
+                log(`[BLE CMD Manager] Retry command sent: ${failedCommand.commandString}`)
+              } catch (e) {
+                logError(`[BLE CMD Manager] Retry write failed: ${e}`)
+                this.pendingCommand = null
+                if (failedCommand.timeoutHandle) clearTimeout(failedCommand.timeoutHandle)
+                failedCommand.reject(e as Error)
+                this.processQueue() 
+              }
             },
             reject: (reason: any) => {
               failedCommand.reject(reason)
             }
           })
           
+          // CRITICAL: Do NOT call processQueue() here. 
+          // The current command is still "stateless" (pendingCommand is null),
+          // so processQueue would try to run the next command immediately.
+          // But we want to run the RETRY command we just unshifted.
+          // So we call processQueue() which will pick up the unshifted command.
           this.processQueue()
         } else {
           // Max retries exceeded
@@ -297,20 +380,20 @@ export class BleCommandManager {
    */
   async waitForMessage(pattern: RegExp, timeoutMs: number): Promise<string> {
     return new Promise((resolve, reject) => {
-      const listener = (msg: ClassifiedMessage) => {
-        if (pattern.test(msg.content)) {
-          this.unsolicitedListeners.delete(listener)
+      const listener = (raw: string) => {
+        if (pattern.test(raw)) {
+          this.messageListeners.delete(listener)
           clearTimeout(timeoutHandle)
-          resolve(msg.content)
+          resolve(raw)
         }
       }
 
       const timeoutHandle = setTimeout(() => {
-        this.unsolicitedListeners.delete(listener)
+        this.messageListeners.delete(listener)
         reject(new Error(`Timeout waiting for message matching: ${pattern}`))
       }, timeoutMs)
 
-      this.unsolicitedListeners.add(listener)
+      this.messageListeners.add(listener)
     })
   }
 
@@ -325,10 +408,27 @@ export class BleCommandManager {
   }
 
   /**
+   * Subscribe to ALL raw incoming messages
+   */
+  addMessageListener(listener: (msg: string) => void): void {
+      this.messageListeners.add(listener)
+  }
+
+  /**
+   * Unsubscribe from raw incoming messages
+   */
+  removeMessageListener(listener: (msg: string) => void): void {
+      this.messageListeners.delete(listener)
+  }
+
+  /**
    * Clear all pending commands and queue
    */
   clear(): void {
     if (this.pendingCommand) {
+      if (this.pendingCommand.timeoutHandle) {
+         clearTimeout(this.pendingCommand.timeoutHandle)
+      }
       this.pendingCommand.reject(new Error('Command manager cleared'))
       this.pendingCommand = null
     }
@@ -336,6 +436,7 @@ export class BleCommandManager {
       item.reject(new Error('Command manager cleared'))
     })
     this.commandQueue = []
+    this.messageListeners.clear()
   }
 }
 

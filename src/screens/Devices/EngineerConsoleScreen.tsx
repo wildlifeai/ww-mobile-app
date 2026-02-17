@@ -18,7 +18,7 @@ import { BleConsoleOutput, ConsoleEntry } from '../../components/BleConsoleOutpu
 import { CommandControlTypes, CommandNames, COMMANDS } from '../../ble/types'
 import { CommandReferenceModal } from '../../components/CommandReferenceModal'
 import { ImagePreviewModal } from '../../components/ImagePreviewModal'
-import * as FileSystem from 'expo-file-system'
+import * as FileSystem from 'expo-file-system/legacy'
 import { DfuService } from '../../services/DfuService'
 import ReferenceDataService from '../../services/ReferenceDataService'
 import { getSupabaseClient } from '../../services/supabase'
@@ -103,7 +103,6 @@ export const EngineerConsoleScreen = () => {
     // Use capture preview hook
     const { capturedImageUri: previewImageUri, isCapturing: isWaitingForCapture, startCapture } = useCapturePreview({
         device: device,
-        logs: logs,
         write: write,
         onImageReceived: (imageUri) => {
             log('[EngineerConsole] Image received:', imageUri)
@@ -438,7 +437,7 @@ export const EngineerConsoleScreen = () => {
                                 if (error || !data) throw new Error(`Download failed: ${error?.message}`)
 
                                 // 3. Save to file
-                                const localPath = (FileSystem as any).cacheDirectory + 'last_image.jpg_' + Date.now() + '.zip'
+                                const localPath = FileSystem.cacheDirectory + 'last_image.jpg_' + Date.now() + '.zip'
                                 const reader = new FileReader()
                                 reader.readAsDataURL(data)
                                 reader.onloadend = async () => {
@@ -448,7 +447,7 @@ export const EngineerConsoleScreen = () => {
                                     await FileSystem.writeAsStringAsync(
                                         localPath,
                                         base64Content,
-                                        { encoding: (FileSystem as any).EncodingType.Base64, }
+                                        { encoding: FileSystem.EncodingType.Base64, }
                                     )
 
 

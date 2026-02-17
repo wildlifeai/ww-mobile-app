@@ -1,23 +1,44 @@
 import { Buffer } from "buffer"
-import { log } from "./logger"
-import { imageReassemblerEmitter } from "../ble/emitters"
+import { log, logError, logWarn } from "./logger"
+import EventEmitter from "eventemitter3"
+import * as FileSystem from 'expo-file-system/legacy'
 
 export class ImageReassembler {
-    private static instance: ImageReassembler
-    private buffer: Buffer = Buffer.alloc(0)
-    private expectedPacketNum: number = 1
+    private chunks: Buffer[] = []
+    private totalBytesReceived: number = 0
     private isReceiving: boolean = false
     private lastPacketTime: number = 0
-    private readonly TIMEOUT_MS = 5000 // 5 seconds timeout
+    private readonly TIMEOUT_MS = 5000 // 5 seconds inter-packet timeout
     private totalExpectedBytes: number = 0
+    private watchdog: NodeJS.Timeout | null = null
+    private emitter: EventEmitter
 
-    private constructor() { }
+    private forceFinalizeHandler = () => {
+        log('ImageReassembler: Received force_finalize signal')
+        this.finalizePartial()
+    }
 
-    public static getInstance(): ImageReassembler {
-        if (!ImageReassembler.instance) {
-            ImageReassembler.instance = new ImageReassembler()
-        }
-        return ImageReassembler.instance
+    constructor(emitter: EventEmitter) {
+        this.emitter = emitter
+        // Listen for external force_finalize command
+        this.emitter.on('force_finalize', this.forceFinalizeHandler)
+    }
+
+    private startWatchdog() {
+        if (this.watchdog) clearInterval(this.watchdog)
+        this.watchdog = setInterval(() => {
+            if (this.isReceiving && Date.now() - this.lastPacketTime > this.TIMEOUT_MS) {
+                log("ImageReassembler: Watchdog timeout. Finalizing partial.")
+                this.finalizePartial()
+            }
+        }, 1000)
+    }
+
+    private stopWatchdog() {
+         if (this.watchdog) {
+             clearInterval(this.watchdog)
+             this.watchdog = null
+         }
     }
 
     public initialize(totalBytes: number): void {
@@ -26,76 +47,115 @@ export class ImageReassembler {
         this.totalExpectedBytes = totalBytes
         this.isReceiving = true
         this.lastPacketTime = Date.now()
+        this.startWatchdog()
+    }
+
+    public finalizePartial(): void {
+        if (this.totalBytesReceived > 0) {
+            log(`ImageReassembler: Finalizing partial/stalled transfer (${this.totalBytesReceived} bytes)`)
+            this.finalize()
+        } else {
+             this.reset()
+        }
     }
 
     public processPacket(data: number[]): void {
         const now = Date.now()
 
-        // Auto-start mechanism: If we receive a packet but aren't in receiving state,
-        // assume it's the start of a new transfer. This handles cases where the
-        // "Start" text message was dropped or parsed incorrectly.
+        // Strict state check - no auto-start
         if (!this.isReceiving) {
-            log("ImageReassembler: Auto-starting transfer (Size unknown)")
-            this.reset()
-            this.isReceiving = true
-            this.lastPacketTime = now
-        }
-
-        // Timeout Check
-        if (now - this.lastPacketTime > this.TIMEOUT_MS) {
-            log("ImageReassembler: Timeout, restarting buffer")
-            this.reset()
-            this.isReceiving = true
-            this.lastPacketTime = now
-            // If we had a known size, we lost it on reset. Proceed with unknown size.
-        }
-
-        // Protocol observed in logs: [0x06, PacketNum, Len, ...Payload]
-        // data[0] is 0x06 (Type)
-        // data[1] is PacketNum (e.g. 0x01, 0x02...)
-        // data[2] is Length (1 byte, e.g. 0xF1 = 241)
-
-
-        const payloadLen = data[2]
-
-        // Safety check on length
-        if (payloadLen <= 0 || payloadLen > data.length - 3) {
-            log(`ImageReassembler: Invalid payload length ${payloadLen}`)
             return
         }
-
-        const payload = data.slice(3, 3 + payloadLen)
-
-        // Append data
-        this.buffer = Buffer.concat([this.buffer, Buffer.from(payload)])
+        
         this.lastPacketTime = now
 
-        log(`ImageReassembler: Rx ${payloadLen} bytes, total: ${this.buffer.length}/${this.totalExpectedBytes || '?'}`)
+        // Protocol: [0x06, PacketNum, ...Payload]
+        // Note: Ignoring packetNum for maximum robustness as requested. 
+        // We just append all payloads in order they arrive.
+        
+        // Everything after packetNum (index 1) is payload
+        const payload = data.slice(2)
+        
+        if (payload.length === 0) {
+            log('ImageReassembler: Empty payload')
+            return
+        }
+        const chunk = Buffer.from(payload)
+        this.processChunk(chunk)
+    }
 
-        // Check completion
-        let isComplete = false
-        if (this.totalExpectedBytes > 0 && this.buffer.length >= this.totalExpectedBytes) {
-            isComplete = true
-        } else if (this.totalExpectedBytes === 0) {
-            // If size is unknown, check for JPEG EOI marker (0xFF 0xD9)
-            // It is usually the very last two bytes.
-            if (this.buffer.indexOf(Buffer.from([0xFF, 0xD9])) !== -1) {
-                isComplete = true
-            }
+    private processChunk(chunk: Buffer) {
+        this.chunks.push(chunk)
+        this.totalBytesReceived += chunk.length
+
+        // Emit progress
+        if (this.totalExpectedBytes > 0) {
+             const progress = Math.min(this.totalBytesReceived / this.totalExpectedBytes, 1)
+             this.emitter.emit('onImageProgress', progress)
         }
 
-        if (isComplete) {
-            log("ImageReassembler: Transfer complete!")
-            const base64 = this.buffer.toString('base64')
-            imageReassemblerEmitter.emit('onImageComplete', base64)
+        // Check completion strictly by size
+        if (this.totalExpectedBytes > 0 && this.totalBytesReceived >= this.totalExpectedBytes) {
+            log(`ImageReassembler: Transfer complete! Received ${this.totalBytesReceived}/${this.totalExpectedBytes}`)
+            this.finalize()
+        }
+    }
+
+    /**
+     * Force finalization of the current transfer.
+     * Useful if some packets were lost but the transfer has ended.
+     */
+    public forceFinalize(): void {
+        if (!this.isReceiving) return
+        log(`ImageReassembler: Received force_finalize signal. Partial total: ${this.totalBytesReceived}/${this.totalExpectedBytes}`)
+        this.finalize()
+    }
+
+    private async finalize(): Promise<void> {
+        try {
+            const finalBuffer = Buffer.concat(this.chunks)
+            const base64 = finalBuffer.toString('base64')
+            
+            const timestamp = Date.now()
+            
+            // Ensure valid directory
+            let cacheDir = FileSystem.cacheDirectory
+            
+            if (!cacheDir) {
+                cacheDir = FileSystem.documentDirectory
+            }
+            
+            if (!cacheDir) {
+                logError('ImageReassembler: Both cacheDirectory and documentDirectory are null/undefined')
+                return 
+            }
+
+            const fileUri = `${cacheDir}capture_${timestamp}.jpg`
+            
+            await FileSystem.writeAsStringAsync(fileUri, base64, {
+                encoding: FileSystem.EncodingType.Base64
+            })
+
+            log(`ImageReassembler: Image saved to ${fileUri}`)
+            this.emitter.emit('onImageComplete', fileUri)
+            
+        } catch (error) {
+            logError('ImageReassembler: Failed to save image', error)
+        } finally {
             this.reset()
         }
     }
 
     public reset(): void {
-        this.buffer = Buffer.alloc(0)
-        // expectedPacketNum removed as protocol doesn't support it
+        this.stopWatchdog()
+        this.chunks = []
+        this.totalBytesReceived = 0
         this.isReceiving = false
         this.totalExpectedBytes = 0
+    }
+    
+    public destroy() {
+        this.stopWatchdog()
+        this.emitter.off('force_finalize', this.forceFinalizeHandler)
     }
 }

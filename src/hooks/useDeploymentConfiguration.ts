@@ -7,7 +7,7 @@ import { log, logError, logWarn } from '../utils/logger'
 
 export interface DeploymentConfig {
     deploymentId: string
-    captureMethod: 'activity' | 'timelapse' | 'unknown'
+    captureMethod: 'activity' | 'timelapse' | 'mixed' | 'unknown'
     motionInterval?: number
     timelapseInterval?: number
     location?: {
@@ -92,6 +92,14 @@ export const useDeploymentConfiguration = () => {
             updates.push({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: interval })
             updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 1000 })
             updates.push({ index: OP_PARAMETER.CAMERA_ENABLED, value: 1 }) // Enable last
+        } else if (config.captureMethod === 'mixed') {
+             // Mixed mode (Activity + Timelapse)
+             const interval = config.timelapseInterval || 300
+             log(`[DeployConfig] Mixed mode - Motion 1000ms + Timelapse ${interval}s`)
+             updates.push({ index: OP_PARAMETER.MD_INTERVAL, value: config.motionInterval || 1000 })
+             updates.push({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: interval })
+             updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 1000 })
+             updates.push({ index: OP_PARAMETER.CAMERA_ENABLED, value: 1 }) // Enable last
         } else {
             logWarn('[DeployConfig] Unknown capture method:', config.captureMethod)
             return

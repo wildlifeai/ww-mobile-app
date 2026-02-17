@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react'
+import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
 import { View, StyleSheet } from 'react-native'
 import { Card, Button, Text } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
@@ -22,6 +23,7 @@ interface FirmwareSectionProps {
     batteryLevel: number | null
     theme: any
     onShowHelp: (title: string, content: string) => void
+    firmwareUpdateStatus?: string
 }
 
 export const FirmwareSection: React.FC<FirmwareSectionProps> = ({
@@ -38,7 +40,8 @@ export const FirmwareSection: React.FC<FirmwareSectionProps> = ({
     bleDeviceConnected,
     batteryLevel,
     theme,
-    onShowHelp
+    onShowHelp,
+    firmwareUpdateStatus
 }) => {
     const renderIcon = useCallback((props: any) => <WWIcon {...props} source="bluetooth" />, [])
     const renderHelp = useCallback((props: any) => (
@@ -66,8 +69,8 @@ export const FirmwareSection: React.FC<FirmwareSectionProps> = ({
                 )}
 
                 {deviceFirmwareVersion && (
-                    <WWText variant="bodyMedium" style={styles.firmwareVersionText}>
-                        Device Version: {deviceFirmwareVersion}
+                    <WWText style={styles.firmwareVersionText}>
+                        Device Version: {convertBleToSemanticVersion(deviceFirmwareVersion)}
                     </WWText>
                 )}
 
@@ -93,10 +96,10 @@ export const FirmwareSection: React.FC<FirmwareSectionProps> = ({
                         <WWProgressBar
                             progress={isVerifyingUpdate ? 1 : firmwareUpdateProgress / 100}
                             showLabel
-                            label={isVerifyingUpdate ? 'Rebooting & Verifying...' : `Updating: ${firmwareUpdateProgress}%`}
+                            label={firmwareUpdateStatus || (isVerifyingUpdate ? 'Rebooting & Verifying...' : `Updating: ${firmwareUpdateProgress}%`)}
                         />
                         <WWText variant="bodySmall" style={styles.statusHint}>
-                            {isVerifyingUpdate ? 'Waiting for device to finish restart...' : 'Do not disconnect the device...'}
+                            {firmwareUpdateStatus || (isVerifyingUpdate ? 'Waiting for device to finish restart...' : 'Do not disconnect the device...')}
                         </WWText>
                     </>
                 ) : deviceFirmwareVersion && bleFirmwareUpdateAvailable ? (

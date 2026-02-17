@@ -4,7 +4,6 @@ import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { Appbar, TextInput, Card, useTheme } from 'react-native-paper'
 import { WWScreenView } from '../../components/ui/WWScreenView'
-// import { TestDeepLink } from '../../components/TestDeepLink'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
 import { RootStackParamList } from '../../navigation'
@@ -52,36 +51,15 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const user = useAppSelector(selectCurrentUser)
 
 
-    log(`[EndDeployment] Rendering (Fixed). Params from route:: bleDeviceId=${bleDeviceId}, deviceId=${deviceId}`);
-
-    // Robust lookup: Try direct match, then case-insensitive, then fallback
-    const bleDevice = useMemo(() => {
-        let device: any = devices[bleDeviceId];
-
-        if (!device) {
-            device = Object.values(devices).find(d => d.id?.toLowerCase() === bleDeviceId?.toLowerCase());
-        }
-
-        log(`[EndDeployment] Validating device from store. bleDeviceId=${bleDeviceId}, Found=${!!device}, ID=${device?.id}, Connected=${device?.connected}`);
-
-        if (device) {
-            // Use actual device state from store
-            return device;
-        }
-
-        // Fallback: Construct a minimal defined object
-        logWarn(`[EndDeployment] Device ${bleDeviceId} not found in store. Using fallback (disconnected).`);
-        return {
-            id: bleDeviceId,
-            connected: false, // Default to false if not found in store
-            name: 'Fallback Device',
-        };
-    }, [devices, bleDeviceId]);
+    // Track device in ref for use in intervals/callbacks to avoid stale closures
+    const bleDeviceRef = useRef(storeDevice)
+    useEffect(() => {
+        bleDeviceRef.current = storeDevice
+    }, [storeDevice])
 
     // Local state
     const [retrievalNotes, setRetrievalNotes] = useState('')
     const [isEnding, setIsEnding] = useState(false)
-    const [bleStatus] = useState<string>('Connected')
     
     // Progress Dialog State
     const [finishProgress, setFinishProgress] = useState(0)
@@ -112,7 +90,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     // Standard BLE initialization (Set UTC, Check Hardware) - runs on screen load
     useEffect(() => {
         const initializeDevice = async () => {
-            if (!bleDevice?.connected || hasRunInitialization.current) return
+            if (!storeDevice?.connected || hasRunInitialization.current) return
             hasRunInitialization.current = true
             setIsInitializing(true)
             
@@ -120,7 +98,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             setInitProgress(0.2)
             log('[EndDeployment] Running standard BLE initialization...')
             
-            const result = await initialize(bleDevice, {
+            const result = await initialize(storeDevice, {
                 onProgress: (step, progress) => {
                     setInitStep(step)
                     setInitProgress(0.2 + (progress * 0.8)) // Scale progress
@@ -144,18 +122,20 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         }
 
         initializeDevice()
-    }, [bleDevice, initialize])
+    }, [storeDevice, initialize])
 
     // Heartbeat: Ping device every 20 seconds to keep it awake
     useEffect(() => {
-        if (!bleDevice?.connected || isEnding || isInitializing) return
+        if (!storeDevice?.connected || isEnding || isInitializing) return
 
         log('[EndDeployment] Starting keep-alive heartbeat (20s interval)')
         const interval = setInterval(async () => {
-            if (bleDevice?.connected && !isEnding && !isNavigatingAway.current) {
+            // Use ref to avoid stale closure
+            const currentDevice = bleDeviceRef.current
+            if (currentDevice?.connected && !isEnding && !isNavigatingAway.current) {
                 log('[EndDeployment] Heartbeat ping...')
                 try {
-                    await getHeartbeat(bleDevice)
+                    await getHeartbeat(currentDevice)
                 } catch (e) {
                     logWarn('[EndDeployment] Heartbeat failed:', e)
                 }
@@ -166,7 +146,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
              log('[EndDeployment] Stopping heartbeat')
              clearInterval(interval)
         }
-    }, [bleDevice, bleDevice?.connected, isEnding, isInitializing, getHeartbeat])
+    }, [storeDevice?.connected, isEnding, isInitializing, getHeartbeat])
 
     // Back button handler: Disconnect BLE before navigating away
     useEffect(() => {
@@ -177,10 +157,11 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             e.preventDefault()
             
             // Disconnect device
-            if (bleDevice?.connected) {
+            const currentDevice = bleDeviceRef.current
+            if (currentDevice?.connected) {
                 log('[EndDeployment] Back button pressed - disconnecting device...')
                 isNavigatingAway.current = true
-                await runDisconnect(bleDevice)
+                await runDisconnect(currentDevice)
             }
             
             // Now allow navigation
@@ -188,12 +169,11 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         })
 
         return unsubscribe
-    }, [navigation, bleDevice, isEnding, runDisconnect])
+    }, [navigation, isEnding, runDisconnect])
 
     const handleEndDeployment = useCallback(async () => {
         // Sanity Check: Ensure BLE is still connected (unless it's a forced cleanup)
-        const realDevice = devices[bleDeviceId]
-        if (!realDevice || !realDevice.connected) {
+        if (!storeDevice || !storeDevice.connected) {
             Alert.alert(
                 'Connection Lost',
                 'The device appears to be disconnected. You cannot end the deployment on the device without a connection.',
@@ -205,6 +185,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                         onPress: async () => {
                             // Allow forcing end if device is lost/damaged, but warn heavily
                             setIsEnding(true)
+                            isNavigatingAway.current = true // Prevent alerts during force-end
                             setIsFinishing(true)
                             setFinishProgress(0.5)
                             setFinishStep('Force ending...')
@@ -240,7 +221,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
         try {
             // 1. Clear Configuration (ID)
-            if (bleDevice) {
+            if (storeDevice) {
                 addFinishLog('Clearing configuration...')
                 setFinishStep('Clearing config...')
                 setFinishProgress(0.2)
@@ -251,7 +232,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 while (!idCleared && attempts < 3) {
                     try {
                         attempts++
-                        await setDeploymentIdAsOps(bleDevice, null)
+                        await setDeploymentIdAsOps(storeDevice, null)
                         log('[EndDeployment] ID cleared')
                         idCleared = true
                         addFinishLog('Configuration cleared')
@@ -266,9 +247,9 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
                 if (!idCleared) addFinishLog('Warning: Config clear failed')
 
-                // 3. Clear GPS (Legacy/Safety)
+                // 2. Clear GPS (Legacy/Safety)
                 try {
-                    await clearGpsLocation(bleDevice)
+                    await clearGpsLocation(storeDevice)
                 } catch (e) {
                     logWarn('[EndDeployment] Failed to clear GPS:', e)
                 }
@@ -284,7 +265,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             addFinishLog('Record updated successfully')
 
             // 3. Quiesce Device (Final Stop) - Optimized mode skips camera enable
-            if (bleDevice) {
+            if (storeDevice) {
                 addFinishLog('Finalizing stop...')
                 setFinishStep('Finalizing...')
                 setFinishProgress(0.6)
@@ -303,9 +284,9 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
             setFinishStep('Disconnecting...')
             setFinishProgress(0.8)
             
-            if (bleDevice) {
+            if (storeDevice) {
                 try {
-                    await runDisconnect(bleDevice)
+                    await runDisconnect(storeDevice)
                     addFinishLog('Device disconnected')
                 } catch (e) {
                     logWarn('[EndDeployment] Disconnect error:', e)
@@ -325,7 +306,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         } finally {
             setIsEnding(false)
         }
-    }, [devices, bleDeviceId, bleDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsOps, clearGpsLocation, runDisconnect, addFinishLog])
+    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsOps, clearGpsLocation, runDisconnect, addFinishLog])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)
@@ -352,9 +333,9 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         <WWScreenView scrollable style={styles.screenView}>
             <View style={styles.container}>
                 {/* Initialization Header (Set UTC, Hardware Check) */}
-                 {(deviceDb || bleDevice) && (
+                 {(deviceDb || storeDevice) && (
                     <InitializationHeader
-                        device={deviceDb || { name: bleDevice?.name || 'Device', bluetoothId: bleDeviceId } as any}
+                        device={deviceDb || { name: storeDevice?.name || 'Device', bluetoothId: bleDeviceId } as any}
                         isInitializing={isInitializing}
                         initProgress={initProgress}
                         initStep={initStep}
@@ -407,7 +388,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                         loading={isEnding}
                         disabled={isEnding}
                     >
-                        {isEnding ? bleStatus : "End Deployment"}
+                        {isEnding ? "Ending..." : "End Deployment"}
                     </WWButton>
 
                     <WWButton

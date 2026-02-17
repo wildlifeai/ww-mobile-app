@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { Alert } from 'react-native'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { useBleCommands } from './useBleCommands'
-import { log, logError } from '../utils/logger'
+import { log, logError, logWarn } from '../utils/logger'
 
 
 /**
@@ -89,7 +89,7 @@ export const useDeviceSettings = ({
     onError
 }: UseDeviceSettingsOptions): UseDeviceSettingsReturn => {
     const [isUpdating, setIsUpdating] = useState(false)
-    const { setOperationalParam } = useBleCommands()
+    const { setOperationalParam, getOperationalParam } = useBleCommands()
 
     /**
      * Update multiple operational parameters on the device
@@ -203,11 +203,6 @@ export const useDeviceSettings = ({
 
     /**
      * Safely quiesces the device (stops all capture activities).
-     * Enforces the sequence: Enable Camera -> Clear Intervals -> Disable Camera.
-     * This ensures the firmware accepts the "Stop" commands even if the camera was previously disabled.
-     */
-    /**
-     * Safely quiesces the device (stops all capture activities).
      * 
      * @param logPrefix Custom prefix for logs
      * @param optimized If true, skips the "Enable -> Clear -> Disable" sequence and just disables.
@@ -219,20 +214,38 @@ export const useDeviceSettings = ({
 
         log(`${logPrefix} Quiescing device (Optimized: ${optimized})...`)
         try {
-            if (!optimized) {
-                // 1. Enable Camera to unlock parameters (Op 10 = 1)
-                log(`${logPrefix} 1. Enabling camera to allow interval writes...`)
-                await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '1')
-                await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_ENABLE))
-            } else {
-                log(`${logPrefix} Skipped camera enable step (Optimized Mode)`)
-            }
+            // Note: Camera Enable (Op 10=1) was previously forced here but removed 
+            // to avoid needing to unlock parameters if they are already correct.
+
 
             // 2. Clear Intervals (Op 11 = 0, Op 7 = 0) - ALWAYS do this
             log(`${logPrefix} 2. Clearing Motion & Timelapse intervals...`)
-            await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
-            await new Promise(r => setTimeout(r, QUIESCE_DELAYS.PARAM_CLEAR)) 
-            await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
+
+            // Optimization: Check current values first to avoid unnecessary writes
+            try {
+                const currentMd = await getOperationalParam(device, OP_PARAMETER.MD_INTERVAL)
+                // log(`${logPrefix} Current MD Interval (Op 11): ${currentMd}`)
+                if (currentMd !== '0') {
+                    await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
+                    await new Promise(r => setTimeout(r, QUIESCE_DELAYS.PARAM_CLEAR)) 
+                } else {
+                     log(`${logPrefix} MD Interval already 0, skipping write.`)
+                }
+
+                const currentTl = await getOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL)
+                // log(`${logPrefix} Current Timelapse Interval (Op 7): ${currentTl}`)
+                if (currentTl !== '0') {
+                    await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
+                } else {
+                    log(`${logPrefix} Timelapse Interval already 0, skipping write.`)
+                }
+            } catch (readErr) {
+                logWarn(`${logPrefix} Failed to read current params, forcing clear...`, readErr)
+                // Fallback to forced write if read fails
+                await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
+                await new Promise(r => setTimeout(r, QUIESCE_DELAYS.PARAM_CLEAR)) 
+                await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
+            }
             
             // BUS SAFETY: Wait for potential "Stats" message from Himax
             log(`${logPrefix} Waiting ${QUIESCE_DELAYS.BUS_STABILIZATION}ms for bus stabilization...`)
@@ -240,9 +253,19 @@ export const useDeviceSettings = ({
 
             // 3. Disable Camera (Op 10 = 0)
             log(`${logPrefix} 3. Disabling camera...`)
-            await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '0')
-            await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_DISABLE))
-
+            try {
+                const currentCam = await getOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED)
+                if (currentCam !== '0') {
+                    await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '0')
+                    await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_DISABLE))
+                } else {
+                    log(`${logPrefix} Camera already disabled (Op 10=0), skipping write.`)
+                }
+            } catch (err) {
+                 logWarn(`${logPrefix} Check failed, forcing disable...`)
+                 await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '0')
+                 await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_DISABLE))
+            }
             log(`${logPrefix} Device quiesced successfully.`)
         } catch (error) {
             logError(`${logPrefix} Error quiescing device:`, error)

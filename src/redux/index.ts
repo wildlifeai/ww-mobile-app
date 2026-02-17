@@ -3,7 +3,6 @@ import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux"
 import androidPermissionsReducer from "./slices/androidPermissionsSlice"
 import bleLibraryReducer from "./slices/bleLibrarySlice"
 import blStatusReducer from "./slices/bluetoothStatusSlice"
-import configurationReducer from "./slices/configurationSlice"
 import devicesReducer from "./slices/devicesSlice"
 import locationStatusReducer from "./slices/locationStatusSlice"
 import logsReducer from "./slices/logsSlice"
@@ -27,7 +26,6 @@ const store = configureStore({
 		[aiModelsApi.reducerPath]: aiModelsApi.reducer,
 		devices: devicesReducer,
 		logs: logsReducer,
-		configuration: configurationReducer,
 		scanning: scanningReducer,
 		bleLibrary: bleLibraryReducer,
 		blStatus: blStatusReducer,

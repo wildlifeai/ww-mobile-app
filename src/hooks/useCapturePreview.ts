@@ -1,16 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Alert } from 'react-native'
+
 import { imageReassemblerEmitter } from '../ble/emitters'
+import { bleCommandManager } from '../ble/commandManager'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
-import { LogEntry } from '../redux/slices/logsSlice'
 import { log, logError } from '../utils/logger'
 
 
 interface UseCapturePreviewOptions {
     /** BLE device to capture from */
     device: ExtendedPeripheral | undefined
-    /** BLE logs to monitor for capture completion */
-    logs: LogEntry[]
     /** Write function from useBle hook */
     write: (peripheral: ExtendedPeripheral, data: (string | [any, any])[], options?: any) => Promise<string[]>
     /** Optional callback when capture starts */
@@ -26,6 +25,8 @@ interface UseCapturePreviewReturn {
     capturedImageUri: string | null
     /** Whether currently capturing/downloading */
     isCapturing: boolean
+    /** Capture progress (0-1) */
+    captureProgress: number
     /** Function to start image capture */
     startCapture: () => Promise<void>
     /** Function to clear captured image */
@@ -35,29 +36,10 @@ interface UseCapturePreviewReturn {
 /**
  * Custom hook for handling the CAPTURE_PREVIEW process
  * 
- * This hook encapsulates the entire flow of:
- * 1. Sending 'AI capture 1 0' command
- * 2. Detecting "Captured" in BLE logs
- * 3. Auto-triggering 'AI txfile .' download
- * 4. Receiving image via imageReassemblerEmitter
- * 
- * @example
- * ```tsx
- * const { capturedImageUri, isCapturing, startCapture, clearImage } = useCapturePreview({
- *   device: bleDevice,
- *   logs: bleDeviceLogs,
- *   write: bleWrite,
- *   onImageReceived: (uri) => log('Image received:', uri)
- * })
- * 
- * // In your component
- * <Button onPress={startCapture} loading={isCapturing}>Capture Image</Button>
- * {capturedImageUri && <Image source={{ uri: capturedImageUri }} />}
- * ```
+ * Optimized to use FileSystem for storage and proper event listeners.
  */
 export const useCapturePreview = ({
     device,
-    logs,
     write,
     onCaptureStart,
     onImageReceived,
@@ -65,124 +47,127 @@ export const useCapturePreview = ({
 }: UseCapturePreviewOptions): UseCapturePreviewReturn => {
     const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null)
     const [isCapturing, setIsCapturing] = useState(false)
+    const [captureProgress, setCaptureProgress] = useState(0)
+    
+    // Refs for state that shouldn't trigger re-renders or needs to be accessed in callbacks
     const downloadRequested = useRef(false)
-    const lastProcessedLength = useRef<number>(0)
+    const downloadTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-    // Listen for image download completion
+    // Clear timeout helper
+    const clearDownloadTimeout = () => {
+        if (downloadTimeoutRef.current) {
+            clearTimeout(downloadTimeoutRef.current)
+            downloadTimeoutRef.current = null
+        }
+    }
+
+    // Listen for image download completion and progress
     useEffect(() => {
-        const handleImageComplete = (base64: string) => {
-            log('[useCapturePreview] Image download complete, base64 length:', base64?.length)
+        const handleImageComplete = (fileUri: string) => {
+            log('[useCapturePreview] Image download complete, URI:', fileUri)
+            clearDownloadTimeout()
+            
             setIsCapturing(false)
-            // Convert base64 to URI format for React Native Image component
-            const imageUri = `data:image/jpeg;base64,${base64}`
-            setCapturedImageUri(imageUri)
+            setCaptureProgress(1) 
+            setCapturedImageUri(fileUri)
             downloadRequested.current = false
 
             if (onImageReceived) {
-                onImageReceived(imageUri)
+                onImageReceived(fileUri)
             }
+        }
+
+        const handleImageProgress = (progress: number) => {
+            setCaptureProgress(progress)
         }
 
         imageReassemblerEmitter.on('onImageComplete', handleImageComplete)
+        imageReassemblerEmitter.on('onImageProgress', handleImageProgress)
+        
         return () => {
             imageReassemblerEmitter.off('onImageComplete', handleImageComplete)
+            imageReassemblerEmitter.off('onImageProgress', handleImageProgress)
+            clearDownloadTimeout()
         }
-    }, [onImageReceived])
+    }, [onImageReceived, onError])
 
-    // Auto-trigger download when "Captured" detected in logs
-    //  This uses the EXACT logic from the old working Engineer Console implementation
+    // Listen for "Finished sending" message
     useEffect(() => {
-        // log('[useCapturePreview] useEffect running, isCapturing:', isCapturing, 'logs length:', logs.length)
-
-        // Don't process if logs haven't changed
-        if (logs.length === lastProcessedLength.current) {
-            // log('[useCapturePreview] Logs unchanged, skipping')
-            return
-        }
-
-        // Extract the new entries
-        const newEntries = logs.slice(lastProcessedLength.current)
-
-        // Update the last processed log reference
-        lastProcessedLength.current = logs.length
-
-        log('[useCapturePreview] New log entries:', newEntries.length)
-
-        // Only process if there are actually new lines
-        if (newEntries.length === 0) {
-            return
-        }
-
-        // Check for automation triggers in the new lines
-        const combinedNewLogs = newEntries.map(e => e.content).join('\n')
-        log('[useCapturePreview] Combined new logs includes "Captured":', combinedNewLogs.includes("Captured"))
-        log('[useCapturePreview] State check - isCapturing:', isCapturing, 'downloadRequested:', downloadRequested.current, 'hasDevice:', !!device)
-
-        // Automation: If waiting for capture and log contains "Captured", trigger download
-        if (isCapturing && combinedNewLogs.includes("Captured") && !downloadRequested.current && device) {
-            log('[useCapturePreview] Capture confirmed, auto-triggering download...')
-            downloadRequested.current = true
-
-            const autoEntry = {
-                message: 'Capture complete. Requesting file...',
-                timestamp: new Date()
+        const messageListener = (msg: string) => {
+            // Check if we are expecting a download and receive the finish signal
+            if (downloadRequested.current && msg.includes('Finished sending')) {
+                log('[useCapturePreview] "Finished sending" detected. Force finalizing.')
+                // Small delay to ensure last chunks are processed
+                setTimeout(() => {
+                     imageReassemblerEmitter.emit('force_finalize')
+                }, 100)
             }
-            log('[useCapturePreview]', autoEntry.message)
-
-            write(device, ['AI txfile .']).catch((error) => {
-                logError('[useCapturePreview] Failed to request image download:', error)
-                setIsCapturing(false)
-                downloadRequested.current = false
-
-                if (onError) {
-                    onError(error)
-                } else {
-                    Alert.alert('Error', 'Failed to download captured image')
-                }
-            })
         }
-    }, [logs, isCapturing, device, write, onError])
+
+        bleCommandManager.addMessageListener(messageListener)
+
+        return () => {
+            bleCommandManager.removeMessageListener(messageListener)
+        }
+    }, [])
 
     // Start capture process
     const startCapture = useCallback(async () => {
         if (!device) {
             const error = new Error('No device connected')
             logError('[useCapturePreview]', error.message)
-            if (onError) {
-                onError(error)
-            } else {
-                Alert.alert('Error', 'No device connected')
-            }
+            if (onError) onError(error)
+            else Alert.alert('Error', 'No device connected')
             return
         }
 
-        log('[useCapturePreview] startCapture called, device:', device?.name || 'undefined')
+        log('[useCapturePreview] startCapture called')
 
         try {
             setIsCapturing(true)
             setCapturedImageUri(null)
+            setCaptureProgress(0)
             downloadRequested.current = false
+            clearDownloadTimeout()
 
-            if (onCaptureStart) {
-                log('[useCapturePreview] Calling onCaptureStart callback')
-                onCaptureStart()
-            }
+            if (onCaptureStart) onCaptureStart()
 
-            log('[useCapturePreview] Starting capture & download flow')
-            // Use the actual capture command from types (AI capture 1 0, not AI capture 1 1)
+            // 1. Send Capture Command
+            log('[useCapturePreview] Sending capture command...')
             await write(device, ['AI capture 1 0'])
-            log('[useCapturePreview] Capture command sent, waiting for response...')
+            
+            // 2. Wait for "Captured" response
+            const CAPTURE_TIMEOUT = 30000 
+            await bleCommandManager.waitForMessage(/Captured/, CAPTURE_TIMEOUT)
+            log('[useCapturePreview] Capture confirmed.')
+
+            // 3. Start Download
+            downloadRequested.current = true
+            
+            // Set safety timeout for download
+            const DOWNLOAD_TIMEOUT = 20000
+            downloadTimeoutRef.current = setTimeout(() => {
+                if (downloadRequested.current) {
+                    logError('[useCapturePreview] Download timed out (20s). Force finalizing.')
+                    imageReassemblerEmitter.emit('force_finalize')
+                    // The reassembler will decide if it has enough data to emit complete
+                    // or if it resets. If it emits complete, our handleImageComplete will fire.
+                }
+            }, DOWNLOAD_TIMEOUT)
+
+            log('[useCapturePreview] Requesting file download...')
+            await write(device, ['AI txfile .'])
+
         } catch (error) {
             const err = error as Error
             logError('[useCapturePreview] Capture failed:', err)
             setIsCapturing(false)
             downloadRequested.current = false
+            setCaptureProgress(0)
+            clearDownloadTimeout()
 
-            if (onError) {
-                onError(err)
-            } else {
-                Alert.alert('Error', 'Failed to capture image')
-            }
+            if (onError) onError(err)
+            else Alert.alert('Error', `Capture failed: ${err.message}`)
         }
     }, [device, write, onCaptureStart, onError])
 
@@ -190,11 +175,14 @@ export const useCapturePreview = ({
     const clearImage = useCallback(() => {
         setCapturedImageUri(null)
         downloadRequested.current = false
+        setCaptureProgress(0)
+        clearDownloadTimeout()
     }, [])
 
     return {
         capturedImageUri,
         isCapturing,
+        captureProgress,
         startCapture,
         clearImage
     }

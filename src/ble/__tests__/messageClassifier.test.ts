@@ -9,27 +9,27 @@ import {
 
 describe('Message Classifier', () => {
   describe('classifyMessage', () => {
-    it('should classify Wake as UNSOLICITED', () => {
+    it('should classify Wake as INFO', () => {
       const result = classifyMessage('Wake')
-      expect(result.type).toBe(MessageType.UNSOLICITED)
+      expect(result.type).toBe(MessageType.INFO)
       expect(result.content).toBe('Wake')
     })
 
-    it('should classify Waking AI processor as UNSOLICITED', () => {
+    it('should classify Waking AI processor as INFO', () => {
       const result = classifyMessage('Waking AI processor.')
-      expect(result.type).toBe(MessageType.UNSOLICITED)
+      expect(result.type).toBe(MessageType.INFO)
       expect(result.content).toBe('Waking AI processor.')
     })
 
-    it('should classify AI processor is awake as UNSOLICITED', () => {
+    it('should classify AI processor is awake as INFO', () => {
       const result = classifyMessage('AI processor is awake.')
-      expect(result.type).toBe(MessageType.UNSOLICITED)
+      expect(result.type).toBe(MessageType.INFO)
       expect(result.content).toBe('AI processor is awake.')
     })
 
-    it('should classify Error bits message as UNSOLICITED', () => {
+    it('should classify Error bits message as INFO when 0x0000', () => {
       const result = classifyMessage('Error bits = 0x0000')
-      expect(result.type).toBe(MessageType.UNSOLICITED)
+      expect(result.type).toBe(MessageType.INFO)
       expect(result.content).toBe('Error bits = 0x0000')
     })
 
