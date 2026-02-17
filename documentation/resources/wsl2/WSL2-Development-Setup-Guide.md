@@ -364,7 +364,7 @@ This setup ensures your React Native app with native BLE functionality can run e
 
 - **[Supabase Integration Guide](./Supabase-Integration-Guide.md)** - Backend setup and configuration
 - **[Developer Onboarding Guide](./Developer-Onboarding-Guide.md)** - Complete development environment setup
-- **[App Architecture Guide](./App-Architecture-Guide.md)** - Understanding the app's BLE and native module architecture
+- **[Onboarding Guides](../../onboarding/00-GETTING-STARTED.md)** - App architecture, technology stack, and developer onboarding
 
 ---
 

@@ -18,67 +18,7 @@ The Wildlife Watcher mobile app allows users to communicate with Wildlife Watche
 - **Maps**: react-native-maps for location features
 - **Development**: TypeScript with strict typing
 
-## Architecture Overview
-
-### Offline-First Design
-
-The app uses an **offline-first architecture** that allows full functionality without internet connectivity:
-
-- **Local Database**: WatermelonDB stores all data locally (projects, deployments, user roles, reference data)
-- **Outbox Pattern**: All create/update/delete operations are queued in an outbox for sync
-- **Bidirectional Sync**: Changes sync from device → Supabase and Supabase → device
-- **Manual Refresh**: Users can trigger a sync via pull-to-refresh on Projects, Deployments, and Devices screens
-- **Conflict Resolution**: Server-side conflict detection with timestamp-based resolution
-- **Network Detection**: Automatic sync when connectivity is restored
-
-### Data Flow
-
-```
-User Action → Local DB (WatermelonDB) → Outbox Queue → Supabase (when online)
-                                                              ↓
-User Interface ← Local DB ← Pull Sync ← Supabase Changes
-```
-
-### Key Components
-
-- **`SupabaseSyncService`**: Manages bidirectional sync, outbox upload, and fetches user profiles for new project members
-- **`OutboxService`**: Records offline operations for later sync
-- **`OfflineService`**: Monitors network state and triggers sync
-- **`ProjectService`**: Handles project CRUD with automatic outbox queueing and member invitations
-- **RTK Query**: Provides optimistic UI updates with local-first data for project lists
-
-## BLE Features
-
-> **Important:** When working with BLE commands, please read the [BLE Architecture Guide](./documentation/onboarding/ble-architecture-guide.md) to understand our **Command Manager architecture**, standardized initialization flow, and message classification system.
-
-### Modern BLE Architecture
-
-- **Command Manager**: Centralized command queue with automatic request-response matching and timeout protection.
-- **Message Classifier**: Intelligently categorizes device logs as **Responses** (matching commands), **Unsolicited** (events/echoes), or **Errors**.
-- **Three-Phase Initialization**:
-    - **Phase A (Standard)**: Global sync triggered by `setutc`. Wakes AI, stabilizes bus, and checks hardware health.
-    - **Phase B (Setup)**: Screen-specific resets (Camera lock, GPS zeroing, ID cleanup).
-    - **Phase C (Diagnostics)**: Automated one-tap hardware data collection (Battery, SD, Firmware).
-- **Definitive Confirmation**: Commands wait for final hardware confirmation strings (e.g., `Set OpParam`) to prevent race conditions.
-
-### Camera Communication
-
-- **Device Discovery**: Securely scan and connect to Wildlife Watcher cameras.
-- **Standardized Foundation**: Automatic wake/stabilize/time-sync foundation used across all connection flows.
-- **One-Tap Diagnostics**: Immediate feedback on battery health, SD card space, and firmware version on connection.
-- **Image Preview**: Remote `AI capture` with automatic BLE background download.
-- **Safe Quiesce Sequence**: Hardware-first finish flow (Set ID → LED Confirmation → Graceful Disconnect).
-- **Optimized Deployment Handshake**: Robust, atomic configuration flow that eliminates redundant commands ("Latch" cycle) for faster, reliable field deployments.
-- **Firmware Updates**: Integrated OTA firmware updates via Nordic DFU.
-
-
-### Image Preview Flow
-
-1. Send `AI capture 1 0` command to device.
-2. Camera captures image and stores in internal buffer.
-3. App automatically detects capture log and initiates BLE chunked download.
-4. Image displays in interactive modal.
-5. User can save, share, or discard the preview.
+> For a complete dependency reference with versions, patterns, and architecture details, see the [Technology Stack Guide](./documentation/onboarding/01-TECHNOLOGY-STACK.md).
 
 ## Critical Version Requirements (Expo SDK 54)
 > [!IMPORTANT]
@@ -141,161 +81,40 @@ This app uses **Expo SDK 54** with a managed workflow (prebuild enabled). Ensure
     npx expo start --clear
     ```
 
-## Building Locally
+## Building
 
-### Android (Windows/Mac)
-1. Ensure Android Emulator is running or device is connected.
-2. Run the build command:
-    ```bash
-    npx expo run:android
-    ```
-    *Note: The first build may take 10-15 minutes.*
-
-### iOS (Mac Only)
-1. Run on Simulator:
-    ```bash
-    npx expo run:ios
-    ```
-
-## Building with EAS (Cloud)
-
-Builds are managed via Expo Application Services (EAS).
-
-### Authenticating
-If you need to switch accounts or link a new project:
-
-1.  **Logout and Login**:
-    ```bash
-    npx eas logout
-    npx eas login
-    ```
-2.  **Clear Existing Config**:
-    *   Open `app.config.ts`.
-    *   Remove or comment out `owner`, `updates.url`, and `extra.eas.projectId`.
-3.  **Initialize Project**:
-    ```bash
-    npx eas init # Select your account/project
-    ```
-
-### Running a Build
-To build for iOS (on Windows) or generic cloud builds:
+### Local Builds
 ```bash
-npx eas build --clear-cache --profile development --platform ios
+npx expo run:android      # Android (Windows/Mac)
+npx expo run:ios           # iOS (Mac only)
+```
+*Note: The first Android build may take 10-15 minutes.*
+
+### Cloud Builds (EAS)
+```bash
+eas build --profile development                          # Development
+eas build --profile production                           # Production
+eas build --platform android --profile production --auto-submit  # Build + submit to Play Console
 ```
 
-### Production Build & Submit (Android)
-To build and automatically submit to the Google Play Console (Internal Track):
-1.  **Configure Service Account**: Ensure your `eas.json` points to a valid Google Play Service Account JSON key (e.g., `./wwmap-443023-....json`).
-2.  **Versioning**: Bump the `version` in `package.json` before creating a production build.
-3.  **Run Command**:
-    ```bash
-    eas build --platform android --profile production --auto-submit
-    ```
-
 > [!IMPORTANT]
-> **Signing Key**: Ensure your EAS Signing Key (SHA1 fingerprint) matches the one registered in the Google Play Console. Use `eas credentials` to verify or upload the correct keystore.
+> **Signing Key**: Ensure your EAS Signing Key (SHA1 fingerprint) matches the one registered in the Google Play Console. Use `eas credentials` to verify.
 
+For detailed EAS configuration, see the [EAS guides](./documentation/setup/expo-eas/).
 
 ## Troubleshooting
 
-### "useLegacyImplementation" or "useAnimatedGestureHandler" Errors
-These are caused by incompatibility between `react-native-drawer-layout` and Reanimated 4.
-**Fix:** We upgraded `react-native-drawer-layout` to v4.2.1+. Ensure you are using a compatible version:
-```bash
-npm install react-native-drawer-layout@^4.2.1
-npx expo start --clear
-```
-
-### Module Resolution / EBUSY Errors (Windows)
-*   **Cause:** Long paths or file locking.
-*   **Fix:** Move project to `C:\dev\ww`. Delete `node_modules` and run `npm install` again.
-
-### Android Build Failures
-*   **Cause:** Missing SDK, JDK mismatch, or missing `local.properties`.
-*   **Fix:** 
-    - Ensure you have **Android SDK 35** and **Java 17**.
-    - If you see "SDK location not found", create `android/local.properties` with:
-      `sdk.dir=C:/Users/YourName/AppData/Local/Android/Sdk`
-    - Run `npx expo prebuild --clean` to reset native files.
-
-### Windows Path Length Errors (`MAX_PATH`)
-*   **Cause:** Windows has a 260 character path limit.
-*   **Fix:** Ensure the project is in a very short path like `C:\dev\ww`. If errors persist, try `git config --global core.longpaths true`.
-
-### Sync Issues
-
-If sync isn't working:
-1. Check network connectivity
-2. Verify Supabase credentials in `.env`
-3. Check Metro logs for sync errors
-4. Clear app data and reinstall if needed
-
-### BLE Connection Issues
-
-If camera won't connect or initializes with warnings:
-1. **Bluetooth**: Ensure Bluetooth is enabled and permissions are granted.
-2. **Range**: Ensure camera is powered and within 5 meters.
-3. **Initialization**: If it hangs at "Setting UTC", the I2C bus may be busy. Wait 5s or reset the camera.
-4. **Health Warnings**: Check the "System Health" bits in the app. A non-zero bit (e.g., `0x0800`) indicates a hardware issue (like a missing SD card) rather than a connection failure.
-5. **Logs**: Check Metro logs for `[BLE CMD Manager]` activity to see raw hardware responses.
-
-### Database Issues
-
-If local database is corrupted:
-1. Clear app data
-2. Reinstall app
-3. Data will re-sync from Supabase on next login
-
-## Offline Development & Testing
-
-### Testing Offline Functionality
-
-1. **Enable Airplane Mode** on your device
-2. **Create/Edit/Delete** projects and deployments
-3. **Disable Airplane Mode** to restore connectivity
-4. **Observe Automatic Sync** - changes upload to Supabase automatically
-
-### Monitoring Sync Status
-
-Check Metro logs for sync activity:
-- `📤 Uploading X pending operations` - Outbox upload starting
-- `✅ Server processed X operations` - Sync successful
-- `🔽 Pulling changes since [timestamp]` - Downloading server changes
-- `⚠️ X conflicts detected` - Conflict resolution needed
-
-### Outbox Management
-
-The outbox automatically:
-- Queues operations when offline
-- Retries failed syncs with exponential backoff
-- Marks operations as synced when successful
-- Detects and resolves conflicts
-
-## Building and Releasing
-
-The app uses EAS Build for cloud builds:
-
-### Development Builds
-```bash
-eas build --profile development
-```
-
-### Production Builds
-```bash
-eas build --profile production
-```
-
-### Local Development
-For local development, use the Expo development server:
-```bash
-npm start
-```
-
-Building and releasing is managed through EAS Build service. See the app configuration in `app.config.ts` for build settings.
+| Issue | Fix |
+|-------|-----|
+| `useLegacyImplementation` errors | `npm install react-native-drawer-layout@^4.2.1 && npx expo start --clear` |
+| Module resolution / EBUSY (Windows) | Move project to `C:\dev\ww`, delete `node_modules`, `npm install` |
+| Android build failures | Ensure SDK 35 + Java 17. Run `npx expo prebuild --clean` to reset native files |
+| Windows `MAX_PATH` errors | Use short path like `C:\dev\ww`. Try `git config --global core.longpaths true` |
+| Sync not working | Check network, verify `.env` credentials, check Metro logs |
+| BLE connection issues | Enable Bluetooth + permissions, keep within 5m, check Metro for `[BLE CMD Manager]` logs |
+| Database corrupted | Clear app data, reinstall — data re-syncs from Supabase on next login |
 
 ## Database Migrations
-
-### ⚠️ CRITICAL: Database Workflow Rules
 
 > [!CAUTION]
 > **NEVER make database schema changes directly in this mobile repository.**
@@ -304,59 +123,62 @@ Building and releasing is managed through EAS Build service. See the app configu
 
 **Correct Workflow:**
 1.  **Backend Changes**: Make schema changes in the `wildlife-watcher-backend` repository.
-2.  **Cloud Deployment**: Push changes to the backend repo. The GitHub Actions CI/CD pipeline will automatically deploy changes to the Supabase Cloud.
-3.  **Mobile Sync**: Once deployed, pull the changes into this mobile repo:
-    *   **Schema**: `npm run db:sync-schema`
-    *   **Types**: `npm run types:cloud-dev` or `npm run types:local`
-    *   **Verify**: Check updated files in `supabase/schemas` and `src/types/supabase.ts`.
+2.  **Cloud Deployment**: Push changes to the backend repo (CI/CD auto-deploys to Supabase Cloud).
+3.  **Mobile Sync**:
+    *   Schema: `npm run db:sync-schema`
+    *   Types: `npm run types:cloud-dev`
+    *   Verify: Check updated files in `supabase/schemas` and `src/types/supabase.ts`.
 
-### WatermelonDB Schema
-
-Local database schema is defined in `src/database/schema.ts`. To modify:
-
-1. Update schema version in `schema.ts`
-2. Create migration in `src/database/migrations.ts`
-3. Test migration on development device
-4. Commit changes
-
-### Supabase Migrations (Backend)
-
-The mobile app follows a **declarative schema-as-code** workflow, synced from the [wildlife-watcher-backend](https://github.com/wildlifeai/wildlife-watcher-backend) repository.
-
-1. **Automated Sync**: The schema is automatically synced from the backend repo whenever you run `ios`, `android`, or `start` scripts.
-    * manual sync: `npm run db:sync-schema`
-    * **Note**: Synchronization uses a **Protected Clean Sync** logic—it automatically removes stale files from synced folders while preserving intentional mobile-only code (like `01_watermelon_sync.sql`). It also includes a **GitHub Fallback** if the local backend repository is not found.
-2. **Local Schema Store**: Core logic lives in `supabase/schemas/`.
-3. **Applying Changes**:
-   * **Local Only**: `npx supabase db reset` (resets local DB with the latest synced schema files).
-   * **Remote**: All remote migrations and schema deployments are managed exclusively in the [backend repository](https://github.com/wildlifeai/wildlife-watcher-backend).
-4. **Detailed Guide**: See [supabase/README.md](./supabase/README.md) for full instructions on synchronization.
+See the [Data & Sync Guide](./documentation/onboarding/03-DATA-AND-SYNC.md) for schema drift prevention and the full 5-layer defence strategy.
 
 ## Testing
 
-### Unit Tests
 ```bash
-npm test
+npm test                   # Unit tests (Jest)
+npm run test:integration   # Integration tests
+npm run test:e2e           # E2E tests (Detox)
+npm run test:maestro       # E2E UI tests (Maestro)
 ```
 
-### Integration Tests
-```bash
-npm run test:integration
-```
-
-### E2E Tests
-```bash
-npm run test:e2e
-```
+For detailed testing patterns, see the [Testing Guide](./documentation/setup/Testing-Guide.md).
 
 ## Additional Commands
 
-- `npm test` - Run Jest tests
-- `npm run lint` - Run ESLint
-- `npm run validate:deps` - Validate dependency compatibility
-- `npm run deps` - Interactive dependency management CLI
-- `npm run type-check` - Run TypeScript type checking
+| Command | Purpose |
+|---------|---------|
+| `npm run lint` | Run ESLint |
+| `npm run type-check` | Run `tsc --noEmit` |
+| `npm run validate:deps` | Validate dependency compatibility |
+| `npm run deps` | Interactive dependency management CLI |
+| `npm run schema:generate` | Regenerate WatermelonDB schema |
+| `npm run schema:validate` | Validate schema consistency |
 
+## Documentation
+
+All documentation is organised under `documentation/`:
+
+### Onboarding (Start Here)
+
+| Guide | What It Covers |
+|-------|----------------|
+| [00-GETTING-STARTED.md](./documentation/onboarding/00-GETTING-STARTED.md) | Setup, architecture overview, verification checklist |
+| [01-TECHNOLOGY-STACK.md](./documentation/onboarding/01-TECHNOLOGY-STACK.md) | All dependencies, versions, patterns, and integrations |
+| [02-CODEBASE-GUIDE.md](./documentation/onboarding/02-CODEBASE-GUIDE.md) | Project structure, state management, naming conventions |
+| [03-DATA-AND-SYNC.md](./documentation/onboarding/03-DATA-AND-SYNC.md) | WatermelonDB, Supabase sync, security model |
+| [04-DEVICE-FLOWS.md](./documentation/onboarding/04-DEVICE-FLOWS.md) | Device preparation, deployment, and retrieval |
+
+### Setup & Configuration
+
+| Guide | What It Covers |
+|-------|----------------|
+| [BLE Architecture](./documentation/setup/BLE_Architecture.md) | BLE command system, timing, firmware constraints |
+| [Android Setup](./documentation/setup/android/) | SDK, emulator, and device configuration |
+| [Docker Guide](./documentation/setup/Docker-Development-Guide.md) | Containerised development environment |
+| [EAS/Expo](./documentation/setup/expo-eas/) | Cloud builds and OTA updates |
+| [WSL2 Guide](./documentation/setup/wsl2/) | Windows Subsystem for Linux setup |
+| [Google Maps](./documentation/setup/GOOGLE-MAPS-SETUP.md) | Maps API key and configuration |
+| [Testing](./documentation/setup/Testing-Guide.md) | Jest, Maestro, and E2E testing |
+| [Auth Guide](./documentation/setup/Authentication-Implementation-Guide.md) | Authentication implementation details |
 
 ## Contributing
 
@@ -376,27 +198,6 @@ If you wish to contribute to this project, submit a [pull request](https://githu
 - [Victor Anton](https://github.com/victor-wildlife)
 
 If you find this project helpful, consider [donating to Wildlife.ai](https://givealittle.co.nz/donate/org/wildlifeai)
-
-## Documentation
-
-All documentation is organized under `documentation/`:
-
-### Getting Started
-- **[Onboarding](./documentation/onboarding/)** - Getting started guides, architecture overview, Redux patterns
-  - [Quick Start Checklist](./documentation/onboarding/Quick-Start-Checklist.md)
-  - [Developer Onboarding Guide](./documentation/onboarding/Developer-Onboarding-Guide.md)
-
-### Setup & Configuration
-- **[Setup](./documentation/setup/)** - Platform setup, integrations, dependencies
-  - Android, BLE, Expo/EAS, WSL2, Docker, MCP
-- **[Environment](./documentation/environment/)** - Environment variable configuration  
-- **[Workflows](./documentation/workflows/)** - Developer workflows, troubleshooting, database management
-
-### Testing
-- **[Testing](./documentation/testing/)** - Maestro E2E testing guide
-
-### Archive
-- **[Archive](./documentation/archive/)** - Historical documentation, agentic development guidelines, project context
 
 ## License
 

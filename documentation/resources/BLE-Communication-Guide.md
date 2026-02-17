@@ -411,8 +411,7 @@ This comprehensive guide covers:
 - Firmware log indicators
 
 **Flow-Specific Timing:**
-- [Device Preparation Flow](../onboarding/02-DEVICE-PREPARATION.md) - Initialization sequence timing
-- [Deployment Flow](../onboarding/03-DEPLOYMENT-FLOW.md) - Start/End deployment timing
+- [Device Flows Guide](../onboarding/04-DEVICE-FLOWS.md) - Preparation, deployment, and retrieval timing
 
 ## Best Practices
 
