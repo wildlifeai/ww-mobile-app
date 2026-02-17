@@ -142,7 +142,7 @@ export const useBle = (): ReturnType => {
 
 						const response = await bleCommandManager.sendCommand(
 							peripheral,
-							commandString,
+							{ name: lookupName || 'UNKNOWN', string: commandString },
 							writeToDevice,
 							cmdOptions,
 						)

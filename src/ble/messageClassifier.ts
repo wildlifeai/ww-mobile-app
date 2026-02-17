@@ -46,7 +46,7 @@ const UNSOLICITED_PATTERNS = [
   /^AI processor is in DPD/i,
   /^AI processor not responding\. Waking it\.$/i,
   /^Disconnecting$/i,
-  // /^Failed to join\.?$/i, // Moved to ERROR_PATTERNS
+  /^Failed to join\.?$/i,
   // Command Echoes (Treat as info, not resolution)
   /^setutc\s+[0-9TZ:-]+$/i,
   /^AI setop\s+\d+\s+\d+$/i,
@@ -68,7 +68,6 @@ const ERROR_PATTERNS = [
   { pattern: /^AI NACK$/i, type: 'AI_NACK' as ErrorType },
   { pattern: /^I2C error: address NACK$/i, type: 'I2C_ERROR' as ErrorType },
   { pattern: /^Discarding message as there is already one pending$/i, type: 'I2C_ERROR' as ErrorType },
-  { pattern: /^Failed to join/i, type: 'I2C_ERROR' as ErrorType }, // Treat join failure as error
 ]
 
 /**

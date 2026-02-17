@@ -30,7 +30,8 @@ class FirmwareService {
 
         // Construct unique local filename
         // locationPath is typically "type/filename.zip"
-        const filename = `${firmware.type}_${firmware.version}_${firmware.locationPath.split('/').pop()}`
+        // locationPath is typically "type/filename.zip"
+        const filename = this.getLocalFilename(firmware)
         const localUri = FIRMWARE_DIR + filename
 
         const fileInfo = await FileSystem.getInfoAsync(localUri)
@@ -93,11 +94,23 @@ class FirmwareService {
     /**
      * Deletes a local firmware file
      */
+    /**
+     * Deletes a local firmware file
+     */
     async deleteLocalFirmware(firmware: Firmware): Promise<void> {
         await this.init()
-        const filename = `${firmware.type}_${firmware.version}_${firmware.locationPath.split('/').pop()}`
+        const filename = this.getLocalFilename(firmware)
         const localUri = FIRMWARE_DIR + filename
         await FileSystem.deleteAsync(localUri, { idempotent: true })
+    }
+
+    private getLocalFilename(firmware: Firmware): string {
+        // Sanitize type and version to prevent path traversal
+        const sanitizedType = firmware.type.replace(/[^a-zA-Z0-9.-]/g, '_')
+        const sanitizedVersion = firmware.version.replace(/[^a-zA-Z0-9.-]/g, '_')
+        const originalFilename = firmware.locationPath.split('/').pop() || 'unknown'
+        
+        return `${sanitizedType}_${sanitizedVersion}_${originalFilename}`
     }
 }
 

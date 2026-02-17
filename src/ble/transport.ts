@@ -27,12 +27,18 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 		if (data === "") return
 
 		try {
-			// Strip trailing newlines/CRs as they break firmware command matching
-			const sanitizedData = data.replace(/[\r\n]+$/, "")
+			// Strip ALL newlines/CRs to prevent command injection
+			const sanitizedData = data.replace(/[\r\n]+/g, "")
 			// Revert: Firmware rejects newline (treats as extra char causing mismatch)
 			const byteArray = [...Buffer.from(sanitizedData)]
+			
+            // Check for sensitive data (PII/Secrets) to redact from logs
+            const isSensitive = /^(setgps|appkey|appeui|deveui|setutc)/i.test(sanitizedData)
+            const logHex = isSensitive ? "[REDACTED]" : Buffer.from(byteArray).toString("hex")
+            const logData = isSensitive ? "[REDACTED]" : sanitizedData
+
 			// log('DEBUG: byteArray content:', byteArray)
-			log(`TX Hex: ${Buffer.from(byteArray).toString("hex")}`)
+			log(`TX Hex: ${logHex}`)
 
 			// Push a LF-CR (LF = 10, CR = 13 in decimal) to local listener for UI feedback
 			readlineParserEmitter.emit(
@@ -54,7 +60,7 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 			)
 
 			log(
-				`Written ${data} to the device ${peripheral.name} (${dayjs().format(
+				`Written ${logData} to the device ${peripheral.name} (${dayjs().format(
 					"HH:mm:ss-SSS",
 				)})`,
 			)

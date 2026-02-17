@@ -204,7 +204,6 @@ export const PrepareAndTestScreen = () => {
         runDfu, 
         setDeploymentIdAsOps, 
         clearGpsLocation, 
-        getHeartbeat, 
         flashLed,
         runSelfTest 
     } = useBleCommands()

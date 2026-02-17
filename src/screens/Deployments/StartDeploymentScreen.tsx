@@ -48,7 +48,7 @@ export const DeploymentDetailsStep = () => {
     const user = useAppSelector(state => state.authentication.user)
 
     // BLE Hooks
-    const { setUtc, runDisconnect, getHeartbeat, flashLed } = useBleCommands()
+    const { setUtc, runDisconnect, flashLed } = useBleCommands()
     const { initialize: runBleStandardInit } = useBleInitialization()
     const { configure: startConfigure } = useDeploymentConfiguration()
     useBleActions()
@@ -181,29 +181,6 @@ export const DeploymentDetailsStep = () => {
         initializeDevice()
     }, [bleDevice, runBleStandardInit, navigation])
 
-    // Heartbeat: Ping device every 20 seconds to keep it awake during deployment
-    useEffect(() => {
-        const isConnected = !!bleDevice?.connected
-        if (!isConnected || isInitializing) return
-
-        log('[Deployment] Starting keep-alive heartbeat (20s interval)')
-        const interval = setInterval(async () => {
-            const currentDevice = bleDeviceRef.current
-            if (currentDevice && currentDevice.connected && !isNavigatingAway.current) {
-                log('[Deployment] Heartbeat ping...')
-                try {
-                    await getHeartbeat(currentDevice)
-                } catch (e) {
-                    logWarn('[Deployment] Heartbeat failed:', e)
-                }
-            }
-        }, 20000)
-
-        return () => {
-            log('[Deployment] Stopping heartbeat')
-            clearInterval(interval)
-        }
-    }, [bleDevice?.connected, isInitializing, getHeartbeat])
 
 
 

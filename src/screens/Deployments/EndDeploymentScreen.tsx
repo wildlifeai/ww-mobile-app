@@ -38,7 +38,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const route = useRoute<EndDeploymentDetailsStepRouteProp>()
     const { deviceId = '', bleDeviceId = '' } = route.params || {}
     useBleActions()
-    const { runDisconnect, setDeploymentIdAsOps, clearGpsLocation, getHeartbeat } = useBleCommands()
+    const { runDisconnect, setDeploymentIdAsOps, clearGpsLocation } = useBleCommands()
 
     const { initialize } = useBleInitialization() 
 
@@ -124,29 +124,6 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         initializeDevice()
     }, [storeDevice, initialize])
 
-    // Heartbeat: Ping device every 20 seconds to keep it awake
-    useEffect(() => {
-        if (!storeDevice?.connected || isEnding || isInitializing) return
-
-        log('[EndDeployment] Starting keep-alive heartbeat (20s interval)')
-        const interval = setInterval(async () => {
-            // Use ref to avoid stale closure
-            const currentDevice = bleDeviceRef.current
-            if (currentDevice?.connected && !isEnding && !isNavigatingAway.current) {
-                log('[EndDeployment] Heartbeat ping...')
-                try {
-                    await getHeartbeat(currentDevice)
-                } catch (e) {
-                    logWarn('[EndDeployment] Heartbeat failed:', e)
-                }
-            }
-        }, 20000)
-
-        return () => {
-             log('[EndDeployment] Stopping heartbeat')
-             clearInterval(interval)
-        }
-    }, [storeDevice?.connected, isEnding, isInitializing, getHeartbeat])
 
     // Back button handler: Disconnect BLE before navigating away
     useEffect(() => {

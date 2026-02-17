@@ -10,7 +10,7 @@
  */
 
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
-import { PendingCommand, BleCommandOptions, WriteFunction } from './types'
+import { PendingCommand, BleCommandOptions, WriteFunction, CommandNames } from './types'
 import {
   classifyMessage,
   ClassifiedMessage,
@@ -38,7 +38,7 @@ export class BleCommandManager {
    */
   async sendCommand(
     peripheral: ExtendedPeripheral,
-    commandString: string,
+    command: { name: CommandNames | string; string: string },
     writeToDevice: WriteFunction,
     options: BleCommandOptions = {},
   ): Promise<string> {
@@ -55,8 +55,8 @@ export class BleCommandManager {
           
           const pending: PendingCommand = {
           id: requestId.toString(),
-          commandName: 'UNKNOWN', // We don't have easy access to enum here without parsing
-          commandString,
+          commandName: command.name, 
+          commandString: command.string,
           sentAt: Date.now(),
           timeoutMs: timeout,
           resolve,
@@ -80,14 +80,14 @@ export class BleCommandManager {
                 this.processQueue() // Resume queue processing
                 
                 const notReceived = !cmd.echoReceived ? ' (No Echo Received)' : ''
-                reject(new Error(`Command timeout after ${timeout}ms: ${commandString}${notReceived}`))
+                reject(new Error(`Command timeout after ${timeout}ms: ${command.string}${notReceived}`))
               }
             }, timeout)
             pending.timeoutHandle = timeoutHandle
 
             // Send command to device
-            await writeToDevice(peripheral, commandString)
-            log(`[BLE CMD Manager] Sent: ${commandString}`)
+            await writeToDevice(peripheral, command.string)
+            log(`[BLE CMD Manager] Sent: ${command.string}`)
             
             // Note: resolve/reject will be called by handleResponse/handleError
             // which will also call processQueue() to handle the next command

@@ -96,11 +96,6 @@ export const useBleCommands = () => {
     
     const disableCamera = useMemo(() => createAction(write, CommandNames.DISABLE_CAMERA, { timeout: 10000 }), [write])
 
-    const getHeartbeat = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.wake, { control: CommandControlTypes.WRITE }]], { timeout: 8000 })
-    }, [write])
-
-    const wake = useMemo(() => createAction(write, CommandNames.wake, { timeout: 5000 }), [write])
 
     /**
      * Flash one of the device LEDs
@@ -198,9 +193,10 @@ export const useBleCommands = () => {
 
                 // Use the new serialized write method instead of raw writeToDevice
                 try {
-                    // Optimization: Pass expectedPattern: false to skip regex waiting (fire-and-forget)
-                    // This prevents timeouts if the device response is slow or slightly mismatched
-                    const results = await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]], { expectedPattern: false })
+                    // Optimization: We previously skipped regex waiting, but this caused race conditions
+                    // with subsequent commands (e.g. battery check picking up setop response).
+                    // Now we wait for the confirmation "Set OpParam X = Y".
+                    const results = await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]])
                     // Check if write returned an error string (since useBle swallows errors)
                     const result = results[0]
                     if (result && typeof result === 'string' && result.startsWith('ERROR:')) {
@@ -248,8 +244,6 @@ export const useBleCommands = () => {
         disableTimelapse,
         // Debug
         runSelfTest,
-        getHeartbeat,
-        wake,
         flashLed,
         disconnectDevice,
         enableCamera,
