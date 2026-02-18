@@ -10,7 +10,7 @@ Wildlife Watcher is a React Native mobile app that communicates with wildlife ca
 
 | Technology | Version | Source |
 |-----------|---------|--------|
-| React Native | 0.81.5 | [package.json](file:///c:/dev/ww/package.json) |
+| React Native | 0.81.5 | [package.json](../../package.json) |
 | React | 19.1.0 | |
 | TypeScript | 5.3.3 | |
 | Expo SDK | ~54.0.32 | Managed workflow with dev client |
