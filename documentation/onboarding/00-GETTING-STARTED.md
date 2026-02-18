@@ -34,7 +34,11 @@ This folder contains five onboarding guides:
 | Guide | What It Covers |
 |-------|----------------|
 | [BLE_Architecture.md](../resources/BLE_Architecture.md) | BLE command system, timing, and firmware constraints |
-| [Docker-Development-Guide.md](../setup/Docker-Development-Guide.md) | Docker setup for team development |
+| [Dependency-Validation-System.md](../resources/Dependency-Validation-System.md) | npm dependency validation, version locking, and SDK compatibility |
+| [Authentication-Implementation-Guide.md](../resources/Authentication-Implementation-Guide.md) | Supabase auth, Redux integration, deep linking, roles and permissions |
+| [dev-database-reset-guide.md](../resources/dev-database-reset-guide.md) | WatermelonDB reset utility for dev/test workflows |
+| [Docker-Development-Guide.md](../resources/Docker-Development-Guide.md) | Docker setup for team development |
+| [GOOGLE-MAPS-SETUP.md](../resources/GOOGLE-MAPS-SETUP.md) | Google Maps API key configuration for Android and iOS |
 | [Android setup](../setup/android/) | Android SDK, emulator, and device configuration |
 | [Expo/EAS guides](../setup/expo-eas/) | Cloud builds, OTA updates, EAS configuration |
 | [Testing guides](../setup/Testing-Guide.md) | Jest, Maestro E2E, and testing patterns |

@@ -1,110 +1,81 @@
-# Google Maps API Configuration for Wildlife Watcher
+# Google Maps API Setup
 
-**Issue**: Map tiles not loading (transparent background with spinner)
-**Root Cause**: Google Maps API key not properly configured in Google Cloud Console
+> **Related**: See the [maps feature README](../../src/features/maps/README.md) for component architecture and usage patterns.
 
-## Quick Fix Steps
+## Overview
 
-### 0. Set up Project Environment
+The app uses `react-native-maps` (v1.20.1) with Google Maps provider for deployment location display and map interactions. API keys are configured via environment variables — never hardcoded.
 
-**Security Note:** We do not hardcode API keys in the app.
+**Key config**: `app.config.ts` reads `GOOGLE_MAPS_API_KEY_ANDROID` and `GOOGLE_MAPS_API_KEY_IOS` from the environment and passes them to the native SDKs. A custom Expo config plugin (`plugins/withGoogleMapsKey.js`) handles iOS integration.
 
-#### For Local Development (`npx expo run:android`)
-1.  Create a `.env` file in the project root (`wildlife-watcher-mobile-app/.env`).
-2.  Add your API key:
-    ```bash
-    GOOGLE_MAPS_API_KEY_ANDROID=your_api_key_here
-    ```
-    *Note: The native Android build has been modified to automatically read this file.*
+## Environment Setup
 
-#### For Cloud Builds (EAS)
-1.  Add the secret to EAS:
-    ```bash
-    eas secret:create --scope project --name GOOGLE_MAPS_API_KEY_ANDROID --value "your_api_key_here"
-    ```
+### Local Development (`npx expo run:android`)
+
+Create `.env.local` in the project root (gitignored):
+
+```bash
+GOOGLE_MAPS_API_KEY_ANDROID=your_android_key_here
+GOOGLE_MAPS_API_KEY_IOS=your_ios_key_here
+```
+
+### Cloud Builds (EAS)
+
+```bash
+eas secret:create --scope project --name GOOGLE_MAPS_API_KEY_ANDROID --value "your_key"
+eas secret:create --scope project --name GOOGLE_MAPS_API_KEY_IOS --value "your_key"
+```
+
+## Google Cloud Console Setup
 
 ### 1. Enable Required APIs
 
 Go to: https://console.cloud.google.com/apis/library
 
-Enable these APIs:
-- ✅ **Maps SDK for Android** (CRITICAL - without this, tiles won't load)
-- ✅ **Maps SDK for iOS** (for future iOS builds)
+- ✅ **Maps SDK for Android** (required — without this, tiles won't load)
+- ✅ **Maps SDK for iOS** (required for iOS builds)
 - ✅ Geolocation API (optional, improves location accuracy)
 
 ### 2. Configure API Key Restrictions
 
 Go to: https://console.cloud.google.com/google/maps-apis/credentials
 
-**Your API Key**: `<YOUR_API_KEY>`
+#### Android Key Restrictions
 
-Click on the API key, then:
+| Build | Package Name | SHA-1 |
+|-------|-------------|-------|
+| Development | `com.wildlife.wildlifewatcher.expo` | `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25` |
+| Production | `com.wildlife.wildlifewatcher` | Get from release keystore |
 
-#### Application Restrictions:
-- Select: **Android apps**
-- Click: **Add an app**
+> [!NOTE]
+> The package name switches based on `APP_VARIANT` in `app.config.ts`: development builds use `.expo` suffix, production builds don't.
 
-**Development Build (Debug):**
-- Package name: `com.wildlife.wildlifewatcher.expo`
-- SHA-1: `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`
+#### API Restrictions
 
-**Production Build (Release):**
-- Package name: `com.wildlife.wildlifewatcher` (when you switch from .expo suffix)
-- SHA-1: Get from your release keystore when ready
+Restrict the key to only:
+- Maps SDK for Android
+- Maps SDK for iOS
+- Geolocation API (if enabled)
 
-#### API Restrictions:
-- Select: **Restrict key**
-- Enable only:
-  - Maps SDK for Android
-  - Maps SDK for iOS
-  - Geolocation API (optional)
+### 3. Test
 
-### 3. Test After Configuration
-
-After saving changes in Google Cloud Console:
-
-1. **Wait 2-5 minutes** for changes to propagate
-2. **Reload the app** (press R R in Metro bundler)
-3. **Check**: Map tiles should now load showing your location in New Zealand
-
-## Current Configuration
-
-**Package Name (Development)**: `com.wildlife.wildlifewatcher.expo`
-**Debug SHA-1**: `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`
-**Location**: AndroidManifest.xml line 22
-**Environment Variables**: .env.local
-
-## Alternative: No Restrictions (Testing Only)
-
-For quick testing, you can temporarily set:
-- Application restrictions: **None**
-- API restrictions: **Don't restrict key**
-
-⚠️ **Warning**: This is less secure. Add restrictions before production!
-
-## Verification
-
-After configuration, you should see in Metro logs:
-```
-[MapScreen] Centering on user location: {"latitude": -39.0814439, "longitude": 174.0851391}
-```
-
-And the map should display tiles showing New Zealand geography.
+1. Wait 2–5 minutes for changes to propagate
+2. Rebuild the app (`npx expo run:android`)
+3. Map tiles should load on the Maps tab and deployment detail screens
 
 ## Troubleshooting
 
-**Still not working after 5 minutes?**
-1. Check API key is correct in AndroidManifest.xml
-2. Verify Maps SDK for Android is enabled
-3. Check package name matches exactly: `com.wildlife.wildlifewatcher.expo`
-4. Try removing all restrictions temporarily
-5. Check Google Cloud Console quota/billing
+| Symptom | Check |
+|---------|-------|
+| Transparent map / spinner | Maps SDK for Android not enabled in Cloud Console |
+| Key not working after setup | Wait 5 min; verify package name + SHA-1 match exactly |
+| Tiles load in dev but not prod | Different package name — add production entry to key restrictions |
+| Still broken | Temporarily remove all key restrictions to isolate the issue |
 
-**Reference Documentation:**
-- https://developers.google.com/maps/documentation/android-sdk/get-api-key
-- https://github.com/react-native-maps/react-native-maps/blob/master/docs/installation.md
+**Reference**:
+- [Google Maps Android SDK setup](https://developers.google.com/maps/documentation/android-sdk/get-api-key)
+- [react-native-maps installation](https://github.com/react-native-maps/react-native-maps/blob/master/docs/installation.md)
 
 ---
 
-**Last Updated**: 2025-10-09
-**Status**: Maps feature functional, waiting for Google Cloud configuration
+**Last Updated**: 2026-02-19
