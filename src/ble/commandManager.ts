@@ -80,7 +80,6 @@ export class BleCommandManager {
                 // If we have retries left, trigger a retry instead of failing immediately
                 if (cmd.retryCount < cmd.maxRetries) {
                   logWarn(`[BLE CMD Manager] Command timeout after ${timeout}ms. Retrying (${cmd.retryCount + 1}/${cmd.maxRetries})...`)
-                  this.pendingCommand = null
                   this.handleError({
                     type: MessageType.ERROR,
                     content: `Timeout after ${timeout}ms`,
@@ -258,21 +257,21 @@ export class BleCommandManager {
       return
     }
 
-    if (msg.errorType === 'AI_NACK' || msg.errorType === 'DEVICE_SLEEP' || msg.errorType === 'TIMEOUT') {
-      const reason = msg.errorType === 'AI_NACK' ? 'AI NACK' : (msg.errorType === 'DEVICE_SLEEP' ? 'Device Sleep' : 'Timeout')
-      log(`[BLE CMD Manager] ${reason} detected - waiting for wake sequence then retrying`)
+    if (msg.errorType === 'AI_NACK' || msg.errorType === 'DEVICE_SLEEP' || msg.errorType === 'TIMEOUT' || msg.errorType === 'DEVICE_BUSY') {
+      const reason = msg.errorType === 'AI_NACK' ? 'AI NACK' : (msg.errorType === 'DEVICE_SLEEP' ? 'Device Sleep' : (msg.errorType === 'DEVICE_BUSY' ? 'Device Busy' : 'Timeout'))
       
       const failedCommand = this.pendingCommand
-      
-      // Wait for Wake and Error bits messages, then retry
-      this.waitForWakeSequence().then(() => {
+
+      const executeRetry = () => {
         if (failedCommand && failedCommand.retryCount < failedCommand.maxRetries) {
-          log(`[BLE CMD Manager] Retrying command after wake sequence (attempt ${failedCommand.retryCount + 1}/${failedCommand.maxRetries})`)
-          
+          log(`[BLE CMD Manager] Retrying command ${reason} (attempt ${failedCommand.retryCount + 1}/${failedCommand.maxRetries}): ${this.redact(failedCommand.commandString)}`)
+
           // Clear pending and increment retry count
-          this.pendingCommand = null
           failedCommand.retryCount++
           
+          // CRITICAL: Reset echoReceived so the echo of the retried command is matched correctly
+          failedCommand.echoReceived = false
+
           // Re-queue the command with updated retry count
           // IMPORTANT: We use unshift to put it at the FRONT of the queue
           this.commandQueue.unshift({
@@ -291,7 +290,6 @@ export class BleCommandManager {
                     // RECURSIVE RETRY CHECK: If we still have retries, trigger another handleError for TIMEOUT
                     if (cmd.retryCount < cmd.maxRetries) {
                         logWarn(`[BLE CMD Manager] Retry timeout. Retrying again...`)
-                        this.pendingCommand = null
                         this.handleError({
                             type: MessageType.ERROR,
                             content: `Retry Timeout`,
@@ -325,8 +323,6 @@ export class BleCommandManager {
             }
           })
           
-          // CRITICAL: Do NOT call processQueue() here if we just unshifted?
-          // Actually, we need to call it to run the newly unshifted command.
           this.processQueue()
         } else {
           // Max retries exceeded
@@ -334,7 +330,17 @@ export class BleCommandManager {
           failedCommand?.reject(new Error(`${reason}: Max retries (${failedCommand?.maxRetries}) exceeded`))
           this.processQueue()
         }
-      })
+      }
+
+      if (msg.errorType === 'DEVICE_BUSY') {
+        log(`[BLE CMD Manager] Device busy - retrying in 1s`)
+        setTimeout(executeRetry, 1000)
+      } else {
+        log(`[BLE CMD Manager] ${reason} detected - waiting for wake sequence then retrying`)
+        this.lastWakeReceivedAt = 0
+        this.lastErrorBitsReceivedAt = 0
+        this.waitForWakeSequence().then(executeRetry)
+      }
     } else {
       // Other errors - reject immediately
       const cmd = this.pendingCommand
@@ -366,6 +372,13 @@ export class BleCommandManager {
    * Emit unsolicited message to all listeners
    */
   private emitUnsolicited(msg: ClassifiedMessage): void {
+    if (isWakeMessage(msg.content)) {
+      this.lastWakeReceivedAt = Date.now()
+    }
+    if (isErrorBitsMessage(msg.content)) {
+      this.lastErrorBitsReceivedAt = Date.now()
+    }
+
     this.unsolicitedListeners.forEach(callback => {
       try {
         callback(msg)
@@ -375,11 +388,29 @@ export class BleCommandManager {
     })
   }
 
+  private lastWakeReceivedAt = 0
+  private lastErrorBitsReceivedAt = 0
+
   /**
    * Wait for Wake + Error bits sequence
    */
   private async waitForWakeSequence(): Promise<void> {
+    const WAKE_WINDOW_MS = 10000 // 10s window to consider device "recently awake"
+
     return new Promise((resolve) => {
+      const now = Date.now()
+      
+      // Optimization: If we received both Wake and Error bits very recently, skip the wait.
+      // This happens when a command times out but the device sends wake messages right AFTER the timeout.
+      if (
+        (now - this.lastWakeReceivedAt < WAKE_WINDOW_MS) && 
+        (now - this.lastErrorBitsReceivedAt < WAKE_WINDOW_MS)
+      ) {
+        log(`[BLE CMD Manager] Device recently awake (Wake ${now - this.lastWakeReceivedAt}ms ago, ErrorBits ${now - this.lastErrorBitsReceivedAt}ms ago). Skipping wait.`)
+        resolve()
+        return
+      }
+
       let wakeReceived = false
       let errorBitsReceived = false
 
@@ -392,10 +423,12 @@ export class BleCommandManager {
 
       const listener = (msg: ClassifiedMessage) => {
         if (isWakeMessage(msg.content)) {
+          this.lastWakeReceivedAt = Date.now()
           wakeReceived = true
           checkComplete()
         }
         if (isErrorBitsMessage(msg.content)) {
+          this.lastErrorBitsReceivedAt = Date.now()
           errorBitsReceived = true
           checkComplete()
         }

@@ -5,6 +5,7 @@ import { imageReassemblerEmitter } from '../ble/emitters'
 import { bleCommandManager } from '../ble/commandManager'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { log, logError } from '../utils/logger'
+import { CommandNames, CommandControlTypes } from '../ble/types'
 
 
 interface UseCapturePreviewOptions {
@@ -81,12 +82,27 @@ export const useCapturePreview = ({
             setCaptureProgress(progress)
         }
 
+        const handleImageError = (errorMessage: string) => {
+            logError('[useCapturePreview] Image transfer error:', errorMessage)
+            clearDownloadTimeout()
+
+            setIsCapturing(false)
+            setCaptureProgress(0)
+            downloadRequested.current = false
+
+            const err = new Error(errorMessage)
+            if (onError) onError(err)
+            else Alert.alert('Image Error', errorMessage)
+        }
+
         imageReassemblerEmitter.on('onImageComplete', handleImageComplete)
         imageReassemblerEmitter.on('onImageProgress', handleImageProgress)
+        imageReassemblerEmitter.on('onImageError', handleImageError)
         
         return () => {
             imageReassemblerEmitter.off('onImageComplete', handleImageComplete)
             imageReassemblerEmitter.off('onImageProgress', handleImageProgress)
+            imageReassemblerEmitter.off('onImageError', handleImageError)
             clearDownloadTimeout()
         }
     }, [onImageReceived, onError])
@@ -137,15 +153,38 @@ export const useCapturePreview = ({
 
             if (onCaptureStart) onCaptureStart()
 
-            // 1. Send Capture Command
-            log('[useCapturePreview] Sending capture command...')
-            await write(device, ['AI capture 1 0'])
+            // 1. Check if camera is enabled (OpParam 10)
+            log('[useCapturePreview] Checking camera status...')
+            const responses = await write(device, ['AI getop 10'])
+            const statusResponse = responses[0] || ''
             
-            // 2. Wait for "Captured" response
-            const CAPTURE_TIMEOUT = 30000 
-            await bleCommandManager.waitForMessage(/Captured/, CAPTURE_TIMEOUT)
-            log('[useCapturePreview] Capture confirmed.')
+            // Check if it's currently disabled ('0')
+            if (statusResponse.includes('= 0') || statusResponse.endsWith(' 0')) {
+                log('[useCapturePreview] Camera disabled (Op10=0), enabling...')
+                await write(device, ['AI setop 10 1'])
+                log('[useCapturePreview] Camera enabled. Waiting for device sleep/wake cycle to initialize hardware...')
+                
+                // CRITICAL FIX: After 'AI setop 10 1', the device sends 'Sleep' and enters DPD.
+                // We must catch this 'Sleep' event to know it's cycling.
+                // WE DO NOT WAIT FOR 'Wake' PASSIVELY - the device stays asleep until we wake it!
+                // So: Wait for Sleep -> Wait 1s (allow DPD entry) -> Send Capture (wakes device)
+                try {
+                    log('[useCapturePreview] Waiting for device to sleep (applied settings)...')
+                    await bleCommandManager.waitForMessage(/^Sleep/i, 10000)
+                    log('[useCapturePreview] Device sleeping. Waiting 1s buffer before waking...')
+                    await new Promise(resolve => setTimeout(resolve, 1000))
+                    log('[useCapturePreview] Buffer done. Sending capture to wake device.')
+                } catch (e) {
+                    logError('[useCapturePreview] Timeout waiting for sleep. Proceeding anyway.', e)
+                }
+            } else {
+                log('[useCapturePreview] Camera already enabled.')
+            }
 
+            // 2. Send Capture Command (interval 1 allows capture even if MD/TL is disabled)
+            log('[useCapturePreview] Sending capture command (AI capture 1 1)...')
+            await write(device, [[CommandNames.CAPTURE_PREVIEW, { control: CommandControlTypes.WRITE }]], { maxRetries: 3 })
+            
             // 3. Start Download
             downloadRequested.current = true
             

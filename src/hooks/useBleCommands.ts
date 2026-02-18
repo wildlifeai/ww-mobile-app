@@ -81,9 +81,6 @@ export const useBleCommands = () => {
         [write]
     )
 
-    const captureTestImage = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.AI_CAPTURE, { control: CommandControlTypes.WRITE, value: "1 0" }]])
-    }, [write])
 
 
     // --- Debug ---
@@ -241,7 +238,6 @@ export const useBleCommands = () => {
         // AI
         checkSdCard,
         getCameraType,
-        captureTestImage,
         setMotionDetectInterval,
         disableMotionDetect,
         setTimelapseInterval,

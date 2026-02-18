@@ -336,7 +336,6 @@ export const EngineerConsoleScreen = () => {
         }
     }
 
-    const [isImageModalVisible, setIsImageModalVisible] = useState(false)
 
 
     const handleConnect = async () => {
@@ -670,17 +669,6 @@ export const EngineerConsoleScreen = () => {
                     onRunCommand={onRunHelpCommand}
                 />
 
-                <Modal visible={isImageModalVisible} onDismiss={() => setIsImageModalVisible(false)} contentContainerStyle={styles.imageModalContainer}>
-                    <View style={styles.imageModalContent}>
-                        <Text style={styles.imageModalTitle}>Received Image</Text>
-                        <TouchableOpacity
-                            style={styles.imageModalCloseButton}
-                            onPress={() => setIsImageModalVisible(false)}
-                        >
-                            <Text style={styles.imageModalCloseText}>Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </Modal>
             </Portal>
 
             <ImagePreviewModal

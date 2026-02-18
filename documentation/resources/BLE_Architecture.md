@@ -5,7 +5,7 @@
 The Wildlife Watcher mobile app communicates with hardware devices over **Bluetooth Low Energy (BLE)** using the Nordic UART Service (NUS). All communication is routed through a centralized `BleCommandManager` that serializes commands, matches responses, and handles error recovery.
 
 The app supports two data channels on the same BLE characteristic:
-- **Text commands** — ASCII strings for configuration and control (e.g. `AI capture 1 0`)
+- **Text commands** — ASCII strings for configuration and control (e.g. `AI capture 1 1`)
 - **Binary image data** — Raw JPEG bytes prefixed with a `0x06` marker
 
 ---
@@ -345,7 +345,16 @@ Two global `EventEmitter3` instances:
 | Emitter | Purpose |
 |---|---|
 | `readlineParserEmitter` | Routes text messages between native listener and `deviceValueUpdatedEvent` |
-| `imageReassemblerEmitter` | Connects `ImageReassembler` events (`onImageComplete`, `onImageProgress`, `force_finalize`) to `useCapturePreview` |
+| `imageReassemblerEmitter` | Connects `ImageReassembler` events (`onImageComplete`, `onImageProgress`, `onImageError`, `force_finalize`) to `useCapturePreview` |
+
+**`imageReassemblerEmitter` events:**
+
+| Event | Payload | Description |
+|---|---|---|
+| `onImageProgress` | `number` (0–1) | Emitted per packet with current completeness ratio |
+| `onImageComplete` | `string` (file URI) | Image saved successfully |
+| `onImageError` | `string` (error message) | Image corrupt, incomplete, or failed to save |
+| `force_finalize` | none | External signal to finalize a stalled transfer |
 
 **File:** [emitters.ts](file:///c:/dev/ww/src/ble/emitters.ts)
 
@@ -369,12 +378,25 @@ const batteryStr = await getBatteryLevel(device)
 
 ### 12. Image Reassembler (`ImageReassembler`)
 
-Reconstructs JPEG images from multiple BLE packets:
+Reconstructs JPEG images from multiple BLE packets.
 
-- **Append-only:** Ignores packet sequence numbers, simply appends payloads in arrival order
+**Packet protocol (3-byte header):**
+
+```
+byte[0] = 0x06              // AI_PROCESSOR_MSG_RX_BINARY marker
+byte[1] = packetNum          // 1-based, incrementing, wraps 255→1
+byte[2] = payloadLength      // declared payload length (always < 255)
+byte[3..] = payload          // actual JPEG image data
+```
+
+**Features:**
+- **Header validation:** Verifies marker byte (0x06), extracts and validates payload length against actual packet size
+- **Sequence tracking:** Monitors packet numbers and detects gaps (lost packets) and duplicates
 - **Completion:** Finalizes when `totalBytesReceived >= totalExpectedBytes`
-- **Watchdog:** 5-second inter-packet timeout triggers `finalizePartial()`
-- **Force finalize:** Firmware sends `"Finished sending X bytes."` — `useCapturePreview` catches this and emits `force_finalize` to save partial images
+- **Watchdog:** 3-second inter-packet timeout triggers `finalizePartial()`
+- **Force finalize:** Firmware sends `"Finished sending X bytes."` — `useCapturePreview` catches this and emits `force_finalize`
+- **Integrity checks on finalize:** Validates JPEG magic bytes (`0xFF 0xD8`), rejects images below 90% completeness
+- **Error reporting:** Emits `onImageError` event (instead of silently saving corrupt data)
 - **Storage:** Converts binary buffer to base64, writes via `FileSystem.writeAsStringAsync()`
 
 > [!CAUTION]
@@ -386,13 +408,19 @@ Reconstructs JPEG images from multiple BLE packets:
 
 ### 13. Capture Preview (`useCapturePreview`)
 
-Orchestrates the full capture-preview flow:
+Orchestrates the full capture-preview flow with robust camera initialization:
 
-1. Send `AI capture 1 0` → wait for `/Captured/` response
-2. Send `AI txfile .` → firmware announces byte count, then streams binary
-3. Listen for `onImageProgress` / `onImageComplete` events from `ImageReassembler`
-4. Safety net: if `"Finished sending"` arrives but `onImageComplete` hasn't fired, emit `force_finalize`
-5. Download timeout: 20 seconds
+1. **Check Camera Status:** `AI getop 10`
+   - If disabled (`0`): `AI setop 10 1` -> **Wait for Sleep** -> Wait 1s buffer -> **Send Capture** (wakes device immediately).
+   - *Reason:* Camera hardware initializes only on the next wake cycle. We confirm sleep (settings applied), then actively wake it to proceed without delay.
+2. **Capture:** Send `AI capture 1 1` (Capture 1 image, interval 1ms to bypass MD check)
+3. **Start Download:** Send `AI txfile .` -> Firmware announces byte count
+4. **Receive:** `ImageReassembler` processes binary packets
+   - Listens for `onImageProgress`, `onImageComplete`, and `onImageError`
+5. **Completion:**
+   - Normal: `ImageReassembler` detects `bytesReceived >= bytesExpected`
+   - Fallback: Firmware sends `"Finished sending X bytes"`. If image incomplete, app waits 500ms grace period then emits `force_finalize`.
+6. **Timeout:** 20-second safety timeout triggers `force_finalize`.
 
 **File:** [useCapturePreview.ts](file:///c:/dev/ww/src/hooks/useCapturePreview.ts)
 

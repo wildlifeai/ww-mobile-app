@@ -46,7 +46,6 @@ export enum CommandNames {
 	// Process commands (UPPERCASE - app-specific workflows)
 	SET_UTC = "SET_UTC",
 	SET_GPS = "SET_GPS",
-	AI_CAPTURE = "AI_CAPTURE",
 	SET_NUM_PICTURES = "SET_NUM_PICTURES",
 	SET_PICTURE_INTERVAL = "SET_PICTURE_INTERVAL",
 	SET_TIMELAPSE_INTERVAL = "SET_TIMELAPSE_INTERVAL",
@@ -82,7 +81,7 @@ export type Command = {
 	timeout?: number
 }
 
-export const getCommandByName = (name: CommandNames | string) => {
+export const getCommandByName = (name: CommandNames | string): Command | null => {
 	if (!name) return null
 
 	// Normalized lookup: Handle "AI info" or "AI setop" by looking for the last part
@@ -105,6 +104,12 @@ export const getCommandByName = (name: CommandNames | string) => {
 		if (candidate.toUpperCase() in CommandNames) {
 			return COMMANDS[CommandNames[candidate.toUpperCase() as keyof typeof CommandNames]]
 		}
+	}
+
+	// Secondary lookup: Try stripping trailing numeric arguments (e.g. "AI capture 1 1" -> "AI capture")
+	const stripped = name.toString().replace(/\b\d+\b/g, '').replace(/\s+/g, ' ').trim()
+	if (stripped && stripped !== name.toString()) {
+		return getCommandByName(stripped)
 	}
 
 	return null
@@ -306,12 +311,6 @@ export const COMMANDS: {
 		readRegex: /(\d+)\s*[Kk]\s*total\s*drive\s*space\.\s*(\d+)\s*[Kk]\s*available/i,
 		description: "Get AI module info (label, serial, total/available drive space in KB)",
 		type: 'command',
-	},
-	[CommandNames.AI_CAPTURE]: {
-		name: CommandNames.AI_CAPTURE,
-		writeCommand: (count?: string, interval?: string) => `AI capture ${count || '1'} ${interval || '0'}`,
-		description: "Capture image(s) with AI module (count interval_ms). Returns filename of last captured image",
-		type: 'process',
 	},
 	[CommandNames.selftest]: {
 		name: CommandNames.selftest,
@@ -525,7 +524,8 @@ export const COMMANDS: {
 	},
 	[CommandNames.CAPTURE_PREVIEW]: {
 		name: CommandNames.CAPTURE_PREVIEW,
-		writeCommand: () => "AI capture 1 0",
+		writeCommand: () => "AI capture 1 1",
+		readRegex: /Captured/i,
 		description: "Capture image for preview",
 		type: 'process',
 	},

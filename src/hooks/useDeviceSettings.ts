@@ -26,14 +26,7 @@ export const OP_PARAMETER = {
     FLASH_LED: 13,
 } as const
 
-/**
- * Delays for quiesceDevice sequence (in ms)
- */
-const QUIESCE_DELAYS = {
-    CAMERA_ENABLE: 500,
-    PARAM_CLEAR: 200,
-    CAMERA_DISABLE: 500,
-} as const
+
 
 /**
  * Device settings interface
@@ -153,8 +146,6 @@ export const useDeviceSettings = ({
 
                 log(`[useDeviceSettings] Setting parameter ${index} to ${value}`)
                 await setOperationalParam(device, index, value.toString())
-                // Small delay between commands (Increased to 500ms for robust DPD wake/sleep handling)
-                await new Promise(resolve => setTimeout(resolve, 500))
             }
 
             log('[useDeviceSettings] All settings updated successfully')
@@ -209,12 +200,15 @@ export const useDeviceSettings = ({
     }, [updateSettings])
 
     /**
-     * Safely quiesces the device (stops all capture activities).
+     * Safely quiesces the device (stops autonomous capture triggers but keeps camera enabled).
+     * 
+     * Actions:
+     * 1. Clear Motion Detection interval (Op 11 = 0)
+     * 2. Clear Timelapse interval (Op 7 = 0)
+     * 3. Enable Camera (Op 10 = 1) - Ensures device is ready for commands/preview
      * 
      * @param logPrefix Custom prefix for logs
-     * @param optimized If true, skips the "Enable -> Clear -> Disable" sequence and just disables.
-     *                  Use ONLY when fast stop is required (e.g. End Deployment).
-     *                  Use FALSE for Preparation to ensure clean slate.
+     * @param optimized Legacy parameter (unused in current logic)
      */
     const quiesceDevice = useCallback(async (logPrefix: string = '[DeviceSettings]', optimized: boolean = false) => {
         if (!device || !device.connected) {
@@ -234,7 +228,6 @@ export const useDeviceSettings = ({
             try {
                 if (!isMounted.current || !device.connected) return
                 await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
-                await new Promise(r => setTimeout(r, QUIESCE_DELAYS.PARAM_CLEAR)) 
 
                 if (!isMounted.current || !device.connected) return
                 await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
@@ -249,18 +242,20 @@ export const useDeviceSettings = ({
             
             if (!isMounted.current || !device.connected) return
             
-            // 3. Disable Camera (Op 10 = 0)
-            log(`${logPrefix} 3. Disabling camera...`)
+            if (!isMounted.current || !device.connected) return
+            
+            // 3. Enable Camera (Op 10 = 1)
+            // We want the camera ON for previews/testing, but triggers OFF (steps above)
+            log(`${logPrefix} 3. Enabling camera (Op 10=1)...`)
             try {
                 if (!isMounted.current || !device.connected) return
                 const currentCam = await getOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED)
                 
                 if (!isMounted.current || !device.connected) return
-                if (currentCam !== '0') {
-                    await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '0')
-                    await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_DISABLE))
+                if (currentCam !== '1') {
+                    await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '1')
                 } else {
-                    log(`${logPrefix} Camera already disabled (Op 10=0), skipping write.`)
+                    log(`${logPrefix} Camera already enabled (Op 10=1), skipping write.`)
                 }
             } catch (err) {
                  const errMsg = err instanceof Error ? err.message : String(err)
@@ -268,10 +263,9 @@ export const useDeviceSettings = ({
                      throw err
                  }
 
-                 logWarn(`${logPrefix} Check failed, forcing disable...`)
+                 logWarn(`${logPrefix} Check failed, forcing enable...`)
                  if (!isMounted.current || !device.connected) return
-                 await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '0')
-                 await new Promise(r => setTimeout(r, QUIESCE_DELAYS.CAMERA_DISABLE))
+                 await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '1')
             }
             log(`${logPrefix} Device quiesced successfully.`)
         } catch (error) {
