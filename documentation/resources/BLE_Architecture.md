@@ -451,6 +451,33 @@ Manages CONFIG.TXT operational parameters (OpParams 5-13) on the device:
 
 ---
 
+### 16. BLE Heartbeat (`useBleHeartbeat`)
+
+Prevents device disconnection due to the firmware's 60-second BLE inactivity timeout. Implemented as a **pure inactivity timer** — any incoming BLE message resets a 58-second countdown.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle: Device connected
+    Idle --> Countdown: Start 58s timer
+    Countdown --> Countdown: BLE message received → reset timer
+    Countdown --> SendHeartbeat: 58s elapsed with no messages
+    SendHeartbeat --> Countdown: AI selftest response resets timer
+    SendHeartbeat --> [*]: Device disconnected
+    Countdown --> [*]: Device disconnected
+```
+
+**Key design decisions:**
+- Uses `useRef` for `device`, `write`, and `timer` to avoid stale closures in the 58s callback
+- Listens via `bleCommandManager.addMessageListener()` — reacts to **all** raw messages, not just specific types
+- The heartbeat command (`AI selftest`) produces a response, which itself resets the timer — creating a self-sustaining keep-alive cycle
+- Effect only re-registers when `device?.connected` changes, not on every Redux state update
+
+**Mounted in:** `ListenToBleEngineProvider` — active whenever any device is connected.
+
+**File:** [useBleHeartbeat.ts](file:///c:/dev/ww/src/hooks/useBleHeartbeat.ts)
+
+---
+
 ## Development Workflow
 
 ### Adding a New Command
@@ -540,6 +567,7 @@ src/
 │   ├── useBleCommands.ts        # High-level command API
 │   ├── useBleCommandFactory.ts  # Factory for createCommand / createAction
 │   ├── useBleInitialization.ts  # Post-connect: selftest + time sync
+│   ├── useBleHeartbeat.ts       # 58s inactivity keep-alive
 │   ├── useCapturePreview.ts     # Image capture flow
 │   ├── useDeviceSettings.ts     # CONFIG.TXT parameter management
 │   └── useSetupBLELibrary.ts    # BleManager.start() lifecycle

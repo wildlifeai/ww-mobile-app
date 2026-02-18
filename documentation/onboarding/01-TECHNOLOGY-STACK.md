@@ -389,7 +389,7 @@ Communication with Wildlife Watcher cameras. Uses a centralised hook-based archi
 > [!IMPORTANT]
 > **Critical timing constraint:** The device enters Deep Power Down (DPD) after 1000ms of inactivity. Commands must be spaced ≥500ms apart. The device has a single-slot command buffer — rapid commands are discarded.
 
-**See:** [BLE Architecture Guide](file:///c:/dev/ww/documentation/onboarding/BLE_Architecture.md) for complete patterns and firmware constraints.
+**See:** [BLE Architecture Guide](../resources/BLE_Architecture.md) for complete patterns and firmware constraints.
 
 ### Firmware Updates (DFU)
 
@@ -520,6 +520,6 @@ export type OfflineOperationType =
 
 1. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device preparation, deployment, and retrieval
 2. [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) — Project structure and state management
-3. [BLE_Architecture.md](../setup/BLE_Architecture.md) — BLE patterns and firmware constraints
+3. [BLE_Architecture.md](../resources/BLE_Architecture.md) — BLE patterns and firmware constraints
 4. [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) — Offline-first architecture and sync
 

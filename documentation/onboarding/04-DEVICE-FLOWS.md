@@ -2,7 +2,7 @@
 
 All three device workflows share the same BLE initialization (`useBleInitialization`) and follow the same pattern: connect → initialise → act → quiesce → disconnect. This guide covers them in the order a device goes through its lifecycle.
 
-**Deep dive:** [BLE Architecture Guide](../setup/BLE_Architecture.md) — command system, timing constraints, message classification
+**Deep dive:** [BLE Architecture Guide](../resources/BLE_Architecture.md) — command system, timing constraints, message classification
 
 ---
 

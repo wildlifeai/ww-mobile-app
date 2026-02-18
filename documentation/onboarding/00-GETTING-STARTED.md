@@ -33,7 +33,7 @@ This folder contains five onboarding guides:
 
 | Guide | What It Covers |
 |-------|----------------|
-| [BLE_Architecture.md](../setup/BLE_Architecture.md) | BLE command system, timing, and firmware constraints |
+| [BLE_Architecture.md](../resources/BLE_Architecture.md) | BLE command system, timing, and firmware constraints |
 | [Docker-Development-Guide.md](../setup/Docker-Development-Guide.md) | Docker setup for team development |
 | [Android setup](../setup/android/) | Android SDK, emulator, and device configuration |
 | [Expo/EAS guides](../setup/expo-eas/) | Cloud builds, OTA updates, EAS configuration |
