@@ -39,9 +39,12 @@ This folder contains five onboarding guides:
 | [dev-database-reset-guide.md](../resources/dev-database-reset-guide.md) | WatermelonDB reset utility for dev/test workflows |
 | [Docker-Development-Guide.md](../resources/Docker-Development-Guide.md) | Docker setup for team development |
 | [GOOGLE-MAPS-SETUP.md](../resources/GOOGLE-MAPS-SETUP.md) | Google Maps API key configuration for Android and iOS |
-| [Android setup](../setup/android/) | Android SDK, emulator, and device configuration |
-| [Expo/EAS guides](../setup/expo-eas/) | Cloud builds, OTA updates, EAS configuration |
-| [Testing guides](../setup/Testing-Guide.md) | Jest, Maestro E2E, and testing patterns |
+| [Testing-Guide.md](../resources/Testing-Guide.md) | Jest unit/integration tests, mocking patterns |
+| [Maestro-E2E-Testing-Guide.md](../resources/Maestro-E2E-Testing-Guide.md) | E2E testing with Maestro (device-based) |
+| [publishing_guide.md](../resources/publishing_guide.md) | EAS builds, store submission (Android + iOS) |
+| [Android-Guide.md](../resources/Android-Guide.md) | JDK/SDK setup, local builds, device config, 16KB compliance |
+| [Expo-EAS-Guide.md](../resources/Expo-EAS-Guide.md) | EAS build profiles, dev client workflow, keystores |
+| [WSL2-Setup-Guide.md](../resources/WSL2-Setup-Guide.md) | WSL2 networking, port forwarding, .wslconfig tuning |
 
 ---
 

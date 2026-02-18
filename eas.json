@@ -9,8 +9,8 @@
       "distribution": "internal",
       "env": {
         "NODE_ENV": "development",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://nuhwmubvygxyddkycmpa.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://qegeovogqxiouqbrxmnh.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlZ2Vvdm9ncXhpb3VxYnJ4bW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3MDQ3MTEsImV4cCI6MjA4NjI4MDcxMX0.DI71CS1VvMf1cnunTg3HldxyrGdnh57UJu91AZ-nJlI",
         "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
         "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
       },
@@ -42,6 +42,8 @@
       "autoIncrement": true,
       "env": {
         "NODE_ENV": "production",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nuhwmubvygxyddkycmpa.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd",
         "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
         "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
       },
@@ -57,14 +59,14 @@
   "submit": {
     "production": {
       "android": {
-        "serviceAccountKeyPath": "${GOOGLE_PLAY_SERVICE_ACCOUNT_KEY_PATH}",
+        "serviceAccountKeyPath": "./wwmap-443023-3ed6207e2aa0.json",
         "track": "internal",
         "releaseStatus": "draft"
       },
       "ios": {
-        "appleId": "${APPLE_ID}",
-        "ascAppId": "${ASC_APP_ID}",
-        "appleTeamId": "${APPLE_TEAM_ID}"
+        "appleId": "victor@wildlife.ai",
+        "ascAppId": "6479951661",
+        "appleTeamId": "7399889N9Z"
       }
     }
   }

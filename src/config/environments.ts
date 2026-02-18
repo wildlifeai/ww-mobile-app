@@ -40,12 +40,12 @@ export const ENVIRONMENT_CONFIGS: Record<
 	"cloud-dev": {
 		supabaseUrl:
 			Constants.expoConfig?.extra?.supabaseUrl ||
-			"https://nuhwmubvygxyddkycmpa.supabase.co",
+			"https://qegeovogqxiouqbrxmnh.supabase.co",
 		supabaseAnonKey:
 			Constants.expoConfig?.extra?.supabaseAnonKey ||
-			"sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd",
+			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlZ2Vvdm9ncXhpb3VxYnJ4bW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3MDQ3MTEsImV4cCI6MjA4NjI4MDcxMX0.DI71CS1VvMf1cnunTg3HldxyrGdnh57UJu91AZ-nJlI",
 		displayName: "Cloud Development",
-		description: "Cloud Supabase development instance (default)",
+		description: "Dev Supabase instance (active development, may break)",
 		isProduction: false,
 	},
 	"cloud-prod": {
