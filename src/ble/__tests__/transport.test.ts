@@ -63,10 +63,8 @@ describe("src/ble/transport", () => {
 		})
 
 		it("should handle write errors", async () => {
-			(BleManager.writeWithoutResponse as jest.Mock).mockRejectedValue("Write failed")
-			const error = await writeToDevice(mockPeripheral, "test-data")
-			expect(error).toBeInstanceOf(Error)
-			expect(error?.message).toBe("Write failed")
+			(BleManager.writeWithoutResponse as jest.Mock).mockRejectedValue(new Error("Write failed"))
+			await expect(writeToDevice(mockPeripheral, "test-data")).rejects.toThrow("Write failed")
 		})
 	})
 
