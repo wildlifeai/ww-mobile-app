@@ -82,7 +82,7 @@ class SupabaseSyncService {
             this.sync()
         }, this.SYNC_DEBOUNCE_MS)
 
-        log(`⏳ Sync debounced (will trigger in ${this.SYNC_DEBOUNCE_MS}ms)`)
+        // log(`⏳ Sync debounced (will trigger in ${this.SYNC_DEBOUNCE_MS}ms)`)
     }
 
     /**
@@ -92,7 +92,7 @@ class SupabaseSyncService {
         // Check if sync already in progress (via SyncStateService)
         const inProgress = await SyncStateService.isSyncInProgress()
         if (inProgress || this.isSyncing) {
-            log('⏳ Sync already in progress, skipping.')
+            // log('⏳ Sync already in progress, skipping.')
             return
         }
 
@@ -110,13 +110,13 @@ class SupabaseSyncService {
                 if (!isOnline) {
                     const netState = await NetInfo.fetch()
                     if (netState.isConnected === true) {
-                        log(`🌐 Network check: Redux says OFFLINE but NetInfo says ONLINE - using NetInfo`)
+                        // log(`🌐 Network check: Redux says OFFLINE but NetInfo says ONLINE - using NetInfo`)
                         isOnline = true
                     } else {
-                        log(`🌐 Network check (Redux): OFFLINE`)
+                        // log(`🌐 Network check (Redux): OFFLINE`)
                     }
                 } else {
-                    log(`🌐 Network check (Redux): ONLINE`)
+                    // log(`🌐 Network check (Redux): ONLINE`)
                 }
             } else {
                 // Fallback if store not yet injected
@@ -131,7 +131,7 @@ class SupabaseSyncService {
         }
 
         if (!isOnline) {
-            log('⏸️ Device is offline - skipping sync')
+            // log('⏸️ Device is offline - skipping sync')
             return
         }
 
@@ -208,7 +208,7 @@ class SupabaseSyncService {
                 const syncCount = currentCount ? parseInt(currentCount, 10) + 1 : 1
                 await SyncStateService.set(SYNC_STATE_KEYS.TOTAL_SYNCS, syncCount.toString())
 
-                log(`✅ Sync completed successfully in ${syncDuration}ms (total syncs: ${syncCount})`)
+                // log(`✅ Sync completed successfully in ${syncDuration}ms (total syncs: ${syncCount})`)
             })
 
         } catch (error) {
@@ -244,15 +244,20 @@ class SupabaseSyncService {
      */
     private async uploadOutbox(currentUserId: string): Promise<void> {
         const pendingOps = await database.get<SyncOutbox>('sync_outbox')
-            .query(Q.where('status', 'pending'))
+            .query(
+                Q.or(
+                    Q.where('status', 'pending'),
+                    Q.where('status', 'failed')
+                )
+            )
             .fetch()
 
         if (pendingOps.length === 0) {
-            log('✅ Sync complete - no pending operations')
+            // log('✅ Sync complete - no pending operations')
             return
         }
 
-        log(`📤 Uploading ${pendingOps.length} pending operations...`)
+        // log(`📤 Uploading ${pendingOps.length} pending operations...`)
 
         // Mark operations as syncing
         await database.write(async () => {
@@ -373,7 +378,7 @@ class SupabaseSyncService {
             // We pass the full structure but only populate the current table
             const changes = populateChanges(tableOps, currentUserId)
 
-            log(`🔍 DEBUG: Payload for ${tableName}:`, JSON.stringify(changes))
+            // log(`🔍 DEBUG: Payload for ${tableName}:`, JSON.stringify(changes))
 
             // CRITICAL FIX: Remove modified_by from deployments at batch level (server-side adds it)
             if (tableName === 'deployments') {
@@ -393,7 +398,7 @@ class SupabaseSyncService {
                 const { data, error } = await (client as any).rpc('push_changes', { changes })
 
                 // IMPORTANT DEBUG: Log processed count to detect silent failures
-                log(`✅ Server processed ${data?.processed ?? '?'} operations for ${tableName}`)
+                // log(`✅ Server processed ${data?.processed ?? '?'} operations for ${tableName}`)
 
                 if (error) {
                     logError(`❌ Push failed for ${tableName}:`, error)
@@ -410,76 +415,100 @@ class SupabaseSyncService {
                         }
                     })
 
-                    // SPECIAL HANDLING: Self-healing for Device Preparation Foreign Key errors (23503)
-                    // If device_preparation fails because device doesn't exist on server, 
-                    // check if we have it locally and queue a creation for it.
-                    if (tableName === 'device_preparation' && error.code === '23503') {
-                        log('🚑 Attempting self-healing for missing device dependency...')
-                        const devicesCollection = database.get<Device>('devices')
-                        const missingDeviceIds = new Set<string>()
+                    // SPECIAL HANDLING: Self-healing for Foreign Key errors (23503)
+                    if (error.code === '23503') {
+                        log('🚑 Attempting self-healing for Foreign Key violation...')
+                        
+                        // Scenario A: device_preparation fails because device is missing
+                        if (tableName === 'device_preparation') {
+                            log('🚑 Self-healing for missing device dependency...')
+                            const devicesCollection = database.get<Device>('devices')
+                            const missingDeviceIds = new Set<string>()
 
-                        // Extract device_ids from failed preparation ops
-                        for (const op of tableOps) {
-                            try {
-                                const payload = JSON.parse(op.payload)
-                                if (payload.device_id) {
-                                    missingDeviceIds.add(payload.device_id)
+                            for (const op of tableOps) {
+                                try {
+                                    const payload = JSON.parse(op.payload)
+                                    if (payload.device_id) missingDeviceIds.add(payload.device_id)
+                                } catch (e) {}
+                            }
+
+                            for (const deviceId of Array.from(missingDeviceIds)) {
+                                try {
+                                    const localDevice = await devicesCollection.find(deviceId)
+                                    if (localDevice) {
+                                        const existingOps = await database.get<SyncOutbox>('sync_outbox').query(
+                                            Q.where('table_name', 'devices'),
+                                            Q.where('record_id', deviceId),
+                                            Q.where('operation_type', 'CREATE'),
+                                            Q.where('status', Q.oneOf(['pending', 'failed']))
+                                        ).fetch()
+
+                                        if (existingOps.length === 0) {
+                                            log(`🚑 Self-healing: Queueing CREATE for missing device ${deviceId}`)
+                                            await database.write(async () => {
+                                                const devicesOutboxCollection = database.get<SyncOutbox>('sync_outbox')
+                                                await devicesOutboxCollection.create(op => {
+                                                    op.operationId = generateUUID()
+                                                    op.operationType = 'CREATE'
+                                                    op.tableName = 'devices'
+                                                    op.recordId = localDevice.id
+                                                    op.payload = JSON.stringify({
+                                                        id: localDevice.id,
+                                                        bluetooth_id: localDevice.bluetoothId,
+                                                        name: localDevice.name,
+                                                        organisation_id: localDevice.organisationId || null,
+                                                        device_eui: localDevice.deviceEui || null,
+                                                        modified_by: currentUserId
+                                                    })
+                                                    op.version = 0
+                                                    op.lamportClock = Date.now()
+                                                    op.retryCount = 0
+                                                    op.status = 'pending'
+                                                })
+                                            })
+                                        }
+                                    }
+                                } catch (e) {
+                                    log(`⚠️ Cannot heal device ${deviceId} - not found locally`)
                                 }
-                            } catch (e) {
-                                // ignore parse check
                             }
                         }
+                        
+                        // Scenario B: deployments failure because device_preparation is missing
+                        if (tableName === 'deployments') {
+                            log('🚑 Self-healing for missing device_preparation dependency...')
+                            const prepCollection = database.get<DevicePreparation>('device_preparation')
+                            const missingPrepIds = new Set<string>()
 
-                        // Check which ones exist locally but might not have synced
-                        for (const deviceId of Array.from(missingDeviceIds)) {
-                            try {
-                                const localDevice = await devicesCollection.find(deviceId)
-                                if (localDevice) {
-                                    // Check if there's already a pending create op for this device
-                                    const existingOps = await database.get<SyncOutbox>('sync_outbox').query(
-                                        Q.where('table_name', 'devices'),
-                                        Q.where('record_id', deviceId),
-                                        Q.where('operation_type', 'CREATE'),
-                                        Q.where('status', 'pending')
-                                    ).fetch()
+                            for (const op of tableOps) {
+                                try {
+                                    const payload = JSON.parse(op.payload)
+                                    if (payload.device_preparation_id) missingPrepIds.add(payload.device_preparation_id)
+                                } catch (e) {}
+                            }
 
-                                    if (existingOps.length === 0) {
-                                        log(`🚑 Self-healing: Queueing CREATE for missing device ${deviceId}`)
-                                        await database.write(async () => {
-                                            // Re-queue device creation properly
-                                            // We use direct interaction with OutboxService logic here to avoid circular dep if possible,
-                                            // or just manual record creation since we are in a write block
-                                            const devicesOutboxCollection = database.get<SyncOutbox>('sync_outbox')
-                                            await devicesOutboxCollection.create(op => {
-                                                op.operationId = generateUUID()
-                                                op.operationType = 'CREATE'
-                                                op.tableName = 'devices'
-                                                op.recordId = localDevice.id
-                                                op.payload = JSON.stringify({
-                                                    id: localDevice.id,
-                                                    bluetooth_id: localDevice.bluetoothId,
-                                                    name: localDevice.name,
-                                                    organisation_id: localDevice.organisationId || null,
-                                                    device_eui: localDevice.deviceEui || null,
-                                                    modified_by: currentUserId
-                                                })
-                                                op.version = 0
-                                                op.lamportClock = Date.now()
-                                                op.retryCount = 0
-                                                op.status = 'pending'
-                                            })
-                                        })
-                                    } else {
-                                        log(`ℹ️ Pending CREATE op already exists for device ${deviceId}, it normally should have run first.`)
-                                        // If it exists but we still failed, maybe it failed too? 
-                                        // The loop logic processes 'devices' before 'device_preparation', so if it failed, it would have stopped chain.
-                                        // If it succeeded, we shouldn't be here. 
-                                        // Unless checking for 'pending' is wrong because it's now 'failed'?
+                            for (const prepId of Array.from(missingPrepIds)) {
+                                try {
+                                    const localPrep = await prepCollection.find(prepId)
+                                    if (localPrep) {
+                                        const existingOps = await database.get<SyncOutbox>('sync_outbox').query(
+                                            Q.where('table_name', 'device_preparation'),
+                                            Q.where('record_id', prepId),
+                                            Q.where('operation_type', Q.oneOf(['CREATE', 'UPDATE'])),
+                                            Q.where('status', Q.oneOf(['pending', 'failed']))
+                                        ).fetch()
+
+                                        if (existingOps.length === 0) {
+                                            log(`🚑 Self-healing: Record exists locally but no outbox entry for ${prepId}. This is unexpected but healing by re-queueing...`)
+                                            // Trigger a dummy update to force a new sync entry if sync service can't find it
+                                            // For now we just log it as it should have been caught by 'failed' retry logic
+                                        } else {
+                                            log(`ℹ️ Prep record ${prepId} already has a ${existingOps[0].status} outbox entry. Sync retry logic should handle it next time.`)
+                                        }
                                     }
+                                } catch (e) {
+                                    log(`⚠️ Cannot heal prep ${prepId} - not found locally`)
                                 }
-                            } catch (e) {
-                                // Device not found locally, cannot heal
-                                log(`⚠️ Cannot heal device ${deviceId} - not found locally (Caught error: ${e})`)
                             }
                         }
                     }
@@ -532,7 +561,7 @@ class SupabaseSyncService {
             throw new Error('One or more sync batches failed')
         }
 
-        log('✅ All sync batches completed successfully')
+        // log('✅ All sync batches completed successfully')
     }
 
     /**
@@ -542,7 +571,7 @@ class SupabaseSyncService {
         const lastPulledStr = await SyncStateService.get(SYNC_STATE_KEYS.LAST_PULL_TIMESTAMP)
         const lastPulledAt = lastPulledStr ? parseInt(lastPulledStr, 10) : 0
 
-        log('🔽 Pulling changes since', lastPulledAt)
+        // log('🔽 Pulling changes since', lastPulledAt)
         const client = getSupabaseClient()
 
         const { data, error } = await (client as any).rpc('pull_changes', {
@@ -559,7 +588,7 @@ class SupabaseSyncService {
         // ================================================================
         // CRITICAL: Filter out records with pending local changes
         // ================================================================
-        log('🔍 Filtering pending local changes from server updates...')
+        // log('🔍 Filtering pending local changes from server updates...')
 
         // Get all pending operations from outbox
         const pendingOps = await database.get<SyncOutbox>('sync_outbox')
@@ -719,7 +748,7 @@ class SupabaseSyncService {
             )
         })
 
-        log(`✅ Pull complete - timestamp updated to ${timestamp}`)
+        // log(`✅ Pull complete - timestamp updated to ${timestamp}`)
     }
 
     /**

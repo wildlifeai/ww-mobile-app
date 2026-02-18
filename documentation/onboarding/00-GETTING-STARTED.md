@@ -2,23 +2,42 @@
 
 ## Welcome! 👋
 
-You're joining the development team for the **Wildlife Watcher Mobile App** - a React Native application that helps conservation researchers deploy and manage wildlife monitoring cameras in remote locations worldwide.
+You're joining the development team for the **Wildlife Watcher Mobile App** — a React Native application that helps conservation researchers deploy and manage wildlife monitoring cameras in remote locations worldwide.
 
 This guide is your single entry point to understanding the project, setting up your environment, and learning our core architecture.
+
+### What This App Does
+
+- **Device Management** — Scan, connect to, and configure wildlife camera devices via BLE
+- **Firmware Updates** — Over-the-air firmware updates using Nordic DFU
+- **Project Management** — Create and manage wildlife monitoring projects
+- **Deployment Tracking** — Track where devices are deployed with GPS coordinates
+- **User Collaboration** — Invite team members with role-based permissions (Admin/Member)
+- **Sync & Offline** — Full offline support with WatermelonDB and Supabase sync
+- **Maps Integration** — Visualise device deployments on interactive maps
 
 ---
 
 ## 📚 Documentation Roadmap
 
-This folder contains specialized guides for each area of the app:
+This folder contains five onboarding guides:
 
-1. **[01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md)**: Deep dive into React Native, Expo, and our core libraries.
-2. **[02-PROJECT-STRUCTURE.md](./02-PROJECT-STRUCTURE.md)**: Folder organization and naming conventions.
-3. **[03-OFFLINE-FIRST-ARCHITECTURE.md](./03-OFFLINE-FIRST-ARCHITECTURE.md)**: The heart of the app - WatermelonDB and Sync.
-4. **[04-REDUX-STATE-MANAGEMENT.md](./04-REDUX-STATE-MANAGEMENT.md)**: How we use RTK for UI and session state.
-5. **[05-REACT-NATIVE-PATTERNS.md](./05-REACT-NATIVE-PATTERNS.md)**: UI patterns, navigation, and styling.
-6. **[06-DEVELOPMENT-WORKFLOW.md](./06-DEVELOPMENT-WORKFLOW.md)**: Detailed environment, testing, and git flows.
-7. **[03-DEPLOYMENT-FLOW.md](./03-DEPLOYMENT-FLOW.md)**: Technical guide to the field deployment process.
+| # | Guide | What It Covers |
+|---|-------|----------------|
+| 1 | [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) | Framework versions, dependencies, architecture, and patterns |
+| 2 | [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) | Folder structure, state management, naming conventions |
+| 3 | [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) | WatermelonDB, Supabase sync, security model, offline patterns |
+| 4 | [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) | Device preparation, deployment, and retrieval |
+
+**Deep-dive guides** in [`documentation/setup/`](../setup/):
+
+| Guide | What It Covers |
+|-------|----------------|
+| [BLE_Architecture.md](../resources/BLE_Architecture.md) | BLE command system, timing, and firmware constraints |
+| [Docker-Development-Guide.md](../setup/Docker-Development-Guide.md) | Docker setup for team development |
+| [Android setup](../setup/android/) | Android SDK, emulator, and device configuration |
+| [Expo/EAS guides](../setup/expo-eas/) | Cloud builds, OTA updates, EAS configuration |
+| [Testing guides](../setup/Testing-Guide.md) | Jest, Maestro E2E, and testing patterns |
 
 ---
 
@@ -90,20 +109,53 @@ The Wildlife Watcher app is an **offline-first field tool**. It is built on the 
 
 ### The Tech Stack
 - **React Native 0.81.5** + **Expo SDK 54**
-- **WatermelonDB**: High-performance local reactive database (The source of truth).
-- **Supabase**: Cloud backend (PostgreSQL, Auth, Sync).
-- **Redux Toolkit**: UI state and session management (Auth).
+- **WatermelonDB**: High-performance local reactive database (the source of truth)
+- **Supabase**: Cloud backend (PostgreSQL, Auth, Sync)
+- **Redux Toolkit**: UI state and session management
 
-### Component Observation Pattern
-Instead of fetching data in `useEffect`, our components **observe** the local database. When data changes (even via background sync or manual pull-to-refresh), the UI updates automatically.
+### Layered Architecture
 
 ```mermaid
-graph TD
-    UI[React Component] -->|Observes| DB[(WatermelonDB Local)]
-    DB -->|Reactive Update| UI
-    Sync[Sync Engine] <-->|Bidirectional| DB
-    Sync <-->|HTTPS/Websockets| Cloud[Supabase Cloud]
-    User[Pull-to-Refresh] -->|Triggers| Sync
+flowchart TD
+    subgraph UI["UI Layer"]
+        Screens["Screens"]
+        Components["WW Components"]
+        Navigation["Navigation"]
+    end
+    subgraph Logic["Business Logic Layer"]
+        Redux["Redux State"]
+        Hooks["Custom Hooks"]
+        Providers["Context Providers"]
+    end
+    subgraph Integration["Integration Layer"]
+        BLE["BLE Engine"]
+        DFU["DFU Service"]
+        SyncEngine["Sync Engine"]
+    end
+    subgraph Platform["Platform Layer"]
+        RN["React Native"]
+        Expo["Expo Modules"]
+        Native["Native Modules"]
+    end
+    UI --> Logic
+    Logic --> Integration
+    Integration --> Platform
+    Platform --> WDB[("WatermelonDB")]
+    Platform --> Supa["Supabase Cloud"]
+    WDB <-->|Sync| Supa
+```
+
+### Data Flow Pattern
+
+Instead of fetching data in `useEffect`, components **observe** the local database. When data changes (via user action, background sync, or pull-to-refresh), the UI updates automatically.
+
+```mermaid
+graph LR
+    A["User Action"] --> B["WatermelonDB Write"]
+    B --> C["Observables Trigger"]
+    C --> D["UI Re-render"]
+    B --> E["SyncOutbox"]
+    E -->|Background| F["Supabase"]
 ```
 
 ---
@@ -151,4 +203,4 @@ npm test              # Run Jest tests
 **Ready to dive deeper?** Move on to **[01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md)**. 🚀
 
 ---
-*Last Updated: January 30, 2026*
+*Last Updated: February 17, 2026*

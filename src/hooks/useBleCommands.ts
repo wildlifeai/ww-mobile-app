@@ -12,7 +12,7 @@ export const useBleCommands = () => {
 
     // --- Device Info (using factory) ---
     const getBatteryLevel = useMemo(() => createCommand(write, CommandNames.battery), [write])
-    const getDeviceVer = useMemo(() => createCommand(write, CommandNames.ver), [write])
+    const getDeviceVer = useMemo(() => createCommand(write, CommandNames.ver, { timeout: 10000 }), [write])
     const getDeviceName = useMemo(() => createCommand(write, CommandNames.device), [write])
     const getDeviceId = useMemo(() => createCommand(write, CommandNames.id), [write])
     const getStatus = useMemo(() => createCommand(write, CommandNames.status), [write])
@@ -64,10 +64,9 @@ export const useBleCommands = () => {
                 const match = response.match(COMMANDS[CommandNames.aiinfo].readRegex!)
                 if (match) {
                     const total = parseInt(match[1], 10)
-                    // We don't get 'free' space from this specific command string usually, 
-                    // but let's assume if we get a valid total, the card is present.
-                    // If we want more details we might need to adjust the regex or command.
-                    return { total, free: 0 } 
+                    const free = parseInt(match[2], 10)
+                    log(`[BLE CMD] Parsed SD Card: total=${total}KB, free=${free}KB`)
+                    return { total, free } 
                 }
             }
             return null
@@ -82,26 +81,18 @@ export const useBleCommands = () => {
         [write]
     )
 
-    const captureTestImage = useCallback(async (peripheral: ExtendedPeripheral) => {
-        await write(peripheral, [[CommandNames.AI_CAPTURE, { control: CommandControlTypes.WRITE, value: "1 0" }]])
-    }, [write])
 
 
     // --- Debug ---
-    const runSelfTest = useMemo(() => createCommand(write, CommandNames.selftest, { control: CommandControlTypes.WRITE }), [write])
+    const runSelfTest = useMemo(() => createCommand(write, CommandNames.selftest, { 
+        control: CommandControlTypes.WRITE,
+        timeout: 10000 // Increased to 10s to wait for device initialization
+    }), [write])
 
     const enableCamera = useMemo(() => createAction(write, CommandNames.ENABLE_CAMERA, { timeout: 10000 }), [write])
     
     const disableCamera = useMemo(() => createAction(write, CommandNames.DISABLE_CAMERA, { timeout: 10000 }), [write])
 
-    const getHeartbeat = useCallback(async (peripheral: ExtendedPeripheral) => {
-        // Use 'wake' command instead of 'heartbeat' to ensure AI processor inactivity timer is reset
-        // 'heartbeat' command only checks the BLE/MCU status but doesn't necessarily wake the AI
-        log('[BLE CMD] Sending keep-alive (wake) to:', peripheral.id)
-        await write(peripheral, [[CommandNames.wake, { control: CommandControlTypes.WRITE }]], { timeout: 8000 })
-    }, [write])
-
-    const wake = useMemo(() => createAction(write, CommandNames.wake, { timeout: 5000 }), [write])
 
     /**
      * Flash one of the device LEDs
@@ -118,12 +109,36 @@ export const useBleCommands = () => {
         await write(peripheral, [[commandName, { control: CommandControlTypes.WRITE, value }]])
     }, [write])
 
-    const setOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number, value: string) => {
-        // Use structured command so useBle can find the correct regex pattern automatically
-        // Optimization: Pass expectedPattern: false to skip waiting for regex match (fire-and-forget)
-        // This speeds up sequential writes significantly
-        await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]], { expectedPattern: false })
+    const getOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number): Promise<string | null> => {
+        // "AI getop <index>" -> Response: "Op[<index>] = <value>"
+        // Enable retries for OpParams as they are often requested during state transitions
+        const responses = await write(peripheral, [[CommandNames.getop, { control: CommandControlTypes.WRITE, value: index.toString() }]], { maxRetries: 1 })
+        const response = responses[0]
+        if (response) {
+             const match = response.match(COMMANDS[CommandNames.getop].readRegex!)
+             if (match) {
+                 return match[2].trim() // Returns the value part
+             }
+        }
+        return null
     }, [write])
+
+    const setOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number, value: string) => {
+        // Optimization: Read current value first to avoid redundant writes
+        try {
+            const current = await getOperationalParam(peripheral, index)
+            if (current === value) {
+                log(`[BLE CMD] Parameter ${index} is already ${value}, skipping write.`)
+                return
+            }
+        } catch (e) {
+            logWarn(`[BLE CMD] Fetch failed for parameter ${index}, forcing write: ${e}`)
+        }
+
+        // Use structured command so useBle can find the correct regex pattern automatically
+        // We wait for the confirmation "Set OpParam X = Y" to ensure task completion.
+        await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]])
+    }, [write, getOperationalParam])
 
     const setGpsLocation = useCallback(
         async (peripheral: ExtendedPeripheral, latitude: number, longitude: number, altitude: number) => {
@@ -143,9 +158,6 @@ export const useBleCommands = () => {
     )
 
     const clearGpsLocation = useCallback(async (peripheral: ExtendedPeripheral) => {
-        log('[BLE CMD] Clearing GPS location on device:', peripheral.id)
-        // Use formatGPSString to generate properly formatted DMS string
-        // Firmware expects format like: "0°0'0.00\"_N_0°0'0.00\"_E_0.00_Above"
         const gpsString = formatGPSString(0, 0, 0)
         await write(peripheral, [[CommandNames.setgps, { control: CommandControlTypes.WRITE, value: gpsString }]])
     }, [write])
@@ -187,16 +199,10 @@ export const useBleCommands = () => {
 
                 log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
 
-                // Use the new serialized write method instead of raw writeToDevice
                 try {
-                    // Optimization: Pass expectedPattern: false to skip regex waiting (fire-and-forget)
-                    // This prevents timeouts if the device response is slow or slightly mismatched
-                    const results = await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${opIndex} ${value}` }]], { expectedPattern: false })
-                    // Check if write returned an error string (since useBle swallows errors)
-                    const result = results[0]
-                    if (result && typeof result === 'string' && result.startsWith('ERROR:')) {
-                        throw new Error(result)
-                    }
+                    // Use the optimized setOperationalParam which now performs its own Read-Before-Write check.
+                    // We allow retries here because writing 8 chunks is prone to racing with the device's summary stats (Sleep).
+                    await setOperationalParam(peripheral, opIndex, value.toString())
                 } catch (error) {
                     logError(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
                     throw error
@@ -204,7 +210,7 @@ export const useBleCommands = () => {
             }
             log('[BLE CMD] Deployment ID OPs sent successfully')
         },
-        [write]
+        [setOperationalParam] // Changed dependency from 'write' to 'setOperationalParam'
     )
 
     return {
@@ -232,15 +238,12 @@ export const useBleCommands = () => {
         // AI
         checkSdCard,
         getCameraType,
-        captureTestImage,
         setMotionDetectInterval,
         disableMotionDetect,
         setTimelapseInterval,
         disableTimelapse,
         // Debug
         runSelfTest,
-        getHeartbeat,
-        wake,
         flashLed,
         disconnectDevice,
         enableCamera,
@@ -248,6 +251,7 @@ export const useBleCommands = () => {
 
         // Settings
         setOperationalParam,
+        getOperationalParam,
         setGpsLocation,
         clearGpsLocation,
     }

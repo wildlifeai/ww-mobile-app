@@ -1,294 +1,104 @@
 # Technology Stack Guide
 
-Complete guide to the technologies powering Wildlife Watcher, with real examples from our codebase.
+## Overview
 
-## Core Technologies
+Wildlife Watcher is a React Native mobile app that communicates with wildlife cameras over BLE, stores data locally with WatermelonDB, and syncs to a Supabase backend. This guide covers the real dependencies, patterns, and architecture as they exist in the codebase today.
 
-### React Native 0.81.5
+---
 
-**What it is**: Framework for building native mobile apps using React.
+## Core Framework
 
-**Key Concepts for Web Developers**:
-- Components render to native views (not DOM)
-- Flexbox layout by default
-- No CSS files - use StyleSheet API or inline styles
-- Platform-specific code via Platform API
+| Technology | Version | Source |
+|-----------|---------|--------|
+| React Native | 0.81.5 | [package.json](../../package.json) |
+| React | 19.1.0 | |
+| TypeScript | 5.3.3 | |
+| Expo SDK | ~54.0.32 | Managed workflow with dev client |
+| Node.js | ≥20 | |
 
-**Example from Our App**: src/App.tsx:1-54
-```typescript
-// src/App.tsx
-import 'react-native-gesture-handler' // Must be first
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { Suspense } from "react"
-import { Text } from "react-native"
-import { SafeAreaProvider } from "react-native-safe-area-context"
-import { Provider as ReduxProvider } from "react-redux"
-import store from "./redux"
-import { MainNavigation } from "./navigation"
+**Key concepts for web developers:**
+- Components render to native views (not DOM) — no CSS files, use `StyleSheet` API
+- Flexbox is the default layout model
+- Platform-specific code via `Platform` API
+- Hermes JavaScript engine for startup performance
 
-export const App = () => {
-    return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-            <SafeAreaProvider>
-                <Suspense fallback={<Text>Loading...</Text>}>
-                    <ReduxProvider store={store}>
-                        <PaperProvider theme={CombinedDefaultTheme}>
-                            <NavigationContainer theme={CombinedDefaultTheme} linking={linking}>
-                                <AndroidPermissionsProvider>
-                                    <AppSetupProvider>
-                                        <BleEngineProvider>
-                                            <ListenToBleEngineProvider>
-                                                <AuthProvider>
-                                                    <MainNavigation />
-                                                </AuthProvider>
-                                            </ListenToBleEngineProvider>
-                                        </BleEngineProvider>
-                                    </AppSetupProvider>
-                                </AndroidPermissionsProvider>
-                            </NavigationContainer>
-                        </PaperProvider>
-                    </ReduxProvider>
-                </Suspense>
-            </SafeAreaProvider>
-        </GestureHandlerRootView>
-    )
-}
-```
+### TypeScript Configuration
 
-**Provider Pattern**: Notice the nested providers - this is the React Context pattern for sharing state/functionality throughout the app.
-
-###
-TypeScript ~5.3.3
-
-**Why TypeScript**: Type safety catches bugs at compile time, improves IDE autocomplete, and serves as living documentation.
-
-**Configuration**: `tsconfig.json` extends React Native defaults
 ```json
 {
   "extends": "@react-native/typescript-config/tsconfig.json"
 }
 ```
 
-**Type Example from Our Codebase**: src/types/offline.ts
-```typescript
-export interface OfflineOperation {
-  id: string;
-  type: OfflineOperationType;
-  data: any;
-  user_id: string;
-  organisation_id: string;
-  timestamp: Date;
-  retry_count: number;
-  metadata?: {
-    entityType: string;
-    entityId: string;
-    priority: number;
-  };
-}
+---
 
-export type OfflineOperationType =
-  | 'CREATE_PROJECT'
-  | 'UPDATE_PROJECT'
-  | 'DELETE_PROJECT'
-  | 'CREATE_DEPLOYMENT'
-  | 'UPDATE_DEPLOYMENT'
-  | 'DELETE_DEPLOYMENT'
-  | 'UPDATE_DEVICE_LORAWAN_STATUS';
+## Application Entry Point
+
+**File:** [App.tsx](file:///c:/dev/ww/src/App.tsx)
+
+The app wraps `<MainNavigation />` in a tree of context providers. The nesting order matters — inner providers can access outer ones.
+
+```mermaid
+graph TD
+    A["GestureHandlerRootView"] --> B["KeyboardProvider"]
+    B --> C["SafeAreaProvider"]
+    C --> D["StatusBar"]
+    D --> E["Suspense"]
+    E --> F["ReduxProvider (store)"]
+    F --> G["PaperProvider (theme)"]
+    G --> H["NavigationContainer"]
+    H --> I["AndroidPermissionsProvider"]
+    I --> J["AppSetupProvider"]
+    J --> K["BleEngineProvider"]
+    K --> L["ListenToBleEngineProvider"]
+    L --> M["AuthProvider"]
+    M --> N["MainNavigation"]
 ```
 
-**Typed Hooks**: src/redux/index.ts:75-76
+> [!NOTE]
+> `SupabaseSyncService.setStore(store)` is called **before** the provider tree renders. This injects the Redux store into the sync service to avoid a circular dependency.
+
+---
+
+## State Management
+
+### Redux Toolkit
+
+**Version:** ^2.5.0
+
+**Store:** [redux/index.ts](file:///c:/dev/ww/src/redux/index.ts)
+
+| Reducer | Slice | Purpose |
+|---------|-------|---------|
+| `api` | RTK Query | Base API |
+| `enhancedApi` | RTK Query | Auto-generated endpoints |
+| `projectsApi` | RTK Query | Project-specific queries |
+| `aiModelsApi` | RTK Query | AI model queries |
+| `devices` | `devicesSlice` | BLE device state (discovered peripherals) |
+| `logs` | `logsSlice` | In-app logging |
+| `scanning` | `scanningSlice` | BLE scan state |
+| `bleLibrary` | `bleLibrarySlice` | BLE manager init state |
+| `blStatus` | `bluetoothStatusSlice` | Bluetooth adapter status |
+| `locationStatus` | `locationStatusSlice` | GPS availability |
+| `androidPermissions` | `androidPermissionsSlice` | Runtime permissions |
+| `authentication` | `authSlice` | User, token, permissions |
+| `deployments` | `deploymentsSlice` | Deployment state |
+| `wwAdmin` | `wwAdminSlice` | Admin features |
+| `sync` | `syncSlice` | Entity sync status tracking |
+| `network` | `networkSlice` | Network connectivity state |
+
+**Middleware:** Default RTK middleware + all four API middlewares. Serializable check ignores `persist/PERSIST`. Immutable check warns after 1000ms.
+
+**Typed hooks:**
 ```typescript
 export const useAppDispatch = () => useDispatch<AppDispatch>()
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector
 ```
 
-### Expo SDK 54
-
-**What it is**: Tools and libraries that make React Native development easier.
-
-**Key Expo Modules We Use**:
-- `@nozbe/watermelondb` - High-performance reactive database
-- `expo-location` - GPS access
-- `expo-file-system` - File operations
-- `expo-constants` - App configuration
-- `expo-linking` - Deep linking support
-
-**Example**: Using Expo SQLite - src/services/offline/DatabaseService.ts:92-100
-```typescript
-async initializeDatabase(): Promise<void> {
-  try {
-    this.db = await SQLite.openDatabaseAsync(this.DATABASE_NAME, {
-      enableChangeListener: true
-    });
-
-    // Enable foreign key constraints
-    await this.db.execAsync('PRAGMA foreign_keys = ON;');
-    await this.db.execAsync('PRAGMA journal_mode = WAL;');
-
-    await this.runMigrations();
-  } catch (error) {
-    console.error('Failed to initialize database:', error);
-    throw error;
-  }
-}
-```
-
-## State Management
-
-### Redux Toolkit 2.2.1
-
-**Why Redux Toolkit**: Simplifies Redux with less boilerplate, better TypeScript support, and built-in best practices.
-
-**Store Configuration**: src/redux/index.ts:25-68
-```typescript
-const store = configureStore({
-  reducer: {
-    [api.reducerPath]: api.reducer,
-    [enhancedApi.reducerPath]: enhancedApi.reducer,
-    [projectsApi.reducerPath]: projectsApi.reducer,
-    devices: devicesReducer,
-    logs: logsReducer,
-    configuration: configurationReducer,
-    scanning: scanningReducer,
-    bleLibrary: bleLibraryReducer,
-    blStatus: blStatusReducer,
-    locationStatus: locationStatusReducer,
-    androidPermissions: androidPermissionsReducer,
-    authentication: authReducer,
-    projects: projectsReducer,
-    deployments: deploymentsReducer,
-    wwAdmin: wwAdminReducer,
-    offline: offlineReducer,
-    sync: syncReducer,
-    network: networkReducer,
-  },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: ['persist/PERSIST', ...],
-        ignoredPaths: ['offline.pendingOperations.timestamp', ...],
-      },
-    })
-    .concat(api.middleware, enhancedApi.middleware, projectsApi.middleware, offlineSyncMiddleware.middleware),
-})
-
-export type RootState = ReturnType<typeof store.getState>
-export type AppDispatch = typeof store.dispatch
-```
-
-**Slice Example**: src/redux/slices/syncSlice.ts
-```typescript
-const syncSlice = createSlice({
-  name: 'sync',
-  initialState: {
-    overallSyncStatus: 'idle',
-    lastSyncedAt: null,
-    isSyncing: false,
-  },
-  reducers: {
-    setSyncStatus: (state, action) => {
-      state.overallSyncStatus = action.payload
-    },
-    setLastSyncedAt: (state, action) => {
-      state.lastSyncedAt = action.payload
-    },
-  },
-})
-```
-```typescript
-export interface OfflineState {
-  queue: {
-    operations: OfflineOperation[];
-    processing: boolean;
-    lastProcessed: string | null;
-  };
-  stats: {
-    totalQueued: number;
-    totalProcessed: number;
-    totalFailed: number;
-  };
-}
-
-const initialState: OfflineState = {
-  queue: {
-    operations: [],
-    processing: false,
-    lastProcessed: null,
-  },
-  stats: {
-    totalQueued: 0,
-    totalProcessed: 0,
-    totalFailed: 0,
-  },
-};
-```
-
-**Async Thunk Example**: src/redux/slices/authSlice.ts
-```typescript
-export const loginUser = createAsyncThunk(
-  'auth/login',
-  async (credentials: { email: string; password: string }) => {
-    const { data, error } = await supabase.auth.signInWithPassword(credentials)
-    if (error) throw error
-    return data
-  }
-)
-```
-```typescript
-export const queueOfflineOperation = createAsyncThunk(
-  'offline/queueOperation',
-  async (
-    operation: {
-      type: OfflineOperationType;
-      entityType: string;
-      entityId: string;
-      data: any;
-      userId: string;
-      organisationId: string;
-      priority?: number;
-    },
-    { dispatch, rejectWithValue }
-  ) => {
-    try {
-      initializeServices();
-
-      const offlineOp: OfflineOperation = {
-        id: `${operation.type}_${operation.entityId}_${Date.now()}`,
-        type: operation.type,
-        data: operation.data,
-        user_id: operation.userId,
-        organisation_id: operation.organisationId,
-        timestamp: new Date(),
-        retry_count: 0,
-        metadata: {
-          entityType: operation.entityType,
-          entityId: operation.entityId,
-          priority: operation.priority || OPERATION_PRIORITY.MEDIUM,
-        },
-      };
-
-      // Save to SQLite queue
-      await databaseService.queueOperation(offlineOp);
-
-      // Mark entity as pending sync
-      dispatch(markEntityPending({
-        entityType: operation.entityType as any,
-        entityId: operation.entityId,
-      }));
-
-      return offlineOp;
-    } catch (error: any) {
-      return rejectWithValue({ error: error.message });
-    }
-  }
-);
-```
-
 ### RTK Query
 
-**What it is**: Data fetching and caching built into Redux Toolkit.
+**API Definition:** [redux/api/index.ts](file:///c:/dev/ww/src/redux/api/index.ts)
 
-**API Definition**: src/redux/api/index.ts:15-20
 ```typescript
 export const api = createApi({
   reducerPath: "api",
@@ -298,400 +108,418 @@ export const api = createApi({
 })
 ```
 
-**Benefits**:
-- Automatic caching
-- Request deduplication
-- Optimistic updates
-- Automatic re-fetching
-- TypeScript code generation
+Endpoints are injected via `enhancedApi` (auto-generated) and `projectsApi` / `aiModelsApi` (manual).
 
-## Database & Backend
+### Auth Pattern
 
-### WatermelonDB (@nozbe/watermelondb)
+**File:** [authSlice.ts](file:///c:/dev/ww/src/redux/slices/authSlice.ts)
 
-**Purpose**: High-performance, reactive, offline-first local database.
+Authentication uses `createSlice` with synchronous reducers — **not** async thunks. The `AuthProvider` handles Supabase session management and dispatches `setCredentials` / `setInitialState` / `logout` actions.
 
-**Schema Example**: src/database/schema.ts
-```typescript
-import { appSchema, tableSchema } from '@nozbe/watermelondb'
+| Action | Purpose |
+|--------|---------|
+| `setCredentials` | Store JWT + user + calculate permissions from role |
+| `logout` | Clear all state, reset permissions to empty |
+| `setInitialState` | Restore persisted session on app start |
+| `setCurrentOrganisation` | Switch active org, recalculate permissions |
 
-export default appSchema({
-  version: 1,
-  tables: [
-    tableSchema({
-      name: 'projects',
-      columns: [
-        { name: 'name', type: 'string' },
-        { name: 'description', type: 'string', isOptional: true },
-        { name: 'status', type: 'string' },
-        { name: 'organisation_id', type: 'string', isIndexed: true },
-        { name: 'created_at', type: 'number' },
-        { name: 'updated_at', type: 'number' },
-      ]
-    }),
-    tableSchema({
-      name: 'sync_outbox',
-      columns: [
-        { name: 'operation_id', type: 'string', isIndexed: true },
-        { name: 'table_name', type: 'string' },
-        { name: 'record_id', type: 'string' },
-        { name: 'operation_type', type: 'string' }, // create, update, delete
-        { name: 'payload', type: 'string' }, // JSON payload
-        { name: 'status', type: 'string', isIndexed: true }, // pending, syncing, synced, failed
-        { name: 'created_at', type: 'number' },
-      ]
-    }),
-  ]
-})
-```
+Permissions are computed from `UserRole` (`ww_admin`, `project_admin`, `project_member`) — not fetched from the server.
 
-**Model Example**: src/database/models/Project.ts
+---
+
+## Database
+
+### WatermelonDB
+
+**Package:** `@nozbe/watermelondb` ^0.28.0
+
+High-performance, reactive, offline-first local database built on SQLite. This is the **primary local data store** — all entity data (projects, deployments, devices, etc.) lives here.
+
+**Schema:** [database/schema.ts](file:///c:/dev/ww/src/database/schema.ts)
+
+> [!IMPORTANT]
+> The schema is **auto-generated** by `npm run schema:generate`. Do not edit it manually. The generator reads `src/types/database.types.ts` (Supabase types). Current version: **185**.
+
+**Models:** [database/models/](file:///c:/dev/ww/src/database/models)
+
+| Model | Table | Key Fields |
+|-------|-------|------------|
+| `Project` | `projects` | `name`, `organisationId`, `captureMethodId`, `isActive` |
+| `Deployment` | `deployments` | `name`, `projectId`, `deviceId`, `latitude`, `longitude` |
+| `Device` | `devices` | `name`, `serialNumber`, `type` |
+| `DevicePreparation` | `device_preparation` | `deviceId`, `projectId`, battery/SD/firmware checks |
+| `Organisation` | `organisations` | `name` |
+| `SyncOutbox` | `sync_outbox` | `operationId`, `tableName`, `recordId`, `status` |
+| `User` | `users` | `email`, `firstName`, `lastName` |
+| `UserRole` | `user_roles` | `userId`, `projectId`, `role` |
+| `Firmware` | `firmware` | `version`, `fileUrl`, `releaseDate` |
+| `AiModel` | `ai_models` | `name`, `description` |
+| `CaptureMethod` | `capture_methods` | `value`, `description` |
+| `ActivitySensitivity` | `activity_sensitivity` | `value`, `description` |
+| `SamplingDesign` | `sampling_designs` | `value`, `description` |
+| `ProjectInvitation` | `project_invitations` | `projectId`, `email`, `role` |
+| `SyncState` | `sync_state` | Sync tracking metadata |
+
+**Model pattern:**
 ```typescript
 import { Model } from '@nozbe/watermelondb'
-import { field, text, date, children } from '@nozbe/watermelondb/decorators'
+import { field, text, date, readonly } from '@nozbe/watermelondb/decorators'
 
 export default class Project extends Model {
-  static table = 'projects'
-
-  @text('name') name!: string
-  @text('description') description?: string
-  @text('status') status!: string
-  @text('organisation_id') organisationId!: string
-  @date('created_at') createdAt!: Date
-  @date('updated_at') updatedAt!: Date
-
-  // Relationships
-  @children('deployments') deployments!: any
+    static table = 'projects'
+    @text('name') name!: string
+    @field('organisation_id') organisationId!: string
+    @field('capture_method_id') captureMethodId?: number | null
+    @field('is_active') isActive!: boolean
+    @readonly @date('created_at') createdAt!: number  // Note: number, not Date
+    // ...
 }
 ```
 
-### Supabase (@supabase/supabase-js)
+> [!NOTE]
+> WatermelonDB dates are stored as **numbers** (Unix timestamps), not JavaScript `Date` objects.
 
-**What it is**: Open-source Firebase alternative providing PostgreSQL database, authentication, and storage.
+### Data Access Pattern
 
-**Client Setup**: `src/services/supabase.ts`
+Components subscribe to WatermelonDB via `withObservables`. This replaces traditional `useEffect` + fetch patterns — the UI re-renders automatically when data changes.
+
 ```typescript
-import { getSupabaseClient } from './src/services/supabase';
+import { withObservables } from '@nozbe/watermelondb/react'
 
-// Always use the factory function
-const supabase = getSupabaseClient();
+const enhance = withObservables(['project'], ({ project }) => ({
+    project,
+    deployments: project.deployments.observe(),
+}))
+
+export default enhance(ProjectDetails)
 ```
 
-**Typed Operations**: src/services/database.ts:16-56
+### Supabase
+
+**Package:** `@supabase/supabase-js` ^2.53.0
+
+**Client:** [services/supabase.ts](file:///c:/dev/ww/src/services/supabase.ts)
+
+Uses a **factory pattern** with dynamic environment switching:
+
 ```typescript
-export const userOperations = {
-  getCurrentProfile: async (): Promise<Tables<'users'> | null> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+import { getSupabaseClient } from '../services/supabase'
 
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error fetching user profile:', error);
-      throw new Error(error.message);
-    }
-
-    return data;
-  },
-
-  createProfile: async (profileData: Omit<TablesInsert<'users'>, 'id'>): Promise<Tables<'users'>> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('No authenticated user');
-
-    const { data, error } = await supabase
-      .from('users')
-      .insert({
-        id: user.id,
-        ...profileData,
-      })
-      .select('*')
-      .single();
-
-    if (error) throw new Error(error.message);
-    return data;
-  },
-};
+const client = getSupabaseClient()  // Throws if not initialized
 ```
+
+| Function | Purpose |
+|----------|---------|
+| `initializeSupabaseClient()` | Create client from current environment config |
+| `getSupabaseClient()` | Get current client (throws if uninitialised) |
+| `reconnectSupabase()` | Recreate client after environment switch |
+| `onSupabaseClientChange()` | Subscribe to client change events |
+| `getCurrentEnvironment()` | Get active environment config |
+
+> [!WARNING]
+> A legacy `export default supabase` uses a `Proxy` for backward compatibility. **New code should always use `getSupabaseClient()`**.
+
+### Sync Architecture
+
+**Service:** [SupabaseSyncService.ts](file:///c:/dev/ww/src/services/SupabaseSyncService.ts) (1325 lines)
+
+Bidirectional sync between WatermelonDB and Supabase:
+
+```mermaid
+flowchart LR
+    A["Local Changes"] --> B["SyncOutbox\n(WatermelonDB)"]
+    B --> C["uploadOutbox()"]
+    C --> D["Supabase"]
+    D --> E["pullRemoteChanges()"]
+    E --> F["WatermelonDB\n(local tables)"]
+```
+
+| Method | Direction | What It Syncs |
+|--------|-----------|---------------|
+| `uploadOutbox()` | Push | Pending local changes → Supabase |
+| `pullRemoteChanges()` | Pull | Reference data (capture methods, sensitivities, etc.) |
+| `syncProjects()` | Pull | Projects user has access to via `user_roles` |
+| `syncDevices()` | Pull | Device records |
+| `syncDeployments()` | Pull | Deployment records |
+| `syncDevicePreparation()` | Pull | Preparation records |
+| `syncUserRoles()` | Pull | User role assignments |
+
+Sync is debounced (2s) and tracks per-entity status via `syncSlice` in Redux.
+
+---
 
 ## Navigation
 
 ### React Navigation 6
 
-**Stack Navigator**: src/navigation/index.tsx:61-62
-```typescript
-export const Stack = createNativeStackNavigator<RootStackParamList>()
+**Packages:** `@react-navigation/native` ^6.1.12, `@react-navigation/native-stack` ^6.9.20
+
+**File:** [navigation/index.tsx](file:///c:/dev/ww/src/navigation/index.tsx)
+
+#### Route Table
+
+| Route | Component | Params |
+|-------|-----------|--------|
+| `Home` | `BottomTabs` | `{ initialTab?: string }` |
+| `Login` | `Login` | `{ confirmed?: boolean }` |
+| `Register` | `Register` | — |
+| `ForgotPassword` | `ForgotPassword` | `{ token?, refreshToken?, mode? }` |
+| `Notifications` | `Notifications` | — |
+| `Profile` | `Profile` | — |
+| `Settings` | `Settings` | — |
+| `DeviceDiscovery` | `DeviceDiscoveryScreen` | `{ mode: 'prepare' \| 'engineer' \| 'deployment' }` |
+| `DeviceDetails` | `DeviceDetailsScreen` | `{ deviceId }` |
+| `PrepareAndTest` | `PrepareAndTestScreen` | `{ deviceId, bleDeviceId, selftestError?, setUtcError?, nextRoute? }` |
+| `EngineerConsoleScreen` | `EngineerConsoleScreen` | `{ deviceId }` |
+| `DfuScreen` | `DfuScreen` | `{ deviceId }` |
+| `NewProjectScreen` | `NewProjectScreen` | — |
+| `ProjectDetailsScreen` | `ProjectDetailsScreen` | `{ projectId }` |
+| `ProjectMembersScreen` | `ProjectMembersScreen` | `{ projectId, projectName }` |
+| `AddDeployment` | `AddDeployment` | `{ selectedProject? }` |
+| `StartDeploymentWizard` | `DeviceDiscoveryScreen` | `{ mode: 'deployment' }` |
+| `DeploymentDetailsStep` | `DeploymentDetailsStep` | `{ devicePreparationId, deviceId, bleDeviceId }` |
+| `DeploymentDetails` | `DeploymentDetailsScreen` | `{ deploymentId }` |
+| `EndDeploymentWizard` | `DeviceDiscoveryScreen` | `{ mode: 'end_deployment', deploymentId? }` |
+| `EndDeploymentDetailsStep` | `EndDeploymentDetailsStep` | `{ deploymentId, deviceId, bleDeviceId }` |
+
+Dev-only routes (`__DEV__`): `DevBuildInfo`, `AuthTestScreen`, `DeveloperSettings`.
+
+#### Navigation Guard Logic
+
+The navigator conditionally renders screens based on system state:
+
+```mermaid
+flowchart TD
+    A{"Bluetooth powered on?"} -- No --> B["BluetoothProblems screen"]
+    A -- Yes --> C{"Location enabled?"}
+    C -- No --> D["LocationProblems screen"]
+    C -- Yes --> E{"BLE initialized?"}
+    E -- No --> F["BLEProblems screen"]
+    E -- Yes --> G{"Token exists?"}
+    G -- No --> H["Auth screens (Login, Register, ForgotPassword)"]
+    G -- Yes --> I["Main app screens"]
 ```
 
-**TypeScript Route Types**: src/navigation/index.tsx:33-52
-```typescript
-export interface RootStackParamList extends ParamListBase {
-  CommunityDiscussion: undefined
-  Notifications: undefined
-  Profile: undefined
-  Settings: undefined
-  Home: undefined
-  DeviceNavigator: { deviceId: string }
-  Terminal: { deviceId: string }
-  DfuScreen: { deviceId: string }
-  Login: undefined
-  Register: undefined
-  ForgotPassword: undefined
-  AddDeployment: { selectedProject?: Option } | undefined
-  AddProject: undefined
-  NewProjectScreen: undefined
-  ProjectDetailsScreen: { projectId: string }
-  ProjectMembersScreen: { projectId: string; projectName: string }
-}
+#### Typed Navigation
 
-export type Routes = keyof RootStackParamList
-```
-
-**Navigation Usage in Components**:
 ```typescript
-import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>
+const navigation = useNavigation<NavigationProp>()
 
-const MyComponent = () => {
-  const navigation = useNavigation<NavigationProp>();
-
-  const goToProjectDetails = (projectId: string) => {
-    navigation.navigate('ProjectDetailsScreen', { projectId });
-  };
-};
+navigation.navigate('ProjectDetailsScreen', { projectId })
 ```
+
+---
 
 ## UI Library
 
 ### React Native Paper 5.12.3
 
-**Why Paper**: Material Design components for React Native with consistent theming.
+Material Design 3 component library. Theme configured in [theme.ts](file:///c:/dev/ww/src/theme.ts).
 
-**Theme Configuration**: src/theme.ts
-```typescript
-import { MD3DarkTheme, MD3LightTheme } from 'react-native-paper'
-import { DarkTheme as NavigationDarkTheme, DefaultTheme as NavigationDefaultTheme } from '@react-navigation/native'
+**Theme construction:** Uses `adaptNavigationTheme()` + `deepmerge` to combine React Navigation and Paper themes with custom color palettes. The app ships in **dark mode by default** — `CombinedDefaultTheme` uses `MD3DarkTheme` with custom green/amber colors.
 
-export const CombinedDefaultTheme = {
-  ...NavigationDefaultTheme,
-  ...MD3LightTheme,
-  colors: {
-    ...NavigationDefaultTheme.colors,
-    ...MD3LightTheme.colors,
-  },
-}
-```
+| Theme Export | Base | Usage |
+|-------------|------|-------|
+| `CombinedDefaultTheme` | `MD3DarkTheme` | Default (dark mode) |
+| `CombinedLightTheme` | `MD3LightTheme` | Light mode alternative |
+| `useExtendedTheme()` | — | Hook for accessing theme in components |
 
-**Component Usage**:
-```typescript
-import { Button, Card, TextInput } from 'react-native-paper'
+Custom theme extensions: `appPadding: 20`, `roundness: 10`, `spacing: 10`.
 
-<Card>
-  <Card.Title title="Project Name" />
-  <Card.Content>
-    <TextInput
-      label="Email"
-      value={email}
-      onChangeText={setEmail}
-      mode="outlined"
-    />
-    <Button mode="contained" onPress={handleSubmit}>
-      Submit
-    </Button>
-  </Card.Content>
-</Card>
-```
+### WW-Prefixed Components
 
+The app has a custom component library in `src/components/ui/`. **Always check here before building new UI elements.**
+
+| Component | Purpose |
+|-----------|---------|
+| `WWButton` | Standardised button |
+| `WWText` | Typography with theme integration |
+| `WWTextInput` | Form input with validation |
+| `WWSelect` | Dropdown/picker |
+| `WWScreenView` | Screen container with safe areas |
+| `WWScrollView` | Scrollable container |
+| `WWLoader` | Loading indicators |
+| `WWProgressBar` | Progress visualisation |
+
+---
 
 ## Maps
 
-### React Native Maps 1.14.0
+### React Native Maps 1.20.1
 
-**Provider**: Google Maps (configured for both iOS and Android).
+**Provider:** Google Maps (both iOS and Android)
 
-**Usage**: Used for checking device locations and deployments.
+**Location:** [features/maps/](file:///c:/dev/ww/src/features/maps)
 
-**Component Example**: src/features/maps/components/BasicMapView.tsx
-```typescript
-import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+| File | Purpose |
+|------|---------|
+| `BasicMapView.tsx` | Reusable map component with markers |
+| `DeploymentCard.tsx` | Map overlay for deployment details |
+| `DeploymentMarker.tsx` | Custom marker for deployments |
+| `MapControls.tsx` | Zoom/location controls |
+| `MapScreen.tsx` | Full-screen map view |
+| `useLocation.ts` | GPS access hook |
+| `useMapRegion.ts` | Map viewport management |
 
-<MapView
-  provider={PROVIDER_GOOGLE}
-  style={styles.map}
-  region={initialRegion}
->
-  {markers.map(marker => (
-    <Marker
-      key={marker.id}
-      coordinate={marker.coordinate}
-      title={marker.title}
-    />
-  ))}
-</MapView>
-```
-
-## Network & Connectivity
-
-### NetInfo (@react-native-community/netinfo)
-
-**Purpose**: Monitor network connectivity for offline sync.
-
-**Usage in OfflineService**: src/services/offline/OfflineService.ts:70-100
-```typescript
-private async setupNetworkMonitoring(): Promise<void> {
-  // Get initial network state
-  const initialState = await NetInfo.fetch();
-  this.updateNetworkStatus(initialState);
-
-  // Listen for network changes
-  this.networkUnsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
-    const wasOffline = !this.networkStatus.isConnected;
-    this.updateNetworkStatus(state);
-    const isNowOnline = this.networkStatus.isConnected;
-
-    console.log('📡 ============ NETWORK STATE CHANGE ============');
-    console.log('📡 Was offline:', wasOffline);
-    console.log('📡 Is now online:', isNowOnline);
-
-    // Trigger sync when coming online
-    if (wasOffline && isNowOnline) {
-      console.log('📡 🔄 TRANSITIONING FROM OFFLINE → ONLINE');
-      this.syncPendingOperations().catch(error => {
-        console.error('📡 ❌ Failed to sync pending operations:', error);
-      });
-    }
-  });
-}
-```
+---
 
 ## Hardware Integration
 
-### Bluetooth (react-native-ble-manager)
+### Bluetooth Low Energy
 
-**Purpose**: Communication with Wildlife Watcher cameras via Bluetooth Low Energy (BLE).
+**Package:** `react-native-ble-manager` ^11.3.2
 
-> **🔧 Important for Developers**: We use a centralized hook-based architecture for all BLE commands. Before implementing BLE features, please read the [BLE Architecture Guide](../ble-architecture-guide.md) to understand our patterns and avoid code duplication.
+Communication with Wildlife Watcher cameras. Uses a centralised hook-based architecture.
 
-**Architecture Pattern**:
+**Command definitions:** [ble/types.ts](file:///c:/dev/ww/src/ble/types.ts) — single source of truth for all BLE commands
+
+| Layer | File | Purpose |
+|-------|------|---------|
+| Types | `src/ble/types.ts` | Command enum, regex patterns, timeouts |
+| Low-level | `src/hooks/useBle.ts` | Connect, write, read, disconnect |
+| Commands | `src/hooks/useBleCommands.ts` | Typed wrappers (battery, SD card, GPS, etc.) |
+| Deployment | `src/hooks/useDeploymentConfiguration.ts` | Atomic deployment configuration |
+| Capture | `src/hooks/useCapturePreview.ts` | Image capture flow |
+| Init | `src/hooks/useBleInitialization.ts` | Shared self-test + UTC sync |
+| Settings | `src/hooks/useDeviceSettings.ts` | Quiesce device, configure intervals |
+
+> [!IMPORTANT]
+> **Critical timing constraint:** The device enters Deep Power Down (DPD) after 1000ms of inactivity. Commands must be spaced ≥500ms apart. The device has a single-slot command buffer — rapid commands are discarded.
+
+**See:** [BLE Architecture Guide](../resources/BLE_Architecture.md) for complete patterns and firmware constraints.
+
+### Firmware Updates (DFU)
+
+**Package:** `@getquip/expo-nordic-dfu` ^2.0.3
+
+Over-the-air firmware updates using Nordic Semiconductor's DFU protocol. Handles DFU mode transitions, bootloader detection, and firmware image upload.
+
+**Current limitations:**
+- **nRF firmware only** — Himax AI processor updates are planned but not yet supported
+- **No AI model transfer** — Cannot flash AI model files to the device
+- **No SD card config** — Cannot write to `CONFIG.TXT` on the SD card (planned)
+- **ZIP format required** — Must use Nordic DFU-compatible ZIP packages
+
+---
+
+## Network & Connectivity
+
+### NetInfo
+
+**Package:** `@react-native-community/netinfo` ^11.3.1
+
+Monitors network state to trigger sync when transitioning from offline → online.
+
+### Offline Types
+
+**File:** [types/offline.ts](file:///c:/dev/ww/src/types/offline.ts)
+
+Defines the offline operation queue types:
+
 ```typescript
-// ✅ CORRECT - Use centralized hooks
-import { useBleCommands } from '../hooks/useBleCommands'
-import { useDeploymentConfiguration } from '../hooks/useDeploymentConfiguration'
-
-const { configure } = useDeploymentConfiguration()
-await configure(device, config)
-
-// ❌ WRONG - Don't hardcode commands or duplicate logic
-await write(device, ['Battery']) // Never do this!
+export type OfflineOperationType =
+  | 'CREATE_PROJECT' | 'UPDATE_PROJECT' | 'DELETE_PROJECT'
+  | 'CREATE_DEPLOYMENT' | 'UPDATE_DEPLOYMENT' | 'DELETE_DEPLOYMENT'
+  | 'UPDATE_DEVICE_LORAWAN_STATUS'
+  | 'CREATE_ORGANISATION' | 'UPDATE_ORGANISATION'
+  | 'CREATE_USER' | 'UPDATE_USER' | 'DELETE_USER'
 ```
 
-**Key Components**:
-- **`useBle`** - Low-level BLE operations (connect, write, read)
-- **`useBleCommands`** - Individual command functions (battery, SD card, etc.)
-- **`useDeploymentConfiguration`** - Atomic, optimized deployment setup
-- **`useCapturePreview`** - Complete image capture process
-- **`src/ble/types.ts`** - Single source of truth for all command definitions
-- **Engineer Console** - Testing ground and reference implementation
+---
 
-**Command Flow**:
-1. Commands defined in `src/ble/types.ts`
-2. Wrapped in hooks in `src/hooks/useBleCommands.ts`
-3. Tested in Engineer Console
-4. Reused across all screens
+## Expo Modules Used
 
-**Critical Timing Constraints**:
-- Device enters Deep Power Down (DPD) after 1000ms inactivity
-- **Command Interval**: Minimum **500ms** delay between commands to prevent DPD race conditions
-- GPS format must be space-separated values without quotes: `"0 0 0"`
-- Single-slot command buffer means rapid commands get discarded
+| Package | Purpose |
+|---------|---------|
+| `expo-location` | GPS access |
+| `expo-file-system` | File read/write |
+| `expo-constants` | App configuration values |
+| `expo-linking` | Deep linking |
+| `expo-crypto` | UUID generation |
+| `expo-secure-store` | Secure credential storage |
+| `expo-clipboard` | Copy to clipboard |
+| `expo-localization` | Locale detection |
+| `expo-splash-screen` | Splash screen management |
+| `expo-status-bar` | Status bar styling |
+| `expo-updates` | OTA app updates |
+| `expo-dev-client` | Development builds |
 
-**Why This Matters**:
-- Update battery check once → propagates to all screens automatically
-- No duplicate BLE logic
-- Consistent behavior everywhere
-- Engineer Console serves as live documentation
-- Firmware-validated timing ensures reliable communication
-
-**See**: [BLE Architecture Guide](../app-technical-guides/ble-architecture-guide.md) for complete patterns, timing requirements, and firmware constraints.
-
-
-### Firmware Updates (react-native-nordic-dfu)
-
-**Purpose**: Over-the-air (OTA) firmware updates for Wildlife Watcher cameras using Nordic Semiconductor's DFU protocol.
-
-**Usage**:
-- Scan for DFU-capable devices
-- Handle DFU mode transitions
-- Upload new firmware images
+---
 
 ## Development Tools
 
 ### Testing
-- **Jest** - Unit testing framework
-- **@testing-library/react-native** - Component testing
-- **Maestro** - E2E UI testing
+
+| Tool | Purpose | Command |
+|------|---------|---------|
+| Jest | Unit & integration tests | `npm test` |
+| `@testing-library/react-native` | Component testing | — |
+| Maestro | E2E UI testing | `npm run test:maestro` |
+| Detox | E2E native testing | `npm run test:e2e` |
 
 ### Code Quality
-- **ESLint** - Linting
-- **Prettier** - Code formatting
-- **TypeScript** - Static type checking
+
+| Tool | Purpose |
+|------|---------|
+| ESLint 8 | Linting |
+| Prettier 2.8.8 | Code formatting |
+| TypeScript 5.3.3 | Static type checking |
+| `tsc --noEmit` | Type-check without emitting (`npm run type-check`) |
 
 ### Build & Deploy
-- **EAS (Expo Application Services)** - Cloud builds for iOS and Android
-- **Metro** - JavaScript bundler
-- **Babel** - JavaScript transpiler
 
-## Key Concepts Summary
+| Tool | Purpose |
+|------|---------|
+| EAS (Expo Application Services) | Cloud builds for iOS and Android |
+| Metro | JavaScript bundler |
+| Babel | Transpiler |
+| `patch-package` | Patching node_modules |
 
-### Component Lifecycle in React Native
-Same as React web, but consider:
-- App state (active, background, inactive)
-- Memory constraints on mobile
-- Native module initialization
+### Key Scripts
 
-### Styling Differences
-```typescript
-// StyleSheet API (recommended)
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-});
+| Script | Purpose |
+|--------|---------|
+| `npm run android` | Build and run on Android |
+| `npm run ios` | Build and run on iOS |
+| `npm run schema:generate` | Regenerate WatermelonDB schema from Supabase types |
+| `npm run schema:validate` | Validate schema consistency |
+| `npm run types:cloud-dev` | Regenerate Supabase TypeScript types |
+| `npm run type-check` | Run `tsc --noEmit` |
 
-// Usage
-<View style={styles.container}>
-  <Text style={styles.title}>Hello</Text>
-</View>
-```
+---
 
-### Performance Considerations
+## Performance Considerations
+
 - **FlatList** for long lists (not ScrollView)
-- **useMemo/useCallback** for expensive computations
-- **React.memo** for component optimization
-- **Hermes** JavaScript engine for faster startup
+- **useMemo / useCallback** for expensive computations
+- **React.memo** for component memoisation
+- **Hermes** engine for faster startup and lower memory usage
+- WatermelonDB lazy-loads records — queries are fast even with large datasets
+
+---
+
+## Error Handling
+
+| Area | Strategy |
+|------|----------|
+| BLE connection failures | Auto-retry with backoff; clear error screens |
+| BLE command timeouts | Logged + user notification; configurable per-command timeout |
+| Device disconnection | Detected via listeners; cleanup and navigation guard |
+| Bluetooth/Location off | Navigation guard shows dedicated problem screens |
+| Sync failures | Debounced retry; per-entity error tracking in `syncSlice` |
+| Offline mode | Full local functionality via WatermelonDB |
+| Sync conflicts | Last-write-wins in `SupabaseSyncService` |
+| Missing permissions | Guided flow via `AndroidPermissionsProvider` |
+
+---
 
 ## Next Steps
 
-1. Explore [02-PROJECT-STRUCTURE.md](./02-PROJECT-STRUCTURE.md) to understand code organization
-2. Deep dive into [03-OFFLINE-FIRST-ARCHITECTURE.md](./03-OFFLINE-FIRST-ARCHITECTURE.md)
-3. Learn Redux patterns in [04-REDUX-STATE-MANAGEMENT.md](./04-REDUX-STATE-MANAGEMENT.md)
-4. Study React Native specifics in [05-REACT-NATIVE-PATTERNS.md](./05-REACT-NATIVE-PATTERNS.md)
+1. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device preparation, deployment, and retrieval
+2. [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) — Project structure and state management
+3. [BLE_Architecture.md](../resources/BLE_Architecture.md) — BLE patterns and firmware constraints
+4. [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) — Offline-first architecture and sync
 
-## Additional Resources
-
-- [React Native Documentation](https://reactnative.dev/docs/getting-started)
-- [Expo Documentation](https://docs.expo.dev/)
-- [Redux Toolkit Documentation](https://redux-toolkit.js.org/)
-- [React Navigation Documentation](https://reactnavigation.org/)
-- [Supabase Documentation](https://supabase.com/docs)

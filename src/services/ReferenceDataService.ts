@@ -19,6 +19,17 @@ import { log, logError } from '../utils/logger'
  * - capture_methods: Wildlife capture methods (motion detection, time lapse, etc.)
  * - activity_sensitivity: Motion detection sensitivity levels (low, medium, high)
  * - ai_models: AI models available for wildlife detection
+
+/**
+ * ReferenceDataService
+ * 
+ * Manages read-only reference data (lookup tables) stored in WatermelonDB.
+ * These tables are synced one-way from Supabase and enable offline form functionality.
+ * 
+ * Reference tables:
+ * - capture_methods: Wildlife capture methods (motion detection, time lapse, etc.)
+ * - activity_sensitivity: Motion detection sensitivity levels (low, medium, high)
+ * - ai_models: AI models available for wildlife detection
  * - sampling_designs: Sampling design methods (random, systematic, etc.)
  */
 class ReferenceDataService {
@@ -27,7 +38,7 @@ class ReferenceDataService {
      * Called on app startup if online, or when user manually syncs
      */
     async syncReferenceData(): Promise<void> {
-        log('📚 Syncing reference data from Supabase...')
+        // log('📚 Syncing reference data from Supabase...')
 
         const client = getSupabaseClient()
 
@@ -55,16 +66,16 @@ class ReferenceDataService {
         }
 
         try {
-            log('📚 Starting parallel sync of reference tables...')
+            // log('📚 Starting parallel sync of reference tables...')
             await Promise.all([
-                (async () => { log('📚 Syncing capture methods...'); await this.syncCaptureMethods() })(),
-                (async () => { log('📚 Syncing activity sensitivity...'); await this.syncActivitySensitivity() })(),
-                (async () => { log('📚 Syncing AI models...'); await this.syncAiModels() })(),
-                (async () => { log('📚 Syncing sampling designs...'); await this.syncSamplingDesigns() })(),
-                (async () => { log('📚 Syncing firmware...'); await this.syncFirmware() })(),
+                (async () => { /* log('📚 Syncing capture methods...'); */ await this.syncCaptureMethods() })(),
+                (async () => { /* log('📚 Syncing activity sensitivity...'); */ await this.syncActivitySensitivity() })(),
+                (async () => { /* log('📚 Syncing AI models...'); */ await this.syncAiModels() })(),
+                (async () => { /* log('📚 Syncing sampling designs...'); */ await this.syncSamplingDesigns() })(),
+                (async () => { /* log('📚 Syncing firmware...'); */ await this.syncFirmware() })(),
             ])
 
-            log('✅ Reference data sync complete')
+            // log('✅ Reference data sync complete')
         } catch (error) {
             logError('❌ Reference data sync failed:', error)
             // Don't throw - app can continue with stale data
@@ -119,7 +130,7 @@ class ReferenceDataService {
             }
         })
 
-        log(`   ✅ Synced ${data.length} capture methods`)
+        // log(`   ✅ Synced ${data.length} capture methods`)
     }
 
     async getCaptureMethods(): Promise<Array<{ id: number; value: string; description: string }>> {
@@ -182,7 +193,7 @@ class ReferenceDataService {
             }
         })
 
-        log(`   ✅ Synced ${data.length} activity sensitivity levels`)
+        // log(`   ✅ Synced ${data.length} activity sensitivity levels`)
     }
 
     async getActivitySensitivity(): Promise<Array<{ id: number; value: string; description: string }>> {
@@ -248,7 +259,7 @@ class ReferenceDataService {
             }
         })
 
-        log(`   ✅ Synced ${data.length} AI models`)
+        // log(`   ✅ Synced ${data.length} AI models`)
     }
 
     async getAiModels(): Promise<Array<{ id: string; name: string; version: string; description: string | null }>> {
@@ -312,7 +323,7 @@ class ReferenceDataService {
             }
         })
 
-        log(`   ✅ Synced ${data.length} sampling designs`)
+        // log(`   ✅ Synced ${data.length} sampling designs`)
     }
 
     async getSamplingDesigns(): Promise<Array<{ id: number; value: string; description: string }>> {
@@ -333,7 +344,7 @@ class ReferenceDataService {
     public async syncFirmware(): Promise<void> {
         const supabase = getSupabaseClient()
         // Sync all active firmware metadata
-        log('[RefData] Syncing firmware...')
+        // log('[RefData] Syncing firmware...')
         const { data, error } = await supabase
             .from('firmware')
             .select('*')
@@ -354,21 +365,21 @@ class ReferenceDataService {
         await database.write(async () => {
             const collection = database.get<Firmware>('firmware')
             const existingRecords = await collection.query().fetch()
-            log('[RefData] Local firmware records before sync:', existingRecords.length)
+            // log('[RefData] Local firmware records before sync:', existingRecords.length)
 
             // Firmware uses UUID (string) for ID, not number like other ref tables
             const existingMap = new Map(existingRecords.map(r => [r.id, r]))
             const serverIds = new Set(data.map(d => d.id))
 
             // Upsert
-            log(`[RefData] Raw firmware data:`, JSON.stringify(data))
+            // log(`[RefData] Raw firmware data:`, JSON.stringify(data))
             for (const row of data) {
                 try {
                     if (!row) {
                         logError('[RefData] Found undefined row in firmware data!')
                         continue
                     }
-                    log(`[RefData] Processing firmware row: ${row.id}, type=${row.type}`)
+                    // log(`[RefData] Processing firmware row: ${row.id}, type=${row.type}`)
                     const existing = existingMap.get(row.id)
                     if (existing) {
                         await existing.update(rec => {
@@ -404,10 +415,10 @@ class ReferenceDataService {
                 }
             }
 
-            log('[RefData] Firmware sync complete.')
+            // log('[RefData] Firmware sync complete.')
         })
 
-        log(`   ✅ Synced ${data.length} firmware records`)
+        // log(`   ✅ Synced ${data.length} firmware records`)
     }
 
     /**
@@ -428,7 +439,7 @@ class ReferenceDataService {
             return versionB.localeCompare(versionA, undefined, { numeric: true, sensitivity: 'base' })
         })
 
-        log(`[RefData] getLatestFirmware(${type}) found:`, sorted.length, sorted[0]?._raw)
+        // log(`[RefData] getLatestFirmware(${type}) found:`, sorted.length, sorted[0]?._raw)
         return sorted.length > 0 ? sorted[0] : null
     }
 }

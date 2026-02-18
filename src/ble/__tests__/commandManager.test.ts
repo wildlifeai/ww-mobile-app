@@ -29,7 +29,7 @@ describe('BleCommandManager', () => {
     it('should send command and wait for response', async () => {
       const commandPromise = manager.sendCommand(
         mockPeripheral,
-        'ver',
+        { name: 'ver', string: 'ver' },
         mockWriteToDevice,
       )
 
@@ -50,7 +50,7 @@ describe('BleCommandManager', () => {
     it('should timeout if no response received', async () => {
       const commandPromise = manager.sendCommand(
         mockPeripheral,
-        'ver',
+        { name: 'ver', string: 'ver' },
         mockWriteToDevice,
         { timeout: 100 },
       )
@@ -63,8 +63,8 @@ describe('BleCommandManager', () => {
     // TODO: Fix timing issues with fake timers in this test
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip('should serialize multiple commands', async () => {
-      const command1 = manager.sendCommand(mockPeripheral, 'ver', mockWriteToDevice)
-      const command2 = manager.sendCommand(mockPeripheral, 'battery', mockWriteToDevice)
+      const command1 = manager.sendCommand(mockPeripheral, { name: 'ver', string: 'ver' }, mockWriteToDevice)
+      const command2 = manager.sendCommand(mockPeripheral, { name: 'battery', string: 'battery' }, mockWriteToDevice)
 
       // First command should be sent immediately
       expect(mockWriteToDevice).toHaveBeenCalledTimes(1)
@@ -96,7 +96,7 @@ describe('BleCommandManager', () => {
     it('should classify and route RESPONSE messages', async () => {
       const commandPromise = manager.sendCommand(
         mockPeripheral,
-        'ver',
+        { name: 'ver', string: 'ver' },
         mockWriteToDevice,
       )
 
@@ -106,9 +106,9 @@ describe('BleCommandManager', () => {
       expect(response).toBe('WW500-C02 V 00.08.14')
     })
 
-    it('should emit UNSOLICITED messages to listeners', (done) => {
+    it('should emit UNSOLICITED/INFO messages to listeners', (done) => {
       const unsubscribe = manager.onUnsolicitedMessage((msg) => {
-        expect(msg.type).toBe(MessageType.UNSOLICITED)
+        expect(msg.type).toBe(MessageType.INFO)
         expect(msg.content).toBe('Wake')
         unsubscribe()
         done()
@@ -122,7 +122,7 @@ describe('BleCommandManager', () => {
     it.skip('should handle ERROR messages', async () => {
       const commandPromise = manager.sendCommand(
         mockPeripheral,
-        'AI info',
+        { name: 'AI info', string: 'AI info' },
         mockWriteToDevice,
         { timeout: 1000 }
       )
@@ -175,13 +175,13 @@ describe('BleCommandManager', () => {
 
       expect(callback1).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: MessageType.UNSOLICITED,
+          type: MessageType.INFO,
           content: 'Wake',
         }),
       )
       expect(callback2).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: MessageType.UNSOLICITED,
+          type: MessageType.INFO,
           content: 'Wake',
         }),
       )
@@ -205,7 +205,7 @@ describe('BleCommandManager', () => {
     it('should reject pending command', async () => {
       const commandPromise = manager.sendCommand(
         mockPeripheral,
-        'ver',
+        { name: 'ver', string: 'ver' },
         mockWriteToDevice,
       )
 
@@ -220,8 +220,8 @@ describe('BleCommandManager', () => {
     })
 
     it('should clear command queue', async () => {
-      const promise1 = manager.sendCommand(mockPeripheral, 'ver', mockWriteToDevice).catch(() => {})
-      const promise2 = manager.sendCommand(mockPeripheral, 'battery', mockWriteToDevice).catch(() => {})
+      const promise1 = manager.sendCommand(mockPeripheral, { name: 'ver', string: 'ver' }, mockWriteToDevice).catch(() => {})
+      const promise2 = manager.sendCommand(mockPeripheral, { name: 'battery', string: 'battery' }, mockWriteToDevice).catch(() => {})
 
       manager.clear()
 

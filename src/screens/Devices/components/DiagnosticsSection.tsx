@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react'
 import { View, StyleSheet, Image } from 'react-native'
-import { Card, Button, Text } from 'react-native-paper'
+import { Card, Button, Text, ProgressBar } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
 import { WWIcon } from '../../../components/ui/WWIcon'
@@ -18,6 +18,7 @@ interface DiagnosticsSectionProps {
     bleDeviceConnected: boolean
     theme: any
     onShowHelp: (title: string, content: string) => void
+    captureProgress: number
 }
 
 export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
@@ -32,7 +33,8 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
     isInitializing,
     bleDeviceConnected,
     theme,
-    onShowHelp
+    onShowHelp,
+    captureProgress
 }) => {
     const renderBatteryIcon = useCallback((props: any) => <WWIcon {...props} source="battery-charging" />, [])
     const renderBatteryHelp = useCallback((props: any) => (
@@ -151,13 +153,22 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
                         </View>
                     )}
 
+                    {isCapturingImage && (
+                        <View style={{ marginBottom: 8 }}>
+                             <ProgressBar progress={captureProgress} color={theme.colors.primary} />
+                             <Text variant="labelSmall" style={{ textAlign: 'center', marginTop: 4 }}>
+                                 {Math.round(captureProgress * 100)}%
+                             </Text>
+                        </View>
+                    )}
+
                     <WWButton
                         mode="outlined"
                         onPress={handleCameraTest}
                         disabled={sdCardStatus === null || isCapturingImage || isInitializing || !bleDeviceConnected}
                         loading={isCapturingImage}
                     >
-                        {isCapturingImage ? 'Capturing & Downloading...' : (cameraTestPassed ? 'Test Again' : 'Test Camera View')}
+                        {isCapturingImage ? `Downloading... ${Math.round(captureProgress * 100)}%` : (cameraTestPassed ? 'Test Again' : 'Test Camera View')}
                     </WWButton>
                     {sdCardStatus === null && (
                         <Text variant="bodySmall" style={[styles.warningText, { color: theme.colors.error }]}>

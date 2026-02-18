@@ -7,17 +7,12 @@ import { Peripheral } from "react-native-ble-manager"
 
 import { BLE_SERVICE_UUID } from "../utils/constants"
 import {
-	extractServiceAndCharacteristic,
 	invokeWithTimeout,
 	isOurDevice,
 	sleep,
 } from "../utils/helpers"
 import { guard, log, logError, logWarn } from '../utils/logger'
 import { useAppDispatch, useAppSelector } from "../redux"
-import {
-	deviceConfigClear,
-	deviceConfigInitiated,
-} from "../redux/slices/configurationSlice"
 import {
 	ExtendedPeripheral,
 	deviceDisconnect,
@@ -26,8 +21,8 @@ import {
 } from "../redux/slices/devicesSlice"
 import { clearLogs } from "../redux/slices/logsSlice"
 import { scanError, scanStart } from "../redux/slices/scanningSlice"
-// import { useInterval } from "../hooks/useInterval"
-import { clearAllDeviceIntervals, writeToDevice } from "../utils/helpers"
+import { clearAllDeviceIntervals } from "../utils/helpers"
+import { extractServiceAndCharacteristic, writeToDevice } from "../ble/transport"
 import {
 	BleCommandOptions,
 	CommandConstructOptions,
@@ -36,7 +31,7 @@ import {
 	// COMMANDS,
 	Services,
 } from "../ble/types"
-import { constructCommandString } from "../ble/parser"
+import { constructCommandString } from "../ble/types"
 import { bleCommandManager } from "../ble/commandManager"
 import { getCommandByName } from "../ble/types"
 
@@ -55,9 +50,7 @@ export type ReturnType = {
 		data: (string | WriteData)[],
 		options?: BleCommandOptions,
 	) => Promise<string[]>
-	enginePause: (toggle: boolean) => void
 	pingsPause: (toggle: boolean) => void
-	enginePaused: React.MutableRefObject<boolean>
 	pingsPaused: React.MutableRefObject<boolean>
 }
 
@@ -73,29 +66,11 @@ export const useBle = (): ReturnType => {
 
 	const dispatch = useAppDispatch()
 
-	const enginePauseRef = useRef(false)
 	const pingsPauseRef = useRef(false)
-
-	/**
-	 * Wrapper for writeToDevice to match BleCommandManager signature
-	 */
-	const writeToDeviceWrapper = useCallback(
-		async (p: ExtendedPeripheral, s: string) => {
-			const err = await writeToDevice(p, s)
-			if (err) throw err
-		},
-		[],
-	)
 
 	// Removed legacy useInterval polling queue. BleCommandManager handles serialization now.
 
-	const enginePause = useCallback((toggle: boolean) => {
-		// log(`Engine turning: ${toggle ? "off" : "on"}`)
-		enginePauseRef.current = toggle
-	}, [])
-
 	const pingsPause = useCallback((toggle: boolean) => {
-		// log(`Pinging paused: ${toggle ? "YES" : "NO"}`)
 		pingsPauseRef.current = toggle
 	}, [])
 
@@ -138,18 +113,6 @@ export const useBle = (): ReturnType => {
 
 			const currentPeripheral = devices[peripheral.id]
 
-			if (currentPeripheral) {
-				dispatch(
-					deviceConfigInitiated({
-						id: peripheral.id,
-						data: data
-							.filter((strOrCommand) => typeof strOrCommand !== "string")
-							.map(([name]) => {
-								return name as CommandNames
-							}),
-					}),
-				)
-			}
 
 			const results: string[] = []
 
@@ -172,28 +135,43 @@ export const useBle = (): ReturnType => {
 						if (cmdOptions.expectedPattern === undefined && cmdDef?.readRegex) {
 							cmdOptions.expectedPattern = cmdDef.readRegex
 						}
+						// Use command-specific timeout if no override provided in options
+						if (cmdOptions.timeout === undefined && cmdDef?.timeout) {
+							cmdOptions.timeout = cmdDef.timeout
+						}
 
 						const response = await bleCommandManager.sendCommand(
 							peripheral,
-							commandString,
-							writeToDeviceWrapper,
+							{ name: lookupName || 'UNKNOWN', string: commandString },
+							writeToDevice,
 							cmdOptions,
 						)
 						results.push(response)
 						// Add small delay between commands to be nice to firmware
 						await sleep(PAUSE)
 					} catch (error) {
-						logError(`Error writing command ${commandString}: ${error}`)
-						results.push(`ERROR: ${error}`)
-						// On critical error, we might want to disconnect or stop processing
-						// disconnectDevice(peripheral) 
+						const errMsg = error instanceof Error ? error.message : String(error)
+						logError(`Error writing command ${commandString}: ${errMsg}`)
+						results.push(`ERROR: ${errMsg}`)
+						
+						// Stop the sequence if the error is fatal (disconnection or cancelled)
+						const isFatal = 
+							errMsg.includes('Peripheral not found') || 
+							errMsg.includes('not connected') || 
+							errMsg.includes('Command manager cleared') ||
+							errMsg.includes('disconnected')
+
+						if (isFatal) {
+							logWarn(`[useBle] Fatal error detected, stopping command sequence: ${errMsg}`)
+							throw error
+						}
 					}
 				}
 			}
 
 			return results
 		},
-		[devices, dispatch, initialized, writeToDeviceWrapper],
+		[devices, initialized],
 	)
 
 	const isDeviceReconnecting = useRef<{ [x: string]: boolean }>({})
@@ -238,11 +216,6 @@ export const useBle = (): ReturnType => {
 
 					// Clear logs BEFORE starting connection/notifications to ensure we don't wipe early firmware messages
 					dispatch(clearLogs({ id: newPeripheral.id }))
-					dispatch(deviceConfigClear({ id: newPeripheral.id }))
-
-					// if (Platform.OS === "android") {
-					// 	await BleManager.createBond(newPeripheral.id)
-					// }
 
 					await invokeWithTimeout(
 						() => BleManager.connect(newPeripheral.id),
@@ -285,6 +258,14 @@ export const useBle = (): ReturnType => {
 					// This prevents the 8-second delay caused by MTU blocking the GATT queue
 					if (Platform.OS === "android") {
 						try {
+                            // Request high priority (1) for faster transfer
+                            await invokeWithTimeout(
+                                () => BleManager.requestConnectionPriority(newPeripheral.id, 1),
+                                "BleManager.requestConnectionPriority",
+                                timeout
+                            )
+                            log("Connection priority: High")
+
 							await invokeWithTimeout(
 								() => BleManager.requestMTU(newPeripheral.id, 512),
 								"BleManager.requestMTU",
@@ -292,7 +273,7 @@ export const useBle = (): ReturnType => {
 							)
 							log("MTU negotiated to 512 bytes")
 						} catch (mtuError) {
-							logWarn("MTU negotiation failed, using default:", mtuError)
+							logWarn("MTU/Priority negotiation failed, using default:", mtuError)
 						}
 					}
 
@@ -340,7 +321,6 @@ export const useBle = (): ReturnType => {
 			results.map(async (peripheral) => {
 				// Prevent disconnecting devices that are already handled by the app state
 				if (devices[peripheral.id]?.connected) {
-					// log(`Skipping cleanup for already connected device: ${peripheral.id}`)
 					return
 				}
 
@@ -372,8 +352,6 @@ export const useBle = (): ReturnType => {
 		connectDevice,
 		disconnectDevice,
 		write,
-		enginePause,
-		enginePaused: enginePauseRef,
 		pingsPause,
 		pingsPaused: pingsPauseRef,
 	}

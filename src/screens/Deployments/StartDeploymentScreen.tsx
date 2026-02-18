@@ -17,13 +17,12 @@ import { DeviceService } from '../../services/DeviceService'
 
 import { useBleCommands } from '../../hooks/useBleCommands'
 import { useBleInitialization } from '../../hooks/useBleInitialization'
-// // import { useDeviceSettings } from '../../hooks/useDeviceSettings'
 import { useBleActions } from '../../providers/BleEngineProvider'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 
 import { LoRaWANSection } from './components/LoRaWANSection'
 import { CameraViewSection } from './components/CameraViewSection'
 import { LocationSection } from './components/LocationSection'
-// import { PhotosSection } from './components/PhotosSection'
 import { MetadataSection } from './components/MetadataSection'
 import { HelpDialog } from '../../components/ui/HelpDialog'
 import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog'
@@ -38,30 +37,20 @@ const INITIALIZATION_GUARD_TIMEOUT = 2000;
 
 export const DeploymentDetailsStep = () => {
     const theme = useTheme()
-    const navigation = useNavigation()
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
     const route = useRoute<DeploymentDetailsRouteProp>()
 
-    // Params passed from DeviceDiscoveryScreen
-    // Params passed from DeviceDiscoveryScreen
     const { devicePreparationId, deviceId, bleDeviceId } = route.params || {}
 
     // Selectors
     const devices = useAppSelector(state => state.devices)
     const bleDevice = devices[bleDeviceId]
-    // const logs = useAppSelector(state => state.logs[bleDeviceId] || [])
-    // const deviceConfig = useAppSelector(state => state.configuration[bleDeviceId])
     const user = useAppSelector(state => state.authentication.user)
 
-
-
     // BLE Hooks
-    // BLE Hooks
-    const { setUtc, runDisconnect, getHeartbeat, flashLed } = useBleCommands()
+    const { setUtc, runDisconnect, flashLed } = useBleCommands()
     const { initialize: runBleStandardInit } = useBleInitialization()
-    // const { updateSettings } = useDeviceSettings({ device: bleDevice })
-
-    // const { updateSettings } = useDeviceSettings({ device: bleDevice })
-    const { configure: configureDeployment } = useDeploymentConfiguration()
+    const { configure: startConfigure } = useDeploymentConfiguration()
     useBleActions()
 
 
@@ -82,11 +71,9 @@ export const DeploymentDetailsStep = () => {
     })
 
     const [submitting, setSubmitting] = useState(false)
-    const [, setPreparation] = useState<any>(null)
     const [project, setProject] = useState<any>(null)
     const [captureMethodName, setCaptureMethodName] = useState<string>('')
     const [sensitivityLabel, setSensitivityLabel] = useState<string>('')
-    const [, setTimeCheckStatus] = useState<'pending' | 'ok' | 'correcting' | 'failed'>('pending')
     
     // UI State for Initialization Header
     const [device, setDevice] = useState<Device | undefined>()
@@ -100,7 +87,7 @@ export const DeploymentDetailsStep = () => {
     const [finishStep, setFinishStep] = useState('')
     const [finishLogs, setFinishLogs] = useState<string[]>([])
     const [isFinishing, setIsFinishing] = useState(false)
-    const [isDeploymentSuccess, setIsDeploymentSuccess] = useState(false)
+    const [isStartSuccess, setIsStartSuccess] = useState(false)
 
     const addFinishLog = useCallback((message: string) => {
         setFinishLogs(prev => [...prev, message])
@@ -109,7 +96,6 @@ export const DeploymentDetailsStep = () => {
     // Connection Guard Refs
     const isNavigatingAway = useRef(false)
     const isStartDeploymentInProgress = useRef(false)
-    // const isInitializing = useRef(true) // Replaced with state
 
     // Standard BLE initialization plus initialization guard
     const hasRunInitialization = useRef(false)
@@ -170,7 +156,7 @@ export const DeploymentDetailsStep = () => {
             log('[Deployment] Step 2: Running standard BLE initialization...')
             
             const result = await runBleStandardInit(bleDevice, {
-                onProgress: (step, progress) => {
+                onProgress: (step: string, progress: number) => {
                     setInitStep(step)
                     setInitProgress(0.2 + (progress * 0.8)) // Scale progress
                 }
@@ -184,8 +170,6 @@ export const DeploymentDetailsStep = () => {
                 })
             } else {
                  log('[Deployment] Initialization complete. Time set and hardware verified.')
-                 // Implicitly we know UTC is set, so we can set TimeCheckStatus to ok
-                 setTimeCheckStatus('ok')
             }
 
             // Mark initialization as done
@@ -197,63 +181,10 @@ export const DeploymentDetailsStep = () => {
         initializeDevice()
     }, [bleDevice, runBleStandardInit, navigation])
 
-    // Heartbeat: Ping device every 20 seconds to keep it awake during deployment
-    useEffect(() => {
-        const isConnected = !!bleDevice?.connected
-        if (!isConnected || isInitializing) return
 
-        log('[Deployment] Starting keep-alive heartbeat (20s interval)')
-        const interval = setInterval(async () => {
-            const currentDevice = bleDeviceRef.current
-            if (currentDevice && currentDevice.connected && !isNavigatingAway.current) {
-                log('[Deployment] Heartbeat ping...')
-                try {
-                    await getHeartbeat(currentDevice)
-                } catch (e) {
-                    logWarn('[Deployment] Heartbeat failed:', e)
-                }
-            }
-        }, 20000)
 
-        return () => {
-            log('[Deployment] Stopping heartbeat')
-            clearInterval(interval)
-        }
-    }, [bleDevice?.connected, isInitializing, getHeartbeat])
 
-    /*
-    const validateAndCorrectTime = useCallback(async (timeString: string) => {
-        try {
-            // value comes from regex group: "2024-01-01T12:00:00Z"
-            const deviceTime = new Date(timeString).getTime()
-            const phoneTime = new Date().getTime()
-            const diff = Math.abs(phoneTime - deviceTime)
 
-            log(`[TimeCheck] Device: ${timeString}, Phone: ${new Date().toISOString()}, Diff: ${diff}ms`)
-
-            if (diff > 5000) { // 5 seconds tolerance
-                log('[TimeCheck] Time mismatch. Setting UTC...')
-                setTimeCheckStatus('correcting')
-                await setUtc(bleDevice)
-                // Optionally request verify again?
-                setTimeCheckStatus('ok') // Assume success for now
-            } else {
-                log('[TimeCheck] Time is correct.')
-                setTimeCheckStatus('ok')
-            }
-        } catch (e) {
-            logError('[TimeCheck] Parse error:', e)
-            setTimeCheckStatus('failed')
-        }
-    }, [bleDevice, setUtc])
-    */
-
-    // Removed Check And Correct Time - Replaced by runBleStandardInit
-    const startCheckAndCorrectTime = useCallback(async () => {
-         // Placeholder if we need manual trigger
-         if (!bleDevice) return
-         await setUtc(bleDevice)
-    }, [bleDevice, setUtc])
 
     const loadPreparationAndProject = useCallback(async () => {
         try {
@@ -265,7 +196,7 @@ export const DeploymentDetailsStep = () => {
                 DeviceService.getDeviceById(deviceId)
             ])
             
-            setPreparation(prep)
+            // setPreparation(prep) - Unused state removed
             setDevice(deviceData)
             log('[DeploymentDetails] Prep loaded:', prep?.id, 'projectId:', prep?.projectId);
 
@@ -305,9 +236,7 @@ export const DeploymentDetailsStep = () => {
         }
     }, [devicePreparationId, loadPreparationAndProject])
 
-    // Initial Time Check on Mount REMOVED (Handled by Init)
 
-    // Check Status REMOVED (Merged into Init Flow)
 
     // Navigation Interceptor: Handle Back Button / Gesture
     useEffect(() => {
@@ -337,40 +266,17 @@ export const DeploymentDetailsStep = () => {
                 // 2. Redirect to Deployments Screen/Tab
                 // We use a small timeout or immediate navigation? Immediate is fine.
                 // Cast to any to avoid strict type checking on route names if needed
-                (navigation as any).navigate('Home', { initialTab: 'deployment' })
+                                navigation.navigate('Home', { initialTab: 'deployment' })
             }
         })
 
         return unsubscribe
     }, [navigation, bleDevice, runDisconnect])
 
-    // Heartbeat: Ping device every 20 seconds to keep it awake
-    useEffect(() => {
-        // Don't ping if initializing or submitting (as other commands are running)
-        // or if not connected
-        if (!bleDevice?.connected || isInitializing || submitting) return
-
-        log('[Deployment] Starting keep-alive heartbeat (20s interval)')
-        const interval = setInterval(async () => {
-            if (bleDevice?.connected && !isNavigatingAway.current && !submitting) {
-                log('[Deployment] Heartbeat ping...')
-                try {
-                    await getHeartbeat(bleDevice)
-                } catch (e) {
-                    logWarn('[Deployment] Heartbeat failed:', e)
-                }
-            }
-        }, 20000)
-
-        return () => {
-            log('[Deployment] Stopping heartbeat')
-            clearInterval(interval)
-        }
-    }, [bleDevice, submitting, getHeartbeat, isInitializing])
 
 
-    // Status and Time Check Logic - Removed Redux monitoring
-    // Now using direct responses from getStatus() and getUtc() commands
+
+
 
 
     // Robust Connection Lost Alert
@@ -416,18 +322,15 @@ export const DeploymentDetailsStep = () => {
         setFinishProgress(0)
         setFinishStep('Starting deployment...')
         setFinishLogs([])
-        setIsDeploymentSuccess(false)
+        setIsStartSuccess(false)
         isStartDeploymentInProgress.current = true // Suppress disconnect alerts
 
         try {
-            // 1. Final Time Check
             addFinishLog('Performing final time check...')
             setFinishStep('Checking time...')
             setFinishProgress(0.1)
             
-            await startCheckAndCorrectTime()
-            // Delay removed - setUtc is now fire-and-forget and verified during init
-            // await new Promise(resolve => setTimeout(resolve, 2000))
+            if (bleDevice) await setUtc(bleDevice)
             addFinishLog('Time check complete')
 
             // 2. Call DeploymentService.createDeployment
@@ -468,16 +371,17 @@ export const DeploymentDetailsStep = () => {
             log('[Deployment] Configuring device via standardized hook...')
             try {
                 // Determine capture method
-                const methodRaw = captureMethodName.toLowerCase().replace(/[^a-z]/g, '')
-                let method: 'activity' | 'timelapse' | 'unknown' = 'unknown'
+                let method: 'activity' | 'timelapse' | 'mixed' | 'unknown' = 'unknown'
                 
-                if (methodRaw.includes('activity') || methodRaw.includes('motion')) {
+                if (project.capture_method_id === 1) {
                     method = 'activity'
-                } else if (methodRaw.includes('time') || methodRaw.includes('lapse')) {
+                } else if (project.capture_method_id === 2) {
                     method = 'timelapse'
+                } else if (project.capture_method_id === 3) {
+                    method = 'mixed'
                 }
 
-                await configureDeployment(bleDevice, {
+                await startConfigure(bleDevice, {
                     deploymentId: newDeployment.id,
                     captureMethod: method,
                     motionInterval: 1000,
@@ -498,31 +402,10 @@ export const DeploymentDetailsStep = () => {
                 // We continue to enable camera/disconnect as best effort
             }
 
-            // 4. Enable Camera (Explicit Command) - REMOVED per optimization
-            // Camera is enabled in step 3 (useDeploymentConfiguration)
-            /* 
-            if (bleDevice?.connected) {
-                addFinishLog('Enabling camera...')
-                setFinishStep('Enabling camera...')
-                setFinishProgress(0.7)
-                log('[Deployment] Sending explicit Enable Camera command...')
-                try {
-                    await enableCamera(bleDevice)
-                    addFinishLog('Camera enabled')
-                    log('[Deployment] Explicit enable command sent.')
-                } catch (e) {
-                    logWarn('[Deployment] Failed to send explicit enable command:', e)
-                    addFinishLog('Warning: Failed to confirm camera enable')
-                }
-            } else {
-                logWarn('[Deployment] Device disconnected during explicit enable.')
-                addFinishLog('Warning: Device disconnected before camera enable')
-            }
-            */
 
 
 
-            // 6. Flash Green LED (Success Confirmation)
+
             // 6. Flash Green LED (Success Confirmation)
             // Re-enabled by user request (3 flashes, 300ms each = ~1s total)
             if (bleDevice?.connected) {
@@ -557,7 +440,7 @@ export const DeploymentDetailsStep = () => {
             // 8. Success State
             setFinishStep('Complete')
             setFinishProgress(1.0)
-            setIsDeploymentSuccess(true)
+            setIsStartSuccess(true)
             addFinishLog('Deployment started successfully')
 
         } catch (error) {
@@ -566,16 +449,16 @@ export const DeploymentDetailsStep = () => {
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false // Re-enable alerts on failure
         }
-    }, [formState.name, formState.locationName, formState.locationDescription, formState.cameraHeight, formState.location, formState.notes, bleDevice, project, user, startCheckAndCorrectTime, deviceId, devicePreparationId, captureMethodName, runDisconnect, configureDeployment, addFinishLog, flashLed])
+    }, [formState.name, formState.locationName, formState.locationDescription, formState.cameraHeight, formState.location, formState.notes, bleDevice, project, user, deviceId, devicePreparationId, captureMethodName, runDisconnect, startConfigure, addFinishLog, flashLed])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)
-        if (isDeploymentSuccess) {
+        if (isStartSuccess) {
              isNavigatingAway.current = true
-            // @ts-ignore - navigation types need to be strict but for now this works
-            navigation.navigate('Home', { initialTab: 'deployment' })
+            // Properly typed navigation
+                        navigation.navigate('Home', { initialTab: 'deployment' })
         }
-    }, [isDeploymentSuccess, navigation])
+    }, [isStartSuccess, navigation])
 
     const [helpVisible, setHelpVisible] = useState(false)
     const [helpTitle, setHelpTitle] = useState('')
@@ -666,7 +549,7 @@ export const DeploymentDetailsStep = () => {
                             mode="outlined"
                             onPress={() => {
                                 isNavigatingAway.current = true
-                                    ; (navigation as any).navigate('PrepareAndTest', {
+                                    ; navigation.navigate('PrepareAndTest', {
                                         deviceId,
                                         bleDeviceId,
                                         nextRoute: 'DeploymentDetailsStep'
@@ -732,7 +615,7 @@ export const DeploymentDetailsStep = () => {
                 progress={finishProgress}
                 step={finishStep}
                 logs={finishLogs}
-                isComplete={isDeploymentSuccess}
+                isComplete={isStartSuccess}
                 onDismiss={handleFinishDismiss}
                 loadingTitle="Starting Deployment"
                 successTitle="Deployment Complete"

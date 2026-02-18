@@ -111,7 +111,19 @@ export const DeviceDiscoveryScreen = () => {
                         return
                     }
 
-                    // For 'prepare' and 'end_deployment', we need the device in the DB
+                    if (mode === 'prepare') {
+                        // Navigate directly to Prepare and Test (Immediate Navigation Optimization)
+                        // The PrepareAndTestScreen will handle DB resolution/creation
+                        log(`[DeviceDiscovery] Immediate navigation to PrepareAndTest for ${device.id}`);
+                        (navigation as any).navigate('PrepareAndTest', {
+                            bleDeviceId: connectedDevice.id,
+                            // We don't verify DB device here anymore for speed
+                        })
+                        setProcessing(false)
+                        return
+                    }
+
+                    // For 'end_deployment', we need the device in the DB
                     // 2. Check if device exists in DB
                     log(`Checking DB for device ${device.id}...`)
                     let dbDevice = await DeviceService.getDeviceByBluetoothId(device.id)
@@ -169,29 +181,7 @@ export const DeviceDiscoveryScreen = () => {
                         }
                     }
 
-                    if (mode === 'prepare') {
-                        // Check deployment status
-                        if (dbDevice) {
-                            const status = await DeviceService.calculateDeviceStatus(dbDevice.id)
-                            if (status === 'deployed') {
-                                Alert.alert(
-                                    'Device Deployed',
-                                    'This device is currently deployed. Please end the deployment before preparing it.',
-                                    [{ text: 'OK', onPress: () => disconnectDevice(device) }]
-                                )
-                                setProcessing(false)
-                                return
-                            }
-                        }
-
-                        // Navigate directly to Prepare and Test without initialization
-                        if (dbDevice) {
-                            (navigation as any).navigate('PrepareAndTest', {
-                                deviceId: dbDevice.id,
-                                bleDeviceId: connectedDevice.id,
-                            })
-                        }
-                    } else if (mode === 'deployment') {
+                    if (mode === 'deployment') {
 
                         // Smart Routing: Check if device is prepared
                         if (dbDevice) {

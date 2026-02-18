@@ -1,9 +1,5 @@
-import { useRef } from "react"
-import { useCallback } from "react"
-import { useEffect } from "react"
-
+import { useRef, useCallback, useEffect } from "react"
 import { NativeEventEmitter, NativeModules, Platform } from "react-native"
-
 import { Buffer } from "buffer"
 import BleManager, { Peripheral } from "react-native-ble-manager"
 
@@ -17,17 +13,12 @@ import {
 	deviceUpdate,
 } from "./../redux/slices/devicesSlice"
 import { logAdded } from "./../redux/slices/logsSlice"
-import { useInterval } from "../hooks/useInterval"
 import { scanStop } from "../redux/slices/scanningSlice"
-import { parseLogs } from "../ble/parser"
-import {
-	DeviceConfiguration,
-	deviceConfigChanged,
-} from "../redux/slices/configurationSlice"
-import isEmpty from "lodash.isempty"
 import { useBleActions } from "../providers/BleEngineProvider"
 import { isOurDevice } from "../utils/helpers"
 import { ImageReassembler } from "../utils/ImageReassembler"
+import { imageReassemblerEmitter, readlineParserEmitter } from "../ble/emitters"
+import { bleCommandManager } from "../ble/commandManager"
 
 // Lazy-load the emitter to avoid accessing NativeModules during import
 let _bleManagerEmitter: NativeEventEmitter | null = null
@@ -38,8 +29,6 @@ export const getBleManagerEmitter = () => {
 	return _bleManagerEmitter
 }
 
-import { readlineParserEmitter } from "../ble/emitters"
-import { bleCommandManager } from "../ble/commandManager"
 export { readlineParserEmitter }
 
 export type UpdateValueEventType = {
@@ -58,43 +47,31 @@ export type UpdateValueEventType = {
 */
 export const useBleListeners = () => {
 	const devices = useAppSelector((state) => state.devices)
-	const configuration = useAppSelector((state) => state.configuration)
 	const { pingsPause } = useBleActions()
 
 	const dispatch = useAppDispatch()
+	
+    // Create a persistent instance of ImageReassembler for this session
+    const reassemblerRef = useRef<ImageReassembler | null>(null)
+
+    useEffect(() => {
+        // Instantiate with the global emitter
+        reassemblerRef.current = new ImageReassembler(imageReassemblerEmitter)
+        return () => {
+            reassemblerRef.current?.destroy()
+        }
+    }, [])
+    
 	/*
 		Ref is needed so that listeners are able to get access to the
 		updated state.
 	*/
 	const devicesRef = useRef(devices)
-	const configRef = useRef(configuration)
 
 	useEffect(() => {
 		devicesRef.current = devices
-		configRef.current = configuration
-	}, [devices, configuration])
+	}, [devices])
 	/** End */
-
-	/**
-	 * This interval takes care of trimming the device logs before
-	 * they're processed by the reducers. It also acts as a sort of
-	 * a buffer so that data is always reported in correct order as
-	 * it arrives via the BLE library bridge.
-	 */
-	const allLogs = useRef<{ [x: string]: string }>({})
-	const MAX_LOG_LENGTH = 15000
-
-	useInterval(() => {
-		for (const device in allLogs.current) {
-			const currentLog = allLogs.current[device]
-			if (currentLog.length > MAX_LOG_LENGTH) {
-				allLogs.current[device] = currentLog.slice(
-					currentLog.length - MAX_LOG_LENGTH,
-					currentLog.length,
-				)
-			}
-		}
-	}, 5000)
 
 	/*
 		Helper function to check for newlines and emit a custom event
@@ -108,13 +85,11 @@ export const useBleListeners = () => {
 			// Check for binary packets (Image Transfer)
 			// Protocol: 0x06 is Image Binary. Sometimes prefixed with 0x80 (Notification/Status).
 			if (value[0] === 0x06 || (value[0] === 0x80 && value[1] === 0x06)) {
-				readlineParserEmitter.emit(
-					"BleManagerDidUpdateValueForCharacteristicReadlineParser",
-					{
-						...data,
-						value,
-					},
-				)
+				const dataArray = value as number[]
+				const imagePacket = dataArray[0] === 0x06 ? dataArray : dataArray.slice(1)
+				
+				// Direct processing to avoid JS thread latency from extra event hops
+				reassemblerRef.current?.processPacket(imagePacket)
 				return
 			}
 
@@ -144,23 +119,12 @@ export const useBleListeners = () => {
 			const { peripheral, value, isLocal } = data
 
 			const dataArray = value as number[]
+
+			// Binary image packets (0x06) are now handled directly in readlineParser 
+			// to reduce JS thread latency. We only process text/responses here.
+
 			const hex = Buffer.from(dataArray).toString("hex")
 			log(`${isLocal ? 'TX' : 'RX'} Hex: ${hex}`)
-
-			// Check for binary image packet (0x06) or (0x80 0x06)
-			// Firmware might send 0x80 as a status/header byte.
-			let imagePacket: number[] | null = null;
-			if (dataArray[0] === 0x06) {
-				imagePacket = dataArray;
-			} else if (dataArray[0] === 0x80 && dataArray[1] === 0x06) {
-				imagePacket = dataArray.slice(1);
-			}
-
-			if (imagePacket) {
-				const reassembler = ImageReassembler.getInstance()
-				reassembler.processPacket(imagePacket)
-				return
-			}
 
 			const text = Buffer.from(value).toString()
 
@@ -174,24 +138,10 @@ export const useBleListeners = () => {
 				const size = parseInt(imageStartMatch[1], 10)
 				const filename = imageStartMatch[2]
 				log(`Detected image transfer start: ${filename} (${size} bytes)`)
-				ImageReassembler.getInstance().initialize(size)
+				reassemblerRef.current?.initialize(size)
 			}
 
-			const currentConfiguration = configRef.current[peripheral] || {}
-			const currentLog = allLogs.current[peripheral] || ""
-
-			// Format the new log entry
-			// Add newline if there isn't one at the end of previous log
-			const needsNewline = currentLog.length > 0 && !currentLog.endsWith('\n')
-			const prefix = needsNewline ? '\n' : ''
-			const formattedText = `${prefix}${isLocal ? '> TX: ' : '< RX: '}${text}${text.endsWith('\n') ? '' : '\n'}`
-
-			if (allLogs.current[peripheral]) {
-				allLogs.current[peripheral] += formattedText
-			} else {
-				allLogs.current[peripheral] = formattedText
-			}
-			const finishedLog = currentLog + formattedText
+			const formattedText = `${isLocal ? '> TX: ' : '< RX: '}${text}${text.endsWith('\n') ? '' : '\n'}`
 
 			dispatch(
 				logAdded({
@@ -203,36 +153,6 @@ export const useBleListeners = () => {
 					},
 				}),
 			)
-
-			const commands = parseLogs(finishedLog, text)
-			const newConfig = {} as DeviceConfiguration
-
-			if (commands.length > 0) {
-				commands.forEach((commandToProcess) => {
-					const { command, error, value: newValue } = commandToProcess
-					if (command && newValue) {
-						const existingValue =
-							currentConfiguration[command.name] &&
-							currentConfiguration[command.name]?.value
-
-						newConfig[command.name] = {
-							value: newValue === undefined ? existingValue : newValue,
-							loading: false,
-							loaded: true,
-							error,
-						}
-					}
-				})
-			}
-
-			if (!isEmpty(newConfig)) {
-				dispatch(
-					deviceConfigChanged({
-						id: peripheral,
-						configuration: newConfig,
-					}),
-				)
-			}
 		},
 		[dispatch],
 	)
@@ -270,6 +190,9 @@ export const useBleListeners = () => {
 			log(
 				`Peripheral disconnect event triggered. Disconnecting: ${data.peripheral}`,
 			)
+
+			// CRITICAL: Clear any pending commands to prevent stuck state on reconnect
+			bleCommandManager.clear()
 
 			/** Clear the device out on Android systems */
 			Platform.OS === "android" &&
@@ -325,7 +248,6 @@ export const useBleListeners = () => {
 		)
 
 		dispatch(scanStop())
-		// log("Scan stopped.")
 	}, [dispatch, pingsPause])
 
 	useEffect(() => {

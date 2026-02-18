@@ -178,7 +178,7 @@ describe("useBle", () => {
 
 			expect(bleCommandManager.sendCommand).toHaveBeenCalledWith(
 				mockPeripheral, 
-				"ver", 
+				{ name: expect.any(String), string: "ver" }, 
 				expect.any(Function), 
 				expect.objectContaining({})
 			)

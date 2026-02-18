@@ -18,6 +18,7 @@ module.exports = {
 		"expo-sqlite": "<rootDir>/tests/__mocks__/expo-sqlite.ts",
 		"expo-updates": "<rootDir>/tests/__mocks__/expo-updates.ts",
 		"expo-secure-store": "<rootDir>/tests/__mocks__/expo-secure-store.ts",
+		"expo-file-system/legacy": "<rootDir>/tests/__mocks__/expo-file-system-legacy.ts",
 		"react-native-drawer-layout": "<rootDir>/tests/__mocks__/react-native-drawer-layout.tsx",
 		"react-native-maps": "<rootDir>/tests/__mocks__/react-native-maps.tsx",
 		"react-native-toast-message": "<rootDir>/tests/__mocks__/react-native-toast-message.tsx",

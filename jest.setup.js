@@ -5,6 +5,15 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 	require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 )
 
+// Mock Reanimated
+// require("react-native-reanimated/lib/reanimated2/jestUtils").setUpTests()
+jest.mock("react-native-reanimated", () =>
+	require("react-native-reanimated/mock"),
+)
+
+// Mock Gesture Handler
+require("react-native-gesture-handler/jestSetup")
+
 // Mock Expo modules
 jest.mock("expo-constants", () => ({
 	expoConfig: {
@@ -17,6 +26,20 @@ jest.mock("expo-constants", () => ({
 
 jest.mock("expo-crypto", () => ({
 	randomUUID: jest.fn(() => "test-uuid"),
+}))
+
+jest.mock("expo-file-system", () => ({
+	cacheDirectory: "file:///test/cache/",
+	documentDirectory: "file:///test/documents/",
+	writeAsStringAsync: jest.fn(),
+	deleteAsync: jest.fn(),
+	readAsStringAsync: jest.fn(),
+	getInfoAsync: jest.fn(() => Promise.resolve({ exists: true, isDirectory: false })),
+	makeDirectoryAsync: jest.fn(),
+	EncodingType: { Base64: "base64", UTF8: "utf8" },
+    createDownloadResumable: jest.fn(() => ({
+        downloadAsync: jest.fn(() => Promise.resolve({ uri: "file:///test.jpg" }))
+    })),
 }))
 
 // Silence console warnings in tests
