@@ -1,0 +1,24 @@
+{
+  "ignore": {
+    "rules": [
+      "jsx-a11y/no-autofocus",
+      "jsx-a11y/accessible-emoji",
+      "jsx-a11y/anchor-is-valid",
+      "jsx-a11y/click-events-have-key-events",
+      "jsx-a11y/no-static-element-interactions",
+      "jsx-a11y/no-noninteractive-element-interactions"
+    ],
+    "files": [
+      "android/**",
+      "ios/**",
+      "scripts/**",
+      "patches/**",
+      "archive/**",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/__tests__/**",
+      "**/__mocks__/**",
+      "src/types/database.types.ts"
+    ]
+  }
+}

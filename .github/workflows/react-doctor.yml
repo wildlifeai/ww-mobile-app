@@ -1,0 +1,31 @@
+name: React Doctor Review
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      verbose:
+        description: 'Show file details per rule'
+        type: boolean
+        default: true
+
+jobs:
+  react-doctor:
+    name: React Doctor Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run React Doctor
+        id: doctor
+        uses: millionco/react-doctor@main
+        with:
+          directory: '.'
+          verbose: ${{ github.event.inputs.verbose || 'true' }}
+          node-version: '20'
+
+      - name: Report score
+        run: |
+          echo "## 🩺 React Doctor Score: ${{ steps.doctor.outputs.score }}" >> $GITHUB_STEP_SUMMARY
