@@ -21,15 +21,8 @@ import {
 	Alert,
 } from "react-native"
 import {
-
-	Card,
 	Text,
 	Button,
-	Avatar,
-	Chip,
-	IconButton,
-	Menu,
-	Divider,
 	ActivityIndicator,
 	useTheme,
 } from "react-native-paper"

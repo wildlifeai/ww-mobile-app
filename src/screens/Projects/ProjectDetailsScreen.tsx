@@ -13,18 +13,14 @@
 
 import { useState, useCallback, useMemo } from "react"
 import { StyleSheet, View, ScrollView, Alert } from "react-native"
-import { useForm, Controller } from "react-hook-form"
+import { useForm } from "react-hook-form"
 import {
 	Text,
 	useTheme,
 	ActivityIndicator,
-	Card,
-	Divider,
-	IconButton,
 	Portal,
 	Dialog,
 	Button,
-	Avatar,
 } from "react-native-paper"
 import { useRoute } from "@react-navigation/native"
 import {
@@ -38,19 +34,17 @@ import {
 	useGetAiModelsQuery,
 	useGetSamplingDesignsQuery,
 } from "../../redux/api/projectsApi"
-import { WWScreenView } from "../../components/ui/WWScreenView"
-import { WWTextInput } from "../../components/ui/WWTextInput"
-import { WWButton } from "../../components/ui/WWButton"
-import { WWCheckbox } from "../../components/ui/WWCheckbox"
-import { WWIcon } from "../../components/ui/WWIcon"
-import { WWSelect } from "../../components/ui/WWSelect"
 import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
-import { Field } from "../../components/form/Field"
+import { WWScreenView } from "../../components/ui/WWScreenView"
+import { WWButton } from "../../components/ui/WWButton"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { useAppSelector } from "../../redux"
 import { AppParams } from "../../navigation/types"
 import { logError } from '../../utils/logger'
-import { getDisplayName } from "../../utils/userUtils"
+import { ProjectHeaderCard } from './components/ProjectHeaderCard'
+import { ProjectStatsCard } from './components/ProjectStatsCard'
+import { ProjectSettingsCard } from './components/ProjectSettingsCard'
+import { ProjectMembersCard } from './components/ProjectMembersCard'
 
 
 
@@ -269,23 +263,6 @@ export const ProjectDetailsScreen = () => {
 		loadingLabel: { color: theme.colors.onSurfaceVariant },
 		errorHeader: { color: theme.colors.error },
 		errorMessage: { color: theme.colors.onSurfaceVariant },
-		projectTitle: { color: theme.colors.onSurface },
-		orgName: { color: theme.colors.onSurfaceVariant, marginTop: 4 },
-		description: { color: theme.colors.onSurfaceVariant },
-		noDescription: { color: theme.colors.onSurfaceDisabled },
-		statValue: { color: theme.colors.onSurface },
-		statLabel: { color: theme.colors.onSurfaceVariant },
-		sectionTitle: { color: theme.colors.onSurface },
-		settingLabel: { color: theme.colors.onSurfaceVariant },
-		settingValue: { color: theme.colors.onSurface },
-		websiteValue: { color: theme.colors.primary },
-		memberInitialBg: { backgroundColor: theme.colors.primaryContainer },
-		memberInitialLabel: { color: theme.colors.onPrimaryContainer, fontSize: 12 },
-		memberNameAdmin: { color: theme.colors.onSurface, fontWeight: 'bold' as const },
-		memberNameMember: { color: theme.colors.onSurface, fontWeight: 'normal' as const },
-		memberRoleText: { color: theme.colors.onSurfaceVariant },
-		membersEmpty: { color: theme.colors.onSurfaceVariant },
-		membersTitle: { color: theme.colors.onSurface },
 	}), [theme])
 
 	// Loading state
@@ -351,565 +328,46 @@ export const ProjectDetailsScreen = () => {
 
 			<View style={styles.content}>
 				{/* Header Card */}
-				<Card mode="outlined" style={styles.card}>
-					<Card.Content>
-						<View style={styles.headerRow}>
-							{isEditMode ? (
-								<View style={styles.flex1}>
-									<Field
-										control={control}
-										name="name"
-										label="Project Name"
-										required
-										rules={{
-											required: "Project name is required",
-											minLength: { value: 3, message: "At least 3 characters" },
-											maxLength: { value: 100, message: "Max 100 characters" },
-										}}
-									>
-										{(field) => (
-											<WWTextInput
-												{...field}
-												mode="outlined"
-												error={!!errors.name}
-												testID="project-name-input"
-											/>
-										)}
-									</Field>
-								</View>
-							) : (
-								<View style={styles.flex1}>
-									<Text
-										variant="headlineMedium"
-										style={dynamicStyles.projectTitle}
-									>
-										{project.name}
-									</Text>
-									{project.organisation?.name && (
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.orgName}
-										>
-											{project.organisation.name}
-										</Text>
-									)}
-								</View>
-							)}
-
-							{!isEditMode && isProjectAdmin && (
-								<View style={styles.actionButtons}>
-									<IconButton
-										icon="pencil"
-										size={24}
-										onPress={handleEdit}
-										testID="edit-button"
-									/>
-									<IconButton
-										icon="delete"
-										size={24}
-										iconColor={theme.colors.error}
-										onPress={() => setShowDeleteDialog(true)}
-										testID="delete-button"
-									/>
-								</View>
-							)}
-						</View>
-
-						{/* Description */}
-						{isEditMode ? (
-							<Field
-								control={control}
-								name="description"
-								label="Description"
-								rules={{
-									maxLength: { value: 500, message: "Max 500 characters" },
-								}}
-							>
-								{(field) => (
-									<WWTextInput
-										{...field}
-										mode="outlined"
-										multiline
-										numberOfLines={4}
-										error={!!errors.description}
-										testID="project-description-input"
-									/>
-								)}
-							</Field>
-						) : project.description ? (
-							<Text
-								variant="bodyMedium"
-								style={[
-									styles.description,
-									dynamicStyles.description,
-								]}
-							>
-								{project.description}
-							</Text>
-						) : (
-							<Text
-								variant="bodyMedium"
-								style={[
-									styles.description,
-									dynamicStyles.noDescription,
-								]}
-							>
-								No description
-							</Text>
-						)}
-					</Card.Content>
-				</Card>
+				<ProjectHeaderCard
+					project={project}
+					isEditMode={isEditMode}
+					isProjectAdmin={isProjectAdmin}
+					control={control as any}
+					errors={errors as any}
+					onEdit={handleEdit}
+					onDelete={() => setShowDeleteDialog(true)}
+				/>
 
 				{/* Stats Cards */}
 				{!isEditMode && (
-					<View style={styles.statsContainer}>
-						<Card mode="outlined" style={styles.statCard}>
-							<Card.Content style={styles.statContent}>
-								<WWIcon
-									source="account-group"
-									size={32}
-									color={theme.colors.primary}
-								/>
-								<Text
-									variant="headlineSmall"
-									style={dynamicStyles.statValue}
-								>
-									{project.member_count || 0}
-								</Text>
-								<Text
-									variant="bodySmall"
-									style={dynamicStyles.statLabel}
-								>
-									Members
-								</Text>
-							</Card.Content>
-						</Card>
-
-						<Card mode="outlined" style={styles.statCard}>
-							<Card.Content style={styles.statContent}>
-								<WWIcon
-									source="map-marker-multiple"
-									size={32}
-									color={theme.colors.primary}
-								/>
-								<Text
-									variant="headlineSmall"
-									style={dynamicStyles.statValue}
-								>
-									{project.deployment_count || 0}
-								</Text>
-								<Text
-									variant="bodySmall"
-									style={dynamicStyles.statLabel}
-								>
-									Deployments
-									{` (${project.active_deployment_count || 0} active)`}
-								</Text>
-							</Card.Content>
-						</Card>
-
-						<Card mode="outlined" style={styles.statCard}>
-							<Card.Content style={styles.statContent}>
-								<WWIcon
-									source="access-point"
-									size={32}
-									color={theme.colors.primary}
-								/>
-								<Text
-									variant="headlineSmall"
-									style={dynamicStyles.statValue}
-								>
-									{project.lorawan_device_count || 0}
-								</Text>
-								<Text
-									variant="bodySmall"
-									style={dynamicStyles.statLabel}
-								>
-									Devices
-								</Text>
-							</Card.Content>
-						</Card>
-					</View>
+					<ProjectStatsCard project={project} />
 				)}
 
 				{/* Settings Section */}
-				<Card mode="outlined" style={styles.card}>
-					<Card.Content>
-						<Text
-							variant="titleMedium"
-							style={[styles.sectionTitle, dynamicStyles.sectionTitle]}
-						>
-							Settings
-						</Text>
-
-						{isEditMode ? (
-							<View>
-								<Field
-									control={control}
-									name="sampling_design_id"
-									label="Sampling Design"
-								>
-									{(field) => (
-										<WWSelect
-											{...field}
-											options={samplingDesignOptions}
-											label="Sampling Design"
-										/>
-									)}
-								</Field>
-
-								<Field
-									control={control}
-									name="capture_method_id"
-									label="Capture Method"
-								>
-									{(field) => (
-										<WWSelect
-											{...field}
-											options={captureMethodOptions}
-											label="Capture Method"
-										/>
-									)}
-								</Field>
-
-								{isMotionDetection && (
-									<Field
-										control={control}
-										name="activity_detection_sensitivity_id"
-										label="Motion Sensitivity"
-									>
-										{(field) => (
-											<WWSelect
-												{...field}
-												options={sensitivityOptions}
-												label="Motion Sensitivity"
-											/>
-										)}
-									</Field>
-								)}
-
-								{isTimeLapse && (
-									<Field
-										control={control}
-										name="timelapse_interval_seconds"
-										label="Time-lapse Interval (seconds)"
-									>
-										{(field) => (
-											<WWTextInput
-												{...field}
-												mode="outlined"
-												keyboardType="numeric"
-												placeholder="e.g., 60"
-											/>
-										)}
-									</Field>
-								)}
-
-								{isProjectAdmin && (
-									<Field
-										control={control}
-										name="model_id"
-										label="Default AI Model"
-									>
-										{(field) => (
-											<WWSelect
-												{...field}
-												options={aiModelOptions}
-												label="Default AI Model"
-											/>
-										)}
-									</Field>
-								)}
-
-								<Field control={control} name="website" label="Website">
-									{(field) => (
-										<WWTextInput
-											{...field}
-											mode="outlined"
-											placeholder="https://example.com"
-											keyboardType="url"
-											autoCapitalize="none"
-											testID="website-input"
-										/>
-									)}
-								</Field>
-
-								<Controller
-									control={control}
-									name="is_baited"
-									render={({ field: { value, onChange } }) => (
-										<WWCheckbox
-											label="Using Bait"
-											value={value}
-											onChange={onChange}
-											testID="is-baited-checkbox"
-										/>
-									)}
-								/>
-
-								<Controller
-									control={control}
-									name="is_monitoring_marked_individuals"
-									render={({ field: { value, onChange } }) => (
-										<WWCheckbox
-											label="Monitoring Marked Individuals"
-											value={value}
-											onChange={onChange}
-											testID="is-monitoring-marked-checkbox"
-										/>
-									)}
-								/>
-							</View>
-						) : (
-							<View>
-								{project.sampling_design_id && (
-									<View style={styles.settingRow}>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingLabel}
-										>
-											Sampling Design:
-										</Text>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingValue}
-										>
-											{getLabel(samplingDesignOptions, project.sampling_design_id)}
-										</Text>
-									</View>
-								)}
-
-								{project.capture_method_id && (
-									<View style={styles.settingRow}>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingLabel}
-										>
-											Capture Method:
-										</Text>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingValue}
-										>
-											{getLabel(captureMethodOptions, project.capture_method_id)}
-										</Text>
-									</View>
-								)}
-
-								{project.activity_detection_sensitivity_id && isMotionDetection && (
-									<View style={styles.settingRow}>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingLabel}
-										>
-											Motion Sensitivity:
-										</Text>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingValue}
-										>
-											{getLabel(sensitivityOptions, project.activity_detection_sensitivity_id)}
-										</Text>
-									</View>
-								)}
-
-								{project.timelapse_interval_seconds && isTimeLapse && (
-									<View style={styles.settingRow}>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingLabel}
-										>
-											Time-lapse Interval:
-										</Text>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingValue}
-										>
-											{project.timelapse_interval_seconds}s
-										</Text>
-									</View>
-								)}
-
-								{project.model_id && (
-									<View style={styles.settingRow}>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingLabel}
-										>
-											AI Model:
-										</Text>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingValue}
-										>
-											{getLabel(aiModelOptions, project.model_id)}
-										</Text>
-									</View>
-								)}
-
-								{project.website && (
-									<View style={styles.settingRow}>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingLabel}
-										>
-											Website:
-										</Text>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.websiteValue}
-										>
-											{project.website}
-										</Text>
-									</View>
-								)}
-
-								{project.is_baited && (
-									<View style={styles.settingRow}>
-										<WWIcon
-											source="checkbox-marked"
-											size={20}
-											color={theme.colors.primary}
-										/>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingValue}
-										>
-											Using Bait
-										</Text>
-									</View>
-								)}
-
-								{project.is_monitoring_marked_individuals && (
-									<View style={styles.settingRow}>
-										<WWIcon
-											source="checkbox-marked"
-											size={20}
-											color={theme.colors.primary}
-										/>
-										<Text
-											variant="bodyMedium"
-											style={dynamicStyles.settingValue}
-										>
-											Monitoring Marked Individuals
-										</Text>
-									</View>
-								)}
-							</View>
-						)}
-					</Card.Content>
-				</Card>
+				<ProjectSettingsCard
+					project={project}
+					isEditMode={isEditMode}
+					isProjectAdmin={isProjectAdmin}
+					control={control as any}
+					samplingDesignOptions={samplingDesignOptions}
+					captureMethodOptions={captureMethodOptions}
+					sensitivityOptions={sensitivityOptions}
+					aiModelOptions={aiModelOptions}
+					isMotionDetection={!!isMotionDetection}
+					isTimeLapse={!!isTimeLapse}
+					getLabel={getLabel}
+				/>
 
 				{/* Members Section */}
 				{!isEditMode && (
-					<Card mode="outlined" style={styles.card}>
-						<Card.Content>
-							<View style={styles.sectionHeader}>
-								<Text
-									variant="titleMedium"
-									style={dynamicStyles.membersTitle}
-								>
-									Members
-								</Text>
-								{isProjectAdmin && (
-									<Button
-										mode="text"
-										icon="account-multiple"
-										onPress={() => {
-											navigation.navigate("ProjectMembersScreen", {
-												projectId: project.id,
-												projectName: project.name,
-											})
-										}}
-										testID="manage-members-button"
-									>
-										Manage
-									</Button>
-								)}
-
-							</View>
-
-							<Divider style={styles.divider} />
-
-							{membersLoading ? (
-								<ActivityIndicator size="small" />
-							) : members && members.length > 0 ? (
-								<View style={styles.membersList}>
-									{members.map((member, index) => {
-										const isMe = member.user_id === currentUser?.id
-										const displayName = isMe
-											? ((currentUser as any)?.profile?.first_name
-												? `${(currentUser as any).profile.first_name} ${(currentUser as any).profile.last_name || ""}`.trim()
-												: "Me")
-											: getDisplayName(member.user_profile || (member.user_profile as any)?.profile, false)
-
-										const initials = (displayName || "")
-											.split(" ")
-											.map(n => n[0])
-											.join("")
-											.toUpperCase()
-											.substring(0, 2)
-
-										return (
-											<View
-												key={member.user_id || `member-${index}`}
-												style={styles.memberListItem}
-											>
-												<View style={styles.memberInfo}>
-													<Avatar.Text
-														size={32}
-														label={initials}
-														style={dynamicStyles.memberInitialBg}
-														labelStyle={dynamicStyles.memberInitialLabel}
-													/>
-													<View style={styles.memberDetails}>
-														<Text
-															variant="bodyMedium"
-															style={isMe ? dynamicStyles.memberNameAdmin : dynamicStyles.memberNameMember}
-														>
-															{displayName} {isMe && "(You)"}
-														</Text>
-														{!isMe && member.user_profile?.email && member.user_profile.email !== displayName && (
-															<Text
-																variant="bodySmall"
-																style={dynamicStyles.memberRoleText}
-															>
-																{member.user_profile.email}
-															</Text>
-														)}
-														{member.role && (
-															<Text
-																variant="bodySmall"
-																style={dynamicStyles.memberRoleText}
-															>
-																{member.role === 'project_admin' ? 'Admin' : 'Member'}
-															</Text>
-														)}
-													</View>
-												</View>
-												{isProjectAdmin && !isMe && (
-													<IconButton
-														icon="close"
-														size={20}
-														iconColor={theme.colors.error}
-														onPress={() => handleRemoveMember(member.user_id)}
-														testID={`remove-member-${member.user_id}`}
-													/>
-												)}
-											</View>
-										)
-									})}
-								</View>
-							) : (
-								<Text
-									variant="bodyMedium"
-									style={dynamicStyles.membersEmpty}
-								>
-									No members yet
-								</Text>
-							)}
-						</Card.Content>
-					</Card>
+					<ProjectMembersCard
+						project={project}
+						members={members}
+						membersLoading={membersLoading}
+						isProjectAdmin={isProjectAdmin}
+						currentUser={currentUser}
+						handleRemoveMember={handleRemoveMember}
+					/>
 				)}
 
 				{/* Edit Mode Actions */}

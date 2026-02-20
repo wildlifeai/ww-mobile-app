@@ -3,7 +3,7 @@ import { View, StyleSheet, Platform } from "react-native"
 import { List, Divider, RadioButton, Button } from "react-native-paper"
 import { WWText } from "../../../../components/ui/WWText"
 import { type SupabaseEnvironment, ENVIRONMENT_CONFIGS } from "../../../../config/environments"
-import { ConnectionStatus, STATUS_INDICATORS } from "../DeveloperSettingsScreen"
+import { ConnectionStatus, STATUS_INDICATORS } from "../hooks/useDeveloperSettings"
 
 export interface EnvironmentItemProps {
     env: SupabaseEnvironment

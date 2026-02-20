@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react"
-import { View, ScrollView, Alert, StyleSheet } from "react-native"
-import { Button, Card, Text, Chip, ActivityIndicator } from "react-native-paper"
+import { ScrollView, Alert, StyleSheet } from "react-native"
+import { Text } from "react-native-paper"
 import { getSupabaseClient } from "../services/supabase"
 import type {
 	RealtimePostgresChangesPayload,

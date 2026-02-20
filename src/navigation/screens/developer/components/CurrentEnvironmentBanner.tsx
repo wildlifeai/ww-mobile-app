@@ -1,5 +1,5 @@
 import React from "react"
-import { View, StyleSheet, Platform } from "react-native"
+import { StyleSheet, Platform } from "react-native"
 import { Surface } from "react-native-paper"
 import { WWText } from "../../../../components/ui/WWText"
 import { type SupabaseEnvironment, ENVIRONMENT_CONFIGS } from "../../../../config/environments"

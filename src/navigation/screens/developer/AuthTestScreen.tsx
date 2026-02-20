@@ -1,14 +1,13 @@
 ﻿import React, { useState, useEffect, useCallback } from "react"
-import { View, ScrollView, Alert, StyleSheet } from "react-native"
-import {
-	Button,
-	Card,
-	Text,
-	TextInput,
-	Chip,
-} from "react-native-paper"
+import { ScrollView, Alert, StyleSheet } from "react-native"
+import { Text } from "react-native-paper"
 import { useSupabaseAuth } from "../../../hooks/useSupabaseAuth"
 import * as apiTestSuite from "../../../services/tests/apiTest"
+
+import { AuthStatusCard } from "./components/AuthStatusCard"
+import { AuthActionsCard } from "./components/AuthActionsCard"
+import { ApiTestsCard } from "./components/ApiTestsCard"
+import { TestResultsCard } from "./components/TestResultsCard"
 
 /**
  * Authentication Test Screen
@@ -36,12 +35,6 @@ export const AuthTestScreen: React.FC = () => {
 	const clearTestResults = useCallback(() => {
 		setTestResults([])
 	}, [])
-
-	const renderCardTitleRight = useCallback((props: any) => (
-		<Button {...props} onPress={clearTestResults} compact>
-			Clear
-		</Button>
-	), [clearTestResults])
 
 	// Form state
 	const [email, setEmail] = useState("test@example.com")
@@ -207,182 +200,39 @@ export const AuthTestScreen: React.FC = () => {
 				🔍 Supabase Auth Test
 			</Text>
 
-			{/* Auth Status Card */}
-			<Card style={styles.card}>
-				<Card.Title title="Authentication Status" />
-				<Card.Content>
-					<View
-						style={styles.chipContainer}
-					>
-						<Chip
-							icon={isLoggedIn ? "check" : "close"}
-							mode={isLoggedIn ? "flat" : "outlined"}
-						>
-							{isLoggedIn ? "Logged In" : "Not Logged In"}
-						</Chip>
-						<Chip icon={loading ? "loading" : "check"} mode="outlined">
-							{loading ? "Loading" : "Ready"}
-						</Chip>
-						<Chip icon={token ? "key" : "key-outline"} mode="outlined">
-							{token ? "Has Token" : "No Token"}
-						</Chip>
-					</View>
+			<AuthStatusCard
+				isLoggedIn={isLoggedIn}
+				loading={loading}
+				token={token}
+				user={user}
+			/>
 
-					{user && (
-						<View>
-							<Text>
-								<Text style={styles.boldText}>Email:</Text> {user.email}
-							</Text>
-							<Text>
-								<Text style={styles.boldText}>ID:</Text> {user.id}
-							</Text>
-							<Text>
-								<Text style={styles.boldText}>Role:</Text> {user.role}
-							</Text>
-						</View>
-					)}
-				</Card.Content>
-			</Card>
+			<AuthActionsCard
+				email={email}
+				setEmail={setEmail}
+				password={password}
+				setPassword={setPassword}
+				username={username}
+				setUsername={setUsername}
+				isSubmitting={isSubmitting}
+				isLoggedIn={isLoggedIn}
+				loading={loading}
+				onRegister={handleRegister}
+				onLogin={handleLogin}
+				onLogout={handleLogout}
+				onCheckAuthStatus={handleCheckAuthStatus}
+				onRefreshSession={handleRefreshSession}
+				onResetPassword={handleResetPassword}
+			/>
 
-			{/* Registration/Login Form */}
-			<Card style={styles.card}>
-				<Card.Title title="Authentication Actions" />
-				<Card.Content>
-					<TextInput
-						label="Email"
-						value={email}
-						onChangeText={setEmail}
-						keyboardType="email-address"
-						autoCapitalize="none"
-						style={styles.input}
-					/>
+			<ApiTestsCard
+				onRunTests={runConnectivityTests}
+			/>
 
-					<TextInput
-						label="Password"
-						value={password}
-						onChangeText={setPassword}
-						secureTextEntry
-						style={styles.input}
-					/>
-
-					<TextInput
-						label="Username (for registration)"
-						value={username}
-						onChangeText={setUsername}
-						autoCapitalize="none"
-						style={styles.inputLargeMargin}
-					/>
-
-					<View style={styles.buttonRow}>
-						<Button
-							mode="contained"
-							onPress={handleRegister}
-							disabled={isSubmitting || loading}
-							style={styles.flex1}
-						>
-							{isSubmitting ? "Registering..." : "Register"}
-						</Button>
-
-						<Button
-							mode="outlined"
-							onPress={handleLogin}
-							disabled={isSubmitting || loading}
-							style={styles.flex1}
-						>
-							{isSubmitting ? "Logging in..." : "Login"}
-						</Button>
-					</View>
-
-					{isLoggedIn && (
-						<Button
-							mode="contained-tonal"
-							onPress={handleLogout}
-							style={styles.input}
-						>
-							Logout
-						</Button>
-					)}
-
-					<View style={styles.gapRow}>
-						<Button
-							mode="outlined"
-							onPress={handleCheckAuthStatus}
-							style={styles.flex1}
-							compact
-						>
-							Check Status
-						</Button>
-
-						<Button
-							mode="outlined"
-							onPress={handleRefreshSession}
-							style={styles.flex1}
-							compact
-						>
-							Refresh Session
-						</Button>
-					</View>
-
-					<Button
-						mode="text"
-						onPress={handleResetPassword}
-						style={styles.textButton}
-					>
-						Reset Password
-					</Button>
-				</Card.Content>
-			</Card>
-
-			{/* API Tests */}
-			<Card style={styles.card}>
-				<Card.Title title="API Connectivity Tests" />
-				<Card.Content>
-					<Button
-						mode="contained"
-						onPress={runConnectivityTests}
-						style={styles.input}
-					>
-						Run All API Tests
-					</Button>
-
-					<Text variant="bodySmall" style={styles.mutedText}>
-						Tests database connection, authentication, and real-time features
-					</Text>
-				</Card.Content>
-			</Card>
-
-			{/* Test Results */}
-			<Card style={styles.resultsCard}>
-				<Card.Title
-					title="Test Results"
-					right={renderCardTitleRight}
-				/>
-				<Card.Content>
-					{testResults.length === 0 ? (
-						<Text style={styles.resultsPlaceholder}>
-							No test results yet. Run some tests above!
-						</Text>
-					) : (
-						<View>
-							{testResults.map((result) => ( // Using result itself if unique, or handling via memo
-								<Text
-									key={result}
-									style={[
-										styles.resultItem,
-										result.includes("❌")
-											? styles.resultError
-											: result.includes("✅")
-												? styles.resultSuccess
-												: styles.resultNormal,
-									]}
-								>
-									{result}
-								</Text>
-							))}
-						</View>
-					)}
-				</Card.Content>
-			</Card>
+			<TestResultsCard
+				testResults={testResults}
+				onClearResults={clearTestResults}
+			/>
 		</ScrollView>
 	)
 }
@@ -395,62 +245,5 @@ const styles = StyleSheet.create({
 	title: {
 		marginBottom: 16,
 		textAlign: "center",
-	},
-	card: {
-		marginBottom: 16,
-	},
-	chipContainer: {
-		flexDirection: "row",
-		flexWrap: "wrap",
-		gap: 8,
-		marginBottom: 8,
-	},
-	boldText: {
-		fontWeight: "bold",
-	},
-	input: {
-		marginBottom: 8,
-	},
-	inputLargeMargin: {
-		marginBottom: 16,
-	},
-	buttonRow: {
-		flexDirection: "row",
-		gap: 8,
-		marginBottom: 16,
-	},
-	gapRow: {
-		flexDirection: "row",
-		gap: 8,
-	},
-	flex1: {
-		flex: 1,
-	},
-	textButton: {
-		marginTop: 8,
-	},
-	mutedText: {
-		color: "#666",
-	},
-	resultsCard: {
-		marginBottom: 32,
-	},
-	resultsPlaceholder: {
-		fontStyle: "italic",
-		color: "#666",
-	},
-	resultItem: {
-		fontSize: 12,
-		fontFamily: "monospace",
-		marginBottom: 4,
-	},
-	resultError: {
-		color: "#F44336",
-	},
-	resultSuccess: {
-		color: "#4CAF50",
-	},
-	resultNormal: {
-		color: "#333",
 	},
 })
