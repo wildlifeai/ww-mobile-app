@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useRef, useReducer } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
@@ -31,6 +31,49 @@ interface InnerProps {
     deployment: Deployment
     deviceId: string
     bleDeviceId: string
+}
+
+type InitState = {
+    isInitializing: boolean
+    initProgress: number
+    initStep: string
+    initErrors: { setUtc?: string; deviceHealth?: string[] }
+}
+
+type InitAction = 
+    | { type: 'START_INIT' }
+    | { type: 'SET_PROGRESS'; step: string; progress: number }
+    | { type: 'SET_ERRORS'; errors: { setUtc?: string; deviceHealth?: string[] } }
+    | { type: 'FINISH_INIT' }
+
+const initReducer = (state: InitState, action: InitAction): InitState => {
+    switch (action.type) {
+        case 'START_INIT':
+            return {
+                ...state,
+                isInitializing: true,
+                initStep: 'Initializing...',
+                initProgress: 0.2
+            }
+        case 'SET_PROGRESS':
+            return {
+                ...state,
+                initStep: action.step,
+                initProgress: action.progress
+            }
+        case 'SET_ERRORS':
+            return {
+                ...state,
+                initErrors: action.errors
+            }
+        case 'FINISH_INIT':
+            return {
+                ...state,
+                isInitializing: false
+            }
+        default:
+            return state
+    }
 }
 
 const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment }) => {
@@ -90,10 +133,12 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     
     // Initialization State (for InitializationHeader)
     const [deviceDb, setDeviceDb] = useState<Device | undefined>()
-    const [isInitializing, setIsInitializing] = useState(true)
-    const [initProgress, setInitProgress] = useState(0)
-    const [initStep, setInitStep] = useState('')
-    const [initErrors, setInitErrors] = useState<{ setUtc?: string; deviceHealth?: string[] }>({})
+    const [{ isInitializing, initProgress, initStep, initErrors }, dispatchInit] = useReducer(initReducer, {
+        isInitializing: true,
+        initProgress: 0,
+        initStep: '',
+        initErrors: {}
+    })
     
 
     
@@ -106,24 +151,24 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         const initializeDevice = async () => {
             if (!storeDevice?.connected || hasRunInitialization.current) return
             hasRunInitialization.current = true
-            setIsInitializing(true)
+            dispatchInit({ type: 'START_INIT' })
             
-            setInitStep('Initializing...')
-            setInitProgress(0.2)
             log('[EndDeployment] Running standard BLE initialization...')
             
             const result = await initialize(storeDevice, {
                 onProgress: (step, progress) => {
-                    setInitStep(step)
-                    setInitProgress(0.2 + (progress * 0.8)) // Scale progress
+                    dispatchInit({ type: 'SET_PROGRESS', step, progress: 0.2 + (progress * 0.8) })
                 }
             })
 
             if (!result.success) {
                 logWarn('[EndDeployment] BLE initialization had errors:', result.errors)
-                setInitErrors({
-                    setUtc: result.errors.setUtc,
-                    deviceHealth: result.errors.deviceHealth
+                dispatchInit({
+                    type: 'SET_ERRORS',
+                    errors: {
+                        setUtc: result.errors.setUtc,
+                        deviceHealth: result.errors.deviceHealth
+                    }
                 })
             } else {
                 log('[EndDeployment] Initialization complete. Time set and hardware verified.')
@@ -131,7 +176,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
             // Mark initialization as done
             setTimeout(() => {
-                setIsInitializing(false)
+                dispatchInit({ type: 'FINISH_INIT' })
             }, 2000)
         }
 
