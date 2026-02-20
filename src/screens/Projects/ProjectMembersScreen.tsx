@@ -36,7 +36,7 @@ import {
 import { useRoute, RouteProp } from "@react-navigation/native"
 
 // UI Helper Functions
-const getRoleBadgeColor = (role: ProjectRole): string => {
+export const getRoleBadgeColor = (role: ProjectRole): string => {
 	switch (role) {
 		case "project_admin":
 			return "#4CAF50"
@@ -47,7 +47,7 @@ const getRoleBadgeColor = (role: ProjectRole): string => {
 	}
 }
 
-const getRoleDisplayName = (role: ProjectRole): string => {
+export const getRoleDisplayName = (role: ProjectRole): string => {
 	switch (role) {
 		case "project_admin":
 			return "Admin"
@@ -79,6 +79,8 @@ import { getDisplayName } from "../../utils/userUtils"
 import { InviteMemberModal } from "./components/InviteMemberModal"
 import { ChangeRoleDialog } from "./components/ChangeRoleDialog"
 import { RemoveMemberDialog } from "./components/RemoveMemberDialog"
+import { MemberListItem } from "./components/MemberListItem"
+import { PendingInvitationsList } from "./components/PendingInvitationsList"
 
 
 type RouteParams = {
@@ -289,23 +291,11 @@ export const ProjectMembersScreen = () => {
 
 			{/* Pending Invitations List (Admin Only) */}
 			{canManageMembers && pendingInvitations.length > 0 && (
-				<View style={dynamicStyles.inviteSection}>
-					<Text variant="titleSmall" style={dynamicStyles.inviteTitle}>
-						Pending Invitations ({pendingInvitations.length})
-					</Text>
-					{pendingInvitations.map((invite) => (
-						<Card key={invite.id || invite.remoteId} style={dynamicStyles.inviteCard}>
-							<Card.Content style={dynamicStyles.inviteContent}>
-								<View>
-									<Text variant="bodyMedium" style={dynamicStyles.inviteEmail}>{invite.inviteeEmail}</Text>
-									<Text variant="bodySmall">{getRoleDisplayName(invite.role as ProjectRole)} • Expires {new Date(invite.expiresAt).toLocaleDateString()}</Text>
-								</View>
-								<Chip icon="clock-outline" compact>Pending</Chip>
-							</Card.Content>
-						</Card>
-					))}
-					<Divider style={dynamicStyles.inviteDivider} />
-				</View>
+				<PendingInvitationsList
+					pendingInvitations={pendingInvitations}
+					getRoleDisplayName={getRoleDisplayName}
+					dynamicStyles={dynamicStyles}
+				/>
 			)}
 
 			{/* Member List */}
@@ -319,108 +309,23 @@ export const ProjectMembersScreen = () => {
 					const adminCount = members.filter(
 						(m) => m.role === "project_admin",
 					).length
-					const isLastAdmin =
-						member.role === "project_admin" && adminCount === 1
-					const canRemove = !isLastAdmin
-
-					const isMe = user && String(member.id).toLowerCase() === String(user.id).toLowerCase()
-
-
-					const displayName = getDisplayName(member, isMe)
-
-					const initials = displayName
-						.replace("(You)", "")
-						.trim()
-						.split(" ")
-						.filter((n) => n.length > 0)
-						.map((n) => n[0])
-						.join("")
-						.toUpperCase()
-						.substring(0, 2)
-
+					
 					return (
-						<Card key={member.id} style={styles.memberCard}>
-							<Card.Content>
-								<View style={styles.memberRow}>
-									{/* Avatar */}
-									<Avatar.Text
-										size={48}
-										label={initials}
-										style={{ backgroundColor: getRoleBadgeColor(member.role as ProjectRole) }}
-									/>
-
-									{/* Member Info */}
-									<View style={styles.memberInfo}>
-										<Text
-											variant="titleMedium"
-											style={dynamicStyles.memberSurface}
-										>
-											{displayName}
-										</Text>
-										{member.email && member.email !== displayName && (
-											<Text
-												variant="bodySmall"
-												style={dynamicStyles.memberSurfaceVariant}
-											>
-												{member.email}
-											</Text>
-										)}
-										<Chip
-											mode="flat"
-											textStyle={dynamicStyles.chipText}
-											style={[
-												dynamicStyles.chipStyle,
-												{ backgroundColor: getRoleBadgeColor(member.role as ProjectRole) + "20" }
-											]}
-										>
-											{getRoleDisplayName(member.role as ProjectRole)}
-										</Chip>
-									</View>
-
-									{/* Actions Menu (admin only) */}
-									{canManageMembers && (
-										<Menu
-											visible={menuVisible[member.id] || false}
-											onDismiss={() => closeMenu(member.id)}
-											anchor={
-												<IconButton
-													icon="dots-vertical"
-													onPress={() => openMenu(member.id)}
-												/>
-											}
-										>
-											<Menu.Item
-												leadingIcon="account-convert"
-												onPress={() => handleMenuChangeRole(member)}
-												title={
-													member.role === "project_admin"
-														? "Change to Member"
-														: "Promote to Admin"
-												}
-											/>
-											{canRemove && (
-												<>
-													<Divider />
-													<Menu.Item
-														leadingIcon="account-remove"
-														onPress={() => handleMenuRemove(member)}
-														title="Remove from Project"
-														titleStyle={{ color: theme.colors.error }}
-													/>
-												</>
-											)}
-											{!canRemove && isLastAdmin && (
-												<Menu.Item
-													disabled
-													leadingIcon="shield-account"
-													title="Last Admin (Cannot Remove)"
-												/>
-											)}
-										</Menu>
-									)}
-								</View>
-							</Card.Content>
-						</Card>
+						<MemberListItem
+							key={member.id}
+							member={member}
+							user={user}
+							adminCount={adminCount}
+							canManageMembers={!!canManageMembers}
+							menuVisible={menuVisible[member.id] || false}
+							openMenu={openMenu}
+							closeMenu={closeMenu}
+							handleMenuChangeRole={handleMenuChangeRole}
+							handleMenuRemove={handleMenuRemove}
+							getRoleBadgeColor={getRoleBadgeColor}
+							getRoleDisplayName={getRoleDisplayName}
+							dynamicStyles={dynamicStyles}
+						/>
 					)
 				})}
 			</ScrollView>

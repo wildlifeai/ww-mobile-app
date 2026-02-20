@@ -54,112 +54,18 @@ import { reconnectSupabase } from "../../../services/supabase"
 import { log, logError, logWarn } from '../../../utils/logger'
 
 
+import { EnvironmentItem } from "./components/EnvironmentItem"
+import { CurrentEnvironmentBanner } from "./components/CurrentEnvironmentBanner"
+
 /**
  * Connection status for each environment
  */
-type ConnectionStatus = "unknown" | "testing" | "connected" | "failed"
-
-interface EnvironmentItemProps {
-    env: SupabaseEnvironment
-    currentEnvironment: SupabaseEnvironment
-    selectedEnvironment: SupabaseEnvironment
-    connectionStatus: ConnectionStatus
-    onSelect: (env: SupabaseEnvironment) => void
-    onTest: (env: SupabaseEnvironment) => void
-    spacing: number
-}
-
-const EnvironmentItem = React.memo(({ 
-    env, 
-    currentEnvironment, 
-    selectedEnvironment, 
-    connectionStatus, 
-    onSelect, 
-    onTest,
-    spacing 
-}: EnvironmentItemProps) => {
-    const config = ENVIRONMENT_CONFIGS[env]
-    const status = connectionStatus
-    const statusIndicator = STATUS_INDICATORS[status]
-    const isActive = env === currentEnvironment
-    
-    // Stable render functions
-    const renderLeft = useCallback((props: any) => (
-         <RadioButton.Android
-             value={env}
-             status={selectedEnvironment === env ? "checked" : "unchecked"}
-             onPress={() => onSelect(env)}
-             testID={`radio-${env}`}
-             accessibilityLabel={`Select ${config.displayName}`}
-             accessibilityRole="radio"
-             {...props}
-         />
-    ), [env, selectedEnvironment, config.displayName, onSelect])
-
-    const renderRight = useCallback((props: any) => (
-         <View style={styles.environmentActions} {...props}>
-             <WWText
-                 testID={`connection-status-${env}`}
-                 style={styles.statusIndicator}
-                 accessibilityLabel={`Connection status: ${status}`}
-             >
-                 {statusIndicator}
-             </WWText>
-         </View>
-    ), [env, status, statusIndicator])
-
-    return (
-        <View style={styles.environmentItem}>
-            <List.Item
-                title={
-                    <View style={styles.environmentTitle}>
-                        <WWText variant="bodyLarge">{config.displayName}</WWText>
-                        {isActive && (
-                            <View style={styles.activeBadge}>
-                                <WWText style={styles.activeBadgeText}>ACTIVE</WWText>
-                            </View>
-                        )}
-                    </View>
-                }
-                description={config.description}
-                left={renderLeft}
-                right={renderRight}
-                onPress={() => onSelect(env)}
-            />
-
-            <View
-                style={[
-                    styles.environmentDetails,
-                    { paddingHorizontal: spacing * 2 },
-                ]}
-            >
-                <WWText variant="bodySmall" style={styles.urlText}>
-                    URL: {config.supabaseUrl}
-                </WWText>
-
-                <Button
-                    mode="outlined"
-                    onPress={() => onTest(env)}
-                    disabled={status === "testing"}
-                    icon="wifi"
-                    style={styles.testButton}
-                    testID={`test-connection-${env}`}
-                    accessibilityLabel={`Test connection to ${config.displayName}`}
-                    accessibilityRole="button"
-                >
-                    {status === "testing" ? "Testing..." : "Test Connection"}
-                </Button>
-            </View>
-
-            <Divider style={{ marginVertical: spacing }} />
-        </View>
-    )
-})
+export type ConnectionStatus = "unknown" | "testing" | "connected" | "failed"
 
 /**
  * Map of connection status to emoji indicators
  */
-const STATUS_INDICATORS: Record<ConnectionStatus, string> = {
+export const STATUS_INDICATORS: Record<ConnectionStatus, string> = {
 	unknown: "⚪",
 	testing: "🟡",
 	connected: "🟢",
@@ -452,27 +358,10 @@ export const DeveloperSettingsScreen: React.FC = () => {
 				</View>
 
 				{/* Current Environment Indicator */}
-				<Surface
-					style={[
-						styles.currentEnvironmentBanner,
-						{
-							marginHorizontal: spacing * 2,
-							marginBottom: spacing * 2,
-							padding: spacing * 2,
-						},
-					]}
-					elevation={2}
-				>
-					<WWText variant="labelMedium" style={styles.currentEnvironmentLabel}>
-						🔌 ACTIVE ENVIRONMENT
-					</WWText>
-					<WWText variant="titleMedium" style={styles.currentEnvironmentName}>
-						{ENVIRONMENT_CONFIGS[currentEnvironment].displayName}
-					</WWText>
-					<WWText variant="bodySmall" style={styles.currentEnvironmentUrl}>
-						{ENVIRONMENT_CONFIGS[currentEnvironment].supabaseUrl}
-					</WWText>
-				</Surface>
+				<CurrentEnvironmentBanner 
+					currentEnvironment={currentEnvironment} 
+					spacing={spacing} 
+				/>
 
 				<List.Section>
 					<List.Subheader>Environment Selection</List.Subheader>
@@ -563,68 +452,7 @@ const styles = StyleSheet.create({
 		marginTop: 8,
 		opacity: 0.7,
 	},
-	currentEnvironmentBanner: {
-		borderRadius: 8,
-		backgroundColor: "rgba(76, 175, 80, 0.1)", // Light green tint
-		borderLeftWidth: 4,
-		borderLeftColor: "#4CAF50", // Green accent
-	},
-	currentEnvironmentLabel: {
-		fontWeight: "700",
-		color: "#4CAF50",
-		marginBottom: 4,
-	},
-	currentEnvironmentName: {
-		fontWeight: "700",
-		marginBottom: 4,
-	},
-	currentEnvironmentUrl: {
-		opacity: 0.7,
-		fontFamily: Platform.select({
-			ios: "Courier",
-			android: "monospace",
-			default: "monospace",
-		}),
-	},
-	environmentItem: {
-		marginBottom: 8,
-	},
-	activeBadge: {
-		backgroundColor: "#4CAF50",
-		paddingHorizontal: 8,
-		paddingVertical: 2,
-		borderRadius: 4,
-	},
-	activeBadgeText: {
-		color: "white",
-		fontSize: 10,
-		fontWeight: "700",
-	},
-	environmentTitle: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
-	},
-	environmentDetails: {
-		marginTop: 8,
-		gap: 8,
-	},
-	environmentActions: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
-	},
-	statusIndicator: {
-		fontSize: 24,
-	},
-	urlText: {
-		opacity: 0.7,
-		fontFamily: Platform.select({
-			ios: "Courier",
-			android: "monospace",
-			default: "monospace",
-		}),
-	},
+
 	testButton: {
 		marginTop: 4,
 	},
