@@ -23,8 +23,10 @@ export interface EnvironmentConfig {
 /**
  * Environment-specific Supabase configurations
  *
- * Security Note: Local and cloud-dev keys are non-sensitive development credentials.
- * Cloud-prod keys should be stored as EAS secrets in production builds.
+ * Security Note: Local keys are non-sensitive development credentials.
+ * Cloud-dev and cloud-prod keys are loaded from EAS secrets at build time
+ * via Constants.expoConfig.extra (set in app.config.ts from process.env).
+ * For local development, keys come from the .env file.
  */
 export const ENVIRONMENT_CONFIGS: Record<
 	SupabaseEnvironment,
@@ -38,12 +40,8 @@ export const ENVIRONMENT_CONFIGS: Record<
 		isProduction: false,
 	},
 	"cloud-dev": {
-		supabaseUrl:
-			Constants.expoConfig?.extra?.supabaseUrl ||
-			"https://qegeovogqxiouqbrxmnh.supabase.co",
-		supabaseAnonKey:
-			Constants.expoConfig?.extra?.supabaseAnonKey ||
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlZ2Vvdm9ncXhpb3VxYnJ4bW5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3MDQ3MTEsImV4cCI6MjA4NjI4MDcxMX0.DI71CS1VvMf1cnunTg3HldxyrGdnh57UJu91AZ-nJlI",
+		supabaseUrl: Constants.expoConfig?.extra?.supabaseUrl || "",
+		supabaseAnonKey: Constants.expoConfig?.extra?.supabaseAnonKey || "",
 		displayName: "Cloud Development",
 		description: "Dev Supabase instance (active development, may break)",
 		isProduction: false,
