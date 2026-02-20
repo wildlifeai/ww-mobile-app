@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { StyleSheet, View, Alert } from 'react-native'
 import { useAppSelector } from '../../redux'
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWButton } from '../../components/ui/WWButton'
 import { RootStackParamList } from '../../navigation/types'
@@ -230,11 +230,13 @@ export const DeploymentDetailsStep = () => {
         }
     }, [devicePreparationId, deviceId])
 
-    useEffect(() => {
-        if (devicePreparationId) {
-            loadPreparationAndProject()
-        }
-    }, [devicePreparationId, loadPreparationAndProject])
+    useFocusEffect(
+        useCallback(() => {
+            if (devicePreparationId) {
+                loadPreparationAndProject()
+            }
+        }, [devicePreparationId, loadPreparationAndProject])
+    )
 
 
 

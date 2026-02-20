@@ -5,7 +5,7 @@ import {
 	logout,
 	setInitialState,
 } from "../redux/slices/authSlice"
-import { getCurrentSession, setupAuthListener } from "../services/auth"
+import { setupAuthListener } from "../services/auth"
 import { logError } from '../utils/logger'
 
 
@@ -14,13 +14,12 @@ export const AuthProvider = ({ children }: PropsWithChildren<unknown>) => {
 	const authListenerRef = useRef<(() => void) | null>(null)
 
 	useEffect(() => {
-		const init = async () => {
+		const init = () => {
 			try {
-				// Check for existing Supabase session
-				const sessionData = await getCurrentSession()
-				dispatch(setInitialState(sessionData))
-
 				// Set up auth state listener
+				// Supabase's onAuthStateChange immediately fires with the current session,
+				// avoiding the need for a separate getCurrentSession() call and preventing
+				// redundant dispatched events (cascading state updates).
 				authListenerRef.current = setupAuthListener((authResponse) => {
 					if (authResponse) {
 						dispatch(setCredentials(authResponse))

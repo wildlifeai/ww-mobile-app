@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react'
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Platform, PermissionsAndroid } from 'react-native'
+import { useEffect, useRef, useLayoutEffect, useCallback, useReducer } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Platform, PermissionsAndroid } from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import { Modal, Portal, Button, useTheme, Appbar } from 'react-native-paper'
@@ -8,7 +8,6 @@ import { useExtendedTheme } from '../../theme'
 import { BackHandler } from 'react-native'
 import { useBle } from '../../hooks/useBle'
 import { useBleCommands } from '../../hooks/useBleCommands'
-import { KeyboardStickyView } from "react-native-keyboard-controller"
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useGPSLocation } from '../../hooks/useGPSLocation'
@@ -26,6 +25,9 @@ import { Alert } from 'react-native'
 import BleManager, { Peripheral } from 'react-native-ble-manager'
 import { log, logError, logWarn } from '../../utils/logger'
 
+import { consoleReducer, initialConsoleState } from './hooks/useConsoleReducer'
+import { ConsoleHeader } from './components/ConsoleHeader'
+import { ConsoleInput } from './components/ConsoleInput'
 
 /**
  * Scans for the Nordic DFU booth loader which advertises as "DfuTarg"
@@ -95,10 +97,7 @@ export const EngineerConsoleScreen = () => {
     } = useBleCommands()
 
 
-    const [inputText, setInputText] = useState('')
-    const [consoleHistory, setConsoleHistory] = useState<ConsoleEntry[]>([])
-    const [isConnecting, setIsConnecting] = useState(false)
-    const [isHelpVisible, setIsHelpVisible] = useState(false)
+    const [consoleState, dispatch] = useReducer(consoleReducer, initialConsoleState)
 
     // Use capture preview hook
     const { capturedImageUri: previewImageUri, isCapturing: isWaitingForCapture, startCapture } = useCapturePreview({
@@ -106,7 +105,7 @@ export const EngineerConsoleScreen = () => {
         write: write,
         onImageReceived: (imageUri) => {
             log('[EngineerConsole] Image received:', imageUri)
-            setShowPreviewModal(true)
+            dispatch({ type: 'SET_SHOW_PREVIEW_MODAL', payload: true })
         }
     })
 
@@ -156,8 +155,7 @@ export const EngineerConsoleScreen = () => {
 
     const lastProcessedLogLength = useRef<number>(0)
 
-    // Image preview state
-    const [showPreviewModal, setShowPreviewModal] = useState(false)
+
 
     // Monitor logs and update console history
     useEffect(() => {
@@ -190,49 +188,18 @@ export const EngineerConsoleScreen = () => {
             }
         })
 
-        setConsoleHistory((prev: ConsoleEntry[]) => [...prev, ...historyEntries])
-
-        // Check for automation triggers in the new lines
-        const combinedNewLogs = newEntries.map(e => e.content).join('\n')
-
-        // Automation: Handle Firmware Wakeup Logic
-        if (isWaitingForCapture) {
-            if (combinedNewLogs.includes("Waking it")) {
-                const infoEntry: ConsoleEntry = {
-                    id: Date.now().toString(),
-                    timestamp: new Date(),
-                    type: 'info',
-                    content: 'Device waking up... Waiting for firmware to auto-send.'
-                }
-                setConsoleHistory((prev: ConsoleEntry[]) => {
-                    const last = prev[prev.length - 1]
-                    if (last && last.content === infoEntry.content) return prev
-                    return [...prev, infoEntry]
-                })
-            }
-
-            if (combinedNewLogs.includes("Discarding message")) {
-                const infoEntry: ConsoleEntry = {
-                    id: Date.now().toString(),
-                    timestamp: new Date(),
-                    type: 'info',
-                    content: 'Command queued. Waiting...'
-                }
-                setConsoleHistory((prev: ConsoleEntry[]) => {
-                    const last = prev[prev.length - 1]
-                    if (last && last.content === infoEntry.content) return prev
-                    return [...prev, infoEntry]
-                })
-            }
-        }
+        dispatch({
+            type: 'APPEND_LOGS_AND_AUTOMATION',
+            payload: { newEntries: historyEntries, isWaitingForCapture }
+        })
 
     }, [logs, isWaitingForCapture, device, write])
 
     const handleSend = async (cmd?: string) => {
-        const commandToSend = cmd || inputText.trim()
+        const commandToSend = cmd || consoleState.inputText.trim()
         if (!commandToSend || !device) return
 
-        if (!cmd) setInputText('')
+        if (!cmd) dispatch({ type: 'SET_INPUT_TEXT', payload: '' })
 
         // Add to history
         const newEntry: ConsoleEntry = {
@@ -241,7 +208,7 @@ export const EngineerConsoleScreen = () => {
             type: 'command',
             content: commandToSend
         }
-        setConsoleHistory((prev: ConsoleEntry[]) => [...prev, newEntry])
+        dispatch({ type: 'APPEND_HISTORY', payload: newEntry })
 
         try {
             await write(device, [commandToSend])
@@ -252,7 +219,7 @@ export const EngineerConsoleScreen = () => {
                 type: 'error',
                 content: `Error sending command: ${error}`
             }
-            setConsoleHistory((prev: ConsoleEntry[]) => [...prev, errorEntry])
+            dispatch({ type: 'APPEND_HISTORY', payload: errorEntry })
         }
     }
 
@@ -279,7 +246,7 @@ export const EngineerConsoleScreen = () => {
                     await write(device, ['AI txfile .'])
                     break
                 case 'Clear':
-                    setConsoleHistory((_prev: ConsoleEntry[]) => [])
+                    dispatch({ type: 'CLEAR_HISTORY' })
                     return
 
                 // --- System ---
@@ -323,7 +290,7 @@ export const EngineerConsoleScreen = () => {
                 type: 'command',
                 content: `[Action] ${commandDisplay}`
             }
-            setConsoleHistory((prev: ConsoleEntry[]) => [...prev, newEntry])
+            dispatch({ type: 'APPEND_HISTORY', payload: newEntry })
 
         } catch (error) {
             const errorEntry: ConsoleEntry = {
@@ -332,7 +299,7 @@ export const EngineerConsoleScreen = () => {
                 type: 'error',
                 content: `Error executing ${action}: ${error}`
             }
-            setConsoleHistory((prev: ConsoleEntry[]) => [...prev, errorEntry])
+            dispatch({ type: 'APPEND_HISTORY', payload: errorEntry })
         }
     }
 
@@ -340,7 +307,7 @@ export const EngineerConsoleScreen = () => {
 
     const handleConnect = async () => {
         if (!device) return
-        setIsConnecting(true)
+        dispatch({ type: 'SET_IS_CONNECTING', payload: true })
         try {
             await connectDevice(device)
             const entry: ConsoleEntry = {
@@ -349,7 +316,7 @@ export const EngineerConsoleScreen = () => {
                 type: 'info',
                 content: 'Connected to device'
             }
-            setConsoleHistory((prev: ConsoleEntry[]) => [...prev, entry])
+            dispatch({ type: 'APPEND_HISTORY', payload: entry })
         } catch (error) {
             const entry: ConsoleEntry = {
                 id: Date.now().toString(),
@@ -357,14 +324,14 @@ export const EngineerConsoleScreen = () => {
                 type: 'error',
                 content: `Connection failed: ${error}`
             }
-            setConsoleHistory((prev: ConsoleEntry[]) => [...prev, entry])
+            dispatch({ type: 'APPEND_HISTORY', payload: entry })
         } finally {
-            setIsConnecting(false)
+            dispatch({ type: 'SET_IS_CONNECTING', payload: false })
         }
     }
 
     const onRunHelpCommand = async (cmdName: CommandNames) => { // Added async here
-        setIsHelpVisible(false)
+        dispatch({ type: 'SET_IS_HELP_VISIBLE', payload: false })
 
         // Handle special command types
         if (cmdName === CommandNames.CAPTURE_PREVIEW) {
@@ -418,7 +385,7 @@ export const EngineerConsoleScreen = () => {
                                     type: 'info',
                                     content: 'Starting Firmware Update...'
                                 }
-                                setConsoleHistory((prev: ConsoleEntry[]) => [...prev, entry])
+                                dispatch({ type: 'APPEND_HISTORY', payload: entry })
 
                                 // 1. Get latest firmware info
                                 const latestBleFirmware = await ReferenceDataService.getLatestFirmware('ble')
@@ -451,12 +418,12 @@ export const EngineerConsoleScreen = () => {
 
 
                                     // 4. Trigger DFU Mode on device
-                                    setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
+                                    dispatch({ type: 'APPEND_HISTORY', payload: {
                                         id: Date.now().toString(),
                                         timestamp: new Date(),
                                         type: 'info',
                                         content: `Sending 'dfu' command to switch mode...`
-                                    }])
+                                    }})
 
                                     // Send DFU command and wait for disconnect
                                     try {
@@ -493,24 +460,24 @@ export const EngineerConsoleScreen = () => {
                                     }
 
                                     // 6. Scan for bootloader ("DfuTarg")
-                                    setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
+                                    dispatch({ type: 'APPEND_HISTORY', payload: {
                                         id: Date.now().toString(),
                                         timestamp: new Date(),
                                         type: 'info',
                                         content: `Scanning for bootloader...`
-                                    }])
+                                    }})
 
                                     let bootloaderAddress: string | null = null
                                     try {
                                         bootloaderAddress = await scanForBootloader(10000) // 10s scan
                                         if (bootloaderAddress) {
                                             log(`[EngineerConsole] Found bootloader at: ${bootloaderAddress}`)
-                                            setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
+                                            dispatch({ type: 'APPEND_HISTORY', payload: {
                                                 id: Date.now().toString(),
                                                 timestamp: new Date(),
                                                 type: 'info',
                                                 content: `Found bootloader: ${bootloaderAddress}`
-                                            }])
+                                            }})
                                         } else {
                                             throw new Error('Bootloader not found after scanning')
                                         }
@@ -519,24 +486,24 @@ export const EngineerConsoleScreen = () => {
                                     }
 
                                     // 7. Start DFU with bootloader address
-                                    setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
+                                    dispatch({ type: 'APPEND_HISTORY', payload: {
                                         id: Date.now().toString(),
                                         timestamp: new Date(),
                                         type: 'info',
                                         content: `Starting DFU transfer to ${bootloaderAddress}...`
-                                    }])
+                                    }})
 
                                     await DfuService.startDFU(
                                         bootloaderAddress,
                                         localPath,
                                         (progress) => {
                                             if (progress % 10 === 0) { // Log every 10%
-                                                setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
+                                                dispatch({ type: 'APPEND_HISTORY', payload: {
                                                     id: Date.now().toString(),
                                                     timestamp: new Date(),
                                                     type: 'info',
                                                     content: `DFU Progress: ${progress}%`
-                                                }])
+                                                }})
                                             }
                                         }
                                     )
@@ -545,12 +512,12 @@ export const EngineerConsoleScreen = () => {
                                     // Use watermelonDB directly since we have the ID but need the record
                                     // Actually we can't easily update the Redux device in DB without fetching the Model first.
                                     // But we can trigger a sync or just rely on next connect.
-                                    setConsoleHistory((prev: ConsoleEntry[]) => [...prev, {
+                                    dispatch({ type: 'APPEND_HISTORY', payload: {
                                         id: Date.now().toString(),
                                         timestamp: new Date(),
                                         type: 'info',
                                         content: `Firmware Update Complete!`
-                                    }])
+                                    }})
 
                                     await FileSystem.deleteAsync(localPath, { idempotent: true })
                                     Alert.alert('Success', 'Firmware updated successfully')
@@ -564,7 +531,7 @@ export const EngineerConsoleScreen = () => {
                                     type: 'error',
                                     content: `DFU Failed: ${e}`
                                 }
-                                setConsoleHistory((prev: ConsoleEntry[]) => [...prev, errorEntry])
+                                dispatch({ type: 'APPEND_HISTORY', payload: errorEntry })
                                 Alert.alert('Error', `Update failed: ${e}`)
                             }
                         }
@@ -602,79 +569,39 @@ export const EngineerConsoleScreen = () => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <View>
-                    <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
-                    <Text style={styles.deviceId}>{device.id}</Text>
-                </View>
-                <View style={styles.statusContainer}>
-                    <View style={[styles.statusDot, device.connected ? styles.statusDotConnected : styles.statusDotDisconnected]} />
-                    <Text style={styles.statusText}>{device.connected ? 'Connected' : 'Disconnected'}</Text>
-                    <Button
-                        mode="outlined"
-                        compact
-                        onPress={() => setIsHelpVisible(true)}
-                        style={styles.helpButton}
-                    >
-                        Command Reference
-                    </Button>
-                </View>
-            </View>
-
-            {!device.connected && (
-                <Button
-                    mode="contained"
-                    onPress={handleConnect}
-                    disabled={isConnecting}
-                    style={styles.connectButton}
-                    buttonColor={theme.colors.primary}
-                    textColor="#FFFFFF"
-                    loading={isConnecting}
-                >
-                    Connect to Console
-                </Button>
-            )}
+            <ConsoleHeader
+                deviceName={device?.name || null}
+                deviceId={device.id}
+                isConnected={device.connected}
+                isConnecting={consoleState.isConnecting}
+                onConnect={handleConnect}
+                onShowHelp={() => dispatch({ type: 'SET_IS_HELP_VISIBLE', payload: true })}
+            />
 
             <View style={styles.consoleContainer}>
-                <BleConsoleOutput entries={consoleHistory} />
+                <BleConsoleOutput entries={consoleState.consoleHistory} />
             </View>
 
-            {/* Input Container - Sticky to Keyboard */}
-            <KeyboardStickyView offset={{ closed: 0, opened: 0 }}> 
-                <View style={styles.inputContainer}>
-                    <TextInput
-                        style={styles.input}
-                        value={inputText}
-                        onChangeText={setInputText}
-                        placeholder="Enter command..."
-                        placeholderTextColor="#666"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        editable={device.connected}
-                    />
-                    <TouchableOpacity
-                        style={[styles.sendButton, (!inputText.trim() || !device.connected) && styles.sendButtonDisabled]}
-                        onPress={() => handleSend()}
-                        disabled={!inputText.trim() || !device.connected}
-                    >
-                        <Ionicons name="send" size={20} color="#FFF" />
-                    </TouchableOpacity>
-                </View>
-            </KeyboardStickyView>
+            <ConsoleInput
+                inputText={consoleState.inputText}
+                isConnected={device.connected}
+                onInputChange={(text) => dispatch({ type: 'SET_INPUT_TEXT', payload: text })}
+                onSend={() => handleSend()}
+            />
 
             <Portal>
                 <CommandReferenceModal
-                    visible={isHelpVisible}
-                    onDismiss={() => setIsHelpVisible(false)}
+                    visible={consoleState.isHelpVisible}
+                    onDismiss={() => dispatch({ type: 'SET_IS_HELP_VISIBLE', payload: false })}
                     onRunCommand={onRunHelpCommand}
                 />
 
             </Portal>
 
             <ImagePreviewModal
-                visible={showPreviewModal}
+                visible={consoleState.showPreviewModal}
                 imageUri={previewImageUri}
-                onDismiss={() => setShowPreviewModal(false)}
+                onDismiss={() => dispatch({ type: 'SET_SHOW_PREVIEW_MODAL', payload: false })}
             />
         </View>
     )

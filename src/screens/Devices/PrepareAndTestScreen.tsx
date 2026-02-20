@@ -198,7 +198,6 @@ export const PrepareAndTestScreen = () => {
     const { 
         getBatteryLevel, 
         checkSdCard, 
-        setUtc, 
         getDeviceVer, 
         runDisconnect, 
         runDfu, 
@@ -244,12 +243,17 @@ export const PrepareAndTestScreen = () => {
     })
 
 
-    // Initialization errors from connection
-    const [initErrors, setInitErrors] = useState<{ selftest?: string; setUtc?: string; deviceHealth?: string[] }>({})
-    // Track whether BLE initialization has run
-    const [isInitializing, setIsInitializing] = useState(false)
-    const [initStep, setInitStep] = useState<string>('')
-    const [initProgress, setInitProgress] = useState(0)
+    // Consolidated Initialization State
+    const [initState, setInitState] = useState({
+        errors: {} as { selftest?: string; setUtc?: string; deviceHealth?: string[]; cameraDisable?: string },
+        isInitializing: false,
+        progress: 0,
+        step: ''
+    })
+
+    const updateInitState = useCallback((updates: Partial<typeof initState>) => {
+        setInitState(prev => ({ ...prev, ...updates }))
+    }, [])
     const hasInitialized = useRef(false)
 
     // Load user projects using RTK Query (consistent with Projects screen)
@@ -921,8 +925,7 @@ export const PrepareAndTestScreen = () => {
             if (!bleDevice || !bleDevice.connected || hasInitialized.current) return
 
             hasInitialized.current = true
-            setIsInitializing(true)
-            setInitProgress(0.05)
+            updateInitState({ isInitializing: true, progress: 0.05 })
             log('[PrepareTest] Running BLE initialization sequence...')
 
             const errors: { setUtc?: string; deviceHealth?: string[]; cameraDisable?: string } = {}
@@ -930,8 +933,7 @@ export const PrepareAndTestScreen = () => {
             // Step 1-2: Standard BLE initialization (wake -> stabilize -> setutc)
             const initResult = await runBleStandardInit(bleDevice, {
                 onProgress: (step, progress) => {
-                    setInitStep(step)
-                    setInitProgress(progress * 0.5) // Use first 50% for standard init
+                    updateInitState({ step, progress: progress * 0.5 }) // Use first 50% for standard init
                 },
                 onError: (errorsResult) => {
                     if (errorsResult.setUtc) errors.setUtc = errorsResult.setUtc
@@ -945,8 +947,7 @@ export const PrepareAndTestScreen = () => {
 
             // Step 3. Disable Camera (AI setop 10 0)
             try {
-                setInitStep('Disabling camera...')
-                setInitProgress(0.6)
+                updateInitState({ step: 'Disabling camera...', progress: 0.6 })
                 log('[PrepareTest] Stopping camera for preparation flow...')
                 await quiesceDevice('[PrepareTest]', false)
                 // Confirmation handled by Command Manager regex
@@ -957,8 +958,7 @@ export const PrepareAndTestScreen = () => {
 
             // Step 4. Reset GPS location to default
             try {
-                setInitStep('Resetting location...')
-                setInitProgress(0.8)
+                updateInitState({ step: 'Resetting location...', progress: 0.8 })
                 log('[PrepareTest] Resetting GPS location to default...')
                 await clearGpsLocation(bleDevice)
                 // Confirmation handled by Command Manager regex
@@ -968,8 +968,7 @@ export const PrepareAndTestScreen = () => {
 
             // Step 5. Clear Deployment ID (Op 20-27)
             try {
-                setInitStep('Clearing old IDs...')
-                setInitProgress(0.85)
+                updateInitState({ step: 'Clearing old IDs...', progress: 0.85 })
                 log('[PrepareTest] Clearing any existing deployment IDs...')
                 await setDeploymentIdAsOps(bleDevice, null)
             } catch (err) {
@@ -979,40 +978,29 @@ export const PrepareAndTestScreen = () => {
             // Step 6. Automated Hardware Checks
             try {
                 // 6a. Battery Check
-                setInitStep('Checking battery...')
-                setInitProgress(0.9)
+                updateInitState({ step: 'Checking battery...', progress: 0.9 })
                 log('[PrepareTest] Auto-triggering battery check...')
                 await handleBatteryCheck()
 
                 // 6b. SD Card Check
-                setInitStep('Checking SD card...')
-                setInitProgress(0.94)
+                updateInitState({ step: 'Checking SD card...', progress: 0.94 })
                 log('[PrepareTest] Auto-triggering SD card check...')
                 await handleSdCardCheck()
 
                 // 6c. Firmware Check
-                setInitStep('Verifying firmware...')
-                setInitProgress(0.98)
+                updateInitState({ step: 'Verifying firmware...', progress: 0.98 })
                 log('[PrepareTest] Auto-triggering firmware check...')
                 await handleFirmwareCheck()
             } catch (err) {
                 logError('[PrepareTest] One or more automated checks failed:', err)
             }
 
-            setInitErrors(errors)
-            
-            // If critical steps failed, alert the user
-            if (errors.setUtc || errors.cameraDisable) {
-                Alert.alert(
-                    'Initialization Warning',
-                    `Some setup steps failed:\n${errors.setUtc ? `• ${errors.setUtc}\n` : ''}${errors.cameraDisable ? `• ${errors.cameraDisable}` : ''}\n\nYou may need to retry initialization.`,
-                    [{ text: 'OK' }]
-                )
-            }
-
-            setInitProgress(1)
-            setInitStep('Ready')
-            setIsInitializing(false)
+            updateInitState({
+                errors,
+                progress: 1,
+                step: 'Ready',
+                isInitializing: false
+            })
             log('[PrepareTest] BLE initialization complete')
         }
 
@@ -1102,12 +1090,14 @@ export const PrepareAndTestScreen = () => {
     // Store initialization errors from route params
     useEffect(() => {
         if (selftestError || setUtcError) {
-            setInitErrors({
-                selftest: selftestError,
-                setUtc: setUtcError
+            updateInitState({
+                errors: {
+                    selftest: selftestError,
+                    setUtc: setUtcError
+                }
             })
         }
-    }, [selftestError, setUtcError])
+    }, [selftestError, setUtcError, updateInitState])
 
     // Check BLE connection status when screen regains focus
     useFocusEffect(
@@ -1118,7 +1108,7 @@ export const PrepareAndTestScreen = () => {
             // Skip check if initializing (BLE commands in progress)
             // Skip check if reconnecting after DFU (device is rebooting)
             const isConnected = bleDevice?.connected
-            if (!loading && bleDevice && !isDfuInProgress.current && !isNavigatingAway.current && !isInitializing && !isReconnectingAfterDfu.current) {
+            if (!loading && bleDevice && !isDfuInProgress.current && !isNavigatingAway.current && !initState.isInitializing && !isReconnectingAfterDfu.current) {
                 if (!isConnected) {
                     log('[PrepareTest] Connection lost detected on focus')
                     Alert.alert(
@@ -1137,7 +1127,7 @@ export const PrepareAndTestScreen = () => {
                     )
                 }
             }
-        }, [bleDevice, loading, navigation, isInitializing]) 
+        }, [bleDevice, loading, navigation, initState.isInitializing])
     )
 
 
@@ -1188,17 +1178,17 @@ export const PrepareAndTestScreen = () => {
             <View style={styles.container}>
                 <InitializationHeader
                     device={device}
-                    isInitializing={isInitializing}
-                    initProgress={initProgress}
-                    initStep={initStep}
-                    initErrors={initErrors}
+                    isInitializing={initState.isInitializing}
+                    initProgress={initState.progress}
+                    initStep={initState.step}
+                    initErrors={initState.errors}
                     theme={theme}
                 />
 
                 <ProjectSelectionSection
                     selectedProject={selectedProject}
                     handleProjectChange={handleProjectChange}
-                    isInitializing={isInitializing}
+                    isInitializing={initState.isInitializing}
                     projects={projects}
                     theme={theme}
                     onShowHelp={showHelp}
@@ -1213,7 +1203,7 @@ export const PrepareAndTestScreen = () => {
                     handleCameraTest={handleCameraTest}
                     isCapturingImage={isCapturingImage}
                     cameraTestPassed={cameraTestPassed}
-                    isInitializing={isInitializing}
+                    isInitializing={initState.isInitializing}
                     bleDeviceConnected={!!bleDevice?.connected}
                     theme={theme}
                     onShowHelp={showHelp}
@@ -1231,7 +1221,7 @@ export const PrepareAndTestScreen = () => {
                     handleFirmwareCheck={handleFirmwareCheck}
                     handleBleFirmwareUpdate={handleBleFirmwareUpdate}
                     firmwareUpdateStatus={firmwareUpdateStatus}
-                    isInitializing={isInitializing}
+                    isInitializing={initState.isInitializing}
                     bleDeviceConnected={!!bleDevice?.connected}
                     batteryLevel={batteryLevel}
                     theme={theme}
@@ -1255,7 +1245,7 @@ export const PrepareAndTestScreen = () => {
                         mode="contained"
                         onPress={handleFinish}
                         style={styles.finishButton}
-                        disabled={!selectedProject || isInitializing || isFinishing}
+                        disabled={!selectedProject || initState.isInitializing || isFinishing}
                         loading={isFinishing}
                     >
                         {isFinishing ? 'Finishing...' : 'Finish Preparation & Testing'}

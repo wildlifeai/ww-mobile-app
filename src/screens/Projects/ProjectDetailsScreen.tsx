@@ -122,6 +122,18 @@ export const ProjectDetailsScreen = () => {
 			timelapse_interval_seconds: "",
 			model_id: "",
 		},
+		values: project ? {
+			name: project.name,
+			description: project.description || "",
+			sampling_design_id: project.sampling_design_id?.toString() || "",
+			website: project.website || "",
+			is_baited: project.is_baited || false,
+			is_monitoring_marked_individuals: project.is_monitoring_marked_individuals || false,
+			capture_method_id: project.capture_method_id?.toString() || "",
+			activity_detection_sensitivity_id: project.activity_detection_sensitivity_id?.toString() || "",
+			timelapse_interval_seconds: project.timelapse_interval_seconds?.toString() || "",
+			model_id: project.model_id || "",
+		} : undefined,
 	})
 
 	// Watch fields for conditional rendering
@@ -161,25 +173,6 @@ export const ProjectDetailsScreen = () => {
 	const isTimeLapse = useMemo(() => {
 		return selectedMethod?.value === "Time-lapse" || selectedMethod?.value === "timeLapse"
 	}, [selectedMethod])
-
-	// Reset form when project data loads
-	useEffect(() => {
-		if (project) {
-			reset({
-				name: project.name,
-				description: project.description || "",
-				sampling_design_id: project.sampling_design_id?.toString() || "",
-				website: project.website || "",
-				is_baited: project.is_baited || false,
-				is_monitoring_marked_individuals:
-					project.is_monitoring_marked_individuals || false,
-				capture_method_id: project.capture_method_id?.toString() || "",
-				activity_detection_sensitivity_id: project.activity_detection_sensitivity_id?.toString() || "",
-				timelapse_interval_seconds: project.timelapse_interval_seconds?.toString() || "",
-				model_id: project.model_id || "",
-			})
-		}
-	}, [project, reset])
 
 	// Handlers
 	const handleEdit = useCallback(() => {
