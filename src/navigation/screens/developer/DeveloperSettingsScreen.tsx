@@ -178,7 +178,7 @@ export const DeveloperSettingsScreen: React.FC = () => {
 
 	// Current environment from EnvironmentManager
 	const [currentEnvironment, setCurrentEnvironment] =
-		useState<SupabaseEnvironment>(getDefaultEnvironment())
+		useState<SupabaseEnvironment>(() => getDefaultEnvironment())
 
 	// Loading state for environment initialization
 	// const [isLoadingEnvironment, setIsLoadingEnvironment] = useState(true)

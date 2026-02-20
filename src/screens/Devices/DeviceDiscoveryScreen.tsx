@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useCallback } from 'react'
 import { View, FlatList, StyleSheet, Alert } from 'react-native'
-import { useIsFocused, useNavigation, useRoute, RouteProp } from '@react-navigation/native'
+import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
@@ -12,7 +12,7 @@ import { ActivityIndicator } from 'react-native-paper'
 import { DeviceItem } from '../../components/DeviceItem'
 import { DeviceService } from '../../services/DeviceService'
 import { selectCurrentOrganisation } from '../../redux/slices/authSlice'
-import { RootStackParamList } from '../../navigation'
+import { RootStackParamList } from '../../navigation/types'
 import { DevicePreparationService } from '../../services/DevicePreparationService'
 import { DeploymentService } from '../../services/DeploymentService'
 import { log, logError } from '../../utils/logger'
@@ -23,7 +23,7 @@ type DeviceDiscoveryScreenRouteProp = RouteProp<RootStackParamList, 'DeviceDisco
 export const DeviceDiscoveryScreen = () => {
     const navigation = useNavigation()
     const route = useRoute<DeviceDiscoveryScreenRouteProp>()
-    const isFocused = useIsFocused()
+
     const { isBleConnecting, startScan, connectDevice, disconnectDevice } = useBleActions()
     // const { runSelfTest, setUtc } = useBleCommands()
     const devices = useAppSelector((state) => state.devices)
@@ -54,29 +54,23 @@ export const DeviceDiscoveryScreen = () => {
     }, [devices])
 
     // Start scanning when screen is focused
-    useEffect(() => {
-        if (isFocused) {
+    useFocusEffect(
+        useCallback(() => {
             startScan(10)
-        }
-    }, [isFocused, startScan])
 
-    // Auto-scan every 15 seconds
-    useEffect(() => {
-        if (!isFocused) return
+            const interval = setInterval(() => {
+                if (!isBleBusy) {
+                    startScan(10)
+                } else {
+                    log('Scanning already taking place, skipping.')
+                }
+            }, 30 * 1000)
 
-        const interval = setInterval(() => {
-            if (!isBleBusy && isFocused) {
-                startScan(10)
-            } else {
-                log('Scanning already taking place, skipping.')
+            return () => {
+                clearInterval(interval)
             }
-        }, 30 * 1000)
-
-        return () => {
-
-            clearInterval(interval)
-        }
-    }, [isScanning, isBleConnecting, isBleBusy, startScan, isFocused])
+        }, [startScan, isBleBusy])
+    )
 
     const handleScan = () => {
         if (!isBleBusy && !isScanning) {

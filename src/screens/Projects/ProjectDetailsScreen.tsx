@@ -48,7 +48,7 @@ import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { Field } from "../../components/form/Field"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { useAppSelector } from "../../redux"
-import { AppParams } from "../../navigation/index"
+import { AppParams } from "../../navigation/types"
 import { logError } from '../../utils/logger'
 import { getDisplayName } from "../../utils/userUtils"
 

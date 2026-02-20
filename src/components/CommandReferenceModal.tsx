@@ -58,7 +58,7 @@ export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Prop
                     </WWText>
 
                     {commandList.map((cmd, index) => (
-                        <View key={index} style={[styles.row, dynamicStyles.rowBorder]}>
+                        <View key={cmd.name} style={[styles.row, dynamicStyles.rowBorder]}>
                             <View style={styles.rowInfo}>
                                 <View style={styles.nameContainer}>
                                     <WWText style={styles.boldText}>{cmd.name}</WWText>

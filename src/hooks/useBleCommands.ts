@@ -124,21 +124,10 @@ export const useBleCommands = () => {
     }, [write])
 
     const setOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number, value: string) => {
-        // Optimization: Read current value first to avoid redundant writes
-        try {
-            const current = await getOperationalParam(peripheral, index)
-            if (current === value) {
-                log(`[BLE CMD] Parameter ${index} is already ${value}, skipping write.`)
-                return
-            }
-        } catch (e) {
-            logWarn(`[BLE CMD] Fetch failed for parameter ${index}, forcing write: ${e}`)
-        }
-
         // Use structured command so useBle can find the correct regex pattern automatically
-        // We wait for the confirmation "Set OpParam X = Y" to ensure task completion.
+        // We blindly set the parameter to avoid the roundtrip delay of a read-before-write
         await write(peripheral, [[CommandNames.setop, { control: CommandControlTypes.WRITE, value: `${index} ${value}` }]])
-    }, [write, getOperationalParam])
+    }, [write])
 
     const setGpsLocation = useCallback(
         async (peripheral: ExtendedPeripheral, latitude: number, longitude: number, altitude: number) => {

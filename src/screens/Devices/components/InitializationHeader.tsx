@@ -79,7 +79,7 @@ export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
                         </Text>
                     )}
                     {initErrors.deviceHealth && initErrors.deviceHealth.map((warning, i) => (
-                        <Text key={i} variant="bodySmall" style={[styles.errorText, { color: theme.colors.onErrorContainer }]}>
+                        <Text key={warning} variant="bodySmall" style={[styles.errorText, { color: theme.colors.onErrorContainer }]}>
                             • Hardware: {warning}
                         </Text>
                     ))}

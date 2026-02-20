@@ -22,16 +22,17 @@ export const LocationSection = ({ onLocationChange, onShowHelp }: Props) => {
 
     const renderHelpButton = useCallback((props: any) => <HelpButton {...props} onShowHelp={onShowHelp} />, [onShowHelp])
 
-    useEffect(() => {
-        // Auto-fetch on mount
-        getLocation()
-    }, [getLocation])
+    const handleGetLocation = useCallback(async () => {
+        const loc = await getLocation()
+        if (loc) {
+            onLocationChange(loc)
+        }
+    }, [getLocation, onLocationChange])
 
     useEffect(() => {
-        if (location) {
-            onLocationChange(location)
-        }
-    }, [location, onLocationChange])
+        // Auto-fetch on mount
+        handleGetLocation()
+    }, [handleGetLocation])
 
     return (
         <Card style={styles.card}>
@@ -53,7 +54,7 @@ export const LocationSection = ({ onLocationChange, onShowHelp }: Props) => {
                 ) : (
                     <Text>Location not available.</Text>
                 )}
-                <Button onPress={getLocation} icon="refresh">Update Location</Button>
+                <Button onPress={handleGetLocation} icon="refresh">Update Location</Button>
             </Card.Content>
         </Card>
     )

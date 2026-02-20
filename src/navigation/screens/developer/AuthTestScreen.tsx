@@ -366,7 +366,7 @@ export const AuthTestScreen: React.FC = () => {
 						<View>
 							{testResults.map((result, index) => (
 								<Text
-									key={index}
+									key={`${index}-${result}`}
 									style={[
 										styles.resultItem,
 										result.includes("❌")

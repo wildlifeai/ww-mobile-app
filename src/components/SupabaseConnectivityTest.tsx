@@ -347,7 +347,7 @@ export const SupabaseConnectivityTest: React.FC = () => {
 			</Card>
 
 			{tests.map((test, index) => (
-				<Card key={index} style={styles.testCard}>
+				<Card key={test.name} style={styles.testCard}>
 					<Card.Content>
 						<View
 							style={styles.testHeader}

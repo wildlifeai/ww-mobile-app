@@ -82,7 +82,7 @@ export const FinishProgressDialog: React.FC<FinishProgressDialogProps> = ({
                                 contentContainerStyle={styles.logsContent}
                             >
                                 {logs.map((log, index) => (
-                                    <Text key={index} variant="bodySmall" style={styles.logLine}>
+                                    <Text key={`${index}-${log}`} variant="bodySmall" style={styles.logLine}>
                                         {`> ${log}`}
                                     </Text>
                                 ))}

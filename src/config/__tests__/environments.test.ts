@@ -20,7 +20,10 @@ import Constants from "expo-constants"
 // Mock expo-constants
 jest.mock("expo-constants", () => ({
 	expoConfig: {
-		extra: {},
+		extra: {
+			supabaseUrl: "https://test.supabase.co",
+			supabaseAnonKey: "test-anon-key",
+		},
 	},
 }))
 

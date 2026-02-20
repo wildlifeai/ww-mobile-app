@@ -33,8 +33,8 @@ export const ENVIRONMENT_CONFIGS: Record<
 	EnvironmentConfig
 > = {
 	local: {
-		supabaseUrl: "http://192.168.1.239:54321",
-		supabaseAnonKey: "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH",
+		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || "http://192.168.1.239:54321",
+		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "YOUR_LOCAL_ANON_KEY",
 		displayName: "Local Development",
 		description: "WSL Supabase (LAN: 192.168.1.239:54321)",
 		isProduction: false,
