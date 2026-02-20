@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback } from 'react'
+import React, { useMemo, useCallback } from 'react'
 import { View, FlatList, StyleSheet, Alert } from 'react-native'
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { WWScreenView } from '../../components/ui/WWScreenView'

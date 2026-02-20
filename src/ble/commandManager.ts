@@ -318,8 +318,8 @@ export class BleCommandManager {
                 this.processQueue() 
               }
             },
-            reject: (reason: any) => {
-              failedCommand.reject(reason)
+            reject: (r: any) => {
+              failedCommand.reject(r)
             }
           })
           

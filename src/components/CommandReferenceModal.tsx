@@ -57,7 +57,7 @@ export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Prop
                         List of available firmware commands. Click Run to send.
                     </WWText>
 
-                    {commandList.map((cmd, index) => (
+                    {commandList.map((cmd) => (
                         <View key={cmd.name} style={[styles.row, dynamicStyles.rowBorder]}>
                             <View style={styles.rowInfo}>
                                 <View style={styles.nameContainer}>

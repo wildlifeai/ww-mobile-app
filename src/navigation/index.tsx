@@ -1,5 +1,4 @@
 import { useEffect } from "react"
-import { ParamListBase, RouteProp } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { useAppSelector } from "../redux"
 // System screens

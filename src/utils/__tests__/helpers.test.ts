@@ -6,16 +6,11 @@ import {
 	isOurDevice,
 	parseUuidToOps,
 } from "../helpers"
-import BleManager from "react-native-ble-manager"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { ExtendedPeripheral } from "../../redux/slices/devicesSlice"
 import {
-	BLE_SERVICE_UUID,
-	BLE_CHARACTERISTIC_WRITE_UUID,
-	BLE_CHARACTERISTIC_READ_UUID,
 	DEVICE_NAMES,
 } from "../constants"
-import { readlineParserEmitter } from "../../ble/emitters"
 
 // Mock dependencies
 jest.mock("react-native-ble-manager", () => ({

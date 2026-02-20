@@ -78,7 +78,7 @@ export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
                             • Time Sync: {initErrors.setUtc}
                         </Text>
                     )}
-                    {initErrors.deviceHealth && initErrors.deviceHealth.map((warning, i) => (
+                    {initErrors.deviceHealth && initErrors.deviceHealth.map((warning) => (
                         <Text key={warning} variant="bodySmall" style={[styles.errorText, { color: theme.colors.onErrorContainer }]}>
                             • Hardware: {warning}
                         </Text>

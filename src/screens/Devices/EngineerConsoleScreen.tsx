@@ -1,8 +1,8 @@
 import { useEffect, useRef, useLayoutEffect, useCallback, useReducer } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Platform, PermissionsAndroid } from 'react-native'
+import { View, Text, StyleSheet, Platform, PermissionsAndroid } from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
-import { Ionicons } from '@expo/vector-icons'
-import { Modal, Portal, Button, useTheme, Appbar } from 'react-native-paper'
+
+import { Portal, Appbar } from 'react-native-paper'
 import { useAppSelector } from '../../redux'
 import { useExtendedTheme } from '../../theme'
 import { BackHandler } from 'react-native'
@@ -80,7 +80,7 @@ const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> =>
 export const EngineerConsoleScreen = () => {
     const route = useRoute<any>()
     const navigation = useNavigation<any>()
-    const theme = useTheme()
+
     const { colors } = useExtendedTheme()
     const deviceId = route.params?.deviceId
 

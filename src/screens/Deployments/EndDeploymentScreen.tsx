@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { View, StyleSheet, Alert } from 'react-native'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'

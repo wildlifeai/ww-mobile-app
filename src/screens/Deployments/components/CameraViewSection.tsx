@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback } from 'react'
 import { StyleSheet, View, Image } from 'react-native'
 import { Card, Button, Text, ProgressBar, useTheme } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
@@ -68,9 +68,9 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                 )}
 
                 {isCapturing && (
-                    <View style={{ marginBottom: 8 }}>
+                    <View style={styles.progressContainer}>
                         <ProgressBar progress={captureProgress} color={theme.colors.primary} />
-                        <Text variant="labelSmall" style={{ textAlign: 'center', marginTop: 4 }}>
+                        <Text variant="labelSmall" style={styles.progressText}>
                             {Math.round(captureProgress * 100)}%
                         </Text>
                     </View>
@@ -107,4 +107,11 @@ const styles = StyleSheet.create({
         width: '100%',
         height: 300,
     },
+    progressContainer: {
+        marginBottom: 8,
+    },
+    progressText: {
+        textAlign: 'center',
+        marginTop: 4,
+    }
 })

@@ -179,7 +179,7 @@ export const DeploymentDetailsStep = () => {
         }
 
         initializeDevice()
-    }, [bleDevice, runBleStandardInit, navigation])
+    }, [bleDevice, runBleStandardInit])
 
 
 
@@ -451,7 +451,7 @@ export const DeploymentDetailsStep = () => {
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false // Re-enable alerts on failure
         }
-    }, [formState.name, formState.locationName, formState.locationDescription, formState.cameraHeight, formState.location, formState.notes, bleDevice, project, user, deviceId, devicePreparationId, captureMethodName, runDisconnect, startConfigure, addFinishLog, flashLed])
+    }, [formState.name, formState.locationName, formState.locationDescription, formState.cameraHeight, formState.location, formState.notes, bleDevice, project, user, deviceId, devicePreparationId, runDisconnect, startConfigure, addFinishLog, flashLed, setUtc])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)

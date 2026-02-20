@@ -655,7 +655,7 @@ export const PrepareAndTestScreen = () => {
             logError('SD card check failed:', error)
             Alert.alert('Error', 'Failed to check SD card status')
         }
-    }, [bleDevice, checkSdCard, runSelfTest])
+    }, [bleDevice, checkSdCard, runSelfTest, preparation])
 
     const handleFirmwareCheck = useCallback(async () => {
         // log('[PrepareTest] Firmware check requested, bleDevice:', bleDevice?.id, 'connected:', bleDevice?.connected)
@@ -862,7 +862,7 @@ export const PrepareAndTestScreen = () => {
                 }
             ]
         )
-    }, [latestBleFirmware, device, bleDevice, bleDeviceId, batteryLevel, preparation, handleFirmwareCheck, runDisconnect, runDfu, connectDevice])
+    }, [latestBleFirmware, device, bleDevice, bleDeviceId, batteryLevel, preparation, handleFirmwareCheck, runDisconnect, runDfu, connectDevice, navigation])
 
 
 
@@ -1005,7 +1005,7 @@ export const PrepareAndTestScreen = () => {
         }
 
         runBleInitialization()
-    }, [bleDevice, setDeploymentIdAsOps, clearGpsLocation, handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, runBleStandardInit, quiesceDevice])
+    }, [bleDevice, setDeploymentIdAsOps, clearGpsLocation, handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, runBleStandardInit, quiesceDevice, updateInitState])
 
     // Parse BLE logs for firmware version (post-DFU verification) and device name
     useEffect(() => {
@@ -1016,7 +1016,7 @@ export const PrepareAndTestScreen = () => {
 
         // Parse firmware version response.
         // Accepts standard "V 0.21.43", "BLE: v1.0", and loose matches like "Ver: ..0.4" to debug bad versions.
-        const versionMatch = recentLogsString.match(/(?:^|[\s:])(?:V|Ver|Version|BLE)[:\s]+v?([\.\d]+)/i)
+        const versionMatch = recentLogsString.match(/(?:^|[\s:])(?:V|Ver|Version|BLE)[:\s]+v?([.\d]+)/i)
         
         if (versionMatch && deviceFirmwareVersion === null && isCheckingFirmware) {
              let version = versionMatch[1]

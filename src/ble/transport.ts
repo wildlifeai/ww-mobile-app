@@ -1,7 +1,6 @@
 import BleManager from "react-native-ble-manager"
 import { Buffer } from "buffer"
 import dayjs from "dayjs"
-import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
 import { log } from "../utils/logger"
 import { readlineParserEmitter } from "./emitters"
 import { Services, WriteFunction } from "./types"
@@ -12,13 +11,6 @@ import {
 	BLE_DFU_SERVICE_UUID,
 } from "../utils/constants"
 import { invokeWithTimeout } from "../utils/helpers"
-
-const DEVICE_NOT_CONNECTED_ANYMORE = [
-	"Device disconnected",
-	"Device is not connected",
-	"Write failed",
-	"Could not find service",
-]
 
 export const writeToDevice: WriteFunction = async (peripheral, data) => {
 	if (!peripheral.connected) return
@@ -71,11 +63,6 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 
 			const error = e instanceof Error ? e : new Error(String(e))
 
-			const errorMessage = error.message
-			const problem = DEVICE_NOT_CONNECTED_ANYMORE.find((errMessage) =>
-				errorMessage.includes(errMessage),
-			)
-
 			// We used to have logic here specifically for disconnection, 
 			// but we should always throw the error for the caller to handle.
 			throw error
@@ -83,7 +70,6 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 	}
 }
 
-const UUID_LENGTH = 36
 
 export const extractServiceAndCharacteristic = (services?: Services) => {
 	log("Extracting services and characteristics.")

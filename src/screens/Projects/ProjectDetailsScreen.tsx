@@ -11,7 +11,7 @@
  * - Loading states: Proper skeleton/spinner for data fetching
  */
 
-import { useState, useCallback, useMemo, useEffect } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { StyleSheet, View, ScrollView, Alert } from "react-native"
 import { useForm, Controller } from "react-hook-form"
 import {
