@@ -154,9 +154,9 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
                     )}
 
                     {isCapturingImage && (
-                        <View style={{ marginBottom: 8 }}>
+                        <View style={styles.progressContainer}>
                              <ProgressBar progress={captureProgress} color={theme.colors.primary} />
-                             <Text variant="labelSmall" style={{ textAlign: 'center', marginTop: 4 }}>
+                             <Text variant="labelSmall" style={styles.progressText}>
                                  {Math.round(captureProgress * 100)}%
                              </Text>
                         </View>
@@ -214,4 +214,11 @@ const styles = StyleSheet.create({
         width: '100%',
         height: 300,
     },
+    progressContainer: {
+        marginBottom: 8,
+    },
+    progressText: {
+        textAlign: 'center',
+        marginTop: 4,
+    }
 })

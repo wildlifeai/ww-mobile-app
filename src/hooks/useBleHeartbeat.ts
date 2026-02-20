@@ -46,9 +46,9 @@ export const useBleHeartbeat = (device: ExtendedPeripheral | null) => {
                 timerRef.current = null
                 const currentDevice = deviceRef.current
                 if (!currentDevice?.connected) return
-                log('[BLE Heartbeat] 58s idle — sending heartbeat (AI selftest)...')
+                log('[BLE Heartbeat] 58s idle — sending heartbeat (selftest)...')
                 try {
-                    await writeRef.current(currentDevice, ['AI selftest'])
+                    await writeRef.current(currentDevice, ['selftest'])
                     log('[BLE Heartbeat] Heartbeat sent. Timer will reset on response.')
                 } catch (err) {
                     logWarn('[BLE Heartbeat] Heartbeat failed:', err)

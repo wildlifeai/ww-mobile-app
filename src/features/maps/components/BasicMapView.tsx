@@ -23,6 +23,8 @@ interface BasicMapViewProps {
 	onPress?: (e: any) => void
 }
 
+const EMPTY_CONFIG = {}
+
 const DEFAULT_CONFIG: MapViewConfig = {
 	showsUserLocation: true,
 	showsMyLocationButton: false, // We'll create custom button
@@ -39,7 +41,7 @@ export const BasicMapView: React.FC<BasicMapViewProps> = ({
 	onRegionChange,
 	onRegionChangeComplete,
 	mapType = "standard",
-	config = {},
+	config = EMPTY_CONFIG,
 	mapRef,
 	children,
 	onPress,

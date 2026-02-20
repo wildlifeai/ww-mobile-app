@@ -14,7 +14,7 @@ import { WWButton } from '../../components/ui/WWButton'
 
 type DeviceDetailsRouteProp = RouteProp<{ params: { deviceId: string } }, 'params'>
 
-import { RootStackParamList } from '../../navigation'
+import { RootStackParamList } from '../../navigation/types'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { logError } from '../../utils/logger'
 

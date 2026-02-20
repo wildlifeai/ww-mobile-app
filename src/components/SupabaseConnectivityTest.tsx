@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react"
-import { View, ScrollView, Alert, StyleSheet } from "react-native"
-import { Button, Card, Text, Chip, ActivityIndicator } from "react-native-paper"
+import { ScrollView, Alert, StyleSheet } from "react-native"
+import { Text } from "react-native-paper"
 import { getSupabaseClient } from "../services/supabase"
 import type {
 	RealtimePostgresChangesPayload,
@@ -11,12 +11,15 @@ import type { Tables } from "../types/database.types"
 import { log, logWarn } from '../utils/logger'
 
 
-type TestResult = {
+export type TestResult = {
 	name: string
 	status: "pending" | "running" | "success" | "error"
 	message: string
 	duration?: number
 }
+
+import { TestHeader } from "./SupabaseConnectivityTest/TestHeader"
+import { TestResultItem } from "./SupabaseConnectivityTest/TestResultItem"
 
 /**
  * Comprehensive Supabase Connectivity Test Component
@@ -295,88 +298,21 @@ export const SupabaseConnectivityTest: React.FC = () => {
 		])
 	}
 
-	const getStatusColor = (status: TestResult["status"]) => {
-		switch (status) {
-			case "success":
-				return "#4CAF50"
-			case "error":
-				return "#F44336"
-			case "running":
-				return "#FF9800"
-			default:
-				return "#9E9E9E"
-		}
-	}
-
-	const getStatusIcon = (status: TestResult["status"]) => {
-		switch (status) {
-			case "success":
-				return "✅"
-			case "error":
-				return "❌"
-			case "running":
-				return "⏳"
-			default:
-				return "⚪"
-		}
-	}
-
 	return (
 		<ScrollView style={styles.container}>
 			<Text variant="headlineMedium" style={styles.title}>
 				Supabase Connectivity Test
 			</Text>
 
-			<Card style={styles.card}>
-				<Card.Title title="Test Suite" />
-				<Card.Content>
-					<Text>
-						Authentication Status:{" "}
-						{isLoggedIn ? "✅ Logged In" : "❌ Not Logged In"}
-					</Text>
-					<Text>User: {user?.email || "None"}</Text>
-					<Button
-						mode="contained"
-						onPress={runAllTests}
-						disabled={isRunning}
-						style={styles.runButton}
-					>
-						{isRunning ? "Running Tests..." : "Run All Tests"}
-					</Button>
-				</Card.Content>
-			</Card>
+			<TestHeader
+				isLoggedIn={isLoggedIn}
+				user={user}
+				isRunning={isRunning}
+				runAllTests={runAllTests}
+			/>
 
-			{tests.map((test, index) => (
-				<Card key={index} style={styles.testCard}>
-					<Card.Content>
-						<View
-							style={styles.testHeader}
-						>
-							<Text style={styles.testIcon}>
-								{getStatusIcon(test.status)}
-							</Text>
-							<Text variant="titleMedium" style={styles.testName}>
-								{test.name}
-							</Text>
-							{test.duration && (
-								<Chip mode="outlined" compact>
-									{test.duration}ms
-								</Chip>
-							)}
-						</View>
-						<Text
-							style={[
-								styles.testMessage,
-								{ color: getStatusColor(test.status) }
-							]}
-						>
-							{test.message}
-						</Text>
-						{test.status === "running" && (
-							<ActivityIndicator size="small" style={styles.loader} />
-						)}
-					</Card.Content>
-				</Card>
+			{tests.map((test) => (
+				<TestResultItem key={test.name} test={test} />
 			))}
 		</ScrollView>
 	)
@@ -388,32 +324,5 @@ const styles = StyleSheet.create({
 	},
 	title: {
 		marginBottom: 16,
-	},
-	card: {
-		marginBottom: 16,
-	},
-	runButton: {
-		marginTop: 8,
-	},
-	testCard: {
-		marginBottom: 8,
-	},
-	testHeader: {
-		flexDirection: "row",
-		alignItems: "center",
-		marginBottom: 8,
-	},
-	testIcon: {
-		fontSize: 20,
-		marginRight: 8,
-	},
-	testName: {
-		flex: 1,
-	},
-	testMessage: {
-		fontSize: 12,
-	},
-	loader: {
-		marginTop: 8,
 	},
 })

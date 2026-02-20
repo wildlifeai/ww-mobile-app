@@ -174,7 +174,6 @@ class SupabaseSyncService {
         await database.write(async () => {
             await SyncStateService.set(SYNC_STATE_KEYS.SYNC_IN_PROGRESS, 'true')
         })
-        const syncStartTime = Date.now()
 
         try {
             // STEP 1: UPLOAD OUTBOX OPERATIONS
@@ -194,13 +193,12 @@ class SupabaseSyncService {
             // ================================================================
             // STEP 3: UPDATE SYNC TIMESTAMPS
             // ================================================================
-            const syncEndTime = Date.now()
-            const syncDuration = syncEndTime - syncStartTime
+            // ================================================================
 
             await database.write(async () => {
                 await SyncStateService.set(
                     SYNC_STATE_KEYS.LAST_SYNCED_AT,
-                    syncEndTime.toString()
+                    Date.now().toString()
                 )
                 await SyncStateService.delete(SYNC_STATE_KEYS.LAST_SYNC_ERROR)
 

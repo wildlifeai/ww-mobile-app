@@ -1,7 +1,6 @@
 {
-  "$schema": "./dependency-rules-schema.json",
-  "description": "Dependency validation rules for Wildlife Watcher Expo SDK 54 Migration",
-  "lastUpdated": "2025-12-24T00:30:00Z",
+  "description": "Dependency validation rules for Wildlife Watcher Expo SDK 54",
+  "lastUpdated": "2026-02-19T10:26:08+13:00",
   "rules": {
     "expo": {
       "required": "~54.0.0",

@@ -19,14 +19,14 @@ export type ProjectInsert = TablesInsert<"projects">
 export type ProjectUpdate = TablesUpdate<"projects">
 
 // Note: project_members table removed - using backward-compatible type
-export type ProjectMember = {
-	id: string
-	project_id: string
-	user_id: string
-	email?: string
-	role: string
-	created_at: string
-	updated_at: string
+export interface ProjectMember {
+	id: string;
+	project_id: string;
+	user_id: string;
+	role: 'project_admin' | 'field_worker' | 'analyst' | 'viewer' | string;
+	created_at?: string;
+	user_profile?: any; // To hold joined profile data
+	updated_at: string;
 }
 export type Organisation = Tables<"organisations">
 // Note: user_organisations table removed

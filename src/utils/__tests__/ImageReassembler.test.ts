@@ -1,5 +1,5 @@
 import { ImageReassembler } from "../ImageReassembler"
-import { imageReassemblerEmitter } from "../../ble/emitters"
+
 
 jest.mock("../logger", () => ({
 	log: jest.fn(),

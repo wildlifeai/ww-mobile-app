@@ -1,118 +1,107 @@
+# Publishing Guide — Android & iOS
 
-# Google Play Store Publishing Guide
+> **Related**: [00-GETTING-STARTED.md](../onboarding/00-GETTING-STARTED.md) (project overview), [GOOGLE-MAPS-SETUP.md](GOOGLE-MAPS-SETUP.md) (Maps API keys).
 
-This guide outlines the process for publishing the **Wildlife Watcher** app to the Google Play Store using Expo EAS (Exchange Client).
+## Overview
+
+The app uses **EAS (Expo Application Services)** for building and submitting to both stores. Configuration lives in `eas.json`.
+
+| EAS Profile | Purpose | Supabase | Trigger |
+|-------------|---------|----------|---------|
+| `development` | Dev client builds | Dev (`qegeovogqxiouqbrxmnh`) | Manual: `eas build` |
+| `preview` | Internal testing / staging | Stag (`nuhwmubvygxyddkycmpa`) | Push to `main` (via GitHub Action) |
+| `production` | Store submission | Stag (`nuhwmubvygxyddkycmpa`) | Git tag `v*` (via GitHub Action) |
 
 ## Prerequisites
 
-Before your first submission, ensure you have the following:
+### One-Time Setup
 
-1.  **Google Play Developer Account**: You must have a paid developer account ($25 one-time fee).
-2.  **Google Cloud Project**: You need a Google Cloud Project to manage the Android Management API.
-3.  **Service Account Key (JSON)**: Required for EAS to upload builds automatically.
+1. **Expo account**: `eas login` (project owner: `wildlifeai`)
+2. **Google Play service account** (Android):
+   - Create in [Google Cloud Console](https://console.cloud.google.com/) → Service Accounts
+   - Enable "Google Play Android Developer API"
+   - Download JSON key → save as `wwmap-443023-3ed6207e2aa0.json` (gitignored)
+   - Invite service account email in [Google Play Console](https://play.google.com/console/) → Users & Permissions
+3. **Apple Developer account** (iOS):
+   - Apple ID, ASC App ID, and Team ID are already in `eas.json`
+   - EAS manages certificates and provisioning profiles automatically
 
-### 1. Setting up Google Service Account
+### GitHub Secrets (for CI/CD)
 
-To use `eas submit`, you need a Google Service Account Key.
+| Secret | Where to get |
+|--------|--------------|
+| `EXPO_TOKEN` | [expo.dev](https://expo.dev) → Account Settings → Access Tokens |
+| `SUPABASE_ACCESS_TOKEN` | Supabase dashboard → Account → Access Tokens |
 
-1.  Open the [Google Cloud Console](https://console.cloud.google.com/).
-2.  Create a new project (e.g., "Wildlife Watcher Play Store").
-3.  Enable the **Google Play Android Developer API**.
-4.  Navigate to **IAM & Admin** > **Service Accounts**.
-5.  Click **Create Service Account**:
-    *   **Name**: `eas-submit`
-    *   **Role**: Service Account User
-6.  Click on the created Service Account > **Keys** > **Add Key** > **Create new key** > **JSON**.
-7.  Save this file securely as `google-play-service-account.json` (Do NOT commit this to Git).
-8.  Go to the [Google Play Console](https://play.google.com/console/).
-9.  Navigate to **Users and identifiers** > **Service accounts**.
-10. Click **Invite new user** and enter the email address of the service account you just created.
-11. Grant the service account **Admin** permissions (or at least "Release apps to testing tracks" and "Manage app releases").
+Google Maps keys and Supabase publishable keys are in `eas.json` (safe to commit).
 
-### 2. Configure EAS
+## Build & Submit
 
-Ensure your `eas.json` has a production submission profile.
-
-```json
-{
-  "submit": {
-    "production": {
-      "android": {
-        "serviceAccountKeyPath": "./google-play-service-account.json",
-        "track": "internal"
-      }
-    }
-  }
-}
-```
-
-> **Note**: The `serviceAccountKeyPath` is relative to where you run the command. Alternatively, verify if the key is already uploaded to Expo using `eas secret:list`.
-
-## Build and Submit Workflow
-
-### Step 1: Versioning
-
-The app version is automatically read from `package.json`.
-Before building, bump the version:
+### Manual (Local)
 
 ```bash
-npm version patch # or minor/major
+# Development client (for local testing)
+eas build --profile development --platform android
+
+# Preview build (internal test distribution)
+eas build --profile preview --platform all
+
+# Production build
+eas build --profile production --platform all
+
+# Submit to stores
+eas submit --profile production --platform all
 ```
 
-This updates `package.json` and `app.config.ts` (via import) will reflect it.
-Git commit this change.
+### Automated (GitHub Actions)
 
-### Step 2: Build the Production Bundle
+The `eas-build.yml` workflow handles this:
 
-Run the following command to build the Android App Bundle (.aab):
+- **Push to `main`** → builds `preview` profile (both platforms)
+- **Git tag `v*`** → builds `production` profile → submits to stores
+- **Manual dispatch** → choose profile + platform
+
+### Release Process
 
 ```bash
-eas build --platform android --profile production
+# 1. Merge dev → main (via PR)
+# 2. Bump version
+npm version patch   # or minor / major
+
+# 3. Push and tag
+git push origin main
+git tag v1.2.3
+git push origin v1.2.3
+# → GitHub Action builds + submits automatically
 ```
 
-*   **Credentials**: If this is your first build, EAS will ask to generate a new Keystore. Select **Yes** and let EAS manage it.
-*   **Wait**: The build happens on Expo's servers.
+## Store Tracks
 
-### Step 3: Submit to Google Play
+### Android (Google Play)
 
-Once the build is complete, you can submit it directly:
+Current config: `internal` track, `draft` release status.
 
-```bash
-eas submit --platform android --profile production
-```
+Promotion path: **Internal testing** → **Closed testing** → **Open testing** → **Production**
 
-If you just finished a build, it will ask if you want to submit the latest build. Select **Yes**.
+Promote releases via Google Play Console (manual for now).
 
-### alternative: Build and Submit in One Command
+### iOS (App Store Connect)
 
-```bash
-eas build --platform android --profile production --auto-submit
-```
+EAS submits to App Store Connect. Review takes 1-3 days.
 
-## First Time Submission (Manual)
-
-**Crucial**: Use `eas submit` for the *second* release onwards.
-For the **very first release**, Google often requires you to upload the `.aab` manually via the dashboard to accept agreements and set up the store listing.
-
-1.  Download the `.aab` from the Expo build page.
-2.  Go to **Google Play Console** > **Create App**.
-3.  Set up the **Store Listing** (Title, Description, Screenshots).
-4.  Go to **Testing** > **Internal testing** (or Closed/Production).
-5.  **Create new release**.
-6.  Upload the `.aab`.
-7.  Review and Rollout.
-
-Once the first manual release exists, `eas submit` works for updates.
+> [!NOTE]
+> First submission to each store requires manual setup of the store listing (title, description, screenshots, etc.) via their respective consoles.
 
 ## Troubleshooting
 
-### "Google Play API not enabled"
-Ensure you enabled "Google Play Android Developer API" in the Google Cloud project linked to your Service Account.
+| Problem | Solution |
+|---------|----------|
+| "Google Play API not enabled" | Enable "Google Play Android Developer API" in Cloud Console |
+| "Forbidden / Permission Denied" | Add service account to Play Console Users & Permissions |
+| EAS build fails | Check `eas build:list` for logs; verify `EXPO_TOKEN` secret |
+| iOS submission rejected | Check App Store Connect for specific rejection reasons |
+| Keystore issues | Run `eas credentials` → Android → Keystore → manage |
 
-### "Forbidden / Permission Denied"
-Ensure the Service Account email is added to **Users and identifiers** in the Google Play Console and has "Admin" or "Release Manager" permissions.
+---
 
-### Keystore Issues
-If you have an existing keystore (e.g. from an old non-EAS build), you must upload it to EAS:
-`eas credentials` -> Android -> Keystore -> Upload existing.
-Otherwise, let EAS generate a new one.
+**Last Updated**: 2026-02-19

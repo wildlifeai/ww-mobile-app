@@ -1,16 +1,33 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useReducer } from 'react'
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { RootStackParamList } from '../../navigation'
+import { RootStackParamList } from '../../navigation/types'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppSelector } from '../../redux'
 import { useBle } from '../../hooks/useBle'
 import { useBleCommands } from '../../hooks/useBleCommands'
 import { DeviceStatusCard } from '../../components/DeviceStatusCard'
 import { DevicePreparationService } from '../../services/DevicePreparationService'
-import { AppParams } from '../../navigation/index'
+import { AppParams } from '../../navigation/types'
 import { BleConsoleOutput, ConsoleEntry } from '../../components/BleConsoleOutput'
+
+interface PrepState {
+    isConnecting: boolean
+    preparationId: string | null
+    consoleHistory: ConsoleEntry[]
+    batteryInfo?: { level: number, voltage: number }
+    sdCardInfo?: { total: number, available: number }
+    lorawanInfo?: { rssi: number, snr: number }
+    firmwareVersion?: string
+}
+
+const prepReducer = (state: PrepState, action: Partial<PrepState> | { type: 'APPEND_HISTORY', entries: ConsoleEntry[] }): PrepState => {
+    if ('type' in action && action.type === 'APPEND_HISTORY') {
+        return { ...state, consoleHistory: [...state.consoleHistory, ...action.entries] }
+    }
+    return { ...state, ...action }
+}
 
 export const DevicePreparationScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
@@ -25,15 +42,17 @@ export const DevicePreparationScreen = () => {
     const { connectDevice } = useBle()
     const { getBatteryLevel, checkSdCard, pingNetwork } = useBleCommands()
 
-    const [isConnecting, setIsConnecting] = useState(false)
-    const [preparationId, setPreparationId] = useState<string | null>(null)
-    const [consoleHistory, setConsoleHistory] = useState<ConsoleEntry[]>([])
+    const [state, dispatch] = useReducer(prepReducer, {
+        isConnecting: false,
+        preparationId: null,
+        consoleHistory: [],
+        batteryInfo: undefined,
+        sdCardInfo: undefined,
+        lorawanInfo: undefined,
+        firmwareVersion: undefined
+    })
 
-    // Status state
-    const [batteryInfo, setBatteryInfo] = useState<{ level: number, voltage: number } | undefined>()
-    const [sdCardInfo, setSdCardInfo] = useState<{ total: number, available: number } | undefined>()
-    const [lorawanInfo, setLorawanInfo] = useState<{ rssi: number, snr: number } | undefined>()
-    const [firmwareVersion, _setFirmwareVersion] = useState<string | undefined>()
+    const { isConnecting, preparationId, consoleHistory, batteryInfo, sdCardInfo, lorawanInfo, firmwareVersion } = state
 
     const lastProcessedLength = React.useRef<number>(0)
 
@@ -54,14 +73,14 @@ export const DevicePreparationScreen = () => {
             content: e.content
         }))
 
-        setConsoleHistory(prev => [...prev, ...historyEntries])
+        dispatch({ type: 'APPEND_HISTORY', entries: historyEntries })
 
         // Parse LoRaWAN response (legitimate async event)
         const combinedLogs = newEntries.map(e => e.content).join('\n')
         if (combinedLogs.includes('RSSI=')) {
             const match = combinedLogs.match(/RSSI=(-?\d+),\s*SNR=(-?\d+(?:\.\d+)?)/)
             if (match) {
-                setLorawanInfo({ rssi: parseInt(match[1], 10), snr: parseFloat(match[2]) })
+                dispatch({ lorawanInfo: { rssi: parseInt(match[1], 10), snr: parseFloat(match[2]) } })
                 if (preparationId) {
                     DevicePreparationService.recordLoRaWANCheck(preparationId, true)
                 }
@@ -72,13 +91,13 @@ export const DevicePreparationScreen = () => {
 
     const handleConnect = async () => {
         if (!device) return
-        setIsConnecting(true)
+        dispatch({ isConnecting: true })
         try {
             await connectDevice(device)
         } catch (error) {
             Alert.alert('Connection Failed', String(error))
         } finally {
-            setIsConnecting(false)
+            dispatch({ isConnecting: false })
         }
     }
 
@@ -88,7 +107,7 @@ export const DevicePreparationScreen = () => {
             // TODO: Select project ID properly. Using placeholder for now.
             const projectId = 'placeholder-project-id'
             const prep = await DevicePreparationService.startPreparation(deviceId, projectId, currentUser.id)
-            setPreparationId(prep.id)
+            dispatch({ preparationId: prep.id })
             Alert.alert('Started', 'Device preparation workflow started.')
         } catch (error) {
             Alert.alert('Error', 'Failed to start preparation: ' + error)
@@ -108,7 +127,7 @@ export const DevicePreparationScreen = () => {
             if (batteryMatch) {
                 const voltage = parseInt(batteryMatch[1], 10)
                 const level = parseInt(batteryMatch[2], 10)
-                setBatteryInfo({ voltage, level })
+                dispatch({ batteryInfo: { voltage, level } })
                 if (preparationId) {
                     DevicePreparationService.recordBatteryCheck(preparationId, level > 20)
                 }
@@ -117,7 +136,7 @@ export const DevicePreparationScreen = () => {
             // SD card check - use return value
             const sdResult = await checkSdCard(device)
             if (sdResult && sdResult.total > 0) {
-                setSdCardInfo({ total: sdResult.total * 1024, available: sdResult.free * 1024 })
+                dispatch({ sdCardInfo: { total: sdResult.total * 1024, available: sdResult.free * 1024 } })
                 if (preparationId) {
                     DevicePreparationService.recordSdCardCheck(preparationId, true)
                 }

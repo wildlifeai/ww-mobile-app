@@ -272,7 +272,7 @@ export const useDeviceSettings = ({
             logError(`${logPrefix} Error quiescing device:`, error)
             throw error
         }
-    }, [device, setOperationalParam])
+    }, [device, setOperationalParam, getOperationalParam])
 
     return {
         updateSettings,

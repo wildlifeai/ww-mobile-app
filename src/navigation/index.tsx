@@ -1,5 +1,4 @@
 import { useEffect } from "react"
-import { ParamListBase, RouteProp } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { useAppSelector } from "../redux"
 // System screens
@@ -22,7 +21,6 @@ import { Register } from "./screens/auth/RegisterScreen"
 import { ForgotPassword } from "./screens/auth/ForgotPasswordScreen"
 
 // Project screens
-import type { Option } from "../components/ui/WWSelect"
 // import { Projects as ProjectsListScreen } from "../screens/Projects/ProjectsListScreen"
 import { NewProjectScreen } from "../screens/Projects/NewProjectScreen"
 import { ProjectDetailsScreen } from "../screens/Projects/ProjectDetailsScreen"
@@ -52,41 +50,7 @@ import { DeveloperSettingsScreen } from "./screens/developer/DeveloperSettingsSc
 import { BottomTabs } from "./BottomTabs"
 import { useDeepLinking } from "../hooks/useDeepLinking"
 
-export interface RootStackParamList extends ParamListBase {
-	Notifications: undefined
-	Profile: undefined
-	Settings: undefined
-	Home: { initialTab?: string } | undefined
-	DfuScreen: { deviceId: string }
-	Login: { confirmed?: boolean } | undefined
-	Register: undefined
-	ForgotPassword:
-	| { token?: string; refreshToken?: string; mode?: string }
-	| undefined
-	AddDeployment: { selectedProject?: Option } | undefined
-	NewProjectScreen: undefined
-	ProjectDetailsScreen: { projectId: string }
-	ProjectMembersScreen: { projectId: string; projectName: string }
-	DevBuildInfo: undefined
-	AuthTestScreen: undefined
-	DeveloperSettings: undefined
-	DeviceDiscovery: { mode: 'prepare' | 'engineer' | 'deployment' }
-	DeviceDetails: { deviceId: string }
-	EngineerConsoleScreen: { deviceId: string }
-	PrepareAndTest: { deviceId: string; bleDeviceId: string; selftestError?: string; setUtcError?: string; nextRoute?: string }
-	StartDeploymentWizard: { mode: 'deployment' }
-	DeploymentDetailsStep: { devicePreparationId: string; deviceId: string; bleDeviceId: string }
-	DeploymentDetails: { deploymentId: string }
-	EndDeploymentWizard: { mode: 'end_deployment'; deploymentId?: string }
-	EndDeploymentDetailsStep: { deploymentId: string; deviceId: string; bleDeviceId: string }
-}
-
-export type Routes = keyof RootStackParamList
-
-export type AppParams<T extends keyof RootStackParamList> = RouteProp<
-	RootStackParamList,
-	T
->
+import { RootStackParamList } from "./types"
 
 export const Stack = createNativeStackNavigator<RootStackParamList>()
 

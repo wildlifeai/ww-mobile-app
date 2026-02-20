@@ -4,7 +4,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { List, Divider } from "react-native-paper"
 import { WWScreenView } from "../../../components/ui/WWScreenView"
 import { WWText } from "../../../components/ui/WWText"
-import { RootStackParamList } from "../../index"
+import { RootStackParamList } from "../../types"
 import { useExtendedTheme } from "../../../theme"
 
 type SettingsNavigationProp = NativeStackNavigationProp<

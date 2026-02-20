@@ -153,32 +153,23 @@ export const useCapturePreview = ({
 
             if (onCaptureStart) onCaptureStart()
 
-            // 1. Check if camera is enabled (OpParam 10)
-            log('[useCapturePreview] Checking camera status...')
-            const responses = await write(device, ['AI getop 10'])
-            const statusResponse = responses[0] || ''
+            // 1. Enable camera blindly (OpParam 10) to avoid unnecessary getop roundtrip
+            log('[useCapturePreview] Enabling camera blindly (Op10=1)...')
+            await write(device, ['AI setop 10 1'])
+            log('[useCapturePreview] Camera enabled. Waiting for device sleep/wake cycle to initialize hardware...')
             
-            // Check if it's currently disabled ('0')
-            if (statusResponse.includes('= 0') || statusResponse.endsWith(' 0')) {
-                log('[useCapturePreview] Camera disabled (Op10=0), enabling...')
-                await write(device, ['AI setop 10 1'])
-                log('[useCapturePreview] Camera enabled. Waiting for device sleep/wake cycle to initialize hardware...')
-                
-                // CRITICAL FIX: After 'AI setop 10 1', the device sends 'Sleep' and enters DPD.
-                // We must catch this 'Sleep' event to know it's cycling.
-                // WE DO NOT WAIT FOR 'Wake' PASSIVELY - the device stays asleep until we wake it!
-                // So: Wait for Sleep -> Wait 1s (allow DPD entry) -> Send Capture (wakes device)
-                try {
-                    log('[useCapturePreview] Waiting for device to sleep (applied settings)...')
-                    await bleCommandManager.waitForMessage(/^Sleep/i, 10000)
-                    log('[useCapturePreview] Device sleeping. Waiting 1s buffer before waking...')
-                    await new Promise(resolve => setTimeout(resolve, 1000))
-                    log('[useCapturePreview] Buffer done. Sending capture to wake device.')
-                } catch (e) {
-                    logError('[useCapturePreview] Timeout waiting for sleep. Proceeding anyway.', e)
-                }
-            } else {
-                log('[useCapturePreview] Camera already enabled.')
+            // CRITICAL FIX: After 'AI setop 10 1', the device sends 'Sleep' and enters DPD.
+            // We must catch this 'Sleep' event to know it's cycling.
+            // WE DO NOT WAIT FOR 'Wake' PASSIVELY - the device stays asleep until we wake it!
+            // So: Wait for Sleep -> Wait 1s (allow DPD entry) -> Send Capture (wakes device)
+            try {
+                log('[useCapturePreview] Waiting for device to sleep (applied settings)...')
+                await bleCommandManager.waitForMessage(/^Sleep/i, 10000)
+                log('[useCapturePreview] Device sleeping. Waiting 1s buffer before waking...')
+                await new Promise(resolve => setTimeout(resolve, 1000))
+                log('[useCapturePreview] Buffer done. Sending capture to wake device.')
+            } catch (e) {
+                logError('[useCapturePreview] Timeout waiting for sleep. Proceeding anyway.', e)
             }
 
             // 2. Send Capture Command (interval 1 allows capture even if MD/TL is disabled)

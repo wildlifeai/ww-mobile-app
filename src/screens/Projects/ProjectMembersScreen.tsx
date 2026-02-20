@@ -12,38 +12,24 @@
  * - Only project admins can add/remove/change roles
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useEffect, useCallback, useMemo, useReducer } from "react"
 import {
 	View,
 	ScrollView,
 	StyleSheet,
 	RefreshControl,
 	Alert,
-	Modal,
-	SafeAreaView,
 } from "react-native"
-import { WWTextInput } from "../../components/ui/WWTextInput"
 import {
-
-	Card,
 	Text,
 	Button,
-	Avatar,
-	Chip,
-	IconButton,
-	Menu,
-	Divider,
-	Portal,
-	Dialog,
 	ActivityIndicator,
-	Appbar,
-	SegmentedButtons,
 	useTheme,
 } from "react-native-paper"
 import { useRoute, RouteProp } from "@react-navigation/native"
 
 // UI Helper Functions
-const getRoleBadgeColor = (role: ProjectRole): string => {
+export const getRoleBadgeColor = (role: ProjectRole): string => {
 	switch (role) {
 		case "project_admin":
 			return "#4CAF50"
@@ -54,7 +40,7 @@ const getRoleBadgeColor = (role: ProjectRole): string => {
 	}
 }
 
-const getRoleDisplayName = (role: ProjectRole): string => {
+export const getRoleDisplayName = (role: ProjectRole): string => {
 	switch (role) {
 		case "project_admin":
 			return "Admin"
@@ -65,22 +51,9 @@ const getRoleDisplayName = (role: ProjectRole): string => {
 	}
 }
 
-const getRoleDescription = (role: ProjectRole): string => {
-	switch (role) {
-		case "project_admin":
-			return "Can manage project, members, and deployments"
-		case "project_member":
-			return "Can create and manage deployments"
-		default:
-			return ""
-	}
-}
-
 // Real service imports
 import {
 	getProjectMembers,
-	updateProjectMemberRole,
-	removeProjectMember,
 } from "../../services/UserRoleService"
 import { useAppSelector } from "../../redux"
 import {
@@ -96,6 +69,11 @@ import type ProjectInvitation from "../../database/models/ProjectInvitation"
 import { log, logError } from '../../utils/logger'
 import { UserProfile } from "../../types/UserProfile"
 import { getDisplayName } from "../../utils/userUtils"
+import { InviteMemberModal } from "./components/InviteMemberModal"
+import { ChangeRoleDialog } from "./components/ChangeRoleDialog"
+import { RemoveMemberDialog } from "./components/RemoveMemberDialog"
+import { MemberListItem } from "./components/MemberListItem"
+import { PendingInvitationsList } from "./components/PendingInvitationsList"
 
 
 type RouteParams = {
@@ -103,6 +81,22 @@ type RouteParams = {
 		projectId: string
 		projectName: string
 	}
+}
+
+interface MembersState {
+	members: ProjectMember[]
+	loading: boolean
+	refreshing: boolean
+	dialogState: { type: 'none' | 'add' | 'role' | 'remove', member?: ProjectMember }
+	pendingInvitations: ProjectInvitation[]
+	menuVisible: { [key: string]: boolean }
+}
+
+const membersReducer = (state: MembersState, action: Partial<MembersState> | { type: 'TOGGLE_MENU'; memberId: string; visible: boolean }): MembersState => {
+	if ('type' in action && action.type === 'TOGGLE_MENU') {
+		return { ...state, menuVisible: { ...state.menuVisible, [action.memberId]: action.visible } }
+	}
+	return { ...state, ...action as Partial<MembersState> }
 }
 
 export const ProjectMembersScreen = () => {
@@ -116,27 +110,16 @@ export const ProjectMembersScreen = () => {
 	const user = useAppSelector(selectCurrentUser)
 
 	// State
-	const [members, setMembers] = useState<ProjectMember[]>([])
-	const [loading, setLoading] = useState(false)
-	const [refreshing, setRefreshing] = useState(false)
+	const [state, dispatch] = useReducer(membersReducer, {
+		members: [],
+		loading: false,
+		refreshing: false,
+		dialogState: { type: 'none' },
+		pendingInvitations: [],
+		menuVisible: {}
+	})
 
-	// Dialogs
-	const [showAddMemberDialog, setShowAddMemberDialog] = useState(false)
-	const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false)
-	const [showRemoveDialog, setShowRemoveDialog] = useState(false)
-	const [selectedMember, setSelectedMember] = useState<ProjectMember | null>(
-		null,
-	)
-	const [selectedRole, setSelectedRole] =
-		useState<ProjectRole>("project_member")
-
-	// Invite member dialog state
-	const [inviteEmail, setInviteEmail] = useState("")
-	const [inviteRole, setInviteRole] = useState<ProjectRole>("project_member")
-	const [pendingInvitations, setPendingInvitations] = useState<ProjectInvitation[]>([])
-
-	// Menu state (for individual member actions)
-	const [menuVisible, setMenuVisible] = useState<{ [key: string]: boolean }>({})
+	const { members, loading, refreshing, dialogState, pendingInvitations, menuVisible } = state
 
 	// Permission checks
 	const currentUserProjectRole = members.find((m) => m.id === user?.id)?.role
@@ -151,7 +134,7 @@ export const ProjectMembersScreen = () => {
 			return
 		}
 
-		setLoading(true)
+		dispatch({ loading: true })
 		try {
 			log("📋 Loading members for project:", projectId)
 
@@ -181,13 +164,13 @@ export const ProjectMembersScreen = () => {
 					return m
 				})
 
-				setMembers(enrichedMembers)
+				dispatch({ members: enrichedMembers })
 				log(`✅ Loaded ${enrichedMembers.length} project members`)
 			} catch (error: any) {
 				if (error?.message?.includes("Unauthorized")) {
 					// User not authorized to view members - show empty list
 					log("⚠️ User not authorized to view project members")
-					setMembers([])
+					dispatch({ members: [] })
 
 					return
 				}
@@ -196,12 +179,12 @@ export const ProjectMembersScreen = () => {
 
 			// Load pending invitations
 			const pending = await InvitationService.getProjectPendingInvitations(projectId)
-			setPendingInvitations(pending)
+			dispatch({ pendingInvitations: pending })
 		} catch (error) {
 			logError("❌ Error loading members:", error)
 			Alert.alert("Error", "Failed to load project members")
 		} finally {
-			setLoading(false)
+			dispatch({ loading: false })
 		}
 	}, [projectId, user])
 
@@ -211,147 +194,26 @@ export const ProjectMembersScreen = () => {
 	}, [loadMembers])
 
 	const handleRefresh = useCallback(async () => {
-		setRefreshing(true)
+		dispatch({ refreshing: true })
 		await loadMembers()
-		setRefreshing(false)
+		dispatch({ refreshing: false })
 	}, [loadMembers])
 
-	const handleInviteMember = useCallback(async () => {
-		if (!inviteEmail.trim()) {
-			Alert.alert("Error", "Please enter an email address")
-			return
-		}
-
-		if (!user) {
-			Alert.alert("Error", "User authentication required")
-			return
-		}
-
-		setLoading(true)
-		try {
-			log(`📧 Inviting ${inviteEmail}...`)
-
-			// Send invitation
-			await InvitationService.sendInvitation(
-				projectId,
-				inviteEmail.trim(),
-				inviteRole as "project_admin" | "project_member"
-			)
-
-			Alert.alert("Success", "Invitation sent successfully")
-
-			// Refresh lists
-			await loadMembers()
-
-			// Reset form
-			setShowAddMemberDialog(false)
-			setInviteEmail("")
-			setInviteRole("project_member")
-		} catch (err: any) {
-			logError("❌ Error sending invitation:", err)
-			Alert.alert("Error", err.message || "Failed to send invitation")
-		} finally {
-			setLoading(false)
-		}
-	}, [inviteEmail, user, projectId, inviteRole, loadMembers])
-
-
-
-	const handleChangeRole = useCallback(async () => {
-		if (!selectedMember || !user) return
-
-		setLoading(true)
-		try {
-			log(`🔄 Changing role for ${selectedMember.name}...`)
-
-			const result = await updateProjectMemberRole({
-				project_id: projectId,
-				user_id: selectedMember.id,
-				new_role: selectedRole,
-				updated_by: user.id,
-			})
-
-			if (!result.success) {
-				Alert.alert("Error", result.error || "Failed to update role")
-				return
-			}
-
-			// Refresh member list
-			await loadMembers()
-
-			Alert.alert("Success", "Role updated successfully")
-			setShowRoleChangeDialog(false)
-			setSelectedMember(null)
-		} catch (err) {
-			logError("❌ Error changing role:", err)
-			Alert.alert("Error", "Failed to update role")
-		} finally {
-			setLoading(false)
-		}
-	}, [selectedMember, user, projectId, selectedRole, loadMembers])
-
-	const handleRemoveMember = useCallback(async () => {
-		if (!selectedMember || !user) return
-
-		// Check if this is the last admin
-		const adminCount = members.filter((m) => m.role === "project_admin").length
-		const isLastAdmin =
-			selectedMember.role === "project_admin" && adminCount === 1
-
-		if (isLastAdmin) {
-			Alert.alert("Cannot Remove", "Cannot remove the last project admin")
-			return
-		}
-
-		setLoading(true)
-		try {
-			log(`➖ Removing member ${selectedMember.name}...`)
-
-			const result = await removeProjectMember({
-				project_id: projectId,
-				user_id: selectedMember.id,
-				removed_by: user.id,
-			})
-
-			if (!result.success) {
-				Alert.alert("Error", result.error || "Failed to remove member")
-				return
-			}
-
-			// Refresh member list
-			await loadMembers()
-
-			Alert.alert("Success", "Member removed successfully")
-			setShowRemoveDialog(false)
-			setSelectedMember(null)
-		} catch (err) {
-			logError("❌ Error removing member:", err)
-			Alert.alert("Error", "Failed to remove member")
-		} finally {
-			setLoading(false)
-		}
-	}, [selectedMember, user, members, projectId, loadMembers])
-
 	const openMenu = useCallback((memberId: string) => {
-		setMenuVisible({ [memberId]: true })
+		dispatch({ type: 'TOGGLE_MENU', memberId, visible: true })
 	}, [])
 
 	const closeMenu = useCallback((memberId: string) => {
-		setMenuVisible({ [memberId]: false })
+		dispatch({ type: 'TOGGLE_MENU', memberId, visible: false })
 	}, [])
 
 	const handleMenuChangeRole = useCallback((member: ProjectMember) => {
-		setSelectedMember(member)
-		setSelectedRole(
-			member.role === "project_admin" ? "project_member" : "project_admin",
-		)
-		setShowRoleChangeDialog(true)
+		dispatch({ dialogState: { type: 'role', member } })
 		closeMenu(member.id)
 	}, [closeMenu])
 
 	const handleMenuRemove = useCallback((member: ProjectMember) => {
-		setSelectedMember(member)
-		setShowRemoveDialog(true)
+		dispatch({ dialogState: { type: 'remove', member } })
 		closeMenu(member.id)
 	}, [closeMenu])
 
@@ -423,7 +285,7 @@ export const ProjectMembersScreen = () => {
 					<Button
 						mode="contained"
 						icon="account-plus"
-						onPress={() => setShowAddMemberDialog(true)}
+						onPress={() => dispatch({ dialogState: { type: 'add' } })}
 						style={styles.addButton}
 					>
 						Add Member
@@ -433,23 +295,11 @@ export const ProjectMembersScreen = () => {
 
 			{/* Pending Invitations List (Admin Only) */}
 			{canManageMembers && pendingInvitations.length > 0 && (
-				<View style={dynamicStyles.inviteSection}>
-					<Text variant="titleSmall" style={dynamicStyles.inviteTitle}>
-						Pending Invitations ({pendingInvitations.length})
-					</Text>
-					{pendingInvitations.map((invite) => (
-						<Card key={invite.id || invite.remoteId} style={dynamicStyles.inviteCard}>
-							<Card.Content style={dynamicStyles.inviteContent}>
-								<View>
-									<Text variant="bodyMedium" style={dynamicStyles.inviteEmail}>{invite.inviteeEmail}</Text>
-									<Text variant="bodySmall">{getRoleDisplayName(invite.role as ProjectRole)} • Expires {new Date(invite.expiresAt).toLocaleDateString()}</Text>
-								</View>
-								<Chip icon="clock-outline" compact>Pending</Chip>
-							</Card.Content>
-						</Card>
-					))}
-					<Divider style={dynamicStyles.inviteDivider} />
-				</View>
+				<PendingInvitationsList
+					pendingInvitations={pendingInvitations}
+					getRoleDisplayName={getRoleDisplayName}
+					dynamicStyles={dynamicStyles}
+				/>
 			)}
 
 			{/* Member List */}
@@ -463,307 +313,53 @@ export const ProjectMembersScreen = () => {
 					const adminCount = members.filter(
 						(m) => m.role === "project_admin",
 					).length
-					const isLastAdmin =
-						member.role === "project_admin" && adminCount === 1
-					const canRemove = !isLastAdmin
-
-					const isMe = user && String(member.id).toLowerCase() === String(user.id).toLowerCase()
-
-
-					const displayName = getDisplayName(member, isMe)
-
-					const initials = displayName
-						.replace("(You)", "")
-						.trim()
-						.split(" ")
-						.filter((n) => n.length > 0)
-						.map((n) => n[0])
-						.join("")
-						.toUpperCase()
-						.substring(0, 2)
-
+					
 					return (
-						<Card key={member.id} style={styles.memberCard}>
-							<Card.Content>
-								<View style={styles.memberRow}>
-									{/* Avatar */}
-									<Avatar.Text
-										size={48}
-										label={initials}
-										style={{ backgroundColor: getRoleBadgeColor(member.role as ProjectRole) }}
-									/>
-
-									{/* Member Info */}
-									<View style={styles.memberInfo}>
-										<Text
-											variant="titleMedium"
-											style={dynamicStyles.memberSurface}
-										>
-											{displayName}
-										</Text>
-										{member.email && member.email !== displayName && (
-											<Text
-												variant="bodySmall"
-												style={dynamicStyles.memberSurfaceVariant}
-											>
-												{member.email}
-											</Text>
-										)}
-										<Chip
-											mode="flat"
-											textStyle={dynamicStyles.chipText}
-											style={[
-												dynamicStyles.chipStyle,
-												{ backgroundColor: getRoleBadgeColor(member.role as ProjectRole) + "20" }
-											]}
-										>
-											{getRoleDisplayName(member.role as ProjectRole)}
-										</Chip>
-									</View>
-
-									{/* Actions Menu (admin only) */}
-									{canManageMembers && (
-										<Menu
-											visible={menuVisible[member.id] || false}
-											onDismiss={() => closeMenu(member.id)}
-											anchor={
-												<IconButton
-													icon="dots-vertical"
-													onPress={() => openMenu(member.id)}
-												/>
-											}
-										>
-											<Menu.Item
-												leadingIcon="account-convert"
-												onPress={() => handleMenuChangeRole(member)}
-												title={
-													member.role === "project_admin"
-														? "Change to Member"
-														: "Promote to Admin"
-												}
-											/>
-											{canRemove && (
-												<>
-													<Divider />
-													<Menu.Item
-														leadingIcon="account-remove"
-														onPress={() => handleMenuRemove(member)}
-														title="Remove from Project"
-														titleStyle={{ color: theme.colors.error }}
-													/>
-												</>
-											)}
-											{!canRemove && isLastAdmin && (
-												<Menu.Item
-													disabled
-													leadingIcon="shield-account"
-													title="Last Admin (Cannot Remove)"
-												/>
-											)}
-										</Menu>
-									)}
-								</View>
-							</Card.Content>
-						</Card>
+						<MemberListItem
+							key={member.id}
+							member={member}
+							user={user}
+							adminCount={adminCount}
+							canManageMembers={!!canManageMembers}
+							menuVisible={menuVisible[member.id] || false}
+							openMenu={openMenu}
+							closeMenu={closeMenu}
+							handleMenuChangeRole={handleMenuChangeRole}
+							handleMenuRemove={handleMenuRemove}
+							getRoleBadgeColor={getRoleBadgeColor}
+							getRoleDisplayName={getRoleDisplayName}
+							dynamicStyles={dynamicStyles}
+						/>
 					)
 				})}
 			</ScrollView>
 
-			{/* Add Member Full-Screen Modal */}
-			<Modal
-				visible={showAddMemberDialog}
-				animationType="slide"
-				onRequestClose={() => setShowAddMemberDialog(false)}
-			>
-				<SafeAreaView
-					style={[
-						styles.modalContainer,
-						dynamicStyles.modalBg,
-					]}
-				>
-					{/* Header with back button */}
-					<Appbar.Header>
-						<Appbar.BackAction onPress={() => setShowAddMemberDialog(false)} />
-						<Appbar.Content title="Invite Member" />
-						<Button
-							onPress={handleInviteMember}
-							disabled={!inviteEmail.trim() || loading}
-							mode="contained"
-							style={styles.headerButton}
-							loading={loading}
-						>
-							Send Invite
-						</Button>
-					</Appbar.Header>
+			<InviteMemberModal
+				projectId={projectId!}
+				visible={dialogState.type === 'add'}
+				onDismiss={() => dispatch({ dialogState: { type: 'none' } })}
+				onSuccess={handleRefresh}
+				user={user}
+			/>
 
-					<ScrollView style={dynamicStyles.modalPadding}>
-						<Text variant="bodyMedium" style={dynamicStyles.modalDesc}>
-							Enter the email address of the user you want to invite to this project.
-						</Text>
+			<ChangeRoleDialog
+				projectId={projectId!}
+				visible={dialogState.type === 'role'}
+				member={dialogState.member || null}
+				user={user}
+				onDismiss={() => dispatch({ dialogState: { type: 'none' } })}
+				onSuccess={handleRefresh}
+			/>
 
-						<WWTextInput
-							label="Email Address"
-							value={inviteEmail}
-							onChange={setInviteEmail}
-							keyboardType="email-address"
-							autoCapitalize="none"
-							autoCorrect={false}
-							style={dynamicStyles.inputMargin}
-						/>
-
-						{/* Role Selection with Segmented Buttons - GREEN THEME */}
-						<View style={styles.roleSelectionSection}>
-							<Text variant="titleMedium" style={styles.roleLabel}>
-								Role:
-							</Text>
-							<SegmentedButtons
-								value={inviteRole}
-								onValueChange={(value) =>
-									setInviteRole(value as ProjectRole)
-								}
-								buttons={[
-									{
-										value: "project_member",
-										label: "Member",
-										icon: "account",
-										style: { borderColor: "#4CAF50" },
-										labelStyle: { color: "#FFFFFF" },
-										uncheckedColor: "#FFFFFF",
-										checkedColor: "#FFFFFF",
-									},
-									{
-										value: "project_admin",
-										label: "Admin",
-										icon: "shield-account",
-										style: { borderColor: "#4CAF50" },
-										labelStyle: { color: "#FFFFFF" },
-										uncheckedColor: "#FFFFFF",
-										checkedColor: "#FFFFFF",
-									},
-								]}
-								theme={{
-									colors: {
-										secondaryContainer: "#4CAF50",
-										onSecondaryContainer: "#FFFFFF",
-										outline: "#4CAF50",
-									},
-								}}
-								style={styles.segmentedButtons}
-							/>
-							<Text variant="bodySmall" style={dynamicStyles.roleHint}>
-								{getRoleDescription(inviteRole)}
-							</Text>
-						</View>
-					</ScrollView>
-				</SafeAreaView>
-			</Modal>
-
-			{/* Change Role Dialog */}
-			<Portal>
-				<Dialog
-					visible={showRoleChangeDialog}
-					onDismiss={() => setShowRoleChangeDialog(false)}
-				>
-					<Dialog.Title>Change Member Role</Dialog.Title>
-					<Dialog.Content>
-						{selectedMember && (
-							<>
-								<Text variant="bodyLarge" style={dynamicStyles.dialogDesc}>
-									Change role for{" "}
-									<Text style={dynamicStyles.bold}>
-										{selectedMember.name}
-									</Text>
-									?
-								</Text>
-								<View style={styles.roleCompare}>
-									<View>
-										<Text
-											variant="bodySmall"
-											style={dynamicStyles.roleLabelSub}
-										>
-											Current:
-										</Text>
-										<Chip style={dynamicStyles.roleChip}>
-											{getRoleDisplayName(selectedMember.role as ProjectRole)}
-										</Chip>
-									</View>
-									<IconButton icon="arrow-right" />
-									<View>
-										<Text
-											variant="bodySmall"
-											style={dynamicStyles.roleLabelSub}
-										>
-											New:
-										</Text>
-										<Chip
-											style={[
-												dynamicStyles.roleChip,
-												{ backgroundColor: getRoleBadgeColor(selectedRole) + "20" }
-											]}
-										>
-											{getRoleDisplayName(selectedRole)}
-										</Chip>
-									</View>
-								</View>
-								<Text
-									variant="bodySmall"
-									style={dynamicStyles.roleMarginLarge}
-								>
-									{getRoleDescription(selectedRole)}
-								</Text>
-							</>
-						)}
-					</Dialog.Content>
-					<Dialog.Actions>
-						<Button onPress={() => setShowRoleChangeDialog(false)}>
-							Cancel
-						</Button>
-						<Button onPress={handleChangeRole} mode="contained">
-							Change Role
-						</Button>
-					</Dialog.Actions>
-				</Dialog>
-			</Portal>
-
-			{/* Remove Member Dialog */}
-			<Portal>
-				<Dialog
-					visible={showRemoveDialog}
-					onDismiss={() => setShowRemoveDialog(false)}
-				>
-					<Dialog.Title>Remove Member</Dialog.Title>
-					<Dialog.Content>
-						{selectedMember && (
-							<>
-								<Text variant="bodyLarge">
-									Are you sure you want to remove{" "}
-									<Text style={dynamicStyles.bold}>
-										{selectedMember.name}
-									</Text>{" "}
-									from this project?
-								</Text>
-								<Text
-									variant="bodySmall"
-									style={dynamicStyles.errorText}
-								>
-									This action cannot be undone. They will lose access to all
-									project resources.
-								</Text>
-							</>
-						)}
-					</Dialog.Content>
-					<Dialog.Actions>
-						<Button onPress={() => setShowRemoveDialog(false)}>Cancel</Button>
-						<Button
-							onPress={handleRemoveMember}
-							mode="contained"
-							buttonColor={theme.colors.error}
-						>
-							Remove
-						</Button>
-					</Dialog.Actions>
-				</Dialog>
-			</Portal>
+			<RemoveMemberDialog
+				projectId={projectId!}
+				visible={dialogState.type === 'remove'}
+				member={dialogState.member || null}
+				members={members}
+				user={user}
+				onDismiss={() => dispatch({ dialogState: { type: 'none' } })}
+				onSuccess={handleRefresh}
+			/>
 		</View>
 	)
 }

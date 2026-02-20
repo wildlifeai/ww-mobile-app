@@ -13,32 +13,22 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { StyleSheet, View, ScrollView } from "react-native"
-import { useForm, Controller } from "react-hook-form"
+import { StyleSheet, View } from "react-native"
+import { useForm } from "react-hook-form"
 import {
-	Text,
-	useTheme,
 	Snackbar,
-	IconButton,
-	Portal,
-	Dialog,
-	Button,
-	Divider,
-	ActivityIndicator,
 } from "react-native-paper"
 import { projectsApi } from "../../redux/api/projectsApi"
 import { WWScreenView } from "../../components/ui/WWScreenView"
-import { WWTextInput } from "../../components/ui/WWTextInput"
 import { WWButton } from "../../components/ui/WWButton"
-import { WWCheckbox } from "../../components/ui/WWCheckbox"
-import { WWSelect } from "../../components/ui/WWSelect"
 import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
-import { Field } from "../../components/form/Field"
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { useAppDispatch, useAppSelector } from "../../redux"
 import { selectCurrentOrganisation, selectCurrentUser, setCurrentOrganisation } from "../../redux/slices/authSlice"
 import type { CreateProjectInput } from "../../types/project"
 import { log, logError } from '../../utils/logger'
+import { NewProjectBasicInfoSection } from './components/NewProjectBasicInfoSection'
+import { NewProjectSettingsSection } from './components/NewProjectSettingsSection'
 
 
 interface ProjectFormData {
@@ -57,7 +47,6 @@ interface ProjectFormData {
 export const NewProjectScreen = () => {
 	const navigation = useAppNavigation()
 	const dispatch = useAppDispatch()
-	const theme = useTheme()
 	const currentOrganisation = useAppSelector(selectCurrentOrganisation)
 	const user = useAppSelector(selectCurrentUser)
 
@@ -69,14 +58,9 @@ export const NewProjectScreen = () => {
 			dispatch(setCurrentOrganisation(defaultOrg.id))
 		}
 	}, [currentOrganisation, user, dispatch])
-
 	const [createProject, { isLoading }] = projectsApi.useCreateProjectMutation()
 	const [errorMessage, setErrorMessage] = useState<string>("")
 	const [showError, setShowError] = useState(false)
-	const [samplingHelpVisible, setSamplingHelpVisible] = useState(false)
-	const [captureHelpVisible, setCaptureHelpVisible] = useState(false)
-
-	// Reference Data Queries
 	const { data: captureMethods } = projectsApi.useGetCaptureMethodsQuery()
 	const { data: activitySensitivities } = projectsApi.useGetActivitySensitivityQuery()
 	const { data: aiModels, isLoading: isLoadingModels, error: modelsError } = projectsApi.useGetAiModelsQuery()
@@ -250,236 +234,21 @@ export const NewProjectScreen = () => {
 
 			<View style={styles.container}>
 				{/* Section: Basic Information */}
-				<View style={styles.section}>
-					<Text
-						variant="titleMedium"
-						style={styles.sectionTitle}
-					>
-						Basic Information
-					</Text>
-
-					<Field
-						control={control}
-						name="name"
-						label="Project Name"
-						required
-						rules={{
-							required: "Project name is required",
-							minLength: {
-								value: 3,
-								message: "Project name must be at least 3 characters",
-							},
-							maxLength: {
-								value: 100,
-								message: "Project name must not exceed 100 characters",
-							},
-						}}
-					>
-						{(field) => (
-							<WWTextInput
-								{...field}
-								mode="outlined"
-								placeholder="Enter project name"
-								error={!!errors.name}
-								testID="project-name-input"
-							/>
-						)}
-					</Field>
-
-					<Field
-						control={control}
-						name="description"
-						label="Description"
-						rules={{
-							maxLength: {
-								value: 500,
-								message: "Description must not exceed 500 characters",
-							},
-						}}
-					>
-						{(field) => (
-							<WWTextInput
-								{...field}
-								mode="outlined"
-								placeholder="Enter project description"
-								multiline
-								numberOfLines={4}
-								error={!!errors.description}
-								testID="project-description-input"
-							/>
-						)}
-					</Field>
-
-					<Field control={control} name="website" label="Website (Optional)">
-						{(field) => (
-							<WWTextInput
-								{...field}
-								mode="outlined"
-								placeholder="https://example.com"
-								keyboardType="url"
-								autoCapitalize="none"
-								error={!!errors.website}
-								testID="website-input"
-							/>
-						)}
-					</Field>
-				</View>
+				<NewProjectBasicInfoSection control={control as any} errors={errors as any} />
 
 				{/* Section: Project Settings */}
-				<View style={styles.section}>
-					<Text
-						variant="titleMedium"
-						style={styles.sectionTitle}
-					>
-						Project Settings
-					</Text>
-
-					<View style={styles.fieldRow}>
-						<View style={styles.flex1}>
-							<Field
-								control={control}
-								name="sampling_design_id"
-								label="Sampling Design"
-							>
-								{(field) => (
-									<WWSelect
-										{...field}
-										options={samplingDesignOptions}
-										label="Sampling Design"
-									/>
-								)}
-							</Field>
-						</View>
-						<IconButton
-							icon="help-circle-outline"
-							size={24}
-							onPress={() => setSamplingHelpVisible(true)}
-							style={styles.helpIcon}
-							iconColor={theme.colors.primary}
-						/>
-					</View>
-
-					<View style={styles.fieldRow}>
-						<View style={styles.flex1}>
-							<Field
-								control={control}
-								name="capture_method_id"
-								label="Capture Method"
-							>
-								{(field) => (
-									<WWSelect
-										{...field}
-										options={captureMethodOptions}
-										label="Capture Method"
-									/>
-								)}
-							</Field>
-						</View>
-						<IconButton
-							icon="help-circle-outline"
-							size={24}
-							onPress={() => setCaptureHelpVisible(true)}
-							style={styles.helpIcon}
-							iconColor={theme.colors.primary}
-						/>
-					</View>
-
-					{isMotionDetection && (
-						<Field
-							control={control}
-							name="activity_detection_sensitivity_id"
-							label="Motion Sensitivity"
-						>
-							{(field) => (
-								<WWSelect
-									{...field}
-									options={sensitivityOptions}
-									label="Motion Sensitivity"
-								/>
-							)}
-						</Field>
-					)}
-
-					{isTimeLapse && (
-						<Field
-							control={control}
-							name="timelapse_interval_seconds"
-							label="Time-lapse Interval (seconds)"
-						>
-							{(field) => (
-								<WWTextInput
-									{...field}
-									mode="outlined"
-									keyboardType="numeric"
-									placeholder="e.g., 60"
-								/>
-							)}
-						</Field>
-					)}
-
-					<Field control={control} name="model_id" label="Default AI Model (Optional)">
-						{(field) => {
-							if (isLoadingModels) {
-								return (
-									<View testID="ai-model-select-loading">
-										<ActivityIndicator testID="ai-model-select-loading-placeholder" />
-										<Text>Loading AI models...</Text>
-									</View>
-								)
-							}
-							if (modelsError) {
-								logError("Failed to load AI models:", modelsError)
-								return (
-									<View testID="ai-model-select-error">
-										<Text>Error loading AI models.</Text>
-									</View>
-								)
-							}
-							if (!aiModels?.length) {
-								return (
-									<View testID="ai-model-select-empty">
-										<Text>No AI models available for this organisation</Text>
-									</View>
-								)
-							}
-							return (
-								<WWSelect
-									{...field}
-									testID="ai-model-select-dropdown"
-									options={aiModelOptions}
-									label="Default AI Model"
-								/>
-							)
-						}}
-					</Field>
-
-					{/* Checkboxes */}
-					<Controller
-						control={control}
-						name="is_baited"
-						render={({ field: { value, onChange } }) => (
-							<WWCheckbox
-								label="Using Bait"
-								value={value}
-								onChange={onChange}
-								testID="is-baited-checkbox"
-							/>
-						)}
-					/>
-
-					<Controller
-						control={control}
-						name="is_monitoring_marked_individuals"
-						render={({ field: { value, onChange } }) => (
-							<WWCheckbox
-								label="Monitoring Marked Individuals"
-								value={value}
-								onChange={onChange}
-								testID="is-monitoring-marked-checkbox"
-							/>
-						)}
-					/>
-				</View>
+				<NewProjectSettingsSection 
+					control={control as any}
+					samplingDesignOptions={samplingDesignOptions}
+					captureMethodOptions={captureMethodOptions}
+					sensitivityOptions={sensitivityOptions}
+					aiModelOptions={aiModelOptions}
+					isMotionDetection={isMotionDetection}
+					isTimeLapse={isTimeLapse}
+					isLoadingModels={isLoadingModels}
+					modelsError={modelsError}
+					hasAiModels={!!aiModels?.length}
+				/>
 
 				{/* Submit Button */}
 				<WWButton
@@ -506,92 +275,7 @@ export const NewProjectScreen = () => {
 					{errorMessage}
 				</Snackbar>
 
-				{/* Help Dialog */}
-				<Portal>
-					<Dialog
-						visible={samplingHelpVisible}
-						onDismiss={() => setSamplingHelpVisible(false)}
-						style={styles.dialog}
-					>
-						<Dialog.Title>Sampling Designs</Dialog.Title>
-						<Dialog.ScrollArea>
-							<ScrollView contentContainerStyle={styles.dialogScrollContent}>
-								<Text style={styles.helpItem}>
-									<Text style={styles.bold}>Simple random:</Text> random
-									distribution of sampling locations
-								</Text>
-								<Divider style={styles.divider} />
 
-								<Text style={styles.helpItem}>
-									<Text style={styles.bold}>Systematic random:</Text> random
-									distribution of sampling locations, but arranged in a regular
-									pattern
-								</Text>
-								<Divider style={styles.divider} />
-
-								<Text style={styles.helpItem}>
-									<Text style={styles.bold}>Clustered random:</Text> random
-									distribution of sampling locations, but clustered in arrays
-								</Text>
-								<Divider style={styles.divider} />
-
-								<Text style={styles.helpItem}>
-									<Text style={styles.bold}>Experimental:</Text> non-random
-									distribution aimed to study an effect, including the
-									before-after control-impact (BACI) design
-								</Text>
-								<Divider style={styles.divider} />
-
-								<Text style={styles.helpItem}>
-									<Text style={styles.bold}>Targeted:</Text> non-random
-									distribution optimized for capturing specific target species
-									(often using various bait types)
-								</Text>
-								<Divider style={styles.divider} />
-
-								<Text style={styles.helpItem}>
-									<Text style={styles.bold}>Opportunistic:</Text> opportunistic
-									camera trapping (usually with a small number of cameras).
-								</Text>
-							</ScrollView>
-						</Dialog.ScrollArea>
-						<Dialog.Actions>
-							<Button onPress={() => setSamplingHelpVisible(false)}>
-								Close
-							</Button>
-						</Dialog.Actions>
-					</Dialog>
-				</Portal>
-
-				{/* Capture Method Help Dialog */}
-				<Portal>
-					<Dialog
-						visible={captureHelpVisible}
-						onDismiss={() => setCaptureHelpVisible(false)}
-						style={styles.dialog}
-					>
-						<Dialog.Title>Capture Methods</Dialog.Title>
-						<Dialog.ScrollArea>
-							<ScrollView contentContainerStyle={styles.dialogScrollContent}>
-								<Text style={styles.helpItem}>
-									<Text style={styles.bold}>activityDetection:</Text> The camera
-									uses the motion-detection sensor to record photos
-								</Text>
-								<Divider style={styles.divider} />
-
-								<Text style={styles.helpItem}>
-									<Text style={styles.bold}>timeLapse:</Text> Set a timer (e.g.
-									every 30 seconds) for the camera to take photos.
-								</Text>
-							</ScrollView>
-						</Dialog.ScrollArea>
-						<Dialog.Actions>
-							<Button onPress={() => setCaptureHelpVisible(false)}>
-								Close
-							</Button>
-						</Dialog.Actions>
-					</Dialog>
-				</Portal>
 			</View>
 		</WWScreenView>
 	)
@@ -601,53 +285,9 @@ const styles = StyleSheet.create({
 	container: {
 		padding: 16,
 	},
-	section: {
-		marginBottom: 24,
-	},
-	sectionTitle: {
-		fontWeight: "600",
-		marginBottom: 16,
-	},
-	fieldRow: {
-		flexDirection: "row",
-		alignItems: "flex-start", // Align top to handle different heights
-		gap: 8,
-	},
-	flex1: {
-		flex: 1,
-	},
-	helpIcon: {
-		margin: 0,
-		marginTop: 8, // Align with input field visually
-	},
-	helpItem: {
-		marginBottom: 8,
-		lineHeight: 20,
-	},
-	bold: {
-		fontWeight: "bold",
-	},
-	divider: {
-		marginVertical: 8,
-	},
-	radioGroup: {
-		marginBottom: 16,
-	},
-	label: {
-		marginBottom: 8,
-		fontWeight: "500",
-	},
-	radioOptions: {
-		gap: 8,
-	},
+
 	submitButton: {
 		marginTop: 8,
 		marginBottom: 32,
-	},
-	dialog: {
-		maxHeight: "80%",
-	},
-	dialogScrollContent: {
-		paddingVertical: 16,
 	},
 })

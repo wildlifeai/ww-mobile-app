@@ -52,7 +52,7 @@ describe('BleCommandManager', () => {
         mockPeripheral,
         { name: 'ver', string: 'ver' },
         mockWriteToDevice,
-        { timeout: 100 },
+        { timeout: 100, maxRetries: 0 },
       )
 
       jest.advanceTimersByTime(100)

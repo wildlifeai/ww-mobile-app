@@ -9,8 +9,8 @@
       "distribution": "internal",
       "env": {
         "NODE_ENV": "development",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://nuhwmubvygxyddkycmpa.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd",
+        "EXPO_PUBLIC_SUPABASE_URL": "${EXPO_PUBLIC_SUPABASE_URL_DEV}",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY_DEV}",
         "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
         "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
       },
@@ -25,8 +25,8 @@
       "distribution": "internal",
       "env": {
         "NODE_ENV": "development",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://nuhwmubvygxyddkycmpa.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_SZ5M-5IzbkTs74QgD7c9wg_7EUyWzsd",
+        "EXPO_PUBLIC_SUPABASE_URL": "${EXPO_PUBLIC_SUPABASE_URL_PROD}",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY_PROD}",
         "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
         "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
       },
@@ -42,6 +42,8 @@
       "autoIncrement": true,
       "env": {
         "NODE_ENV": "production",
+        "EXPO_PUBLIC_SUPABASE_URL": "${EXPO_PUBLIC_SUPABASE_URL_PROD}",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY_PROD}",
         "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
         "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
       },
@@ -57,14 +59,14 @@
   "submit": {
     "production": {
       "android": {
-        "serviceAccountKeyPath": "${GOOGLE_PLAY_SERVICE_ACCOUNT_KEY_PATH}",
+        "serviceAccountKeyPath": "./wwmap-443023-3ed6207e2aa0.json",
         "track": "internal",
         "releaseStatus": "draft"
       },
       "ios": {
-        "appleId": "${APPLE_ID}",
-        "ascAppId": "${ASC_APP_ID}",
-        "appleTeamId": "${APPLE_TEAM_ID}"
+        "appleId": "victor@wildlife.ai",
+        "ascAppId": "6479951661",
+        "appleTeamId": "7399889N9Z"
       }
     }
   }

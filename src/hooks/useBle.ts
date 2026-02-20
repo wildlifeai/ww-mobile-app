@@ -111,7 +111,6 @@ export const useBle = (): ReturnType => {
 		): Promise<string[]> => {
 			if (!initialized) return []
 
-			const currentPeripheral = devices[peripheral.id]
 
 
 			const results: string[] = []
@@ -171,7 +170,7 @@ export const useBle = (): ReturnType => {
 
 			return results
 		},
-		[devices, initialized],
+		[initialized],
 	)
 
 	const isDeviceReconnecting = useRef<{ [x: string]: boolean }>({})

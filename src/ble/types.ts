@@ -266,6 +266,7 @@ export const COMMANDS: {
 	[CommandNames.ping]: {
 		name: CommandNames.ping,
 		writeCommand: () => "ping",
+		readRegex: /(Joined|Not Joined)/i,
 		description: "Send LoRaWAN packet",
 		type: 'command',
 	},
@@ -391,12 +392,14 @@ export const COMMANDS: {
 	[CommandNames.erasemodel]: {
 		name: CommandNames.erasemodel,
 		writeCommand: () => "AI erasemodel",
+		readRegex: /(OK|erased|failed)/i,
 		description: "Erases the model and write 0, 0 to the CONFIG.TXT lines 14 & 15",
 		type: 'command',
 	},
 	[CommandNames.loadmodel]: {
 		name: CommandNames.loadmodel,
 		writeCommand: (id?: string, ver?: string) => `AI loadmodel ${id || '0'} ${ver || '0'}`,
+		readRegex: /(OK|loaded|failed)/i,
 		description: "Load model <id> <ver> from SD (e.g. 1V1.TFL) and update lines 14 & 15 of CONFIG.TXT",
 		type: 'command',
 	},
@@ -418,36 +421,42 @@ export const COMMANDS: {
 	[CommandNames.SET_NUM_PICTURES]: {
 		name: CommandNames.SET_NUM_PICTURES,
 		writeCommand: (count?: string) => `AI setop 5 ${count || '3'}`,
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set number of images per trigger (default: 3)",
 		type: 'process',
 	},
 	[CommandNames.SET_PICTURE_INTERVAL]: {
 		name: CommandNames.SET_PICTURE_INTERVAL,
 		writeCommand: (intervalMs?: string) => `AI setop 6 ${intervalMs || '1500'}`,
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set interval between images in ms (default: 1500)",
 		type: 'process',
 	},
 	[CommandNames.SET_TIMELAPSE_INTERVAL]: {
 		name: CommandNames.SET_TIMELAPSE_INTERVAL,
 		writeCommand: (intervalSec?: string) => `AI setop 7 ${intervalSec || '900'}`,
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set timelapse interval in seconds, 0=off (default: 900)",
 		type: 'process',
 	},
 	[CommandNames.SET_MOTION_DETECT_INTERVAL]: {
 		name: CommandNames.SET_MOTION_DETECT_INTERVAL,
 		writeCommand: (intervalMs?: string) => `AI setop 11 ${intervalMs || '1000'}`,
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set motion detection interval in ms, 0=off (default: 1000)",
 		type: 'process',
 	},
 	[CommandNames.DISABLE_MOTION_DETECT]: {
 		name: CommandNames.DISABLE_MOTION_DETECT,
 		writeCommand: () => 'AI setop 11 0',
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Disable motion detection",
 		type: 'process',
 	},
 	[CommandNames.DISABLE_TIMELAPSE]: {
 		name: CommandNames.DISABLE_TIMELAPSE,
 		writeCommand: () => 'AI setop 7 0',
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Disable timelapse capture",
 		type: 'process',
 	},
@@ -484,6 +493,7 @@ export const COMMANDS: {
 	[CommandNames.join]: {
 		name: CommandNames.join,
 		writeCommand: () => "join",
+		readRegex: /^(Already joined|OK|Wrong state)/i,
 		description: "Request a LoRaWAN join",
 		type: 'command',
 	},
@@ -519,6 +529,7 @@ export const COMMANDS: {
 		name: CommandNames.TX_FILE,
 		// "AI txfile ." requests the last captured file
 		writeCommand: () => "AI txfile .",
+		readRegex: /(sending\s+\d+\s+bytes|no\s+file)/i,
 		description: "Request last captured file from AI module",
 		type: 'process',
 	},

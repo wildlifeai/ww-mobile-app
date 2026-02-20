@@ -3,7 +3,7 @@ import { useCallback, useRef } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { useBleCommands } from './useBleCommands'
 import { extractErrorBits } from '../ble/messageClassifier'
-import { bleCommandManager } from '../ble/commandManager'
+
 import { log, logError, logWarn } from '../utils/logger'
 
 

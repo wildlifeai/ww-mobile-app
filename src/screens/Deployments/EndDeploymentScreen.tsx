@@ -1,12 +1,12 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { View, StyleSheet, Alert } from 'react-native'
+import React, { useState, useCallback, useEffect, useRef, useReducer } from 'react'
+import { View, StyleSheet } from 'react-native'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { Appbar, TextInput, Card, useTheme } from 'react-native-paper'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
-import { RootStackParamList } from '../../navigation'
+import { RootStackParamList } from '../../navigation/types'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { DeploymentService } from '../../services/DeploymentService'
 import { useBleCommands } from '../../hooks/useBleCommands'
@@ -21,7 +21,8 @@ import { DeviceService } from '../../services/DeviceService'
 import type Deployment from '../../database/models/Deployment'
 import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog'
 import { useBleInitialization } from '../../hooks/useBleInitialization'
-import { log, logError, logWarn } from '../../utils/logger'
+import { log, logWarn } from '../../utils/logger'
+import { useEndDeployment } from './hooks/useEndDeployment'
 
 
 type EndDeploymentDetailsStepRouteProp = RouteProp<RootStackParamList, 'EndDeploymentDetailsStep'>
@@ -30,6 +31,49 @@ interface InnerProps {
     deployment: Deployment
     deviceId: string
     bleDeviceId: string
+}
+
+type InitState = {
+    isInitializing: boolean
+    initProgress: number
+    initStep: string
+    initErrors: { setUtc?: string; deviceHealth?: string[] }
+}
+
+type InitAction = 
+    | { type: 'START_INIT' }
+    | { type: 'SET_PROGRESS'; step: string; progress: number }
+    | { type: 'SET_ERRORS'; errors: { setUtc?: string; deviceHealth?: string[] } }
+    | { type: 'FINISH_INIT' }
+
+const initReducer = (state: InitState, action: InitAction): InitState => {
+    switch (action.type) {
+        case 'START_INIT':
+            return {
+                ...state,
+                isInitializing: true,
+                initStep: 'Initializing...',
+                initProgress: 0.2
+            }
+        case 'SET_PROGRESS':
+            return {
+                ...state,
+                initStep: action.step,
+                initProgress: action.progress
+            }
+        case 'SET_ERRORS':
+            return {
+                ...state,
+                initErrors: action.errors
+            }
+        case 'FINISH_INIT':
+            return {
+                ...state,
+                isInitializing: false
+            }
+        default:
+            return state
+    }
 }
 
 const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment }) => {
@@ -59,29 +103,44 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
     // Local state
     const [retrievalNotes, setRetrievalNotes] = useState('')
-    const [isEnding, setIsEnding] = useState(false)
-    
-    // Progress Dialog State
-    const [finishProgress, setFinishProgress] = useState(0)
-    const [finishStep, setFinishStep] = useState('')
-    const [finishLogs, setFinishLogs] = useState<string[]>([])
-    const [isFinishing, setIsFinishing] = useState(false)
-    const [isEndDeploymentSuccess, setIsEndDeploymentSuccess] = useState(false)
 
-    const addFinishLog = useCallback((message: string) => {
-        setFinishLogs(prev => [...prev, message])
-    }, [])
-    
-    // Initialization State (for InitializationHeader)
-    const [deviceDb, setDeviceDb] = useState<Device | undefined>()
-    const [isInitializing, setIsInitializing] = useState(true)
-    const [initProgress, setInitProgress] = useState(0)
-    const [initStep, setInitStep] = useState('')
-    const [initErrors, setInitErrors] = useState<{ setUtc?: string; deviceHealth?: string[] }>({})
-    
     // Connection Guard Refs
     const isNavigatingAway = useRef(false)
     const hasRunInitialization = useRef(false)
+
+    // End Deployment Logic Hook
+    const {
+        isEnding,
+        finishProgress,
+        finishStep,
+        finishLogs,
+        isFinishing,
+        isEndDeploymentSuccess,
+        handleEndDeployment,
+        handleFinishDismiss
+    } = useEndDeployment({
+        deployment,
+        user,
+        storeDevice,
+        retrievalNotes,
+        navigation,
+        quiesceDevice,
+        setDeploymentIdAsOps,
+        clearGpsLocation,
+        runDisconnect,
+        isNavigatingAway
+    })
+    
+    // Initialization State (for InitializationHeader)
+    const [deviceDb, setDeviceDb] = useState<Device | undefined>()
+    const [{ isInitializing, initProgress, initStep, initErrors }, dispatchInit] = useReducer(initReducer, {
+        isInitializing: true,
+        initProgress: 0,
+        initStep: '',
+        initErrors: {}
+    })
+    
+
     
     useEffect(() => {
         DeviceService.getDeviceById(deviceId).then(setDeviceDb)
@@ -92,24 +151,24 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         const initializeDevice = async () => {
             if (!storeDevice?.connected || hasRunInitialization.current) return
             hasRunInitialization.current = true
-            setIsInitializing(true)
+            dispatchInit({ type: 'START_INIT' })
             
-            setInitStep('Initializing...')
-            setInitProgress(0.2)
             log('[EndDeployment] Running standard BLE initialization...')
             
             const result = await initialize(storeDevice, {
                 onProgress: (step, progress) => {
-                    setInitStep(step)
-                    setInitProgress(0.2 + (progress * 0.8)) // Scale progress
+                    dispatchInit({ type: 'SET_PROGRESS', step, progress: 0.2 + (progress * 0.8) })
                 }
             })
 
             if (!result.success) {
                 logWarn('[EndDeployment] BLE initialization had errors:', result.errors)
-                setInitErrors({
-                    setUtc: result.errors.setUtc,
-                    deviceHealth: result.errors.deviceHealth
+                dispatchInit({
+                    type: 'SET_ERRORS',
+                    errors: {
+                        setUtc: result.errors.setUtc,
+                        deviceHealth: result.errors.deviceHealth
+                    }
                 })
             } else {
                 log('[EndDeployment] Initialization complete. Time set and hardware verified.')
@@ -117,7 +176,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
             // Mark initialization as done
             setTimeout(() => {
-                setIsInitializing(false)
+                dispatchInit({ type: 'FINISH_INIT' })
             }, 2000)
         }
 
@@ -148,153 +207,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         return unsubscribe
     }, [navigation, isEnding, runDisconnect])
 
-    const handleEndDeployment = useCallback(async () => {
-        // Sanity Check: Ensure BLE is still connected (unless it's a forced cleanup)
-        if (!storeDevice || !storeDevice.connected) {
-            Alert.alert(
-                'Connection Lost',
-                'The device appears to be disconnected. You cannot end the deployment on the device without a connection.',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                        text: 'Force End (Database Only)',
-                        style: 'destructive',
-                        onPress: async () => {
-                            // Allow forcing end if device is lost/damaged, but warn heavily
-                            setIsEnding(true)
-                            isNavigatingAway.current = true // Prevent alerts during force-end
-                            setIsFinishing(true)
-                            setFinishProgress(0.5)
-                            setFinishStep('Force ending...')
-                            setFinishLogs(['Device disconnected'])
-                            addFinishLog('WARNING: Ending deployment without device connection')
-                            
-                            try {
-                                const userId = user?.id || null
-                                await DeploymentService.endDeployment(deployment.id, userId, retrievalNotes)
-                                addFinishLog('Deployment ended in database')
-                                setFinishProgress(1.0)
-                                setIsEndDeploymentSuccess(true)
-                            } catch (e) {
-                                setIsFinishing(false)
-                                Alert.alert('Error', 'Failed to force end')
-                            } finally {
-                                setIsEnding(false)
-                            }
-                        }
-                    }
-                ]
-            )
-            return
-        }
 
-        // Reset and Show Progress Dialog
-        setIsEnding(true)
-        setIsFinishing(true)
-        setFinishProgress(0)
-        setFinishStep('Starting...')
-        setFinishLogs([])
-        setIsEndDeploymentSuccess(false)
-
-        try {
-            // 1. Clear Configuration (ID)
-            if (storeDevice) {
-                addFinishLog('Clearing configuration...')
-                setFinishStep('Clearing config...')
-                setFinishProgress(0.2)
-                
-                log('[EndDeployment] Clearing Deployment ID...')
-                let idCleared = false
-                let attempts = 0
-                while (!idCleared && attempts < 3) {
-                    try {
-                        attempts++
-                        await setDeploymentIdAsOps(storeDevice, null)
-                        log('[EndDeployment] ID cleared')
-                        idCleared = true
-                        addFinishLog('Configuration cleared')
-                    } catch (e) {
-                        logWarn(`[EndDeployment] Clear ID failed (attempt ${attempts}):`, e)
-                        if (attempts < 3) {
-                            addFinishLog(`Retry ${attempts}/3...`)
-                            await new Promise(r => setTimeout(r, 1000))
-                        }
-                    }
-                }
-
-                if (!idCleared) addFinishLog('Warning: Config clear failed')
-
-                // 2. Clear GPS (Legacy/Safety)
-                try {
-                    await clearGpsLocation(storeDevice)
-                } catch (e) {
-                    logWarn('[EndDeployment] Failed to clear GPS:', e)
-                }
-            }
-
-            // 2. Update DB
-            addFinishLog('Updating deployment record...')
-            setFinishStep('Updating record...')
-            setFinishProgress(0.3)
-            
-            const userId = user?.id || null
-            await DeploymentService.endDeployment(deployment.id, userId, retrievalNotes)
-            addFinishLog('Record updated successfully')
-
-            // 3. Quiesce Device (Final Stop) - Optimized mode skips camera enable
-            if (storeDevice) {
-                addFinishLog('Finalizing stop...')
-                setFinishStep('Finalizing...')
-                setFinishProgress(0.6)
-                
-                try {
-                    await quiesceDevice('[EndDeployment]', true)  // Use optimized mode (skip camera enable)
-                    addFinishLog('Device stopped')
-                } catch (e) {
-                    logWarn('[EndDeployment] Final stop warning:', e)
-                    addFinishLog('Warning: Final stop incomplete')
-                }
-            }
-
-            // 4. Disconnect
-            addFinishLog('Disconnecting...')
-            setFinishStep('Disconnecting...')
-            setFinishProgress(0.8)
-            
-            if (storeDevice) {
-                try {
-                    await runDisconnect(storeDevice)
-                    addFinishLog('Device disconnected')
-                } catch (e) {
-                    logWarn('[EndDeployment] Disconnect error:', e)
-                }
-            }
-
-            // Success State
-            setFinishStep('Complete')
-            setFinishProgress(1.0)
-            setIsEndDeploymentSuccess(true)
-            addFinishLog('Deployment ended successfully')
-
-        } catch (error) {
-            logError(error)
-            setIsFinishing(false)
-            Alert.alert("Error", "Failed to end deployment. Please try again.")
-        } finally {
-            setIsEnding(false)
-        }
-    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsOps, clearGpsLocation, runDisconnect, addFinishLog])
-
-    const handleFinishDismiss = useCallback(() => {
-        setIsFinishing(false)
-        if (isEndDeploymentSuccess) {
-            // Reset navigation stack to Home
-            navigation.reset({
-                index: 0,
-                routes: [{ name: 'Home' }],
-            })
-        }
-    }, [isEndDeploymentSuccess, navigation])
 
     const renderInfoLeft = useCallback((props: any) => <Appbar.Action {...props} icon="information" />, [])
 

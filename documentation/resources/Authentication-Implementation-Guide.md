@@ -1,625 +1,294 @@
 # Authentication Implementation Guide
 
-## Overview
+> **Prerequisite reading**: [01-TECHNOLOGY-STACK.md](../onboarding/01-TECHNOLOGY-STACK.md) (Redux architecture, provider hierarchy) and [02-CODEBASE-GUIDE.md](../onboarding/02-CODEBASE-GUIDE.md) (folder structure, state management conventions).
 
-This guide documents the complete authentication system implementation for the Wildlife Watcher mobile app, including Supabase integration, deep linking, and React Navigation configuration.
+## Architecture Overview
 
-## Architecture
-
-### Authentication Flow
+Authentication uses **Supabase Auth + Redux + RTK Query**. There is no React Context; the `AuthProvider` dispatches directly to the Redux store.
 
 ```
-App Start → AuthProvider → Supabase Session Check
-    ↓
-Session Exists? → Dispatch setCredentials (Redux) → Main App
-    ↓
-Session Missing? → Clear Redux State → Auth Stack
+App Start
+  → AuthProvider checks Supabase session (getCurrentSession)
+  → Dispatches setInitialState(session) to Redux
+  → Sets up onAuthStateChange listener
+  → On change: dispatches setCredentials / logout
+
+Navigation reads Redux state.authentication.token
+  → No token  → Login / Register / ForgotPassword screens
+  → Has token → Main app screens
 ```
 
-### Provider Hierarchy
+### Navigation Gate (Priority Chain)
 
-The authentication system is integrated into the app's provider hierarchy:
+`MainNavigation` (`src/navigation/index.tsx`) uses conditional rendering with a priority chain — auth is one gate among several:
 
 ```tsx
-SafeAreaProvider → ReduxProvider → PaperProvider → NavigationContainer
-→ AndroidPermissionsProvider → AppSetupProvider → BleEngineProvider
-→ ListenToBleEngineProvider → AuthProvider → MainNavigation
+// Simplified from src/navigation/index.tsx
+if (appLoading)          → AppLoading screen
+if (bluetooth !== on)    → BluetoothProblems screen
+if (!locationEnabled)    → LocationProblems screen
+if (!bleInitialized)     → BleProblems screen
+if (!token)              → Auth screens (Login, Register, ForgotPassword)
+else                     → Main app (Home, Devices, Projects, etc.)
 ```
 
-## Core Components
-
-### 1. AuthProvider (`src/providers/AuthProvider.tsx`)
-
-**Purpose**: Manages authentication state and provides auth context to the entire app.
-
-**Key Features**:
-- Session management with Supabase
-- Automatic session restoration on app start
-- Deep link handling for auth flows
-- Loading states and error handling
-
-**Implementation**:
-```tsx
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Get initial session
-    const client = getSupabaseClient();
-    client.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = client.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  return (
-    <AuthContext.Provider value={{ session, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-```
-
-### 2. Navigation Structure (`src/navigation/index.tsx`)
-
-**Conditional Navigation**: Based on authentication state, the app renders either:
-- **AuthStack**: Login, Register, Forgot Password screens
-- **MainNavigation**: Primary app functionality (requires authentication)
-
-**Implementation**:
-```tsx
-export default function Navigation() {
-  const { session, loading } = useAuth();
-
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  return (
-    <NavigationContainer linking={linking}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {session ? (
-          <Stack.Screen name="Main" component={MainNavigation} />
-        ) : (
-          <>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Register" component={RegisterScreen} />
-            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
-}
-```
-
-### 3. Deep Linking Integration
-
-**Configuration** (`src/navigation/linking.ts`):
-```tsx
-const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: ['wildlifewatcher://'],
-  config: {
-    screens: {
-      Login: 'login',
-      Register: 'register', 
-      ForgotPassword: 'forgot-password',
-      Main: {
-        screens: {
-          Home: 'home',
-          Projects: 'projects',
-          Devices: 'devices',
-          Profile: 'profile',
-        },
-      },
-    },
-  },
-};
-```
-
-**Deep Link Handler** (`src/hooks/useDeepLinking.ts`):
-```tsx
-export const useDeepLinking = () => {
-  useEffect(() => {
-    const handleDeepLink = (url: string) => {
-      if (url.includes('forgot-password')) {
-        // Handle password reset deep links
-        const urlObj = new URL(url);
-        const accessToken = urlObj.searchParams.get('access_token');
-        const refreshToken = urlObj.searchParams.get('refresh_token');
-        
-        if (accessToken && refreshToken) {
-          const client = getSupabaseClient();
-          client.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-        }
-      }
-    };
-
-    const subscription = Linking.addEventListener('url', ({ url }) => {
-      handleDeepLink(url);
-    });
-
-    // Handle app launch from deep link
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        handleDeepLink(url);
-      }
-    });
-
-    return () => subscription?.remove();
-  }, []);
-};
-```
-
-## Supabase Configuration
-
-### 1. Client Setup (`src/services/supabase.ts`)
-
-```tsx
-import 'react-native-url-polyfill/auto';
-import { getSupabaseClient } from '../services/supabase';
-import { Database } from '../types/database.types';
-
-// The client is managed by EnvironmentManager and supabase.ts
-const supabase = getSupabaseClient();
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false, // Important for mobile apps
-  },
-});
-```
-
-### 2. Environment Variables
-
-Required in `.env`:
-```
-EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-### 3. Database Schema Requirements
-
-The authentication system expects these Supabase configurations:
-
-**User Profiles Table**:
-```sql
-create table profiles (
-  id uuid references auth.users on delete cascade not null primary key,
-  email text,
-  first_name text,
-  last_name text,
-  avatar_url text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- Enable RLS
-alter table profiles enable row level security;
-
--- Create policies
-create policy "Public profiles are viewable by everyone." on profiles
-  for select using (true);
-
-create policy "Users can insert their own profile." on profiles
-  for insert with check (auth.uid() = id);
-
-create policy "Users can update own profile." on profiles
-  for update using (auth.uid() = id);
-```
-
-## Screen Implementations
-
-### 1. Login Screen (`src/navigation/screens/Login.tsx`)
-
-**Key Features**:
-- Email/password authentication
-- Form validation with React Hook Form
-- Loading states and error handling
-- Navigation to Register and Forgot Password
-
-**Implementation Highlights**:
-```tsx
-const onSubmit = async (data: LoginFormData) => {
-  setLoading(true);
-  setError(null);
-  
-  const client = getSupabaseClient();
-  const { error } = await client.auth.signInWithPassword({
-    email: data.email,
-    password: data.password,
-  });
-  
-  if (error) {
-    setError(error.message);
-  }
-  
-  setLoading(false);
-};
-```
-
-### 2. Register Screen (`src/navigation/screens/Register.tsx`)
-
-**Key Features**:
-- User account creation
-- Profile data collection (first name, last name)
-- Password confirmation validation
-- Automatic sign-in after successful registration
-
-**Implementation Highlights**:
-```tsx
-const onSubmit = async (data: RegisterFormData) => {
-  setLoading(true);
-  setError(null);
-  
-  const client = getSupabaseClient();
-  const { data: authData, error } = await client.auth.signUp({
-    email: data.email,
-    password: data.password,
-    options: {
-      data: {
-        first_name: data.firstName,
-        last_name: data.lastName,
-      },
-    },
-  });
-  
-  if (error) {
-    setError(error.message);
-  } else if (authData.user) {
-    // User created successfully
-    // Profile will be created automatically via database triggers
-  }
-  
-  setLoading(false);
-};
-```
-
-### 3. Forgot Password Screen (`src/navigation/screens/ForgotPassword.tsx`)
-
-**Key Features**:
-- Password reset email sending
-- Deep link handling for reset flow
-- User feedback and status messages
-
-**Implementation Highlights**:
-```tsx
-const handleResetPassword = async (data: ForgotPasswordFormData) => {
-  setLoading(true);
-  setMessage(null);
-  setError(null);
-  
-  const client = getSupabaseClient();
-  const { error } = await client.auth.resetPasswordForEmail(
-    data.email,
-    {
-      redirectTo: 'wildlifewatcher://forgot-password',
-    }
-  );
-  
-  if (error) {
-    setError(error.message);
-  } else {
-    setMessage('Check your email for a password reset link!');
-  }
-  
-  setLoading(false);
-};
-```
-
-## Authentication Service Layer
-
-### Core Service (`src/services/auth.ts`)
-
-```tsx
-export class AuthService {
-  static async signIn(email: string, password: string) {
-    const client = getSupabaseClient();
-    const { data, error } = await client.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (error) throw error;
-    return data;
-  }
-  
-  static async signUp(email: string, password: string, metadata?: any) {
-    const client = getSupabaseClient();
-    const { data, error } = await client.auth.signUp({
-      email,
-      password,
-      options: {
-        data: metadata,
-      },
-    });
-    
-    if (error) throw error;
-    return data;
-  }
-  
-  static async signOut() {
-    const client = getSupabaseClient();
-    const { error } = await client.auth.signOut();
-    if (error) throw error;
-  }
-  
-  static async resetPassword(email: string, redirectTo?: string) {
-    const client = getSupabaseClient();
-    const { error } = await client.auth.resetPasswordForEmail(
-      email,
-      { redirectTo }
-    );
-    
-    if (error) throw error;
-  }
-  
-  static async updatePassword(password: string) {
-    const client = getSupabaseClient();
-    const { error } = await client.auth.updateUser({
-      password,
-    });
-    
-    if (error) throw error;
-  }
-}
-```
-
-## Redux Integration
-
-### Auth Types (`src/redux/api/auth/types.ts`)
-
-```tsx
-export type User = {
-  id: string;
-  email: string;
-  first_name?: string;
-  last_name?: string;
-  avatar_url?: string;
-};
-
-export type AuthState = {
-  user: User | null;
-  session: Session | null;
-  loading: boolean;
-  error: string | null;
-};
-```
-
-### Auth Slice Integration
-
-The app uses Redux to manage global user state, permissions, and organization context. The `AuthProvider` syncs Supabase session changes to the Redux store.
-
-```typescript
-// src/redux/slices/authSlice.ts
-export const authSlice = createSlice({
-  name: "authentication",
-  initialState,
-  reducers: {
-    setCredentials: (state, action) => {
-      state.user = action.payload.user;
-      state.token = action.payload.jwt;
-      state.permissions = calculatePermissions(action.payload.user.role);
-    },
-    // ...
-  }
-});
-```
-
-## Common Pitfalls and Solutions
-
-### 1. Expo Go vs Development Client
-
-**Problem**: Deep linking doesn't work properly in Expo Go.
-
-**Solution**: Use Expo Development Client for testing authentication flows:
-```bash
-# Create development build
-npx expo run:android --variant debug
-```
-
-**Why**: Expo Go has limitations with custom URL schemes and native modules.
-
-### 2. Session Persistence
-
-**Problem**: User session not persisting across app restarts.
-
-**Solution**: Ensure proper Supabase client configuration:
-```tsx
-export const supabase = createClient(url, key, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false, // Important for mobile
-  },
-});
-```
-
-### 3. Navigation State Issues
-
-**Problem**: Navigation stack getting confused during auth state changes.
-
-**Solution**: Use conditional rendering based on auth state:
-```tsx
-// Don't use navigation.navigate() for auth transitions
-// Let the conditional rendering handle navigation changes
-{session ? <MainNavigation /> : <AuthStack />}
-```
-
-### 4. Deep Link URL Parsing
-
-**Problem**: URLs with special characters causing parsing issues.
-
-**Solution**: Proper URL parsing and validation:
-```tsx
-const handleDeepLink = (url: string) => {
-  try {
-    const urlObj = new URL(url);
-    const token = urlObj.searchParams.get('access_token');
-    // Process token...
-  } catch (error) {
-    console.error('Invalid URL:', error);
-  }
-};
-```
-
-## Testing Strategies
-
-### 1. Authentication Flow Testing
-
-**Manual Testing Checklist**:
-- [ ] Sign up with valid email/password
-- [ ] Sign in with correct credentials
-- [ ] Sign in with incorrect credentials
-- [ ] Password reset email flow
-- [ ] Deep link password reset
-- [ ] Session persistence after app restart
-- [ ] Sign out functionality
-
-### 2. Deep Link Testing
-
-**Testing Commands**:
-```bash
-# Test deep links on Android
-adb shell am start \
-  -W -a android.intent.action.VIEW \
-  -d "wildlifewatcher://forgot-password?access_token=test&refresh_token=test" \
-  com.wildlife.wildlifewatcher
-
-# Test on iOS Simulator
-xcrun simctl openurl booted "wildlifewatcher://forgot-password"
-```
-
-### 3. Integration Testing
-
-**Key Areas**:
-- Auth state changes triggering navigation updates
-- Profile creation on successful registration
-- Session token refresh handling
-- Error boundary handling for auth failures
-
-## Performance Considerations
-
-### 1. Authentication State Loading
-
-**Optimization**: Show appropriate loading states during auth checks:
-```tsx
-if (loading) {
-  return <SplashScreen />;
-}
-```
-
-### 2. Session Refresh
-
-**Automatic Handling**: Supabase handles token refresh automatically, but ensure UI doesn't block:
-```tsx
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'TOKEN_REFRESHED') {
-    // Handle refresh without blocking UI
-    console.log('Token refreshed');
-  }
-});
-```
-
-### 3. Memory Management
-
-**Context Cleanup**: Ensure auth listeners are properly cleaned up:
-```tsx
-useEffect(() => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(handler);
-  
-  return () => subscription.unsubscribe(); // Important cleanup
-}, []);
-```
-
-## Security Best Practices
-
-### 1. Environment Variables
-
-- Never commit API keys to repository
-- Use different keys for development/production
-- Validate environment variables on app start
-
-### 2. Session Management
-
-- Enable automatic token refresh
-- Implement proper session timeout handling
-- Clear sensitive data on logout
-
-### 3. Deep Link Validation
-
-- Validate all URL parameters
-- Implement proper error boundaries
-- Log security-relevant events
-
-## Troubleshooting Guide
-
-### Common Issues
-
-**1. "Invalid login credentials" on valid credentials**
-- Check Supabase project settings
-- Verify email confirmation requirements
-- Check user table policies
-
-**2. Deep links not working**
-- Verify URL scheme in app.config.js
-- Test with Development Client (not Expo Go)
-- Check Android intent filters
-
-**3. Session not persisting**
-- Verify AsyncStorage permissions
-- Check Supabase client configuration
-- Review auth state change handlers
-
-**4. Navigation issues during auth changes**
-- Use conditional rendering instead of navigation.navigate()
-- Ensure proper loading states
-- Check navigation stack configuration
-
-### Debug Commands
-
-```bash
-# Check deep link registration
-adb shell pm query-services | grep wildlife
-
-# Monitor auth state changes
-# Add logging to auth state change handler
-
-# Check AsyncStorage
-# Use React Native Debugger or Flipper
-```
-
-## Next Steps and Improvements
-
-### Planned Enhancements
-
-1. **Biometric Authentication**: Add fingerprint/face recognition
-2. **Social Login**: Google, Apple, Facebook authentication
-3. **Multi-factor Authentication**: SMS or authenticator app
-4. **Session Analytics**: Track auth events and user behavior
-5. **Offline Auth**: Handle authentication state during network outages
-
-### Code Quality Improvements
-
-1. **Unit Tests**: Add comprehensive test coverage for auth flows
-2. **Integration Tests**: Automated testing of complete auth workflows
-3. **Performance Monitoring**: Track auth-related performance metrics
-4. **Error Tracking**: Implement proper error reporting and analytics
+> [!IMPORTANT]
+> Never use `navigation.navigate()` to switch between auth/main states. The conditional rendering handles transitions automatically when Redux state changes.
 
 ---
 
-This authentication system provides a solid foundation for the Wildlife Watcher app with proper security, user experience, and maintainability considerations.
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/providers/AuthProvider.tsx` | Session bootstrap + auth listener → Redux |
+| `src/services/auth.ts` | Supabase auth functions (login, register, logout, password reset, org fetching) |
+| `src/services/supabase.ts` | Supabase client factory with environment switching |
+| `src/redux/slices/authSlice.ts` | Auth state, types, roles, permissions, org management |
+| `src/redux/api/auth/index.ts` | RTK Query mutations (`useLoginMutation`, `useRegisterMutation`) |
+| `src/redux/api/auth/types.ts` | Request types; re-exports auth types from `authSlice` |
+| `src/navigation/index.tsx` | Navigation gate (auth/main conditional rendering) |
+| `src/navigation/linking.ts` | Deep link configuration |
+| `src/hooks/useDeepLinking.ts` | Deep link handler for auth callbacks |
+| `src/navigation/screens/auth/` | `LoginScreen.tsx`, `RegisterScreen.tsx`, `ForgotPasswordScreen.tsx` |
+
+---
+
+## AuthProvider
+
+**File**: `src/providers/AuthProvider.tsx` (~50 lines)
+
+The provider is minimal — no Context, no `useAuth()` hook. It:
+1. Calls `getCurrentSession()` from `auth.ts` on mount
+2. Dispatches `setInitialState(session)` to Redux
+3. Sets up `setupAuthListener()` which dispatches `setCredentials` or `logout` on auth state changes
+4. Stores the unsubscribe function in a ref for cleanup
+
+```tsx
+// src/providers/AuthProvider.tsx (actual code, simplified)
+export const AuthProvider = ({ children }: PropsWithChildren) => {
+  const dispatch = useAppDispatch()
+  const authListenerRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    const init = async () => {
+      const sessionData = await getCurrentSession()
+      dispatch(setInitialState(sessionData))
+
+      authListenerRef.current = setupAuthListener((authResponse) => {
+        if (authResponse) dispatch(setCredentials(authResponse))
+        else dispatch(logout())
+      })
+    }
+    init()
+    return () => authListenerRef.current?.()
+  }, [dispatch])
+
+  return children  // No Context wrapper
+}
+```
+
+---
+
+## Auth Service Layer
+
+**File**: `src/services/auth.ts` (~559 lines)
+
+Standalone exported functions (not a class):
+
+| Function | Purpose |
+|----------|---------|
+| `login(credentials)` | Sign in with email/password via Supabase, fetches user orgs |
+| `register(credentials)` | Create account, handles email confirmation flow |
+| `logout()` | Sign out from Supabase |
+| `getCurrentSession()` | Get existing session, transforms to `AuthResponse` |
+| `setupAuthListener(callback)` | Subscribe to `onAuthStateChange`, returns unsubscribe fn |
+| `resetPassword(email)` | Send password reset email |
+| `updatePassword(newPassword)` | Update password (active session required) |
+| `updatePasswordWithToken(token, password, refreshToken?)` | Reset password using deep link token |
+| `fetchUserOrganisations(userId)` | Query `user_organisations` table for roles |
+| `transformSupabaseUser(user, session)` | Convert Supabase `User` → app `AuthResponse` with org data |
+| `getCurrentUser()` | Get current Supabase user |
+
+### RTK Query Integration
+
+Login and register are exposed as RTK Query mutations in `src/redux/api/auth/index.ts`:
+
+```tsx
+// These call the standalone functions from auth.ts
+export const { useLoginMutation, useRegisterMutation } = authApi
+```
+
+Screens use these hooks for loading/error state management, then dispatch `setCredentials()` on success.
+
+---
+
+## Redux Auth State
+
+**File**: `src/redux/slices/authSlice.ts` (~283 lines)
+
+### Types
+
+```tsx
+type UserRole = "ww_admin" | "project_admin" | "project_member"
+
+interface User {
+  id: string
+  email: string
+  role: UserRole
+  organisation_id: string | null
+  profile?: UserProfile          // first_name, last_name, avatar_url
+  organisations?: UserOrganisation[]  // id, name, role
+}
+
+interface AuthResponse {
+  jwt: string
+  user: User
+  refresh_token?: string
+  isPendingConfirmation?: boolean
+}
+
+type AuthState = {
+  token?: string
+  refreshToken?: string
+  user?: User
+  currentOrganisation?: UserOrganisation
+  permissions: UserPermissions   // 10 boolean permission flags
+  loading: boolean
+  initialLoad: boolean           // true until first session check completes
+  sessionPersisted: boolean
+  error?: string
+}
+```
+
+### Permission System
+
+`calculatePermissions(role)` maps each role to 10 permission flags:
+
+| Permission | `ww_admin` | `project_admin` | `project_member` |
+|-----------|:-:|:-:|:-:|
+| `canManageUsers` | ✅ | ❌ | ❌ |
+| `canAccessAllOrganisations` | ✅ | ❌ | ❌ |
+| `canCreateProjects` | ✅ | ✅ | ❌ |
+| `canManageProjects` | ✅ | ✅ | ❌ |
+| `canDeleteProjects` | ✅ | ✅ | ❌ |
+| `canViewProjects` | ✅ | ✅ | ✅ |
+| `canManageDeployments` | ✅ | ✅ | ✅ |
+| `canViewDeployments` | ✅ | ✅ | ✅ |
+| `canManageDevices` | ✅ | ✅ | ❌ |
+| `canViewDevices` | ✅ | ✅ | ✅ |
+
+### Actions
+
+| Action | Effect |
+|--------|--------|
+| `setCredentials(authResponse)` | Sets token, user, permissions, current org; persists to storage |
+| `logout()` | Clears all state, resets permissions to empty, clears storage |
+| `setInitialState(authResponse \| null)` | First load — sets state without triggering persistence writes |
+| `setCurrentOrganisation(orgId)` | Switches active org, recalculates permissions based on org role |
+| `updateUserProfile(profile)` | Updates profile fields and re-persists |
+
+### Selectors
+
+`selectCurrentUser`, `selectUserPermissions`, `selectCurrentOrganisation`, `selectIsAuthenticated`, `selectIsWWAdmin`, `selectIsProjectAdmin`, `selectCanManageUsers`
+
+---
+
+## Supabase Client
+
+**File**: `src/services/supabase.ts` (~387 lines)
+
+Uses a **factory pattern** with dynamic environment switching:
+
+```tsx
+// Initialize (called once at app startup by providers)
+const client = await initializeSupabaseClient()
+
+// Use anywhere
+const client = getSupabaseClient()
+
+// Switch environment (settings screen)
+await reconnectSupabase()
+```
+
+Configuration:
+- **Storage**: `AsyncStorage` (session persistence)
+- **Auto refresh**: enabled
+- **Detect session in URL**: disabled (mobile app)
+- **Legacy compat**: `supabase` export uses a `Proxy` with deprecation warnings
+
+---
+
+## Deep Linking
+
+### Configuration (`src/navigation/linking.ts`)
+
+```tsx
+prefixes: [prefix, "wildlifewatcher://", "com.wildlife.wildlifewatcher://", ...]
+config: {
+  screens: {
+    Login: "auth/callback",
+    ForgotPassword: "auth/reset-password",
+    Register: "auth/confirm",
+    Home: "",
+  }
+}
+```
+
+The `getStateFromPath` override defers auth routes to `useDeepLinking` to avoid navigation conflicts.
+
+### Handler (`src/hooks/useDeepLinking.ts`)
+
+Handles two auth deep link flows:
+
+1. **Password reset** (`auth/reset-password`) — Parses both query params and URL fragment params (Supabase uses `#` for tokens), navigates to `ForgotPassword` with `{ token, refreshToken, mode: "reset" }`
+2. **Email confirmation** (`auth/callback`) — Navigates to `Login` with `{ confirmed: true }`
+
+```tsx
+// Supports multiple token formats
+const token = allParams.access_token || allParams.token_hash || allParams.token
+```
+
+---
+
+## Auth Screens
+
+All screens use `WWScreenView`, React Hook Form (`useForm`), and `Field`/`WWTextInput` form components.
+
+### LoginScreen
+- RTK Query: `useLoginMutation()` → dispatches `setCredentials` on success
+- **Remember me**: persists email to `expo-secure-store`
+- Navigates to `Register` and `ForgotPassword`
+
+### RegisterScreen
+- RTK Query: `useRegisterMutation()` with fields: name, email, organization (optional), password, confirm
+- **Email confirmation**: checks `response.isPendingConfirmation` → shows alert directing to email, navigates to Login
+- Otherwise dispatches `setCredentials` for immediate login
+
+### ForgotPasswordScreen
+- **Dual mode** based on `route.params`:
+  - **Request mode** (default): calls `resetPassword(email)` → shows "check email" alert
+  - **Reset mode** (has `token` param from deep link): shows password + confirm fields, calls `updatePasswordWithToken()`, then `getCurrentSession()` → `setCredentials`
+
+---
+
+## Troubleshooting
+
+### Deep links not working
+- Must use **Development Client** (not Expo Go) — Expo Go doesn't support custom URL schemes
+- Verify URL scheme in `app.config.js` matches `wildlifewatcher://`
+- Test: `adb shell am start -W -a android.intent.action.VIEW -d "wildlifewatcher://auth/reset-password?token_hash=test&type=recovery" com.wildlife.wildlifewatcher`
+
+### Session not persisting
+- Verify `AsyncStorage` is properly installed (it's the storage backend for Supabase auth)
+- Check that `initializeSupabaseClient()` was called before any auth operations
+- The `getSupabaseClient()` call will throw if the client isn't initialized
+
+### Auth state not updating navigation
+- Check that `AuthProvider` is in the provider hierarchy (it must wrap `MainNavigation`)
+- Verify the `setupAuthListener` callback is dispatching correctly
+- The navigation gate reads `state.authentication.token` — if it's `undefined`, auth screens show
+
+---
+
+**Last Updated**: 2026-02-19

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { BottomNavigation } from "react-native-paper"
 import { useRoute, RouteProp } from "@react-navigation/native"
-import { RootStackParamList } from "./index"
+import { RootStackParamList } from "./types"
 import { Deployments } from "../screens/Deployments/DeploymentsListScreen"
 import { Maps } from "./screens/MapsScreen"
 import { Projects } from "../screens/Projects/ProjectsListScreen"
