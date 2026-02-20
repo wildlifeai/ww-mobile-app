@@ -12,7 +12,7 @@
  * - Only project admins can add/remove/change roles
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useEffect, useCallback, useMemo, useReducer } from "react"
 import {
 	View,
 	ScrollView,
@@ -83,6 +83,22 @@ type RouteParams = {
 	}
 }
 
+interface MembersState {
+	members: ProjectMember[]
+	loading: boolean
+	refreshing: boolean
+	dialogState: { type: 'none' | 'add' | 'role' | 'remove', member?: ProjectMember }
+	pendingInvitations: ProjectInvitation[]
+	menuVisible: { [key: string]: boolean }
+}
+
+const membersReducer = (state: MembersState, action: Partial<MembersState> | { type: 'TOGGLE_MENU'; memberId: string; visible: boolean }): MembersState => {
+	if ('type' in action && action.type === 'TOGGLE_MENU') {
+		return { ...state, menuVisible: { ...state.menuVisible, [action.memberId]: action.visible } }
+	}
+	return { ...state, ...action as Partial<MembersState> }
+}
+
 export const ProjectMembersScreen = () => {
 	const route =
 		useRoute<RouteProp<{ params: RouteParams["params"] }, "params">>()
@@ -94,21 +110,16 @@ export const ProjectMembersScreen = () => {
 	const user = useAppSelector(selectCurrentUser)
 
 	// State
-	const [members, setMembers] = useState<ProjectMember[]>([])
-	const [loading, setLoading] = useState(false)
-	const [refreshing, setRefreshing] = useState(false)
+	const [state, dispatch] = useReducer(membersReducer, {
+		members: [],
+		loading: false,
+		refreshing: false,
+		dialogState: { type: 'none' },
+		pendingInvitations: [],
+		menuVisible: {}
+	})
 
-	// Dialog State
-	const [dialogState, setDialogState] = useState<{
-		type: 'none' | 'add' | 'role' | 'remove',
-		member?: ProjectMember
-	}>({ type: 'none' })
-
-	// Pending invitations
-	const [pendingInvitations, setPendingInvitations] = useState<ProjectInvitation[]>([])
-
-	// Menu state (for individual member actions)
-	const [menuVisible, setMenuVisible] = useState<{ [key: string]: boolean }>({})
+	const { members, loading, refreshing, dialogState, pendingInvitations, menuVisible } = state
 
 	// Permission checks
 	const currentUserProjectRole = members.find((m) => m.id === user?.id)?.role
@@ -123,7 +134,7 @@ export const ProjectMembersScreen = () => {
 			return
 		}
 
-		setLoading(true)
+		dispatch({ loading: true })
 		try {
 			log("📋 Loading members for project:", projectId)
 
@@ -153,13 +164,13 @@ export const ProjectMembersScreen = () => {
 					return m
 				})
 
-				setMembers(enrichedMembers)
+				dispatch({ members: enrichedMembers })
 				log(`✅ Loaded ${enrichedMembers.length} project members`)
 			} catch (error: any) {
 				if (error?.message?.includes("Unauthorized")) {
 					// User not authorized to view members - show empty list
 					log("⚠️ User not authorized to view project members")
-					setMembers([])
+					dispatch({ members: [] })
 
 					return
 				}
@@ -168,12 +179,12 @@ export const ProjectMembersScreen = () => {
 
 			// Load pending invitations
 			const pending = await InvitationService.getProjectPendingInvitations(projectId)
-			setPendingInvitations(pending)
+			dispatch({ pendingInvitations: pending })
 		} catch (error) {
 			logError("❌ Error loading members:", error)
 			Alert.alert("Error", "Failed to load project members")
 		} finally {
-			setLoading(false)
+			dispatch({ loading: false })
 		}
 	}, [projectId, user])
 
@@ -183,26 +194,26 @@ export const ProjectMembersScreen = () => {
 	}, [loadMembers])
 
 	const handleRefresh = useCallback(async () => {
-		setRefreshing(true)
+		dispatch({ refreshing: true })
 		await loadMembers()
-		setRefreshing(false)
+		dispatch({ refreshing: false })
 	}, [loadMembers])
 
 	const openMenu = useCallback((memberId: string) => {
-		setMenuVisible({ [memberId]: true })
+		dispatch({ type: 'TOGGLE_MENU', memberId, visible: true })
 	}, [])
 
 	const closeMenu = useCallback((memberId: string) => {
-		setMenuVisible({ [memberId]: false })
+		dispatch({ type: 'TOGGLE_MENU', memberId, visible: false })
 	}, [])
 
 	const handleMenuChangeRole = useCallback((member: ProjectMember) => {
-		setDialogState({ type: 'role', member })
+		dispatch({ dialogState: { type: 'role', member } })
 		closeMenu(member.id)
 	}, [closeMenu])
 
 	const handleMenuRemove = useCallback((member: ProjectMember) => {
-		setDialogState({ type: 'remove', member })
+		dispatch({ dialogState: { type: 'remove', member } })
 		closeMenu(member.id)
 	}, [closeMenu])
 
@@ -274,7 +285,7 @@ export const ProjectMembersScreen = () => {
 					<Button
 						mode="contained"
 						icon="account-plus"
-						onPress={() => setDialogState({ type: 'add' })}
+						onPress={() => dispatch({ dialogState: { type: 'add' } })}
 						style={styles.addButton}
 					>
 						Add Member
@@ -326,7 +337,7 @@ export const ProjectMembersScreen = () => {
 			<InviteMemberModal
 				projectId={projectId!}
 				visible={dialogState.type === 'add'}
-				onDismiss={() => setDialogState({ type: 'none' })}
+				onDismiss={() => dispatch({ dialogState: { type: 'none' } })}
 				onSuccess={handleRefresh}
 				user={user}
 			/>
@@ -336,7 +347,7 @@ export const ProjectMembersScreen = () => {
 				visible={dialogState.type === 'role'}
 				member={dialogState.member || null}
 				user={user}
-				onDismiss={() => setDialogState({ type: 'none' })}
+				onDismiss={() => dispatch({ dialogState: { type: 'none' } })}
 				onSuccess={handleRefresh}
 			/>
 
@@ -346,7 +357,7 @@ export const ProjectMembersScreen = () => {
 				member={dialogState.member || null}
 				members={members}
 				user={user}
-				onDismiss={() => setDialogState({ type: 'none' })}
+				onDismiss={() => dispatch({ dialogState: { type: 'none' } })}
 				onSuccess={handleRefresh}
 			/>
 		</View>

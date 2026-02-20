@@ -4,7 +4,7 @@
  * Main map screen with deployment markers, FABs, and interactive controls
  */
 
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useEffect, useMemo, useReducer } from "react"
 import { StyleSheet, View, Text, ActivityIndicator } from "react-native"
 import { FAB, IconButton, Menu, Divider } from "react-native-paper"
 import { withObservables } from '@nozbe/watermelondb/react'
@@ -25,6 +25,17 @@ import type Deployment from "../../../database/models/Deployment"
 import { log } from '../../../utils/logger'
 
 
+interface MapState {
+	mapType: MapType
+	initialLoad: boolean
+	showActive: boolean
+	showEnded: boolean
+	filterMenuVisible: boolean
+	selectedDeploymentId: string | null
+}
+
+const mapReducer = (state: MapState, action: Partial<MapState>): MapState => ({ ...state, ...action })
+
 interface Props {
 	deployments: Deployment[]
 }
@@ -44,13 +55,16 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 
 	const insets = useSafeAreaInsets()
 
-	// Default to hybrid, no selector shown
-	const [mapType, setMapType] = useState<MapType>("hybrid")
-	const [initialLoad, setInitialLoad] = useState(true)
-	const [showActive, setShowActive] = useState(true)
-	const [showEnded, setShowEnded] = useState(false)
-	const [filterMenuVisible, setFilterMenuVisible] = useState(false)
-	const [selectedDeploymentId, setSelectedDeploymentId] = useState<string | null>(null)
+	const [state, dispatch] = useReducer(mapReducer, {
+		mapType: "hybrid",
+		initialLoad: true,
+		showActive: true,
+		showEnded: false,
+		filterMenuVisible: false,
+		selectedDeploymentId: null
+	})
+
+	const { mapType, initialLoad, showActive, showEnded, filterMenuVisible, selectedDeploymentId } = state
 
 	const navigation = useAppNavigation()
 
@@ -96,7 +110,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 		if (location && initialLoad) {
 			log("[MapScreen] Centering on user location:", location)
 			resetToUserLocation(location)
-			setInitialLoad(false)
+			dispatch({ initialLoad: false })
 		}
 	}, [location, initialLoad, resetToUserLocation])
 
@@ -128,7 +142,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 	 */
 	const handleMarkerPress = React.useCallback((deploymentId: string) => {
 		log('[MapScreen] Deployment marker selected:', deploymentId)
-		setSelectedDeploymentId(deploymentId)
+		dispatch({ selectedDeploymentId: deploymentId })
 	}, [])
 
 	/**
@@ -137,7 +151,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 	const handleMapPress = React.useCallback(() => {
 		if (selectedDeploymentId) {
 			log('[MapScreen] Map tapped, deselecting')
-			setSelectedDeploymentId(null)
+			dispatch({ selectedDeploymentId: null })
 		}
 	}, [selectedDeploymentId])/* selectedDeploymentId dependency is fine here as it only runs when map is pressed, not passed to markers */
 
@@ -148,7 +162,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 		if (selectedDeploymentId) {
 			log('[MapScreen] Navigating to details:', selectedDeploymentId)
 			navigation.navigate('DeploymentDetails', { deploymentId: selectedDeploymentId })
-			setSelectedDeploymentId(null)
+			dispatch({ selectedDeploymentId: null })
 		}
 	}, [selectedDeploymentId, navigation])
 
@@ -193,7 +207,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 				onZoomIn={zoomIn}
 				onZoomOut={zoomOut}
 				onCenterUser={handleCenterUser}
-				onMapTypeChange={setMapType}
+				onMapTypeChange={(type) => dispatch({ mapType: type })}
 				currentMapType={mapType}
 				showMapTypeSelector={false}
 				showZoomControls={false}
@@ -215,14 +229,14 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 			<View style={[styles.filterFab, { top: insets.top + 16 }]}>
 				<Menu
 					visible={filterMenuVisible}
-					onDismiss={() => setFilterMenuVisible(false)}
+					onDismiss={() => dispatch({ filterMenuVisible: false })}
 					anchor={
 						<FAB
 							icon="filter"
 							label="Filter"
 							style={{ backgroundColor: (showActive || showEnded) ? colors.primary : colors.surface }}
 							color={(showActive || showEnded) ? colors.onPrimary : colors.onSurface}
-							onPress={() => setFilterMenuVisible(true)}
+							onPress={() => dispatch({ filterMenuVisible: true })}
 							small
 						/>
 					}
@@ -230,12 +244,12 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 					<Menu.Item title="Deployments" disabled />
 					<Divider />
 					<Menu.Item
-						onPress={() => setShowActive(!showActive)}
+						onPress={() => dispatch({ showActive: !showActive })}
 						title="Active"
 						leadingIcon={showActive ? "check" : undefined}
 					/>
 					<Menu.Item
-						onPress={() => setShowEnded(!showEnded)}
+						onPress={() => dispatch({ showEnded: !showEnded })}
 						title="Ended"
 						leadingIcon={showEnded ? "check" : undefined}
 					/>
@@ -281,7 +295,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 			<DeploymentCard
 				deployment={selectedDeployment}
 				isVisible={!!selectedDeploymentId}
-				onClose={() => setSelectedDeploymentId(null)}
+				onClose={() => dispatch({ selectedDeploymentId: null })}
 				onPress={handleViewDetails}
 			/>
 

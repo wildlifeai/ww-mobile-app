@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from "react"
+﻿import React, { useEffect, useCallback, useReducer } from "react"
 import { ScrollView, Alert, StyleSheet } from "react-native"
 import { Text } from "react-native-paper"
 import { useSupabaseAuth } from "../../../hooks/useSupabaseAuth"
@@ -18,6 +18,26 @@ import { TestResultsCard } from "./components/TestResultsCard"
  * - API connectivity tests
  * - Session persistence validation
  */
+
+interface AuthTestState {
+	email: string
+	password: string
+	username: string
+	isSubmitting: boolean
+	testResults: string[]
+}
+
+type AuthTestAction =
+	| Partial<AuthTestState>
+	| { type: 'ADD_RESULT'; result: string }
+
+const authTestReducer = (state: AuthTestState, action: AuthTestAction): AuthTestState => {
+	if ('type' in action && action.type === 'ADD_RESULT') {
+		return { ...state, testResults: [...state.testResults, action.result] }
+	}
+	return { ...state, ...(action as Partial<AuthTestState>) }
+}
+
 export const AuthTestScreen: React.FC = () => {
 	const {
 		user,
@@ -33,26 +53,29 @@ export const AuthTestScreen: React.FC = () => {
 	} = useSupabaseAuth()
 
 	const clearTestResults = useCallback(() => {
-		setTestResults([])
+		dispatch({ testResults: [] })
 	}, [])
 
 	// Form state
-	const [email, setEmail] = useState("test@example.com")
-	const [password, setPassword] = useState("testpassword123")
-	const [username, setUsername] = useState("testuser")
-	const [isSubmitting, setIsSubmitting] = useState(false)
-	const [testResults, setTestResults] = useState<string[]>([])
+	const [state, dispatch] = useReducer(authTestReducer, {
+		email: "test@example.com",
+		password: "testpassword123",
+		username: "testuser",
+		isSubmitting: false,
+		testResults: [],
+	})
+	const { email, password, username, isSubmitting, testResults } = state
 
 	// Add test result
 	const addTestResult = useCallback((result: string) => {
-		setTestResults((prev: string[]) => [
-			...prev,
-			`${new Date().toLocaleTimeString()}: ${result}`,
-		])
+		dispatch({
+			type: 'ADD_RESULT',
+			result: `${new Date().toLocaleTimeString()}: ${result}`,
+		})
 	}, [])
 
 	const handleRegister = useCallback(async () => {
-		setIsSubmitting(true)
+		dispatch({ isSubmitting: true })
 		try {
 			const authResponse = await register({ email, password, name: username })
 
@@ -75,12 +98,12 @@ export const AuthTestScreen: React.FC = () => {
 			addTestResult(`❌ Registration failed: ${message}`)
 			Alert.alert("Registration Failed", message)
 		} finally {
-			setIsSubmitting(false)
+			dispatch({ isSubmitting: false })
 		}
 	}, [email, password, register, username, addTestResult])
 
 	const handleLogin = useCallback(async () => {
-		setIsSubmitting(true)
+		dispatch({ isSubmitting: true })
 		try {
 			await login({ identifier: email, password })
 			addTestResult(`✅ Login successful for ${email}`)
@@ -90,7 +113,7 @@ export const AuthTestScreen: React.FC = () => {
 			addTestResult(`❌ Login failed: ${message}`)
 			Alert.alert("Login Failed", message)
 		} finally {
-			setIsSubmitting(false)
+			dispatch({ isSubmitting: false })
 		}
 	}, [email, password, login, addTestResult])
 
@@ -209,11 +232,11 @@ export const AuthTestScreen: React.FC = () => {
 
 			<AuthActionsCard
 				email={email}
-				setEmail={setEmail}
+				setEmail={(val) => dispatch({ email: val })}
 				password={password}
-				setPassword={setPassword}
+				setPassword={(val) => dispatch({ password: val })}
 				username={username}
-				setUsername={setUsername}
+				setUsername={(val) => dispatch({ username: val })}
 				isSubmitting={isSubmitting}
 				isLoggedIn={isLoggedIn}
 				loading={loading}
