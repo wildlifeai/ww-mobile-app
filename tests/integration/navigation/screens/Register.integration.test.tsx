@@ -616,6 +616,7 @@ describe("Register Screen Integration Tests", () => {
 
 		// Fix the input
 		fireEvent.changeText(nameInput, "validname")
+		fireEvent.press(registerButton)
 
 		await waitFor(() => {
 			expect(
