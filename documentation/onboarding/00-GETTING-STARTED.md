@@ -28,6 +28,7 @@ This folder contains five onboarding guides:
 | 2 | [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) | Folder structure, state management, naming conventions |
 | 3 | [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) | WatermelonDB, Supabase sync, security model, offline patterns |
 | 4 | [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) | Device preparation, deployment, and retrieval |
+| 5 | [05-GIT-WORKFLOW.md](./05-GIT-WORKFLOW.md) | Git branching, Conventional Commits, and CI pipeline rules |
 
 **Deep-dive guides** in [`documentation/setup/`](../setup/):
 

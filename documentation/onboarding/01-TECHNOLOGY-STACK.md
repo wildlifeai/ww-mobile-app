@@ -469,10 +469,11 @@ export type OfflineOperationType =
 | TypeScript 5.3.3 | Static type checking |
 | `tsc --noEmit` | Type-check without emitting (`npm run type-check`) |
 
-### Build & Deploy
+### Build, Deploy & Version Control
 
 | Tool | Purpose |
 |------|---------|
+| Git & GitHub | [See 05-GIT-WORKFLOW.md](./05-GIT-WORKFLOW.md) for branching, Conventional Commits, and CI rules |
 | EAS (Expo Application Services) | Cloud builds for iOS and Android |
 | Metro | JavaScript bundler |
 | Babel | Transpiler |
