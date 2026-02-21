@@ -1,6 +1,6 @@
 import React from "react"
 import { StyleSheet, Platform } from "react-native"
-import { Surface } from "react-native-paper"
+import { Surface, Text } from "react-native-paper"
 import { WWText } from "../../../../components/ui/WWText"
 import { type SupabaseEnvironment, ENVIRONMENT_CONFIGS } from "../../../../config/environments"
 
@@ -26,13 +26,13 @@ export const CurrentEnvironmentBanner: React.FC<CurrentEnvironmentBannerProps> =
 			elevation={2}
 		>
 			<WWText variant="labelMedium" style={styles.currentEnvironmentLabel}>
-				🔌 ACTIVE ENVIRONMENT
+				<Text>🔌 ACTIVE ENVIRONMENT</Text>
 			</WWText>
 			<WWText variant="titleMedium" style={styles.currentEnvironmentName}>
-				{ENVIRONMENT_CONFIGS[currentEnvironment].displayName}
+				<Text>{ENVIRONMENT_CONFIGS[currentEnvironment].displayName}</Text>
 			</WWText>
 			<WWText variant="bodySmall" style={styles.currentEnvironmentUrl}>
-				{ENVIRONMENT_CONFIGS[currentEnvironment].supabaseUrl}
+				<Text>{ENVIRONMENT_CONFIGS[currentEnvironment].supabaseUrl}</Text>
 			</WWText>
 		</Surface>
 	)

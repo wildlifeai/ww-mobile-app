@@ -110,7 +110,7 @@ export const OrgSwitcher = () => {
 					onDismiss={handleCloseDialog}
 					testID="org-switcher-dialog"
 				>
-					<Dialog.Title>Switch Organisation</Dialog.Title>
+					<Dialog.Title><Text>Switch Organisation</Text></Dialog.Title>
 
 					<Dialog.ScrollArea style={styles.scrollArea}>
 						<RadioButton.Group
@@ -163,7 +163,7 @@ export const OrgSwitcher = () => {
 							disabled={isLoading}
 							testID="org-cancel-button"
 						>
-							Cancel
+							<Text>Cancel</Text>
 						</Button>
 						<Button
 							onPress={handleConfirmSwitch}
@@ -181,7 +181,7 @@ export const OrgSwitcher = () => {
 									color={theme.colors.onPrimary}
 								/>
 							) : (
-								"Switch"
+								<Text>Switch</Text>
 							)}
 						</Button>
 					</Dialog.Actions>

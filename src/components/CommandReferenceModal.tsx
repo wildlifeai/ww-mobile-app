@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { View, ScrollView, StyleSheet } from "react-native"
-import { Modal, Portal, IconButton, Divider, Button, Chip } from "react-native-paper"
+import { Modal, Portal, IconButton, Divider, Button, Chip, Text } from "react-native-paper"
 import { WWText } from "./ui/WWText"
 import { useExtendedTheme } from "../theme"
 import { CommandNames, COMMANDS } from "../ble/types"
@@ -46,7 +46,7 @@ export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Prop
         <Portal>
             <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={[styles.modal, dynamicStyles.modal]}>
                 <View style={styles.header}>
-                    <WWText variant="titleLarge">Command Reference</WWText>
+                    <WWText variant="titleLarge"><Text>Command Reference</Text></WWText>
                     <IconButton icon="close" onPress={onDismiss} />
                 </View>
 
@@ -54,33 +54,33 @@ export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Prop
 
                 <ScrollView style={styles.content}>
                     <WWText style={dynamicStyles.instructionText}>
-                        List of available firmware commands. Click Run to send.
+                        <Text>List of available firmware commands. Click Run to send.</Text>
                     </WWText>
 
                     {commandList.map((cmd) => (
                         <View key={cmd.name} style={[styles.row, dynamicStyles.rowBorder]}>
                             <View style={styles.rowInfo}>
                                 <View style={styles.nameContainer}>
-                                    <WWText style={styles.boldText}>{cmd.name}</WWText>
+                                    <WWText style={styles.boldText}><Text>{cmd.name}</Text></WWText>
                                     {cmd.type && (
                                         <Chip
                                             compact
                                             style={[styles.chip, dynamicStyles.chip]}
                                             textStyle={styles.chipText}
                                         >
-                                            {cmd.type === 'process' ? 'Process' : cmd.type === 'local' ? 'Local' : 'Cmd'}
+                                            <Text>{cmd.type === 'process' ? 'Process' : cmd.type === 'local' ? 'Local' : 'Cmd'}</Text>
                                         </Chip>
                                     )}
                                 </View>
                                 {cmd.description && (
                                     <WWText variant="bodySmall" style={dynamicStyles.descriptionText}>
-                                        {cmd.description}
+                                        <Text>{cmd.description}</Text>
                                     </WWText>
                                 )}
                             </View>
                             <View style={styles.rowAction}>
                                 <Button mode="contained" compact onPress={() => onRunCommand(cmd.name)}>
-                                    Run
+                                    <Text>Run</Text>
                                 </Button>
                             </View>
                         </View>

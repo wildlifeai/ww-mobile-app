@@ -35,7 +35,7 @@ export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
                     <View style={[styles.header, isInitializing && styles.headerInitializing]}>
                         <View style={styles.headerTitleRow}>
                             <View style={styles.headerTitleColumn}>
-                                <WWText variant="titleMedium" style={styles.headerLabel}>Device ID</WWText>
+                                <WWText variant="titleMedium" style={styles.headerLabel}><Text>Device ID</Text></WWText>
                                 <WWText variant="bodyMedium" style={styles.deviceName}>
                                     {device.name}
                                 </WWText>
@@ -54,7 +54,7 @@ export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
                             <View style={styles.initializationProgressContainer}>
                                 <WWProgressBar progress={initProgress} style={styles.initProgressBar} />
                                 <WWText variant="bodySmall" style={styles.initStepText}>
-                                    {initStep || 'Preparing device...'}
+                                    <Text>{initStep || 'Preparing device...'}</Text>
                                 </WWText>
                             </View>
                         )}

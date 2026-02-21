@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef, useReducer } from 'rea
 import { View, StyleSheet } from 'react-native'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
-import { Appbar, TextInput, Card, useTheme } from 'react-native-paper'
+import { Appbar, TextInput, Card, useTheme, Text } from 'react-native-paper'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
@@ -214,7 +214,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     if (!deployment) {
         return (
             <WWScreenView>
-                <WWText>Loading deployment details...</WWText>
+                <WWText><Text>Loading deployment details...</Text></WWText>
             </WWScreenView>
         )
     }
@@ -242,12 +242,12 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                     />
                     <Card.Content>
                         <View style={styles.infoRow}>
-                            <WWText variant="labelMedium">Deployment Name:</WWText>
-                            <WWText variant="bodyLarge">{deployment.name}</WWText>
+                            <WWText variant="labelMedium"><Text>Deployment Name:</Text></WWText>
+                            <WWText variant="bodyLarge"><Text>{deployment.name}</Text></WWText>
                         </View>
                         <View style={styles.infoRow}>
-                            <WWText variant="labelMedium">Started:</WWText>
-                            <WWText variant="bodyLarge">{new Date(deployment.deploymentStart).toLocaleDateString()}</WWText>
+                            <WWText variant="labelMedium"><Text>Started:</Text></WWText>
+                            <WWText variant="bodyLarge"><Text>{new Date(deployment.deploymentStart).toLocaleDateString()}</Text></WWText>
                         </View>
                     </Card.Content>
                 </Card>
@@ -255,7 +255,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 {/* Retrieval Notes Input */}
                 <Card style={styles.card}>
                     <Card.Content>
-                        <WWText variant="titleMedium" style={styles.notesTitle}>Retrieval Notes</WWText>
+                        <WWText variant="titleMedium" style={styles.notesTitle}><Text>Retrieval Notes</Text></WWText>
                         <TextInput
                             mode="outlined"
                             placeholder="e.g. SD card full, Battery low, Device damaged..."
@@ -278,7 +278,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                         loading={isEnding}
                         disabled={isEnding}
                     >
-                        {isEnding ? "Ending..." : "End Deployment"}
+                        <Text>{isEnding ? "Ending..." : "End Deployment"}</Text>
                     </WWButton>
 
                     <WWButton
@@ -287,7 +287,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                         disabled={isEnding}
                         style={styles.cancelButton}
                     >
-                        Cancel
+                        <Text>Cancel</Text>
                     </WWButton>
                 </View>
 

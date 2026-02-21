@@ -57,7 +57,7 @@ export const ProjectMembersCard: React.FC<Props> = ({
                             }}
                             testID="manage-members-button"
                         >
-                            Manage
+                            <Text>Manage</Text>
                         </Button>
                     )}
                 </View>

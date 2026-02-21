@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Chip, Divider } from 'react-native-paper'
+import { Card, Chip, Divider, Text } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { useExtendedTheme } from '../../../theme'
@@ -59,7 +59,7 @@ export const DeploymentHeroCard: React.FC<Props> = ({ deployment, isActive, stat
                             { color: isActive ? colors.onPrimaryContainer : colors.onErrorContainer }
                         ]}
                     >
-                        {statusLabel}
+                        <Text>{statusLabel}</Text>
                     </Chip>
                 </View>
 
@@ -83,21 +83,21 @@ export const DeploymentHeroCard: React.FC<Props> = ({ deployment, isActive, stat
                 {/* Dates & Duration */}
                 <View style={styles.datesGrid}>
                     <View style={styles.dateItem}>
-                        <WWText variant="labelMedium" style={styles.label}>Started</WWText>
+                        <WWText variant="labelMedium" style={styles.label}><Text>Started</Text></WWText>
                         <WWText variant="bodyLarge" style={styles.dateValue}>
                             {isValidDate(deployment.deploymentStart) ? new Date(deployment.deploymentStart).toLocaleDateString() : 'N/A'}
                         </WWText>
                     </View>
                     {deployment.deploymentEnd && isValidDate(deployment.deploymentEnd) && (
                         <View style={styles.dateItem}>
-                            <WWText variant="labelMedium" style={styles.label}>Ended</WWText>
+                            <WWText variant="labelMedium" style={styles.label}><Text>Ended</Text></WWText>
                             <WWText variant="bodyLarge" style={styles.dateValue}>
                                 {new Date(deployment.deploymentEnd).toLocaleDateString()}
                             </WWText>
                         </View>
                     )}
                     <View style={styles.dateItem}>
-                        <WWText variant="labelMedium" style={styles.label}>Duration</WWText>
+                        <WWText variant="labelMedium" style={styles.label}><Text>Duration</Text></WWText>
                         <WWText variant="bodyLarge" style={styles.dateValue}>
                             {duration || '--'}
                         </WWText>

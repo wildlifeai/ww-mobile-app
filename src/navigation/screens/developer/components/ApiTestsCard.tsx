@@ -16,7 +16,7 @@ export const ApiTestsCard: React.FC<ApiTestsCardProps> = ({ onRunTests }) => {
                     onPress={onRunTests}
                     style={styles.input}
                 >
-                    Run All API Tests
+                    <Text>Run All API Tests</Text>
                 </Button>
 
                 <Text variant="bodySmall" style={styles.mutedText}>

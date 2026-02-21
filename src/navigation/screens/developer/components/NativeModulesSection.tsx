@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react'
 import { View, NativeModules } from 'react-native'
-import { List, Chip } from 'react-native-paper'
+import { List, Chip, Text } from 'react-native-paper'
 import { WWText } from '../../../../components/ui/WWText'
 import Constants from 'expo-constants'
 
@@ -68,14 +68,14 @@ export const NativeModulesSection = ({ dynamicStyles }: { dynamicStyles: any }) 
             style={dynamicStyles.nativeModuleChip}
             textStyle={dynamicStyles.nativeModuleChipText}
         >
-            {nativeModuleCount === 0 ? "Debug" : "OK"}
+            <Text>{nativeModuleCount === 0 ? "Debug" : "OK"}</Text>
         </Chip>
     ), [dynamicStyles, nativeModuleCount])
 
     return (
         <>
             <List.Section>
-                <List.Subheader>Native Modules</List.Subheader>
+                <List.Subheader><Text>Native Modules</Text></List.Subheader>
                 <List.Item
                     title="Total Native Modules"
                     description={`${nativeModuleCount} modules loaded`}
@@ -109,12 +109,12 @@ export const NativeModulesSection = ({ dynamicStyles }: { dynamicStyles: any }) 
                             key={module}
                             style={dynamicStyles.moduleRow}
                         >
-                            <WWText variant="bodyMedium">{module}</WWText>
+                            <WWText variant="bodyMedium"><Text>{module}</Text></WWText>
                             <WWText
                                 variant="bodyMedium"
                                 style={dynamicStyles.moduleStatus(color)}
                             >
-                                {text}
+                                <Text>{text}</Text>
                             </WWText>
                         </View>
                     )

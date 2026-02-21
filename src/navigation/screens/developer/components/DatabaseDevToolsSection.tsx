@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react'
 import { View, Alert } from 'react-native'
-import { List, Button } from 'react-native-paper'
+import { List, Button, Text } from 'react-native-paper'
 import { WWText } from '../../../../components/ui/WWText'
 import { resetDatabaseForDev, clearDatabaseDataForDev } from '../../../../utils/devDatabaseReset'
 
@@ -92,7 +92,7 @@ export const DatabaseDevToolsSection: React.FC<DatabaseDevToolsSectionProps> = (
     return (
         <>
             <List.Section>
-                <List.Subheader>Database (Dev Tools)</List.Subheader>
+                <List.Subheader><Text>Database (Dev Tools)</Text></List.Subheader>
                 <List.Item
                     title="Database Adapter"
                     description={dbStatus ? dbStatus.adapter : "Loading..."}
@@ -122,7 +122,7 @@ export const DatabaseDevToolsSection: React.FC<DatabaseDevToolsSectionProps> = (
                     buttonColor="transparent"
                     textColor="#ff9800"
                 >
-                    Clear Database Data
+                    <Text>Clear Database Data</Text>
                 </Button>
                 <Button
                     mode="outlined"
@@ -132,13 +132,13 @@ export const DatabaseDevToolsSection: React.FC<DatabaseDevToolsSectionProps> = (
                     buttonColor="transparent"
                     textColor="#f44336"
                 >
-                    Reset Database (Full)
+                    <Text>Reset Database (Full)</Text>
                 </Button>
                 <WWText
                     variant="bodySmall"
                     style={dynamicStyles.devNotice}
                 >
-                    ⚠️ Dev Only: These actions will delete all local data
+                    <Text>⚠️ Dev Only: These actions will delete all local data</Text>
                 </WWText>
             </View>
         </>

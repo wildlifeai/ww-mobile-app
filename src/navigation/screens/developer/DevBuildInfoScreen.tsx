@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { ScrollView, StyleSheet, View } from "react-native"
-import { Surface, Divider, Chip } from "react-native-paper"
+import { Surface, Divider, Chip, Text } from "react-native-paper"
 import { WWText } from "../../../components/ui/WWText"
 import { useExtendedTheme } from "../../../theme"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -59,9 +59,9 @@ export const DevBuildInfo = () => {
         <ScrollView style={styles.container}>
             <Surface style={[styles.surface, dynamicStyles.surface]}>
                 <View style={[styles.header, dynamicStyles.header]}>
-                    <WWText variant="titleLarge">Development Build Info</WWText>
+                    <WWText variant="titleLarge"><Text>Development Build Info</Text></WWText>
                     <Chip icon="developer-board" style={dynamicStyles.chip}>
-                        Expo Dev Client
+                        <Text>Expo Dev Client</Text>
                     </Chip>
                 </View>
 
@@ -93,7 +93,7 @@ export const DevBuildInfo = () => {
 
                 <View style={[styles.footer, dynamicStyles.footer]}>
                     <WWText variant="bodySmall" style={dynamicStyles.devNotice}>
-                        This screen is only visible in development builds
+                        <Text>This screen is only visible in development builds</Text>
                     </WWText>
                 </View>
             </Surface>

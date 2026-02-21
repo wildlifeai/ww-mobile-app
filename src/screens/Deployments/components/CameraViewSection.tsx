@@ -41,7 +41,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
             icon="help-circle-outline"
             onPress={() => onShowHelp('Camera Preview', 'Take a test photo to ensure the camera is pointing at the desired target and the view is unobstructed.')}
         >
-            Help
+            <Text>Help</Text>
         </Button>
     ), [onShowHelp])
 
@@ -54,7 +54,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
             />
             <Card.Content>
                 <WWText variant="bodySmall" style={styles.sectionDescription}>
-                    Capture a test photo to verify camera positioning
+                    <Text>Capture a test photo to verify camera positioning</Text>
                 </WWText>
 
                 {capturedImageUri && (
@@ -82,9 +82,9 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                     disabled={!device || isCapturing}
                     loading={isCapturing}
                 >
-                    {isCapturing
+                    <Text>{isCapturing
                         ? `Downloading... ${Math.round(captureProgress * 100)}%`
-                        : (capturedImageUri ? 'Test Again' : 'Test Camera View')}
+                        : (capturedImageUri ? 'Test Again' : 'Test Camera View')}</Text>
                 </WWButton>
             </Card.Content>
         </Card>

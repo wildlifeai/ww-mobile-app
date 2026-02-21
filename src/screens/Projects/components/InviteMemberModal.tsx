@@ -84,7 +84,7 @@ export const InviteMemberModal = ({ projectId, visible, onDismiss, onSuccess, us
 						style={styles.headerButton}
 						loading={loading}
 					>
-						Send Invite
+						<Text>Send Invite</Text>
 					</Button>
 				</Appbar.Header>
 

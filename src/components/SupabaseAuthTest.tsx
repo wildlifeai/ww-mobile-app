@@ -116,7 +116,7 @@ export const SupabaseAuthTest: React.FC = () => {
 						onPress={handleTestConnection}
 						style={styles.buttonTop}
 					>
-						Test Connection
+						<Text>Test Connection</Text>
 					</Button>
 				</Card.Content>
 			</Card>
@@ -134,7 +134,7 @@ export const SupabaseAuthTest: React.FC = () => {
 						onPress={handleCheckAuthStatus}
 						style={styles.buttonTop}
 					>
-						Check Auth Status
+						<Text>Check Auth Status</Text>
 					</Button>
 				</Card.Content>
 			</Card>
@@ -170,14 +170,14 @@ export const SupabaseAuthTest: React.FC = () => {
 								onPress={handleLogin}
 								style={styles.flex}
 							>
-								Login
+								<Text>Login</Text>
 							</Button>
 							<Button
 								mode="outlined"
 								onPress={handleRegister}
 								style={styles.flex}
 							>
-								Register
+								<Text>Register</Text>
 							</Button>
 						</View>
 					</Card.Content>
@@ -195,7 +195,7 @@ export const SupabaseAuthTest: React.FC = () => {
 							onPress={handleLogout}
 							style={styles.buttonTop}
 						>
-							Logout
+							<Text>Logout</Text>
 						</Button>
 					</Card.Content>
 				</Card>

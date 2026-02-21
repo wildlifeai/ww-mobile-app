@@ -25,6 +25,7 @@ import {
 	RadioButton,
 	Button,
 	ActivityIndicator,
+	Text,
 } from "react-native-paper"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -71,16 +72,16 @@ export const DeveloperSettingsScreen: React.FC = () => {
 					]}
 				>
 					<View style={[styles.header, { marginBottom: spacing * 2 }]}>
-						<WWText variant="titleLarge">Developer Settings</WWText>
+						<WWText variant="titleLarge"><Text>Developer Settings</Text></WWText>
 					</View>
 
 					<View style={styles.notAvailableContainer}>
 						<WWText variant="bodyLarge" style={styles.notAvailableText}>
-							Developer settings are not available in production builds.
+							<Text>Developer settings are not available in production builds.</Text>
 						</WWText>
 						<WWText variant="bodyMedium" style={styles.notAvailableSubtext}>
-							This feature is only accessible in development builds for testing
-							and debugging purposes.
+							<Text>This feature is only accessible in development builds for testing
+							and debugging purposes.</Text>
 						</WWText>
 					</View>
 				</Surface>
@@ -98,9 +99,9 @@ export const DeveloperSettingsScreen: React.FC = () => {
 				]}
 			>
 				<View style={[styles.header, { marginBottom: spacing * 2 }]}>
-					<WWText variant="titleLarge">Developer Settings</WWText>
+					<WWText variant="titleLarge"><Text>Developer Settings</Text></WWText>
 					<WWText variant="bodyMedium" style={styles.subtitle}>
-						Runtime Environment Switching
+						<Text>Runtime Environment Switching</Text>
 					</WWText>
 				</View>
 
@@ -111,7 +112,7 @@ export const DeveloperSettingsScreen: React.FC = () => {
 				/>
 
 				<List.Section>
-					<List.Subheader>Environment Selection</List.Subheader>
+					<List.Subheader><Text>Environment Selection</Text></List.Subheader>
 
 					<RadioButton.Group
 						onValueChange={(value) =>
@@ -141,14 +142,14 @@ export const DeveloperSettingsScreen: React.FC = () => {
 					]}
 				>
 					<WWText variant="bodySmall" style={styles.warningText}>
-						⚠️ App restart required to apply environment changes
+						<Text>⚠️ App restart required to apply environment changes</Text>
 					</WWText>
 
 					{isRestarting && (
 						<View style={styles.loadingContainer} testID="loading-indicator">
 							<ActivityIndicator size="large" />
 							<WWText variant="bodyMedium" style={{ marginTop: spacing }}>
-								Restarting app...
+								<Text>Restarting app...</Text>
 							</WWText>
 						</View>
 					)}
@@ -169,7 +170,7 @@ export const DeveloperSettingsScreen: React.FC = () => {
 								selectedEnvironment === currentEnvironment || isRestarting,
 						}}
 					>
-						Apply & Restart
+						<Text>Apply & Restart</Text>
 					</Button>
 				</View>
 
@@ -177,7 +178,7 @@ export const DeveloperSettingsScreen: React.FC = () => {
 
 				<View style={[styles.footer, { marginTop: spacing }]}>
 					<WWText variant="bodySmall" style={styles.footerText}>
-						💡 This screen is only visible in development builds
+						<Text>💡 This screen is only visible in development builds</Text>
 					</WWText>
 				</View>
 			</Surface>

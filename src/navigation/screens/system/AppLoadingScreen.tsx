@@ -3,7 +3,7 @@ import { ActivityIndicator } from "react-native-paper"
 
 export const AppLoading = () => {
 	return (
-		<View style={[styles.loader]}>
+		<View style={styles.loader}>
 			<ActivityIndicator size={30} />
 		</View>
 	)

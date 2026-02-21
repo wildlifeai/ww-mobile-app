@@ -116,7 +116,7 @@ export function StandardizedListLayout<T>({
                     </Text>
                     {onRetry && (
                         <Button mode="contained" onPress={onRetry} style={styles.retryButton}>
-                            Retry
+                            <Text>Retry</Text>
                         </Button>
                     )}
                 </View>
@@ -172,7 +172,7 @@ export function StandardizedListLayout<T>({
                         onPress={onPrimaryAction}
                         style={styles.createButton}
                     >
-                        {primaryActionLabel}
+                        <Text>{primaryActionLabel}</Text>
                     </Button>
                 </View>
             ) : (

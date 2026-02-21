@@ -50,7 +50,7 @@ export const FirmwareSection: React.FC<FirmwareSectionProps> = ({
             icon="help-circle-outline" 
             onPress={() => onShowHelp('BLE Firmware', 'Manage device firmware. Ensure the device is running the latest version for best performance.')}
         >
-            Help
+            <Text>Help</Text>
         </Button>
     ), [onShowHelp])
 
@@ -64,13 +64,13 @@ export const FirmwareSection: React.FC<FirmwareSectionProps> = ({
             <Card.Content>
                 {latestBleFirmware && (
                     <WWText variant="bodyMedium" style={styles.firmwareVersionText}>
-                        Latest Available: {latestBleFirmware.version}
+                        <Text>Latest Available: {latestBleFirmware.version}</Text>
                     </WWText>
                 )}
 
                 {deviceFirmwareVersion && (
                     <WWText style={styles.firmwareVersionText}>
-                        Device Version: {convertBleToSemanticVersion(deviceFirmwareVersion)}
+                        <Text>Device Version: {convertBleToSemanticVersion(deviceFirmwareVersion)}</Text>
                     </WWText>
                 )}
 
@@ -81,13 +81,13 @@ export const FirmwareSection: React.FC<FirmwareSectionProps> = ({
                         disabled={isInitializing || !bleDeviceConnected}
                         style={styles.checkFirmwareButton}
                     >
-                        Check Firmware Version
+                        <Text>Check Firmware Version</Text>
                     </WWButton>
                 )}
 
                 {isCheckingFirmware && (
                     <WWText variant="bodySmall" style={styles.statusHint}>
-                        Checking firmware version...
+                        <Text>Checking firmware version...</Text>
                     </WWText>
                 )}
 
@@ -99,7 +99,7 @@ export const FirmwareSection: React.FC<FirmwareSectionProps> = ({
                             label={firmwareUpdateStatus || (isVerifyingUpdate ? 'Rebooting & Verifying...' : `Updating: ${firmwareUpdateProgress}%`)}
                         />
                         <WWText variant="bodySmall" style={styles.statusHint}>
-                            {firmwareUpdateStatus || (isVerifyingUpdate ? 'Waiting for device to finish restart...' : 'Do not disconnect the device...')}
+                            <Text>{firmwareUpdateStatus || (isVerifyingUpdate ? 'Waiting for device to finish restart...' : 'Do not disconnect the device...')}</Text>
                         </WWText>
                     </>
                 ) : deviceFirmwareVersion && bleFirmwareUpdateAvailable ? (
@@ -113,7 +113,7 @@ export const FirmwareSection: React.FC<FirmwareSectionProps> = ({
                             disabled={isInitializing}
                             style={styles.actionButton}
                         >
-                            Update BLE Firmware
+                            <Text>Update BLE Firmware</Text>
                         </WWButton>
                         {batteryLevel !== null && batteryLevel < 30 && (
                             <Text variant="bodySmall" style={[styles.warningText, { color: theme.colors.error }]}>
@@ -132,7 +132,7 @@ export const FirmwareSection: React.FC<FirmwareSectionProps> = ({
                             disabled={isInitializing || !bleDeviceConnected}
                             style={styles.actionButton}
                         >
-                            Refresh Version
+                            <Text>Refresh Version</Text>
                         </WWButton>
                     </View>
                 ) : null}

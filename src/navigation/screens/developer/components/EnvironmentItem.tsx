@@ -1,6 +1,6 @@
 import React, { useCallback } from "react"
 import { View, StyleSheet, Platform } from "react-native"
-import { List, Divider, RadioButton, Button } from "react-native-paper"
+import { List, Divider, RadioButton, Button, Text } from "react-native-paper"
 import { WWText } from "../../../../components/ui/WWText"
 import { type SupabaseEnvironment, ENVIRONMENT_CONFIGS } from "../../../../config/environments"
 import { ConnectionStatus, STATUS_INDICATORS } from "../hooks/useDeveloperSettings"
@@ -59,10 +59,10 @@ export const EnvironmentItem = React.memo(({
             <List.Item
                 title={
                     <View style={styles.environmentTitle}>
-                        <WWText variant="bodyLarge">{config.displayName}</WWText>
+                        <WWText variant="bodyLarge"><Text>{config.displayName}</Text></WWText>
                         {isActive && (
                             <View style={styles.activeBadge}>
-                                <WWText style={styles.activeBadgeText}>ACTIVE</WWText>
+                                <WWText style={styles.activeBadgeText}><Text>ACTIVE</Text></WWText>
                             </View>
                         )}
                     </View>
@@ -80,7 +80,7 @@ export const EnvironmentItem = React.memo(({
                 ]}
             >
                 <WWText variant="bodySmall" style={styles.urlText}>
-                    URL: {config.supabaseUrl}
+                    <Text>URL: {config.supabaseUrl}</Text>
                 </WWText>
 
                 <Button
@@ -93,7 +93,7 @@ export const EnvironmentItem = React.memo(({
                     accessibilityLabel={`Test connection to ${config.displayName}`}
                     accessibilityRole="button"
                 >
-                    {status === "testing" ? "Testing..." : "Test Connection"}
+                    <Text>{status === "testing" ? "Testing..." : "Test Connection"}</Text>
                 </Button>
             </View>
 

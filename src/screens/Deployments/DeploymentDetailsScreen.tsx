@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useMemo, useCallback } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { useNavigation, RouteProp } from '@react-navigation/native'
-import { IconButton, Menu } from 'react-native-paper'
+import { IconButton, Menu, Text } from 'react-native-paper'
 import { withObservables } from '@nozbe/watermelondb/react'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
@@ -117,7 +117,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                         onPress={() => navigation.navigate('Home')}
                         style={styles.actionButton}
                     >
-                        View on Map
+                        <Text>View on Map</Text>
                     </WWButton>
 
                     {isActive && (
@@ -128,7 +128,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                             style={[styles.actionButton, styles.endButton]}
                             color={colors.error}
                         >
-                            End Deployment
+                            <Text>End Deployment</Text>
                         </WWButton>
                     )}
                 </View>

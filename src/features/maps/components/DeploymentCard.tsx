@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { StyleSheet, View, Text, TouchableOpacity, Animated } from 'react-native'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { Image } from 'expo-image'
 import { useExtendedTheme } from '../../../theme'
 import type Deployment from '../../../database/models/Deployment'
 
@@ -41,10 +41,10 @@ export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose
     // Status helper (duplicated from MapScreen, could be shared util)
     const getStatusInfo = (statusId?: number | null) => {
         switch (statusId) {
-            case 1: return { label: 'Active', color: '#4CAF50', icon: 'check-circle' }
-            case 2: return { label: 'Ended', color: '#616161', icon: 'stop-circle' }
-            case 3: return { label: 'Failed', color: '#F44336', icon: 'alert-circle' }
-            default: return { label: 'Unknown', color: '#757575', icon: 'help-circle' }
+            case 1: return { label: 'Active', color: '#4CAF50', icon: 'sf:checkmark.circle.fill' }
+            case 2: return { label: 'Ended', color: '#616161', icon: 'sf:stop.circle.fill' }
+            case 3: return { label: 'Failed', color: '#F44336', icon: 'sf:exclamationmark.circle.fill' }
+            default: return { label: 'Unknown', color: '#757575', icon: 'sf:questionmark.circle.fill' }
         }
     }
 
@@ -70,20 +70,20 @@ export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose
                             {deployment?.name || 'Unnamed Deployment'}
                         </Text>
                         <View style={styles.statusRow}>
-                            <MaterialCommunityIcons name={statusObj.icon as any} size={14} color={statusObj.color} />
+                            <Image source={statusObj.icon} style={{ width: 14, height: 14, tintColor: statusObj.color }} />
                             <Text style={[styles.statusText, { color: statusObj.color }]}>
                                 {statusObj.label}
                             </Text>
                         </View>
                     </View>
                     <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <MaterialCommunityIcons name="close" size={24} color={colors.onSurfaceVariant} />
+                        <Image source="sf:xmark" style={{ width: 24, height: 24, tintColor: colors.onSurfaceVariant }} />
                     </TouchableOpacity>
                 </View>
 
                 {deployment?.locationName && (
                     <View style={styles.locationRow}>
-                        <MaterialCommunityIcons name="map-marker" size={16} color={colors.onSurfaceVariant} />
+                        <Image source="sf:mappin.and.ellipse" style={{ width: 16, height: 16, tintColor: colors.onSurfaceVariant }} />
                         <Text style={[styles.locationText, { color: colors.onSurfaceVariant }]}>
                             {deployment.locationName}
                         </Text>
@@ -95,7 +95,7 @@ export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose
                     onPress={onPress}
                 >
                     <Text style={[styles.buttonText, { color: colors.onPrimary }]}>View Details</Text>
-                    <MaterialCommunityIcons name="arrow-right" size={16} color={colors.onPrimary} />
+                    <Image source="sf:arrow.right" style={{ width: 16, height: 16, tintColor: colors.onPrimary }} />
                 </TouchableOpacity>
             </View>
         </Animated.View>

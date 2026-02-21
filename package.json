@@ -75,6 +75,7 @@
     "expo-crypto": "~15.0.8",
     "expo-dev-client": "~6.0.20",
     "expo-file-system": "~19.0.21",
+    "expo-image": "~3.0.11",
     "expo-linking": "~8.0.11",
     "expo-localization": "~17.0.8",
     "expo-location": "~19.0.8",

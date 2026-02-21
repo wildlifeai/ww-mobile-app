@@ -288,7 +288,7 @@ export const ProjectMembersScreen = () => {
 						onPress={() => dispatch({ dialogState: { type: 'add' } })}
 						style={styles.addButton}
 					>
-						Add Member
+						<Text>Add Member</Text>
 					</Button>
 				</View>
 			)}

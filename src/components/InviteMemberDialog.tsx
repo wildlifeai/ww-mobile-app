@@ -7,6 +7,7 @@ import {
     TextInput,
     RadioButton,
     HelperText,
+    Text,
 } from 'react-native-paper'
 import { WWText } from './ui/WWText'
 import InvitationService from '../services/InvitationService'
@@ -73,10 +74,10 @@ export const InviteMemberDialog = memo<InviteMemberDialogProps>(({
     return (
         <Portal>
             <Dialog visible={visible} onDismiss={handleDismiss} style={styles.dialog}>
-                <Dialog.Title style={styles.title}>Invite Member</Dialog.Title>
+                <Dialog.Title style={styles.title}><Text>Invite Member</Text></Dialog.Title>
                 <Dialog.Content>
                     <HelperText type="info" visible style={styles.helperText}>
-                        Enter the user's email address. They will be notified in the app.
+                        <Text>Enter the user's email address. They will be notified in the app.</Text>
                     </HelperText>
 
                     <TextInput
@@ -93,7 +94,7 @@ export const InviteMemberDialog = memo<InviteMemberDialogProps>(({
 
                     <View style={styles.roleSection}>
                         <WWText variant="bodyMedium" style={styles.roleLabel}>
-                            Role
+                            <Text>Role</Text>
                         </WWText>
                         <RadioButton.Group
                             onValueChange={(value) =>
@@ -116,7 +117,7 @@ export const InviteMemberDialog = memo<InviteMemberDialogProps>(({
                 </Dialog.Content>
                 <Dialog.Actions>
                     <Button onPress={handleDismiss} disabled={loading}>
-                        Cancel
+                        <Text>Cancel</Text>
                     </Button>
                     <Button
                         onPress={handleSend}
@@ -124,7 +125,7 @@ export const InviteMemberDialog = memo<InviteMemberDialogProps>(({
                         disabled={loading}
                         mode="contained"
                     >
-                        Send
+                        <Text>Send</Text>
                     </Button>
                 </Dialog.Actions>
             </Dialog>

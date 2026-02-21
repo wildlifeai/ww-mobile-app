@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { RootStackParamList } from '../../navigation/types'
-import { Ionicons } from '@expo/vector-icons'
+import { Image } from 'expo-image'
 import { useAppSelector } from '../../redux'
 import { useBle } from '../../hooks/useBle'
 import { useBleCommands } from '../../hooks/useBleCommands'
@@ -195,7 +195,7 @@ export const DevicePreparationScreen = () => {
 
                 {!preparationId ? (
                     <TouchableOpacity style={styles.actionButton} onPress={startWorkflow}>
-                        <Ionicons name="play" size={20} color="#FFF" style={styles.actionIcon} />
+                        <Image source="sf:play.fill" style={[{ width: 20, height: 20, tintColor: '#FFF' }, styles.actionIcon]} />
                         <Text style={styles.actionButtonText}>Start New Preparation</Text>
                     </TouchableOpacity>
                 ) : (
@@ -205,7 +205,7 @@ export const DevicePreparationScreen = () => {
                             onPress={runAllChecks}
                             disabled={!device.connected}
                         >
-                            <Ionicons name="refresh" size={20} color="#FFF" style={styles.actionIcon} />
+                            <Image source="sf:arrow.clockwise" style={[{ width: 20, height: 20, tintColor: '#FFF' }, styles.actionIcon]} />
                             <Text style={styles.actionButtonText}>Run Health Checks</Text>
                         </TouchableOpacity>
 
@@ -213,7 +213,7 @@ export const DevicePreparationScreen = () => {
                             style={[styles.actionButton, styles.secondaryButton]}
                             onPress={() => navigation.navigate('EngineerConsoleScreen', { deviceId })}
                         >
-                            <Ionicons name="terminal" size={20} color="#2196F3" style={styles.actionIcon} />
+                            <Image source="sf:terminal.fill" style={[{ width: 20, height: 20, tintColor: '#2196F3' }, styles.actionIcon]} />
                             <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Open Engineer Console</Text>
                         </TouchableOpacity>
                     </>

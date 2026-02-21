@@ -59,7 +59,7 @@ export const RemoveMemberDialog = ({ projectId, visible, member, members, user, 
 	return (
 		<Portal>
 			<Dialog visible={visible} onDismiss={onDismiss}>
-				<Dialog.Title>Remove Member</Dialog.Title>
+				<Dialog.Title><Text>Remove Member</Text></Dialog.Title>
 				<Dialog.Content>
 					{member && (
 						<>
@@ -73,9 +73,9 @@ export const RemoveMemberDialog = ({ projectId, visible, member, members, user, 
 					)}
 				</Dialog.Content>
 				<Dialog.Actions>
-					<Button onPress={onDismiss} disabled={loading}>Cancel</Button>
+					<Button onPress={onDismiss} disabled={loading}><Text>Cancel</Text></Button>
 					<Button onPress={handleRemoveMember} mode="contained" buttonColor={theme.colors.error} loading={loading} disabled={loading}>
-						Remove
+						<Text>Remove</Text>
 					</Button>
 				</Dialog.Actions>
 			</Dialog>

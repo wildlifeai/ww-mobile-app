@@ -1,12 +1,12 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import { Image } from 'expo-image'
 
 interface StatusItemProps {
     label: string
     value: string
     status: 'success' | 'warning' | 'error' | 'neutral'
-    icon?: keyof typeof Ionicons.glyphMap
+    icon?: string
 }
 
 const StatusItem: React.FC<StatusItemProps> = ({ label, value, status, icon }) => {
@@ -22,14 +22,14 @@ const StatusItem: React.FC<StatusItemProps> = ({ label, value, status, icon }) =
     return (
         <View style={styles.itemContainer}>
             <View style={styles.labelContainer}>
-                {icon && <Ionicons name={icon} size={16} color="#666" style={styles.icon} />}
+                {icon && <Image source={icon} style={[{ width: 16, height: 16, tintColor: '#666' }, styles.icon]} />}
                 <Text style={styles.label}>{label}</Text>
             </View>
             <View style={styles.valueContainer}>
                 <Text style={[styles.value, { color: getStatusColor() }]}>{value}</Text>
-                {status === 'success' && <Ionicons name="checkmark-circle" size={16} color="#4CAF50" style={styles.statusIcon} />}
-                {status === 'error' && <Ionicons name="alert-circle" size={16} color="#F44336" style={styles.statusIcon} />}
-                {status === 'warning' && <Ionicons name="warning" size={16} color="#FFC107" style={styles.statusIcon} />}
+                {status === 'success' && <Image source="sf:checkmark.circle.fill" style={[{ width: 16, height: 16, tintColor: '#4CAF50' }, styles.statusIcon]} />}
+                {status === 'error' && <Image source="sf:exclamationmark.circle.fill" style={[{ width: 16, height: 16, tintColor: '#F44336' }, styles.statusIcon]} />}
+                {status === 'warning' && <Image source="sf:exclamationmark.triangle.fill" style={[{ width: 16, height: 16, tintColor: '#FFC107' }, styles.statusIcon]} />}
             </View>
         </View>
     )
@@ -92,35 +92,35 @@ export const DeviceStatusCard: React.FC<DeviceStatusCardProps> = ({
                 label="Battery"
                 value={batteryLevel ? `${batteryLevel}% (${batteryVoltage || '?'}mV)` : 'Unknown'}
                 status={getBatteryStatus()}
-                icon="battery-charging"
+                icon="sf:battery.100.bolt"
             />
 
             <StatusItem
                 label="SD Card"
                 value={sdCardTotal ? `${formatBytes(sdCardAvailable)} / ${formatBytes(sdCardTotal)} free` : 'Not Detected'}
                 status={getSdCardStatus()}
-                icon="save"
+                icon="sf:externaldrive.fill"
             />
 
             <StatusItem
                 label="Firmware"
                 value={firmwareVersion || 'Unknown'}
                 status={firmwareVersion ? 'neutral' : 'warning'}
-                icon="hardware-chip"
+                icon="sf:cpu"
             />
 
             <StatusItem
                 label="AI Model"
                 value={aiModelVersion || 'Unknown'}
                 status={aiModelVersion ? 'neutral' : 'warning'}
-                icon="eye"
+                icon="sf:eye.fill"
             />
 
             <StatusItem
                 label="LoRaWAN"
                 value={lorawanStatus ? `RSSI: ${lorawanStatus.rssi}, SNR: ${lorawanStatus.snr}` : 'Not Tested'}
                 status={getLorawanStatus()}
-                icon="radio"
+                icon="sf:antenna.radiowaves.left.and.right"
             />
         </View>
     )

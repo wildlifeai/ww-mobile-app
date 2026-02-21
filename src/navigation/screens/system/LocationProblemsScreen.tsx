@@ -3,6 +3,7 @@ import { WWIcon } from "../../../components/ui/WWIcon"
 import { WWScreenView } from "../../../components/ui/WWScreenView"
 import { useExtendedTheme } from "../../../theme"
 import { WWText } from "../../../components/ui/WWText"
+import { Text } from "react-native-paper"
 
 export const LocationProblems = () => {
 	const { spacing } = useExtendedTheme()
@@ -10,14 +11,14 @@ export const LocationProblems = () => {
 	return (
 		<WWScreenView style={styles.view}>
 			<WWIcon
-				containerStyle={[{ marginBottom: spacing }]}
+				containerStyle={{ marginBottom: spacing }}
 				source="bluetooth"
 				size={40}
 			/>
-			<WWText variant="headlineSmall">Please enable Location</WWText>
+			<WWText variant="headlineSmall"><Text>Please enable Location</Text></WWText>
 			<WWText variant="bodyMedium">
-				This app requires Location to run. It uses it to connect and setup your
-				Wildlife Watcher devices.
+				<Text>This app requires Location to run. It uses it to connect and setup your
+				Wildlife Watcher devices.</Text>
 			</WWText>
 		</WWScreenView>
 	)

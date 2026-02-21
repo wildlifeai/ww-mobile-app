@@ -118,7 +118,7 @@ export const ProjectDetailsScreen = () => {
 						onPress={() => refetch()}
 						style={styles.retryButton}
 					>
-						Retry
+						<Text>Retry</Text>
 					</Button>
 				</View>
 			</WWScreenView>
@@ -183,7 +183,7 @@ export const ProjectDetailsScreen = () => {
 							style={styles.actionButton}
 							testID="cancel-button"
 						>
-							Cancel
+							<Text>Cancel</Text>
 						</WWButton>
 						<WWButton
 							mode="contained"
@@ -193,7 +193,7 @@ export const ProjectDetailsScreen = () => {
 							style={styles.actionButton}
 							testID="save-button"
 						>
-							Save Changes
+							<Text>Save Changes</Text>
 						</WWButton>
 					</View>
 				)}

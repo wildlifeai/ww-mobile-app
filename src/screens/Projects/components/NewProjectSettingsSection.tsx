@@ -261,7 +261,7 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                     </Dialog.ScrollArea>
                     <Dialog.Actions>
                         <Button onPress={() => setSamplingHelpVisible(false)}>
-                            Close
+                            <Text>Close</Text>
                         </Button>
                     </Dialog.Actions>
                 </Dialog>
@@ -290,7 +290,7 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                     </Dialog.ScrollArea>
                     <Dialog.Actions>
                         <Button onPress={() => setCaptureHelpVisible(false)}>
-                            Close
+                            <Text>Close</Text>
                         </Button>
                     </Dialog.Actions>
                 </Dialog>

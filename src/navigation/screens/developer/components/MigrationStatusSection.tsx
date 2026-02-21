@@ -1,5 +1,5 @@
 
-import { List } from 'react-native-paper'
+import { List, Text } from 'react-native-paper'
 
 const ListItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
 
@@ -12,7 +12,7 @@ const Icons = {
 export const MigrationStatusSection = () => {
     return (
         <List.Section>
-            <List.Subheader>Migration Status</List.Subheader>
+            <List.Subheader><Text>Migration Status</Text></List.Subheader>
             <List.Item
                 title="Migration"
                 description="Expo SDK 51 Migration Complete"

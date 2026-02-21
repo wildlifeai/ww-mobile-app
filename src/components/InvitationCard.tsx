@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { WWText } from './ui/WWText'
-import { Button } from 'react-native-paper'
+import { Button, Text } from 'react-native-paper'
 
 interface Invitation {
     id: string
@@ -38,15 +38,15 @@ export const InvitationCard = memo<InvitationCardProps>(({
                 </WWText>
 
                 <WWText variant="bodyMedium" style={styles.inviter}>
-                    Invited by {invitation.inviterEmail}
+                    <Text>Invited by {invitation.inviterEmail}</Text>
                 </WWText>
 
                 <View style={styles.details}>
                     <WWText variant="bodySmall" style={styles.role}>
-                        Role: {getRoleDisplay(invitation.role)}
+                        <Text>Role: {getRoleDisplay(invitation.role)}</Text>
                     </WWText>
                     <WWText variant="bodySmall" style={styles.expires}>
-                        Expires in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}
+                        <Text>Expires in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}</Text>
                     </WWText>
                 </View>
 
@@ -57,7 +57,7 @@ export const InvitationCard = memo<InvitationCardProps>(({
                         style={styles.acceptButton}
                         labelStyle={styles.buttonLabel}
                     >
-                        Accept
+                        <Text>Accept</Text>
                     </Button>
                     <Button
                         mode="outlined"
@@ -66,7 +66,7 @@ export const InvitationCard = memo<InvitationCardProps>(({
                         labelStyle={styles.buttonLabel}
                         textColor="#F44336"
                     >
-                        Decline
+                        <Text>Decline</Text>
                     </Button>
                 </View>
             </View>

@@ -1,6 +1,6 @@
 
 
-import { List } from 'react-native-paper'
+import { List, Text } from 'react-native-paper'
 import Constants from 'expo-constants'
 
 const ListItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
@@ -16,7 +16,7 @@ export const ExpoInfoSection = () => {
 
     return (
         <List.Section>
-            <List.Subheader>Expo Information</List.Subheader>
+            <List.Subheader><Text>Expo Information</Text></List.Subheader>
             <List.Item
                 title="Expo SDK Version"
                 description={expoSdkVersion}

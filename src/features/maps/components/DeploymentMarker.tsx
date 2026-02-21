@@ -2,7 +2,7 @@
 import React, { useRef, useLayoutEffect, useState, memo } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { Marker } from 'react-native-maps'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { Image } from 'expo-image'
 import type Deployment from '../../../database/models/Deployment'
 
 interface Props {
@@ -54,7 +54,7 @@ const DeploymentMarkerComponent: React.FC<Props> = ({ deployment, onPress }) => 
             tracksInfoWindowChanges={false} // We don't use InfoWindow/Callout
         >
             <View style={[styles.markerBody, { borderColor: color }]}>
-                <MaterialCommunityIcons name="camera" size={20} color={color} />
+                <Image source="sf:camera.fill" style={{ width: 20, height: 20, tintColor: color }} />
             </View>
         </Marker>
     )

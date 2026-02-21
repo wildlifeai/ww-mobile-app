@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Divider } from 'react-native-paper'
+import { Card, Divider, Text } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { useExtendedTheme } from '../../../theme'
@@ -28,9 +28,9 @@ export const DeploymentDeviceCard: React.FC<Props> = ({ deployment }) => {
             />
             <Card.Content>
                 <View style={styles.infoRow}>
-                    <WWText variant="labelMedium" style={styles.infoLabel}>Device ID:</WWText>
+                    <WWText variant="labelMedium" style={styles.infoLabel}><Text>Device ID:</Text></WWText>
                     <WWText variant="bodyMedium" style={styles.valueText}>
-                        {deployment.deviceId || 'Unknown'}
+                        <Text>{deployment.deviceId || 'Unknown'}</Text>
                     </WWText>
                 </View>
 
@@ -38,7 +38,7 @@ export const DeploymentDeviceCard: React.FC<Props> = ({ deployment }) => {
                 <View style={styles.statusPlaceholder}>
                     <WWIcon source="access-point" size={20} color={colors.onSurfaceVariant} />
                     <WWText variant="bodySmall" style={styles.placeholderText}>
-                        Device status via LoRaWAN
+                        <Text>Device status via LoRaWAN</Text>
                     </WWText>
                 </View>
             </Card.Content>

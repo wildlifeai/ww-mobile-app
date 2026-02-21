@@ -5,11 +5,11 @@ import {
     Modal,
     FlatList,
     TouchableOpacity,
-    SafeAreaView,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { WWText } from './ui/WWText'
 import { InvitationCard } from './InvitationCard'
-import { IconButton } from 'react-native-paper'
+import { IconButton, Text } from 'react-native-paper'
 
 interface Invitation {
     id: string
@@ -58,7 +58,7 @@ export const NotificationPanel = memo<NotificationPanelProps>(({
                 <View style={styles.panel}>
                     <View style={styles.header}>
                         <WWText variant="headlineSmall" style={styles.title}>
-                            Notifications
+                            <Text>Notifications</Text>
                         </WWText>
                         <IconButton
                             icon="close"

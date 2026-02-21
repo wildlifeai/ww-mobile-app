@@ -10,7 +10,7 @@ interface TestResultsCardProps {
 export const TestResultsCard: React.FC<TestResultsCardProps> = ({ testResults, onClearResults }) => {
     const renderCardTitleRight = useCallback((props: any) => (
         <Button {...props} onPress={onClearResults} compact>
-            Clear
+            <Text>Clear</Text>
         </Button>
     ), [onClearResults])
 

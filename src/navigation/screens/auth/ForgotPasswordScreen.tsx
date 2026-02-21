@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form"
 import { StyleSheet, View, Image, Alert } from "react-native"
-import { Button } from "react-native-paper"
+import { Button, Text } from "react-native-paper"
 // import { CustomKeyboardAvoidingView } from "../../../components/CustomKeyboardAvoidingView"
 import { WWScreenView } from "../../../components/ui/WWScreenView"
 import { WWTextInput } from "../../../components/ui/WWTextInput"
@@ -161,9 +161,9 @@ export const ForgotPassword = () => {
 				<View style={styles.form}>
 					{isResetMode ? (
 						<>
-							<WWText style={styles.title}>Set New Password</WWText>
+							<WWText style={styles.title}><Text>Set New Password</Text></WWText>
 							<WWText style={styles.subtitle}>
-								Enter your new password below.
+								<Text>Enter your new password below.</Text>
 							</WWText>
 
 							<Field
@@ -205,15 +205,15 @@ export const ForgotPassword = () => {
 								style={styles.button}
 								disabled={isLoading}
 							>
-								Update Password
+								<Text>Update Password</Text>
 							</Button>
 						</>
 					) : (
 						<>
-							<WWText style={styles.title}>Reset Your Password</WWText>
+							<WWText style={styles.title}><Text>Reset Your Password</Text></WWText>
 							<WWText style={styles.subtitle}>
-								Enter your email address and we'll send you instructions to
-								reset your password.
+								<Text>Enter your email address and we'll send you instructions to
+								reset your password.</Text>
 							</WWText>
 
 							<Field
@@ -247,7 +247,7 @@ export const ForgotPassword = () => {
 								style={styles.button}
 								disabled={isLoading || isEmailSent}
 							>
-								{isEmailSent ? "Email Sent" : "Send Reset Email"}
+								<Text>{isEmailSent ? "Email Sent" : "Send Reset Email"}</Text>
 							</Button>
 						</>
 					)}
@@ -258,7 +258,7 @@ export const ForgotPassword = () => {
 						style={styles.textButton}
 						disabled={isLoading}
 					>
-						Back to Login
+						<Text>Back to Login</Text>
 					</Button>
 				</View>
 			</View>

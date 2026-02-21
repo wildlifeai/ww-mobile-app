@@ -109,6 +109,8 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 	)
 }
 
+
+
 const styles = StyleSheet.create({
 	loadingContainer: {
 		flex: 1,
@@ -129,7 +131,7 @@ const styles = StyleSheet.create({
 const createBaseToast = (props: ExtendedToastConfigParams) => (
 	<BaseToast
 		{...props}
-		style={[styles.toast]}
+		style={styles.toast}
 		text1Style={styles.text}
 		text2Style={styles.description}
 		text2NumberOfLines={props.props.numberOfLines || 1}
@@ -139,7 +141,7 @@ const createBaseToast = (props: ExtendedToastConfigParams) => (
 const createSuccessToast = (props: ExtendedToastConfigParams) => (
 	<SuccessToast
 		{...props}
-		style={[styles.toast]}
+		style={styles.toast}
 		text1Style={styles.text}
 		text2Style={styles.description}
 		text2NumberOfLines={props.props.numberOfLines || 1}
@@ -149,7 +151,7 @@ const createSuccessToast = (props: ExtendedToastConfigParams) => (
 const createInfoToast = (props: ExtendedToastConfigParams) => (
 	<InfoToast
 		{...props}
-		style={[styles.toast]}
+		style={styles.toast}
 		text1Style={styles.text}
 		text2Style={styles.description}
 		text2NumberOfLines={props.props.numberOfLines || 1}
@@ -159,7 +161,7 @@ const createInfoToast = (props: ExtendedToastConfigParams) => (
 const createErrorToast = (props: ExtendedToastConfigParams) => (
 	<ErrorToast
 		{...props}
-		style={[styles.toast]}
+		style={styles.toast}
 		text1Style={styles.text}
 		text2Style={styles.description}
 		text2NumberOfLines={props.props.numberOfLines || 1}

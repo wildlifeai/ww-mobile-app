@@ -100,7 +100,7 @@ return (
                                 onPress={onDismiss}
                                 style={styles.button}
                             >
-                                OK
+                                <Text>OK</Text>
                             </Button>
                         )}
                     </Card.Content>

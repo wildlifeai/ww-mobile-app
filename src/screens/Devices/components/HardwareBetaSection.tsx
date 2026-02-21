@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react'
 import { StyleSheet } from 'react-native'
-import { Card, Button } from 'react-native-paper'
+import { Card, Button, Text } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
 import { WWIcon } from '../../../components/ui/WWIcon'
@@ -21,7 +21,7 @@ export const HardwareBetaSection: React.FC<HardwareBetaSectionProps> = ({
             icon="help-circle-outline" 
             onPress={() => onShowHelp('AI Model', 'Verify the installed AI model for object detection. (Beta Feature)')}
         >
-            Help
+            <Text>Help</Text>
         </Button>
     ), [onShowHelp])
 
@@ -32,7 +32,7 @@ export const HardwareBetaSection: React.FC<HardwareBetaSectionProps> = ({
             icon="help-circle-outline" 
             onPress={() => onShowHelp('LoRaWAN Network', 'Test LoRaWAN connectivity using a ping command. (Beta Feature)')}
         >
-            Help
+            <Text>Help</Text>
         </Button>
     ), [onShowHelp])
 
@@ -47,13 +47,13 @@ export const HardwareBetaSection: React.FC<HardwareBetaSectionProps> = ({
                 />
                 <Card.Content>
                     <WWText variant="bodySmall" style={styles.infoText}>
-                        🚧 AI Model verification coming soon
+                        <Text>🚧 AI Model verification coming soon</Text>
                     </WWText>
                     <WWText variant="bodySmall" style={styles.sectionDescription}>
-                        For Beta: Manually update AI model via SD card, then use "Verify Model" button to confirm installation.
+                        <Text>For Beta: Manually update AI model via SD card, then use "Verify Model" button to confirm installation.</Text>
                     </WWText>
                     <WWButton mode="outlined" disabled>
-                        Verify Model (In Progress)
+                        <Text>Verify Model (In Progress)</Text>
                     </WWButton>
                 </Card.Content>
             </Card>
@@ -67,13 +67,13 @@ export const HardwareBetaSection: React.FC<HardwareBetaSectionProps> = ({
                 />
                 <Card.Content>
                     <WWText variant="bodySmall" style={styles.infoText}>
-                        🚧 LoRaWAN ping test coming soon
+                        <Text>🚧 LoRaWAN ping test coming soon</Text>
                     </WWText>
                     <WWText variant="bodySmall" style={styles.sectionDescription}>
-                        Will use "ping" BLE command to verify network connectivity and display RSSI/SNR signal strength.
+                        <Text>Will use "ping" BLE command to verify network connectivity and display RSSI/SNR signal strength.</Text>
                     </WWText>
                     <WWButton mode="outlined" disabled>
-                        Ping Network (In Progress)
+                        <Text>Ping Network (In Progress)</Text>
                     </WWButton>
                 </Card.Content>
             </Card>

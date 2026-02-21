@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback } from 'react'
 import { View, StyleSheet, Linking, Platform } from 'react-native'
-import { Card } from 'react-native-paper'
+import { Card, Text } from 'react-native-paper'
 import { Marker } from 'react-native-maps'
 import { WWText } from '../../../components/ui/WWText'
 import { WWIcon } from '../../../components/ui/WWIcon'
@@ -44,12 +44,12 @@ export const DeploymentLocationCard: React.FC<Props> = ({ deployment }) => {
             <Card.Content>
                 {deployment.locationName ? (
                     <WWText variant="titleMedium" style={styles.locationName}>
-                        {deployment.locationName}
+                        <Text>{deployment.locationName}</Text>
                     </WWText>
                 ) : null}
                 {deployment.latitude && deployment.longitude && (
                     <WWText variant="bodySmall" style={styles.coordinates}>
-                        {deployment.latitude.toFixed(6)}, {deployment.longitude.toFixed(6)}
+                        <Text>{deployment.latitude.toFixed(6)}, {deployment.longitude.toFixed(6)}</Text>
                     </WWText>
                 )}
             </Card.Content>
@@ -76,7 +76,7 @@ export const DeploymentLocationCard: React.FC<Props> = ({ deployment }) => {
                 ) : (
                     <View style={styles.noLocation}>
                         <WWIcon source="map-marker-off" size={48} color={colors.onSurfaceVariant} />
-                        <WWText style={styles.noLocationText}>No location data available</WWText>
+                        <WWText style={styles.noLocationText}><Text>No location data available</Text></WWText>
                     </View>
                 )}
             </View>
@@ -84,7 +84,7 @@ export const DeploymentLocationCard: React.FC<Props> = ({ deployment }) => {
             {deployment.latitude && deployment.longitude && (
                 <Card.Actions>
                     <WWButton mode="text" onPress={openInMaps} icon="directions">
-                        Open in Maps
+                        <Text>Open in Maps</Text>
                     </WWButton>
                 </Card.Actions>
             )}

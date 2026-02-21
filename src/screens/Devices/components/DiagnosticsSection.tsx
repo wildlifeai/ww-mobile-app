@@ -43,7 +43,7 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
             icon="help-circle-outline" 
             onPress={() => onShowHelp('Battery Level', 'Check the device battery level. It must be above 30% for deployment.')}
         >
-            Help
+            <Text>Help</Text>
         </Button>
     ), [onShowHelp])
 
@@ -54,7 +54,7 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
             icon="help-circle-outline" 
             onPress={() => onShowHelp('SD Card Status', 'Verifies SD card space. Ensure sufficient space is available for recordings.')}
         >
-            Help
+            <Text>Help</Text>
         </Button>
     ), [onShowHelp])
 
@@ -65,7 +65,7 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
             icon="help-circle-outline" 
             onPress={() => onShowHelp('Camera View Test', 'Take a test photo to verify camera positioning and function.')}
         >
-            Help
+            <Text>Help</Text>
         </Button>
     ), [onShowHelp])
 
@@ -82,18 +82,18 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
                     {batteryLevel !== null ? (
                         <View>
                             <View style={styles.statusDisplay}>
-                                <WWText variant="bodyLarge">🔋 {batteryLevel}%</WWText>
+                                <WWText variant="bodyLarge"><Text>🔋 {batteryLevel}%</Text></WWText>
                                 <WWText variant="bodySmall" style={styles.statusHint}>
-                                    {batteryLevel > 30 ? 'Battery level sufficient' : 'Battery level low - charge before deployment'}
+                                    <Text>{batteryLevel > 30 ? 'Battery level sufficient' : 'Battery level low - charge before deployment'}</Text>
                                 </WWText>
                             </View>
                             <WWButton mode="outlined" onPress={handleBatteryCheck} style={styles.statusButton} disabled={isInitializing || !bleDeviceConnected}>
-                                Check Again
+                                <Text>Check Again</Text>
                             </WWButton>
                         </View>
                     ) : (
                         <WWButton mode="outlined" onPress={handleBatteryCheck} disabled={isInitializing || !bleDeviceConnected}>
-                            Check Battery Level
+                            <Text>Check Battery Level</Text>
                         </WWButton>
                     )}
                 </Card.Content>
@@ -111,21 +111,21 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
                         <View>
                             <View style={styles.statusDisplay}>
                                 <WWText variant="bodyLarge">
-                                    💾 {Math.round((sdCardStatus.free / sdCardStatus.total) * 100)}% available of {Math.round(sdCardStatus.total / 1024 / 1024)}GB
+                                    <Text>💾 {Math.round((sdCardStatus.free / sdCardStatus.total) * 100)}% available of {Math.round(sdCardStatus.total / 1024 / 1024)}GB</Text>
                                 </WWText>
                                 <WWText variant="bodySmall" style={styles.statusHint}>
-                                    {(sdCardStatus.free / sdCardStatus.total) > 0.1
+                                    <Text>{(sdCardStatus.free / sdCardStatus.total) > 0.1
                                         ? 'SD card has sufficient space'
-                                        : 'SD card is nearly full - free up space'}
+                                        : 'SD card is nearly full - free up space'}</Text>
                                 </WWText>
                             </View>
                             <WWButton mode="outlined" onPress={handleSdCardCheck} style={styles.statusButton} disabled={isInitializing || !bleDeviceConnected}>
-                                Check Again
+                                <Text>Check Again</Text>
                             </WWButton>
                         </View>
                     ) : (
                         <WWButton mode="outlined" onPress={handleSdCardCheck} disabled={isInitializing || !bleDeviceConnected}>
-                            Check SD Card
+                            <Text>Check SD Card</Text>
                         </WWButton>
                     )}
                 </Card.Content>
@@ -140,7 +140,7 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
                 />
                 <Card.Content>
                     <WWText variant="bodySmall" style={styles.sectionDescription}>
-                        Capture a test photo to verify camera positioning
+                        <Text>Capture a test photo to verify camera positioning</Text>
                     </WWText>
 
                     {capturedImageUri && (
