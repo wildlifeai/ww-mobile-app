@@ -87,7 +87,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 "android": {
                     "compileSdkVersion": 35,
                     "targetSdkVersion": 35,
-                    "newArchEnabled": true
+                    "newArchEnabled": true,
+                    "enableProguardInReleaseBuilds": true,
+                    "enableShrinkResourcesInReleaseBuilds": true
                 },
                 "ios": {
                     "deploymentTarget": "17.0",

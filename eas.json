@@ -52,7 +52,8 @@
         "cocoapods": "1.16.1"
       },
       "android": {
-        "resourceClass": "medium"
+        "resourceClass": "medium",
+        "buildType": "app-bundle"
       }
     }
   },
