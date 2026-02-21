@@ -1,0 +1,46 @@
+name: Semantic Release & Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      # The standard-version library generates a CHANGELOG.md based on conventional commits
+      # We skip the commit/tag step as we triggered this from a tag manually in this workflow assumption,
+      # but standard-version can handle full automation if configured.
+      - name: Generate Changelog
+        run: npx standard-version --skip.commit --skip.tag
+
+      - name: Build and Publish to EAS
+        run: eas build --profile production --platform all --non-interactive --auto-submit
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: false

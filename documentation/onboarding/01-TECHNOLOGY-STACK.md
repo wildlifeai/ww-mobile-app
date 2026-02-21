@@ -415,7 +415,7 @@ Monitors network state to trigger sync when transitioning from offline → onlin
 
 ### Offline Types
 
-**File:** [types/offline.ts](file:///c:/dev/ww/src/types/offline.ts)
+**Files:** `src/types/offline.ts` (Exported centrally via `src/types/index.ts`)
 
 Defines the offline operation queue types:
 
@@ -519,7 +519,7 @@ export type OfflineOperationType =
 ## Next Steps
 
 1. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device preparation, deployment, and retrieval
-2. [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) — Project structure and state management
+2. [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) — Project structure, type architecture, and state management
 3. [BLE_Architecture.md](../resources/BLE_Architecture.md) — BLE patterns and firmware constraints
 4. [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) — Offline-first architecture and sync
 

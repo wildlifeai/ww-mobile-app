@@ -302,7 +302,9 @@ Categorizes every incoming text message into one of four types:
 
 ### 8. Command Registry (`types.ts`)
 
-Every known command is defined in the `COMMANDS` object. Each entry specifies:
+Every known command is defined in the `COMMANDS` object. **Note:** BLE types and enums (like `CommandNames`) are centrally exported via `src/types/index.ts` to align with the app's type architecture. Always import BLE types from `src/types` to avoid relative path hell.
+
+Each entry specifies:
 
 ```typescript
 {
@@ -585,6 +587,7 @@ src/
 ## Maintenance Rules
 
 - **Adding features**: Always start in `types.ts` — define the command, then expose it.
+- **Type Imports**: Always import BLE types from the central `src/types/index.ts` export to keep file sizes small.
 - **Modifying low-level logic**: Check `commandManager.ts` first.
 - **Modifying app-level logic**: Check `useBleCommands.ts` or the relevant process hook.
 - **Performance concerns**: Never log image data. Process binary packets before any string operations.
