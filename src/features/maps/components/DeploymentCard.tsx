@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react'
-import { StyleSheet, View, Text, TouchableOpacity, Animated } from 'react-native'
+import React, { useEffect } from 'react'
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native'
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated'
 import { Image } from 'expo-image'
 import { useExtendedTheme } from '../../../theme'
 import type Deployment from '../../../database/models/Deployment'
@@ -15,26 +16,26 @@ interface Props {
 
 export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose, onPress }) => {
     const { colors } = useExtendedTheme()
-    const slideAnim = useRef(new Animated.Value(300)).current // Start off-screen (down)
+    const slideAnim = useSharedValue(300) // Start off-screen (down)
 
     useEffect(() => {
         if (isVisible && deployment) {
             // Slide up
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                useNativeDriver: true,
-                friction: 8,
-                tension: 40
-            }).start()
+            slideAnim.value = withSpring(0, {
+                damping: 8,
+                stiffness: 40
+            })
         } else {
             // Slide down
-            Animated.timing(slideAnim, {
-                toValue: 300,
-                duration: 200,
-                useNativeDriver: true
-            }).start()
+            slideAnim.value = withTiming(300, {
+                duration: 200
+            })
         }
     }, [isVisible, deployment, slideAnim])
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: slideAnim.value }]
+    }))
 
     if (!isVisible || !deployment) return null
 
@@ -55,9 +56,9 @@ export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose
             style={[
                 styles.container,
                 {
-                    backgroundColor: colors.surface,
-                    transform: [{ translateY: slideAnim }]
-                }
+                    backgroundColor: colors.surface
+                },
+                animatedStyle
             ]}
         >
             {/* Header / Stripe */}
@@ -70,20 +71,20 @@ export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose
                             {deployment?.name || 'Unnamed Deployment'}
                         </Text>
                         <View style={styles.statusRow}>
-                            <Image source={statusObj.icon} style={{ width: 14, height: 14, tintColor: statusObj.color }} />
+                            <Image source={statusObj.icon} style={[styles.iconSmall, { tintColor: statusObj.color }]} />
                             <Text style={[styles.statusText, { color: statusObj.color }]}>
                                 {statusObj.label}
                             </Text>
                         </View>
                     </View>
                     <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <Image source="sf:xmark" style={{ width: 24, height: 24, tintColor: colors.onSurfaceVariant }} />
+                        <Image source="sf:xmark" style={[styles.iconLarge, { tintColor: colors.onSurfaceVariant }]} />
                     </TouchableOpacity>
                 </View>
 
                 {deployment?.locationName && (
                     <View style={styles.locationRow}>
-                        <Image source="sf:mappin.and.ellipse" style={{ width: 16, height: 16, tintColor: colors.onSurfaceVariant }} />
+                        <Image source="sf:mappin.and.ellipse" style={[styles.iconMedium, { tintColor: colors.onSurfaceVariant }]} />
                         <Text style={[styles.locationText, { color: colors.onSurfaceVariant }]}>
                             {deployment.locationName}
                         </Text>
@@ -95,7 +96,7 @@ export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose
                     onPress={onPress}
                 >
                     <Text style={[styles.buttonText, { color: colors.onPrimary }]}>View Details</Text>
-                    <Image source="sf:arrow.right" style={{ width: 16, height: 16, tintColor: colors.onPrimary }} />
+                    <Image source="sf:arrow.right" style={[styles.iconMedium, { tintColor: colors.onPrimary }]} />
                 </TouchableOpacity>
             </View>
         </Animated.View>
@@ -109,11 +110,7 @@ const styles = StyleSheet.create({
         left: 16,
         right: 16,
         borderRadius: 16,
-        elevation: 6,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.27,
-        shadowRadius: 4.65,
+        boxShadow: "0px 3px 4.65px rgba(0, 0, 0, 0.27)",
         overflow: 'hidden', // For stripe
     },
     stripe: {
@@ -164,5 +161,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         marginRight: 8,
+    },
+    iconSmall: {
+        width: 14,
+        height: 14,
+    },
+    iconMedium: {
+        width: 16,
+        height: 16,
+    },
+    iconLarge: {
+        width: 24,
+        height: 24,
     }
 })

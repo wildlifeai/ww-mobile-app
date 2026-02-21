@@ -395,7 +395,6 @@ const styles = StyleSheet.create({
 	},
 	memberCard: {
 		marginBottom: 12,
-		elevation: 2,
 	},
 	memberRow: {
 		flexDirection: "row",
@@ -427,7 +426,6 @@ const styles = StyleSheet.create({
 		marginHorizontal: 24,
 	},
 	searchBar: {
-		elevation: 0,
 		backgroundColor: "#FFFFFF",
 	},
 	searchInput: {
@@ -523,7 +521,6 @@ const styles = StyleSheet.create({
 		paddingVertical: 8,
 	},
 	searchBarFull: {
-		elevation: 2,
 		backgroundColor: "#FFFFFF",
 	},
 	selectAllContainer: {

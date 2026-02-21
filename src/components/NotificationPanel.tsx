@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useCallback } from 'react'
 import {
     StyleSheet,
     View,
@@ -42,6 +42,14 @@ export const NotificationPanel = memo<NotificationPanelProps>(({
     onAccept,
     onDecline,
 }) => {
+    const renderInvitationItem = useCallback(({ item }: { item: Invitation }) => (
+        <InvitationCard
+            invitation={item}
+            onAccept={() => onAccept(item.id)}
+            onDecline={() => onDecline(item.id)}
+        />
+    ), [onAccept, onDecline])
+
     return (
         <Modal
             visible={visible}
@@ -70,13 +78,7 @@ export const NotificationPanel = memo<NotificationPanelProps>(({
 
                     <FlatList
                         data={invitations}
-                        renderItem={({ item }) => (
-                            <InvitationCard
-                                invitation={item}
-                                onAccept={() => onAccept(item.id)}
-                                onDecline={() => onDecline(item.id)}
-                            />
-                        )}
+                        renderItem={renderInvitationItem}
                         keyExtractor={(item) => item.id}
                         contentContainerStyle={styles.listContent}
                         ListEmptyComponent={
@@ -105,11 +107,7 @@ const styles = StyleSheet.create({
         width: '85%',
         maxWidth: 400,
         backgroundColor: '#2C2C2C',
-        shadowColor: '#000',
-        shadowOffset: { width: 2, height: 0 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 5,
+        boxShadow: "2px 0px 8px rgba(0, 0, 0, 0.3)",
     },
     header: {
         flexDirection: 'row',

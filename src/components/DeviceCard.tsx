@@ -138,7 +138,6 @@ const styles = StyleSheet.create({
     card: {
         marginBottom: 12,
         marginHorizontal: 16,
-        elevation: 0,
     },
     content: {
         paddingVertical: 12,

@@ -241,7 +241,6 @@ const styles = StyleSheet.create({
         paddingLeft: 72, // Make room for Menu FAB
     },
     searchbar: {
-        elevation: 0,
         flex: 1,
     },
 
@@ -249,7 +248,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 16,
         backgroundColor: 'transparent',
-        elevation: 0,
         zIndex: 1000,
     },
     listContent: {

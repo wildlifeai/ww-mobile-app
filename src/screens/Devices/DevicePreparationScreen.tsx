@@ -195,7 +195,7 @@ export const DevicePreparationScreen = () => {
 
                 {!preparationId ? (
                     <TouchableOpacity style={styles.actionButton} onPress={startWorkflow}>
-                        <Image source="sf:play.fill" style={[{ width: 20, height: 20, tintColor: '#FFF' }, styles.actionIcon]} />
+                        <Image source="sf:play.fill" style={[styles.iconWhite, styles.actionIcon]} />
                         <Text style={styles.actionButtonText}>Start New Preparation</Text>
                     </TouchableOpacity>
                 ) : (
@@ -205,7 +205,7 @@ export const DevicePreparationScreen = () => {
                             onPress={runAllChecks}
                             disabled={!device.connected}
                         >
-                            <Image source="sf:arrow.clockwise" style={[{ width: 20, height: 20, tintColor: '#FFF' }, styles.actionIcon]} />
+                            <Image source="sf:arrow.clockwise" style={[styles.iconWhite, styles.actionIcon]} />
                             <Text style={styles.actionButtonText}>Run Health Checks</Text>
                         </TouchableOpacity>
 
@@ -213,7 +213,7 @@ export const DevicePreparationScreen = () => {
                             style={[styles.actionButton, styles.secondaryButton]}
                             onPress={() => navigation.navigate('EngineerConsoleScreen', { deviceId })}
                         >
-                            <Image source="sf:terminal.fill" style={[{ width: 20, height: 20, tintColor: '#2196F3' }, styles.actionIcon]} />
+                            <Image source="sf:terminal.fill" style={[styles.iconBlue, styles.actionIcon]} />
                             <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Open Engineer Console</Text>
                         </TouchableOpacity>
                     </>
@@ -331,5 +331,15 @@ const styles = StyleSheet.create({
     errorText: {
         color: '#F44336',
         fontSize: 16,
+    },
+    iconWhite: {
+        width: 20,
+        height: 20,
+        tintColor: '#FFF'
+    },
+    iconBlue: {
+        width: 20,
+        height: 20,
+        tintColor: '#2196F3'
     }
 })

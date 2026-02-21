@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor: '#fff',
         borderRadius: 12,
-        elevation: 5,
+        boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.25)",
     },
     content: {
         alignItems: 'center',

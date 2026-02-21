@@ -124,11 +124,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         borderRadius: 20,
         borderWidth: 2,
         borderColor: '#fff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
+        boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
     },
     noLocation: {
         height: 200,

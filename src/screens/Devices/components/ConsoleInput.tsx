@@ -36,7 +36,7 @@ export const ConsoleInput = ({
                     onPress={onSend}
                     disabled={isSendDisabled}
                 >
-                    <Image source="sf:paperplane.fill" style={{ width: 20, height: 20, tintColor: '#FFF' }} />
+                    <Image source="sf:paperplane.fill" style={styles.iconStyles} />
                 </TouchableOpacity>
             </View>
         </KeyboardStickyView>
@@ -73,5 +73,10 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: '#BDBDBD',
+    },
+    iconStyles: {
+        width: 20,
+        height: 20,
+        tintColor: '#FFF'
     }
 });

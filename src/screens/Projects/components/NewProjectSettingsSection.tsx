@@ -217,45 +217,45 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                     onDismiss={() => setSamplingHelpVisible(false)}
                     style={styles.dialog}
                 >
-                    <Dialog.Title>Sampling Designs</Dialog.Title>
+                    <Dialog.Title><Text>Sampling Designs</Text></Dialog.Title>
                     <Dialog.ScrollArea>
                         <ScrollView contentContainerStyle={styles.dialogScrollContent}>
                             <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Simple random:</Text> random
-                                distribution of sampling locations
+                                <Text style={styles.bold}>Simple random:</Text> <Text>random
+                                distribution of sampling locations</Text>
                             </Text>
                             <Divider style={styles.divider} />
 
                             <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Systematic random:</Text> random
+                                <Text style={styles.bold}>Systematic random:</Text> <Text>random
                                 distribution of sampling locations, but arranged in a regular
-                                pattern
+                                pattern</Text>
                             </Text>
                             <Divider style={styles.divider} />
 
                             <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Clustered random:</Text> random
-                                distribution of sampling locations, but clustered in arrays
+                                <Text style={styles.bold}>Clustered random:</Text> <Text>random
+                                distribution of sampling locations, but clustered in arrays</Text>
                             </Text>
                             <Divider style={styles.divider} />
 
                             <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Experimental:</Text> non-random
+                                <Text style={styles.bold}>Experimental:</Text> <Text>non-random
                                 distribution aimed to study an effect, including the
-                                before-after control-impact (BACI) design
+                                before-after control-impact (BACI) design</Text>
                             </Text>
                             <Divider style={styles.divider} />
 
                             <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Targeted:</Text> non-random
+                                <Text style={styles.bold}>Targeted:</Text> <Text>non-random
                                 distribution optimized for capturing specific target species
-                                (often using various bait types)
+                                (often using various bait types)</Text>
                             </Text>
                             <Divider style={styles.divider} />
 
                             <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Opportunistic:</Text> opportunistic
-                                camera trapping (usually with a small number of cameras).
+                                <Text style={styles.bold}>Opportunistic:</Text> <Text>opportunistic
+                                camera trapping (usually with a small number of cameras).</Text>
                             </Text>
                         </ScrollView>
                     </Dialog.ScrollArea>
@@ -273,18 +273,18 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                     onDismiss={() => setCaptureHelpVisible(false)}
                     style={styles.dialog}
                 >
-                    <Dialog.Title>Capture Methods</Dialog.Title>
+                    <Dialog.Title><Text>Capture Methods</Text></Dialog.Title>
                     <Dialog.ScrollArea>
                         <ScrollView contentContainerStyle={styles.dialogScrollContent}>
                             <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>activityDetection:</Text> The camera
-                                uses the motion-detection sensor to record photos
+                                <Text style={styles.bold}>activityDetection:</Text> <Text>The camera
+                                uses the motion-detection sensor to record photos</Text>
                             </Text>
                             <Divider style={styles.divider} />
 
                             <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>timeLapse:</Text> Set a timer (e.g.
-                                every 30 seconds) for the camera to take photos.
+                                <Text style={styles.bold}>timeLapse:</Text> <Text>Set a timer (e.g.
+                                every 30 seconds) for the camera to take photos.</Text>
                             </Text>
                         </ScrollView>
                     </Dialog.ScrollArea>

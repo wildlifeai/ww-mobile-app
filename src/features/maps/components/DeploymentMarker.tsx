@@ -54,7 +54,7 @@ const DeploymentMarkerComponent: React.FC<Props> = ({ deployment, onPress }) => 
             tracksInfoWindowChanges={false} // We don't use InfoWindow/Callout
         >
             <View style={[styles.markerBody, { borderColor: color }]}>
-                <Image source="sf:camera.fill" style={{ width: 20, height: 20, tintColor: color }} />
+                <Image source="sf:camera.fill" style={[styles.icon, { tintColor: color }]} />
             </View>
         </Marker>
     )
@@ -67,6 +67,10 @@ const styles = StyleSheet.create({
         padding: 4,
         borderWidth: 2,
         opacity: 1
+    },
+    icon: {
+        width: 20,
+        height: 20,
     }
 })
 

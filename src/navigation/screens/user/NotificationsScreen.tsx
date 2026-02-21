@@ -68,7 +68,7 @@ export const Notifications = () => {
 				contentContainerStyle={styles.scrollContent}
 			>
 				<WWText variant="titleMedium" style={styles.header}>
-					Pending Invitations
+					<Text>Pending Invitations</Text>
 				</WWText>
 
 				{loading && !refreshing && invitations.length === 0 ? (

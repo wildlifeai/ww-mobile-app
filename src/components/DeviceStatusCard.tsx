@@ -22,14 +22,14 @@ const StatusItem: React.FC<StatusItemProps> = ({ label, value, status, icon }) =
     return (
         <View style={styles.itemContainer}>
             <View style={styles.labelContainer}>
-                {icon && <Image source={icon} style={[{ width: 16, height: 16, tintColor: '#666' }, styles.icon]} />}
+                {icon && <Image source={icon} style={[styles.baseIcon, styles.iconNeutral, styles.icon]} />}
                 <Text style={styles.label}>{label}</Text>
             </View>
             <View style={styles.valueContainer}>
                 <Text style={[styles.value, { color: getStatusColor() }]}>{value}</Text>
-                {status === 'success' && <Image source="sf:checkmark.circle.fill" style={[{ width: 16, height: 16, tintColor: '#4CAF50' }, styles.statusIcon]} />}
-                {status === 'error' && <Image source="sf:exclamationmark.circle.fill" style={[{ width: 16, height: 16, tintColor: '#F44336' }, styles.statusIcon]} />}
-                {status === 'warning' && <Image source="sf:exclamationmark.triangle.fill" style={[{ width: 16, height: 16, tintColor: '#FFC107' }, styles.statusIcon]} />}
+                {status === 'success' && <Image source="sf:checkmark.circle.fill" style={[styles.baseIcon, styles.iconSuccess, styles.statusIcon]} />}
+                {status === 'error' && <Image source="sf:exclamationmark.circle.fill" style={[styles.baseIcon, styles.iconError, styles.statusIcon]} />}
+                {status === 'warning' && <Image source="sf:exclamationmark.triangle.fill" style={[styles.baseIcon, styles.iconWarning, styles.statusIcon]} />}
             </View>
         </View>
     )
@@ -131,12 +131,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
         borderRadius: 12,
         padding: 16,
-        marginVertical: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
     },
     title: {
         fontSize: 16,
@@ -173,5 +168,21 @@ const styles = StyleSheet.create({
     },
     statusIcon: {
         marginLeft: 6,
-    }
+    },
+    baseIcon: {
+        width: 16,
+        height: 16,
+    },
+    iconNeutral: {
+        tintColor: '#666',
+    },
+    iconSuccess: {
+        tintColor: '#4CAF50',
+    },
+    iconError: {
+        tintColor: '#F44336',
+    },
+    iconWarning: {
+        tintColor: '#FFC107',
+    },
 })

@@ -85,7 +85,7 @@ export const ChangeRoleDialog = ({ projectId, visible, member, user, onDismiss, 
 	return (
 		<Portal>
 			<Dialog visible={visible} onDismiss={onDismiss}>
-				<Dialog.Title>Change Member Role</Dialog.Title>
+				<Dialog.Title><Text>Change Member Role</Text></Dialog.Title>
 				<Dialog.Content>
 					{member && (
 						<>

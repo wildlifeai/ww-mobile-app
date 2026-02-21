@@ -1,4 +1,5 @@
 import { View, FlatList, StyleSheet } from 'react-native'
+import { useCallback } from 'react'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
@@ -40,6 +41,16 @@ export const DeviceDiscoveryScreen = () => {
         </View>
     )
 
+    const renderDeviceItem = useCallback(({ item }: { item: any }) => (
+        <DeviceItem
+            disabled={isAnyDeviceConnecting}
+            item={item}
+            disconnect={handleDisconnect}
+            go={handleDeviceSelect}
+            upgrade={() => { }} // No-op for selection screen
+        />
+    ), [isAnyDeviceConnecting, handleDisconnect, handleDeviceSelect])
+
     return (
         <WWScreenView scrollable={false}>
             <View style={styles.container}>
@@ -69,15 +80,7 @@ export const DeviceDiscoveryScreen = () => {
                 {/* Devices List */}
                 <FlatList
                     data={devicesToDisplay}
-                    renderItem={({ item }) => (
-                        <DeviceItem
-                            disabled={isAnyDeviceConnecting}
-                            item={item}
-                            disconnect={handleDisconnect}
-                            go={handleDeviceSelect}
-                            upgrade={() => { }} // No-op for selection screen
-                        />
-                    )}
+                    renderItem={renderDeviceItem}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={renderEmptyState}

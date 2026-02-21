@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Modal, View, Image, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { Modal, View, Image, StyleSheet, useWindowDimensions, TouchableOpacity } from 'react-native';
 import { IconButton, Text, Surface, useTheme as usePaperTheme } from 'react-native-paper';
 
 interface ImagePreviewModalProps {
@@ -8,25 +8,30 @@ interface ImagePreviewModalProps {
     onDismiss: () => void;
 }
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
     visible,
     imageUri,
     onDismiss,
 }) => {
     const theme = usePaperTheme();
+    const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+
     const dynamicStyles = useMemo(() => ({
         content: {
-            backgroundColor: theme.colors.surface
+            backgroundColor: theme.colors.surface,
+            width: SCREEN_WIDTH * 0.9,
+            maxHeight: SCREEN_HEIGHT * 0.8,
         },
         header: {
             backgroundColor: theme.colors.primary
         },
+        imageContainer: {
+            height: SCREEN_HEIGHT * 0.6,
+        },
         filename: {
             color: theme.colors.onSurfaceVariant
         }
-    }), [theme])
+    }), [theme, SCREEN_WIDTH, SCREEN_HEIGHT])
 
     if (!imageUri) return null;
 
@@ -59,7 +64,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                     </View>
 
                     {/* Image */}
-                    <View style={styles.imageContainer}>
+                    <View style={[styles.imageContainer, dynamicStyles.imageContainer]}>
                         <Image
                             source={{ uri: imageUri }}
                             style={styles.image}
@@ -94,11 +99,9 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.9)',
     },
     content: {
-        width: SCREEN_WIDTH * 0.9,
-        maxHeight: SCREEN_HEIGHT * 0.8,
         borderRadius: 12,
         overflow: 'hidden',
-        elevation: 8,
+        boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.3)",
     },
     header: {
         flexDirection: 'row',
@@ -115,7 +118,6 @@ const styles = StyleSheet.create({
     },
     imageContainer: {
         width: '100%',
-        height: SCREEN_HEIGHT * 0.6,
         backgroundColor: '#000',
         justifyContent: 'center',
         alignItems: 'center',

@@ -73,7 +73,7 @@ export const DeploymentHeroCard: React.FC<Props> = ({ deployment, isActive, stat
                     <View style={styles.infoRow}>
                         <WWIcon source="folder" size={16} color={colors.onSurfaceVariant} />
                         <WWText variant="bodyMedium" style={styles.infoText}>
-                            Project ID: {deployment.projectId.slice(0, 8)}...
+                            <Text>Project ID: {deployment.projectId.slice(0, 8)}...</Text>
                         </WWText>
                     </View>
                 )}

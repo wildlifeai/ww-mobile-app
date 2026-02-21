@@ -86,7 +86,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
     if (!deployment) {
         return (
             <WWScreenView>
-                <WWText>Deployment not found.</WWText>
+                <WWText><Text>Deployment not found.</Text></WWText>
             </WWScreenView>
         )
     }
