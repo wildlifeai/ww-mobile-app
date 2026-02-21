@@ -48,7 +48,7 @@
     "dev:status": "npm run types:check-local && npm run schema:validate:live:local",
     "validate:ci": "npm run lint && npm run type-check && npm test",
     "build:android-debug": "npx expo prebuild --no-install && cd android && ./gradlew assembleDebug",
-    "build:ios-sanity": "npx expo prebuild --no-install && npx pod-install && xcodebuild -workspace ios/*.xcworkspace -scheme * -showBuildSettings",
+    "build:ios-sanity": "npx expo prebuild --no-install && npx pod-install && xcodebuild -workspace ios/*.xcworkspace -scheme wildlifewatcher -showBuildSettings",
     "postinstall": "npx patch-package && npm run validate:deps",
     "prepare": "husky"
   },
@@ -151,7 +151,8 @@
   "lint-staged": {
     "*.{js,ts,tsx}": [
       "eslint --fix",
-      "npm test -- --silent"
+      "npm test -- --findRelatedTests --bail --passWithNoTests",
+      "() => 'npm run type-check'"
     ]
   }
 }

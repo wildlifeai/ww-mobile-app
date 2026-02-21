@@ -8,7 +8,7 @@ This document describes the team's process for managing branches, pull requests,
 |--------|---------|-----------------|
 | `main` | Stable production releases (Semantic Release targets) | **Never** — only merged from `dev` via PR |
 | `dev` | Integration branch (head branch for all work) | **Never** — only merged from feature branches via PR |
-| `feature/*` | Individual task or feature work, bug fixes | Yes |
+| `feature/*`, `fix/*`, `chore/*`, etc. | Individual task or feature work, bug fixes | Yes |
 
 > [!IMPORTANT]
 > All work starts and ends with `dev`. Never commit directly to `dev` or `main`.
@@ -125,7 +125,7 @@ When you open a PR against `dev` or `main`, multiple GitHub Actions will run aut
 4. **E2E UI Tests:** Runs a full Maestro UI test suite on a hardware-accelerated local Android emulator.
 
 ### Code Review
-- **Address automated feedback**: If a GitHub Action fails, or Gemini code review leaves comments, push new commits to fix the issues.
+- **Address automated feedback**: If a GitHub Action fails, or Gemini code review leaves comments, use interactive rebase (`git rebase -i`) to amend your commits and force-push the changes. This keeps the commit history clean.
 - **Request Human Review**: Request a review from at least one team member.
 - **Approve and Merge**: Once approved and all CI checks are green, the PR author or reviewer can merge the PR into `dev`.
 

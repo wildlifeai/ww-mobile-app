@@ -214,7 +214,7 @@ types/
 ├── api.types.ts           # Shared API types
 ├── device.ts              # Device-specific types
 ├── project.ts             # Project-specific types
-├── UserProfile.ts         # User profile types
+├── userProfile.ts         # User profile types
 └── offline.ts             # Offline operation types
 ```
 
