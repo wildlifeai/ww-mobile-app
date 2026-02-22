@@ -38,22 +38,7 @@ Wildlife Watcher is a React Native mobile app that communicates with wildlife ca
 
 The app wraps `<MainNavigation />` in a tree of context providers. The nesting order matters — inner providers can access outer ones.
 
-```mermaid
-graph TD
-    A["GestureHandlerRootView"] --> B["KeyboardProvider"]
-    B --> C["SafeAreaProvider"]
-    C --> D["StatusBar"]
-    D --> E["Suspense"]
-    E --> F["ReduxProvider (store)"]
-    F --> G["PaperProvider (theme)"]
-    G --> H["NavigationContainer"]
-    H --> I["AndroidPermissionsProvider"]
-    I --> J["AppSetupProvider"]
-    J --> K["BleEngineProvider"]
-    K --> L["ListenToBleEngineProvider"]
-    L --> M["AuthProvider"]
-    M --> N["MainNavigation"]
-```
+> For the full provider hierarchy diagram, see [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md#srcapptsx--provider-hierarchy).
 
 > [!NOTE]
 > `SupabaseSyncService.setStore(store)` is called **before** the provider tree renders. This injects the Redux store into the sync service to avoid a circular dependency.
@@ -183,16 +168,7 @@ export default class Project extends Model {
 
 Components subscribe to WatermelonDB via `withObservables`. This replaces traditional `useEffect` + fetch patterns — the UI re-renders automatically when data changes.
 
-```typescript
-import { withObservables } from '@nozbe/watermelondb/react'
-
-const enhance = withObservables(['project'], ({ project }) => ({
-    project,
-    deployments: project.deployments.observe(),
-}))
-
-export default enhance(ProjectDetails)
-```
+> For detailed data access patterns, code examples, and the offline-first architecture, see [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md).
 
 ### Supabase
 
@@ -223,28 +199,9 @@ const client = getSupabaseClient()  // Throws if not initialized
 
 **Service:** [SupabaseSyncService.ts](file:///c:/dev/ww/src/services/SupabaseSyncService.ts) (1325 lines)
 
-Bidirectional sync between WatermelonDB and Supabase:
+Bidirectional sync between WatermelonDB and Supabase. Sync is debounced (2s) and tracks per-entity status via `syncSlice` in Redux.
 
-```mermaid
-flowchart LR
-    A["Local Changes"] --> B["SyncOutbox\n(WatermelonDB)"]
-    B --> C["uploadOutbox()"]
-    C --> D["Supabase"]
-    D --> E["pullRemoteChanges()"]
-    E --> F["WatermelonDB\n(local tables)"]
-```
-
-| Method | Direction | What It Syncs |
-|--------|-----------|---------------|
-| `uploadOutbox()` | Push | Pending local changes → Supabase |
-| `pullRemoteChanges()` | Pull | Reference data (capture methods, sensitivities, etc.) |
-| `syncProjects()` | Pull | Projects user has access to via `user_roles` |
-| `syncDevices()` | Pull | Device records |
-| `syncDeployments()` | Pull | Deployment records |
-| `syncDevicePreparation()` | Pull | Preparation records |
-| `syncUserRoles()` | Pull | User role assignments |
-
-Sync is debounced (2s) and tracks per-entity status via `syncSlice` in Redux.
+> For the full sync flow diagrams, push/pull logic, retry behaviour, and conflict resolution, see [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md#supabasesynservice).
 
 ---
 

@@ -49,25 +49,29 @@ The app wraps all content in nested providers. The order matters — inner provi
 ```typescript
 export const App = () => {
   return (
-    <SafeAreaProvider>
-      <ReduxProvider store={store}>
-        <PaperProvider>
-          <NavigationContainer>
-            <AndroidPermissionsProvider>
-              <AppSetupProvider>
-                <BleEngineProvider>
-                  <ListenToBleEngineProvider>
-                    <AuthProvider>
-                      <MainNavigation />
-                    </AuthProvider>
-                  </ListenToBleEngineProvider>
-                </BleEngineProvider>
-              </AppSetupProvider>
-            </AndroidPermissionsProvider>
-          </NavigationContainer>
-        </PaperProvider>
-      </ReduxProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView>
+      <KeyboardProvider>
+        <SafeAreaProvider>
+          <ReduxProvider store={store}>
+            <PaperProvider>
+              <NavigationContainer>
+                <AndroidPermissionsProvider>
+                  <AppSetupProvider>
+                    <BleEngineProvider>
+                      <ListenToBleEngineProvider>
+                        <AuthProvider>
+                          <MainNavigation />
+                        </AuthProvider>
+                      </ListenToBleEngineProvider>
+                    </BleEngineProvider>
+                  </AppSetupProvider>
+                </AndroidPermissionsProvider>
+              </NavigationContainer>
+            </PaperProvider>
+          </ReduxProvider>
+        </SafeAreaProvider>
+      </KeyboardProvider>
+    </GestureHandlerRootView>
   )
 }
 ```

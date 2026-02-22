@@ -129,6 +129,8 @@ When you open a PR against `dev` or `main`, multiple GitHub Actions will run aut
 - **Request Human Review**: Request a review from at least one team member.
 - **Approve and Merge**: Once approved and all CI checks are green, the PR author or reviewer can merge the PR into `dev`.
 
+> For branch protection rules (required checks, force-push blocking), see [Branch Protection](../resources/github-branch-protection.md).
+
 ---
 
 ## 7. Switching to a Different Task (Staggered Development)

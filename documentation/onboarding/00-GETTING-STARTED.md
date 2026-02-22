@@ -20,7 +20,7 @@ This guide is your single entry point to understanding the project, setting up y
 
 ## 📚 Documentation Roadmap
 
-This folder contains five onboarding guides:
+This folder contains six onboarding guides:
 
 | # | Guide | What It Covers |
 |---|-------|----------------|
@@ -30,7 +30,7 @@ This folder contains five onboarding guides:
 | 4 | [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) | Device preparation, deployment, and retrieval |
 | 5 | [05-GIT-WORKFLOW.md](./05-GIT-WORKFLOW.md) | Git branching, Conventional Commits, and CI pipeline rules |
 
-**Deep-dive guides** in [`documentation/setup/`](../setup/):
+**Deep-dive guides** in [`documentation/resources/`](../resources/):
 
 | Guide | What It Covers |
 |-------|----------------|
@@ -71,8 +71,9 @@ This folder contains five onboarding guides:
    ```
 
 ### 💻 Option B: Native Setup
-1. **Install Node.js 20.19.4** (exact version required):
-   - Use `nvm install 20.19.4 && nvm use 20.19.4`.
+1. **Install Node.js 20** (LTS or higher):
+   - Use `nvm install 20 && nvm use 20`.
+   - Verify: `node -v` should show `v20.x.x`.
 2. **Install CLI Tools**:
    - `npm install -g eas-cli@latest`.
 3. **Setup Android Debug Bridge (ADB)**:
@@ -92,9 +93,8 @@ This folder contains five onboarding guides:
 To ensure your environment is configured correctly, verify these checkpoints:
 
 1. **Tool Versions**:
-   - `node -v` → should show `v20.19.4`.
-   - `npx @expo/cli --version` → should show `0.18.31`.
-   - `eas --version` → should show `16.17.3`.
+   - `node -v` → should show `v20.x.x` (LTS).
+   - `eas --version` → should show a recent version.
 2. **Android Connection**:
    - `adb devices` → your device should appear (not "unauthorized").
 3. **App Launch**:
@@ -105,7 +105,7 @@ To ensure your environment is configured correctly, verify these checkpoints:
 
 ## 📱 Step 3: Get the App on Your Device
 
-1. **Fastest**: Download the [Latest Development APK](https://expo.dev/accounts/apps_wildlife/projects/wildlife-watcher-expo/builds/12fa61c8-cf82-47c5-a8b1-f92fea0a04ca).
+1. **Fastest**: Download the latest Development APK from [Expo Builds](https://expo.dev/accounts/apps_wildlife/projects/wildlife-watcher-expo/builds).
 2. **Manual**: Run `eas build --platform android --profile development`.
 3. **Note on Expo Go**: BLE and other native modules **will not work** in Expo Go. You must use the Development Build for full functionality.
 
