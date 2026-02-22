@@ -1,11 +1,16 @@
 name: E2E UI Tests
 
 on:
-  pull_request:
+  workflow_run:
+    workflows: ["Native Build Validation"]
+    types: [completed]
 
 jobs:
   maestro-e2e:
+    name: Maestro E2E Tests
     runs-on: ubuntu-latest
+    # Only run if the build workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -18,19 +23,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Setup Java
-        uses: actions/setup-java@v3
+      - name: Download APK from Build Workflow
+        uses: actions/download-artifact@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
-          cache: 'gradle'
-
-      - name: Generate Android Native Directory
-        run: npx expo prebuild --no-install --platform android
-
-      - name: Build Android App for Emulator (x86_64)
-        working-directory: ./android
-        run: ./gradlew assembleDebug
+          name: app-debug-apk
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Install KVM for hardware acceleration on Ubuntu runner
       - name: Enable KVM
@@ -54,9 +52,8 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          # Install the APK and run Maestro while the emulator is running
           script: |
-            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r ./app-debug.apk
             npm run test:maestro:offline
 
       - name: Upload Maestro Logs

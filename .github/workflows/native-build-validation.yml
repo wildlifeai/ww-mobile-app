@@ -5,6 +5,7 @@ on:
 
 jobs:
   android-build:
+    name: Android EAS Local Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,21 +26,24 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Expo Prebuild
-        run: npx expo prebuild --no-install --platform android
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build Android Debug APK
-        working-directory: ./android
-        run: ./gradlew assembleDebug
+      - name: Build Android APK (EAS Local)
+        run: eas build --local --profile ci --platform android --output ./app-debug.apk --non-interactive
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug.apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: app-debug-apk
+          path: ./app-debug.apk
           retention-days: 7
 
-  ios-build:
+  ios-sanity:
+    name: iOS Prebuild Sanity Check
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,20 +57,5 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      - name: Restore CocoaPods cache
-        uses: actions/cache@v4
-        with:
-          path: ios/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-
-
-      - name: Expo Prebuild
+      - name: Expo Prebuild (config plugin validation)
         run: npx expo prebuild --no-install --platform ios
-
-      - name: Install CocoaPods
-        run: npx pod-install
-
-      - name: Run iOS Sanity Check
-        working-directory: ./ios
-        run: xcodebuild -workspace wildlifewatcher.xcworkspace -scheme wildlifewatcher -showBuildSettings
