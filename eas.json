@@ -9,10 +9,10 @@
       "distribution": "internal",
       "env": {
         "NODE_ENV": "development",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://placeholder.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "placeholder",
-        "GOOGLE_MAPS_API_KEY_ANDROID": "placeholder",
-        "GOOGLE_MAPS_API_KEY_IOS": "placeholder"
+        "EXPO_PUBLIC_SUPABASE_URL": "${EXPO_PUBLIC_SUPABASE_URL_DEV}",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY_DEV}",
+        "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
+        "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
       },
       "android": {
         "buildType": "apk"
@@ -38,12 +38,32 @@
         "resourceClass": "medium"
       }
     },
+    "staging": {
+      "distribution": "internal",
+      "env": {
+        "NODE_ENV": "development",
+        "EXPO_PUBLIC_SUPABASE_URL": "${EXPO_PUBLIC_SUPABASE_URL_PROD}",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY_PROD}",
+        "EXPO_PUBLIC_SUPABASE_PROD_URL": "${EXPO_PUBLIC_SUPABASE_URL_PROD}",
+        "EXPO_PUBLIC_SUPABASE_PROD_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY_PROD}",
+        "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
+        "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "resourceClass": "medium"
+      }
+    },
     "preview": {
       "distribution": "internal",
       "env": {
         "NODE_ENV": "development",
         "EXPO_PUBLIC_SUPABASE_URL": "${EXPO_PUBLIC_SUPABASE_URL_PROD}",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY_PROD}",
+        "EXPO_PUBLIC_SUPABASE_PROD_URL": "${EXPO_PUBLIC_SUPABASE_URL_PROD}",
+        "EXPO_PUBLIC_SUPABASE_PROD_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY_PROD}",
         "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
         "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
       },
@@ -61,6 +81,8 @@
         "NODE_ENV": "production",
         "EXPO_PUBLIC_SUPABASE_URL": "${EXPO_PUBLIC_SUPABASE_URL_PROD}",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY_PROD}",
+        "EXPO_PUBLIC_SUPABASE_PROD_URL": "${EXPO_PUBLIC_SUPABASE_URL_PROD}",
+        "EXPO_PUBLIC_SUPABASE_PROD_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY_PROD}",
         "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
         "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
       },

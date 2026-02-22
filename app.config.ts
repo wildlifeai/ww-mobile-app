@@ -76,8 +76,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         // Expose env vars to Expo Constants
         supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
         supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-        supabaseProdUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
-        supabaseProdAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+        supabaseProdUrl: process.env.EXPO_PUBLIC_SUPABASE_PROD_URL,
+        supabaseProdAnonKey: process.env.EXPO_PUBLIC_SUPABASE_PROD_ANON_KEY,
         isDevelopment: IS_DEV,
     },
     plugins: [
