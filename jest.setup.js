@@ -28,6 +28,10 @@ jest.mock("expo-crypto", () => ({
 	randomUUID: jest.fn(() => "test-uuid"),
 }))
 
+jest.mock("expo-image", () => ({
+	Image: "Image",
+}))
+
 jest.mock("expo-file-system", () => ({
 	cacheDirectory: "file:///test/cache/",
 	documentDirectory: "file:///test/documents/",

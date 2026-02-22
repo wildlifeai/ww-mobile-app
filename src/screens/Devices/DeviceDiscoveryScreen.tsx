@@ -1,8 +1,9 @@
 import { View, FlatList, StyleSheet } from 'react-native'
+import { useCallback } from 'react'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
-import { ActivityIndicator } from 'react-native-paper'
+import { ActivityIndicator, Text } from 'react-native-paper'
 
 import { DeviceItem } from '../../components/DeviceItem'
 import { useDeviceDiscovery } from './hooks/useDeviceDiscovery'
@@ -24,21 +25,31 @@ export const DeviceDiscoveryScreen = () => {
                 <>
                     <ActivityIndicator size="large" color="#4CAF50" />
                     <WWText variant="bodyLarge" style={styles.emptyText}>
-                        Scanning for nearby devices...
+                        <Text>Scanning for nearby devices...</Text>
                     </WWText>
                 </>
             ) : (
                 <>
                     <WWText variant="titleMedium" style={styles.emptyTitle}>
-                        No Devices Found
+                        <Text>No Devices Found</Text>
                     </WWText>
                     <WWText variant="bodyMedium" style={styles.emptyText}>
-                        To make your camera discoverable, press the button on the Wildlife Watcher until the blue Bluetooth icon lights up.
+                        <Text>To make your camera discoverable, press the button on the Wildlife Watcher until the blue Bluetooth icon lights up.</Text>
                     </WWText>
                 </>
             )}
         </View>
     )
+
+    const renderDeviceItem = useCallback(({ item }: { item: any }) => (
+        <DeviceItem
+            disabled={isAnyDeviceConnecting}
+            item={item}
+            disconnect={handleDisconnect}
+            go={handleDeviceSelect}
+            upgrade={() => { }} // No-op for selection screen
+        />
+    ), [isAnyDeviceConnecting, handleDisconnect, handleDeviceSelect])
 
     return (
         <WWScreenView scrollable={false}>
@@ -46,9 +57,9 @@ export const DeviceDiscoveryScreen = () => {
                 {/* Header Title based on mode */}
                 <View style={styles.header}>
                     <WWText variant="titleLarge" style={styles.title}>
-                        {mode === 'prepare' ? 'Select Device to Prepare' :
+                        <Text>{mode === 'prepare' ? 'Select Device to Prepare' :
                          mode === 'deployment' ? 'Select Device to Deploy' :
-                         'Engineer Console: Select Device'}
+                         'Engineer Console: Select Device'}</Text>
                     </WWText>
                 </View>
 
@@ -61,7 +72,7 @@ export const DeviceDiscoveryScreen = () => {
                             loading={isScanning}
                             style={styles.scanButton}
                         >
-                            {isScanning ? 'Scanning' : 'Scan'}
+                            <Text>{isScanning ? 'Scanning' : 'Scan'}</Text>
                         </WWButton>
                     </View>
                 </View>
@@ -69,15 +80,7 @@ export const DeviceDiscoveryScreen = () => {
                 {/* Devices List */}
                 <FlatList
                     data={devicesToDisplay}
-                    renderItem={({ item }) => (
-                        <DeviceItem
-                            disabled={isAnyDeviceConnecting}
-                            item={item}
-                            disconnect={handleDisconnect}
-                            go={handleDeviceSelect}
-                            upgrade={() => { }} // No-op for selection screen
-                        />
-                    )}
+                    renderItem={renderDeviceItem}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={renderEmptyState}

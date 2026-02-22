@@ -1,6 +1,6 @@
 
 import { Platform } from 'react-native'
-import { List } from 'react-native-paper'
+import { List, Text } from 'react-native-paper'
 
 const ListItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
 
@@ -17,7 +17,7 @@ export const PlatformInfoSection = () => {
 
     return (
         <List.Section>
-            <List.Subheader>Platform Information</List.Subheader>
+            <List.Subheader><Text>Platform Information</Text></List.Subheader>
             <List.Item
                 title="Platform"
                 description={Platform.OS}

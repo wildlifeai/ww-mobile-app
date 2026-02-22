@@ -116,7 +116,7 @@ export function StandardizedListLayout<T>({
                     </Text>
                     {onRetry && (
                         <Button mode="contained" onPress={onRetry} style={styles.retryButton}>
-                            Retry
+                            <Text>Retry</Text>
                         </Button>
                     )}
                 </View>
@@ -172,7 +172,7 @@ export function StandardizedListLayout<T>({
                         onPress={onPrimaryAction}
                         style={styles.createButton}
                     >
-                        {primaryActionLabel}
+                        <Text>{primaryActionLabel}</Text>
                     </Button>
                 </View>
             ) : (
@@ -241,7 +241,6 @@ const styles = StyleSheet.create({
         paddingLeft: 72, // Make room for Menu FAB
     },
     searchbar: {
-        elevation: 0,
         flex: 1,
     },
 
@@ -249,7 +248,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 16,
         backgroundColor: 'transparent',
-        elevation: 0,
         zIndex: 1000,
     },
     listContent: {

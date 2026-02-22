@@ -1,6 +1,6 @@
 
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { KeyboardStickyView } from "react-native-keyboard-controller";
 
 interface ConsoleInputProps {
@@ -36,7 +36,7 @@ export const ConsoleInput = ({
                     onPress={onSend}
                     disabled={isSendDisabled}
                 >
-                    <Ionicons name="send" size={20} color="#FFF" />
+                    <MaterialCommunityIcons name="send" size={20} color="#FFF" />
                 </TouchableOpacity>
             </View>
         </KeyboardStickyView>
@@ -73,5 +73,10 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: '#BDBDBD',
+    },
+    iconStyles: {
+        width: 20,
+        height: 20,
+        tintColor: '#FFF'
     }
 });

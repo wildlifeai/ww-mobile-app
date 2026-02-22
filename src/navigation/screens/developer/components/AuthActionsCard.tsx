@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Button, Card, TextInput } from 'react-native-paper'
+import { Button, Card, TextInput, Text } from 'react-native-paper'
 
 interface AuthActionsCardProps {
     email: string
@@ -73,7 +73,7 @@ export const AuthActionsCard: React.FC<AuthActionsCardProps> = ({
                         disabled={isSubmitting || loading}
                         style={styles.flex1}
                     >
-                        {isSubmitting ? "Registering..." : "Register"}
+                        <Text>{isSubmitting ? "Registering..." : "Register"}</Text>
                     </Button>
 
                     <Button
@@ -82,7 +82,7 @@ export const AuthActionsCard: React.FC<AuthActionsCardProps> = ({
                         disabled={isSubmitting || loading}
                         style={styles.flex1}
                     >
-                        {isSubmitting ? "Logging in..." : "Login"}
+                        <Text>{isSubmitting ? "Logging in..." : "Login"}</Text>
                     </Button>
                 </View>
 
@@ -92,7 +92,7 @@ export const AuthActionsCard: React.FC<AuthActionsCardProps> = ({
                         onPress={onLogout}
                         style={styles.input}
                     >
-                        Logout
+                        <Text>Logout</Text>
                     </Button>
                 )}
 
@@ -103,7 +103,7 @@ export const AuthActionsCard: React.FC<AuthActionsCardProps> = ({
                         style={styles.flex1}
                         compact
                     >
-                        Check Status
+                        <Text>Check Status</Text>
                     </Button>
 
                     <Button
@@ -112,7 +112,7 @@ export const AuthActionsCard: React.FC<AuthActionsCardProps> = ({
                         style={styles.flex1}
                         compact
                     >
-                        Refresh Session
+                        <Text>Refresh Session</Text>
                     </Button>
                 </View>
 
@@ -121,7 +121,7 @@ export const AuthActionsCard: React.FC<AuthActionsCardProps> = ({
                     onPress={onResetPassword}
                     style={styles.textButton}
                 >
-                    Reset Password
+                    <Text>Reset Password</Text>
                 </Button>
             </Card.Content>
         </Card>

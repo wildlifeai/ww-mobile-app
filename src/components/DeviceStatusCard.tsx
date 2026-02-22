@@ -1,12 +1,12 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 
 interface StatusItemProps {
     label: string
     value: string
     status: 'success' | 'warning' | 'error' | 'neutral'
-    icon?: keyof typeof Ionicons.glyphMap
+    icon?: string
 }
 
 const StatusItem: React.FC<StatusItemProps> = ({ label, value, status, icon }) => {
@@ -22,14 +22,14 @@ const StatusItem: React.FC<StatusItemProps> = ({ label, value, status, icon }) =
     return (
         <View style={styles.itemContainer}>
             <View style={styles.labelContainer}>
-                {icon && <Ionicons name={icon} size={16} color="#666" style={styles.icon} />}
+                {icon && <MaterialCommunityIcons name={icon as any} size={16} color="#666" style={styles.icon} />}
                 <Text style={styles.label}>{label}</Text>
             </View>
             <View style={styles.valueContainer}>
                 <Text style={[styles.value, { color: getStatusColor() }]}>{value}</Text>
-                {status === 'success' && <Ionicons name="checkmark-circle" size={16} color="#4CAF50" style={styles.statusIcon} />}
-                {status === 'error' && <Ionicons name="alert-circle" size={16} color="#F44336" style={styles.statusIcon} />}
-                {status === 'warning' && <Ionicons name="warning" size={16} color="#FFC107" style={styles.statusIcon} />}
+                {status === 'success' && <MaterialCommunityIcons name="check-circle" size={16} color="#4CAF50" style={styles.statusIcon} />}
+                {status === 'error' && <MaterialCommunityIcons name="alert-circle" size={16} color="#F44336" style={styles.statusIcon} />}
+                {status === 'warning' && <MaterialCommunityIcons name="alert" size={16} color="#FFC107" style={styles.statusIcon} />}
             </View>
         </View>
     )
@@ -92,21 +92,21 @@ export const DeviceStatusCard: React.FC<DeviceStatusCardProps> = ({
                 label="Battery"
                 value={batteryLevel ? `${batteryLevel}% (${batteryVoltage || '?'}mV)` : 'Unknown'}
                 status={getBatteryStatus()}
-                icon="battery-charging"
+                icon="battery-charging-100"
             />
 
             <StatusItem
                 label="SD Card"
                 value={sdCardTotal ? `${formatBytes(sdCardAvailable)} / ${formatBytes(sdCardTotal)} free` : 'Not Detected'}
                 status={getSdCardStatus()}
-                icon="save"
+                icon="harddisk"
             />
 
             <StatusItem
                 label="Firmware"
                 value={firmwareVersion || 'Unknown'}
                 status={firmwareVersion ? 'neutral' : 'warning'}
-                icon="hardware-chip"
+                icon="cpu-64-bit"
             />
 
             <StatusItem
@@ -120,7 +120,7 @@ export const DeviceStatusCard: React.FC<DeviceStatusCardProps> = ({
                 label="LoRaWAN"
                 value={lorawanStatus ? `RSSI: ${lorawanStatus.rssi}, SNR: ${lorawanStatus.snr}` : 'Not Tested'}
                 status={getLorawanStatus()}
-                icon="radio"
+                icon="antenna"
             />
         </View>
     )
@@ -131,12 +131,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
         borderRadius: 12,
         padding: 16,
-        marginVertical: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
     },
     title: {
         fontSize: 16,
@@ -173,5 +168,21 @@ const styles = StyleSheet.create({
     },
     statusIcon: {
         marginLeft: 6,
-    }
+    },
+    baseIcon: {
+        width: 16,
+        height: 16,
+    },
+    iconNeutral: {
+        tintColor: '#666',
+    },
+    iconSuccess: {
+        tintColor: '#4CAF50',
+    },
+    iconError: {
+        tintColor: '#F44336',
+    },
+    iconWarning: {
+        tintColor: '#FFC107',
+    },
 })

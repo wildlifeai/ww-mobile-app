@@ -74,9 +74,9 @@ export const Devices = () => {
 		loadDevices()
 	}
 
-	const handleDevicePress = (deviceId: string) => {
+	const handleDevicePress = useCallback((deviceId: string) => {
 		(navigation as any).navigate('DeviceDetails', { deviceId })
-	}
+	}, [navigation])
 
 	const handlePrepareAndTest = () => {
 		(navigation as any).navigate('DeviceDiscovery', { mode: 'prepare' })
@@ -93,12 +93,14 @@ export const Devices = () => {
 		device.bluetoothId?.toLowerCase().includes(searchQuery.toLowerCase())
 	)
 
+	const renderDeviceItem = useCallback(({ item }: { item: DeviceListItem }) => (
+		<DeviceCard device={item} onPress={() => handleDevicePress(item.id)} />
+	), [handleDevicePress])
+
 	return (
 		<StandardizedListLayout
 			data={filteredDevices}
-			renderItem={({ item }) => (
-				<DeviceCard device={item} onPress={() => handleDevicePress(item.id)} />
-			)}
+			renderItem={renderDeviceItem}
 			keyExtractor={(item) => item.id}
 			isLoading={loading || (isGlobalSyncing && devices.length === 0)}
 			isFetching={refreshing || isGlobalSyncing}

@@ -1,7 +1,7 @@
 import { View, StyleSheet } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
-import { List, Divider } from "react-native-paper"
+import { List, Divider, Text } from "react-native-paper"
 import { WWScreenView } from "../../../components/ui/WWScreenView"
 import { WWText } from "../../../components/ui/WWText"
 import { RootStackParamList } from "../../types"
@@ -22,13 +22,13 @@ export const Settings = () => {
 	return (
 		<WWScreenView>
 			<View style={styles.container}>
-				<WWText variant="titleSmall">Settings screen.</WWText>
+				<WWText variant="titleSmall"><Text>Settings screen.</Text></WWText>
 
 				{__DEV__ && (
 					<>
 						<Divider style={{ marginVertical: spacing * 2 }} />
 						<List.Section>
-							<List.Subheader>Developer Options</List.Subheader>
+							<List.Subheader><Text>Developer Options</Text></List.Subheader>
 							<List.Item
 								title="Developer Settings"
 								description="Runtime environment switching and debug tools"

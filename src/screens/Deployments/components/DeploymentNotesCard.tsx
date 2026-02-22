@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card } from 'react-native-paper'
+import { Card, Text } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { useExtendedTheme } from '../../../theme'
@@ -34,7 +34,7 @@ export const DeploymentNotesCard: React.FC<Props> = ({ deployment }) => {
                 {deployment.startDeploymentComments && (
                     <View style={styles.noteSection}>
                         <WWText variant="labelLarge" style={styles.noteLabel}>
-                            Start Comments
+                            <Text>Start Comments</Text>
                         </WWText>
                         <WWText variant="bodyMedium" style={styles.noteText}>
                             {deployment.startDeploymentComments}
@@ -44,7 +44,7 @@ export const DeploymentNotesCard: React.FC<Props> = ({ deployment }) => {
                 {deployment.endDeploymentComments && (
                     <View style={styles.noteSection}>
                         <WWText variant="labelLarge" style={styles.noteLabel}>
-                            Retrieval Notes
+                            <Text>Retrieval Notes</Text>
                         </WWText>
                         <WWText variant="bodyMedium" style={styles.noteText}>
                             {deployment.endDeploymentComments}

@@ -44,7 +44,7 @@ export const TestResultItem: React.FC<TestResultItemProps> = ({ test }) => {
 					</Text>
 					{test.duration && (
 						<Chip mode="outlined" compact>
-							{test.duration}ms
+							<Text>{test.duration}ms</Text>
 						</Chip>
 					)}
 				</View>

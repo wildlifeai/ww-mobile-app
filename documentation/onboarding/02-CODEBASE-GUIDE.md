@@ -49,25 +49,29 @@ The app wraps all content in nested providers. The order matters — inner provi
 ```typescript
 export const App = () => {
   return (
-    <SafeAreaProvider>
-      <ReduxProvider store={store}>
-        <PaperProvider>
-          <NavigationContainer>
-            <AndroidPermissionsProvider>
-              <AppSetupProvider>
-                <BleEngineProvider>
-                  <ListenToBleEngineProvider>
-                    <AuthProvider>
-                      <MainNavigation />
-                    </AuthProvider>
-                  </ListenToBleEngineProvider>
-                </BleEngineProvider>
-              </AppSetupProvider>
-            </AndroidPermissionsProvider>
-          </NavigationContainer>
-        </PaperProvider>
-      </ReduxProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView>
+      <KeyboardProvider>
+        <SafeAreaProvider>
+          <ReduxProvider store={store}>
+            <PaperProvider>
+              <NavigationContainer>
+                <AndroidPermissionsProvider>
+                  <AppSetupProvider>
+                    <BleEngineProvider>
+                      <ListenToBleEngineProvider>
+                        <AuthProvider>
+                          <MainNavigation />
+                        </AuthProvider>
+                      </ListenToBleEngineProvider>
+                    </BleEngineProvider>
+                  </AppSetupProvider>
+                </AndroidPermissionsProvider>
+              </NavigationContainer>
+            </PaperProvider>
+          </ReduxProvider>
+        </SafeAreaProvider>
+      </KeyboardProvider>
+    </GestureHandlerRootView>
   )
 }
 ```
@@ -207,16 +211,32 @@ database/
 
 ### `src/types/` — TypeScript Definitions
 
-```
+```text
 types/
-├── supabase.ts            # Auto-generated from Supabase schema
-├── offline.ts             # Offline operation types
-└── ... feature types
+├── index.ts               # Central export for all type definitions (API, DB, BLE, Offline, etc.)
+├── database.types.ts      # Auto-generated from Supabase schema
+├── api.types.ts           # Shared API types
+├── device.ts              # Device-specific types
+├── project.ts             # Project-specific types
+├── userProfile.ts         # User profile types
+└── offline.ts             # Offline operation types
+```
+
+**Type Import Pattern:**
+To reduce the bundle size and prevent circular dependencies, **always import types from the central index** (`src/types/index.ts` or `src/types`) rather than individual files or the massive `database.types.ts` file. All conflicts are aliased safely.
+
+```typescript
+// ✅ CORRECT: Import from central index
+import { OfflineUser, ProjectWithDetails } from "../../types"
+
+// ❌ WRONG: Don't import from specific files
+import { ProjectWithDetails } from "../../types/project"
+import { Database } from "../../types/database.types"
 ```
 
 **Regenerate types after backend changes:**
 ```bash
-npm run types:cloud-dev     # From cloud-dev environment
+npm run types:cloud-dev     # Regenerate database.types.ts from cloud-dev environment
 npm run schema:generate     # Regenerate WatermelonDB schema
 ```
 

@@ -1,0 +1,88 @@
+name: Native Build Validation
+
+on:
+  pull_request:
+    paths:
+      # Only trigger when files that affect the native build are changed
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'app.config.ts'
+      - 'app.json'
+      - 'eas.json'
+      - 'patches/**'
+      - 'babel.config.js'
+      - 'metro.config.js'
+      - 'tsconfig.json'
+
+jobs:
+  android-build:
+    name: Android EAS Local Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      # Cache the Expo prebuild output (android/ directory)
+      - name: Generate prebuild fingerprint
+        id: fingerprint
+        run: |
+          HASH=$(npx expo-updates fingerprint:generate --platform android 2>/dev/null | md5sum | cut -d' ' -f1 || echo "no-fingerprint")
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+
+      - name: Restore cached APK
+        id: cache-apk
+        uses: actions/cache@v4
+        with:
+          path: ./app-debug.apk
+          key: android-apk-${{ steps.fingerprint.outputs.hash }}-${{ hashFiles('package-lock.json', 'app.config.ts', 'eas.json', 'patches/**') }}
+
+      - name: Build Android APK (EAS Local)
+        if: steps.cache-apk.outputs.cache-hit != 'true'
+        run: eas build --local --profile ci --platform android --output ./app-debug.apk --non-interactive
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: ./app-debug.apk
+          retention-days: 7
+
+  ios-sanity:
+    name: iOS Prebuild Sanity Check
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Expo Prebuild (config plugin validation)
+        run: npx expo prebuild --no-install --platform ios

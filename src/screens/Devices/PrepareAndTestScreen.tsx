@@ -11,7 +11,7 @@ import { FirmwareSection } from './components/FirmwareSection'
 import { HardwareBetaSection } from './components/HardwareBetaSection'
 import { FinishProgressDialog } from './components/FinishProgressDialog'
 import { HelpDialog } from '../../components/ui/HelpDialog'
-import { ActivityIndicator, useTheme } from 'react-native-paper'
+import { ActivityIndicator, useTheme, Text } from 'react-native-paper'
 import { usePrepareAndTest } from './hooks/usePrepareAndTest'
 
 export const PrepareAndTestScreen = () => {
@@ -64,7 +64,7 @@ export const PrepareAndTestScreen = () => {
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" />
                     <WWText variant="bodyMedium" style={styles.loadingText}>
-                        Preparing device...
+                        <Text>Preparing device...</Text>
                     </WWText>
                 </View>
             </WWScreenView>
@@ -77,17 +77,17 @@ export const PrepareAndTestScreen = () => {
                 <View style={styles.loadingContainer}>
                     <WWIcon source="alert-circle-outline" size={64} color={theme.colors.error} />
                     <WWText variant="headlineSmall" style={[styles.loadingText, { color: theme.colors.error }]}>
-                        Device Not Found
+                        <Text>Device Not Found</Text>
                     </WWText>
                     <WWText variant="bodyMedium" style={styles.errorText}>
-                        Could not find device details in the local database. Please try pairing again.
+                        <Text>Could not find device details in the local database. Please try pairing again.</Text>
                     </WWText>
                     <WWButton 
                         mode="contained" 
                         onPress={() => navigation.goBack()} 
                         style={styles.goBackButton}
                     >
-                        Go Back
+                        <Text>Go Back</Text>
                     </WWButton>
                 </View>
             </WWScreenView>
@@ -169,10 +169,10 @@ export const PrepareAndTestScreen = () => {
                         disabled={!selectedProject || initState.isInitializing || isFinishing}
                         loading={isFinishing}
                     >
-                        {isFinishing ? 'Finishing...' : 'Finish Preparation & Testing'}
+                        <Text>{isFinishing ? 'Finishing...' : 'Finish Preparation & Testing'}</Text>
                     </WWButton>
                     <WWButton mode="text" onPress={() => navigation.goBack()} disabled={isFinishing}>
-                        Cancel
+                        <Text>Cancel</Text>
                     </WWButton>
                 </View>
             </View>

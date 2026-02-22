@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card } from 'react-native-paper'
+import { Card, Text } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { useExtendedTheme } from '../../../theme'
@@ -31,7 +31,7 @@ export const DeploymentConfigurationCard: React.FC<Props> = ({ deployment, captu
             <Card.Content>
                 <View style={styles.deviceInfo}>
                     <View style={styles.infoRow}>
-                        <WWText variant="labelMedium" style={styles.infoLabel}>Capture Method:</WWText>
+                        <WWText variant="labelMedium" style={styles.infoLabel}><Text>Capture Method:</Text></WWText>
                         <WWText variant="bodyMedium" style={styles.valueText}>
                             {captureMethodName}
                         </WWText>
@@ -39,7 +39,7 @@ export const DeploymentConfigurationCard: React.FC<Props> = ({ deployment, captu
 
                     {deployment.captureMethodId === 1 && (
                         <View style={styles.infoRow}>
-                            <WWText variant="labelMedium" style={styles.infoLabel}>Sensitivity:</WWText>
+                            <WWText variant="labelMedium" style={styles.infoLabel}><Text>Sensitivity:</Text></WWText>
                             <WWText variant="bodyMedium" style={styles.valueText}>
                                 {sensitivityName}
                             </WWText>
@@ -47,9 +47,9 @@ export const DeploymentConfigurationCard: React.FC<Props> = ({ deployment, captu
                     )}
                     {deployment.captureMethodId === 2 && deployment.timelapseIntervalSeconds && (
                         <View style={styles.infoRow}>
-                            <WWText variant="labelMedium" style={styles.infoLabel}>Interval:</WWText>
+                            <WWText variant="labelMedium" style={styles.infoLabel}><Text>Interval:</Text></WWText>
                             <WWText variant="bodyMedium" style={styles.valueText}>
-                                {deployment.timelapseIntervalSeconds}s
+                                <Text>{deployment.timelapseIntervalSeconds}s</Text>
                             </WWText>
                         </View>
                     )}

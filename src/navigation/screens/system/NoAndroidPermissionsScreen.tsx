@@ -3,7 +3,7 @@ import { Linking, StyleSheet, View } from "react-native"
 import { useAppDispatch, useAppSelector } from "../../../redux"
 import { permissionRequest } from "../../../redux/slices/androidPermissionsSlice"
 import { WWScreenView } from "../../../components/ui/WWScreenView"
-import { Button, Divider } from "react-native-paper"
+import { Button, Divider, Text } from "react-native-paper"
 import { useExtendedTheme } from "../../../theme"
 import { WWText } from "../../../components/ui/WWText"
 
@@ -20,10 +20,10 @@ export const NoAndroidPermissions = () => {
 	const notAgain = neverAskAgain.length > 0
 
 	return (
-		<WWScreenView style={[styles.view]}>
+		<WWScreenView style={styles.view}>
 			<View>
 				<WWText variant="bodyMedium" align="center" gutter>
-					Please grant the necessary permissions to use this app.
+					<Text>Please grant the necessary permissions to use this app.</Text>
 				</WWText>
 				{error && (
 					<WWText style={{ paddingVertical: spacing }} variant="bodyMedium">
@@ -36,18 +36,18 @@ export const NoAndroidPermissions = () => {
 				disabled={notAgain}
 				onPress={() => dispatch(permissionRequest())}
 			>
-				Grant permissions
+				<Text>Grant permissions</Text>
 			</Button>
 			{notAgain && (
 				<>
 					<Divider bold style={[{ marginVertical: spacing }, styles.divider]} />
 					<WWText variant="bodyMedium" align="center" gutter>
-						Could not grant permissions. You will need to do it manually.
+						<Text>Could not grant permissions. You will need to do it manually.
 						Please, open settings and make sure all services are enabled for the
-						Wildlife Watcher application.
+						Wildlife Watcher application.</Text>
 					</WWText>
 					<Button mode="contained" onPress={openSettings}>
-						Open Settings
+						<Text>Open Settings</Text>
 					</Button>
 				</>
 			)}

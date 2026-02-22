@@ -57,7 +57,7 @@ export const Notifications = () => {
 		}
 	}, [])
 
-	const renderCardLeft = useCallback((props: any) => <Chip icon="email-outline" {...props} onPress={() => { }}>Invite</Chip>, [])
+	const renderCardLeft = useCallback((props: any) => <Chip icon="email-outline" {...props} onPress={() => { }}><Text>Invite</Text></Chip>, [])
 
 	return (
 		<WWScreenView>
@@ -68,14 +68,14 @@ export const Notifications = () => {
 				contentContainerStyle={styles.scrollContent}
 			>
 				<WWText variant="titleMedium" style={styles.header}>
-					Pending Invitations
+					<Text>Pending Invitations</Text>
 				</WWText>
 
 				{loading && !refreshing && invitations.length === 0 ? (
 					<ActivityIndicator style={styles.loading} />
 				) : invitations.length === 0 ? (
 					<View style={styles.emptyContainer}>
-						<WWText>No pending invitations</WWText>
+						<WWText><Text>No pending invitations</Text></WWText>
 					</View>
 				) : (
 					invitations.map((invite) => (
@@ -99,7 +99,7 @@ export const Notifications = () => {
 									disabled={processingId === invite.remoteId}
 									textColor={theme.colors.error}
 								>
-									Decline
+									<Text>Decline</Text>
 								</Button>
 								<Button
 									mode="contained"
@@ -107,7 +107,7 @@ export const Notifications = () => {
 									disabled={processingId === invite.remoteId}
 									loading={processingId === invite.remoteId}
 								>
-									Accept
+									<Text>Accept</Text>
 								</Button>
 							</Card.Actions>
 						</Card>

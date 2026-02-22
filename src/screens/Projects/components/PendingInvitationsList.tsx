@@ -35,7 +35,7 @@ export const PendingInvitationsList: React.FC<PendingInvitationsListProps> = ({
 							</Text>
 						</View>
 						<Chip icon="clock-outline" compact>
-							Pending
+							<Text>Pending</Text>
 						</Chip>
 					</Card.Content>
 				</Card>

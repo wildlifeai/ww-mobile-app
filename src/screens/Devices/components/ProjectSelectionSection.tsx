@@ -29,7 +29,7 @@ export const ProjectSelectionSection: React.FC<ProjectSelectionSectionProps> = (
             icon="help-circle-outline" 
             onPress={() => onShowHelp('Project Association', 'Select the project that this device will appear in. You can also create a new project here.')}
         >
-            Help
+            <Text>Help</Text>
         </Button>
     ), [onShowHelp])
 
@@ -66,7 +66,7 @@ export const ProjectSelectionSection: React.FC<ProjectSelectionSectionProps> = (
                     icon="plus"
                     disabled={isInitializing}
                 >
-                    Create New Project
+                    <Text>Create New Project</Text>
                 </WWButton>
             </Card.Content>
         </Card>

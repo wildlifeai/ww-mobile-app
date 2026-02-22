@@ -1,5 +1,5 @@
 import { NativeStackHeaderProps } from "@react-navigation/native-stack"
-import { Appbar, Chip } from "react-native-paper"
+import { Appbar, Chip, Text } from "react-native-paper"
 import { getHeaderTitle } from "@react-navigation/elements"
 import { useAppDrawer } from "./AppDrawer"
 import { useExtendedTheme } from "../theme"
@@ -46,7 +46,7 @@ export const NavigationBar = ({
 						mode="outlined"
 						icon="wifi-off"
 					>
-						Offline
+						<Text>Offline</Text>
 					</Chip>
 				)}
 			</View>

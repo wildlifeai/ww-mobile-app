@@ -37,7 +37,7 @@ export const ConsoleHeader = ({
                         onPress={onShowHelp}
                         style={styles.helpButton}
                     >
-                        Command Reference
+                        <Text>Command Reference</Text>
                     </Button>
                 </View>
             </View>
@@ -52,7 +52,7 @@ export const ConsoleHeader = ({
                     textColor="#FFFFFF"
                     loading={isConnecting}
                 >
-                    Connect to Console
+                    <Text>Connect to Console</Text>
                 </Button>
             )}
         </>

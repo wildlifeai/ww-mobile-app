@@ -1,5 +1,6 @@
 import { useForm } from "react-hook-form"
 import { StyleSheet, View } from "react-native"
+import { Text } from "react-native-paper"
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWSelect } from "../../components/ui/WWSelect"
 import { WWTextInput } from "../../components/ui/WWTextInput"
@@ -110,7 +111,7 @@ export const AddDeployment = () => {
 						onPress={handleSubmit(onSubmit)}
 						style={styles.button}
 					>
-						Confirm & Search for Device
+						<Text>Confirm & Search for Device</Text>
 					</WWButton>
 				</View>
 			</View>

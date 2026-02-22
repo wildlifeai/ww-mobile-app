@@ -36,7 +36,6 @@ The Wildlife Watcher mobile app allows users to communicate with Wildlife Watche
 This app uses **Expo SDK 54** with a managed workflow (prebuild enabled). Ensure you have:
 
 - **Node.js**: Version 20 (LTS) or higher
-- **Expo CLI**: `npm install -g expo-cli`
 - **EAS CLI**: `npm install -g eas-cli`
 - **Android Studio**: Android SDK 35 (Vanilla Ice Cream) & Java 17 (Zulu JDK 17 recommended)
 - **Xcode**: macOS only, latest version
@@ -100,7 +99,7 @@ eas build --platform android --profile production --auto-submit  # Build + submi
 > [!IMPORTANT]
 > **Signing Key**: Ensure your EAS Signing Key (SHA1 fingerprint) matches the one registered in the Google Play Console. Use `eas credentials` to verify.
 
-For detailed EAS configuration, see the [EAS guides](./documentation/setup/expo-eas/).
+For detailed EAS configuration, see the [EAS Guide](./documentation/resources/Expo-EAS-Guide.md).
 
 ## Troubleshooting
 
@@ -117,30 +116,17 @@ For detailed EAS configuration, see the [EAS guides](./documentation/setup/expo-
 ## Database Migrations
 
 > [!CAUTION]
-> **NEVER make database schema changes directly in this mobile repository.**
-> 
-> The Mobile Repository is a **Downstream Consumer** of the backend schema. All schema changes must originate from the Backend Repository.
-
-**Correct Workflow:**
-1.  **Backend Changes**: Make schema changes in the `wildlife-watcher-backend` repository.
-2.  **Cloud Deployment**: Push changes to the backend repo (CI/CD auto-deploys to Supabase Cloud).
-3.  **Mobile Sync**:
-    *   Schema: `npm run db:sync-schema`
-    *   Types: `npm run types:cloud-dev`
-    *   Verify: Check updated files in `supabase/schemas` and `src/types/supabase.ts`.
-
-See the [Data & Sync Guide](./documentation/onboarding/03-DATA-AND-SYNC.md) for schema drift prevention and the full 5-layer defence strategy.
+> **NEVER make database schema changes directly in this mobile repository.** All schema changes must originate from the `wildlife-watcher-backend` repository. See the [Data & Sync Guide](./documentation/onboarding/03-DATA-AND-SYNC.md) for the full schema drift prevention strategy.
 
 ## Testing
 
 ```bash
 npm test                   # Unit tests (Jest)
 npm run test:integration   # Integration tests
-npm run test:e2e           # E2E tests (Detox)
 npm run test:maestro       # E2E UI tests (Maestro)
 ```
 
-For detailed testing patterns, see the [Testing Guide](./documentation/setup/Testing-Guide.md).
+For detailed testing patterns, see the [Testing Guide](./documentation/resources/Testing-Guide.md).
 
 ## Additional Commands
 
@@ -166,19 +152,20 @@ All documentation is organised under `documentation/`:
 | [02-CODEBASE-GUIDE.md](./documentation/onboarding/02-CODEBASE-GUIDE.md) | Project structure, state management, naming conventions |
 | [03-DATA-AND-SYNC.md](./documentation/onboarding/03-DATA-AND-SYNC.md) | WatermelonDB, Supabase sync, security model |
 | [04-DEVICE-FLOWS.md](./documentation/onboarding/04-DEVICE-FLOWS.md) | Device preparation, deployment, and retrieval |
+| [05-GIT-WORKFLOW.md](./documentation/onboarding/05-GIT-WORKFLOW.md) | Git branching, Conventional Commits, and CI pipeline rules |
 
-### Setup & Configuration
+### Reference Guides
 
 | Guide | What It Covers |
 |-------|----------------|
-| [BLE Architecture](./documentation/setup/BLE_Architecture.md) | BLE command system, timing, firmware constraints |
-| [Android Setup](./documentation/setup/android/) | SDK, emulator, and device configuration |
-| [Docker Guide](./documentation/setup/Docker-Development-Guide.md) | Containerised development environment |
-| [EAS/Expo](./documentation/setup/expo-eas/) | Cloud builds and OTA updates |
-| [WSL2 Guide](./documentation/setup/wsl2/) | Windows Subsystem for Linux setup |
-| [Google Maps](./documentation/setup/GOOGLE-MAPS-SETUP.md) | Maps API key and configuration |
-| [Testing](./documentation/setup/Testing-Guide.md) | Jest, Maestro, and E2E testing |
-| [Auth Guide](./documentation/setup/Authentication-Implementation-Guide.md) | Authentication implementation details |
+| [BLE Architecture](./documentation/resources/BLE_Architecture.md) | BLE command system, timing, firmware constraints |
+| [Android Setup](./documentation/resources/Android-Guide.md) | SDK, emulator, and device configuration |
+| [Docker Guide](./documentation/resources/Docker-Development-Guide.md) | Containerised development environment |
+| [EAS/Expo](./documentation/resources/Expo-EAS-Guide.md) | Cloud builds and OTA updates |
+| [WSL2 Guide](./documentation/resources/WSL2-Setup-Guide.md) | Windows Subsystem for Linux setup |
+| [Google Maps](./documentation/resources/GOOGLE-MAPS-SETUP.md) | Maps API key and configuration |
+| [Testing](./documentation/resources/Testing-Guide.md) | Jest, Maestro, and E2E testing |
+| [Auth Guide](./documentation/resources/Authentication-Implementation-Guide.md) | Authentication implementation details |
 
 ## Contributing
 

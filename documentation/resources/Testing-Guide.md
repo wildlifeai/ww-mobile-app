@@ -113,6 +113,7 @@ The `react-doctor.yml` GitHub Action also runs on all PRs (informational):
 
 ## Best Practices
 
+- **Type Imports**: Always import types from `src/types/index.ts` (the central export) instead of specific files like `database.types.ts`. This significantly reduces memory usage and Jest crash risks during test runs by avoiding parsing huge auto-generated backend schemas.
 - **Async assertions**: Always use `waitFor` for UI changes after promises
 - **TestIDs**: Use `testID` props for robust selection
 - **State reset**: Clear mocks and reset store in `beforeEach`

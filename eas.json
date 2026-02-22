@@ -4,6 +4,23 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "ci": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "NODE_ENV": "development",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://placeholder.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "placeholder",
+        "GOOGLE_MAPS_API_KEY_ANDROID": "placeholder",
+        "GOOGLE_MAPS_API_KEY_IOS": "placeholder"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      }
+    },
     "development": {
       "developmentClient": true,
       "distribution": "internal",
@@ -52,7 +69,8 @@
         "cocoapods": "1.16.1"
       },
       "android": {
-        "resourceClass": "medium"
+        "resourceClass": "medium",
+        "buildType": "app-bundle"
       }
     }
   },

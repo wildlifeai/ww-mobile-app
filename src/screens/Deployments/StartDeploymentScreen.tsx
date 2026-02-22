@@ -42,7 +42,7 @@ export const DeploymentDetailsStep = () => {
     const renderProjectSettingsLeft = useCallback((props: any) => <WWIcon {...props} source="tune" />, [])
     const renderProjectSettingsRight = useCallback((props: any) => (
         <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Project settings', 'Project and Capture Method are set during Project Creation and Device Preparation. To change these, you must restart the preparation.')}>
-            Help
+            <Text>Help</Text>
         </Button>
     ), [showHelp])
 
@@ -57,7 +57,7 @@ export const DeploymentDetailsStep = () => {
                         Missing Device Preparation ID. Unable to proceed with deployment.
                     </Text>
                     <Button mode="contained" onPress={() => navigation.goBack()}>
-                        Go Back
+                        <Text>Go Back</Text>
                     </Button>
                 </View>
             </WWScreenView>
@@ -123,7 +123,7 @@ export const DeploymentDetailsStep = () => {
                             style={styles.editButton}
                             icon="cog"
                         >
-                            Edit Device Preparation
+                            <Text>Edit Device Preparation</Text>
                         </Button>
                     </Card.Content>
                 </Card>
@@ -163,7 +163,7 @@ export const DeploymentDetailsStep = () => {
                         loading={submitting}
                         style={styles.deployButton}
                     >
-                        Start Deployment
+                        <Text>Start Deployment</Text>
                     </WWButton>
                 </View>
             </View>

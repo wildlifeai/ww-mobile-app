@@ -2,7 +2,7 @@ import React from "react"
 import { View, StyleSheet } from "react-native"
 import { useNetInfo } from "@react-native-community/netinfo"
 import { WWText } from "./WWText"
-import { useTheme } from "react-native-paper"
+import { useTheme, Text } from "react-native-paper"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 
 /**
@@ -22,7 +22,7 @@ export const OfflineIndicator: React.FC = () => {
 	return (
 		<View style={[styles.container, { backgroundColor: theme.colors.error }]}>
 			<Icon name="wifi-off" size={16} color="#fff" style={styles.icon} />
-			<WWText style={styles.text}>Offline Mode</WWText>
+			<WWText style={styles.text}><Text>Offline Mode</Text></WWText>
 		</View>
 	)
 }

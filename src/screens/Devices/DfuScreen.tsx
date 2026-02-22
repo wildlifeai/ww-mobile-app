@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { StyleSheet, View, Platform, PermissionsAndroid } from "react-native"
-import { Button } from "react-native-paper"
+import { Button, Text } from "react-native-paper"
 import DocumentPicker from "react-native-document-picker"
 import * as FileSystem from "expo-file-system/legacy"
 import { WWScreenView } from "../../components/ui/WWScreenView"
@@ -140,19 +140,19 @@ export const DfuScreen = () => {
 		<WWScreenView>
 			<View style={styles.container}>
 				<WWText variant="bodyMedium" style={styles.description}>
-					Select a firmware file to update your device. Make sure your device
-					stays connected during the update.
+					<Text>Select a firmware file to update your device. Make sure your device
+					stays connected during the update.</Text>
 				</WWText>
 
 				{fileName && (
 					<WWText variant="bodyMedium" style={styles.fileName}>
-						Selected file: {fileName}
+						<Text>Selected file: {fileName}</Text>
 					</WWText>
 				)}
 
 				{dfuError && (
 					<WWText variant="bodyMedium" style={styles.error}>
-						Error: {dfuError}
+						<Text>Error: {dfuError}</Text>
 					</WWText>
 				)}
 
@@ -168,7 +168,7 @@ export const DfuScreen = () => {
 						onPress={handleFilePick}
 						style={styles.button}
 					>
-						Select Firmware File
+						<Text>Select Firmware File</Text>
 					</Button>
 				)}
 			</View>

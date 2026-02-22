@@ -2,7 +2,7 @@
 import React, { useRef, useLayoutEffect, useState, memo } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { Marker } from 'react-native-maps'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import type Deployment from '../../../database/models/Deployment'
 
 interface Props {
@@ -67,6 +67,10 @@ const styles = StyleSheet.create({
         padding: 4,
         borderWidth: 2,
         opacity: 1
+    },
+    icon: {
+        width: 20,
+        height: 20,
     }
 })
 

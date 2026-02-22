@@ -17,6 +17,7 @@ import { StyleSheet, View } from "react-native"
 import { useForm } from "react-hook-form"
 import {
 	Snackbar,
+	Text,
 } from "react-native-paper"
 import { projectsApi } from "../../redux/api/projectsApi"
 import { WWScreenView } from "../../components/ui/WWScreenView"
@@ -259,7 +260,7 @@ export const NewProjectScreen = () => {
 					style={styles.submitButton}
 					testID="create-project-button"
 				>
-					Create Project
+					<Text>Create Project</Text>
 				</WWButton>
 
 				{/* Error Snackbar */}

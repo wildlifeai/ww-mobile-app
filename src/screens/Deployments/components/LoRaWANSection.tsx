@@ -45,7 +45,7 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
             icon="help-circle-outline"
             onPress={() => onShowHelp('LoRaWAN Signal Test', 'Sends a ping through the LoRaWAN network to verify the device can transmit data to the gateway.')}
         >
-            Help
+            <Text>Help</Text>
         </Button>
     ), [onShowHelp])
 
@@ -76,7 +76,7 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
                     disabled={!device || status === 'testing'}
                     icon="refresh"
                 >
-                    Test Connectivity
+                    <Text>Test Connectivity</Text>
                 </Button>
             </Card.Content>
         </Card>

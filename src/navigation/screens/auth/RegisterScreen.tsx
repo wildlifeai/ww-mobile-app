@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form"
 import { StyleSheet, View, Image, Alert } from "react-native"
-import { Button } from "react-native-paper"
+import { Button, Text } from "react-native-paper"
 // import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView" - REMOVED
 import { WWScreenView } from "../../../components/ui/WWScreenView"
 import { WWTextInput } from "../../../components/ui/WWTextInput"
@@ -211,7 +211,7 @@ export const Register = () => {
 						style={styles.button}
 						disabled={isLoading}
 					>
-						Register
+						<Text>Register</Text>
 					</Button>
 
 					<Button
@@ -221,7 +221,7 @@ export const Register = () => {
 						style={styles.textButton}
 						disabled={isLoading}
 					>
-						Already have an account? Login
+						<Text>Already have an account? Login</Text>
 					</Button>
 				</View>
 			</View>

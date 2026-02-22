@@ -1,5 +1,5 @@
 
-import { List } from 'react-native-paper'
+import { List, Text } from 'react-native-paper'
 import { getReadableVersion, getBuildNumber, getBundleId, getVersion } from 'react-native-device-info'
 
 // Reusing icon helper
@@ -21,7 +21,7 @@ export const BuildInfoSection = () => {
 
     return (
         <List.Section>
-            <List.Subheader>Build Information</List.Subheader>
+            <List.Subheader><Text>Build Information</Text></List.Subheader>
             <List.Item
                 title="Build Type"
                 description={isDevelopment ? "Development" : "Production"}

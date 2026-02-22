@@ -11,7 +11,7 @@ interface Props {
 
 const HelpButton = ({ onShowHelp, ...props }: any) => (
     <Button {...props} icon="help-circle-outline" onPress={() => onShowHelp('GPS Location', 'Location provided by your device GPS. Ensure you have a clear view of the sky for best accuracy.')}>
-        Help
+        <Text>Help</Text>
     </Button>
 )
 
@@ -54,7 +54,7 @@ export const LocationSection = ({ onLocationChange, onShowHelp }: Props) => {
                 ) : (
                     <Text>Location not available.</Text>
                 )}
-                <Button onPress={handleGetLocation} icon="refresh">Update Location</Button>
+                <Button onPress={handleGetLocation} icon="refresh"><Text>Update Location</Text></Button>
             </Card.Content>
         </Card>
     )

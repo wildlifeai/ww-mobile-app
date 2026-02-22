@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, Dispatch, SetStateAction } from "react"
 import { StyleSheet, View } from "react-native"
-import { Button, Divider, Badge } from "react-native-paper"
+import { Button, Divider, Badge, Text } from "react-native-paper"
 import { useAppNavigation } from "../hooks/useAppNavigation"
 import { useExtendedTheme } from "../theme"
 import { useAppDispatch } from "../redux"
@@ -90,7 +90,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 					icon="bell"
 					onPress={() => goTo("Notifications")}
 				>
-					Notifications
+					<Text>Notifications</Text>
 				</Button>
 				{invitationCount > 0 && (
 					<Badge
@@ -107,7 +107,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 				icon="account"
 				onPress={() => goTo("Profile")}
 			>
-				Profile
+				<Text>Profile</Text>
 			</Button>
 			<Button
 				textColor={colors.onBackground}
@@ -115,7 +115,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 				icon="cog"
 				onPress={() => goTo("Settings")}
 			>
-				Settings
+				<Text>Settings</Text>
 			</Button>
 			<Button
 				textColor={colors.onBackground}
@@ -123,7 +123,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 				icon="logout"
 				onPress={onLogout}
 			>
-				Sign out
+				<Text>Sign out</Text>
 			</Button>
 			{__DEV__ && (
 				<>
@@ -136,7 +136,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 						icon="developer-board"
 						onPress={() => goTo("DevBuildInfo")}
 					>
-						Dev Build Info
+						<Text>Dev Build Info</Text>
 					</Button>
 					<Button
 						textColor={colors.primary}
@@ -144,7 +144,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 						icon="shield-key"
 						onPress={() => goTo("AuthTestScreen")}
 					>
-						🔐 Auth Test
+						<Text>🔐 Auth Test</Text>
 					</Button>
 				</>
 			)}

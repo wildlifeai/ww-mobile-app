@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form"
 import { StyleSheet, View, Image, Alert } from "react-native"
-import { Button, Checkbox } from "react-native-paper"
+import { Button, Checkbox, Text } from "react-native-paper"
 // import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView" - REMOVED
 import { WWScreenView } from "../../../components/ui/WWScreenView"
 import { WWTextInput } from "../../../components/ui/WWTextInput"
@@ -171,7 +171,7 @@ export const Login = () => {
 							onPress={() => setRememberMe(!rememberMe)}
 							testID="remember-me-label"
 						>
-							Remember me
+							<Text>Remember me</Text>
 						</WWText>
 					</View>
 
@@ -190,7 +190,7 @@ export const Login = () => {
 						style={styles.button}
 						disabled={isLoading}
 					>
-						Login
+						<Text>Login</Text>
 					</Button>
 
 					<Button
@@ -200,7 +200,7 @@ export const Login = () => {
 						style={styles.textButton}
 						disabled={isLoading}
 					>
-						Forgot Password?
+						<Text>Forgot Password?</Text>
 					</Button>
 
 					<Button
@@ -210,7 +210,7 @@ export const Login = () => {
 						style={styles.textButton}
 						disabled={isLoading}
 					>
-						Don't have an account? Register
+						<Text>Don't have an account? Register</Text>
 					</Button>
 
 				</View>

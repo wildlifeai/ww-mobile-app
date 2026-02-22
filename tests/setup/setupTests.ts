@@ -51,6 +51,10 @@ jest.mock("expo-crypto", () => ({
 	digestStringAsync: jest.fn(),
 }))
 
+jest.mock("expo-image", () => ({
+	Image: "Image",
+}))
+
 // Mock Expo File System
 jest.mock("expo-file-system", () => ({
 	documentDirectory: "/mock/documents/",

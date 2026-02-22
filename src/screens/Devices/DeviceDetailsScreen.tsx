@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native'
-import { Card, useTheme } from 'react-native-paper'
+import { Card, useTheme, Text } from 'react-native-paper'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { DeviceStatusBadge } from '../../components/DeviceStatusBadge'
@@ -62,7 +62,7 @@ export const DeviceDetailsScreen = () => {
         return (
             <WWScreenView>
                 <View style={styles.loadingContainer}>
-                    <WWText variant="bodyMedium">Loading device details...</WWText>
+                    <WWText variant="bodyMedium"><Text>Loading device details...</Text></WWText>
                 </View>
             </WWScreenView>
         )
@@ -72,16 +72,16 @@ export const DeviceDetailsScreen = () => {
         return (
             <WWScreenView>
                 <View style={styles.errorContainer}>
-                    <WWText variant="titleMedium">Device Not Found</WWText>
+                    <WWText variant="titleMedium"><Text>Device Not Found</Text></WWText>
                     <WWText variant="bodyMedium" style={styles.errorText}>
-                        The requested device could not be found.
+                        <Text>The requested device could not be found.</Text>
                     </WWText>
                     <TouchableOpacity
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}
                     >
                         <WWText variant="labelMedium" style={styles.backButtonText}>
-                            Go Back
+                            <Text>Go Back</Text>
                         </WWText>
                     </TouchableOpacity>
                 </View>
@@ -130,7 +130,7 @@ export const DeviceDetailsScreen = () => {
                         <View style={styles.headerSeparator} />
 
                         <View style={styles.infoRow}>
-                            <WWText variant="bodySmall" style={styles.label}>Bluetooth ID:</WWText>
+                            <WWText variant="bodySmall" style={styles.label}><Text>Bluetooth ID:</Text></WWText>
                             <WWText variant="bodyMedium" style={styles.headerValue}>
                                 {device.bluetoothId ? device.bluetoothId : 'N/A'}
                             </WWText>
@@ -144,18 +144,18 @@ export const DeviceDetailsScreen = () => {
                     <Card mode="outlined" style={styles.card} onPress={() => handleViewDeployment(activeDeployment.id)}>
                         <Card.Content>
                             <WWText variant="titleSmall" style={styles.sectionTitle}>
-                                Current Deployment
+                                <Text>Current Deployment</Text>
                             </WWText>
                             <View style={styles.deploymentCardContent}>
-                                <WWText variant="titleMedium">{activeDeployment.name || 'Unnamed Deployment'}</WWText>
+                                <WWText variant="titleMedium"><Text>{activeDeployment.name || 'Unnamed Deployment'}</Text></WWText>
                                 <WWText variant="bodySmall" style={styles.deploymentDate}>
-                                    Started: {isValidDate(activeDeployment.deploymentStart) ? new Date(activeDeployment.deploymentStart).toLocaleDateString() : 'Unknown'}
+                                    <Text>Started: {isValidDate(activeDeployment.deploymentStart) ? new Date(activeDeployment.deploymentStart).toLocaleDateString() : 'Unknown'}</Text>
                                 </WWText>
                                 <WWText variant="bodySmall" style={styles.deploymentDate}>
-                                    Duration: {getDurationString(activeDeployment.deploymentStart, activeDeployment.deploymentEnd)}
+                                    <Text>Duration: {getDurationString(activeDeployment.deploymentStart, activeDeployment.deploymentEnd)}</Text>
                                 </WWText>
                                 <WWText variant="bodySmall" style={styles.viewDetailsLink}>
-                                    View Details →
+                                    <Text>View Details →</Text>
                                 </WWText>
                             </View>
                         </Card.Content>
@@ -166,12 +166,12 @@ export const DeviceDetailsScreen = () => {
                 <Card mode="outlined" style={styles.card}>
                     <Card.Content>
                         <WWText variant="titleSmall" style={styles.sectionTitle}>
-                            Deployment History
+                            <Text>Deployment History</Text>
                         </WWText>
 
                         {deploymentHistory.length === 0 ? (
                             <WWText variant="bodySmall" style={styles.comingSoon}>
-                                No previous deployments found.
+                                <Text>No previous deployments found.</Text>
                             </WWText>
                         ) : (
                             deploymentHistory.map((deployment, index) => (
@@ -187,7 +187,7 @@ export const DeviceDetailsScreen = () => {
                                                 {isValidDate(deployment.deploymentStart) ? new Date(deployment.deploymentStart).toLocaleDateString() : 'Unknown Date'}
                                             </WWText>
                                             <WWText variant="labelSmall" style={styles.historyDuration}>
-                                                • {getDurationString(deployment.deploymentStart, deployment.deploymentEnd)}
+                                                <Text>• {getDurationString(deployment.deploymentStart, deployment.deploymentEnd)}</Text>
                                             </WWText>
                                         </View>
                                     </View>

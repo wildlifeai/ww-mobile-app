@@ -3,6 +3,7 @@ import { WWIcon } from "../../../components/ui/WWIcon"
 import { WWScreenView } from "../../../components/ui/WWScreenView"
 import { useExtendedTheme } from "../../../theme"
 import { WWText } from "../../../components/ui/WWText"
+import { Text } from "react-native-paper"
 
 export const BleProblems = () => {
 	const { spacing } = useExtendedTheme()
@@ -10,14 +11,14 @@ export const BleProblems = () => {
 	return (
 		<WWScreenView style={styles.view}>
 			<WWIcon
-				containerStyle={[{ marginBottom: spacing }]}
+				containerStyle={{ marginBottom: spacing }}
 				source="bluetooth"
 				size={40}
 			/>
-			<WWText variant="headlineSmall">Bluetooth problems</WWText>
+			<WWText variant="headlineSmall"><Text>Bluetooth problems</Text></WWText>
 			<WWText variant="bodyMedium">
-				For some reason, bluetooth could not start. Please make sure this device
-				supports BLE (Bluetooth Low Energy) and that it is enabled.
+				<Text>For some reason, bluetooth could not start. Please make sure this device
+				supports BLE (Bluetooth Low Energy) and that it is enabled.</Text>
 			</WWText>
 		</WWScreenView>
 	)

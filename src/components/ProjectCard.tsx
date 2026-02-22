@@ -222,7 +222,6 @@ ProjectCard.displayName = "ProjectCard"
 const styles = StyleSheet.create({
 	card: {
 		marginBottom: 12,
-		elevation: 0,
 	},
 	content: {
 		paddingVertical: 12,

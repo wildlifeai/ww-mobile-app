@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react"
 import { ListRenderItemInfo, View, StyleSheet } from "react-native"
 import { withObservables } from '@nozbe/watermelondb/react'
-import { FAB, Chip } from 'react-native-paper'
+import { FAB, Chip, Text } from 'react-native-paper'
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { DeploymentCard } from "../../components/DeploymentCard"
 import type Deployment from "../../database/models/Deployment"
@@ -124,7 +124,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 							showSelectedCheck={false}
 							style={styles.filterChip}
 						>
-							All
+							<Text>All</Text>
 						</Chip>
 						<Chip
 							selected={statusFilter === 'active'}
@@ -132,7 +132,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 							showSelectedCheck={false}
 							style={styles.filterChip}
 						>
-							Active
+							<Text>Active</Text>
 						</Chip>
 						<Chip
 							selected={statusFilter === 'ended'}
@@ -140,7 +140,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 							showSelectedCheck={false}
 							style={styles.filterChip}
 						>
-							Ended
+							<Text>Ended</Text>
 						</Chip>
 					</>
 				}

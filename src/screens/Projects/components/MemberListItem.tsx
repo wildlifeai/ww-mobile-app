@@ -134,7 +134,7 @@ export const MemberListItem: React.FC<MemberListItemProps> = ({
 const styles = StyleSheet.create({
 	memberCard: {
 		marginBottom: 12,
-		elevation: 2,
+		boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.15)",
 	},
 	memberRow: {
 		flexDirection: "row",

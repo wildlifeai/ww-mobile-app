@@ -334,12 +334,7 @@ const styles = StyleSheet.create({
 		backgroundColor: "white",
 		borderRadius: 12,
 		padding: 24,
-		alignItems: "center",
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.25,
-		shadowRadius: 4,
-		elevation: 5,
+		boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.25)",
 	},
 	loadingText: {
 		marginTop: 12,
@@ -354,12 +349,7 @@ const styles = StyleSheet.create({
 		right: 16,
 		backgroundColor: "#FF3B30",
 		borderRadius: 12,
-		padding: 16,
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.25,
-		shadowRadius: 4,
-		elevation: 5,
+		boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.25)",
 	},
 	errorText: {
 		color: "white",
@@ -372,19 +362,16 @@ const styles = StyleSheet.create({
 		position: "absolute",
 		left: 16,
 		backgroundColor: "rgba(255, 255, 255, 0.9)",
-		elevation: 4,
 	},
 	filterFab: {
 		position: "absolute",
 		right: 16, // Move to right to balance with Menu button
-		elevation: 4,
 	},
 	centerFab: {
 		position: "absolute",
 		bottom: 16,
 		left: 16,
 		backgroundColor: "rgba(255, 255, 255, 0.9)",
-		elevation: 4,
 	},
 	actionFab: {
 		position: "absolute",

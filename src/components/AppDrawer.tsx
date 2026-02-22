@@ -7,7 +7,7 @@ import {
 } from "react"
 import { StyleSheet, View } from "react-native"
 import { Drawer } from "react-native-drawer-layout"
-import { Surface } from "react-native-paper"
+import { Surface, Text } from "react-native-paper"
 import { WWText } from "./ui/WWText"
 import { useExtendedTheme } from "../theme"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -47,17 +47,17 @@ export const AppDrawer = ({ children }: PropsWithChildren<unknown>) => {
 						<View style={styles.profileSection}>
 							<View style={styles.avatar}>
 								<WWText style={styles.avatarText}>
-									{user?.profile?.first_name?.[0] || user?.email?.[0] || "U"}
+									<Text>{user?.profile?.first_name?.[0] || user?.email?.[0] || "U"}</Text>
 								</WWText>
 							</View>
 							<View style={styles.userInfo}>
 								<WWText style={styles.userName}>
-									{user?.profile?.first_name
+									<Text>{user?.profile?.first_name
 										? `${user.profile.first_name} ${user.profile.last_name || ''}`
-										: "Wildlife Watcher User"}
+										: "Wildlife Watcher User"}</Text>
 								</WWText>
 								<WWText style={styles.userEmail} variant="bodySmall">
-									{user?.email || "No email"}
+									<Text>{user?.email || "No email"}</Text>
 								</WWText>
 							</View>
 						</View>
@@ -66,9 +66,9 @@ export const AppDrawer = ({ children }: PropsWithChildren<unknown>) => {
 
 						<View style={styles.footer}>
 							<View style={styles.version}>
-								<WWText variant="bodySmall" style={styles.versionLabel}>Version</WWText>
+								<WWText variant="bodySmall" style={styles.versionLabel}><Text>Version</Text></WWText>
 								<WWText variant="bodySmall" style={styles.versionText}>
-									v{getReadableVersion()}
+									<Text>v{getReadableVersion()}</Text>
 								</WWText>
 							</View>
 						</View>

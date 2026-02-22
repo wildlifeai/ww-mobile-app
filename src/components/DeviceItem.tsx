@@ -65,7 +65,7 @@ export const DeviceItem = ({
 									onPress={() => upgrade(item)}
 									disabled={disabled}
 								>
-									Upgrade
+									<Text>Upgrade</Text>
 								</WWButton>
 							)}
 							{item.connected && (

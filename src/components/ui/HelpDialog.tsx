@@ -17,7 +17,7 @@ export const HelpDialog = ({ visible, title, content, onDismiss }: Props) => {
                     <Text variant="bodyMedium">{content}</Text>
                 </Dialog.Content>
                 <Dialog.Actions>
-                    <Button onPress={onDismiss}>Close</Button>
+                    <Button onPress={onDismiss}><Text>Close</Text></Button>
                 </Dialog.Actions>
             </Dialog>
         </Portal>

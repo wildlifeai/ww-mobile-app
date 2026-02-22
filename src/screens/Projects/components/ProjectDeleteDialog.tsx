@@ -21,7 +21,7 @@ export const ProjectDeleteDialog: React.FC<ProjectDeleteDialogProps> = ({
 	return (
 		<Portal>
 			<Dialog visible={visible} onDismiss={onDismiss}>
-				<Dialog.Title>Delete Project</Dialog.Title>
+				<Dialog.Title><Text>Delete Project</Text></Dialog.Title>
 				<Dialog.Content>
 					<Text variant="bodyMedium">
 						Are you sure you want to delete "{projectName}"? This action cannot be
@@ -30,7 +30,7 @@ export const ProjectDeleteDialog: React.FC<ProjectDeleteDialogProps> = ({
 				</Dialog.Content>
 				<Dialog.Actions>
 					<Button onPress={onDismiss} disabled={isDeleting}>
-						Cancel
+						<Text>Cancel</Text>
 					</Button>
 					<Button
 						onPress={onDelete}
@@ -39,7 +39,7 @@ export const ProjectDeleteDialog: React.FC<ProjectDeleteDialogProps> = ({
 						textColor={theme.colors.error}
 						testID="confirm-delete-button"
 					>
-						Delete
+						<Text>Delete</Text>
 					</Button>
 				</Dialog.Actions>
 			</Dialog>
