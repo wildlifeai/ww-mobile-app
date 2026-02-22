@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
-import { Image } from 'expo-image'
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 
 interface StatusItemProps {
     label: string
@@ -22,14 +22,14 @@ const StatusItem: React.FC<StatusItemProps> = ({ label, value, status, icon }) =
     return (
         <View style={styles.itemContainer}>
             <View style={styles.labelContainer}>
-                {icon && <Image source={icon} style={[styles.baseIcon, styles.iconNeutral, styles.icon]} />}
+                {icon && <MaterialCommunityIcons name={icon as any} size={16} color="#666" style={styles.icon} />}
                 <Text style={styles.label}>{label}</Text>
             </View>
             <View style={styles.valueContainer}>
                 <Text style={[styles.value, { color: getStatusColor() }]}>{value}</Text>
-                {status === 'success' && <Image source="sf:checkmark.circle.fill" style={[styles.baseIcon, styles.iconSuccess, styles.statusIcon]} />}
-                {status === 'error' && <Image source="sf:exclamationmark.circle.fill" style={[styles.baseIcon, styles.iconError, styles.statusIcon]} />}
-                {status === 'warning' && <Image source="sf:exclamationmark.triangle.fill" style={[styles.baseIcon, styles.iconWarning, styles.statusIcon]} />}
+                {status === 'success' && <MaterialCommunityIcons name="check-circle" size={16} color="#4CAF50" style={styles.statusIcon} />}
+                {status === 'error' && <MaterialCommunityIcons name="alert-circle" size={16} color="#F44336" style={styles.statusIcon} />}
+                {status === 'warning' && <MaterialCommunityIcons name="alert" size={16} color="#FFC107" style={styles.statusIcon} />}
             </View>
         </View>
     )
@@ -92,35 +92,35 @@ export const DeviceStatusCard: React.FC<DeviceStatusCardProps> = ({
                 label="Battery"
                 value={batteryLevel ? `${batteryLevel}% (${batteryVoltage || '?'}mV)` : 'Unknown'}
                 status={getBatteryStatus()}
-                icon="sf:battery.100.bolt"
+                icon="battery-charging-100"
             />
 
             <StatusItem
                 label="SD Card"
                 value={sdCardTotal ? `${formatBytes(sdCardAvailable)} / ${formatBytes(sdCardTotal)} free` : 'Not Detected'}
                 status={getSdCardStatus()}
-                icon="sf:externaldrive.fill"
+                icon="harddisk"
             />
 
             <StatusItem
                 label="Firmware"
                 value={firmwareVersion || 'Unknown'}
                 status={firmwareVersion ? 'neutral' : 'warning'}
-                icon="sf:cpu"
+                icon="cpu-64-bit"
             />
 
             <StatusItem
                 label="AI Model"
                 value={aiModelVersion || 'Unknown'}
                 status={aiModelVersion ? 'neutral' : 'warning'}
-                icon="sf:eye.fill"
+                icon="eye"
             />
 
             <StatusItem
                 label="LoRaWAN"
                 value={lorawanStatus ? `RSSI: ${lorawanStatus.rssi}, SNR: ${lorawanStatus.snr}` : 'Not Tested'}
                 status={getLorawanStatus()}
-                icon="sf:antenna.radiowaves.left.and.right"
+                icon="antenna"
             />
         </View>
     )

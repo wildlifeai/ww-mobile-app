@@ -1,6 +1,6 @@
 
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { KeyboardStickyView } from "react-native-keyboard-controller";
 
 interface ConsoleInputProps {
@@ -36,7 +36,7 @@ export const ConsoleInput = ({
                     onPress={onSend}
                     disabled={isSendDisabled}
                 >
-                    <Image source="sf:paperplane.fill" style={styles.iconStyles} />
+                    <MaterialCommunityIcons name="send" size={20} color="#FFF" />
                 </TouchableOpacity>
             </View>
         </KeyboardStickyView>

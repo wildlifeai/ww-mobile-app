@@ -364,6 +364,7 @@ const styles = StyleSheet.create({
 		backgroundColor: "rgba(255, 255, 255, 0.9)",
 	},
 	filterFab: {
+		position: "absolute",
 		right: 16, // Move to right to balance with Menu button
 	},
 	centerFab: {
