@@ -36,6 +36,7 @@ export const useDeveloperSettings = () => {
     >({
         local: "unknown",
         "cloud-dev": "unknown",
+        "cloud-staging": "unknown",
         "cloud-prod": "unknown",
     })
     const [isRestarting, setIsRestarting] = useState(false)

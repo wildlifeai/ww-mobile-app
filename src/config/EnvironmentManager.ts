@@ -74,7 +74,7 @@ export async function setEnvironment(env: SupabaseEnvironment): Promise<void> {
 	if (!isValidEnvironment(env)) {
 		throw new Error(
 			`Invalid environment: '${env}'. ` +
-				`Must be one of: 'local', 'cloud-dev', 'cloud-prod'`,
+				`Must be one of: 'local', 'cloud-dev', 'cloud-staging', 'cloud-prod'`,
 		)
 	}
 

@@ -10,7 +10,7 @@
 
 import Constants from "expo-constants"
 
-export type SupabaseEnvironment = "local" | "cloud-dev" | "cloud-prod"
+export type SupabaseEnvironment = "local" | "cloud-dev" | "cloud-staging" | "cloud-prod"
 
 export interface EnvironmentConfig {
 	supabaseUrl: string
@@ -44,6 +44,13 @@ export const ENVIRONMENT_CONFIGS: Record<
 		supabaseAnonKey: Constants.expoConfig?.extra?.supabaseAnonKey || "",
 		displayName: "Cloud Development",
 		description: "Dev Supabase instance (active development, may break)",
+		isProduction: false,
+	},
+	"cloud-staging": {
+		supabaseUrl: Constants.expoConfig?.extra?.supabaseStagingUrl || "",
+		supabaseAnonKey: Constants.expoConfig?.extra?.supabaseStagingAnonKey || "",
+		displayName: "Cloud Staging",
+		description: "Staging Supabase instance (pre-production validation)",
 		isProduction: false,
 	},
 	"cloud-prod": {
@@ -88,7 +95,7 @@ export function getDefaultEnvironment(): SupabaseEnvironment {
  * @returns true if env is a valid SupabaseEnvironment
  */
 export function isValidEnvironment(env: string): env is SupabaseEnvironment {
-	return env === "local" || env === "cloud-dev" || env === "cloud-prod"
+	return env === "local" || env === "cloud-dev" || env === "cloud-staging" || env === "cloud-prod"
 }
 
 /**
