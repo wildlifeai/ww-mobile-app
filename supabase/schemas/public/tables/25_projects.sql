@@ -3,7 +3,7 @@ CREATE TABLE projects (
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
-  modified_by uuid NOT NULL REFERENCES auth.users(id),
+  modified_by uuid NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id),
   name text NOT NULL,
   organisation_id uuid NOT NULL REFERENCES organisations(id) ON DELETE RESTRICT,
   created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,

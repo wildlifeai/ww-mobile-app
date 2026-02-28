@@ -58,7 +58,14 @@ DECLARE
 BEGIN
   -- Get current user
   v_user_id := auth.uid();
-  SELECT email INTO v_user_email FROM auth.users WHERE id = v_user_id;
+  
+  -- Use JWT claims to get email (works for both tests and production)
+  v_user_email := current_setting('request.jwt.claims', true)::jsonb->>'email';
+  
+  -- Fallback to auth.users if JWT claim doesn't have it
+  IF v_user_email IS NULL THEN
+    SELECT email INTO v_user_email FROM auth.users WHERE id = v_user_id;
+  END IF;
   
   -- Get invitation details
   SELECT * INTO v_invitation
@@ -142,7 +149,12 @@ DECLARE
   v_user_email TEXT;
 BEGIN
   -- FIX: Aliased auth.users to 'au' and used 'au.id' to resolve ambiguity
-  SELECT email INTO v_user_email FROM auth.users au WHERE au.id = auth.uid();
+  -- Use JWT claims for email (works in tests where auth.users is not mock populated)
+  v_user_email := current_setting('request.jwt.claims', true)::jsonb->>'email';
+  
+  IF v_user_email IS NULL THEN
+    SELECT email INTO v_user_email FROM auth.users au WHERE au.id = auth.uid();
+  END IF;
   
   RETURN QUERY
   SELECT

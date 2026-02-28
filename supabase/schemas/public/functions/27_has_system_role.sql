@@ -6,7 +6,7 @@ RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER  -- CRITICAL: Bypasses RLS to prevent circular dependencies
 SET search_path = ''  -- Prevent injection attacks
-STABLE  -- Enable caching for performance
+VOLATILE  -- Must be volatile to react to tests switching `auth.uid()` mid-transaction
 AS $$
 DECLARE
   check_user_id uuid;

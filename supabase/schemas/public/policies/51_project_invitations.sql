@@ -12,7 +12,7 @@ CREATE POLICY "Project admins can send invitations"
 CREATE POLICY "Users can view their invitations"
   ON project_invitations FOR SELECT
   USING (
-    invitee_email = (SELECT email FROM auth.users WHERE id = auth.uid())
+    invitee_email = (current_setting('request.jwt.claims', true)::jsonb ->> 'email')
     OR inviter_id = auth.uid()
     OR has_project_role(auth.uid(), project_id, 'project_admin')
   );
@@ -21,8 +21,8 @@ CREATE POLICY "Users can view their invitations"
 CREATE POLICY "Users can respond to their invitations"
   ON project_invitations FOR UPDATE
   USING (
-    invitee_email = (SELECT email FROM auth.users WHERE id = auth.uid())
+    invitee_email = (current_setting('request.jwt.claims', true)::jsonb ->> 'email')
   )
   WITH CHECK (
-    invitee_email = (SELECT email FROM auth.users WHERE id = auth.uid())
+    invitee_email = (current_setting('request.jwt.claims', true)::jsonb ->> 'email')
   );

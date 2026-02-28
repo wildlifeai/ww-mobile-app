@@ -14,8 +14,8 @@ CREATE POLICY "organisations_select_policy"
       -- WW Admins can see all organisations
       has_system_role((SELECT auth.uid()), 'ww_admin') OR
       -- Organisation members can see their organisation
-      -- (MVP2: All users are members of "General", so this allows all authenticated users to see it)
-      has_organisation_role((SELECT auth.uid()), organisations.id, 'organisation_member')
+      -- Only those with explicit roles in the organisation can see it
+      has_organisation_role((SELECT auth.uid()), organisations.id, 'project_member')
     )
   );
 
@@ -47,15 +47,12 @@ CREATE POLICY "organisations_update_policy"
 -- DELETE: Only WW Admins can delete organisations
 CREATE POLICY "organisations_delete_policy"
   ON organisations
-  FOR UPDATE
+  FOR DELETE
   TO authenticated
   USING (
     (SELECT auth.uid()) IS NOT NULL
     AND has_system_role((SELECT auth.uid()), 'ww_admin')
     AND deleted_at IS NULL
-  )
-  WITH CHECK (
-    deleted_at IS NOT NULL
   );
 
 COMMENT ON POLICY "organisations_select_policy" ON organisations

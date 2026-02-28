@@ -83,8 +83,7 @@ export function getDefaultEnvironment(): SupabaseEnvironment {
 	// Development builds default to cloud-dev
 	const isDevelopment = __DEV__ || Constants.expoConfig?.extra?.isDevelopment
 
-	// For now, default to cloud-dev for all builds
-	// TODO: Use 'cloud-prod' for production builds once we have prod credentials
+	// Default to cloud-dev for DEV builds, otherwise cloud-prod
 	return isDevelopment ? "cloud-dev" : "cloud-prod"
 }
 

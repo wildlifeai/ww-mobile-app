@@ -42,6 +42,7 @@
       "distribution": "internal",
       "env": {
         "NODE_ENV": "development",
+        "EXPO_PUBLIC_SUPABASE_ENV": "cloud-staging",
         "EXPO_PUBLIC_SUPABASE_URL": "${EXPO_PUBLIC_SUPABASE_URL_STAGING}",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY_STAGING}",
         "EXPO_PUBLIC_SUPABASE_STAGING_URL": "${EXPO_PUBLIC_SUPABASE_URL_STAGING}",
