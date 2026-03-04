@@ -1,6 +1,6 @@
 {
   "name": "wildlifewatcher",
-  "version": "0.0.35",
+  "version": "0.0.37",
   "private": true,
   "scripts": {
     "android": "npm run types:cloud-dev && npm run db:sync-schema && npm run schema:generate && npx expo run:android",
@@ -50,7 +50,7 @@
     "build:android-debug": "npx expo prebuild --no-install && cd android && ./gradlew assembleDebug",
     "build:ios-sanity": "npx expo prebuild --no-install && npx pod-install && xcodebuild -workspace ios/*.xcworkspace -scheme wildlifewatcher -showBuildSettings",
     "postinstall": "npx patch-package && npm run validate:deps",
-    "prepare": "husky"
+    "prepare": "node -e \"try{require('husky')}catch(e){process.exit(0)}\" && husky"
   },
   "dependencies": {
     "@getquip/expo-nordic-dfu": "^2.0.3",
