@@ -40,22 +40,22 @@ export const ENVIRONMENT_CONFIGS: Record<
 		isProduction: false,
 	},
 	"cloud-dev": {
-		supabaseUrl: Constants.expoConfig?.extra?.supabaseUrl || "",
-		supabaseAnonKey: Constants.expoConfig?.extra?.supabaseAnonKey || "",
+		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || Constants.expoConfig?.extra?.supabaseUrl || "",
+		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || Constants.expoConfig?.extra?.supabaseAnonKey || "",
 		displayName: "Cloud Development",
 		description: "Dev Supabase instance (active development, may break)",
 		isProduction: false,
 	},
 	"cloud-staging": {
-		supabaseUrl: Constants.expoConfig?.extra?.supabaseStagingUrl || "",
-		supabaseAnonKey: Constants.expoConfig?.extra?.supabaseStagingAnonKey || "",
+		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_STAGING_URL || Constants.expoConfig?.extra?.supabaseStagingUrl || "",
+		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_STAGING_ANON_KEY || Constants.expoConfig?.extra?.supabaseStagingAnonKey || "",
 		displayName: "Cloud Staging",
 		description: "Staging Supabase instance (pre-production validation)",
 		isProduction: false,
 	},
 	"cloud-prod": {
-		supabaseUrl: Constants.expoConfig?.extra?.supabaseProdUrl || "",
-		supabaseAnonKey: Constants.expoConfig?.extra?.supabaseProdAnonKey || "",
+		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_PROD_URL || Constants.expoConfig?.extra?.supabaseProdUrl || "",
+		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_PROD_ANON_KEY || Constants.expoConfig?.extra?.supabaseProdAnonKey || "",
 		displayName: "Cloud Production",
 		description:
 			"Production Supabase instance (requires production credentials)",
@@ -74,8 +74,8 @@ export const ENVIRONMENT_CONFIGS: Record<
  * @returns Default environment for current build type
  */
 export function getDefaultEnvironment(): SupabaseEnvironment {
-	// Check for explicit environment override from app config
-	const envOverride = Constants.expoConfig?.extra?.supabaseEnv
+	// Check for explicit environment override from direct env var or app config
+	const envOverride = process.env.EXPO_PUBLIC_SUPABASE_ENV || Constants.expoConfig?.extra?.supabaseEnv
 	if (envOverride && isValidEnvironment(envOverride)) {
 		return envOverride
 	}
