@@ -84,8 +84,6 @@ eas build --profile development --platform android --clear-cache
 
 ### How It Works
 
-### How It Works
-
 1. **Build-time Configuration (`eas.json`)**: Environment variables are defined in the `env` blocks.
 2. **Dynamic Injection (EAS Dashboard)**: Sensitive variables (URLs, Keys) are stored in the Expo Dashboard (Project Settings → Environment variables) and automatically injected by EAS at build-time.
 3. **App Configuration (`app.config.ts`)**: Reads variables via `process.env` and exposes them to the app bundle via the `extra` object.
@@ -123,7 +121,7 @@ const url = Constants.expoConfig?.extra?.supabaseUrl
 import { getEnvironmentConfig } from "../config/EnvironmentManager"
 const config = await getEnvironmentConfig()
 
-// ❌ Wrong — process.env is undefined at runtime in client code
+// ❌ Wrong — Bypasses the EnvironmentManager, which is the single source of truth for runtime config.
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL
 ```
 
