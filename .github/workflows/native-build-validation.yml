@@ -19,6 +19,7 @@ jobs:
   android-build:
     name: Android EAS Local Build
     runs-on: ubuntu-latest
+    environment: development 
     steps:
       - uses: actions/checkout@v4
 
@@ -79,6 +80,8 @@ jobs:
           EXPO_PUBLIC_SUPABASE_ANON_KEY_DEV: ${{ steps.config.outputs.supabase_anon_key }}
           EXPO_PUBLIC_SUPABASE_URL_PROD: ${{ steps.config.outputs.supabase_url }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY_PROD: ${{ steps.config.outputs.supabase_anon_key }}
+          GOOGLE_MAPS_API_KEY_ANDROID: ${{ secrets.GOOGLE_MAPS_API_KEY_ANDROID }}
+          GOOGLE_MAPS_API_KEY_IOS: ${{ secrets.GOOGLE_MAPS_API_KEY_IOS }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
