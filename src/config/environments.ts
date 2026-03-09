@@ -10,7 +10,7 @@
 
 import Constants from "expo-constants"
 
-export type SupabaseEnvironment = "local" | "cloud-dev" | "cloud-prod"
+export type SupabaseEnvironment = "local" | "cloud-dev" | "cloud-staging" | "cloud-prod"
 
 export interface EnvironmentConfig {
 	supabaseUrl: string
@@ -40,15 +40,22 @@ export const ENVIRONMENT_CONFIGS: Record<
 		isProduction: false,
 	},
 	"cloud-dev": {
-		supabaseUrl: Constants.expoConfig?.extra?.supabaseUrl || "",
-		supabaseAnonKey: Constants.expoConfig?.extra?.supabaseAnonKey || "",
+		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || Constants.expoConfig?.extra?.supabaseUrl || "",
+		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || Constants.expoConfig?.extra?.supabaseAnonKey || "",
 		displayName: "Cloud Development",
 		description: "Dev Supabase instance (active development, may break)",
 		isProduction: false,
 	},
+	"cloud-staging": {
+		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_STAGING_URL || Constants.expoConfig?.extra?.supabaseStagingUrl || "",
+		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_STAGING_ANON_KEY || Constants.expoConfig?.extra?.supabaseStagingAnonKey || "",
+		displayName: "Cloud Staging",
+		description: "Staging Supabase instance (pre-production validation)",
+		isProduction: false,
+	},
 	"cloud-prod": {
-		supabaseUrl: Constants.expoConfig?.extra?.supabaseProdUrl || "",
-		supabaseAnonKey: Constants.expoConfig?.extra?.supabaseProdAnonKey || "",
+		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_PROD_URL || Constants.expoConfig?.extra?.supabaseProdUrl || "",
+		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_PROD_ANON_KEY || Constants.expoConfig?.extra?.supabaseProdAnonKey || "",
 		displayName: "Cloud Production",
 		description:
 			"Production Supabase instance (requires production credentials)",
@@ -67,8 +74,8 @@ export const ENVIRONMENT_CONFIGS: Record<
  * @returns Default environment for current build type
  */
 export function getDefaultEnvironment(): SupabaseEnvironment {
-	// Check for explicit environment override from app config
-	const envOverride = Constants.expoConfig?.extra?.supabaseEnv
+	// Check for explicit environment override from direct env var or app config
+	const envOverride = process.env.EXPO_PUBLIC_SUPABASE_ENV || Constants.expoConfig?.extra?.supabaseEnv
 	if (envOverride && isValidEnvironment(envOverride)) {
 		return envOverride
 	}
@@ -76,8 +83,7 @@ export function getDefaultEnvironment(): SupabaseEnvironment {
 	// Development builds default to cloud-dev
 	const isDevelopment = __DEV__ || Constants.expoConfig?.extra?.isDevelopment
 
-	// For now, default to cloud-dev for all builds
-	// TODO: Use 'cloud-prod' for production builds once we have prod credentials
+	// Default to cloud-dev for DEV builds, otherwise cloud-prod
 	return isDevelopment ? "cloud-dev" : "cloud-prod"
 }
 
@@ -88,7 +94,7 @@ export function getDefaultEnvironment(): SupabaseEnvironment {
  * @returns true if env is a valid SupabaseEnvironment
  */
 export function isValidEnvironment(env: string): env is SupabaseEnvironment {
-	return env === "local" || env === "cloud-dev" || env === "cloud-prod"
+	return env === "local" || env === "cloud-dev" || env === "cloud-staging" || env === "cloud-prod"
 }
 
 /**

@@ -4,7 +4,7 @@ CREATE TABLE users (
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
-  modified_by uuid NOT NULL REFERENCES auth.users(id),
+  modified_by uuid NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id),
   firstname text NOT NULL,
   surname text NOT NULL
   -- email text UNIQUE NOT NULL,  -- this field is in auth.users

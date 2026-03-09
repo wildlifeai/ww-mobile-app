@@ -19,6 +19,7 @@ jobs:
   android-build:
     name: Android EAS Local Build
     runs-on: ubuntu-latest
+    environment: development 
     steps:
       - uses: actions/checkout@v4
 
@@ -44,6 +45,19 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+      - name: Determine EAS profile and Supabase env
+        id: config
+        run: |
+          if [[ "${{ github.base_ref }}" == "main" ]]; then
+            echo "profile=staging" >> $GITHUB_OUTPUT
+            echo "supabase_url=${{ secrets.EXPO_PUBLIC_SUPABASE_URL_STAG }}" >> $GITHUB_OUTPUT
+            echo "supabase_anon_key=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY_STAG }}" >> $GITHUB_OUTPUT
+          else
+            echo "profile=ci" >> $GITHUB_OUTPUT
+            echo "supabase_url=${{ secrets.EXPO_PUBLIC_SUPABASE_URL_DEV }}" >> $GITHUB_OUTPUT
+            echo "supabase_anon_key=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY_DEV }}" >> $GITHUB_OUTPUT
+          fi
+
       # Cache the Expo prebuild output (android/ directory)
       - name: Generate prebuild fingerprint
         id: fingerprint
@@ -56,11 +70,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ./app-debug.apk
-          key: android-apk-${{ steps.fingerprint.outputs.hash }}-${{ hashFiles('package-lock.json', 'app.config.ts', 'eas.json', 'patches/**') }}
+          key: android-apk-${{ steps.config.outputs.profile }}-${{ steps.fingerprint.outputs.hash }}-${{ hashFiles('package-lock.json', 'app.config.ts', 'eas.json', 'patches/**') }}
 
       - name: Build Android APK (EAS Local)
         if: steps.cache-apk.outputs.cache-hit != 'true'
-        run: eas build --local --profile ci --platform android --output ./app-debug.apk --non-interactive
+        run: eas build --local --profile ${{ steps.config.outputs.profile }} --platform android --output ./app-debug.apk --non-interactive
+        env:
+          EXPO_PUBLIC_SUPABASE_URL_DEV: ${{ steps.config.outputs.supabase_url }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY_DEV: ${{ steps.config.outputs.supabase_anon_key }}
+          EXPO_PUBLIC_SUPABASE_URL_PROD: ${{ steps.config.outputs.supabase_url }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY_PROD: ${{ steps.config.outputs.supabase_anon_key }}
+          GOOGLE_MAPS_API_KEY_ANDROID: ${{ secrets.GOOGLE_MAPS_API_KEY_ANDROID }}
+          GOOGLE_MAPS_API_KEY_IOS: ${{ secrets.GOOGLE_MAPS_API_KEY_IOS }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

@@ -74,6 +74,12 @@ BEGIN
     RETURN TRUE;
   END IF;
 
+  -- C. User-specific uploads: path starts with auth.uid()
+  IF v_path_part = v_user_id::text THEN
+    INSERT INTO public.debug_storage_logs (message) VALUES ('Allowed: user-specific path match');
+    RETURN TRUE;
+  END IF;
+
   -- Default Deny
   INSERT INTO public.debug_storage_logs (message) VALUES ('Denied: no matching permissions found');
   RETURN FALSE;

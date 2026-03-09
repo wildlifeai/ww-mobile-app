@@ -84,13 +84,36 @@ eas build --profile development --platform android --clear-cache
 
 ### How It Works
 
-1. **Build-time**: `eas.json` env vars → `app.config.ts` reads via `process.env` → baked into app
-2. **Runtime**: `EnvironmentManager` allows switching between local/cloud-dev/cloud-prod (dev builds only)
+1. **Build-time Configuration (`eas.json`)**: Environment variables are defined in the `env` blocks.
+2. **Dynamic Injection (EAS Dashboard)**: Sensitive variables (URLs, Keys) are stored in the Expo Dashboard (Project Settings → Environment variables) and automatically injected by EAS at build-time.
+3. **App Configuration (`app.config.ts`)**: Reads variables via `process.env` and exposes them to the app bundle via the `extra` object.
+4. **Runtime Access**: The app reads `Constants.expoConfig?.extra` through the `EnvironmentManager`.
+
+### EAS Secrets and Visibility (CRITICAL)
+
+EAS has strict rules about environment variable visibility and interpolation:
+
+| Visibility | Hidden in UI/Logs? | Works with `${...}` in `eas.json`? | Allows `EXPO_PUBLIC_` prefix? |
+|------------|--------------------|------------------------------------|-------------------------------|
+| **Plain text** | No | ✅ Yes | ✅ Yes (but discouraged for keys) |
+| **Sensitive** | Yes (Logs `*****`) | ✅ Yes | ❌ No (Will cause warnings) |
+| **Secret** | Yes (Completely) | ❌ **No** (Resolves to literal string) | ❌ No |
+
+**The Golden Rule for Secrets (e.g., Supabase Keys):**
+Do NOT use `${...}` interpolation in `eas.json` for secrets stored on the Expo dashboard.
+Instead, create the variables on the dashboard without the `EXPO_PUBLIC_` prefix (e.g., `SUPABASE_URL_STAGING` with **Sensitive** visibility). Then read them directly in `app.config.ts`:
+
+```typescript
+// app.config.ts
+extra: {
+  supabaseUrl: process.env.SUPABASE_URL_STAGING, // Injected directly by EAS
+}
+```
 
 ### Accessing Config in Code
 
 ```typescript
-// ✅ Correct — via expo-constants
+// ✅ Correct — via expo-constants (after being mapped in app.config.ts)
 import Constants from 'expo-constants'
 const url = Constants.expoConfig?.extra?.supabaseUrl
 
@@ -98,16 +121,16 @@ const url = Constants.expoConfig?.extra?.supabaseUrl
 import { getEnvironmentConfig } from "../config/EnvironmentManager"
 const config = await getEnvironmentConfig()
 
-// ❌ Wrong — process.env is undefined at runtime
+// ❌ Wrong — Bypasses the EnvironmentManager, which is the single source of truth for runtime config.
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL
 ```
 
 ### Local Development
 
-Copy `.env.example` → `.env.local` and fill in your keys. See [.env.example](../../.env.example) for all required vars.
+Copy `.env.example` → `.env.local` and fill in your keys. Local builds will load these from the `.env` file via Expo's dot-env support.
 
 > [!NOTE]
-> `EXPO_PUBLIC_` prefixed vars are embedded in the client bundle. Non-prefixed vars are build-time only.
+> `EXPO_PUBLIC_` prefixed vars are automatically embedded into the client bundle at build time. Non-prefixed vars are strictly build-time only, and must be explicitly mapped in `app.config.ts` `extra` to be available at runtime.
 
 ## Android Keystores
 

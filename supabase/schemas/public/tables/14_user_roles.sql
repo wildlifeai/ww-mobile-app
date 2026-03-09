@@ -11,7 +11,7 @@ CREATE TABLE user_roles (
   granted_at timestamptz DEFAULT (now()) NOT NULL,
   expires_at timestamptz, -- NULL means no expiration
   is_active boolean DEFAULT true NOT NULL,
-  modified_by uuid NOT NULL REFERENCES auth.users(id),
+  modified_by uuid NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id),
   CONSTRAINT user_roles_user_id_fkey 
     FOREIGN KEY (user_id) REFERENCES auth.users (id) ON DELETE CASCADE,
   CONSTRAINT user_roles_granted_by_fkey
