@@ -11,7 +11,7 @@ import Toast, {
 } from "react-native-toast-message"
 
 import { useBluetoothStatus } from "../hooks/useBluetoothStatus"
-import { useLocationStatus } from "../hooks/useLocationStatus"
+
 import { useSetupBLELibrary } from "../hooks/useSetupBLELibrary"
 import { useAppSelector } from "../redux"
 
@@ -33,7 +33,7 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 
 	useSetupBLELibrary()
 	useBluetoothStatus()
-	useLocationStatus()
+
 
 	// Initialize Supabase client and then sync reference data
 	useEffect(() => {

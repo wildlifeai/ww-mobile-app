@@ -46,7 +46,7 @@ const renderScene = BottomNavigation.SceneMap({
 })
 
 export const BottomTabs = () => {
-	const [index, setIndex] = useState(0) // Start with Maps tab active
+	const [index, setIndex] = useState(2) // Start with Deployments tab active
 	// const [invitationCount, setInvitationCount] = useState(0)
 	const { colors } = useExtendedTheme()
 	const navigation = useAppNavigation()
