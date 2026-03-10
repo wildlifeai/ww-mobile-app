@@ -3,7 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { useAppSelector } from "../redux"
 // System screens
 import { BluetoothProblems } from "./screens/system/BluetoothProblemsScreen"
-import { LocationProblems } from "./screens/system/LocationProblemsScreen"
+
 import { BleProblems } from "./screens/system/BleProblemsScreen"
 import * as SplashScreen from "expo-splash-screen"
 import { NavigationBar } from "../components/NavigationBar"
@@ -60,9 +60,6 @@ export const MainNavigation = () => {
 	const { status, initialLoad: blLoading } = useAppSelector(
 		(state) => state.blStatus,
 	)
-	const { locationEnabled, initialLoad: locLoading } = useAppSelector(
-		(state) => state.locationStatus,
-	)
 	const { initialized, initialLoad: bleLoading } = useAppSelector(
 		(state) => state.bleLibrary,
 	)
@@ -73,7 +70,7 @@ export const MainNavigation = () => {
 	// Initialize deep linking
 	useDeepLinking()
 
-	const appLoading = blLoading || locLoading || bleLoading || authLoading
+	const appLoading = blLoading || bleLoading || authLoading
 
 	useEffect(() => {
 		if (!appLoading) {
@@ -107,12 +104,6 @@ export const MainNavigation = () => {
 						name="BluetoothProblems"
 						component={BluetoothProblems}
 						options={{ headerShown: false }}
-					/>
-				) : !locationEnabled ? (
-					<Stack.Screen
-						options={{ headerShown: false }}
-						name="LocationProblems"
-						component={LocationProblems}
 					/>
 				) : !initialized ? (
 					<Stack.Screen
