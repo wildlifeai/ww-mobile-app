@@ -16,7 +16,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { log, logError, logWarn } from '../utils/logger'
 
 
-interface PendingInvitation {
+export interface PendingInvitation {
     id: string
     project_id: string
     project_name: string
