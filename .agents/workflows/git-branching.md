@@ -16,7 +16,7 @@ description: Git branching rules — NEVER commit directly to protected branches
 - `chore/<short-description>` — maintenance, CI, tooling
 
 ## Workflow
-// turbo-all
+
 
 1. Check current branch: `git branch --show-current`
 2. If on a protected branch, create a new branch: `git checkout -b <type>/<description>`
