@@ -79,7 +79,16 @@ class InvitationService {
             if (error) throw error
 
             log(`✅ Found ${data?.length || 0} pending invitations for project`)
-            return (data || []) as any[]
+            
+            // Map snake_case backend fields to camelCase properties expected by the UI
+            const mappedData = (data || []).map((item: any) => ({
+                ...item,
+                inviteeEmail: item.invitee_email,
+                expiresAt: item.expires_at,
+                remoteId: item.id
+            }))
+
+            return mappedData as any[]
         } catch (error) {
             logError('❌ Failed to fetch project pending invitations:', error)
             return []

@@ -53,10 +53,15 @@ export const Notifications = () => {
 
 			if (accept) {
 				log("🔄 Refreshing session and syncing data after invite acceptance...")
-				// 1. Refresh Redux user session to get the new project role/permissions
-				await refreshSession()
-				// 2. Trigger a global background sync to pull down the new Projects and Devices
-				SupabaseSyncService.debouncedSync()
+				try {
+					// 1. Refresh Redux user session to get the new project role/permissions
+					await refreshSession()
+					// 2. Trigger a global background sync to pull down the new Projects and Devices IMMEDIATELY
+					await SupabaseSyncService.sync()
+				} catch (syncError) {
+					logError("Sync failed after accepting invite", syncError)
+					// We don't throw here because the invitation itself was successfully accepted
+				}
 			}
 
 			// Refresh list from cloud
