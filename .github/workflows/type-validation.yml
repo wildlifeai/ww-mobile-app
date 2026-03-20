@@ -41,14 +41,14 @@ jobs:
       - name: Link to cloud-dev project
         run: |
           echo "Linking to cloud-dev Supabase instance..."
-          npx supabase link --project-ref nuhwmubvygxyddkycmpa
+          npx supabase link --project-ref qegeovogqxiouqbrxmnh
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Generate fresh types from cloud-dev
         run: |
           echo "Generating types from cloud-dev Supabase instance..."
-          npx supabase gen types typescript --project-id nuhwmubvygxyddkycmpa > /tmp/fresh-types.ts
+          npx supabase gen types typescript --project-id qegeovogqxiouqbrxmnh > /tmp/fresh-types.ts
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
