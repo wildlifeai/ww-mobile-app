@@ -1,0 +1,12 @@
+﻿react-doctor v0.0.30
+
+Scanning changes: [36mfeature/org-filtering-devices-deployments[39m ΓåÆ [36mmain[39m
+
+[2mScanning C:\dev\ww\src...[22m
+
+
+[31mSomething went wrong. Please check the error below for more details.[39m
+[31mIf the problem persists, please open an issue on GitHub.[39m
+[31m[39m
+[31mNo package.json found in C:\dev\ww\src[39m
+

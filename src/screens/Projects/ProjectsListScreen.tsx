@@ -28,7 +28,10 @@ export const Projects = () => {
 
 	// Query projects for current organisation
 	const userId = useAppSelector((state) => state.authentication.user?.id)
-	const organisationId = useAppSelector((state) => state.authentication.currentOrganisation?.id)
+	const currentOrganisation = useAppSelector((state) => state.authentication.currentOrganisation)
+	const organisationId = currentOrganisation?.id
+	const organisationName = currentOrganisation?.name || 'your organisation'
+	const hasMultipleOrgs = (useAppSelector((state) => state.authentication.user?.organisations)?.length ?? 0) > 1
 	const isGlobalSyncing = useAppSelector((state) => state.sync.isGlobalSyncing)
 
 	const {
@@ -109,8 +112,11 @@ export const Projects = () => {
 			searchPlaceholder="Search projects..."
 			primaryActionLabel="New Project"
 			onPrimaryAction={handleCreateProject}
-			emptyStateTitle="No projects yet"
-			emptyStateMessage="Create your first project to start managing wildlife camera deployments"
+			emptyStateTitle={hasMultipleOrgs ? `No projects for ${organisationName}` : 'No projects yet'}
+			emptyStateMessage={hasMultipleOrgs
+				? `There are no projects yet for ${organisationName}. Create a new project or switch to a different organisation.`
+				: 'Create your first project to start managing wildlife camera deployments.'
+			}
 		/>
 	)
 }

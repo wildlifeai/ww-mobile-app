@@ -10,10 +10,52 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.12 (cd3cf9e)"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
+      account_deletion_requests: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          email: string
+          id: string
+          notes: string | null
+          reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       activity_sensitivity: {
         Row: {
           created_at: string | null
@@ -1065,7 +1107,7 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           is_active?: boolean
-          modified_by: string
+          modified_by?: string
           name: string
           slug: string
           updated_at?: string | null
@@ -1195,7 +1237,7 @@ export type Database = {
           is_baited?: boolean | null
           is_monitoring_marked_individuals?: boolean | null
           model_id?: string | null
-          modified_by: string
+          modified_by?: string
           name: string
           organisation_id: string
           project_image?: string | null
@@ -1379,7 +1421,7 @@ export type Database = {
           granted_by?: string | null
           id?: string
           is_active?: boolean
-          modified_by: string
+          modified_by?: string
           role: string
           scope_id?: string | null
           scope_type: string
@@ -1418,7 +1460,7 @@ export type Database = {
           deleted_at?: string | null
           firstname: string
           id: string
-          modified_by: string
+          modified_by?: string
           surname: string
           updated_at?: string | null
         }
@@ -2154,27 +2196,16 @@ export type Database = {
           projects: Json
         }[]
       }
-      get_organisation_users:
-        | {
-            Args: { p_organisation_id: string }
-            Returns: {
-              email: string
-              id: string
-              is_in_project: boolean
-              name: string
-              roles: Json
-            }[]
-          }
-        | {
-            Args: { p_organisation_id: string; p_requesting_user_id?: string }
-            Returns: {
-              email: string
-              id: string
-              is_in_project: boolean
-              name: string
-              roles: Json
-            }[]
-          }
+      get_organisation_users: {
+        Args: { p_organisation_id: string }
+        Returns: {
+          email: string
+          id: string
+          is_in_project: boolean
+          name: string
+          roles: Json
+        }[]
+      }
       get_project_health_report: {
         Args: { p_organisation_id?: string }
         Returns: {
@@ -2190,31 +2221,18 @@ export type Database = {
           project_name: string
         }[]
       }
-      get_project_members:
-        | {
-            Args: { p_project_id: string }
-            Returns: {
-              email: string
-              granted_at: string
-              granted_by: string
-              granted_by_name: string
-              id: string
-              name: string
-              role: string
-            }[]
-          }
-        | {
-            Args: { p_project_id: string; p_requesting_user_id?: string }
-            Returns: {
-              email: string
-              granted_at: string
-              granted_by: string
-              granted_by_name: string
-              id: string
-              name: string
-              role: string
-            }[]
-          }
+      get_project_members: {
+        Args: { p_project_id: string }
+        Returns: {
+          email: string
+          granted_at: string
+          granted_by: string
+          granted_by_name: string
+          id: string
+          name: string
+          role: string
+        }[]
+      }
       get_project_pending_invitations: {
         Args: { p_project_id: string }
         Returns: {

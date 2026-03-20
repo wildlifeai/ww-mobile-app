@@ -1,6 +1,5 @@
-import { useState, useMemo, useCallback } from "react"
+import { useReducer, useMemo, useCallback, useEffect } from "react"
 import { ListRenderItemInfo, View, StyleSheet } from "react-native"
-import { withObservables } from '@nozbe/watermelondb/react'
 import { FAB, Chip, Text } from 'react-native-paper'
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { DeploymentCard } from "../../components/DeploymentCard"
@@ -12,22 +11,78 @@ import { DeploymentService } from "../../services/DeploymentService"
 import SupabaseSyncService from "../../services/SupabaseSyncService"
 import { log, logError } from "../../utils/logger"
 
-type Props = {
-	deployments: Deployment[]
+interface DeploymentsState {
+	deployments: Deployment[];
+	isLoading: boolean;
+	isRefreshing: boolean;
+	searchQuery: string;
+	statusFilter: 'all' | 'active' | 'ended';
 }
 
-const DeploymentsComponent = ({ deployments }: Props) => {
+type DeploymentsAction =
+	| { type: 'SET_DEPLOYMENTS'; payload: Deployment[] }
+	| { type: 'SET_LOADING'; payload: boolean }
+	| { type: 'SET_REFRESHING'; payload: boolean }
+	| { type: 'SET_SEARCH_QUERY'; payload: string }
+	| { type: 'SET_STATUS_FILTER'; payload: 'all' | 'active' | 'ended' }
+
+const initialState: DeploymentsState = {
+	deployments: [],
+	isLoading: true,
+	isRefreshing: false,
+	searchQuery: "",
+	statusFilter: 'all',
+}
+
+function deploymentsReducer(state: DeploymentsState, action: DeploymentsAction): DeploymentsState {
+	switch (action.type) {
+		case 'SET_DEPLOYMENTS':
+			return { ...state, deployments: action.payload, isLoading: false }
+		case 'SET_LOADING':
+			return { ...state, isLoading: action.payload }
+		case 'SET_REFRESHING':
+			return { ...state, isRefreshing: action.payload }
+		case 'SET_SEARCH_QUERY':
+			return { ...state, searchQuery: action.payload }
+		case 'SET_STATUS_FILTER':
+			return { ...state, statusFilter: action.payload }
+		default:
+			return state
+	}
+}
+
+export const Deployments = () => {
 	const navigation = useAppNavigation()
 	// const theme = useExtendedTheme()
 	
 	const isGlobalSyncing = useAppSelector((state) => state.sync.isGlobalSyncing)
+	const currentOrganisation = useAppSelector((state) => state.authentication.currentOrganisation)
+	const organisationId = currentOrganisation?.id
+	const organisationName = currentOrganisation?.name || 'your organisation'
+	const hasMultipleOrgs = (useAppSelector((state) => state.authentication.user?.organisations)?.length ?? 0) > 1
 
-	// Refresh state for pull-to-refresh
-	const [isRefreshing, setIsRefreshing] = useState(false)
+	const [state, dispatch] = useReducer(deploymentsReducer, initialState)
+	const { deployments, isLoading, isRefreshing, searchQuery, statusFilter } = state
 
-	// Search & Filter state
-	const [searchQuery, setSearchQuery] = useState("")
-	const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'ended'>('all')
+	// Subscribe to deployments filtered by organisation
+	useEffect(() => {
+		dispatch({ type: 'SET_LOADING', payload: true })
+		const observable = organisationId
+			? DeploymentService.observeDeploymentsForOrganisation(organisationId)
+			: DeploymentService.observeDeployments()
+
+		const subscription = observable.subscribe({
+			next: (results) => {
+				dispatch({ type: 'SET_DEPLOYMENTS', payload: results })
+			},
+			error: (err) => {
+				logError('[DeploymentsListScreen] Observable error:', err)
+				dispatch({ type: 'SET_LOADING', payload: false })
+			}
+		})
+
+		return () => subscription.unsubscribe()
+	}, [organisationId])
 
 	// Filter deployments based on search query and status
 	const filteredDeployments = useMemo(() => {
@@ -72,7 +127,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 	 * Observable will automatically update local state when new data arrives
 	 */
 	const handleRefresh = useCallback(async () => {
-		setIsRefreshing(true)
+		dispatch({ type: 'SET_REFRESHING', payload: true })
 		try {
 			log('[DeploymentsListScreen] Syncing deployments with server...')
 			// Trigger full sync which includes pulling latest changes
@@ -82,7 +137,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 		} catch (error) {
 			logError('[DeploymentsListScreen] Error syncing deployments:', error)
 		} finally {
-			setIsRefreshing(false)
+			dispatch({ type: 'SET_REFRESHING', payload: false })
 		}
 	}, [])
 
@@ -108,11 +163,11 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 				data={filteredDeployments}
 				renderItem={renderItem}
 				keyExtractor={keyExtractor}
-				isLoading={false || (isGlobalSyncing && (!deployments || deployments.length === 0))}
+				isLoading={isLoading || (isGlobalSyncing && (!deployments || deployments.length === 0))}
 				isFetching={isRefreshing || isGlobalSyncing}
 				onRefresh={handleRefresh}
 				searchQuery={searchQuery}
-				onSearchChange={setSearchQuery}
+				onSearchChange={(text) => dispatch({ type: 'SET_SEARCH_QUERY', payload: text })}
 				searchPlaceholder="Search deployments..."
 				primaryActionLabel="New Deployment"
 				onPrimaryAction={handleAddDeployment}
@@ -120,7 +175,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 					<>
 						<Chip
 							selected={statusFilter === 'all'}
-							onPress={() => setStatusFilter('all')}
+							onPress={() => dispatch({ type: 'SET_STATUS_FILTER', payload: 'all' })}
 							showSelectedCheck={false}
 							style={styles.filterChip}
 						>
@@ -128,7 +183,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 						</Chip>
 						<Chip
 							selected={statusFilter === 'active'}
-							onPress={() => setStatusFilter('active')}
+							onPress={() => dispatch({ type: 'SET_STATUS_FILTER', payload: 'active' })}
 							showSelectedCheck={false}
 							style={styles.filterChip}
 						>
@@ -136,7 +191,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 						</Chip>
 						<Chip
 							selected={statusFilter === 'ended'}
-							onPress={() => setStatusFilter('ended')}
+							onPress={() => dispatch({ type: 'SET_STATUS_FILTER', payload: 'ended' })}
 							showSelectedCheck={false}
 							style={styles.filterChip}
 						>
@@ -144,10 +199,12 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 						</Chip>
 					</>
 				}
-				emptyStateTitle="No deployments found"
+				emptyStateTitle={hasMultipleOrgs ? `No deployments for ${organisationName}` : 'No deployments yet'}
 				emptyStateMessage={
 					statusFilter === 'all'
-						? "Create a deployment to track your devices in the field"
+						? (hasMultipleOrgs
+							? `There are no deployments yet for ${organisationName}. Create a new deployment or switch to a different organisation.`
+							: 'Create a deployment to start tracking your devices in the field.')
 						: `No ${statusFilter} deployments match your search`
 				}
 			/>
@@ -182,9 +239,3 @@ const styles = StyleSheet.create({
 		backgroundColor: '#FFAB00',
 	}
 })
-
-const enhance = withObservables([], () => ({
-	deployments: DeploymentService.observeDeployments()
-}))
-
-export const Deployments = enhance(DeploymentsComponent)
