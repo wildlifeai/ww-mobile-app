@@ -123,14 +123,26 @@ export const getOrganizationUsers = async (
 
 /**
  * Get all members of a project
- * Checks local WatermelonDB first for offline support
+ * Uses a Network-First strategy to bypass local RLS restrictions for non-admins,
+ * falling back to local WatermelonDB for offline support.
  */
 export const getProjectMembers = async (
 	projectId: string,
 	requestingUserId: string,
 ): Promise<ProjectMember[]> => {
 	try {
-		// 1. Try local database first
+		// 1. Try cloud first (Network-First strategy)
+		// This guarantees that non-admins (bound by RLS offline) can see the full member list natively.
+		try {
+			const cloudMembers = await fetchMembersFromCloud(projectId, requestingUserId)
+			if (cloudMembers && cloudMembers.length > 0) {
+				return cloudMembers
+			}
+		} catch (cloudError) {
+			log("⚠️ Cloud fetch for project members failed or offline, securely falling back to local DB...")
+		}
+
+		// 2. Try local database (Offline Fallback)
 		const localRoles = await database.get<UserRole>('user_roles')
 			.query(
 				Q.where('scope_type', 'project'),
@@ -288,18 +300,10 @@ export const getProjectMembers = async (
 				}]
 			}
 		} catch (e) {
-			// Project not found or error, proceed to RPC fallback
+			// Project not found or error, return empty
 		}
 
-		// 2. Fallback to backend RPC
-		// If cloud fetch fails (likely due to u.name error on old backend),
-		// we still have the local members with enriched data from invitations.
-		try {
-			return await fetchMembersFromCloud(projectId, requestingUserId)
-		} catch (cloudError) {
-			log("⚠️ Cloud fetch failed, returning enriched local members")
-			throw cloudError
-		}
+		return []
 	} catch (error) {
 		logError("❌ Exception fetching project members: " + (error instanceof Error ? error.message : String(error)))
 		throw error
