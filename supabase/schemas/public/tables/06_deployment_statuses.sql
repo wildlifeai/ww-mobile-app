@@ -3,7 +3,7 @@ CREATE TABLE deployment_statuses (
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
-  modified_by uuid NOT NULL REFERENCES auth.users(id),
+  modified_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   value text NOT NULL,
   description text NOT NULL,
   is_active boolean NOT NULL DEFAULT true

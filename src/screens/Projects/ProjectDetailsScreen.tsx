@@ -143,7 +143,7 @@ export const ProjectDetailsScreen = () => {
 
 				{/* Stats Cards */}
 				{!isEditMode && (
-					<ProjectStatsCard project={project} />
+					<ProjectStatsCard project={project} cloudMemberCount={members?.length} />
 				)}
 
 				{/* Settings Section */}

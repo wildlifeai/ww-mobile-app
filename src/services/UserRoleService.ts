@@ -314,8 +314,7 @@ export const fetchMembersFromCloud = async (
 		// This bypasses RLS issues and provides proper data joins
 		const { data, error } = await getSupabaseClient()
 			.rpc("get_project_members", {
-				p_project_id: projectId,
-				p_requesting_user_id: requestingUserId
+				p_project_id: projectId
 			})
 
 		if (error) {

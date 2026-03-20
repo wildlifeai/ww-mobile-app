@@ -9,9 +9,9 @@ CREATE TABLE deployments (
   
   -- Deployment lifecycle
   name text NOT NULL,
-  setup_by uuid NOT NULL REFERENCES auth.users(id),
+  setup_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   deployment_start timestamptz NOT NULL,
-  ended_by uuid REFERENCES auth.users(id),
+  ended_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   deployment_end timestamptz,
   deployment_status_id int REFERENCES deployment_statuses(id),
   capture_method_id int REFERENCES capture_methods(id), -- RESTORED
