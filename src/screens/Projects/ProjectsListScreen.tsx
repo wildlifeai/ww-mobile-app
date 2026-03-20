@@ -22,6 +22,8 @@ import { useAppNavigation } from "../../hooks/useAppNavigation"
 import type { ProjectWithDetails } from "../../types/project"
 import { useAppSelector } from "../../redux"
 import { StandardizedListLayout } from "../../components/ui/StandardizedListLayout"
+import SupabaseSyncService from "../../services/SupabaseSyncService"
+import { logError } from "../../utils/logger"
 
 export const Projects = () => {
 	const navigation = useAppNavigation()
@@ -33,6 +35,7 @@ export const Projects = () => {
 	const organisationName = currentOrganisation?.name || 'your organisation'
 	const hasMultipleOrgs = (useAppSelector((state) => state.authentication.user?.organisations)?.length ?? 0) > 1
 	const isGlobalSyncing = useAppSelector((state) => state.sync.isGlobalSyncing)
+	const [refreshing, setRefreshing] = useState(false)
 
 	const {
 		data: projects,
@@ -58,6 +61,17 @@ export const Projects = () => {
 			refetch()
 		}, [refetch])
 	)
+
+	const handleRefresh = useCallback(async () => {
+		setRefreshing(true)
+		try {
+			await SupabaseSyncService.sync()
+		} catch (err) {
+			logError('[ProjectsListScreen] Error syncing projects:', err)
+		} finally {
+			setRefreshing(false)
+		}
+	}, [])
 
 	// Search state
 	const [searchQuery, setSearchQuery] = useState("")
@@ -103,8 +117,8 @@ export const Projects = () => {
 			renderItem={renderItem}
 			keyExtractor={keyExtractor}
 			isLoading={isLoading || (isGlobalSyncing && (!projects || projects.length === 0))}
-			isFetching={isFetching || isGlobalSyncing}
-			onRefresh={refetch}
+			isFetching={isFetching || isGlobalSyncing || refreshing}
+			onRefresh={handleRefresh}
 			error={error}
 			onRetry={refetch}
 			searchQuery={searchQuery}

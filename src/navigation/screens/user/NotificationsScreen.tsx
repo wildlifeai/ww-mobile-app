@@ -5,8 +5,9 @@ import { Card, Button, Chip, useTheme, ActivityIndicator, Text } from "react-nat
 import { useState, useCallback } from "react"
 import { useFocusEffect } from "@react-navigation/native"
 import InvitationService, { PendingInvitation } from "../../../services/InvitationService"
-import { logError } from '../../../utils/logger'
-
+import { logError, log } from '../../../utils/logger'
+import useSupabaseAuth from "../../../hooks/useSupabaseAuth"
+import SupabaseSyncService from "../../../services/SupabaseSyncService"
 
 export const Notifications = () => {
 	const theme = useTheme()
@@ -42,11 +43,22 @@ export const Notifications = () => {
 		setRefreshing(false)
 	}, [loadInvitations])
 
+	const { refreshSession } = useSupabaseAuth()
+
 	const handleRespond = useCallback(async (invitationId: string, accept: boolean) => {
 		setProcessingId(invitationId)
 		try {
 			await InvitationService.respondToInvitation(invitationId, accept)
 			Alert.alert("Success", `Invitation ${accept ? "accepted" : "declined"}`)
+
+			if (accept) {
+				log("🔄 Refreshing session and syncing data after invite acceptance...")
+				// 1. Refresh Redux user session to get the new project role/permissions
+				await refreshSession()
+				// 2. Trigger a global background sync to pull down the new Projects and Devices
+				SupabaseSyncService.debouncedSync()
+			}
+
 			// Refresh list from cloud
 			const pending = await InvitationService.getMyPendingInvitations()
 			setInvitations(pending)
@@ -55,7 +67,7 @@ export const Notifications = () => {
 		} finally {
 			setProcessingId(null)
 		}
-	}, [])
+	}, [refreshSession])
 
 	const renderCardLeft = useCallback((props: any) => <Chip icon="email-outline" {...props} onPress={() => { }}><Text>Invite</Text></Chip>, [])
 
