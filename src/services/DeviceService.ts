@@ -241,9 +241,19 @@ export const DeviceService = {
     },
 
     /**
-     * Get devices that user has access to via their projects
-     * Shows devices that have deployments OR device_preparation in user's accessible projects
+     * Get devices for a user scoped to a specific organisation.
+     * Reuses getDevicesForUser then filters to only devices belonging to the given org.
      */
+    getDevicesForUserInOrganisation: async (userId: string, organisationId: string): Promise<DeviceListItem[]> => {
+        const allDevices = await DeviceService.getDevicesForUser(userId)
+
+        // Get device records for this organisation to build a set of valid IDs
+        const orgDevices = await DeviceService.getDevicesByOrganisation(organisationId)
+        const orgDeviceIds = new Set(orgDevices.map(d => d.id))
+
+        return allDevices.filter(d => orgDeviceIds.has(d.id))
+    },
+
     /**
      * Get devices that user has access to via their projects
      * Shows devices that have deployments OR device_preparation in user's accessible projects

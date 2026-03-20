@@ -269,6 +269,18 @@ export const DeploymentService = {
         return deploymentsCollection.query(
             Q.sortBy('created_at', Q.desc)
         ).observe()
+    },
+
+    /**
+     * Observe deployments filtered to a specific organisation.
+     * Joins through projects table to find deployments whose project belongs to the given org.
+     */
+    observeDeploymentsForOrganisation: (organisationId: string) => {
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        return deploymentsCollection.query(
+            Q.on('projects', 'organisation_id', organisationId),
+            Q.sortBy('created_at', Q.desc)
+        ).observe()
     }
 }
 

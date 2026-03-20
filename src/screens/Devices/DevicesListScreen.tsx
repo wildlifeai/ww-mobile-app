@@ -18,8 +18,12 @@ export const Devices = () => {
 	const [refreshing, setRefreshing] = useState(false)
 	const [searchQuery, setSearchQuery] = useState('')
 
-	// Get current user ID from Redux
+	// Get current user ID and organisation from Redux
 	const userId = useSelector((state: RootState) => state.authentication.user?.id)
+	const currentOrganisation = useSelector((state: RootState) => state.authentication.currentOrganisation)
+	const organisationId = currentOrganisation?.id
+	const organisationName = currentOrganisation?.name || 'your organisation'
+	const hasMultipleOrgs = (useSelector((state: RootState) => state.authentication.user?.organisations)?.length ?? 0) > 1
 	const isGlobalSyncing = useSelector((state: RootState) => state.sync.isGlobalSyncing)
 
 	const loadDevices = useCallback(async () => {
@@ -30,8 +34,10 @@ export const Devices = () => {
 				return
 			}
 
-			// Use filtered method to get only devices user has access to
-			const devicesList = await DeviceService.getDevicesForUser(userId)
+			// Use filtered method to get only devices user has access to within the selected org
+			const devicesList = organisationId
+				? await DeviceService.getDevicesForUserInOrganisation(userId, organisationId)
+				: await DeviceService.getDevicesForUser(userId)
 
 			// Sort by latest activity (maximum of preparedDate and lastDeploymentDate)
 			const sortedDevices = [...devicesList].sort((a, b) => {
@@ -54,7 +60,7 @@ export const Devices = () => {
 			setLoading(false)
 			setRefreshing(false)
 		}
-	}, [userId])
+	}, [userId, organisationId])
 
 	useFocusEffect(
 		useCallback(() => {
@@ -119,8 +125,11 @@ export const Devices = () => {
 			secondaryActionIcon="wrench"
 			secondaryActionColor={theme.colors.primary}
 
-			emptyStateTitle="No devices yet"
-			emptyStateMessage="Prepare and test nearby cameras to add them to your device list"
+			emptyStateTitle={hasMultipleOrgs ? `No devices for ${organisationName}` : 'No devices yet'}
+			emptyStateMessage={hasMultipleOrgs
+				? `There are no devices yet for ${organisationName}. Prepare and test nearby cameras, or switch to a different organisation.`
+				: 'Prepare and test nearby cameras to add them to your device list.'
+			}
 			emptySearchMessage={`No devices found matching "${searchQuery}"`}
 		/>
 	)

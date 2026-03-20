@@ -1,6 +1,5 @@
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { ListRenderItemInfo, View, StyleSheet } from "react-native"
-import { withObservables } from '@nozbe/watermelondb/react'
 import { FAB, Chip, Text } from 'react-native-paper'
 import { useAppNavigation } from "../../hooks/useAppNavigation"
 import { DeploymentCard } from "../../components/DeploymentCard"
@@ -12,15 +11,40 @@ import { DeploymentService } from "../../services/DeploymentService"
 import SupabaseSyncService from "../../services/SupabaseSyncService"
 import { log, logError } from "../../utils/logger"
 
-type Props = {
-	deployments: Deployment[]
-}
-
-const DeploymentsComponent = ({ deployments }: Props) => {
+export const Deployments = () => {
 	const navigation = useAppNavigation()
 	// const theme = useExtendedTheme()
 	
 	const isGlobalSyncing = useAppSelector((state) => state.sync.isGlobalSyncing)
+	const currentOrganisation = useAppSelector((state) => state.authentication.currentOrganisation)
+	const organisationId = currentOrganisation?.id
+	const organisationName = currentOrganisation?.name || 'your organisation'
+	const hasMultipleOrgs = (useAppSelector((state) => state.authentication.user?.organisations)?.length ?? 0) > 1
+
+	// Local state for deployments (replaces withObservables)
+	const [deployments, setDeployments] = useState<Deployment[]>([])
+	const [isLoading, setIsLoading] = useState(true)
+
+	// Subscribe to deployments filtered by organisation
+	useEffect(() => {
+		setIsLoading(true)
+		const observable = organisationId
+			? DeploymentService.observeDeploymentsForOrganisation(organisationId)
+			: DeploymentService.observeDeployments()
+
+		const subscription = observable.subscribe({
+			next: (results) => {
+				setDeployments(results)
+				setIsLoading(false)
+			},
+			error: (err) => {
+				logError('[DeploymentsListScreen] Observable error:', err)
+				setIsLoading(false)
+			}
+		})
+
+		return () => subscription.unsubscribe()
+	}, [organisationId])
 
 	// Refresh state for pull-to-refresh
 	const [isRefreshing, setIsRefreshing] = useState(false)
@@ -108,7 +132,7 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 				data={filteredDeployments}
 				renderItem={renderItem}
 				keyExtractor={keyExtractor}
-				isLoading={false || (isGlobalSyncing && (!deployments || deployments.length === 0))}
+				isLoading={isLoading || (isGlobalSyncing && (!deployments || deployments.length === 0))}
 				isFetching={isRefreshing || isGlobalSyncing}
 				onRefresh={handleRefresh}
 				searchQuery={searchQuery}
@@ -144,10 +168,12 @@ const DeploymentsComponent = ({ deployments }: Props) => {
 						</Chip>
 					</>
 				}
-				emptyStateTitle="No deployments found"
+				emptyStateTitle={hasMultipleOrgs ? `No deployments for ${organisationName}` : 'No deployments yet'}
 				emptyStateMessage={
 					statusFilter === 'all'
-						? "Create a deployment to track your devices in the field"
+						? (hasMultipleOrgs
+							? `There are no deployments yet for ${organisationName}. Create a new deployment or switch to a different organisation.`
+							: 'Create a deployment to start tracking your devices in the field.')
 						: `No ${statusFilter} deployments match your search`
 				}
 			/>
@@ -182,9 +208,3 @@ const styles = StyleSheet.create({
 		backgroundColor: '#FFAB00',
 	}
 })
-
-const enhance = withObservables([], () => ({
-	deployments: DeploymentService.observeDeployments()
-}))
-
-export const Deployments = enhance(DeploymentsComponent)
