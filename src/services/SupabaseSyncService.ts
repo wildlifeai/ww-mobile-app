@@ -1130,7 +1130,7 @@ class SupabaseSyncService {
                         rec.deviceEui = row.device_eui ?? undefined
                         rec.lorawanNetwork = row.lorawan_network ?? undefined
                         rec.lorawanRegistrationCompleted = row.lorawan_registration_completed
-                        rec.modifiedBy = row.modified_by;
+                        rec.modifiedBy = row.modified_by ?? '';
                         (rec._raw as any).updated_at = new Date(row.updated_at ?? Date.now()).getTime()
                     })
                 } catch (e) {
@@ -1148,7 +1148,7 @@ class SupabaseSyncService {
                         rec.deviceEui = row.device_eui ?? undefined
                         rec.lorawanNetwork = row.lorawan_network ?? undefined
                         rec.lorawanRegistrationCompleted = row.lorawan_registration_completed
-                        rec.modifiedBy = row.modified_by;
+                        rec.modifiedBy = row.modified_by ?? '';
                         (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
                         rec.updatedAt = new Date(row.updated_at ?? Date.now())
                     })

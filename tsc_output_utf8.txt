@@ -1,0 +1,8 @@
+﻿
+> wildlifewatcher@0.0.37 type-check
+> tsc --noEmit
+
+src/services/SupabaseSyncService.ts(1133,25): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/services/SupabaseSyncService.ts(1151,25): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useReducer, useMemo, useCallback, useEffect } from "react"
 import { ListRenderItemInfo, View, StyleSheet } from "react-native"
 import { FAB, Chip, Text } from 'react-native-paper'
 import { useAppNavigation } from "../../hooks/useAppNavigation"
@@ -11,6 +11,46 @@ import { DeploymentService } from "../../services/DeploymentService"
 import SupabaseSyncService from "../../services/SupabaseSyncService"
 import { log, logError } from "../../utils/logger"
 
+interface DeploymentsState {
+	deployments: Deployment[];
+	isLoading: boolean;
+	isRefreshing: boolean;
+	searchQuery: string;
+	statusFilter: 'all' | 'active' | 'ended';
+}
+
+type DeploymentsAction =
+	| { type: 'SET_DEPLOYMENTS'; payload: Deployment[] }
+	| { type: 'SET_LOADING'; payload: boolean }
+	| { type: 'SET_REFRESHING'; payload: boolean }
+	| { type: 'SET_SEARCH_QUERY'; payload: string }
+	| { type: 'SET_STATUS_FILTER'; payload: 'all' | 'active' | 'ended' }
+
+const initialState: DeploymentsState = {
+	deployments: [],
+	isLoading: true,
+	isRefreshing: false,
+	searchQuery: "",
+	statusFilter: 'all',
+}
+
+function deploymentsReducer(state: DeploymentsState, action: DeploymentsAction): DeploymentsState {
+	switch (action.type) {
+		case 'SET_DEPLOYMENTS':
+			return { ...state, deployments: action.payload, isLoading: false }
+		case 'SET_LOADING':
+			return { ...state, isLoading: action.payload }
+		case 'SET_REFRESHING':
+			return { ...state, isRefreshing: action.payload }
+		case 'SET_SEARCH_QUERY':
+			return { ...state, searchQuery: action.payload }
+		case 'SET_STATUS_FILTER':
+			return { ...state, statusFilter: action.payload }
+		default:
+			return state
+	}
+}
+
 export const Deployments = () => {
 	const navigation = useAppNavigation()
 	// const theme = useExtendedTheme()
@@ -21,37 +61,28 @@ export const Deployments = () => {
 	const organisationName = currentOrganisation?.name || 'your organisation'
 	const hasMultipleOrgs = (useAppSelector((state) => state.authentication.user?.organisations)?.length ?? 0) > 1
 
-	// Local state for deployments (replaces withObservables)
-	const [deployments, setDeployments] = useState<Deployment[]>([])
-	const [isLoading, setIsLoading] = useState(true)
+	const [state, dispatch] = useReducer(deploymentsReducer, initialState)
+	const { deployments, isLoading, isRefreshing, searchQuery, statusFilter } = state
 
 	// Subscribe to deployments filtered by organisation
 	useEffect(() => {
-		setIsLoading(true)
+		dispatch({ type: 'SET_LOADING', payload: true })
 		const observable = organisationId
 			? DeploymentService.observeDeploymentsForOrganisation(organisationId)
 			: DeploymentService.observeDeployments()
 
 		const subscription = observable.subscribe({
 			next: (results) => {
-				setDeployments(results)
-				setIsLoading(false)
+				dispatch({ type: 'SET_DEPLOYMENTS', payload: results })
 			},
 			error: (err) => {
 				logError('[DeploymentsListScreen] Observable error:', err)
-				setIsLoading(false)
+				dispatch({ type: 'SET_LOADING', payload: false })
 			}
 		})
 
 		return () => subscription.unsubscribe()
 	}, [organisationId])
-
-	// Refresh state for pull-to-refresh
-	const [isRefreshing, setIsRefreshing] = useState(false)
-
-	// Search & Filter state
-	const [searchQuery, setSearchQuery] = useState("")
-	const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'ended'>('all')
 
 	// Filter deployments based on search query and status
 	const filteredDeployments = useMemo(() => {
@@ -96,7 +127,7 @@ export const Deployments = () => {
 	 * Observable will automatically update local state when new data arrives
 	 */
 	const handleRefresh = useCallback(async () => {
-		setIsRefreshing(true)
+		dispatch({ type: 'SET_REFRESHING', payload: true })
 		try {
 			log('[DeploymentsListScreen] Syncing deployments with server...')
 			// Trigger full sync which includes pulling latest changes
@@ -106,7 +137,7 @@ export const Deployments = () => {
 		} catch (error) {
 			logError('[DeploymentsListScreen] Error syncing deployments:', error)
 		} finally {
-			setIsRefreshing(false)
+			dispatch({ type: 'SET_REFRESHING', payload: false })
 		}
 	}, [])
 
@@ -136,7 +167,7 @@ export const Deployments = () => {
 				isFetching={isRefreshing || isGlobalSyncing}
 				onRefresh={handleRefresh}
 				searchQuery={searchQuery}
-				onSearchChange={setSearchQuery}
+				onSearchChange={(text) => dispatch({ type: 'SET_SEARCH_QUERY', payload: text })}
 				searchPlaceholder="Search deployments..."
 				primaryActionLabel="New Deployment"
 				onPrimaryAction={handleAddDeployment}
@@ -144,7 +175,7 @@ export const Deployments = () => {
 					<>
 						<Chip
 							selected={statusFilter === 'all'}
-							onPress={() => setStatusFilter('all')}
+							onPress={() => dispatch({ type: 'SET_STATUS_FILTER', payload: 'all' })}
 							showSelectedCheck={false}
 							style={styles.filterChip}
 						>
@@ -152,7 +183,7 @@ export const Deployments = () => {
 						</Chip>
 						<Chip
 							selected={statusFilter === 'active'}
-							onPress={() => setStatusFilter('active')}
+							onPress={() => dispatch({ type: 'SET_STATUS_FILTER', payload: 'active' })}
 							showSelectedCheck={false}
 							style={styles.filterChip}
 						>
@@ -160,7 +191,7 @@ export const Deployments = () => {
 						</Chip>
 						<Chip
 							selected={statusFilter === 'ended'}
-							onPress={() => setStatusFilter('ended')}
+							onPress={() => dispatch({ type: 'SET_STATUS_FILTER', payload: 'ended' })}
 							showSelectedCheck={false}
 							style={styles.filterChip}
 						>
