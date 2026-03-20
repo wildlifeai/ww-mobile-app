@@ -3,10 +3,10 @@ CREATE TABLE public.organisations (
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
-  modified_by uuid NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id),
+  modified_by uuid DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE SET NULL,
   name text NOT NULL,
   slug text NOT NULL UNIQUE,
-  created_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   is_active boolean DEFAULT true NOT NULL
 );
 

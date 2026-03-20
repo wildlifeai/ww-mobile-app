@@ -12,8 +12,28 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 214,
+    version: 223,
     tables: [
+        tableSchema({
+            name: 'account_deletion_requests',
+            columns: [
+                { name: 'completed_at', type: 'string', isOptional: true },
+                { name: 'email', type: 'string' },
+                { name: 'notes', type: 'string', isOptional: true },
+                { name: 'reason', type: 'string', isOptional: true },
+                { name: 'reviewed_at', type: 'string', isOptional: true },
+                { name: 'reviewed_by', type: 'string', isOptional: true },
+                { name: 'status', type: 'string' },
+                { name: 'user_id', type: 'string', isOptional: true, isIndexed: true },
+                // System & Sync Fields
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+                { name: 'modified_by', type: 'string' },
+            ],
+        }),
         tableSchema({
             name: 'activity_sensitivity',
             columns: [

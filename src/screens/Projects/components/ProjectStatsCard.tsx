@@ -6,9 +6,10 @@ import { ProjectWithDetails } from '../../../types/project'
 
 interface Props {
     project: ProjectWithDetails
+    cloudMemberCount?: number
 }
 
-export const ProjectStatsCard: React.FC<Props> = ({ project }) => {
+export const ProjectStatsCard: React.FC<Props> = ({ project, cloudMemberCount }) => {
     const theme = useTheme()
 
     const dynamicStyles = {
@@ -29,7 +30,7 @@ export const ProjectStatsCard: React.FC<Props> = ({ project }) => {
                         variant="headlineSmall"
                         style={dynamicStyles.statValue}
                     >
-                        {project.member_count || 0}
+                        {cloudMemberCount ?? project.member_count ?? 0}
                     </Text>
                     <Text
                         variant="bodySmall"

@@ -281,6 +281,75 @@ export const DeploymentService = {
             Q.on('projects', 'organisation_id', organisationId),
             Q.sortBy('created_at', Q.desc)
         ).observe()
+    },
+
+    /**
+     * Get deployments that the user has access to
+     */
+    getDeploymentsForUser: async (userId: string): Promise<Deployment[]> => {
+        const ProjectService = require('./ProjectService').default
+        const userProjects = await ProjectService.getProjectsForUser(userId)
+        const projectIds = new Set(userProjects.map((p: any) => p.id))
+
+        if (projectIds.size === 0) {
+            // Check global admin
+            const userRolesCollection = database.get('user_roles')
+            const userRoles = await userRolesCollection.query(
+                Q.where('user_id', userId),
+                Q.where('is_active', true)
+            ).fetch()
+
+            const isGlobalAdmin = userRoles.some((r: any) => r.scopeType === 'global')
+            if (isGlobalAdmin) {
+                const deploymentsCollection = database.get<Deployment>('deployments')
+                return await deploymentsCollection.query(Q.sortBy('created_at', Q.desc)).fetch()
+            }
+            return []
+        }
+
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        return await deploymentsCollection.query(
+            Q.where('project_id', Q.oneOf(Array.from(projectIds) as string[])),
+            Q.sortBy('created_at', Q.desc)
+        ).fetch()
+    },
+
+    /**
+     * Get deployments for user in a specific organisation
+     */
+    getDeploymentsForUserInOrganisation: async (userId: string, organisationId: string): Promise<Deployment[]> => {
+        const ProjectService = require('./ProjectService').default
+        const userProjects = await ProjectService.getProjectsForUserInOrganisation(userId, organisationId)
+        const projectIds = new Set(userProjects.map((p: any) => p.id))
+
+        if (projectIds.size === 0) {
+            // Check global/org admin
+            const userRolesCollection = database.get('user_roles')
+            const userRoles = await userRolesCollection.query(
+                Q.where('user_id', userId),
+                Q.where('is_active', true)
+            ).fetch()
+
+            const hasFullAccess = userRoles.some((r: any) =>
+                r.scopeType === 'global' ||
+                (r.scopeType === 'organisation' && r.scopeId === organisationId && (r.role === 'project_admin' || r.role === 'ww_admin'))
+            )
+
+            if (hasFullAccess) {
+                const deploymentsCollection = database.get<Deployment>('deployments')
+                return await deploymentsCollection.query(
+                    Q.on('projects', 'organisation_id', organisationId),
+                    Q.sortBy('created_at', Q.desc)
+                ).fetch()
+            }
+            return []
+        }
+
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        return await deploymentsCollection.query(
+            Q.where('project_id', Q.oneOf(Array.from(projectIds) as string[])),
+            Q.sortBy('created_at', Q.desc)
+        ).fetch()
     }
 }
 

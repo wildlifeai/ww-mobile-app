@@ -270,6 +270,9 @@ export default enhance(ProjectsList);
 const projects = useAppSelector(state => state.projects.items);
 ```
 
+> [!WARNING]
+> **Aggregated Data & RLS:** WatermelonDB local queries (like `.fetchCount()`) only reflect what the current user is authorized to sync. For cross-user aggregated data (e.g., total members in a project), do not rely on local observables. Use RTK Query (`projectsApi.ts`) to fetch the true count from the Cloud.
+
 ### Redux Store
 
 **Location:** `src/redux/index.ts`

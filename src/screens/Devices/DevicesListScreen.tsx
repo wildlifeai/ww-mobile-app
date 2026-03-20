@@ -9,6 +9,7 @@ import { useSelector } from 'react-redux'
 import { RootState } from '../../redux'
 import { StandardizedListLayout } from '../../components/ui/StandardizedListLayout'
 import { log, logError } from '../../utils/logger'
+import SupabaseSyncService from '../../services/SupabaseSyncService'
 
 export const Devices = () => {
 	const theme = useTheme()
@@ -75,9 +76,16 @@ export const Devices = () => {
 		}
 	}, [isGlobalSyncing, loadDevices])
 
-	const handleRefresh = () => {
+	const handleRefresh = async () => {
 		setRefreshing(true)
-		loadDevices()
+		try {
+			log('[DevicesListScreen] Syncing devices manually...')
+			await SupabaseSyncService.sync()
+		} catch (error) {
+			logError('Error syncing devices:', error)
+		} finally {
+			setRefreshing(false)
+		}
 	}
 
 	const handleDevicePress = useCallback((deviceId: string) => {

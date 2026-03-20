@@ -14,6 +14,7 @@ import { StyleSheet, View } from "react-native"
 import { Card, Text, useTheme } from "react-native-paper"
 import { WWIcon } from "./ui/WWIcon"
 import type { ProjectWithDetails } from "../types/project"
+import { useGetProjectMembersQuery } from "../redux/api/projectsApi"
 
 export interface ProjectCardProps {
 	project: ProjectWithDetails
@@ -23,6 +24,11 @@ export interface ProjectCardProps {
 export const ProjectCard = React.memo(
 	({ project, onPress }: ProjectCardProps) => {
 		const theme = useTheme()
+
+		// Fetch true cloud member count since local DB only syncs the current user's role 
+		// due to RLS policies. It's safe here because RTK Query caches and deduplicates.
+		const { data: members } = useGetProjectMembersQuery(project.id)
+		const displayMemberCount = members ? members.length : (project.member_count || 0)
 
 		// Format date for display
 		const formatDate = (dateString: string | null) => {
@@ -64,7 +70,7 @@ export const ProjectCard = React.memo(
 				onPress={onPress}
 				testID={`project-card-${project.id}`}
 				accessible
-				accessibilityLabel={`Project ${project.name}, ${project.member_count || 0
+				accessibilityLabel={`Project ${project.name}, ${displayMemberCount
 					} members, ${project.deployment_count || 0} deployments`}
 			>
 				<Card.Content style={styles.content}>
@@ -107,8 +113,8 @@ export const ProjectCard = React.memo(
 								variant="bodySmall"
 								style={{ color: theme.colors.onSurfaceVariant }}
 							>
-								{project.member_count || 0}{" "}
-								{(project.member_count || 0) === 1 ? "member" : "members"}
+								{displayMemberCount}{" "}
+								{displayMemberCount === 1 ? "member" : "members"}
 							</Text>
 						</View>
 

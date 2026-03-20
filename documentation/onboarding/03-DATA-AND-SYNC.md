@@ -405,6 +405,27 @@ npm run schema:validate:live:cloud-dev
 
 ---
 
+## 🚧 Guardrails for Future Development
+
+Based on past architectural issues, adhere strictly to these operational guardrails:
+
+### 1. The RLS "Offline Blindspot"
+**Trigger:** Writing UI that displays aggregated numbers or cross-user data (e.g. "Total Members", "Pending Global Invitations").
+**Guardrail:** Never rely on a local WatermelonDB `.fetchCount()` or `.fetch()` for data relating to other users. RLS physically prevents the mobile app from downloading records the current user doesn't own (like another user's `user_roles`).
+**Solution:** Use a **"Network-First, Fallback to Local"** strategy via RTK Query (`projectsApi.ts`) or `Supabase.rpc()`. Fetch the authoritative data directly from the cloud when online, and gracefully degrade to the local WatermelonDB estimate when completely offline.
+
+### 2. Silent RPC Parameter Drift
+**Trigger:** Modifying a backend database function (`.sql` migration) that changes the parameters.
+**Guardrail:** The Supabase JavaScript client does not fail at compile-time when calling `.rpc()` with outdated runtime arguments. If an argument is dropped on the server, the mobile app will receive a generic "function does not exist" error, leading to obscure fallback behavior.
+**Solution:** Always run `npm run types:cloud-dev` after backend schema changes, and manually search the `src/services/` directory for any hardcoded `.rpc('your_function', { ... })` calls to verify the parameter signatures match precisely.
+
+### 3. Sync Performance vs. Data Leaks
+**Trigger:** Building or modifying the `pull_changes` sync function.
+**Guardrail:** Do not use repeated subqueries or generic `EXISTS(SELECT 1 FROM user_roles...)` inline checks directly within the massive JSON aggregation blocks. It destroys horizontal scaling performance. Furthermore, do not define wide open `SECURITY DEFINER` queries without explicitly scoping data to the calling user limit, or you will leak data (e.g. users seeing deployments for projects they aren't members of).
+**Solution:** Pre-compute the user's accessible scope IDs natively up front via PostgreSQL arrays (e.g. `array_agg(scope_id)`), store them in local variables (`_project_ids`, `_org_ids`), and perform rapid array intersection checks (`project_id = ANY(_project_ids)`) in the body JSON payloads.
+
+---
+
 ## Next Steps
 
 1. [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) — Where the offline code lives

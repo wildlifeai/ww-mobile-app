@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ProjectService - Project management service layer
  *
  * Refactored for WatermelonDB Native Sync:
@@ -545,8 +545,9 @@ class ProjectService {
 				).fetchCount(),
 
 				database.collections.get('device_preparation').query(
-					Q.where('project_id', model.id),
-					Q.where('deleted_at', null)
+					Q.where('project_id', model.id)
+					// Note: Q.where('deleted_at', null) is intentionally omitted.
+					// WatermelonDB natively filters out soft-deleted records via its internal `_status` column.
 				).fetch()
 			])
 
