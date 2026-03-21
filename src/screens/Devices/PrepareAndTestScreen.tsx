@@ -11,7 +11,7 @@ import { FirmwareSection } from './components/FirmwareSection'
 import { HardwareBetaSection } from './components/HardwareBetaSection'
 import { FinishProgressDialog } from './components/FinishProgressDialog'
 import { HelpDialog } from '../../components/ui/HelpDialog'
-import { ActivityIndicator, useTheme, Text } from 'react-native-paper'
+import { useTheme, Text } from 'react-native-paper'
 import { usePrepareAndTest } from './hooks/usePrepareAndTest'
 
 export const PrepareAndTestScreen = () => {
@@ -59,20 +59,9 @@ export const PrepareAndTestScreen = () => {
         navigation
     } = usePrepareAndTest()
 
-    if (loading) {
-        return (
-            <WWScreenView>
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" />
-                    <WWText variant="bodyMedium" style={styles.loadingText}>
-                        <Text>Preparing device...</Text>
-                    </WWText>
-                </View>
-            </WWScreenView>
-        )
-    }
+    // Removed fullscreen loading spinner to allow immediate visual layout and log array
 
-    if (!device) {
+    if (!loading && !device) {
         return (
             <WWScreenView>
                 <View style={styles.loadingContainer}>
@@ -99,7 +88,7 @@ export const PrepareAndTestScreen = () => {
         <WWScreenView scrollable={true} style={styles.screenView}>
             <View style={styles.container}>
                 <InitializationHeader
-                    device={device}
+                    device={device || { name: bleDevice?.name || 'Loading...', bluetoothId: bleDevice?.id || 'Connecting...' } as any}
                     isInitializing={initState.isInitializing}
                     initProgress={initState.progress}
                     initStep={initState.step}

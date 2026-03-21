@@ -7,6 +7,7 @@ import BleManager, { Peripheral } from 'react-native-ble-manager'
 import { AppParams } from '../../../navigation/types'
 import { DeviceService } from '../../../services/DeviceService'
 import { DevicePreparationService } from '../../../services/DevicePreparationService'
+import { DeploymentService } from '../../../services/DeploymentService'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import { DfuService } from '../../../services/DfuService'
 import FirmwareService from '../../../services/FirmwareService'
@@ -339,6 +340,7 @@ export const usePrepareAndTest = () => {
         }
 
         hasStartedPreparation.current = true
+        updateInitState({ isInitializing: true, progress: 0.1, step: 'Connecting to local database...' })
         log('[PrepareTest] Loading data for device:', activeDeviceId)
 
         try {
@@ -352,6 +354,28 @@ export const usePrepareAndTest = () => {
             }
             setDevice(deviceData)
 
+            updateInitState({ progress: 0.2, step: 'Checking deployment status...' })
+            // Check for active deployment BEFORE starting preparation
+            const activeDeployment = await DeploymentService.getActiveDeploymentForDeviceId(activeDeviceId)
+            if (activeDeployment) {
+                logWarn(`[PrepareTest] Device ${activeDeviceId} is currently deployed. Blocking preparation.`)
+                updateInitState({ 
+                    isInitializing: false, 
+                    step: 'Blocked: Device is deployed', 
+                    errors: { selftest: 'This device is currently part of an active deployment and cannot be prepared. Please end the deployment first.' } 
+                })
+                
+                Alert.alert(
+                    'Device Deployed',
+                    'This device is currently part of an active deployment and cannot be prepared. Please end the deployment first.',
+                    [{ text: 'Go Back', onPress: () => navigation.goBack() }]
+                )
+                hasStartedPreparation.current = false
+                setLoading(false)
+                return
+            }
+
+            updateInitState({ progress: 0.3, step: 'Retrieving device history...' })
             // Determine initial project ID
             let initialProjectId = ''
             
@@ -374,6 +398,7 @@ export const usePrepareAndTest = () => {
             }
 
             // Create new preparation record (startPreparation handles cleanup)
+            updateInitState({ progress: 0.4, step: 'Creating preparation record...' })
             log('[PrepareTest] Starting preparation record...')
             const newPrep = await DevicePreparationService.startPreparation(
                 activeDeviceId,
@@ -398,7 +423,7 @@ export const usePrepareAndTest = () => {
         } finally {
             setLoading(false)
         }
-    }, [activeDeviceId, projects, user?.id, isLoadingProjects])
+    }, [activeDeviceId, projects, user?.id, isLoadingProjects, navigation, updateInitState])
 
     const handleProjectChange = useCallback(async (projectId: string) => {
         if (projectId === 'create_new') {
@@ -893,7 +918,7 @@ export const usePrepareAndTest = () => {
             if (!bleDevice || !bleDevice.connected || hasInitialized.current) return
 
             hasInitialized.current = true
-            updateInitState({ isInitializing: true, progress: 0.05 })
+            updateInitState({ isInitializing: true, progress: 0.45, step: 'Starting hardware sync...' })
             log('[PrepareTest] Running BLE initialization sequence...')
 
             const errors: { setUtc?: string; deviceHealth?: string[]; cameraDisable?: string } = {}
@@ -901,7 +926,7 @@ export const usePrepareAndTest = () => {
             // Step 1-2: Standard BLE initialization (wake -> stabilize -> setutc)
             const initResult = await runBleStandardInit(bleDevice, {
                 onProgress: (step, progress) => {
-                    updateInitState({ step, progress: progress * 0.5 }) // Use first 50% for standard init
+                    updateInitState({ step, progress: 0.45 + (progress * 0.45) }) // Scale to fill 0.45->0.9
                 },
                 onError: (errorsResult) => {
                     if (errorsResult.setUtc) errors.setUtc = errorsResult.setUtc
