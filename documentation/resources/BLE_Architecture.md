@@ -434,8 +434,10 @@ Standard post-connection procedure:
 
 1. Wait 1.5s for device stabilization
 2. `selftest` → parse error bits → report hardware warnings
-3. `setutc` → synchronize device clock to phone UTC
-4. `getutc` → verify time was set
+3. `setutc` → synchronize device clock to phone UTC (firmware confirms via `UTC is: <time>` response)
+
+> [!NOTE]
+> `setutc` already returns the confirmed time in its response. A separate `getutc` verification is **not** needed and has been removed to save a BLE round-trip.
 
 **File:** [useBleInitialization.ts](file:///c:/dev/ww/src/hooks/useBleInitialization.ts)
 
@@ -445,9 +447,11 @@ Standard post-connection procedure:
 
 Manages CONFIG.TXT operational parameters (OpParams 5-13) on the device:
 
-- `updateSettings({ cameraEnabled: true })` — write individual params
+- `updateSettings({ cameraEnabled: true })` — write individual params (pre-checks via `AI getop -1`)
 - `applyPreset('motion-detect')` — batch apply a preset configuration
-- `quiesceDevice()` — ensure device settles after changes (handles DPD latch timing)
+- `quiesceDevice(logPrefix?, optimized?, cachedOps?)` — ensure device settles after changes; accepts optional pre-fetched OP cache
+
+All write operations use `getAllOperationalParams()` to perform a **read-before-write check**, skipping `setop` commands for parameters that already match the target value.
 
 **File:** [useDeviceSettings.ts](file:///c:/dev/ww/src/hooks/useDeviceSettings.ts)
 
@@ -572,6 +576,7 @@ src/
 │   ├── useBleHeartbeat.ts       # 58s inactivity keep-alive
 │   ├── useCapturePreview.ts     # Image capture flow
 │   ├── useDeviceSettings.ts     # CONFIG.TXT parameter management
+│   ├── useDeploymentConfiguration.ts # Deployment config (bulk getop + conditional writes)
 │   └── useSetupBLELibrary.ts    # BleManager.start() lifecycle
 ├── providers/
 │   ├── BleEngineProvider.tsx     # React Context for useBle

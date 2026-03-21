@@ -34,11 +34,15 @@ Steps 1–2 are shared with deployment flows via `useBleInitialization`; steps 3
 | Step | Action | BLE Command | Source |
 |------|--------|-------------|--------|
 | 1 | Hardware Self-Test | `selftest` → parse `Error bits = 0xXXXX` | `useBleInitialization` |
-| 2 | Set UTC Time | `setutc <ISO>` → verify with `getutc` | `useBleInitialization` |
-| 3 | Quiesce Device (disable camera) | `AI setop 10 0` (+ clear intervals) | `useDeviceSettings.quiesceDevice()` |
-| 4 | Reset GPS | `setgps 0 0 0` | `useBleCommands.clearGpsLocation()` |
-| 5 | Clear Deployment IDs | `AI setop 20 0` … `AI setop 27 0` | `useBleCommands.setDeploymentIdAsOps(null)` |
-| 6 | Automated Diagnostics | `battery`, `AI info`, `ver` | Screen handlers |
+| 2 | Set UTC Time | `setutc <ISO>` (firmware confirms via response) | `useBleInitialization` |
+| 3 | **Bulk Fetch OP Parameters** | `AI getop -1` → returns all params | `useBleCommands.getAllOperationalParams()` |
+| 4 | Quiesce Device (disable camera) | Conditional `AI setop` (skips unchanged) | `useDeviceSettings.quiesceDevice(cachedOps)` |
+| 5 | Reset GPS | `setgps 0 0 0` | `useBleCommands.clearGpsLocation()` |
+| 6 | Clear Deployment IDs | Conditional `AI setop 20-27` (skips if already 0) | `useBleCommands.setDeploymentIdAsOps(null, cachedOps)` |
+| 7 | Automated Diagnostics | `battery`, `AI info`, `ver` | Screen handlers |
+
+> [!TIP]
+> **Optimization:** Steps 4 and 6 use the cached result from Step 3's `AI getop -1` bulk fetch. This means only **one** round-trip to the AI processor is needed instead of two. Parameters that already match the target value are skipped entirely.
 
 > [!NOTE]
 > Step 1 includes a **1.5s stabilization delay** after connection to allow the device (especially LoRaWAN) to settle before the self-test.
@@ -151,7 +155,7 @@ Project settings (capture method, sensitivity, timelapse interval) are read-only
 
 | Step | Action | Detail |
 |------|--------|--------|
-| 1 | Final Time Sync | `setutc` |
+| 1 | Final Time Sync | `setutc` (firmware confirms via response) |
 | 2 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
 | 3 | Configure Device | `useDeploymentConfiguration.configure()` (see below) |
 | 4 | LED Confirmation | `flashg 3 300` (3 green flashes) |
@@ -159,9 +163,11 @@ Project settings (capture method, sensitivity, timelapse interval) are read-only
 
 ### Device Configuration (`useDeploymentConfiguration`)
 
+`configure()` performs a single `AI getop -1` bulk fetch at the start, then passes the cached result to both sub-steps below. Only parameters that differ from the target value are actually written.
+
 **A. Set Deployment ID** (with GPS fallback):
 ```
-AI setop 20 <val> ... AI setop 27 <val>   (UUID → 8 × 16-bit integers)
+AI setop 20 <val> ... AI setop 27 <val>   (UUID → 8 × 16-bit integers, skips unchanged)
 ```
 If OP writing fails (AI NACK), falls back to `setgps <lat> <lng> <alt>`.
 
@@ -172,7 +178,7 @@ If OP writing fails (AI NACK), falls back to `setgps <lat> <lng> <alt>`.
 | Activity Detection | `setop 11 1000`, `setop 7 0`, `setop 8 1000`, `setop 10 1` | Motion on, timelapse off |
 | Timelapse | `setop 11 0`, `setop 7 <secs>`, `setop 8 1000`, `setop 10 1` | Motion off, timelapse on |
 
-Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers.
+Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers. All writes are conditional — unchanged values are skipped.
 
 ### OP Parameter Index Reference
 
@@ -217,12 +223,15 @@ flowchart TD
 
 ### End Deployment Sequence
 
+A single `AI getop -1` bulk fetch is performed before Step 1, and the cached result is shared with both Step 1 and Step 4 to avoid redundant BLE round-trips.
+
 | Step | Progress | Action | BLE Command |
 |------|----------|--------|-------------|
-| 1 | 0.2 | Clear Deployment ID | `AI setop 20 0` … `AI setop 27 0` (retry 3×, 1s delay) |
+| 0 | — | **Bulk Fetch OP Parameters** | `AI getop -1` → cached for steps below |
+| 1 | 0.2 | Clear Deployment ID | Conditional `AI setop 20-27` (retry 3×, 1s delay, skips unchanged) |
 | 2 | — | Clear GPS | `setgps 0 0 0` (non-blocking) |
 | 3 | 0.3 | Update Database | `DeploymentService.endDeployment()` |
-| 4 | 0.6 | Quiesce Device | `AI setop 10 0` (optimised — camera disable only) |
+| 4 | 0.6 | Quiesce Device | Conditional `AI setop` (optimised — uses cached ops) |
 | 5 | 0.8 | Disconnect | `dis` |
 
 > [!IMPORTANT]
@@ -235,6 +244,26 @@ If the device is not connected, the user can "Force End (Database Only)":
 - Device must be manually reset later (e.g. via Engineer Console)
 
 **Deployment Status IDs:** `1 = Deployed (Active)`, `2 = Recovery (Ended)`, `3 = Failed`
+
+---
+
+## OP Parameter Optimization (`AI getop -1`)
+
+All three flows use the **bulk parameter fetch** command `AI getop -1` to minimize BLE round-trips. This single command returns all operational parameters (OpParams 0–27) from the AI processor in one response.
+
+**Pattern:**
+1. Fetch all params once: `AI getop -1` → `OpParams 1324 6 0 18 ...`
+2. Cache the result in memory
+3. Before each `AI setop`, compare target value against cached value
+4. Skip the write if the parameter is already correct
+
+**Backward compatibility:** If `AI getop -1` fails (e.g. older firmware), all functions gracefully fall back to "blind write" mode — they send every `setop` unconditionally.
+
+**Key files:**
+- [types.ts](file:///c:/dev/ww/src/ble/types.ts) — `getop_all` command definition (requires both `readCommand` and `writeCommand`)
+- [useBleCommands.ts](file:///c:/dev/ww/src/hooks/useBleCommands.ts) — `getAllOperationalParams()` function
+- [useDeviceSettings.ts](file:///c:/dev/ww/src/hooks/useDeviceSettings.ts) — `quiesceDevice(cachedOps?)` accepts cached ops
+- [useDeploymentConfiguration.ts](file:///c:/dev/ww/src/hooks/useDeploymentConfiguration.ts) — `configure()` fetches once for both deployment ID and capture method
 
 ---
 
@@ -281,4 +310,4 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval
 
 ---
 
-*Last Updated: February 17, 2026*
+*Last Updated: March 21, 2026*
