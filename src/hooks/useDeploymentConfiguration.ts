@@ -18,7 +18,7 @@ export interface DeploymentConfig {
 }
 
 export const useDeploymentConfiguration = () => {
-    const { setDeploymentIdAsOps, setGpsLocation, setOperationalParam } = useBleCommands()
+    const { setDeploymentIdAsOps, setGpsLocation, setOperationalParam, getAllOperationalParams } = useBleCommands()
 
     /**
      * Sets deployment ID on device with automatic fallback
@@ -58,12 +58,26 @@ export const useDeploymentConfiguration = () => {
      * Helper to apply updates sequentially
      */
     const applyUpdates = useCallback(async (device: ExtendedPeripheral, updates: { index: number, value: number }[]) => {
+        let currentOps: string[] | null = null
+        try {
+            currentOps = await getAllOperationalParams(device)
+        } catch (err) {
+            logWarn('[DeployConfig] Warning: bulk fetch failed, proceeding blindly', err)
+        }
+
         for (const { index, value } of updates) {
+            if (currentOps && currentOps.length > index) {
+                if (currentOps[index] === value.toString()) {
+                    log(`[DeployConfig] Skipping parameter ${index} (already ${value})`)
+                    continue
+                }
+            }
+
             log(`[DeployConfig] Setting parameter ${index} to ${value}`)
             await setOperationalParam(device, index, value.toString())
             // Delay removed - relying on BLE queue serialization
         }
-    }, [setOperationalParam])
+    }, [setOperationalParam, getAllOperationalParams])
 
     /**
      * Configures capture method settings (motion detection or timelapse)

@@ -81,7 +81,7 @@ export const useDeviceSettings = ({
     onError
 }: UseDeviceSettingsOptions): UseDeviceSettingsReturn => {
     const [isUpdating, setIsUpdating] = useState(false)
-    const { setOperationalParam, getOperationalParam } = useBleCommands()
+    const { setOperationalParam, getAllOperationalParams } = useBleCommands()
 
     // Safety: Track if component is still mounted to avoid state updates/commands after unmount
     const isMounted = useRef(true)
@@ -137,11 +137,25 @@ export const useDeviceSettings = ({
                 updates.push({ index: OP_PARAMETER.CAMERA_ENABLED, value: settings.cameraEnabled ? 1 : 0 })
             }
 
+            let currentOps: string[] | null = null
+            try {
+                currentOps = await getAllOperationalParams(device)
+            } catch (err) {
+                logWarn('[useDeviceSettings] Warning: bulk fetch failed, proceeding blindly', err)
+            }
+
             // Send each update with a small delay to avoid overwhelming the device
             for (const { index, value } of updates) {
                 // Safety check before each step
                 if (!isMounted.current || !device.connected) {
                     throw new Error('Update cancelled: Device disconnected or component unmounted')
+                }
+
+                if (currentOps && currentOps.length > index) {
+                    if (currentOps[index] === value.toString()) {
+                        log(`[useDeviceSettings] Skipping parameter ${index} (already ${value})`)
+                        continue
+                    }
                 }
 
                 log(`[useDeviceSettings] Setting parameter ${index} to ${value}`)
@@ -163,7 +177,7 @@ export const useDeviceSettings = ({
         } finally {
             setIsUpdating(false)
         }
-    }, [device, setOperationalParam, onSettingsUpdated, onError])
+    }, [device, setOperationalParam, onSettingsUpdated, onError, getAllOperationalParams])
 
     /**
      * Apply a preset configuration
@@ -221,16 +235,27 @@ export const useDeviceSettings = ({
             // Note: Camera Enable (Op 10=1) was previously forced here but removed 
             // to avoid needing to unlock parameters if they are already correct.
 
+            let currentOps: string[] | null = null
+            try {
+                if (!isMounted.current || !device.connected) return
+                currentOps = await getAllOperationalParams(device)
+            } catch (err) {
+                logWarn(`${logPrefix} Bulk fetch failed, proceeding blindly`, err)
+            }
 
             // 2. Clear Intervals (Op 11 = 0, Op 7 = 0) - ALWAYS do this
             log(`${logPrefix} 2. Clearing Motion & Timelapse intervals...`)
 
             try {
                 if (!isMounted.current || !device.connected) return
-                await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
+                if (!currentOps || String(currentOps[OP_PARAMETER.MD_INTERVAL]) !== '0') {
+                    await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
+                }
 
                 if (!isMounted.current || !device.connected) return
-                await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
+                if (!currentOps || String(currentOps[OP_PARAMETER.TIMELAPSE_INTERVAL]) !== '0') {
+                    await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
+                }
             } catch (err) {
                 // If the error is fatal, we stop.
                 const errMsg = err instanceof Error ? err.message : String(err)
@@ -242,17 +267,13 @@ export const useDeviceSettings = ({
             
             if (!isMounted.current || !device.connected) return
             
-            if (!isMounted.current || !device.connected) return
-            
             // 3. Enable Camera (Op 10 = 1)
             // We want the camera ON for previews/testing, but triggers OFF (steps above)
             log(`${logPrefix} 3. Enabling camera (Op 10=1)...`)
             try {
                 if (!isMounted.current || !device.connected) return
-                const currentCam = await getOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED)
                 
-                if (!isMounted.current || !device.connected) return
-                if (currentCam !== '1') {
+                if (!currentOps || String(currentOps[OP_PARAMETER.CAMERA_ENABLED]) !== '1') {
                     await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '1')
                 } else {
                     log(`${logPrefix} Camera already enabled (Op 10=1), skipping write.`)
@@ -272,7 +293,7 @@ export const useDeviceSettings = ({
             logError(`${logPrefix} Error quiescing device:`, error)
             throw error
         }
-    }, [device, setOperationalParam, getOperationalParam])
+    }, [device, setOperationalParam, getAllOperationalParams])
 
     return {
         updateSettings,

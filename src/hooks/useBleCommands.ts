@@ -123,6 +123,20 @@ export const useBleCommands = () => {
         return null
     }, [write])
 
+    const getAllOperationalParams = useCallback(async (peripheral: ExtendedPeripheral): Promise<string[] | null> => {
+        // "AI getop -1" -> Response: "OpParam -1 = 0 10 200 ..."
+        const responses = await write(peripheral, [[CommandNames.getop_all, { control: CommandControlTypes.WRITE }]], { maxRetries: 1 })
+        const response = responses[0]
+        if (response) {
+            const match = response.match(COMMANDS[CommandNames.getop_all].readRegex!)
+            if (match) {
+                // Split by spaces and filter empties
+                return match[1].trim().split(/\s+/)
+            }
+        }
+        return null
+    }, [write])
+
     const setOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number, value: string) => {
         // Use structured command so useBle can find the correct regex pattern automatically
         // We blindly set the parameter to avoid the roundtrip delay of a read-before-write
@@ -181,10 +195,28 @@ export const useBleCommands = () => {
                 ops = parseUuidToOps(id)
             }
 
+            // Bulk fetch params first
+            let currentOps: string[] | null = null
+            try {
+                currentOps = await getAllOperationalParams(peripheral)
+                if (currentOps) {
+                    log('[BLE CMD] Pre-fetched bulk ops for Deployment ID configuration')
+                }
+            } catch (err) {
+                logWarn('[BLE CMD] Warning: bulk fetch failed, proceeding blindly', err)
+            }
+
             // Send 8 commands with strict delays between each
             for (let i = 0; i < 8; i++) {
                 const opIndex = 20 + i
                 const value = ops[i]
+
+                if (currentOps && currentOps.length > opIndex) {
+                    if (currentOps[opIndex] === value.toString()) {
+                        log(`[BLE CMD] Skipping OP${opIndex} (already set to ${value})`)
+                        continue
+                    }
+                }
 
                 log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
 
@@ -199,7 +231,7 @@ export const useBleCommands = () => {
             }
             log('[BLE CMD] Deployment ID OPs sent successfully')
         },
-        [setOperationalParam] // Changed dependency from 'write' to 'setOperationalParam'
+        [setOperationalParam, getAllOperationalParams] // Changed dependency from 'write' to 'setOperationalParam'
     )
 
     return {
@@ -241,6 +273,7 @@ export const useBleCommands = () => {
         // Settings
         setOperationalParam,
         getOperationalParam,
+        getAllOperationalParams,
         setGpsLocation,
         clearGpsLocation,
     }
