@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Card, Button, Text, ActivityIndicator } from 'react-native-paper'
+import MapView, { Marker } from 'react-native-maps'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
 import { WWIcon } from '../../../components/ui/WWIcon'
 
@@ -45,16 +46,50 @@ export const LocationSection = ({ onLocationChange, onShowHelp }: Props) => {
                 {isGettingLocation ? (
                     <ActivityIndicator />
                 ) : location ? (
-                    <View>
-                        <Text>Lat: {location.latitude}</Text>
-                        <Text>Lon: {location.longitude}</Text>
-                        <Text>Alt: {location.altitude}m</Text>
-                        {location.accuracy && <Text>Accuracy: +/- {location.accuracy?.toFixed(1)}m</Text>}
-                    </View>
+                    <>
+                        <View style={styles.locationTextContainer}>
+                            <View style={styles.locationColumn}>
+                                <Text variant="labelMedium">Latitude:</Text>
+                                <Text>{location.latitude.toFixed(6)}</Text>
+                            </View>
+                            <View style={styles.locationColumn}>
+                                <Text variant="labelMedium">Longitude:</Text>
+                                <Text>{location.longitude.toFixed(6)}</Text>
+                            </View>
+                            <View style={styles.locationColumn}>
+                                <Text variant="labelMedium">Altitude:</Text>
+                                <Text>{location.altitude ? `${location.altitude.toFixed(1)}m` : 'N/A'}</Text>
+                            </View>
+                        </View>
+                        {!!location.accuracy && (
+                            <Text variant="bodySmall" style={styles.accuracyText}>
+                                Accuracy: +/- {location.accuracy.toFixed(1)}m
+                            </Text>
+                        )}
+                        <View style={styles.mapContainer}>
+                            <MapView
+                                style={styles.map}
+                                region={{
+                                    latitude: location.latitude,
+                                    longitude: location.longitude,
+                                    latitudeDelta: 0.005,
+                                    longitudeDelta: 0.005,
+                                }}
+                                scrollEnabled={false}
+                                zoomEnabled={false}
+                                pitchEnabled={false}
+                                rotateEnabled={false}
+                            >
+                                <Marker coordinate={{ latitude: location.latitude, longitude: location.longitude }} />
+                            </MapView>
+                        </View>
+                    </>
                 ) : (
                     <Text>Location not available.</Text>
                 )}
-                <Button onPress={handleGetLocation} icon="refresh"><Text>Update Location</Text></Button>
+                <Button mode="outlined" onPress={handleGetLocation} icon="refresh" style={styles.refreshButton}>
+                    <Text>Update Location</Text>
+                </Button>
             </Card.Content>
         </Card>
     )
@@ -62,5 +97,33 @@ export const LocationSection = ({ onLocationChange, onShowHelp }: Props) => {
 
 const styles = StyleSheet.create({
     card: { marginBottom: 16 },
-    content: { gap: 12 }
+    content: { gap: 12 },
+    locationTextContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    locationColumn: {
+        minWidth: '30%',
+    },
+    accuracyText: {
+        fontStyle: 'italic',
+        color: '#666',
+    },
+    mapContainer: {
+        height: 150,
+        borderRadius: 8,
+        overflow: 'hidden',
+        marginTop: 4,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    map: {
+        width: '100%',
+        height: '100%',
+    },
+    refreshButton: {
+        marginTop: 8,
+    }
 })
