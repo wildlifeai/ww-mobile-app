@@ -34,7 +34,7 @@ export const DeploymentDetailsStep = () => {
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         isNavigatingAway, handleLocationChange, handleImageCaptured,
-        handleNameChange, handleNotesChange, handleLocationDescriptionChange,
+        handleNameChange, handleNotesChange, handleLocationNameChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
         helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp
     } = useStartDeployment({ deviceId, bleDeviceId, devicePreparationId, navigation })
@@ -147,11 +147,11 @@ export const DeploymentDetailsStep = () => {
                 <MetadataSection
                     name={formState.name}
                     notes={formState.notes}
-                    locationDescription={formState.locationDescription}
+                    locationName={formState.locationName}
                     cameraHeight={formState.cameraHeight}
                     onNameChange={handleNameChange}
                     onNotesChange={handleNotesChange}
-                    onLocationDescriptionChange={handleLocationDescriptionChange}
+                    onLocationNameChange={handleLocationNameChange}
                     onCameraHeightChange={handleCameraHeightChange}
                     onShowHelp={showHelp}
                 />
