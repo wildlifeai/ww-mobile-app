@@ -381,7 +381,7 @@ export const COMMANDS: {
 		name: CommandNames.getop_all,
 		readCommand: "AI getop -1",
 		writeCommand: () => `AI getop -1`,
-		readRegex: /^Op(?:Param\s+|\[)-1\]?\s+=\s+(.+)$/i,
+		readRegex: /^OpParams\s+(.+)$/i,
 		description: "Get all Operational Parameters at once",
 		type: 'command',
 	},
