@@ -36,6 +36,7 @@ export enum CommandNames {
 	state = "state",
 	setop = "setop",
 	getop = "getop",
+	getop_all = "getop_all",
 	getops = "getops",
 	ai_ver = "ai_ver",
 	erasemodel = "erasemodel",
@@ -374,6 +375,14 @@ export const COMMANDS: {
 		writeCommand: (index?: string) => `AI getop ${index || ''}`.trim(),
 		readRegex: /^Op(?:Param\s+|\[)(\d+)\]?\s+=\s+(.+)$/i,
 		description: "Get Operational Parameter <index> (Advanced)",
+		type: 'command',
+	},
+	[CommandNames.getop_all]: {
+		name: CommandNames.getop_all,
+		readCommand: "AI getop -1",
+		writeCommand: () => `AI getop -1`,
+		readRegex: /^OpParams\s+(.+)$/i,
+		description: "Get all Operational Parameters at once",
 		type: 'command',
 	},
 	[CommandNames.getops]: {

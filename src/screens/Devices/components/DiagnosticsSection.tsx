@@ -19,6 +19,7 @@ interface DiagnosticsSectionProps {
     theme: any
     onShowHelp: (title: string, content: string) => void
     captureProgress: number
+    captureStage?: string
 }
 
 export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
@@ -34,7 +35,8 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
     bleDeviceConnected,
     theme,
     onShowHelp,
-    captureProgress
+    captureProgress,
+    captureStage
 }) => {
     const renderBatteryIcon = useCallback((props: any) => <WWIcon {...props} source="battery-charging" />, [])
     const renderBatteryHelp = useCallback((props: any) => (
@@ -168,7 +170,9 @@ export const DiagnosticsSection: React.FC<DiagnosticsSectionProps> = ({
                         disabled={sdCardStatus === null || isCapturingImage || isInitializing || !bleDeviceConnected}
                         loading={isCapturingImage}
                     >
-                        {isCapturingImage ? `Downloading... ${Math.round(captureProgress * 100)}%` : (cameraTestPassed ? 'Test Again' : 'Test Camera View')}
+                        {isCapturingImage 
+                            ? (captureProgress > 0 ? `${captureStage} ${Math.round(captureProgress * 100)}%` : (captureStage || 'Capturing...'))
+                            : (cameraTestPassed ? 'Test Again' : 'Test Camera View')}
                     </WWButton>
                     {sdCardStatus === null && (
                         <Text variant="bodySmall" style={[styles.warningText, { color: theme.colors.error }]}>

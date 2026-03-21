@@ -26,6 +26,8 @@ interface UseCapturePreviewReturn {
     capturedImageUri: string | null
     /** Whether currently capturing/downloading */
     isCapturing: boolean
+    /** Current stage of capture for UI feedback */
+    captureStage: string
     /** Capture progress (0-1) */
     captureProgress: number
     /** Function to start image capture */
@@ -48,6 +50,7 @@ export const useCapturePreview = ({
 }: UseCapturePreviewOptions): UseCapturePreviewReturn => {
     const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null)
     const [isCapturing, setIsCapturing] = useState(false)
+    const [captureStage, setCaptureStage] = useState<string>('')
     const [captureProgress, setCaptureProgress] = useState(0)
     
     // Refs for state that shouldn't trigger re-renders or needs to be accessed in callbacks
@@ -69,6 +72,7 @@ export const useCapturePreview = ({
             clearDownloadTimeout()
             
             setIsCapturing(false)
+            setCaptureStage('')
             setCaptureProgress(1) 
             setCapturedImageUri(fileUri)
             downloadRequested.current = false
@@ -79,6 +83,7 @@ export const useCapturePreview = ({
         }
 
         const handleImageProgress = (progress: number) => {
+            setCaptureStage('Downloading...')
             setCaptureProgress(progress)
         }
 
@@ -87,6 +92,7 @@ export const useCapturePreview = ({
             clearDownloadTimeout()
 
             setIsCapturing(false)
+            setCaptureStage('')
             setCaptureProgress(0)
             downloadRequested.current = false
 
@@ -146,6 +152,7 @@ export const useCapturePreview = ({
 
         try {
             setIsCapturing(true)
+            setCaptureStage('Initializing...')
             setCapturedImageUri(null)
             setCaptureProgress(0)
             downloadRequested.current = false
@@ -163,6 +170,7 @@ export const useCapturePreview = ({
             // WE DO NOT WAIT FOR 'Wake' PASSIVELY - the device stays asleep until we wake it!
             // So: Wait for Sleep -> Wait 1s (allow DPD entry) -> Send Capture (wakes device)
             try {
+                setCaptureStage('Waking camera hardware...')
                 log('[useCapturePreview] Waiting for device to sleep (applied settings)...')
                 await bleCommandManager.waitForMessage(/^Sleep/i, 10000)
                 log('[useCapturePreview] Device sleeping. Waiting 1s buffer before waking...')
@@ -173,6 +181,7 @@ export const useCapturePreview = ({
             }
 
             // 2. Send Capture Command (interval 1 allows capture even if MD/TL is disabled)
+            setCaptureStage('Capturing image...')
             log('[useCapturePreview] Sending capture command (AI capture 1 1)...')
             await write(device, [[CommandNames.CAPTURE_PREVIEW, { control: CommandControlTypes.WRITE }]], { maxRetries: 3 })
             
@@ -190,6 +199,7 @@ export const useCapturePreview = ({
                 }
             }, DOWNLOAD_TIMEOUT)
 
+            setCaptureStage('Processing image...')
             log('[useCapturePreview] Requesting file download...')
             await write(device, ['AI txfile .'])
 
@@ -197,6 +207,7 @@ export const useCapturePreview = ({
             const err = error as Error
             logError('[useCapturePreview] Capture failed:', err)
             setIsCapturing(false)
+            setCaptureStage('')
             downloadRequested.current = false
             setCaptureProgress(0)
             clearDownloadTimeout()
@@ -209,6 +220,7 @@ export const useCapturePreview = ({
     // Clear captured image
     const clearImage = useCallback(() => {
         setCapturedImageUri(null)
+        setCaptureStage('')
         downloadRequested.current = false
         setCaptureProgress(0)
         clearDownloadTimeout()
@@ -217,6 +229,7 @@ export const useCapturePreview = ({
     return {
         capturedImageUri,
         isCapturing,
+        captureStage,
         captureProgress,
         startCapture,
         clearImage

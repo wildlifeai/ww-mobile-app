@@ -123,6 +123,41 @@ export const useBleCommands = () => {
         return null
     }, [write])
 
+    const getAllOperationalParams = useCallback(async (peripheral: ExtendedPeripheral): Promise<string[] | null> => {
+        // "AI getop -1" -> Response: "OpParam -1 = 0 10 200 ..."
+        const responses = await write(peripheral, [[CommandNames.getop_all, { control: CommandControlTypes.WRITE }]], { maxRetries: 1 })
+        const response = responses[0]
+        if (response) {
+            const match = response.match(COMMANDS[CommandNames.getop_all].readRegex!)
+            if (match) {
+                // Split by spaces and filter empties
+                return match[1].trim().split(/\s+/)
+            }
+        }
+        return null
+    }, [write])
+
+    const getOrFetchOperationalParams = useCallback(async (
+        peripheral: ExtendedPeripheral, 
+        cachedOps?: string[] | null, 
+        logContext: string = '[BLE CMD]'
+    ): Promise<string[] | null> => {
+        let currentOps: string[] | null = cachedOps ?? null
+        if (!currentOps) {
+            try {
+                currentOps = await getAllOperationalParams(peripheral)
+                if (currentOps) {
+                    log(`${logContext} Pre-fetched bulk ops`)
+                }
+            } catch (err) {
+                logWarn(`${logContext} Warning: bulk fetch failed, proceeding blindly`, err)
+            }
+        } else {
+            log(`${logContext} Using cached ops`)
+        }
+        return currentOps
+    }, [getAllOperationalParams])
+
     const setOperationalParam = useCallback(async (peripheral: ExtendedPeripheral, index: number, value: string) => {
         // Use structured command so useBle can find the correct regex pattern automatically
         // We blindly set the parameter to avoid the roundtrip delay of a read-before-write
@@ -168,7 +203,7 @@ export const useBleCommands = () => {
     }, [write])
 
     const setDeploymentIdAsOps = useCallback(
-        async (peripheral: ExtendedPeripheral, id: string | null) => {
+        async (peripheral: ExtendedPeripheral, id: string | null, cachedOps?: string[] | null) => {
             log('[BLE CMD] Sending Deployment ID via OPs (20-27). ID:', id)
 
             let ops: number[]
@@ -181,10 +216,20 @@ export const useBleCommands = () => {
                 ops = parseUuidToOps(id)
             }
 
+            // Use cached ops if provided, otherwise fetch
+            const currentOps = await getOrFetchOperationalParams(peripheral, cachedOps, '[BLE CMD] Deployment ID configuration:')
+
             // Send 8 commands with strict delays between each
             for (let i = 0; i < 8; i++) {
                 const opIndex = 20 + i
                 const value = ops[i]
+
+                if (currentOps && currentOps.length > opIndex) {
+                    if (currentOps[opIndex] === value.toString()) {
+                        log(`[BLE CMD] Skipping OP${opIndex} (already set to ${value})`)
+                        continue
+                    }
+                }
 
                 log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
 
@@ -199,7 +244,7 @@ export const useBleCommands = () => {
             }
             log('[BLE CMD] Deployment ID OPs sent successfully')
         },
-        [setOperationalParam] // Changed dependency from 'write' to 'setOperationalParam'
+        [setOperationalParam, getOrFetchOperationalParams] // Changed dependency from 'write' to 'setOperationalParam'
     )
 
     return {
@@ -241,6 +286,8 @@ export const useBleCommands = () => {
         // Settings
         setOperationalParam,
         getOperationalParam,
+        getAllOperationalParams,
+        getOrFetchOperationalParams,
         setGpsLocation,
         clearGpsLocation,
     }

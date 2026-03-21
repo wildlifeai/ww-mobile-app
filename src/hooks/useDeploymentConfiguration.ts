@@ -18,7 +18,7 @@ export interface DeploymentConfig {
 }
 
 export const useDeploymentConfiguration = () => {
-    const { setDeploymentIdAsOps, setGpsLocation, setOperationalParam } = useBleCommands()
+    const { setDeploymentIdAsOps, setGpsLocation, setOperationalParam, getOrFetchOperationalParams } = useBleCommands()
 
     /**
      * Sets deployment ID on device with automatic fallback
@@ -28,14 +28,15 @@ export const useDeploymentConfiguration = () => {
     const setDeploymentId = useCallback(async (
         device: ExtendedPeripheral,
         deploymentId: string,
-        location?: { latitude: number; longitude: number; altitude: number }
+        location?: { latitude: number; longitude: number; altitude: number },
+        cachedOps?: string[] | null
     ): Promise<void> => {
         log('[DeployConfig] Setting deployment ID:', deploymentId)
 
         try {
             // Write deployment ID directly via extended OPs
             // We assume modern firmware supports this; fallback handles failures
-            await setDeploymentIdAsOps(device, deploymentId)
+            await setDeploymentIdAsOps(device, deploymentId, cachedOps)
             log('[DeployConfig] Deployment ID set successfully via OPs')
             
         } catch (error) {
@@ -57,20 +58,29 @@ export const useDeploymentConfiguration = () => {
     /**
      * Helper to apply updates sequentially
      */
-    const applyUpdates = useCallback(async (device: ExtendedPeripheral, updates: { index: number, value: number }[]) => {
+    const applyUpdates = useCallback(async (device: ExtendedPeripheral, updates: { index: number, value: number }[], cachedOps?: string[] | null) => {
+        const currentOps = await getOrFetchOperationalParams(device, cachedOps, '[DeployConfig]')
+
         for (const { index, value } of updates) {
+            if (currentOps && currentOps.length > index) {
+                if (currentOps[index] === value.toString()) {
+                    log(`[DeployConfig] Skipping parameter ${index} (already ${value})`)
+                    continue
+                }
+            }
+
             log(`[DeployConfig] Setting parameter ${index} to ${value}`)
             await setOperationalParam(device, index, value.toString())
-            // Delay removed - relying on BLE queue serialization
         }
-    }, [setOperationalParam])
+    }, [setOperationalParam, getOrFetchOperationalParams])
 
     /**
      * Configures capture method settings (motion detection or timelapse)
      */
     const configureCaptureMethod = useCallback(async (
         device: ExtendedPeripheral,
-        config: DeploymentConfig
+        config: DeploymentConfig,
+        cachedOps?: string[] | null
     ): Promise<void> => {
         log('[DeployConfig] Configuring capture method:', config.captureMethod)
 
@@ -105,7 +115,7 @@ export const useDeploymentConfiguration = () => {
             return
         }
 
-        await applyUpdates(device, updates)
+        await applyUpdates(device, updates, cachedOps)
     }, [applyUpdates])
 
     /**
@@ -118,18 +128,21 @@ export const useDeploymentConfiguration = () => {
         log('[DeployConfig] Starting deployment configuration...')
 
         try {
+            // Pre-fetch all ops once for the entire configuration sequence
+            const cachedOps = await getOrFetchOperationalParams(device, null, '[DeployConfig] Configuration sequence:')
+
             // 1. Set deployment ID (with auto-fallback)
-            await setDeploymentId(device, config.deploymentId, config.location)
+            await setDeploymentId(device, config.deploymentId, config.location, cachedOps)
 
             // 2. Configure capture settings
-            await configureCaptureMethod(device, config)
+            await configureCaptureMethod(device, config, cachedOps)
 
             log('[DeployConfig] Deployment configuration complete')
         } catch (error) {
             logError('[DeployConfig] Configuration failed:', error)
             throw new Error(`Failed to configure deployment: ${error}`)
         }
-    }, [setDeploymentId, configureCaptureMethod])
+    }, [setDeploymentId, configureCaptureMethod, getOrFetchOperationalParams])
 
     return {
         configure,

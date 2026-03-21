@@ -190,7 +190,8 @@ export const usePrepareAndTest = () => {
         setDeploymentIdAsOps, 
         clearGpsLocation, 
         flashLed,
-        runSelfTest 
+        runSelfTest,
+        getAllOperationalParams
     } = useBleCommands()
 
     const { initialize: runBleStandardInit } = useBleInitialization()
@@ -204,7 +205,7 @@ export const usePrepareAndTest = () => {
     const logs = useAppSelector(state => state.logs[bleDeviceId || ''] || [])
 
     // Camera capture hook
-    const { capturedImageUri, isCapturing: isCapturingImage, startCapture, captureProgress } = useCapturePreview({
+    const { capturedImageUri, isCapturing: isCapturingImage, startCapture, captureProgress, captureStage } = useCapturePreview({
         device: bleDevice,
         write: write,
         onImageReceived: (imageUri) => {
@@ -896,11 +897,22 @@ export const usePrepareAndTest = () => {
                 logError('[PrepareTest] Standard initialization failed')
             }
 
+            // Pre-fetch all operational params once for the entire init sequence
+            let cachedOps: string[] | null = null
+            try {
+                if (bleDevice.connected) {
+                    cachedOps = await getAllOperationalParams(bleDevice)
+                    log('[PrepareTest] Pre-fetched bulk ops for init sequence')
+                }
+            } catch (err) {
+                logWarn('[PrepareTest] Bulk ops fetch failed, proceeding without cache', err)
+            }
+
             // Step 3. Disable Camera (AI setop 10 0)
             try {
                 updateInitState({ step: 'Disabling camera...', progress: 0.6 })
                 log('[PrepareTest] Stopping camera for preparation flow...')
-                await quiesceDevice('[PrepareTest]', false)
+                await quiesceDevice('[PrepareTest]', false, cachedOps)
                 // Confirmation handled by Command Manager regex
             } catch (err) {
                 logError('[PrepareTest] Failed to disable camera:', err)
@@ -921,7 +933,7 @@ export const usePrepareAndTest = () => {
             try {
                 updateInitState({ step: 'Clearing old IDs...', progress: 0.85 })
                 log('[PrepareTest] Clearing any existing deployment IDs...')
-                await setDeploymentIdAsOps(bleDevice, null)
+                await setDeploymentIdAsOps(bleDevice, null, cachedOps)
             } catch (err) {
                 logError('[PrepareTest] Failed to clear deployment ID:', err)
             }
@@ -956,7 +968,7 @@ export const usePrepareAndTest = () => {
         }
 
         runBleInitialization()
-    }, [bleDevice, setDeploymentIdAsOps, clearGpsLocation, handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, runBleStandardInit, quiesceDevice, updateInitState])
+    }, [bleDevice, setDeploymentIdAsOps, clearGpsLocation, handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, runBleStandardInit, quiesceDevice, updateInitState, getAllOperationalParams])
 
     // Parse BLE logs for firmware version (post-DFU verification) and device name
     useEffect(() => {
@@ -1121,6 +1133,7 @@ export const usePrepareAndTest = () => {
         capturedImageUri,
         isCapturingImage,
         captureProgress,
+        captureStage,
         navigation
     }
 }

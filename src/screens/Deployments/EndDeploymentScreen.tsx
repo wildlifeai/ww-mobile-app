@@ -82,7 +82,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const route = useRoute<EndDeploymentDetailsStepRouteProp>()
     const { deviceId = '', bleDeviceId = '' } = route.params || {}
     useBleActions()
-    const { runDisconnect, setDeploymentIdAsOps, clearGpsLocation } = useBleCommands()
+    const { runDisconnect, setDeploymentIdAsOps, clearGpsLocation, getAllOperationalParams } = useBleCommands()
 
     const { initialize } = useBleInitialization() 
 
@@ -128,6 +128,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         setDeploymentIdAsOps,
         clearGpsLocation,
         runDisconnect,
+        getAllOperationalParams,
         isNavigatingAway
     })
     
