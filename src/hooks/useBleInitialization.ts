@@ -32,7 +32,7 @@ export interface BleInitResult {
  * The hook does NOT handle connection itself - the device must already be connected.
  */
 export const useBleInitialization = () => {
-  const { setUtc, runSelfTest, getUtc } = useBleCommands()
+  const { setUtc, runSelfTest } = useBleCommands()
   const isInitializing = useRef(false)
 
   const initialize = useCallback(async (
@@ -136,10 +136,9 @@ export const useBleInitialization = () => {
         options?.onProgress?.('Synchronizing time...', 0.5)
         log('[BLE Init] Setting UTC time...')
         await setUtc(device)
-        
-        // Verify time was set
-        const time = await getUtc(device)
-        log('[BLE Init] UTC time synchronized. Device time:', time)
+        // setUtc already waits for the firmware response ("UTC is: <time>"),
+        // confirming the time was set. No need for a separate getUtc verification.
+        log('[BLE Init] UTC time synchronized successfully')
       } catch (err) {
         logError('[BLE Init] Failed to set UTC:', err)
         errors.setUtc = 'Device initialization failed. Check connection or device state.'
@@ -157,7 +156,7 @@ export const useBleInitialization = () => {
       isInitializing.current = false
       return { success: false, errors: { setUtc: 'Initialization failed unexpectedly' } }
     }
-  }, [setUtc, runSelfTest, getUtc])
+  }, [setUtc, runSelfTest])
 
   return { initialize }
 }
