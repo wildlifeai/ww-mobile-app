@@ -339,7 +339,7 @@ export const useStartDeployment = ({
                         longitude: formState.location.longitude || 0,
                         altitude: formState.location.altitude || 0
                     },
-                    recordGpsInImages: project.recordGpsInImages || (project as any).record_gps_in_images || false
+                    recordGpsInImages: project.recordGpsInImages || false
                 })
                 
                 addFinishLog('Device configuration successful')
