@@ -154,6 +154,7 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                 left={props => <List.Icon {...props} icon="cog-outline" />}
                 style={styles.accordionContainer}
             >
+                <View style={styles.accordionChildrenContainer}>
                 <Field control={control} name="website" label="Website (Optional)">
                     {(field) => (
                         <WWTextInput
@@ -230,28 +231,27 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                     )}
                 />
 
-                <View style={[styles.fieldRow, styles.alignCenter]}>
-                    <View style={styles.flex1}>
-                        <Controller
-                            control={control}
-                            name="record_gps_in_images"
-                            render={({ field: { value, onChange } }) => (
-                                <WWCheckbox
-                                    label="Record GPS locations in images"
-                                    value={value}
-                                    onChange={onChange}
-                                    testID="record-gps-checkbox"
-                                />
-                            )}
-                        />
-                    </View>
+                <View style={{ position: 'relative' }}>
+                    <Controller
+                        control={control}
+                        name="record_gps_in_images"
+                        render={({ field: { value, onChange } }) => (
+                            <WWCheckbox
+                                label="Record GPS locations in images"
+                                value={value}
+                                onChange={onChange}
+                                testID="record-gps-checkbox"
+                            />
+                        )}
+                    />
                     <IconButton
                         icon="help-circle-outline"
                         size={24}
                         onPress={() => setGpsHelpVisible(true)}
-                        style={styles.helpIcon}
+                        style={[styles.helpIcon, { position: 'absolute', right: 0, top: 4, zIndex: 1 }]}
                         iconColor={theme.colors.primary}
                     />
+                </View>
                 </View>
             </List.Accordion>
 
@@ -412,5 +412,8 @@ const styles = StyleSheet.create({
         backgroundColor: "transparent",
         paddingHorizontal: 0,
         marginLeft: -16, // To align title with other fields
+    },
+    accordionChildrenContainer: {
+        marginLeft: -64,
     }
 })
