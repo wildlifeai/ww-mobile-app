@@ -18,7 +18,7 @@ export interface DeploymentConfig {
 }
 
 export const useDeploymentConfiguration = () => {
-    const { setDeploymentIdAsOps, setGpsLocation, setOperationalParam, getAllOperationalParams } = useBleCommands()
+    const { setDeploymentIdAsOps, setGpsLocation, setOperationalParam, getOrFetchOperationalParams } = useBleCommands()
 
     /**
      * Sets deployment ID on device with automatic fallback
@@ -59,17 +59,7 @@ export const useDeploymentConfiguration = () => {
      * Helper to apply updates sequentially
      */
     const applyUpdates = useCallback(async (device: ExtendedPeripheral, updates: { index: number, value: number }[], cachedOps?: string[] | null) => {
-        // Use cached ops if provided, otherwise fetch
-        let currentOps: string[] | null = cachedOps ?? null
-        if (!currentOps) {
-            try {
-                currentOps = await getAllOperationalParams(device)
-            } catch (err) {
-                logWarn('[DeployConfig] Warning: bulk fetch failed, proceeding blindly', err)
-            }
-        } else {
-            log('[DeployConfig] Using cached ops for applyUpdates')
-        }
+        const currentOps = await getOrFetchOperationalParams(device, cachedOps, '[DeployConfig]')
 
         for (const { index, value } of updates) {
             if (currentOps && currentOps.length > index) {
@@ -82,7 +72,7 @@ export const useDeploymentConfiguration = () => {
             log(`[DeployConfig] Setting parameter ${index} to ${value}`)
             await setOperationalParam(device, index, value.toString())
         }
-    }, [setOperationalParam, getAllOperationalParams])
+    }, [setOperationalParam, getOrFetchOperationalParams])
 
     /**
      * Configures capture method settings (motion detection or timelapse)
@@ -139,13 +129,7 @@ export const useDeploymentConfiguration = () => {
 
         try {
             // Pre-fetch all ops once for the entire configuration sequence
-            let cachedOps: string[] | null = null
-            try {
-                cachedOps = await getAllOperationalParams(device)
-                log('[DeployConfig] Pre-fetched bulk ops for configuration')
-            } catch (err) {
-                logWarn('[DeployConfig] Bulk fetch failed, sub-functions will proceed blindly', err)
-            }
+            const cachedOps = await getOrFetchOperationalParams(device, null, '[DeployConfig] Configuration sequence:')
 
             // 1. Set deployment ID (with auto-fallback)
             await setDeploymentId(device, config.deploymentId, config.location, cachedOps)
@@ -158,7 +142,7 @@ export const useDeploymentConfiguration = () => {
             logError('[DeployConfig] Configuration failed:', error)
             throw new Error(`Failed to configure deployment: ${error}`)
         }
-    }, [setDeploymentId, configureCaptureMethod, getAllOperationalParams])
+    }, [setDeploymentId, configureCaptureMethod, getOrFetchOperationalParams])
 
     return {
         configure,

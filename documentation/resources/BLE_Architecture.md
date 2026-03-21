@@ -102,7 +102,7 @@ sequenceDiagram
 
 Calls `BleManager.start()` on app launch and updates the `bleLibrarySlice` Redux state. All BLE operations check `initialized` before proceeding.
 
-**File:** [useSetupBLELibrary.ts](file:///c:/dev/ww/src/hooks/useSetupBLELibrary.ts)
+**File:** [useSetupBLELibrary.ts](../../src/hooks/useSetupBLELibrary.ts)
 
 ---
 
@@ -110,7 +110,7 @@ Calls `BleManager.start()` on app launch and updates the `bleLibrarySlice` Redux
 
 React Context that wraps the core `useBle` hook. Provides `startScan`, `connectDevice`, `disconnectDevice`, `write` and scan/connection control to the entire app tree.
 
-**File:** [BleEngineProvider.tsx](file:///c:/dev/ww/src/providers/BleEngineProvider.tsx)
+**File:** [BleEngineProvider.tsx](../../src/providers/BleEngineProvider.tsx)
 
 ---
 
@@ -118,7 +118,7 @@ React Context that wraps the core `useBle` hook. Provides `startScan`, `connectD
 
 Thin wrapper that calls `useBleListeners()` to register native event handlers. This is the entry point for **all incoming BLE data**.
 
-**File:** [ListenToBleEngineProvider.tsx](file:///c:/dev/ww/src/providers/ListenToBleEngineProvider.tsx)
+**File:** [ListenToBleEngineProvider.tsx](../../src/providers/ListenToBleEngineProvider.tsx)
 
 ---
 
@@ -149,7 +149,7 @@ The foundational hook providing:
 > [!NOTE]
 > iOS handles MTU negotiation automatically at the Core Bluetooth level (typically 185–512 bytes depending on the iOS version and peripheral). `requestConnectionPriority` and `requestMTU` are **Android-only** APIs and are skipped on iOS. The connection interval on iOS is managed by the OS and cannot be changed by the app.
 
-**File:** [useBle.ts](file:///c:/dev/ww/src/hooks/useBle.ts)
+**File:** [useBle.ts](../../src/hooks/useBle.ts)
 
 ---
 
@@ -209,7 +209,7 @@ sequenceDiagram
 - **Android:** The firmware file is copied from the document picker URI to `FileSystem.cacheDirectory` before DFU, because the Nordic DFU library cannot read from content URIs directly. The temporary file is cleaned up in a `finally` block.
 - **iOS:** The document picker URI is used directly — no file copy is needed.
 
-**Files:** [DfuService.ts](file:///c:/dev/ww/src/services/DfuService.ts), [DfuScreen.tsx](file:///c:/dev/ww/src/screens/Devices/DfuScreen.tsx), [PrepareAndTestScreen.tsx](file:///c:/dev/ww/src/screens/Devices/PrepareAndTestScreen.tsx)
+**Files:** [DfuService.ts](../../src/services/DfuService.ts), [DfuScreen.tsx](../../src/screens/Devices/DfuScreen.tsx), [PrepareAndTestScreen.tsx](../../src/screens/Devices/PrepareAndTestScreen.tsx)
 
 ---
 
@@ -240,7 +240,7 @@ else:
 3. Checks for image transfer start messages (e.g. `7272 bytes in TL000163.JPG`)
 4. Dispatches to Redux log store
 
-**File:** [useBleListeners.tsx](file:///c:/dev/ww/src/hooks/useBleListeners.tsx)
+**File:** [useBleListeners.tsx](../../src/hooks/useBleListeners.tsx)
 
 ---
 
@@ -279,7 +279,7 @@ stateDiagram-v2
 - **AI NACK auto-retry:** If the AI processor is sleeping, firmware responds with `AI NACK`. The manager automatically waits for the wake sequence (`Wake` + `Error bits = 0x0000`) then retries the command.
 - **Message listeners:** `waitForMessage(regex, timeout)` lets any hook wait for arbitrary firmware messages without blocking the command queue.
 
-**File:** [commandManager.ts](file:///c:/dev/ww/src/ble/commandManager.ts)
+**File:** [commandManager.ts](../../src/ble/commandManager.ts)
 
 ---
 
@@ -296,7 +296,7 @@ Categorizes every incoming text message into one of four types:
 
 **Classification order:** ERROR → Expected Pattern → INFO → UNSOLICITED → Default to RESPONSE
 
-**File:** [messageClassifier.ts](file:///c:/dev/ww/src/ble/messageClassifier.ts)
+**File:** [messageClassifier.ts](../../src/ble/messageClassifier.ts)
 
 ---
 
@@ -323,7 +323,7 @@ Each entry specifies:
 - `process` — Multi-step workflows (e.g. `CAPTURE_PREVIEW`, `ENABLE_CAMERA`)
 - `local` — App-only actions (e.g. `CLEAR_CONSOLE`)
 
-**File:** [types.ts](file:///c:/dev/ww/src/ble/types.ts)
+**File:** [types.ts](../../src/ble/types.ts)
 
 ---
 
@@ -336,7 +336,7 @@ Handles the raw BLE write operation:
 4. Calls `BleManager.writeWithoutResponse()` with a 5-second timeout
 5. Service/characteristic discovery with fallback logic
 
-**File:** [transport.ts](file:///c:/dev/ww/src/ble/transport.ts)
+**File:** [transport.ts](../../src/ble/transport.ts)
 
 ---
 
@@ -358,7 +358,7 @@ Two global `EventEmitter3` instances:
 | `onImageError` | `string` (error message) | Image corrupt, incomplete, or failed to save |
 | `force_finalize` | none | External signal to finalize a stalled transfer |
 
-**File:** [emitters.ts](file:///c:/dev/ww/src/ble/emitters.ts)
+**File:** [emitters.ts](../../src/ble/emitters.ts)
 
 ---
 
@@ -374,7 +374,7 @@ const getBatteryLevel = createCommand(write, CommandNames.battery)
 const batteryStr = await getBatteryLevel(device)
 ```
 
-**Files:** [useBleCommands.ts](file:///c:/dev/ww/src/hooks/useBleCommands.ts), [useBleCommandFactory.ts](file:///c:/dev/ww/src/hooks/useBleCommandFactory.ts)
+**Files:** [useBleCommands.ts](../../src/hooks/useBleCommands.ts), [useBleCommandFactory.ts](../../src/hooks/useBleCommandFactory.ts)
 
 ---
 
@@ -404,7 +404,7 @@ byte[3..] = payload          // actual JPEG image data
 > [!CAUTION]
 > Must import from `'expo-file-system/legacy'` (not `'expo-file-system'`). The new v19 API does not export `cacheDirectory`/`documentDirectory` as top-level properties.
 
-**File:** [ImageReassembler.ts](file:///c:/dev/ww/src/utils/ImageReassembler.ts)
+**File:** [ImageReassembler.ts](../../src/utils/ImageReassembler.ts)
 
 ---
 
@@ -424,7 +424,7 @@ Orchestrates the full capture-preview flow with robust camera initialization:
    - Fallback: Firmware sends `"Finished sending X bytes"`. If image incomplete, app waits 500ms grace period then emits `force_finalize`.
 6. **Timeout:** 20-second safety timeout triggers `force_finalize`.
 
-**File:** [useCapturePreview.ts](file:///c:/dev/ww/src/hooks/useCapturePreview.ts)
+**File:** [useCapturePreview.ts](../../src/hooks/useCapturePreview.ts)
 
 ---
 
@@ -439,7 +439,7 @@ Standard post-connection procedure:
 > [!NOTE]
 > `setutc` already returns the confirmed time in its response. A separate `getutc` verification is **not** needed and has been removed to save a BLE round-trip.
 
-**File:** [useBleInitialization.ts](file:///c:/dev/ww/src/hooks/useBleInitialization.ts)
+**File:** [useBleInitialization.ts](../../src/hooks/useBleInitialization.ts)
 
 ---
 
@@ -453,7 +453,7 @@ Manages CONFIG.TXT operational parameters (OpParams 5-13) on the device:
 
 All write operations use `getAllOperationalParams()` to perform a **read-before-write check**, skipping `setop` commands for parameters that already match the target value.
 
-**File:** [useDeviceSettings.ts](file:///c:/dev/ww/src/hooks/useDeviceSettings.ts)
+**File:** [useDeviceSettings.ts](../../src/hooks/useDeviceSettings.ts)
 
 ---
 
@@ -480,7 +480,7 @@ stateDiagram-v2
 
 **Mounted in:** `ListenToBleEngineProvider` — active whenever any device is connected.
 
-**File:** [useBleHeartbeat.ts](file:///c:/dev/ww/src/hooks/useBleHeartbeat.ts)
+**File:** [useBleHeartbeat.ts](../../src/hooks/useBleHeartbeat.ts)
 
 ---
 

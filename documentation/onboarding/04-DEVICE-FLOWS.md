@@ -260,10 +260,10 @@ All three flows use the **bulk parameter fetch** command `AI getop -1` to minimi
 **Backward compatibility:** If `AI getop -1` fails (e.g. older firmware), all functions gracefully fall back to "blind write" mode — they send every `setop` unconditionally.
 
 **Key files:**
-- [types.ts](file:///c:/dev/ww/src/ble/types.ts) — `getop_all` command definition (requires both `readCommand` and `writeCommand`)
-- [useBleCommands.ts](file:///c:/dev/ww/src/hooks/useBleCommands.ts) — `getAllOperationalParams()` function
-- [useDeviceSettings.ts](file:///c:/dev/ww/src/hooks/useDeviceSettings.ts) — `quiesceDevice(cachedOps?)` accepts cached ops
-- [useDeploymentConfiguration.ts](file:///c:/dev/ww/src/hooks/useDeploymentConfiguration.ts) — `configure()` fetches once for both deployment ID and capture method
+- [types.ts](../../src/ble/types.ts) — `getop_all` command definition (requires both `readCommand` and `writeCommand`)
+- [useBleCommands.ts](../../src/hooks/useBleCommands.ts) — `getAllOperationalParams()` function
+- [useDeviceSettings.ts](../../src/hooks/useDeviceSettings.ts) — `quiesceDevice(cachedOps?)` accepts cached ops
+- [useDeploymentConfiguration.ts](../../src/hooks/useDeploymentConfiguration.ts) — `configure()` fetches once for both deployment ID and capture method
 
 ---
 
