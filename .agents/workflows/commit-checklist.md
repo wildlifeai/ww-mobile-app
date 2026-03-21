@@ -18,12 +18,6 @@ Read and follow its branching strategy, commit conventions, and PR guidelines **
 > The contributing guidelines are the **single source of truth** for each repo's git workflow.
 > If no repo-level file exists, the organisation default applies.
 
-### Key conventions (wildlife.ai repos)
-
-- **Conventional Commits** required: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`
-- **Never commit directly** to `main` or `dev` — use feature/fix/chore branches
-- **Rebase onto `dev`** before pushing
-
 ## 2. Review and Update Documentation
 
 Before committing code changes, check if relevant documentation needs updating.
@@ -41,16 +35,6 @@ Search for `*.md` files in **all** of these directories (not just `docs/`):
 > **IMPORTANT**: The docs directory may vary per repo. Always check `documentation/` AND `docs/` — do not assume either.
 
 Skip `node_modules/`, `archive/`, and similar non-documentation directories.
-
-### When documentation review applies
-
-Changes that affect any documented behavior:
-
-- Workflows or multi-step flows (e.g., device preparation, deployment, sync)
-- Communication protocols (BLE, API, LoRaWAN)
-- Database schema, models, migrations, or services
-- Architecture, navigation, or screen structure
-- CI/CD pipelines, build processes, or versioning
 
 ### Steps
 

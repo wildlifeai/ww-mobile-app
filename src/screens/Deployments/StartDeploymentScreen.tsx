@@ -110,6 +110,25 @@ export const DeploymentDetailsStep = () => {
                             </View>
                         ) : null}
 
+                        {project?.record_gps_in_images && (
+                            <View style={styles.infoRow}>
+                                <Text variant="labelMedium">Record GPS in Images:</Text>
+                                <Text variant="bodyLarge">Enabled</Text>
+                            </View>
+                        )}
+                        {project?.is_baited && (
+                            <View style={styles.infoRow}>
+                                <Text variant="labelMedium">Using Bait:</Text>
+                                <Text variant="bodyLarge">Enabled</Text>
+                            </View>
+                        )}
+                        {project?.is_monitoring_marked_individuals && (
+                            <View style={styles.infoRow}>
+                                <Text variant="labelMedium">Monitoring Marked Individuals:</Text>
+                                <Text variant="bodyLarge">Enabled</Text>
+                            </View>
+                        )}
+
                         <Button
                             mode="outlined"
                             onPress={() => {

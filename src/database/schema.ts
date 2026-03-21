@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 226,
+    version: 227,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -370,10 +370,10 @@ export default appSchema({
                 { name: 'name', type: 'string' },
                 { name: 'organisation_id', type: 'string', isIndexed: true },
                 { name: 'project_image', type: 'string', isOptional: true },
+                { name: 'record_gps_in_images', type: 'boolean' },
                 { name: 'sampling_design_id', type: 'number', isOptional: true, isIndexed: true },
                 { name: 'timelapse_interval_seconds', type: 'number', isOptional: true },
                 { name: 'website', type: 'string', isOptional: true },
-                { name: 'record_gps_in_images', type: 'boolean', isOptional: true },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },

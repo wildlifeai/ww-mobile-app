@@ -149,7 +149,7 @@ Uses `useBleInitialization` — same self-test + time sync as preparation steps 
 | Camera View Image | — | Preview via `CameraViewSection` |
 | LoRaWAN Status | — | Connectivity check |
 
-Project settings (capture method, sensitivity, timelapse interval) are read-only, inherited from the preparation's project.
+Project settings (capture method, sensitivity, timelapse interval, GPS image tagging, bait usage, marked individuals monitoring) are read-only, inherited from the preparation's project and prominently displayed to the user for confirmation prior to starting the deployment.
 
 ### Start Deployment Sequence
 
