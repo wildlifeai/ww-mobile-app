@@ -27,7 +27,7 @@ export const MetadataSection = ({
     // Helper to only allow numeric input for Camera Height
     const handleCameraHeightChange = (text: string) => {
         // Allow empty string or numbers only
-        if (text === '' || /^\d+$/.test(text)) {
+        if (/^\d*$/.test(text)) {
             onCameraHeightChange(text)
         }
     }
