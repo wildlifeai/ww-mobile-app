@@ -15,6 +15,7 @@ export interface DeploymentConfig {
         longitude: number
         altitude: number
     }
+    recordGpsInImages?: boolean
 }
 
 export const useDeploymentConfiguration = () => {
@@ -29,6 +30,7 @@ export const useDeploymentConfiguration = () => {
         device: ExtendedPeripheral,
         deploymentId: string,
         location?: { latitude: number; longitude: number; altitude: number },
+        recordGpsInImages?: boolean,
         cachedOps?: string[] | null
     ): Promise<void> => {
         log('[DeployConfig] Setting deployment ID:', deploymentId)
@@ -40,18 +42,19 @@ export const useDeploymentConfiguration = () => {
             log('[DeployConfig] Deployment ID set successfully via OPs')
             
         } catch (error) {
-            // Feature not supported or failed - fall back to GPS
-            logWarn('[DeployConfig] OPs writing failed, using GPS fallback:', error)
-            
-            if (location) {
-                const { latitude, longitude, altitude } = location
-                await setGpsLocation(device, latitude, longitude, altitude)
-                log('[DeployConfig] GPS location set as fallback')
-            } else {
-                // Use 0,0,0 if no location provided
-                await setGpsLocation(device, 0, 0, 0)
-                log('[DeployConfig] GPS fallback with default 0,0,0')
-            }
+            // Feature not supported or failed
+            logWarn('[DeployConfig] OPs writing failed:', error)
+        }
+
+        // Always enforce GPS writing based on privacy setting
+        if (recordGpsInImages && location) {
+            const { latitude, longitude, altitude } = location
+            await setGpsLocation(device, latitude, longitude, altitude)
+            log('[DeployConfig] Real GPS location set as EXIF fallback')
+        } else {
+            // Use 0,0,0 if privacy enabled or no location provided
+            await setGpsLocation(device, 0, 0, 0)
+            log('[DeployConfig] GPS zeroed out (Privacy mode or missing location)')
         }
     }, [setDeploymentIdAsOps, setGpsLocation])
 
@@ -131,8 +134,8 @@ export const useDeploymentConfiguration = () => {
             // Pre-fetch all ops once for the entire configuration sequence
             const cachedOps = await getOrFetchOperationalParams(device, null, '[DeployConfig] Configuration sequence:')
 
-            // 1. Set deployment ID (with auto-fallback)
-            await setDeploymentId(device, config.deploymentId, config.location, cachedOps)
+            // 1. Set deployment ID (with auto-fallback and GPS enforce)
+            await setDeploymentId(device, config.deploymentId, config.location, config.recordGpsInImages, cachedOps)
 
             // 2. Configure capture settings
             await configureCaptureMethod(device, config, cachedOps)

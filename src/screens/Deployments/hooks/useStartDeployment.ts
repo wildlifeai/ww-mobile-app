@@ -43,9 +43,8 @@ export const useStartDeployment = ({
     const [formState, setFormState] = useState({
         name: '',
         notes: '',
-        locationDescription: '',
         cameraHeight: '',
-        locationName: 'User Location',
+        locationName: '',
         location: {
             latitude: 0,
             longitude: 0,
@@ -114,8 +113,8 @@ export const useStartDeployment = ({
         setFormState(prev => ({ ...prev, notes }))
     }, [])
 
-    const handleLocationDescriptionChange = useCallback((text: string) => {
-        setFormState(prev => ({ ...prev, locationDescription: text }))
+    const handleLocationNameChange = useCallback((text: string) => {
+        setFormState(prev => ({ ...prev, locationName: text }))
     }, [])
 
     const handleCameraHeightChange = useCallback((text: string) => {
@@ -299,8 +298,7 @@ export const useStartDeployment = ({
                 devicePreparationId: devicePreparationId || '',
                 setupBy: user.id,
 
-                locationName: formState.locationName || 'User Location',
-                locationDescription: formState.locationDescription,
+                locationName: formState.locationName || 'Unnamed Location',
                 cameraHeight: formState.cameraHeight ? parseFloat(formState.cameraHeight) : undefined,
 
                 latitude: formState.location.latitude,
@@ -340,7 +338,8 @@ export const useStartDeployment = ({
                         latitude: formState.location.latitude || 0,
                         longitude: formState.location.longitude || 0,
                         altitude: formState.location.altitude || 0
-                    }
+                    },
+                    recordGpsInImages: project.recordGpsInImages || false
                 })
                 
                 addFinishLog('Device configuration successful')
@@ -390,7 +389,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.name, formState.locationName, formState.locationDescription, formState.cameraHeight, formState.location, formState.notes, bleDevice, project, user, deviceId, devicePreparationId, runDisconnect, startConfigure, addFinishLog, flashLed, setUtc])
+    }, [formState.name, formState.locationName, formState.cameraHeight, formState.location, formState.notes, bleDevice, project, user, deviceId, devicePreparationId, runDisconnect, startConfigure, addFinishLog, flashLed, setUtc])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)
@@ -419,7 +418,7 @@ export const useStartDeployment = ({
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         isNavigatingAway, handleLocationChange, handleImageCaptured,
-        handleNameChange, handleNotesChange, handleLocationDescriptionChange,
+        handleNameChange, handleNotesChange, handleLocationNameChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
         helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp
     }

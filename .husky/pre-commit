@@ -22,4 +22,10 @@ case "$branch" in
     ;;
 esac
 
+echo "----------------------------------------------------------"
+echo "🤖 REMINDER: Have you followed the /commit-checklist flow?"
+echo "   📂 Docs live in: documentation/ (not docs/)"
+echo "   📋 Org CONTRIBUTING: github.com/wildlifeai/.github"
+echo "----------------------------------------------------------"
+
 npx lint-staged

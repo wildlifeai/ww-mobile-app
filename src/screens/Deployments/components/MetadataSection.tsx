@@ -4,11 +4,11 @@ import { Card, TextInput } from 'react-native-paper'
 interface Props {
     name: string
     notes: string
-    locationDescription: string
+    locationName: string
     cameraHeight: string // Stored as string in input, parsed to number later
     onNameChange: (text: string) => void
     onNotesChange: (text: string) => void
-    onLocationDescriptionChange: (text: string) => void
+    onLocationNameChange: (text: string) => void
     onCameraHeightChange: (text: string) => void
     onShowHelp: (title: string, content: string) => void
 }
@@ -16,11 +16,11 @@ interface Props {
 export const MetadataSection = ({
     name,
     notes,
-    locationDescription,
+    locationName,
     cameraHeight,
     onNameChange,
     onNotesChange,
-    onLocationDescriptionChange,
+    onLocationNameChange,
     onCameraHeightChange,
     onShowHelp
 }: Props) => {
@@ -45,15 +45,13 @@ export const MetadataSection = ({
                 />
 
                 <TextInput
-                    label="Location Description"
-                    placeholder="Describe the camera location..."
-                    value={locationDescription}
-                    onChangeText={onLocationDescriptionChange}
+                    label="Location Name"
+                    placeholder="e.g. Ridge Trail Camera A"
+                    value={locationName}
+                    onChangeText={onLocationNameChange}
                     mode="outlined"
-                    multiline
-                    numberOfLines={4}
-                    style={[styles.input, styles.textArea]}
-                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Location Description', "Describe the immediate surroundings (e.g., 'On oak tree, facing North'). Useful for finding the camera later.")} />}
+                    style={styles.input}
+                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Location Name', 'A short, project-specific identifiable name for this deployment location (e.g. "Ridge Trail Camera A", "Pond North").')} />}
                 />
 
                 <TextInput
@@ -75,7 +73,7 @@ export const MetadataSection = ({
                     multiline
                     numberOfLines={4}
                     style={[styles.input, styles.textArea]}
-                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Notes', 'Any additional observations, such as bait used, weather conditions, or specific features being monitored.')} />}
+                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Notes', 'Any additional observations, such as location details, bait used, weather conditions, or specific features being monitored.')} />}
                 />
             </Card.Content>
         </Card>

@@ -359,9 +359,9 @@ export const DeploymentService = {
 function mapModelToPayload(model: Deployment): any {
     return {
         id: model.id,
-        // project_id: model.projectId, // REMOVED: Column missing in schema, linked via device_preparation
+        project_id: model.projectId,
         // user_id: model.userId, // REMOVED
-        // device_id: model.deviceId, // REMOVED: Column missing in schema, linked via device_preparation
+        device_id: model.deviceId,
         device_preparation_id: model.devicePreparationId,
         name: model.name,
         setup_by: model.setupBy,

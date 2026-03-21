@@ -34,7 +34,7 @@ export const DeploymentDetailsStep = () => {
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         isNavigatingAway, handleLocationChange, handleImageCaptured,
-        handleNameChange, handleNotesChange, handleLocationDescriptionChange,
+        handleNameChange, handleNotesChange, handleLocationNameChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
         helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp
     } = useStartDeployment({ deviceId, bleDeviceId, devicePreparationId, navigation })
@@ -110,6 +110,19 @@ export const DeploymentDetailsStep = () => {
                             </View>
                         ) : null}
 
+                        {[
+                            { label: 'Record GPS in Images', enabled: project?.record_gps_in_images },
+                            { label: 'Using Bait', enabled: project?.is_baited },
+                            { label: 'Monitoring Marked Individuals', enabled: project?.is_monitoring_marked_individuals },
+                        ].map(({ label, enabled }) => (
+                            enabled && (
+                                <View key={label} style={styles.infoRow}>
+                                    <Text variant="labelMedium">{label}:</Text>
+                                    <Text variant="bodyLarge">Enabled</Text>
+                                </View>
+                            )
+                        ))}
+
                         <Button
                             mode="outlined"
                             onPress={() => {
@@ -147,11 +160,11 @@ export const DeploymentDetailsStep = () => {
                 <MetadataSection
                     name={formState.name}
                     notes={formState.notes}
-                    locationDescription={formState.locationDescription}
+                    locationName={formState.locationName}
                     cameraHeight={formState.cameraHeight}
                     onNameChange={handleNameChange}
                     onNotesChange={handleNotesChange}
-                    onLocationDescriptionChange={handleLocationDescriptionChange}
+                    onLocationNameChange={handleLocationNameChange}
                     onCameraHeightChange={handleCameraHeightChange}
                     onShowHelp={showHelp}
                 />

@@ -20,6 +20,7 @@ interface ProjectFormData {
     activity_detection_sensitivity_id: string
     timelapse_interval_seconds: string
     model_id: string
+    record_gps_in_images: boolean
 }
 
 interface SelectOption {
@@ -190,6 +191,19 @@ export const ProjectSettingsCard: React.FC<Props> = ({
                                 />
                             )}
                         />
+
+                        <Controller
+                            control={control}
+                            name="record_gps_in_images"
+                            render={({ field: { value, onChange } }) => (
+                                <WWCheckbox
+                                    label="Record GPS in Images"
+                                    value={value}
+                                    onChange={onChange}
+                                    testID="record-gps-checkbox"
+                                />
+                            )}
+                        />
                     </View>
                 ) : (
                     <View>
@@ -323,6 +337,22 @@ export const ProjectSettingsCard: React.FC<Props> = ({
                                     style={dynamicStyles.settingValue}
                                 >
                                     Monitoring Marked Individuals
+                                </Text>
+                            </View>
+                        )}
+
+                        {project.record_gps_in_images && (
+                            <View style={styles.settingRow}>
+                                <WWIcon
+                                    source="checkbox-marked"
+                                    size={20}
+                                    color={theme.colors.primary}
+                                />
+                                <Text
+                                    variant="bodyMedium"
+                                    style={dynamicStyles.settingValue}
+                                >
+                                    Record GPS in Images
                                 </Text>
                             </View>
                         )}

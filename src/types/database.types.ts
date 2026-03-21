@@ -1220,6 +1220,7 @@ export type Database = {
           name: string
           organisation_id: string
           project_image: string | null
+          record_gps_in_images: boolean
           sampling_design_id: number | null
           timelapse_interval_seconds: number | null
           updated_at: string | null
@@ -1241,6 +1242,7 @@ export type Database = {
           name: string
           organisation_id: string
           project_image?: string | null
+          record_gps_in_images?: boolean
           sampling_design_id?: number | null
           timelapse_interval_seconds?: number | null
           updated_at?: string | null
@@ -1262,6 +1264,7 @@ export type Database = {
           name?: string
           organisation_id?: string
           project_image?: string | null
+          record_gps_in_images?: boolean
           sampling_design_id?: number | null
           timelapse_interval_seconds?: number | null
           updated_at?: string | null
@@ -1701,6 +1704,7 @@ export type Database = {
           name: string | null
           organisation_id: string | null
           project_image: string | null
+          record_gps_in_images: boolean | null
           sampling_design_id: number | null
           sd_card_usage: number | null
           timelapse_interval_seconds: number | null
@@ -1727,6 +1731,7 @@ export type Database = {
           name?: string | null
           organisation_id?: string | null
           project_image?: string | null
+          record_gps_in_images?: boolean | null
           sampling_design_id?: number | null
           sd_card_usage?: never
           timelapse_interval_seconds?: number | null
@@ -1753,6 +1758,7 @@ export type Database = {
           name?: string | null
           organisation_id?: string | null
           project_image?: string | null
+          record_gps_in_images?: boolean | null
           sampling_design_id?: number | null
           sd_card_usage?: never
           timelapse_interval_seconds?: number | null

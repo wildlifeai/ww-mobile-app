@@ -43,6 +43,7 @@ interface ProjectFormData {
 	activity_detection_sensitivity_id: string
 	timelapse_interval_seconds: string
 	model_id: string
+	record_gps_in_images: boolean
 }
 
 export const NewProjectScreen = () => {
@@ -85,6 +86,7 @@ export const NewProjectScreen = () => {
 			activity_detection_sensitivity_id: "",
 			timelapse_interval_seconds: "30", // Default timelapse interval
 			model_id: "",
+			record_gps_in_images: false,
 		},
 	})
 
@@ -212,6 +214,7 @@ export const NewProjectScreen = () => {
 				timelapse_interval_seconds: data.timelapse_interval_seconds
 					? Number(data.timelapse_interval_seconds)
 					: undefined,
+				record_gps_in_images: data.record_gps_in_images,
 			}
 
 			await createProject(input).unwrap()
