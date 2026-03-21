@@ -28,14 +28,15 @@ export const useDeploymentConfiguration = () => {
     const setDeploymentId = useCallback(async (
         device: ExtendedPeripheral,
         deploymentId: string,
-        location?: { latitude: number; longitude: number; altitude: number }
+        location?: { latitude: number; longitude: number; altitude: number },
+        cachedOps?: string[] | null
     ): Promise<void> => {
         log('[DeployConfig] Setting deployment ID:', deploymentId)
 
         try {
             // Write deployment ID directly via extended OPs
             // We assume modern firmware supports this; fallback handles failures
-            await setDeploymentIdAsOps(device, deploymentId)
+            await setDeploymentIdAsOps(device, deploymentId, cachedOps)
             log('[DeployConfig] Deployment ID set successfully via OPs')
             
         } catch (error) {
@@ -57,12 +58,17 @@ export const useDeploymentConfiguration = () => {
     /**
      * Helper to apply updates sequentially
      */
-    const applyUpdates = useCallback(async (device: ExtendedPeripheral, updates: { index: number, value: number }[]) => {
-        let currentOps: string[] | null = null
-        try {
-            currentOps = await getAllOperationalParams(device)
-        } catch (err) {
-            logWarn('[DeployConfig] Warning: bulk fetch failed, proceeding blindly', err)
+    const applyUpdates = useCallback(async (device: ExtendedPeripheral, updates: { index: number, value: number }[], cachedOps?: string[] | null) => {
+        // Use cached ops if provided, otherwise fetch
+        let currentOps: string[] | null = cachedOps ?? null
+        if (!currentOps) {
+            try {
+                currentOps = await getAllOperationalParams(device)
+            } catch (err) {
+                logWarn('[DeployConfig] Warning: bulk fetch failed, proceeding blindly', err)
+            }
+        } else {
+            log('[DeployConfig] Using cached ops for applyUpdates')
         }
 
         for (const { index, value } of updates) {
@@ -75,7 +81,6 @@ export const useDeploymentConfiguration = () => {
 
             log(`[DeployConfig] Setting parameter ${index} to ${value}`)
             await setOperationalParam(device, index, value.toString())
-            // Delay removed - relying on BLE queue serialization
         }
     }, [setOperationalParam, getAllOperationalParams])
 
@@ -84,7 +89,8 @@ export const useDeploymentConfiguration = () => {
      */
     const configureCaptureMethod = useCallback(async (
         device: ExtendedPeripheral,
-        config: DeploymentConfig
+        config: DeploymentConfig,
+        cachedOps?: string[] | null
     ): Promise<void> => {
         log('[DeployConfig] Configuring capture method:', config.captureMethod)
 
@@ -119,7 +125,7 @@ export const useDeploymentConfiguration = () => {
             return
         }
 
-        await applyUpdates(device, updates)
+        await applyUpdates(device, updates, cachedOps)
     }, [applyUpdates])
 
     /**
@@ -132,18 +138,27 @@ export const useDeploymentConfiguration = () => {
         log('[DeployConfig] Starting deployment configuration...')
 
         try {
+            // Pre-fetch all ops once for the entire configuration sequence
+            let cachedOps: string[] | null = null
+            try {
+                cachedOps = await getAllOperationalParams(device)
+                log('[DeployConfig] Pre-fetched bulk ops for configuration')
+            } catch (err) {
+                logWarn('[DeployConfig] Bulk fetch failed, sub-functions will proceed blindly', err)
+            }
+
             // 1. Set deployment ID (with auto-fallback)
-            await setDeploymentId(device, config.deploymentId, config.location)
+            await setDeploymentId(device, config.deploymentId, config.location, cachedOps)
 
             // 2. Configure capture settings
-            await configureCaptureMethod(device, config)
+            await configureCaptureMethod(device, config, cachedOps)
 
             log('[DeployConfig] Deployment configuration complete')
         } catch (error) {
             logError('[DeployConfig] Configuration failed:', error)
             throw new Error(`Failed to configure deployment: ${error}`)
         }
-    }, [setDeploymentId, configureCaptureMethod])
+    }, [setDeploymentId, configureCaptureMethod, getAllOperationalParams])
 
     return {
         configure,

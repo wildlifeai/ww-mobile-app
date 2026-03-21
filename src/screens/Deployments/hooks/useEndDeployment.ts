@@ -9,10 +9,11 @@ interface UseEndDeploymentParams {
     storeDevice: any
     retrievalNotes: string
     navigation: any
-    quiesceDevice: (source: string, fast?: boolean) => Promise<void>
-    setDeploymentIdAsOps: (device: any, id: string | null) => Promise<void>
+    quiesceDevice: (source: string, fast?: boolean, cachedOps?: string[] | null) => Promise<void>
+    setDeploymentIdAsOps: (device: any, id: string | null, cachedOps?: string[] | null) => Promise<void>
     clearGpsLocation: (device: any) => Promise<void>
     runDisconnect: (device: any) => Promise<void>
+    getAllOperationalParams: (device: any) => Promise<string[] | null>
     isNavigatingAway: React.MutableRefObject<boolean>
 }
 
@@ -26,6 +27,7 @@ export const useEndDeployment = ({
     setDeploymentIdAsOps,
     clearGpsLocation,
     runDisconnect,
+    getAllOperationalParams,
     isNavigatingAway
 }: UseEndDeploymentParams) => {
     const [isEnding, setIsEnding] = useState(false)
@@ -88,6 +90,17 @@ export const useEndDeployment = ({
         setIsEndDeploymentSuccess(false)
 
         try {
+            // Pre-fetch all ops once for the entire end-deployment sequence
+            let cachedOps: string[] | null = null
+            if (storeDevice) {
+                try {
+                    cachedOps = await getAllOperationalParams(storeDevice)
+                    log('[EndDeployment] Pre-fetched bulk ops for end-deployment')
+                } catch (err) {
+                    logWarn('[EndDeployment] Bulk ops fetch failed, proceeding without cache', err)
+                }
+            }
+
             // 1. Clear Configuration (ID)
             if (storeDevice) {
                 addFinishLog('Clearing configuration...')
@@ -100,7 +113,7 @@ export const useEndDeployment = ({
                 while (!idCleared && attempts < 3) {
                     try {
                         attempts++
-                        await setDeploymentIdAsOps(storeDevice, null)
+                        await setDeploymentIdAsOps(storeDevice, null, cachedOps)
                         log('[EndDeployment] ID cleared')
                         idCleared = true
                         addFinishLog('Configuration cleared')
@@ -139,7 +152,7 @@ export const useEndDeployment = ({
                 setFinishProgress(0.6)
                 
                 try {
-                    await quiesceDevice('[EndDeployment]', true)  // Use optimized mode (skip camera enable)
+                    await quiesceDevice('[EndDeployment]', true, cachedOps)  // Use optimized mode (skip camera enable)
                     addFinishLog('Device stopped')
                 } catch (e) {
                     logWarn('[EndDeployment] Final stop warning:', e)
@@ -174,7 +187,7 @@ export const useEndDeployment = ({
         } finally {
             setIsEnding(false)
         }
-    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsOps, clearGpsLocation, runDisconnect, addFinishLog, isNavigatingAway])
+    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsOps, clearGpsLocation, runDisconnect, addFinishLog, isNavigatingAway, getAllOperationalParams])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)
