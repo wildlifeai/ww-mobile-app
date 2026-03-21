@@ -55,6 +55,7 @@ export const PrepareAndTestScreen = () => {
         capturedImageUri,
         isCapturingImage,
         captureProgress,
+        captureStage,
         navigation
     } = usePrepareAndTest()
 
@@ -129,6 +130,7 @@ export const PrepareAndTestScreen = () => {
                     theme={theme}
                     onShowHelp={showHelp}
                     captureProgress={captureProgress}
+                    captureStage={captureStage}
                 />
 
                 <FirmwareSection

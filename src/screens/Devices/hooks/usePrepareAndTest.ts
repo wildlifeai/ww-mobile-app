@@ -205,7 +205,7 @@ export const usePrepareAndTest = () => {
     const logs = useAppSelector(state => state.logs[bleDeviceId || ''] || [])
 
     // Camera capture hook
-    const { capturedImageUri, isCapturing: isCapturingImage, startCapture, captureProgress } = useCapturePreview({
+    const { capturedImageUri, isCapturing: isCapturingImage, startCapture, captureProgress, captureStage } = useCapturePreview({
         device: bleDevice,
         write: write,
         onImageReceived: (imageUri) => {
@@ -1133,6 +1133,7 @@ export const usePrepareAndTest = () => {
         capturedImageUri,
         isCapturingImage,
         captureProgress,
+        captureStage,
         navigation
     }
 }
