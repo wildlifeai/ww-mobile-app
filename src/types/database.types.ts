@@ -1224,6 +1224,7 @@ export type Database = {
           timelapse_interval_seconds: number | null
           updated_at: string | null
           website: string | null
+          record_gps_in_images: boolean
         }
         Insert: {
           activity_detection_sensitivity_id?: number | null
@@ -1245,6 +1246,7 @@ export type Database = {
           timelapse_interval_seconds?: number | null
           updated_at?: string | null
           website?: string | null
+          record_gps_in_images?: boolean
         }
         Update: {
           activity_detection_sensitivity_id?: number | null
@@ -1266,6 +1268,7 @@ export type Database = {
           timelapse_interval_seconds?: number | null
           updated_at?: string | null
           website?: string | null
+          record_gps_in_images?: boolean
         }
         Relationships: [
           {
@@ -1698,6 +1701,7 @@ export type Database = {
           member_count: number | null
           model_id: string | null
           modified_by: string | null
+          record_gps_in_images: boolean
           name: string | null
           organisation_id: string | null
           project_image: string | null

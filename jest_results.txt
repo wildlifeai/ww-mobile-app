@@ -1,0 +1,1376 @@
+PASS tests/unit/database_import.test.ts
+  Database Import Test
+    √ should import database without crashing (9 ms)
+
+PASS src/hooks/__tests__/useBle.test.tsx
+  useBle
+    √ should initialize hooks and return methods (39 ms)
+    startScan
+      √ should call BleManager.scan when not scanning (7 ms)
+      √ should NOT call BleManager.scan if already scanning (4 ms)
+    connectDevice
+      √ should connect, retrieve services, start notifications (21 ms)
+    disconnectDevice
+      √ should disconnect and dispatch action (9 ms)
+    write
+      √ should send command via manager (7 ms)
+
+PASS tests/unit/outbox_import.test.ts
+  OutboxService Import Test
+    √ should import OutboxService without crashing (23 ms)
+
+PASS src/services/__tests__/DeviceService.test.ts
+  DeviceService
+    getDevices
+      √ should query devices collection (11 ms)
+    getDeviceById
+      √ should find device by ID (2 ms)
+      √ should return undefined on error (1 ms)
+    searchDevices
+      √ should query with Q.or condition (2 ms)
+    createDevice
+      √ should prepare create and batch write (2 ms)
+    getDevicesForUser
+      √ should return empty list if user has no projects and no direct access (2 ms)
+      √ should return devices based on project deployments (3 ms)
+
+PASS tests/integration/services/auth.test.ts
+  Authentication Service
+    login
+      √ should login successfully with valid credentials (35 ms)
+      √ should throw error with invalid credentials (4 ms)
+      √ should throw error when no user data returned (2 ms)
+      √ should handle network errors (9 ms)
+    register
+      √ should register successfully with valid credentials (3 ms)
+      √ should handle registration with email confirmation required (5 ms)
+      √ should throw error with invalid registration data (4 ms)
+      √ should throw error when email already exists (2 ms)
+      √ should throw error when no user data returned (1 ms)
+    logout
+      √ should logout successfully (2 ms)
+      √ should throw error when logout fails (2 ms)
+    getCurrentSession
+      √ should return current session when user is authenticated (2 ms)
+      √ should return null when no session exists (1 ms)
+      √ should return null when error occurs (1 ms)
+    isAuthenticated
+      √ should return true when user is authenticated (1 ms)
+      √ should return false when user is not authenticated (5 ms)
+    refreshSession
+      √ should refresh session successfully (11 ms)
+      √ should return null when refresh fails (1 ms)
+    setupAuthListener
+      √ should set up auth state change listener (5 ms)
+      √ should call callback with auth response when session exists (805 ms)
+      √ should call callback with null when no session (1 ms)
+    resetPassword
+      √ should send password reset email successfully (2 ms)
+      √ should throw error when reset password fails (1 ms)
+    updatePassword
+      √ should update password successfully (1 ms)
+      √ should throw error when update password fails (1 ms)
+    updatePasswordWithToken
+      √ should update password with token successfully (1 ms)
+      √ should throw error when token verification fails (4 ms)
+      √ should throw error when password update fails after token verification (4 ms)
+    getCurrentUser
+      √ should return current user successfully (1 ms)
+      √ should return null when no user found (1 ms)
+      √ should return null when error occurs (1 ms)
+
+PASS tests/unit/syncstate_import.test.ts
+  SyncStateService Import Test
+    √ should import SyncStateService without crashing (25 ms)
+
+PASS tests/unit/ProjectService.unit.test.ts
+  ProjectService Unit Test
+    √ should verify mocks are active (717 ms)
+    √ should batch createProject operations (144 ms)
+    √ should batch updateProject operations (132 ms)
+    √ should batch deleteProject operations (123 ms)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'function',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: [Function: NavigationContainer]
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    
+    User Story: Successful User Login
+    As a wildlife researcher
+    I want to log into the application with my email and password
+    So that I can access the app features and manage my projects
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:119:11)
+
+  console.log
+    Scenario: Valid credentials provided
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:120:11)
+
+  console.log
+      GIVEN: I am on the login screen
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      WHEN: I enter a valid email address
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      AND: I enter a valid password
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      AND: I submit the login form
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      THEN: I should be authenticated successfully
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'function',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: [Function: NavigationContainer]
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    
+    User Story: Login Form Validation
+    As a user
+    I want to see helpful validation messages
+    So that I can correct my input and successfully log in
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:119:11)
+
+  console.log
+    Scenario: Empty form submission
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:120:11)
+
+  console.log
+      GIVEN: I am on the login screen
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      WHEN: I submit the form without entering any information
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      THEN: I should see an email required error
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      AND: I should see a password required error
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'function',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: [Function: NavigationContainer]
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    
+    User Story: Email Format Validation
+    As a user
+    I want to be notified when my email format is invalid
+    So that I can enter a correctly formatted email address
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:119:11)
+
+  console.log
+    Scenario: Invalid email format
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:120:11)
+
+  console.log
+      GIVEN: I am on the login screen
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      WHEN: I enter an invalid email format
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      AND: I enter a valid password
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      AND: I submit the form
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      THEN: I should see an invalid email error
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'function',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: [Function: NavigationContainer]
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    
+    User Story: Password Length Validation
+    As a user
+    I want to be notified when my password is too short
+    So that I can enter a password that meets the security requirements
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:119:11)
+
+  console.log
+    Scenario: Password too short
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:120:11)
+
+  console.log
+      GIVEN: I am on the login screen
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      WHEN: I enter a valid email
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      AND: I enter a password that is too short
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      AND: I submit the form
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      THEN: I should see a password too short error
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'function',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: [Function: NavigationContainer]
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    
+    User Story: Login Error Handling
+    As a user
+    I want to be notified when my login credentials are incorrect
+    So that I can try again with the correct credentials
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:119:11)
+
+  console.log
+    Scenario: Invalid credentials
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:120:11)
+
+  console.log
+      GIVEN: I am on the login screen
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      WHEN: I enter incorrect credentials
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      AND: I submit the form
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      THEN: I should see an error alert
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'function',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: [Function: NavigationContainer]
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    
+    User Story: Navigate to Registration
+    As a new user
+    I want to navigate to the registration screen from the login screen
+    So that I can create a new account
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:119:11)
+
+  console.log
+    Scenario: Click registration link
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:120:11)
+
+  console.log
+      GIVEN: I am on the login screen
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      WHEN: I click on the registration link
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      THEN: I should be navigated to the registration screen
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+    Checking for navigation to Register
+
+      at Object.log (tests/setup/helpers/bdd.ts:227:11)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'function',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: [Function: NavigationContainer]
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    
+    User Story: Navigate to Forgot Password
+    As a user who has forgotten their password
+    I want to navigate to the forgot password screen
+    So that I can reset my password
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:119:11)
+
+  console.log
+    Scenario: Click forgot password link
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:120:11)
+
+  console.log
+      GIVEN: I am on the login screen
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      WHEN: I click on the forgot password link
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      THEN: I should be navigated to the forgot password screen
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+    Checking for navigation to ForgotPassword
+
+      at Object.log (tests/setup/helpers/bdd.ts:227:11)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'function',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: [Function: NavigationContainer]
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    
+    User Story: Remember Me Feature
+    As a frequent user
+    I want to have my email remembered for future logins
+    So that I can log in more quickly
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:119:11)
+
+  console.log
+    Scenario: Login with remember me checked
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:120:11)
+
+  console.log
+      GIVEN: I am on the login screen
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      WHEN: I enter valid credentials
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      AND: I check the remember me option
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      AND: I submit the form
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      THEN: My credentials should be saved for next time
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'function',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: [Function: NavigationContainer]
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    
+    User Story: Form Interaction
+    As a mobile user
+    I want the form fields to have proper keyboard types and behavior
+    So that I can efficiently enter my login information
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:119:11)
+
+  console.log
+    Scenario: Field properties and behavior
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:120:11)
+
+  console.log
+      GIVEN: I am on the login screen
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      WHEN: I look at the email field
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      AND: I look at the password field
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      THEN: the fields should have appropriate keyboard and input settings
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'function',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: [Function: NavigationContainer]
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    
+    User Story: Login Loading State
+    As a user
+    I want to see visual feedback while my login is being processed
+    So that I know the app is working and I should wait
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:119:11)
+
+  console.log
+    Scenario: Form submission with loading state
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:120:11)
+
+  console.log
+      GIVEN: I am on the login screen
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      WHEN: I enter valid credentials and submit
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      THEN: the login button should show loading state
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+  console.log
+      AND: other interactive elements should be disabled
+
+      at ScenarioBuilder.log (tests/setup/helpers/bdd.ts:123:12)
+
+PASS tests/integration/navigation/screens/Login.bdd.test.tsx
+  Login Screen - User Stories
+    √ User Story: Successful Login (751 ms)
+    √ User Story: Login Validation (53 ms)
+    √ User Story: Email Format Validation (38 ms)
+    √ User Story: Password Length Validation (36 ms)
+    √ User Story: Login Failure Handling (29 ms)
+    √ User Story: Navigation to Registration (18 ms)
+    √ User Story: Navigation to Forgot Password (25 ms)
+    √ User Story: Remember Me Functionality (37 ms)
+    √ User Story: Form Field Focus and Keyboard Behavior (34 ms)
+    √ User Story: Loading State During Login (36 ms)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+FAIL tests/integration/screens/__tests__/NewProjectScreen.integration.test.tsx
+  NewProjectScreen - AI Model Integration
+    × should load AI models and allow project creation with selected model (727 ms)
+    × should handle empty AI models list gracefully (31 ms)
+    × should display loading state while fetching AI models (33 ms)
+    × should display error state when AI models fail to load (23 ms)
+    × should allow project creation without AI model selection (20 ms)
+    × should validate UUID format when model is selected (11 ms)
+
+  ● NewProjectScreen - AI Model Integration › should load AI models and allow project creation with selected model
+
+    Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+
+    Check the render method of `NewProjectSettingsSection`.
+
+    [0m [90m 160 |[39m
+     [90m 161 |[39m 		[90m// Act[39m
+    [31m[1m>[22m[39m[90m 162 |[39m 		render([33m<[39m[33mNewProjectScreen[39m [33m/[39m[33m>[39m[33m,[39m {
+     [90m     |[39m 		      [31m[1m^[22m[39m
+     [90m 163 |[39m 			wrapper[33m:[39m createWrapper(store)[33m,[39m
+     [90m 164 |[39m 		})
+     [90m 165 |[39m[0m
+
+      at createFiberFromTypeAndProps (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12185:28)
+      at createFiberFromElement (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12199:14)
+      at createChild (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4475:26)
+      at reconcileChildrenArray (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4805:25)
+      at reconcileChildFibersImpl (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5122:30)
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5227:33
+      at reconcileChildren (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5735:13)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7551:13)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10980:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10816:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10797:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10384:39)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2094:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (tests/integration/screens/__tests__/NewProjectScreen.integration.test.tsx:162:9)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  ● NewProjectScreen - AI Model Integration › should handle empty AI models list gracefully
+
+    Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+
+    Check the render method of `NewProjectSettingsSection`.
+
+    [0m [90m 235 |[39m
+     [90m 236 |[39m 		[90m// Act[39m
+    [31m[1m>[22m[39m[90m 237 |[39m 		render([33m<[39m[33mNewProjectScreen[39m [33m/[39m[33m>[39m[33m,[39m {
+     [90m     |[39m 		      [31m[1m^[22m[39m
+     [90m 238 |[39m 			wrapper[33m:[39m createWrapper(store)[33m,[39m
+     [90m 239 |[39m 		})
+     [90m 240 |[39m[0m
+
+      at createFiberFromTypeAndProps (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12185:28)
+      at createFiberFromElement (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12199:14)
+      at createChild (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4475:26)
+      at reconcileChildrenArray (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4805:25)
+      at reconcileChildFibersImpl (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5122:30)
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5227:33
+      at reconcileChildren (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5735:13)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7551:13)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10980:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10816:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10797:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10384:39)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2094:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (tests/integration/screens/__tests__/NewProjectScreen.integration.test.tsx:237:9)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  ● NewProjectScreen - AI Model Integration › should display loading state while fetching AI models
+
+    Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+
+    Check the render method of `NewProjectSettingsSection`.
+
+    [0m [90m 261 |[39m
+     [90m 262 |[39m 		[90m// Act[39m
+    [31m[1m>[22m[39m[90m 263 |[39m 		render([33m<[39m[33mNewProjectScreen[39m [33m/[39m[33m>[39m[33m,[39m {
+     [90m     |[39m 		      [31m[1m^[22m[39m
+     [90m 264 |[39m 			wrapper[33m:[39m createWrapper(store)[33m,[39m
+     [90m 265 |[39m 		})
+     [90m 266 |[39m[0m
+
+      at createFiberFromTypeAndProps (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12185:28)
+      at createFiberFromElement (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12199:14)
+      at createChild (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4475:26)
+      at reconcileChildrenArray (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4805:25)
+      at reconcileChildFibersImpl (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5122:30)
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5227:33
+      at reconcileChildren (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5735:13)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7551:13)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10980:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10816:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10797:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10384:39)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2094:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (tests/integration/screens/__tests__/NewProjectScreen.integration.test.tsx:263:9)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  ● NewProjectScreen - AI Model Integration › should display error state when AI models fail to load
+
+    Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+
+    Check the render method of `NewProjectSettingsSection`.
+
+    [0m [90m 289 |[39m
+     [90m 290 |[39m 		[90m// Act[39m
+    [31m[1m>[22m[39m[90m 291 |[39m 		render([33m<[39m[33mNewProjectScreen[39m [33m/[39m[33m>[39m[33m,[39m {
+     [90m     |[39m 		      [31m[1m^[22m[39m
+     [90m 292 |[39m 			wrapper[33m:[39m createWrapper(store)[33m,[39m
+     [90m 293 |[39m 		})
+     [90m 294 |[39m[0m
+
+      at createFiberFromTypeAndProps (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12185:28)
+      at createFiberFromElement (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12199:14)
+      at createChild (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4475:26)
+      at reconcileChildrenArray (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4805:25)
+      at reconcileChildFibersImpl (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5122:30)
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5227:33
+      at reconcileChildren (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5735:13)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7551:13)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10980:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10816:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10797:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10384:39)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2094:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (tests/integration/screens/__tests__/NewProjectScreen.integration.test.tsx:291:9)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  ● NewProjectScreen - AI Model Integration › should allow project creation without AI model selection
+
+    Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+
+    Check the render method of `NewProjectSettingsSection`.
+
+    [0m [90m 333 |[39m
+     [90m 334 |[39m 		[90m// Act[39m
+    [31m[1m>[22m[39m[90m 335 |[39m 		render([33m<[39m[33mNewProjectScreen[39m [33m/[39m[33m>[39m[33m,[39m {
+     [90m     |[39m 		      [31m[1m^[22m[39m
+     [90m 336 |[39m 			wrapper[33m:[39m createWrapper(store)[33m,[39m
+     [90m 337 |[39m 		})
+     [90m 338 |[39m[0m
+
+      at createFiberFromTypeAndProps (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12185:28)
+      at createFiberFromElement (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12199:14)
+      at createChild (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4475:26)
+      at reconcileChildrenArray (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4805:25)
+      at reconcileChildFibersImpl (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5122:30)
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5227:33
+      at reconcileChildren (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5735:13)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7551:13)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10980:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10816:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10797:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10384:39)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2094:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (tests/integration/screens/__tests__/NewProjectScreen.integration.test.tsx:335:9)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  ● NewProjectScreen - AI Model Integration › should validate UUID format when model is selected
+
+    Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+
+    Check the render method of `NewProjectSettingsSection`.
+
+    [0m [90m 405 |[39m
+     [90m 406 |[39m 		[90m// Act[39m
+    [31m[1m>[22m[39m[90m 407 |[39m 		render([33m<[39m[33mNewProjectScreen[39m [33m/[39m[33m>[39m[33m,[39m {
+     [90m     |[39m 		      [31m[1m^[22m[39m
+     [90m 408 |[39m 			wrapper[33m:[39m createWrapper(store)[33m,[39m
+     [90m 409 |[39m 		})
+     [90m 410 |[39m[0m
+
+      at createFiberFromTypeAndProps (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12185:28)
+      at createFiberFromElement (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12199:14)
+      at createChild (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4475:26)
+      at reconcileChildrenArray (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4805:25)
+      at reconcileChildFibersImpl (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5122:30)
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5227:33
+      at reconcileChildren (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5735:13)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7551:13)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10980:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10816:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10797:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10384:39)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2094:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:12:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:81:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (tests/integration/screens/__tests__/NewProjectScreen.integration.test.tsx:407:9)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+PASS tests/integration/navigation/screens/Login.integration.test.tsx
+  Login Screen Integration Tests
+    √ should render login form correctly (746 ms)
+    √ should load saved credentials on mount when remember me was checked (26 ms)
+    √ should not load saved credentials when remember me was not checked (13 ms)
+    √ should validate email field correctly (27 ms)
+    √ should validate password field correctly (15 ms)
+    √ should handle successful login flow (37 ms)
+    √ should handle login failure workflow (26 ms)
+    √ should handle remember me functionality (31 ms)
+    √ should clear saved credentials when remember me is unchecked (15 ms)
+    √ should navigate to forgot password screen (8 ms)
+    √ should navigate to register screen (11 ms)
+    √ should disable form elements during loading (25 ms)
+    √ should handle SecureStore errors gracefully (14 ms)
+    √ should toggle remember me checkbox on label press (15 ms)
+    √ should handle error states gracefully (21 ms)
+    √ should handle keyboard and focus interactions (10 ms)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+PASS __tests__/App.test.tsx
+  √ renders correctly (8 ms)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+  console.log
+    DEBUG: Checking components in renderWithProviders: {
+      ProviderType: 'function',
+      PaperProviderType: 'function',
+      NavigationContainerType: 'object',
+      ProviderVal: [Function: Provider],
+      PaperProviderVal: [Function: PaperProvider],
+      NavigationContainerVal: {
+        '$$typeof': Symbol(react.forward_ref),
+        render: [Function: NavigationContainerInner]
+      }
+    }
+
+      at log (tests/setup/utils/testUtils.tsx:65:10)
+
+PASS tests/integration/navigation/screens/Register.integration.test.tsx
+  Register Screen Integration Tests
+    √ should render registration form correctly (771 ms)
+    √ should validate all required fields (40 ms)
+    √ should validate name field correctly (37 ms)
+    √ should validate email field correctly (143 ms)
+    √ should validate organization field length (101 ms)
+    √ should validate password field correctly (71 ms)
+    √ should validate password confirmation matching (87 ms)
+    √ should handle successful registration with immediate login (19 ms)
+    √ should handle registration with email confirmation required (18 ms)
+    √ should handle registration failure with existing email (18 ms)
+    √ should navigate to login screen (11 ms)
+    √ should disable form elements during loading (15 ms)
+    √ should handle optional organization field correctly (16 ms)
+    √ should trim empty organization field before submission (21 ms)
+    √ should handle form input properties correctly (9 ms)
+    √ should handle API error messages in UI (17 ms)
+    √ should clear form validation errors when input is corrected (82 ms)
+
+Test Suites: 1 failed, 2 skipped, 11 passed, 12 of 14 total
+Tests:       6 failed, 23 skipped, 95 passed, 124 total
+Snapshots:   0 total
+Time:        5.43 s, estimated 8 s
+Ran all test suites related to changed files.

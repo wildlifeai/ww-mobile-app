@@ -83,6 +83,7 @@ export interface CreateProjectInput {
 	timelapse_interval_seconds?: number
 	activity_detection_sensitivity_id?: number
 	capture_method_id?: number
+	record_gps_in_images?: boolean
 }
 
 // LoRaWAN device status (mock for now)

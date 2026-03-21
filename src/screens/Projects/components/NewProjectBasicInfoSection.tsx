@@ -16,6 +16,7 @@ interface ProjectFormData {
     activity_detection_sensitivity_id: string
     timelapse_interval_seconds: string
     model_id: string
+    record_gps_in_images: boolean
 }
 
 interface Props {
@@ -81,20 +82,7 @@ export const NewProjectBasicInfoSection: React.FC<Props> = ({ control, errors })
                         numberOfLines={4}
                         error={!!errors.description}
                         testID="project-description-input"
-                    />
-                )}
-            </Field>
-
-            <Field control={control} name="website" label="Website (Optional)">
-                {(field) => (
-                    <WWTextInput
-                        {...field}
-                        mode="outlined"
-                        placeholder="https://example.com"
-                        keyboardType="url"
-                        autoCapitalize="none"
-                        error={!!errors.website}
-                        testID="website-input"
+                        style={styles.textArea}
                     />
                 )}
             </Field>
@@ -110,4 +98,7 @@ const styles = StyleSheet.create({
         fontWeight: "600",
         marginBottom: 16,
     },
+    textArea: {
+        minHeight: 100
+    }
 })

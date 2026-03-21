@@ -270,6 +270,7 @@ class ProjectService {
 					project.captureMethodId = input.capture_method_id ?? null
 					project.modelId = input.model_id ?? null
 					project.isBaited = input.is_baited || false
+					project.recordGpsInImages = input.record_gps_in_images || false
 				})
 
 
@@ -341,6 +342,7 @@ class ProjectService {
 					if (updates.capture_method_id !== undefined) p.captureMethodId = updates.capture_method_id ?? null
 					if (updates.model_id !== undefined) p.modelId = updates.model_id ?? null
 					if (updates.is_baited !== undefined) p.isBaited = updates.is_baited ?? false
+					if (updates.record_gps_in_images !== undefined) p.recordGpsInImages = updates.record_gps_in_images ?? false
 
 					if (currentUserId) p.modifiedBy = currentUserId
 				})
@@ -577,6 +579,7 @@ class ProjectService {
 				is_baited: model.isBaited || false,
 				is_monitoring_marked_individuals: model.isMonitoringMarkedIndividuals || false,
 				project_image: model.projectImage || null,
+				record_gps_in_images: model.recordGpsInImages || false,
 				// Computed fields
 				member_count: memberCount,
 				deployment_count: deploymentCount,
@@ -611,6 +614,7 @@ class ProjectService {
 			is_baited: model.isBaited || false,
 			is_monitoring_marked_individuals: model.isMonitoringMarkedIndividuals || false,
 			project_image: model.projectImage || null,
+			record_gps_in_images: model.recordGpsInImages || false,
 		}
 	}
 }
