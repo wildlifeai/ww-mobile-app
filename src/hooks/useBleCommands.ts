@@ -182,7 +182,7 @@ export const useBleCommands = () => {
     }, [write])
 
     const setDeploymentIdAsOps = useCallback(
-        async (peripheral: ExtendedPeripheral, id: string | null) => {
+        async (peripheral: ExtendedPeripheral, id: string | null, cachedOps?: string[] | null) => {
             log('[BLE CMD] Sending Deployment ID via OPs (20-27). ID:', id)
 
             let ops: number[]
@@ -195,15 +195,19 @@ export const useBleCommands = () => {
                 ops = parseUuidToOps(id)
             }
 
-            // Bulk fetch params first
-            let currentOps: string[] | null = null
-            try {
-                currentOps = await getAllOperationalParams(peripheral)
-                if (currentOps) {
-                    log('[BLE CMD] Pre-fetched bulk ops for Deployment ID configuration')
+            // Use cached ops if provided, otherwise fetch
+            let currentOps: string[] | null = cachedOps ?? null
+            if (!currentOps) {
+                try {
+                    currentOps = await getAllOperationalParams(peripheral)
+                    if (currentOps) {
+                        log('[BLE CMD] Pre-fetched bulk ops for Deployment ID configuration')
+                    }
+                } catch (err) {
+                    logWarn('[BLE CMD] Warning: bulk fetch failed, proceeding blindly', err)
                 }
-            } catch (err) {
-                logWarn('[BLE CMD] Warning: bulk fetch failed, proceeding blindly', err)
+            } else {
+                log('[BLE CMD] Using cached ops for Deployment ID configuration')
             }
 
             // Send 8 commands with strict delays between each

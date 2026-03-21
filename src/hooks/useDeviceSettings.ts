@@ -53,7 +53,7 @@ export interface UseDeviceSettingsOptions {
 export interface UseDeviceSettingsReturn {
     updateSettings: (settings: Partial<DeviceSettings>) => Promise<void>
     applyPreset: (preset: 'default' | 'motion-detect' | 'timelapse') => Promise<void>
-    quiesceDevice: (logPrefix?: string, optimized?: boolean) => Promise<void>
+    quiesceDevice: (logPrefix?: string, optimized?: boolean, cachedOps?: string[] | null) => Promise<void>
     isUpdating: boolean
 }
 
@@ -224,7 +224,7 @@ export const useDeviceSettings = ({
      * @param logPrefix Custom prefix for logs
      * @param optimized Legacy parameter (unused in current logic)
      */
-    const quiesceDevice = useCallback(async (logPrefix: string = '[DeviceSettings]', optimized: boolean = false) => {
+    const quiesceDevice = useCallback(async (logPrefix: string = '[DeviceSettings]', optimized: boolean = false, cachedOps?: string[] | null) => {
         if (!device || !device.connected) {
             logWarn(`${logPrefix} Skipping quiesce: Device not connected`)
             return
@@ -235,12 +235,17 @@ export const useDeviceSettings = ({
             // Note: Camera Enable (Op 10=1) was previously forced here but removed 
             // to avoid needing to unlock parameters if they are already correct.
 
-            let currentOps: string[] | null = null
-            try {
-                if (!isMounted.current || !device.connected) return
-                currentOps = await getAllOperationalParams(device)
-            } catch (err) {
-                logWarn(`${logPrefix} Bulk fetch failed, proceeding blindly`, err)
+            // Use cached ops if provided, otherwise fetch
+            let currentOps: string[] | null = cachedOps ?? null
+            if (!currentOps) {
+                try {
+                    if (!isMounted.current || !device.connected) return
+                    currentOps = await getAllOperationalParams(device)
+                } catch (err) {
+                    logWarn(`${logPrefix} Bulk fetch failed, proceeding blindly`, err)
+                }
+            } else {
+                log(`${logPrefix} Using cached ops for quiesce`)
             }
 
             // 2. Clear Intervals (Op 11 = 0, Op 7 = 0) - ALWAYS do this
