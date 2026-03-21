@@ -110,24 +110,18 @@ export const DeploymentDetailsStep = () => {
                             </View>
                         ) : null}
 
-                        {project?.record_gps_in_images && (
-                            <View style={styles.infoRow}>
-                                <Text variant="labelMedium">Record GPS in Images:</Text>
-                                <Text variant="bodyLarge">Enabled</Text>
-                            </View>
-                        )}
-                        {project?.is_baited && (
-                            <View style={styles.infoRow}>
-                                <Text variant="labelMedium">Using Bait:</Text>
-                                <Text variant="bodyLarge">Enabled</Text>
-                            </View>
-                        )}
-                        {project?.is_monitoring_marked_individuals && (
-                            <View style={styles.infoRow}>
-                                <Text variant="labelMedium">Monitoring Marked Individuals:</Text>
-                                <Text variant="bodyLarge">Enabled</Text>
-                            </View>
-                        )}
+                        {[
+                            { label: 'Record GPS in Images', enabled: project?.record_gps_in_images },
+                            { label: 'Using Bait', enabled: project?.is_baited },
+                            { label: 'Monitoring Marked Individuals', enabled: project?.is_monitoring_marked_individuals },
+                        ].map(({ label, enabled }) => (
+                            enabled && (
+                                <View key={label} style={styles.infoRow}>
+                                    <Text variant="labelMedium">{label}:</Text>
+                                    <Text variant="bodyLarge">Enabled</Text>
+                                </View>
+                            )
+                        ))}
 
                         <Button
                             mode="outlined"
