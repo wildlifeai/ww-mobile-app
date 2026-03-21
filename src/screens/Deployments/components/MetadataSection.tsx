@@ -24,6 +24,13 @@ export const MetadataSection = ({
     onCameraHeightChange,
     onShowHelp
 }: Props) => {
+    // Helper to only allow numeric input for Camera Height
+    const handleCameraHeightChange = (text: string) => {
+        // Allow empty string or numbers only
+        if (text === '' || /^\d+$/.test(text)) {
+            onCameraHeightChange(text)
+        }
+    }
     return (
         <Card style={styles.card}>
             <Card.Title title="Deployment Details" />
@@ -44,7 +51,7 @@ export const MetadataSection = ({
                     onChangeText={onLocationDescriptionChange}
                     mode="outlined"
                     multiline
-                    numberOfLines={2}
+                    numberOfLines={4}
                     style={[styles.input, styles.textArea]}
                     right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Location Description', "Describe the immediate surroundings (e.g., 'On oak tree, facing North'). Useful for finding the camera later.")} />}
                 />
@@ -53,7 +60,7 @@ export const MetadataSection = ({
                     label="Camera Height (cm)"
                     placeholder="e.g. 50"
                     value={cameraHeight}
-                    onChangeText={onCameraHeightChange}
+                    onChangeText={handleCameraHeightChange}
                     mode="outlined"
                     keyboardType="numeric"
                     style={styles.input}
@@ -66,7 +73,7 @@ export const MetadataSection = ({
                     onChangeText={onNotesChange}
                     mode="outlined"
                     multiline
-                    numberOfLines={2}
+                    numberOfLines={4}
                     style={[styles.input, styles.textArea]}
                     right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Notes', 'Any additional observations, such as bait used, weather conditions, or specific features being monitored.')} />}
                 />
@@ -80,6 +87,6 @@ const styles = StyleSheet.create({
     content: { gap: 12 },
     input: {},
     textArea: {
-        minHeight: 60
+        minHeight: 100
     }
 })
