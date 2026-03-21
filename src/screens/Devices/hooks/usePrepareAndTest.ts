@@ -381,6 +381,15 @@ export const usePrepareAndTest = () => {
                 user.id
             )
             setPreparation(newPrep)
+
+            // Populate ai_model_id from project if available
+            const selectedProj = projects.find((p: any) => p.id === initialProjectId)
+            if (selectedProj?.model_id && newPrep) {
+                DevicePreparationService.updatePreparation(newPrep.id, {
+                    aiModelId: selectedProj.model_id
+                }).catch((err: any) => logError('[PrepareTest] Failed to set ai_model_id:', err))
+            }
+
             log('[PrepareTest] Data loading complete.')
         } catch (error) {
             logError('[PrepareTest] Error loading device data:', error)
@@ -407,8 +416,15 @@ export const usePrepareAndTest = () => {
                     prep.projectId = projectId
                 })
             })
+            // Update ai_model_id from the newly selected project
+            const proj = projects.find((p: any) => p.id === projectId)
+            if (proj?.model_id) {
+                DevicePreparationService.updatePreparation(preparation.id, {
+                    aiModelId: proj.model_id
+                }).catch((err: any) => logError('[PrepareTest] Failed to update ai_model_id:', err))
+            }
         }
-    }, [navigation, preparation])
+    }, [navigation, preparation, projects])
 
     const handleFinish = useCallback(async () => {
         if (!selectedProject) {
@@ -1047,6 +1063,12 @@ export const usePrepareAndTest = () => {
             const name = deviceNameMatch[1]
             log('[PrepareTest] Parsed device model name:', name)
             setCameraModelName(name)
+            // Persist camera_model to the preparation record immediately
+            if (preparation) {
+                DevicePreparationService.updatePreparation(preparation.id, {
+                    cameraModel: name
+                }).catch((err: any) => logError('[PrepareTest] Failed to save camera model:', err))
+            }
         }
     }, [logs, deviceFirmwareVersion, isCheckingFirmware, latestBleFirmware, cameraModelName, preparation, isVerifyingUpdate])
 
