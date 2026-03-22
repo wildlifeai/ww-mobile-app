@@ -53,6 +53,7 @@
       "distribution": "internal",
       "env": {
         "NODE_ENV": "development",
+        "EXPO_PUBLIC_SUPABASE_ENV": "cloud-dev",
         "GOOGLE_MAPS_API_KEY_ANDROID": "${GOOGLE_MAPS_API_KEY_ANDROID}",
         "GOOGLE_MAPS_API_KEY_IOS": "${GOOGLE_MAPS_API_KEY_IOS}"
       },

@@ -415,14 +415,15 @@ Orchestrates the full capture-preview flow with robust camera initialization:
 1. **Check Camera Status:** `AI getop 10`
    - If disabled (`0`): `AI setop 10 1` -> **Wait for Sleep** -> Wait 1s buffer -> **Send Capture** (wakes device immediately).
    - *Reason:* Camera hardware initializes only on the next wake cycle. We confirm sleep (settings applied), then actively wake it to proceed without delay.
-2. **Capture:** Send `AI capture 1 1` (Capture 1 image, interval 1ms to bypass MD check)
-3. **Start Download:** Send `AI txfile .` -> Firmware announces byte count
-4. **Receive:** `ImageReassembler` processes binary packets
+2. **Single Image Capture:** Send `AI capture 1 0` (Capture 1 image, interval 0ms, effectively bypassing MD check)
+3. **Motion Detection Capture Test:** Send `AI capture 2 500` (Capture 2 images, 500ms apart). The HM0360 requires a minimum of 2 frames to detect motion so it can compare Frame 2 against Frame 1. An interval < 1000ms is required to prevent the firmware's inactivity timer from sending a premature `Sleep`.
+4. **Start Download:** Send `AI txfile .` -> Firmware announces byte count
+5. **Receive:** `ImageReassembler` processes binary packets
    - Listens for `onImageProgress`, `onImageComplete`, and `onImageError`
-5. **Completion:**
+6. **Completion:**
    - Normal: `ImageReassembler` detects `bytesReceived >= bytesExpected`
    - Fallback: Firmware sends `"Finished sending X bytes"`. If image incomplete, app waits 500ms grace period then emits `force_finalize`.
-6. **Timeout:** 20-second safety timeout triggers `force_finalize`.
+7. **Timeout:** 20-second safety timeout triggers `force_finalize`.
 
 **File:** [useCapturePreview.ts](../../src/hooks/useCapturePreview.ts)
 

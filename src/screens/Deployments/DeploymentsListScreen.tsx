@@ -2,7 +2,6 @@ import { useReducer, useMemo, useCallback, useEffect } from "react"
 import { ListRenderItemInfo, View, StyleSheet } from "react-native"
 import { FAB, Chip, Text } from 'react-native-paper'
 import { useAppNavigation } from "../../hooks/useAppNavigation"
-import { useFocusEffect } from "@react-navigation/native"
 import { DeploymentCard } from "../../components/DeploymentCard"
 import type Deployment from "../../database/models/Deployment"
 import { useAppSelector } from "../../redux"
@@ -11,6 +10,7 @@ import { StandardizedListLayout } from "../../components/ui/StandardizedListLayo
 import { DeploymentService } from "../../services/DeploymentService"
 import SupabaseSyncService from "../../services/SupabaseSyncService"
 import { log, logError } from "../../utils/logger"
+import type { Subscription } from "rxjs"
 
 interface DeploymentsState {
 	deployments: Deployment[];
@@ -58,7 +58,6 @@ export const Deployments = () => {
 	
 	const isGlobalSyncing = useAppSelector((state) => state.sync.isGlobalSyncing)
 	const currentOrganisation = useAppSelector((state) => state.authentication.currentOrganisation)
-	const userId = useAppSelector((state) => state.authentication.user?.id)
 	const organisationId = currentOrganisation?.id
 	const organisationName = currentOrganisation?.name || 'your organisation'
 	const hasMultipleOrgs = (useAppSelector((state) => state.authentication.user?.organisations)?.length ?? 0) > 1
@@ -66,40 +65,38 @@ export const Deployments = () => {
 	const [state, dispatch] = useReducer(deploymentsReducer, initialState)
 	const { deployments, isLoading, isRefreshing, searchQuery, statusFilter } = state
 
-	const loadDeployments = useCallback(async () => {
-		try {
-			if (!userId) {
-				log('[DeploymentsListScreen] No user ID available, cannot load deployments')
-				dispatch({ type: 'SET_DEPLOYMENTS', payload: [] })
-				return
-			}
-
-			const deploymentsList = organisationId
-				? await DeploymentService.getDeploymentsForUserInOrganisation(userId, organisationId)
-				: await DeploymentService.getDeploymentsForUser(userId)
-
-			dispatch({ type: 'SET_DEPLOYMENTS', payload: deploymentsList })
-		} catch (error) {
-			logError('[DeploymentsListScreen] Error loading deployments:', error)
-		} finally {
-			dispatch({ type: 'SET_LOADING', payload: false })
-			dispatch({ type: 'SET_REFRESHING', payload: false })
-		}
-	}, [userId, organisationId])
-
-	// Fetch deployments on focus
-	useFocusEffect(
-		useCallback(() => {
-			loadDeployments()
-		}, [loadDeployments])
-	)
-
-	// Reload deployments when global sync finishes
+	// Reactive subscription to deployments
 	useEffect(() => {
-		if (!isGlobalSyncing) {
-			loadDeployments()
+		let subscription: Subscription
+
+		try {
+			const observable = organisationId
+				? DeploymentService.observeDeploymentsForOrganisation(organisationId)
+				// If no org selected, get all deployments overall (since sync filters based on RLS anyway)
+				: DeploymentService.observeDeployments()
+
+			subscription = observable.subscribe({
+				next: (deploymentsList: Deployment[]) => {
+					dispatch({ type: 'SET_DEPLOYMENTS', payload: deploymentsList })
+					dispatch({ type: 'SET_REFRESHING', payload: false })
+				},
+				error: (error: any) => {
+					logError('[DeploymentsListScreen] Error observing deployments:', error)
+					dispatch({ type: 'SET_LOADING', payload: false })
+					dispatch({ type: 'SET_REFRESHING', payload: false })
+				}
+			})
+		} catch (e) {
+			logError('[DeploymentsListScreen] Exception attached to observer:', e)
+			dispatch({ type: 'SET_LOADING', payload: false })
 		}
-	}, [isGlobalSyncing, loadDeployments])
+
+		return () => {
+			if (subscription && subscription.unsubscribe) {
+				subscription.unsubscribe()
+			}
+		}
+	}, [organisationId])
 
 	// Filter deployments based on search query and status
 	const filteredDeployments = useMemo(() => {

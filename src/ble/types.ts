@@ -43,6 +43,7 @@ export enum CommandNames {
 	loadmodel = "loadmodel",
 	wake = "wake",
 	camera_type = "camera_type",
+	md = "md",
 
 	// Process commands (UPPERCASE - app-specific workflows)
 	SET_UTC = "SET_UTC",
@@ -425,6 +426,12 @@ export const COMMANDS: {
         readRegex: /\b(HM0360|RP2|RP3)\b/i,
 		description: "Get connected camera type",
 		type: 'command',
+	},
+	[CommandNames.md]: {
+		name: CommandNames.md,
+		writeCommand: (level?: string) => `AI md ${level || '0'}`,
+		description: "Set motion detection sensitivity (0-3)",
+		type: 'process',
 	},
 	// Preset Operational Parameter Commands
 	[CommandNames.SET_NUM_PICTURES]: {

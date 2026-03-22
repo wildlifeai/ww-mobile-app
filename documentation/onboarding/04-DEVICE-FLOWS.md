@@ -147,6 +147,7 @@ Uses `useBleInitialization` — same self-test + time sync as preparation steps 
 | Camera Height (cm) | — | Height from ground |
 | Start Comments | — | Deployment conditions |
 | Camera View Image | — | Preview via `CameraViewSection` |
+| Motion Detection Test | — | Test grid via `DeploymentMotionDetectionSection` (Activity Detection projects only) |
 | LoRaWAN Status | — | Connectivity check |
 
 Project settings (capture method, sensitivity, timelapse interval, GPS image tagging, bait usage, marked individuals monitoring) are read-only, inherited from the preparation's project and prominently displayed to the user for confirmation prior to starting the deployment.
@@ -310,4 +311,4 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval
 
 ---
 
-*Last Updated: March 21, 2026*
+*Last Updated: March 22, 2026*

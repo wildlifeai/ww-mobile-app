@@ -101,12 +101,13 @@ EAS has strict rules about environment variable visibility and interpolation:
 
 **The Golden Rule for Secrets (e.g., Supabase Keys):**
 Do NOT use `${...}` interpolation in `eas.json` for secrets stored on the Expo dashboard.
-Instead, create the variables on the dashboard without the `EXPO_PUBLIC_` prefix (e.g., `SUPABASE_URL_STAGING` with **Sensitive** visibility). Then read them directly in `app.config.ts`:
+Instead, create the variables on the dashboard natively without suffixed environment names (e.g., strictly `SUPABASE_URL` and `SUPABASE_ANON_KEY` mapped directly to the active `preview` or `production` EAS Environment tabs with **Sensitive** visibility). Then read them directly in `app.config.ts`:
 
 ```typescript
 // app.config.ts
 extra: {
-  supabaseUrl: process.env.SUPABASE_URL_STAGING, // Injected directly by EAS
+  supabaseUrl: process.env.SUPABASE_URL, // Injected directly by EAS based on the active profile environment
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
 }
 ```
 
@@ -195,4 +196,4 @@ npx eas init
 
 ---
 
-**Last Updated**: 2026-02-19
+**Last Updated**: 2026-03-22
