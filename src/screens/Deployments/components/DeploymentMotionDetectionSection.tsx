@@ -10,11 +10,10 @@ import { useBle } from '../../../hooks/useBle'
 import { useBleCommands } from '../../../hooks/useBleCommands'
 import { useMotionDetectionStream } from '../../Devices/hooks/useMotionDetectionStream'
 import { logError } from '../../../utils/logger'
-import type Project from '../../../database/models/Project'
 
 interface DeploymentMotionDetectionSectionProps {
     device?: ExtendedPeripheral
-    project?: Project
+    project?: any // Changed from Project to any
     onShowHelp: (title: string, content: string) => void
 }
 
@@ -38,12 +37,13 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
     } = useMotionDetectionStream({ device, write })
 
     const handleStartTest = useCallback(async () => {
-        if (!device || !project?.activityDetectionSensitivityId) return
+        // Use activity_detection_sensitivity_id and provide a default
+        if (!device || !project?.activity_detection_sensitivity_id) return
         
         setIsPreparing(true)
         try {
             // Apply project's sensitivity first before engaging the test loop
-            await setMdSensitivity(device, project.activityDetectionSensitivityId.toString())
+            await setMdSensitivity(device, (project.activity_detection_sensitivity_id ?? 3).toString()) // Changed to activity_detection_sensitivity_id with default
             await startTest()
         } catch (error) {
             logError('[DeploymentMD] Failed to set sensitivity for test', error)
@@ -63,7 +63,8 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
         </Button>
     ), [onShowHelp])
 
-    if (!project || project.captureMethodId !== 1) {
+    // Use capture_method_id
+    if (!project || project.capture_method_id !== 1) { // Changed to capture_method_id
         return null // Only render for Activity Detection projects
     }
 
