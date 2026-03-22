@@ -79,31 +79,24 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
             />
             <Card.Content>
                 <WWText variant="bodySmall" style={styles.sectionDescription}>
-                    <Text>Verify the camera detects motion at its mounted location using the project's sensitivity</Text>
+                    <Text>Verify when the camera detects motion</Text>
                 </WWText>
 
-                <View style={styles.controlsRow}>
-                    <WWButton 
-                        mode={isTesting ? 'outlined' : 'contained'}
-                        onPress={isTesting ? stopTest : handleStartTest}
-                        disabled={disabled}
-                        loading={isPreparing}
-                        icon={isTesting ? "stop-circle-outline" : "play-circle-outline"}
-                        style={styles.testButton}
-                    >
-                        <Text>{isTesting ? 'Stop Test' : (isPreparing ? 'Preparing...' : 'Test Motion Detection')}</Text>
-                    </WWButton>
-                    
-                    {isTesting && (
-                        <WWText variant="bodySmall" style={styles.blocksText}>
-                            Motion in {mdBlocksCount} blocks
-                        </WWText>
-                    )}
-                </View>
+                <WWButton 
+                    mode="outlined"
+                    onPress={isTesting ? stopTest : handleStartTest}
+                    disabled={disabled}
+                    loading={isPreparing}
+                >
+                    <Text>{isTesting ? 'Stop Test' : (isPreparing ? 'Preparing...' : 'Test Motion Detection')}</Text>
+                </WWButton>
 
                 {/* 16x16 Grid Visualizer */}
                 {isTesting && (
                     <View style={styles.gridContainer}>
+                        <WWText variant="bodySmall" style={styles.blocksText}>
+                            Motion in {mdBlocksCount} blocks
+                        </WWText>
                         {mdGrid.map((row, rowIndex) => (
                             <View key={`row-${rowIndex}`} style={styles.gridRow}>
                                 {row.map((cell, colIndex) => (
@@ -157,18 +150,10 @@ const styles = StyleSheet.create({
         opacity: 0.6,
         marginBottom: 16,
     },
-    controlsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-    },
-    testButton: {
-        flex: 1,
-        marginRight: 16,
-    },
     blocksText: {
         opacity: 0.7,
+        marginBottom: 8,
+        textAlign: 'center',
     },
     gridContainer: {
         marginTop: 16,
