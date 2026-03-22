@@ -57,8 +57,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             "BLUETOOTH",
             "BLUETOOTH_ADMIN",
             "BLUETOOTH_CONNECT",
-            "BLUETOOTH_SCAN",
-            "ACCESS_BACKGROUND_LOCATION"
+            "BLUETOOTH_SCAN"
         ],
         softwareKeyboardLayoutMode: "pan",
     },
@@ -106,7 +105,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         [
             "expo-location",
             {
-                "isAndroidBackgroundLocationEnabled": true,
+                "isAndroidBackgroundLocationEnabled": false,
                 "isAndroidMockLocationEnabled": false
             }
         ],
