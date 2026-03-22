@@ -265,10 +265,19 @@ describe("Environment Switching Integration", () => {
 				// Mock corrupted environment data
 				;(AsyncStorage.getItem as jest.Mock).mockResolvedValue("cloud-prod")
 
-				// cloud-prod is not configured (empty credentials)
+				// Ensure cloud-prod is unconfigured (empty credentials)
+				const originalConfig = ENVIRONMENT_CONFIGS["cloud-prod"]
+				;(ENVIRONMENT_CONFIGS as any)["cloud-prod"] = {
+					...originalConfig,
+					supabaseUrl: "",
+					supabaseAnonKey: "",
+				}
+
 				await expect(initializeSupabaseClient()).rejects.toThrow(
 					"Invalid Supabase configuration",
 				)
+
+				;(ENVIRONMENT_CONFIGS as any)["cloud-prod"] = originalConfig
 			})
 
 			it("should handle reconnection errors gracefully", async () => {
@@ -279,8 +288,18 @@ describe("Environment Switching Integration", () => {
 				// Mock environment manager to return invalid environment
 				;(AsyncStorage.getItem as jest.Mock).mockResolvedValue("cloud-prod")
 
+				// Ensure cloud-prod is unconfigured
+				const originalConfig = ENVIRONMENT_CONFIGS["cloud-prod"]
+				;(ENVIRONMENT_CONFIGS as any)["cloud-prod"] = {
+					...originalConfig,
+					supabaseUrl: "",
+					supabaseAnonKey: "",
+				}
+
 				// Should throw error when reconnecting to unconfigured environment
 				await expect(reconnectSupabase()).rejects.toThrow()
+
+				;(ENVIRONMENT_CONFIGS as any)["cloud-prod"] = originalConfig
 			})
 		})
 	})

@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 229,
+    version: 230,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',

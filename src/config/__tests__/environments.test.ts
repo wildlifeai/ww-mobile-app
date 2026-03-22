@@ -39,6 +39,10 @@ describe("Environment Configuration System", () => {
 		;(global as any).__DEV__ = true
 		// Reset Constants mock
 		;(Constants as any).expoConfig = { extra: {} }
+		
+		// Ensure cloud-prod is unconfigured for tests (simulating default state)
+		ENVIRONMENT_CONFIGS["cloud-prod"].supabaseUrl = ""
+		ENVIRONMENT_CONFIGS["cloud-prod"].supabaseAnonKey = ""
 	})
 
 	afterEach(() => {
