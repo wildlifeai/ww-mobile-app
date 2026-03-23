@@ -141,7 +141,17 @@ export const useMotionDetectionStream = ({ device, write }: UseMotionDetectionSt
         }
         setIsTesting(false)
         log('[MotionDetectionStream] Stopped MD Test Loop.')
-    }, [])
+        
+        if (device) {
+            try {
+                // Disable the motion detection interval to stop the test on the device side.
+                await write(device, ['AI setop 11 0'])
+                log('[MotionDetectionStream] MD test mode disabled on device.')
+            } catch (error) {
+                logError('[MotionDetectionStream] Failed to send stop command to device:', error)
+            }
+        }
+    }, [device, write])
 
     // Ensure we clean up interval on unmount
     useEffect(() => {

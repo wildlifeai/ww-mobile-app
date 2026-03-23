@@ -13,7 +13,10 @@ import { logError } from '../../../utils/logger'
 
 interface DeploymentMotionDetectionSectionProps {
     device?: ExtendedPeripheral
-    project?: any // Changed from Project to any
+    project?: {
+        activity_detection_sensitivity_id?: number | null;
+        capture_method_id?: number | null;
+    }
     onShowHelp: (title: string, content: string) => void
 }
 

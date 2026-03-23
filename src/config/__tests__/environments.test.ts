@@ -31,6 +31,8 @@ describe("Environment Configuration System", () => {
 	// Store original environment variables and __DEV__ flag
 	const originalEnv = process.env
 	const originalDev = (global as any).__DEV__
+	const originalCloudProdUrl = ENVIRONMENT_CONFIGS["cloud-prod"].supabaseUrl
+	const originalCloudProdKey = ENVIRONMENT_CONFIGS["cloud-prod"].supabaseAnonKey
 
 	beforeEach(() => {
 		// Reset environment variables before each test
@@ -48,7 +50,11 @@ describe("Environment Configuration System", () => {
 	afterEach(() => {
 		// Restore original environment and __DEV__
 		process.env = originalEnv
-			; (global as any).__DEV__ = originalDev
+		;(global as any).__DEV__ = originalDev
+		
+		// Restore original cloud-prod configuration
+		ENVIRONMENT_CONFIGS["cloud-prod"].supabaseUrl = originalCloudProdUrl
+		ENVIRONMENT_CONFIGS["cloud-prod"].supabaseAnonKey = originalCloudProdKey
 	})
 
 	describe("ENVIRONMENT_CONFIGS", () => {
