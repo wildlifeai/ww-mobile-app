@@ -1208,10 +1208,24 @@ class SupabaseSyncService {
                     continue
                 }
 
+                // Derive project_id from device_preparation if missing from server
+                let projectId = row.project_id || ''
+                if (!projectId && row.device_preparation_id) {
+                    try {
+                        const dp = await database.get<DevicePreparation>('device_preparation').find(row.device_preparation_id)
+                        projectId = (dp as any).projectId || ''
+                        if (projectId) {
+                            log(`[Sync] Derived project_id ${projectId} from device_preparation ${row.device_preparation_id}`)
+                        }
+                    } catch (e) {
+                        // device_preparation not synced yet, leave empty
+                    }
+                }
+
                 try {
                     const existing = await collection.find(row.id)
                     await existing.update((rec) => {
-                        rec.projectId = row.project_id || ''
+                        rec.projectId = projectId
                         rec.deviceId = row.device_id || ''
                         rec.devicePreparationId = row.device_preparation_id || ''
 
@@ -1220,12 +1234,12 @@ class SupabaseSyncService {
                         rec.activityDetectionSensitivityId = row.activity_detection_sensitivity_id ?? undefined
                         rec.timelapseIntervalSeconds = row.timelapse_interval_seconds ?? undefined
 
-                        rec.name = row.name ?? undefined
+                        rec.name = row.name ?? ''
                         rec.setupBy = row.setup_by || ''
                         rec.endedBy = row.ended_by ?? undefined
 
                         rec.locationName = row.location_name || ''
-                        rec.location = row.location
+                        rec.location = row.location ?? {}
                         rec.latitude = row.latitude ?? undefined
                         rec.longitude = row.longitude ?? undefined
                         rec.altitude = row.altitude ?? undefined
@@ -1241,6 +1255,11 @@ class SupabaseSyncService {
                         rec.startDeploymentComments = row.start_deployment_comments ?? undefined
                         rec.endDeploymentComments = row.end_deployment_comments ?? undefined
 
+                        rec.modifiedBy = (row as any).modified_by ?? ''
+                        if (row.deployment_photos != null) {
+                            rec.deploymentPhotos = row.deployment_photos
+                        }
+
                         const raw = rec._raw as any;
                         raw.updated_at = this.parseDateToTimestamp(row.updated_at);
                     })
@@ -1249,7 +1268,7 @@ class SupabaseSyncService {
                     await collection.create((rec) => {
                         rec._raw.id = row.id // Use server ID
 
-                        rec.projectId = row.project_id || ''
+                        rec.projectId = projectId
                         rec.deviceId = row.device_id || ''
                         rec.devicePreparationId = row.device_preparation_id || ''
 
@@ -1258,12 +1277,12 @@ class SupabaseSyncService {
                         rec.activityDetectionSensitivityId = row.activity_detection_sensitivity_id ?? undefined
                         rec.timelapseIntervalSeconds = row.timelapse_interval_seconds ?? undefined
 
-                        rec.name = row.name ?? undefined
+                        rec.name = row.name ?? ''
                         rec.setupBy = row.setup_by || ''
                         rec.endedBy = row.ended_by ?? undefined
 
                         rec.locationName = row.location_name || ''
-                        rec.location = row.location
+                        rec.location = row.location ?? {}
                         rec.latitude = row.latitude ?? undefined
                         rec.longitude = row.longitude ?? undefined
                         rec.altitude = row.altitude ?? undefined
@@ -1278,6 +1297,9 @@ class SupabaseSyncService {
 
                         rec.startDeploymentComments = row.start_deployment_comments ?? undefined
                         rec.endDeploymentComments = row.end_deployment_comments ?? undefined
+
+                        rec.modifiedBy = (row as any).modified_by ?? ''
+                        rec.deploymentPhotos = row.deployment_photos ?? []
 
                         const raw = rec._raw as any;
                         raw.created_at = this.parseDateToTimestamp(row.created_at);
