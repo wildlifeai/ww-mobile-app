@@ -9,6 +9,7 @@ import {
 	LoginRequest,
 	RegisterRequest,
 	UserRole,
+	UserOrganisation,
 } from "../redux/api/auth/types"
 
 import { log, logError, logWarn } from '../utils/logger'
@@ -34,8 +35,25 @@ const supabase = () => getSupabaseClient()
  * Fetch user's organisations and role information from database
  * This queries the user_organisations table to get all organisations the user belongs to
  */
-export const fetchUserOrganisations = async (userId: string, session?: Session): Promise<{ organisations: any[], role: UserRole, organisationId: string | null }> => {
-	try {
+let orgFetchPromise: Promise<{ organisations: UserOrganisation[], role: UserRole, organisationId: string | null }> | null = null;
+let lastFetchedUserId: string | null = null;
+let lastFetchTime: number = 0;
+const CACHE_TTL = 30_000; // 30 seconds
+let cachedResult: { organisations: UserOrganisation[], role: UserRole, organisationId: string | null } | null = null;
+
+export const fetchUserOrganisations = async (userId: string, session?: Session): Promise<{ organisations: UserOrganisation[], role: UserRole, organisationId: string | null }> => {
+	// Return in-flight promise if one exists for the same user
+	if (orgFetchPromise && lastFetchedUserId === userId) return orgFetchPromise;
+	
+	// Return cached result if within TTL
+	if (cachedResult && lastFetchedUserId === userId && (Date.now() - lastFetchTime < CACHE_TTL)) {
+		log("🔄 Using cached organisation data (within TTL)");
+		return cachedResult;
+	}
+
+	const currentPromise = (async () => {
+		lastFetchedUserId = userId;
+		try {
 		// 🔍 DEBUG: Verify JWT session first (as suggested by backend team)
 		// Use passed session if available to avoid AsyncStorage deadlocks during onAuthStateChange
 		if (session) {
@@ -49,6 +67,7 @@ export const fetchUserOrganisations = async (userId: string, session?: Session):
 				userIdMatch: session?.user?.id === userId,
 			})
 		} else {
+			logWarn("⚠️ fetchUserOrganisations called without explicitly passed session - relying on getSession fallback")
 			const {
 				data: { session: fetchedSession },
 				error: sessionError,
@@ -144,7 +163,7 @@ export const fetchUserOrganisations = async (userId: string, session?: Session):
 		log("✅ Found", orgs?.length || 0, "organisations")
 
 		// Step 3: Combine the data
-		const organisations = orgIds.map((orgId) => {
+		const organisations: UserOrganisation[] = orgIds.map((orgId) => {
 			const org = orgs?.find((o) => o.id === orgId)
 
 			// Find role for this organisation
@@ -161,19 +180,15 @@ export const fetchUserOrganisations = async (userId: string, session?: Session):
 			return {
 				id: org?.id || "",
 				name: org?.name || "",
-				role: role as "ww_admin" | "project_admin" | "project_member",
+				role: role as UserRole,
 			}
 		})
 
 		// Get highest privilege role (ww_admin > project_admin > project_member)
 		const allRoles = organisations.map(
-			(o: {
-				id: string
-				name: string
-				role: "ww_admin" | "project_admin" | "project_member"
-			}) => o.role,
+			(o) => o.role,
 		)
-		const role = allRoles.includes("ww_admin")
+		const role: UserRole = allRoles.includes("ww_admin")
 			? "ww_admin"
 			: allRoles.includes("project_admin")
 				? "project_admin"
@@ -189,9 +204,13 @@ export const fetchUserOrganisations = async (userId: string, session?: Session):
 			organisationId,
 		})
 
-
-
-		return { organisations, role, organisationId }
+		const result = { organisations, role, organisationId }
+		
+		// Update Cache
+		cachedResult = result;
+		lastFetchTime = Date.now();
+		
+		return result
 	} catch (error) {
 		logError("❌ Exception in fetchUserOrganisations:", {
 			message: error instanceof Error ? error.message : "Unknown error",
@@ -204,7 +223,13 @@ export const fetchUserOrganisations = async (userId: string, session?: Session):
 			role: "project_member" as const,
 			organisationId: null,
 		}
+	} finally {
+		orgFetchPromise = null;
 	}
+	})()
+	
+	orgFetchPromise = currentPromise;
+	return currentPromise;
 }
 
 // Transform Supabase User to match existing app AuthResponse format
@@ -218,7 +243,7 @@ const transformSupabaseUser = async (
 		user: {
 			id: user.id, // Keep UUID as string
 			email: user.email || "",
-			role: "project_member", // Default fallback until async fetch finishes
+			role: "project_member", // Default fallback. Note: Redux authSlice preserves the cached role!
 			organisation_id: null,
 			// organisations intentionally omitted to preserve offline cache
 		},
@@ -406,8 +431,10 @@ export const refreshSession = async (): Promise<AuthResponse | null> => {
  */
 export const setupAuthListener = (
 	onAuthStateChange: (authResponse: AuthResponse | null) => void,
-	onProfileData?: (orgData: { organisations: any[], role: UserRole, organisationId: string | null }) => void
+	onProfileData?: (orgData: { organisations: UserOrganisation[], role: UserRole, organisationId: string | null }) => void
 ): (() => void) => {
+	let currentUserId: string | null = null;
+
 	const {
 		data: { subscription },
 	} = supabase().auth.onAuthStateChange(
@@ -415,18 +442,28 @@ export const setupAuthListener = (
 			log("Auth state changed:", event, session?.user?.email)
 
 			if (session && session.user) {
+				const isNewSession = currentUserId !== session.user.id;
+				const isAuthEvent = event === 'INITIAL_SESSION' || event === 'SIGNED_IN';
+				
+				currentUserId = session.user.id;
 				const authResponse = await transformSupabaseUser(session.user, session)
 				onAuthStateChange(authResponse)
 
 				// Fetch organisations asynchronously to avoid blocking auth success
-				if (onProfileData) {
-					fetchUserOrganisations(session.user.id, session)
-						.then(orgData => onProfileData(orgData))
+				if (onProfileData && (isNewSession || isAuthEvent)) {
+					const fetchForUserId = session.user.id;
+					fetchUserOrganisations(fetchForUserId, session)
+						.then(orgData => {
+							// Guard against race conditions: only trigger if user hasn't changed during fetch
+							if (currentUserId === fetchForUserId) {
+								onProfileData(orgData)
+							}
+						})
 						.catch(err => logError("Async org fetch failed", err))
 				}
 
 				// Trigger sync after successful sign-in to pull projects and other data
-				if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+				if (isAuthEvent) {
 					// Use a safe import or event trigger to avoid circular dependencies
 					// For now, we use a custom event that various services can listen to
 					log("Triggering post-auth sync event...");
@@ -435,6 +472,7 @@ export const setupAuthListener = (
 					triggerPostAuthSync();
 				}
 			} else {
+				currentUserId = null;
 				onAuthStateChange(null)
 			}
 		},
