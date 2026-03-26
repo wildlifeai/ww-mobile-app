@@ -25,6 +25,7 @@ describe("authSlice", () => {
 		loading: false,
 		initialLoad: true,
 		sessionPersisted: false,
+		profileLoading: false,
 		permissions: {
 			canManageUsers: false,
 			canAccessAllOrganisations: false,

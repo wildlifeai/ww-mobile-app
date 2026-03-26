@@ -74,7 +74,6 @@ describe("Authentication Service", () => {
 					email: validLoginCredentials.identifier,
 					role: expect.any(String),
 					organisation_id: null,
-					organisations: expect.any(Array),
 				},
 			})
 		})
@@ -136,7 +135,6 @@ describe("Authentication Service", () => {
 					email: validRegisterCredentials.email,
 					role: "project_member",
 					organisation_id: null,
-					organisations: [],
 				},
 			})
 		})
@@ -158,7 +156,6 @@ describe("Authentication Service", () => {
 					email: validRegisterCredentials.email,
 					role: "project_member",
 					organisation_id: null,
-					organisations: [],
 				},
 			})
 			expect((result as any).isPendingConfirmation).toBe(true)

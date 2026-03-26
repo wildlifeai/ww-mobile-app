@@ -34,31 +34,46 @@ const supabase = () => getSupabaseClient()
  * Fetch user's organisations and role information from database
  * This queries the user_organisations table to get all organisations the user belongs to
  */
-const fetchUserOrganisations = async (userId: string) => {
+export const fetchUserOrganisations = async (userId: string, session?: Session): Promise<{ organisations: any[], role: UserRole, organisationId: string | null }> => {
 	try {
 		// 🔍 DEBUG: Verify JWT session first (as suggested by backend team)
-		const {
-			data: { session },
-			error: sessionError,
-		} = await supabase().auth.getSession()
-		log("🔍 JWT DEBUG:", {
-			hasSession: !!session,
-			userId: session?.user?.id,
-			email: session?.user?.email,
-			hasToken: !!session?.access_token,
-			tokenLength: session?.access_token?.length,
-			sessionError: sessionError?.message,
-			paramUserId: userId,
-			userIdMatch: session?.user?.id === userId,
-		})
+		// Use passed session if available to avoid AsyncStorage deadlocks during onAuthStateChange
+		if (session) {
+			log("🔍 JWT DEBUG (using passed session):", {
+				hasSession: !!session,
+				userId: session?.user?.id,
+				email: session?.user?.email,
+				hasToken: !!session?.access_token,
+				tokenLength: session?.access_token?.length,
+				paramUserId: userId,
+				userIdMatch: session?.user?.id === userId,
+			})
+		} else {
+			const {
+				data: { session: fetchedSession },
+				error: sessionError,
+			} = await supabase().auth.getSession()
+			
+			log("🔍 JWT DEBUG (fetched session):", {
+				hasSession: !!fetchedSession,
+				userId: fetchedSession?.user?.id,
+				email: fetchedSession?.user?.email,
+				hasToken: !!fetchedSession?.access_token,
+				tokenLength: fetchedSession?.access_token?.length,
+				sessionError: sessionError?.message,
+				paramUserId: userId,
+				userIdMatch: fetchedSession?.user?.id === userId,
+			})
 
-		if (!session || !session.user) {
-			logError("❌ No active session - JWT token missing or expired")
-			return {
-				organisations: [],
-				role: "project_member" as const,
-				organisationId: null,
+			if (!fetchedSession || !fetchedSession.user) {
+				logError("❌ No active session - JWT token missing or expired")
+				return {
+					organisations: [],
+					role: "project_member" as const,
+					organisationId: null,
+				}
 			}
+			session = fetchedSession; // Assign to session for subsequent checks
 		}
 
 		if (session.user.id !== userId) {
@@ -193,24 +208,19 @@ const fetchUserOrganisations = async (userId: string) => {
 }
 
 // Transform Supabase User to match existing app AuthResponse format
-// Now includes organisation data from database
+// Fast path: leaves organisations undefined so the redux slice preserves cached ones
 const transformSupabaseUser = async (
 	user: User,
 	session: Session,
 ): Promise<AuthResponse> => {
-	// Fetch user's organisations from database
-	const { organisations, role, organisationId } = await fetchUserOrganisations(
-		user.id,
-	)
-
 	return {
 		jwt: session.access_token,
 		user: {
 			id: user.id, // Keep UUID as string
 			email: user.email || "",
-			role: role as UserRole, // User's highest privilege role
-			organisation_id: organisationId, // Default organisation
-			organisations, // All organisations user belongs to
+			role: "project_member", // Default fallback until async fetch finishes
+			organisation_id: null,
+			// organisations intentionally omitted to preserve offline cache
 		},
 	}
 }
@@ -396,6 +406,7 @@ export const refreshSession = async (): Promise<AuthResponse | null> => {
  */
 export const setupAuthListener = (
 	onAuthStateChange: (authResponse: AuthResponse | null) => void,
+	onProfileData?: (orgData: { organisations: any[], role: UserRole, organisationId: string | null }) => void
 ): (() => void) => {
 	const {
 		data: { subscription },
@@ -406,6 +417,13 @@ export const setupAuthListener = (
 			if (session && session.user) {
 				const authResponse = await transformSupabaseUser(session.user, session)
 				onAuthStateChange(authResponse)
+
+				// Fetch organisations asynchronously to avoid blocking auth success
+				if (onProfileData) {
+					fetchUserOrganisations(session.user.id, session)
+						.then(orgData => onProfileData(orgData))
+						.catch(err => logError("Async org fetch failed", err))
+				}
 
 				// Trigger sync after successful sign-in to pull projects and other data
 				if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {

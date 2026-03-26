@@ -56,6 +56,7 @@ type AuthState = {
 	loading: boolean
 	initialLoad: boolean
 	sessionPersisted: boolean
+	profileLoading: boolean
 	error?: string
 }
 
@@ -134,6 +135,7 @@ const initialState: AuthState = {
 	loading: false,
 	initialLoad: true,
 	sessionPersisted: false,
+	profileLoading: false,
 	permissions: emptyPermissions,
 }
 
@@ -144,32 +146,43 @@ export const authSlice = createSlice({
 		setCredentials: (state, action: PayloadAction<AuthResponse>) => {
 			state.token = action.payload.jwt
 			state.refreshToken = action.payload.refresh_token
-			state.user = action.payload.user
+			
+			// Preserve existing role and organisations if the incoming payload omits them
+			const newRole = action.payload.user.organisations ? action.payload.user.role : (state.user?.role || action.payload.user.role)
+			const newOrgs = action.payload.user.organisations ? action.payload.user.organisations : state.user?.organisations
+			const newOrgId = action.payload.user.organisations ? action.payload.user.organisation_id : (state.user?.organisation_id || action.payload.user.organisation_id)
+
+			state.user = {
+				...action.payload.user,
+				role: newRole,
+				organisations: newOrgs,
+				organisation_id: newOrgId
+			}
 			state.loading = false
 			state.initialLoad = false
 			state.sessionPersisted = true
 			state.error = undefined
 
 			// Calculate permissions based on user role
-			state.permissions = calculatePermissions(action.payload.user.role)
+			state.permissions = calculatePermissions(state.user.role)
 
 			// Set current organisation (default or first available)
 			if (
-				action.payload.user.organisations &&
-				action.payload.user.organisations.length > 0
+				state.user.organisations &&
+				state.user.organisations.length > 0
 			) {
 				// Find default organisation or use first one
 				const defaultOrg =
-					action.payload.user.organisations.find(
-						(org) => org.id === action.payload.user.organisation_id,
-					) || action.payload.user.organisations[0]
+					state.user.organisations.find(
+						(org) => org.id === state.user!.organisation_id,
+					) || state.user.organisations[0]
 				state.currentOrganisation = defaultOrg
 
 				// Update permissions based on role in current organisation
 				state.permissions = calculatePermissions(defaultOrg.role)
 			}
 
-			storeDataToStorage(AUTH_STORAGE_KEY, action.payload)
+			storeDataToStorage(AUTH_STORAGE_KEY, { ...action.payload, user: state.user })
 		},
 		logout: (state) => {
 			state.token = undefined
@@ -244,6 +257,28 @@ export const authSlice = createSlice({
 		setLoading: (state, action: PayloadAction<boolean>) => {
 			state.loading = action.payload
 		},
+		setProfileLoading: (state, action: PayloadAction<boolean>) => {
+			state.profileLoading = action.payload
+		},
+		setOrganisationsAndRole: (state, action: PayloadAction<{ organisations: UserOrganisation[], role: UserRole, organisationId: string | null }>) => {
+			if (state.user) {
+				state.user.organisations = action.payload.organisations
+				state.user.role = action.payload.role
+				state.user.organisation_id = action.payload.organisationId
+				state.permissions = calculatePermissions(action.payload.role)
+				state.profileLoading = false
+
+				if (action.payload.organisations.length > 0) {
+					const defaultOrg = action.payload.organisations.find((org) => org.id === action.payload.organisationId) || action.payload.organisations[0]
+					state.currentOrganisation = defaultOrg
+					state.permissions = calculatePermissions(defaultOrg.role)
+				}
+
+				if (state.token) {
+					storeDataToStorage(AUTH_STORAGE_KEY, { jwt: state.token, refresh_token: state.refreshToken, user: state.user })
+				}
+			}
+		},
 		setError: (state, action: PayloadAction<string | undefined>) => {
 			state.error = action.payload
 			state.loading = false
@@ -259,6 +294,8 @@ export const {
 	setCurrentOrganisation,
 	updateUserProfile,
 	setLoading,
+	setProfileLoading,
+	setOrganisationsAndRole,
 	setError,
 } = authSlice.actions
 
