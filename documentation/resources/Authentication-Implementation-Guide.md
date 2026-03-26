@@ -75,10 +75,17 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       const sessionData = await getCurrentSession()
       dispatch(setInitialState(sessionData))
 
-      authListenerRef.current = setupAuthListener((authResponse) => {
-        if (authResponse) dispatch(setCredentials(authResponse))
-        else dispatch(logout())
-      })
+      authListenerRef.current = setupAuthListener(
+        (authResponse) => {
+          if (authResponse) dispatch(setCredentials(authResponse))
+          else dispatch(logout())
+        },
+        (orgData) => {
+          // Background fetch resolves, updating state without blocking UI/network
+          dispatch(setOrganisationsAndRole(orgData))
+          dispatch(setProfileLoading(false))
+        }
+      )
     }
     init()
     return () => authListenerRef.current?.()
@@ -102,7 +109,7 @@ Standalone exported functions (not a class):
 | `register(credentials)` | Create account, handles email confirmation flow |
 | `logout()` | Sign out from Supabase |
 | `getCurrentSession()` | Get existing session, transforms to `AuthResponse` |
-| `setupAuthListener(callback)` | Subscribe to `onAuthStateChange`, returns unsubscribe fn |
+| `setupAuthListener(callback, onProfileData)` | Subscribes to `onAuthStateChange`, fires fast UI-unblocking callback, and triggers deduplicated background profile fetch |
 | `resetPassword(email)` | Send password reset email |
 | `updatePassword(newPassword)` | Update password (active session required) |
 | `updatePasswordWithToken(token, password, refreshToken?)` | Reset password using deep link token |
@@ -155,6 +162,7 @@ type AuthState = {
   currentOrganisation?: UserOrganisation
   permissions: UserPermissions   // 10 boolean permission flags
   loading: boolean
+  profileLoading: boolean        // tracks async background organisation fetching
   initialLoad: boolean           // true until first session check completes
   sessionPersisted: boolean
   error?: string
@@ -183,6 +191,7 @@ type AuthState = {
 | Action | Effect |
 |--------|--------|
 | `setCredentials(authResponse)` | Sets token, user, permissions, current org; persists to storage |
+| `setOrganisationsAndRole(data)`| Merges background fetched profile configurations gracefully |
 | `logout()` | Clears all state, resets permissions to empty, clears storage |
 | `setInitialState(authResponse \| null)` | First load — sets state without triggering persistence writes |
 | `setCurrentOrganisation(orgId)` | Switches active org, recalculates permissions based on org role |
@@ -291,4 +300,4 @@ All screens use `WWScreenView`, React Hook Form (`useForm`), and `Field`/`WWText
 
 ---
 
-**Last Updated**: 2026-02-19
+**Last Updated**: 2026-03-26
