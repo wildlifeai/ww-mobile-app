@@ -4,6 +4,7 @@ import database from '../database'
 import Deployment from '../database/models/Deployment'
 import OutboxService from './OutboxService'
 import SupabaseSyncService from './SupabaseSyncService'
+import ProjectService from './ProjectService'
 import { log, logError, logWarn } from '../utils/logger'
 
 
@@ -43,8 +44,7 @@ export const DeploymentService = {
         log('[DeploymentService] Creating deployment:', data.name)
 
         // Fetch Project Settings for Snapshot
-        const projectService = require('./ProjectService').default // Dynamic import to avoid cycles if any
-        const project = await projectService.getProjectById(data.projectId)
+        const project = await ProjectService.getProjectById(data.projectId)
         const sensitivityId = project?.activity_detection_sensitivity_id
         const timelapseInterval = project?.timelapse_interval_seconds
 
@@ -289,7 +289,6 @@ export const DeploymentService = {
      * Get deployments that the user has access to
      */
     getDeploymentsForUser: async (userId: string): Promise<Deployment[]> => {
-        const ProjectService = require('./ProjectService').default
         const userProjects = await ProjectService.getProjectsForUser(userId)
         const projectIds = new Set(userProjects.map((p: any) => p.id))
 
@@ -320,7 +319,6 @@ export const DeploymentService = {
      * Get deployments for user in a specific organisation
      */
     getDeploymentsForUserInOrganisation: async (userId: string, organisationId: string): Promise<Deployment[]> => {
-        const ProjectService = require('./ProjectService').default
         const userProjects = await ProjectService.getProjectsForUserInOrganisation(userId, organisationId)
         const projectIds = new Set(userProjects.map((p: any) => p.id))
 
