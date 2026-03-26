@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 
 import { LoRaWANSection } from './components/LoRaWANSection'
 import { CameraViewSection } from './components/CameraViewSection'
+import { DeploymentMotionDetectionSection } from './components/DeploymentMotionDetectionSection'
 import { LocationSection } from './components/LocationSection'
 import { MetadataSection } from './components/MetadataSection'
 import { HelpDialog } from '../../components/ui/HelpDialog'
@@ -149,6 +150,12 @@ export const DeploymentDetailsStep = () => {
                 <CameraViewSection
                     device={bleDevice}
                     onImageCaptured={handleImageCaptured}
+                    onShowHelp={showHelp}
+                />
+
+                <DeploymentMotionDetectionSection
+                    device={bleDevice}
+                    project={project}
                     onShowHelp={showHelp}
                 />
 

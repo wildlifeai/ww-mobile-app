@@ -98,6 +98,7 @@ export const DeploymentService = {
                     // Initialize required JSON fields to defaults to prevent schema validation errors
                     deployment.location = {}
                     deployment.deploymentPhotos = []
+                    deployment.modifiedBy = data.setupBy
                     log('[DeploymentService] Preparation function complete')
                 })
 
@@ -176,6 +177,7 @@ export const DeploymentService = {
                 record.deploymentEnd = new Date()
                 record.endedBy = endedBy ?? undefined
                 record.endDeploymentComments = notes
+                record.modifiedBy = endedBy ?? 'system'
             })
 
             // 2. Prepare outbox record

@@ -7,6 +7,7 @@ import { WWIcon } from '../../components/ui/WWIcon'
 import { InitializationHeader } from './components/InitializationHeader'
 import { ProjectSelectionSection } from './components/ProjectSelectionSection'
 import { DiagnosticsSection } from './components/DiagnosticsSection'
+import { MotionDetectionSection } from './components/MotionDetectionSection'
 import { FirmwareSection } from './components/FirmwareSection'
 import { HardwareBetaSection } from './components/HardwareBetaSection'
 import { FinishProgressDialog } from './components/FinishProgressDialog'
@@ -120,6 +121,13 @@ export const PrepareAndTestScreen = () => {
                     onShowHelp={showHelp}
                     captureProgress={captureProgress}
                     captureStage={captureStage}
+                />
+
+                <MotionDetectionSection
+                    bleDevice={bleDevice}
+                    isInitializing={initState.isInitializing}
+                    bleDeviceConnected={!!bleDevice?.connected}
+                    onShowHelp={showHelp}
                 />
 
                 <FirmwareSection

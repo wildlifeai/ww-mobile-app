@@ -109,16 +109,15 @@ export const InviteMemberModal = ({ projectId, visible, onDismiss, onSuccess, us
 							buttons={[
 								{
 									value: "project_member", label: "Member", icon: "account",
-									style: { borderColor: "#4CAF50" }, labelStyle: { color: "#FFFFFF" },
+									labelStyle: { color: "#FFFFFF" },
 									uncheckedColor: "#FFFFFF", checkedColor: "#FFFFFF",
 								},
 								{
 									value: "project_admin", label: "Admin", icon: "shield-account",
-									style: { borderColor: "#4CAF50" }, labelStyle: { color: "#FFFFFF" },
+									labelStyle: { color: "#FFFFFF" },
 									uncheckedColor: "#FFFFFF", checkedColor: "#FFFFFF",
 								},
 							]}
-							theme={{ colors: { secondaryContainer: "#4CAF50", onSecondaryContainer: "#FFFFFF", outline: "#4CAF50" } }}
 							style={styles.segmentedButtons}
 						/>
 						<Text variant="bodySmall" style={dynamicStyles.roleHint}>{getRoleDescription(inviteRole)}</Text>
@@ -134,5 +133,5 @@ const styles = StyleSheet.create({
 	headerButton: { marginRight: 8, borderRadius: 8 },
 	roleSelectionSection: { marginTop: 8 },
 	roleLabel: { marginBottom: 16 },
-	segmentedButtons: { backgroundColor: "#81C784" },
+	segmentedButtons: {},
 })

@@ -47,15 +47,15 @@ export const ENVIRONMENT_CONFIGS: Record<
 		isProduction: false,
 	},
 	"cloud-staging": {
-		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_STAGING_URL || Constants.expoConfig?.extra?.supabaseStagingUrl || "",
-		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_STAGING_ANON_KEY || Constants.expoConfig?.extra?.supabaseStagingAnonKey || "",
+		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || Constants.expoConfig?.extra?.supabaseUrl || "",
+		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || Constants.expoConfig?.extra?.supabaseAnonKey || "",
 		displayName: "Cloud Staging",
 		description: "Staging Supabase instance (pre-production validation)",
 		isProduction: false,
 	},
 	"cloud-prod": {
-		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_PROD_URL || Constants.expoConfig?.extra?.supabaseProdUrl || "",
-		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_PROD_ANON_KEY || Constants.expoConfig?.extra?.supabaseProdAnonKey || "",
+		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || Constants.expoConfig?.extra?.supabaseUrl || "",
+		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || Constants.expoConfig?.extra?.supabaseAnonKey || "",
 		displayName: "Cloud Production",
 		description:
 			"Production Supabase instance (requires production credentials)",
