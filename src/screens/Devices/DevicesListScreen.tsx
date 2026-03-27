@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Alert } from 'react-native'
-import { useTheme } from 'react-native-paper'
 import { DeviceCard } from '../../components/DeviceCard'
 import { DeviceService } from '../../services/DeviceService'
 import { DeviceListItem } from '../../types/device'
@@ -12,7 +11,6 @@ import { log, logError } from '../../utils/logger'
 import SupabaseSyncService from '../../services/SupabaseSyncService'
 
 export const Devices = () => {
-	const theme = useTheme()
 	const navigation = useNavigation()
 	const [devices, setDevices] = useState<DeviceListItem[]>([])
 	const [loading, setLoading] = useState(true)
@@ -96,10 +94,6 @@ export const Devices = () => {
 		(navigation as any).navigate('DeviceDiscovery', { mode: 'prepare' })
 	}
 
-	const handleEngineerConsole = () => {
-		(navigation as any).navigate('DeviceDiscovery', { mode: 'engineer' })
-	}
-
 	// Filter devices locally since we load all at once
 	const filteredDevices = devices.filter(device =>
 		!searchQuery ||
@@ -126,12 +120,6 @@ export const Devices = () => {
 			// Primary Action: Prepare & Test
 			primaryActionLabel="Prepare & Test Devices"
 			onPrimaryAction={handlePrepareAndTest}
-
-			// Secondary Action: Engineer Console
-			secondaryActionLabel="Engineer Device"
-			onSecondaryAction={handleEngineerConsole}
-			secondaryActionIcon="wrench"
-			secondaryActionColor={theme.colors.primary}
 
 			emptyStateTitle={hasMultipleOrgs ? `No devices for ${organisationName}` : 'No devices yet'}
 			emptyStateMessage={hasMultipleOrgs
