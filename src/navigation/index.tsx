@@ -37,8 +37,8 @@ import { EndDeploymentDetailsStep } from "../screens/Deployments/EndDeploymentSc
 // import { Devices as DevicesListScreen } from "../screens/Devices/DevicesListScreen"
 import { DeviceDiscoveryScreen } from "../screens/Devices/DeviceDiscoveryScreen"
 import { DeviceDetailsScreen } from "../screens/Devices/DeviceDetailsScreen"
-import { PrepareAndTestScreen } from "../screens/Devices/PrepareAndTestScreen"
 import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
+import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMotionDetectionScreen"
 import { DfuScreen } from "../screens/Devices/DfuScreen"
 
 // Developer screens
@@ -186,6 +186,10 @@ export const MainNavigation = () => {
 							options={{ title: "Engineer Console", headerTitleAlign: 'center' }}
 						/>
 						<Stack.Screen
+							name="StandaloneMotionDetectionScreen"
+							component={StandaloneMotionDetectionScreen}
+						/>
+						<Stack.Screen
 							name="StartDeploymentWizard"
 							component={DeviceDiscoveryScreen}
 							initialParams={{ mode: 'deployment' }}
@@ -211,11 +215,6 @@ export const MainNavigation = () => {
 							name="DeploymentDetails"
 							component={DeploymentDetailsScreen}
 							options={{ title: "Deployment" }}
-						/>
-						<Stack.Screen
-							name="PrepareAndTest"
-							component={PrepareAndTestScreen}
-							options={{ title: "Prepare & Test", headerTitleAlign: 'center' }}
 						/>
 						{__DEV__ && (
 							<>

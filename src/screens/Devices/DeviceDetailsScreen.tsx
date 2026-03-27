@@ -49,8 +49,8 @@ export const DeviceDetailsScreen = () => {
         loadDeviceDetails()
     }, [loadDeviceDetails])
 
-    const handlePrepareAndTest = () => {
-        navigation.navigate('DeviceDiscovery', { mode: 'prepare' })
+    const handleConnectToDevice = () => {
+        (navigation as any).navigate('Home', { initialTab: 'devices' })
     }
 
     const handleViewDeployment = (deploymentId: string) => {
@@ -203,10 +203,10 @@ export const DeviceDetailsScreen = () => {
                     <View style={styles.actionsSection}>
                         <WWButton
                             mode="contained"
-                            onPress={handlePrepareAndTest}
+                            onPress={handleConnectToDevice}
                             style={styles.prepareButton}
                         >
-                            {status === 'prepared' ? '🔄 Re-prepare Device' : '⚙️ Prepare and Test Device'}
+                            Scan for Device
                         </WWButton>
                     </View>
                 )}

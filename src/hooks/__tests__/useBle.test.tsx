@@ -79,9 +79,22 @@ describe("useBle", () => {
 		const { result } = renderHook(() => useBle())
 		
 		expect(result.current.startScan).toBeDefined()
+		expect(result.current.stopScan).toBeDefined()
 		expect(result.current.connectDevice).toBeDefined()
 		expect(result.current.disconnectDevice).toBeDefined()
 		expect(result.current.write).toBeDefined()
+	})
+
+	describe("stopScan", () => {
+		it("should call BleManager.stopScan", async () => {
+			const { result } = renderHook(() => useBle())
+
+			await act(async () => {
+				await result.current.stopScan()
+			})
+
+			expect(BleManager.stopScan).toHaveBeenCalled()
+		})
 	})
 
 	describe("startScan", () => {

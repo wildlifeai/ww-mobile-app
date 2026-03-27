@@ -9,13 +9,14 @@ import { useExtendedTheme } from "../theme"
 // import InvitationService from "../services/InvitationService"
 // import { getSupabaseClient } from "../services/supabase"
 import { useAppNavigation } from "../hooks/useAppNavigation"
+import { useGPSLocation } from "../hooks/useGPSLocation"
 
 const routes = [
 	{
 		key: "devices",
 		title: "Scanner",
-		focusedIcon: "cellphone-link",
-		unfocusedIcon: "cellphone-link",
+		focusedIcon: "bluetooth-connect",
+		unfocusedIcon: "bluetooth",
 	},
 	{
 		key: "maps",
@@ -43,6 +44,12 @@ export const BottomTabs = () => {
 	const { colors } = useExtendedTheme()
 	const navigation = useAppNavigation()
 	const route = useRoute<RouteProp<RootStackParamList, "Home">>()
+	const { startBackgroundTracking, stopBackgroundTracking } = useGPSLocation()
+
+	useEffect(() => {
+		startBackgroundTracking()
+		return () => stopBackgroundTracking()
+	}, [startBackgroundTracking, stopBackgroundTracking])
 
 	useEffect(() => {
 		if (route.params?.initialTab === "devices") {

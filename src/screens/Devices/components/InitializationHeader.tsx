@@ -17,6 +17,7 @@ interface InitializationHeaderProps {
         deviceHealth?: string[]
     }
     theme: any
+    warningHintText?: string
 }
 
 export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
@@ -25,7 +26,8 @@ export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
     initProgress,
     initStep,
     initErrors,
-    theme
+    theme,
+    warningHintText = "You can still proceed with preparation, but address these issues before deployment."
 }) => {
     return (
         <>
@@ -84,7 +86,7 @@ export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
                         </Text>
                     ))}
                     <Text variant="bodySmall" style={[styles.errorHint, { color: theme.colors.onErrorContainer }]}>
-                        You can still proceed with preparation, but address these issues before deployment.
+                        {warningHintText}
                     </Text>
                 </View>
             )}

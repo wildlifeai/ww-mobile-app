@@ -90,8 +90,8 @@ export const Devices = () => {
 		(navigation as any).navigate('DeviceDetails', { deviceId })
 	}, [navigation])
 
-	const handlePrepareAndTest = () => {
-		(navigation as any).navigate('DeviceDiscovery', { mode: 'prepare' })
+	const handleConnectToDevice = () => {
+		(navigation as any).navigate('Home', { initialTab: 'devices' })
 	}
 
 	// Filter devices locally since we load all at once
@@ -117,14 +117,14 @@ export const Devices = () => {
 			onSearchChange={setSearchQuery}
 			searchPlaceholder="Search devices..."
 
-			// Primary Action: Prepare & Test
-			primaryActionLabel="Prepare & Test Devices"
-			onPrimaryAction={handlePrepareAndTest}
+			// Primary Action: Connect
+			primaryActionLabel="Scan for Devices"
+			onPrimaryAction={handleConnectToDevice}
 
 			emptyStateTitle={hasMultipleOrgs ? `No devices for ${organisationName}` : 'No devices yet'}
 			emptyStateMessage={hasMultipleOrgs
-				? `There are no devices yet for ${organisationName}. Prepare and test nearby cameras, or switch to a different organisation.`
-				: 'Prepare and test nearby cameras to add them to your device list.'
+				? `There are no devices yet for ${organisationName}. Scan for nearby cameras, or switch to a different organisation.`
+				: 'Scan for nearby cameras to add them to your device list.'
 			}
 			emptySearchMessage={`No devices found matching "${searchQuery}"`}
 		/>

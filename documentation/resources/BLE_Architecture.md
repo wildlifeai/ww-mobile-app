@@ -108,7 +108,7 @@ Calls `BleManager.start()` on app launch and updates the `bleLibrarySlice` Redux
 
 ### 2. Engine Provider (`BleEngineProvider`)
 
-React Context that wraps the core `useBle` hook. Provides `startScan`, `connectDevice`, `disconnectDevice`, `write` and scan/connection control to the entire app tree.
+React Context that wraps the core `useBle` hook. Provides `startScan`, `stopScan`, `connectDevice`, `disconnectDevice`, `write` and scan/connection control to the entire app tree.
 
 **File:** [BleEngineProvider.tsx](../../src/providers/BleEngineProvider.tsx)
 
@@ -129,6 +129,7 @@ The foundational hook providing:
 | Function | Purpose |
 |---|---|
 | `startScan(length?)` | Scan for nearby Wildlife Watcher devices |
+| `stopScan()` | Stop an active discovery scan |
 | `connectDevice(peripheral)` | Connect, discover services, enable notifications, negotiate MTU |
 | `disconnectDevice(peripheral)` | Clean disconnect + clear command manager |
 | `write(peripheral, data[], options?)` | Route commands through `BleCommandManager` with auto regex lookup |
@@ -159,7 +160,7 @@ The app supports over-the-air firmware updates using the **Nordic DFU** protocol
 
 ```mermaid
 sequenceDiagram
-    participant UI as PrepareAndTestScreen
+    participant UI as DeviceDiscoveryScreen
     participant BLE as useBleCommands
     participant FW as Firmware (Device)
     participant Scan as BleManager.scan
@@ -209,7 +210,7 @@ sequenceDiagram
 - **Android:** The firmware file is copied from the document picker URI to `FileSystem.cacheDirectory` before DFU, because the Nordic DFU library cannot read from content URIs directly. The temporary file is cleaned up in a `finally` block.
 - **iOS:** The document picker URI is used directly — no file copy is needed.
 
-**Files:** [DfuService.ts](../../src/services/DfuService.ts), [DfuScreen.tsx](../../src/screens/Devices/DfuScreen.tsx), [PrepareAndTestScreen.tsx](../../src/screens/Devices/PrepareAndTestScreen.tsx)
+**Files:** [DfuService.ts](../../src/services/DfuService.ts), [DfuScreen.tsx](../../src/screens/Devices/DfuScreen.tsx), [DeviceDiscoveryScreen.tsx](../../src/screens/Devices/DeviceDiscoveryScreen.tsx)
 
 ---
 

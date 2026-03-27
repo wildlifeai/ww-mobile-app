@@ -10,6 +10,8 @@ import { useUserOrganisations } from "../hooks/useUserOrganisations"
 import InvitationService from "../services/InvitationService"
 import { useAppSelector } from "../redux"
 import { selectCurrentUser } from "../redux/slices/authSlice"
+import { useEngineerConnect } from "../hooks/useEngineerConnect"
+import { EngineerConnectDialog } from "./EngineerConnectDialog"
 
 type Props = {
 	drawerControls: Dispatch<SetStateAction<boolean>>
@@ -42,6 +44,15 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 	const { canSwitchOrganisations } = useUserOrganisations()
 	const user = useAppSelector(selectCurrentUser)
 	const [invitationCount, setInvitationCount] = useState(0)
+
+	const {
+		dialogState,
+		discoveredDevices,
+		connectingDevice: engineerConnectingDevice,
+		beginScan,
+		selectDevice,
+		reset: resetEngineerConnect,
+	} = useEngineerConnect()
 
 	useEffect(() => {
 		if (!user?.email) return
@@ -122,8 +133,8 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 				style={[dynamicStyles.link, styles.link]}
 				icon="wrench"
 				onPress={() => {
-					navigation.navigate("DeviceDiscovery", { mode: 'engineer' })
 					drawerControls(false)
+					beginScan()
 				}}
 			>
 				<Text>Engineer Console</Text>
@@ -159,6 +170,15 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 					</Button>
 				</>
 			)}
+
+			<EngineerConnectDialog
+				visible={dialogState !== 'idle'}
+				dialogState={dialogState}
+				discoveredDevices={discoveredDevices}
+				connectingDevice={engineerConnectingDevice}
+				onSelectDevice={selectDevice}
+				onDismiss={resetEngineerConnect}
+			/>
 		</View>
 	)
 }

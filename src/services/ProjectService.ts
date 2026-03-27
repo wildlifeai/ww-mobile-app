@@ -544,7 +544,7 @@ class ProjectService {
 				database.collections.get('deployments').query(
 					Q.where('project_id', model.id),
 					Q.where('deployment_end', null)
-				).fetchCount(),
+				).fetch(),
 
 				database.collections.get('device_preparation').query(
 					Q.where('project_id', model.id)
@@ -554,10 +554,25 @@ class ProjectService {
 			])
 
 			// Calculate distinct device count
-			const uniqueDeviceIds = new Set(devicePreparations.map((dp: any) => dp.deviceId))
-			const lorawanDeviceCount = uniqueDeviceIds.size
+			const preparationDeviceIds = devicePreparations.map((dp: any) => dp.deviceId)
+			
+			// Get all deployments to find all devices
+			const allDeployments = await database.collections.get('deployments').query(
+				Q.where('project_id', model.id)
+			).fetch()
+			const deploymentDeviceIds = allDeployments.map((d: any) => d.deviceId)
+			
+			const uniqueDeviceIds = new Set([...preparationDeviceIds, ...deploymentDeviceIds])
+            
+            // Get active devices from ongoing deployments
+            const activeDeploymentDeviceIds = new Set(activeDeploymentCount.map((d: any) => d.deviceId))
+			
+            const lorawanDeviceCount = uniqueDeviceIds.size // keeping this var name for legacy lorawan compatibility if used
+            const deviceCount = uniqueDeviceIds.size
+            const activeDeviceCount = activeDeploymentDeviceIds.size
+            const activeDeployments = activeDeploymentCount.length
 
-			log(`[ProjectService] Enrichment complete for ${model.id}: ${deploymentCount} deployments, ${memberCount} members`)
+			log(`[ProjectService] Enrichment complete for ${model.id}: ${activeDeployments} active out of ${deploymentCount} deployments, ${memberCount} members`)
 
 			return {
 				id: model.id,
@@ -583,8 +598,10 @@ class ProjectService {
 				// Computed fields
 				member_count: memberCount,
 				deployment_count: deploymentCount,
-				active_deployment_count: activeDeploymentCount,
+				active_deployment_count: activeDeployments,
 				lorawan_device_count: lorawanDeviceCount,
+				device_count: deviceCount,
+				active_device_count: activeDeviceCount,
 			}
 		} catch (error) {
 			logError(`[ProjectService] Error enriching project ${model.id}:`, error)

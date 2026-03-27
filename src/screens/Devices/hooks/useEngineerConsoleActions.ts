@@ -202,6 +202,12 @@ export const useEngineerConsoleActions = ({
             return
         }
 
+        if (cmdName === CommandNames.MOTION_DETECTION_PREVIEW) {
+            log('[EngineerConsole] MOTION_DETECTION_PREVIEW clicked, navigating to standalone screen')
+            navigation.navigate('StandaloneMotionDetectionScreen', { deviceId: device.id })
+            return
+        }
+
         if (cmdName === CommandNames.SET_GPS) {
             log('[EngineerConsole] SET_GPS clicked, getting phone location')
             try {

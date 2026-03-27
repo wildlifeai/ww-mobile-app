@@ -13,10 +13,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { LoRaWANSection } from './components/LoRaWANSection'
 import { CameraViewSection } from './components/CameraViewSection'
 import { DeploymentMotionDetectionSection } from './components/DeploymentMotionDetectionSection'
-import { LocationSection } from './components/LocationSection'
 import { MetadataSection } from './components/MetadataSection'
 import { HelpDialog } from '../../components/ui/HelpDialog'
 import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog'
+import { AdvancedSettingsSection } from './components/AdvancedSettingsSection'
 
 import { useStartDeployment } from './hooks/useStartDeployment'
 
@@ -34,10 +34,15 @@ export const DeploymentDetailsStep = () => {
         formState, submitting, project, captureMethodName, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
-        isNavigatingAway, handleLocationChange, handleImageCaptured,
-        handleNameChange, handleNotesChange, handleLocationNameChange,
+        handleImageCaptured,
+        handleNameChange, handleNotesChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
-        helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp
+        helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp,
+        // Advanced Settings
+        batteryLevel, sdCardStatus, latestBleFirmware, deviceFirmwareVersion,
+        bleFirmwareUpdateAvailable, firmwareUpdateProgress, isUpdatingFirmware,
+        isCheckingFirmware, isVerifyingUpdate, firmwareUpdateStatus,
+        handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, handleBleFirmwareUpdate
     } = useStartDeployment({ deviceId, bleDeviceId, devicePreparationId, navigation })
 
     const renderProjectSettingsLeft = useCallback((props: any) => <WWIcon {...props} source="tune" />, [])
@@ -80,6 +85,7 @@ export const DeploymentDetailsStep = () => {
                         initStep={initStep}
                         initErrors={initErrors}
                         theme={theme}
+                        warningHintText="You can still proceed with deployment, but we recommend addressing these issues if possible."
                     />
                 )}
 
@@ -124,21 +130,6 @@ export const DeploymentDetailsStep = () => {
                             )
                         ))}
 
-                        <Button
-                            mode="outlined"
-                            onPress={() => {
-                                isNavigatingAway.current = true
-                                    ; navigation.navigate('PrepareAndTest', {
-                                        deviceId,
-                                        bleDeviceId,
-                                        nextRoute: 'DeploymentDetailsStep'
-                                    })
-                            }}
-                            style={styles.editButton}
-                            icon="cog"
-                        >
-                            <Text>Edit Device Preparation</Text>
-                        </Button>
                     </Card.Content>
                 </Card>
 
@@ -159,20 +150,34 @@ export const DeploymentDetailsStep = () => {
                     onShowHelp={showHelp}
                 />
 
-                <LocationSection
-                    onLocationChange={handleLocationChange}
-                    onShowHelp={showHelp}
-                />
-
                 <MetadataSection
                     name={formState.name}
                     notes={formState.notes}
-                    locationName={formState.locationName}
                     cameraHeight={formState.cameraHeight}
                     onNameChange={handleNameChange}
                     onNotesChange={handleNotesChange}
-                    onLocationNameChange={handleLocationNameChange}
                     onCameraHeightChange={handleCameraHeightChange}
+                    onShowHelp={showHelp}
+                />
+
+                <AdvancedSettingsSection
+                    batteryLevel={batteryLevel}
+                    sdCardStatus={sdCardStatus}
+                    latestBleFirmware={latestBleFirmware}
+                    deviceFirmwareVersion={deviceFirmwareVersion}
+                    bleFirmwareUpdateAvailable={bleFirmwareUpdateAvailable}
+                    firmwareUpdateProgress={firmwareUpdateProgress}
+                    isUpdatingFirmware={isUpdatingFirmware}
+                    isCheckingFirmware={isCheckingFirmware}
+                    isVerifyingUpdate={isVerifyingUpdate}
+                    firmwareUpdateStatus={firmwareUpdateStatus}
+                    handleBatteryCheck={handleBatteryCheck}
+                    handleSdCardCheck={handleSdCardCheck}
+                    handleFirmwareCheck={handleFirmwareCheck}
+                    handleBleFirmwareUpdate={handleBleFirmwareUpdate}
+                    isInitializing={isInitializing}
+                    bleDeviceConnected={!!bleDevice?.connected}
+                    theme={theme}
                     onShowHelp={showHelp}
                 />
 

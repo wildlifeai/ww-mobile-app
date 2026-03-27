@@ -57,6 +57,8 @@ export interface ProjectWithDetails extends Project {
 	deployment_count?: number
 	active_deployment_count?: number
 	lorawan_device_count?: number
+	device_count?: number
+	active_device_count?: number
 	battery_level?: number // 0-100%
 	sd_card_usage?: number // 0-100%
 }

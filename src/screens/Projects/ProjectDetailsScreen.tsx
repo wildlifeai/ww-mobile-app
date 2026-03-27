@@ -14,23 +14,24 @@
 import { useMemo } from "react"
 import { StyleSheet, View, ScrollView } from "react-native"
 import { Text, useTheme, ActivityIndicator, Button } from "react-native-paper"
-import { useRoute } from "@react-navigation/native"
+import { useRoute, useNavigation } from "@react-navigation/native"
+import { useEffect } from "react"
 
 import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWButton } from "../../components/ui/WWButton"
 import { AppParams } from "../../navigation/types"
 
-import { ProjectHeaderCard } from './components/ProjectHeaderCard'
-import { ProjectStatsCard } from './components/ProjectStatsCard'
-import { ProjectSettingsCard } from './components/ProjectSettingsCard'
+import { ProjectDetailsCard } from './components/ProjectDetailsCard'
+import { ProjectDevicesCard } from './components/ProjectDevicesCard'
 import { ProjectMembersCard } from './components/ProjectMembersCard'
-import { ProjectDeleteDialog } from './components/ProjectDeleteDialog'
 import { useProjectDetails } from './hooks/useProjectDetails'
+import { useGetAiModelsQuery } from "../../redux/api/projectsApi"
 
 export const ProjectDetailsScreen = () => {
 	const theme = useTheme()
 	const route = useRoute<AppParams<"ProjectDetailsScreen">>()
+	const navigation = useNavigation()
 	const { projectId } = route.params
 
 	const {
@@ -50,7 +51,6 @@ export const ProjectDetailsScreen = () => {
 		errors,
 		isDirty,
 		isUpdating,
-		isDeleting,
 		samplingDesignOptions,
 		captureMethodOptions,
 		sensitivityOptions,
@@ -60,16 +60,29 @@ export const ProjectDetailsScreen = () => {
 		handleEdit,
 		handleCancelEdit,
 		handleSave,
-		handleDelete,
 		handleRemoveMember,
 		getLabel,
 	} = useProjectDetails(projectId)
+
+	const {
+		isLoading: isLoadingModels,
+		error: modelsError,
+		data: aiModels
+	} = useGetAiModelsQuery()
+	const hasAiModels = !!(aiModels && aiModels.length > 0)
 
 	const dynamicStyles = useMemo(() => ({
 		loadingLabel: { color: theme.colors.onSurfaceVariant },
 		errorHeader: { color: theme.colors.error },
 		errorMessage: { color: theme.colors.onSurfaceVariant },
 	}), [theme])
+
+	// Dynamic Title Update
+	useEffect(() => {
+		if (project?.name) {
+			navigation.setOptions({ title: project.name })
+		}
+	}, [project?.name, navigation])
 
 	// Loading state
 	if (isLoading) {
@@ -130,36 +143,33 @@ export const ProjectDetailsScreen = () => {
 			<OfflineIndicator />
 
 			<View style={styles.content}>
-				{/* Header Card */}
-				<ProjectHeaderCard
+				{/* Details Card */}
+				<ProjectDetailsCard
 					project={project}
 					isEditMode={isEditMode}
 					isProjectAdmin={isProjectAdmin}
 					control={control as any}
 					errors={errors as any}
 					onEdit={handleEdit}
-					onDelete={() => setShowDeleteDialog(true)}
-				/>
-
-				{/* Stats Cards */}
-				{!isEditMode && (
-					<ProjectStatsCard project={project} cloudMemberCount={members?.length} />
-				)}
-
-				{/* Settings Section */}
-				<ProjectSettingsCard
-					project={project}
-					isEditMode={isEditMode}
-					isProjectAdmin={isProjectAdmin}
-					control={control as any}
 					samplingDesignOptions={samplingDesignOptions}
 					captureMethodOptions={captureMethodOptions}
 					sensitivityOptions={sensitivityOptions}
 					aiModelOptions={aiModelOptions}
 					isMotionDetection={!!isMotionDetection}
 					isTimeLapse={!!isTimeLapse}
+					isLoadingModels={isLoadingModels}
+					modelsError={modelsError}
+					hasAiModels={hasAiModels}
 					getLabel={getLabel}
 				/>
+
+				{/* Devices Section */}
+				{!isEditMode && (
+					<ProjectDevicesCard 
+						projectId={projectId} 
+						projectName={project.name} 
+					/>
+				)}
 
 				{/* Members Section */}
 				{!isEditMode && (
@@ -198,14 +208,6 @@ export const ProjectDetailsScreen = () => {
 					</View>
 				)}
 			</View>
-
-			<ProjectDeleteDialog
-				visible={showDeleteDialog}
-				projectName={project.name}
-				isDeleting={isDeleting}
-				onDismiss={() => setShowDeleteDialog(false)}
-				onDelete={handleDelete}
-			/>
 		</ScrollView>
 	)
 }

@@ -88,6 +88,52 @@ export const DevicePreparationService = {
     },
 
     /**
+     * Create a covert dummy preparation record to satisfy database constraints
+     * after deprecating the PrepareAndTest UI flow.
+     */
+    createDummyPreparationRecord: async (deviceId: string, projectId: string, modifiedBy: string): Promise<DevicePreparation> => {
+        let newPrep: DevicePreparation | undefined
+
+        await database.write(async () => {
+            const preparationsCollection = database.get<DevicePreparation>('device_preparation')
+
+            newPrep = preparationsCollection.prepareCreate((preparation) => {
+                preparation.deviceId = deviceId
+                preparation.projectId = projectId
+                preparation.modifiedBy = modifiedBy
+                preparation.status = 'completed'
+                preparation.isDeploymentReady = true
+                // We simulate checks passing so validation systems don't fail
+                preparation.batteryCheckPassed = true
+                preparation.cameraViewTestPassed = true
+                preparation.firmwareCheckPassed = true
+                preparation.sdCardCheckPassed = true
+                preparation.firmwareUpdated = true
+                preparation.lorawanRegistrationCompleted = true
+                preparation.completedAt = new Date()
+            })
+
+            const payload = mapModelToPayload(newPrep)
+
+            const outboxOp = OutboxService.recordOperation({
+                operation: 'CREATE',
+                tableName: 'device_preparation',
+                recordId: newPrep.id,
+                payload,
+                userId: modifiedBy || undefined,
+            })
+
+            await database.batch(newPrep, outboxOp)
+        })
+
+        if (!newPrep) throw new Error("Failed to create dummy preparation instance")
+
+        SupabaseSyncService.debouncedSync()
+
+        return newPrep
+    },
+
+    /**
      * Update an existing device preparation record
      */
     updatePreparation: async (

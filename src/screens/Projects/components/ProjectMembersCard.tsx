@@ -43,23 +43,19 @@ export const ProjectMembersCard: React.FC<Props> = ({
                         variant="titleMedium"
                         style={dynamicStyles.membersTitle}
                     >
-                        Members
+                        Members ({members?.length || 0})
                     </Text>
-                    {isProjectAdmin && (
-                        <Button
-                            mode="text"
-                            icon="account-multiple"
-                            onPress={() => {
-                                navigation.navigate("ProjectMembersScreen", {
-                                    projectId: project.id,
-                                    projectName: project.name,
-                                })
-                            }}
-                            testID="manage-members-button"
-                        >
-                            <Text>Manage</Text>
-                        </Button>
-                    )}
+                    <IconButton
+                        icon={isProjectAdmin ? "account-cog" : "eye"}
+                        size={24}
+                        onPress={() => {
+                            navigation.navigate("ProjectMembersScreen", {
+                                projectId: project.id,
+                                projectName: project.name,
+                            })
+                        }}
+                        testID={isProjectAdmin ? "manage-members-button" : "view-members-button"}
+                    />
                 </View>
 
                 <Divider style={styles.divider} />
@@ -68,7 +64,7 @@ export const ProjectMembersCard: React.FC<Props> = ({
                     <ActivityIndicator size="small" />
                 ) : members && members.length > 0 ? (
                     <View style={styles.membersList}>
-                        {members.map((member, index) => {
+                        {members.slice(0, 5).map((member, index) => {
                             const isMe = member.user_id === currentUser?.id
                             const displayName = isMe
                                 ? ((currentUser as any)?.profile?.first_name

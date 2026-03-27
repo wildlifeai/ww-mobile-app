@@ -15,15 +15,16 @@ export interface RootStackParamList extends ParamListBase {
 	AddDeployment: { selectedProject?: Option } | undefined
 	NewProjectScreen: undefined
 	ProjectDetailsScreen: { projectId: string }
+	ProjectDevicesScreen: { projectId: string; projectName: string }
 	ProjectMembersScreen: { projectId: string; projectName: string }
 	DevBuildInfo: undefined
 	AuthTestScreen: undefined
 	DeveloperSettings: undefined
-	DeviceDiscovery: { mode: 'prepare' | 'engineer' | 'deployment' | 'auto' | 'end_deployment' } | undefined
+	DeviceDiscovery: { mode: 'auto' | 'end_deployment' } | undefined
 	DeviceDetails: { deviceId: string }
 	EngineerConsoleScreen: { deviceId: string }
-	PrepareAndTest: { deviceId: string; bleDeviceId: string; selftestError?: string; setUtcError?: string; nextRoute?: string }
-	StartDeploymentWizard: { mode: 'deployment' }
+	StandaloneMotionDetectionScreen: { deviceId: string }
+
 	DeploymentDetailsStep: { devicePreparationId: string; deviceId: string; bleDeviceId: string }
 	DeploymentDetails: { deploymentId: string }
 	EndDeploymentWizard: { mode: 'end_deployment'; deploymentId?: string }

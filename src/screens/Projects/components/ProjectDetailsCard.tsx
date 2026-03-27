@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Text, useTheme } from 'react-native-paper'
+import { Card, Text, IconButton, useTheme, Divider } from 'react-native-paper'
 import { Control, Controller } from 'react-hook-form'
 import { Field } from '../../../components/form/Field'
 import { WWSelect } from '../../../components/ui/WWSelect'
@@ -8,6 +8,7 @@ import { WWTextInput } from '../../../components/ui/WWTextInput'
 import { WWCheckbox } from '../../../components/ui/WWCheckbox'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { ProjectWithDetails } from '../../../types/project'
+import { NewProjectSettingsSection } from './NewProjectSettingsSection'
 
 interface ProjectFormData {
     name: string
@@ -33,32 +34,45 @@ interface Props {
     isEditMode: boolean
     isProjectAdmin: boolean
     control: Control<ProjectFormData>
+    errors: any
+    onEdit: () => void
     samplingDesignOptions: SelectOption[]
     captureMethodOptions: SelectOption[]
     sensitivityOptions: SelectOption[]
     aiModelOptions: SelectOption[]
     isMotionDetection: boolean
     isTimeLapse: boolean
+    isLoadingModels: boolean
+    modelsError: any
+    hasAiModels: boolean
     getLabel: (options: SelectOption[], value?: string | number | null) => string | number | null | undefined
 }
 
-export const ProjectSettingsCard: React.FC<Props> = ({
+export const ProjectDetailsCard: React.FC<Props> = ({
     project,
     isEditMode,
     isProjectAdmin,
     control,
+    errors,
+    onEdit,
     samplingDesignOptions,
     captureMethodOptions,
     sensitivityOptions,
     aiModelOptions,
     isMotionDetection,
     isTimeLapse,
+    isLoadingModels,
+    modelsError,
+    hasAiModels,
     getLabel
 }) => {
     const theme = useTheme()
 
     const dynamicStyles = {
         sectionTitle: { color: theme.colors.onSurface },
+        orgName: { color: theme.colors.onSurfaceVariant, marginBottom: 8 },
+        description: { color: theme.colors.onSurfaceVariant },
+        noDescription: { color: theme.colors.onSurfaceDisabled },
         settingLabel: { color: theme.colors.onSurfaceVariant },
         settingValue: { color: theme.colors.onSurface },
         websiteValue: { color: theme.colors.primary },
@@ -67,146 +81,121 @@ export const ProjectSettingsCard: React.FC<Props> = ({
     return (
         <Card mode="outlined" style={styles.card}>
             <Card.Content>
-                <Text
-                    variant="titleMedium"
-                    style={[styles.sectionTitle, dynamicStyles.sectionTitle]}
-                >
-                    Settings
-                </Text>
+                <View style={styles.headerRow}>
+                    <View style={styles.flex1}>
+                        <Text
+                            variant="titleMedium"
+                            style={[styles.sectionTitle, dynamicStyles.sectionTitle]}
+                        >
+                            Project Details
+                        </Text>
+                        {!isEditMode && project.organisation?.name && (
+                            <Text
+                                variant="bodyMedium"
+                                style={dynamicStyles.orgName}
+                            >
+                                {project.organisation.name}
+                            </Text>
+                        )}
+                    </View>
+
+                    {!isEditMode && isProjectAdmin && (
+                        <View style={styles.actionButtons}>
+                            <IconButton
+                                icon="cog"
+                                size={24}
+                                onPress={onEdit}
+                                testID="edit-button"
+                            />
+                        </View>
+                    )}
+                </View>
 
                 {isEditMode ? (
                     <View>
                         <Field
                             control={control}
-                            name="sampling_design_id"
-                            label="Sampling Design"
+                            name="name"
+                            label="Project Name"
+                            required
+                            rules={{
+                                required: "Project name is required",
+                                minLength: { value: 3, message: "At least 3 characters" },
+                                maxLength: { value: 100, message: "Max 100 characters" },
+                            }}
                         >
                             {(field) => (
-                                <WWSelect
+                                <WWTextInput
                                     {...field}
-                                    options={samplingDesignOptions}
-                                    label="Sampling Design"
+                                    mode="outlined"
+                                    error={!!errors.name}
+                                    testID="project-name-input"
                                 />
                             )}
                         </Field>
 
                         <Field
                             control={control}
-                            name="capture_method_id"
-                            label="Capture Method"
+                            name="description"
+                            label="Description"
+                            rules={{
+                                maxLength: { value: 500, message: "Max 500 characters" },
+                            }}
                         >
-                            {(field) => (
-                                <WWSelect
-                                    {...field}
-                                    options={captureMethodOptions}
-                                    label="Capture Method"
-                                />
-                            )}
-                        </Field>
-
-                        {isMotionDetection && (
-                            <Field
-                                control={control}
-                                name="activity_detection_sensitivity_id"
-                                label="Motion Sensitivity"
-                            >
-                                {(field) => (
-                                    <WWSelect
-                                        {...field}
-                                        options={sensitivityOptions}
-                                        label="Motion Sensitivity"
-                                    />
-                                )}
-                            </Field>
-                        )}
-
-                        {isTimeLapse && (
-                            <Field
-                                control={control}
-                                name="timelapse_interval_seconds"
-                                label="Time-lapse Interval (seconds)"
-                            >
-                                {(field) => (
-                                    <WWTextInput
-                                        {...field}
-                                        mode="outlined"
-                                        keyboardType="numeric"
-                                        placeholder="e.g., 60"
-                                    />
-                                )}
-                            </Field>
-                        )}
-
-                        {isProjectAdmin && (
-                            <Field
-                                control={control}
-                                name="model_id"
-                                label="Default AI Model"
-                            >
-                                {(field) => (
-                                    <WWSelect
-                                        {...field}
-                                        options={aiModelOptions}
-                                        label="Default AI Model"
-                                    />
-                                )}
-                            </Field>
-                        )}
-
-                        <Field control={control} name="website" label="Website">
                             {(field) => (
                                 <WWTextInput
                                     {...field}
                                     mode="outlined"
-                                    placeholder="https://example.com"
-                                    keyboardType="url"
-                                    autoCapitalize="none"
-                                    testID="website-input"
+                                    multiline
+                                    numberOfLines={4}
+                                    error={!!errors.description}
+                                    testID="project-description-input"
                                 />
                             )}
                         </Field>
 
-                        <Controller
-                            control={control}
-                            name="is_baited"
-                            render={({ field: { value, onChange } }) => (
-                                <WWCheckbox
-                                    label="Using Bait"
-                                    value={value}
-                                    onChange={onChange}
-                                    testID="is-baited-checkbox"
-                                />
-                            )}
-                        />
+                        <Divider style={styles.divider} />
 
-                        <Controller
+                        <NewProjectSettingsSection
                             control={control}
-                            name="is_monitoring_marked_individuals"
-                            render={({ field: { value, onChange } }) => (
-                                <WWCheckbox
-                                    label="Monitoring Marked Individuals"
-                                    value={value}
-                                    onChange={onChange}
-                                    testID="is-monitoring-marked-checkbox"
-                                />
-                            )}
-                        />
-
-                        <Controller
-                            control={control}
-                            name="record_gps_in_images"
-                            render={({ field: { value, onChange } }) => (
-                                <WWCheckbox
-                                    label="Record GPS in Images"
-                                    value={value}
-                                    onChange={onChange}
-                                    testID="record-gps-checkbox"
-                                />
-                            )}
+                            samplingDesignOptions={samplingDesignOptions}
+                            captureMethodOptions={captureMethodOptions}
+                            sensitivityOptions={sensitivityOptions}
+                            aiModelOptions={aiModelOptions}
+                            isMotionDetection={isMotionDetection}
+                            isTimeLapse={isTimeLapse}
+                            isLoadingModels={isLoadingModels}
+                            modelsError={modelsError}
+                            hasAiModels={hasAiModels}
+                            showArchiveToggle={true}
                         />
                     </View>
                 ) : (
                     <View>
+                        {project.description ? (
+                            <Text
+                                variant="bodyMedium"
+                                style={[
+                                    styles.description,
+                                    dynamicStyles.description,
+                                ]}
+                            >
+                                {project.description}
+                            </Text>
+                        ) : (
+                            <Text
+                                variant="bodyMedium"
+                                style={[
+                                    styles.description,
+                                    dynamicStyles.noDescription,
+                                ]}
+                            >
+                                No description
+                            </Text>
+                        )}
+
+                        <Divider style={styles.divider} />
+
                         {project.sampling_design_id && (
                             <View style={styles.settingRow}>
                                 <Text
@@ -367,9 +356,29 @@ const styles = StyleSheet.create({
     card: {
         marginBottom: 16,
     },
+    headerRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        marginBottom: 8,
+        gap: 16,
+    },
+    flex1: {
+        flex: 1,
+    },
     sectionTitle: {
         fontWeight: "600",
+    },
+    actionButtons: {
+        flexDirection: "row",
+        marginRight: -8, // Offset default IconButton padding
+        marginTop: -8,
+    },
+    description: {
         marginBottom: 16,
+    },
+    divider: {
+        marginVertical: 16,
     },
     settingRow: {
         flexDirection: "row",
@@ -377,5 +386,6 @@ const styles = StyleSheet.create({
         flexWrap: "wrap",
         gap: 8,
         minHeight: 24,
+        marginBottom: 8,
     },
 })

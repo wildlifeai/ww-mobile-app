@@ -4,11 +4,9 @@ import { Card, TextInput } from 'react-native-paper'
 interface Props {
     name: string
     notes: string
-    locationName: string
     cameraHeight: string // Stored as string in input, parsed to number later
     onNameChange: (text: string) => void
     onNotesChange: (text: string) => void
-    onLocationNameChange: (text: string) => void
     onCameraHeightChange: (text: string) => void
     onShowHelp: (title: string, content: string) => void
 }
@@ -16,11 +14,9 @@ interface Props {
 export const MetadataSection = ({
     name,
     notes,
-    locationName,
     cameraHeight,
     onNameChange,
     onNotesChange,
-    onLocationNameChange,
     onCameraHeightChange,
     onShowHelp
 }: Props) => {
@@ -42,16 +38,6 @@ export const MetadataSection = ({
                     mode="outlined"
                     style={styles.input}
                     right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Deployment Name', 'A unique identifier for this specific deployment. It helps track data collected during this session.')} />}
-                />
-
-                <TextInput
-                    label="Location Name"
-                    placeholder="e.g. Ridge Trail Camera A"
-                    value={locationName}
-                    onChangeText={onLocationNameChange}
-                    mode="outlined"
-                    style={styles.input}
-                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Location Name', 'A short, project-specific identifiable name for this deployment location (e.g. "Ridge Trail Camera A", "Pond North").')} />}
                 />
 
                 <TextInput

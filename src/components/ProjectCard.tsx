@@ -47,21 +47,7 @@ export const ProjectCard = React.memo(
 			return date.toLocaleDateString()
 		}
 
-		// Battery level color based on percentage
-		const getBatteryColor = (level?: number) => {
-			if (!level) return theme.colors.onSurfaceDisabled
-			if (level >= 50) return theme.colors.primary
-			if (level >= 20) return "#FFA726" // Warning orange
-			return theme.colors.error
-		}
 
-		// SD card usage color based on percentage
-		const getSDCardColor = (usage?: number) => {
-			if (!usage) return theme.colors.onSurfaceDisabled
-			if (usage >= 80) return theme.colors.error
-			if (usage >= 60) return "#FFA726" // Warning orange
-			return theme.colors.primary
-		}
 
 		return (
 			<Card
@@ -118,10 +104,10 @@ export const ProjectCard = React.memo(
 							</Text>
 						</View>
 
-						{/* Deployment Count */}
-						<View style={styles.metadataItem} testID="deployment-count">
+						{/* Device Count */}
+						<View style={styles.metadataItem} testID="device-count">
 							<WWIcon
-								source="map-marker-multiple"
+								source="camera-wireless"
 								size={16}
 								color={theme.colors.onSurfaceVariant}
 								containerStyle={styles.icon}
@@ -130,81 +116,16 @@ export const ProjectCard = React.memo(
 								variant="bodySmall"
 								style={{ color: theme.colors.onSurfaceVariant }}
 							>
-								{project.deployment_count || 0}{" "}
-								{(project.deployment_count || 0) === 1
-									? "deployment"
-									: "deployments"}
-								{` (${project.active_deployment_count || 0} active)`}
+								{project.device_count || 0}{" "}
+								{(project.device_count || 0) === 1
+									? "device"
+									: "devices"}
+								{` (${project.active_device_count || 0} active)`}
 							</Text>
 						</View>
 					</View>
 
-					{/* LoRaWAN Device Status */}
-					{(project.lorawan_device_count || 0) > 0 && (
-						<View style={styles.lorawanStatus} testID="lorawan-status">
-							<View style={styles.metadataItem}>
-								<WWIcon
-									source="access-point"
-									size={16}
-									color={theme.colors.primary}
-									containerStyle={styles.icon}
-								/>
-								<Text
-									variant="bodySmall"
-									style={{ color: theme.colors.onSurfaceVariant }}
-								>
-									{project.lorawan_device_count} {" "}
-									{(project.lorawan_device_count || 0) === 1
-										? "device"
-										: "devices"}
-								</Text>
-							</View>
 
-							{/* Battery Level */}
-							{project.battery_level !== undefined && (
-								<View style={styles.metadataItem} testID="battery-level">
-									<WWIcon
-										source={
-											project.battery_level >= 80
-												? "battery-high"
-												: project.battery_level >= 50
-													? "battery-medium"
-													: project.battery_level >= 20
-														? "battery-low"
-														: "battery-alert"
-										}
-										size={16}
-										color={getBatteryColor(project.battery_level)}
-										containerStyle={styles.icon}
-									/>
-									<Text
-										variant="bodySmall"
-										style={{ color: getBatteryColor(project.battery_level) }}
-									>
-										{project.battery_level}%
-									</Text>
-								</View>
-							)}
-
-							{/* SD Card Usage */}
-							{project.sd_card_usage !== undefined && (
-								<View style={styles.metadataItem} testID="sd-card-usage">
-									<WWIcon
-										source="sd"
-										size={16}
-										color={getSDCardColor(project.sd_card_usage)}
-										containerStyle={styles.icon}
-									/>
-									<Text
-										variant="bodySmall"
-										style={{ color: getSDCardColor(project.sd_card_usage) }}
-									>
-										{project.sd_card_usage}% used
-									</Text>
-								</View>
-							)}
-						</View>
-					)}
 
 					{/* Last Updated */}
 					<Text
@@ -252,15 +173,6 @@ const styles = StyleSheet.create({
 	},
 	icon: {
 		marginRight: 4,
-	},
-	lorawanStatus: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 12,
-		marginBottom: 8,
-		paddingTop: 8,
-		borderTopWidth: 1,
-		borderTopColor: "rgba(0, 0, 0, 0.08)",
 	},
 	lastUpdated: {
 		marginTop: 4,

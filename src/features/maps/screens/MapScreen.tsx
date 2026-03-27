@@ -68,11 +68,6 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 
 	const navigation = useAppNavigation()
 
-	// Check if there is ANY active deployment (based on missing end date)
-	const hasActiveDeployment = useMemo(() => {
-		return deployments.some(d => !d.deploymentEnd)
-	}, [deployments])
-
 	// Filter deployments based on filter mode
 	const filteredDeployments = useMemo(() => {
 		return deployments.filter(d => {
@@ -265,32 +260,6 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 				small
 			/>
 
-			{/* Action Buttons - Bottom Right */}
-
-			{/* New Deployment Button - Always Shown */}
-			<FAB
-				icon="plus"
-				label="New Deployment"
-				style={[styles.actionFab, { backgroundColor: colors.primary }]}
-				color="#fff"
-				onPress={() => navigation.navigate('StartDeploymentWizard', { mode: 'deployment' })}
-			/>
-
-			{/* End Deployment Button - Shown if active deployment exists */}
-			{hasActiveDeployment && (
-				<FAB
-					icon="stop"
-					label="End Deployment"
-					style={[styles.actionFab, styles.endDeploymentFab]} // Stacked above New Deployment
-					color="#000"
-					small // Make it smaller to distinguish importance? Or keep regular. Let's keep regular but stacked.
-					onPress={() => {
-						log('[MapScreen] End Deployment pressed')
-						navigation.navigate('EndDeploymentWizard', { mode: 'end_deployment' } as any)
-					}}
-				/>
-			)}
-
 			{/* Custom Deployment Details Card Overlay */}
 			<DeploymentCard
 				deployment={selectedDeployment}
@@ -377,10 +346,6 @@ const styles = StyleSheet.create({
 		position: "absolute",
 		bottom: 16,
 		right: 16,
-	},
-	endDeploymentFab: {
-		backgroundColor: '#FFAB00',
-		bottom: 80,
 	},
 	headerBackground: {
 		position: "absolute",

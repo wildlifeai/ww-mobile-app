@@ -224,9 +224,8 @@ Bidirectional sync between WatermelonDB and Supabase. Sync is debounced (2s) and
 | `Notifications` | `Notifications` | — |
 | `Profile` | `Profile` | — |
 | `Settings` | `Settings` | — |
-| `DeviceDiscovery` | `DeviceDiscoveryScreen` | `{ mode: 'prepare' \| 'engineer' \| 'deployment' }` |
+| `DeviceDiscovery` | `DeviceDiscoveryScreen` | `{ mode: 'prepare' \| 'engineer' \| 'deployment' \| 'auto' }` |
 | `DeviceDetails` | `DeviceDetailsScreen` | `{ deviceId }` |
-| `PrepareAndTest` | `PrepareAndTestScreen` | `{ deviceId, bleDeviceId, selftestError?, setUtcError?, nextRoute? }` |
 | `EngineerConsoleScreen` | `EngineerConsoleScreen` | `{ deviceId }` |
 | `DfuScreen` | `DfuScreen` | `{ deviceId }` |
 | `NewProjectScreen` | `NewProjectScreen` | — |

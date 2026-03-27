@@ -27,6 +27,7 @@ export interface ProjectFormData {
 	activity_detection_sensitivity_id: string
 	timelapse_interval_seconds: string
 	model_id: string
+	is_archived: boolean
 }
 
 export const useProjectDetails = (projectId: string) => {
@@ -57,7 +58,6 @@ export const useProjectDetails = (projectId: string) => {
 
 	// Mutations
 	const [updateProject, { isLoading: isUpdating }] = useUpdateProjectMutation()
-	const [deleteProject, { isLoading: isDeleting }] = useDeleteProjectMutation()
 	const [removeMember] = useRemoveProjectMemberMutation()
 
 	// Form
@@ -79,6 +79,7 @@ export const useProjectDetails = (projectId: string) => {
 			activity_detection_sensitivity_id: "",
 			timelapse_interval_seconds: "",
 			model_id: "",
+			is_archived: false,
 		},
 		values: project ? {
 			name: project.name,
@@ -91,6 +92,7 @@ export const useProjectDetails = (projectId: string) => {
 			activity_detection_sensitivity_id: project.activity_detection_sensitivity_id?.toString() || "",
 			timelapse_interval_seconds: project.timelapse_interval_seconds?.toString() || "",
 			model_id: project.model_id || "",
+			is_archived: project.is_active === false,
 		} : undefined,
 	})
 
@@ -144,51 +146,62 @@ export const useProjectDetails = (projectId: string) => {
 
 	const handleSave = useCallback(
 		async (data: ProjectFormData) => {
-			try {
-				await updateProject({
-					id: projectId,
-					updates: {
-						name: data.name.trim(),
-						description: data.description.trim() || null,
-						sampling_design_id: data.sampling_design_id ? Number(data.sampling_design_id) : null,
-						website: data.website.trim() || null,
-						is_baited: data.is_baited,
-						is_monitoring_marked_individuals: data.is_monitoring_marked_individuals,
-						capture_method_id: data.capture_method_id ? Number(data.capture_method_id) : null,
-						activity_detection_sensitivity_id: data.activity_detection_sensitivity_id ? Number(data.activity_detection_sensitivity_id) : null,
-						timelapse_interval_seconds: data.timelapse_interval_seconds ? Number(data.timelapse_interval_seconds) : null,
-						model_id: data.model_id || null,
-					},
-				}).unwrap()
+			const performSave = async () => {
+				try {
+					await updateProject({
+						id: projectId,
+						updates: {
+							name: data.name.trim(),
+							description: data.description.trim() || null,
+							sampling_design_id: data.sampling_design_id ? Number(data.sampling_design_id) : null,
+							website: data.website.trim() || null,
+							is_baited: data.is_baited,
+							is_monitoring_marked_individuals: data.is_monitoring_marked_individuals,
+							capture_method_id: data.capture_method_id ? Number(data.capture_method_id) : null,
+							activity_detection_sensitivity_id: data.activity_detection_sensitivity_id ? Number(data.activity_detection_sensitivity_id) : null,
+							timelapse_interval_seconds: data.timelapse_interval_seconds ? Number(data.timelapse_interval_seconds) : null,
+							model_id: data.model_id || null,
+							is_active: !data.is_archived,
+						},
+					}).unwrap()
 
-				setIsEditMode(false)
-				refetch()
-			} catch (err) {
-				logError("Failed to update project:", err)
-				Alert.alert(
-					"Update Failed",
-					"Failed to update project. Please try again.",
-					[{ text: "OK" }],
-				)
+					setIsEditMode(false)
+					refetch()
+					if (data.is_archived) {
+						navigation.goBack() // Exit to projects list if archived
+					}
+				} catch (err) {
+					logError("Failed to update project:", err)
+					Alert.alert(
+						"Update Failed",
+						"Failed to update project. Please try again.",
+						[{ text: "OK" }],
+					)
+				}
 			}
-		},
-		[projectId, updateProject, refetch],
-	)
 
-	const handleDelete = useCallback(async () => {
-		try {
-			await deleteProject(projectId).unwrap()
-			setShowDeleteDialog(false)
-			navigation.goBack()
-		} catch (err) {
-			logError("Failed to delete project:", err)
-			Alert.alert(
-				"Delete Failed",
-				"Failed to delete project. Please try again.",
-				[{ text: "OK" }],
-			)
-		}
-	}, [projectId, deleteProject, navigation])
+			// Intercept if they are archiving the project
+			if (data.is_archived && project?.is_active) {
+				Alert.alert(
+					"Archive Project",
+					"Are you sure you want to archive this project? To unarchive projects you will need to contact the Wildlife Watcher team.",
+					[
+						{ text: "Cancel", style: "cancel" },
+						{
+							text: "Continue",
+							style: "destructive",
+							onPress: performSave,
+						},
+					]
+				)
+				return // Early return, saving will happen inside onPress
+			}
+
+			// Normal save
+			await performSave()
+		},
+		[projectId, updateProject, refetch, project, navigation],
+	)
 
 	const handleRemoveMember = useCallback(
 		async (userId: string) => {
@@ -243,7 +256,6 @@ export const useProjectDetails = (projectId: string) => {
 		errors,
 		isDirty,
 		isUpdating,
-		isDeleting,
 
 		// Options
 		samplingDesignOptions,
@@ -257,7 +269,6 @@ export const useProjectDetails = (projectId: string) => {
 		handleEdit,
 		handleCancelEdit,
 		handleSave,
-		handleDelete,
 		handleRemoveMember,
 		getLabel,
 	}

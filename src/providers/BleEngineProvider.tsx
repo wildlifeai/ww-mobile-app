@@ -13,6 +13,7 @@ export const BleEngineProvider = ({ children }: PropsWithChildren<{}>) => {
 	const {
 		isBleConnecting,
 		startScan,
+		stopScan,
 		connectDevice,
 		disconnectDevice,
 		write,
@@ -25,6 +26,7 @@ export const BleEngineProvider = ({ children }: PropsWithChildren<{}>) => {
 			value={{
 				isBleConnecting,
 				startScan,
+				stopScan,
 				connectDevice,
 				disconnectDevice,
 				write,

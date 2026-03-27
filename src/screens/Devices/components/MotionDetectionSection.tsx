@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useState, useEffect } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { Card, Button, Text, SegmentedButtons, useTheme } from 'react-native-paper'
 
@@ -53,6 +53,17 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
         }
     }, [bleDevice, setMdSensitivity])
 
+    useEffect(() => {
+        if (bleDeviceConnected && !isInitializing) {
+            log('[MotionDetectionSection] Auto-starting test on mount')
+            startTest()
+        }
+        return () => {
+            log('[MotionDetectionSection] Stopping test on unmount')
+            stopTest()
+        }
+    }, [bleDeviceConnected, isInitializing])
+
     const renderIcon = useCallback((props: any) => <WWIcon {...props} source="paw" />, [])
     const renderHelp = useCallback((props: any) => (
         <Button 
@@ -105,26 +116,60 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                     )}
                 </View>
 
-                {/* 16x16 Grid Visualizer */}
+                {/* Grid Visualizers */}
                 {isTesting && (
-                    <View style={styles.gridContainer}>
-                        {mdGrid.map((row, rowIndex) => (
-                            <View key={`row-${rowIndex}`} style={styles.gridRow}>
-                                {row.map((cell, colIndex) => (
-                                    <View
-                                        key={`cell-${rowIndex}-${colIndex}`}
-                                        style={[
-                                            styles.gridCell,
-                                            {
-                                                backgroundColor: cell 
-                                                    ? theme.colors.primary 
-                                                    : theme.colors.surfaceVariant
-                                            }
-                                        ]}
-                                    />
+                    <View style={styles.dualGridContainer}>
+                        <View style={styles.gridWrapper}>
+                            <WWText variant="labelSmall" style={styles.gridLabel}>16x16 Grid</WWText>
+                            <View style={styles.gridContainer}>
+                                {mdGrid.map((row, rowIndex) => (
+                                    <View key={`row-16-${rowIndex}`} style={styles.gridRow}>
+                                        {row.map((cell, colIndex) => (
+                                            <View
+                                                key={`cell-16-${rowIndex}-${colIndex}`}
+                                                style={[
+                                                    styles.gridCell,
+                                                    {
+                                                        backgroundColor: cell 
+                                                            ? theme.colors.primary 
+                                                            : theme.colors.surfaceVariant
+                                                    }
+                                                ]}
+                                            />
+                                        ))}
+                                    </View>
                                 ))}
                             </View>
-                        ))}
+                        </View>
+
+                        <View style={styles.gridWrapper}>
+                            <WWText variant="labelSmall" style={styles.gridLabel}>16x15 Grid</WWText>
+                            <View style={styles.gridContainer}>
+                                {Array.from({ length: 15 }).map((_, rowIndex) => (
+                                    <View key={`row-15-${rowIndex}`} style={styles.gridRow}>
+                                        {/* 16x15 means 16 columns, 15 rows. Total 240 bits. 
+                                            We take pixels from the flattened 16x16 array (256 bits) but only first 240. */}
+                                        {Array.from({ length: 16 }).map((_, colIndex) => {
+                                            const flatIndex = rowIndex * 16 + colIndex
+                                            const cell = mdGrid.flat()[flatIndex]
+                                            return (
+                                                <View
+                                                    key={`cell-15-${rowIndex}-${colIndex}`}
+                                                    style={[
+                                                        styles.gridCell,
+                                                        {
+                                                            backgroundColor: cell 
+                                                                ? theme.colors.tertiary
+                                                                : theme.colors.surfaceVariant
+                                                        }
+                                                    ]}
+                                                />
+                                            )
+                                        })}
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
                     </View>
                 )}
 
@@ -178,21 +223,35 @@ const styles = StyleSheet.create({
         marginLeft: 16,
         fontStyle: 'italic',
     },
+    dualGridContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'flex-start',
+        paddingVertical: 8,
+        backgroundColor: '#00000010',
+        borderRadius: 8,
+    },
+    gridWrapper: {
+        alignItems: 'center',
+    },
+    gridLabel: {
+        marginBottom: 4,
+        opacity: 0.7,
+        fontWeight: '700',
+    },
     gridContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 8,
-        backgroundColor: '#00000010', // Subtle background
-        borderRadius: 8,
+        padding: 4,
     },
     gridRow: {
         flexDirection: 'row',
     },
     gridCell: {
-        width: 14,
-        height: 14,
-        margin: 1,
-        borderRadius: 2,
+        width: 10,
+        height: 10,
+        margin: 0.5,
+        borderRadius: 1,
     },
     motionIndicator: {
         flexDirection: 'row',

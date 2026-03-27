@@ -1,124 +1,75 @@
-# Device Flows — Preparation, Deployment, and Retrieval
+# Device Flows — Scanner Routing, Deployment, and Retrieval
 
-All three device workflows share the same BLE initialization (`useBleInitialization`) and follow the same pattern: connect → initialise → act → quiesce → disconnect. This guide covers them in the order a device goes through its lifecycle.
+All device workflows share the same BLE initialization (`useBleInitialization`) and follow the same pattern: connect → initialise → act → quiesce → disconnect. This guide covers them in the order a device goes through its lifecycle.
 
 **Deep dive:** [BLE Architecture Guide](../resources/BLE_Architecture.md) — command system, timing constraints, message classification
 
 ---
 
-## Part 1: Device Preparation
+## Part 1: Scanner Routing (Automated Device Association)
 
-**Screen:** `PrepareAndTestScreen.tsx`
-**Entry:** Devices tab → "Prepare & Test" → select a device
+**Components:** `DeviceDiscoveryScreen.tsx`, `ScannerRoutingDialog.tsx`, `useDeviceDiscovery.ts`
+**Entry:** Scanner tab (default landing page — auto-scans immediately)
+
+> [!IMPORTANT]
+> The old `PrepareAndTestScreen` has been **removed**. Device preparation records are now created automatically in the background when a user associates a device with a project via the `ScannerRoutingDialog`.
 
 ### Flow
 
 ```mermaid
 flowchart TD
-    A["Device Discovery & BLE Connect"] --> B["Resolve/Create DB Record"]
-    B --> C["Load Device & Create Preparation Record"]
-    C --> D["BLE Initialization (6 Steps)"]
-    D --> E["User Actions (Project, Checks, Firmware, Camera)"]
-    E --> F{"Tap 'Finish Preparation'"}
-    F --> G["Safe Quiesce Sequence"]
-    G --> H["Mark Preparation Complete in DB"]
-    H --> I{"nextRoute param?"}
-    I -- Yes --> J["Navigate to Start Deployment"]
-    I -- No --> K["Disconnect & Navigate Home"]
+    A["Scanner auto-discovers BLE device"] --> B["Auto-connect to first device"]
+    B --> C["Resolve/Create DB Record"]
+    C --> D{"Active Deployment?"}
+    D -- Yes --> E["Show 'Active Deployment' dialog"]
+    E --> F["Route → End Deployment"]
+    D -- No --> G{"Freshly prepared?"}
+    G -- Yes --> H["Show 'Device Ready' dialog"]
+    H --> I["Route → Start Deployment"]
+    G -- No --> J{"User has projects?"}
+    J -- No --> K["Show 'No Projects' dialog"]
+    K --> L["Route → Create Project"]
+    J -- Yes --> M["Show project selector dialog"]
+    M --> N["User selects project"]
+    N --> O["Create background preparation record"]
+    O --> I
 ```
 
-### BLE Initialization Sequence
+### ScannerRoutingDialog States
 
-Steps 1–2 are shared with deployment flows via `useBleInitialization`; steps 3–6 are preparation-specific.
+| State | Trigger | User Action |
+|-------|---------|-------------|
+| `active_deployment` | Device has `status = deployed` | "Stop Deployment" → End Deployment flow |
+| `start_deployment` | Device has a fresh completed preparation | "Start Deployment" → Deployment details |
+| `no_projects` | User has 0 projects in current org | "Create Project" → New Project screen |
+| `unassociated` | Device is new/not recently prepared | Select project → auto-create prep record → Deployment details |
 
-| Step | Action | BLE Command | Source |
-|------|--------|-------------|--------|
-| 1 | Hardware Self-Test | `selftest` → parse `Error bits = 0xXXXX` | `useBleInitialization` |
-| 2 | Set UTC Time | `setutc <ISO>` (firmware confirms via response) | `useBleInitialization` |
-| 3 | **Bulk Fetch OP Parameters** | `AI getop -1` → returns all params | `useBleCommands.getAllOperationalParams()` |
-| 4 | Quiesce Device (disable camera) | Conditional `AI setop` (skips unchanged) | `useDeviceSettings.quiesceDevice(cachedOps)` |
-| 5 | Reset GPS | `setgps 0 0 0` | `useBleCommands.clearGpsLocation()` |
-| 6 | Clear Deployment IDs | Conditional `AI setop 20-27` (skips if already 0) | `useBleCommands.setDeploymentIdAsOps(null, cachedOps)` |
-| 7 | Automated Diagnostics | `battery`, `AI info`, `ver` | Screen handlers |
+### Background Preparation Record
 
-> [!TIP]
-> **Optimization:** Steps 4 and 6 use the cached result from Step 3's `AI getop -1` bulk fetch. This means only **one** round-trip to the AI processor is needed instead of two. Parameters that already match the target value are skipped entirely.
+When a user selects a project in the `unassociated` state, `DevicePreparationService.createDummyPreparationRecord()` creates a completed preparation record with all checks marked as passed. This satisfies the downstream `StartDeploymentScreen` which requires a `devicePreparationId`.
 
-> [!NOTE]
-> Step 1 includes a **1.5s stabilization delay** after connection to allow the device (especially LoRaWAN) to settle before the self-test.
+### Engineer Console (Side Drawer)
 
-### Self-Test Error Bits
+The **Engineer Console** is accessible via the hamburger menu in the side drawer, independent of the scanner flow.
 
-| Bit | Mask | Meaning |
-|-----|------|---------|
-| 0 | `0x0001` | Low Battery |
-| 1 | `0x0002` | AI Processor No Response |
-| 2 | `0x0004` | LoRaWAN Error |
-| 3 | `0x0008` | Watchdog Reset |
-| 4 | `0x0010` | Brownout Reset |
-| 8 | `0x0100` | Main Camera Error |
-| 9 | `0x0200` | Motion Detector Error |
-| 10 | `0x0400` | LED Flash Failure |
-| 11 | `0x0800` | No SD Card |
-| 12 | `0x1000` | PDM Microphone Failure |
-| 13 | `0x2000` | Neural Network Error |
-
-If the high byte is `0xFF` (e.g. `0xFF00`), the system is still initialising — bits are not yet valid.
-
-### User Actions
-
-After initialisation, the user can perform these in any order:
-
-**Project Selection (Required)** — determines capture method (Activity Detection or Timelapse). Last-used project pre-selected. Can create a new project inline.
-
-**Battery Check** — `battery` → parses `Battery = XXXXmV YY%`. Pass threshold: >30%.
-
-**SD Card Check (Two-Phase):**
-1. Primary: `AI info` → parses total/available KB
-2. Fallback: `selftest` → checks bit 11 (`0x0800`) for "No SD Card"
-3. Ambiguous: If AI info fails but bit 11 is clear → shows format warning
-
-**Firmware Check & Update:**
-- Version query: `ver` → parses `WW500-A00 V XX.YY.ZZ`
-- Update: `dfu` → 500ms → `dis` → wait 5s → scan for `WW500_DFU`/`DfuTarg` → DFU → wait 6s → reconnect → verify
-
-**Camera View Test** — `useCapturePreview` → `AI capture 1 0` → image from BLE chunks
-
-### Finish Preparation (Safe Quiesce)
-
-**Preconditions:** Project selected, SD card check passed, device connected.
-
-| Step | Action | BLE Command |
-|------|--------|-------------|
-| 1 | Store Preparation ID on device | `AI setop 20 <val>` … `AI setop 27 <val>` |
-| 2 | LED Confirmation | `flashg 2 500` (2 green flashes) |
-| 3 | Disconnect (if no `nextRoute`) | `dis` |
-
-Marks `DevicePreparation` as complete via `DevicePreparationService.completePreparation()`. If a `nextRoute` is set (e.g. `DeploymentDetailsStep`), skips disconnect and navigates directly.
-
-### Database Records (Preparation)
-
-| Service | Method | When |
-|---------|--------|------|
-| `DeviceService.getDeviceByBluetoothId` | Resolve or create device record | On mount |
-| `DevicePreparationService.startPreparation` | Create new preparation record | After device resolved |
-| `DevicePreparationService.updatePreparation` | Record check results | After each check |
-| `DevicePreparationService.completePreparation` | Mark preparation as ready | On finish |
+**Hook:** `useEngineerConnect.ts`
+**Dialog:** `EngineerConnectDialog.tsx`
+**Flow:** Hamburger → "Engineer Console" → scan → auto-connect (or select) → navigate to `EngineerConsoleScreen`
 
 ---
 
 ## Part 2: Starting a Deployment
 
 **Screen:** `StartDeploymentScreen.tsx` (`DeploymentDetailsStep`)
-**Entry:** Maps tab → "New Deployment" FAB → Device Discovery → select device
+**Entry:** Scanner tab → auto-connect → ScannerRoutingDialog → "Start Deployment"
 
 ### Flow
 
 ```mermaid
 flowchart TD
     A["Device Discovery & BLE Connect"] --> B{"Device Routing Logic"}
-    B -- "Already deployed" --> C["Warn: End current deployment first"]
-    B -- "Not prepared" --> D["Redirect to Prepare & Test<br/>(with nextRoute=DeploymentDetailsStep)"]
+    B -- "Already deployed" --> C["ScannerRoutingDialog: 'Active Deployment'"]
+    B -- "Unassociated" --> D["ScannerRoutingDialog: Project Selection<br/>(auto-creates prep record)"]
     B -- "Prepared & ready" --> E["DeploymentDetailsStep Screen"]
     
     E --> F["BLE Initialization (shared hook)"]
@@ -270,13 +221,13 @@ All three flows use the **bulk parameter fetch** command `AI getop -1` to minimi
 
 ## Connection Safety (All Screens)
 
-| Feature | Preparation | Start Deployment | End Deployment |
-|---------|-------------|-----------------|----------------|
-| Connection Lost Alert | ✅ (suppressed during DFU/reconnect) | ✅ (suppressed during init/submit) | Back handler only |
-| Heartbeat | Disabled | 20s interval | 20s interval |
-| Navigation Guard | `isNavigatingAway` ref | `isNavigatingAway` ref | `isNavigatingAway` ref |
-| In-Progress Guard | — | `isStartDeploymentInProgress` ref | `isEnding` state |
-| Unmount Cleanup | Auto-disconnect (unless navigating) | Auto-disconnect | Auto-disconnect |
+| Feature | Start Deployment | End Deployment |
+|---------|-----------------|----------------|
+| Connection Lost Alert | ✅ (suppressed during init/submit) | Back handler only |
+| Heartbeat | 20s interval | 20s interval |
+| Navigation Guard | `isNavigatingAway` ref | `isNavigatingAway` ref |
+| In-Progress Guard | `isStartDeploymentInProgress` ref | `isEnding` state |
+| Unmount Cleanup | Auto-disconnect (unless navigating) | Auto-disconnect |
 
 All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval` callbacks, preventing stale closure bugs.
 
@@ -284,14 +235,13 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval
 
 ## Troubleshooting
 
-### Preparation
+### Scanner Routing
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
-| "SD Card Check Failed" | Card not inserted, wrong format, or damaged | Re-insert, format to FAT32, or try different card |
-| "Project Required" | Finish tapped without selecting project | Select a project from dropdown |
-| "Connection Lost" during DFU | Expected — device reboots into bootloader | Wait for auto-reconnect |
-| "Reconnect Failed" after DFU | Device didn't advertise in time | Go back and re-select device |
+| Dialog not appearing | Device has stale preparation record | Clear app data or re-connect |
+| "No Projects Found" | User has no projects in current org | Create a project first |
+| Infinite connect loop | Navigation guard not reset | Fixed via `hasNavigatedRef` in `useEngineerConnect` |
 
 ### Start Deployment
 
@@ -311,4 +261,4 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval
 
 ---
 
-*Last Updated: March 22, 2026*
+*Last Updated: March 27, 2026*

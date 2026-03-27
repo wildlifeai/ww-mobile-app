@@ -20,6 +20,7 @@ interface ProjectFormData {
     timelapse_interval_seconds: string
     model_id: string
     record_gps_in_images: boolean
+    is_archived?: boolean
 }
 
 interface SelectOption {
@@ -38,6 +39,7 @@ interface Props {
     isLoadingModels: boolean
     modelsError: any
     hasAiModels: boolean
+    showArchiveToggle?: boolean
 }
 
 export const NewProjectSettingsSection: React.FC<Props> = ({
@@ -50,7 +52,8 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
     isTimeLapse,
     isLoadingModels,
     modelsError,
-    hasAiModels
+    hasAiModels,
+    showArchiveToggle = false
 }) => {
     const theme = useTheme()
     const [samplingHelpVisible, setSamplingHelpVisible] = useState(false)
@@ -252,6 +255,21 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                         iconColor={theme.colors.primary}
                     />
                 </View>
+
+                {showArchiveToggle && (
+                    <Controller
+                        control={control}
+                        name="is_archived"
+                        render={({ field: { value, onChange } }) => (
+                            <WWCheckbox
+                                label="Archive project"
+                                value={value}
+                                onChange={onChange}
+                                testID="is-archived-checkbox"
+                            />
+                        )}
+                    />
+                )}
                 </View>
             </List.Accordion>
 

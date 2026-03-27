@@ -86,10 +86,11 @@ components/
 ├── ProjectCard.tsx        # Project list item
 ├── DeploymentCard.tsx     # Deployment list item
 ├── DeviceItem.tsx         # Device list item
+├── EngineerConnectDialog.tsx # Side-drawer quick BLE connect for engineer console
 ├── NavigationBar.tsx      # Header bar
 ├── AppDrawer.tsx          # Side drawer menu
 ├── OrgSwitcher.tsx        # Organisation switcher
-└── SideNavigation.tsx     # Drawer content
+└── SideNavigation.tsx     # Drawer content (includes Engineer Console trigger)
 ```
 
 > [!TIP]
@@ -106,25 +107,34 @@ screens/                       navigation/screens/
 │   ├── EndDeploymentScreen    ├── Profile.tsx
 │   └── ...                    ├── Settings.tsx
 ├── Devices/                   └── ForgotPassword.tsx
-│   ├── PrepareAndTestScreen
 │   ├── DeviceDiscoveryScreen
-│   └── ...
+│   ├── DeviceDetailsScreen
+│   ├── EngineerConsoleScreen
+│   ├── components/
+│   │   └── ScannerRoutingDialog.tsx  # Post-scan routing (project association, deployment start/stop)
+│   └── hooks/
+│       └── useDeviceDiscovery.ts     # Scanner auto-connect + routing logic
 ├── Projects/
 │   ├── ProjectDetailsScreen
 │   └── ...
 └── AuthTestScreen.tsx (__DEV__)
 ```
 
+> [!NOTE]
+> The old `PrepareAndTestScreen` has been removed. Device preparation is now handled automatically by `ScannerRoutingDialog`, which creates background preparation records when associating a device with a project.
+
 ### `src/navigation/` — Navigation Setup
 
 ```
 navigation/
 ├── index.tsx              # Stack navigator + route definitions
-├── BottomTabs.tsx         # Bottom tab navigator (Maps, Projects, Deployments, Devices)
+├── BottomTabs.tsx         # Bottom tab navigator (Scanner, Map, Projects — 3 tabs)
 ├── types.ts               # Navigation TypeScript types
 ├── linking.ts             # Deep linking configuration
 └── screens/               # Auth & utility screens
 ```
+
+The app launches to the **Scanner** tab by default. The **Engineer Console** is accessible from the side drawer (hamburger menu) — not from a tab.
 
 The full route table with params is documented in [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md#route-table).
 
@@ -173,6 +183,7 @@ hooks/
 ├── useBleCommands.ts          # Typed BLE command wrappers
 ├── useBleInitialization.ts    # Shared self-test + UTC sync
 ├── useBleListeners.tsx        # BLE event listeners
+├── useEngineerConnect.ts      # Engineer Console BLE quick-connect from side drawer
 ├── useDeploymentConfiguration.ts # Atomic deployment config
 ├── useCapturePreview.ts       # Image capture flow
 ├── useDeviceSettings.ts       # Device quiesce + settings
@@ -372,4 +383,4 @@ const syncSlice = createSlice({
 
 ---
 
-*Last Updated: February 17, 2026*
+*Last Updated: March 27, 2026*

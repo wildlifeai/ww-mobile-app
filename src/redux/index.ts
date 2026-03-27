@@ -12,6 +12,7 @@ import deploymentsReducer from "./slices/deploymentsSlice"
 import wwAdminReducer from "./slices/wwAdminSlice"
 import syncReducer from "./slices/syncSlice"
 import networkReducer from "./slices/networkSlice"
+import locationReducer from "./slices/locationSlice"
 import { Action, ThunkAction, configureStore } from "@reduxjs/toolkit"
 import { api } from "./api"
 import { enhancedApi } from "./api/enhanced"
@@ -36,6 +37,7 @@ const store = configureStore({
 		wwAdmin: wwAdminReducer,
 		sync: syncReducer,
 		network: networkReducer,
+		location: locationReducer,
 	},
 	middleware: (getDefaultMiddleware) =>
 		getDefaultMiddleware({
