@@ -59,6 +59,7 @@ export const DeviceDiscoveryScreen = () => {
                     <WWText variant="titleLarge" style={styles.title}>
                         <Text>{mode === 'prepare' ? 'Select Device to Prepare' :
                          mode === 'deployment' ? 'Select Device to Deploy' :
+                         mode === 'auto' ? 'Searching for Wildlife Watchers' :
                          'Engineer Console: Select Device'}</Text>
                     </WWText>
                 </View>

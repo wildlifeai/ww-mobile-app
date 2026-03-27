@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Alert } from 'react-native'
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 
@@ -24,7 +24,7 @@ export const useDeviceDiscovery = () => {
     const currentOrganisation = useAppSelector(selectCurrentOrganisation)
     const user = useAppSelector((state) => state.authentication.user)
 
-    const mode = route.params?.mode || 'prepare' // Default to 'prepare' if not specified
+    const mode = route.params?.mode || 'auto' // Default to 'auto' for the new UX flow
 
     const isBleBusy = isBleConnecting || isScanning
 
@@ -44,6 +44,9 @@ export const useDeviceDiscovery = () => {
     const isAnyDeviceConnecting = useMemo(() => {
         return !!Object.values(devices).find((device) => device.loading)
     }, [devices])
+
+    const [processing, setProcessing] = useState(false)
+
 
     // Start scanning when screen is focused
     useFocusEffect(
@@ -71,8 +74,6 @@ export const useDeviceDiscovery = () => {
             log('Scanning already taking place, skipping.')
         }
     }, [isBleBusy, isScanning, startScan])
-
-    const [processing, setProcessing] = useState(false)
 
     const handleDeviceSelect = useCallback(
         async (device: ExtendedPeripheral) => {
@@ -135,6 +136,58 @@ export const useDeviceDiscovery = () => {
                             setProcessing(false)
                             return
                         }
+                    }
+
+                    if (mode === 'auto') {
+                        // Smart Routing: End Deployment, Start Deployment, or Prepare
+                        let status = 'unprepared'
+                        if (dbDevice) {
+                            status = await DeviceService.calculateDeviceStatus(dbDevice.id)
+                        }
+
+                        if (status === 'deployed') {
+                            // Proceed to End Deployment Step 2 immediately if possible, else Wizard
+                            const activeDeployment = dbDevice ? await DeploymentService.getActiveDeploymentForDeviceId(dbDevice.id) : null
+                            if (activeDeployment) {
+                                log(`activeDeployment found: ${activeDeployment.id}. Proceeding to End Deployment details.`);
+                                (navigation as any).navigate('EndDeploymentDetailsStep', {
+                                    deploymentId: activeDeployment.id,
+                                    deviceId: dbDevice!.id,
+                                    bleDeviceId: connectedDevice.id
+                                })
+                            } else {
+                                (navigation as any).navigate('EndDeploymentWizard', { mode: 'end_deployment' })
+                                disconnectDevice(device)
+                            }
+                            setProcessing(false)
+                            return
+                        }
+
+                        // Check preparation status
+                        const lastPrep = dbDevice ? await DevicePreparationService.getLastCompletedPreparation(dbDevice.id) : null
+                        const lastEndedDeployment = dbDevice ? await DeploymentService.getLastEndedDeploymentForDeviceId(dbDevice.id) : null
+
+                        const isFreshlyPrepared = lastPrep && (
+                            !lastEndedDeployment ||
+                            !lastEndedDeployment.deploymentEnd ||
+                            lastPrep.createdAt > lastEndedDeployment.deploymentEnd
+                        )
+
+                        if (isFreshlyPrepared && lastPrep.isDeploymentReady) {
+                            log(`Device ${dbDevice?.id} is prepared. Proceeding to Start deployment.`);
+                            (navigation as any).navigate('DeploymentDetailsStep', {
+                                devicePreparationId: lastPrep.id,
+                                deviceId: dbDevice!.id,
+                                bleDeviceId: connectedDevice.id
+                            })
+                        } else {
+                            log(`Device ${dbDevice?.id} not fully prepared. Redirecting to preparation.`);
+                            (navigation as any).navigate('PrepareAndTest', {
+                                bleDeviceId: connectedDevice.id,
+                            })
+                        }
+                        setProcessing(false)
+                        return
                     }
 
                     if ((mode as string) === 'end_deployment') {
@@ -241,6 +294,17 @@ export const useDeviceDiscovery = () => {
         },
         [connectDevice, disconnectDevice, navigation, currentOrganisation, mode, processing, user?.id]
     )
+
+    // Auto-connect if exactly one device is found and we are in the base tab (auto mode)
+    useEffect(() => {
+        if (!isScanning && devicesToDisplay.length === 1 && mode === 'auto') {
+            const singleDevice = devicesToDisplay[0]
+            if (!singleDevice.connected && !singleDevice.loading && !processing) {
+                log(`[DeviceDiscovery] Auto-connecting to the only discovered device: ${singleDevice.id}`)
+                handleDeviceSelect(singleDevice)
+            }
+        }
+    }, [isScanning, devicesToDisplay, mode, isAnyDeviceConnecting, processing, handleDeviceSelect])
 
     const handleDisconnect = useCallback(async (device: ExtendedPeripheral) => {
         log(`Disconnecting from ${device.id}`)

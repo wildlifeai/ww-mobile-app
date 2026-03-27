@@ -19,7 +19,7 @@ export interface RootStackParamList extends ParamListBase {
 	DevBuildInfo: undefined
 	AuthTestScreen: undefined
 	DeveloperSettings: undefined
-	DeviceDiscovery: { mode: 'prepare' | 'engineer' | 'deployment' }
+	DeviceDiscovery: { mode: 'prepare' | 'engineer' | 'deployment' | 'auto' | 'end_deployment' } | undefined
 	DeviceDetails: { deviceId: string }
 	EngineerConsoleScreen: { deviceId: string }
 	PrepareAndTest: { deviceId: string; bleDeviceId: string; selftestError?: string; setUtcError?: string; nextRoute?: string }
