@@ -122,9 +122,9 @@
     }
   },
   "blockedPackages": {
-    "react-native-vector-icons": {
-      "reason": "Use @expo/vector-icons instead for Expo managed workflow (Note: project currently has it installed, verify if needed)",
-      "alternative": "@expo/vector-icons",
+    "@expo/vector-icons": {
+      "reason": "Deprecated in Expo SDK 52+. Use react-native-vector-icons or expo-symbols instead.",
+      "alternative": "react-native-vector-icons",
       "severity": "warning"
     }
   },

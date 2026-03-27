@@ -63,7 +63,7 @@ This system exists to **protect the dependency chain** by:
    - `expo-dev-client: ~6.0.20` — must match SDK
 
 3. **Package Migration Guards**: Prevents reverting to bare RN packages
-   - **Blocks** `react-native-vector-icons` → **Must use** `@expo/vector-icons`
+   - **Blocks** `@expo/vector-icons` → **Must use** `react-native-vector-icons` or `expo-symbols`
 
 4. **Dependency Cascade Protection**: Ensures transitive dependencies don't break constraints
    - Package overrides enforce versions throughout the dependency tree
