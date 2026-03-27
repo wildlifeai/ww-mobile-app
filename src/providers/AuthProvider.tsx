@@ -1,4 +1,5 @@
 import { PropsWithChildren, useEffect, useRef } from "react"
+import { batch } from "react-redux"
 import { useAppDispatch } from "../redux"
 import {
 	setCredentials,
@@ -22,8 +23,10 @@ export const AuthProvider = ({ children }: PropsWithChildren<unknown>) => {
 				// Supabase's onAuthStateChange immediately fires with the current session
 				authListenerRef.current = setupAuthListener((authResponse) => {
 					if (authResponse) {
-						dispatch(setProfileLoading(true))
-						dispatch(setCredentials(authResponse))
+						batch(() => {
+							dispatch(setProfileLoading(true))
+							dispatch(setCredentials(authResponse))
+						})
 					} else {
 						dispatch(logout())
 					}

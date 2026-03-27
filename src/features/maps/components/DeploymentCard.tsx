@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated'
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useExtendedTheme } from '../../../theme'
 import type Deployment from '../../../database/models/Deployment'
 

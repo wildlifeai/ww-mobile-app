@@ -2,7 +2,7 @@
 import React, { useRef, useLayoutEffect, useState, memo } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { Marker } from 'react-native-maps'
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import type Deployment from '../../../database/models/Deployment'
 
 interface Props {

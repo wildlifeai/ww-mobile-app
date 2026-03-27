@@ -1,8 +1,6 @@
-import groovy.json.JsonSlurper
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
-import groovy.json.JsonSlurper
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -86,7 +84,7 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 android {
     ndkVersion rootProject.ext.ndkVersion
 
-
+    buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace 'com.wildlife.wildlifewatcher'
@@ -95,43 +93,28 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        def packageJsonFile = new File(rootProject.projectDir.parentFile, 'package.json')
-        def packageJson = new groovy.json.JsonSlurper().parseText(packageJsonFile.text)
-        versionName packageJson.version
-        
-        // Dynamically set expo_runtime_version to match package.json version
-        resValue "string", "expo_runtime_version", packageJson.version
+        versionName "0.0.38"
 
-        buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
-
-        def googleMapsApiKey = System.getenv("GOOGLE_MAPS_API_KEY_ANDROID") ?: null
+        def googleMapsApiKey = System.getenv("GOOGLE_MAPS_API_KEY_ANDROID")
         if (!googleMapsApiKey) {
-            // Fallback: try to read from .env file manually
             try {
-                def envFile = file("${projectRoot}/.env")
+                def envFile = file("../../.env.development")
+                if (!envFile.exists()) {
+                    envFile = file("../../.env.local")
+                }
                 if (envFile.exists()) {
                     envFile.eachLine { line ->
-                        def matcher = (line =~ /^\s*GOOGLE_MAPS_API_KEY_ANDROID\s*=\s*("([^"]*)"|'([^']*)'|([^#\s]+))/)
-                        if (matcher) {
-                            // Handle double-quoted, single-quoted, or unquoted values
-                            // For unquoted values, stop at first '#' or whitespace
-                            googleMapsApiKey = matcher[0][2] ?: matcher[0][3] ?: matcher[0][4]
+                        if (line.startsWith("GOOGLE_MAPS_API_KEY_ANDROID=")) {
+                            googleMapsApiKey = line.substring("GOOGLE_MAPS_API_KEY_ANDROID=".length()).trim()
                         }
                     }
                 }
-            } catch (Exception e) {
-                // Ignore parsing errors
-            }
-        }
-
-        // Fail the build if the Google Maps API key is missing during an actual app build.
-        // This allows `expo prebuild` to run without the key, but prevents creating a broken APK.
-        def isAssembleTask = gradle.startParameter.taskNames.any { it.toLowerCase().contains('assemble') }
-        if (isAssembleTask && !googleMapsApiKey) {
-            throw new GradleException("Missing GOOGLE_MAPS_API_KEY_ANDROID environment variable. Please set it in your environment or in a .env file for local development.")
+            } catch (Exception e) {}
         }
         
         manifestPlaceholders = [GOOGLE_MAPS_API_KEY_ANDROID: googleMapsApiKey ?: ""]
+
+        buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
     signingConfigs {
         debug {

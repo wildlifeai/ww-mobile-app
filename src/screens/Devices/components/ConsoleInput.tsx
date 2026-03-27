@@ -1,6 +1,6 @@
 
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { KeyboardStickyView } from "react-native-keyboard-controller";
 
 interface ConsoleInputProps {

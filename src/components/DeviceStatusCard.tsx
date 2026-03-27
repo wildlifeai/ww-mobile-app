@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 
 interface StatusItemProps {
     label: string
