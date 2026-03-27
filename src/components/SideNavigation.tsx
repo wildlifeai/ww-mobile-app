@@ -120,6 +120,17 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 			<Button
 				textColor={colors.onBackground}
 				style={[dynamicStyles.link, styles.link]}
+				icon="wrench"
+				onPress={() => {
+					(navigation as any).navigate("DeviceDiscovery", { mode: 'engineer' })
+					drawerControls(false)
+				}}
+			>
+				<Text>Engineer Console</Text>
+			</Button>
+			<Button
+				textColor={colors.onBackground}
+				style={[dynamicStyles.link, styles.link]}
 				icon="logout"
 				onPress={onLogout}
 			>
