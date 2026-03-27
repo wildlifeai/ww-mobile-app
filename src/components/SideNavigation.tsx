@@ -122,7 +122,7 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 				style={[dynamicStyles.link, styles.link]}
 				icon="wrench"
 				onPress={() => {
-					(navigation as any).navigate("DeviceDiscovery", { mode: 'engineer' })
+					navigation.navigate("DeviceDiscovery", { mode: 'engineer' })
 					drawerControls(false)
 				}}
 			>
