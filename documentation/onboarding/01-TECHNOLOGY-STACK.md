@@ -132,7 +132,6 @@ High-performance, reactive, offline-first local database built on SQLite. This i
 | `Project` | `projects` | `name`, `organisationId`, `captureMethodId`, `isActive` |
 | `Deployment` | `deployments` | `name`, `projectId`, `deviceId`, `latitude`, `longitude` |
 | `Device` | `devices` | `name`, `serialNumber`, `type` |
-| `DevicePreparation` | `device_preparation` | `deviceId`, `projectId`, battery/SD/firmware checks |
 | `Organisation` | `organisations` | `name` |
 | `SyncOutbox` | `sync_outbox` | `operationId`, `tableName`, `recordId`, `status` |
 | `User` | `users` | `email`, `firstName`, `lastName` |
@@ -233,7 +232,7 @@ Bidirectional sync between WatermelonDB and Supabase. Sync is debounced (2s) and
 | `ProjectMembersScreen` | `ProjectMembersScreen` | `{ projectId, projectName }` |
 | `AddDeployment` | `AddDeployment` | `{ selectedProject? }` |
 | `StartDeploymentWizard` | `DeviceDiscoveryScreen` | `{ mode: 'deployment' }` |
-| `DeploymentDetailsStep` | `DeploymentDetailsStep` | `{ devicePreparationId, deviceId, bleDeviceId }` |
+| `DeploymentDetailsStep` | `DeploymentDetailsStep` | `{ deviceId, bleDeviceId }` |
 | `DeploymentDetails` | `DeploymentDetailsScreen` | `{ deploymentId }` |
 | `EndDeploymentWizard` | `DeviceDiscoveryScreen` | `{ mode: 'end_deployment', deploymentId? }` |
 | `EndDeploymentDetailsStep` | `EndDeploymentDetailsStep` | `{ deploymentId, deviceId, bleDeviceId }` |
@@ -475,7 +474,7 @@ export type OfflineOperationType =
 
 ## Next Steps
 
-1. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device preparation, deployment, and retrieval
+1. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device deployment, management, and retrieval
 2. [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) — Project structure, type architecture, and state management
 3. [BLE_Architecture.md](../resources/BLE_Architecture.md) — BLE patterns and firmware constraints
 4. [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) — Offline-first architecture and sync

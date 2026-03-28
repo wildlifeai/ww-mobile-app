@@ -44,6 +44,7 @@ interface ProjectFormData {
 	timelapse_interval_seconds: string
 	model_id: string
 	record_gps_in_images: boolean
+	lorawan_required: boolean
 }
 
 export const NewProjectScreen = () => {
@@ -87,6 +88,7 @@ export const NewProjectScreen = () => {
 			timelapse_interval_seconds: "30", // Default timelapse interval
 			model_id: "",
 			record_gps_in_images: false,
+			lorawan_required: false,
 		},
 	})
 
@@ -215,6 +217,7 @@ export const NewProjectScreen = () => {
 					? Number(data.timelapse_interval_seconds)
 					: undefined,
 				record_gps_in_images: data.record_gps_in_images,
+				lorawan_required: data.lorawan_required,
 			}
 
 			await createProject(input).unwrap()

@@ -7,6 +7,7 @@ import { WWButton } from '../../components/ui/WWButton'
 import { RootStackParamList } from '../../navigation/types'
 import { Card, Text, Button, useTheme } from 'react-native-paper'
 import { WWIcon } from '../../components/ui/WWIcon'
+import { WWSelect } from '../../components/ui/WWSelect'
 import { InitializationHeader } from '../Devices/components/InitializationHeader'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 
@@ -28,14 +29,14 @@ export const DeploymentDetailsStep = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
     const route = useRoute<DeploymentDetailsRouteProp>()
 
-    const { devicePreparationId, deviceId, bleDeviceId } = route.params || {}
+    const { projectId, deviceId, bleDeviceId, initPayload } = route.params || {}
 
     const {
-        formState, submitting, project, captureMethodName, sensitivityLabel,
+        formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         handleImageCaptured,
-        handleNameChange, handleNotesChange,
+        handleNameChange, handleNotesChange, handleProjectChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
         helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp,
         // Advanced Settings
@@ -43,7 +44,7 @@ export const DeploymentDetailsStep = () => {
         bleFirmwareUpdateAvailable, firmwareUpdateProgress, isUpdatingFirmware,
         isCheckingFirmware, isVerifyingUpdate, firmwareUpdateStatus,
         handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, handleBleFirmwareUpdate
-    } = useStartDeployment({ deviceId, bleDeviceId, devicePreparationId, navigation })
+    } = useStartDeployment({ deviceId, bleDeviceId, projectId, navigation, initPayload })
 
     const renderProjectSettingsLeft = useCallback((props: any) => <WWIcon {...props} source="tune" />, [])
     const renderProjectSettingsRight = useCallback((props: any) => (
@@ -54,13 +55,13 @@ export const DeploymentDetailsStep = () => {
 
 
     // Sanity Check: Ensure required params are present
-    if (!devicePreparationId) {
+    if (!deviceId) {
         return (
             <WWScreenView>
                 <View style={styles.errorContainer}>
                     <Text variant="headlineMedium" style={styles.errorTitle}>Error</Text>
                     <Text variant="bodyLarge" style={styles.errorMessage}>
-                        Missing Device Preparation ID. Unable to proceed with deployment.
+                        Missing Device ID. Unable to proceed with deployment.
                     </Text>
                     <Button mode="contained" onPress={() => navigation.goBack()}>
                         <Text>Go Back</Text>
@@ -97,9 +98,14 @@ export const DeploymentDetailsStep = () => {
                         right={renderProjectSettingsRight}
                     />
                     <Card.Content>
-                        <View style={styles.infoRow}>
-                            <Text variant="labelMedium">Project:</Text>
-                            <Text variant="bodyLarge">{project ? project.name : 'Loading...'}</Text>
+                        <View style={styles.projectSelectContainer}>
+                            <WWSelect
+                                label="Project"
+                                value={project?.id || ''}
+                                options={availableProjects.map((p) => ({ label: p.name, value: p.id }))}
+                                onChange={handleProjectChange}
+                                disabled={submitting || isInitializing}
+                            />
                         </View>
                         <View style={styles.infoRow}>
                             <Text variant="labelMedium">Capture Method:</Text>
@@ -235,6 +241,11 @@ const styles = StyleSheet.create({
     },
     infoRow: {
         marginBottom: 4
+    },
+    projectSelectContainer: {
+        marginBottom: 16,
+        marginTop: 4,
+        zIndex: 1000, 
     },
     errorContainer: {
         flex: 1,

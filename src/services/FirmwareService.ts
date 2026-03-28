@@ -1,4 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy'
+import { Q } from '@nozbe/watermelondb'
+import database from '../database'
 import Firmware from '../database/models/Firmware'
 import { getSupabaseClient } from './supabase'
 import { log, logError } from '../utils/logger'
@@ -111,6 +113,25 @@ class FirmwareService {
         const originalFilename = firmware.locationPath.split('/').pop() || 'unknown'
         
         return `${sanitizedType}_${sanitizedVersion}_${originalFilename}`
+    }
+
+    /**
+     * Resolves a firmware UUID by its type and version string.
+     */
+    async getFirmwareIdByVersion(type: 'ble' | 'himax' | 'config', version: string): Promise<string | null> {
+        try {
+            const firmwareCollection = database.get<Firmware>('firmware')
+            const firmwares = await firmwareCollection.query(
+                Q.where('type', type),
+                Q.where('version', version),
+                Q.where('is_active', true)
+            ).fetch()
+
+            return firmwares.length > 0 ? firmwares[0].id : null
+        } catch (error) {
+            logError(`Failed to resolve firmware ID for ${type} v${version}:`, error)
+            return null
+        }
     }
 }
 

@@ -13,7 +13,6 @@ import SyncState from './models/SyncState'
 import UserRole from './models/UserRole'
 import ProjectInvitation from './models/ProjectInvitation'
 import Device from './models/Device'
-import DevicePreparation from './models/DevicePreparation'
 import Firmware from './models/Firmware'
 // Reference Data Models
 import CaptureMethod from './models/CaptureMethod'
@@ -43,7 +42,6 @@ const database = new Database({
         UserRole,
         ProjectInvitation,
         Device,
-        DevicePreparation,
         Firmware,
         // Reference Data
         CaptureMethod,

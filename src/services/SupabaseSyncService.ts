@@ -8,7 +8,6 @@ import { Database } from '../types/database.types'
 import UserRole from '../database/models/UserRole'
 import Device from '../database/models/Device'
 import Project from '../database/models/Project'
-import DevicePreparation from '../database/models/DevicePreparation'
 import NetInfo from '@react-native-community/netinfo'
 import type { RootState } from '../redux'
 import { generateUUID } from '../utils/uuid'
@@ -187,7 +186,6 @@ class SupabaseSyncService {
             await this.syncUserRoles()
             await this.syncProjects()
             await this.syncDevices()
-            await this.syncDevicePreparation()
             await this.syncDeployments()
 
             // ================================================================
@@ -273,7 +271,6 @@ class SupabaseSyncService {
             const result: any = {
                 projects: { created: [], updated: [], deleted: [] },
                 devices: { created: [], updated: [], deleted: [] },
-                device_preparation: { created: [], updated: [], deleted: [] },
                 deployments: { created: [], updated: [], deleted: [] },
             }
 
@@ -357,9 +354,9 @@ class SupabaseSyncService {
             return result
         }
 
-        // Define upload order: Projects -> Devices -> Preparation -> Deployments
-        // This ensures Foreign Keys are satisfied (e.g. Device Prep needs Device, Deployment needs Device & Project)
-        const uploadOrder = ['projects', 'devices', 'device_preparation', 'deployments']
+        // Define upload order: Projects -> Devices -> Deployments
+        // This ensures Foreign Keys are satisfied (e.g. Deployment needs Device & Project)
+        const uploadOrder = ['projects', 'devices', 'deployments']
 
         const client = getSupabaseClient()
         let anyFailures = false
@@ -417,8 +414,8 @@ class SupabaseSyncService {
                     if (error.code === '23503') {
                         log('🚑 Attempting self-healing for Foreign Key violation...')
                         
-                        // Scenario A: device_preparation fails because device is missing
-                        if (tableName === 'device_preparation') {
+                        // Self-heal deployments that fail because a device hasn't been pushed yet
+                        if (tableName === 'deployments') {
                             log('🚑 Self-healing for missing device dependency...')
                             const devicesCollection = database.get<Device>('devices')
                             const missingDeviceIds = new Set<string>()
@@ -468,44 +465,6 @@ class SupabaseSyncService {
                                     }
                                 } catch (e) {
                                     log(`⚠️ Cannot heal device ${deviceId} - not found locally`)
-                                }
-                            }
-                        }
-                        
-                        // Scenario B: deployments failure because device_preparation is missing
-                        if (tableName === 'deployments') {
-                            log('🚑 Self-healing for missing device_preparation dependency...')
-                            const prepCollection = database.get<DevicePreparation>('device_preparation')
-                            const missingPrepIds = new Set<string>()
-
-                            for (const op of tableOps) {
-                                try {
-                                    const payload = JSON.parse(op.payload)
-                                    if (payload.device_preparation_id) missingPrepIds.add(payload.device_preparation_id)
-                                } catch (e) {}
-                            }
-
-                            for (const prepId of Array.from(missingPrepIds)) {
-                                try {
-                                    const localPrep = await prepCollection.find(prepId)
-                                    if (localPrep) {
-                                        const existingOps = await database.get<SyncOutbox>('sync_outbox').query(
-                                            Q.where('table_name', 'device_preparation'),
-                                            Q.where('record_id', prepId),
-                                            Q.where('operation_type', Q.oneOf(['CREATE', 'UPDATE'])),
-                                            Q.where('status', Q.oneOf(['pending', 'failed']))
-                                        ).fetch()
-
-                                        if (existingOps.length === 0) {
-                                            log(`🚑 Self-healing: Record exists locally but no outbox entry for ${prepId}. This is unexpected but healing by re-queueing...`)
-                                            // Trigger a dummy update to force a new sync entry if sync service can't find it
-                                            // For now we just log it as it should have been caught by 'failed' retry logic
-                                        } else {
-                                            log(`ℹ️ Prep record ${prepId} already has a ${existingOps[0].status} outbox entry. Sync retry logic should handle it next time.`)
-                                        }
-                                    }
-                                } catch (e) {
-                                    log(`⚠️ Cannot heal prep ${prepId} - not found locally`)
                                 }
                             }
                         }
@@ -598,7 +557,6 @@ class SupabaseSyncService {
             projects: new Set(),
             devices: new Set(),
             deployments: new Set(),
-            device_preparation: new Set(),
         }
 
         for (const op of pendingOps) {
@@ -662,29 +620,7 @@ class SupabaseSyncService {
                     return !isPending
                 }),
             },
-            device_preparation: {
-                created: (rawChanges.device_preparation?.created || []).filter((dp: any) => {
-                    const isPending = pendingByTable.device_preparation.has(dp.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered device_preparation CREATED: ${dp.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                updated: (rawChanges.device_preparation?.updated || []).filter((dp: any) => {
-                    const isPending = pendingByTable.device_preparation.has(dp.id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered device_preparation UPDATED: ${dp.id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-                deleted: (rawChanges.device_preparation?.deleted || []).filter((id: string) => {
-                    const isPending = pendingByTable.device_preparation.has(id)
-                    if (isPending) {
-                        log(`   ⚠️ Filtered device_preparation DELETED: ${id} (has pending changes)`)
-                    }
-                    return !isPending
-                }),
-            },
+
             devices: {
                 created: (rawChanges.devices?.created || []).filter((d: any) => {
                     const isPending = pendingByTable.devices.has(d.id)
@@ -718,9 +654,7 @@ class SupabaseSyncService {
             (rawChanges.deployments?.created?.length || 0) - (safeChanges.deployments.created.length) +
             (rawChanges.deployments?.updated?.length || 0) - (safeChanges.deployments.updated.length) +
             (rawChanges.deployments?.deleted?.length || 0) - (safeChanges.deployments.deleted.length) +
-            (rawChanges.device_preparation?.created?.length || 0) - (safeChanges.device_preparation.created.length) +
-            (rawChanges.device_preparation?.updated?.length || 0) - (safeChanges.device_preparation.updated.length) +
-            (rawChanges.device_preparation?.deleted?.length || 0) - (safeChanges.device_preparation.deleted.length) +
+
             (rawChanges.devices?.created?.length || 0) - (safeChanges.devices.created.length) +
             (rawChanges.devices?.updated?.length || 0) - (safeChanges.devices.updated.length) +
             (rawChanges.devices?.deleted?.length || 0) - (safeChanges.devices.deleted.length)
@@ -1070,98 +1004,6 @@ class SupabaseSyncService {
         log('✅ Devices sync complete')
     }
 
-    /**
-     * Sync device preparation records (incremental pull)
-     */
-    private async syncDevicePreparation(): Promise<void> {
-        const LAST_PULLED_KEY = SYNC_STATE_KEYS.DEVICE_PREP_LAST_PULLED_AT
-        const lastPulledStr = await SyncStateService.get(LAST_PULLED_KEY)
-        const lastPulledAt = lastPulledStr ? new Date(parseInt(lastPulledStr, 10)).toISOString() : new Date(0).toISOString()
-
-        log('📷 Syncing device_preparation since', lastPulledAt)
-
-        const client = getSupabaseClient()
-        const { data, error } = await client
-            .from('device_preparation')
-            .select('*')
-            .gt('updated_at', lastPulledAt)
-
-        if (error) {
-            logError('❌ Failed to sync device_preparation:', error)
-            return
-        }
-
-        if (!data || data.length === 0) {
-            log('✅ No new device preparation changes')
-            return
-        }
-
-        log(`📥 Received ${data.length} device preparation updates`)
-
-        await database.write(async () => {
-            const collection = database.get<DevicePreparation>('device_preparation')
-
-            for (const row of data) {
-                // Skip if deleted on server
-                if (row.deleted_at) {
-                    try {
-                        const existing = await collection.find(row.id)
-                        if (!existing._raw._status.includes('deleted')) {
-                            await existing.markAsDeleted()
-                        }
-                    } catch (e) {
-                        // Doesn't exist locally, skip
-                    }
-                    continue
-                }
-
-                // Update or create
-                try {
-                    const existing = await collection.find(row.id)
-                    await existing.update((rec) => {
-                        rec.deviceId = row.device_id || ''
-                        rec.projectId = row.project_id || ''
-                        rec.aiModelId = row.ai_model_id ?? undefined
-                        rec.bleFirmwareId = row.ble_firmware_id ?? undefined
-                        rec.configFirmwareId = row.config_firmware_id ?? undefined
-                        rec.himaxFirmwareId = row.himax_firmware_id ?? undefined
-                        rec.status = row.status
-                        rec.isDeploymentReady = row.is_deployment_ready
-                        rec.deviceEui = row.device_eui ?? undefined
-                        rec.lorawanNetwork = row.lorawan_network ?? undefined
-                        rec.lorawanRegistrationCompleted = row.lorawan_registration_completed
-                        rec.modifiedBy = row.modified_by ?? '';
-                        (rec._raw as any).updated_at = new Date(row.updated_at ?? Date.now()).getTime()
-                    })
-                } catch (e) {
-                    // Not found, create
-                    await collection.create((rec) => {
-                        rec._raw.id = row.id || ''
-                        rec.deviceId = row.device_id || ''
-                        rec.projectId = row.project_id || ''
-                        rec.aiModelId = row.ai_model_id ?? undefined
-                        rec.bleFirmwareId = row.ble_firmware_id ?? undefined
-                        rec.configFirmwareId = row.config_firmware_id ?? undefined
-                        rec.himaxFirmwareId = row.himax_firmware_id ?? undefined
-                        rec.status = row.status
-                        rec.isDeploymentReady = row.is_deployment_ready
-                        rec.deviceEui = row.device_eui ?? undefined
-                        rec.lorawanNetwork = row.lorawan_network ?? undefined
-                        rec.lorawanRegistrationCompleted = row.lorawan_registration_completed
-                        rec.modifiedBy = row.modified_by ?? '';
-                        (rec._raw as any).created_at = new Date(row.created_at ?? Date.now()).getTime()
-                        rec.updatedAt = new Date(row.updated_at ?? Date.now())
-                    })
-                }
-            }
-
-            // Update timestamp
-            const maxTimestamp = Math.max(...data.map((d: any) => new Date(d.updated_at).getTime()))
-            await SyncStateService.set(LAST_PULLED_KEY, maxTimestamp.toString())
-        })
-
-        log('✅ Device preparation sync complete')
-    }
 
     /**
      * Sync deployments (incremental pull)
@@ -1208,26 +1050,13 @@ class SupabaseSyncService {
                     continue
                 }
 
-                // Derive project_id from device_preparation if missing from server
-                let projectId = row.project_id || ''
-                if (!projectId && row.device_preparation_id) {
-                    try {
-                        const dp = await database.get<DevicePreparation>('device_preparation').find(row.device_preparation_id)
-                        projectId = (dp as any).projectId || ''
-                        if (projectId) {
-                            log(`[Sync] Derived project_id ${projectId} from device_preparation ${row.device_preparation_id}`)
-                        }
-                    } catch (e) {
-                        // device_preparation not synced yet, leave empty
-                    }
-                }
+                const projectId = row.project_id || ''
 
                 try {
                     const existing = await collection.find(row.id)
                     await existing.update((rec) => {
                         rec.projectId = projectId
                         rec.deviceId = row.device_id || ''
-                        rec.devicePreparationId = row.device_preparation_id || ''
 
                         rec.deploymentStatusId = row.deployment_status_id ?? undefined
                         rec.captureMethodId = row.capture_method_id ?? undefined
@@ -1270,7 +1099,6 @@ class SupabaseSyncService {
 
                         rec.projectId = projectId
                         rec.deviceId = row.device_id || ''
-                        rec.devicePreparationId = row.device_preparation_id || ''
 
                         rec.deploymentStatusId = row.deployment_status_id ?? undefined
                         rec.captureMethodId = row.capture_method_id ?? undefined

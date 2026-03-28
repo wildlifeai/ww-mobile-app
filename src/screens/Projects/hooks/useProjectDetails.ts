@@ -28,6 +28,7 @@ export interface ProjectFormData {
 	timelapse_interval_seconds: string
 	model_id: string
 	is_archived: boolean
+	lorawan_required: boolean
 }
 
 export const useProjectDetails = (projectId: string) => {
@@ -80,6 +81,7 @@ export const useProjectDetails = (projectId: string) => {
 			timelapse_interval_seconds: "",
 			model_id: "",
 			is_archived: false,
+			lorawan_required: false,
 		},
 		values: project ? {
 			name: project.name,
@@ -92,7 +94,8 @@ export const useProjectDetails = (projectId: string) => {
 			activity_detection_sensitivity_id: project.activity_detection_sensitivity_id?.toString() || "",
 			timelapse_interval_seconds: project.timelapse_interval_seconds?.toString() || "",
 			model_id: project.model_id || "",
-			is_archived: project.is_active === false,
+			is_archived: project.is_archived || project.is_active === false,
+			lorawan_required: project.lorawan_required || false,
 		} : undefined,
 	})
 
@@ -162,6 +165,8 @@ export const useProjectDetails = (projectId: string) => {
 							timelapse_interval_seconds: data.timelapse_interval_seconds ? Number(data.timelapse_interval_seconds) : null,
 							model_id: data.model_id || null,
 							is_active: !data.is_archived,
+							is_archived: data.is_archived,
+							lorawan_required: data.lorawan_required,
 						},
 					}).unwrap()
 

@@ -1,6 +1,14 @@
 import { ParamListBase, RouteProp } from "@react-navigation/native"
 import type { Option } from "../components/ui/WWSelect"
 
+export interface InitPayload {
+    batteryLevel: number | null
+    sdCardStatus: { total: number; free: number } | null
+    deviceFirmwareVersion: string | null
+    bleFirmwareUpdateAvailable: boolean
+    initErrors: { selftest?: string; setUtc?: string; deviceHealth?: string[] }
+}
+
 export interface RootStackParamList extends ParamListBase {
 	Notifications: undefined
 	Profile: undefined
@@ -25,7 +33,7 @@ export interface RootStackParamList extends ParamListBase {
 	EngineerConsoleScreen: { deviceId: string }
 	StandaloneMotionDetectionScreen: { deviceId: string }
 
-	DeploymentDetailsStep: { devicePreparationId: string; deviceId: string; bleDeviceId: string }
+	DeploymentDetailsStep: { projectId: string; deviceId: string; bleDeviceId: string; initPayload?: InitPayload }
 	DeploymentDetails: { deploymentId: string }
 	EndDeploymentWizard: { mode: 'end_deployment'; deploymentId?: string }
 	EndDeploymentDetailsStep: { deploymentId: string; deviceId: string; bleDeviceId: string }

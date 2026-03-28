@@ -22,6 +22,8 @@ interface ProjectFormData {
     timelapse_interval_seconds: string
     model_id: string
     record_gps_in_images: boolean
+    lorawan_required: boolean
+    is_archived?: boolean
 }
 
 interface SelectOption {
@@ -342,6 +344,22 @@ export const ProjectDetailsCard: React.FC<Props> = ({
                                     style={dynamicStyles.settingValue}
                                 >
                                     Record GPS in Images
+                                </Text>
+                            </View>
+                        )}
+
+                        {project.lorawan_required && (
+                            <View style={styles.settingRow}>
+                                <WWIcon
+                                    source="checkbox-marked"
+                                    size={20}
+                                    color={theme.colors.primary}
+                                />
+                                <Text
+                                    variant="bodyMedium"
+                                    style={dynamicStyles.settingValue}
+                                >
+                                    LoRaWAN Required
                                 </Text>
                             </View>
                         )}

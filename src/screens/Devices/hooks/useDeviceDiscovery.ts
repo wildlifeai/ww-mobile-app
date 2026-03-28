@@ -4,11 +4,11 @@ import { useIsFocused, useNavigation, useRoute, RouteProp } from '@react-navigat
 
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useBleCommands } from "../../../hooks/useBleCommands"
+import { useDevicePreDeploymentChecks } from '../../../hooks/useDevicePreDeploymentChecks'
 import { useAppDispatch, useAppSelector } from '../../../redux'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { DeviceService } from '../../../services/DeviceService'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
-import { DevicePreparationService } from '../../../services/DevicePreparationService'
 import { DeploymentService } from '../../../services/DeploymentService'
 import ProjectService from '../../../services/ProjectService'
 import { RootStackParamList } from '../../../navigation/types'
@@ -33,6 +33,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
     const { isBleConnecting, startScan, stopScan, connectDevice, disconnectDevice } = useBleActions()
     const { setGpsLocation } = useBleCommands()
+    const { runChecks: runPreDeploymentChecks } = useDevicePreDeploymentChecks()
     const devices = useAppSelector((state) => state.devices)
     const { isScanning } = useAppSelector((state) => state.scanning)
     const currentOrganisation = useAppSelector(selectCurrentOrganisation)
@@ -66,15 +67,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
     // Scanner Routing Dialog state
     const [routingState, setRoutingState] = useState<ScannerRoutingState>('idle')
-    const [routingProjects, setRoutingProjects] = useState<ProjectWithDetails[]>([])
-    const [routingDeviceName, setRoutingDeviceName] = useState<string | null>(null)
     const [routingIsProcessing, setRoutingIsProcessing] = useState(false)
-
-    // Refs to hold device context for dialog callbacks
-    const connectedDeviceRef = useRef<ExtendedPeripheral | null>(null)
-    const dbDeviceRef = useRef<Device | null>(null)
-    const activeDeploymentRef = useRef<Deployment | null>(null)
-    const lastPrepRef = useRef<any>(null)
 
     // We use a ref so the effect doesn't constantly re-run and interrupt scans
     const isReadyToScanRef = useRef(!isBleConnecting && !isScanning && !processing && !connectingDevice)
@@ -175,10 +168,6 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                         }
                     }
 
-                    // Store refs for dialog callbacks
-                    connectedDeviceRef.current = connectedDevice
-                    dbDeviceRef.current = dbDevice || null
-
                     if (mode === 'auto') {
                         await addLog('Finding the state of the device...')
 
@@ -189,56 +178,64 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                             if (status === 'deployed') {
                                 const activeDeployment = await DeploymentService.getActiveDeploymentForDeviceId(dbDevice.id)
                                 if (activeDeployment) {
-                                    activeDeploymentRef.current = activeDeployment
-                                    setRoutingDeviceName(device.name || device.id)
-                                    setRoutingState('active_deployment')
+                                    const projectAccess = await ProjectService.getProjectById(activeDeployment.projectId)
+
+                                    if (!projectAccess) {
+                                        setRoutingState('no_access_active_deployment')
+                                    } else {
+                                        // User has access -> Route directly to End Deployment
+                                        (navigation as any).navigate('EndDeploymentDetailsStep', {
+                                            deploymentId: activeDeployment.id,
+                                            deviceId: dbDevice.id,
+                                            bleDeviceId: connectedDevice.id
+                                        })
+                                    }
                                     setProcessing(false)
                                     setConnectingDevice(null)
                                     return
                                 }
                             }
 
-                            // Step 2: Check if device has been prepared before (associated)
-                            const lastPrep = await DevicePreparationService.getLastCompletedPreparation(dbDevice.id)
-                            const lastEndedDeployment = await DeploymentService.getLastEndedDeploymentForDeviceId(dbDevice.id)
+                            // Step 2 & 3: Not Deployed -> Check user projects & Auto-route to Start Deployment
+                            await addLog('Checking available projects...')
+                            if (user?.id && currentOrganisation?.id) {
+                                const projects = await ProjectService.getProjectsForUserInOrganisation(user.id, currentOrganisation.id)
 
-                            const isFreshlyPrepared = lastPrep && (
-                                !lastEndedDeployment ||
-                                !lastEndedDeployment.deploymentEnd ||
-                                lastPrep.createdAt > lastEndedDeployment.deploymentEnd
-                            )
+                                if (projects.length === 0) {
+                                    setRoutingState('no_projects')
+                                } else {
+                                    // Found projects! Select the best default
+                                    const lastEndedDeployment = await DeploymentService.getLastEndedDeploymentForDeviceId(dbDevice.id)
+                                    
+                                    let targetProjectId = projects[0].id // Fallback
+                                    
+                                    if (lastEndedDeployment && projects.some(p => p.id === lastEndedDeployment.projectId)) {
+                                        targetProjectId = lastEndedDeployment.projectId
+                                    }
 
-                            if (isFreshlyPrepared && lastPrep.isDeploymentReady) {
-                                lastPrepRef.current = lastPrep
-                                setRoutingDeviceName(device.name || device.id)
-                                setRoutingState('start_deployment')
-                                setProcessing(false)
-                                setConnectingDevice(null)
-                                return
-                            }
-                        }
+                                    // Pre-deployment Health Checks
+                                    const initPayload = await runPreDeploymentChecks(connectedDevice, (step) => {
+                                        addLog(step)
+                                    })
+                                    
+                                    await addLog('Ready for deployment')
 
-                        // Step 3: Device is unassociated — fetch user projects
-                        await addLog('Checking available projects...')
-                        if (user?.id && currentOrganisation?.id) {
-                            const projects = await ProjectService.getProjectsForUserInOrganisation(user.id, currentOrganisation.id)
-
-                            if (projects.length === 0) {
-                                setRoutingDeviceName(device.name || device.id)
-                                setRoutingState('no_projects')
+                                    // Route directly to Start Deployment
+                                    ;(navigation as any).navigate('DeploymentDetailsStep', {
+                                        projectId: targetProjectId,
+                                        deviceId: dbDevice.id,
+                                        bleDeviceId: connectedDevice.id,
+                                        initPayload
+                                    })
+                                }
                             } else {
-                                setRoutingProjects(projects)
-                                setRoutingDeviceName(device.name || device.id)
-                                setRoutingState('unassociated')
+                                setRoutingState('no_projects')
                             }
-                        } else {
-                            setRoutingDeviceName(device.name || device.id)
-                            setRoutingState('no_projects')
-                        }
 
-                        setProcessing(false)
-                        setConnectingDevice(null)
-                        return
+                            setProcessing(false)
+                            setConnectingDevice(null)
+                            return
+                        }
                     }
 
                     if ((mode as string) === 'end_deployment') {
@@ -286,101 +283,18 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
     // --- Scanner Routing Dialog Callbacks ---
 
-    const handleRoutingStartDeployment = useCallback(async () => {
-        const dbDevice = dbDeviceRef.current
-        const connDevice = connectedDeviceRef.current
-        const lastPrep = lastPrepRef.current
-
-        if (!dbDevice || !connDevice || !lastPrep) return
-
-        setRoutingIsProcessing(true)
-        try {
-            // Check if the prep is tied to a project with GPS recording enabled
-            if (lastPrep.project) {
-                const project = await lastPrep.project.fetch()
-                if (project && project.record_gps_in_images && currentLocation) {
-                    log(`[Scanner] Auto-syncing GPS to device ${connDevice.id} for project ${project.id}`)
-                    await setGpsLocation(connDevice, currentLocation.latitude, currentLocation.longitude, currentLocation.altitude)
-                }
-            }
-        } catch (error) {
-            logError('[Scanner] Optional GPS sync failed during start_deployment routing:', error)
-        } finally {
-            setRoutingIsProcessing(false)
-            setRoutingState('idle');
-            (navigation as any).navigate('DeploymentDetailsStep', {
-                devicePreparationId: lastPrep.id,
-                deviceId: dbDevice.id,
-                bleDeviceId: connDevice.id
-            })
-        }
-    }, [navigation, currentLocation, setGpsLocation])
-
-    const handleRoutingStopDeployment = useCallback(() => {
-        const dbDevice = dbDeviceRef.current
-        const connDevice = connectedDeviceRef.current
-        const activeDeployment = activeDeploymentRef.current
-
-        if (!dbDevice || !connDevice || !activeDeployment) return
-
-        setRoutingState('idle');
-        (navigation as any).navigate('EndDeploymentDetailsStep', {
-            deploymentId: activeDeployment.id,
-            deviceId: dbDevice.id,
-            bleDeviceId: connDevice.id
-        })
-    }, [navigation])
-
     const handleRoutingCreateProject = useCallback(() => {
         setRoutingState('idle');
         (navigation as any).navigate('NewProjectScreen')
     }, [navigation])
 
-    const handleRoutingAssociateDevice = useCallback(async (projectId: string) => {
-        const dbDevice = dbDeviceRef.current
-        const connDevice = connectedDeviceRef.current
-
-        if (!dbDevice || !connDevice || !user?.id) return
-
-        setRoutingIsProcessing(true)
-        try {
-            // Check project GPS preferences
-            const project = await ProjectService.getProjectById(projectId)
-            if (project && project.record_gps_in_images && currentLocation) {
-                log(`[Scanner] Auto-syncing GPS to device ${connDevice.id} for newly associated project ${projectId}`)
-                await setGpsLocation(connDevice, currentLocation.latitude, currentLocation.longitude, currentLocation.altitude)
-            }
-
-            const dummyPrep = await DevicePreparationService.createDummyPreparationRecord(
-                dbDevice.id,
-                projectId,
-                user.id
-            )
-            log(`[Scanner] Created dummy prep ${dummyPrep.id} for device ${dbDevice.id} -> project ${projectId}`)
-
-            setRoutingState('idle');
-            (navigation as any).navigate('DeploymentDetailsStep', {
-                devicePreparationId: dummyPrep.id,
-                deviceId: dbDevice.id,
-                bleDeviceId: connDevice.id
-            })
-        } catch (error) {
-            logError('[Scanner] Failed to associate device with project:', error)
-            Alert.alert('Error', 'Failed to associate device with project. Please try again.')
-        } finally {
-            setRoutingIsProcessing(false)
-        }
-    }, [navigation, user?.id, currentLocation, setGpsLocation])
-
     const handleRoutingDismiss = useCallback(() => {
         setRoutingState('idle')
-        setRoutingProjects([])
-        setRoutingDeviceName(null)
-        const connDevice = connectedDeviceRef.current
-        if (connDevice) {
-            disconnectDevice(connDevice)
+        // Ensure any active connection is thoroughly killed on dismiss
+        if (Object.values(devices).find(d => d.connected)) {
+            Object.values(devices).filter(d => d.connected).forEach(d => disconnectDevice(d))
         }
-    }, [disconnectDevice])
+    }, [disconnectDevice, devices])
 
     // Auto-connect logic
     const autoConnectIgnoredDevicesRef = useRef<Set<string>>(new Set())
@@ -434,13 +348,8 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         processing,
         // Scanner Routing Dialog
         routingState,
-        routingProjects,
-        routingDeviceName,
         routingIsProcessing,
-        handleRoutingStartDeployment,
-        handleRoutingStopDeployment,
         handleRoutingCreateProject,
-        handleRoutingAssociateDevice,
         handleRoutingDismiss,
     }
 }

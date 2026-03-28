@@ -271,6 +271,8 @@ class ProjectService {
 					project.modelId = input.model_id ?? null
 					project.isBaited = input.is_baited || false
 					project.recordGpsInImages = input.record_gps_in_images || false
+					project.lorawanRequired = input.lorawan_required || false
+					project.isArchived = false
 				})
 
 
@@ -343,6 +345,8 @@ class ProjectService {
 					if (updates.model_id !== undefined) p.modelId = updates.model_id ?? null
 					if (updates.is_baited !== undefined) p.isBaited = updates.is_baited ?? false
 					if (updates.record_gps_in_images !== undefined) p.recordGpsInImages = updates.record_gps_in_images ?? false
+					if (updates.lorawan_required !== undefined) p.lorawanRequired = updates.lorawan_required ?? false
+					if (updates.is_archived !== undefined) p.isArchived = updates.is_archived ?? false
 
 					if (currentUserId) p.modifiedBy = currentUserId
 				})
@@ -530,7 +534,7 @@ class ProjectService {
 			log(`[ProjectService] Enriching project: ${model.name} (${model.id})`)
 
 			// Fetch related counts in parallel for performance
-			const [memberCount, deploymentCount, activeDeploymentCount, devicePreparations] = await Promise.all([
+			const [memberCount, deploymentCount, activeDeploymentCount] = await Promise.all([
 				database.collections.get('user_roles').query(
 					Q.where('scope_type', 'project'),
 					Q.where('scope_id', model.id),
@@ -545,24 +549,15 @@ class ProjectService {
 					Q.where('project_id', model.id),
 					Q.where('deployment_end', null)
 				).fetch(),
-
-				database.collections.get('device_preparation').query(
-					Q.where('project_id', model.id)
-					// Note: Q.where('deleted_at', null) is intentionally omitted.
-					// WatermelonDB natively filters out soft-deleted records via its internal `_status` column.
-				).fetch()
 			])
 
-			// Calculate distinct device count
-			const preparationDeviceIds = devicePreparations.map((dp: any) => dp.deviceId)
-			
-			// Get all deployments to find all devices
+			// Calculate distinct device count from deployments
 			const allDeployments = await database.collections.get('deployments').query(
 				Q.where('project_id', model.id)
 			).fetch()
 			const deploymentDeviceIds = allDeployments.map((d: any) => d.deviceId)
 			
-			const uniqueDeviceIds = new Set([...preparationDeviceIds, ...deploymentDeviceIds])
+			const uniqueDeviceIds = new Set(deploymentDeviceIds)
             
             // Get active devices from ongoing deployments
             const activeDeploymentDeviceIds = new Set(activeDeploymentCount.map((d: any) => d.deviceId))
@@ -595,6 +590,8 @@ class ProjectService {
 				is_monitoring_marked_individuals: model.isMonitoringMarkedIndividuals || false,
 				project_image: model.projectImage || null,
 				record_gps_in_images: model.recordGpsInImages || false,
+				lorawan_required: model.lorawanRequired || false,
+				is_archived: model.isArchived || false,
 				// Computed fields
 				member_count: memberCount,
 				deployment_count: deploymentCount,
@@ -632,6 +629,8 @@ class ProjectService {
 			is_monitoring_marked_individuals: model.isMonitoringMarkedIndividuals || false,
 			project_image: model.projectImage || null,
 			record_gps_in_images: model.recordGpsInImages || false,
+			lorawan_required: model.lorawanRequired || false,
+			is_archived: model.isArchived || false,
 		}
 	}
 }

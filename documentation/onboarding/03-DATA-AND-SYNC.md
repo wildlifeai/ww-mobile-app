@@ -429,7 +429,7 @@ Based on past architectural issues, adhere strictly to these operational guardra
 ## Next Steps
 
 1. [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) — Where the offline code lives
-2. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device preparation and deployment lifecycle
+2. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device deployment lifecycle
 3. [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) — Complete dependency and sync service reference
 
 ## Resources

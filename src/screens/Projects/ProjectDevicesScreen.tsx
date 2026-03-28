@@ -3,7 +3,6 @@ import { Alert } from 'react-native'
 import { useRoute } from '@react-navigation/native'
 import { Q } from '@nozbe/watermelondb'
 import database from '../../database'
-import DevicePreparation from '../../database/models/DevicePreparation'
 import Deployment from '../../database/models/Deployment'
 import Device from '../../database/models/Device'
 import { DeviceCard } from '../../components/DeviceCard'
@@ -24,17 +23,12 @@ export const ProjectDevicesScreen = () => {
         try {
             setLoading(true)
 
-            // Find all preparations and deployments for this project
-            const preparations = await database.get<DevicePreparation>('device_preparation')
-                .query(Q.where('project_id', projectId))
-                .fetch()
-
+            // Find all deployments for this project to get device IDs
             const deployments = await database.get<Deployment>('deployments')
                 .query(Q.where('project_id', projectId))
                 .fetch()
 
             const deviceIds = new Set([
-                ...preparations.map(p => p.deviceId),
                 ...deployments.map(d => d.deviceId)
             ])
 
@@ -48,14 +42,9 @@ export const ProjectDevicesScreen = () => {
                     uniqueDevices.map(async (device) => {
                         const status: DeviceStatus = await DeviceService.calculateDeviceStatus(device.id)
 
-                        // Attempt to find battery info from the latest preparation
-                        const devicePreps = preparations.filter(p => p.deviceId === device.id)
-                        devicePreps.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-                        const latestPrep = devicePreps[0]
-
                         // Attempt to find last deployment
-                        const deviceDeployments = deployments.filter(d => d.deviceId === device.id)
-                        deviceDeployments.sort((a, b) => b.deploymentStart.getTime() - a.deploymentStart.getTime())
+                        const deviceDeployments = deployments.filter((d: Deployment) => d.deviceId === device.id)
+                        deviceDeployments.sort((a: Deployment, b: Deployment) => b.deploymentStart.getTime() - a.deploymentStart.getTime())
                         const lastDeployment = deviceDeployments[0]
 
                         return {
@@ -63,8 +52,6 @@ export const ProjectDevicesScreen = () => {
                             bluetoothId: device.bluetoothId,
                             name: device.name,
                             status,
-                            batteryLevel: latestPrep?.batteryLevelAtCheck,
-                            preparedDate: latestPrep?.completedAt ? new Date(latestPrep.completedAt) : undefined,
                             lastDeploymentDate: lastDeployment?.deploymentStart ? new Date(lastDeployment.deploymentStart) : undefined,
                         }
                     })

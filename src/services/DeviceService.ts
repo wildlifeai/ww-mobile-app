@@ -1,7 +1,6 @@
 import { Q } from '@nozbe/watermelondb'
 import database from '../database'
 import Device from '../database/models/Device'
-import DevicePreparation from '../database/models/DevicePreparation'
 import Deployment from '../database/models/Deployment'
 import { DeviceStatus, DeviceWithStatus, DeviceListItem } from '../types/device'
 import OutboxService from './OutboxService'
@@ -66,13 +65,13 @@ export const DeviceService = {
     },
 
     /**
-     * Calculate device status based on deployments and preparations
+     * Calculate device status based on deployments
      */
     calculateDeviceStatus: async (deviceId: string): Promise<DeviceStatus> => {
         // Check for active deployment
         const deploymentsCollection = database.get<Deployment>('deployments')
         const activeDeployments = await deploymentsCollection.query(
-            Q.on('device_preparation', 'device_id', deviceId),
+            Q.where('device_id', deviceId),
             Q.where('deployment_status_id', 1) // 1 = DEPLOYED
         ).fetch()
 
@@ -80,38 +79,19 @@ export const DeviceService = {
             return 'deployed'
         }
 
-        // Check for completed preparation
-        const preparationsCollection = database.get<DevicePreparation>('device_preparation')
-        const preparations = await preparationsCollection.query(
-            Q.where('device_id', deviceId),
-            Q.where('status', 'completed'),
-            Q.sortBy('created_at', Q.desc),
-            Q.take(1)
-        ).fetch()
-        const lastPreparation = preparations[0]
-
-        if (!lastPreparation) {
-            return 'needs_preparation'
-        }
-
-        // Check if last preparation is OLDER than the last ended deployment
+        // Check if any ended deployment exists
         const endedDeployments = await deploymentsCollection.query(
-            Q.on('device_preparation', 'device_id', deviceId),
-            Q.where('deployment_status_id', Q.notEq(1)), // Not active
-            Q.where('deployment_end', Q.notEq(null)),
+            Q.where('device_id', deviceId),
+            Q.where('deployment_status_id', Q.notEq(1)),
             Q.sortBy('deployment_end', Q.desc),
             Q.take(1)
         ).fetch()
-        const lastEndedDeployment = endedDeployments[0]
 
-        if (lastEndedDeployment && lastEndedDeployment.deploymentEnd) {
-            // If prep date is BEFORE deployment end date, it needs new preparation
-            if (lastPreparation.createdAt.getTime() < lastEndedDeployment.deploymentEnd.getTime()) {
-                return 'needs_preparation'
-            }
+        if (endedDeployments.length > 0) {
+            return 'prepared' // Device has been deployed before
         }
 
-        return 'prepared'
+        return 'needs_preparation'
     },
 
     /**
@@ -128,27 +108,16 @@ export const DeviceService = {
         if (status === 'deployed') {
             const deploymentsCollection = database.get<Deployment>('deployments')
             const deployments = await deploymentsCollection.query(
-                Q.on('device_preparation', 'device_id', deviceId),
+                Q.where('device_id', deviceId),
                 Q.where('deployment_status_id', 1) // 1 = DEPLOYED
             ).fetch()
             activeDeployment = deployments[0]
         }
 
-        // Get last preparation
-        const preparationsCollection = database.get<DevicePreparation>('device_preparation')
-        const preparations = await preparationsCollection.query(
-            Q.where('device_id', deviceId),
-            Q.where('status', 'completed'),
-            Q.sortBy('created_at', Q.desc)
-        ).fetch()
-        const lastPreparation = preparations[0]
-
         return {
             device,
             status,
             activeDeployment,
-            lastPreparation,
-            preparedDate: lastPreparation?.completedAt || lastPreparation?.createdAt,
         }
     },
 
@@ -158,7 +127,7 @@ export const DeviceService = {
     getDeviceDeploymentHistory: async (deviceId: string): Promise<Deployment[]> => {
         const deploymentsCollection = database.get<Deployment>('deployments')
         return await deploymentsCollection.query(
-            Q.on('device_preparation', 'device_id', deviceId),
+            Q.where('device_id', deviceId),
             Q.sortBy('deployment_start', Q.desc)
         ).fetch()
     },
@@ -172,7 +141,7 @@ export const DeviceService = {
         // Get last deployment (active or ended) for status display
         const deploymentsCollection = database.get<Deployment>('deployments')
         const allDeployments = await deploymentsCollection.query(
-            Q.on('device_preparation', 'device_id', device.id),
+            Q.where('device_id', device.id),
             Q.sortBy('deployment_start', Q.desc)
         ).fetch()
         const lastDeployment = allDeployments[0]
@@ -182,7 +151,6 @@ export const DeviceService = {
             name: device.name,
             bluetoothId: device.bluetoothId,
             status: deviceWithStatus?.status || 'needs_preparation',
-            batteryLevel: deviceWithStatus?.lastPreparation?.batteryLevelAtCheck || undefined,
             deploymentName: deviceWithStatus?.activeDeployment?.name || lastDeployment?.name,
             deploymentId: deviceWithStatus?.activeDeployment?.id || lastDeployment?.id,
             deploymentEndDate: (deviceWithStatus?.activeDeployment?.deploymentEnd || lastDeployment?.deploymentEnd)
@@ -192,7 +160,6 @@ export const DeviceService = {
                 ? new Date(lastDeployment.deploymentStart)
                 : undefined,
             projectName: undefined, // TODO: Resolve project name from deployment
-            preparedDate: deviceWithStatus?.preparedDate,
         }
     },
 
@@ -256,7 +223,7 @@ export const DeviceService = {
 
     /**
      * Get devices that user has access to via their projects
-     * Shows devices that have deployments OR device_preparation in user's accessible projects
+     * Shows devices that have deployments in user's accessible projects
      */
     getDevicesForUser: async (userId: string): Promise<DeviceListItem[]> => {
         // 1. Get user's accessible projects using the centralized service
@@ -268,16 +235,6 @@ export const DeviceService = {
         log(`[DeviceService] Found ${projectIds.size} accessible projects for user ${userId}`)
 
         if (projectIds.size === 0) {
-            // Even if no projects, check if user is Global Admin to see ALL devices?
-            // ProjectService handles Global Admin by returning ALL projects.
-            // But devices might exist WITHOUT a project (unassigned).
-            // Logic Check:
-            // If Global Admin, ProjectService returns ALL projects.
-            // DeviceService should probably return ALL devices too.
-            // But ProjectService logic for "Global Admin" returns all *projects*.
-            // Does it imply access to all *devices*?
-            // Yes, let's assume Global Admin should see everything.
-
             // Re-check Global Admin legacy check for safety/performance or unassigned devices
             const userRolesCollection = database.get('user_roles')
             const userRoles = await userRolesCollection.query(
@@ -297,25 +254,13 @@ export const DeviceService = {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const deviceIds = new Set<string>()
 
-        // Optimization: Use Q.oneOf if possible, but loop is safe for now
-        // We can query deployments where project_id IS IN projectIds via device_preparation
         const projectDeployments = await deploymentsCollection.query(
             Q.where('project_id', Q.oneOf(Array.from(projectIds)))
         ).fetch()
         projectDeployments.forEach(d => {
-            // Fix potential issue where deviceId might be accessed but is on relationship?
-            // Deployment model has deviceId field.
             if (d.deviceId) deviceIds.add(d.deviceId)
         })
         log(`[DeviceService] Found ${projectDeployments.length} deployments, cumulative devices: ${deviceIds.size}`)
-
-        // 4. Get device IDs from device_preparation in these projects
-        const preparationsCollection = database.get<DevicePreparation>('device_preparation')
-        const projectPreparations = await preparationsCollection.query(
-            Q.where('project_id', Q.oneOf(Array.from(projectIds)))
-        ).fetch()
-        projectPreparations.forEach(p => deviceIds.add(p.deviceId))
-        log(`[DeviceService] Found ${projectPreparations.length} preparations, cumulative devices: ${deviceIds.size}`)
 
         if (deviceIds.size === 0) {
             // Also check for Org Admin access to unassigned devices?

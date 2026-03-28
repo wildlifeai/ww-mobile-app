@@ -462,15 +462,7 @@ export const setupAuthListener = (
 						.catch(err => logError("Async org fetch failed", err))
 				}
 
-				// Trigger sync after successful sign-in to pull projects and other data
-				if (isAuthEvent) {
-					// Use a safe import or event trigger to avoid circular dependencies
-					// For now, we use a custom event that various services can listen to
-					log("Triggering post-auth sync event...");
-					// @ts-ignore - dynamic require to break cycle without dynamic import ESM issues
-					const { triggerPostAuthSync } = require('./SyncTriggerService');
-					triggerPostAuthSync();
-				}
+				// Syncing is exclusively handled by AppSetupProvider reacting to Redux user changes
 			} else {
 				currentUserId = null;
 				onAuthStateChange(null)

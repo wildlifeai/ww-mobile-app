@@ -16,6 +16,7 @@ import { StyleSheet, View, ScrollView } from "react-native"
 import { Text, useTheme, ActivityIndicator, Button } from "react-native-paper"
 import { useRoute, useNavigation } from "@react-navigation/native"
 import { useEffect } from "react"
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { WWScreenView } from "../../components/ui/WWScreenView"
@@ -33,6 +34,7 @@ export const ProjectDetailsScreen = () => {
 	const route = useRoute<AppParams<"ProjectDetailsScreen">>()
 	const navigation = useNavigation()
 	const { projectId } = route.params
+	const insets = useSafeAreaInsets()
 
 	const {
 		isEditMode,
@@ -142,7 +144,7 @@ export const ProjectDetailsScreen = () => {
 		<ScrollView style={styles.container}>
 			<OfflineIndicator />
 
-			<View style={styles.content}>
+			<View style={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
 				{/* Details Card */}
 				<ProjectDetailsCard
 					project={project}

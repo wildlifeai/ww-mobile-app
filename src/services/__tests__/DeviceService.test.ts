@@ -125,17 +125,14 @@ describe("DeviceService", () => {
 			;(ProjectService.getProjectsForUser as jest.Mock).mockResolvedValue(mockProjects)
 
 			// 1. Deployments query
-			const mockDeployments = [{ deviceId: "d1" }]
-			// 2. Preparations query
-			const mockPreparations = [{ deviceId: "d2" }]
-			// 3. Devices query
+			const mockDeployments = [{ deviceId: "d1" }, { deviceId: "d2" }]
+			// 2. Devices query
 			const mockDevices = [
 				{ id: "d1", name: "Device 1", bluetoothId: "bt1" },
 				{ id: "d2", name: "Device 2", bluetoothId: "bt2" }
 			]
 
 			const mockDeploymentsColl = { query: jest.fn().mockReturnThis(), fetch: jest.fn().mockResolvedValue(mockDeployments) }
-			const mockPrepsColl = { query: jest.fn().mockReturnThis(), fetch: jest.fn().mockResolvedValue(mockPreparations) }
 			const mockDevicesColl = { query: jest.fn().mockReturnThis(), fetch: jest.fn().mockResolvedValue(mockDevices) }
 			
 			// Mock getting status for list item
@@ -146,7 +143,6 @@ describe("DeviceService", () => {
 
 			;(database.get as jest.Mock).mockImplementation((table) => {
 				if (table === 'deployments') return mockDeploymentsColl
-				if (table === 'device_preparation') return mockPrepsColl
 				if (table === 'devices') return mockDevicesColl
 				return mockCollection
 			})
@@ -159,7 +155,7 @@ describe("DeviceService", () => {
 			const results = await DeviceService.getDevicesForUser("user-1")
 
 			expect(ProjectService.getProjectsForUser).toHaveBeenCalledWith("user-1")
-			// Should return 2 devices (d1 from deployment, d2 from preparation)
+			// Should return 2 devices (d1 and d2 from deployments)
 			expect(results).toHaveLength(2)
 			expect(DeviceService.deviceToListItem).toHaveBeenCalledTimes(2)
 		})

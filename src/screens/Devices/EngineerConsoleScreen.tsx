@@ -120,7 +120,7 @@ export const EngineerConsoleScreen = () => {
     }
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
             <ConsoleHeader
                 deviceName={device?.name || null}
                 deviceId={device.id}
@@ -155,6 +155,6 @@ export const EngineerConsoleScreen = () => {
                 imageUri={previewImageUri}
                 onDismiss={() => dispatch({ type: 'SET_SHOW_PREVIEW_MODAL', payload: false })}
             />
-        </View>
+        </SafeAreaView>
     )
 }

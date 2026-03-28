@@ -12,41 +12,37 @@ All device workflows share the same BLE initialization (`useBleInitialization`) 
 **Entry:** Scanner tab (default landing page — auto-scans immediately)
 
 > [!IMPORTANT]
-> The old `PrepareAndTestScreen` has been **removed**. Device preparation records are now created automatically in the background when a user associates a device with a project via the `ScannerRoutingDialog`.
+> The old `PrepareAndTestScreen` has been **removed**. Device configuration and metrics snapshots are captured directly when a user starts a deployment via the `ScannerRoutingDialog`.
 
 ### Flow
 
 ```mermaid
 flowchart TD
     A["Scanner auto-discovers BLE device"] --> B["Auto-connect to first device"]
-    B --> C["Resolve/Create DB Record"]
-    C --> D{"Active Deployment?"}
-    D -- Yes --> E["Show 'Active Deployment' dialog"]
-    E --> F["Route → End Deployment"]
-    D -- No --> G{"Freshly prepared?"}
-    G -- Yes --> H["Show 'Device Ready' dialog"]
-    H --> I["Route → Start Deployment"]
-    G -- No --> J{"User has projects?"}
-    J -- No --> K["Show 'No Projects' dialog"]
-    K --> L["Route → Create Project"]
-    J -- Yes --> M["Show project selector dialog"]
-    M --> N["User selects project"]
-    N --> O["Create background preparation record"]
-    O --> I
+    B --> C{"Active Deployment?"}
+    C -- Yes --> D{"User has project access?"}
+    D -- Yes --> E["Route → End Deployment"]
+    D -- No --> F["Show 'Access Denied' dialog"]
+    C -- No --> G{"User has projects?"}
+    G -- No --> H["Show 'No Projects' dialog"]
+    H --> I["Route → Create Project"]
+    G -- Yes --> J["Look up last project used"]
+    J --> K["Auto-create background prep record"]
+    K --> L["Route → Start Deployment"]
 ```
 
 ### ScannerRoutingDialog States
 
 | State | Trigger | User Action |
 |-------|---------|-------------|
-| `active_deployment` | Device has `status = deployed` | "Stop Deployment" → End Deployment flow |
-| `start_deployment` | Device has a fresh completed preparation | "Start Deployment" → Deployment details |
+| State | Trigger | User Action |
+|-------|---------|-------------|
+| `no_access_active_deployment` | Device has `status = deployed` but user lacks access to project | "OK" → Dismiss & Disconnect |
 | `no_projects` | User has 0 projects in current org | "Create Project" → New Project screen |
-| `unassociated` | Device is new/not recently prepared | Select project → auto-create prep record → Deployment details |
 
-### Background Preparation Record
+### Direct Deployment Routing
 
-When a user selects a project in the `unassociated` state, `DevicePreparationService.createDummyPreparationRecord()` creates a completed preparation record with all checks marked as passed. This satisfies the downstream `StartDeploymentScreen` which requires a `devicePreparationId`.
+When a new device is found, if the user has at least one project, the system looks up their most recently used project (from past deployments) and seamlessly bridges directly to the `StartDeploymentScreen` without blocking the user.
 
 ### Engineer Console (Side Drawer)
 
@@ -68,12 +64,12 @@ The **Engineer Console** is accessible via the hamburger menu in the side drawer
 ```mermaid
 flowchart TD
     A["Device Discovery & BLE Connect"] --> B{"Device Routing Logic"}
-    B -- "Already deployed" --> C["ScannerRoutingDialog: 'Active Deployment'"]
-    B -- "Unassociated" --> D["ScannerRoutingDialog: Project Selection<br/>(auto-creates prep record)"]
-    B -- "Prepared & ready" --> E["DeploymentDetailsStep Screen"]
+    B -- "Already deployed" --> C["Active Deployment routing"]
+    B -- "Ready or New" --> D["Auto-create prep record"]
+    D --> E["DeploymentDetailsStep Screen"]
     
     E --> F["BLE Initialization (shared hook)"]
-    F --> G["Load Preparation & Project Data"]
+    F --> G["Load Device & Project Data"]
     G --> H["User fills deployment form"]
     H --> I{"Tap 'Start Deployment'"}
     I --> J["Final Time Sync"]
@@ -86,7 +82,7 @@ flowchart TD
 
 ### BLE Initialization
 
-Uses `useBleInitialization` — same self-test + time sync as preparation steps 1–2. A **20s heartbeat** keeps the device awake during form entry.
+Uses `useBleInitialization` — runs standard self-test and UTC time sync. A **20s heartbeat** keeps the device awake during form entry.
 
 ### User Form
 
@@ -101,7 +97,7 @@ Uses `useBleInitialization` — same self-test + time sync as preparation steps 
 | Motion Detection Test | — | Test grid via `DeploymentMotionDetectionSection` (Activity Detection projects only) |
 | LoRaWAN Status | — | Connectivity check |
 
-Project settings (capture method, sensitivity, timelapse interval, GPS image tagging, bait usage, marked individuals monitoring) are read-only, inherited from the preparation's project and prominently displayed to the user for confirmation prior to starting the deployment.
+Project settings (capture method, sensitivity, timelapse interval, GPS image tagging, bait usage, marked individuals monitoring) are inherited from the configured project. However, the user can instantly swap the attached **Project** using the `<WWSelect>` interactive dropdown right on this screen. Any change dynamically recalculates the capture parameters before deployment.
 
 ### Start Deployment Sequence
 
@@ -239,7 +235,7 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
-| Dialog not appearing | Device has stale preparation record | Clear app data or re-connect |
+| Dialog not appearing | Device timeout | Clear app data or re-connect |
 | "No Projects Found" | User has no projects in current org | Create a project first |
 | Infinite connect loop | Navigation guard not reset | Fixed via `hasNavigatedRef` in `useEngineerConnect` |
 
@@ -248,7 +244,7 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval
 | Issue | Cause | Fix |
 |-------|-------|-----|
 | "GPS Accuracy Too Low" | Weak signal (dense canopy) | Move to clearing for fix, then return |
-| "Device Not Prepared" | No completed preparation record | Complete preparation flow first |
+| "Deployment Initialisation Failed" | Device handshake timeout | Re-connect and keep phone close |
 | "Failed to Set Deployment ID" | BLE write error or AI NACK | Keep phone within 1m; app falls back to GPS-only |
 
 ### End Deployment

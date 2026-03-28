@@ -20,6 +20,7 @@ interface ProjectFormData {
     timelapse_interval_seconds: string
     model_id: string
     record_gps_in_images: boolean
+    lorawan_required: boolean
     is_archived?: boolean
 }
 
@@ -255,6 +256,19 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                         iconColor={theme.colors.primary}
                     />
                 </View>
+
+                <Controller
+                    control={control}
+                    name="lorawan_required"
+                    render={({ field: { value, onChange } }) => (
+                        <WWCheckbox
+                            label="LoRaWAN Required"
+                            value={value}
+                            onChange={onChange}
+                            testID="lorawan-required-checkbox"
+                        />
+                    )}
+                />
 
                 {showArchiveToggle && (
                     <Controller

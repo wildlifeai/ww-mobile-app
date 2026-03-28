@@ -5,7 +5,7 @@ CREATE TABLE deployments (
   deleted_at timestamptz,
   
   -- Snapshot of device configuration at deployment time
-  device_preparation_id uuid REFERENCES device_preparation(id),
+  device_preparation_id_deprecated uuid REFERENCES device_preparation(id),
   
   -- Deployment lifecycle
   name text NOT NULL,
@@ -34,16 +34,17 @@ CREATE TABLE deployments (
   timelapse_interval_seconds int,
 
   -- New fields (Fixing sync error)
-  project_id uuid REFERENCES projects(id),
-  device_id uuid REFERENCES devices(id),
+  project_id uuid NOT NULL REFERENCES projects(id),
+  device_id uuid NOT NULL REFERENCES devices(id),
   location_data jsonb -- Stores the raw JSON location object from frontend
 );
 
 -- Indexes
-CREATE UNIQUE INDEX deployments_start_prep_id_unique_idx ON deployments (deployment_start, device_preparation_id);
+CREATE UNIQUE INDEX deployments_start_device_unique_idx ON deployments (deployment_start, device_id);
 CREATE INDEX idx_deployments_setup_by ON deployments (setup_by);
 CREATE INDEX idx_deployments_ended_by ON deployments (ended_by);
-CREATE INDEX idx_deployments_device_preparation ON deployments (device_preparation_id);
+CREATE INDEX idx_deployments_project_id ON deployments (project_id);
+CREATE INDEX idx_deployments_device_id ON deployments (device_id);
 CREATE INDEX idx_deployments_deleted_at ON deployments (deleted_at);
 CREATE INDEX deployments_location_idx ON deployments USING GIST (location);
 

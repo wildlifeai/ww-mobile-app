@@ -3,7 +3,6 @@ import { View, StyleSheet } from 'react-native'
 import { Card, Text, IconButton, Divider, ActivityIndicator, useTheme } from 'react-native-paper'
 import { Q } from '@nozbe/watermelondb'
 import database from '../../../database'
-import DevicePreparation from '../../../database/models/DevicePreparation'
 import Deployment from '../../../database/models/Deployment'
 import Device from '../../../database/models/Device'
 import { useAppNavigation } from '../../../hooks/useAppNavigation'
@@ -33,17 +32,12 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
 
         const fetchDevices = async () => {
             try {
-                // Find all preparations and deployments for this project
-                const preparations = await database.get<DevicePreparation>('device_preparation')
-                    .query(Q.where('project_id', projectId))
-                    .fetch()
-                    
+                // Find all deployments for this project to get device IDs
                 const deployments = await database.get<Deployment>('deployments')
                     .query(Q.where('project_id', projectId))
                     .fetch()
 
                 const deviceIds = new Set([
-                    ...preparations.map(p => p.deviceId),
                     ...deployments.map(d => d.deviceId)
                 ])
 

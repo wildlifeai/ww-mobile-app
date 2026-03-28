@@ -38,16 +38,10 @@ export const Devices = () => {
 				? await DeviceService.getDevicesForUserInOrganisation(userId, organisationId)
 				: await DeviceService.getDevicesForUser(userId)
 
-			// Sort by latest activity (maximum of preparedDate and lastDeploymentDate)
+			// Sort by latest activity (lastDeploymentDate)
 			const sortedDevices = [...devicesList].sort((a, b) => {
-				const timeA = Math.max(
-					a.preparedDate ? new Date(a.preparedDate).getTime() : 0,
-					a.lastDeploymentDate ? new Date(a.lastDeploymentDate).getTime() : 0
-				)
-				const timeB = Math.max(
-					b.preparedDate ? new Date(b.preparedDate).getTime() : 0,
-					b.lastDeploymentDate ? new Date(b.lastDeploymentDate).getTime() : 0
-				)
+				const timeA = a.lastDeploymentDate ? new Date(a.lastDeploymentDate).getTime() : 0
+				const timeB = b.lastDeploymentDate ? new Date(b.lastDeploymentDate).getTime() : 0
 				return timeB - timeA
 			})
 

@@ -86,6 +86,7 @@ export interface CreateProjectInput {
 	activity_detection_sensitivity_id?: number
 	capture_method_id?: number
 	record_gps_in_images?: boolean
+	lorawan_required?: boolean
 }
 
 // LoRaWAN device status (mock for now)

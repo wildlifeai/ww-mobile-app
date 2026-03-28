@@ -20,6 +20,8 @@ export default class Project extends Model {
     @field('is_monitoring_marked_individuals') isMonitoringMarkedIndividuals?: boolean
     @field('timelapse_interval_seconds') timelapseIntervalSeconds?: number | null
     @field('record_gps_in_images') recordGpsInImages!: boolean
+    @field('lorawan_required') lorawanRequired!: boolean
+    @field('is_archived') isArchived!: boolean
     @text('project_image') projectImage?: string | null
     @text('website') website?: string | null
     @text('created_by') createdBy?: string

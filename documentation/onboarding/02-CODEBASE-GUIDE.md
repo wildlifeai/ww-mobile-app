@@ -121,7 +121,7 @@ screens/                       navigation/screens/
 ```
 
 > [!NOTE]
-> The old `PrepareAndTestScreen` has been removed. Device preparation is now handled automatically by `ScannerRoutingDialog`, which creates background preparation records when associating a device with a project.
+> The old `PrepareAndTestScreen` has been removed. Device configuration and metrics snapshots are captured directly during Deployment.
 
 ### `src/navigation/` — Navigation Setup
 
@@ -148,7 +148,6 @@ services/
 ├── ProjectMemberService.ts    # Member invitations
 ├── DeploymentService.ts       # Deployment lifecycle
 ├── DeviceService.ts           # Device record management
-├── DevicePreparationService.ts # Preparation workflow
 ├── ReferenceDataService.ts    # Downloaded reference data (capture methods, etc.)
 ├── DfuService.ts              # Firmware updates (Nordic DFU)
 ├── MockLoRaWANService.ts      # LoRaWAN mocking
@@ -378,7 +377,7 @@ const syncSlice = createSlice({
 ## Next Steps
 
 1. [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) — WatermelonDB, Supabase sync, and security model
-2. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device preparation and deployment lifecycle
+2. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device deployment lifecycle
 3. [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) — Complete dependency reference
 
 ---

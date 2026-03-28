@@ -44,12 +44,10 @@ export const BottomTabs = () => {
 	const { colors } = useExtendedTheme()
 	const navigation = useAppNavigation()
 	const route = useRoute<RouteProp<RootStackParamList, "Home">>()
-	const { startBackgroundTracking, stopBackgroundTracking } = useGPSLocation()
+	const { startGeolocation, stopGeolocation } = useGPSLocation()
 
-	useEffect(() => {
-		startBackgroundTracking()
-		return () => stopBackgroundTracking()
-	}, [startBackgroundTracking, stopBackgroundTracking])
+	// GPS Geolocation is now triggered directly by screens that need it (Map, Deployments)
+	// We no longer start it automatically for all users upon login.
 
 	useEffect(() => {
 		if (route.params?.initialTab === "devices") {

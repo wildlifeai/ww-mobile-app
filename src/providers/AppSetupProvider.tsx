@@ -64,8 +64,6 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 		log("🔄 Starting Supabase Sync Service...")
 		SupabaseSyncService.resetSyncState().then(() => {
 			SupabaseSyncService.startRealtimeSubscription()
-			// Initial sync attempt (might fail if no user)
-			SupabaseSyncService.sync()
 		})
 
 		return () => {
@@ -76,11 +74,11 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 
 	// Trigger Sync on Login
 	useEffect(() => {
-		if (isSupabaseReady && user) {
+		if (isSupabaseReady && user?.id) {
 			log("👤 User authenticated - triggering data sync...")
 			SupabaseSyncService.sync()
 		}
-	}, [isSupabaseReady, user]) // Depend on user ID change
+	}, [isSupabaseReady, user?.id]) // Depend strictly on user ID change
 
 	// Show loading screen while initializing
 	if (!isSupabaseReady) {

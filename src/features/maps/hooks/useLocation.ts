@@ -5,7 +5,7 @@
  * Zero dependencies - foundational hook for maps feature
  */
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import * as Location from "expo-location"
 import {
 	LocationPermissions,
@@ -35,8 +35,7 @@ export const useLocation = (): UseLocationReturn => {
 	})
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-	const [subscription, setSubscription] =
-		useState<Location.LocationSubscription | null>(null)
+	const subscriptionRef = useRef<Location.LocationSubscription | null>(null)
 
 	/**
 	 * Check current permission status
@@ -141,11 +140,12 @@ export const useLocation = (): UseLocationReturn => {
 
 		// Cleanup subscription on unmount
 		return () => {
-			if (subscription) {
-				subscription.remove()
+			if (subscriptionRef.current) {
+				subscriptionRef.current.remove()
+				subscriptionRef.current = null
 			}
 		}
-	}, [subscription])
+	}, [])
 
 	/**
 	 * Auto-fetch location when permission becomes granted
@@ -168,8 +168,9 @@ export const useLocation = (): UseLocationReturn => {
 			}
 
 			// Stop existing subscription if any
-			if (subscription) {
-				subscription.remove()
+			if (subscriptionRef.current) {
+				subscriptionRef.current.remove()
+				subscriptionRef.current = null
 			}
 
 			try {
@@ -197,7 +198,7 @@ export const useLocation = (): UseLocationReturn => {
 					},
 				)
 
-				setSubscription(newSubscription)
+				subscriptionRef.current = newSubscription
 			} catch (err) {
 				logError("[useLocation] Error starting location tracking:", err)
 				setError("Failed to start location tracking")
@@ -205,18 +206,18 @@ export const useLocation = (): UseLocationReturn => {
 				setLoading(false)
 			}
 		},
-		[permissions.foreground, subscription],
+		[permissions.foreground],
 	)
 
 	/**
 	 * Stop location tracking
 	 */
 	const stopTracking = useCallback(() => {
-		if (subscription) {
-			subscription.remove()
-			setSubscription(null)
+		if (subscriptionRef.current) {
+			subscriptionRef.current.remove()
+			subscriptionRef.current = null
 		}
-	}, [subscription])
+	}, [])
 
 	return {
 		location,

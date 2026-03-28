@@ -16,22 +16,8 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
 
     // Calculate status message based on user's logic
     const statusInfo = useMemo(() => {
-        const prepDate = device.preparedDate ? new Date(device.preparedDate) : null
         const deployEndDate = device.deploymentEndDate ? new Date(device.deploymentEndDate) : null
         const lastDeployDate = device.lastDeploymentDate ? new Date(device.lastDeploymentDate) : null
-
-        // Logic 1: Device preparation after latest deployment
-        if (prepDate && device.lastDeploymentDate) {
-            const lastDeploy = deployEndDate || lastDeployDate
-            if (lastDeploy && prepDate > lastDeploy) {
-                return {
-                    text: `Prepared on ${prepDate.toLocaleDateString()} at ${prepDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-                    color: theme.colors.primary,
-                    icon: 'check-circle' as const,
-                    hasLink: false
-                }
-            }
-        }
 
         // Logic 2: Active deployment (no end date)
         // If there is a last deployment date (start) but NO end date, it is active.
@@ -56,17 +42,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
             }
         }
 
-        // Logic 1 (alternate): Prepared without any deployment
-        if (prepDate) {
-            return {
-                text: `Prepared on ${prepDate.toLocaleDateString()} at ${prepDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-                color: theme.colors.primary,
-                icon: 'check-circle' as const,
-                hasLink: false
-            }
-        }
-
-        // Default: Needs preparation
+        // Default: Needs deployment
         return null
     }, [device, theme])
 

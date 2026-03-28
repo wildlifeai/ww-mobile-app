@@ -106,17 +106,17 @@ export const useGPSLocation = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []) // Empty deps - getLocation doesn't depend on any props or state
 
-    const startBackgroundTracking = useCallback(async () => {
+    const startGeolocation = useCallback(async () => {
         try {
-            log('[GPS] Starting background tracking...')
+            log('[GPS] Starting geolocation tracking...')
             const { status } = await Location.getForegroundPermissionsAsync()
             if (status !== 'granted') {
-                log('[GPS] Cannot start background tracking: Foreground permission not granted')
+                log('[GPS] Cannot start geolocation: Foreground permission not granted')
                 return
             }
 
             if (locationSubscription.current) {
-                log('[GPS] Background tracking already active')
+                log('[GPS] Geolocation tracking already active')
                 return
             }
 
@@ -129,7 +129,7 @@ export const useGPSLocation = () => {
                     distanceInterval: 1, // Require at least 1 meter of movement
                 },
                 (loc) => {
-                    log('[GPS] Background update received:', loc.coords)
+                    log('[GPS] Geolocation update received:', loc.coords)
                     const locationData: GPSLocation = {
                         latitude: loc.coords.latitude,
                         longitude: loc.coords.longitude,
@@ -141,21 +141,21 @@ export const useGPSLocation = () => {
                     dispatch(setLocation(locationData))
                 }
             )
-            log('[GPS] Background tracking started successfully')
+            log('[GPS] Geolocation tracking started successfully')
         } catch (error) {
-            logError('[GPS] Failed to start background tracking:', error)
+            logError('[GPS] Failed to start geolocation tracking:', error)
             dispatch(setIsTrackingRedux(false))
         }
     }, [dispatch])
 
-    const stopBackgroundTracking = useCallback(() => {
-        log('[GPS] Stopping background tracking...')
+    const stopGeolocation = useCallback(() => {
+        log('[GPS] Stopping geolocation tracking...')
         if (locationSubscription.current) {
             locationSubscription.current.remove()
             locationSubscription.current = null
         }
         dispatch(setIsTrackingRedux(false))
-        log('[GPS] Background tracking stopped')
+        log('[GPS] Geolocation tracking stopped')
     }, [dispatch])
 
     useEffect(() => {
@@ -171,7 +171,7 @@ export const useGPSLocation = () => {
         location,
         isGettingLocation,
         getLocation,
-        startBackgroundTracking,
-        stopBackgroundTracking
+        startGeolocation,
+        stopGeolocation
     }
 }
