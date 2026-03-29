@@ -13,7 +13,7 @@ export interface RootStackParamList extends ParamListBase {
 	Notifications: undefined
 	Profile: undefined
 	Settings: undefined
-	Home: { initialTab?: string } | undefined
+	Home: { initialTab?: string; selectedDeploymentId?: string } | undefined
 	DfuScreen: { deviceId: string }
 	Login: { confirmed?: boolean } | undefined
 	Register: undefined
@@ -37,7 +37,7 @@ export interface RootStackParamList extends ParamListBase {
 	DeploymentDetailsStep: { projectId: string; deviceId: string; bleDeviceId: string; initPayload?: InitPayload }
 	DeploymentDetails: { deploymentId: string }
 	EndDeploymentWizard: { mode: 'end_deployment'; deploymentId?: string }
-	EndDeploymentDetailsStep: { deploymentId: string; deviceId: string; bleDeviceId: string }
+	EndDeploymentDetailsStep: { deploymentId: string; deviceId: string; bleDeviceId: string; initPayload?: InitPayload }
 }
 
 export type Routes = keyof RootStackParamList

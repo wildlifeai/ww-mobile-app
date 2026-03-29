@@ -17,4 +17,6 @@ import { MapScreen } from "../../features/maps"
  * - Add organization boundaries from Task 12-14
  * - Add marker clustering for high-density areas
  */
-export const Maps = MapScreen
+export const Maps: React.FC<{ selectedDeploymentId?: string }> = ({ selectedDeploymentId }) => {
+	return <MapScreen selectedDeploymentId={selectedDeploymentId} />
+}

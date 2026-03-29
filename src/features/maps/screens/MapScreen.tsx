@@ -39,9 +39,10 @@ const mapReducer = (state: MapState, action: Partial<MapState>): MapState => ({ 
 
 interface Props {
 	deployments: Deployment[]
+	selectedDeploymentId?: string
 }
 
-const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
+const MapScreenComponent: React.FC<Props> = ({ deployments, selectedDeploymentId: initialDeploymentId }) => {
 	const {
 		location,
 		permissions,
@@ -80,6 +81,26 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 		if (!selectedDeploymentId) return null
 		return deployments.find(d => d.id === selectedDeploymentId) || null
 	}, [deployments, selectedDeploymentId])
+
+	// Handle external selectedDeploymentId navigation target
+	useEffect(() => {
+		if (initialDeploymentId && initialDeploymentId !== selectedDeploymentId) {
+			dispatch({ selectedDeploymentId: initialDeploymentId })
+			const deployment = deployments.find(d => d.id === initialDeploymentId)
+			if (deployment && deployment.latitude && deployment.longitude) {
+				const loc = { 
+					latitude: deployment.latitude, 
+					longitude: deployment.longitude,
+					altitude: null,
+					accuracy: null,
+					heading: null,
+					speed: null,
+					timestamp: Date.now()
+				}
+				resetToUserLocation(loc as any)
+			}
+		}
+	}, [initialDeploymentId, deployments, selectedDeploymentId, resetToUserLocation])
 
 	// Navigation Drawer Control
 	const { setIsOpen } = useAppDrawer()
