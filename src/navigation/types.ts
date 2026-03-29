@@ -23,6 +23,7 @@ export interface RootStackParamList extends ParamListBase {
 	AddDeployment: { selectedProject?: Option } | undefined
 	NewProjectScreen: undefined
 	ProjectDetailsScreen: { projectId: string }
+	EditProjectScreen: { projectId: string }
 	ProjectDevicesScreen: { projectId: string; projectName: string }
 	ProjectMembersScreen: { projectId: string; projectName: string }
 	DevBuildInfo: undefined

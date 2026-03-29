@@ -1,14 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Alert } from 'react-native'
 import { useAppSelector } from '../../../redux'
+import { Q } from '@nozbe/watermelondb'
+import database from '../../../database'
 import { useFocusEffect } from '@react-navigation/native'
 import { DeploymentService } from '../../../services/DeploymentService'
 import ProjectService from '../../../services/ProjectService'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Device from '../../../database/models/Device'
+import Deployment from '../../../database/models/Deployment'
 import { DeviceService } from '../../../services/DeviceService'
 import { useBleCommands } from '../../../hooks/useBleCommands'
-import { useBleInitialization } from '../../../hooks/useBleInitialization'
+// import { useBleInitialization } from '../../../hooks/useBleInitialization'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
@@ -24,8 +27,9 @@ import { log, logError, logWarn } from '../../../utils/logger'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { ProjectWithDetails } from '../../../types/project'
 import { InitPayload } from '../../../navigation/types'
+import { calculateDistance } from '../../../utils/gpsUtils'
 
-const INITIALIZATION_GUARD_TIMEOUT = 2000
+// const INITIALIZATION_GUARD_TIMEOUT = 2000
 
 /**
  * Scans for the Nordic DFU booth loader which advertises as "DfuTarg"
@@ -126,8 +130,8 @@ export const useStartDeployment = ({
 
     // BLE Hooks
     const { connectDevice } = useBle()
-    const { setUtc, runDisconnect, flashLed, getBatteryLevel, checkSdCard, getDeviceVer, runSelfTest, runDfu, pingNetwork, getLorawanMetrics } = useBleCommands()
-    const { initialize: runBleStandardInit } = useBleInitialization()
+    const { setUtc, runDisconnect, getBatteryLevel, checkSdCard, getDeviceVer, runSelfTest, runDfu, pingNetwork, getLorawanMetrics } = useBleCommands()
+    // const { initialize } = useBleInitialization()
     const { configure: startConfigure } = useDeploymentConfiguration()
     useBleActions()
 
@@ -137,7 +141,7 @@ export const useStartDeployment = ({
     // Advanced Settings State
     const [batteryLevel, setBatteryLevel] = useState<number | null>(initPayload?.batteryLevel || null)
     const [sdCardStatus, setSdCardStatus] = useState<{ total: number; free: number } | null>(initPayload?.sdCardStatus || null)
-    const [latestBleFirmware, setLatestBleFirmware] = useState<Firmware | null>(null)
+    const [latestBleFirmware, _setLatestBleFirmware] = useState<Firmware | null>(null)
     const [deviceFirmwareVersion, setDeviceFirmwareVersion] = useState<string | null>(initPayload?.deviceFirmwareVersion || null)
     const [bleFirmwareUpdateAvailable, setBleFirmwareUpdateAvailable] = useState(initPayload?.bleFirmwareUpdateAvailable || false)
     const [firmwareUpdateProgress, setFirmwareUpdateProgress] = useState<number>(0)
@@ -163,11 +167,17 @@ export const useStartDeployment = ({
     const [captureMethodName, setCaptureMethodName] = useState<string>('')
     const [sensitivityLabel, setSensitivityLabel] = useState<string>('')
     
+    // Site Name (Location Name) States
+    const [locationName, setLocationName] = useState<string>('')
+    const [availableLocations, setAvailableLocations] = useState<{label: string, value: string}[]>([])
+    const [isCustomLocation, setIsCustomLocation] = useState<boolean>(true)
+    const lastLocationCalculationRef = useRef<{lat: number, lon: number} | null>(null)
+    
     // UI State for Initialization Header
     const [device, setDevice] = useState<Device | undefined>()
-    const [isInitializing, setIsInitializing] = useState(false) // Hardcoded false as initialization now happens upstream
-    const [initProgress, setInitProgress] = useState(1.0)
-    const [initStep, setInitStep] = useState('Complete')
+    const [isInitializing, _setIsInitializing] = useState(false) // Hardcoded false as initialization now happens upstream
+    const [initProgress, _setInitProgress] = useState(1.0)
+    const [initStep, _setInitStep] = useState('Complete')
     const [initErrors, setInitErrors] = useState<{ selftest?: string; setUtc?: string; deviceHealth?: string[] }>(initPayload?.initErrors || {})
 
     // UI State for Deployment Progress Dialog
@@ -176,6 +186,7 @@ export const useStartDeployment = ({
     const [finishLogs, setFinishLogs] = useState<string[]>([])
     const [isFinishing, setIsFinishing] = useState(false)
     const [isStartSuccess, setIsStartSuccess] = useState(false)
+    const [isMonitoring, setIsMonitoring] = useState(false)
 
     const addFinishLog = useCallback((message: string) => {
         setFinishLogs(prev => [...prev, message])
@@ -186,7 +197,7 @@ export const useStartDeployment = ({
     const isStartDeploymentInProgress = useRef(false)
 
     // Standard BLE initialization plus initialization guard
-    const hasRunInitialization = useRef(false)
+    // const hasRunInitialization = useRef(false)
     const bleDeviceRef = useRef(bleDevice)
 
     
@@ -264,6 +275,86 @@ export const useStartDeployment = ({
         }, [initialProjectId, deviceId, loadProjectAndDevice, getLocation])
     )
 
+    // Location Name logic based on GPS and Project Deployments
+    useEffect(() => {
+        let isMounted = true
+        const updateClosestLocations = async () => {
+            if (!project?.id || !gpsLocation) return
+
+            const lat = gpsLocation.latitude
+            const lon = gpsLocation.longitude
+
+            // Check if we need to recalculate (moved > 80m)
+            if (lastLocationCalculationRef.current) {
+                const dist = calculateDistance(
+                    lat, lon,
+                    lastLocationCalculationRef.current.lat, lastLocationCalculationRef.current.lon
+                )
+                if (dist < 80) {
+                    return // No significant movement
+                }
+            }
+
+            lastLocationCalculationRef.current = { lat, lon }
+
+            try {
+                const deploymentsCollection = database.get<Deployment>('deployments')
+                const pastDeployments = await deploymentsCollection.query(
+                    Q.where('project_id', project.id),
+                    Q.where('latitude', Q.notEq(null)),
+                    Q.where('longitude', Q.notEq(null))
+                ).fetch()
+
+                if (!isMounted) return
+
+                if (pastDeployments.length === 0) {
+                    setAvailableLocations([])
+                    setIsCustomLocation(true)
+                    return
+                }
+
+                // Group by locationName and find distance
+                const locationsMap = new Map<string, number>()
+                pastDeployments.forEach(d => {
+                    if (!d.locationName) return
+                    const dist = calculateDistance(lat, lon, d.latitude!, d.longitude!)
+                    
+                    if (!locationsMap.has(d.locationName) || dist < locationsMap.get(d.locationName)!) {
+                        locationsMap.set(d.locationName, dist)
+                    }
+                })
+
+                if (locationsMap.size === 0) {
+                    setAvailableLocations([])
+                    setIsCustomLocation(true)
+                    return
+                }
+
+                // Sort by distance
+                const sorted = Array.from(locationsMap.entries())
+                    .sort((a, b) => a[1] - b[1])
+                    .slice(0, 3) // Top 3
+
+                const ops = sorted.map(([name]) => ({ label: name, value: name }))
+                setAvailableLocations(ops)
+
+                // Autofill closest
+                if (ops.length > 0) {
+                    setLocationName(ops[0].value)
+                    setIsCustomLocation(false)
+                }
+            } catch (err) {
+                logError('[Deployment] Failed to calculate closest locations', err)
+            }
+        }
+
+        updateClosestLocations()
+
+        return () => {
+            isMounted = false
+        }
+    }, [project?.id, gpsLocation])
+
     const handleProjectChange = useCallback(async (projectId: string) => {
         if (!projectId || projectId === project?.id) return;
         
@@ -328,7 +419,7 @@ export const useStartDeployment = ({
         }
         checkLorawan()
         return () => { isMounted = false }
-    }, [project?.lorawan_required, bleDevice?.connected, pingNetwork])
+    }, [project?.lorawan_required, bleDevice?.connected, pingNetwork, bleDevice])
 
     // Navigation Interceptor
     useEffect(() => {
@@ -358,18 +449,25 @@ export const useStartDeployment = ({
     // Robust Connection Lost Alert
     useEffect(() => {
         if (!isInitializing && !submitting && bleDevice && !bleDevice.connected && !isNavigatingAway.current && !isStartDeploymentInProgress.current && !isDfuInProgress.current && !isReconnectingAfterDfu.current) {
-            Alert.alert(
-                'Connection Lost',
-                'Device disconnected unexpectedly during deployment setup.',
-                [{
-                    text: 'OK', onPress: () => {
-                        isNavigatingAway.current = true
-                        navigation.goBack()
-                    }
-                }]
-            )
+            if (isMonitoring) {
+                logWarn('[Monitor] Connection lost. Auto-navigating to home.')
+                Alert.alert('Connection Lost', 'Connection lost — device continues recording.', [{ text: 'OK' }])
+                isNavigatingAway.current = true
+                navigation.navigate('Home', { initialTab: 'deployment' })
+            } else {
+                Alert.alert(
+                    'Connection Lost',
+                    'Device disconnected unexpectedly during deployment setup.',
+                    [{
+                        text: 'OK', onPress: () => {
+                            isNavigatingAway.current = true
+                            navigation.goBack()
+                        }
+                    }]
+                )
+            }
         }
-    }, [bleDevice, submitting, navigation, isInitializing])
+    }, [bleDevice, submitting, navigation, isInitializing, isMonitoring])
 
     const handleStartDeployment = useCallback(async () => {
         if (!formState.name) {
@@ -415,7 +513,7 @@ export const useStartDeployment = ({
             let lorawanSnr: number | undefined
             let bleFirmwareId: string | undefined
 
-            if (bleDevice) {
+            if (bleDevice && project?.lorawan_required) {
                 try {
                     addFinishLog('Reading LoRaWAN metrics...')
                     const networkResp = await getLorawanMetrics(bleDevice)
@@ -451,7 +549,7 @@ export const useStartDeployment = ({
                 deviceId: deviceId || '',
                 setupBy: user.id,
 
-                locationName: 'Automated Deployment',
+                locationName: locationName || 'Automated Deployment',
                 cameraHeight: formState.cameraHeight ? parseFloat(formState.cameraHeight) : undefined,
 
                 latitude: gpsLocation?.latitude,
@@ -508,38 +606,11 @@ export const useStartDeployment = ({
                 addFinishLog('Configuration warning: Verify settings in console')
             }
 
-            if (bleDevice?.connected) {
-                addFinishLog('Flashing confirmation LED...')
-                setFinishStep('Signaling success...')
-                setFinishProgress(0.9)
-                
-                try {
-                    await flashLed(bleDevice, 'green', 3, 300)
-                    addFinishLog('LED signal sent')
-                } catch (e) {
-                    logWarn('[Deployment] LED flash failed:', e)
-                    addFinishLog('Warning: LED signal failed')
-                }
-            }
-
-            addFinishLog('Disconnecting...')
-            setFinishStep('Disconnecting...')
-            setFinishProgress(0.95)
-            log('[Deployment] Disconnecting device...')
-            
-            try {
-                await runDisconnect(bleDevice)
-                addFinishLog('Device disconnected')
-                log('[Deployment] Device disconnected')
-            } catch (e) {
-                logError('[Deployment] Failed to disconnect:', e)
-                addFinishLog('Warning: Clean disconnect failed')
-            }
-
             setFinishStep('Complete')
             setFinishProgress(1.0)
             setIsStartSuccess(true)
             addFinishLog('Deployment started successfully')
+            addFinishLog('Transitioning to live monitor...')
 
         } catch (error) {
             logError('Deployment failed:', error)
@@ -547,15 +618,27 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.name, formState.cameraHeight, formState.notes, bleDevice, project, user, deviceId, runDisconnect, startConfigure, addFinishLog, flashLed, setUtc])
+    }, [formState.name, formState.cameraHeight, formState.notes, bleDevice, project, user, deviceId, startConfigure, addFinishLog, setUtc, batteryLevel, device?.deviceEui, deviceFirmwareVersion, getLorawanMetrics, gpsLocation?.accuracy, gpsLocation?.altitude, gpsLocation?.latitude, gpsLocation?.longitude, locationName, sdCardStatus?.free, sdCardStatus?.total])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)
         if (isStartSuccess) {
-             isNavigatingAway.current = true
-             navigation.navigate('Home', { initialTab: 'deployment' })
+            setIsMonitoring(true)
         }
-    }, [isStartSuccess, navigation])
+    }, [isStartSuccess])
+
+    const handleMonitorDisconnect = useCallback(async () => {
+        if (!bleDevice) return
+        try {
+            await runDisconnect(bleDevice)
+            setIsMonitoring(false)
+        } catch (error) {
+            logError('Monitor disconnect failed:', error)
+        } finally {
+            isNavigatingAway.current = true
+            navigation.navigate('Home', { initialTab: 'deployment' })
+        }
+    }, [bleDevice, runDisconnect, navigation])
 
     const [helpVisible, setHelpVisible] = useState(false)
     const [helpTitle, setHelpTitle] = useState('')
@@ -596,6 +679,7 @@ export const useStartDeployment = ({
             }
             const statusMsg = await runSelfTest(bleDevice)
             const hexBits = extractErrorBits(statusMsg)
+            // eslint-disable-next-line no-bitwise
             if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
                 Alert.alert('No SD Card Detected', 'The device reports no SD card is inserted.', [{ text: 'OK' }])
                 setSdCardStatus(null)
@@ -723,9 +807,12 @@ export const useStartDeployment = ({
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
+        isMonitoring, handleMonitorDisconnect,
         isNavigatingAway, handleImageCaptured, handleNameChange, handleNotesChange, handleProjectChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
         helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp,
+        // Dropdown & Additional Location State
+        locationName, setLocationName, availableLocations, isCustomLocation, setIsCustomLocation,
         // Advanced Settings Exports
         batteryLevel, sdCardStatus, latestBleFirmware, deviceFirmwareVersion,
         bleFirmwareUpdateAvailable, firmwareUpdateProgress, isUpdatingFirmware,

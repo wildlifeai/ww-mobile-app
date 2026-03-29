@@ -505,7 +505,7 @@ export const COMMANDS: {
 	[CommandNames.network]: {
 		name: CommandNames.network,
 		readCommand: "network",
-		readRegex: /RSSI: (-?\d+)dB, SNR: (-?\d+)dB/,
+		readRegex: /RSSI: (-?\d+)dB, SNR: (-?\d+)dB|No network comms yet/i,
 		description: "Most recent RSSI, SNR etc",
 		type: 'command',
 	},

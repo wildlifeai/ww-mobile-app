@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Text, IconButton, Divider, ActivityIndicator, Button, Avatar, useTheme } from 'react-native-paper'
+import { Card, Text, IconButton, Divider, ActivityIndicator, Avatar, useTheme } from 'react-native-paper'
 import { useAppNavigation } from '../../../hooks/useAppNavigation'
 import { ProjectWithDetails, ProjectMember } from '../../../types/project'
 import { getDisplayName } from '../../../utils/userUtils'
@@ -11,7 +11,6 @@ interface Props {
     membersLoading: boolean
     isProjectAdmin: boolean
     currentUser: any
-    handleRemoveMember: (userId: string) => void
 }
 
 export const ProjectMembersCard: React.FC<Props> = ({
@@ -20,7 +19,6 @@ export const ProjectMembersCard: React.FC<Props> = ({
     membersLoading,
     isProjectAdmin,
     currentUser,
-    handleRemoveMember
 }) => {
     const navigation = useAppNavigation()
     const theme = useTheme()
@@ -116,15 +114,6 @@ export const ProjectMembersCard: React.FC<Props> = ({
                                             )}
                                         </View>
                                     </View>
-                                    {isProjectAdmin && !isMe && (
-                                        <IconButton
-                                            icon="close"
-                                            size={20}
-                                            iconColor={theme.colors.error}
-                                            onPress={() => handleRemoveMember(member.user_id)}
-                                            testID={`remove-member-${member.user_id}`}
-                                        />
-                                    )}
                                 </View>
                             )
                         })}

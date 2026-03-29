@@ -25,6 +25,8 @@ import { ForgotPassword } from "./screens/auth/ForgotPasswordScreen"
 import { NewProjectScreen } from "../screens/Projects/NewProjectScreen"
 import { ProjectDetailsScreen } from "../screens/Projects/ProjectDetailsScreen"
 import { ProjectMembersScreen } from "../screens/Projects/ProjectMembersScreen"
+import { ProjectDevicesScreen } from "../screens/Projects/ProjectDevicesScreen"
+import { EditProjectScreen } from "../screens/Projects/EditProjectScreen"
 
 // Deployment screens
 // import { Deployments as DeploymentsListScreen } from "../screens/Deployments/DeploymentsListScreen"
@@ -166,9 +168,19 @@ export const MainNavigation = () => {
 							options={{ title: "Project Details" }}
 						/>
 						<Stack.Screen
+							name="EditProjectScreen"
+							component={EditProjectScreen}
+							options={{ title: "Edit Project" }}
+						/>
+						<Stack.Screen
 							name="ProjectMembersScreen"
 							component={ProjectMembersScreen}
 							options={{ title: "Project Members" }}
+						/>
+						<Stack.Screen
+							name="ProjectDevicesScreen"
+							component={ProjectDevicesScreen}
+							options={{ title: "Project Devices" }}
 						/>
 						<Stack.Screen
 							name="DeviceDiscovery"

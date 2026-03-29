@@ -105,7 +105,7 @@ describe("useBle", () => {
 				await result.current.startScan(10)
 			})
 
-			expect(BleManager.scan).toHaveBeenCalledWith([], 10)
+			expect(BleManager.scan).toHaveBeenCalledWith(["6e400001-b5a3-f393-e0a9-e50e24dcca9e"], 10, true, { "matchMode": 1, "scanMode": 2 })
 			expect(mockDispatch).toHaveBeenCalledWith(scanStart())
 		})
 

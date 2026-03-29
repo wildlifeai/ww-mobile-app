@@ -1,59 +1,67 @@
 import React, { useLayoutEffect, useMemo, useCallback } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { useNavigation, RouteProp } from '@react-navigation/native'
-import { IconButton, Menu, Text } from 'react-native-paper'
+import { IconButton, Menu, Card, Text } from 'react-native-paper'
 import { withObservables } from '@nozbe/watermelondb/react'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
+import { WWIcon } from '../../components/ui/WWIcon'
 
 import { RootStackParamList } from '../../navigation/types'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { DeploymentService } from '../../services/DeploymentService'
 import type Deployment from '../../database/models/Deployment'
-import { DeploymentHeroCard } from './components/DeploymentHeroCard'
-import { DeploymentDeviceCard } from './components/DeploymentDeviceCard'
-import { DeploymentConfigurationCard } from './components/DeploymentConfigurationCard'
-import { DeploymentLocationCard } from './components/DeploymentLocationCard'
-import { DeploymentNotesCard } from './components/DeploymentNotesCard'
-import { useGetCaptureMethodsQuery, useGetActivitySensitivityQuery } from '../../redux/api/projectsApi'
+import type Device from '../../database/models/Device'
+import type Project from '../../database/models/Project'
+import type User from '../../database/models/User'
 import { useExtendedTheme } from '../../theme'
 
 type DeploymentDetailsRouteProp = RouteProp<RootStackParamList, 'DeploymentDetails'>
 
 interface Props {
     deployment: Deployment
+    device: Device | null
+    project: Project | null
+    setupUser: User | null
 }
 
-const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
+const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment, device, project, setupUser }) => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
     const [menuVisible, setMenuVisible] = React.useState(false)
     const theme = useExtendedTheme()
     const { colors } = theme
     const styles = useMemo(() => createStyles(theme), [theme])
 
-    // Queries for lookup data
-    const { data: captureMethods } = useGetCaptureMethodsQuery()
-    const { data: activitySensitivities } = useGetActivitySensitivityQuery()
-
     // Status helpers
     const isActive = !deployment.deploymentEnd
-    const statusLabel = isActive ? 'Active' : (deployment.deploymentStatusId === 2 ? 'Ended' : 'Failed')
 
-    // Lookup names
-    const captureMethodName = useMemo(() => {
-        if (!deployment.captureMethodId) return 'N/A'
-        const cm = captureMethods?.find(c => c.id === deployment.captureMethodId)
-        return cm?.value || cm?.description || `Unknown (ID: ${deployment.captureMethodId})`
-    }, [deployment.captureMethodId, captureMethods])
+    // Duration calculation
+    const activeDuration = useMemo(() => {
+        if (!deployment.deploymentStart) return '--'
+        const start = new Date(deployment.deploymentStart)
+        if (isNaN(start.getTime()) || start.getTime() < 946684800000) return '--'
+        const end = deployment.deploymentEnd ? new Date(deployment.deploymentEnd) : new Date()
+        const diffMs = end.getTime() - start.getTime()
+        if (diffMs < 0) return '--'
 
-    const sensitivityName = useMemo(() => {
-        if (!deployment.activityDetectionSensitivityId) return 'N/A'
-        const ads = activitySensitivities?.find(a => a.id === deployment.activityDetectionSensitivityId)
-        return ads?.value || ads?.description || `Unknown (ID: ${deployment.activityDetectionSensitivityId})`
-    }, [deployment.activityDetectionSensitivityId, activitySensitivities])
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+        const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
 
+        if (days > 0) return `${days} day${days !== 1 ? 's' : ''} and ${hours} hour${hours !== 1 ? 's' : ''}`
+        return `${hours} hour${hours !== 1 ? 's' : ''}`
+    }, [deployment.deploymentStart, deployment.deploymentEnd])
 
+    // User display name
+    const deployedByName = useMemo(() => {
+        if (setupUser?.firstname) {
+            return `${setupUser.firstname} ${setupUser.surname || ''}`.trim()
+        }
+        return deployment.setupBy ? deployment.setupBy.slice(0, 8) + '...' : 'Unknown'
+    }, [setupUser, deployment.setupBy])
+
+    // Device display name (title)
+    const deviceName = device?.name || deployment.name || 'Unknown Device'
 
     const renderHeaderRight = useCallback(() => (
         isActive ? (
@@ -74,14 +82,13 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
         ) : null
     ), [isActive, menuVisible, navigation])
 
-    // Configure header menu
+    // Configure header
     useLayoutEffect(() => {
         navigation.setOptions({
+            title: deviceName,
             headerRight: renderHeaderRight,
         })
-    }, [navigation, renderHeaderRight])
-
-
+    }, [navigation, deviceName, renderHeaderRight])
 
     if (!deployment) {
         return (
@@ -94,22 +101,55 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
     return (
         <WWScreenView scrollable>
             <View style={styles.container}>
-                {/* Hero Card - Status & Overview */}
-                <DeploymentHeroCard deployment={deployment} isActive={isActive} statusLabel={statusLabel} />
+                {/* Summary Info Card */}
+                <Card mode="outlined" style={styles.summaryCard}>
+                    <Card.Content style={styles.summaryContent}>
+                        {/* Project */}
+                        <View style={styles.infoRow}>
+                            <WWIcon source="folder" size={18} color={colors.onSurfaceVariant} />
+                            <View style={styles.infoTextGroup}>
+                                <WWText variant="labelMedium" style={styles.infoLabel}>
+                                    <Text>Project</Text>
+                                </WWText>
+                                <WWText variant="bodyLarge" style={styles.infoValue}>
+                                    <Text>{project?.name || 'Unknown Project'}</Text>
+                                </WWText>
+                            </View>
+                        </View>
 
-                {/* Device Card */}
-                <DeploymentDeviceCard deployment={deployment} />
+                        <View style={styles.divider} />
 
-                {/* Project & Configuration Card */}
-                <DeploymentConfigurationCard deployment={deployment} captureMethodName={captureMethodName} sensitivityName={sensitivityName} />
+                        {/* Active for */}
+                        <View style={styles.infoRow}>
+                            <WWIcon source="clock-outline" size={18} color={colors.onSurfaceVariant} />
+                            <View style={styles.infoTextGroup}>
+                                <WWText variant="labelMedium" style={styles.infoLabel}>
+                                    <Text>Active for</Text>
+                                </WWText>
+                                <WWText variant="bodyLarge" style={styles.infoValue}>
+                                    <Text>{activeDuration}</Text>
+                                </WWText>
+                            </View>
+                        </View>
 
-                {/* Location Card */}
-                <DeploymentLocationCard deployment={deployment} />
+                        <View style={styles.divider} />
 
-                {/* Notes & Comments Card */}
-                <DeploymentNotesCard deployment={deployment} />
+                        {/* Deployed by */}
+                        <View style={styles.infoRow}>
+                            <WWIcon source="account" size={18} color={colors.onSurfaceVariant} />
+                            <View style={styles.infoTextGroup}>
+                                <WWText variant="labelMedium" style={styles.infoLabel}>
+                                    <Text>Deployed by</Text>
+                                </WWText>
+                                <WWText variant="bodyLarge" style={styles.infoValue}>
+                                    <Text>{deployedByName}</Text>
+                                </WWText>
+                            </View>
+                        </View>
+                    </Card.Content>
+                </Card>
 
-                {/* Action Buttons */}
+                {/* View on Map Button */}
                 <View style={styles.actionSection}>
                     <WWButton
                         mode="outlined"
@@ -119,18 +159,6 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
                     >
                         <Text>View on Map</Text>
                     </WWButton>
-
-                    {isActive && (
-                        <WWButton
-                            mode="contained"
-                            icon="stop"
-                            onPress={() => navigation.navigate('EndDeploymentWizard', { mode: 'end_deployment' } as any)}
-                            style={[styles.actionButton, styles.endButton]}
-                            color={colors.error}
-                        >
-                            <Text>End Deployment</Text>
-                        </WWButton>
-                    )}
                 </View>
             </View>
         </WWScreenView>
@@ -139,9 +167,36 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment }) => {
 
 const createStyles = (theme: any) => StyleSheet.create({
     container: {
-        padding: theme.spacing * 1.6, // approx 16
+        padding: theme.spacing * 1.6,
     },
-
+    summaryCard: {
+        marginBottom: 16,
+        backgroundColor: 'transparent',
+    },
+    summaryContent: {
+        paddingVertical: 8,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        gap: 12,
+    },
+    infoTextGroup: {
+        flex: 1,
+    },
+    infoLabel: {
+        color: theme.colors.onSurfaceVariant,
+        marginBottom: 2,
+    },
+    infoValue: {
+        color: theme.colors.onSurface,
+        fontWeight: '600',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: theme.colors.outlineVariant,
+    },
     actionSection: {
         gap: 12,
         marginTop: 8,
@@ -150,14 +205,23 @@ const createStyles = (theme: any) => StyleSheet.create({
     actionButton: {
         borderRadius: 8,
     },
-    endButton: {
-        backgroundColor: theme.colors.error,
-    },
 })
 
-// Enhance
-const enhance = withObservables(['route'], ({ route }: { route: DeploymentDetailsRouteProp }) => ({
-    deployment: DeploymentService.observeDeploymentById(route.params?.deploymentId || '')
+// Enhance with WatermelonDB observables - fetch deployment + related records
+const enhance = withObservables(['route'], ({ route }: { route: DeploymentDetailsRouteProp }) => {
+    const deployment$ = DeploymentService.observeDeploymentById(route.params?.deploymentId || '')
+    return {
+        deployment: deployment$,
+    }
+})
+
+// Second HOC layer: once deployment is resolved, observe its relations
+const enhanceRelations = withObservables(['deployment'], ({ deployment }: { deployment: Deployment }) => ({
+    device: deployment.device.observe(),
+    project: deployment.project.observe(),
+    setupUser: deployment.user.observe(),
 }))
 
-export const DeploymentDetailsScreen = enhance(DeploymentDetailsScreenComponent)
+const EnhancedComponent = enhanceRelations(DeploymentDetailsScreenComponent)
+export const DeploymentDetailsScreen = enhance(EnhancedComponent)
+

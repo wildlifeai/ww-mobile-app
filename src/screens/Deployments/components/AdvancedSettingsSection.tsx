@@ -1,14 +1,22 @@
 import React, { useCallback, useState } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { List, Card, Button, Text } from 'react-native-paper'
+import { List, Card, Button, Text, TextInput } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
 import { WWProgressBar } from '../../../components/ui/WWProgressBar'
+import { WWSelect } from '../../../components/ui/WWSelect'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import Firmware from '../../../database/models/Firmware'
 import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
 
 interface AdvancedSettingsSectionProps {
+    cameraHeight: string
+    onCameraHeightChange: (text: string) => void
+    locationName: string
+    onLocationNameChange: (text: string) => void
+    availableLocations: {label: string, value: string}[]
+    isCustomLocation: boolean
+    setIsCustomLocation: (val: boolean) => void
     batteryLevel: number | null
     sdCardStatus: { total: number; free: number } | null
     latestBleFirmware: Firmware | null
@@ -30,6 +38,13 @@ interface AdvancedSettingsSectionProps {
 }
 
 export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = ({
+    cameraHeight,
+    onCameraHeightChange,
+    locationName,
+    onLocationNameChange,
+    availableLocations,
+    isCustomLocation,
+    setIsCustomLocation,
     batteryLevel,
     sdCardStatus,
     latestBleFirmware,
@@ -98,6 +113,61 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
         >
             <View style={styles.accordionContent}>
                 
+                {/* Location & Camera Settings Card */}
+                <Card style={styles.card}>
+                    <Card.Title title="Location & Camera Settings" />
+                    <Card.Content style={styles.content}>
+                        {availableLocations.length > 0 && !isCustomLocation ? (
+                            <View style={styles.inputContainer}>
+                                <WWSelect
+                                    label="Site Name"
+                                    value={locationName}
+                                    options={[...availableLocations, {label: '- Create New Site Location -', value: 'ADD_NEW'}]}
+                                    onChange={(val) => {
+                                        if (val === 'ADD_NEW') {
+                                            setIsCustomLocation(true)
+                                            onLocationNameChange('')
+                                        } else {
+                                            onLocationNameChange(val)
+                                        }
+                                    }}
+                                />
+                            </View>
+                        ) : (
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    label="Site Name"
+                                    value={locationName}
+                                    onChangeText={onLocationNameChange}
+                                    mode="outlined"
+                                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Site Name', 'Name of the deployment site')} />}
+                                />
+                                {availableLocations.length > 0 && (
+                                    <WWButton mode="text" onPress={() => { setIsCustomLocation(false); if(availableLocations.length > 0) onLocationNameChange(availableLocations[0].value) }} style={styles.switchButton}>
+                                        <Text>Select from nearby locations instead</Text>
+                                    </WWButton>
+                                )}
+                            </View>
+                        )}
+
+                        <View style={styles.inputContainer}>
+                            <TextInput
+                                label="Camera Height (cm)"
+                                placeholder="e.g. 50"
+                                value={cameraHeight}
+                                onChangeText={(text) => {
+                                    if (/^\d*$/.test(text)) {
+                                        onCameraHeightChange(text)
+                                    }
+                                }}
+                                mode="outlined"
+                                keyboardType="numeric"
+                                right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Camera Height', 'The height of the camera lens from the ground in centimeters.')} />}
+                            />
+                        </View>
+                    </Card.Content>
+                </Card>
+
                 {/* Battery Check Card */}
                 <Card style={styles.card}>
                     <Card.Title
@@ -259,6 +329,16 @@ const styles = StyleSheet.create({
     },
     card: {
         width: '100%',
+    },
+    content: {
+        gap: 16,
+    },
+    inputContainer: {
+        marginBottom: 8,
+    },
+    switchButton: {
+        marginTop: 4,
+        alignSelf: 'flex-start'
     },
     statusDisplay: {
         gap: 4,

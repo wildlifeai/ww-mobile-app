@@ -75,8 +75,8 @@ flowchart TD
     I --> J["Final Time Sync"]
     J --> K["Create Deployment Record in DB"]
     K --> L["Configure Device via BLE"]
-    L --> M["LED Confirmation"]
-    M --> N["Disconnect"]
+    L --> M["Transition to Live Monitor"]
+    M --> N["User taps 'Disconnect'"]
     N --> O["Navigate to Home"]
 ```
 
@@ -106,8 +106,8 @@ Project settings (capture method, sensitivity, timelapse interval, GPS image tag
 | 1 | Final Time Sync | `setutc` (firmware confirms via response) |
 | 2 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
 | 3 | Configure Device | `useDeploymentConfiguration.configure()` (see below) |
-| 4 | LED Confirmation | `flashg 3 300` (3 green flashes) |
-| 5 | Disconnect | `dis` |
+| 4 | Live Monitor | Transitions to `DeploymentMonitorView` (remains connected) |
+| 5 | Disconnect | User initiates manual disconnect (`dis`) |
 
 ### Device Configuration (`useDeploymentConfiguration`)
 
@@ -257,4 +257,4 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval
 
 ---
 
-*Last Updated: March 27, 2026*
+*Last Updated: March 29, 2026*

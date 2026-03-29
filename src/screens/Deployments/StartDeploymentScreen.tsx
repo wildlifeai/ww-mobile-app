@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
 import { StyleSheet, View } from 'react-native'
 
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
@@ -18,6 +18,7 @@ import { MetadataSection } from './components/MetadataSection'
 import { HelpDialog } from '../../components/ui/HelpDialog'
 import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog'
 import { AdvancedSettingsSection } from './components/AdvancedSettingsSection'
+import { DeploymentMonitorView } from './components/DeploymentMonitorView'
 
 import { useStartDeployment } from './hooks/useStartDeployment'
 
@@ -31,6 +32,7 @@ export const DeploymentDetailsStep = () => {
 
     const { projectId, deviceId, bleDeviceId, initPayload } = route.params || {}
 
+    // Destructure everything from hook first
     const {
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
@@ -39,12 +41,23 @@ export const DeploymentDetailsStep = () => {
         handleNameChange, handleNotesChange, handleProjectChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
         helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp,
+        // Dropdown & Additional Location State
+        locationName, setLocationName, availableLocations, isCustomLocation, setIsCustomLocation,
         // Advanced Settings
         batteryLevel, sdCardStatus, latestBleFirmware, deviceFirmwareVersion,
         bleFirmwareUpdateAvailable, firmwareUpdateProgress, isUpdatingFirmware,
         isCheckingFirmware, isVerifyingUpdate, firmwareUpdateStatus,
-        handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, handleBleFirmwareUpdate
+        handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, handleBleFirmwareUpdate,
+        isMonitoring, handleMonitorDisconnect
     } = useStartDeployment({ deviceId, bleDeviceId, projectId, navigation, initPayload })
+
+    useEffect(() => {
+        let title = device?.name || bleDevice?.name || 'Start deployment'
+        if (isMonitoring) {
+            title = `Monitoring: ${title}`
+        }
+        navigation.setOptions({ title })
+    }, [device?.name, bleDevice?.name, navigation, isMonitoring])
 
     const renderProjectSettingsLeft = useCallback((props: any) => <WWIcon {...props} source="tune" />, [])
     const renderProjectSettingsRight = useCallback((props: any) => (
@@ -71,8 +84,16 @@ export const DeploymentDetailsStep = () => {
         )
     }
 
-
-
+    if (isMonitoring) {
+        return (
+            <DeploymentMonitorView
+                deviceName={device?.name || bleDevice?.name || 'Device'}
+                deploymentName={formState.name || 'Deployment'}
+                device={bleDevice as any}
+                onDisconnect={handleMonitorDisconnect}
+            />
+        )
+    }
 
     return (
         <WWScreenView style={styles.screenView}>
@@ -87,6 +108,7 @@ export const DeploymentDetailsStep = () => {
                         initErrors={initErrors}
                         theme={theme}
                         warningHintText="You can still proceed with deployment, but we recommend addressing these issues if possible."
+                        hideDeviceDetails={true}
                     />
                 )}
 
@@ -139,10 +161,12 @@ export const DeploymentDetailsStep = () => {
                     </Card.Content>
                 </Card>
 
-                <LoRaWANSection
-                    device={bleDevice}
-                    onShowHelp={showHelp}
-                />
+                {project?.lorawan_required ? (
+                    <LoRaWANSection
+                        device={bleDevice}
+                        onShowHelp={showHelp}
+                    />
+                ) : null}
 
                 <CameraViewSection
                     device={bleDevice}
@@ -159,14 +183,19 @@ export const DeploymentDetailsStep = () => {
                 <MetadataSection
                     name={formState.name}
                     notes={formState.notes}
-                    cameraHeight={formState.cameraHeight}
                     onNameChange={handleNameChange}
                     onNotesChange={handleNotesChange}
-                    onCameraHeightChange={handleCameraHeightChange}
                     onShowHelp={showHelp}
                 />
 
                 <AdvancedSettingsSection
+                    cameraHeight={formState.cameraHeight}
+                    onCameraHeightChange={handleCameraHeightChange}
+                    locationName={locationName}
+                    onLocationNameChange={setLocationName}
+                    availableLocations={availableLocations}
+                    isCustomLocation={isCustomLocation}
+                    setIsCustomLocation={setIsCustomLocation}
                     batteryLevel={batteryLevel}
                     sdCardStatus={sdCardStatus}
                     latestBleFirmware={latestBleFirmware}

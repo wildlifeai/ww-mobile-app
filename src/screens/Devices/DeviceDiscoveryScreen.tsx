@@ -197,7 +197,14 @@ export const DeviceDiscoveryScreen = () => {
                                 Wildlife Watcher Scan
                             </Text>
                         </View>
-                        {renderEmptyState()}
+                        {devicesToDisplay.length === 0 ? renderEmptyState() : (
+                            <FlatList
+                                data={devicesToDisplay}
+                                renderItem={renderDeviceItem}
+                                keyExtractor={(item) => item.id}
+                                contentContainerStyle={styles.listContent}
+                            />
+                        )}
                     </>
                 )}
             </View>

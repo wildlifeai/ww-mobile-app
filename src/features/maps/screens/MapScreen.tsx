@@ -66,18 +66,14 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 		selectedDeploymentId: null
 	})
 
-	const { mapType, initialLoad, showActive, showEnded, selectedDeploymentId } = state
+	const { mapType, initialLoad, selectedDeploymentId } = state
 
 	const navigation = useAppNavigation()
 
-	// Filter deployments based on filter mode
+	// Filter deployments to only show active ones
 	const filteredDeployments = useMemo(() => {
-		return deployments.filter(d => {
-			const isActive = !d.deploymentEnd
-			if (isActive) return showActive
-			return showEnded
-		})
-	}, [deployments, showActive, showEnded])
+		return deployments.filter(d => d.deploymentStatusId === 1)
+	}, [deployments])
 
 	// Get selected deployment object for the card
 	const selectedDeployment = useMemo(() => {

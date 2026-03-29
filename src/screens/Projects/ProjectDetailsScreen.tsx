@@ -1,11 +1,10 @@
 /**
  * ProjectDetailsScreen
- * View and edit project details with member management
+ * View project details with member management
  *
  * Features:
  * - View mode: Display project details, stats, and members
- * - Edit mode: Toggle to edit project information
- * - Delete: Confirmation dialog before deletion
+ * - Edit: Navigate to EditProjectScreen via gear icon
  * - Member management: Add/remove project members
  * - Offline-first: All operations work offline with background sync
  * - Loading states: Proper skeleton/spinner for data fetching
@@ -20,14 +19,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { WWScreenView } from "../../components/ui/WWScreenView"
-import { WWButton } from "../../components/ui/WWButton"
 import { AppParams } from "../../navigation/types"
 
 import { ProjectDetailsCard } from './components/ProjectDetailsCard'
 import { ProjectDevicesCard } from './components/ProjectDevicesCard'
 import { ProjectMembersCard } from './components/ProjectMembersCard'
 import { useProjectDetails } from './hooks/useProjectDetails'
-import { useGetAiModelsQuery } from "../../redux/api/projectsApi"
 
 export const ProjectDetailsScreen = () => {
 	const theme = useTheme()
@@ -37,9 +34,6 @@ export const ProjectDetailsScreen = () => {
 	const insets = useSafeAreaInsets()
 
 	const {
-		isEditMode,
-		showDeleteDialog,
-		setShowDeleteDialog,
 		currentUser,
 		project,
 		isLoading,
@@ -48,30 +42,14 @@ export const ProjectDetailsScreen = () => {
 		members,
 		membersLoading,
 		isProjectAdmin,
-		control,
-		handleSubmit,
-		errors,
-		isDirty,
-		isUpdating,
 		samplingDesignOptions,
 		captureMethodOptions,
 		sensitivityOptions,
 		aiModelOptions,
 		isMotionDetection,
 		isTimeLapse,
-		handleEdit,
-		handleCancelEdit,
-		handleSave,
-		handleRemoveMember,
 		getLabel,
 	} = useProjectDetails(projectId)
-
-	const {
-		isLoading: isLoadingModels,
-		error: modelsError,
-		data: aiModels
-	} = useGetAiModelsQuery()
-	const hasAiModels = !!(aiModels && aiModels.length > 0)
 
 	const dynamicStyles = useMemo(() => ({
 		loadingLabel: { color: theme.colors.onSurfaceVariant },
@@ -148,67 +126,30 @@ export const ProjectDetailsScreen = () => {
 				{/* Details Card */}
 				<ProjectDetailsCard
 					project={project}
-					isEditMode={isEditMode}
 					isProjectAdmin={isProjectAdmin}
-					control={control as any}
-					errors={errors as any}
-					onEdit={handleEdit}
 					samplingDesignOptions={samplingDesignOptions}
 					captureMethodOptions={captureMethodOptions}
 					sensitivityOptions={sensitivityOptions}
 					aiModelOptions={aiModelOptions}
 					isMotionDetection={!!isMotionDetection}
 					isTimeLapse={!!isTimeLapse}
-					isLoadingModels={isLoadingModels}
-					modelsError={modelsError}
-					hasAiModels={hasAiModels}
 					getLabel={getLabel}
 				/>
 
 				{/* Devices Section */}
-				{!isEditMode && (
-					<ProjectDevicesCard 
-						projectId={projectId} 
-						projectName={project.name} 
-					/>
-				)}
+				<ProjectDevicesCard
+					projectId={projectId}
+					projectName={project.name}
+				/>
 
 				{/* Members Section */}
-				{!isEditMode && (
-					<ProjectMembersCard
-						project={project}
-						members={members}
-						membersLoading={membersLoading}
-						isProjectAdmin={isProjectAdmin}
-						currentUser={currentUser}
-						handleRemoveMember={handleRemoveMember}
-					/>
-				)}
-
-				{/* Edit Mode Actions */}
-				{isEditMode && (
-					<View style={styles.editActions}>
-						<WWButton
-							mode="outlined"
-							onPress={handleCancelEdit}
-							disabled={isUpdating}
-							style={styles.actionButton}
-							testID="cancel-button"
-						>
-							<Text>Cancel</Text>
-						</WWButton>
-						<WWButton
-							mode="contained"
-							onPress={handleSubmit(handleSave)}
-							loading={isUpdating}
-							disabled={isUpdating || !isDirty}
-							style={styles.actionButton}
-							testID="save-button"
-						>
-							<Text>Save Changes</Text>
-						</WWButton>
-					</View>
-				)}
+				<ProjectMembersCard
+					project={project}
+					members={members}
+					membersLoading={membersLoading}
+					isProjectAdmin={isProjectAdmin}
+					currentUser={currentUser}
+				/>
 			</View>
 		</ScrollView>
 	)
@@ -242,12 +183,5 @@ const styles = StyleSheet.create({
 	retryButton: {
 		marginTop: 8,
 	},
-	editActions: {
-		flexDirection: "row",
-		gap: 12,
-		marginTop: 8,
-	},
-	actionButton: {
-		flex: 1,
-	},
 })
+

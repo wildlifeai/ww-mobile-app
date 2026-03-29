@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native'
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated'
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useExtendedTheme } from '../../../theme'
 import type Deployment from '../../../database/models/Deployment'
@@ -21,9 +21,8 @@ export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose
     useEffect(() => {
         if (isVisible && deployment) {
             // Slide up
-            slideAnim.value = withSpring(0, {
-                damping: 8,
-                stiffness: 40
+            slideAnim.value = withTiming(0, {
+                duration: 200
             })
         } else {
             // Slide down
