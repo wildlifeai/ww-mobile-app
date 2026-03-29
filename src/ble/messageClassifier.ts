@@ -259,8 +259,8 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   const content = rawMessage.replace(/\0/g, '').trim()
 
   // --- WAKE EVENTS ---
-  if (/^MD\s/i.test(content)) return { category: 'motion', label: 'Motion detected — capturing photos', icon: 'run', details: content }
-  if (/^Timer\s/i.test(content)) return { category: 'timelapse', label: 'Timelapse triggered — capturing photos', icon: 'timer-sand', details: content }
+  if (/^MD[\s.]/i.test(content) || /^Wake\s*\(MD\)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
+  if (/^Timer\s/i.test(content) || /^Wake\s*\(Timer\)/i.test(content)) return { category: 'timelapse', label: 'Timelapse triggered', icon: 'timer-sand', details: content }
   if (/^(Wake|Waking AI processor|AI processor is awake)/i.test(content)) return { category: 'wake', label: 'Device waking up', icon: 'clock-start', details: content }
 
   // --- CAPTURE EVENTS ---

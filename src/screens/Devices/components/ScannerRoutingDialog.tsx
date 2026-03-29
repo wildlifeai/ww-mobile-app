@@ -1,15 +1,12 @@
-import { useState } from 'react'
-import { StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
+import { StyleSheet } from 'react-native'
 import { Portal, Dialog, Button, Text } from 'react-native-paper'
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
-import { useExtendedTheme } from '../../../theme'
-import { ProjectWithDetails } from '../../../types/project'
 
 export type ScannerRoutingState = 'idle' | 'no_projects' | 'no_access_active_deployment'
 
 type Props = {
     visible: boolean
     state: ScannerRoutingState
+    params?: any
     isProcessing: boolean
     onCreateProject: () => void
     onDismiss: () => void
@@ -18,6 +15,7 @@ type Props = {
 export const ScannerRoutingDialog = ({
     visible,
     state,
+    params,
     isProcessing,
     onCreateProject,
     onDismiss
@@ -28,53 +26,46 @@ export const ScannerRoutingDialog = ({
         dismissable: !isProcessing,
     }
 
-    const renderDialog = () => {
-        switch (state) {
-            case 'no_access_active_deployment':
-                return (
-                    <Dialog {...commonDialogProps} dismissable={false}>
-                        <Dialog.Title>Access Denied</Dialog.Title>
-                        <Dialog.Content>
-                            <Text variant="bodyLarge">
-                                This Wildlife Watcher is active in a project you don't have access to. Contact the project admin to be added.
-                            </Text>
-                        </Dialog.Content>
-                        <Dialog.Actions>
-                            <Button mode="contained" onPress={commonDialogProps.onDismiss} disabled={isProcessing}>
-                                OK
-                            </Button>
-                        </Dialog.Actions>
-                    </Dialog>
-                )
-
-            case 'no_projects':
-                return (
-                    <Dialog {...commonDialogProps}>
-                        <Dialog.Title>No Projects Found</Dialog.Title>
-                        <Dialog.Content>
-                            <Text variant="bodyLarge">
-                                You need to create a project first before you can associate a device with it for deployment.
-                            </Text>
-                        </Dialog.Content>
-                        <Dialog.Actions>
-                            <Button onPress={commonDialogProps.onDismiss} disabled={isProcessing}>Cancel</Button>
-                            <Button mode="contained" onPress={onCreateProject} disabled={isProcessing}>
-                                Create Project
-                            </Button>
-                        </Dialog.Actions>
-                    </Dialog>
-                )
-
-            default:
-                return null
-        }
-    }
-
     return (
         <Portal>
-            {renderDialog()}
+            {state === 'no_access_active_deployment' && (
+                <Dialog {...commonDialogProps} dismissable={false}>
+                    <Dialog.Title><Text>Access Denied</Text></Dialog.Title>
+                    <Dialog.Content>
+                        <Text variant="bodyLarge">
+                            This Wildlife Watcher is active in <Text style={styles.boldText}>'{params?.projectName || 'an unknown project'}'</Text>. You do not have access to this project. Contact the Wildlife Watcher team for support.
+                        </Text>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <Button mode="contained" onPress={commonDialogProps.onDismiss} disabled={isProcessing}>
+                            <Text>OK</Text>
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            )}
+
+            {state === 'no_projects' && (
+                <Dialog {...commonDialogProps}>
+                    <Dialog.Title><Text>No Projects Found</Text></Dialog.Title>
+                    <Dialog.Content>
+                        <Text variant="bodyLarge">
+                            You need to have at least a project first before you can use the Wildlife Watcher.
+                        </Text>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <Button onPress={commonDialogProps.onDismiss} disabled={isProcessing}><Text>Cancel</Text></Button>
+                        <Button mode="contained" onPress={onCreateProject} disabled={isProcessing}>
+                            <Text>Create Project</Text>
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            )}
         </Portal>
     )
 }
 
-const styles = StyleSheet.create({})
+const styles = StyleSheet.create({
+    boldText: {
+        fontWeight: 'bold'
+    }
+})

@@ -3,6 +3,10 @@ import { View, StyleSheet } from 'react-native'
 import { useNavigation, RouteProp } from '@react-navigation/native'
 import { IconButton, Menu, Card, Text } from 'react-native-paper'
 import { withObservables } from '@nozbe/watermelondb/react'
+import { Q } from '@nozbe/watermelondb'
+import { of } from 'rxjs'
+import { map } from 'rxjs/operators'
+import database from '../../database'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
@@ -217,9 +221,15 @@ const enhance = withObservables(['route'], ({ route }: { route: DeploymentDetail
 
 // Second HOC layer: once deployment is resolved, observe its relations
 const enhanceRelations = withObservables(['deployment'], ({ deployment }: { deployment: Deployment }) => ({
-    device: deployment.device.observe(),
-    project: deployment.project.observe(),
-    setupUser: deployment.user.observe(),
+    device: deployment.deviceId 
+        ? database.get<Device>('devices').query(Q.where('id', deployment.deviceId)).observe().pipe(map(devices => devices[0] || null))
+        : of(null),
+    project: deployment.projectId 
+        ? database.get<Project>('projects').query(Q.where('id', deployment.projectId)).observe().pipe(map(projects => projects[0] || null))
+        : of(null),
+    setupUser: deployment.setupBy 
+        ? database.get<User>('users').query(Q.where('id', deployment.setupBy)).observe().pipe(map(users => users[0] || null))
+        : of(null),
 }))
 
 const EnhancedComponent = enhanceRelations(DeploymentDetailsScreenComponent)

@@ -12,6 +12,7 @@ interface FinishProgressDialogProps {
     onDismiss: () => void
     loadingTitle?: string
     successTitle?: string
+    hideOkButton?: boolean
 }
 
 export const FinishProgressDialog: React.FC<FinishProgressDialogProps> = ({
@@ -22,7 +23,8 @@ export const FinishProgressDialog: React.FC<FinishProgressDialogProps> = ({
     isComplete,
     onDismiss,
     loadingTitle = 'Processing...',
-    successTitle = 'Completed Successfully'
+    successTitle = 'Completed Successfully',
+    hideOkButton = false
 }) => {
     const theme = useTheme()
     const scrollViewRef = React.useRef<ScrollView>(null)
@@ -94,7 +96,7 @@ return (
                         </ScrollView>
                     </View>
 
-                        {isComplete && (
+                        {isComplete && !hideOkButton && (
                             <Button
                                 mode="contained"
                                 onPress={onDismiss}

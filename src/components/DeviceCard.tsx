@@ -17,7 +17,6 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
     // Calculate status message based on user's logic
     const statusInfo = useMemo(() => {
         const deployEndDate = device.deploymentEndDate ? new Date(device.deploymentEndDate) : null
-        const lastDeployDate = device.lastDeploymentDate ? new Date(device.lastDeploymentDate) : null
 
         // Logic 2: Active deployment (no end date)
         // If there is a last deployment date (start) but NO end date, it is active.
@@ -67,7 +66,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
                         style={[styles.title, { color: theme.colors.onSurface }]}
                         numberOfLines={1}
                     >
-                        {device.name || 'Unknown Device'}
+                        {device.bluetoothId}{device.name && device.name !== device.bluetoothId ? ` (${device.name})` : ''}
                     </Text>
                 </View>
 

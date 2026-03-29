@@ -1,15 +1,13 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef } from 'react'
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useExtendedTheme } from '../../../theme'
 import { useDeploymentMonitor, ActivityLogEntry } from '../hooks/useDeploymentMonitor'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming, withSequence, Easing } from 'react-native-reanimated'
 
 interface Props {
-  deviceName: string
-  deploymentName: string
   device: ExtendedPeripheral | null
+  captureMethodId?: number | null
   onDisconnect: () => void
 }
 
@@ -30,48 +28,17 @@ const formatDate = (timestamp: number) => {
   return d.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
-const PulseIndicator = () => {
-  const { colors } = useExtendedTheme()
-  const opacity = useSharedValue(0.4)
-  const scale = useSharedValue(0.8)
-
-  useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1000, easing: Easing.ease }),
-        withTiming(0.4, { duration: 1000, easing: Easing.ease })
-      ),
-      -1,
-      true
-    )
-    scale.value = withRepeat(
-      withSequence(
-        withTiming(1.2, { duration: 1000, easing: Easing.ease }),
-        withTiming(0.8, { duration: 1000, easing: Easing.ease })
-      ),
-      -1,
-      true
-    )
-  }, [opacity, scale])
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: scale.value }],
-  }))
-
-  return (
-    <Animated.View style={[styles.pulseCircle, { backgroundColor: colors.success }, animatedStyle]} />
-  )
-}
 
 export const DeploymentMonitorView: React.FC<Props> = ({
-  deviceName,
-  deploymentName,
   device,
+  captureMethodId,
   onDisconnect,
 }) => {
   const { colors } = useExtendedTheme()
   const { activityLog, stats } = useDeploymentMonitor(device)
+
+  const showMotion = captureMethodId === 1 || captureMethodId === 3
+  const showTimelapse = captureMethodId === 2 || captureMethodId === 3
   const flatListRef = useRef<FlatList>(null)
 
   const getEventColor = (category: string) => {
@@ -122,19 +89,7 @@ export const DeploymentMonitorView: React.FC<Props> = ({
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       
-      {/* Header Info */}
-      <View style={[styles.headerCard, { backgroundColor: colors.surface }]}>
-        <View style={styles.headerRow}>
-          <Text style={[styles.deviceName, { color: colors.onSurface }]}>{deviceName}</Text>
-          <View style={styles.activePill}>
-            <PulseIndicator />
-            <Text style={[styles.activeText, { color: colors.success }]}>Active</Text>
-          </View>
-        </View>
-        <Text style={[styles.deploymentName, { color: colors.onSurfaceVariant }]}>
-          Deployment: {deploymentName}
-        </Text>
-      </View>
+
 
       {/* Stats Bar */}
       <View style={styles.statsContainer}>
@@ -143,16 +98,20 @@ export const DeploymentMonitorView: React.FC<Props> = ({
           <Text style={[styles.statValue, { color: colors.onSurface }]}>{stats.photoCount}</Text>
           <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Photos</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
-          <MaterialCommunityIcons name="run" size={24} color={colors.tertiary || '#FF9800'} />
-          <Text style={[styles.statValue, { color: colors.onSurface }]}>{stats.motionCount}</Text>
-          <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Motion</Text>
-        </View>
-        <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
-          <MaterialCommunityIcons name="timer-sand" size={24} color="#9C27B0" />
-          <Text style={[styles.statValue, { color: colors.onSurface }]}>{stats.timelapseCount}</Text>
-          <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Timelapse</Text>
-        </View>
+        {showMotion && (
+          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+            <MaterialCommunityIcons name="run" size={24} color={colors.tertiary || '#FF9800'} />
+            <Text style={[styles.statValue, { color: colors.onSurface }]}>{stats.motionCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Motion</Text>
+          </View>
+        )}
+        {showTimelapse && (
+          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+            <MaterialCommunityIcons name="timer-sand" size={24} color="#9C27B0" />
+            <Text style={[styles.statValue, { color: colors.onSurface }]}>{stats.timelapseCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Timelapse</Text>
+          </View>
+        )}
       </View>
 
       <View style={[styles.timeContainer, { backgroundColor: colors.surfaceVariant }]}>
@@ -201,33 +160,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  headerCard: {
-    padding: 16,
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-  },
-  headerRow: {
+  activeHeaderRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 16,
     marginBottom: 4,
-  },
-  deviceName: {
-    fontSize: 20,
-    fontWeight: 'bold',
   },
   activePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(76, 175, 80, 0.1)', // Light success tint
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 16,
   },
   pulseCircle: {
@@ -239,9 +184,6 @@ const styles = StyleSheet.create({
   activeText: {
     fontSize: 12,
     fontWeight: 'bold',
-  },
-  deploymentName: {
-    fontSize: 14,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -255,11 +197,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginHorizontal: 4,
     borderRadius: 12,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
+    boxShadow: '0px 1px 1px 0px rgba(0,0,0,0.1)',
   },
   statValue: {
     fontSize: 24,

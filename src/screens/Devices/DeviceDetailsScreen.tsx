@@ -206,7 +206,7 @@ export const DeviceDetailsScreen = () => {
                             onPress={handleConnectToDevice}
                             style={styles.prepareButton}
                         >
-                            Scan for Device
+                            <Text>Scan for Device</Text>
                         </WWButton>
                     </View>
                 )}

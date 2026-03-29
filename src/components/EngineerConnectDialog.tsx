@@ -28,117 +28,104 @@ export const EngineerConnectDialog = ({
         dismissable: dialogState !== 'scanning' && dialogState !== 'connecting',
     }
 
-    const renderDialog = () => {
-        switch (dialogState) {
-            case 'scanning':
-                return (
-                    <Dialog {...commonDialogProps} dismissable={true} onDismiss={onDismiss}>
-                        <Dialog.Title>Engineer Console</Dialog.Title>
-                        <Dialog.Content>
-                            <View style={styles.centered}>
-                                <ActivityIndicator size="large" color="#4CAF50" style={styles.spinner} />
-                                <Text variant="bodyLarge">Scanning for devices...</Text>
-                                <Text variant="bodySmall" style={styles.messageText}>
-                                    Turn on your Wildlife Watcher device to connect
-                                </Text>
-                            </View>
-                        </Dialog.Content>
-                        <Dialog.Actions>
-                            <Button onPress={onDismiss}><Text>Cancel</Text></Button>
-                        </Dialog.Actions>
-                    </Dialog>
-                )
-
-            case 'no_devices':
-                return (
-                    <Dialog {...commonDialogProps}>
-                        <Dialog.Title>No Devices Found</Dialog.Title>
-                        <Dialog.Content>
-                            <View style={styles.centered}>
-                                <MaterialCommunityIcons
-                                    name="bluetooth-off"
-                                    size={48}
-                                    color="#999"
-                                    style={styles.icon}
-                                />
-                                <Text variant="bodyLarge" style={styles.messageText}>
-                                    There is no device nearby advertising BLE
-                                </Text>
-                            </View>
-                        </Dialog.Content>
-                        <Dialog.Actions>
-                            <Button onPress={onDismiss}><Text>Close</Text></Button>
-                        </Dialog.Actions>
-                    </Dialog>
-                )
-
-            case 'connecting':
-                return (
-                    <Dialog {...commonDialogProps}>
-                        <Dialog.Title>Engineer Console</Dialog.Title>
-                        <Dialog.Content>
-                            <View style={styles.centered}>
-                                <ActivityIndicator size="large" color="#4CAF50" style={styles.spinner} />
-                                <Text variant="bodyLarge">
-                                    Connecting to {connectingDevice?.name || connectingDevice?.id || 'device'}...
-                                </Text>
-                            </View>
-                        </Dialog.Content>
-                    </Dialog>
-                )
-
-            case 'select':
-                return (
-                    <Dialog {...commonDialogProps}>
-                        <Dialog.Title>Multiple Devices Found</Dialog.Title>
-                        <Dialog.Content>
-                            <Text variant="bodyMedium" style={styles.selectMessage}>
-                                Multiple BLE devices are advertising. Select which one to connect to:
-                            </Text>
-                            <View style={styles.deviceList}>
-                                {discoveredDevices.map((device) => (
-                                    <TouchableOpacity
-                                        key={device.id}
-                                        style={styles.deviceRow}
-                                        onPress={() => onSelectDevice(device)}
-                                    >
-                                        <MaterialCommunityIcons
-                                            name="bluetooth"
-                                            size={24}
-                                            color="#4CAF50"
-                                            style={styles.deviceIcon}
-                                        />
-                                        <View style={styles.deviceInfo}>
-                                            <Text variant="bodyLarge" style={styles.deviceName}>
-                                                {device.name || 'Unknown Device'}
-                                            </Text>
-                                            <Text variant="bodySmall" style={styles.deviceId}>
-                                                {device.id}
-                                            </Text>
-                                        </View>
-                                        {device.rssi != null && device.rssi !== 127 && (
-                                            <Text variant="bodySmall" style={styles.rssi}>
-                                                {device.rssi} dBm
-                                            </Text>
-                                        )}
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </Dialog.Content>
-                        <Dialog.Actions>
-                            <Button onPress={onDismiss}><Text>Cancel</Text></Button>
-                        </Dialog.Actions>
-                    </Dialog>
-                )
-
-            default:
-                return null
-        }
-    }
-
     return (
         <Portal>
-            {renderDialog()}
+            {dialogState === 'scanning' && (
+                <Dialog {...commonDialogProps} dismissable={true} onDismiss={onDismiss}>
+                    <Dialog.Title><Text>Engineer Console</Text></Dialog.Title>
+                    <Dialog.Content>
+                        <View style={styles.centered}>
+                            <ActivityIndicator size="large" color="#4CAF50" style={styles.spinner} />
+                            <Text variant="bodyLarge">Scanning for devices...</Text>
+                            <Text variant="bodySmall" style={styles.messageText}>
+                                Turn on your Wildlife Watcher device to connect
+                            </Text>
+                        </View>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <Button onPress={onDismiss}><Text>Cancel</Text></Button>
+                    </Dialog.Actions>
+                </Dialog>
+            )}
+
+            {dialogState === 'no_devices' && (
+                <Dialog {...commonDialogProps}>
+                    <Dialog.Title><Text>No Devices Found</Text></Dialog.Title>
+                    <Dialog.Content>
+                        <View style={styles.centered}>
+                            <MaterialCommunityIcons
+                                name="bluetooth-off"
+                                size={48}
+                                color="#999"
+                                style={styles.icon}
+                            />
+                            <Text variant="bodyLarge" style={styles.messageText}>
+                                There is no device nearby advertising BLE
+                            </Text>
+                        </View>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <Button onPress={onDismiss}><Text>Close</Text></Button>
+                    </Dialog.Actions>
+                </Dialog>
+            )}
+
+            {dialogState === 'connecting' && (
+                <Dialog {...commonDialogProps}>
+                    <Dialog.Title><Text>Engineer Console</Text></Dialog.Title>
+                    <Dialog.Content>
+                        <View style={styles.centered}>
+                            <ActivityIndicator size="large" color="#4CAF50" style={styles.spinner} />
+                            <Text variant="bodyLarge">
+                                Connecting to {connectingDevice?.name || connectingDevice?.id || 'device'}...
+                            </Text>
+                        </View>
+                    </Dialog.Content>
+                </Dialog>
+            )}
+
+            {dialogState === 'select' && (
+                <Dialog {...commonDialogProps}>
+                    <Dialog.Title><Text>Multiple Devices Found</Text></Dialog.Title>
+                    <Dialog.Content>
+                        <Text variant="bodyMedium" style={styles.selectMessage}>
+                            Multiple BLE devices are advertising. Select which one to connect to:
+                        </Text>
+                        <View style={styles.deviceList}>
+                            {discoveredDevices.map((device) => (
+                                <TouchableOpacity
+                                    key={device.id}
+                                    style={styles.deviceRow}
+                                    onPress={() => onSelectDevice(device)}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="bluetooth"
+                                        size={24}
+                                        color="#4CAF50"
+                                        style={styles.deviceIcon}
+                                    />
+                                    <View style={styles.deviceInfo}>
+                                        <Text variant="bodyLarge" style={styles.deviceName}>
+                                            {device.name || 'Unknown Device'}
+                                        </Text>
+                                        <Text variant="bodySmall" style={styles.deviceId}>
+                                            {device.id}
+                                        </Text>
+                                    </View>
+                                    {device.rssi != null && device.rssi !== 127 && (
+                                        <Text variant="bodySmall" style={styles.rssi}>
+                                            {device.rssi} dBm
+                                        </Text>
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <Button onPress={onDismiss}><Text>Cancel</Text></Button>
+                    </Dialog.Actions>
+                </Dialog>
+            )}
         </Portal>
     )
 }

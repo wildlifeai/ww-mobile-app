@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { bleCommandManager } from '../../../ble/commandManager'
 import { classifyForMonitor, MonitorEvent } from '../../../ble/messageClassifier'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { useBleHeartbeat } from '../../../hooks/useBleHeartbeat'
 
 export interface ActivityLogEntry extends MonitorEvent {
     id: string
@@ -18,7 +17,7 @@ interface MonitorStats {
 
 const MAX_LOG_ENTRIES = 200
 
-export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
+export const useDeploymentMonitor = (_device: ExtendedPeripheral | null) => {
     const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([])
     const [stats, setStats] = useState<MonitorStats>({
         photoCount: 0,
@@ -29,8 +28,7 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
 
     const startTimeRef = useRef<number>(Date.now())
 
-    // 1. Keep the BLE connection alive using the heartbeat
-    useBleHeartbeat(device)
+
 
     // 2. Track time active
     useEffect(() => {

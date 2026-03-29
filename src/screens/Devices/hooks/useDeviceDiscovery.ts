@@ -3,21 +3,22 @@ import { Alert } from 'react-native'
 import { useIsFocused, useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 
 import { useBleActions } from '../../../providers/BleEngineProvider'
-import { useBleCommands } from "../../../hooks/useBleCommands"
+
 import { useDevicePreDeploymentChecks } from '../../../hooks/useDevicePreDeploymentChecks'
-import { useAppDispatch, useAppSelector } from '../../../redux'
+import { useAppSelector } from '../../../redux'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { DeviceService } from '../../../services/DeviceService'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { DeploymentService } from '../../../services/DeploymentService'
 import ProjectService from '../../../services/ProjectService'
 import { RootStackParamList } from '../../../navigation/types'
+import { useBleInitialization } from '../../../hooks/useBleInitialization'
+import { getSupabaseClient } from '../../../services/supabase'
 import { log, logError } from '../../../utils/logger'
 import { sleep } from '../../../utils/helpers'
 import { ScannerRoutingState } from '../components/ScannerRoutingDialog'
-import { ProjectWithDetails } from '../../../types/project'
-import Device from '../../../database/models/Device'
-import Deployment from '../../../database/models/Deployment'
+import { InitPayload } from '../../../navigation/types'
+
 
 type DeviceDiscoveryScreenRouteProp = RouteProp<RootStackParamList, 'DeviceDiscovery'>
 
@@ -28,21 +29,17 @@ type UseDeviceDiscoveryOptions = {
 export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const isDrawerOpen = options?.isDrawerOpen ?? false
     const navigation = useNavigation()
-    const dispatch = useAppDispatch()
     const route = useRoute<DeviceDiscoveryScreenRouteProp>()
 
     const { isBleConnecting, startScan, stopScan, connectDevice, disconnectDevice } = useBleActions()
-    const { setGpsLocation } = useBleCommands()
     const { runChecks: runPreDeploymentChecks } = useDevicePreDeploymentChecks()
+    const { initialize: runBleStandardInit } = useBleInitialization()
     const devices = useAppSelector((state) => state.devices)
     const { isScanning } = useAppSelector((state) => state.scanning)
     const currentOrganisation = useAppSelector(selectCurrentOrganisation)
     const user = useAppSelector((state) => state.authentication.user)
-    const { currentLocation } = useAppSelector(state => state.location)
 
     const mode = route.params?.mode || 'auto'
-
-    const isBleBusy = isBleConnecting || isScanning
 
     // Sort devices by signal strength (RSSI)
     const devicesToDisplay = useMemo(() => {
@@ -67,7 +64,14 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
     // Scanner Routing Dialog state
     const [routingState, setRoutingState] = useState<ScannerRoutingState>('idle')
-    const [routingIsProcessing, setRoutingIsProcessing] = useState(false)
+    const [routingParams, setRoutingParams] = useState<any>({})
+    const routingStateRef = useRef<ScannerRoutingState>('idle')
+    const updateRoutingState = useCallback((state: ScannerRoutingState, params?: any) => {
+        routingStateRef.current = state
+        if (params) setRoutingParams(params)
+        setRoutingState(state)
+    }, [])
+    const [routingIsProcessing] = useState(false)
 
     // We use a ref so the effect doesn't constantly re-run and interrupt scans
     const isReadyToScanRef = useRef(!isBleConnecting && !isScanning && !processing && !connectingDevice)
@@ -181,13 +185,39 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                     const projectAccess = await ProjectService.getProjectById(activeDeployment.projectId)
 
                                     if (!projectAccess) {
-                                        setRoutingState('no_access_active_deployment')
+                                        // Fetch project name from Supabase directly
+                                        let projectName = 'this project'
+                                        try {
+                                            const { data } = await getSupabaseClient().from('projects').select('name').eq('id', activeDeployment.projectId).single()
+                                            if (data?.name) projectName = data.name
+                                        } catch (e) {
+                                            logError('Failed to fetch project name from supabase', e)
+                                        }
+                                        updateRoutingState('no_access_active_deployment', { projectName })
+                                        return
                                     } else {
-                                        // User has access -> Route directly to End Deployment
-                                        (navigation as any).navigate('EndDeploymentDetailsStep', {
+                                        // User has access -> Run Checks -> Route to End Deployment
+                                        await addLog('Verifying device health...')
+                                        const initResult = await runBleStandardInit(connectedDevice, {
+                                            onProgress: (step) => addLog(step)
+                                        })
+                                        
+                                        const initPayload: InitPayload = {
+                                            batteryLevel: null,
+                                            sdCardStatus: null,
+                                            deviceFirmwareVersion: null,
+                                            bleFirmwareUpdateAvailable: false,
+                                            initErrors: {
+                                                setUtc: initResult.errors?.setUtc,
+                                                deviceHealth: initResult.errors?.deviceHealth || []
+                                            }
+                                        }
+
+                                        ;(navigation as any).navigate('EndDeploymentDetailsStep', {
                                             deploymentId: activeDeployment.id,
                                             deviceId: dbDevice.id,
-                                            bleDeviceId: connectedDevice.id
+                                            bleDeviceId: connectedDevice.id,
+                                            initPayload
                                         })
                                     }
                                     setProcessing(false)
@@ -202,7 +232,8 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                 const projects = await ProjectService.getProjectsForUserInOrganisation(user.id, currentOrganisation.id)
 
                                 if (projects.length === 0) {
-                                    setRoutingState('no_projects')
+                                    updateRoutingState('no_projects')
+                                    return
                                 } else {
                                     // Found projects! Select the best default
                                     const lastEndedDeployment = await DeploymentService.getLastEndedDeploymentForDeviceId(dbDevice.id)
@@ -229,7 +260,8 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                     })
                                 }
                             } else {
-                                setRoutingState('no_projects')
+                                updateRoutingState('no_projects')
+                                return
                             }
 
                             setProcessing(false)
@@ -256,10 +288,28 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                             }
 
                             log(`activeDeployment found: ${activeDeployment.id}. Proceeding to End Deployment details.`);
-                            (navigation as any).navigate('EndDeploymentDetailsStep', {
+                            
+                            await addLog('Verifying device health...')
+                            const initResult = await runBleStandardInit(connectedDevice, {
+                                onProgress: (step) => addLog(step)
+                            })
+                            
+                            const initPayload: InitPayload = {
+                                batteryLevel: null,
+                                sdCardStatus: null,
+                                deviceFirmwareVersion: null,
+                                bleFirmwareUpdateAvailable: false,
+                                initErrors: {
+                                    setUtc: initResult.errors?.setUtc,
+                                    deviceHealth: initResult.errors?.deviceHealth || []
+                                }
+                            }
+
+                            ;(navigation as any).navigate('EndDeploymentDetailsStep', {
                                 deploymentId: activeDeployment.id,
                                 deviceId: dbDevice.id,
-                                bleDeviceId: connectedDevice.id
+                                bleDeviceId: connectedDevice.id,
+                                initPayload
                             })
                             setProcessing(false)
                             setConnectingDevice(null)
@@ -269,36 +319,57 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 }
             } catch (error) {
                 logError('Error connecting to device:', error)
-                Alert.alert('Connection Failed', 'Could not connect to device. It might be in DFU mode or out of range.')
+                Alert.alert('Connection Failed', 'Could not connect to device. It might be in DFU mode or out of range.', [
+                    { 
+                        text: 'OK', 
+                        onPress: () => {
+                            autoConnectIgnoredDevicesRef.current.delete(device.id)
+                        } 
+                    }
+                ])
             } finally {
                 if (!navigation.isFocused()) {
                     setConnectingDevice(null)
                     setConnectionLogs([])
                 }
-                setProcessing(false)
+                if (routingStateRef.current === 'idle') {
+                    setProcessing(false)
+                }
             }
         },
-        [connectDevice, disconnectDevice, navigation, currentOrganisation, mode, processing, user?.id, stopScan, addLog]
+        [connectDevice, disconnectDevice, navigation, currentOrganisation, mode, processing, user?.id, stopScan, addLog, updateRoutingState, runBleStandardInit, runPreDeploymentChecks]
     )
 
     // --- Scanner Routing Dialog Callbacks ---
 
     const handleRoutingCreateProject = useCallback(() => {
-        setRoutingState('idle');
+        updateRoutingState('idle');
+        setProcessing(false);
+        setConnectingDevice(null);
         (navigation as any).navigate('NewProjectScreen')
-    }, [navigation])
+    }, [navigation, updateRoutingState])
 
     const handleRoutingDismiss = useCallback(() => {
-        setRoutingState('idle')
+        updateRoutingState('idle')
+        setProcessing(false);
+        setConnectingDevice(null);
         // Ensure any active connection is thoroughly killed on dismiss
         if (Object.values(devices).find(d => d.connected)) {
             Object.values(devices).filter(d => d.connected).forEach(d => disconnectDevice(d))
         }
-    }, [disconnectDevice, devices])
+    }, [disconnectDevice, devices, updateRoutingState])
 
     // Auto-connect logic
     const autoConnectIgnoredDevicesRef = useRef<Set<string>>(new Set())
     const { isEngineerConsoleActive } = useAppSelector((state) => state.scanning)
+
+    // Clear the ignore list (cool-off period) whenever focus returns to this screen
+    // This allows users to immediately reconnect to devices they just backed out of
+    useEffect(() => {
+        if (isFocused) {
+            autoConnectIgnoredDevicesRef.current.clear()
+        }
+    }, [isFocused])
 
     useEffect(() => {
         // Treat an open drawer the same as not being focused (pause background operations)
@@ -306,7 +377,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
         // Prevent auto-connect if we're not focused, processing a connection, ANY device is currently connecting,
         // OR the Engineer Console is actively scanning for a device
-        if (isActuallyFocused && !isAnyDeviceConnecting && !isEngineerConsoleActive && devicesToDisplay.length >= 1 && mode === 'auto') {
+        if (isActuallyFocused && !isAnyDeviceConnecting && !isEngineerConsoleActive && devicesToDisplay.length >= 1) {
             const deviceToConnect = devicesToDisplay.find(d =>
                 !d.signalLost && !d.connected && !d.loading && !processing && !autoConnectIgnoredDevicesRef.current.has(d.id)
             )
@@ -348,6 +419,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         processing,
         // Scanner Routing Dialog
         routingState,
+        routingParams,
         routingIsProcessing,
         handleRoutingCreateProject,
         handleRoutingDismiss,

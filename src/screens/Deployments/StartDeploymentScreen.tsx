@@ -5,7 +5,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWButton } from '../../components/ui/WWButton'
 import { RootStackParamList } from '../../navigation/types'
-import { Card, Text, Button, useTheme } from 'react-native-paper'
+import { Card, Text, Button, IconButton, useTheme } from 'react-native-paper'
 import { WWIcon } from '../../components/ui/WWIcon'
 import { WWSelect } from '../../components/ui/WWSelect'
 import { InitializationHeader } from '../Devices/components/InitializationHeader'
@@ -54,10 +54,24 @@ export const DeploymentDetailsStep = () => {
     useEffect(() => {
         let title = device?.name || bleDevice?.name || 'Start deployment'
         if (isMonitoring) {
-            title = `Monitoring: ${title}`
+            title = formState.name || 'Monitoring'
         }
         navigation.setOptions({ title })
-    }, [device?.name, bleDevice?.name, navigation, isMonitoring])
+    }, [device?.name, bleDevice?.name, navigation, isMonitoring, formState.name])
+
+    const headerLeft = useCallback(() => (
+        <IconButton
+            icon="arrow-left"
+            onPress={handleMonitorDisconnect}
+        />
+    ), [handleMonitorDisconnect])
+
+    // Task 6: Override header back button when monitoring (like Engineer Console)
+    useEffect(() => {
+        navigation.setOptions({
+            headerLeft: isMonitoring ? headerLeft : undefined,
+        })
+    }, [isMonitoring, navigation, headerLeft])
 
     const renderProjectSettingsLeft = useCallback((props: any) => <WWIcon {...props} source="tune" />, [])
     const renderProjectSettingsRight = useCallback((props: any) => (
@@ -87,9 +101,8 @@ export const DeploymentDetailsStep = () => {
     if (isMonitoring) {
         return (
             <DeploymentMonitorView
-                deviceName={device?.name || bleDevice?.name || 'Device'}
-                deploymentName={formState.name || 'Deployment'}
                 device={bleDevice as any}
+                captureMethodId={project?.capture_method_id}
                 onDisconnect={handleMonitorDisconnect}
             />
         )
@@ -244,6 +257,7 @@ export const DeploymentDetailsStep = () => {
                 onDismiss={handleFinishDismiss}
                 loadingTitle="Starting Deployment"
                 successTitle="Deployment Complete"
+                hideOkButton={true}
             />
         </WWScreenView>
     )
