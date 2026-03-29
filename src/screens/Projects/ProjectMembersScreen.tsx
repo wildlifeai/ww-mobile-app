@@ -259,9 +259,6 @@ export const ProjectMembersScreen = () => {
 		<View style={styles.container}>
 			{/* Header */}
 			<View style={styles.header}>
-				<Text variant="headlineSmall" style={styles.headerTitle}>
-					Project Members
-				</Text>
 				<Text
 					variant="bodyMedium"
 					style={[

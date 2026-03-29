@@ -12,6 +12,7 @@ import { useAppNavigation } from '../../hooks/useAppNavigation'
 
 interface ProjectDevice {
     id: string
+    bluetoothId: string
     name: string
     isActive: boolean
     activeDeploymentId?: string
@@ -61,6 +62,7 @@ export const ProjectDevicesScreen = () => {
 
                     return {
                         id: device.id,
+                        bluetoothId: device.bluetoothId,
                         name: device.name || 'Unknown Device',
                         isActive: !!activeDeployment,
                         activeDeploymentId: activeDeployment?.id,
@@ -110,14 +112,14 @@ export const ProjectDevicesScreen = () => {
                             style={[styles.deviceName, dynamicStyles.deviceName]}
                             numberOfLines={1}
                         >
-                            {item.name}
+                            {item.bluetoothId}{item.name && item.name !== item.bluetoothId ? ` (${item.name})` : ''}
                         </Text>
                         {item.isActive && item.activeDeploymentName && (
                             <Text
                                 variant="bodySmall"
                                 style={dynamicStyles.activeText}
                             >
-                                Active — {item.activeDeploymentName}
+                                Deployed at {item.activeDeploymentName}
                             </Text>
                         )}
                         {!item.isActive && (
@@ -125,7 +127,7 @@ export const ProjectDevicesScreen = () => {
                                 variant="bodySmall"
                                 style={dynamicStyles.inactiveText}
                             >
-                                Not deployed
+                                not deployed
                             </Text>
                         )}
                     </View>
@@ -133,7 +135,7 @@ export const ProjectDevicesScreen = () => {
                     {/* View on Map action (active only) */}
                     {item.isActive && (
                         <TouchableRipple
-                            onPress={() => navigation.navigate('Home')}
+                            onPress={() => navigation.navigate('Home', { initialTab: 'maps', selectedDeploymentId: item.activeDeploymentId })}
                             style={styles.mapButton}
                             borderless
                         >

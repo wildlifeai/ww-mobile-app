@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
-import { View, StyleSheet, ScrollView } from 'react-native'
-import { Text, IconButton, Portal, Dialog, Button, Divider, ActivityIndicator, useTheme, List } from 'react-native-paper'
+import { View, StyleSheet } from 'react-native'
+import { Text, IconButton, ActivityIndicator, useTheme, List } from 'react-native-paper'
 import { Control, Controller } from 'react-hook-form'
 import { Field } from '../../../components/form/Field'
 import { WWSelect } from '../../../components/ui/WWSelect'
 import { WWTextInput } from '../../../components/ui/WWTextInput'
 import { WWCheckbox } from '../../../components/ui/WWCheckbox'
 import { logError } from '../../../utils/logger'
+import { ProjectSettingsHelpDialogs } from './ProjectSettingsHelpDialogs'
 
 interface ProjectFormData {
     name: string
@@ -60,6 +61,11 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
     const [samplingHelpVisible, setSamplingHelpVisible] = useState(false)
     const [captureHelpVisible, setCaptureHelpVisible] = useState(false)
     const [gpsHelpVisible, setGpsHelpVisible] = useState(false)
+
+    const renderAccordionIcon = React.useCallback(
+        (props: any) => <List.Icon {...props} icon="cog-outline" />,
+        []
+    )
 
     return (
         <View style={styles.section}>
@@ -155,11 +161,11 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
 
             <List.Accordion
                 title="Advanced Project Settings"
-                left={props => <List.Icon {...props} icon="cog-outline" />}
+                left={renderAccordionIcon}
                 style={styles.accordionContainer}
             >
                 <View style={styles.accordionChildrenContainer}>
-                <Field control={control} name="website" label="Website (Optional)">
+                <Field control={control} name="website" label="Website">
                     {(field) => (
                         <WWTextInput
                             {...field}
@@ -172,7 +178,7 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                     )}
                 </Field>
 
-                <Field control={control} name="model_id" label="Default AI Model (Optional)">
+                <Field control={control} name="model_id" label="Default AI Model">
                     {(field) => {
                         if (isLoadingModels) {
                             return (
@@ -235,7 +241,7 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                     )}
                 />
 
-                <View style={{ position: 'relative' }}>
+                <View style={styles.relativeContainer}>
                     <Controller
                         control={control}
                         name="record_gps_in_images"
@@ -252,7 +258,7 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                         icon="help-circle-outline"
                         size={24}
                         onPress={() => setGpsHelpVisible(true)}
-                        style={[styles.helpIcon, { position: 'absolute', right: 0, top: 4, zIndex: 1 }]}
+                        style={[styles.helpIcon, styles.absoluteHelpIcon]}
                         iconColor={theme.colors.primary}
                     />
                 </View>
@@ -288,115 +294,14 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
             </List.Accordion>
 
             {/* Help Dialogs */}
-            <Portal>
-                <Dialog
-                    visible={samplingHelpVisible}
-                    onDismiss={() => setSamplingHelpVisible(false)}
-                    style={styles.dialog}
-                >
-                    <Dialog.Title><Text>Sampling Designs</Text></Dialog.Title>
-                    <Dialog.ScrollArea>
-                        <ScrollView contentContainerStyle={styles.dialogScrollContent}>
-                            <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Simple random:</Text> <Text>random
-                                distribution of sampling locations</Text>
-                            </Text>
-                            <Divider style={styles.divider} />
-
-                            <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Systematic random:</Text> <Text>random
-                                distribution of sampling locations, but arranged in a regular
-                                pattern</Text>
-                            </Text>
-                            <Divider style={styles.divider} />
-
-                            <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Clustered random:</Text> <Text>random
-                                distribution of sampling locations, but clustered in arrays</Text>
-                            </Text>
-                            <Divider style={styles.divider} />
-
-                            <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Experimental:</Text> <Text>non-random
-                                distribution aimed to study an effect, including the
-                                before-after control-impact (BACI) design</Text>
-                            </Text>
-                            <Divider style={styles.divider} />
-
-                            <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Targeted:</Text> <Text>non-random
-                                distribution optimized for capturing specific target species
-                                (often using various bait types)</Text>
-                            </Text>
-                            <Divider style={styles.divider} />
-
-                            <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Opportunistic:</Text> <Text>opportunistic
-                                camera trapping (usually with a small number of cameras).</Text>
-                            </Text>
-                        </ScrollView>
-                    </Dialog.ScrollArea>
-                    <Dialog.Actions>
-                        <Button onPress={() => setSamplingHelpVisible(false)}>
-                            <Text>Close</Text>
-                        </Button>
-                    </Dialog.Actions>
-                </Dialog>
-            </Portal>
-
-            <Portal>
-                <Dialog
-                    visible={captureHelpVisible}
-                    onDismiss={() => setCaptureHelpVisible(false)}
-                    style={styles.dialog}
-                >
-                    <Dialog.Title><Text>Capture Methods</Text></Dialog.Title>
-                    <Dialog.ScrollArea>
-                        <ScrollView contentContainerStyle={styles.dialogScrollContent}>
-                            <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>activityDetection:</Text> <Text>The camera
-                                uses the motion-detection sensor to record photos</Text>
-                            </Text>
-                            <Divider style={styles.divider} />
-
-                            <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>timeLapse:</Text> <Text>Set a timer (e.g.
-                                every 30 seconds) for the camera to take photos.</Text>
-                            </Text>
-                        </ScrollView>
-                    </Dialog.ScrollArea>
-                    <Dialog.Actions>
-                        <Button onPress={() => setCaptureHelpVisible(false)}>
-                            <Text>Close</Text>
-                        </Button>
-                    </Dialog.Actions>
-                </Dialog>
-            </Portal>
-            <Portal>
-                <Dialog
-                    visible={gpsHelpVisible}
-                    onDismiss={() => setGpsHelpVisible(false)}
-                    style={styles.dialog}
-                >
-                    <Dialog.Title><Text>GPS Image Tracking</Text></Dialog.Title>
-                    <Dialog.ScrollArea>
-                        <ScrollView contentContainerStyle={styles.dialogScrollContent}>
-                            <Text style={styles.helpItem}>
-                                Geolocation is by default only tracked in the Wildlife Watcher database so that only users with access to the project and deployments can access the information.
-                            </Text>
-                            <Divider style={styles.divider} />
-                            <Text style={styles.helpItem}>
-                                <Text style={styles.bold}>Warning:</Text> Writing the GPS locations directly in the images' EXIF properties can expose sensitive information (e.g., a georeferenced picture of a threatened species floating online). Enable this only if absolutely necessary for your workflow.
-                            </Text>
-                        </ScrollView>
-                    </Dialog.ScrollArea>
-                    <Dialog.Actions>
-                        <Button onPress={() => setGpsHelpVisible(false)}>
-                            <Text>Close</Text>
-                        </Button>
-                    </Dialog.Actions>
-                </Dialog>
-            </Portal>
+            <ProjectSettingsHelpDialogs
+                samplingHelpVisible={samplingHelpVisible}
+                setSamplingHelpVisible={setSamplingHelpVisible}
+                captureHelpVisible={captureHelpVisible}
+                setCaptureHelpVisible={setCaptureHelpVisible}
+                gpsHelpVisible={gpsHelpVisible}
+                setGpsHelpVisible={setGpsHelpVisible}
+            />
         </View>
     )
 }
@@ -421,31 +326,23 @@ const styles = StyleSheet.create({
         margin: 0,
         marginTop: 8,
     },
-    helpItem: {
-        marginBottom: 8,
-        lineHeight: 20,
-    },
-    bold: {
-        fontWeight: "bold",
-    },
-    divider: {
-        marginVertical: 8,
-    },
-    dialog: {
-        maxHeight: "80%",
-    },
-    dialogScrollContent: {
-        paddingVertical: 16,
-    },
     alignCenter: {
         alignItems: "center"
     },
     accordionContainer: {
         backgroundColor: "transparent",
         paddingHorizontal: 0,
-        marginLeft: -16, // To align title with other fields
     },
     accordionChildrenContainer: {
-        marginLeft: -64,
+        marginLeft: 0,
+    },
+    relativeContainer: {
+        position: 'relative'
+    },
+    absoluteHelpIcon: {
+        position: 'absolute',
+        right: 0,
+        top: 4,
+        zIndex: 1
     }
 })

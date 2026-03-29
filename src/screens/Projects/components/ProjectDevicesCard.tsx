@@ -17,8 +17,10 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
     const navigation = useAppNavigation()
     const theme = useTheme()
 
-    const [devices, setDevices] = useState<Device[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+    const [{ devices, isLoading }, setState] = useState<{
+        devices: (Device & { isActive?: boolean })[]
+        isLoading: boolean
+    }>({ devices: [], isLoading: true })
 
     const dynamicStyles = {
         title: { color: theme.colors.onSurface },
@@ -31,6 +33,7 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
         let isMounted = true
 
         const fetchDevices = async () => {
+            let nextDevices: any[] = []
             try {
                 // Find all deployments for this project to get device IDs
                 const deployments = await database.get<Deployment>('deployments')
@@ -47,16 +50,34 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
                         .fetch()
                         
                     if (isMounted) {
-                        setDevices(uniqueDevices)
+                        const devicesWithStatus = uniqueDevices.map(device => {
+                            const isActive = deployments.some(d => d.deviceId === device.id && !d.deploymentEnd)
+                            return {
+                                id: device.id,
+                                name: device.name,
+                                bluetoothId: device.bluetoothId,
+                                isActive,
+                            }
+                        })
+                        
+                        // Sort so active devices appear first
+                        devicesWithStatus.sort((a, b) => {
+                            if (a.isActive && !b.isActive) return -1
+                            if (!a.isActive && b.isActive) return 1
+                            const nameA = a.name || a.bluetoothId || 'Unknown Device'
+                            const nameB = b.name || b.bluetoothId || 'Unknown Device'
+                            return nameA.localeCompare(nameB)
+                        })
+
+                        nextDevices = devicesWithStatus
                     }
-                } else {
-                    if (isMounted) setDevices([])
                 }
             } catch (error) {
                 console.error("Failed to fetch project devices:", error)
-                if (isMounted) setDevices([])
             } finally {
-                if (isMounted) setIsLoading(false)
+                if (isMounted) {
+                    setState({ devices: nextDevices as any, isLoading: false })
+                }
             }
         }
 
@@ -100,14 +121,11 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
                             <View key={device.id} style={styles.deviceListItem}>
                                 <View style={styles.deviceInfo}>
                                     <View style={styles.iconContainer}>
-                                        <WWIcon source="camera-wireless" size={24} color={theme.colors.primary} />
+                                        <WWIcon source="camera" size={24} color={device.isActive ? '#4CAF50' : '#9E9E9E'} />
                                     </View>
                                     <View style={styles.deviceDetails}>
                                         <Text variant="bodyMedium" style={dynamicStyles.deviceName}>
                                             {device.name}
-                                        </Text>
-                                        <Text variant="bodySmall" style={dynamicStyles.deviceMac}>
-                                            {device.bluetoothId}
                                         </Text>
                                     </View>
                                 </View>
