@@ -72,6 +72,16 @@ export const DeviceDiscoveryScreen = () => {
                         </View>
                     </View>
                 </View>
+
+                {/* Scanner Routing Dialog (Rendered in Connecting State) */}
+                <ScannerRoutingDialog
+                    visible={routingState !== 'idle'}
+                    state={routingState}
+                    params={routingParams}
+                    isProcessing={routingIsProcessing}
+                    onCreateProject={handleRoutingCreateProject}
+                    onDismiss={handleRoutingDismiss}
+                />
             </SafeAreaView>
         )
     }

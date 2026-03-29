@@ -166,6 +166,16 @@ export const ProjectMembersScreen = () => {
 
 				dispatch({ members: enrichedMembers })
 				log(`✅ Loaded ${enrichedMembers.length} project members`)
+				// Load pending invitations only if user is an admin
+				const currentUserRole = enrichedMembers.find((m) => m.id === user!.id)?.role
+				const isAdmin = currentUserRole === "project_admin" || user!.role === "ww_admin"
+				
+				if (isAdmin) {
+					const pending = await InvitationService.getProjectPendingInvitations(projectId)
+					dispatch({ pendingInvitations: pending })
+				} else {
+					dispatch({ pendingInvitations: [] })
+				}
 			} catch (error: any) {
 				if (error?.message?.includes("Unauthorized")) {
 					// User not authorized to view members - show empty list
@@ -176,10 +186,6 @@ export const ProjectMembersScreen = () => {
 				}
 				throw error // Re-throw other errors
 			}
-
-			// Load pending invitations
-			const pending = await InvitationService.getProjectPendingInvitations(projectId)
-			dispatch({ pendingInvitations: pending })
 		} catch (error) {
 			logError("❌ Error loading members:", error)
 			Alert.alert("Error", "Failed to load project members")

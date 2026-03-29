@@ -75,7 +75,7 @@ export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
             )}
 
             {/* Initialization Errors */}
-            {(initErrors.selftest || initErrors.setUtc || initErrors.deviceHealth) && (
+            {(initErrors.selftest || initErrors.setUtc || (initErrors.deviceHealth && initErrors.deviceHealth.length > 0)) && (
                 <View style={[styles.errorSection, { backgroundColor: theme.colors.errorContainer, borderLeftColor: theme.colors.error }]}>
                     <Text variant="titleMedium" style={[styles.errorTitle, { color: theme.colors.onErrorContainer }]}>
                         ⚠️ Initialization Warnings

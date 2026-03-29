@@ -595,7 +595,7 @@ export const useStartDeployment = ({
                     captureMethod: method,
                     motionInterval: 1000,
                     timelapseInterval: project.timelapse_interval_seconds || 300,
-                    recordGpsInImages: project.recordGpsInImages || false,
+                    recordGpsInImages: project.record_gps_in_images || false,
                     location: gpsLocation && gpsLocation.latitude !== undefined && gpsLocation.longitude !== undefined ? {
                         latitude: gpsLocation.latitude,
                         longitude: gpsLocation.longitude,
