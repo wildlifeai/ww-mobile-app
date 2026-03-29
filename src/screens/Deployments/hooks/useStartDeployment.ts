@@ -245,13 +245,13 @@ export const useStartDeployment = ({
                 if (proj && proj.capture_method_id) {
                     log('[DeploymentDetails] Resolving capture method name for ID:', proj.capture_method_id);
                     const methods = await ReferenceDataService.getCaptureMethods()
-                    const method = methods.find((m: any) => m.id === proj.capture_method_id)
+                    const method = methods.find((m: any) => String(m.id) === String(proj.capture_method_id))
                     log('[DeploymentDetails] Method resolved:', method?.value);
                     setCaptureMethodName(method ? method.value : 'Unknown')
 
                     if (proj.activity_detection_sensitivity_id) {
                         const sensitivities = await ReferenceDataService.getActivitySensitivity()
-                        const sensitivity = sensitivities.find((s: any) => s.id === proj.activity_detection_sensitivity_id)
+                        const sensitivity = sensitivities.find((s: any) => String(s.id) === String(proj.activity_detection_sensitivity_id))
                         setSensitivityLabel(sensitivity ? sensitivity.value : 'Unknown')
                     }
                 } else {
@@ -366,12 +366,12 @@ export const useStartDeployment = ({
 
         if (newProject.capture_method_id) {
             const methods = await ReferenceDataService.getCaptureMethods()
-            const method = methods.find((m: any) => m.id === newProject.capture_method_id)
+            const method = methods.find((m: any) => String(m.id) === String(newProject.capture_method_id))
             setCaptureMethodName(method ? method.value : 'Unknown')
 
             if (newProject.activity_detection_sensitivity_id) {
                 const sensitivities = await ReferenceDataService.getActivitySensitivity()
-                const sensitivity = sensitivities.find((s: any) => s.id === newProject.activity_detection_sensitivity_id)
+                const sensitivity = sensitivities.find((s: any) => String(s.id) === String(newProject.activity_detection_sensitivity_id))
                 setSensitivityLabel(sensitivity ? sensitivity.value : 'Unknown')
             } else {
                 setSensitivityLabel('')
@@ -595,7 +595,12 @@ export const useStartDeployment = ({
                     captureMethod: method,
                     motionInterval: 1000,
                     timelapseInterval: project.timelapse_interval_seconds || 300,
-                    recordGpsInImages: project.recordGpsInImages || false
+                    recordGpsInImages: project.recordGpsInImages || false,
+                    location: gpsLocation && gpsLocation.latitude !== undefined && gpsLocation.longitude !== undefined ? {
+                        latitude: gpsLocation.latitude,
+                        longitude: gpsLocation.longitude,
+                        altitude: gpsLocation.altitude || 0
+                    } : undefined
                 })
                 
                 addFinishLog('Device configuration successful')
@@ -612,13 +617,20 @@ export const useStartDeployment = ({
             addFinishLog('Deployment started successfully')
             addFinishLog('Transitioning to live monitor...')
 
+            // Auto-transition to monitoring after a brief delay
+            setTimeout(() => {
+                setIsFinishing(false)
+                setIsMonitoring(true)
+                isStartDeploymentInProgress.current = false
+            }, 1500)
+
         } catch (error) {
             logError('Deployment failed:', error)
             setIsFinishing(false)
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.name, formState.cameraHeight, formState.notes, bleDevice, project, user, deviceId, startConfigure, addFinishLog, setUtc, batteryLevel, device?.deviceEui, deviceFirmwareVersion, getLorawanMetrics, gpsLocation?.accuracy, gpsLocation?.altitude, gpsLocation?.latitude, gpsLocation?.longitude, locationName, sdCardStatus?.free, sdCardStatus?.total])
+    }, [formState.name, formState.cameraHeight, formState.notes, bleDevice, project, user, deviceId, startConfigure, addFinishLog, setUtc, batteryLevel, device?.deviceEui, deviceFirmwareVersion, getLorawanMetrics, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)
