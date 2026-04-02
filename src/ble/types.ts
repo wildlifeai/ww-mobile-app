@@ -449,7 +449,7 @@ export const COMMANDS: {
 		name: CommandNames.getdid,
 		writeCommand: () => "AI getdid", // In case we want to write it explicitly instead of read
 		readCommand: "AI getdid",
-		readRegex: /([a-zA-Z0-9-]+)/, // Matches any alphanumeric string with hyphens
+		readRegex: /\b([a-fA-F0-9-]{36})\b/, // Matches UUID-formatted deployment IDs
 		description: "Get Deployment ID (string)",
 		type: 'command',
 	},
