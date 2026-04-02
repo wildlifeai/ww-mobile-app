@@ -27,7 +27,7 @@ This folder contains six onboarding guides:
 | 1 | [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) | Framework versions, dependencies, architecture, and patterns |
 | 2 | [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) | Folder structure, state management, naming conventions |
 | 3 | [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) | WatermelonDB, Supabase sync, security model, offline patterns |
-| 4 | [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) | Device preparation, deployment, and retrieval |
+| 4 | [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) | Device deployment, management, and retrieval |
 | 5 | [05-GIT-WORKFLOW.md](./05-GIT-WORKFLOW.md) | Git branching, Conventional Commits, and CI pipeline rules |
 
 **Deep-dive guides** in [`documentation/resources/`](../resources/):

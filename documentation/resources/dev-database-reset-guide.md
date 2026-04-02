@@ -80,7 +80,7 @@ When backend team deploys new seed data:
 
 **Key tables** (subset — full list in `src/database/schema.ts`):
 - `deployments`, `deployment_statuses`
-- `devices`, `device_preparation`
+- `devices`
 - `projects`, `organisations`, `user_organisations`
 - `ai_models`, `ai_model_organisation`
 - `api_logs`, `activity_sensitivity`, `capture_methods`

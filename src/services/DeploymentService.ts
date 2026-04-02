@@ -27,7 +27,6 @@ export const DeploymentService = {
             name: string
             projectId: string
             deviceId: string
-            devicePreparationId: string
             setupBy: string
             locationName: string
             latitude?: number
@@ -39,6 +38,21 @@ export const DeploymentService = {
             cameraHeight?: number
             locationDescription?: string
             captureMethodId?: number
+            // Device Snapshot Fields
+            cameraModel?: string
+            lorawanNetwork?: string
+            deviceEui?: string
+            lorawanRegistrationCompleted?: boolean
+            lorawanLastVerifiedAt?: Date | null
+            aiModelId?: string
+            bleFirmwareId?: string
+            himaxFirmwareId?: string
+            configFirmwareId?: string
+            batteryLevelAtStart?: number
+            sdCardTotalKbAtStart?: number
+            sdCardAvailableKbAtStart?: number
+            lorawanRssiAtStart?: number
+            lorawanSnrAtStart?: number
         }
     ): Promise<Deployment> => {
         log('[DeploymentService] Creating deployment:', data.name)
@@ -61,7 +75,6 @@ export const DeploymentService = {
                     deployment.projectId = data.projectId
                     // deployment.userId = data.userId // REMOVED
                     deployment.deviceId = data.deviceId
-                    deployment.devicePreparationId = data.devicePreparationId
                     deployment.setupBy = data.setupBy
                     deployment.deploymentStart = new Date()
                     deployment.deploymentStatusId = DEPLOYMENT_STATUS.DEPLOYED
@@ -99,6 +112,23 @@ export const DeploymentService = {
                     deployment.location = {}
                     deployment.deploymentPhotos = []
                     deployment.modifiedBy = data.setupBy
+
+                    // Device Snapshot
+                    deployment.cameraModel = data.cameraModel
+                    deployment.lorawanNetwork = data.lorawanNetwork
+                    deployment.deviceEui = data.deviceEui
+                    deployment.lorawanRegistrationCompleted = data.lorawanRegistrationCompleted
+                    deployment.lorawanLastVerifiedAt = data.lorawanLastVerifiedAt
+                    deployment.aiModelId = data.aiModelId
+                    deployment.bleFirmwareId = data.bleFirmwareId
+                    deployment.himaxFirmwareId = data.himaxFirmwareId
+                    deployment.configFirmwareId = data.configFirmwareId
+                    deployment.batteryLevelAtStart = data.batteryLevelAtStart
+                    deployment.sdCardTotalKbAtStart = data.sdCardTotalKbAtStart
+                    deployment.sdCardAvailableKbAtStart = data.sdCardAvailableKbAtStart
+                    deployment.lorawanRssiAtStart = data.lorawanRssiAtStart
+                    deployment.lorawanSnrAtStart = data.lorawanSnrAtStart
+
                     log('[DeploymentService] Preparation function complete')
                 })
 
@@ -223,10 +253,10 @@ export const DeploymentService = {
     /**
      * Get active deployment for a device
      */
-    getActiveDeploymentForDevice: async (devicePreparationId: string): Promise<Deployment | undefined> => {
+    getActiveDeploymentForDevice: async (deviceId: string): Promise<Deployment | undefined> => {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const deployments = await deploymentsCollection.query(
-            Q.where('device_preparation_id', devicePreparationId),
+            Q.where('device_id', deviceId),
             Q.where('deployment_status_id', DEPLOYMENT_STATUS.DEPLOYED),
             Q.sortBy('deployment_start', Q.desc)
         ).fetch()
@@ -240,7 +270,7 @@ export const DeploymentService = {
     getActiveDeploymentForDeviceId: async (deviceId: string): Promise<Deployment | undefined> => {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const deployments = await deploymentsCollection.query(
-            Q.on('device_preparation', 'device_id', deviceId),
+            Q.where('device_id', deviceId),
             Q.where('deployment_status_id', DEPLOYMENT_STATUS.DEPLOYED),
             Q.sortBy('deployment_start', Q.desc)
         ).fetch()
@@ -254,7 +284,7 @@ export const DeploymentService = {
     getLastEndedDeploymentForDeviceId: async (deviceId: string): Promise<Deployment | undefined> => {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const deployments = await deploymentsCollection.query(
-            Q.on('device_preparation', 'device_id', deviceId),
+            Q.where('device_id', deviceId),
             Q.where('deployment_status_id', Q.notEq(DEPLOYMENT_STATUS.DEPLOYED)), // Ended or Failed
             Q.sortBy('deployment_end', Q.desc),
             Q.take(1)
@@ -362,7 +392,6 @@ function mapModelToPayload(model: Deployment): any {
         project_id: model.projectId,
         // user_id: model.userId, // REMOVED
         device_id: model.deviceId,
-        device_preparation_id: model.devicePreparationId,
         name: model.name,
         setup_by: model.setupBy,
         deployment_start: new Date(model.deploymentStart).toISOString(),
@@ -384,6 +413,22 @@ function mapModelToPayload(model: Deployment): any {
             : (model.cameraLocationImagePaths || null),
         latitude: model.latitude || null,
         longitude: model.longitude || null,
+
+        // Device Snapshot Fields
+        camera_model: model.cameraModel || null,
+        lorawan_network: model.lorawanNetwork || null,
+        device_eui: model.deviceEui || null,
+        lorawan_registration_completed: model.lorawanRegistrationCompleted || false,
+        lorawan_last_verified_at: model.lorawanLastVerifiedAt ? new Date(model.lorawanLastVerifiedAt).toISOString() : null,
+        ai_model_id: model.aiModelId || null,
+        ble_firmware_id: model.bleFirmwareId || null,
+        himax_firmware_id: model.himaxFirmwareId || null,
+        config_firmware_id: model.configFirmwareId || null,
+        battery_level_at_start: model.batteryLevelAtStart ?? null,
+        sd_card_total_kb_at_start: model.sdCardTotalKbAtStart ?? null,
+        sd_card_available_kb_at_start: model.sdCardAvailableKbAtStart ?? null,
+        lorawan_rssi_at_start: model.lorawanRssiAtStart ?? null,
+        lorawan_snr_at_start: model.lorawanSnrAtStart ?? null,
 
         created_at: new Date(model.createdAt).toISOString(),
         updated_at: new Date(model.updatedAt).toISOString(),

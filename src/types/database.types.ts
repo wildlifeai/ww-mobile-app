@@ -486,20 +486,27 @@ export type Database = {
         Row: {
           accuracy: number | null
           activity_detection_sensitivity_id: number | null
+          ai_model_id: string | null
           altitude: number | null
+          battery_level_at_start: number | null
+          ble_firmware_id: string | null
           camera_height: number | null
           camera_location_image_paths: Json | null
+          camera_model: string | null
           capture_method_id: number | null
+          config_firmware_id: string | null
           created_at: string | null
           deleted_at: string | null
           deployment_end: string | null
           deployment_photos: Json | null
           deployment_start: string
           deployment_status_id: number | null
-          device_id: string | null
-          device_preparation_id: string | null
+          device_eui: string | null
+          device_id: string
+          device_preparation_id_deprecated: string | null
           end_deployment_comments: string | null
           ended_by: string | null
+          himax_firmware_id: string | null
           id: string
           latitude: number | null
           location: unknown
@@ -507,8 +514,15 @@ export type Database = {
           location_description: string | null
           location_name: string
           longitude: number | null
+          lorawan_last_verified_at: string | null
+          lorawan_network: string | null
+          lorawan_registration_completed: boolean
+          lorawan_rssi_at_start: number | null
+          lorawan_snr_at_start: number | null
           name: string
-          project_id: string | null
+          project_id: string
+          sd_card_available_kb_at_start: number | null
+          sd_card_total_kb_at_start: number | null
           setup_by: string
           start_deployment_comments: string | null
           timelapse_interval_seconds: number | null
@@ -517,20 +531,27 @@ export type Database = {
         Insert: {
           accuracy?: number | null
           activity_detection_sensitivity_id?: number | null
+          ai_model_id?: string | null
           altitude?: number | null
+          battery_level_at_start?: number | null
+          ble_firmware_id?: string | null
           camera_height?: number | null
           camera_location_image_paths?: Json | null
+          camera_model?: string | null
           capture_method_id?: number | null
+          config_firmware_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
           deployment_end?: string | null
           deployment_photos?: Json | null
           deployment_start: string
           deployment_status_id?: number | null
-          device_id?: string | null
-          device_preparation_id?: string | null
+          device_eui?: string | null
+          device_id: string
+          device_preparation_id_deprecated?: string | null
           end_deployment_comments?: string | null
           ended_by?: string | null
+          himax_firmware_id?: string | null
           id?: string
           latitude?: number | null
           location?: unknown
@@ -538,8 +559,15 @@ export type Database = {
           location_description?: string | null
           location_name: string
           longitude?: number | null
+          lorawan_last_verified_at?: string | null
+          lorawan_network?: string | null
+          lorawan_registration_completed?: boolean
+          lorawan_rssi_at_start?: number | null
+          lorawan_snr_at_start?: number | null
           name: string
-          project_id?: string | null
+          project_id: string
+          sd_card_available_kb_at_start?: number | null
+          sd_card_total_kb_at_start?: number | null
           setup_by: string
           start_deployment_comments?: string | null
           timelapse_interval_seconds?: number | null
@@ -548,20 +576,27 @@ export type Database = {
         Update: {
           accuracy?: number | null
           activity_detection_sensitivity_id?: number | null
+          ai_model_id?: string | null
           altitude?: number | null
+          battery_level_at_start?: number | null
+          ble_firmware_id?: string | null
           camera_height?: number | null
           camera_location_image_paths?: Json | null
+          camera_model?: string | null
           capture_method_id?: number | null
+          config_firmware_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
           deployment_end?: string | null
           deployment_photos?: Json | null
           deployment_start?: string
           deployment_status_id?: number | null
-          device_id?: string | null
-          device_preparation_id?: string | null
+          device_eui?: string | null
+          device_id?: string
+          device_preparation_id_deprecated?: string | null
           end_deployment_comments?: string | null
           ended_by?: string | null
+          himax_firmware_id?: string | null
           id?: string
           latitude?: number | null
           location?: unknown
@@ -569,8 +604,15 @@ export type Database = {
           location_description?: string | null
           location_name?: string
           longitude?: number | null
+          lorawan_last_verified_at?: string | null
+          lorawan_network?: string | null
+          lorawan_registration_completed?: boolean
+          lorawan_rssi_at_start?: number | null
+          lorawan_snr_at_start?: number | null
           name?: string
-          project_id?: string | null
+          project_id?: string
+          sd_card_available_kb_at_start?: number | null
+          sd_card_total_kb_at_start?: number | null
           setup_by?: string
           start_deployment_comments?: string | null
           timelapse_interval_seconds?: number | null
@@ -585,10 +627,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "deployments_ai_model_id_fkey"
+            columns: ["ai_model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployments_ble_firmware_id_fkey"
+            columns: ["ble_firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "deployments_capture_method_id_fkey"
             columns: ["capture_method_id"]
             isOneToOne: false
             referencedRelation: "capture_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployments_config_firmware_id_fkey"
+            columns: ["config_firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
             referencedColumns: ["id"]
           },
           {
@@ -614,9 +677,16 @@ export type Database = {
           },
           {
             foreignKeyName: "deployments_device_preparation_id_fkey"
-            columns: ["device_preparation_id"]
+            columns: ["device_preparation_id_deprecated"]
             isOneToOne: false
             referencedRelation: "device_preparation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployments_himax_firmware_id_fkey"
+            columns: ["himax_firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
             referencedColumns: ["id"]
           },
           {
@@ -1213,8 +1283,10 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          is_archived: boolean
           is_baited: boolean | null
           is_monitoring_marked_individuals: boolean | null
+          lorawan_required: boolean
           model_id: string | null
           modified_by: string
           name: string
@@ -1235,8 +1307,10 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_archived?: boolean
           is_baited?: boolean | null
           is_monitoring_marked_individuals?: boolean | null
+          lorawan_required?: boolean
           model_id?: string | null
           modified_by?: string
           name: string
@@ -1257,8 +1331,10 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_archived?: boolean
           is_baited?: boolean | null
           is_monitoring_marked_individuals?: boolean | null
+          lorawan_required?: boolean
           model_id?: string | null
           modified_by?: string
           name?: string
@@ -1515,29 +1591,7 @@ export type Database = {
           status_description: string | null
           updated_at: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "device_preparation_ble_firmware_id_fkey"
-            columns: ["ble_firmware_id"]
-            isOneToOne: false
-            referencedRelation: "firmware"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_preparation_config_firmware_id_fkey"
-            columns: ["config_firmware_id"]
-            isOneToOne: false
-            referencedRelation: "firmware"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_preparation_himax_firmware_id_fkey"
-            columns: ["himax_firmware_id"]
-            isOneToOne: false
-            referencedRelation: "firmware"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       geography_columns: {
         Row: {
@@ -2065,10 +2119,6 @@ export type Database = {
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       expire_old_invitations: { Args: never; Returns: number }
-      force_cancel_active_preparation: {
-        Args: { p_device_id: string }
-        Returns: undefined
-      }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
         Args: { geom1: unknown; geom2: unknown }

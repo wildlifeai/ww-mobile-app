@@ -1,22 +1,24 @@
-import { useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
 import { StyleSheet, View } from 'react-native'
 
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWButton } from '../../components/ui/WWButton'
 import { RootStackParamList } from '../../navigation/types'
-import { Card, Text, Button, useTheme } from 'react-native-paper'
+import { Card, Text, Button, IconButton, useTheme } from 'react-native-paper'
 import { WWIcon } from '../../components/ui/WWIcon'
+import { WWSelect } from '../../components/ui/WWSelect'
 import { InitializationHeader } from '../Devices/components/InitializationHeader'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 
 import { LoRaWANSection } from './components/LoRaWANSection'
 import { CameraViewSection } from './components/CameraViewSection'
 import { DeploymentMotionDetectionSection } from './components/DeploymentMotionDetectionSection'
-import { LocationSection } from './components/LocationSection'
 import { MetadataSection } from './components/MetadataSection'
 import { HelpDialog } from '../../components/ui/HelpDialog'
 import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog'
+import { AdvancedSettingsSection } from './components/AdvancedSettingsSection'
+import { DeploymentMonitorView } from './components/DeploymentMonitorView'
 
 import { useStartDeployment } from './hooks/useStartDeployment'
 
@@ -28,17 +30,48 @@ export const DeploymentDetailsStep = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
     const route = useRoute<DeploymentDetailsRouteProp>()
 
-    const { devicePreparationId, deviceId, bleDeviceId } = route.params || {}
+    const { projectId, deviceId, bleDeviceId, initPayload } = route.params || {}
 
+    // Destructure everything from hook first
     const {
-        formState, submitting, project, captureMethodName, sensitivityLabel,
+        formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
-        isNavigatingAway, handleLocationChange, handleImageCaptured,
-        handleNameChange, handleNotesChange, handleLocationNameChange,
+        handleImageCaptured,
+        handleNameChange, handleNotesChange, handleProjectChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
-        helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp
-    } = useStartDeployment({ deviceId, bleDeviceId, devicePreparationId, navigation })
+        helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp,
+        // Dropdown & Additional Location State
+        locationName, setLocationName, availableLocations, isCustomLocation, setIsCustomLocation,
+        // Advanced Settings
+        batteryLevel, sdCardStatus, latestBleFirmware, deviceFirmwareVersion,
+        bleFirmwareUpdateAvailable, firmwareUpdateProgress, isUpdatingFirmware,
+        isCheckingFirmware, isVerifyingUpdate, firmwareUpdateStatus,
+        handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, handleBleFirmwareUpdate,
+        isMonitoring, handleMonitorDisconnect
+    } = useStartDeployment({ deviceId, bleDeviceId, projectId, navigation, initPayload })
+
+    useEffect(() => {
+        let title = device?.name || bleDevice?.name || 'Start deployment'
+        if (isMonitoring) {
+            title = formState.name || 'Monitoring'
+        }
+        navigation.setOptions({ title })
+    }, [device?.name, bleDevice?.name, navigation, isMonitoring, formState.name])
+
+    const headerLeft = useCallback(() => (
+        <IconButton
+            icon="arrow-left"
+            onPress={handleMonitorDisconnect}
+        />
+    ), [handleMonitorDisconnect])
+
+    // Task 6: Override header back button when monitoring (like Engineer Console)
+    useEffect(() => {
+        navigation.setOptions({
+            headerLeft: isMonitoring ? headerLeft : undefined,
+        })
+    }, [isMonitoring, navigation, headerLeft])
 
     const renderProjectSettingsLeft = useCallback((props: any) => <WWIcon {...props} source="tune" />, [])
     const renderProjectSettingsRight = useCallback((props: any) => (
@@ -49,13 +82,13 @@ export const DeploymentDetailsStep = () => {
 
 
     // Sanity Check: Ensure required params are present
-    if (!devicePreparationId) {
+    if (!deviceId) {
         return (
             <WWScreenView>
                 <View style={styles.errorContainer}>
                     <Text variant="headlineMedium" style={styles.errorTitle}>Error</Text>
                     <Text variant="bodyLarge" style={styles.errorMessage}>
-                        Missing Device Preparation ID. Unable to proceed with deployment.
+                        Missing Device ID. Unable to proceed with deployment.
                     </Text>
                     <Button mode="contained" onPress={() => navigation.goBack()}>
                         <Text>Go Back</Text>
@@ -65,8 +98,15 @@ export const DeploymentDetailsStep = () => {
         )
     }
 
-
-
+    if (isMonitoring) {
+        return (
+            <DeploymentMonitorView
+                device={bleDevice as any}
+                captureMethodId={project?.capture_method_id}
+                onDisconnect={handleMonitorDisconnect}
+            />
+        )
+    }
 
     return (
         <WWScreenView style={styles.screenView}>
@@ -80,6 +120,8 @@ export const DeploymentDetailsStep = () => {
                         initStep={initStep}
                         initErrors={initErrors}
                         theme={theme}
+                        warningHintText="You can still proceed with deployment, but we recommend addressing these issues if possible."
+                        hideDeviceDetails={true}
                     />
                 )}
 
@@ -91,9 +133,14 @@ export const DeploymentDetailsStep = () => {
                         right={renderProjectSettingsRight}
                     />
                     <Card.Content>
-                        <View style={styles.infoRow}>
-                            <Text variant="labelMedium">Project:</Text>
-                            <Text variant="bodyLarge">{project ? project.name : 'Loading...'}</Text>
+                        <View style={styles.projectSelectContainer}>
+                            <WWSelect
+                                label="Project"
+                                value={project?.id || ''}
+                                options={availableProjects.map((p) => ({ label: p.name, value: p.id }))}
+                                onChange={handleProjectChange}
+                                disabled={submitting || isInitializing}
+                            />
                         </View>
                         <View style={styles.infoRow}>
                             <Text variant="labelMedium">Capture Method:</Text>
@@ -124,28 +171,15 @@ export const DeploymentDetailsStep = () => {
                             )
                         ))}
 
-                        <Button
-                            mode="outlined"
-                            onPress={() => {
-                                isNavigatingAway.current = true
-                                    ; navigation.navigate('PrepareAndTest', {
-                                        deviceId,
-                                        bleDeviceId,
-                                        nextRoute: 'DeploymentDetailsStep'
-                                    })
-                            }}
-                            style={styles.editButton}
-                            icon="cog"
-                        >
-                            <Text>Edit Device Preparation</Text>
-                        </Button>
                     </Card.Content>
                 </Card>
 
-                <LoRaWANSection
-                    device={bleDevice}
-                    onShowHelp={showHelp}
-                />
+                {project?.lorawan_required ? (
+                    <LoRaWANSection
+                        device={bleDevice}
+                        onShowHelp={showHelp}
+                    />
+                ) : null}
 
                 <CameraViewSection
                     device={bleDevice}
@@ -159,20 +193,39 @@ export const DeploymentDetailsStep = () => {
                     onShowHelp={showHelp}
                 />
 
-                <LocationSection
-                    onLocationChange={handleLocationChange}
-                    onShowHelp={showHelp}
-                />
-
                 <MetadataSection
                     name={formState.name}
                     notes={formState.notes}
-                    locationName={formState.locationName}
-                    cameraHeight={formState.cameraHeight}
                     onNameChange={handleNameChange}
                     onNotesChange={handleNotesChange}
-                    onLocationNameChange={handleLocationNameChange}
+                    onShowHelp={showHelp}
+                />
+
+                <AdvancedSettingsSection
+                    cameraHeight={formState.cameraHeight}
                     onCameraHeightChange={handleCameraHeightChange}
+                    locationName={locationName}
+                    onLocationNameChange={setLocationName}
+                    availableLocations={availableLocations}
+                    isCustomLocation={isCustomLocation}
+                    setIsCustomLocation={setIsCustomLocation}
+                    batteryLevel={batteryLevel}
+                    sdCardStatus={sdCardStatus}
+                    latestBleFirmware={latestBleFirmware}
+                    deviceFirmwareVersion={deviceFirmwareVersion}
+                    bleFirmwareUpdateAvailable={bleFirmwareUpdateAvailable}
+                    firmwareUpdateProgress={firmwareUpdateProgress}
+                    isUpdatingFirmware={isUpdatingFirmware}
+                    isCheckingFirmware={isCheckingFirmware}
+                    isVerifyingUpdate={isVerifyingUpdate}
+                    firmwareUpdateStatus={firmwareUpdateStatus}
+                    handleBatteryCheck={handleBatteryCheck}
+                    handleSdCardCheck={handleSdCardCheck}
+                    handleFirmwareCheck={handleFirmwareCheck}
+                    handleBleFirmwareUpdate={handleBleFirmwareUpdate}
+                    isInitializing={isInitializing}
+                    bleDeviceConnected={!!bleDevice?.connected}
+                    theme={theme}
                     onShowHelp={showHelp}
                 />
 
@@ -204,6 +257,7 @@ export const DeploymentDetailsStep = () => {
                 onDismiss={handleFinishDismiss}
                 loadingTitle="Starting Deployment"
                 successTitle="Deployment Complete"
+                hideOkButton={true}
             />
         </WWScreenView>
     )
@@ -230,6 +284,11 @@ const styles = StyleSheet.create({
     },
     infoRow: {
         marginBottom: 4
+    },
+    projectSelectContainer: {
+        marginBottom: 16,
+        marginTop: 4,
+        zIndex: 1000, 
     },
     errorContainer: {
         flex: 1,

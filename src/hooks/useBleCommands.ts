@@ -46,6 +46,7 @@ export const useBleCommands = () => {
     const getAppEui = useMemo(() => createCommand(write, CommandNames.appeui), [write])
     const getAppKey = useMemo(() => createCommand(write, CommandNames.appkey), [write])
     const pingNetwork = useMemo(() => createAction(write, CommandNames.ping), [write])
+    const getLorawanMetrics = useMemo(() => createCommand(write, CommandNames.network), [write])
 
 
     // --- AI ---
@@ -270,6 +271,7 @@ export const useBleCommands = () => {
         getAppEui,
         getAppKey,
         pingNetwork,
+        getLorawanMetrics,
         // AI
         checkSdCard,
         getCameraType,

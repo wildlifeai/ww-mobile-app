@@ -222,25 +222,7 @@ function generateSchema() {
         { name: 'responded_at', type: 'number', isOptional: true },
     ];
 
-    // Patch missing boolean check fields for device_preparation (missing in Supabase types but required by Model)
-    if (tables.device_preparation) {
-        const existingNames = new Set(tables.device_preparation.map(c => c.name));
-        const missingFields = [
-            { name: 'battery_check_passed', type: 'boolean' },
-            { name: 'camera_view_test_passed', type: 'boolean' },
-            { name: 'firmware_check_passed', type: 'boolean' },
-            { name: 'sd_card_check_passed', type: 'boolean' },
-            { name: 'firmware_updated', type: 'boolean' }
-        ];
-
-        missingFields.forEach(field => {
-            if (!existingNames.has(field.name)) {
-                tables.device_preparation.push(field);
-            }
-        });
-    }
-
-    // Patch missing fields for reference tables (Models expect server_id but Supabase has id)
+    // ----------------------------------------------------    // Patch missing fields for reference tables (Models expect server_id but Supabase has id)
     // capture_methods, activity_sensitivity, sampling_designs use INT ID -> server_id (number)
     // ai_models uses UUID -> server_id (string)
     const refTablesNum = ['capture_methods', 'activity_sensitivity', 'sampling_designs'];

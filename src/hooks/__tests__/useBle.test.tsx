@@ -79,9 +79,22 @@ describe("useBle", () => {
 		const { result } = renderHook(() => useBle())
 		
 		expect(result.current.startScan).toBeDefined()
+		expect(result.current.stopScan).toBeDefined()
 		expect(result.current.connectDevice).toBeDefined()
 		expect(result.current.disconnectDevice).toBeDefined()
 		expect(result.current.write).toBeDefined()
+	})
+
+	describe("stopScan", () => {
+		it("should call BleManager.stopScan", async () => {
+			const { result } = renderHook(() => useBle())
+
+			await act(async () => {
+				await result.current.stopScan()
+			})
+
+			expect(BleManager.stopScan).toHaveBeenCalled()
+		})
 	})
 
 	describe("startScan", () => {
@@ -92,7 +105,7 @@ describe("useBle", () => {
 				await result.current.startScan(10)
 			})
 
-			expect(BleManager.scan).toHaveBeenCalledWith([], 10)
+			expect(BleManager.scan).toHaveBeenCalledWith(["6e400001-b5a3-f393-e0a9-e50e24dcca9e"], 10, true, { "matchMode": 1, "scanMode": 2 })
 			expect(mockDispatch).toHaveBeenCalledWith(scanStart())
 		})
 

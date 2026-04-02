@@ -40,6 +40,7 @@ export type WriteData = [CommandNames, CommandConstructOptions]
 export type ReturnType = {
 	isBleConnecting: boolean | undefined
 	startScan: (length?: number) => void
+	stopScan: () => Promise<void>
 	connectDevice: (
 		peripheral: ExtendedPeripheral,
 		timeout?: number,
@@ -68,7 +69,6 @@ export const useBle = (): ReturnType => {
 
 	const pingsPauseRef = useRef(false)
 
-	// Removed legacy useInterval polling queue. BleCommandManager handles serialization now.
 
 	const pingsPause = useCallback((toggle: boolean) => {
 		pingsPauseRef.current = toggle
@@ -81,7 +81,9 @@ export const useBle = (): ReturnType => {
 			if (!scanning.isScanning) {
 				try {
 					pingsPause(true)
-					await BleManager.scan([], length)
+					// Use specific service UUID to avoid Android throttling wide-open scans
+					// Force Android into SCAN_MODE_LOW_LATENCY (2) to minimize advertisement drop rates
+					await BleManager.scan([BLE_SERVICE_UUID], length, true, { scanMode: 2, matchMode: 1 })
 					// log("Scan started")
 					dispatch(scanStart())
 				} catch (e: any) {
@@ -91,6 +93,18 @@ export const useBle = (): ReturnType => {
 			}
 		},
 		[initialized, scanning.isScanning, pingsPause, dispatch],
+	)
+
+	const stopScan = useCallback(
+		async () => {
+			if (!initialized) return
+			try {
+				await BleManager.stopScan()
+			} catch (e: any) {
+				logWarn('Failed to stop scan:', e)
+			}
+		},
+		[initialized],
 	)
 
 	const disconnectDevice = useCallback(
@@ -348,6 +362,7 @@ export const useBle = (): ReturnType => {
 	return {
 		isBleConnecting,
 		startScan,
+		stopScan,
 		connectDevice,
 		disconnectDevice,
 		write,

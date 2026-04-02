@@ -2,16 +2,21 @@ import { useState, useEffect } from "react"
 import { BottomNavigation } from "react-native-paper"
 import { useRoute, RouteProp } from "@react-navigation/native"
 import { RootStackParamList } from "./types"
-import { Deployments } from "../screens/Deployments/DeploymentsListScreen"
+import { DeviceDiscoveryScreen } from "../screens/Devices/DeviceDiscoveryScreen"
 import { Maps } from "./screens/MapsScreen"
 import { Projects } from "../screens/Projects/ProjectsListScreen"
-import { Devices } from "../screens/Devices/DevicesListScreen"
 import { useExtendedTheme } from "../theme"
 // import InvitationService from "../services/InvitationService"
 // import { getSupabaseClient } from "../services/supabase"
 import { useAppNavigation } from "../hooks/useAppNavigation"
 
 const routes = [
+	{
+		key: "devices",
+		title: "Scanner",
+		focusedIcon: "bluetooth-connect",
+		unfocusedIcon: "bluetooth",
+	},
 	{
 		key: "maps",
 		title: "Map",
@@ -24,43 +29,42 @@ const routes = [
 		focusedIcon: "folder",
 		unfocusedIcon: "folder-outline",
 	},
-	{
-		key: "deployment",
-		title: "Deployments",
-		focusedIcon: "arrow-up-bold-box",
-		unfocusedIcon: "arrow-up-bold-box-outline",
-	},
-	{
-		key: "devices",
-		title: "Devices",
-		focusedIcon: "cellphone-link",
-		unfocusedIcon: "cellphone-link",
-	},
 ]
 
-const renderScene = BottomNavigation.SceneMap({
-	maps: Maps,
-	projects: Projects,
-	deployment: Deployments,
-	devices: Devices,
-})
+// Removed static renderScene
 
 export const BottomTabs = () => {
-	const [index, setIndex] = useState(2) // Start with Deployments tab active
+	const [index, setIndex] = useState(0) // Start with Devices (Scanner) tab active
 	// const [invitationCount, setInvitationCount] = useState(0)
 	const { colors } = useExtendedTheme()
 	const navigation = useAppNavigation()
 	const route = useRoute<RouteProp<RootStackParamList, "Home">>()
 
+	// GPS Geolocation is now triggered directly by screens that need it (Map, Deployments)
+	// We no longer start it automatically for all users upon login.
+
 	useEffect(() => {
 		if (route.params?.initialTab === "devices") {
-			setIndex(3)
+			setIndex(0)
 			navigation.setParams({ initialTab: undefined })
-		} else if (route.params?.initialTab === "deployment") {
-			setIndex(2)
+		} else if (route.params?.initialTab === "maps") {
+			setIndex(1)
 			navigation.setParams({ initialTab: undefined })
 		}
 	}, [route.params?.initialTab, navigation])
+
+	const renderScene = ({ route: tabRoute }: any) => {
+		switch (tabRoute.key) {
+			case 'maps':
+				return <Maps selectedDeploymentId={route.params?.selectedDeploymentId} />
+			case 'projects':
+				return <Projects />
+			case 'devices':
+				return <DeviceDiscoveryScreen />
+			default:
+				return null
+		}
+	}
 
 
 	return (

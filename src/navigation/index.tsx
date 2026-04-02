@@ -25,6 +25,8 @@ import { ForgotPassword } from "./screens/auth/ForgotPasswordScreen"
 import { NewProjectScreen } from "../screens/Projects/NewProjectScreen"
 import { ProjectDetailsScreen } from "../screens/Projects/ProjectDetailsScreen"
 import { ProjectMembersScreen } from "../screens/Projects/ProjectMembersScreen"
+import { ProjectDevicesScreen } from "../screens/Projects/ProjectDevicesScreen"
+import { EditProjectScreen } from "../screens/Projects/EditProjectScreen"
 
 // Deployment screens
 // import { Deployments as DeploymentsListScreen } from "../screens/Deployments/DeploymentsListScreen"
@@ -37,8 +39,8 @@ import { EndDeploymentDetailsStep } from "../screens/Deployments/EndDeploymentSc
 // import { Devices as DevicesListScreen } from "../screens/Devices/DevicesListScreen"
 import { DeviceDiscoveryScreen } from "../screens/Devices/DeviceDiscoveryScreen"
 import { DeviceDetailsScreen } from "../screens/Devices/DeviceDetailsScreen"
-import { PrepareAndTestScreen } from "../screens/Devices/PrepareAndTestScreen"
 import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
+import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMotionDetectionScreen"
 import { DfuScreen } from "../screens/Devices/DfuScreen"
 
 // Developer screens
@@ -166,9 +168,19 @@ export const MainNavigation = () => {
 							options={{ title: "Project Details" }}
 						/>
 						<Stack.Screen
+							name="EditProjectScreen"
+							component={EditProjectScreen}
+							options={{ title: "Edit Project" }}
+						/>
+						<Stack.Screen
 							name="ProjectMembersScreen"
 							component={ProjectMembersScreen}
 							options={{ title: "Project Members" }}
+						/>
+						<Stack.Screen
+							name="ProjectDevicesScreen"
+							component={ProjectDevicesScreen}
+							options={{ title: "Project Devices" }}
 						/>
 						<Stack.Screen
 							name="DeviceDiscovery"
@@ -184,6 +196,10 @@ export const MainNavigation = () => {
 							name="EngineerConsoleScreen"
 							component={EngineerConsoleScreen}
 							options={{ title: "Engineer Console", headerTitleAlign: 'center' }}
+						/>
+						<Stack.Screen
+							name="StandaloneMotionDetectionScreen"
+							component={StandaloneMotionDetectionScreen}
 						/>
 						<Stack.Screen
 							name="StartDeploymentWizard"
@@ -211,11 +227,6 @@ export const MainNavigation = () => {
 							name="DeploymentDetails"
 							component={DeploymentDetailsScreen}
 							options={{ title: "Deployment" }}
-						/>
-						<Stack.Screen
-							name="PrepareAndTest"
-							component={PrepareAndTestScreen}
-							options={{ title: "Prepare & Test", headerTitleAlign: 'center' }}
 						/>
 						{__DEV__ && (
 							<>

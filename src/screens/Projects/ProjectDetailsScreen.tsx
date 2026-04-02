@@ -1,11 +1,10 @@
 /**
  * ProjectDetailsScreen
- * View and edit project details with member management
+ * View project details with member management
  *
  * Features:
  * - View mode: Display project details, stats, and members
- * - Edit mode: Toggle to edit project information
- * - Delete: Confirmation dialog before deletion
+ * - Edit: Navigate to EditProjectScreen via gear icon
  * - Member management: Add/remove project members
  * - Offline-first: All operations work offline with background sync
  * - Loading states: Proper skeleton/spinner for data fetching
@@ -14,29 +13,27 @@
 import { useMemo } from "react"
 import { StyleSheet, View, ScrollView } from "react-native"
 import { Text, useTheme, ActivityIndicator, Button } from "react-native-paper"
-import { useRoute } from "@react-navigation/native"
+import { useRoute, useNavigation } from "@react-navigation/native"
+import { useEffect } from "react"
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { OfflineIndicator } from "../../components/ui/OfflineIndicator"
 import { WWScreenView } from "../../components/ui/WWScreenView"
-import { WWButton } from "../../components/ui/WWButton"
 import { AppParams } from "../../navigation/types"
 
-import { ProjectHeaderCard } from './components/ProjectHeaderCard'
-import { ProjectStatsCard } from './components/ProjectStatsCard'
-import { ProjectSettingsCard } from './components/ProjectSettingsCard'
+import { ProjectDetailsCard } from './components/ProjectDetailsCard'
+import { ProjectDevicesCard } from './components/ProjectDevicesCard'
 import { ProjectMembersCard } from './components/ProjectMembersCard'
-import { ProjectDeleteDialog } from './components/ProjectDeleteDialog'
 import { useProjectDetails } from './hooks/useProjectDetails'
 
 export const ProjectDetailsScreen = () => {
 	const theme = useTheme()
 	const route = useRoute<AppParams<"ProjectDetailsScreen">>()
+	const navigation = useNavigation()
 	const { projectId } = route.params
+	const insets = useSafeAreaInsets()
 
 	const {
-		isEditMode,
-		showDeleteDialog,
-		setShowDeleteDialog,
 		currentUser,
 		project,
 		isLoading,
@@ -45,23 +42,12 @@ export const ProjectDetailsScreen = () => {
 		members,
 		membersLoading,
 		isProjectAdmin,
-		control,
-		handleSubmit,
-		errors,
-		isDirty,
-		isUpdating,
-		isDeleting,
 		samplingDesignOptions,
 		captureMethodOptions,
 		sensitivityOptions,
 		aiModelOptions,
 		isMotionDetection,
 		isTimeLapse,
-		handleEdit,
-		handleCancelEdit,
-		handleSave,
-		handleDelete,
-		handleRemoveMember,
 		getLabel,
 	} = useProjectDetails(projectId)
 
@@ -70,6 +56,13 @@ export const ProjectDetailsScreen = () => {
 		errorHeader: { color: theme.colors.error },
 		errorMessage: { color: theme.colors.onSurfaceVariant },
 	}), [theme])
+
+	// Dynamic Title Update
+	useEffect(() => {
+		if (project?.name) {
+			navigation.setOptions({ title: project.name })
+		}
+	}, [project?.name, navigation])
 
 	// Loading state
 	if (isLoading) {
@@ -129,29 +122,11 @@ export const ProjectDetailsScreen = () => {
 		<ScrollView style={styles.container}>
 			<OfflineIndicator />
 
-			<View style={styles.content}>
-				{/* Header Card */}
-				<ProjectHeaderCard
+			<View style={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
+				{/* Details Card */}
+				<ProjectDetailsCard
 					project={project}
-					isEditMode={isEditMode}
 					isProjectAdmin={isProjectAdmin}
-					control={control as any}
-					errors={errors as any}
-					onEdit={handleEdit}
-					onDelete={() => setShowDeleteDialog(true)}
-				/>
-
-				{/* Stats Cards */}
-				{!isEditMode && (
-					<ProjectStatsCard project={project} cloudMemberCount={members?.length} />
-				)}
-
-				{/* Settings Section */}
-				<ProjectSettingsCard
-					project={project}
-					isEditMode={isEditMode}
-					isProjectAdmin={isProjectAdmin}
-					control={control as any}
 					samplingDesignOptions={samplingDesignOptions}
 					captureMethodOptions={captureMethodOptions}
 					sensitivityOptions={sensitivityOptions}
@@ -161,51 +136,21 @@ export const ProjectDetailsScreen = () => {
 					getLabel={getLabel}
 				/>
 
+				{/* Devices Section */}
+				<ProjectDevicesCard
+					projectId={projectId}
+					projectName={project.name}
+				/>
+
 				{/* Members Section */}
-				{!isEditMode && (
-					<ProjectMembersCard
-						project={project}
-						members={members}
-						membersLoading={membersLoading}
-						isProjectAdmin={isProjectAdmin}
-						currentUser={currentUser}
-						handleRemoveMember={handleRemoveMember}
-					/>
-				)}
-
-				{/* Edit Mode Actions */}
-				{isEditMode && (
-					<View style={styles.editActions}>
-						<WWButton
-							mode="outlined"
-							onPress={handleCancelEdit}
-							disabled={isUpdating}
-							style={styles.actionButton}
-							testID="cancel-button"
-						>
-							<Text>Cancel</Text>
-						</WWButton>
-						<WWButton
-							mode="contained"
-							onPress={handleSubmit(handleSave)}
-							loading={isUpdating}
-							disabled={isUpdating || !isDirty}
-							style={styles.actionButton}
-							testID="save-button"
-						>
-							<Text>Save Changes</Text>
-						</WWButton>
-					</View>
-				)}
+				<ProjectMembersCard
+					project={project}
+					members={members}
+					membersLoading={membersLoading}
+					isProjectAdmin={isProjectAdmin}
+					currentUser={currentUser}
+				/>
 			</View>
-
-			<ProjectDeleteDialog
-				visible={showDeleteDialog}
-				projectName={project.name}
-				isDeleting={isDeleting}
-				onDismiss={() => setShowDeleteDialog(false)}
-				onDelete={handleDelete}
-			/>
 		</ScrollView>
 	)
 }
@@ -238,12 +183,5 @@ const styles = StyleSheet.create({
 	retryButton: {
 		marginTop: 8,
 	},
-	editActions: {
-		flexDirection: "row",
-		gap: 12,
-		marginTop: 8,
-	},
-	actionButton: {
-		flex: 1,
-	},
 })
+

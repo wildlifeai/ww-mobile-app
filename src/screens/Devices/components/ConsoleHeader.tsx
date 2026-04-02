@@ -13,7 +13,7 @@ interface ConsoleHeaderProps {
 
 export const ConsoleHeader = ({
     deviceName,
-    deviceId,
+    deviceId: _deviceId,
     isConnected,
     isConnecting,
     onConnect,
@@ -26,7 +26,6 @@ export const ConsoleHeader = ({
             <View style={styles.header}>
                 <View>
                     <Text style={styles.deviceName}>{deviceName || 'Unknown Device'}</Text>
-                    <Text style={styles.deviceId}>{deviceId}</Text>
                 </View>
                 <View style={styles.statusContainer}>
                     <View style={[styles.statusDot, isConnected ? styles.statusDotConnected : styles.statusDotDisconnected]} />
@@ -74,11 +73,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#333',
     },
-    deviceId: {
-        fontSize: 12,
-        color: '#666',
-        marginTop: 2,
-    },
+
     statusContainer: {
         flexDirection: 'row',
         alignItems: 'center',

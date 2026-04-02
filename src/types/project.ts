@@ -57,6 +57,8 @@ export interface ProjectWithDetails extends Project {
 	deployment_count?: number
 	active_deployment_count?: number
 	lorawan_device_count?: number
+	device_count?: number
+	active_device_count?: number
 	battery_level?: number // 0-100%
 	sd_card_usage?: number // 0-100%
 }
@@ -84,6 +86,7 @@ export interface CreateProjectInput {
 	activity_detection_sensitivity_id?: number
 	capture_method_id?: number
 	record_gps_in_images?: boolean
+	lorawan_required?: boolean
 }
 
 // LoRaWAN device status (mock for now)

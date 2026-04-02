@@ -86,10 +86,11 @@ components/
 ├── ProjectCard.tsx        # Project list item
 ├── DeploymentCard.tsx     # Deployment list item
 ├── DeviceItem.tsx         # Device list item
+├── EngineerConnectDialog.tsx # Side-drawer quick BLE connect for engineer console
 ├── NavigationBar.tsx      # Header bar
 ├── AppDrawer.tsx          # Side drawer menu
 ├── OrgSwitcher.tsx        # Organisation switcher
-└── SideNavigation.tsx     # Drawer content
+└── SideNavigation.tsx     # Drawer content (includes Engineer Console trigger)
 ```
 
 > [!TIP]
@@ -106,25 +107,34 @@ screens/                       navigation/screens/
 │   ├── EndDeploymentScreen    ├── Profile.tsx
 │   └── ...                    ├── Settings.tsx
 ├── Devices/                   └── ForgotPassword.tsx
-│   ├── PrepareAndTestScreen
 │   ├── DeviceDiscoveryScreen
-│   └── ...
+│   ├── DeviceDetailsScreen
+│   ├── EngineerConsoleScreen
+│   ├── components/
+│   │   └── ScannerRoutingDialog.tsx  # Post-scan routing (project association, deployment start/stop)
+│   └── hooks/
+│       └── useDeviceDiscovery.ts     # Scanner auto-connect + routing logic
 ├── Projects/
 │   ├── ProjectDetailsScreen
 │   └── ...
 └── AuthTestScreen.tsx (__DEV__)
 ```
 
+> [!NOTE]
+> The old `PrepareAndTestScreen` has been removed. Device configuration and metrics snapshots are captured directly during Deployment.
+
 ### `src/navigation/` — Navigation Setup
 
 ```
 navigation/
 ├── index.tsx              # Stack navigator + route definitions
-├── BottomTabs.tsx         # Bottom tab navigator (Maps, Projects, Deployments, Devices)
+├── BottomTabs.tsx         # Bottom tab navigator (Scanner, Map, Projects — 3 tabs)
 ├── types.ts               # Navigation TypeScript types
 ├── linking.ts             # Deep linking configuration
 └── screens/               # Auth & utility screens
 ```
+
+The app launches to the **Scanner** tab by default. The **Engineer Console** is accessible from the side drawer (hamburger menu) — not from a tab.
 
 The full route table with params is documented in [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md#route-table).
 
@@ -138,7 +148,6 @@ services/
 ├── ProjectMemberService.ts    # Member invitations
 ├── DeploymentService.ts       # Deployment lifecycle
 ├── DeviceService.ts           # Device record management
-├── DevicePreparationService.ts # Preparation workflow
 ├── ReferenceDataService.ts    # Downloaded reference data (capture methods, etc.)
 ├── DfuService.ts              # Firmware updates (Nordic DFU)
 ├── MockLoRaWANService.ts      # LoRaWAN mocking
@@ -173,6 +182,7 @@ hooks/
 ├── useBleCommands.ts          # Typed BLE command wrappers
 ├── useBleInitialization.ts    # Shared self-test + UTC sync
 ├── useBleListeners.tsx        # BLE event listeners
+├── useEngineerConnect.ts      # Engineer Console BLE quick-connect from side drawer
 ├── useDeploymentConfiguration.ts # Atomic deployment config
 ├── useCapturePreview.ts       # Image capture flow
 ├── useDeviceSettings.ts       # Device quiesce + settings
@@ -367,9 +377,9 @@ const syncSlice = createSlice({
 ## Next Steps
 
 1. [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) — WatermelonDB, Supabase sync, and security model
-2. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device preparation and deployment lifecycle
+2. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device deployment lifecycle
 3. [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) — Complete dependency reference
 
 ---
 
-*Last Updated: February 17, 2026*
+*Last Updated: March 27, 2026*

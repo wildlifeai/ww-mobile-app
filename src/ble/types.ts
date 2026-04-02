@@ -59,6 +59,7 @@ export enum CommandNames {
 	TX_FILE = "TX_FILE",
 	CAPTURE_PREVIEW = "CAPTURE_PREVIEW",
 	UPDATE_BLE_FIRMWARE = "UPDATE_BLE_FIRMWARE",
+	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
 
 	// Local commands (UPPERCASE - app-only actions)
 	CLEAR_CONSOLE = "CLEAR_CONSOLE",
@@ -81,6 +82,7 @@ export type Command = {
 	description?: string
 	type?: 'command' | 'process' | 'local'
 	timeout?: number
+	expectedPattern?: RegExp | string | false
 }
 
 export const getCommandByName = (name: CommandNames | string): Command | null => {
@@ -430,6 +432,7 @@ export const COMMANDS: {
 	[CommandNames.md]: {
 		name: CommandNames.md,
 		writeCommand: (level?: string) => `AI md ${level || '0'}`,
+		expectedPattern: false,
 		description: "Set motion detection sensitivity (0-3)",
 		type: 'process',
 	},
@@ -502,7 +505,7 @@ export const COMMANDS: {
 	[CommandNames.network]: {
 		name: CommandNames.network,
 		readCommand: "network",
-		readRegex: /RSSI: (-?\d+)dB, SNR: (-?\d+)dB/,
+		readRegex: /RSSI: (-?\d+)dB, SNR: (-?\d+)dB|No network comms yet/i,
 		description: "Most recent RSSI, SNR etc",
 		type: 'command',
 	},
@@ -559,6 +562,11 @@ export const COMMANDS: {
 	[CommandNames.UPDATE_BLE_FIRMWARE]: {
 		name: CommandNames.UPDATE_BLE_FIRMWARE,
 		description: "Update BLE Firmware (DFU)",
+		type: 'process',
+	},
+	[CommandNames.MOTION_DETECTION_PREVIEW]: {
+		name: CommandNames.MOTION_DETECTION_PREVIEW,
+		description: "Open standalone motion detection preview page",
 		type: 'process',
 	},
 	[CommandNames.CLEAR_CONSOLE]: {

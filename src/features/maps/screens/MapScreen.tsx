@@ -6,9 +6,10 @@
 
 import React, { useEffect, useMemo, useReducer } from "react"
 import { StyleSheet, View, Text, ActivityIndicator } from "react-native"
-import { FAB, IconButton, Menu, Divider } from "react-native-paper"
+import { FAB, IconButton } from "react-native-paper"
 import { withObservables } from '@nozbe/watermelondb/react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useFocusEffect } from '@react-navigation/native'
 import { BasicMapView } from "../components/BasicMapView"
 import { MapControls } from "../components/MapControls"
 import { LocationPermissionPrompt } from "../components/LocationPermissionPrompt"
@@ -23,6 +24,7 @@ import { useExtendedTheme } from "../../../theme"
 import { DeploymentService } from "../../../services/DeploymentService"
 import type Deployment from "../../../database/models/Deployment"
 import { log } from '../../../utils/logger'
+import { OfflineIndicator } from '../../../components/ui/OfflineIndicator'
 
 
 interface MapState {
@@ -30,7 +32,6 @@ interface MapState {
 	initialLoad: boolean
 	showActive: boolean
 	showEnded: boolean
-	filterMenuVisible: boolean
 	selectedDeploymentId: string | null
 }
 
@@ -38,9 +39,10 @@ const mapReducer = (state: MapState, action: Partial<MapState>): MapState => ({ 
 
 interface Props {
 	deployments: Deployment[]
+	selectedDeploymentId?: string
 }
 
-const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
+const MapScreenComponent: React.FC<Props> = ({ deployments, selectedDeploymentId: initialDeploymentId }) => {
 	const {
 		location,
 		permissions,
@@ -48,6 +50,8 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 		error: locationError,
 		requestPermissions,
 		getCurrentLocation,
+		startTracking,
+		stopTracking,
 	} = useLocation()
 
 	const { region, setRegion, zoomIn, zoomOut, resetToUserLocation, mapRef } =
@@ -60,33 +64,43 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 		initialLoad: true,
 		showActive: true,
 		showEnded: false,
-		filterMenuVisible: false,
 		selectedDeploymentId: null
 	})
 
-	const { mapType, initialLoad, showActive, showEnded, filterMenuVisible, selectedDeploymentId } = state
+	const { mapType, initialLoad, selectedDeploymentId } = state
 
 	const navigation = useAppNavigation()
 
-	// Check if there is ANY active deployment (based on missing end date)
-	const hasActiveDeployment = useMemo(() => {
-		return deployments.some(d => !d.deploymentEnd)
-	}, [deployments])
-
-	// Filter deployments based on filter mode
+	// Filter deployments to only show active ones
 	const filteredDeployments = useMemo(() => {
-		return deployments.filter(d => {
-			const isActive = !d.deploymentEnd
-			if (isActive) return showActive
-			return showEnded
-		})
-	}, [deployments, showActive, showEnded])
+		return deployments.filter(d => d.deploymentStatusId === 1)
+	}, [deployments])
 
 	// Get selected deployment object for the card
 	const selectedDeployment = useMemo(() => {
 		if (!selectedDeploymentId) return null
 		return deployments.find(d => d.id === selectedDeploymentId) || null
 	}, [deployments, selectedDeploymentId])
+
+	// Handle external selectedDeploymentId navigation target
+	useEffect(() => {
+		if (initialDeploymentId && initialDeploymentId !== selectedDeploymentId) {
+			dispatch({ selectedDeploymentId: initialDeploymentId })
+			const deployment = deployments.find(d => d.id === initialDeploymentId)
+			if (deployment && deployment.latitude && deployment.longitude) {
+				const loc = { 
+					latitude: deployment.latitude, 
+					longitude: deployment.longitude,
+					altitude: null,
+					accuracy: null,
+					heading: null,
+					speed: null,
+					timestamp: Date.now()
+				}
+				resetToUserLocation(loc as any)
+			}
+		}
+	}, [initialDeploymentId, deployments, selectedDeploymentId, resetToUserLocation])
 
 	// Navigation Drawer Control
 	const { setIsOpen } = useAppDrawer()
@@ -113,6 +127,22 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 			dispatch({ initialLoad: false })
 		}
 	}, [location, initialLoad, resetToUserLocation])
+
+	/**
+	 * Start and stop location tracking based on screen focus
+	 */
+	useFocusEffect(
+		React.useCallback(() => {
+			if (permissions.foreground === "granted") {
+				log('[MapScreen] Focused - Starting precise tracking')
+				startTracking({ accuracy: "high", timeInterval: 5000, distanceInterval: 5 })
+			}
+			return () => {
+				log('[MapScreen] Blurred - Stopping precise tracking')
+				stopTracking()
+			}
+		}, [permissions.foreground, startTracking, stopTracking])
+	)
 
 	/**
 	 * Request permission on mount if not determined
@@ -214,7 +244,12 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 			/>
 
 			{/* Header Background Gradient/Overlay - Status Bar Only */}
-			<View style={[styles.headerBackground, { height: insets.top }]} />
+			<View style={[styles.headerBackground, { height: insets.top, backgroundColor: colors.surface }]} />
+
+			{/* Offline Indicator - overlays top of map */}
+			<View style={[styles.offlineOverlay, { top: insets.top }]}>
+				<OfflineIndicator />
+			</View>
 
 			{/* Custom Header with Hamburger Button - Top Left */}
 			<IconButton
@@ -225,71 +260,16 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 				onPress={() => setIsOpen(true)}
 			/>
 
-			{/* Layer Filter Toggle - Top Right */}
-			<View style={[styles.filterFab, { top: insets.top + 16 }]}>
-				<Menu
-					visible={filterMenuVisible}
-					onDismiss={() => dispatch({ filterMenuVisible: false })}
-					anchor={
-						<FAB
-							icon="filter"
-							label="Filter"
-							style={{ backgroundColor: (showActive || showEnded) ? colors.primary : colors.surface }}
-							color={(showActive || showEnded) ? colors.onPrimary : colors.onSurface}
-							onPress={() => dispatch({ filterMenuVisible: true })}
-							small
-						/>
-					}
-				>
-					<Menu.Item title="Deployments" disabled />
-					<Divider />
-					<Menu.Item
-						onPress={() => dispatch({ showActive: !showActive })}
-						title="Active"
-						leadingIcon={showActive ? "check" : undefined}
-					/>
-					<Menu.Item
-						onPress={() => dispatch({ showEnded: !showEnded })}
-						title="Ended"
-						leadingIcon={showEnded ? "check" : undefined}
-					/>
-				</Menu>
-			</View>
+
 
 			{/* Center on User Location - Bottom Left */}
 			<FAB
 				icon="crosshairs-gps"
-				style={styles.centerFab}
+				style={[styles.centerFab, { backgroundColor: colors.surface }]}
 				onPress={handleCenterUser}
-				color="#000"
+				color={colors.onSurface}
 				small
 			/>
-
-			{/* Action Buttons - Bottom Right */}
-
-			{/* New Deployment Button - Always Shown */}
-			<FAB
-				icon="plus"
-				label="New Deployment"
-				style={[styles.actionFab, { backgroundColor: colors.primary }]}
-				color="#fff"
-				onPress={() => navigation.navigate('StartDeploymentWizard', { mode: 'deployment' })}
-			/>
-
-			{/* End Deployment Button - Shown if active deployment exists */}
-			{hasActiveDeployment && (
-				<FAB
-					icon="stop"
-					label="End Deployment"
-					style={[styles.actionFab, styles.endDeploymentFab]} // Stacked above New Deployment
-					color="#000"
-					small // Make it smaller to distinguish importance? Or keep regular. Let's keep regular but stacked.
-					onPress={() => {
-						log('[MapScreen] End Deployment pressed')
-						navigation.navigate('EndDeploymentWizard', { mode: 'end_deployment' } as any)
-					}}
-				/>
-			)}
 
 			{/* Custom Deployment Details Card Overlay */}
 			<DeploymentCard
@@ -303,16 +283,16 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 			{locationLoading && (
 				<View style={styles.loadingOverlay}>
 					<View style={styles.loadingContainer}>
-						<ActivityIndicator size="large" color="#007AFF" />
-						<Text style={styles.loadingText}>Getting your location...</Text>
+						<ActivityIndicator size="large" color={colors.primary} />
+						<Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Getting your location...</Text>
 					</View>
 				</View>
 			)}
 
 			{/* Error Message */}
 			{locationError && (
-				<View style={styles.errorContainer}>
-					<Text style={styles.errorText}>⚠️ {locationError}</Text>
+				<View style={[styles.errorContainer, { backgroundColor: colors.error }]}>
+					<Text style={[styles.errorText, { color: colors.onError }]}>⚠️ {locationError}</Text>
 				</View>
 			)}
 		</View>
@@ -322,7 +302,6 @@ const MapScreenComponent: React.FC<Props> = ({ deployments }) => {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: "#E5E5E5",
 	},
 	loadingOverlay: {
 		...StyleSheet.absoluteFillObject,
@@ -331,7 +310,6 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 	},
 	loadingContainer: {
-		backgroundColor: "white",
 		borderRadius: 12,
 		padding: 24,
 		boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.25)",
@@ -339,7 +317,6 @@ const styles = StyleSheet.create({
 	loadingText: {
 		marginTop: 12,
 		fontSize: 16,
-		color: "#666",
 		fontWeight: "500",
 	},
 	errorContainer: {
@@ -347,12 +324,10 @@ const styles = StyleSheet.create({
 		top: 16,
 		left: 16,
 		right: 16,
-		backgroundColor: "#FF3B30",
 		borderRadius: 12,
 		boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.25)",
 	},
 	errorText: {
-		color: "white",
 		fontSize: 14,
 		fontWeight: "600",
 		textAlign: "center",
@@ -361,34 +336,24 @@ const styles = StyleSheet.create({
 	menuFab: {
 		position: "absolute",
 		left: 16,
-		backgroundColor: "rgba(255, 255, 255, 0.9)",
-	},
-	filterFab: {
-		position: "absolute",
-		right: 16, // Move to right to balance with Menu button
 	},
 	centerFab: {
 		position: "absolute",
 		bottom: 16,
 		left: 16,
-		backgroundColor: "rgba(255, 255, 255, 0.9)",
-	},
-	actionFab: {
-		position: "absolute",
-		bottom: 16,
-		right: 16,
-	},
-	endDeploymentFab: {
-		backgroundColor: '#FFAB00',
-		bottom: 80,
 	},
 	headerBackground: {
 		position: "absolute",
 		top: 0,
 		left: 0,
 		right: 0,
-		backgroundColor: '#121212', // Black background to match bottom nav
-		zIndex: 1, // Ensure it sits below buttons but above map
+		zIndex: 1,
+	},
+	offlineOverlay: {
+		position: "absolute",
+		left: 0,
+		right: 0,
+		zIndex: 2,
 	},
 })
 

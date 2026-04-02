@@ -38,16 +38,10 @@ export const Devices = () => {
 				? await DeviceService.getDevicesForUserInOrganisation(userId, organisationId)
 				: await DeviceService.getDevicesForUser(userId)
 
-			// Sort by latest activity (maximum of preparedDate and lastDeploymentDate)
+			// Sort by latest activity (lastDeploymentDate)
 			const sortedDevices = [...devicesList].sort((a, b) => {
-				const timeA = Math.max(
-					a.preparedDate ? new Date(a.preparedDate).getTime() : 0,
-					a.lastDeploymentDate ? new Date(a.lastDeploymentDate).getTime() : 0
-				)
-				const timeB = Math.max(
-					b.preparedDate ? new Date(b.preparedDate).getTime() : 0,
-					b.lastDeploymentDate ? new Date(b.lastDeploymentDate).getTime() : 0
-				)
+				const timeA = a.lastDeploymentDate ? new Date(a.lastDeploymentDate).getTime() : 0
+				const timeB = b.lastDeploymentDate ? new Date(b.lastDeploymentDate).getTime() : 0
 				return timeB - timeA
 			})
 
@@ -90,8 +84,8 @@ export const Devices = () => {
 		(navigation as any).navigate('DeviceDetails', { deviceId })
 	}, [navigation])
 
-	const handlePrepareAndTest = () => {
-		(navigation as any).navigate('DeviceDiscovery', { mode: 'prepare' })
+	const handleConnectToDevice = () => {
+		(navigation as any).navigate('Home', { initialTab: 'devices' })
 	}
 
 	// Filter devices locally since we load all at once
@@ -117,14 +111,14 @@ export const Devices = () => {
 			onSearchChange={setSearchQuery}
 			searchPlaceholder="Search devices..."
 
-			// Primary Action: Prepare & Test
-			primaryActionLabel="Prepare & Test Devices"
-			onPrimaryAction={handlePrepareAndTest}
+			// Primary Action: Connect
+			primaryActionLabel="Scan for Devices"
+			onPrimaryAction={handleConnectToDevice}
 
 			emptyStateTitle={hasMultipleOrgs ? `No devices for ${organisationName}` : 'No devices yet'}
 			emptyStateMessage={hasMultipleOrgs
-				? `There are no devices yet for ${organisationName}. Prepare and test nearby cameras, or switch to a different organisation.`
-				: 'Prepare and test nearby cameras to add them to your device list.'
+				? `There are no devices yet for ${organisationName}. Scan for nearby cameras, or switch to a different organisation.`
+				: 'Scan for nearby cameras to add them to your device list.'
 			}
 			emptySearchMessage={`No devices found matching "${searchQuery}"`}
 		/>

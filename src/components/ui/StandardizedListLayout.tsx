@@ -131,23 +131,26 @@ export function StandardizedListLayout<T>({
         <SafeAreaView style={styles.container} edges={['top']}>
             <OfflineIndicator />
 
-            {/* Hamburger Menu Button */}
-            <IconButton
-                icon="menu"
-                iconColor={theme.colors.onSurface}
-                size={28}
-                style={[styles.menuFab, { top: insets.top + 8 }]}
-                onPress={() => setIsOpen(true)}
-            />
-
-            {/* Search Bar */}
-            <View style={styles.searchContainer}>
-                <Searchbar
-                    placeholder={searchPlaceholder}
-                    onChangeText={onSearchChange}
-                    value={searchQuery}
-                    style={styles.searchbar}
+            {/* Header / Search Area */}
+            <View style={styles.headerContainer}>
+                {/* Hamburger Menu Button */}
+                <IconButton
+                    icon="menu"
+                    iconColor={theme.colors.onSurface}
+                    size={28}
+                    style={styles.menuIcon}
+                    onPress={() => setIsOpen(true)}
                 />
+
+                {/* Search Bar */}
+                <View style={styles.searchContainer}>
+                    <Searchbar
+                        placeholder={searchPlaceholder}
+                        onChangeText={onSearchChange}
+                        value={searchQuery}
+                        style={styles.searchbar}
+                    />
+                </View>
             </View>
             
             {/* Filter Actions */}
@@ -232,23 +235,21 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    searchContainer: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        backgroundColor: 'transparent',
+    headerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingLeft: 72, // Make room for Menu FAB
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+    },
+    menuIcon: {
+        margin: 0,
+        marginRight: 4,
+    },
+    searchContainer: {
+        flex: 1,
     },
     searchbar: {
         flex: 1,
-    },
-
-    menuFab: {
-        position: 'absolute',
-        left: 16,
-        backgroundColor: 'transparent',
-        zIndex: 1000,
     },
     listContent: {
         paddingHorizontal: 16,

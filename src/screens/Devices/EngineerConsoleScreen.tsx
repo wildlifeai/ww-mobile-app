@@ -30,8 +30,9 @@ export const EngineerConsoleScreen = () => {
     const device = useAppSelector(state => state.devices[deviceId || ''])
     const logs = useAppSelector(state => state.logs[deviceId || ''] || [])
 
-    const { write } = useBle()
+    const { write, disconnectDevice } = useBle()
     const [consoleState, dispatch] = useReducer(consoleReducer, initialConsoleState)
+    const isNavigatingAway = useRef(false)
 
     // Use capture preview hook
     const { capturedImageUri: previewImageUri, isCapturing: isWaitingForCapture, startCapture } = useCapturePreview({
@@ -69,6 +70,25 @@ export const EngineerConsoleScreen = () => {
             headerLeft: headerLeft,
         })
     }, [navigation, headerLeft])
+
+    // Intercept Back Navigation (swipe/pop) to ensure device disconnection
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', async (e: any) => {
+            if (isNavigatingAway.current) return
+
+            e.preventDefault()
+
+            if (device?.connected) {
+                log('[EngineerConsole] Back navigated - disconnecting device...')
+                isNavigatingAway.current = true
+                await disconnectDevice(device)
+            }
+
+            navigation.dispatch(e.data.action)
+        })
+
+        return unsubscribe
+    }, [navigation, device, disconnectDevice])
 
     const lastProcessedLogLength = useRef<number>(0)
 
@@ -120,7 +140,7 @@ export const EngineerConsoleScreen = () => {
     }
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
             <ConsoleHeader
                 deviceName={device?.name || null}
                 deviceId={device.id}
@@ -155,6 +175,6 @@ export const EngineerConsoleScreen = () => {
                 imageUri={previewImageUri}
                 onDismiss={() => dispatch({ type: 'SET_SHOW_PREVIEW_MODAL', payload: false })}
             />
-        </View>
+        </SafeAreaView>
     )
 }

@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Text, IconButton, Divider, ActivityIndicator, Button, Avatar, useTheme } from 'react-native-paper'
+import { Card, Text, IconButton, Divider, ActivityIndicator, Avatar, useTheme } from 'react-native-paper'
 import { useAppNavigation } from '../../../hooks/useAppNavigation'
 import { ProjectWithDetails, ProjectMember } from '../../../types/project'
 import { getDisplayName } from '../../../utils/userUtils'
@@ -11,7 +11,6 @@ interface Props {
     membersLoading: boolean
     isProjectAdmin: boolean
     currentUser: any
-    handleRemoveMember: (userId: string) => void
 }
 
 export const ProjectMembersCard: React.FC<Props> = ({
@@ -20,7 +19,6 @@ export const ProjectMembersCard: React.FC<Props> = ({
     membersLoading,
     isProjectAdmin,
     currentUser,
-    handleRemoveMember
 }) => {
     const navigation = useAppNavigation()
     const theme = useTheme()
@@ -43,23 +41,19 @@ export const ProjectMembersCard: React.FC<Props> = ({
                         variant="titleMedium"
                         style={dynamicStyles.membersTitle}
                     >
-                        Members
+                        Members ({members?.length || 0})
                     </Text>
-                    {isProjectAdmin && (
-                        <Button
-                            mode="text"
-                            icon="account-multiple"
-                            onPress={() => {
-                                navigation.navigate("ProjectMembersScreen", {
-                                    projectId: project.id,
-                                    projectName: project.name,
-                                })
-                            }}
-                            testID="manage-members-button"
-                        >
-                            <Text>Manage</Text>
-                        </Button>
-                    )}
+                    <IconButton
+                        icon={isProjectAdmin ? "account-cog" : "eye"}
+                        size={24}
+                        onPress={() => {
+                            navigation.navigate("ProjectMembersScreen", {
+                                projectId: project.id,
+                                projectName: project.name,
+                            })
+                        }}
+                        testID={isProjectAdmin ? "manage-members-button" : "view-members-button"}
+                    />
                 </View>
 
                 <Divider style={styles.divider} />
@@ -68,7 +62,7 @@ export const ProjectMembersCard: React.FC<Props> = ({
                     <ActivityIndicator size="small" />
                 ) : members && members.length > 0 ? (
                     <View style={styles.membersList}>
-                        {members.map((member, index) => {
+                        {members.slice(0, 5).map((member, index) => {
                             const isMe = member.user_id === currentUser?.id
                             const displayName = isMe
                                 ? ((currentUser as any)?.profile?.first_name
@@ -120,15 +114,6 @@ export const ProjectMembersCard: React.FC<Props> = ({
                                             )}
                                         </View>
                                     </View>
-                                    {isProjectAdmin && !isMe && (
-                                        <IconButton
-                                            icon="close"
-                                            size={20}
-                                            iconColor={theme.colors.error}
-                                            onPress={() => handleRemoveMember(member.user_id)}
-                                            testID={`remove-member-${member.user_id}`}
-                                        />
-                                    )}
                                 </View>
                             )
                         })}

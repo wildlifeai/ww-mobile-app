@@ -17,6 +17,8 @@ interface InitializationHeaderProps {
         deviceHealth?: string[]
     }
     theme: any
+    warningHintText?: string
+    hideDeviceDetails?: boolean
 }
 
 export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
@@ -25,45 +27,55 @@ export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
     initProgress,
     initStep,
     initErrors,
-    theme
+    theme,
+    warningHintText = "You can still proceed with preparation, but address these issues before deployment.",
+    hideDeviceDetails = false
 }) => {
     return (
         <>
             {/* Header */}
-            <Card style={styles.card}>
-                <Card.Content>
-                    <View style={[styles.header, isInitializing && styles.headerInitializing]}>
-                        <View style={styles.headerTitleRow}>
-                            <View style={styles.headerTitleColumn}>
-                                <WWText variant="titleMedium" style={styles.headerLabel}><Text>Device ID</Text></WWText>
-                                <WWText variant="bodyMedium" style={styles.deviceName}>
-                                    {device.name}
-                                </WWText>
-                                <WWText variant="bodySmall" style={styles.deviceId}>
-                                    {device.bluetoothId}
-                                </WWText>
+            {(!hideDeviceDetails || isInitializing) && (
+                <Card style={styles.card}>
+                    <Card.Content>
+                        <View style={[styles.header, isInitializing && styles.headerInitializing]}>
+                            <View style={styles.headerTitleRow}>
+                                {!hideDeviceDetails ? (
+                                    <View style={styles.headerTitleColumn}>
+                                        <WWText variant="titleMedium" style={styles.headerLabel}><Text>Device ID</Text></WWText>
+                                        <WWText variant="bodyMedium" style={styles.deviceName}>
+                                            {device.name}
+                                        </WWText>
+                                        <WWText variant="bodySmall" style={styles.deviceId}>
+                                            {device.bluetoothId}
+                                        </WWText>
+                                    </View>
+                                ) : (
+                                    <View style={styles.headerTitleColumn}>
+                                        <WWText variant="titleMedium" style={styles.headerLabel}><Text>Initialization Status</Text></WWText>
+                                    </View>
+                                )}
+                                {isInitializing ? (
+                                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                                ) : (
+                                    <WWIcon source="check-circle" color="#4CAF50" size={28} />
+                                )}
                             </View>
-                            {isInitializing ? (
-                                <ActivityIndicator size="small" color={theme.colors.primary} />
-                            ) : (
-                                <WWIcon source="check-circle" color="#4CAF50" size={28} />
+
+                            {isInitializing && (
+                                <View style={styles.initializationProgressContainer}>
+                                    <WWProgressBar progress={initProgress} style={styles.initProgressBar} />
+                                    <WWText variant="bodySmall" style={styles.initStepText}>
+                                        <Text>{initStep || 'Preparing device...'}</Text>
+                                    </WWText>
+                                </View>
                             )}
                         </View>
-
-                        {isInitializing && (
-                            <View style={styles.initializationProgressContainer}>
-                                <WWProgressBar progress={initProgress} style={styles.initProgressBar} />
-                                <WWText variant="bodySmall" style={styles.initStepText}>
-                                    <Text>{initStep || 'Preparing device...'}</Text>
-                                </WWText>
-                            </View>
-                        )}
-                    </View>
-                </Card.Content>
-            </Card>
+                    </Card.Content>
+                </Card>
+            )}
 
             {/* Initialization Errors */}
-            {(initErrors.selftest || initErrors.setUtc || initErrors.deviceHealth) && (
+            {(initErrors.selftest || initErrors.setUtc || (initErrors.deviceHealth && initErrors.deviceHealth.length > 0)) && (
                 <View style={[styles.errorSection, { backgroundColor: theme.colors.errorContainer, borderLeftColor: theme.colors.error }]}>
                     <Text variant="titleMedium" style={[styles.errorTitle, { color: theme.colors.onErrorContainer }]}>
                         ⚠️ Initialization Warnings
@@ -84,7 +96,7 @@ export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
                         </Text>
                     ))}
                     <Text variant="bodySmall" style={[styles.errorHint, { color: theme.colors.onErrorContainer }]}>
-                        You can still proceed with preparation, but address these issues before deployment.
+                        {warningHintText}
                     </Text>
                 </View>
             )}

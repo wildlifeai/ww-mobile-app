@@ -10,7 +10,7 @@ import {
 } from "react-native"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { useExtendedTheme } from "../../theme"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context"
 
 type Props = PropsWithChildren<ViewProps | ScrollViewProps> & {
 	scrollable?: boolean
@@ -39,19 +39,20 @@ export const WWScreenView = ({
         <KeyboardAwareScrollView
             style={styles.scrollView}
             contentContainerStyle={[
-                { padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
+                { padding: appPadding, paddingTop: appPadding + safeTop },
                 styles.scrollContent,
                 props.style,
             ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            bottomOffset={bottom}
         >
             {children}
         </KeyboardAwareScrollView>
     ) : (
         <View
             style={[
-                { padding: appPadding, paddingBottom: appPadding + bottom, paddingTop: appPadding + safeTop },
+                { padding: appPadding, paddingTop: appPadding + safeTop },
                 styles.view,
                 props.style,
             ]}
@@ -61,9 +62,11 @@ export const WWScreenView = ({
     );
 
     return (
-        <TouchableWithoutFeedback style={styles.view} onPress={Keyboard.dismiss}>
-            {content}
-        </TouchableWithoutFeedback>
+        <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.view}>
+            <TouchableWithoutFeedback style={styles.view} onPress={Keyboard.dismiss}>
+                {content}
+            </TouchableWithoutFeedback>
+        </SafeAreaView>
     );
 }
 

@@ -4,33 +4,19 @@ import { Card, TextInput } from 'react-native-paper'
 interface Props {
     name: string
     notes: string
-    locationName: string
-    cameraHeight: string // Stored as string in input, parsed to number later
     onNameChange: (text: string) => void
     onNotesChange: (text: string) => void
-    onLocationNameChange: (text: string) => void
-    onCameraHeightChange: (text: string) => void
     onShowHelp: (title: string, content: string) => void
 }
 
 export const MetadataSection = ({
     name,
     notes,
-    locationName,
-    cameraHeight,
     onNameChange,
     onNotesChange,
-    onLocationNameChange,
-    onCameraHeightChange,
     onShowHelp
 }: Props) => {
-    // Helper to only allow numeric input for Camera Height
-    const handleCameraHeightChange = (text: string) => {
-        // Allow empty string or numbers only
-        if (/^\d*$/.test(text)) {
-            onCameraHeightChange(text)
-        }
-    }
+
     return (
         <Card style={styles.card}>
             <Card.Title title="Deployment Details" />
@@ -44,26 +30,6 @@ export const MetadataSection = ({
                     right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Deployment Name', 'A unique identifier for this specific deployment. It helps track data collected during this session.')} />}
                 />
 
-                <TextInput
-                    label="Location Name"
-                    placeholder="e.g. Ridge Trail Camera A"
-                    value={locationName}
-                    onChangeText={onLocationNameChange}
-                    mode="outlined"
-                    style={styles.input}
-                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Location Name', 'A short, project-specific identifiable name for this deployment location (e.g. "Ridge Trail Camera A", "Pond North").')} />}
-                />
-
-                <TextInput
-                    label="Camera Height (cm)"
-                    placeholder="e.g. 50"
-                    value={cameraHeight}
-                    onChangeText={handleCameraHeightChange}
-                    mode="outlined"
-                    keyboardType="numeric"
-                    style={styles.input}
-                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Camera Height', 'The height of the camera lens from the ground in centimeters. Important for estimating animal size and perspective.')} />}
-                />
 
                 <TextInput
                     label="Notes"
