@@ -44,6 +44,8 @@ export enum CommandNames {
 	wake = "wake",
 	camera_type = "camera_type",
 	md = "md",
+	setdid = "setdid",
+	getdid = "getdid",
 
 	// Process commands (UPPERCASE - app-specific workflows)
 	SET_UTC = "SET_UTC",
@@ -435,6 +437,21 @@ export const COMMANDS: {
 		expectedPattern: false,
 		description: "Set motion detection sensitivity (0-3)",
 		type: 'process',
+	},
+	[CommandNames.setdid]: {
+		name: CommandNames.setdid,
+		writeCommand: (id?: string) => `AI setdid ${id || ''}`.trim(),
+		expectedPattern: false,
+		description: "Set Deployment ID as a single string",
+		type: 'command',
+	},
+	[CommandNames.getdid]: {
+		name: CommandNames.getdid,
+		writeCommand: () => "AI getdid", // In case we want to write it explicitly instead of read
+		readCommand: "AI getdid",
+		readRegex: /([a-zA-Z0-9-]+)/, // Matches any alphanumeric string with hyphens
+		description: "Get Deployment ID (string)",
+		type: 'command',
 	},
 	// Preset Operational Parameter Commands
 	[CommandNames.SET_NUM_PICTURES]: {
