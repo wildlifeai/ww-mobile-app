@@ -5,6 +5,12 @@ import { bleCommandManager } from '../../../ble/commandManager'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { log, logError } from '../../../utils/logger'
 
+// Constants for motion detection stream testing timings
+const MOTION_DETECTION_FRAME_INTERVAL_MS = 300
+const MOTION_DETECTION_INACTIVITY_MS = 1000
+const MOTION_DETECTION_CAPTURE_TIMEOUT_MS = 10000
+const MOTION_DETECTION_LOOP_INTERVAL_MS = 2000
+
 interface UseMotionDetectionStreamOptions {
     device: ExtendedPeripheral | undefined
     write: (peripheral: ExtendedPeripheral, data: (string | [any, any])[], options?: any) => Promise<string[]>
@@ -109,22 +115,22 @@ export const useMotionDetectionStream = ({ device, write }: UseMotionDetectionSt
             // 2. Set picture interval between images in a burst (300ms)
             // IMPORTANT: Must be < 1000ms to avoid firmware inactivity timer sending
             // a premature Sleep between frames, which breaks frame 2's motion output.
-            await write(device, ['AI setop 6 300'])
+            await write(device, [`AI setop 6 ${MOTION_DETECTION_FRAME_INTERVAL_MS}`])
 
             // 3. Enable MD interval so the HM0360 sensor engages motion detection mode
-            await write(device, ['AI setop 11 1000'])
+            await write(device, [`AI setop 11 ${MOTION_DETECTION_INACTIVITY_MS}`])
 
             // 4. Capture 2 frames per cycle: frame 1 = reference, frame 2 = motion comparison.
             // After DPD wake, the HM0360 has no previous frame, so a single-frame capture
             // always reports 0 motion blocks. Two frames lets it compare frame 2 vs frame 1.
             // Interval of 300ms keeps both frames within the 1000ms inactivity window.
             testIntervalRef.current = setInterval(() => {
-                write(device, ['AI capture 2 300'], { maxRetries: 1, timeout: 10000 })
+                write(device, [`AI capture 2 ${MOTION_DETECTION_FRAME_INTERVAL_MS}`], { maxRetries: 1, timeout: MOTION_DETECTION_CAPTURE_TIMEOUT_MS })
                     .catch(e => logError('[MotionDetection] capture loop iteration failed', e))
-            }, 2000)
+            }, MOTION_DETECTION_LOOP_INTERVAL_MS)
 
             // Trigger the first one immediately
-            write(device, ['AI capture 2 300'], { maxRetries: 1, timeout: 10000 })
+            write(device, [`AI capture 2 ${MOTION_DETECTION_FRAME_INTERVAL_MS}`], { maxRetries: 1, timeout: MOTION_DETECTION_CAPTURE_TIMEOUT_MS })
                 .catch(e => logError('[MotionDetection] Initial capture failed', e))
 
         } catch (error) {

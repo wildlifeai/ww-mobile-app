@@ -3,22 +3,22 @@ CREATE TABLE deployments (
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
-
+  
   -- Snapshot of device configuration at deployment time
-  device_preparation_id_deprecated uuid REFERENCES device_preparation (id),
-
+  device_preparation_id uuid REFERENCES device_preparation(id),
+  
   -- Deployment lifecycle
   name text NOT NULL,
-  setup_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
+  setup_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   deployment_start timestamptz NOT NULL,
-  ended_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
+  ended_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   deployment_end timestamptz,
-  deployment_status_id int REFERENCES deployment_statuses (id),
-  capture_method_id int REFERENCES capture_methods (id), -- RESTORED
+  deployment_status_id int REFERENCES deployment_statuses(id),
+  capture_method_id int REFERENCES capture_methods(id), -- RESTORED
   deployment_photos jsonb, -- RESTORED
   start_deployment_comments text,
   end_deployment_comments text,
-
+  
   -- Location data
   location_name text NOT NULL,
   location_description text,
@@ -27,48 +27,30 @@ CREATE TABLE deployments (
   longitude double precision,
   altitude double precision,
   accuracy double precision,
-  location GEOGRAPHY (POINT, 4326),
+  location geography(Point,4326),
   -- Camera configuration
   camera_height float,
-  activity_detection_sensitivity_id int REFERENCES activity_sensitivity (id),
+  activity_detection_sensitivity_id int REFERENCES activity_sensitivity(id),
   timelapse_interval_seconds int,
 
   -- New fields (Fixing sync error)
-  project_id uuid NOT NULL REFERENCES projects (id),
-  device_id uuid NOT NULL REFERENCES devices (id),
-  location_data jsonb, -- Stores the raw JSON location object from frontend
-
-  -- Device Snapshot Fields (Captured at deployment start)
-  camera_model text,
-  lorawan_network text,
-  device_eui text,
-  lorawan_registration_completed boolean NOT NULL DEFAULT false,
-  lorawan_last_verified_at timestamptz,
-  ai_model_id uuid REFERENCES ai_models (id),
-  ble_firmware_id uuid REFERENCES firmware (id),
-  himax_firmware_id uuid REFERENCES firmware (id),
-  config_firmware_id uuid REFERENCES firmware (id),
-  battery_level_at_start integer,
-  sd_card_total_kb_at_start integer,
-  sd_card_available_kb_at_start integer,
-  lorawan_rssi_at_start integer,
-  lorawan_snr_at_start double precision
+  project_id uuid REFERENCES projects(id),
+  device_id uuid REFERENCES devices(id),
+  location_data jsonb -- Stores the raw JSON location object from frontend
 );
 
 -- Indexes
-CREATE UNIQUE INDEX deployments_start_device_unique_idx ON deployments (deployment_start, device_id);
+CREATE UNIQUE INDEX deployments_start_prep_id_unique_idx ON deployments (deployment_start, device_preparation_id);
 CREATE INDEX idx_deployments_setup_by ON deployments (setup_by);
 CREATE INDEX idx_deployments_ended_by ON deployments (ended_by);
-CREATE INDEX idx_deployments_project_id ON deployments (project_id);
-CREATE INDEX idx_deployments_device_id ON deployments (device_id);
+CREATE INDEX idx_deployments_device_preparation ON deployments (device_preparation_id);
 CREATE INDEX idx_deployments_deleted_at ON deployments (deleted_at);
-CREATE INDEX deployments_location_idx ON deployments USING gist (location);
+CREATE INDEX deployments_location_idx ON deployments USING GIST (location);
 
 -- Constraints
 ALTER TABLE deployments ADD CONSTRAINT deployments_latitude_check CHECK (latitude >= -90 AND latitude <= 90);
 ALTER TABLE deployments ADD CONSTRAINT deployments_longitude_check CHECK (longitude >= -180 AND longitude <= 180);
-ALTER TABLE deployments ADD CONSTRAINT deployments_end_check CHECK (deployment_end IS null OR deployment_end >= deployment_start);
-ALTER TABLE deployments ADD CONSTRAINT deployments_battery_level_start_check CHECK (battery_level_at_start IS null OR (battery_level_at_start >= 0 AND battery_level_at_start <= 100));
+ALTER TABLE deployments ADD CONSTRAINT deployments_end_check CHECK (deployment_end IS NULL OR deployment_end >= deployment_start);
 
 COMMENT ON TABLE deployments IS 'Stores camera deployments for wildlife monitoring projects. Snapshots device configuration at deployment time via device_preparation_id.';
 COMMENT ON COLUMN deployments.device_preparation_id IS 'Links to prep session that prepared this device. Critical for traceability.';
@@ -84,20 +66,6 @@ COMMENT ON COLUMN deployments.capture_method_id IS 'Mode of capture (timelapse, 
 COMMENT ON COLUMN deployments.project_id IS 'Project this deployment belongs to.';
 COMMENT ON COLUMN deployments.device_id IS 'Device used in this deployment.';
 COMMENT ON COLUMN deployments.location_data IS 'Raw JSON location data from the mobile app.';
-COMMENT ON COLUMN deployments.camera_model IS 'Camera hardware model snapped at deployment start.';
-COMMENT ON COLUMN deployments.lorawan_network IS 'LoRaWAN network provider snapped at deployment start.';
-COMMENT ON COLUMN deployments.device_eui IS 'LoRaWAN Device EUI snapped at deployment start.';
-COMMENT ON COLUMN deployments.lorawan_registration_completed IS 'Whether LoRaWAN registration was complete at deployment start.';
-COMMENT ON COLUMN deployments.lorawan_last_verified_at IS 'LoRaWAN verification timestamp at deployment start.';
-COMMENT ON COLUMN deployments.ai_model_id IS 'AI model assigned at deployment start.';
-COMMENT ON COLUMN deployments.ble_firmware_id IS 'BLE Firmware version active at deployment start.';
-COMMENT ON COLUMN deployments.himax_firmware_id IS 'Himax Firmware version active at deployment start.';
-COMMENT ON COLUMN deployments.config_firmware_id IS 'Config Firmware version active at deployment start.';
-COMMENT ON COLUMN deployments.battery_level_at_start IS 'Battery level recorded at deployment start (%).';
-COMMENT ON COLUMN deployments.sd_card_total_kb_at_start IS 'Total SD card capacity recorded at deployment start (KB).';
-COMMENT ON COLUMN deployments.sd_card_available_kb_at_start IS 'Available SD card capacity recorded at deployment start (KB).';
-COMMENT ON COLUMN deployments.lorawan_rssi_at_start IS 'LoRaWAN RSSI recorded at deployment start.';
-COMMENT ON COLUMN deployments.lorawan_snr_at_start IS 'LoRaWAN SNR recorded at deployment start.';
 
 ALTER TABLE deployments ENABLE ROW LEVEL SECURITY;
 

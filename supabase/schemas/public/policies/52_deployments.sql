@@ -1,6 +1,6 @@
 -- *** Deployments RLS Policies ***
--- UPDATED: 2026-03-27 - Deprecated device_preparation (Phase 1)
--- Now uses native project_id on deployments table
+-- UPDATED: 2025-11-27 - Replaced project_members with user_roles
+-- UPDATED: 2025-11-27 - Adapted for MVP2 schema (project via device_preparation_id)
 
 -- SELECT: Project members can view deployments for their project
 CREATE POLICY "Project members can view active deployments"
@@ -8,7 +8,12 @@ CREATE POLICY "Project members can view active deployments"
   FOR SELECT
   TO authenticated
   USING (
-    has_project_role(auth.uid(), deployments.project_id, 'project_member')
+    EXISTS (
+      SELECT 1 
+      FROM device_preparation dp
+      WHERE dp.id = deployments.device_preparation_id
+        AND has_project_role(auth.uid(), dp.project_id, 'project_member')
+    )
   );
 
 -- INSERT: Project members can create deployments
@@ -17,8 +22,12 @@ CREATE POLICY "Project members can create deployments"
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    (SELECT auth.uid()) IS NOT NULL AND 
-    has_project_role((SELECT auth.uid()), deployments.project_id, 'project_member')
+    (SELECT auth.uid()) IS NOT NULL AND EXISTS (
+      SELECT 1 
+      FROM device_preparation dp
+      WHERE dp.id = deployments.device_preparation_id
+        AND has_project_role((SELECT auth.uid()), dp.project_id, 'project_member')
+    )
   );
 
 -- UPDATE: Deployment creator can update own deployments
@@ -51,12 +60,20 @@ CREATE POLICY "Project admins can update deployments"
   FOR UPDATE
   TO authenticated
   USING (
-    (SELECT auth.uid()) IS NOT NULL AND 
-    has_project_role((SELECT auth.uid()), deployments.project_id, 'project_admin')
+    (SELECT auth.uid()) IS NOT NULL AND EXISTS (
+      SELECT 1 
+      FROM device_preparation dp
+      WHERE dp.id = deployments.device_preparation_id
+        AND has_project_role((SELECT auth.uid()), dp.project_id, 'project_admin')
+    )
   )
   WITH CHECK (
-    (SELECT auth.uid()) IS NOT NULL AND 
-    has_project_role((SELECT auth.uid()), deployments.project_id, 'project_admin')
+    (SELECT auth.uid()) IS NOT NULL AND EXISTS (
+      SELECT 1 
+      FROM device_preparation dp
+      WHERE dp.id = deployments.device_preparation_id
+        AND has_project_role((SELECT auth.uid()), dp.project_id, 'project_admin')
+    )
   );
 
 -- UPDATE: Project admins can soft-delete deployments
@@ -65,14 +82,19 @@ CREATE POLICY "Project admins can soft-delete deployments"
   FOR UPDATE
   TO authenticated
   USING (
-    has_project_role((SELECT auth.uid()), deployments.project_id, 'project_admin')
+    EXISTS (
+      SELECT 1 
+      FROM device_preparation dp
+      WHERE dp.id = deployments.device_preparation_id
+        AND has_project_role((SELECT auth.uid()), dp.project_id, 'project_admin')
+    )
   )
   WITH CHECK (
     deleted_at IS NOT NULL
   );
 
 COMMENT ON POLICY "Project members can view active deployments" ON deployments
-IS 'Updated 2026-03-27: Uses native project_id';
+IS 'Updated 2025-11-27: Uses user_roles and device_preparation for project association';
 
 COMMENT ON POLICY "Project members can create deployments" ON deployments
-IS 'Updated 2026-03-27: Uses native project_id';
+IS 'Updated 2025-11-27: Uses user_roles and device_preparation for project association';

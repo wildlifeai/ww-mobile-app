@@ -222,7 +222,8 @@ function generateSchema() {
         { name: 'responded_at', type: 'number', isOptional: true },
     ];
 
-    // ----------------------------------------------------    // Patch missing fields for reference tables (Models expect server_id but Supabase has id)
+    // ----------------------------------------------------    
+    // Patch missing fields for reference tables (Models expect server_id but Supabase has id)
     // capture_methods, activity_sensitivity, sampling_designs use INT ID -> server_id (number)
     // ai_models uses UUID -> server_id (string)
     const refTablesNum = ['capture_methods', 'activity_sensitivity', 'sampling_designs'];

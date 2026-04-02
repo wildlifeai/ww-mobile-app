@@ -1,8 +1,8 @@
 -- *** Devices RLS Policies ***
--- UPDATED: 2026-03-27 - Deprecated device_preparation (Phase 1)
--- Now joins deployments via device_id natively
+-- UPDATED: 2025-11-27 - Replaced project_members with user_roles
+-- UPDATED: 2025-11-27 - Adapted for MVP2 schema (devices linked via device_preparation)
 
--- SELECT: Project members can view devices linked to their projects via deployments
+-- SELECT: Project members can view devices linked to their projects via device_preparation
 CREATE POLICY "Project members can view active devices"
   ON devices
   FOR SELECT
@@ -10,10 +10,11 @@ CREATE POLICY "Project members can view active devices"
   USING (
     EXISTS (
       SELECT 1
-      FROM deployments d
-      INNER JOIN user_roles ur ON ur.scope_type = 'project' AND ur.scope_id = d.project_id
-      WHERE d.device_id = devices.id
-        AND d.deleted_at IS NULL
+      FROM device_preparation dp
+      INNER JOIN user_roles ur ON ur.scope_type = 'project' AND ur.scope_id = dp.project_id
+      WHERE dp.id IN (
+        SELECT device_preparation_id FROM deployments WHERE device_preparation_id IS NOT NULL
+      )
         AND ur.user_id = auth.uid()
         AND ur.is_active = true
         AND ur.deleted_at IS NULL
