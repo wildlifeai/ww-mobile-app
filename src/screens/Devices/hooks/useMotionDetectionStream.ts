@@ -85,9 +85,11 @@ export const useMotionDetectionStream = ({ device, write }: UseMotionDetectionSt
             
             // Assuming MSB first for each byte's pixels
             for (let bit = 7; bit >= 0; bit--) {
+                // eslint-disable-next-line no-bitwise
                 rowBools.push(((byte1 >> bit) & 1) === 1)
             }
             for (let bit = 7; bit >= 0; bit--) {
+                // eslint-disable-next-line no-bitwise
                 rowBools.push(((byte2 >> bit) & 1) === 1)
             }
             newGrid.push(rowBools)

@@ -102,20 +102,34 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
         </Button>
     ), [onShowHelp])
 
-    return (
-        <List.Accordion
-            title="Advanced Device Settings"
-            description="Diagnostics and Firmware Updates"
-            left={props => <List.Icon {...props} icon="cog" />}
-            expanded={expanded}
-            onPress={() => setExpanded(!expanded)}
-            style={styles.accordionHeader}
+    const renderLocationHelp = useCallback((props: any) => (
+        <Button 
+            {...props} 
+            icon="help-circle-outline" 
+            onPress={() => onShowHelp('Location & Camera Settings', 'Site Name: Name of the deployment site.\n\nCamera Height: The height of the camera lens from the ground in centimeters.')}
         >
-            <View style={styles.accordionContent}>
-                
-                {/* Location & Camera Settings Card */}
-                <Card style={styles.card}>
-                    <Card.Title title="Location & Camera Settings" />
+            <Text>Help</Text>
+        </Button>
+    ), [onShowHelp])
+
+    const renderLeftIcon = useCallback((props: any) => <List.Icon {...props} icon="cog" />, [])
+    const renderRightIcon = useCallback((props: any) => <List.Icon {...props} icon={expanded ? "chevron-up" : "chevron-down"} />, [expanded])
+
+    return (
+        <View>
+            <List.Item
+                title="Advanced Device Settings"
+                left={renderLeftIcon}
+                right={renderRightIcon}
+                onPress={() => setExpanded(!expanded)}
+                style={styles.accordionHeader}
+            />
+            {expanded && (
+                <View style={styles.accordionContent}>
+                    
+                    {/* Location & Camera Settings Card */}
+                    <Card style={styles.card}>
+                        <Card.Title title="Location & Camera Settings" right={renderLocationHelp} />
                     <Card.Content style={styles.content}>
                         {availableLocations.length > 0 && !isCustomLocation ? (
                             <View style={styles.inputContainer}>
@@ -140,7 +154,6 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                                     value={locationName}
                                     onChangeText={onLocationNameChange}
                                     mode="outlined"
-                                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Site Name', 'Name of the deployment site')} />}
                                 />
                                 {availableLocations.length > 0 && (
                                     <WWButton mode="text" onPress={() => { setIsCustomLocation(false); if(availableLocations.length > 0) onLocationNameChange(availableLocations[0].value) }} style={styles.switchButton}>
@@ -162,7 +175,6 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                                 }}
                                 mode="outlined"
                                 keyboardType="numeric"
-                                right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Camera Height', 'The height of the camera lens from the ground in centimeters.')} />}
                             />
                         </View>
                     </Card.Content>
@@ -313,8 +325,9 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                     </Card.Content>
                 </Card>
 
-            </View>
-        </List.Accordion>
+                </View>
+            )}
+        </View>
     )
 }
 
@@ -326,6 +339,7 @@ const styles = StyleSheet.create({
     accordionContent: {
         gap: 16,
         paddingBottom: 16,
+        paddingHorizontal: 0,
     },
     card: {
         width: '100%',

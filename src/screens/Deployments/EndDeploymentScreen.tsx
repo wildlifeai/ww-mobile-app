@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, StyleSheet, FlatList } from 'react-native'
+import { View, StyleSheet, ScrollView } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
@@ -181,20 +181,17 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                                     <Text style={[styles.emptyLogText, { color: theme.colors.onSurfaceVariant }]}>Waiting for device activity...</Text>
                                 </View>
                             ) : (
-                                <FlatList
-                                    data={activityLog.slice(0, 50)}
-                                    keyExtractor={item => item.id}
-                                    nestedScrollEnabled
-                                    renderItem={({ item }: { item: ActivityLogEntry }) => (
-                                        <View style={styles.logEntry}>
+                                <ScrollView nestedScrollEnabled>
+                                    {activityLog.slice(0, 50).map((item: ActivityLogEntry) => (
+                                        <View key={item.id} style={styles.logEntry}>
                                             <MaterialCommunityIcons name={item.icon} size={16} color={theme.colors.primary} style={styles.logEntryIcon} />
                                             <Text style={[styles.logEntryLabel, { color: theme.colors.onSurface }]} numberOfLines={1}>{item.label}</Text>
                                             <Text style={[styles.logEntryTime, { color: theme.colors.onSurfaceVariant }]}>
                                                 {new Date(item.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                             </Text>
                                         </View>
-                                    )}
-                                />
+                                    ))}
+                                </ScrollView>
                             )}
                         </View>
                     </Card.Content>

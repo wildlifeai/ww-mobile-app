@@ -2,6 +2,7 @@
 import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { KeyboardStickyView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ConsoleInputProps {
     inputText: string;
@@ -16,11 +17,12 @@ export const ConsoleInput = ({
     onSend,
     isConnected,
 }: ConsoleInputProps) => {
+    const { bottom } = useSafeAreaInsets();
     const isSendDisabled = !inputText.trim() || !isConnected;
 
     return (
         <KeyboardStickyView offset={{ closed: 0, opened: 0 }}>
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, { paddingBottom: bottom + 16 }]}>
                 <TextInput
                     style={styles.input}
                     value={inputText}

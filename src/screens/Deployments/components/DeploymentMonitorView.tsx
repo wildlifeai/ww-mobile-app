@@ -1,6 +1,7 @@
 import React, { useRef } from 'react'
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useExtendedTheme } from '../../../theme'
 import { useDeploymentMonitor, ActivityLogEntry } from '../hooks/useDeploymentMonitor'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
@@ -35,6 +36,7 @@ export const DeploymentMonitorView: React.FC<Props> = ({
   onDisconnect,
 }) => {
   const { colors } = useExtendedTheme()
+  const { bottom } = useSafeAreaInsets()
   const { activityLog, stats } = useDeploymentMonitor(device)
 
   const showMotion = captureMethodId === 1 || captureMethodId === 3
@@ -140,7 +142,7 @@ export const DeploymentMonitorView: React.FC<Props> = ({
       />
 
       {/* Footer */}
-      <View style={[styles.footer, { borderTopColor: colors.surfaceVariant }]}>
+      <View style={[styles.footer, { borderTopColor: colors.surfaceVariant, paddingBottom: bottom + 16 }]}>
         <Text style={[styles.footerNote, { color: colors.onSurfaceVariant }]}>
           The device will continue operating normally after disconnecting.
         </Text>

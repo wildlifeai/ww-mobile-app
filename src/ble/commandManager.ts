@@ -235,7 +235,10 @@ export class BleCommandManager {
         // If we were expecting a specific pattern, but match was only via fallback (default response),
         // then we should NOT resolve unless the content actually matches our expectation.
         if (this.pendingCommand?.expectedPattern instanceof RegExp && classified.isFallbackResponse) {
-            logWarn(`[BLE CMD Manager] Ignoring unknown message while waiting for ${this.pendingCommand.expectedPattern}: ${classified.content}`)
+            const isDisconnecting = this.pendingCommand?.commandName === CommandNames.dis || this.pendingCommand?.commandString === 'dis'
+            if (!isDisconnecting) {
+                logWarn(`[BLE CMD Manager] Ignoring unknown message while waiting for ${this.pendingCommand.expectedPattern}: ${classified.content}`)
+            }
             this.emitUnsolicited(classified)
             break
         }

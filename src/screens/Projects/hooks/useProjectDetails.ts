@@ -7,7 +7,6 @@ import { logError } from '../../../utils/logger'
 import {
 	useGetProjectByIdQuery,
 	useUpdateProjectMutation,
-	useDeleteProjectMutation,
 	useGetProjectMembersQuery,
 	useRemoveProjectMemberMutation,
 	useGetCaptureMethodsQuery,

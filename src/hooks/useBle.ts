@@ -164,18 +164,30 @@ export const useBle = (): ReturnType => {
 						await sleep(PAUSE)
 					} catch (error) {
 						const errMsg = error instanceof Error ? error.message : String(error)
-						logError(`Error writing command ${commandString}: ${errMsg}`)
+                        const isCleared = errMsg.includes('Command manager cleared')
+                        
+                        // Treat cleared command manager during explicit disconnects gracefully
+                        if (isCleared && (commandString === CommandNames.dis || commandString === 'dis')) {
+                            log(`[useBle] Command manager cleared during disconnect command (expected)`)
+                        } else {
+						    logError(`Error writing command ${commandString}: ${errMsg}`)
+                        }
+                        
 						results.push(`ERROR: ${errMsg}`)
 						
 						// Stop the sequence if the error is fatal (disconnection or cancelled)
 						const isFatal = 
 							errMsg.includes('Peripheral not found') || 
 							errMsg.includes('not connected') || 
-							errMsg.includes('Command manager cleared') ||
+							isCleared ||
 							errMsg.includes('disconnected')
 
 						if (isFatal) {
-							logWarn(`[useBle] Fatal error detected, stopping command sequence: ${errMsg}`)
+                            if (isCleared && (commandString === CommandNames.dis || commandString === 'dis')) {
+                                log(`[useBle] Stopping command sequence normally due to explicit disconnect`)
+                            } else {
+							    logWarn(`[useBle] Fatal error detected, stopping command sequence: ${errMsg}`)
+                            }
 							throw error
 						}
 					}

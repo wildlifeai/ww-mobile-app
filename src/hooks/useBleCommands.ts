@@ -29,8 +29,12 @@ export const useBleCommands = () => {
     const runDisconnect = useCallback(async (peripheral: ExtendedPeripheral) => {
         try {
             await write(peripheral, [[CommandNames.dis, { control: CommandControlTypes.WRITE }]])
-        } catch (e) {
-            logWarn('[runDisconnect] BLE write failed, proceeding to local disconnect:', e)
+        } catch (e: any) {
+            if (e?.message?.includes('Command manager cleared')) {
+                log('[runDisconnect] Device disconnected gracefully')
+            } else {
+                logWarn('[runDisconnect] BLE write failed, proceeding to local disconnect:', e)
+            }
         } finally {
             // Always trigger app-side disconnect
             await disconnectDevice(peripheral)

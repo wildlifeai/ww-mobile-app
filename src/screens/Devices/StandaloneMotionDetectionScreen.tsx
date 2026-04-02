@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useCallback } from 'react'
+import { useLayoutEffect, useCallback } from 'react'
 import { StyleSheet, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
