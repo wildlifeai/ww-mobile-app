@@ -221,7 +221,7 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="EndDeploymentDetailsStep"
 							component={EndDeploymentDetailsStep}
-							options={{ title: "Confirm End Deployment" }}
+							options={{ title: "End deployment" }}
 						/>
 						<Stack.Screen
 							name="DeploymentDetails"
