@@ -141,7 +141,7 @@ export const useStartDeployment = ({
     // Advanced Settings State
     const [batteryLevel, setBatteryLevel] = useState<number | null>(initPayload?.batteryLevel || null)
     const [sdCardStatus, setSdCardStatus] = useState<{ total: number; free: number } | null>(initPayload?.sdCardStatus || null)
-    const [latestBleFirmware, _setLatestBleFirmware] = useState<Firmware | null>(null)
+    const [latestBleFirmware, setLatestBleFirmware] = useState<Firmware | null>(null)
     const [deviceFirmwareVersion, setDeviceFirmwareVersion] = useState<string | null>(initPayload?.deviceFirmwareVersion || null)
     const [bleFirmwareUpdateAvailable, setBleFirmwareUpdateAvailable] = useState(initPayload?.bleFirmwareUpdateAvailable || false)
     const [firmwareUpdateProgress, setFirmwareUpdateProgress] = useState<number>(0)
@@ -221,6 +221,20 @@ export const useStartDeployment = ({
     useEffect(() => {
         bleDeviceRef.current = bleDevice
     }, [bleDevice])
+
+    // Fetch latest BLE firmware from the local database so the update button works
+    useEffect(() => {
+        const fetchLatestFirmware = async () => {
+            try {
+                const latest = await ReferenceDataService.getLatestFirmware('ble')
+                setLatestBleFirmware(latest)
+                log('[Deployment] Latest BLE firmware loaded:', latest?.version || 'none found')
+            } catch (e) {
+                logWarn('[Deployment] Failed to load latest BLE firmware:', e)
+            }
+        }
+        fetchLatestFirmware()
+    }, [])
 
     const loadProjectAndDevice = useCallback(async () => {
         try {
