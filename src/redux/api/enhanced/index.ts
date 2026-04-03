@@ -413,26 +413,7 @@ export const enhancedApi = createApi({
 })
 
 // Export hooks for components
-export const {
-	useGetProjectsQuery,
-	useCreateProjectMutation,
-	useUpdateProjectMutation,
-	useDeleteProjectMutation,
-	useGetDeploymentsQuery,
-	useCreateDeploymentMutation,
-	useUpdateDeploymentMutation,
-	useUpdateDeviceStatusMutation,
-	useGetDeviceStatusQuery,
-	useGetOrganisationsQuery,
-	useCreateOrganisationMutation,
-	useGetUsersQuery,
-	useInviteUserMutation,
-	useUpdateUserStatusMutation,
-	useGetSystemMetricsQuery,
-	useLoginUserMutation,
-	useRefreshTokenMutation,
-	useSetupRealtimeSubscriptionQuery,
-} = enhancedApi
+export const {} = enhancedApi
 
 // Role-based query helpers
 export const createRoleBasedQuery = (state: AuthRootState): RoleBasedQuery => ({
