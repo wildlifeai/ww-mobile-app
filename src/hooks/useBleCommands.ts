@@ -5,6 +5,7 @@ import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
 import { formatGPSString } from '../utils/gpsUtils'
 import { log, logError, logWarn } from '../utils/logger'
 import { createCommand, createAction } from './useBleCommandFactory'
+import { isCommandClearedError } from "../ble/commandManager"
 
 
 export const useBleCommands = () => {
@@ -30,7 +31,7 @@ export const useBleCommands = () => {
         try {
             await write(peripheral, [[CommandNames.dis, { control: CommandControlTypes.WRITE }]])
         } catch (e: any) {
-            if (e?.message?.includes('Command manager cleared')) {
+            if (isCommandClearedError(e)) {
                 log('[runDisconnect] Device disconnected gracefully')
             } else {
                 logWarn('[runDisconnect] BLE write failed, proceeding to local disconnect:', e)

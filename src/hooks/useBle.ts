@@ -32,7 +32,7 @@ import {
 	Services,
 } from "../ble/types"
 import { constructCommandString } from "../ble/types"
-import { bleCommandManager } from "../ble/commandManager"
+import { bleCommandManager, isCommandClearedError, isDisconnectCommand } from "../ble/commandManager"
 import { getCommandByName } from "../ble/types"
 
 export type WriteData = [CommandNames, CommandConstructOptions]
@@ -164,10 +164,11 @@ export const useBle = (): ReturnType => {
 						await sleep(PAUSE)
 					} catch (error) {
 						const errMsg = error instanceof Error ? error.message : String(error)
-                        const isCleared = errMsg.includes('Command manager cleared')
+                        const isCleared = isCommandClearedError(error)
+                        const isDisconnect = isDisconnectCommand(commandString, commandString)
                         
                         // Treat cleared command manager during explicit disconnects gracefully
-                        if (isCleared && (commandString === CommandNames.dis || commandString === 'dis')) {
+                        if (isCleared && isDisconnect) {
                             log(`[useBle] Command manager cleared during disconnect command (expected)`)
                         } else {
 						    logError(`Error writing command ${commandString}: ${errMsg}`)
@@ -183,7 +184,7 @@ export const useBle = (): ReturnType => {
 							errMsg.includes('disconnected')
 
 						if (isFatal) {
-                            if (isCleared && (commandString === CommandNames.dis || commandString === 'dis')) {
+                            if (isCleared && isDisconnect) {
                                 log(`[useBle] Stopping command sequence normally due to explicit disconnect`)
                             } else {
 							    logWarn(`[useBle] Fatal error detected, stopping command sequence: ${errMsg}`)

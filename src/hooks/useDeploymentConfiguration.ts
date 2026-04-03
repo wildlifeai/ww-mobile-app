@@ -35,18 +35,23 @@ export const useDeploymentConfiguration = () => {
     ): Promise<void> => {
         log('[DeployConfig] Setting deployment ID:', deploymentId)
 
+        let success = false
+
         try {
             // Write deployment ID directly via single-line command (newest firmware)
             await setDeploymentIdAsString(device, deploymentId)
             log('[DeployConfig] Deployment ID set successfully via single-line command')
+            success = true
         } catch (error) {
             logWarn('[DeployConfig] Single-line setdid failed, falling back to OPs:', error)
+        }
+
+        if (!success) {
             try {
                 // Write deployment ID directly via extended OPs
                 // We assume modern firmware supports this; fallback handles failures
                 await setDeploymentIdAsOps(device, deploymentId, cachedOps)
                 log('[DeployConfig] Deployment ID set successfully via OPs')
-                
             } catch (opsError) {
                 // Feature not supported or failed
                 logWarn('[DeployConfig] OPs writing failed:', opsError)
