@@ -8,7 +8,7 @@ SET search_path = ''
 AS $$
 BEGIN
   -- Check if caller has project admin role
-  IF NOT has_project_role(auth.uid(), p_project_id, 'project_admin') THEN
+  IF NOT public.has_project_role(auth.uid(), p_project_id, 'project_admin') THEN
     RAISE EXCEPTION 'Permission denied: must be project admin to remove members.' USING ERRCODE = '42501';
   END IF;
 

@@ -90,18 +90,7 @@ BEGIN
     AND is_active = true
     AND deleted_at IS NULL;
 
-  -- Audit log
-  INSERT INTO public.admin_audit_log (admin_id, action, target_user_id, target_project_id, metadata)
-  VALUES (
-    p_updated_by,
-    'UPDATE_PROJECT_MEMBER_ROLE',
-    p_user_id,
-    p_project_id,
-    jsonb_build_object(
-      'old_role', v_old_role,
-      'new_role', p_new_role
-    )
-  );
+  -- Audit log: admin_audit_log table has been removed.
 
   -- Build success response
   v_result := jsonb_build_object(

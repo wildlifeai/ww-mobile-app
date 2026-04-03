@@ -33,10 +33,6 @@ DECLARE
   _devices_updated jsonb;
   _devices_deleted jsonb;
 
-  -- Device Preparation
-  _device_prep_created jsonb;
-  _device_prep_updated jsonb;
-  _device_prep_deleted jsonb;
 
 BEGIN
   _ts := to_timestamp_ms(last_pulled_at);
@@ -86,20 +82,7 @@ BEGIN
   FROM devices
   WHERE deleted_at > _ts;
 
-  -- ----------------------------------------------------------------------------
-  -- DEVICE PREPARATION
-  -- ----------------------------------------------------------------------------
-  SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) INTO _device_prep_created
-  FROM device_preparation t
-  WHERE created_at > _ts AND deleted_at IS NULL;
 
-  SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) INTO _device_prep_updated
-  FROM device_preparation t
-  WHERE updated_at > _ts AND created_at <= _ts AND deleted_at IS NULL;
-
-  SELECT COALESCE(jsonb_agg(id), '[]'::jsonb) INTO _device_prep_deleted
-  FROM device_preparation
-  WHERE deleted_at > _ts;
 
   -- ----------------------------------------------------------------------------
   -- CONSTRUCT RESPONSE
@@ -119,11 +102,6 @@ BEGIN
       'created', _devices_created,
       'updated', _devices_updated,
       'deleted', _devices_deleted
-    ),
-    'device_preparation', jsonb_build_object(
-      'created', _device_prep_created,
-      'updated', _device_prep_updated,
-      'deleted', _device_prep_deleted
     )
   );
 

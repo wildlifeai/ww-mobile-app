@@ -9,10 +9,9 @@ DECLARE
   v_project_id uuid;
 BEGIN
   -- Get project_id for the deployment to check permissions
-  SELECT dp.project_id INTO v_project_id
+  SELECT d.project_id INTO v_project_id
   FROM public.deployments d
-  JOIN public.device_preparation dp ON d.device_preparation_id = dp.id
-  WHERE d.id = p_id;
+  WHERE d.id = p_id AND d.deleted_at IS NULL;
 
   IF v_project_id IS NULL THEN
     RAISE EXCEPTION 'Deployment not found: %', p_id;

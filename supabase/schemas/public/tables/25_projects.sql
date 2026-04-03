@@ -3,21 +3,23 @@ CREATE TABLE projects (
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
-  modified_by uuid DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE SET NULL,
+  modified_by uuid DEFAULT auth.uid() REFERENCES auth.users (id) ON DELETE SET NULL,
   name text NOT NULL,
-  organisation_id uuid NOT NULL REFERENCES organisations(id) ON DELETE RESTRICT,
-  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  organisation_id uuid NOT NULL REFERENCES organisations (id) ON DELETE RESTRICT,
+  created_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
   description text,
   is_active boolean NOT NULL DEFAULT true,
   is_baited boolean,
   is_monitoring_marked_individuals boolean,
   project_image text,
-  sampling_design_id int REFERENCES sampling_designs(id),
+  sampling_design_id int REFERENCES sampling_designs (id),
   website text,
-  model_id uuid REFERENCES ai_models(id),
-  capture_method_id int REFERENCES capture_methods(id),
-  activity_detection_sensitivity_id int REFERENCES activity_sensitivity(id),
-  timelapse_interval_seconds int
+  model_id uuid REFERENCES ai_models (id),
+  capture_method_id int REFERENCES capture_methods (id),
+  activity_detection_sensitivity_id int REFERENCES activity_sensitivity (id),
+  timelapse_interval_seconds int,
+  lorawan_required boolean NOT NULL DEFAULT false,
+  is_archived boolean NOT NULL DEFAULT false
 );
 
 -- Create index for organisation-based queries
@@ -32,6 +34,8 @@ COMMENT ON COLUMN projects.model_id IS 'Default AI model for ALL project deploym
 COMMENT ON COLUMN projects.website IS 'External website associated with the project';
 COMMENT ON COLUMN projects.timelapse_interval_seconds IS 'Timelapse interval in seconds (only for timelapse capture method)';
 COMMENT ON COLUMN projects.deleted_at IS 'Soft delete timestamp - NULL means active';
+COMMENT ON COLUMN projects.lorawan_required IS 'Whether LoRaWAN connectivity is mandatory for deployments in this project';
+COMMENT ON COLUMN projects.is_archived IS 'Explicit archived state (true when inactive). Supplements deleted_at.';
 
 
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
