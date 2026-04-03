@@ -100,7 +100,7 @@ export const useBleCommands = () => {
     
     const disableCamera = useMemo(() => createAction(write, CommandNames.DISABLE_CAMERA, { timeout: 10000 }), [write])
 
-    const setMdSensitivity = useMemo(() => createAction(write, CommandNames.md), [write])
+    const setMdSensitivity = useMemo(() => createAction(write, CommandNames.md, { maxRetries: 0 }), [write])
 
     /**
      * Flash one of the device LEDs

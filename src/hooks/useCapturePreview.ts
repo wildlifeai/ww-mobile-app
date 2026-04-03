@@ -162,7 +162,7 @@ export const useCapturePreview = ({
 
             // 1. Enable camera blindly (OpParam 10) to avoid unnecessary getop roundtrip
             log('[useCapturePreview] Enabling camera blindly (Op10=1)...')
-            await write(device, ['AI setop 10 1'])
+            await write(device, ['AI setop 10 1'], { maxRetries: 0 })
             log('[useCapturePreview] Camera enabled. Waiting for device sleep/wake cycle to initialize hardware...')
             
             // CRITICAL FIX: After 'AI setop 10 1', the device sends 'Sleep' and enters DPD.
@@ -183,7 +183,7 @@ export const useCapturePreview = ({
             // 2. Send Capture Command (interval 1 allows capture even if MD/TL is disabled)
             setCaptureStage('Capturing image...')
             log('[useCapturePreview] Sending capture command (AI capture 1 1)...')
-            await write(device, [[CommandNames.CAPTURE_PREVIEW, { control: CommandControlTypes.WRITE }]], { maxRetries: 3 })
+            await write(device, [[CommandNames.CAPTURE_PREVIEW, { control: CommandControlTypes.WRITE }]], { maxRetries: 0 })
             
             // 3. Start Download
             downloadRequested.current = true
@@ -201,7 +201,7 @@ export const useCapturePreview = ({
 
             setCaptureStage('Processing image...')
             log('[useCapturePreview] Requesting file download...')
-            await write(device, ['AI txfile .'])
+            await write(device, ['AI txfile .'], { maxRetries: 0 })
 
         } catch (error) {
             const err = error as Error
