@@ -4,16 +4,17 @@
 # Usage: ./scripts/switch-supabase-instance.sh <environment>
 #   environment: local, cloud-dev, or cloud-prod
 #
-# Environment Configuration:
-#   local:      Uses local Supabase instance (no link needed)
-#   cloud-dev:  nuhwmubvygxyddkycmpa (https://nuhwmubvygxyddkycmpa.supabase.co)
-#   cloud-prod: [NOT YET CONFIGURED]
+# Project ID is read dynamically from the active .env.development file.
 #
 # Purpose:
 #   This script manages the Supabase CLI link to ensure type generation
 #   targets the correct environment. The CLI can only be linked to one
 #   project at a time, so switching is necessary when working with
 #   multiple environments.
+#
+# Note: Since sync-types-cloud.js now reads the project ID from
+#   .env.development dynamically, this script is mainly useful for
+#   Supabase CLI operations that require an explicit project link.
 #
 # Exit Codes:
 #   0 = Successfully linked to environment
@@ -46,6 +47,24 @@ if ! npx supabase --version &> /dev/null; then
   exit 1
 fi
 
+# Read project ref dynamically from .env.development
+read_project_ref() {
+  ENV_FILE="$(dirname "$0")/../.env.development"
+  if [ ! -f "$ENV_FILE" ]; then
+    echo "❌ Error: .env.development not found at $ENV_FILE"
+    exit 1
+  fi
+
+  PROJECT_REF=$(grep -E '^[^#]*EXPO_PUBLIC_SUPABASE_URL=' "$ENV_FILE" | head -1 | sed 's/.*=https:\/\/\([a-z0-9]*\)\.supabase\.co.*/\1/')
+
+  if [ -z "$PROJECT_REF" ]; then
+    echo "❌ Error: Could not extract Supabase project ID from .env.development"
+    exit 1
+  fi
+
+  PROJECT_URL="https://${PROJECT_REF}.supabase.co"
+}
+
 echo "🔄 Switching Supabase CLI link to: $ENVIRONMENT"
 echo ""
 
@@ -57,18 +76,17 @@ case $ENVIRONMENT in
     echo "Type generation uses: npx supabase gen types typescript --local"
     echo ""
     echo "To start local instance:"
-    echo "  cd ~/dev/wildlifeai/wildlife-watcher-backend"
+    echo "  cd <backend-repo-path>"
     echo "  npx supabase start"
     echo ""
     echo "✅ No action needed for local environment"
     ;;
 
-  cloud-dev)
-    PROJECT_REF="nuhwmubvygxyddkycmpa"
-    PROJECT_URL="https://nuhwmubvygxyddkycmpa.supabase.co"
+  cloud-dev|cloud-prod)
+    read_project_ref
 
-    echo "📡 Linking to cloud-dev environment"
-    echo "   Project ref: $PROJECT_REF"
+    echo "📡 Linking to $ENVIRONMENT environment"
+    echo "   Project ref: $PROJECT_REF (from .env.development)"
     echo "   Project URL: $PROJECT_URL"
     echo ""
 
@@ -76,11 +94,11 @@ case $ENVIRONMENT in
     CURRENT_LINK=$(npx supabase link --project-ref "$PROJECT_REF" 2>&1 || true)
 
     if echo "$CURRENT_LINK" | grep -q "already linked"; then
-      echo "✅ Already linked to cloud-dev"
+      echo "✅ Already linked to $ENVIRONMENT"
     elif echo "$CURRENT_LINK" | grep -q "Finished supabase link"; then
-      echo "✅ Successfully linked to cloud-dev"
+      echo "✅ Successfully linked to $ENVIRONMENT"
     else
-      echo "❌ Failed to link to cloud-dev"
+      echo "❌ Failed to link to $ENVIRONMENT"
       echo ""
       echo "Output: $CURRENT_LINK"
       echo ""
@@ -90,17 +108,6 @@ case $ENVIRONMENT in
       echo "  3. Network connectivity issues"
       exit 1
     fi
-    ;;
-
-  cloud-prod)
-    echo "❌ Error: Production environment not yet configured"
-    echo ""
-    echo "Production Supabase project needs to be set up."
-    echo ""
-    echo "When ready, update this script with:"
-    echo "  - Production project ref"
-    echo "  - Production project URL"
-    exit 1
     ;;
 
   *)
@@ -115,6 +122,6 @@ echo ""
 echo "Current environment: $ENVIRONMENT"
 echo ""
 echo "Next steps:"
-echo "  - Generate types: npm run types:$ENVIRONMENT"
+echo "  - Generate types: npm run types:cloud-dev"
 echo "  - Check types:    npm run types:check-$ENVIRONMENT"
 echo ""

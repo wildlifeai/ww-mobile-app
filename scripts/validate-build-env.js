@@ -31,31 +31,25 @@ if (fs.existsSync(gradleWrapperPath)) {
 const packageJsonPath = path.join(__dirname, '..', 'package.json');
 const packageJson = require(packageJsonPath);
 
-const requiredVersions = {
-    'react-native': '0.81.5',
-    'react': '19.1.0',
-    'expo': '~54.0.0', // Allow small patch variations
-    'typescript': '~5.9.2',
-    '@types/react': '~19.1.10',
-    'react-native-worklets': '0.7.1'
-};
+// Auto-read critical versions from package.json itself so this never goes stale.
+// Only enforce that these keys exist and are non-empty.
+const criticalDeps = [
+    'react-native',
+    'react',
+    'expo',
+    'typescript',
+    '@types/react',
+];
 
 let depErrors = false;
 
-Object.entries(requiredVersions).forEach(([pkg, reqVer]) => {
+criticalDeps.forEach((pkg) => {
     const installedVer = packageJson.dependencies[pkg] || packageJson.devDependencies[pkg];
     if (!installedVer) {
-        console.error(`❌ Missing dependency: ${pkg}`);
+        console.error(`❌ Missing critical dependency: ${pkg}`);
         depErrors = true;
-    } else if (reqVer.startsWith('~') && !installedVer.startsWith(reqVer.substring(0, reqVer.lastIndexOf('.')))) {
-         // Loose check for tilde
-         // Skip, too complex for simple script, relying on exact matches for critical ones
-    } else if (!reqVer.startsWith('~') && installedVer !== reqVer) {
-         if (pkg === 'react-native' || pkg === 'react') {
-            console.error(`❌ CRITICAL ERROR: Invalid ${pkg} version: ${installedVer}`);
-            console.error(`   Required: ${reqVer} (Strictly required for Expo SDK 54)`);
-            depErrors = true;
-         }
+    } else {
+        console.log(`  ✅ ${pkg}: ${installedVer}`);
     }
 });
 

@@ -5,13 +5,10 @@
 # Usage: .\scripts\check-types-cloud.ps1 <environment>
 #   environment: cloud-dev or cloud-prod
 #
-# Environment Configuration:
-#   cloud-dev:  nuhwmubvygxyddkycmpa (https://nuhwmubvygxyddkycmpa.supabase.co)
-#   cloud-prod: [NOT YET CONFIGURED]
+# Project ID is read dynamically from the active .env.development file.
 #
 # Dependencies:
 #   - Supabase CLI (must be authenticated to the project)
-#   - Project must be linked: `supabase link --project-ref <ref>`
 #
 # Exit Codes:
 #   0 = Types are aligned with cloud environment
@@ -41,26 +38,25 @@ if ($Environment -ne "cloud-dev" -and $Environment -ne "cloud-prod") {
     exit 1
 }
 
-# Map environment to Supabase project ref
-$ProjectRef = switch ($Environment) {
-    "cloud-dev" { "nuhwmubvygxyddkycmpa" }
-    "cloud-prod" {
-        Write-Host "❌ Error: Production environment not yet configured" -ForegroundColor Red
-        Write-Host ""
-        Write-Host "Production Supabase project ref needs to be added to:"
-        Write-Host "  - scripts/check-types-cloud.ps1"
-        Write-Host "  - scripts/check-types-cloud.sh"
-        Write-Host "  - package.json (types:cloud-prod script)"
-        exit 1
-    }
-    default {
-        Write-Host "❌ Error: Unknown environment '$Environment'" -ForegroundColor Red
-        exit 1
-    }
+# Read project ref dynamically from .env.development
+$EnvFile = Join-Path $PSScriptRoot "..\.env.development"
+if (-not (Test-Path $EnvFile)) {
+    Write-Host "❌ Error: .env.development not found at $EnvFile" -ForegroundColor Red
+    exit 1
 }
 
+$EnvContent = Get-Content $EnvFile -Raw
+$UrlMatch = [regex]::Match($EnvContent, '(?m)^[^#]*EXPO_PUBLIC_SUPABASE_URL=https://([a-z0-9]+)\.supabase\.co')
+
+if (-not $UrlMatch.Success) {
+    Write-Host "❌ Error: Could not extract Supabase project ID from .env.development" -ForegroundColor Red
+    exit 1
+}
+
+$ProjectRef = $UrlMatch.Groups[1].Value
+
 Write-Host "🔍 Checking type alignment with $Environment Supabase instance..." -ForegroundColor Cyan
-Write-Host "   Project ref: $ProjectRef"
+Write-Host "   Project ref: $ProjectRef (from .env.development)"
 Write-Host ""
 
 # Check if npx is available
@@ -98,10 +94,9 @@ try {
         Write-Host "  1. Not authenticated to Supabase CLI (run: npx supabase login)"
         Write-Host "  2. No access to project ref: $ProjectRef"
         Write-Host "  3. Network connectivity issues"
-        Write-Host "  4. Project ref is incorrect"
+        Write-Host "  4. Project is paused — wake it via the Supabase Dashboard"
         Write-Host ""
         Write-Host "To authenticate: npx supabase login"
-        Write-Host "To link project:  npx supabase link --project-ref $ProjectRef"
         exit 1
     }
     
@@ -132,7 +127,7 @@ try {
         Write-Host "current schema of the $Environment Supabase instance."
         Write-Host ""
         Write-Host "To fix, run:"
-        Write-Host "  npm run types:$Environment"
+        Write-Host "  npm run types:cloud-dev"
         Write-Host ""
         Write-Host "Then commit the updated types:"
         Write-Host "  git add src/types/database.types.ts"
@@ -151,6 +146,7 @@ try {
         }
         Write-Host ""
         exit 1
+    }
 } finally {
     # Cleanup
     if (Test-Path $TempTypes) {
