@@ -180,7 +180,7 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="ProjectDevicesScreen"
 							component={ProjectDevicesScreen}
-							options={{ title: "Project Devices" }}
+							options={{ headerBackTitleVisible: false }}
 						/>
 						<Stack.Screen
 							name="DeviceDiscovery"

@@ -29,14 +29,18 @@ export const ProjectDevicesScreen = () => {
         navigation.setOptions({
             headerTitle: () => (
                 <View style={{ alignItems: 'center' }}>
-                    <Text variant="titleMedium">{projectName}</Text>
-                    <Text variant="bodySmall" style={{ marginTop: -4 }}>Wildlife Watchers</Text>
+                    <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
+                        {projectName}
+                    </Text>
+                    <Text variant="bodySmall" style={{ marginTop: -2, color: theme.colors.onSurfaceVariant }}>
+                        Wildlife Watchers
+                    </Text>
                 </View>
             ),
             headerTitleAlign: 'center',
-            title: '' // Clear default title
+            headerBackTitleVisible: false
         })
-    }, [navigation, projectName])
+    }, [navigation, projectName, theme.colors.onSurface, theme.colors.onSurfaceVariant])
 
     const dynamicStyles = useMemo(() => ({
         activeText: { color: '#4CAF50' },
