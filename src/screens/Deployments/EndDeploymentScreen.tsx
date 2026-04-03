@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
-import { TextInput, useTheme, Text } from 'react-native-paper'
+import { TextInput, useTheme, Text, Card } from 'react-native-paper'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
@@ -157,56 +157,62 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 )}
 
                 {/* Deployment Info Section */}
-                <View style={styles.section}>
-                    <View style={styles.infoRow}>
-                        <WWText variant="labelMedium"><Text>Name:</Text></WWText>
-                        <WWText variant="bodyLarge"><Text>{deployment.name}</Text></WWText>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <WWText variant="labelMedium"><Text>Deployment Start:</Text></WWText>
-                        <WWText variant="bodyLarge"><Text>{new Date(deployment.deploymentStart).toLocaleDateString()}</Text></WWText>
-                    </View>
-                </View>
+                <Card mode="contained" style={styles.section}>
+                    <Card.Content>
+                        <View style={styles.infoRow}>
+                            <WWText variant="labelMedium"><Text>Name:</Text></WWText>
+                            <WWText variant="bodyLarge"><Text>{deployment.name}</Text></WWText>
+                        </View>
+                        <View style={styles.infoRow}>
+                            <WWText variant="labelMedium"><Text>Deployment Start:</Text></WWText>
+                            <WWText variant="bodyLarge"><Text>{new Date(deployment.deploymentStart).toLocaleDateString()}</Text></WWText>
+                        </View>
+                    </Card.Content>
+                </Card>
 
                 {/* Live Activity Log */}
-                <View style={styles.section}>
-                    <WWText variant="titleMedium" style={styles.notesTitle}><Text>Live Activity Log</Text></WWText>
-                    <View style={[styles.activityLogBox, { backgroundColor: theme.colors.surfaceVariant }]}>
-                        {activityLog.length === 0 ? (
-                            <View style={styles.emptyLogContainer}>
-                                <MaterialCommunityIcons name="radar" size={32} color={theme.colors.onSurfaceVariant} style={styles.radarIcon} />
-                                <Text style={[styles.emptyLogText, { color: theme.colors.onSurfaceVariant }]}>Waiting for device activity...</Text>
-                            </View>
-                        ) : (
-                            <ScrollView nestedScrollEnabled>
-                                {activityLog.slice(0, 50).map((item: ActivityLogEntry) => (
-                                    <View key={item.id} style={styles.logEntry}>
-                                        <MaterialCommunityIcons name={item.icon} size={16} color={theme.colors.primary} style={styles.logEntryIcon} />
-                                        <Text style={[styles.logEntryLabel, { color: theme.colors.onSurface }]} numberOfLines={1}>{item.label}</Text>
-                                        <Text style={[styles.logEntryTime, { color: theme.colors.onSurfaceVariant }]}>
-                                            {new Date(item.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                        </Text>
-                                    </View>
-                                ))}
-                            </ScrollView>
-                        )}
-                    </View>
-                </View>
+                <Card mode="contained" style={styles.section}>
+                    <Card.Content>
+                        <WWText variant="titleMedium" style={styles.notesTitle}><Text>Live Activity Log</Text></WWText>
+                        <View style={[styles.activityLogBox, { backgroundColor: theme.colors.surface }]}>
+                            {activityLog.length === 0 ? (
+                                <View style={styles.emptyLogContainer}>
+                                    <MaterialCommunityIcons name="radar" size={32} color={theme.colors.onSurfaceVariant} style={styles.radarIcon} />
+                                    <Text style={[styles.emptyLogText, { color: theme.colors.onSurfaceVariant }]}>Waiting for device activity...</Text>
+                                </View>
+                            ) : (
+                                <ScrollView nestedScrollEnabled>
+                                    {activityLog.slice(0, 50).map((item: ActivityLogEntry) => (
+                                        <View key={item.id} style={styles.logEntry}>
+                                            <MaterialCommunityIcons name={item.icon} size={16} color={theme.colors.primary} style={styles.logEntryIcon} />
+                                            <Text style={[styles.logEntryLabel, { color: theme.colors.onSurface }]} numberOfLines={1}>{item.label}</Text>
+                                            <Text style={[styles.logEntryTime, { color: theme.colors.onSurfaceVariant }]}>
+                                                {new Date(item.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                </ScrollView>
+                            )}
+                        </View>
+                    </Card.Content>
+                </Card>
 
                 {/* Retrieval Notes Input */}
-                <View style={styles.section}>
-                    <WWText variant="titleMedium" style={styles.notesTitle}><Text>Notes</Text></WWText>
-                    <TextInput
-                        mode="outlined"
-                        placeholder="e.g. SD card full, Battery low, Device damaged..."
-                        multiline
-                        numberOfLines={11}
-                        value={retrievalNotes}
-                        onChangeText={setRetrievalNotes}
-                        style={styles.input}
-                        textColor="#000"
-                    />
-                </View>
+                <Card mode="contained" style={styles.section}>
+                    <Card.Content>
+                        <WWText variant="titleMedium" style={styles.notesTitle}><Text>Notes</Text></WWText>
+                        <TextInput
+                            mode="outlined"
+                            placeholder="e.g. SD card full, Battery low, Device damaged..."
+                            multiline
+                            numberOfLines={11}
+                            value={retrievalNotes}
+                            onChangeText={setRetrievalNotes}
+                            style={styles.input}
+                            textColor="#000"
+                        />
+                    </Card.Content>
+                </Card>
 
                 {/* Action Buttons */}
                 <View style={styles.footer}>
