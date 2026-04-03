@@ -813,7 +813,17 @@ export const useStartDeployment = ({
                             } catch (reconnectErr) {
                                 setIsVerifyingUpdate(false)
                                 setDeviceFirmwareVersion(null)
-                                Alert.alert('Reconnect Failed', 'Failed to auto reconnect. Please reconnect manually.', [{ text: 'OK' }])
+                                Alert.alert(
+                                    'Reconnect Failed', 
+                                    'Failed to auto reconnect. Please reconnect manually.', 
+                                    [{ 
+                                        text: 'OK',
+                                        onPress: () => {
+                                            isNavigatingAway.current = true
+                                            navigation.navigate('DeviceDiscovery')
+                                        }
+                                    }]
+                                )
                             }
                         } catch (error) {
                             Alert.alert('Update Failed', error instanceof Error ? error.message : 'Unknown error')
@@ -827,7 +837,7 @@ export const useStartDeployment = ({
                 }
             ]
         )
-    }, [latestBleFirmware, device, bleDevice, bleDeviceId, batteryLevel, handleFirmwareCheck, runDisconnect, runDfu, connectDevice])
+    }, [latestBleFirmware, device, bleDevice, bleDeviceId, batteryLevel, handleFirmwareCheck, runDisconnect, runDfu, connectDevice, navigation])
 
     return {
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
