@@ -64,10 +64,10 @@ export const NewProjectScreen = () => {
 	const [createProject, { isLoading }] = projectsApi.useCreateProjectMutation()
 	const [errorMessage, setErrorMessage] = useState<string>("")
 	const [showError, setShowError] = useState(false)
-	const { data: captureMethods } = projectsApi.useGetCaptureMethodsQuery()
-	const { data: activitySensitivities } = projectsApi.useGetActivitySensitivityQuery()
-	const { data: aiModels, isLoading: isLoadingModels, error: modelsError } = projectsApi.useGetAiModelsQuery()
-	const { data: samplingDesigns } = projectsApi.useGetSamplingDesignsQuery()
+	const { data: captureMethods } = projectsApi.useGetCaptureMethodsQuery(undefined, { refetchOnMountOrArgChange: true })
+	const { data: activitySensitivities } = projectsApi.useGetActivitySensitivityQuery(undefined, { refetchOnMountOrArgChange: true })
+	const { data: aiModels, isLoading: isLoadingModels, error: modelsError } = projectsApi.useGetAiModelsQuery(undefined, { refetchOnMountOrArgChange: true })
+	const { data: samplingDesigns } = projectsApi.useGetSamplingDesignsQuery(undefined, { refetchOnMountOrArgChange: true })
 
 	const {
 		control,

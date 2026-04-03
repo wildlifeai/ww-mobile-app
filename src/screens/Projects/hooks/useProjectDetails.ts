@@ -51,10 +51,10 @@ export const useProjectDetails = (projectId: string) => {
 		useGetProjectMembersQuery(projectId)
 
 	// Reference Data Queries
-	const { data: captureMethods } = useGetCaptureMethodsQuery()
-	const { data: activitySensitivities } = useGetActivitySensitivityQuery()
-	const { data: aiModels } = useGetAiModelsQuery()
-	const { data: samplingDesigns } = useGetSamplingDesignsQuery()
+	const { data: captureMethods } = useGetCaptureMethodsQuery(undefined, { refetchOnMountOrArgChange: true })
+	const { data: activitySensitivities } = useGetActivitySensitivityQuery(undefined, { refetchOnMountOrArgChange: true })
+	const { data: aiModels } = useGetAiModelsQuery(undefined, { refetchOnMountOrArgChange: true })
+	const { data: samplingDesigns } = useGetSamplingDesignsQuery(undefined, { refetchOnMountOrArgChange: true })
 
 	// Mutations
 	const [updateProject, { isLoading: isUpdating }] = useUpdateProjectMutation()
