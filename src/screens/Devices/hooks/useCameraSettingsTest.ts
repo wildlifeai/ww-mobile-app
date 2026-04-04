@@ -102,31 +102,29 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     }, [])
 
     const toggleTestBit = useCallback((bitPos: number) => {
-        setTestModeBits(prev => {
-            const next = prev ^ (1 << bitPos)
-            
-            // Smart defaults when a test is enabled:
-            const isBitEnabled = (next & (1 << bitPos)) !== 0
-            if (isBitEnabled) {
-                setCameraParams(p => {
-                    const newParams = { ...p }
-                    if (bitPos === 0) { // Tone mapping
-                        newParams.numPictures = 4
-                    } else if (bitPos === 1) { // Save BMP
-                        newParams.numPictures = 4 // must be even
-                    } else if (bitPos === 2) { // Flash brightness
-                        newParams.numPictures = 7
-                        if (newParams.flashLed === 0) newParams.flashLed = 1 // Need some flash
-                    } else if (bitPos === 3) { // Skip file creation
-                        newParams.numPictures = 10
-                        newParams.pictureInterval = 500 // fast stream
-                    }
-                    return newParams
-                })
-            }
-            return next
-        })
-    }, [])
+        const nextBits = testModeBits ^ (1 << bitPos)
+        setTestModeBits(nextBits)
+        
+        // Smart defaults when a test is enabled:
+        const isBitEnabled = (nextBits & (1 << bitPos)) !== 0
+        if (isBitEnabled) {
+            setCameraParams(p => {
+                const newParams = { ...p }
+                if (bitPos === 0) { // Tone mapping
+                    newParams.numPictures = 4
+                } else if (bitPos === 1) { // Save BMP
+                    newParams.numPictures = 4 // must be even
+                } else if (bitPos === 2) { // Flash brightness
+                    newParams.numPictures = 7
+                    if (newParams.flashLed === 0) newParams.flashLed = 1 // Need some flash
+                } else if (bitPos === 3) { // Skip file creation
+                    newParams.numPictures = 10
+                    newParams.pictureInterval = 500 // fast stream
+                }
+                return newParams
+            })
+        }
+    }, [testModeBits])
 
     const updateCameraParam = useCallback(<K extends keyof CameraTestParams>(key: K, value: CameraTestParams[K]) => {
         setCameraParams(prev => ({ ...prev, [key]: value }))
