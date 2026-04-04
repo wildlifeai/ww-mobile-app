@@ -6,12 +6,14 @@ interface ImagePreviewModalProps {
     visible: boolean;
     imageUri: string | null;
     onDismiss: () => void;
+    children?: React.ReactNode;
 }
 
 export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
     visible,
     imageUri,
     onDismiss,
+    children,
 }) => {
     const theme = usePaperTheme();
     const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
@@ -72,11 +74,12 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                         />
                     </View>
 
-                    {/* Footer with filename */}
+                    {/* Footer with filename and custom children */}
                     <View style={styles.footer}>
                         <Text style={[styles.filename, dynamicStyles.filename]}>
                             {imageUri.startsWith('data:') ? 'Captured Image' : imageUri.split('/').pop()}
                         </Text>
+                        {children}
                     </View>
                 </Surface>
             </View>

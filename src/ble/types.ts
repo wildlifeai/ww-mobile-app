@@ -62,6 +62,7 @@ export enum CommandNames {
 	CAPTURE_PREVIEW = "CAPTURE_PREVIEW",
 	UPDATE_BLE_FIRMWARE = "UPDATE_BLE_FIRMWARE",
 	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
+	CAMERA_SETTINGS_TEST = "CAMERA_SETTINGS_TEST",
 
 	// Local commands (UPPERCASE - app-only actions)
 	CLEAR_CONSOLE = "CLEAR_CONSOLE",
@@ -584,6 +585,11 @@ export const COMMANDS: {
 	[CommandNames.MOTION_DETECTION_PREVIEW]: {
 		name: CommandNames.MOTION_DETECTION_PREVIEW,
 		description: "Open standalone motion detection preview page",
+		type: 'process',
+	},
+	[CommandNames.CAMERA_SETTINGS_TEST]: {
+		name: CommandNames.CAMERA_SETTINGS_TEST,
+		description: "Open Camera Settings Test page",
 		type: 'process',
 	},
 	[CommandNames.CLEAR_CONSOLE]: {

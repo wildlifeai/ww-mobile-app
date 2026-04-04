@@ -33,6 +33,7 @@ export interface RootStackParamList extends ParamListBase {
 	DeviceDetails: { deviceId: string }
 	EngineerConsoleScreen: { deviceId: string }
 	StandaloneMotionDetectionScreen: { deviceId: string }
+	CameraSettingsTestScreen: { deviceId: string }
 
 	DeploymentDetailsStep: { projectId: string; deviceId: string; bleDeviceId: string; initPayload?: InitPayload }
 	DeploymentDetails: { deploymentId: string }

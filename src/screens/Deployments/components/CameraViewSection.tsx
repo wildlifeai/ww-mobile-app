@@ -79,7 +79,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
 
                 <WWButton
                     mode="outlined"
-                    onPress={startCapture}
+                    onPress={() => startCapture(1, 1)}
                     disabled={!device || isCapturing}
                     loading={isCapturing}
                 >

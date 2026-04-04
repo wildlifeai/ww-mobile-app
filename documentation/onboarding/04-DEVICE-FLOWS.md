@@ -255,4 +255,35 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval
 
 ---
 
-*Last Updated: March 29, 2026*
+## Part 4: Hardware & Sensor Testing Tools
+
+To support ongoing hardware validation, the app integrates dedicated testing screens mapped directly to the hardware capabilities. These tools bypass standard deployment flows and interface directly with the device API. 
+
+They are accessed directly via the **Engineer Console** (`EngineerConsoleScreen.tsx`) → **Help / Command Reference**.
+
+### 1. Motion Detection Screen
+**Screen:** `StandaloneMotionDetectionScreen.tsx`
+**Purpose:** Provides a real-time visualization of the HM0360 sensor's internal motion detection algorithm.
+**Flow:**
+- Uses the `useMotionDetectionStream` hook to subscribe to the device log messages.
+- Parses the 256-bit binary payload representing a 16x16 grid of motion blocks.
+- Renders the grid natively. A visual feedback loop helps understand when the environmental thresholds are crossed.
+
+### 2. Camera Settings Test Screen
+**Screen:** `CameraSettingsTestScreen.tsx`
+**Purpose:** Allows dynamic application and validation of specific test modes (`TEST_MODE_BITS`, OP_PARAMETER Index 18) and fine-tuning hardware parameters (e.g. Flash LED types) without needing a full recompilation of the Nordic/Seeed firmware.
+
+**Features:**
+- **Camera Configurations:** Live adjustment of `Num Pictures`, `Picture Interval`, `Flash Duration`, `Flash LED Type`, `LED Brightness`, and `NN Threshold`.
+- **Hardware Test Modes:** Toggles pre-programmed behaviours encoded in the `TEST_MODE_BITS` (e.g. Tone Mapping, Flash Brightness).
+- **Dynamic Capture Sequencing:** The `AI capture` command is dynamically formatted (e.g., `AI capture 4 1500`) based on user input, ensuring the firmware correctly captures multi-frame bursts for Tone Mapping or High Dynamic Range (HDR) validation.
+- **Real-time Auto Exposure (AE) Data:** Captures console logs (`Integration time`, `Analog gain`, etc.) to dynamically render live AE metrics and a visual AE Mean progress bar (0-255).
+- **Metadata Tracking Gallery:** Every image captured in the test session is stored as a `CapturedImageInfo` object. This creates a persistent **snapshot of settings** exactly as they were during the capture trigger.
+- **Image Validation:** Tapping any thumbnail in the gallery opens a light-box modal that displays the specific `cameraParams`, `testModeBits`, and `aeData` associated with that *exact* frame, enabling fast hardware/firmware debugging.
+- **Robustness:** Includes a `maxRetries: 1` logic for `setop` batch writes to handle transient device Sleep events during the parameter application phase.
+
+> [!NOTE]
+> For multi-picture captures, the firmware uses the initial frames to stabilize the AE/AWB algorithms. Only the final frame in the sequence is currently transferred to the app for preview.
+
+*Last Updated: April 04, 2026*
+

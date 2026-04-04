@@ -41,6 +41,7 @@ import { DeviceDiscoveryScreen } from "../screens/Devices/DeviceDiscoveryScreen"
 import { DeviceDetailsScreen } from "../screens/Devices/DeviceDetailsScreen"
 import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
 import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMotionDetectionScreen"
+import { CameraSettingsTestScreen } from "../screens/Devices/CameraSettingsTestScreen"
 import { DfuScreen } from "../screens/Devices/DfuScreen"
 
 // Developer screens
@@ -200,6 +201,11 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="StandaloneMotionDetectionScreen"
 							component={StandaloneMotionDetectionScreen}
+						/>
+						<Stack.Screen
+							name="CameraSettingsTestScreen"
+							component={CameraSettingsTestScreen}
+							options={{ title: "Camera Settings Test" }}
 						/>
 						<Stack.Screen
 							name="StartDeploymentWizard"

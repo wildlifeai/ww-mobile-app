@@ -24,6 +24,10 @@ export const OP_PARAMETER = {
     MD_INTERVAL: 11,
     FLASH_DURATION: 12,
     FLASH_LED: 13,
+    MODEL_PROJECT: 14,
+    MODEL_VERSION: 15,
+    MODEL_THRESHOLD: 16,
+    TEST_MODE_BITS: 18,
 } as const
 
 
