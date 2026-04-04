@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Text } from 'react-native-paper'
+
 import { Control, FieldErrors } from 'react-hook-form'
 import { Field } from '../../../components/form/Field'
 import { WWTextInput } from '../../../components/ui/WWTextInput'
@@ -27,13 +27,6 @@ interface Props {
 export const NewProjectBasicInfoSection: React.FC<Props> = ({ control, errors }) => {
     return (
         <View style={styles.section}>
-            <Text
-                variant="titleMedium"
-                style={styles.sectionTitle}
-            >
-                Basic Information
-            </Text>
-
             <Field
                 control={control}
                 name="name"

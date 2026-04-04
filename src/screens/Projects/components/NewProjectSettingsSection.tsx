@@ -69,38 +69,6 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
 
     return (
         <View style={styles.section}>
-            <Text
-                variant="titleMedium"
-                style={styles.sectionTitle}
-            >
-                Project Settings
-            </Text>
-
-            <View style={styles.fieldRow}>
-                <View style={styles.flex1}>
-                    <Field
-                        control={control}
-                        name="sampling_design_id"
-                        label="Sampling Design"
-                    >
-                        {(field) => (
-                            <WWSelect
-                                {...field}
-                                options={samplingDesignOptions}
-                                label="Sampling Design"
-                            />
-                        )}
-                    </Field>
-                </View>
-                <IconButton
-                    icon="help-circle-outline"
-                    size={24}
-                    onPress={() => setSamplingHelpVisible(true)}
-                    style={styles.helpIcon}
-                    iconColor={theme.colors.primary}
-                />
-            </View>
-
             <View style={styles.fieldRow}>
                 <View style={styles.flex1}>
                     <Field
@@ -165,18 +133,31 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                 style={styles.accordionContainer}
             >
                 <View style={styles.accordionChildrenContainer}>
-                <Field control={control} name="website" label="Website">
-                    {(field) => (
-                        <WWTextInput
-                            {...field}
-                            mode="outlined"
-                            placeholder="https://example.com"
-                            keyboardType="url"
-                            autoCapitalize="none"
-                            testID="website-input"
-                        />
-                    )}
-                </Field>
+                
+                <View style={styles.fieldRow}>
+                    <View style={styles.flex1}>
+                        <Field
+                            control={control}
+                            name="sampling_design_id"
+                            label="Sampling Design"
+                        >
+                            {(field) => (
+                                <WWSelect
+                                    {...field}
+                                    options={samplingDesignOptions}
+                                    label="Sampling Design"
+                                />
+                            )}
+                        </Field>
+                    </View>
+                    <IconButton
+                        icon="help-circle-outline"
+                        size={24}
+                        onPress={() => setSamplingHelpVisible(true)}
+                        style={styles.helpIcon}
+                        iconColor={theme.colors.primary}
+                    />
+                </View>
 
                 <Field control={control} name="model_id" label="Default AI Model">
                     {(field) => {

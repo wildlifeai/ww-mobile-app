@@ -32,7 +32,7 @@ import {
 	Services,
 } from "../ble/types"
 import { constructCommandString } from "../ble/types"
-import { bleCommandManager } from "../ble/commandManager"
+import { bleCommandManager, isCommandClearedError, isDisconnectCommand } from "../ble/commandManager"
 import { getCommandByName } from "../ble/types"
 
 export type WriteData = [CommandNames, CommandConstructOptions]
@@ -164,18 +164,31 @@ export const useBle = (): ReturnType => {
 						await sleep(PAUSE)
 					} catch (error) {
 						const errMsg = error instanceof Error ? error.message : String(error)
-						logError(`Error writing command ${commandString}: ${errMsg}`)
+                        const isCleared = isCommandClearedError(error)
+                        const isDisconnect = isDisconnectCommand(commandString, commandString)
+                        
+                        // Treat cleared command manager during explicit disconnects gracefully
+                        if (isCleared && isDisconnect) {
+                            log(`[useBle] Command manager cleared during disconnect command (expected)`)
+                        } else {
+						    logError(`Error writing command ${commandString}: ${errMsg}`)
+                        }
+                        
 						results.push(`ERROR: ${errMsg}`)
 						
 						// Stop the sequence if the error is fatal (disconnection or cancelled)
 						const isFatal = 
 							errMsg.includes('Peripheral not found') || 
 							errMsg.includes('not connected') || 
-							errMsg.includes('Command manager cleared') ||
+							isCleared ||
 							errMsg.includes('disconnected')
 
 						if (isFatal) {
-							logWarn(`[useBle] Fatal error detected, stopping command sequence: ${errMsg}`)
+                            if (isCleared && isDisconnect) {
+                                log(`[useBle] Stopping command sequence normally due to explicit disconnect`)
+                            } else {
+							    logWarn(`[useBle] Fatal error detected, stopping command sequence: ${errMsg}`)
+                            }
 							throw error
 						}
 					}

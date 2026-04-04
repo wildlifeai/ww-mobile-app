@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useLayoutEffect } from 'react'
 import { View, FlatList, StyleSheet, RefreshControl, Alert } from 'react-native'
 import { Text, useTheme, ActivityIndicator, Card, TouchableRipple } from 'react-native-paper'
 import { useRoute } from '@react-navigation/native'
@@ -24,6 +24,23 @@ export const ProjectDevicesScreen = () => {
     const navigation = useAppNavigation()
     const theme = useTheme()
     const { projectId, projectName } = route.params
+
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            headerTitle: () => (
+                <View style={{ alignItems: 'center' }}>
+                    <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
+                        {projectName}
+                    </Text>
+                    <Text variant="bodySmall" style={{ marginTop: -2, color: theme.colors.onSurfaceVariant }}>
+                        Wildlife Watchers
+                    </Text>
+                </View>
+            ),
+            headerTitleAlign: 'center',
+            headerBackTitleVisible: false
+        })
+    }, [navigation, projectName, theme.colors.onSurface, theme.colors.onSurfaceVariant])
 
     const dynamicStyles = useMemo(() => ({
         activeText: { color: '#4CAF50' },
@@ -112,7 +129,7 @@ export const ProjectDevicesScreen = () => {
                             style={[styles.deviceName, dynamicStyles.deviceName]}
                             numberOfLines={1}
                         >
-                            {item.bluetoothId}{item.name && item.name !== item.bluetoothId ? ` (${item.name})` : ''}
+                            {item.name && item.name !== 'Unknown Device' ? item.name : item.bluetoothId}
                         </Text>
                         {item.isActive && item.activeDeploymentName && (
                             <Text

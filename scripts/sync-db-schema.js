@@ -31,12 +31,15 @@ const TEMP_DIR = path.resolve(__dirname, '../.tmp-backend');
 // Potential local backend paths to check (Relative + Home Dir)
 const POTENTIAL_PATHS = [
     process.env.WILDLIFE_WATCHER_BACKEND_PATH,                        // 1. Env Variable
-    path.resolve(__dirname, '../../wildlife-watcher-backend'),        // 2. Sibling folder
-    path.resolve(__dirname, '../../Wildlife-Watcher/wildlife-watcher-backend'), // 3. Grouped sibling
-    path.resolve(__dirname, '../../../wildlife-watcher-backend'),     // 4. One level up sibling
-    path.join(os.homedir(), 'Wildlife-Watcher/wildlife-watcher-backend'), // 5. Home Dir Grouped
-    path.join(os.homedir(), 'dev/wildlife-watcher-backend'),          // 6. Home Dir Dev
-    path.join(os.homedir(), 'Documents/wildlife-watcher-backend'),    // 7. Home Dir Documents
+    path.resolve(__dirname, '../../ww-backend'),                      // 2. Sibling (short name)
+    path.resolve(__dirname, '../../Wildlife-Watcher/ww-backend'),     // 3. Grouped sibling (short name)
+    path.resolve(__dirname, '../../wildlife-watcher-backend'),        // 4. Sibling folder
+    path.resolve(__dirname, '../../Wildlife-Watcher/wildlife-watcher-backend'), // 5. Grouped sibling
+    path.resolve(__dirname, '../../../wildlife-watcher-backend'),     // 6. One level up sibling
+    path.join(os.homedir(), 'Wildlife-Watcher/ww-backend'),          // 7. Home Dir Grouped (short name)
+    path.join(os.homedir(), 'Wildlife-Watcher/wildlife-watcher-backend'), // 8. Home Dir Grouped
+    path.join(os.homedir(), 'dev/wildlife-watcher-backend'),          // 9. Home Dir Dev
+    path.join(os.homedir(), 'Documents/wildlife-watcher-backend'),    // 10. Home Dir Documents
 ].filter(Boolean);
 
 console.log('🔄 Starting Database Schema Sync...');

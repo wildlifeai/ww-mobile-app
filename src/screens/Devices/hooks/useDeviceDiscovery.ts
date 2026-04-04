@@ -357,6 +357,13 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         if (Object.values(devices).find(d => d.connected)) {
             Object.values(devices).filter(d => d.connected).forEach(d => disconnectDevice(d))
         }
+        
+        // 2-second cool off period before auto-connect can re-trigger
+        setTimeout(() => {
+            if (autoConnectIgnoredDevicesRef.current) {
+                autoConnectIgnoredDevicesRef.current.clear()
+            }
+        }, 2000)
     }, [disconnectDevice, devices, updateRoutingState])
 
     // Auto-connect logic
@@ -364,12 +371,14 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const { isEngineerConsoleActive } = useAppSelector((state) => state.scanning)
 
     // Clear the ignore list (cool-off period) whenever focus returns to this screen
+    // or when the user changes organisation.
     // This allows users to immediately reconnect to devices they just backed out of
+    // or if they switched orgs to find a project.
     useEffect(() => {
         if (isFocused) {
             autoConnectIgnoredDevicesRef.current.clear()
         }
-    }, [isFocused])
+    }, [isFocused, currentOrganisation?.id])
 
     useEffect(() => {
         // Treat an open drawer the same as not being focused (pause background operations)
@@ -404,6 +413,13 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         setProcessing(false)
 
         await disconnectDevice(device)
+
+        // 2-second cool off period after explicit disconnect
+        setTimeout(() => {
+            if (autoConnectIgnoredDevicesRef.current) {
+                autoConnectIgnoredDevicesRef.current.delete(device.id)
+            }
+        }, 2000)
     }, [disconnectDevice])
 
     return {

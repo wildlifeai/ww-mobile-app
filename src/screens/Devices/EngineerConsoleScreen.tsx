@@ -140,7 +140,7 @@ export const EngineerConsoleScreen = () => {
     }
 
     return (
-        <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+        <SafeAreaView style={styles.container} edges={['left', 'right']}>
             <ConsoleHeader
                 deviceName={device?.name || null}
                 deviceId={device.id}

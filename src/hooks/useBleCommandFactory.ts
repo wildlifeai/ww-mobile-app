@@ -19,13 +19,14 @@ export const createCommand = (
     options: {
         control?: CommandControlTypes,
         timeout?: number,
+        maxRetries?: number,
         defaultValue?: string
     } = {}
 ) => {
     const { control = CommandControlTypes.READ, timeout, defaultValue = '' } = options
     
     return async (peripheral: ExtendedPeripheral, value?: string): Promise<string> => {
-        const writeOptions = timeout ? { timeout } : undefined
+        const writeOptions: BleCommandOptions | undefined = (timeout || options.maxRetries !== undefined) ? { timeout, maxRetries: options.maxRetries } : undefined
         const responses = await write(
             peripheral,
             [[commandName, { control, value: value ?? defaultValue }]],
@@ -45,13 +46,14 @@ export const createAction = (
     commandName: CommandNames,
     options: {
         timeout?: number,
+        maxRetries?: number,
         defaultValue?: string
     } = {}
 ) => {
     const { timeout, defaultValue = '' } = options
     
     return async (peripheral: ExtendedPeripheral, value?: string): Promise<void> => {
-        const writeOptions = timeout ? { timeout } : undefined
+        const writeOptions: BleCommandOptions | undefined = (timeout || options.maxRetries !== undefined) ? { timeout, maxRetries: options.maxRetries } : undefined
         await write(
             peripheral,
             [[commandName, { control: CommandControlTypes.WRITE, value: value ?? defaultValue }]],

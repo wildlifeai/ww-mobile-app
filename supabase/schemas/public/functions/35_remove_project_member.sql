@@ -103,25 +103,7 @@ BEGIN
   -- =============================================================================
   -- AUDIT: Log Administrative Action
   -- =============================================================================
-  -- Create immutable audit trail entry for compliance and forensics
-
-  INSERT INTO public.admin_audit_log (
-    admin_id,
-    action,
-    target_user_id,
-    target_project_id,
-    metadata
-  )
-  VALUES (
-    p_removed_by,
-    'REMOVE_PROJECT_MEMBER',
-    p_user_id,
-    p_project_id,
-    jsonb_build_object(
-      'removed_role', v_role,
-      'timestamp', NOW()
-    )
-  );
+  -- admin_audit_log table has been removed.
 
   -- =============================================================================
   -- RESPONSE: Operation Summary

@@ -9,7 +9,7 @@ import { map } from 'rxjs/operators'
 import database from '../../database'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
-import { WWButton } from '../../components/ui/WWButton'
+
 import { WWIcon } from '../../components/ui/WWIcon'
 
 import { RootStackParamList } from '../../navigation/types'
@@ -20,6 +20,8 @@ import type Device from '../../database/models/Device'
 import type Project from '../../database/models/Project'
 import type User from '../../database/models/User'
 import { useExtendedTheme } from '../../theme'
+import { useAppSelector } from '../../redux'
+import { selectCurrentUser } from '../../redux/slices/authSlice'
 
 type DeploymentDetailsRouteProp = RouteProp<RootStackParamList, 'DeploymentDetails'>
 
@@ -56,13 +58,22 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment, device,
         return `${hours} hour${hours !== 1 ? 's' : ''}`
     }, [deployment.deploymentStart, deployment.deploymentEnd])
 
+    const currentUser = useAppSelector(selectCurrentUser)
+
     // User display name
     const deployedByName = useMemo(() => {
-        if (setupUser?.firstname) {
-            return `${setupUser.firstname} ${setupUser.surname || ''}`.trim()
+        if (setupUser?.firstname || setupUser?.surname) {
+            return `${setupUser?.firstname || ''} ${setupUser?.surname || ''}`.trim()
+        }
+        if (currentUser?.id === deployment.setupBy) {
+            const profile = currentUser.profile as any
+            const first = profile?.firstName || profile?.firstname || ''
+            const last = profile?.lastName || profile?.surname || ''
+            if (first || last) return `${first} ${last}`.trim()
+            return 'Me'
         }
         return deployment.setupBy ? deployment.setupBy.slice(0, 8) + '...' : 'Unknown'
-    }, [setupUser, deployment.setupBy])
+    }, [setupUser, deployment.setupBy, currentUser])
 
     // Device display name (title)
     const deviceName = device?.name || deployment.name || 'Unknown Device'
@@ -108,6 +119,21 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment, device,
                 {/* Summary Info Card */}
                 <Card mode="outlined" style={styles.summaryCard}>
                     <Card.Content style={styles.summaryContent}>
+                        {/* Deployment Name */}
+                        <View style={styles.infoRow}>
+                            <WWIcon source="tag" size={18} color={colors.onSurfaceVariant} />
+                            <View style={styles.infoTextGroup}>
+                                <WWText variant="labelMedium" style={styles.infoLabel}>
+                                    <Text>Deployment Name</Text>
+                                </WWText>
+                                <WWText variant="bodyLarge" style={styles.infoValue}>
+                                    <Text>{deployment.name || 'Unknown'}</Text>
+                                </WWText>
+                            </View>
+                        </View>
+
+                        <View style={styles.divider} />
+
                         {/* Project */}
                         <View style={styles.infoRow}>
                             <WWIcon source="folder" size={18} color={colors.onSurfaceVariant} />
@@ -152,18 +178,6 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment, device,
                         </View>
                     </Card.Content>
                 </Card>
-
-                {/* View on Map Button */}
-                <View style={styles.actionSection}>
-                    <WWButton
-                        mode="outlined"
-                        icon="map"
-                        onPress={() => navigation.navigate('Home')}
-                        style={styles.actionButton}
-                    >
-                        <Text>View on Map</Text>
-                    </WWButton>
-                </View>
             </View>
         </WWScreenView>
     )

@@ -65,6 +65,7 @@ export const useDevicePreDeploymentChecks = () => {
             } else {
                 const statusMsg = await runSelfTest(device)
                 const hexBits = extractErrorBits(statusMsg)
+                // eslint-disable-next-line no-bitwise
                 if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
                     newErrors.deviceHealth.push('No SD Card detected')
                 }

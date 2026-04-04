@@ -5,6 +5,7 @@ import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
 import { formatGPSString } from '../utils/gpsUtils'
 import { log, logError, logWarn } from '../utils/logger'
 import { createCommand, createAction } from './useBleCommandFactory'
+import { isCommandClearedError } from "../ble/commandManager"
 
 
 export const useBleCommands = () => {
@@ -19,6 +20,7 @@ export const useBleCommands = () => {
     const getOps = useMemo(() => createCommand(write, CommandNames.getops), [write])
     const getAiVer = useMemo(() => createCommand(write, CommandNames.ai_ver), [write])
     const getUtc = useMemo(() => createCommand(write, CommandNames.getutc), [write])
+    const getDeploymentIdAsString = useMemo(() => createCommand(write, CommandNames.getdid), [write])
 
     // --- System Actions ---
     const runDfu = useMemo(() => createAction(write, CommandNames.dfu), [write])
@@ -28,8 +30,12 @@ export const useBleCommands = () => {
     const runDisconnect = useCallback(async (peripheral: ExtendedPeripheral) => {
         try {
             await write(peripheral, [[CommandNames.dis, { control: CommandControlTypes.WRITE }]])
-        } catch (e) {
-            logWarn('[runDisconnect] BLE write failed, proceeding to local disconnect:', e)
+        } catch (e: any) {
+            if (isCommandClearedError(e)) {
+                log('[runDisconnect] Device disconnected gracefully')
+            } else {
+                logWarn('[runDisconnect] BLE write failed, proceeding to local disconnect:', e)
+            }
         } finally {
             // Always trigger app-side disconnect
             await disconnectDevice(peripheral)
@@ -94,7 +100,7 @@ export const useBleCommands = () => {
     
     const disableCamera = useMemo(() => createAction(write, CommandNames.DISABLE_CAMERA, { timeout: 10000 }), [write])
 
-    const setMdSensitivity = useMemo(() => createAction(write, CommandNames.md), [write])
+    const setMdSensitivity = useMemo(() => createAction(write, CommandNames.md, { maxRetries: 0 }), [write])
 
     /**
      * Flash one of the device LEDs
@@ -249,7 +255,18 @@ export const useBleCommands = () => {
         [setOperationalParam, getOrFetchOperationalParams] // Changed dependency from 'write' to 'setOperationalParam'
     )
 
+    const setDeploymentIdAsString = useCallback(
+        async (peripheral: ExtendedPeripheral, id: string | null) => {
+            log('[BLE CMD] Sending Deployment ID via string (setdid). ID:', id)
+            const valueToSend = id || '00000000-0000-0000-0000-000000000000'
+            await write(peripheral, [[CommandNames.setdid, { control: CommandControlTypes.WRITE, value: valueToSend }]])
+            log('[BLE CMD] Deployment ID string sent successfully')
+        },
+        [write]
+    )
+
     return {
+
         // Device
         getBatteryLevel,
         getDeviceVer,
@@ -266,6 +283,8 @@ export const useBleCommands = () => {
         setUtc,
         getUtc,
         setDeploymentIdAsOps,
+        setDeploymentIdAsString,
+        getDeploymentIdAsString,
         // LoRaWAN
         getDevEui,
         getAppEui,

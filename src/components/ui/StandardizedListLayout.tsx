@@ -7,7 +7,7 @@ import {
     ListRenderItemInfo,
     ViewStyle,
 } from 'react-native'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import {
     FAB,
     Searchbar,
@@ -83,7 +83,6 @@ export function StandardizedListLayout<T>({
 }: StandardizedListLayoutProps<T>) {
     const theme = useTheme()
     const { setIsOpen } = useAppDrawer()
-    const insets = useSafeAreaInsets()
 
     // Loading State (Initial Load)
     if (isLoading && (!data || data.length === 0)) {

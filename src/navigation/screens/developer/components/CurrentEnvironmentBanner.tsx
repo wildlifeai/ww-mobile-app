@@ -21,7 +21,6 @@ export const CurrentEnvironmentBanner: React.FC<CurrentEnvironmentBannerProps> =
 					marginHorizontal: spacing * 2,
 					marginBottom: spacing * 2,
 					padding: spacing * 2,
-					boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.15)",
 				},
 			]}
 		>
@@ -44,6 +43,7 @@ const styles = StyleSheet.create({
 		backgroundColor: "rgba(76, 175, 80, 0.1)", // Light green tint
 		borderLeftWidth: 4,
 		borderLeftColor: "#4CAF50", // Green accent
+		boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.15)",
 	},
 	currentEnvironmentLabel: {
 		fontWeight: "700",

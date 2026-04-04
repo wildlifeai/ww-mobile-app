@@ -71,7 +71,7 @@ ALTER TABLE deployments ADD CONSTRAINT deployments_end_check CHECK (deployment_e
 ALTER TABLE deployments ADD CONSTRAINT deployments_battery_level_start_check CHECK (battery_level_at_start IS null OR (battery_level_at_start >= 0 AND battery_level_at_start <= 100));
 
 COMMENT ON TABLE deployments IS 'Stores camera deployments for wildlife monitoring projects. Snapshots device configuration at deployment time via device_preparation_id.';
-COMMENT ON COLUMN deployments.device_preparation_id IS 'Links to prep session that prepared this device. Critical for traceability.';
+COMMENT ON COLUMN deployments.device_preparation_id_deprecated IS 'DEPRECATED (Phase 1): Links to prep session that prepared this device. Slated for removal in Phase 2.';
 COMMENT ON COLUMN deployments.setup_by IS 'User who set up the deployment.';
 COMMENT ON COLUMN deployments.ended_by IS 'User who ended the deployment.';
 COMMENT ON COLUMN deployments.location_name IS 'Descriptive label or name for the deployment location.';

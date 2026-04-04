@@ -1,6 +1,6 @@
 {
   "name": "wildlifewatcher",
-  "version": "0.0.38",
+  "version": "0.0.39",
   "private": true,
   "scripts": {
     "android": "npm run types:cloud-dev && npm run db:sync-schema && npm run schema:generate && npx expo run:android",
@@ -27,7 +27,7 @@
     "deps:add": "node scripts/deps-cli.js add",
     "deps:scan": "node scripts/deps-cli.js scan",
     "types:local": "cd ~/dev/wildlifeai/wildlife-watcher-backend && npx supabase gen types typescript --local > ~/dev/wildlifeai/wildlife-watcher-mobile-app/src/types/supabase.ts",
-    "types:cloud-dev": "npx -y supabase gen types typescript --project-id qegeovogqxiouqbrxmnh --schema public > src/types/database.types.ts",
+    "types:cloud-dev": "node scripts/sync-types-cloud.js",
     "types:cloud-prod": "echo '⚠️  Production project ref not yet configured' && exit 1",
     "types:check-local": "bash scripts/check-types-local.sh",
     "types:check-cloud-dev": "bash scripts/check-types-cloud.sh cloud-dev",

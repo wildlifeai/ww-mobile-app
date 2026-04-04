@@ -53,6 +53,13 @@ This app uses **Expo SDK 54** with a managed workflow (prebuild enabled). Ensure
     cd C:\dev\ww
     ```
 
+2. **Clone the Backend Repository** (recommended for schema sync):
+    ```bash
+    # Clone alongside the mobile repo so schema sync finds it automatically
+    git clone https://github.com/wildlifeai/wildlife-watcher-backend.git C:\dev\ww-backend
+    ```
+    > The `db:sync-schema` script automatically detects sibling backend repos named `ww-backend` or `wildlife-watcher-backend`. If unavailable, it falls back to a GitHub shallow clone.
+
 2. **Install Dependencies**:
     ```bash
     # On Windows:
@@ -84,10 +91,12 @@ This app uses **Expo SDK 54** with a managed workflow (prebuild enabled). Ensure
 
 ### Local Builds
 ```bash
-npx expo run:android      # Android (Windows/Mac)
-npx expo run:ios           # iOS (Mac only)
+npm run android            # Full pipeline: types → schema sync → build
+npm run ios                # Full pipeline: types → schema sync → build (Mac only)
+npx expo run:android       # Build only (skip schema sync)
+npx expo run:ios           # Build only (skip schema sync, Mac only)
 ```
-*Note: The first Android build may take 10-15 minutes.*
+*Note: The first Android build may take 10-15 minutes. `npm run android` automatically syncs the database schema from the backend repo before building.*
 
 ### Cloud Builds (EAS)
 ```bash
@@ -132,10 +141,12 @@ For detailed testing patterns, see the [Testing Guide](./documentation/resources
 
 | Command | Purpose |
 |---------|---------|
+| `npm run android` | **Full build pipeline**: sync types → sync schema → generate WatermelonDB → build |
 | `npm run lint` | Run ESLint |
 | `npm run type-check` | Run `tsc --noEmit` |
 | `npm run validate:deps` | Validate dependency compatibility |
 | `npm run deps` | Interactive dependency management CLI |
+| `npm run db:sync-schema` | Sync database schema from backend repo |
 | `npm run schema:generate` | Regenerate WatermelonDB schema |
 | `npm run schema:validate` | Validate schema consistency |
 

@@ -62,7 +62,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
             log('[MotionDetectionSection] Stopping test on unmount')
             stopTest()
         }
-    }, [bleDeviceConnected, isInitializing])
+    }, [bleDeviceConnected, isInitializing, startTest, stopTest])
 
     const renderIcon = useCallback((props: any) => <WWIcon {...props} source="paw" />, [])
     const renderHelp = useCallback((props: any) => (
@@ -149,7 +149,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                     <View key={`row-15-${rowIndex}`} style={styles.gridRow}>
                                         {/* 16x15 means 16 columns, 15 rows. Total 240 bits. 
                                             We take pixels from the flattened 16x16 array (256 bits) but only first 240. */}
-                                        {Array.from({ length: 16 }).map((_, colIndex) => {
+                                        {Array.from({ length: 16 }).map((__, colIndex) => {
                                             const flatIndex = rowIndex * 16 + colIndex
                                             const cell = mdGrid.flat()[flatIndex]
                                             return (

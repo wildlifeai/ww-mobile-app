@@ -20,6 +20,14 @@ import {
 } from './messageClassifier'
 import { log, logError, logWarn } from '../utils/logger'
 
+export const isCommandClearedError = (error: any): boolean => {
+    return error?.message?.includes('Command manager cleared') || false
+}
+
+export const isDisconnectCommand = (name?: string | CommandNames, commandString?: string): boolean => {
+    return name === CommandNames.dis || commandString === 'dis'
+}
+
 type UnsolicitedMessageCallback = (msg: ClassifiedMessage) => void
 
 const DEFAULT_TIMEOUT = 3000
@@ -235,7 +243,9 @@ export class BleCommandManager {
         // If we were expecting a specific pattern, but match was only via fallback (default response),
         // then we should NOT resolve unless the content actually matches our expectation.
         if (this.pendingCommand?.expectedPattern instanceof RegExp && classified.isFallbackResponse) {
-            logWarn(`[BLE CMD Manager] Ignoring unknown message while waiting for ${this.pendingCommand.expectedPattern}: ${classified.content}`)
+            if (!isDisconnectCommand(this.pendingCommand?.commandName, this.pendingCommand?.commandString)) {
+                logWarn(`[BLE CMD Manager] Ignoring unknown message while waiting for ${this.pendingCommand.expectedPattern}: ${classified.content}`)
+            }
             this.emitUnsolicited(classified)
             break
         }

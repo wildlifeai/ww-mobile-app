@@ -96,7 +96,7 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
                         variant="titleMedium"
                         style={dynamicStyles.title}
                     >
-                        Devices ({devices.length})
+                        Wildlife Watchers ({devices.length})
                     </Text>
                     <IconButton
                         icon="eye"

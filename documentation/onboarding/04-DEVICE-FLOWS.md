@@ -35,8 +35,6 @@ flowchart TD
 
 | State | Trigger | User Action |
 |-------|---------|-------------|
-| State | Trigger | User Action |
-|-------|---------|-------------|
 | `no_access_active_deployment` | Device has `status = deployed` but user lacks access to project | "OK" → Dismiss & Disconnect |
 | `no_projects` | User has 0 projects in current org | "Create Project" → New Project screen |
 

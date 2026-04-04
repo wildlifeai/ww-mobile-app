@@ -135,7 +135,8 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
                             variant="bodySmall" 
                             style={[
                                 styles.motionText,
-                                motionDetected && { color: theme.colors.primary, fontWeight: '600' }
+                                motionDetected && styles.motionTextActive,
+                                motionDetected && { color: theme.colors.primary }
                             ]}
                         >
                             {motionDetected ? 'Motion threshold exceeded!' : 'No motion'}
@@ -189,5 +190,8 @@ const styles = StyleSheet.create({
     motionText: {
         marginLeft: 6,
         color: '#888',
+    },
+    motionTextActive: {
+        fontWeight: '600',
     }
 })

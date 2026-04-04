@@ -78,7 +78,12 @@ This folder contains six onboarding guides:
    - `npm install -g eas-cli@latest`.
 3. **Setup Android Debug Bridge (ADB)**:
    - Required for physical device testing. Available in Windows (WSL2), macOS, and Linux.
-4. **Clone and Install**:
+4. **Clone the Backend Repository** (recommended):
+    ```bash
+    # Clone alongside mobile repo for automatic schema sync
+    git clone https://github.com/wildlifeai/wildlife-watcher-backend.git ../ww-backend
+    ```
+5. **Clone and Install**:
    ```bash
    git clone [REPO_URL] && cd wildlife-watcher-mobile-app
    npm install --ignore-scripts
@@ -187,12 +192,15 @@ src/
 ## 🛠️ Daily Development Commands
 
 ```bash
-npx expo start        # Start dev server
-npm run android       # Run on Android device
+npm run android       # Full pipeline: types → schema sync → build → launch
+npm run ios           # Full pipeline: types → schema sync → build → launch (Mac)
+npx expo start        # Start dev server (skip schema sync)
 npm run lint          # Run linter
 npm run type-check    # Run TypeScript check
 npm test              # Run Jest tests
 ```
+
+> **Note:** `npm run android` automatically syncs the latest database schema from the backend repo before building. Use `npx expo start` if you just want to start the dev server without re-syncing.
 
 ### Troubleshooting Quick Fixes
 - **Clear Cache**: `npx expo start --clear`

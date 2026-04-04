@@ -11,7 +11,7 @@ BEGIN
   -- Get project_id for the deployment to check permissions
   SELECT d.project_id INTO v_project_id
   FROM public.deployments d
-  WHERE d.id = p_id;
+  WHERE d.id = p_id AND d.deleted_at IS NULL;
 
   IF v_project_id IS NULL THEN
     RAISE EXCEPTION 'Deployment not found: %', p_id;

@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native'
-import { Card, TextInput } from 'react-native-paper'
+import { Card, TextInput, Button, Text } from 'react-native-paper'
 
 interface Props {
     name: string
@@ -17,9 +17,19 @@ export const MetadataSection = ({
     onShowHelp
 }: Props) => {
 
+    const renderHelp = (props: any) => (
+        <Button 
+            {...props} 
+            icon="help-circle-outline" 
+            onPress={() => onShowHelp('Deployment Details', 'Deployment Name: A unique identifier for this specific deployment. It helps track data collected during this session.\n\nNotes: Any additional observations, such as location details, bait used, weather conditions, or specific features being monitored.')}
+        >
+            <Text>Help</Text>
+        </Button>
+    )
+
     return (
         <Card style={styles.card}>
-            <Card.Title title="Deployment Details" />
+            <Card.Title title="Deployment Details" right={renderHelp} />
             <Card.Content style={styles.content}>
                 <TextInput
                     label="Deployment Name"
@@ -27,7 +37,6 @@ export const MetadataSection = ({
                     onChangeText={onNameChange}
                     mode="outlined"
                     style={styles.input}
-                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Deployment Name', 'A unique identifier for this specific deployment. It helps track data collected during this session.')} />}
                 />
 
 
@@ -39,7 +48,6 @@ export const MetadataSection = ({
                     multiline
                     numberOfLines={4}
                     style={[styles.input, styles.textArea]}
-                    right={<TextInput.Icon icon="help-circle-outline" onPress={() => onShowHelp('Notes', 'Any additional observations, such as location details, bait used, weather conditions, or specific features being monitored.')} />}
                 />
             </Card.Content>
         </Card>

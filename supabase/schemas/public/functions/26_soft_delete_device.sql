@@ -7,7 +7,6 @@ security invoker
 set search_path = ''
 as $$
 declare
-  v_project_id uuid;
   v_organisation_id uuid;
 begin
   -- Get the organisation_id from the device
@@ -19,8 +18,8 @@ begin
 
   -- Check if user has permission (organisation manager or ww_admin)
   if v_organisation_id is not null and not (
-    has_system_role(auth.uid(), 'ww_admin') OR
-    has_organisation_role(auth.uid(), v_organisation_id, 'organisation_manager')
+    public.has_system_role(auth.uid(), 'ww_admin') OR
+    public.has_organisation_role(auth.uid(), v_organisation_id, 'organisation_manager')
   ) then
     raise exception 'Permission denied: must be organisation manager or admin to delete device.';
   end if;

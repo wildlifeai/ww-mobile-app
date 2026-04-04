@@ -118,8 +118,8 @@ export const ProjectCard = React.memo(
 							>
 								{project.device_count || 0}{" "}
 								{(project.device_count || 0) === 1
-									? "device"
-									: "devices"}
+									? "Wildlife Watcher"
+									: "Wildlife Watchers"}
 								{` (${project.active_device_count || 0} active)`}
 							</Text>
 						</View>

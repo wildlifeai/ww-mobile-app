@@ -17,8 +17,8 @@ CREATE POLICY "Project members can create deployments"
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    (SELECT auth.uid()) IS NOT NULL AND 
-    has_project_role((SELECT auth.uid()), deployments.project_id, 'project_member')
+    (SELECT auth.uid()) IS NOT NULL
+    AND has_project_role((SELECT auth.uid()), deployments.project_id, 'project_member')
   );
 
 -- UPDATE: Deployment creator can update own deployments
@@ -51,12 +51,12 @@ CREATE POLICY "Project admins can update deployments"
   FOR UPDATE
   TO authenticated
   USING (
-    (SELECT auth.uid()) IS NOT NULL AND 
-    has_project_role((SELECT auth.uid()), deployments.project_id, 'project_admin')
+    (SELECT auth.uid()) IS NOT NULL
+    AND has_project_role((SELECT auth.uid()), deployments.project_id, 'project_admin')
   )
   WITH CHECK (
-    (SELECT auth.uid()) IS NOT NULL AND 
-    has_project_role((SELECT auth.uid()), deployments.project_id, 'project_admin')
+    (SELECT auth.uid()) IS NOT NULL
+    AND has_project_role((SELECT auth.uid()), deployments.project_id, 'project_admin')
   );
 
 -- UPDATE: Project admins can soft-delete deployments
@@ -72,7 +72,7 @@ CREATE POLICY "Project admins can soft-delete deployments"
   );
 
 COMMENT ON POLICY "Project members can view active deployments" ON deployments
-IS 'Updated 2026-03-27: Uses native project_id';
+IS 'Updated 2026-03-27: Uses native project_id on deployments table';
 
 COMMENT ON POLICY "Project members can create deployments" ON deployments
-IS 'Updated 2026-03-27: Uses native project_id';
+IS 'Updated 2026-03-27: Uses native project_id on deployments table';

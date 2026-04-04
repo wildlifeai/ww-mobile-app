@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS public.debug_storage_logs (
     details jsonb,
     created_at timestamptz DEFAULT now()
 );
+ALTER TABLE public.debug_storage_logs ENABLE ROW LEVEL SECURITY;
 GRANT ALL ON public.debug_storage_logs TO authenticated, service_role, postgres;
 
 -- Function to check if a user can upload to the ai-models bucket

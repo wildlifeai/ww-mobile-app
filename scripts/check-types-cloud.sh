@@ -5,13 +5,10 @@
 # Usage: ./scripts/check-types-cloud.sh <environment>
 #   environment: cloud-dev or cloud-prod
 #
-# Environment Configuration:
-#   cloud-dev:  nuhwmubvygxyddkycmpa (https://nuhwmubvygxyddkycmpa.supabase.co)
-#   cloud-prod: [NOT YET CONFIGURED]
+# Project ID is read dynamically from the active .env.development file.
 #
 # Dependencies:
 #   - Supabase CLI (must be authenticated to the project)
-#   - Project must be linked: `supabase link --project-ref <ref>`
 #
 # Exit Codes:
 #   0 = Types are aligned with cloud environment
@@ -38,27 +35,25 @@ if [ "$ENVIRONMENT" != "cloud-dev" ] && [ "$ENVIRONMENT" != "cloud-prod" ]; then
   exit 1
 fi
 
-# Map environment to Supabase project ref
-case $ENVIRONMENT in
-  cloud-dev)
-    PROJECT_REF="nuhwmubvygxyddkycmpa"
-    ;;
-  cloud-prod)
-    echo "❌ Error: Production environment not yet configured"
-    echo ""
-    echo "Production Supabase project ref needs to be added to:"
-    echo "  - scripts/check-types-cloud.sh"
-    echo "  - package.json (types:cloud-prod script)"
-    exit 1
-    ;;
-  *)
-    echo "❌ Error: Unknown environment '$ENVIRONMENT'"
-    exit 1
-    ;;
-esac
+# Read project ref dynamically from .env.development
+ENV_FILE="$(dirname "$0")/../.env.development"
+if [ ! -f "$ENV_FILE" ]; then
+  echo "❌ Error: .env.development not found at $ENV_FILE"
+  exit 1
+fi
+
+# Extract the active (uncommented) EXPO_PUBLIC_SUPABASE_URL
+SUPABASE_URL=$(grep -E '^[^#]*EXPO_PUBLIC_SUPABASE_URL=' "$ENV_FILE" | head -1 | sed 's/.*=https:\/\/\([a-z0-9]*\)\.supabase\.co.*/\1/')
+
+if [ -z "$SUPABASE_URL" ]; then
+  echo "❌ Error: Could not extract Supabase project ID from .env.development"
+  exit 1
+fi
+
+PROJECT_REF="$SUPABASE_URL"
 
 echo "🔍 Checking type alignment with $ENVIRONMENT Supabase instance..."
-echo "   Project ref: $PROJECT_REF"
+echo "   Project ref: $PROJECT_REF (from .env.development)"
 echo ""
 
 # Check if npx is available
@@ -91,10 +86,9 @@ if ! npx supabase gen types typescript --project-id "$PROJECT_REF" > "$TEMP_TYPE
   echo "  1. Not authenticated to Supabase CLI (run: npx supabase login)"
   echo "  2. No access to project ref: $PROJECT_REF"
   echo "  3. Network connectivity issues"
-  echo "  4. Project ref is incorrect"
+  echo "  4. Project is paused — wake it via the Supabase Dashboard"
   echo ""
   echo "To authenticate: npx supabase login"
-  echo "To link project:  npx supabase link --project-ref $PROJECT_REF"
   exit 1
 fi
 
@@ -119,7 +113,7 @@ else
   echo "current schema of the $ENVIRONMENT Supabase instance."
   echo ""
   echo "To fix, run:"
-  echo "  npm run types:$ENVIRONMENT"
+  echo "  npm run types:cloud-dev"
   echo ""
   echo "Then commit the updated types:"
   echo "  git add src/types/database.types.ts"

@@ -77,6 +77,13 @@ export const AppSetupProvider = ({ children }: PropsWithChildren<{}>) => {
 		if (isSupabaseReady && user?.id) {
 			log("👤 User authenticated - triggering data sync...")
 			SupabaseSyncService.sync()
+
+			// Re-sync reference data now that we have a valid auth session.
+			// The initial sync on mount may have been skipped if the user
+			// wasn't authenticated yet (e.g., expired token, fresh install).
+			ReferenceDataService.syncReferenceData()
+				.then(() => log("✅ Post-login reference data sync complete"))
+				.catch((err) => logError("❌ Post-login reference data sync failed:", err))
 		}
 	}, [isSupabaseReady, user?.id]) // Depend strictly on user ID change
 
