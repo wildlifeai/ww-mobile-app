@@ -61,19 +61,25 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     useEffect(() => { currentTestModeBitsRef.current = testModeBits }, [testModeBits])
     useEffect(() => { currentAeDataRef.current = aeData }, [aeData])
 
+    const handleImageReceived = useCallback((uri: string) => {
+        setCapturedImages(prev => [{
+            uri,
+            params: currentParamsRef.current,
+            testModeBits: currentTestModeBitsRef.current,
+            aeData: currentAeDataRef.current
+        }, ...prev])
+    }, [])
+    
+    const handleCaptureError = useCallback((e: Error) => {
+        logError('[CameraSettingsTest] Capture failed:', e)
+    }, [])
+
     // Setup Capture Preview hook
     const capturePreview = useCapturePreview({
         device,
         write,
-        onImageReceived: (uri) => {
-            setCapturedImages(prev => [{
-                uri,
-                params: currentParamsRef.current,
-                testModeBits: currentTestModeBitsRef.current,
-                aeData: currentAeDataRef.current
-            }, ...prev])
-        },
-        onError: (e) => logError('[CameraSettingsTest] Capture failed:', e)
+        onImageReceived: handleImageReceived,
+        onError: handleCaptureError
     })
 
     // Listen for AE Data from BLE messages
