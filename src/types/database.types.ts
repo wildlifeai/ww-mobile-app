@@ -63,7 +63,7 @@ export type Database = {
           description: string
           id: number
           is_active: boolean
-          modified_by?: string
+          modified_by: string
           updated_at: string | null
           value: string
         }
@@ -73,7 +73,7 @@ export type Database = {
           description: string
           id?: number
           is_active?: boolean
-          modified_by?: string
+          modified_by: string
           updated_at?: string | null
           value: string
         }
@@ -163,7 +163,7 @@ export type Database = {
           file_size_bytes: number | null
           file_type: string | null
           id: string
-          modified_by?: string
+          modified_by: string
           name: string
           organisation_id: string
           storage_path: string
@@ -179,7 +179,7 @@ export type Database = {
           file_size_bytes?: number | null
           file_type?: string | null
           id?: string
-          modified_by?: string
+          modified_by: string
           name: string
           organisation_id: string
           storage_path: string
@@ -402,7 +402,7 @@ export type Database = {
           description: string
           id: number
           is_active: boolean
-          modified_by?: string
+          modified_by: string
           updated_at: string | null
           value: string
         }
@@ -412,7 +412,7 @@ export type Database = {
           description: string
           id?: number
           is_active?: boolean
-          modified_by?: string
+          modified_by: string
           updated_at?: string | null
           value: string
         }
@@ -456,7 +456,7 @@ export type Database = {
           description: string
           id: number
           is_active: boolean
-          modified_by?: string
+          modified_by: string
           updated_at: string | null
           value: string
         }
@@ -466,7 +466,7 @@ export type Database = {
           description: string
           id?: number
           is_active?: boolean
-          modified_by?: string
+          modified_by: string
           updated_at?: string | null
           value: string
         }
@@ -750,7 +750,7 @@ export type Database = {
           lorawan_registration_completed: boolean
           lorawan_rssi_at_check: number | null
           lorawan_snr_at_check: number | null
-          modified_by?: string
+          modified_by: string
           project_id: string | null
           sd_card_available_kb_at_check: number | null
           sd_card_check_passed: boolean | null
@@ -781,7 +781,7 @@ export type Database = {
           lorawan_registration_completed?: boolean
           lorawan_rssi_at_check?: number | null
           lorawan_snr_at_check?: number | null
-          modified_by?: string
+          modified_by: string
           project_id?: string | null
           sd_card_available_kb_at_check?: number | null
           sd_card_check_passed?: boolean | null
@@ -907,7 +907,7 @@ export type Database = {
           deleted_at: string | null
           device_eui: string | null
           id: string
-          modified_by?: string
+          modified_by: string
           name: string
           organisation_id: string | null
           updated_at: string | null
@@ -918,7 +918,7 @@ export type Database = {
           deleted_at?: string | null
           device_eui?: string | null
           id?: string
-          modified_by?: string
+          modified_by: string
           name: string
           organisation_id?: string | null
           updated_at?: string | null
@@ -987,7 +987,7 @@ export type Database = {
           id: string
           is_active: boolean
           location_path: string
-          modified_by?: string
+          modified_by: string
           name: string
           release_notes: string | null
           type: string
@@ -1001,7 +1001,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           location_path: string
-          modified_by?: string
+          modified_by: string
           name: string
           release_notes?: string | null
           type: string
@@ -1166,7 +1166,7 @@ export type Database = {
           deleted_at: string | null
           id: string
           is_active: boolean
-          modified_by?: string
+          modified_by: string
           name: string
           slug: string
           updated_at: string | null
@@ -1288,7 +1288,7 @@ export type Database = {
           is_monitoring_marked_individuals: boolean | null
           lorawan_required: boolean
           model_id: string | null
-          modified_by?: string
+          modified_by: string
           name: string
           organisation_id: string
           project_image: string | null
@@ -1426,7 +1426,7 @@ export type Database = {
           description: string
           id: number
           is_active: boolean
-          modified_by?: string
+          modified_by: string
           updated_at: string | null
           value: string
         }
@@ -1436,7 +1436,7 @@ export type Database = {
           description: string
           id?: number
           is_active?: boolean
-          modified_by?: string
+          modified_by: string
           updated_at?: string | null
           value: string
         }
@@ -1485,7 +1485,7 @@ export type Database = {
           granted_by: string | null
           id: string
           is_active: boolean
-          modified_by?: string
+          modified_by: string
           role: string
           scope_id: string | null
           scope_type: string
@@ -1530,7 +1530,7 @@ export type Database = {
           deleted_at: string | null
           firstname: string
           id: string
-          modified_by?: string
+          modified_by: string
           surname: string
           updated_at: string | null
         }
@@ -1754,7 +1754,7 @@ export type Database = {
           lorawan_device_count: number | null
           member_count: number | null
           model_id: string | null
-          modified_by?: string | null
+          modified_by: string | null
           name: string | null
           organisation_id: string | null
           project_image: string | null
