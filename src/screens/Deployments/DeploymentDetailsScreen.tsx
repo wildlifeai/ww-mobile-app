@@ -76,7 +76,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment, device,
     }, [setupUser, deployment.setupBy, currentUser])
 
     // Device display name (title)
-    const deviceName = device?.name || deployment.name || 'Unknown Device'
+    const deviceName = device?.name || deployment.locationName || 'Unknown Device'
 
     const renderHeaderRight = useCallback(() => (
         isActive ? (
@@ -90,7 +90,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment, device,
                         setMenuVisible(false)
                         navigation.navigate('EndDeploymentWizard', { mode: 'end_deployment' } as any)
                     }}
-                    title="End Deployment"
+                    title="End Monitoring"
                     leadingIcon="stop"
                 />
             </Menu>
@@ -108,7 +108,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment, device,
     if (!deployment) {
         return (
             <WWScreenView>
-                <WWText><Text>Deployment not found.</Text></WWText>
+                <WWText><Text>Monitoring session not found.</Text></WWText>
             </WWScreenView>
         )
     }
@@ -119,15 +119,15 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment, device,
                 {/* Summary Info Card */}
                 <Card mode="outlined" style={styles.summaryCard}>
                     <Card.Content style={styles.summaryContent}>
-                        {/* Deployment Name */}
+                        {/* Location Name */}
                         <View style={styles.infoRow}>
                             <WWIcon source="tag" size={18} color={colors.onSurfaceVariant} />
                             <View style={styles.infoTextGroup}>
                                 <WWText variant="labelMedium" style={styles.infoLabel}>
-                                    <Text>Deployment Name</Text>
+                                    <Text>Location Name</Text>
                                 </WWText>
                                 <WWText variant="bodyLarge" style={styles.infoValue}>
-                                    <Text>{deployment.name || 'Unknown'}</Text>
+                                    <Text>{deployment.locationName || 'Unknown'}</Text>
                                 </WWText>
                             </View>
                         </View>
@@ -169,7 +169,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment, device,
                             <WWIcon source="account" size={18} color={colors.onSurfaceVariant} />
                             <View style={styles.infoTextGroup}>
                                 <WWText variant="labelMedium" style={styles.infoLabel}>
-                                    <Text>Deployed by</Text>
+                                    <Text>Started by</Text>
                                 </WWText>
                                 <WWText variant="bodyLarge" style={styles.infoValue}>
                                     <Text>{deployedByName}</Text>

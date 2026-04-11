@@ -36,7 +36,7 @@ export interface DeviceListItem {
     name: string
     bluetoothId: string
     status: DeviceStatus
-    deploymentName?: string
+    locationName?: string
     deploymentId?: string
     deploymentEndDate?: Date
     lastDeploymentDate?: Date

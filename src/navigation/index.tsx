@@ -156,7 +156,7 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="AddDeployment"
 							component={AddDeployment}
-							options={{ title: "Start deployment" }}
+							options={{ title: "Start monitoring" }}
 						/>
 						<Stack.Screen
 							name="NewProjectScreen"
@@ -216,23 +216,23 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="DeploymentDetailsStep"
 							component={DeploymentDetailsStep}
-							options={{ title: "Deployment Details", headerTitleAlign: 'center' }}
+							options={{ title: "Device Interaction", headerTitleAlign: 'center' }}
 						/>
 						<Stack.Screen
 							name="EndDeploymentWizard"
 							component={DeviceDiscoveryScreen}
-							options={{ title: "End Deployment" }}
+							options={{ title: "End Monitoring" }}
 							initialParams={{ mode: 'end_deployment' }}
 						/>
 						<Stack.Screen
 							name="EndDeploymentDetailsStep"
 							component={EndDeploymentDetailsStep}
-							options={{ title: "End deployment" }}
+							options={{ title: "End monitoring" }}
 						/>
 						<Stack.Screen
 							name="DeploymentDetails"
 							component={DeploymentDetailsScreen}
-							options={{ title: "Deployment" }}
+							options={{ title: "Monitoring Session" }}
 						/>
 						{__DEV__ && (
 							<>

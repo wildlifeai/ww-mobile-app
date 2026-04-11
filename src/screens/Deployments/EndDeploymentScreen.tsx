@@ -165,10 +165,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 <Card style={styles.section}>
                     <Card.Title title="Associated Project" />
                     <Card.Content>
-                        <View style={styles.infoRow}>
-                            <WWText variant="labelMedium"><Text>Name:</Text></WWText>
-                            <WWText variant="bodyLarge"><Text>{deployment.name}</Text></WWText>
-                        </View>
+
                         <View style={styles.infoRow}>
                             <WWText variant="labelMedium"><Text>Monitoring since:</Text></WWText>
                             <WWText variant="bodyLarge"><Text>

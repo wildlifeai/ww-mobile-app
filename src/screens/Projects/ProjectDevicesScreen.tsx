@@ -16,7 +16,7 @@ interface ProjectDevice {
     name: string
     isActive: boolean
     activeDeploymentId?: string
-    activeDeploymentName?: string
+    activeDeploymentLocationName?: string
 }
 
 export const ProjectDevicesScreen = () => {
@@ -83,7 +83,7 @@ export const ProjectDevicesScreen = () => {
                         name: device.name || 'Unknown Device',
                         isActive: !!activeDeployment,
                         activeDeploymentId: activeDeployment?.id,
-                        activeDeploymentName: activeDeployment?.name || activeDeployment?.locationName,
+                        activeDeploymentLocationName: activeDeployment?.locationName || 'Unknown Location',
                     }
                 })
 
@@ -131,12 +131,12 @@ export const ProjectDevicesScreen = () => {
                         >
                             {item.name && item.name !== 'Unknown Device' ? item.name : item.bluetoothId}
                         </Text>
-                        {item.isActive && item.activeDeploymentName && (
+                        {item.isActive && item.activeDeploymentLocationName && (
                             <Text
                                 variant="bodySmall"
                                 style={dynamicStyles.activeText}
                             >
-                                Deployed at {item.activeDeploymentName}
+                                Deployed at {item.activeDeploymentLocationName}
                             </Text>
                         )}
                         {!item.isActive && (

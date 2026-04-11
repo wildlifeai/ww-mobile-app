@@ -13,7 +13,6 @@ export const DeploymentCard = memo<{ deployment: any, onPress?: (id: string) => 
 
 	const deploymentStart = getField(deployment, 'deployment_start', 'deploymentStart')
 	const deploymentEnd = getField(deployment, 'deployment_end', 'deploymentEnd')
-	const deploymentName = deployment.name || getField(deployment, 'name', 'name')
 	const locationName = getField(deployment, 'location_name', 'locationName')
 
 	const getStatusColor = () => {
@@ -58,9 +57,8 @@ export const DeploymentCard = memo<{ deployment: any, onPress?: (id: string) => 
 						style={[styles.title, { color: theme.colors.onSurface }]}
 						numberOfLines={1}
 					>
-						{deploymentName ||
-							locationName ||
-							`Deployment #${deployment.id.slice(-4)}`}
+						{locationName ||
+							`Session #${deployment.id.slice(-4)}`}
 					</Text>
 					<View
 						style={[styles.statusDot, { backgroundColor: getStatusColor() }]}

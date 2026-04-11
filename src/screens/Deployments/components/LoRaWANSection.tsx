@@ -38,7 +38,6 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
         messageText: { color: theme.colors.outline }
     }), [theme])
 
-    const renderLeft = useCallback((props: any) => <WWIcon {...props} source="wifi" />, [])
     const renderRight = useCallback((props: any) => (
         <Button
             {...props}
@@ -53,7 +52,6 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
         <Card style={styles.card}>
             <Card.Title
                 title="LoRaWAN Signal Test"
-                left={renderLeft}
                 right={renderRight}
             />
             <Card.Content style={styles.content}>

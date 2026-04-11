@@ -1,8 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Text, IconButton, ActivityIndicator, useTheme, List } from 'react-native-paper'
+import { Text, IconButton, ActivityIndicator, useTheme, List, Card, Button } from 'react-native-paper'
 import { Control, Controller } from 'react-hook-form'
-import { Field } from '../../../components/form/Field'
 import { WWSelect } from '../../../components/ui/WWSelect'
 import { WWTextInput } from '../../../components/ui/WWTextInput'
 import { WWCheckbox } from '../../../components/ui/WWCheckbox'
@@ -61,218 +60,233 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
     const [samplingHelpVisible, setSamplingHelpVisible] = useState(false)
     const [captureHelpVisible, setCaptureHelpVisible] = useState(false)
     const [gpsHelpVisible, setGpsHelpVisible] = useState(false)
+    const [expanded, setExpanded] = useState(false)
 
-    const renderAccordionIcon = React.useCallback(
-        (props: any) => <List.Icon {...props} icon="cog-outline" />,
-        []
+    // Card title render helpers — matching StartDeployment pattern
+    const renderCaptureHelp = useCallback((props: any) => (
+        <Button
+            {...props}
+            icon="help-circle-outline"
+            onPress={() => setCaptureHelpVisible(true)}
+        >
+            <Text>Help</Text>
+        </Button>
+    ), [])
+
+    const renderRightIcon = useCallback(
+        (props: any) => <List.Icon {...props} icon={expanded ? "chevron-up" : "chevron-down"} />,
+        [expanded]
     )
 
     return (
         <View style={styles.section}>
-            <View style={styles.fieldRow}>
-                <View style={styles.flex1}>
-                    <Field
+            {/* Capture Method Card */}
+            <Card>
+                <Card.Title
+                    title="Capture Method"
+                    right={renderCaptureHelp}
+                />
+                <Card.Content style={styles.cardContent}>
+                    <Controller
                         control={control}
                         name="capture_method_id"
-                        label="Capture Method"
-                    >
-                        {(field) => (
+                        render={({ field: { value, onChange } }) => (
                             <WWSelect
-                                {...field}
+                                value={value}
+                                onChange={onChange}
                                 options={captureMethodOptions}
                                 label="Capture Method"
                             />
                         )}
-                    </Field>
-                </View>
-                <IconButton
-                    icon="help-circle-outline"
-                    size={24}
-                    onPress={() => setCaptureHelpVisible(true)}
-                    style={styles.helpIcon}
-                    iconColor={theme.colors.primary}
-                />
-            </View>
+                    />
 
-            {isMotionDetection && (
-                <Field
-                    control={control}
-                    name="activity_detection_sensitivity_id"
-                    label="Motion Sensitivity"
-                >
-                    {(field) => (
-                        <WWSelect
-                            {...field}
-                            options={sensitivityOptions}
-                            label="Motion Sensitivity"
-                        />
-                    )}
-                </Field>
-            )}
-
-            {isTimeLapse && (
-                <Field
-                    control={control}
-                    name="timelapse_interval_seconds"
-                    label="Time-lapse Interval (seconds)"
-                >
-                    {(field) => (
-                        <WWTextInput
-                            {...field}
-                            mode="outlined"
-                            keyboardType="numeric"
-                            placeholder="e.g., 60"
-                        />
-                    )}
-                </Field>
-            )}
-
-            <List.Accordion
-                title="Advanced Project Settings"
-                left={renderAccordionIcon}
-                style={styles.accordionContainer}
-            >
-                <View style={styles.accordionChildrenContainer}>
-                
-                <View style={styles.fieldRow}>
-                    <View style={styles.flex1}>
-                        <Field
+                    {isMotionDetection && (
+                        <Controller
                             control={control}
-                            name="sampling_design_id"
-                            label="Sampling Design"
-                        >
-                            {(field) => (
+                            name="activity_detection_sensitivity_id"
+                            render={({ field: { value, onChange } }) => (
                                 <WWSelect
-                                    {...field}
-                                    options={samplingDesignOptions}
-                                    label="Sampling Design"
+                                    value={value}
+                                    onChange={onChange}
+                                    options={sensitivityOptions}
+                                    label="Motion Sensitivity"
                                 />
                             )}
-                        </Field>
-                    </View>
-                    <IconButton
-                        icon="help-circle-outline"
-                        size={24}
-                        onPress={() => setSamplingHelpVisible(true)}
-                        style={styles.helpIcon}
-                        iconColor={theme.colors.primary}
-                    />
-                </View>
+                        />
+                    )}
 
-                <Field control={control} name="model_id" label="Default AI Model">
-                    {(field) => {
-                        if (isLoadingModels) {
-                            return (
-                                <View testID="ai-model-select-loading">
-                                    <ActivityIndicator testID="ai-model-select-loading-placeholder" />
-                                    <Text>Loading AI models...</Text>
-                                </View>
-                            )
-                        }
-                        if (modelsError) {
-                            logError("Failed to load AI models:", modelsError)
-                            return (
-                                <View testID="ai-model-select-error">
-                                    <Text>Error loading AI models.</Text>
-                                </View>
-                            )
-                        }
-                        if (!hasAiModels) {
-                            return (
-                                <View testID="ai-model-select-empty">
-                                    <Text>No AI models available for this organisation</Text>
-                                </View>
-                            )
-                        }
-                        return (
-                            <WWSelect
-                                {...field}
-                                testID="ai-model-select-dropdown"
-                                options={aiModelOptions}
-                                label="Default AI Model"
+                    {isTimeLapse && (
+                        <Controller
+                            control={control}
+                            name="timelapse_interval_seconds"
+                            render={({ field: { value, onChange, onBlur } }) => (
+                                <WWTextInput
+                                    value={value}
+                                    onChangeText={onChange}
+                                    onBlur={onBlur}
+                                    mode="outlined"
+                                    label="Time-lapse Interval (seconds)"
+                                    keyboardType="numeric"
+                                    placeholder="e.g., 60"
+                                />
+                            )}
+                        />
+                    )}
+                </Card.Content>
+            </Card>
+
+            {/* Advanced Project Settings Accordion */}
+            <List.Item
+                title="Advanced Project Settings"
+                right={renderRightIcon}
+                onPress={() => setExpanded(!expanded)}
+                style={styles.accordionHeader}
+            />
+            {expanded && (
+                <Card>
+                    <Card.Content style={styles.cardContent}>
+                        <View style={styles.fieldRow}>
+                            <View style={styles.flex1}>
+                                <Controller
+                                    control={control}
+                                    name="sampling_design_id"
+                                    render={({ field: { value, onChange } }) => (
+                                        <WWSelect
+                                            value={value}
+                                            onChange={onChange}
+                                            options={samplingDesignOptions}
+                                            label="Sampling Design"
+                                        />
+                                    )}
+                                />
+                            </View>
+                            <IconButton
+                                icon="help-circle-outline"
+                                size={24}
+                                onPress={() => setSamplingHelpVisible(true)}
+                                style={styles.helpIcon}
+                                iconColor={theme.colors.primary}
                             />
-                        )
-                    }}
-                </Field>
+                        </View>
 
-                {/* Checkboxes */}
-                <Controller
-                    control={control}
-                    name="is_baited"
-                    render={({ field: { value, onChange } }) => (
-                        <WWCheckbox
-                            label="Using Bait"
-                            value={value}
-                            onChange={onChange}
-                            testID="is-baited-checkbox"
+                        <Controller
+                            control={control}
+                            name="model_id"
+                            render={({ field: { value, onChange } }) => {
+                                if (isLoadingModels) {
+                                    return (
+                                        <View testID="ai-model-select-loading">
+                                            <ActivityIndicator testID="ai-model-select-loading-placeholder" />
+                                            <Text>Loading AI models...</Text>
+                                        </View>
+                                    )
+                                }
+                                if (modelsError) {
+                                    logError("Failed to load AI models:", modelsError)
+                                    return (
+                                        <View testID="ai-model-select-error">
+                                            <Text>Error loading AI models.</Text>
+                                        </View>
+                                    )
+                                }
+                                if (!hasAiModels) {
+                                    return (
+                                        <View testID="ai-model-select-empty">
+                                            <Text>No AI models available for this organisation</Text>
+                                        </View>
+                                    )
+                                }
+                                return (
+                                    <WWSelect
+                                        value={value}
+                                        onChange={onChange}
+                                        testID="ai-model-select-dropdown"
+                                        options={aiModelOptions}
+                                        label="Default AI Model"
+                                    />
+                                )
+                            }}
                         />
-                    )}
-                />
 
-                <Controller
-                    control={control}
-                    name="is_monitoring_marked_individuals"
-                    render={({ field: { value, onChange } }) => (
-                        <WWCheckbox
-                            label="Monitoring Marked Individuals"
-                            value={value}
-                            onChange={onChange}
-                            testID="is-monitoring-marked-checkbox"
+                        {/* Checkboxes */}
+                        <Controller
+                            control={control}
+                            name="is_baited"
+                            render={({ field: { value, onChange } }) => (
+                                <WWCheckbox
+                                    label="Using Bait"
+                                    value={value}
+                                    onChange={onChange}
+                                    testID="is-baited-checkbox"
+                                />
+                            )}
                         />
-                    )}
-                />
 
-                <View style={styles.relativeContainer}>
-                    <Controller
-                        control={control}
-                        name="record_gps_in_images"
-                        render={({ field: { value, onChange } }) => (
-                            <WWCheckbox
-                                label="Record GPS locations in images"
-                                value={value}
-                                onChange={onChange}
-                                testID="record-gps-checkbox"
+                        <Controller
+                            control={control}
+                            name="is_monitoring_marked_individuals"
+                            render={({ field: { value, onChange } }) => (
+                                <WWCheckbox
+                                    label="Monitoring Marked Individuals"
+                                    value={value}
+                                    onChange={onChange}
+                                    testID="is-monitoring-marked-checkbox"
+                                />
+                            )}
+                        />
+
+                        <View style={styles.relativeContainer}>
+                            <Controller
+                                control={control}
+                                name="record_gps_in_images"
+                                render={({ field: { value, onChange } }) => (
+                                    <WWCheckbox
+                                        label="Record GPS locations in images"
+                                        value={value}
+                                        onChange={onChange}
+                                        testID="record-gps-checkbox"
+                                    />
+                                )}
+                            />
+                            <IconButton
+                                icon="help-circle-outline"
+                                size={24}
+                                onPress={() => setGpsHelpVisible(true)}
+                                style={[styles.helpIcon, styles.absoluteHelpIcon]}
+                                iconColor={theme.colors.primary}
+                            />
+                        </View>
+
+                        <Controller
+                            control={control}
+                            name="lorawan_required"
+                            render={({ field: { value, onChange } }) => (
+                                <WWCheckbox
+                                    label="LoRaWAN Required"
+                                    value={value}
+                                    onChange={onChange}
+                                    testID="lorawan-required-checkbox"
+                                />
+                            )}
+                        />
+
+                        {showArchiveToggle && (
+                            <Controller
+                                control={control}
+                                name="is_archived"
+                                render={({ field: { value, onChange } }) => (
+                                    <WWCheckbox
+                                        label="Archive project"
+                                        value={value}
+                                        onChange={onChange}
+                                        testID="is-archived-checkbox"
+                                    />
+                                )}
                             />
                         )}
-                    />
-                    <IconButton
-                        icon="help-circle-outline"
-                        size={24}
-                        onPress={() => setGpsHelpVisible(true)}
-                        style={[styles.helpIcon, styles.absoluteHelpIcon]}
-                        iconColor={theme.colors.primary}
-                    />
-                </View>
-
-                <Controller
-                    control={control}
-                    name="lorawan_required"
-                    render={({ field: { value, onChange } }) => (
-                        <WWCheckbox
-                            label="LoRaWAN Required"
-                            value={value}
-                            onChange={onChange}
-                            testID="lorawan-required-checkbox"
-                        />
-                    )}
-                />
-
-                {showArchiveToggle && (
-                    <Controller
-                        control={control}
-                        name="is_archived"
-                        render={({ field: { value, onChange } }) => (
-                            <WWCheckbox
-                                label="Archive project"
-                                value={value}
-                                onChange={onChange}
-                                testID="is-archived-checkbox"
-                            />
-                        )}
-                    />
-                )}
-                </View>
-            </List.Accordion>
+                    </Card.Content>
+                </Card>
+            )}
 
             {/* Help Dialogs */}
             <ProjectSettingsHelpDialogs
@@ -289,11 +303,10 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
     section: {
-        marginBottom: 24,
+        gap: 16,
     },
-    sectionTitle: {
-        fontWeight: "600",
-        marginBottom: 16,
+    cardContent: {
+        gap: 12,
     },
     fieldRow: {
         flexDirection: "row",
@@ -307,15 +320,9 @@ const styles = StyleSheet.create({
         margin: 0,
         marginTop: 8,
     },
-    alignCenter: {
-        alignItems: "center"
-    },
-    accordionContainer: {
+    accordionHeader: {
         backgroundColor: "transparent",
         paddingHorizontal: 0,
-    },
-    accordionChildrenContainer: {
-        marginLeft: 0,
     },
     relativeContainer: {
         position: 'relative'

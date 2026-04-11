@@ -2,14 +2,8 @@
  * NewProjectScreen
  * Form for creating new projects with validation
  *
- * Features:
- * - Multi-section form (Basic Info, Settings, Team Members)
- * - Form validation (name required, 3-100 chars)
- * - Offline support indicator
- * - Loading states
- * - Success navigation to projects list
- * - Error handling with user feedback
- * - Accessible form controls
+ * Design: Matches the StartDeployment screen pattern with Card-based sections,
+ * consistent gap spacing, and WWScreenView for keyboard-aware scrolling.
  */
 
 import { useState, useMemo, useEffect, useCallback } from "react"
@@ -236,7 +230,7 @@ export const NewProjectScreen = () => {
 	}, [currentOrganisation, createProject, navigation])
 
 	return (
-		<WWScreenView scrollable={true}>
+		<WWScreenView style={styles.screenView}>
 			<OfflineIndicator />
 
 			<View style={styles.container}>
@@ -244,7 +238,7 @@ export const NewProjectScreen = () => {
 				<NewProjectBasicInfoSection control={control as any} errors={errors as any} />
 
 				{/* Section: Project Settings */}
-				<NewProjectSettingsSection 
+				<NewProjectSettingsSection
 					control={control as any}
 					samplingDesignOptions={samplingDesignOptions}
 					captureMethodOptions={captureMethodOptions}
@@ -258,16 +252,18 @@ export const NewProjectScreen = () => {
 				/>
 
 				{/* Submit Button */}
-				<WWButton
-					mode="contained"
-					onPress={handleSubmit(onSubmit)}
-					loading={isLoading}
-					disabled={isLoading}
-					style={styles.submitButton}
-					testID="create-project-button"
-				>
-					<Text>Create Project</Text>
-				</WWButton>
+				<View style={styles.footer}>
+					<WWButton
+						mode="contained"
+						onPress={handleSubmit(onSubmit)}
+						loading={isLoading}
+						disabled={isLoading}
+						style={styles.submitButton}
+						testID="create-project-button"
+					>
+						<Text>Create Project</Text>
+					</WWButton>
+				</View>
 
 				{/* Error Snackbar */}
 				<Snackbar
@@ -289,12 +285,18 @@ export const NewProjectScreen = () => {
 }
 
 const styles = StyleSheet.create({
-	container: {
-		padding: 16,
+	screenView: {
+		paddingTop: 0,
 	},
-
-	submitButton: {
-		marginTop: 8,
+	container: {
+		flex: 1,
+		gap: 16,
+	},
+	footer: {
+		marginTop: 24,
 		marginBottom: 32,
+	},
+	submitButton: {
+		paddingVertical: 8,
 	},
 })

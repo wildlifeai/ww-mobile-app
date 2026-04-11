@@ -17,7 +17,7 @@ import { log } from '../../utils/logger'
 
 type FormData = {
 	project: string
-	deploymentName: string
+	locationName: string
 }
 
 export const AddDeployment = () => {
@@ -34,7 +34,7 @@ export const AddDeployment = () => {
 	const { control, handleSubmit, setValue } = useForm<FormData>({
 		defaultValues: {
 			project: "",
-			deploymentName: "",
+			locationName: "",
 		},
 	})
 
@@ -90,18 +90,18 @@ export const AddDeployment = () => {
 
 					<Field
 						control={control}
-						name="deploymentName"
-						label="Deployment name"
+						name="locationName"
+						label="Location name"
 						required
 						rules={{
-							required: "Deployment name is required",
+							required: "Location name is required",
 						}}
 					>
 						{(field) => (
 							<WWTextInput
 								{...field}
 								mode="outlined"
-								placeholder="Enter deployment name"
+								placeholder="Enter location name"
 							/>
 						)}
 					</Field>

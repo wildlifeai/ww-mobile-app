@@ -55,7 +55,6 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
         }
     }, [device, project, setMdSensitivity, startTest])
 
-    const renderIcon = useCallback((props: any) => <WWIcon {...props} source="paw" />, [])
     const renderHelp = useCallback((props: any) => (
         <Button 
             {...props} 
@@ -76,15 +75,10 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
     return (
         <Card style={styles.card}>
             <Card.Title
-                title="Motion Detection Test"
-                left={renderIcon}
+                title="Motion Detection"
                 right={renderHelp}
             />
             <Card.Content>
-                <WWText variant="bodySmall" style={styles.sectionDescription}>
-                    <Text>Verify when the camera detects motion</Text>
-                </WWText>
-
                 <WWButton 
                     mode="outlined"
                     onPress={isTesting ? stopTest : handleStartTest}

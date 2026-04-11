@@ -15,7 +15,7 @@ export const DeviceStatusBadge: React.FC<DeviceStatusBadgeProps> = ({ status }) 
         switch (status) {
             case 'deployed':
                 return {
-                    label: 'Deployed',
+                    label: 'Monitoring',
                     backgroundColor: '#10B981', // Standard success green
                     color: '#FFFFFF',
                 }

@@ -155,7 +155,6 @@ export const useStartDeployment = ({
     const isReconnectingAfterDfu = useRef(false)
 
     const [formState, setFormState] = useState({
-        name: '',
         notes: '',
         cameraHeight: '',
         testImagePath: undefined as string | undefined
@@ -204,10 +203,6 @@ export const useStartDeployment = ({
     // Memoized handlers to prevent infinite loops in child components
     const handleImageCaptured = useCallback((path: string) => {
         setFormState(prev => ({ ...prev, testImagePath: path }))
-    }, [])
-
-    const handleNameChange = useCallback((name: string) => {
-        setFormState(prev => ({ ...prev, name }))
     }, [])
 
     const handleNotesChange = useCallback((notes: string) => {
@@ -484,11 +479,6 @@ export const useStartDeployment = ({
     }, [bleDevice, submitting, navigation, isInitializing, isMonitoring])
 
     const handleStartDeployment = useCallback(async () => {
-        if (!formState.name) {
-            Alert.alert('Missing Information', 'Please enter a deployment name')
-            return
-        }
-
         if (!bleDevice?.connected) {
             Alert.alert(
                 'Device Disconnected',
@@ -558,7 +548,7 @@ export const useStartDeployment = ({
             setFinishProgress(0.3)
 
             const newDeployment = await DeploymentService.createDeployment({
-                name: formState.name,
+                name: locationName || 'Automated Deployment',
                 projectId: project.id,
                 deviceId: deviceId || '',
                 setupBy: user.id,
@@ -644,7 +634,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.name, formState.cameraHeight, formState.notes, bleDevice, project, user, deviceId, startConfigure, addFinishLog, setUtc, batteryLevel, device?.deviceEui, deviceFirmwareVersion, getLorawanMetrics, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total])
+    }, [formState.cameraHeight, formState.notes, bleDevice, project, user, deviceId, startConfigure, addFinishLog, setUtc, batteryLevel, device?.deviceEui, deviceFirmwareVersion, getLorawanMetrics, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)
@@ -844,7 +834,7 @@ export const useStartDeployment = ({
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         isMonitoring, handleMonitorDisconnect,
-        isNavigatingAway, handleImageCaptured, handleNameChange, handleNotesChange, handleProjectChange,
+        isNavigatingAway, handleImageCaptured, handleNotesChange, handleProjectChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
         helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp,
         // Dropdown & Additional Location State

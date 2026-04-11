@@ -11,9 +11,9 @@ import { log, logError } from "../../../utils/logger"
 const getRoleDescription = (role: ProjectRole): string => {
 	switch (role) {
 		case "project_admin":
-			return "Can manage project, members, and deployments"
+			return "Can manage project, members, and monitoring"
 		case "project_member":
-			return "Can create and manage deployments"
+			return "Can create and manage monitoring sessions"
 		default:
 			return ""
 	}

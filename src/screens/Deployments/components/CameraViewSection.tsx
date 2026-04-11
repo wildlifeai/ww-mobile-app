@@ -4,8 +4,7 @@ import { Card, Button, Text, ProgressBar, useTheme } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useCapturePreview } from '../../../hooks/useCapturePreview'
 import { useBle } from '../../../hooks/useBle'
-import { WWIcon } from '../../../components/ui/WWIcon'
-import { WWText } from '../../../components/ui/WWText'
+
 import { WWButton } from '../../../components/ui/WWButton'
 import { logError } from '../../../utils/logger'
 
@@ -35,7 +34,6 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
         }
     })
 
-    const renderLeft = useCallback((props: any) => <WWIcon {...props} source="camera" />, [])
     const renderRight = useCallback((props: any) => (
         <Button
             {...props}
@@ -49,15 +47,10 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
     return (
         <Card style={styles.card}>
             <Card.Title
-                title="Camera View Test"
-                left={renderLeft}
+                title="Camera View"
                 right={renderRight}
             />
             <Card.Content>
-                <WWText variant="bodySmall" style={styles.sectionDescription}>
-                    <Text>Capture a test photo to verify camera positioning</Text>
-                </WWText>
-
                 {capturedImageUri && (
                     <View style={styles.imagePreviewContainer}>
                         <Image

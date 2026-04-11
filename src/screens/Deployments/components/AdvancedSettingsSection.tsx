@@ -5,7 +5,7 @@ import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
 import { WWProgressBar } from '../../../components/ui/WWProgressBar'
 import { WWSelect } from '../../../components/ui/WWSelect'
-import { WWIcon } from '../../../components/ui/WWIcon'
+
 import Firmware from '../../../database/models/Firmware'
 import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
 
@@ -67,19 +67,19 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
     const [expanded, setExpanded] = useState(false)
 
     // Battery Render Helpers
-    const renderBatteryIcon = useCallback((props: any) => <WWIcon {...props} source="battery-charging" />, [])
+
     const renderBatteryHelp = useCallback((props: any) => (
         <Button 
             {...props} 
             icon="help-circle-outline" 
-            onPress={() => onShowHelp('Battery Level', 'Check the device battery level. It must be above 30% for deployment.')}
+            onPress={() => onShowHelp('Battery Level', 'Check the device battery level. It must be above 30% for monitoring.')}
         >
             <Text>Help</Text>
         </Button>
     ), [onShowHelp])
 
     // SD Card Render Helpers
-    const renderSdCardIcon = useCallback((props: any) => <WWIcon {...props} source="sd" />, [])
+
     const renderSdCardHelp = useCallback((props: any) => (
         <Button 
             {...props} 
@@ -91,7 +91,7 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
     ), [onShowHelp])
 
     // Firmware Render Helpers
-    const renderFirmwareIcon = useCallback((props: any) => <WWIcon {...props} source="bluetooth" />, [])
+
     const renderFirmwareHelp = useCallback((props: any) => (
         <Button 
             {...props} 
@@ -106,20 +106,19 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
         <Button 
             {...props} 
             icon="help-circle-outline" 
-            onPress={() => onShowHelp('Location & Camera Settings', 'Site Name: Name of the deployment site.\n\nCamera Height: The height of the camera lens from the ground in centimeters.')}
+            onPress={() => onShowHelp('Location & Camera Settings', 'Site Name: Name of the monitoring site.\n\nCamera Height: The height of the camera lens from the ground in centimeters.')}
         >
             <Text>Help</Text>
         </Button>
     ), [onShowHelp])
 
-    const renderLeftIcon = useCallback((props: any) => <List.Icon {...props} icon="cog" />, [])
+
     const renderRightIcon = useCallback((props: any) => <List.Icon {...props} icon={expanded ? "chevron-up" : "chevron-down"} />, [expanded])
 
     return (
         <View>
             <List.Item
-                title="Advanced Device Settings"
-                left={renderLeftIcon}
+                title="Advanced Settings"
                 right={renderRightIcon}
                 onPress={() => setExpanded(!expanded)}
                 style={styles.accordionHeader}
@@ -184,7 +183,6 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                 <Card style={styles.card}>
                     <Card.Title
                         title="Battery Level"
-                        left={renderBatteryIcon}
                         right={renderBatteryHelp}
                     />
                     <Card.Content>
@@ -193,7 +191,7 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                                 <View style={styles.statusDisplay}>
                                     <WWText variant="bodyLarge"><Text>🔋 {batteryLevel}%</Text></WWText>
                                     <WWText variant="bodySmall" style={styles.statusHint}>
-                                        <Text>{batteryLevel > 30 ? 'Battery level sufficient' : 'Battery level low - charge before deployment'}</Text>
+                                        <Text>{batteryLevel > 30 ? 'Battery level sufficient' : 'Battery level low - charge before monitoring'}</Text>
                                     </WWText>
                                 </View>
                                 <WWButton mode="outlined" onPress={handleBatteryCheck} style={styles.actionButton} disabled={isInitializing || !bleDeviceConnected}>
@@ -212,7 +210,6 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                 <Card style={styles.card}>
                     <Card.Title
                         title="SD Card Status"
-                        left={renderSdCardIcon}
                         right={renderSdCardHelp}
                     />
                     <Card.Content>
@@ -244,7 +241,6 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                 <Card style={styles.card}>
                     <Card.Title
                         title="BLE Firmware"
-                        left={renderFirmwareIcon}
                         right={renderFirmwareHelp}
                     />
                     <Card.Content>
