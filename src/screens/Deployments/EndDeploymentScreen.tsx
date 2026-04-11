@@ -104,6 +104,11 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         DeviceService.getDeviceById(deviceId).then(setDeviceDb)
     }, [deviceId])
 
+    useEffect(() => {
+        const title = deviceDb?.name || storeDevice?.name || 'End Deployment'
+        navigation.setOptions({ title })
+    }, [deviceDb?.name, storeDevice?.name, navigation])
+
 
     // Back button handler: Disconnect BLE before navigating away
     useEffect(() => {
@@ -135,7 +140,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     if (!deployment) {
         return (
             <WWScreenView>
-                <WWText><Text>Loading deployment details...</Text></WWText>
+                <WWText><Text>Loading monitoring session details...</Text></WWText>
             </WWScreenView>
         )
     }
@@ -157,23 +162,32 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 )}
 
                 {/* Deployment Info Section */}
-                <Card mode="contained" style={styles.section}>
+                <Card style={styles.section}>
+                    <Card.Title title="Associated Project" />
                     <Card.Content>
                         <View style={styles.infoRow}>
                             <WWText variant="labelMedium"><Text>Name:</Text></WWText>
                             <WWText variant="bodyLarge"><Text>{deployment.name}</Text></WWText>
                         </View>
                         <View style={styles.infoRow}>
-                            <WWText variant="labelMedium"><Text>Deployment Start:</Text></WWText>
-                            <WWText variant="bodyLarge"><Text>{new Date(deployment.deploymentStart).toLocaleDateString()}</Text></WWText>
+                            <WWText variant="labelMedium"><Text>Monitoring since:</Text></WWText>
+                            <WWText variant="bodyLarge"><Text>
+                                {(() => {
+                                    const d = new Date(deployment.deploymentStart)
+                                    const day = d.getDate().toString().padStart(2, '0')
+                                    const month = (d.getMonth() + 1).toString().padStart(2, '0')
+                                    const year = d.getFullYear().toString().slice(2)
+                                    return `${day}-${month}-${year}`
+                                })()}
+                            </Text></WWText>
                         </View>
                     </Card.Content>
                 </Card>
 
                 {/* Live Activity Log */}
-                <Card mode="contained" style={styles.section}>
+                <Card style={styles.section}>
+                    <Card.Title title="Monitoring Activity" />
                     <Card.Content>
-                        <WWText variant="titleMedium" style={styles.notesTitle}><Text>Live Activity Log</Text></WWText>
                         <View style={[styles.activityLogBox, { backgroundColor: theme.colors.surface }]}>
                             {activityLog.length === 0 ? (
                                 <View style={styles.emptyLogContainer}>
@@ -198,9 +212,9 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 </Card>
 
                 {/* Retrieval Notes Input */}
-                <Card mode="contained" style={styles.section}>
+                <Card style={styles.section}>
+                    <Card.Title title="Notes" />
                     <Card.Content>
-                        <WWText variant="titleMedium" style={styles.notesTitle}><Text>Notes</Text></WWText>
                         <TextInput
                             mode="outlined"
                             placeholder="e.g. SD card full, Battery low, Device damaged..."
@@ -218,12 +232,12 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 <View style={styles.footer}>
                     <WWButton
                         mode="contained"
-                        style={styles.endButton}
+                        style={styles.deployButton}
                         onPress={handleEndDeployment}
                         loading={isEnding}
                         disabled={isEnding}
                     >
-                        <Text>{isEnding ? "Ending..." : "End Deployment"}</Text>
+                        <Text>{isEnding ? "Stopping..." : "Stop monitoring"}</Text>
                     </WWButton>
                 </View>
 
@@ -234,8 +248,8 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                     logs={finishLogs}
                     isComplete={isEndDeploymentSuccess}
                     onDismiss={handleFinishDismiss}
-                    loadingTitle="Ending Deployment"
-                    successTitle="Deployment Ended"
+                    loadingTitle="Ending Monitoring"
+                    successTitle="Monitoring Ended"
                 />
             </View>
         </WWScreenView>
@@ -249,7 +263,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         gap: 16,
-        padding: 16
+        // padding: 16 // Removed to avoid double padding with WWScreenView
     },
     section: { marginBottom: 16 },
     infoRow: { marginBottom: 8 },
@@ -257,8 +271,7 @@ const styles = StyleSheet.create({
         marginTop: 24,
         marginBottom: 32
     },
-    endButton: {
-        backgroundColor: '#D32F2F',
+    deployButton: {
         paddingVertical: 8
     },
     input: {
