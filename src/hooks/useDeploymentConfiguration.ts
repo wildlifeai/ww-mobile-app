@@ -85,6 +85,7 @@ export const useDeploymentConfiguration = () => {
         if (config.captureMethod === 'activity') {
             // Motion detection mode
             log('[DeployConfig] Motion detection mode - interval 1000ms, timeout 30s')
+            updates.push({ index: OP_PARAMETER.MD_SENSITIVITY, value: 1 }) // Ensure MD is on (low sensitivity)
             updates.push({ index: OP_PARAMETER.MD_INTERVAL, value: config.motionInterval || 1000 })
             updates.push({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: 0 })
             updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 1000 })
@@ -94,6 +95,7 @@ export const useDeploymentConfiguration = () => {
             // Timelapse mode
             const interval = config.timelapseInterval || 300
             log(`[DeployConfig] Timelapse mode - interval ${interval}s, timeout 30s`)
+            updates.push({ index: OP_PARAMETER.MD_SENSITIVITY, value: 0 }) // MD off in timelapse-only
             updates.push({ index: OP_PARAMETER.MD_INTERVAL, value: 0 })
             updates.push({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: interval })
             updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 1000 })
@@ -102,6 +104,7 @@ export const useDeploymentConfiguration = () => {
              // Mixed mode (Activity + Timelapse)
              const interval = config.timelapseInterval || 300
              log(`[DeployConfig] Mixed mode - Motion 1000ms + Timelapse ${interval}s`)
+             updates.push({ index: OP_PARAMETER.MD_SENSITIVITY, value: 1 }) // Ensure MD is on (low sensitivity)
              updates.push({ index: OP_PARAMETER.MD_INTERVAL, value: config.motionInterval || 1000 })
              updates.push({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: interval })
              updates.push({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 1000 })

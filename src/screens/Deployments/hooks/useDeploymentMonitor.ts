@@ -20,7 +20,7 @@ interface MonitorStats {
 }
 
 const MAX_LOG_ENTRIES = 200
-const IMAGE_COUNT_POLL_INTERVAL_MS = 10000 // Poll every 10 seconds
+const IMAGE_COUNT_POLL_INTERVAL_MS = 60000 // Poll every 60 seconds — frequent polling wakes AI processor from DPD and resets HM0360 MD
 
 export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
     const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([])
