@@ -14,7 +14,7 @@ interface Props {
 
 const NumericInput = ({ label, value, onChange, min, max }: { label: string; value: number; onChange: (v: number) => void; min: number; max: number }) => {
     const { spacing } = useExtendedTheme()
-    const [localValue, setLocalValue] = useState(value.toString())
+    const [localValue, setLocalValue] = useState(() => value.toString())
 
     // Sync external changes (e.g. preset or reset)
     useEffect(() => {
@@ -174,7 +174,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                     disabled={isApplying || capturePreview.isCapturing}
                     style={{ flex: 1 }}
                 >
-                    Reset
+                    <WWText>Reset</WWText>
                 </Button>
                 <Button 
                     mode="contained" 
@@ -183,7 +183,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                     disabled={isApplying || capturePreview.isCapturing}
                     style={{ flex: 2 }}
                 >
-                    Apply & Capture
+                    <WWText style={{ color: 'white' }}>Apply & Capture</WWText>
                 </Button>
             </View>
 
@@ -251,9 +251,9 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                     <WWText variant="titleMedium" style={{ marginTop: spacing }}>Gallery</WWText>
                     <View style={styles.gallery}>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            {capturedImages.map((info, idx) => (
+                            {capturedImages.map((info) => (
                                 <Surface 
-                                    key={`${info.uri}-${idx}`} 
+                                    key={info.uri} 
                                     style={styles.thumbnailContainer} 
                                     elevation={2}
                                     onTouchEnd={() => handleViewImage(info)}
