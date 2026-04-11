@@ -1,4 +1,5 @@
-
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
 
 # Get current branch
 branch=$(git rev-parse --abbrev-ref HEAD)

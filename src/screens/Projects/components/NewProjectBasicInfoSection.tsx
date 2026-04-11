@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react'
 import { StyleSheet } from 'react-native'
-import { Card, TextInput, Text, Button, useTheme } from 'react-native-paper'
+import { Card, Text, Button, useTheme } from 'react-native-paper'
+import { WWTextInput } from '../../../components/ui/WWTextInput'
 import { Control, Controller, FieldErrors } from 'react-hook-form'
 import { HelpDialog } from '../../../components/ui/HelpDialog'
 
@@ -60,10 +61,10 @@ export const NewProjectBasicInfoSection: React.FC<Props> = ({ control, errors })
                             },
                         }}
                         render={({ field: { value, onChange, onBlur } }) => (
-                            <TextInput
+                            <WWTextInput
                                 label="Project Name"
                                 value={value}
-                                onChangeText={onChange}
+                                onChange={onChange}
                                 onBlur={onBlur}
                                 mode="outlined"
                                 placeholder="Enter project name"
@@ -88,10 +89,10 @@ export const NewProjectBasicInfoSection: React.FC<Props> = ({ control, errors })
                             },
                         }}
                         render={({ field: { value, onChange, onBlur } }) => (
-                            <TextInput
+                            <WWTextInput
                                 label="Description"
                                 value={value}
-                                onChangeText={onChange}
+                                onChange={onChange}
                                 onBlur={onBlur}
                                 mode="outlined"
                                 placeholder="Enter project description"
