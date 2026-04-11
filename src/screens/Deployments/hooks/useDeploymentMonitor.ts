@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { bleCommandManager } from '../../../ble/commandManager'
 import { classifyForMonitor, MonitorEvent } from '../../../ble/messageClassifier'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
+import { useBleCommands } from '../../../hooks/useBleCommands'
+import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
+
 
 export interface ActivityLogEntry extends MonitorEvent {
     id: string
@@ -13,22 +16,56 @@ interface MonitorStats {
     motionCount: number
     timelapseCount: number
     timeActiveMs: number
+    deviceImageCount: number | null  // From OP_PARAMETER.IMAGES_COUNT (firmware-reported total)
 }
 
 const MAX_LOG_ENTRIES = 200
+const IMAGE_COUNT_POLL_INTERVAL_MS = 10000 // Poll every 10 seconds
 
-export const useDeploymentMonitor = (_device: ExtendedPeripheral | null) => {
+export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
     const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([])
     const [stats, setStats] = useState<MonitorStats>({
         photoCount: 0,
         motionCount: 0,
         timelapseCount: 0,
         timeActiveMs: 0,
+        deviceImageCount: null,
     })
 
     const startTimeRef = useRef<number>(Date.now())
+    const { getOperationalParam } = useBleCommands()
 
+    // 1. Poll IMAGES_COUNT from device periodically
+    useEffect(() => {
+        if (!device || !device.connected) return
 
+        let isMounted = true
+
+        const fetchImageCount = async () => {
+            try {
+                const value = await getOperationalParam(device, OP_PARAMETER.IMAGES_COUNT)
+                if (value !== null && isMounted) {
+                    const count = parseInt(value, 10)
+                    if (!isNaN(count)) {
+                        setStats(prev => ({ ...prev, deviceImageCount: count }))
+                    }
+                }
+            } catch {
+                // Silently ignore — device may be busy
+            }
+        }
+
+        // Initial fetch
+        fetchImageCount()
+
+        // Set up polling
+        const intervalId = setInterval(fetchImageCount, IMAGE_COUNT_POLL_INTERVAL_MS)
+
+        return () => {
+            isMounted = false
+            clearInterval(intervalId)
+        }
+    }, [device, device?.connected, getOperationalParam])
 
     // 2. Track time active
     useEffect(() => {

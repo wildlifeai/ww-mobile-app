@@ -1,4 +1,4 @@
-import { View, StyleSheet, ScrollView, Image } from 'react-native'
+import { View, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native'
 import { Surface, Divider, Button, Checkbox, SegmentedButtons, ActivityIndicator, ProgressBar } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
 import { WWTextInput } from '../../../components/ui/WWTextInput'
@@ -12,7 +12,7 @@ interface Props {
     device: ExtendedPeripheral
 }
 
-const NumericInput = ({ label, value, onChange, min, max }: { label: string; value: number; onChange: (v: number) => void; min: number; max: number }) => {
+const NumericInput = ({ label, value, onChange, min, max, disabled }: { label: string; value: number; onChange: (v: number) => void; min: number; max: number; disabled?: boolean }) => {
     const { spacing } = useExtendedTheme()
     const [localValue, setLocalValue] = useState(() => value.toString())
 
@@ -27,6 +27,7 @@ const NumericInput = ({ label, value, onChange, min, max }: { label: string; val
                 label={label}
                 value={localValue}
                 keyboardType="numeric"
+                disabled={disabled}
                 onChange={(t: string) => {
                     setLocalValue(t)
                 }}
@@ -81,6 +82,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                     onChange={(v: number) => updateCameraParam('numPictures', v)}
                     min={1}
                     max={100}
+                    disabled={isApplying || capturePreview.isCapturing}
                 />
                 <WWText variant="bodySmall" style={{ color: colors.onSurfaceVariant, marginTop: -8, marginBottom: 8 }}>
                     Only the last photo is transferred to the app. Use multiple pictures for AE convergence testing.
@@ -92,6 +94,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                     onChange={(v: number) => updateCameraParam('pictureInterval', v)}
                     min={100}
                     max={10000}
+                    disabled={isApplying || capturePreview.isCapturing}
                 />
                 
                 <NumericInput
@@ -100,6 +103,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                     onChange={(v: number) => updateCameraParam('flashDuration', v)}
                     min={0}
                     max={2000}
+                    disabled={isApplying || capturePreview.isCapturing}
                 />
                 
                 <View style={styles.inputGroup}>
@@ -122,6 +126,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                     onChange={(v: number) => updateCameraParam('ledBrightness', v)}
                     min={0}
                     max={100}
+                    disabled={isApplying || capturePreview.isCapturing}
                 />
 
                 <NumericInput
@@ -130,6 +135,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                     onChange={(v: number) => updateCameraParam('modelThreshold', v)}
                     min={0}
                     max={127}
+                    disabled={isApplying || capturePreview.isCapturing}
                 />
 
             </Surface>
@@ -252,14 +258,14 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                     <View style={styles.gallery}>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             {capturedImages.map((info) => (
-                                <Surface 
+                                <TouchableOpacity
                                     key={info.uri} 
                                     style={styles.thumbnailContainer} 
-                                    elevation={2}
-                                    onTouchEnd={() => handleViewImage(info)}
+                                    onPress={() => handleViewImage(info)}
+                                    activeOpacity={0.7}
                                 >
                                     <Image source={{ uri: info.uri }} style={styles.thumbnail} />
-                                </Surface>
+                                </TouchableOpacity>
                             ))}
                         </ScrollView>
                     </View>

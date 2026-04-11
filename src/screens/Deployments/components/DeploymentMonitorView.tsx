@@ -114,6 +114,13 @@ export const DeploymentMonitorView: React.FC<Props> = ({
             <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Timelapse</Text>
           </View>
         )}
+        {stats.deviceImageCount !== null && (
+          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+            <MaterialCommunityIcons name="image-multiple" size={24} color="#4CAF50" />
+            <Text style={[styles.statValue, { color: colors.onSurface }]}>{stats.deviceImageCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Stored</Text>
+          </View>
+        )}
       </View>
 
       <View style={[styles.timeContainer, { backgroundColor: colors.surfaceVariant }]}>

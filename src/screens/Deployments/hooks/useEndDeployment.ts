@@ -10,7 +10,7 @@ interface UseEndDeploymentParams {
     retrievalNotes: string
     navigation: any
     quiesceDevice: (source: string, fast?: boolean, cachedOps?: string[] | null) => Promise<void>
-    setDeploymentIdAsOps: (device: any, id: string | null, cachedOps?: string[] | null) => Promise<void>
+    setDeploymentIdAsString: (device: any, id: string | null) => Promise<void>
     clearGpsLocation: (device: any) => Promise<void>
     runDisconnect: (device: any) => Promise<void>
     getAllOperationalParams: (device: any) => Promise<string[] | null>
@@ -24,7 +24,7 @@ export const useEndDeployment = ({
     retrievalNotes,
     navigation,
     quiesceDevice,
-    setDeploymentIdAsOps,
+    setDeploymentIdAsString,
     clearGpsLocation,
     runDisconnect,
     getAllOperationalParams,
@@ -113,7 +113,7 @@ export const useEndDeployment = ({
                 while (!idCleared && attempts < 3) {
                     try {
                         attempts++
-                        await setDeploymentIdAsOps(storeDevice, null, cachedOps)
+                        await setDeploymentIdAsString(storeDevice, null)
                         log('[EndDeployment] ID cleared')
                         idCleared = true
                         addFinishLog('Configuration cleared')
@@ -187,7 +187,7 @@ export const useEndDeployment = ({
         } finally {
             setIsEnding(false)
         }
-    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsOps, clearGpsLocation, runDisconnect, addFinishLog, isNavigatingAway, getAllOperationalParams])
+    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsString, clearGpsLocation, runDisconnect, addFinishLog, isNavigatingAway, getAllOperationalParams])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)

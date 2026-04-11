@@ -70,7 +70,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     const route = useRoute<EndDeploymentDetailsStepRouteProp>()
     const { deviceId = '', bleDeviceId = '', initPayload } = route.params || {}
     useBleActions()
-    const { runDisconnect, setDeploymentIdAsOps, clearGpsLocation, getAllOperationalParams } = useBleCommands()
+    const { runDisconnect, setDeploymentIdAsString, clearGpsLocation, getAllOperationalParams } = useBleCommands()
 
     // Get full device object for BLE commands
     const devices = useAppSelector(state => state.devices)
@@ -80,8 +80,8 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     // Get current user
     const user = useAppSelector(selectCurrentUser)
 
-    // Live activity log (same feed as monitor screen)
-    const { activityLog } = useDeploymentMonitor(storeDevice)
+    // Live activity log and stats (same feed as monitor screen)
+    const { activityLog, stats: monitorStats } = useDeploymentMonitor(storeDevice)
 
     // Track device in ref for use in intervals/callbacks to avoid stale closures
     const bleDeviceRef = useRef(storeDevice)
@@ -112,7 +112,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         retrievalNotes,
         navigation,
         quiesceDevice,
-        setDeploymentIdAsOps,
+        setDeploymentIdAsString,
         clearGpsLocation,
         runDisconnect,
         getAllOperationalParams,
@@ -213,6 +213,14 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                                 Monitoring for {formatMonitoringDuration(deployment.deploymentStart)}
                             </Text></WWText>
                         </View>
+                        {monitorStats.deviceImageCount !== null && (
+                            <View style={styles.infoRow}>
+                                <MaterialCommunityIcons name="image-multiple" size={20} color={theme.colors.primary} style={{ marginRight: 8 }} />
+                                <WWText variant="bodyLarge"><Text>
+                                    {monitorStats.deviceImageCount} {monitorStats.deviceImageCount === 1 ? 'image' : 'images'} stored on device
+                                </Text></WWText>
+                            </View>
+                        )}
                     </Card.Content>
                 </Card>
 

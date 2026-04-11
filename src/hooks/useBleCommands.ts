@@ -210,50 +210,9 @@ export const useBleCommands = () => {
         await write(peripheral, [[CommandNames.DISABLE_TIMELAPSE, { control: CommandControlTypes.WRITE }]])
     }, [write])
 
-    const setDeploymentIdAsOps = useCallback(
-        async (peripheral: ExtendedPeripheral, id: string | null, cachedOps?: string[] | null) => {
-            log('[BLE CMD] Sending Deployment ID via OPs (20-27). ID:', id)
-
-            let ops: number[]
-            if (!id) {
-                // Clear ID case: Send all zeros
-                ops = [0, 0, 0, 0, 0, 0, 0, 0]
-            } else {
-                // Parse UUID
-                const { parseUuidToOps } = require('../utils/helpers') // Lazy import to avoid cycle if any
-                ops = parseUuidToOps(id)
-            }
-
-            // Use cached ops if provided, otherwise fetch
-            const currentOps = await getOrFetchOperationalParams(peripheral, cachedOps, '[BLE CMD] Deployment ID configuration:')
-
-            // Send 8 commands with strict delays between each
-            for (let i = 0; i < 8; i++) {
-                const opIndex = 20 + i
-                const value = ops[i]
-
-                if (currentOps && currentOps.length > opIndex) {
-                    if (currentOps[opIndex] === value.toString()) {
-                        log(`[BLE CMD] Skipping OP${opIndex} (already set to ${value})`)
-                        continue
-                    }
-                }
-
-                log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
-
-                try {
-                    // Use the optimized setOperationalParam which now performs its own Read-Before-Write check.
-                    // We allow retries here because writing 8 chunks is prone to racing with the device's summary stats (Sleep).
-                    await setOperationalParam(peripheral, opIndex, value.toString())
-                } catch (error) {
-                    logError(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
-                    throw error
-                }
-            }
-            log('[BLE CMD] Deployment ID OPs sent successfully')
-        },
-        [setOperationalParam, getOrFetchOperationalParams] // Changed dependency from 'write' to 'setOperationalParam'
-    )
+    // NOTE: setDeploymentIdAsOps (OP indices 20-27) has been removed.
+    // Firmware no longer uses OP-based deployment ID chunks.
+    // Use setDeploymentIdAsString (AI setdid) exclusively.
 
     const setDeploymentIdAsString = useCallback(
         async (peripheral: ExtendedPeripheral, id: string | null) => {
@@ -282,7 +241,6 @@ export const useBleCommands = () => {
         runDisconnect,
         setUtc,
         getUtc,
-        setDeploymentIdAsOps,
         setDeploymentIdAsString,
         getDeploymentIdAsString,
         // LoRaWAN

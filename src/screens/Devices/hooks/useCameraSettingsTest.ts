@@ -92,7 +92,7 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     //   AEConverged?: Y
     useEffect(() => {
         const messageListener = (msg: string) => {
-            const match = msg.match(/Integration time = (\d+) lines[\s\S]*?Analog gain = (\d+)[\s\S]*?Digital gain = (\d+)[\s\S]*?AE Mean = (\d+)[\s\S]*?AEConverged\?: (Y|N)/i)
+            const match = msg.match(/Integration time\s*=\s*(\d+)\s*lines[\s\S]*?Analog gain\s*=\s*(\d+)[\s\S]*?Digital gain\s*=\s*(\d+)[\s\S]*?AE Mean\s*=\s*(\d+)[\s\S]*?AEConverged\?:\s*(Y|N)/i)
             if (match) {
                 setAeData({
                     integration: match[1],
@@ -133,8 +133,15 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     }, [testModeBits])
 
     const updateCameraParam = useCallback(<K extends keyof CameraTestParams>(key: K, value: CameraTestParams[K]) => {
-        setCameraParams(prev => ({ ...prev, [key]: value }))
-    }, [])
+        setCameraParams(prev => {
+            const next = { ...prev, [key]: value }
+            // Enforce BMP mode constraint (must be even number of pictures)
+            if ((testModeBits & 2) && key === 'numPictures' && next.numPictures % 2 !== 0) {
+                next.numPictures += 1
+            }
+            return next
+        })
+    }, [testModeBits])
 
     const applyAndCapture = useCallback(async () => {
         if (!device) return

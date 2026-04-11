@@ -27,7 +27,7 @@ export const ProjectDevicesScreen = () => {
 
     useLayoutEffect(() => {
         navigation.setOptions({
-            title: "Project Wildlife Watchers",
+            title: `Project ${projectName}`,
             headerTitleAlign: 'center',
             headerBackTitleVisible: false
         })

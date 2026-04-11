@@ -19,44 +19,25 @@ export interface DeploymentConfig {
 }
 
 export const useDeploymentConfiguration = () => {
-    const { setDeploymentIdAsOps, setDeploymentIdAsString, setGpsLocation, setOperationalParam, getOrFetchOperationalParams } = useBleCommands()
+    const { setDeploymentIdAsString, setGpsLocation, setOperationalParam, getOrFetchOperationalParams } = useBleCommands()
 
     /**
-     * Sets deployment ID on device with automatic fallback
-     * - Tries modern single-line approach first (setdid)
-     * - Falls back to OP-based approach (OP20+) for older firmware
+     * Sets deployment ID on device using the modern single-line approach (AI setdid)
+     * 
+     * Note: The legacy OP-based approach (writing UUID chunks to OP indices 20-27) 
+     * has been removed as firmware no longer supports those parameters.
      */
     const setDeploymentId = useCallback(async (
         device: ExtendedPeripheral,
         deploymentId: string,
         location?: { latitude: number; longitude: number; altitude: number },
         recordGpsInImages?: boolean,
-        cachedOps?: string[] | null
+        _cachedOps?: string[] | null
     ): Promise<void> => {
         log('[DeployConfig] Setting deployment ID:', deploymentId)
 
-        let success = false
-
-        try {
-            // Write deployment ID directly via single-line command (newest firmware)
-            await setDeploymentIdAsString(device, deploymentId)
-            log('[DeployConfig] Deployment ID set successfully via single-line command')
-            success = true
-        } catch (error) {
-            logWarn('[DeployConfig] Single-line setdid failed, falling back to OPs:', error)
-        }
-
-        if (!success) {
-            try {
-                // Write deployment ID directly via extended OPs
-                // We assume modern firmware supports this; fallback handles failures
-                await setDeploymentIdAsOps(device, deploymentId, cachedOps)
-                log('[DeployConfig] Deployment ID set successfully via OPs')
-            } catch (opsError) {
-                // Feature not supported or failed
-                logWarn('[DeployConfig] OPs writing failed:', opsError)
-            }
-        }
+        await setDeploymentIdAsString(device, deploymentId)
+        log('[DeployConfig] Deployment ID set successfully via AI setdid')
 
         // Always enforce GPS writing based on privacy setting
         if (recordGpsInImages && location) {
@@ -68,7 +49,7 @@ export const useDeploymentConfiguration = () => {
             await setGpsLocation(device, 0, 0, 0)
             log('[DeployConfig] GPS zeroed out (Privacy mode or missing location)')
         }
-    }, [setDeploymentIdAsOps, setDeploymentIdAsString, setGpsLocation])
+    }, [setDeploymentIdAsString, setGpsLocation])
 
     /**
      * Helper to apply updates sequentially

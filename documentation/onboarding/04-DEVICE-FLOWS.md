@@ -195,7 +195,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 
 ## OP Parameter Optimization (`AI getop -1`)
 
-All three flows use the **bulk parameter fetch** command `AI getop -1` to minimize BLE round-trips. This single command returns all operational parameters (OpParams 0–27) from the AI processor in one response.
+All three flows use the **bulk parameter fetch** command `AI getop -1` to minimize BLE round-trips. This single command returns all operational parameters (OpParams 0–20) from the AI processor in one response.
 
 **Pattern:**
 1. Fetch all params once: `AI getop -1` → `OpParams 1324 6 0 18 ...`

@@ -4,7 +4,6 @@ import {
 	storeDataToStorage,
 	getStorageData,
 	isOurDevice,
-	parseUuidToOps,
 } from "../helpers"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { ExtendedPeripheral } from "../../redux/slices/devicesSlice"
@@ -116,24 +115,6 @@ describe("src/utils/helpers", () => {
 
 		it("should return false for unknown device", () => {
 			expect(isOurDevice("Unknown Device")).toBe(false)
-		})
-	})
-
-	describe("parseUuidToOps", () => {
-		it("should parse valid UUID to ops array", () => {
-			const uuid = "12345678-1234-1234-1234-123456789abc"
-			const result = parseUuidToOps(uuid)
-			expect(result).toHaveLength(8)
-			expect(result[0]).toBe(0x1234)
-			expect(result[7]).toBe(0x9abc)
-		})
-
-		it("should throw error for invalid length", () => {
-			expect(() => parseUuidToOps("too-short")).toThrow()
-		})
-
-		it("should throw error for invalid hex", () => {
-			expect(() => parseUuidToOps("zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz")).toThrow()
 		})
 	})
 })
