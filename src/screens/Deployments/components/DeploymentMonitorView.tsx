@@ -124,7 +124,7 @@ export const DeploymentMonitorView: React.FC<Props> = ({
       </View>
 
       {/* Activity Log */}
-      <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>Live Activity Log</Text>
+      <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>Live Monitoring Log</Text>
       <FlatList
         ref={flatListRef}
         data={activityLog}
@@ -144,7 +144,7 @@ export const DeploymentMonitorView: React.FC<Props> = ({
       {/* Footer */}
       <View style={[styles.footer, { borderTopColor: colors.surfaceVariant, paddingBottom: bottom + 16 }]}>
         <Text style={[styles.footerNote, { color: colors.onSurfaceVariant }]}>
-          The device will continue operating normally after disconnecting.
+          Note: The wildlife watcher will continue monitoring after disconnecting.
         </Text>
         <TouchableOpacity
           style={[styles.disconnectBtn, { borderColor: colors.error }]}

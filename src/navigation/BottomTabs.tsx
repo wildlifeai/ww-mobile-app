@@ -60,7 +60,7 @@ export const BottomTabs = () => {
 			case 'projects':
 				return <Projects />
 			case 'devices':
-				return <DeviceDiscoveryScreen />
+				return <DeviceDiscoveryScreen isActiveTab={index === 0} />
 			default:
 				return null
 		}

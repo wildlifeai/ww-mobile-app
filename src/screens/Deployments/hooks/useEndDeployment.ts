@@ -58,19 +58,19 @@ export const useEndDeployment = ({
                             isNavigatingAway.current = true // Prevent alerts during force-end
                             setIsFinishing(true)
                             setFinishProgress(0.5)
-                            setFinishStep('Force ending...')
+                            setFinishStep('Force stopping...')
                             setFinishLogs(['Device disconnected'])
-                            addFinishLog('WARNING: Ending deployment without device connection')
+                            addFinishLog('WARNING: Stopping monitoring without device connection')
                             
                             try {
                                 const userId = user?.id || null
                                 await DeploymentService.endDeployment(deployment.id, userId, retrievalNotes)
-                                addFinishLog('Deployment ended in database')
+                                addFinishLog('Monitoring stopped in database')
                                 setFinishProgress(1.0)
                                 setIsEndDeploymentSuccess(true)
                             } catch (e) {
                                 setIsFinishing(false)
-                                Alert.alert('Error', 'Failed to force end')
+                                Alert.alert('Error', 'Failed to force stop')
                             } finally {
                                 setIsEnding(false)
                             }
@@ -85,7 +85,7 @@ export const useEndDeployment = ({
         setIsEnding(true)
         setIsFinishing(true)
         setFinishProgress(0)
-        setFinishStep('Starting...')
+        setFinishStep('Stopping...')
         setFinishLogs([])
         setIsEndDeploymentSuccess(false)
 
@@ -137,7 +137,7 @@ export const useEndDeployment = ({
             }
 
             // 2. Update DB
-            addFinishLog('Updating deployment record...')
+            addFinishLog('Updating monitoring record...')
             setFinishStep('Updating record...')
             setFinishProgress(0.3)
             
@@ -178,12 +178,12 @@ export const useEndDeployment = ({
             setFinishStep('Complete')
             setFinishProgress(1.0)
             setIsEndDeploymentSuccess(true)
-            addFinishLog('Deployment ended successfully')
+            addFinishLog('Monitoring stopped successfully')
 
         } catch (error) {
             logError(error)
             setIsFinishing(false)
-            Alert.alert("Error", "Failed to end deployment. Please try again.")
+            Alert.alert("Error", "Failed to stop monitoring. Please try again.")
         } finally {
             setIsEnding(false)
         }

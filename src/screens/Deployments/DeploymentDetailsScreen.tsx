@@ -10,7 +10,6 @@ import database from '../../database'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 
-import { WWIcon } from '../../components/ui/WWIcon'
 
 import { RootStackParamList } from '../../navigation/types'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
@@ -36,7 +35,6 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment, device,
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
     const [menuVisible, setMenuVisible] = React.useState(false)
     const theme = useExtendedTheme()
-    const { colors } = theme
     const styles = useMemo(() => createStyles(theme), [theme])
 
     // Status helpers
@@ -116,66 +114,43 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment, device,
     return (
         <WWScreenView scrollable>
             <View style={styles.container}>
-                {/* Summary Info Card */}
-                <Card mode="outlined" style={styles.summaryCard}>
-                    <Card.Content style={styles.summaryContent}>
-                        {/* Location Name */}
-                        <View style={styles.infoRow}>
-                            <WWIcon source="tag" size={18} color={colors.onSurfaceVariant} />
-                            <View style={styles.infoTextGroup}>
-                                <WWText variant="labelMedium" style={styles.infoLabel}>
-                                    <Text>Location Name</Text>
-                                </WWText>
-                                <WWText variant="bodyLarge" style={styles.infoValue}>
-                                    <Text>{deployment.locationName || 'Unknown'}</Text>
-                                </WWText>
-                            </View>
-                        </View>
+                {/* Location Name */}
+                <Card mode="contained" style={styles.sectionCard}>
+                    <Card.Title title="Location Name" />
+                    <Card.Content>
+                        <WWText variant="bodyLarge">
+                            <Text>{deployment.locationName || 'Unknown'}</Text>
+                        </WWText>
+                    </Card.Content>
+                </Card>
 
-                        <View style={styles.divider} />
+                {/* Project */}
+                <Card mode="contained" style={styles.sectionCard}>
+                    <Card.Title title="Associated Project" />
+                    <Card.Content>
+                        <WWText variant="bodyLarge">
+                            <Text>{project?.name || 'Unknown Project'}</Text>
+                        </WWText>
+                    </Card.Content>
+                </Card>
 
-                        {/* Project */}
-                        <View style={styles.infoRow}>
-                            <WWIcon source="folder" size={18} color={colors.onSurfaceVariant} />
-                            <View style={styles.infoTextGroup}>
-                                <WWText variant="labelMedium" style={styles.infoLabel}>
-                                    <Text>Project</Text>
-                                </WWText>
-                                <WWText variant="bodyLarge" style={styles.infoValue}>
-                                    <Text>{project?.name || 'Unknown Project'}</Text>
-                                </WWText>
-                            </View>
-                        </View>
+                {/* Active for */}
+                <Card mode="contained" style={styles.sectionCard}>
+                    <Card.Title title="Active for" />
+                    <Card.Content>
+                        <WWText variant="bodyLarge">
+                            <Text>{activeDuration}</Text>
+                        </WWText>
+                    </Card.Content>
+                </Card>
 
-                        <View style={styles.divider} />
-
-                        {/* Active for */}
-                        <View style={styles.infoRow}>
-                            <WWIcon source="clock-outline" size={18} color={colors.onSurfaceVariant} />
-                            <View style={styles.infoTextGroup}>
-                                <WWText variant="labelMedium" style={styles.infoLabel}>
-                                    <Text>Active for</Text>
-                                </WWText>
-                                <WWText variant="bodyLarge" style={styles.infoValue}>
-                                    <Text>{activeDuration}</Text>
-                                </WWText>
-                            </View>
-                        </View>
-
-                        <View style={styles.divider} />
-
-                        {/* Deployed by */}
-                        <View style={styles.infoRow}>
-                            <WWIcon source="account" size={18} color={colors.onSurfaceVariant} />
-                            <View style={styles.infoTextGroup}>
-                                <WWText variant="labelMedium" style={styles.infoLabel}>
-                                    <Text>Started by</Text>
-                                </WWText>
-                                <WWText variant="bodyLarge" style={styles.infoValue}>
-                                    <Text>{deployedByName}</Text>
-                                </WWText>
-                            </View>
-                        </View>
+                {/* Deployed by */}
+                <Card mode="contained" style={styles.sectionCard}>
+                    <Card.Title title="Started by" />
+                    <Card.Content>
+                        <WWText variant="bodyLarge">
+                            <Text>{deployedByName}</Text>
+                        </WWText>
                     </Card.Content>
                 </Card>
             </View>
@@ -187,12 +162,8 @@ const createStyles = (theme: any) => StyleSheet.create({
     container: {
         padding: theme.spacing * 1.6,
     },
-    summaryCard: {
+    sectionCard: {
         marginBottom: 16,
-        backgroundColor: 'transparent',
-    },
-    summaryContent: {
-        paddingVertical: 8,
     },
     infoRow: {
         flexDirection: 'row',

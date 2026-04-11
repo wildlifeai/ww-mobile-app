@@ -298,6 +298,7 @@ const styles = StyleSheet.create({
     featureIconsRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
+        justifyContent: 'center',
         gap: 16,
         marginTop: 4,
     },

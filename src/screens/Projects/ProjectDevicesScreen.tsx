@@ -27,16 +27,7 @@ export const ProjectDevicesScreen = () => {
 
     useLayoutEffect(() => {
         navigation.setOptions({
-            headerTitle: () => (
-                <View style={{ alignItems: 'center' }}>
-                    <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
-                        {projectName}
-                    </Text>
-                    <Text variant="bodySmall" style={{ marginTop: -2, color: theme.colors.onSurfaceVariant }}>
-                        Wildlife Watchers
-                    </Text>
-                </View>
-            ),
+            title: "Project Wildlife Watchers",
             headerTitleAlign: 'center',
             headerBackTitleVisible: false
         })

@@ -8,7 +8,11 @@ import { useAppDrawer } from '../../components/AppDrawer'
 import { useDeviceDiscovery } from './hooks/useDeviceDiscovery'
 import { ScannerRoutingDialog } from './components/ScannerRoutingDialog'
 
-export const DeviceDiscoveryScreen = () => {
+interface Props {
+    isActiveTab?: boolean
+}
+
+export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
     const theme = useTheme()
     const { setIsOpen, isOpen } = useAppDrawer()
 
@@ -23,7 +27,7 @@ export const DeviceDiscoveryScreen = () => {
         routingIsProcessing,
         handleRoutingCreateProject,
         handleRoutingDismiss,
-    } = useDeviceDiscovery({ isDrawerOpen: isOpen })
+    } = useDeviceDiscovery({ isDrawerOpen: isOpen, isActiveTab })
 
 
 

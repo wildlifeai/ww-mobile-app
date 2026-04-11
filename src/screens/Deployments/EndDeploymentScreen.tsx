@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, StyleSheet, ScrollView } from 'react-native'
+import { View, StyleSheet, ScrollView, Alert } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
@@ -26,6 +26,34 @@ import { useEndDeployment } from './hooks/useEndDeployment'
 
 import { useDeploymentMonitor, ActivityLogEntry } from './hooks/useDeploymentMonitor'
 
+const formatMonitoringDuration = (startValue: Date | string | number) => {
+    const start = startValue instanceof Date ? startValue.getTime() : new Date(startValue).getTime()
+    const diffInSeconds = Math.max(0, Math.floor((Date.now() - start) / 1000))
+    
+    if (diffInSeconds < 60) {
+        return `${diffInSeconds} ${diffInSeconds === 1 ? 'second' : 'seconds'}`
+    }
+    const minutes = Math.floor(diffInSeconds / 60)
+    if (minutes < 60) {
+        return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`
+    }
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) {
+        const remMin = minutes % 60
+        if (remMin === 0) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
+        return `${hours} ${hours === 1 ? 'hour' : 'hours'} and ${remMin} ${remMin === 1 ? 'minute' : 'minutes'}`
+    }
+    const days = Math.floor(hours / 24)
+    if (days < 30) {
+        const remHours = hours % 24
+        if (remHours === 0) return `${days} ${days === 1 ? 'day' : 'days'}`
+        return `${days} ${days === 1 ? 'day' : 'days'} and ${remHours} ${remHours === 1 ? 'hour' : 'hours'}`
+    }
+    const months = Math.floor(days / 30)
+    const remDays = days % 30
+    if (remDays === 0) return `${months} ${months === 1 ? 'month' : 'months'}`
+    return `${months} ${months === 1 ? 'month' : 'months'} and ${remDays} ${remDays === 1 ? 'day' : 'days'}`
+}
 
 type EndDeploymentDetailsStepRouteProp = RouteProp<RootStackParamList, 'EndDeploymentDetailsStep'>
 
@@ -113,25 +141,40 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     // Back button handler: Disconnect BLE before navigating away
     useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', async (e) => {
-            if (isNavigatingAway.current || isEnding) return // Already handled
+            if (isNavigatingAway.current || isEnding || isEndDeploymentSuccess) return // Already handled
 
             // Prevent immediate navigation
             e.preventDefault()
-            
-            // Disconnect device
-            const currentDevice = bleDeviceRef.current
-            if (currentDevice?.connected) {
-                log('[EndDeployment] Back button pressed - disconnecting device...')
-                isNavigatingAway.current = true
-                await runDisconnect(currentDevice)
-            }
-            
-            // Now allow navigation
-            navigation.dispatch(e.data.action)
+            Alert.alert(
+                "Wildlife Watcher Monitoring",
+                "The wildlife watcher will keep monitoring for animals in the background.",
+                [
+                    {
+                        text: "Cancel",
+                        style: "cancel"
+                    },
+                    {
+                        text: "Understood",
+                        style: "default",
+                        onPress: async () => {
+                            // Disconnect device
+                            const currentDevice = bleDeviceRef.current
+                            if (currentDevice?.connected) {
+                                log('[EndDeployment] Back button pressed - disconnecting device...')
+                                isNavigatingAway.current = true
+                                await runDisconnect(currentDevice)
+                            }
+                            
+                            // Now allow navigation
+                            navigation.dispatch(e.data.action)
+                        }
+                    }
+                ]
+            )
         })
 
         return unsubscribe
-    }, [navigation, isEnding, runDisconnect])
+    }, [navigation, isEnding, isEndDeploymentSuccess, runDisconnect])
 
 
 
@@ -163,19 +206,11 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
                 {/* Deployment Info Section */}
                 <Card style={styles.section}>
-                    <Card.Title title="Associated Project" />
                     <Card.Content>
 
                         <View style={styles.infoRow}>
-                            <WWText variant="labelMedium"><Text>Monitoring since:</Text></WWText>
                             <WWText variant="bodyLarge"><Text>
-                                {(() => {
-                                    const d = new Date(deployment.deploymentStart)
-                                    const day = d.getDate().toString().padStart(2, '0')
-                                    const month = (d.getMonth() + 1).toString().padStart(2, '0')
-                                    const year = d.getFullYear().toString().slice(2)
-                                    return `${day}-${month}-${year}`
-                                })()}
+                                Monitoring for {formatMonitoringDuration(deployment.deploymentStart)}
                             </Text></WWText>
                         </View>
                     </Card.Content>
@@ -234,7 +269,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                         loading={isEnding}
                         disabled={isEnding}
                     >
-                        <Text>{isEnding ? "Stopping..." : "Stop monitoring"}</Text>
+                        <Text>{isEnding ? "Stopping..." : "Stop Monitoring"}</Text>
                     </WWButton>
                 </View>
 
@@ -245,8 +280,8 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                     logs={finishLogs}
                     isComplete={isEndDeploymentSuccess}
                     onDismiss={handleFinishDismiss}
-                    loadingTitle="Ending Monitoring"
-                    successTitle="Monitoring Ended"
+                    loadingTitle="Stopping"
+                    successTitle="Stopped"
                 />
             </View>
         </WWScreenView>

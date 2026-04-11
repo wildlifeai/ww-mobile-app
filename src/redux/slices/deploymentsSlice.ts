@@ -102,8 +102,6 @@ const initialState: DeploymentsState = {
 // Helper function to validate deployment data
 const validateDeployment = (deployment: Deployment): string | null => {
 	if (!deployment.id) return "Deployment ID is required"
-	if (!deployment.name || deployment.name.trim() === "")
-		return "Deployment name is required"
 	if (!deployment.project_id) return "Project ID is required"
 	if (!deployment.organisation_id) return "Organisation ID is required"
 	if (!deployment.created_by) return "Creator ID is required"

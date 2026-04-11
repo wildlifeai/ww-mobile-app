@@ -12,7 +12,7 @@
  * - Only project admins can add/remove/change roles
  */
 
-import { useEffect, useCallback, useMemo, useReducer } from "react"
+import { useEffect, useCallback, useMemo, useReducer, useState } from "react"
 import {
 	View,
 	ScrollView,
@@ -25,8 +25,11 @@ import {
 	Button,
 	ActivityIndicator,
 	useTheme,
+	SegmentedButtons,
+	Card,
 } from "react-native-paper"
 import { useRoute, RouteProp } from "@react-navigation/native"
+import { WWTextInput } from "../../components/ui/WWTextInput"
 
 // UI Helper Functions
 export const getRoleBadgeColor = (role: ProjectRole): string => {
@@ -69,7 +72,6 @@ import type ProjectInvitation from "../../database/models/ProjectInvitation"
 import { log, logError } from '../../utils/logger'
 import { UserProfile } from "../../types/UserProfile"
 import { getDisplayName } from "../../utils/userUtils"
-import { InviteMemberModal } from "./components/InviteMemberModal"
 import { ChangeRoleDialog } from "./components/ChangeRoleDialog"
 import { RemoveMemberDialog } from "./components/RemoveMemberDialog"
 import { MemberListItem } from "./components/MemberListItem"
@@ -87,7 +89,7 @@ interface MembersState {
 	members: ProjectMember[]
 	loading: boolean
 	refreshing: boolean
-	dialogState: { type: 'none' | 'add' | 'role' | 'remove', member?: ProjectMember }
+	dialogState: { type: 'none' | 'role' | 'remove', member?: ProjectMember }
 	pendingInvitations: ProjectInvitation[]
 	menuVisible: { [key: string]: boolean }
 }
@@ -120,6 +122,11 @@ export const ProjectMembersScreen = () => {
 	})
 
 	const { members, loading, refreshing, dialogState, pendingInvitations, menuVisible } = state
+
+	// Inline Invite State
+	const [inviteEmail, setInviteEmail] = useState("")
+	const [inviteRole, setInviteRole] = useState<ProjectRole>("project_member")
+	const [inviteLoading, setInviteLoading] = useState(false)
 
 	// Permission checks
 	const currentUserProjectRole = members.find((m) => m.id === user?.id)?.role
@@ -193,6 +200,38 @@ export const ProjectMembersScreen = () => {
 			dispatch({ loading: false })
 		}
 	}, [projectId, user])
+
+	const handleInviteMember = useCallback(async () => {
+		if (!inviteEmail.trim()) {
+			Alert.alert("Error", "Please enter an email address")
+			return
+		}
+		if (!user) {
+			Alert.alert("Error", "User authentication required")
+			return
+		}
+
+		setInviteLoading(true)
+		try {
+			log(`📧 Inviting ${inviteEmail}...`)
+			await InvitationService.sendInvitation(
+				projectId!,
+				inviteEmail.trim(),
+				inviteRole as "project_admin" | "project_member"
+			)
+			Alert.alert("Success", "Invitation sent successfully")
+			setInviteEmail("")
+			setInviteRole("project_member")
+			dispatch({ refreshing: true })
+			await loadMembers()
+			dispatch({ refreshing: false })
+		} catch (err: any) {
+			logError("❌ Error sending invitation:", err)
+			Alert.alert("Error", err.message || "Failed to send invitation")
+		} finally {
+			setInviteLoading(false)
+		}
+	}, [inviteEmail, user, projectId, inviteRole, loadMembers])
 
 	// Load data
 	useEffect(() => {
@@ -282,18 +321,48 @@ export const ProjectMembersScreen = () => {
 				</Text>
 			</View>
 
-			{/* Add Member Button (admin only) */}
+			{/* Inline Add Member (admin only) */}
 			{canManageMembers && (
-				<View style={styles.actionButtonContainer}>
-					<Button
-						mode="contained"
-						icon="account-plus"
-						onPress={() => dispatch({ dialogState: { type: 'add' } })}
-						style={styles.addButton}
-					>
-						<Text>Add Member</Text>
-					</Button>
-				</View>
+				<Card style={styles.inviteCard} mode="contained">
+					<Card.Title title="Invite Member" />
+					<Card.Content>
+						<Text variant="bodyMedium" style={styles.inviteDesc}>
+							Enter the email address of the user you want to invite to this project.
+						</Text>
+						<WWTextInput
+							label="Email Address"
+							value={inviteEmail}
+							onChange={setInviteEmail}
+							keyboardType="email-address"
+							autoCapitalize="none"
+							autoCorrect={false}
+							style={styles.inviteInput}
+						/>
+						<Text variant="titleSmall" style={styles.roleLabel}>Role:</Text>
+						<SegmentedButtons
+							value={inviteRole}
+							onValueChange={(value) => setInviteRole(value as ProjectRole)}
+							buttons={[
+								{
+									value: "project_member", label: "Member", icon: "account",
+								},
+								{
+									value: "project_admin", label: "Admin", icon: "shield-account",
+								},
+							]}
+							style={styles.segmentedButtons}
+						/>
+						<Button
+							onPress={handleInviteMember}
+							disabled={!inviteEmail.trim() || inviteLoading}
+							mode="contained"
+							style={styles.sendInviteButton}
+							loading={inviteLoading}
+						>
+							<Text>Send Invite</Text>
+						</Button>
+					</Card.Content>
+				</Card>
 			)}
 
 			{/* Pending Invitations List (Admin Only) */}
@@ -336,14 +405,6 @@ export const ProjectMembersScreen = () => {
 					)
 				})}
 			</ScrollView>
-
-			<InviteMemberModal
-				projectId={projectId!}
-				visible={dialogState.type === 'add'}
-				onDismiss={() => dispatch({ dialogState: { type: 'none' } })}
-				onSuccess={handleRefresh}
-				user={user}
-			/>
 
 			<ChangeRoleDialog
 				projectId={projectId!}
@@ -402,6 +463,25 @@ const styles = StyleSheet.create({
 	memberRow: {
 		flexDirection: "row",
 		alignItems: "center",
+	},
+	inviteCard: {
+		marginHorizontal: 16,
+		marginBottom: 16,
+	},
+	inviteDesc: {
+		marginBottom: 16,
+	},
+	inviteInput: {
+		marginBottom: 16,
+	},
+	roleLabel: {
+		marginBottom: 8,
+	},
+	segmentedButtons: {
+		marginBottom: 16,
+	},
+	sendInviteButton: {
+		marginTop: 8,
 	},
 	memberInfo: {
 		flex: 1,
@@ -514,11 +594,6 @@ const styles = StyleSheet.create({
 		paddingTop: 16,
 		paddingBottom: 12,
 	},
-	roleLabel: {
-		fontWeight: "600",
-		marginBottom: 12,
-	},
-	segmentedButtons: {},
 	searchContainer: {
 		paddingHorizontal: 16,
 		paddingVertical: 8,

@@ -301,10 +301,24 @@ jest.mock("react-native-paper", () => ({
     useTheme: () => ({ colors: {} }),
     Menu: Object.assign(({ children }: { children: any }) => children, { Item: "Menu.Item" }),
     RadioButton: Object.assign("RadioButton", { Group: "RadioButton.Group", Item: "RadioButton.Item" }),
-    List: Object.assign("List", { Section: "List.Section", Subheader: "List.Subheader", Item: "List.Item", Icon: "List.Icon", Accordion: "List.Accordion" }),
+    List: Object.assign("List", { 
+        Section: "List.Section", 
+        Subheader: "List.Subheader", 
+        Item: (props: any) => {
+            const React = require("react");
+            const { Text, TouchableOpacity } = require("react-native");
+            return React.createElement(TouchableOpacity, { 
+                onPress: props.onPress,
+                testID: props.testID
+            }, React.createElement(Text, null, props.title), props.children);
+        }, 
+        Icon: "List.Icon", 
+        Accordion: "List.Accordion" 
+    }),
     Divider: "Divider",
     Portal: Object.assign(({ children }: { children: any }) => children, { Host: "Portal.Host" }),
     Dialog: Object.assign(({ children }: { children: any }) => children, { Title: "Dialog.Title", Content: "Dialog.Content", Actions: "Dialog.Actions", ScrollArea: "Dialog.ScrollArea" }),
+    Card: Object.assign(({ children }: { children: any }) => children, { Title: "Card.Title", Content: ({ children }: { children: any }) => children, Actions: ({ children }: { children: any }) => children }),
     Paragraph: "Paragraph",
     Snackbar: "Snackbar",
     TouchableRipple: ({ children }: { children: any }) => children,

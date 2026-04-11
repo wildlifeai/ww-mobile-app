@@ -9,7 +9,7 @@ All device workflows share the same BLE initialization (`useBleInitialization`) 
 ## Part 1: Scanner Routing (Automated Device Association)
 
 **Components:** `DeviceDiscoveryScreen.tsx`, `ScannerRoutingDialog.tsx`, `useDeviceDiscovery.ts`
-**Entry:** Scanner tab (default landing page — auto-scans immediately)
+**Entry:** Scanner tab (default landing page — auto-scans only when the scanner tab is active via `isActiveTab` to prevent background BLE connections)
 
 > [!IMPORTANT]
 > The old `PrepareAndTestScreen` has been **removed**. Device configuration and metrics snapshots are captured directly when a user starts a deployment via the `ScannerRoutingDialog`.
@@ -141,7 +141,7 @@ Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers
 ## Part 3: Ending a Deployment
 
 **Screen:** `EndDeploymentScreen.tsx` (`EndDeploymentDetailsStep`)
-**Entry:** Maps → tap deployed device → "End Deployment", or Devices list, or Deployment details
+**Entry:** Maps → tap deployed device → "Stop Monitoring", or Devices list, or Deployment details
 
 ### Flow
 
@@ -153,7 +153,7 @@ flowchart TD
     
     D --> E["BLE Initialization (shared hook)"]
     E --> F["Show Deployment Info + Retrieval Notes"]
-    F --> G{"Tap 'End Deployment'"}
+    F --> G{"Tap 'Stop Monitoring'"}
     G --> H{"Device connected?"}
     H -- No --> I["Offer 'Force End (DB Only)'"]
     H -- Yes --> J["Clear Deployment ID"]
@@ -186,7 +186,7 @@ A single `AI getop -1` bulk fetch is performed before Step 1, and the cached res
 ### Force End (Disconnected Device)
 
 If the device is not connected, the user can "Force End (Database Only)":
-- Updates the deployment record without BLE commands
+- Updates the monitoring record without BLE commands
 - Device must be manually reset later (e.g. via Engineer Console)
 
 **Deployment Status IDs:** `1 = Deployed (Active)`, `2 = Recovery (Ended)`, `3 = Failed`
@@ -285,5 +285,5 @@ They are accessed directly via the **Engineer Console** (`EngineerConsoleScreen.
 > [!NOTE]
 > For multi-picture captures, the firmware uses the initial frames to stabilize the AE/AWB algorithms. Only the final frame in the sequence is currently transferred to the app for preview.
 
-*Last Updated: April 04, 2026*
+*Last Updated: April 11, 2026*
 
