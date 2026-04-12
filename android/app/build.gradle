@@ -96,6 +96,11 @@ android {
         versionName "0.0.41"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+
+        // Resolve ${GOOGLE_MAPS_API_KEY_ANDROID} placeholder in AndroidManifest.xml
+        manifestPlaceholders = [
+            GOOGLE_MAPS_API_KEY_ANDROID: System.getenv("GOOGLE_MAPS_API_KEY_ANDROID") ?: ""
+        ]
     }
     signingConfigs {
         debug {
