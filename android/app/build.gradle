@@ -84,6 +84,7 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 android {
     ndkVersion rootProject.ext.ndkVersion
 
+    buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace 'com.wildlife.wildlifewatcher'
@@ -92,26 +93,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "0.0.38"
-
-        def googleMapsApiKey = System.getenv("GOOGLE_MAPS_API_KEY_ANDROID")
-        if (!googleMapsApiKey) {
-            try {
-                def envFile = file("../../.env.development")
-                if (!envFile.exists()) {
-                    envFile = file("../../.env.local")
-                }
-                if (envFile.exists()) {
-                    envFile.eachLine { line ->
-                        if (line.startsWith("GOOGLE_MAPS_API_KEY_ANDROID=")) {
-                            googleMapsApiKey = line.substring("GOOGLE_MAPS_API_KEY_ANDROID=".length()).trim()
-                        }
-                    }
-                }
-            } catch (Exception e) {}
-        }
-        
-        manifestPlaceholders = [GOOGLE_MAPS_API_KEY_ANDROID: googleMapsApiKey ?: ""]
+        versionName "0.0.41"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
