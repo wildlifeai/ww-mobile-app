@@ -107,6 +107,20 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
         })
     }, [])
 
+    /**
+     * WORKAROUND: Timelapse-based capture for flash LED testing.
+     *
+     * The Himax firmware has a bug where the HM0360 strobe mode (0x03) is only
+     * configured in the MD sleep preparation path (before DPD), but NOT in the
+     * IMAGE task's manual `capture` command handler. This means `AI capture`
+     * commands never trigger the flash LED.
+     *
+     * Workaround: Instead of `AI capture`, we set a short timelapse interval (2s)
+     * and let the device enter DPD normally (which DOES configure the strobe).
+     * The device auto-wakes from the timelapse timer and captures with flash.
+     *
+     * TODO: Revert to direct `AI capture` once firmware is fixed.
+     */
     const applyAndCapture = useCallback(async () => {
         if (!device) return
         setIsApplying(true)
@@ -121,26 +135,72 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             // Batch write (allow 1 retry per command for transient sleep events)
             await write(device, ops, { maxRetries: 1 })
             
-            // 2. Wait for device to enter DPD (Sleep) so the new OPs are committed.
-            //    Without this, the capture flow may wake the device before the flash
-            //    parameters are stored, causing them to be ignored by the camera hardware.
+            // 2. Wait for device to enter DPD so flash OPs are committed to CONFIG.TXT
             try {
                 await bleCommandManager.waitForMessage(/^Sleep/i, 10000)
             } catch {
                 // Timeout – device may already be sleeping; proceed anyway
             }
             
-            // Small buffer to let DPD fully settle
             await new Promise(res => setTimeout(res, 500))
 
-            // 3. Trigger capture – startCapture will enable the camera (setop 10 1),
-            //    wait for another DPD cycle, then issue 'AI capture 1 1000'.
-            //    Uses 1 image with a 1000ms interval to ensure reliable SD card flush.
-            //    The flash OPs are now safely persisted from step 2.
-            await capturePreview.startCapture(1, 1000)
+            // 3. WORKAROUND: Set short timelapse (2s) + disable MD + enable camera.
+            //    When the device enters DPD after these commands, it WILL configure
+            //    the HM0360 strobe mode (0x03), enabling the flash LED.
+            //    The device then auto-wakes from the timelapse timer after ~2s.
+            capturePreview.clearImage()
+            
+            const captureOps = [
+                `AI setop ${OP_PARAMETER.TIMELAPSE_INTERVAL} 2`,   // 2-second timelapse
+                `AI setop ${OP_PARAMETER.MD_INTERVAL} 0`,          // Disable motion detection
+                `AI setop ${OP_PARAMETER.CAMERA_ENABLED} 1`,       // Enable camera (always last)
+            ]
+            await write(device, captureOps, { maxRetries: 1 })
+
+            // 4. Wait for DPD — this is where the strobe gets configured
+            try {
+                await bleCommandManager.waitForMessage(/^Sleep/i, 15000)
+            } catch {
+                // Timeout — proceed anyway
+            }
+            
+            // 5. Device will auto-wake from timelapse in ~2s and capture WITH flash.
+            //    Listen for the "Captured" message.
+            try {
+                await bleCommandManager.waitForMessage(/Captured/i, 30000)
+            } catch {
+                logError('[CameraSettingsTest] Timeout waiting for timelapse capture')
+                throw new Error('Capture timed out — device did not confirm image capture')
+            }
+            
+            // 6. Download the captured image
+            await write(device, ['AI txfile .'], { maxRetries: 1 })
+
+            // 7. Cleanup: disable camera and reset timelapse to prevent further triggers.
+            //    Wait for device to finish sending the image first.
+            try {
+                await bleCommandManager.waitForMessage(/Finished sending/i, 30000)
+            } catch {
+                // Timeout — still try to clean up
+            }
+            
+            await new Promise(res => setTimeout(res, 500))
+            
+            const cleanupOps = [
+                `AI setop ${OP_PARAMETER.CAMERA_ENABLED} 0`,       // Disable camera
+                `AI setop ${OP_PARAMETER.TIMELAPSE_INTERVAL} 0`,   // Reset timelapse
+            ]
+            await write(device, cleanupOps, { maxRetries: 1 })
 
         } catch (e) {
             logError('[CameraSettingsTest] Error applying params or capturing:', e)
+            // Best-effort cleanup on error
+            try {
+                await write(device, [
+                    `AI setop ${OP_PARAMETER.CAMERA_ENABLED} 0`,
+                    `AI setop ${OP_PARAMETER.TIMELAPSE_INTERVAL} 0`,
+                ], { maxRetries: 0 })
+            } catch { /* ignore cleanup errors */ }
         } finally {
             setIsApplying(false)
         }
