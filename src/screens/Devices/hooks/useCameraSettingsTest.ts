@@ -111,20 +111,31 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
         if (!device) return
         setIsApplying(true)
         try {
-            // Write all parameters first
+            // 1. Write flash parameters to device
             const ops = [
                 `AI setop ${OP_PARAMETER.LED_BRIGHTNESS} ${cameraParams.ledBrightness}`,
                 `AI setop ${OP_PARAMETER.FLASH_DURATION} ${cameraParams.flashDuration}`,
                 `AI setop ${OP_PARAMETER.FLASH_LED} ${cameraParams.flashLed}`,
             ]
             
-            // We batch write these to the device (allow 1 retry per command for transient sleep events)
+            // Batch write (allow 1 retry per command for transient sleep events)
             await write(device, ops, { maxRetries: 1 })
             
-            // Wait a little bit just in case
+            // 2. Wait for device to enter DPD (Sleep) so the new OPs are committed.
+            //    Without this, the capture flow may wake the device before the flash
+            //    parameters are stored, causing them to be ignored by the camera hardware.
+            try {
+                await bleCommandManager.waitForMessage(/^Sleep/i, 10000)
+            } catch {
+                // Timeout – device may already be sleeping; proceed anyway
+            }
+            
+            // Small buffer to let DPD fully settle
             await new Promise(res => setTimeout(res, 500))
 
-            // Trigger Capture with dynamic settings
+            // 3. Trigger capture – startCapture will enable the camera (setop 10 1),
+            //    wait for another DPD cycle, then issue 'AI capture 1 1'.
+            //    The flash OPs are now safely persisted from step 2.
             await capturePreview.startCapture(1, 1)
 
         } catch (e) {
