@@ -480,7 +480,7 @@ stateDiagram-v2
 **Key design decisions:**
 - Uses `useRef` for `device`, `write`, and `timer` to avoid stale closures in the 58s callback
 - Listens via `bleCommandManager.addMessageListener()` — reacts to **all** raw messages, not just specific types
-- The heartbeat command (`AI selftest`) produces a response, which itself resets the timer — creating a self-sustaining keep-alive cycle
+- The heartbeat command (`get heartbeat`) produces a response, which itself resets the timer — creating a self-sustaining keep-alive cycle
 - Effect only re-registers when `device?.connected` changes, not on every Redux state update
 
 **Mounted in:** `ListenToBleEngineProvider` — active whenever any device is connected.

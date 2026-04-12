@@ -277,15 +277,17 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   const op19Match = content.match(/^Op(?:Param)?(?:\s+|\[)19\]?\s*=\s*(\d+)/i)
   if (op19Match) return { category: 'info', label: `${op19Match[1]} images stored`, icon: 'image-multiple' }
 
+  // --- HEARTBEAT EVENT ---
+  if (/^heartbeat is\s/i.test(content)) return { category: 'selftest_ok', label: 'No motion in last 50 seconds', icon: 'check-circle' }
+
   // --- SELF-TEST EVENTS ---
-  if (/^Error bits = 0x0000/i.test(content)) return { category: 'selftest_ok', label: 'No motion in last 50 seconds', icon: 'check-circle' }
-  if (/^Error bits = 0x/i.test(content)) return { category: 'selftest_warn', label: 'Self-test warning', icon: 'alert', details: content }
+  if (/^Error bits = 0x/i.test(content) && !/^Error bits = 0x0000/i.test(content)) return { category: 'selftest_warn', label: 'Self-test warning', icon: 'alert', details: content }
 
   // --- FILTER OUT KNOWN NOISE ---
   const ignoredPatterns = [
     /^Retrying transmission/i, /^RTC set to/i, /^UTC is:/i, /^System time set successfully/i, /^Device GPS set/i, /^Location is:/i,
-    /^heartbeat is/i, /^AI processor is in DPD/i, /^AI processor not responding/i, /^Disconnecting/i, /^Failed to join/i,
-    /^Sleep/i, /^(Wake|Waking AI processor|AI processor is awake)/i,
+    /^AI processor is in DPD/i, /^AI processor not responding/i, /^Disconnecting/i, /^Failed to join/i,
+    /^Sleep/i, /^(Wake|Waking AI processor|AI processor is awake)/i, /^Error bits = 0x0000/i,
     // Command echoes
     /^setutc\s/i, /^AI setop\s/i, /^setgps\s/i, /^AI info/i, /^ver/i, /^battery/i, /^get heartbeat/i, /^flash[rgb]\s/i, /^selftest/i, /^status/i, /^getutc/i,
     // Debug
