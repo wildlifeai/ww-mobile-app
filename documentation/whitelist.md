@@ -21,9 +21,9 @@ The main interface revolves exclusively around 3 horizontal modes:
 *   **User/Profile**: `Notifications`, `Profile`, `Settings`.
 *   **Project Context**: `NewProjectScreen`, `ProjectDetailsScreen`, `EditProjectScreen`, `ProjectMembersScreen`, `ProjectDevicesScreen`.
 *   **Deployment Lifecycle Wizards**: 
-    *   **Start**: `StartDeploymentWizard` -> `DeploymentDetailsStep` -> `AddDeployment`.
+    *   **Start**: `StartDeploymentWizard` -> `StartMonitoringDetailsStep` -> `AddDeployment`.
     *   **Management**: `DeploymentDetails` (Monitoring).
-    *   **End**: `EndDeploymentWizard` -> `EndDeploymentDetailsStep`.
+    *   **End**: `StopMonitoringWizard` -> `EndStartMonitoringDetailsStep`.
 *   **Hardware / Connectivity**:
     *   `DeviceDetails`: Management screen for a synchronized device.
     *   `EngineerConsoleScreen`: Direct serial/command access to the BLE module.

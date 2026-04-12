@@ -32,8 +32,8 @@ import { EditProjectScreen } from "../screens/Projects/EditProjectScreen"
 // import { Deployments as DeploymentsListScreen } from "../screens/Deployments/DeploymentsListScreen"
 import { AddDeployment } from "../screens/Deployments/AddDeploymentScreen"
 import { DeploymentDetailsScreen } from "../screens/Deployments/DeploymentDetailsScreen"
-import { DeploymentDetailsStep } from "../screens/Deployments/StartDeploymentScreen"
-import { EndDeploymentDetailsStep } from "../screens/Deployments/EndDeploymentScreen"
+import { StartMonitoringDetailsStep } from "../screens/Deployments/StartMonitoringScreen"
+import { StopMonitoringDetailsStep } from "../screens/Deployments/StopMonitoringScreen"
 
 // Device screens
 // import { Devices as DevicesListScreen } from "../screens/Devices/DevicesListScreen"
@@ -214,19 +214,19 @@ export const MainNavigation = () => {
 							options={{ title: "Select Device", headerTitleAlign: 'center' }}
 						/>
 						<Stack.Screen
-							name="DeploymentDetailsStep"
-							component={DeploymentDetailsStep}
+							name="StartMonitoringDetailsStep"
+							component={StartMonitoringDetailsStep}
 							options={{ title: "Device Interaction", headerTitleAlign: 'center' }}
 						/>
 						<Stack.Screen
-							name="EndDeploymentWizard"
+							name="StopMonitoringWizard"
 							component={DeviceDiscoveryScreen}
 							options={{ title: "End Monitoring" }}
 							initialParams={{ mode: 'end_deployment' }}
 						/>
 						<Stack.Screen
-							name="EndDeploymentDetailsStep"
-							component={EndDeploymentDetailsStep}
+							name="StopMonitoringDetailsStep"
+							component={StopMonitoringDetailsStep}
 							options={{ title: "End monitoring" }}
 						/>
 						<Stack.Screen

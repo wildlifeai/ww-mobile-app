@@ -56,7 +56,7 @@ const formatMonitoringDuration = (startValue: Date | string | number) => {
     return `${months} ${months === 1 ? 'month' : 'months'} and ${remDays} ${remDays === 1 ? 'day' : 'days'}`
 }
 
-type EndDeploymentDetailsStepRouteProp = RouteProp<RootStackParamList, 'EndDeploymentDetailsStep'>
+type StopMonitoringDetailsStepRouteProp = RouteProp<RootStackParamList, 'StopMonitoringDetailsStep'>
 
 interface InnerProps {
     deployment: Deployment
@@ -65,10 +65,10 @@ interface InnerProps {
 }
 
 
-const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment }) => {
+const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }) => {
     const theme = useTheme()
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
-    const route = useRoute<EndDeploymentDetailsStepRouteProp>()
+    const route = useRoute<StopMonitoringDetailsStepRouteProp>()
     const { deviceId = '', bleDeviceId = '', initPayload } = route.params || {}
     useBleActions()
     const { runDisconnect, setDeploymentIdAsString, clearGpsLocation, getAllOperationalParams } = useBleCommands()
@@ -212,7 +212,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
                         <View style={styles.infoRow}>
                             <WWText variant="bodyLarge"><Text>
-                                Monitoring time: {formatMonitoringDuration(deployment.deploymentStart)}.{monitorStats.deviceImageCount !== null ? ` Images recorded: ${monitorStats.deviceImageCount} .` : ''}
+                                Monitoring time: {formatMonitoringDuration(deployment.deploymentStart)}.{monitorStats.deviceImageCount !== null ? ` Images recorded: ${monitorStats.deviceImageCount}.` : ''}
                             </Text></WWText>
                         </View>
                     </Card.Content>
@@ -355,8 +355,8 @@ const styles = StyleSheet.create({
 })
 
 // Wrapper to fetch deployment
-const enhance = withObservables(['route'], ({ route }: { route: EndDeploymentDetailsStepRouteProp }) => ({
+const enhance = withObservables(['route'], ({ route }: { route: StopMonitoringDetailsStepRouteProp }) => ({
     deployment: DeploymentService.observeDeploymentById(route.params?.deploymentId || '')
 }))
 
-export const EndDeploymentDetailsStep = enhance(EndDeploymentDetailsStepComponent)
+export const StopMonitoringDetailsStep = enhance(StopMonitoringDetailsStepComponent)

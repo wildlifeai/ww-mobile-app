@@ -232,10 +232,10 @@ Bidirectional sync between WatermelonDB and Supabase. Sync is debounced (2s) and
 | `ProjectMembersScreen` | `ProjectMembersScreen` | `{ projectId, projectName }` |
 | `AddDeployment` | `AddDeployment` | `{ selectedProject? }` |
 | `StartDeploymentWizard` | `DeviceDiscoveryScreen` | `{ mode: 'deployment' }` |
-| `DeploymentDetailsStep` | `DeploymentDetailsStep` | `{ deviceId, bleDeviceId }` |
+| `StartMonitoringDetailsStep` | `StartMonitoringDetailsStep` | `{ deviceId, bleDeviceId }` |
 | `DeploymentDetails` | `DeploymentDetailsScreen` | `{ deploymentId }` |
-| `EndDeploymentWizard` | `DeviceDiscoveryScreen` | `{ mode: 'end_deployment', deploymentId? }` |
-| `EndDeploymentDetailsStep` | `EndDeploymentDetailsStep` | `{ deploymentId, deviceId, bleDeviceId }` |
+| `StopMonitoringWizard` | `DeviceDiscoveryScreen` | `{ mode: 'end_deployment', deploymentId? }` |
+| `EndStartMonitoringDetailsStep` | `EndStartMonitoringDetailsStep` | `{ deploymentId, deviceId, bleDeviceId }` |
 
 Dev-only routes (`__DEV__`): `DevBuildInfo`, `AuthTestScreen`, `DeveloperSettings`.
 

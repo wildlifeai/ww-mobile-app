@@ -24,12 +24,12 @@ import { DeploymentMonitorView } from './components/DeploymentMonitorView'
 import { useStartDeployment } from './hooks/useStartDeployment'
 
 
-type DeploymentDetailsRouteProp = RouteProp<RootStackParamList, 'DeploymentDetailsStep'>;
+type StartMonitoringDetailsRouteProp = RouteProp<RootStackParamList, 'StartMonitoringDetailsStep'>;
 
-export const DeploymentDetailsStep = () => {
+export const StartMonitoringDetailsStep = () => {
     const theme = useTheme()
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
-    const route = useRoute<DeploymentDetailsRouteProp>()
+    const route = useRoute<StartMonitoringDetailsRouteProp>()
 
     const { projectId, deviceId, bleDeviceId, initPayload } = route.params || {}
 

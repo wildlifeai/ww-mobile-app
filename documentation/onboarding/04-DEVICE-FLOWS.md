@@ -40,7 +40,7 @@ flowchart TD
 
 ### Direct Deployment Routing
 
-When a new device is found, if the user has at least one project, the system looks up their most recently used project (from past deployments) and seamlessly bridges directly to the `StartDeploymentScreen` without blocking the user.
+When a new device is found, if the user has at least one project, the system looks up their most recently used project (from past deployments) and seamlessly bridges directly to the `StartMonitoringScreen` without blocking the user.
 
 ### Engineer Console (Side Drawer)
 
@@ -54,7 +54,7 @@ The **Engineer Console** is accessible via the hamburger menu in the side drawer
 
 ## Part 2: Starting a Deployment
 
-**Screen:** `StartDeploymentScreen.tsx` (`DeploymentDetailsStep`)
+**Screen:** `StartMonitoringScreen.tsx` (`StartMonitoringDetailsStep`)
 **Entry:** Scanner tab → auto-connect → ScannerRoutingDialog → "Start Deployment"
 
 ### Flow
@@ -64,7 +64,7 @@ flowchart TD
     A["Device Discovery & BLE Connect"] --> B{"Device Routing Logic"}
     B -- "Already deployed" --> C["Active Deployment routing"]
     B -- "Ready or New" --> D["Auto-create prep record"]
-    D --> E["DeploymentDetailsStep Screen"]
+    D --> E["StartMonitoringDetailsStep Screen"]
     
     E --> F["BLE Initialization (shared hook)"]
     F --> G["Load Device & Project Data"]
@@ -140,7 +140,7 @@ Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers
 
 ## Part 3: Ending a Deployment
 
-**Screen:** `EndDeploymentScreen.tsx` (`EndDeploymentDetailsStep`)
+**Screen:** `StopMonitoringScreen.tsx` (`EndStartMonitoringDetailsStep`)
 **Entry:** Maps → tap deployed device → "Stop Monitoring", or Devices list, or Deployment details
 
 ### Flow
@@ -149,7 +149,7 @@ Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers
 flowchart TD
     A["Device Discovery & BLE Connect"] --> B{"Active deployment?"}
     B -- No --> C["Alert: 'Not part of an active deployment'"]
-    B -- Yes --> D["EndDeploymentDetailsStep Screen"]
+    B -- Yes --> D["EndStartMonitoringDetailsStep Screen"]
     
     D --> E["BLE Initialization (shared hook)"]
     E --> F["Show Deployment Info + Retrieval Notes"]

@@ -216,7 +216,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                             }
                                         }
 
-                                        ;(navigation as any).navigate('EndDeploymentDetailsStep', {
+                                        ;(navigation as any).navigate('StopMonitoringDetailsStep', {
                                             deploymentId: activeDeployment.id,
                                             deviceId: dbDevice.id,
                                             bleDeviceId: connectedDevice.id,
@@ -255,7 +255,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                     await addLog('Ready for deployment')
 
                                     // Route directly to Start Deployment
-                                    ;(navigation as any).navigate('DeploymentDetailsStep', {
+                                    ;(navigation as any).navigate('StartMonitoringDetailsStep', {
                                         projectId: targetProjectId,
                                         deviceId: dbDevice.id,
                                         bleDeviceId: connectedDevice.id,
@@ -308,7 +308,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                 }
                             }
 
-                            ;(navigation as any).navigate('EndDeploymentDetailsStep', {
+                            ;(navigation as any).navigate('StopMonitoringDetailsStep', {
                                 deploymentId: activeDeployment.id,
                                 deviceId: dbDevice.id,
                                 bleDeviceId: connectedDevice.id,
