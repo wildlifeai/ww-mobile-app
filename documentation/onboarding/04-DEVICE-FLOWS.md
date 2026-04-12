@@ -272,19 +272,19 @@ They are accessed directly via the **Engineer Console** (`EngineerConsoleScreen.
 
 ### 2. Camera Settings Test Screen
 **Screen:** `CameraSettingsTestScreen.tsx`
-**Purpose:** Allows dynamic application and validation of specific test modes (`TEST_MODE_BITS`, OP_PARAMETER Index 18) and fine-tuning hardware parameters (e.g. Flash LED types) without needing a full recompilation of the Nordic/Seeed firmware.
+**Purpose:** Captures a single test image with configurable flash parameters to validate LED hardware and exposure settings without needing a full firmware recompilation.
 
 **Features:**
-- **Camera Configurations:** Live adjustment of `Num Pictures`, `Picture Interval`, `Flash Duration`, `Flash LED Type`, `LED Brightness`, and `NN Threshold`.
-- **Hardware Test Modes:** Toggles pre-programmed behaviours encoded in the `TEST_MODE_BITS` (e.g. Tone Mapping, Flash Brightness).
-- **Dynamic Capture Sequencing:** The `AI capture` command is dynamically formatted (e.g., `AI capture 4 1500`) based on user input, ensuring the firmware correctly captures multi-frame bursts for Tone Mapping or High Dynamic Range (HDR) validation.
-- **Real-time Auto Exposure (AE) Data:** Captures console logs (`Integration time`, `Analog gain`, etc.) to dynamically render live AE metrics and a visual AE Mean progress bar (0-255).
+- **Flash Configuration:** Live adjustment of `Flash Duration`, `Flash LED Type` (visible/IR/none), and `LED Brightness` (0–100%).
+- **Single Image Capture:** Issues a hardcoded `AI capture 1 1000` command (1 image, 1000ms interval). The 1000ms interval ensures reliable JPEG flush to the SD card before the file is downloaded.
+- **DPD Synchronisation:** After writing flash OPs (9, 12, 13), the hook waits for the device to enter Deep Power Down (`Sleep` message) before triggering capture. This ensures the firmware commits the new parameters to CONFIG.TXT before the capture wake cycle reads them.
+- **Real-time Auto Exposure (AE) Data:** Captures console logs (`Integration time`, `Analog gain`, etc.) to dynamically render live AE metrics and a visual AE Mean progress bar (0–255).
 - **Metadata Tracking Gallery:** Every image captured in the test session is stored as a `CapturedImageInfo` object. This creates a persistent **snapshot of settings** exactly as they were during the capture trigger.
-- **Image Validation:** Tapping any thumbnail in the gallery opens a light-box modal that displays the specific `cameraParams`, `testModeBits`, and `aeData` associated with that *exact* frame, enabling fast hardware/firmware debugging.
+- **Image Validation:** Tapping any thumbnail in the gallery opens a light-box modal that displays the specific `cameraParams` and `aeData` associated with that *exact* frame, enabling fast hardware/firmware debugging.
 - **Robustness:** Includes a `maxRetries: 1` logic for `setop` batch writes to handle transient device Sleep events during the parameter application phase.
 
 > [!NOTE]
-> For multi-picture captures, the firmware uses the initial frames to stabilize the AE/AWB algorithms. Only the final frame in the sequence is currently transferred to the app for preview.
+> The flash LED hardware is driven by the Himax AI processor (HX6538), not the nRF52 (WW500). The nRF only stores and forwards the OP values — the Himax reads them from CONFIG.TXT during the capture wake cycle.
 
 *Last Updated: April 12, 2026*
 

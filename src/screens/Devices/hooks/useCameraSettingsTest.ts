@@ -134,7 +134,8 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             await new Promise(res => setTimeout(res, 500))
 
             // 3. Trigger capture – startCapture will enable the camera (setop 10 1),
-            //    wait for another DPD cycle, then issue 'AI capture 1 1'.
+            //    wait for another DPD cycle, then issue 'AI capture 1 1000'.
+            //    Uses 1 image with a 1000ms interval to ensure reliable SD card flush.
             //    The flash OPs are now safely persisted from step 2.
             await capturePreview.startCapture(1, 1000)
 

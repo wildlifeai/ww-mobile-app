@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Alert } from 'react-native'
 import { DeploymentService } from '../../../services/DeploymentService'
 import { log, logError, logWarn } from '../../../utils/logger'
@@ -36,6 +36,16 @@ export const useEndDeployment = ({
     const [finishLogs, setFinishLogs] = useState<string[]>([])
     const [isFinishing, setIsFinishing] = useState(false)
     const [isEndDeploymentSuccess, setIsEndDeploymentSuccess] = useState(false)
+    const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    // Clean up navigation timer on unmount
+    useEffect(() => {
+        return () => {
+            if (navigationTimerRef.current) {
+                clearTimeout(navigationTimerRef.current)
+            }
+        }
+    }, [])
 
     const addFinishLog = useCallback((message: string) => {
         setFinishLogs(prev => [...prev, message])
@@ -180,7 +190,8 @@ export const useEndDeployment = ({
             setIsEndDeploymentSuccess(true)
             addFinishLog('Monitoring stopped successfully')
 
-            setTimeout(() => {
+            navigationTimerRef.current = setTimeout(() => {
+                navigationTimerRef.current = null
                 setIsFinishing(false)
                 navigation.reset({
                     index: 0,

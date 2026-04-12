@@ -134,7 +134,7 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
     }, [deviceId])
 
     useEffect(() => {
-        const title = deviceDb?.name || storeDevice?.name || 'End Deployment'
+        const title = deviceDb?.name || storeDevice?.name || 'Stop Monitoring'
         navigation.setOptions({ title })
     }, [deviceDb?.name, storeDevice?.name, navigation])
 
