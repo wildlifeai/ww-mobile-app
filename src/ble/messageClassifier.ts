@@ -249,6 +249,7 @@ export interface MonitorEvent {
   label: string
   icon: string
   details?: string
+  isHidden?: boolean
 }
 
 /**
@@ -266,7 +267,8 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   const captureMatch = content.match(/^Captured\s+(\d+)\s+images/i)
   if (captureMatch) {
     const fileMatch = content.match(/Last is\s+(.+)$/i)
-    return { category: 'capture', label: `Captured ${captureMatch[1]} photos`, icon: 'camera', details: fileMatch ? fileMatch[1] : undefined }
+    // Hidden because it clutters the UI (stats bar tracks photo count)
+    return { category: 'capture', label: `Captured ${captureMatch[1]} photos`, icon: 'camera', details: fileMatch ? fileMatch[1] : undefined, isHidden: true }
   }
 
   // --- NEURAL NETWORK EVENTS ---

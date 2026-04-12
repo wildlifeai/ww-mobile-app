@@ -90,11 +90,13 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
                 timestamp: Date.now(),
             }
 
-            // Update the log (capped at MAX_LOG_ENTRIES)
-            setActivityLog(prevLog => {
-                const updatedLog = [newEntry, ...prevLog]
-                return updatedLog.slice(0, MAX_LOG_ENTRIES)
-            })
+            // Update the log (capped at MAX_LOG_ENTRIES) if not hidden
+            if (!classified.isHidden) {
+                setActivityLog(prevLog => {
+                    const updatedLog = [newEntry, ...prevLog]
+                    return updatedLog.slice(0, MAX_LOG_ENTRIES)
+                })
+            }
 
             // Update stats based on category
             setStats(prev => {
