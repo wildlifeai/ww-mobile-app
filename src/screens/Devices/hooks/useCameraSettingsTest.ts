@@ -144,15 +144,16 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             
             await new Promise(res => setTimeout(res, 500))
 
-            // 3. WORKAROUND: Set short timelapse (2s) + disable MD + enable camera.
-            //    When the device enters DPD after these commands, it WILL configure
-            //    the HM0360 strobe mode (0x03), enabling the flash LED.
-            //    The device then auto-wakes from the timelapse timer after ~2s.
+            // 3. WORKAROUND: Set short timelapse (2s) + enable MD + enable camera.
+            //    The firmware only configures the HM0360 strobe mode (0x03) when
+            //    MD is enabled (MD_INTERVAL > 0). With MD disabled, it logs
+            //    "No LED flashes" and skips strobe setup entirely.
+            //    The timelapse timer triggers the actual capture after ~2s.
             capturePreview.clearImage()
             
             const captureOps = [
                 `AI setop ${OP_PARAMETER.TIMELAPSE_INTERVAL} 2`,   // 2-second timelapse
-                `AI setop ${OP_PARAMETER.MD_INTERVAL} 0`,          // Disable motion detection
+                `AI setop ${OP_PARAMETER.MD_INTERVAL} 1000`,       // MD ON (required for strobe!)
                 `AI setop ${OP_PARAMETER.CAMERA_ENABLED} 1`,       // Enable camera (always last)
             ]
             await write(device, captureOps, { maxRetries: 1 })
