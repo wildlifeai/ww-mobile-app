@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Button, Text, useTheme } from 'react-native-paper'
+import { Card, Button, Text, useTheme, List } from 'react-native-paper'
 
 import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
@@ -29,6 +29,7 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
     const { write } = useBle()
     const { setMdSensitivity } = useBleCommands()
     const [isPreparing, setIsPreparing] = useState(false)
+    const [expanded, setExpanded] = useState(false)
 
     const {
         mdGrid,
@@ -65,6 +66,8 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
         </Button>
     ), [onShowHelp])
 
+    const renderRightIcon = useCallback((props: any) => <List.Icon {...props} icon={expanded ? "chevron-up" : "chevron-down"} />, [expanded])
+
     // Use capture_method_id
     if (!project || project.capture_method_id !== 1) { // Changed to capture_method_id
         return null // Only render for Activity Detection projects
@@ -73,12 +76,23 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
     const disabled = !device || isPreparing
 
     return (
-        <Card style={styles.card}>
-            <Card.Title
-                title="Motion Detection"
-                right={renderHelp}
+        <View>
+            { }
+            <List.Item
+                title="Motion Detection Test"
+                right={renderRightIcon}
+                onPress={() => setExpanded(!expanded)}
+                style={styles.accordionHeader}
+                left={props => <List.Icon {...props} icon="run" />}
             />
-            <Card.Content>
+            { }
+            {expanded && (
+                <Card style={styles.card}>
+                    <Card.Title
+                        title="Motion Detection"
+                        right={renderHelp}
+                    />
+                    <Card.Content>
                 <WWButton 
                     mode="outlined"
                     onPress={isTesting ? stopTest : handleStartTest}
@@ -139,11 +153,19 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
                 )}
             </Card.Content>
         </Card>
+        )}
+        </View>
     )
 }
 
 const styles = StyleSheet.create({
-    card: {},
+    accordionHeader: {
+        backgroundColor: 'transparent',
+        paddingHorizontal: 0,
+    },
+    card: {
+        marginBottom: 8
+    },
     sectionDescription: {
         opacity: 0.6,
         marginBottom: 16,

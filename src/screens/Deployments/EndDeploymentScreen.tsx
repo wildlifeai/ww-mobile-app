@@ -3,10 +3,11 @@ import { View, StyleSheet, ScrollView, Alert } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
-import { TextInput, useTheme, Text, Card } from 'react-native-paper'
+import { useTheme, Text, Card } from 'react-native-paper'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
+import { WWTextInput } from '../../components/ui/WWTextInput'
 import { RootStackParamList } from '../../navigation/types'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { DeploymentService } from '../../services/DeploymentService'
@@ -157,13 +158,14 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                         text: "Understood",
                         style: "default",
                         onPress: async () => {
-                            // Disconnect device
-                            const currentDevice = bleDeviceRef.current
-                            if (currentDevice?.connected) {
-                                log('[EndDeployment] Back button pressed - disconnecting device...')
-                                isNavigatingAway.current = true
-                                await runDisconnect(currentDevice)
-                            }
+                        // Disconnect device
+                        const currentDevice = bleDeviceRef.current
+                        isNavigatingAway.current = true
+                        
+                        if (currentDevice?.connected) {
+                            log('[EndDeployment] Back button pressed - disconnecting device...')
+                            await runDisconnect(currentDevice)
+                        }
                             
                             // Now allow navigation
                             navigation.dispatch(e.data.action)
@@ -255,15 +257,15 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 <Card style={styles.section}>
                     <Card.Title title="Notes" />
                     <Card.Content>
-                        <TextInput
+                        <WWTextInput
                             mode="outlined"
+                            label="Notes"
                             placeholder="e.g. SD card full, Battery low, Device damaged..."
                             multiline
                             numberOfLines={11}
                             value={retrievalNotes}
-                            onChangeText={setRetrievalNotes}
+                            onChange={setRetrievalNotes}
                             style={styles.input}
-                            textColor="#000"
                         />
                     </Card.Content>
                 </Card>
@@ -290,6 +292,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                     onDismiss={handleFinishDismiss}
                     loadingTitle="Stopping"
                     successTitle="Stopped"
+                    hideOkButton={true}
                 />
             </View>
         </WWScreenView>

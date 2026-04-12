@@ -644,9 +644,10 @@ export const useStartDeployment = ({
     }, [isStartSuccess])
 
     const handleMonitorDisconnect = useCallback(async () => {
-        if (!bleDevice) return
         try {
-            await runDisconnect(bleDevice)
+            if (bleDevice) {
+                await runDisconnect(bleDevice)
+            }
             setIsMonitoring(false)
         } catch (error) {
             logError('Monitor disconnect failed:', error)

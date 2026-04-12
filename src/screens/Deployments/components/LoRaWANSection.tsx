@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { Card, Button, Text, useTheme } from 'react-native-paper'
+import { Card, Button, Text, useTheme, List } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useBleCommands } from '../../../hooks/useBleCommands'
 import { WWIcon } from '../../../components/ui/WWIcon'
@@ -17,6 +17,7 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
     const { pingNetwork } = useBleCommands()
     const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'failed'>('idle')
     const [message, setMessage] = useState('')
+    const [expanded, setExpanded] = useState(false)
 
     const handlePing = useCallback(async () => {
         if (!device) return
@@ -48,14 +49,27 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
         </Button>
     ), [onShowHelp])
 
+    const renderRightIcon = useCallback((props: any) => <List.Icon {...props} icon={expanded ? "chevron-up" : "chevron-down"} />, [expanded])
+
     return (
-        <Card style={styles.card}>
-            <Card.Title
-                title="LoRaWAN Signal Test"
-                right={renderRight}
+        <View>
+            { }
+            <List.Item
+                title="LoRaWAN Network Test"
+                right={renderRightIcon}
+                onPress={() => setExpanded(!expanded)}
+                style={styles.accordionHeader}
+                left={props => <List.Icon {...props} icon="access-point" />}
             />
-            <Card.Content style={styles.content}>
-                <View style={styles.statusRow}>
+            { }
+            {expanded && (
+                <Card style={styles.card}>
+                    <Card.Title
+                        title="LoRaWAN Signal Test"
+                        right={renderRight}
+                    />
+                    <Card.Content style={styles.content}>
+                        <View style={styles.statusRow}>
                     <Text variant="bodyMedium" style={dynamicStyles.statusText}>
                         Status: {status === 'idle' ? 'Not Tested' :
                             status === 'testing' ? 'Testing...' :
@@ -75,14 +89,20 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
                     icon="refresh"
                 >
                     <Text>Test Connectivity</Text>
-                </Button>
-            </Card.Content>
-        </Card>
+                    </Button>
+                </Card.Content>
+            </Card>
+            )}
+        </View>
     )
 }
 
 const styles = StyleSheet.create({
-    card: { marginBottom: 16 },
+    accordionHeader: {
+        backgroundColor: 'transparent',
+        paddingHorizontal: 0,
+    },
+    card: { marginBottom: 8 },
     content: { gap: 12 },
     statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }
 })

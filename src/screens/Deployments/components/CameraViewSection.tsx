@@ -1,6 +1,6 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { StyleSheet, View, Image } from 'react-native'
-import { Card, Button, Text, ProgressBar, useTheme } from 'react-native-paper'
+import { Card, Button, Text, ProgressBar, useTheme, List } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useCapturePreview } from '../../../hooks/useCapturePreview'
 import { useBle } from '../../../hooks/useBle'
@@ -18,6 +18,7 @@ interface Props {
 export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props) => {
     const theme = useTheme()
     const { write } = useBle()
+    const [expanded, setExpanded] = useState(false)
 
     const {
         startCapture,
@@ -44,14 +45,27 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
         </Button>
     ), [onShowHelp])
 
+    const renderRightIcon = useCallback((props: any) => <List.Icon {...props} icon={expanded ? "chevron-up" : "chevron-down"} />, [expanded])
+
     return (
-        <Card style={styles.card}>
-            <Card.Title
-                title="Camera View"
-                right={renderRight}
+        <View>
+            { }
+            <List.Item
+                title="Camera View Test"
+                right={renderRightIcon}
+                onPress={() => setExpanded(!expanded)}
+                style={styles.accordionHeader}
+                left={props => <List.Icon {...props} icon="camera" />}
             />
-            <Card.Content>
-                {capturedImageUri && (
+            { }
+            {expanded && (
+                <Card style={styles.card}>
+                    <Card.Title
+                        title="Camera View"
+                        right={renderRight}
+                    />
+                    <Card.Content>
+                        {capturedImageUri && (
                     <View style={styles.imagePreviewContainer}>
                         <Image
                             source={{ uri: capturedImageUri }}
@@ -80,13 +94,21 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                         ? (captureProgress > 0 ? `${captureStage} ${Math.round(captureProgress * 100)}%` : (captureStage || 'Capturing...'))
                         : (capturedImageUri ? 'Test Again' : 'Test Camera View')}</Text>
                 </WWButton>
-            </Card.Content>
-        </Card>
+                </Card.Content>
+            </Card>
+            )}
+        </View>
     )
 }
 
 const styles = StyleSheet.create({
-    card: {},
+    accordionHeader: {
+        backgroundColor: 'transparent',
+        paddingHorizontal: 0,
+    },
+    card: {
+        marginBottom: 8
+    },
     sectionDescription: {
         opacity: 0.6,
         marginBottom: 12,

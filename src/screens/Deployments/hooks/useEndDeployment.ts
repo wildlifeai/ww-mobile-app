@@ -180,6 +180,14 @@ export const useEndDeployment = ({
             setIsEndDeploymentSuccess(true)
             addFinishLog('Monitoring stopped successfully')
 
+            setTimeout(() => {
+                setIsFinishing(false)
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Home' }],
+                })
+            }, 1500)
+
         } catch (error) {
             logError(error)
             setIsFinishing(false)
@@ -187,7 +195,7 @@ export const useEndDeployment = ({
         } finally {
             setIsEnding(false)
         }
-    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsString, clearGpsLocation, runDisconnect, addFinishLog, isNavigatingAway, getAllOperationalParams])
+    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsString, clearGpsLocation, runDisconnect, addFinishLog, isNavigatingAway, getAllOperationalParams, navigation])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)
