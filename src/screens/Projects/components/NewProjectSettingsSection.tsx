@@ -122,7 +122,7 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                             render={({ field: { value, onChange, onBlur } }) => (
                                 <WWTextInput
                                     value={value}
-                                    onChangeText={onChange}
+                                    onChange={onChange}
                                     onBlur={onBlur}
                                     mode="outlined"
                                     label="Time-lapse Interval (seconds)"
