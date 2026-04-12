@@ -212,17 +212,9 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
 
                         <View style={styles.infoRow}>
                             <WWText variant="bodyLarge"><Text>
-                                Monitoring for {formatMonitoringDuration(deployment.deploymentStart)}
+                                Monitoring time: {formatMonitoringDuration(deployment.deploymentStart)}.{monitorStats.deviceImageCount !== null ? ` Images recorded: ${monitorStats.deviceImageCount} .` : ''}
                             </Text></WWText>
                         </View>
-                        {monitorStats.deviceImageCount !== null && (
-                            <View style={styles.infoRow}>
-                                <MaterialCommunityIcons name="image-multiple" size={20} color={theme.colors.primary} style={{ marginRight: 8 }} />
-                                <WWText variant="bodyLarge"><Text>
-                                    {monitorStats.deviceImageCount} {monitorStats.deviceImageCount === 1 ? 'image' : 'images'} stored on device
-                                </Text></WWText>
-                            </View>
-                        )}
                     </Card.Content>
                 </Card>
 
