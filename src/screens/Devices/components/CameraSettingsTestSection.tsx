@@ -1,5 +1,5 @@
 import { View, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native'
-import { Surface, Divider, Button, Checkbox, SegmentedButtons, ActivityIndicator, ProgressBar } from 'react-native-paper'
+import { Surface, Divider, Button, SegmentedButtons, ActivityIndicator, ProgressBar } from 'react-native-paper'
 import { WWText } from '../../../components/ui/WWText'
 import { WWTextInput } from '../../../components/ui/WWTextInput'
 import { useExtendedTheme } from '../../../theme'
@@ -49,8 +49,6 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
     const { colors, spacing } = useExtendedTheme()
     
     const {
-        testModeBits,
-        toggleTestBit,
         cameraParams,
         updateCameraParam,
         applyAndCapture,
@@ -75,27 +73,6 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
             <WWText variant="titleMedium" style={{ marginTop: spacing }}>Camera Parameters</WWText>
             
             <Surface style={[styles.card, { backgroundColor: colors.surface }]} elevation={1}>
-                
-                <NumericInput
-                    label="Pictures per capture (1-100)"
-                    value={cameraParams.numPictures}
-                    onChange={(v: number) => updateCameraParam('numPictures', v)}
-                    min={1}
-                    max={100}
-                    disabled={isApplying || capturePreview.isCapturing}
-                />
-                <WWText variant="bodySmall" style={{ color: colors.onSurfaceVariant, marginTop: -8, marginBottom: 8 }}>
-                    Only the last photo is transferred to the app. Use multiple pictures for AE convergence testing.
-                </WWText>
-                
-                <NumericInput
-                    label="Picture Interval (100-10000 ms)"
-                    value={cameraParams.pictureInterval}
-                    onChange={(v: number) => updateCameraParam('pictureInterval', v)}
-                    min={100}
-                    max={10000}
-                    disabled={isApplying || capturePreview.isCapturing}
-                />
                 
                 <NumericInput
                     label="Flash Duration (0-2000 ms)"
@@ -128,50 +105,9 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                     max={100}
                     disabled={isApplying || capturePreview.isCapturing}
                 />
-
-                <NumericInput
-                    label="NN Threshold (0-127)"
-                    value={cameraParams.modelThreshold}
-                    onChange={(v: number) => updateCameraParam('modelThreshold', v)}
-                    min={0}
-                    max={127}
-                    disabled={isApplying || capturePreview.isCapturing}
-                />
-
             </Surface>
 
-            <WWText variant="titleMedium">Test Modes</WWText>
-            <Surface style={[styles.card, { backgroundColor: colors.surface }]} elevation={1}>
-                <View style={styles.checkboxRow}>
-                    <Checkbox
-                        status={(testModeBits & 1) ? 'checked' : 'unchecked'}
-                        onPress={() => toggleTestBit(0)}
-                    />
-                    <WWText>Tone Mapping (Bit 0)</WWText>
-                </View>
-                <View style={styles.checkboxRow}>
-                    <Checkbox
-                        status={(testModeBits & 2) ? 'checked' : 'unchecked'}
-                        onPress={() => toggleTestBit(1)}
-                    />
-                    <WWText>Save BMP (Bit 1)</WWText>
-                </View>
-                <View style={styles.checkboxRow}>
-                    <Checkbox
-                        status={(testModeBits & 4) ? 'checked' : 'unchecked'}
-                        onPress={() => toggleTestBit(2)}
-                    />
-                    <WWText>Flash Brightness (Bit 2)</WWText>
-                </View>
-                <View style={styles.checkboxRow}>
-                    <Checkbox
-                        status={(testModeBits & 8) ? 'checked' : 'unchecked'}
-                        onPress={() => toggleTestBit(3)}
-                        color={colors.error}
-                    />
-                    <WWText style={{ color: colors.error }}>Skip File Creation (Bit 3) ⚠️</WWText>
-                </View>
-            </Surface>
+
 
             <View style={styles.actionRow}>
                 <Button 
@@ -189,7 +125,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                     disabled={isApplying || capturePreview.isCapturing}
                     style={{ flex: 2 }}
                 >
-                    <WWText style={{ color: 'white' }}>Apply & Capture</WWText>
+                    <WWText style={{ color: 'white' }}>Capture Image</WWText>
                 </Button>
             </View>
 
@@ -280,9 +216,6 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                 {selectedImage && (
                     <View style={{ marginTop: 8, paddingHorizontal: 4, width: '100%' }}>
                         <WWText variant="labelMedium" style={{ color: colors.onSurfaceVariant }}>
-                            Pics: {selectedImage.params.numPictures} | Int: {selectedImage.params.pictureInterval}ms | Thr: {selectedImage.params.modelThreshold}
-                        </WWText>
-                        <WWText variant="labelMedium" style={{ color: colors.onSurfaceVariant }}>
                             Flash: {['Off', 'Visible', 'IR'][selectedImage.params.flashLed]} ({selectedImage.params.ledBrightness}%, {selectedImage.params.flashDuration}ms)
                         </WWText>
                         {selectedImage.aeData && (
@@ -312,11 +245,6 @@ const styles = StyleSheet.create({
     },
     inputGroup: {
         marginBottom: 16,
-    },
-    checkboxRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 4,
     },
     actionRow: {
         flexDirection: 'row',

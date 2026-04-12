@@ -7,12 +7,9 @@ import { bleCommandManager } from '../../../ble/commandManager'
 import { logError } from '../../../utils/logger'
 
 export interface CameraTestParams {
-    numPictures: number
-    pictureInterval: number
     ledBrightness: number
     flashDuration: number
     flashLed: number
-    modelThreshold: number
 }
 
 export interface AEData {
@@ -35,12 +32,9 @@ export interface UseCameraSettingsTestOptions {
 }
 
 const DEFAULT_PARAMS: CameraTestParams = {
-    numPictures: 3,
-    pictureInterval: 1500,
     ledBrightness: 5,
     flashDuration: 100,
-    flashLed: 0,
-    modelThreshold: 64
+    flashLed: 0
 }
 
 export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) => {
@@ -107,41 +101,11 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
         return () => bleCommandManager.removeMessageListener(messageListener)
     }, [])
 
-    const toggleTestBit = useCallback((bitPos: number) => {
-        const nextBits = testModeBits ^ (1 << bitPos)
-        setTestModeBits(nextBits)
-        
-        // Smart defaults when a test is enabled:
-        const isBitEnabled = (nextBits & (1 << bitPos)) !== 0
-        if (isBitEnabled) {
-            setCameraParams(p => {
-                const newParams = { ...p }
-                if (bitPos === 0) { // Tone mapping
-                    newParams.numPictures = 4
-                } else if (bitPos === 1) { // Save BMP
-                    newParams.numPictures = 4 // must be even
-                } else if (bitPos === 2) { // Flash brightness
-                    newParams.numPictures = 7
-                    if (newParams.flashLed === 0) newParams.flashLed = 1 // Need some flash
-                } else if (bitPos === 3) { // Skip file creation
-                    newParams.numPictures = 10
-                    newParams.pictureInterval = 500 // fast stream
-                }
-                return newParams
-            })
-        }
-    }, [testModeBits])
-
     const updateCameraParam = useCallback(<K extends keyof CameraTestParams>(key: K, value: CameraTestParams[K]) => {
         setCameraParams(prev => {
-            const next = { ...prev, [key]: value }
-            // Enforce BMP mode constraint (must be even number of pictures)
-            if ((testModeBits & 2) && key === 'numPictures' && next.numPictures % 2 !== 0) {
-                next.numPictures += 1
-            }
-            return next
+            return { ...prev, [key]: value }
         })
-    }, [testModeBits])
+    }, [])
 
     const applyAndCapture = useCallback(async () => {
         if (!device) return
@@ -149,13 +113,9 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
         try {
             // Write all parameters first
             const ops = [
-                `AI setop ${OP_PARAMETER.TEST_MODE_BITS} ${testModeBits}`,
-                `AI setop ${OP_PARAMETER.NUM_PICTURES} ${cameraParams.numPictures}`,
-                `AI setop ${OP_PARAMETER.PICTURE_INTERVAL} ${cameraParams.pictureInterval}`,
                 `AI setop ${OP_PARAMETER.LED_BRIGHTNESS} ${cameraParams.ledBrightness}`,
                 `AI setop ${OP_PARAMETER.FLASH_DURATION} ${cameraParams.flashDuration}`,
                 `AI setop ${OP_PARAMETER.FLASH_LED} ${cameraParams.flashLed}`,
-                `AI setop ${OP_PARAMETER.MODEL_THRESHOLD} ${cameraParams.modelThreshold}`,
             ]
             
             // We batch write these to the device (allow 1 retry per command for transient sleep events)
@@ -165,33 +125,22 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             await new Promise(res => setTimeout(res, 500))
 
             // Trigger Capture with dynamic settings
-            await capturePreview.startCapture(cameraParams.numPictures, cameraParams.pictureInterval)
+            await capturePreview.startCapture(1, 1)
 
         } catch (e) {
             logError('[CameraSettingsTest] Error applying params or capturing:', e)
         } finally {
             setIsApplying(false)
         }
-    }, [device, testModeBits, cameraParams, write, capturePreview])
+    }, [device, cameraParams, write, capturePreview])
 
     const resetTestMode = useCallback(async () => {
         setTestModeBits(0)
         setCameraParams(DEFAULT_PARAMS)
-        if (device) {
-            try {
-                setIsApplying(true)
-                await write(device, [`AI setop ${OP_PARAMETER.TEST_MODE_BITS} 0`], { maxRetries: 0 })
-            } catch (e) {
-                logError('[CameraSettingsTest] Error resetting test mode:', e)
-            } finally {
-                setIsApplying(false)
-            }
-        }
-    }, [device, write])
+    }, [])
 
     return {
         testModeBits,
-        toggleTestBit,
         cameraParams,
         updateCameraParam,
         applyAndCapture,
