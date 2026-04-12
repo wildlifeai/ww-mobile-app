@@ -297,6 +297,9 @@ Categorizes every incoming text message into one of four types:
 
 **Classification order:** ERROR → Expected Pattern → INFO → UNSOLICITED → Default to RESPONSE
 
+> [!NOTE]
+> The subsystem also implements `classifyForMonitor`, which abstracts and filters incoming messages specifically for the UI's Live Monitoring Log. It silently discards telemetry noise like `Sleep` or `Wake` states to reduce clutter, and explicitly translates dense diagnostic markers (e.g. mapping `Error bits = 0x0000` to "No motion" and interpreting specific `OpParam` queries, like `OpParam 19`, into human-readable stored image metrics).
+
 **File:** [messageClassifier.ts](../../src/ble/messageClassifier.ts)
 
 ---

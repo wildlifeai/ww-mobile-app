@@ -91,9 +91,9 @@ Uses `useBleInitialization` — runs standard self-test and UTC time sync. A **2
 | Location Description | — | Optional site notes |
 | Camera Height (cm) | — | Height from ground |
 | Start Comments | — | Deployment conditions |
-| Camera View Image | — | Preview via `CameraViewSection` |
-| Motion Detection Test | — | Test grid via `DeploymentMotionDetectionSection` (Activity Detection projects only) |
-| LoRaWAN Status | — | Connectivity check |
+| Camera View Image | — | Collapsible preview via `CameraViewSection` |
+| Motion Detection Test | — | Collapsible test grid via `DeploymentMotionDetectionSection` (Activity Detection projects only) |
+| LoRaWAN Status | — | Collapsible connectivity check |
 
 Project settings (capture method, sensitivity, timelapse interval, GPS image tagging, bait usage, marked individuals monitoring) are inherited from the configured project. However, the user can instantly swap the attached **Project** using the `<WWSelect>` interactive dropdown right on this screen. Any change dynamically recalculates the capture parameters before deployment.
 
@@ -244,6 +244,7 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval
 | "GPS Accuracy Too Low" | Weak signal (dense canopy) | Move to clearing for fix, then return |
 | "Deployment Initialisation Failed" | Device handshake timeout | Re-connect and keep phone close |
 | "Failed to Set Deployment ID" | BLE write error or AI NACK | Keep phone within 1m; app falls back to GPS-only |
+| "No SD Card Detected" | Missing card or newly inserted card hasn't mounted | The app automatically sends a Wake signal prior to checking `aiinfo` to rapidly recover SD cards inserted mid-session |
 
 ### End Deployment
 
@@ -285,5 +286,5 @@ They are accessed directly via the **Engineer Console** (`EngineerConsoleScreen.
 > [!NOTE]
 > For multi-picture captures, the firmware uses the initial frames to stabilize the AE/AWB algorithms. Only the final frame in the sequence is currently transferred to the app for preview.
 
-*Last Updated: April 11, 2026*
+*Last Updated: April 12, 2026*
 
