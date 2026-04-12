@@ -136,7 +136,7 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             // 3. Trigger capture – startCapture will enable the camera (setop 10 1),
             //    wait for another DPD cycle, then issue 'AI capture 1 1'.
             //    The flash OPs are now safely persisted from step 2.
-            await capturePreview.startCapture(1, 1)
+            await capturePreview.startCapture(1, 1000)
 
         } catch (e) {
             logError('[CameraSettingsTest] Error applying params or capturing:', e)
