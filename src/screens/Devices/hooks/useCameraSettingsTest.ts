@@ -122,8 +122,13 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
         if (!device) return
         setIsApplying(true)
         try {
-            // 1. Write flash parameters to device
+            // 1. Write flash parameters AND quiesce background triggers.
+            //    MD_INTERVAL=0 and TIMELAPSE_INTERVAL=0 are critical: if a prior
+            //    deployment left these non-zero, the device re-enters monitoring mode
+            //    after the test capture and fires the flash LED repeatedly.
             const ops = [
+                `AI setop ${OP_PARAMETER.MD_INTERVAL} 0`,
+                `AI setop ${OP_PARAMETER.TIMELAPSE_INTERVAL} 0`,
                 `AI setop ${OP_PARAMETER.LED_BRIGHTNESS} ${cameraParams.ledBrightness}`,
                 `AI setop ${OP_PARAMETER.FLASH_DURATION} ${cameraParams.flashDuration}`,
                 `AI setop ${OP_PARAMETER.FLASH_LED} ${cameraParams.flashLed}`,
@@ -132,7 +137,7 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             // Batch write (allow 1 retry per command for transient sleep events)
             await write(device, ops, { maxRetries: 1 })
             
-            // 2. Wait for device to enter DPD so flash OPs are committed to CONFIG.TXT
+            // 2. Wait for device to enter DPD so all OPs are committed to CONFIG.TXT
             try {
                 await bleCommandManager.waitForMessage(/^Sleep/i, 10000)
             } catch {
@@ -146,6 +151,15 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             //    startCapture enables the camera (setop 10 1), waits for DPD,
             //    then issues 'AI capture 1 1000'.
             await capturePreview.startCapture(1, 1000)
+
+            // 4. After capture completes, disable camera so the device returns
+            //    to a quiesced idle state and does not re-enter monitoring mode.
+            await write(device, [`AI setop ${OP_PARAMETER.CAMERA_ENABLED} 0`], { maxRetries: 1 })
+            try {
+                await bleCommandManager.waitForMessage(/^Sleep/i, 8000)
+            } catch {
+                // Device may not sleep if already idle — safe to ignore
+            }
 
         } catch (e) {
             logError('[CameraSettingsTest] Error applying params or capturing:', e)

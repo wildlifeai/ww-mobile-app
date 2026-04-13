@@ -276,8 +276,9 @@ They are accessed directly via the **Engineer Console** (`EngineerConsoleScreen.
 
 **Features:**
 - **Flash Configuration:** Live adjustment of `Flash Duration`, `Flash LED Type` (visible/IR/none), and `LED Brightness` (0–100%).
-- **Timelapse-Based Capture (Workaround):** Uses a 2-second timelapse interval instead of direct `AI capture` to trigger the image capture. This workaround exists because of a firmware bug (see warning below).
-- **DPD Synchronisation:** After writing flash OPs (9, 12, 13), the hook waits for the device to enter Deep Power Down (`Sleep` message) before triggering capture. This ensures the firmware commits the new parameters to CONFIG.TXT before the capture wake cycle reads them.
+- **Direct Capture:** Triggers capture via `AI capture 1 1000` (direct command). The previous timelapse-interval workaround has been reverted.
+- **DPD Synchronisation and Quiesce:** Before capture, the hook writes `MD_INTERVAL=0` and `TIMELAPSE_INTERVAL=0` alongside flash OPs (9, 12, 13) and waits for the device to enter Deep Power Down (`Sleep` message). This ensures CONFIG.TXT is committed with both the new flash parameters **and** zeroed background triggers — preventing a prior deployment's motion/timelapse settings from causing the flash LED to fire repeatedly after the test capture.
+- **Post-Capture Camera Disable:** After capture completes, `CAMERA_ENABLED=0` (`setop 10 0`) is sent and the hook waits for the resulting sleep cycle. This returns the device to a clean idle state and prevents it from re-entering monitoring mode.
 - **Real-time Auto Exposure (AE) Data:** Captures console logs (`Integration time`, `Analog gain`, etc.) to dynamically render live AE metrics and a visual AE Mean progress bar (0–255).
 - **Metadata Tracking Gallery:** Every image captured in the test session is stored as a `CapturedImageInfo` object. This creates a persistent **snapshot of settings** exactly as they were during the capture trigger.
 - **Image Validation:** Tapping any thumbnail in the gallery opens a light-box modal that displays the specific `cameraParams` and `aeData` associated with that *exact* frame, enabling fast hardware/firmware debugging.
@@ -289,5 +290,5 @@ They are accessed directly via the **Engineer Console** (`EngineerConsoleScreen.
 > [!NOTE]
 > The flash LED hardware is driven by the Himax AI processor (HX6538), not the nRF52 (WW500). The nRF only stores and forwards the OP values — the Himax reads them from CONFIG.TXT during the capture wake cycle.
 
-*Last Updated: April 12, 2026*
+*Last Updated: April 13, 2026*
 
