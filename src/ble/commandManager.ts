@@ -277,6 +277,7 @@ export class BleCommandManager {
           log(`[BLE CMD Manager] Retrying command ${reason} (attempt ${failedCommand.retryCount + 1}/${failedCommand.maxRetries}): ${this.redact(failedCommand.commandString)}`)
 
           // Clear pending and increment retry count
+          this.pendingCommand = null
           failedCommand.retryCount++
           
           // CRITICAL: Reset echoReceived so the echo of the retried command is matched correctly
