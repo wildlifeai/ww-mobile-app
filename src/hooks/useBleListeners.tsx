@@ -19,6 +19,7 @@ import { isOurDevice } from "../utils/helpers"
 import { ImageReassembler } from "../utils/ImageReassembler"
 import { imageReassemblerEmitter, readlineParserEmitter } from "../ble/emitters"
 import { bleCommandManager } from "../ble/commandManager"
+import { rxRouter } from "../ble/protocol/rxRouter"
 
 // Lazy-load the emitter to avoid accessing NativeModules during import
 let _bleManagerEmitter: NativeEventEmitter | null = null
@@ -81,6 +82,9 @@ export const useBleListeners = () => {
 	const readlineParser = useCallback(
 		(data: UpdateValueEventType) => {
 			const { value, peripheral } = data
+
+			// Feed the new Shadow Mode router simultaneously
+			rxRouter.handleIncomingBytes(peripheral, value as number[])
 
 			// Check for binary packets (Image Transfer)
 			// Protocol: 0x06 is Image Binary. Sometimes prefixed with 0x80 (Notification/Status).
@@ -193,6 +197,7 @@ export const useBleListeners = () => {
 
 			// CRITICAL: Clear any pending commands to prevent stuck state on reconnect
 			bleCommandManager.clear()
+			rxRouter.clearBuffer(data.peripheral)
 
 			/** Clear the device out on Android systems */
 			Platform.OS === "android" &&

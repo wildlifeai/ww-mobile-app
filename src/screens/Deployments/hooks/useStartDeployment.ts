@@ -11,7 +11,9 @@ import Device from '../../../database/models/Device'
 import Deployment from '../../../database/models/Deployment'
 import { DeviceService } from '../../../services/DeviceService'
 import { useBleCommands } from '../../../hooks/useBleCommands'
-// import { useBleInitialization } from '../../../hooks/useBleInitialization'
+import { useBleSession } from '../../../hooks/useBleSession'
+import { commandRegistry } from '../../../ble/protocol/commandRegistry'
+import { checkSdCard as newCheckSdCardWorkflow } from '../../../ble/workflows/checkSdCard'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
@@ -131,6 +133,9 @@ export const useStartDeployment = ({
     // BLE Hooks
     const { connectDevice } = useBle()
     const { setUtc, runDisconnect, getBatteryLevel, checkSdCard, getDeviceVer, runSelfTest, runDfu, runReset, pingNetwork, getLorawanMetrics, getAiVer, updateHimaxFirmware } = useBleCommands()
+    
+    // NEW EVENT-FIRST ARCHITECTURE (SHADOW MODE)
+    const bleSession = useBleSession(bleDevice)
     // const { initialize } = useBleInitialization()
     const { configure: startConfigure } = useDeploymentConfiguration()
     useBleActions()
@@ -680,6 +685,13 @@ export const useStartDeployment = ({
     const handleBatteryCheck = useCallback(async () => {
         if (!bleDevice || !bleDevice.connected) return
         try {
+            // SHADOW MODE: Try new architecture
+            if (bleSession) {
+                const batteryLevelValue = await bleSession.execute(commandRegistry.battery)
+                setBatteryLevel(batteryLevelValue)
+                return
+            }
+            
             const response = await getBatteryLevel(bleDevice)
             const match = response.match(COMMANDS[CommandNames.battery].readRegex!)
             if (match) {
@@ -690,11 +702,35 @@ export const useStartDeployment = ({
             logError('Battery check failed:', error)
             Alert.alert('Error', 'Failed to check battery level')
         }
-    }, [bleDevice, getBatteryLevel])
+    }, [bleDevice, bleSession, getBatteryLevel])
 
     const handleSdCardCheck = useCallback(async () => {
         if (!bleDevice || !bleDevice.connected) return
         try {
+            // SHADOW MODE: Try new architecture
+            if (bleSession) {
+                try {
+                    const sdStatus = await newCheckSdCardWorkflow(bleSession)
+                    setSdCardStatus({ total: sdStatus.totalSpaceMb, free: sdStatus.freeSpaceMb })
+                    return
+                } catch (err: any) {
+                    if (err.message.includes('AI NACK')) {
+                         Alert.alert('AI Coprocessor Error', 'The camera module is not responding.', [{ text: 'OK' }])
+                         return
+                    }
+                    // Proceed to selftest fallback block if normal check failed
+                    const statusStr = await bleSession.execute<string>(commandRegistry.selftest)
+                    const hexBits = extractErrorBits(statusStr)
+                    // eslint-disable-next-line no-bitwise
+                    if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
+                        Alert.alert('No SD Card Detected', 'The device reports no SD card is inserted.', [{ text: 'OK' }])
+                        setSdCardStatus(null)
+                        return
+                    }
+                    throw err; // Re-throw if it wasn't the SD card bit
+                }
+            }
+            
             const sdStatus = await checkSdCard(bleDevice)
             if (sdStatus && sdStatus.total > 0) {
                  setSdCardStatus(sdStatus)
@@ -713,7 +749,7 @@ export const useStartDeployment = ({
             logError('SD card check failed:', error)
             Alert.alert('Error', 'Failed to check SD card status')
         }
-    }, [bleDevice, checkSdCard, runSelfTest])
+    }, [bleDevice, bleSession, checkSdCard, runSelfTest])
 
     const handleFirmwareCheck = useCallback(async () => {
         if (!bleDevice || !bleDevice.connected) return
