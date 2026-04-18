@@ -151,7 +151,7 @@ export const DeviceService = {
             name: device.name,
             bluetoothId: device.bluetoothId,
             status: deviceWithStatus?.status || 'needs_preparation',
-            deploymentName: deviceWithStatus?.activeDeployment?.name || lastDeployment?.name,
+            locationName: deviceWithStatus?.activeDeployment?.locationName || lastDeployment?.locationName,
             deploymentId: deviceWithStatus?.activeDeployment?.id || lastDeployment?.id,
             deploymentEndDate: (deviceWithStatus?.activeDeployment?.deploymentEnd || lastDeployment?.deploymentEnd)
                 ? new Date((deviceWithStatus?.activeDeployment?.deploymentEnd || lastDeployment?.deploymentEnd)!)

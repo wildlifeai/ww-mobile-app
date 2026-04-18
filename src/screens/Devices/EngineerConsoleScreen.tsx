@@ -156,7 +156,7 @@ export const EngineerConsoleScreen = () => {
 
             <ConsoleInput
                 inputText={consoleState.inputText}
-                isConnected={device.connected}
+                isConnected={device.connected && !consoleState.isConnecting}
                 onInputChange={(text) => dispatch({ type: 'SET_INPUT_TEXT', payload: text })}
                 onSend={() => handleSend()}
             />

@@ -16,7 +16,7 @@ interface ProjectDevice {
     name: string
     isActive: boolean
     activeDeploymentId?: string
-    activeDeploymentName?: string
+    activeDeploymentLocationName?: string
 }
 
 export const ProjectDevicesScreen = () => {
@@ -27,16 +27,7 @@ export const ProjectDevicesScreen = () => {
 
     useLayoutEffect(() => {
         navigation.setOptions({
-            headerTitle: () => (
-                <View style={{ alignItems: 'center' }}>
-                    <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
-                        {projectName}
-                    </Text>
-                    <Text variant="bodySmall" style={{ marginTop: -2, color: theme.colors.onSurfaceVariant }}>
-                        Wildlife Watchers
-                    </Text>
-                </View>
-            ),
+            title: `Project ${projectName}`,
             headerTitleAlign: 'center',
             headerBackTitleVisible: false
         })
@@ -83,7 +74,7 @@ export const ProjectDevicesScreen = () => {
                         name: device.name || 'Unknown Device',
                         isActive: !!activeDeployment,
                         activeDeploymentId: activeDeployment?.id,
-                        activeDeploymentName: activeDeployment?.name || activeDeployment?.locationName,
+                        activeDeploymentLocationName: activeDeployment?.locationName || 'Unknown Location',
                     }
                 })
 
@@ -131,12 +122,12 @@ export const ProjectDevicesScreen = () => {
                         >
                             {item.name && item.name !== 'Unknown Device' ? item.name : item.bluetoothId}
                         </Text>
-                        {item.isActive && item.activeDeploymentName && (
+                        {item.isActive && item.activeDeploymentLocationName && (
                             <Text
                                 variant="bodySmall"
                                 style={dynamicStyles.activeText}
                             >
-                                Deployed at {item.activeDeploymentName}
+                                Deployed at {item.activeDeploymentLocationName}
                             </Text>
                         )}
                         {!item.isActive && (

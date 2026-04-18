@@ -9,7 +9,7 @@ All device workflows share the same BLE initialization (`useBleInitialization`) 
 ## Part 1: Scanner Routing (Automated Device Association)
 
 **Components:** `DeviceDiscoveryScreen.tsx`, `ScannerRoutingDialog.tsx`, `useDeviceDiscovery.ts`
-**Entry:** Scanner tab (default landing page — auto-scans immediately)
+**Entry:** Scanner tab (default landing page — auto-scans only when the scanner tab is active via `isActiveTab` to prevent background BLE connections)
 
 > [!IMPORTANT]
 > The old `PrepareAndTestScreen` has been **removed**. Device configuration and metrics snapshots are captured directly when a user starts a deployment via the `ScannerRoutingDialog`.
@@ -40,7 +40,7 @@ flowchart TD
 
 ### Direct Deployment Routing
 
-When a new device is found, if the user has at least one project, the system looks up their most recently used project (from past deployments) and seamlessly bridges directly to the `StartDeploymentScreen` without blocking the user.
+When a new device is found, if the user has at least one project, the system looks up their most recently used project (from past deployments) and seamlessly bridges directly to the `StartMonitoringScreen` without blocking the user.
 
 ### Engineer Console (Side Drawer)
 
@@ -54,7 +54,7 @@ The **Engineer Console** is accessible via the hamburger menu in the side drawer
 
 ## Part 2: Starting a Deployment
 
-**Screen:** `StartDeploymentScreen.tsx` (`DeploymentDetailsStep`)
+**Screen:** `StartMonitoringScreen.tsx` (`StartMonitoringDetailsStep`)
 **Entry:** Scanner tab → auto-connect → ScannerRoutingDialog → "Start Deployment"
 
 ### Flow
@@ -64,7 +64,7 @@ flowchart TD
     A["Device Discovery & BLE Connect"] --> B{"Device Routing Logic"}
     B -- "Already deployed" --> C["Active Deployment routing"]
     B -- "Ready or New" --> D["Auto-create prep record"]
-    D --> E["DeploymentDetailsStep Screen"]
+    D --> E["StartMonitoringDetailsStep Screen"]
     
     E --> F["BLE Initialization (shared hook)"]
     F --> G["Load Device & Project Data"]
@@ -91,9 +91,9 @@ Uses `useBleInitialization` — runs standard self-test and UTC time sync. A **2
 | Location Description | — | Optional site notes |
 | Camera Height (cm) | — | Height from ground |
 | Start Comments | — | Deployment conditions |
-| Camera View Image | — | Preview via `CameraViewSection` |
-| Motion Detection Test | — | Test grid via `DeploymentMotionDetectionSection` (Activity Detection projects only) |
-| LoRaWAN Status | — | Connectivity check |
+| Camera View Image | — | Collapsible preview via `CameraViewSection` |
+| Motion Detection Test | — | Collapsible test grid via `DeploymentMotionDetectionSection` (Activity Detection projects only) |
+| LoRaWAN Status | — | Collapsible connectivity check |
 
 Project settings (capture method, sensitivity, timelapse interval, GPS image tagging, bait usage, marked individuals monitoring) are inherited from the configured project. However, the user can instantly swap the attached **Project** using the `<WWSelect>` interactive dropdown right on this screen. Any change dynamically recalculates the capture parameters before deployment.
 
@@ -140,8 +140,8 @@ Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers
 
 ## Part 3: Ending a Deployment
 
-**Screen:** `EndDeploymentScreen.tsx` (`EndDeploymentDetailsStep`)
-**Entry:** Maps → tap deployed device → "End Deployment", or Devices list, or Deployment details
+**Screen:** `StopMonitoringScreen.tsx` (`EndStartMonitoringDetailsStep`)
+**Entry:** Maps → tap deployed device → "Stop Monitoring", or Devices list, or Deployment details
 
 ### Flow
 
@@ -149,11 +149,11 @@ Camera enable (`setop 10 1`) is always sent **last** to avoid premature triggers
 flowchart TD
     A["Device Discovery & BLE Connect"] --> B{"Active deployment?"}
     B -- No --> C["Alert: 'Not part of an active deployment'"]
-    B -- Yes --> D["EndDeploymentDetailsStep Screen"]
+    B -- Yes --> D["EndStartMonitoringDetailsStep Screen"]
     
     D --> E["BLE Initialization (shared hook)"]
     E --> F["Show Deployment Info + Retrieval Notes"]
-    F --> G{"Tap 'End Deployment'"}
+    F --> G{"Tap 'Stop Monitoring'"}
     G --> H{"Device connected?"}
     H -- No --> I["Offer 'Force End (DB Only)'"]
     H -- Yes --> J["Clear Deployment ID"]
@@ -186,7 +186,7 @@ A single `AI getop -1` bulk fetch is performed before Step 1, and the cached res
 ### Force End (Disconnected Device)
 
 If the device is not connected, the user can "Force End (Database Only)":
-- Updates the deployment record without BLE commands
+- Updates the monitoring record without BLE commands
 - Device must be manually reset later (e.g. via Engineer Console)
 
 **Deployment Status IDs:** `1 = Deployed (Active)`, `2 = Recovery (Ended)`, `3 = Failed`
@@ -195,7 +195,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 
 ## OP Parameter Optimization (`AI getop -1`)
 
-All three flows use the **bulk parameter fetch** command `AI getop -1` to minimize BLE round-trips. This single command returns all operational parameters (OpParams 0–27) from the AI processor in one response.
+All three flows use the **bulk parameter fetch** command `AI getop -1` to minimize BLE round-trips. This single command returns all operational parameters (OpParams 0–20) from the AI processor in one response.
 
 **Pattern:**
 1. Fetch all params once: `AI getop -1` → `OpParams 1324 6 0 18 ...`
@@ -244,6 +244,7 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval
 | "GPS Accuracy Too Low" | Weak signal (dense canopy) | Move to clearing for fix, then return |
 | "Deployment Initialisation Failed" | Device handshake timeout | Re-connect and keep phone close |
 | "Failed to Set Deployment ID" | BLE write error or AI NACK | Keep phone within 1m; app falls back to GPS-only |
+| "No SD Card Detected" | Missing card or newly inserted card hasn't mounted | The app automatically sends a Wake signal prior to checking `aiinfo` to rapidly recover SD cards inserted mid-session |
 
 ### End Deployment
 
@@ -255,4 +256,39 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval
 
 ---
 
-*Last Updated: March 29, 2026*
+## Part 4: Hardware & Sensor Testing Tools
+
+To support ongoing hardware validation, the app integrates dedicated testing screens mapped directly to the hardware capabilities. These tools bypass standard deployment flows and interface directly with the device API. 
+
+They are accessed directly via the **Engineer Console** (`EngineerConsoleScreen.tsx`) → **Help / Command Reference**.
+
+### 1. Motion Detection Screen
+**Screen:** `StandaloneMotionDetectionScreen.tsx`
+**Purpose:** Provides a real-time visualization of the HM0360 sensor's internal motion detection algorithm.
+**Flow:**
+- Uses the `useMotionDetectionStream` hook to subscribe to the device log messages.
+- Parses the 256-bit binary payload representing a 16x16 grid of motion blocks.
+- Renders the grid natively. A visual feedback loop helps understand when the environmental thresholds are crossed.
+
+### 2. Camera Settings Test Screen
+**Screen:** `CameraSettingsTestScreen.tsx`
+**Purpose:** Captures a single test image with configurable flash parameters to validate LED hardware and exposure settings without needing a full firmware recompilation.
+
+**Features:**
+- **Flash Configuration:** Live adjustment of `Flash Duration`, `Flash LED Type` (visible/IR/none), and `LED Brightness` (0–100%).
+- **Direct Capture:** Triggers capture via `AI capture 1 1000` (direct command). The previous timelapse-interval workaround has been reverted.
+- **DPD Synchronisation and Quiesce:** Before capture, the hook writes `MD_INTERVAL=0` and `TIMELAPSE_INTERVAL=0` alongside flash OPs (9, 12, 13) and waits for the device to enter Deep Power Down (`Sleep` message). This ensures CONFIG.TXT is committed with both the new flash parameters **and** zeroed background triggers — preventing a prior deployment's motion/timelapse settings from causing the flash LED to fire repeatedly after the test capture.
+- **Post-Capture Camera Disable:** After capture completes, `CAMERA_ENABLED=0` (`setop 10 0`) is sent and the hook waits for the resulting sleep cycle. This returns the device to a clean idle state and prevents it from re-entering monitoring mode.
+- **Real-time Auto Exposure (AE) Data:** Captures console logs (`Integration time`, `Analog gain`, etc.) to dynamically render live AE metrics and a visual AE Mean progress bar (0–255).
+- **Metadata Tracking Gallery:** Every image captured in the test session is stored as a `CapturedImageInfo` object. This creates a persistent **snapshot of settings** exactly as they were during the capture trigger.
+- **Image Validation:** Tapping any thumbnail in the gallery opens a light-box modal that displays the specific `cameraParams` and `aeData` associated with that *exact* frame, enabling fast hardware/firmware debugging.
+- **Robustness:** Includes a `maxRetries: 1` logic for `setop` batch writes to handle transient device Sleep events during the parameter application phase.
+
+> [!WARNING]
+> **Firmware Bug — Flash strobe not configured in manual capture path.** The Himax firmware only configures the HM0360 strobe mode (`Strobe mode 0x03`) when entering DPD via the normal MD sleep preparation path. The manual `AI capture` command bypasses this, so the flash LED never fires. The timelapse workaround forces the capture through the normal DPD path where strobe IS configured. **TODO:** Revert to direct `AI capture` once the Himax firmware is updated.
+
+> [!NOTE]
+> The flash LED hardware is driven by the Himax AI processor (HX6538), not the nRF52 (WW500). The nRF only stores and forwards the OP values — the Himax reads them from CONFIG.TXT during the capture wake cycle.
+
+*Last Updated: April 13, 2026*
+

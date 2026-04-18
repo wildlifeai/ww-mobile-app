@@ -144,10 +144,10 @@ export const DeviceDetailsScreen = () => {
                     <Card mode="outlined" style={styles.card} onPress={() => handleViewDeployment(activeDeployment.id)}>
                         <Card.Content>
                             <WWText variant="titleSmall" style={styles.sectionTitle}>
-                                <Text>Current Deployment</Text>
+                                <Text>Active Monitoring</Text>
                             </WWText>
                             <View style={styles.deploymentCardContent}>
-                                <WWText variant="titleMedium"><Text>{activeDeployment.name || 'Unnamed Deployment'}</Text></WWText>
+                                <WWText variant="titleMedium"><Text>{activeDeployment.name || 'Unnamed Session'}</Text></WWText>
                                 <WWText variant="bodySmall" style={styles.deploymentDate}>
                                     <Text>Started: {isValidDate(activeDeployment.deploymentStart) ? new Date(activeDeployment.deploymentStart).toLocaleDateString() : 'Unknown'}</Text>
                                 </WWText>
@@ -166,12 +166,12 @@ export const DeviceDetailsScreen = () => {
                 <Card mode="outlined" style={styles.card}>
                     <Card.Content>
                         <WWText variant="titleSmall" style={styles.sectionTitle}>
-                            <Text>Deployment History</Text>
+                            <Text>Monitoring History</Text>
                         </WWText>
 
                         {deploymentHistory.length === 0 ? (
                             <WWText variant="bodySmall" style={styles.comingSoon}>
-                                <Text>No previous deployments found.</Text>
+                                <Text>No previous monitoring sessions found.</Text>
                             </WWText>
                         ) : (
                             deploymentHistory.map((deployment, index) => (
@@ -181,7 +181,7 @@ export const DeviceDetailsScreen = () => {
                                     onPress={() => handleViewDeployment(deployment.id)}
                                 >
                                     <View style={styles.historyItemContent}>
-                                        <WWText variant="titleSmall">{deployment.name || 'Unnamed Deployment'}</WWText>
+                                        <WWText variant="titleSmall">{deployment.name || 'Unnamed Session'}</WWText>
                                         <View style={styles.historyDetailsRow}>
                                             <WWText variant="labelSmall" style={styles.historyDate}>
                                                 {isValidDate(deployment.deploymentStart) ? new Date(deployment.deploymentStart).toLocaleDateString() : 'Unknown Date'}

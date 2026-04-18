@@ -297,6 +297,9 @@ Categorizes every incoming text message into one of four types:
 
 **Classification order:** ERROR → Expected Pattern → INFO → UNSOLICITED → Default to RESPONSE
 
+> [!NOTE]
+> The subsystem also implements `classifyForMonitor`, which abstracts and filters incoming messages specifically for the UI's Live Monitoring Log. It silently discards telemetry noise like `Sleep` or `Wake` states to reduce clutter, and explicitly translates dense diagnostic markers (e.g. mapping `Error bits = 0x0000` to "No motion" and interpreting specific `OpParam` queries, like `OpParam 19`, into human-readable stored image metrics).
+
 **File:** [messageClassifier.ts](../../src/ble/messageClassifier.ts)
 
 ---
@@ -477,7 +480,7 @@ stateDiagram-v2
 **Key design decisions:**
 - Uses `useRef` for `device`, `write`, and `timer` to avoid stale closures in the 58s callback
 - Listens via `bleCommandManager.addMessageListener()` — reacts to **all** raw messages, not just specific types
-- The heartbeat command (`AI selftest`) produces a response, which itself resets the timer — creating a self-sustaining keep-alive cycle
+- The heartbeat command (`get heartbeat`) produces a response, which itself resets the timer — creating a self-sustaining keep-alive cycle
 - Effect only re-registers when `device?.connected` changes, not on every Redux state update
 
 **Mounted in:** `ListenToBleEngineProvider` — active whenever any device is connected.

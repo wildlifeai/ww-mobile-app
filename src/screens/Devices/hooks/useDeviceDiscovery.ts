@@ -24,10 +24,12 @@ type DeviceDiscoveryScreenRouteProp = RouteProp<RootStackParamList, 'DeviceDisco
 
 type UseDeviceDiscoveryOptions = {
     isDrawerOpen?: boolean
+    isActiveTab?: boolean
 }
 
 export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const isDrawerOpen = options?.isDrawerOpen ?? false
+    const isActiveTab = options?.isActiveTab ?? true
     const navigation = useNavigation()
     const route = useRoute<DeviceDiscoveryScreenRouteProp>()
 
@@ -87,7 +89,8 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         const isReadyForNewScan = !isBleConnecting && !processing && !connectingDevice
 
         // Treat an open drawer the same as not being focused (pause background operations)
-        const isActuallyFocused = isFocused && !isDrawerOpen
+        // Also ensure that if we are a tab, we are the active tab
+        const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
 
         if (isActuallyFocused && isReadyForNewScan) {
             if (!isScanning && !scanCommandLockRef.current) {
@@ -107,7 +110,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 scanCommandLockRef.current = false
             })
         }
-    }, [isFocused, isDrawerOpen, isScanning, isBleConnecting, processing, connectingDevice, startScan, stopScan])
+    }, [isFocused, isDrawerOpen, isActiveTab, isScanning, isBleConnecting, processing, connectingDevice, startScan, stopScan])
 
     const handleScan = useCallback(() => {
         if (!isBleConnecting && !processing && !connectingDevice && !isScanning) {
@@ -213,7 +216,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                             }
                                         }
 
-                                        ;(navigation as any).navigate('EndDeploymentDetailsStep', {
+                                        ;(navigation as any).navigate('StopMonitoringDetailsStep', {
                                             deploymentId: activeDeployment.id,
                                             deviceId: dbDevice.id,
                                             bleDeviceId: connectedDevice.id,
@@ -252,7 +255,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                     await addLog('Ready for deployment')
 
                                     // Route directly to Start Deployment
-                                    ;(navigation as any).navigate('DeploymentDetailsStep', {
+                                    ;(navigation as any).navigate('StartMonitoringDetailsStep', {
                                         projectId: targetProjectId,
                                         deviceId: dbDevice.id,
                                         bleDeviceId: connectedDevice.id,
@@ -305,7 +308,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                 }
                             }
 
-                            ;(navigation as any).navigate('EndDeploymentDetailsStep', {
+                            ;(navigation as any).navigate('StopMonitoringDetailsStep', {
                                 deploymentId: activeDeployment.id,
                                 deviceId: dbDevice.id,
                                 bleDeviceId: connectedDevice.id,
@@ -382,7 +385,8 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
     useEffect(() => {
         // Treat an open drawer the same as not being focused (pause background operations)
-        const isActuallyFocused = isFocused && !isDrawerOpen
+        // Also ensure that if we are a tab, we are the active tab
+        const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
 
         // Prevent auto-connect if we're not focused, processing a connection, ANY device is currently connecting,
         // OR the Engineer Console is actively scanning for a device
@@ -403,7 +407,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 }
             })
         }
-    }, [isFocused, isDrawerOpen, isAnyDeviceConnecting, isEngineerConsoleActive, devicesToDisplay, mode, processing, handleDeviceSelect])
+    }, [isFocused, isDrawerOpen, isActiveTab, isAnyDeviceConnecting, isEngineerConsoleActive, devicesToDisplay, mode, processing, handleDeviceSelect])
 
     const handleDisconnect = useCallback(async (device: ExtendedPeripheral) => {
         log(`Disconnecting from ${device.id}`)

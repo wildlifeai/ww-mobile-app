@@ -57,7 +57,7 @@ export const ProjectCard = React.memo(
 				testID={`project-card-${project.id}`}
 				accessible
 				accessibilityLabel={`Project ${project.name}, ${displayMemberCount
-					} members, ${project.deployment_count || 0} deployments`}
+					} members, ${project.deployment_count || 0} sessions`}
 			>
 				<Card.Content style={styles.content}>
 					{/* Project Name */}

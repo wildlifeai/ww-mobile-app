@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
@@ -6,10 +6,11 @@ import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWButton } from '../../components/ui/WWButton'
 import { RootStackParamList } from '../../navigation/types'
 import { Card, Text, Button, IconButton, useTheme } from 'react-native-paper'
-import { WWIcon } from '../../components/ui/WWIcon'
 import { WWSelect } from '../../components/ui/WWSelect'
+import { WWIcon } from '../../components/ui/WWIcon'
 import { InitializationHeader } from '../Devices/components/InitializationHeader'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { useGetAiModelsQuery } from '../../redux/api/projectsApi'
 
 import { LoRaWANSection } from './components/LoRaWANSection'
 import { CameraViewSection } from './components/CameraViewSection'
@@ -23,22 +24,22 @@ import { DeploymentMonitorView } from './components/DeploymentMonitorView'
 import { useStartDeployment } from './hooks/useStartDeployment'
 
 
-type DeploymentDetailsRouteProp = RouteProp<RootStackParamList, 'DeploymentDetailsStep'>;
+type StartMonitoringDetailsRouteProp = RouteProp<RootStackParamList, 'StartMonitoringDetailsStep'>;
 
-export const DeploymentDetailsStep = () => {
+export const StartMonitoringDetailsStep = () => {
     const theme = useTheme()
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
-    const route = useRoute<DeploymentDetailsRouteProp>()
+    const route = useRoute<StartMonitoringDetailsRouteProp>()
 
     const { projectId, deviceId, bleDeviceId, initPayload } = route.params || {}
 
     // Destructure everything from hook first
     const {
-        formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
+        formState, submitting, project, availableProjects, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         handleImageCaptured,
-        handleNameChange, handleNotesChange, handleProjectChange,
+        handleNotesChange, handleProjectChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
         helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp,
         // Dropdown & Additional Location State
@@ -52,12 +53,12 @@ export const DeploymentDetailsStep = () => {
     } = useStartDeployment({ deviceId, bleDeviceId, projectId, navigation, initPayload })
 
     useEffect(() => {
-        let title = device?.name || bleDevice?.name || 'Start deployment'
+        let title = device?.name || bleDevice?.name || 'Start monitoring'
         if (isMonitoring) {
-            title = formState.name || 'Monitoring'
+            title = 'Monitoring'
         }
         navigation.setOptions({ title })
-    }, [device?.name, bleDevice?.name, navigation, isMonitoring, formState.name])
+    }, [device?.name, bleDevice?.name, navigation, isMonitoring])
 
     const headerLeft = useCallback(() => (
         <IconButton
@@ -73,9 +74,15 @@ export const DeploymentDetailsStep = () => {
         })
     }, [isMonitoring, navigation, headerLeft])
 
-    const renderProjectSettingsLeft = useCallback((props: any) => <WWIcon {...props} source="tune" />, [])
+    const { data: aiModels } = useGetAiModelsQuery()
+    const aiModelName = useMemo(() => {
+        if (!project?.model_id || !aiModels) return null
+        const model = aiModels.find(m => m.id === project.model_id)
+        return model ? `${model.name} v${model.version}` : null
+    }, [project?.model_id, aiModels])
+
     const renderProjectSettingsRight = useCallback((props: any) => (
-        <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Project settings', 'Project and Capture Method are set during Project Creation and Device Preparation. To change these, you must restart the preparation.')}>
+        <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Associated Project', 'This section shows the project linked to this device and its active features.\n\n🔄 Motion icon: Activity detection is enabled\n⏱ Clock icon: Time-lapse capture is enabled\n📡 Waves icon: LoRaWAN connectivity is enabled\n🛰 Satellite icon: GPS location is recorded in images\n🧠 Brain icon: An AI model is assigned for analysis')}>
             <Text>Help</Text>
         </Button>
     ), [showHelp])
@@ -88,7 +95,7 @@ export const DeploymentDetailsStep = () => {
                 <View style={styles.errorContainer}>
                     <Text variant="headlineMedium" style={styles.errorTitle}>Error</Text>
                     <Text variant="bodyLarge" style={styles.errorMessage}>
-                        Missing Device ID. Unable to proceed with deployment.
+                        Missing Device ID. Unable to proceed with monitoring.
                     </Text>
                     <Button mode="contained" onPress={() => navigation.goBack()}>
                         <Text>Go Back</Text>
@@ -120,16 +127,15 @@ export const DeploymentDetailsStep = () => {
                         initStep={initStep}
                         initErrors={initErrors}
                         theme={theme}
-                        warningHintText="You can still proceed with deployment, but we recommend addressing these issues if possible."
+                        warningHintText="You can still proceed with monitoring, but we recommend addressing these issues if possible."
                         hideDeviceDetails={true}
                     />
                 )}
 
-                {/* Project & Configuration Header */}
+                {/* Associated Project */}
                 <Card style={styles.card}>
-                    <Card.Title
-                        title="Project settings"
-                        left={renderProjectSettingsLeft}
+                        <Card.Title
+                        title="Associated Project"
                         right={renderProjectSettingsRight}
                     />
                     <Card.Content>
@@ -142,34 +148,44 @@ export const DeploymentDetailsStep = () => {
                                 disabled={submitting || isInitializing}
                             />
                         </View>
-                        <View style={styles.infoRow}>
-                            <Text variant="labelMedium">Capture Method:</Text>
-                            <Text variant="bodyLarge">{captureMethodName || 'Loading...'}</Text>
-                        </View>
-                        {project?.capture_method_id === 1 && sensitivityLabel ? (
-                            <View style={styles.infoRow}>
-                                <Text variant="labelMedium">Motion Sensitivity:</Text>
-                                <Text variant="bodyLarge">{sensitivityLabel}</Text>
-                            </View>
-                        ) : project?.capture_method_id === 2 && project?.timelapse_interval_seconds ? (
-                            <View style={styles.infoRow}>
-                                <Text variant="labelMedium">Time-lapse Interval:</Text>
-                                <Text variant="bodyLarge">{project.timelapse_interval_seconds}s</Text>
-                            </View>
-                        ) : null}
 
-                        {[
-                            { label: 'Record GPS in Images', enabled: project?.record_gps_in_images },
-                            { label: 'Using Bait', enabled: project?.is_baited },
-                            { label: 'Monitoring Marked Individuals', enabled: project?.is_monitoring_marked_individuals },
-                        ].map(({ label, enabled }) => (
-                            enabled && (
-                                <View key={label} style={styles.infoRow}>
-                                    <Text variant="labelMedium">{label}:</Text>
-                                    <Text variant="bodyLarge">Enabled</Text>
+                        {/* Feature icons row */}
+                        <View style={styles.featureIconsRow}>
+                            {project?.capture_method_id === 1 && (
+                                <View style={styles.featureIcon}>
+                                    <WWIcon source="motion-sensor" size={22} color={theme.colors.onSurfaceVariant} />
+                                    <Text variant="labelSmall" style={styles.featureLabel}>
+                                        {sensitivityLabel || 'Motion'}
+                                    </Text>
                                 </View>
-                            )
-                        ))}
+                            )}
+                            {project?.capture_method_id === 2 && (
+                                <View style={styles.featureIcon}>
+                                    <WWIcon source="timer-outline" size={22} color={theme.colors.onSurfaceVariant} />
+                                    <Text variant="labelSmall" style={styles.featureLabel}>
+                                        {project.timelapse_interval_seconds ? `${project.timelapse_interval_seconds}s` : 'Timelapse'}
+                                    </Text>
+                                </View>
+                            )}
+                            {project?.lorawan_required && (
+                                <View style={styles.featureIcon}>
+                                    <WWIcon source="access-point" size={22} color={theme.colors.onSurfaceVariant} />
+                                    <Text variant="labelSmall" style={styles.featureLabel}>LoRaWAN</Text>
+                                </View>
+                            )}
+                            {project?.record_gps_in_images && (
+                                <View style={styles.featureIcon}>
+                                    <WWIcon source="satellite-variant" size={22} color={theme.colors.onSurfaceVariant} />
+                                    <Text variant="labelSmall" style={styles.featureLabel}>GPS</Text>
+                                </View>
+                            )}
+                            {aiModelName && (
+                                <View style={styles.featureIcon}>
+                                    <WWIcon source="brain" size={22} color={theme.colors.onSurfaceVariant} />
+                                    <Text variant="labelSmall" style={styles.featureLabel}>{aiModelName}</Text>
+                                </View>
+                            )}
+                        </View>
 
                     </Card.Content>
                 </Card>
@@ -194,9 +210,7 @@ export const DeploymentDetailsStep = () => {
                 />
 
                 <MetadataSection
-                    name={formState.name}
                     notes={formState.notes}
-                    onNameChange={handleNameChange}
                     onNotesChange={handleNotesChange}
                     onShowHelp={showHelp}
                 />
@@ -236,7 +250,7 @@ export const DeploymentDetailsStep = () => {
                         loading={submitting}
                         style={styles.deployButton}
                     >
-                        <Text>Start Deployment</Text>
+                        <Text>Start Monitoring</Text>
                     </WWButton>
                 </View>
             </View>
@@ -255,8 +269,8 @@ export const DeploymentDetailsStep = () => {
                 logs={finishLogs}
                 isComplete={isStartSuccess}
                 onDismiss={handleFinishDismiss}
-                loadingTitle="Starting Deployment"
-                successTitle="Deployment Complete"
+                loadingTitle="Starting Monitoring"
+                successTitle="Monitoring Started"
                 hideOkButton={true}
             />
         </WWScreenView>
@@ -280,15 +294,26 @@ const styles = StyleSheet.create({
         paddingVertical: 8
     },
     card: {
-        // marginBottom: 16 // Removed to avoid double spacing with container gap
     },
-    infoRow: {
-        marginBottom: 4
+    featureIconsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        gap: 16,
+        marginTop: 4,
+    },
+    featureIcon: {
+        alignItems: 'center',
+        gap: 4,
+    },
+    featureLabel: {
+        opacity: 0.7,
+        textAlign: 'center',
     },
     projectSelectContainer: {
         marginBottom: 16,
         marginTop: 4,
-        zIndex: 1000, 
+        zIndex: 10, 
     },
     errorContainer: {
         flex: 1,

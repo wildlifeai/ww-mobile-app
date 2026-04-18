@@ -32,8 +32,8 @@ import { EditProjectScreen } from "../screens/Projects/EditProjectScreen"
 // import { Deployments as DeploymentsListScreen } from "../screens/Deployments/DeploymentsListScreen"
 import { AddDeployment } from "../screens/Deployments/AddDeploymentScreen"
 import { DeploymentDetailsScreen } from "../screens/Deployments/DeploymentDetailsScreen"
-import { DeploymentDetailsStep } from "../screens/Deployments/StartDeploymentScreen"
-import { EndDeploymentDetailsStep } from "../screens/Deployments/EndDeploymentScreen"
+import { StartMonitoringDetailsStep } from "../screens/Deployments/StartMonitoringScreen"
+import { StopMonitoringDetailsStep } from "../screens/Deployments/StopMonitoringScreen"
 
 // Device screens
 // import { Devices as DevicesListScreen } from "../screens/Devices/DevicesListScreen"
@@ -41,6 +41,7 @@ import { DeviceDiscoveryScreen } from "../screens/Devices/DeviceDiscoveryScreen"
 import { DeviceDetailsScreen } from "../screens/Devices/DeviceDetailsScreen"
 import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
 import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMotionDetectionScreen"
+import { CameraSettingsTestScreen } from "../screens/Devices/CameraSettingsTestScreen"
 import { DfuScreen } from "../screens/Devices/DfuScreen"
 
 // Developer screens
@@ -155,7 +156,7 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="AddDeployment"
 							component={AddDeployment}
-							options={{ title: "Start deployment" }}
+							options={{ title: "Start monitoring" }}
 						/>
 						<Stack.Screen
 							name="NewProjectScreen"
@@ -202,31 +203,36 @@ export const MainNavigation = () => {
 							component={StandaloneMotionDetectionScreen}
 						/>
 						<Stack.Screen
+							name="CameraSettingsTestScreen"
+							component={CameraSettingsTestScreen}
+							options={{ title: "Camera Settings Test" }}
+						/>
+						<Stack.Screen
 							name="StartDeploymentWizard"
 							component={DeviceDiscoveryScreen}
 							initialParams={{ mode: 'deployment' }}
 							options={{ title: "Select Device", headerTitleAlign: 'center' }}
 						/>
 						<Stack.Screen
-							name="DeploymentDetailsStep"
-							component={DeploymentDetailsStep}
-							options={{ title: "Deployment Details", headerTitleAlign: 'center' }}
+							name="StartMonitoringDetailsStep"
+							component={StartMonitoringDetailsStep}
+							options={{ title: "Device Interaction", headerTitleAlign: 'center' }}
 						/>
 						<Stack.Screen
-							name="EndDeploymentWizard"
+							name="StopMonitoringWizard"
 							component={DeviceDiscoveryScreen}
-							options={{ title: "End Deployment" }}
+							options={{ title: "End Monitoring" }}
 							initialParams={{ mode: 'end_deployment' }}
 						/>
 						<Stack.Screen
-							name="EndDeploymentDetailsStep"
-							component={EndDeploymentDetailsStep}
-							options={{ title: "End deployment" }}
+							name="StopMonitoringDetailsStep"
+							component={StopMonitoringDetailsStep}
+							options={{ title: "End monitoring" }}
 						/>
 						<Stack.Screen
 							name="DeploymentDetails"
 							component={DeploymentDetailsScreen}
-							options={{ title: "Deployment" }}
+							options={{ title: "Monitoring Session" }}
 						/>
 						{__DEV__ && (
 							<>

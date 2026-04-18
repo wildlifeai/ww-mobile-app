@@ -103,8 +103,8 @@ Screens live in two locations:
 ```
 screens/                       navigation/screens/
 ├── Deployments/               ├── Login.tsx
-│   ├── StartDeploymentScreen  ├── Register.tsx
-│   ├── EndDeploymentScreen    ├── Profile.tsx
+│   ├── StartMonitoringScreen  ├── Register.tsx
+│   ├── StopMonitoringScreen    ├── Profile.tsx
 │   └── ...                    ├── Settings.tsx
 ├── Devices/                   └── ForgotPassword.tsx
 │   ├── DeviceDiscoveryScreen

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, StyleSheet, ScrollView } from 'react-native'
+import { View, StyleSheet, ScrollView, Alert } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
-import { TextInput, useTheme, Text, Card } from 'react-native-paper'
+import { useTheme, Text, Card } from 'react-native-paper'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
+import { WWTextInput } from '../../components/ui/WWTextInput'
 import { RootStackParamList } from '../../navigation/types'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { DeploymentService } from '../../services/DeploymentService'
@@ -26,8 +27,36 @@ import { useEndDeployment } from './hooks/useEndDeployment'
 
 import { useDeploymentMonitor, ActivityLogEntry } from './hooks/useDeploymentMonitor'
 
+const formatMonitoringDuration = (startValue: Date | string | number) => {
+    const start = startValue instanceof Date ? startValue.getTime() : new Date(startValue).getTime()
+    const diffInSeconds = Math.max(0, Math.floor((Date.now() - start) / 1000))
+    
+    if (diffInSeconds < 60) {
+        return `${diffInSeconds} ${diffInSeconds === 1 ? 'second' : 'seconds'}`
+    }
+    const minutes = Math.floor(diffInSeconds / 60)
+    if (minutes < 60) {
+        return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`
+    }
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) {
+        const remMin = minutes % 60
+        if (remMin === 0) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
+        return `${hours} ${hours === 1 ? 'hour' : 'hours'} and ${remMin} ${remMin === 1 ? 'minute' : 'minutes'}`
+    }
+    const days = Math.floor(hours / 24)
+    if (days < 30) {
+        const remHours = hours % 24
+        if (remHours === 0) return `${days} ${days === 1 ? 'day' : 'days'}`
+        return `${days} ${days === 1 ? 'day' : 'days'} and ${remHours} ${remHours === 1 ? 'hour' : 'hours'}`
+    }
+    const months = Math.floor(days / 30)
+    const remDays = days % 30
+    if (remDays === 0) return `${months} ${months === 1 ? 'month' : 'months'}`
+    return `${months} ${months === 1 ? 'month' : 'months'} and ${remDays} ${remDays === 1 ? 'day' : 'days'}`
+}
 
-type EndDeploymentDetailsStepRouteProp = RouteProp<RootStackParamList, 'EndDeploymentDetailsStep'>
+type StopMonitoringDetailsStepRouteProp = RouteProp<RootStackParamList, 'StopMonitoringDetailsStep'>
 
 interface InnerProps {
     deployment: Deployment
@@ -36,13 +65,13 @@ interface InnerProps {
 }
 
 
-const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment }) => {
+const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }) => {
     const theme = useTheme()
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
-    const route = useRoute<EndDeploymentDetailsStepRouteProp>()
+    const route = useRoute<StopMonitoringDetailsStepRouteProp>()
     const { deviceId = '', bleDeviceId = '', initPayload } = route.params || {}
     useBleActions()
-    const { runDisconnect, setDeploymentIdAsOps, clearGpsLocation, getAllOperationalParams } = useBleCommands()
+    const { runDisconnect, setDeploymentIdAsString, clearGpsLocation, getAllOperationalParams } = useBleCommands()
 
     // Get full device object for BLE commands
     const devices = useAppSelector(state => state.devices)
@@ -52,8 +81,8 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     // Get current user
     const user = useAppSelector(selectCurrentUser)
 
-    // Live activity log (same feed as monitor screen)
-    const { activityLog } = useDeploymentMonitor(storeDevice)
+    // Live activity log and stats (same feed as monitor screen)
+    const { activityLog, stats: monitorStats } = useDeploymentMonitor(storeDevice)
 
     // Track device in ref for use in intervals/callbacks to avoid stale closures
     const bleDeviceRef = useRef(storeDevice)
@@ -84,7 +113,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         retrievalNotes,
         navigation,
         quiesceDevice,
-        setDeploymentIdAsOps,
+        setDeploymentIdAsString,
         clearGpsLocation,
         runDisconnect,
         getAllOperationalParams,
@@ -104,29 +133,50 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
         DeviceService.getDeviceById(deviceId).then(setDeviceDb)
     }, [deviceId])
 
+    useEffect(() => {
+        const title = deviceDb?.name || storeDevice?.name || 'Stop Monitoring'
+        navigation.setOptions({ title })
+    }, [deviceDb?.name, storeDevice?.name, navigation])
+
 
     // Back button handler: Disconnect BLE before navigating away
     useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', async (e) => {
-            if (isNavigatingAway.current || isEnding) return // Already handled
+            if (isNavigatingAway.current || isEnding || isEndDeploymentSuccess) return // Already handled
 
             // Prevent immediate navigation
             e.preventDefault()
-            
-            // Disconnect device
-            const currentDevice = bleDeviceRef.current
-            if (currentDevice?.connected) {
-                log('[EndDeployment] Back button pressed - disconnecting device...')
-                isNavigatingAway.current = true
-                await runDisconnect(currentDevice)
-            }
-            
-            // Now allow navigation
-            navigation.dispatch(e.data.action)
+            Alert.alert(
+                "Wildlife Watcher Monitoring",
+                "The wildlife watcher will keep monitoring for animals in the background.",
+                [
+                    {
+                        text: "Cancel",
+                        style: "cancel"
+                    },
+                    {
+                        text: "Understood",
+                        style: "default",
+                        onPress: async () => {
+                        // Disconnect device
+                        const currentDevice = bleDeviceRef.current
+                        isNavigatingAway.current = true
+                        
+                        if (currentDevice?.connected) {
+                            log('[EndDeployment] Back button pressed - disconnecting device...')
+                            await runDisconnect(currentDevice)
+                        }
+                            
+                            // Now allow navigation
+                            navigation.dispatch(e.data.action)
+                        }
+                    }
+                ]
+            )
         })
 
         return unsubscribe
-    }, [navigation, isEnding, runDisconnect])
+    }, [navigation, isEnding, isEndDeploymentSuccess, runDisconnect])
 
 
 
@@ -135,7 +185,7 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
     if (!deployment) {
         return (
             <WWScreenView>
-                <WWText><Text>Loading deployment details...</Text></WWText>
+                <WWText><Text>Loading monitoring session details...</Text></WWText>
             </WWScreenView>
         )
     }
@@ -157,23 +207,21 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 )}
 
                 {/* Deployment Info Section */}
-                <Card mode="contained" style={styles.section}>
+                <Card style={styles.section}>
                     <Card.Content>
+
                         <View style={styles.infoRow}>
-                            <WWText variant="labelMedium"><Text>Name:</Text></WWText>
-                            <WWText variant="bodyLarge"><Text>{deployment.name}</Text></WWText>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <WWText variant="labelMedium"><Text>Deployment Start:</Text></WWText>
-                            <WWText variant="bodyLarge"><Text>{new Date(deployment.deploymentStart).toLocaleDateString()}</Text></WWText>
+                            <WWText variant="bodyLarge"><Text>
+                                Monitoring time: {formatMonitoringDuration(deployment.deploymentStart)}.{monitorStats.deviceImageCount !== null ? ` Images recorded: ${monitorStats.deviceImageCount}.` : ''}
+                            </Text></WWText>
                         </View>
                     </Card.Content>
                 </Card>
 
                 {/* Live Activity Log */}
-                <Card mode="contained" style={styles.section}>
+                <Card style={styles.section}>
+                    <Card.Title title="Monitoring Activity" />
                     <Card.Content>
-                        <WWText variant="titleMedium" style={styles.notesTitle}><Text>Live Activity Log</Text></WWText>
                         <View style={[styles.activityLogBox, { backgroundColor: theme.colors.surface }]}>
                             {activityLog.length === 0 ? (
                                 <View style={styles.emptyLogContainer}>
@@ -198,18 +246,18 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 </Card>
 
                 {/* Retrieval Notes Input */}
-                <Card mode="contained" style={styles.section}>
+                <Card style={styles.section}>
+                    <Card.Title title="Notes" />
                     <Card.Content>
-                        <WWText variant="titleMedium" style={styles.notesTitle}><Text>Notes</Text></WWText>
-                        <TextInput
+                        <WWTextInput
                             mode="outlined"
+                            label="Notes"
                             placeholder="e.g. SD card full, Battery low, Device damaged..."
                             multiline
                             numberOfLines={11}
                             value={retrievalNotes}
-                            onChangeText={setRetrievalNotes}
+                            onChange={setRetrievalNotes}
                             style={styles.input}
-                            textColor="#000"
                         />
                     </Card.Content>
                 </Card>
@@ -218,12 +266,12 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                 <View style={styles.footer}>
                     <WWButton
                         mode="contained"
-                        style={styles.endButton}
+                        style={styles.deployButton}
                         onPress={handleEndDeployment}
                         loading={isEnding}
                         disabled={isEnding}
                     >
-                        <Text>{isEnding ? "Ending..." : "End Deployment"}</Text>
+                        <Text>{isEnding ? "Stopping..." : "Stop Monitoring"}</Text>
                     </WWButton>
                 </View>
 
@@ -234,8 +282,9 @@ const EndDeploymentDetailsStepComponent: React.FC<InnerProps> = ({ deployment })
                     logs={finishLogs}
                     isComplete={isEndDeploymentSuccess}
                     onDismiss={handleFinishDismiss}
-                    loadingTitle="Ending Deployment"
-                    successTitle="Deployment Ended"
+                    loadingTitle="Stopping"
+                    successTitle="Stopped"
+                    hideOkButton={true}
                 />
             </View>
         </WWScreenView>
@@ -249,7 +298,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         gap: 16,
-        padding: 16
+        // padding: 16 // Removed to avoid double padding with WWScreenView
     },
     section: { marginBottom: 16 },
     infoRow: { marginBottom: 8 },
@@ -257,8 +306,7 @@ const styles = StyleSheet.create({
         marginTop: 24,
         marginBottom: 32
     },
-    endButton: {
-        backgroundColor: '#D32F2F',
+    deployButton: {
         paddingVertical: 8
     },
     input: {
@@ -307,8 +355,8 @@ const styles = StyleSheet.create({
 })
 
 // Wrapper to fetch deployment
-const enhance = withObservables(['route'], ({ route }: { route: EndDeploymentDetailsStepRouteProp }) => ({
+const enhance = withObservables(['route'], ({ route }: { route: StopMonitoringDetailsStepRouteProp }) => ({
     deployment: DeploymentService.observeDeploymentById(route.params?.deploymentId || '')
 }))
 
-export const EndDeploymentDetailsStep = enhance(EndDeploymentDetailsStepComponent)
+export const StopMonitoringDetailsStep = enhance(StopMonitoringDetailsStepComponent)

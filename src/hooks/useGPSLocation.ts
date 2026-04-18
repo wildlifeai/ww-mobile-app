@@ -67,19 +67,54 @@ export const useGPSLocation = () => {
                 return null
             }
 
+            // 1. Attempt to get last known location as a fallback mechanism
+            let lastKnownLocation: Location.LocationObject | null = null
+            try {
+                lastKnownLocation = await Location.getLastKnownPositionAsync({
+                    maxAge: 300000 // 5 minutes max age
+                })
+            } catch (e) {
+                log('[GPS] Last known position unsupported or failed:', e)
+            }
+
             // Get current position with high accuracy
             log('[GPS] Getting current position...')
 
-            // Add a race with timeout 
-            const locationPromise = Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.High,
-            })
+            let loc: Location.LocationObject | undefined
+            
+            try {
+                // Add a race with timeout 
+                const locationPromise = Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.High,
+                })
 
-            const timeoutPromise = new Promise<never>((_, reject) => {
-                setTimeout(() => reject(new Error('Location request timed out')), 15000)
-            })
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                    setTimeout(() => reject(new Error('Location request timed out')), 15000)
+                })
 
-            const loc = await Promise.race([locationPromise, timeoutPromise])
+                loc = await Promise.race([locationPromise, timeoutPromise])
+            } catch (error) {
+                logError('[GPS] High accuracy location failed/timed out:', error)
+                
+                if (lastKnownLocation) {
+                    log('[GPS] Falling back to last known position')
+                    loc = lastKnownLocation
+                } else {
+                    log('[GPS] No last known position available, attempting balanced accuracy fallback...')
+                    const balancedPromise = Location.getCurrentPositionAsync({
+                        accuracy: Location.Accuracy.Balanced,
+                    })
+                    const balancedTimeoutPromise = new Promise<never>((_, reject) => {
+                        setTimeout(() => reject(new Error('Balanced location request timed out')), 10000)
+                    })
+                    loc = await Promise.race([balancedPromise, balancedTimeoutPromise])
+                }
+            }
+
+            if (!loc) {
+                throw new Error('Location could not be determined.')
+            }
+
             log('[GPS] Location received:', loc.coords)
 
             const locationData: GPSLocation = {

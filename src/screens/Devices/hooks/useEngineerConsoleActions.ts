@@ -208,6 +208,12 @@ export const useEngineerConsoleActions = ({
             return
         }
 
+        if (cmdName === CommandNames.CAMERA_SETTINGS_TEST) {
+            log('[EngineerConsole] CAMERA_SETTINGS_TEST clicked, navigating to standalone screen')
+            navigation.navigate('CameraSettingsTestScreen', { deviceId: device.id })
+            return
+        }
+
         if (cmdName === CommandNames.SET_GPS) {
             log('[EngineerConsole] SET_GPS clicked, getting phone location')
             try {

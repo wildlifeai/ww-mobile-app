@@ -10,11 +10,12 @@ interface Props {
     isVisible: boolean
     onClose: () => void
     onPress: () => void
+    device?: any
 }
 
 
 
-export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose, onPress }) => {
+export const DeploymentCardComponent: React.FC<Props> = ({ deployment, device, isVisible, onClose, onPress }) => {
     const { colors } = useExtendedTheme()
     const slideAnim = useSharedValue(300) // Start off-screen (down)
 
@@ -67,7 +68,7 @@ export const DeploymentCard: React.FC<Props> = ({ deployment, isVisible, onClose
                 <View style={styles.header}>
                     <View>
                         <Text style={[styles.title, { color: colors.onSurface }]}>
-                            {deployment?.name || 'Unnamed Deployment'}
+                            {device?.name || device?.bluetoothId || 'Unknown Device'}
                         </Text>
                         <View style={styles.statusRow}>
                             <MaterialCommunityIcons name={statusObj.icon} size={14} color={statusObj.color} />
@@ -174,3 +175,12 @@ const styles = StyleSheet.create({
         height: 24,
     }
 })
+
+import { withObservables } from '@nozbe/watermelondb/react'
+import { of } from 'rxjs'
+
+const enhance = withObservables(['deployment'], ({ deployment }: { deployment: Deployment | undefined | null }) => ({
+    device: deployment ? deployment.device.observe() : of(null)
+}))
+
+export const DeploymentCard = enhance(DeploymentCardComponent)

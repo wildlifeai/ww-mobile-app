@@ -59,15 +59,20 @@ export const useBleCommands = () => {
     const checkSdCard = useCallback(async (peripheral: ExtendedPeripheral): Promise<{ total: number; free: number } | null> => {
         log('[BLE CMD] Sending SD card check request (aiinfo) to device:', peripheral.id)
         try {
+            // Wake the AI processor in case it's in Deep Power Down due to a missing SD card previously
+            try {
+                await write(peripheral, [[CommandNames.wake, { control: CommandControlTypes.WRITE }]], { timeout: 3000, maxRetries: 0 })
+                // Give the firmware a moment to wake and mount the SD card
+                await new Promise(resolve => setTimeout(resolve, 1500))
+            } catch (e) {
+                // Ignore wake failures, it is purely speculative 
+            }
+
             // Use structured command to get response
-            // The readRegex in types.ts is: /(\d+)\s*[Kk]\s*total\s*drive\s*space/i
             const responses = await write(peripheral, [[CommandNames.aiinfo, { control: CommandControlTypes.WRITE }]])
             const response = responses[0]
             
             if (response) {
-                // Parse the response "15200 K total drive space" -> 15200
-                // Note: The regex in types.ts might capture just the first number.
-                // We should probably rely on the regex capture if available, but here we get the full string match usually.
                 const match = response.match(COMMANDS[CommandNames.aiinfo].readRegex!)
                 if (match) {
                     const total = parseInt(match[1], 10)
@@ -77,9 +82,13 @@ export const useBleCommands = () => {
                 }
             }
             return null
-        } catch (error) {
+        } catch (error: any) {
+            if (error?.message && error.message.includes('Device Sleep')) {
+                logWarn('[BLE CMD] AI processor is sleeping, likely no SD card present')
+                return null
+            }
             logError('[BLE CMD] Failed to write aiinfo command:', error)
-            throw error
+            return null // Return null gracefully
         }
     }, [write])
 
@@ -210,50 +219,9 @@ export const useBleCommands = () => {
         await write(peripheral, [[CommandNames.DISABLE_TIMELAPSE, { control: CommandControlTypes.WRITE }]])
     }, [write])
 
-    const setDeploymentIdAsOps = useCallback(
-        async (peripheral: ExtendedPeripheral, id: string | null, cachedOps?: string[] | null) => {
-            log('[BLE CMD] Sending Deployment ID via OPs (20-27). ID:', id)
-
-            let ops: number[]
-            if (!id) {
-                // Clear ID case: Send all zeros
-                ops = [0, 0, 0, 0, 0, 0, 0, 0]
-            } else {
-                // Parse UUID
-                const { parseUuidToOps } = require('../utils/helpers') // Lazy import to avoid cycle if any
-                ops = parseUuidToOps(id)
-            }
-
-            // Use cached ops if provided, otherwise fetch
-            const currentOps = await getOrFetchOperationalParams(peripheral, cachedOps, '[BLE CMD] Deployment ID configuration:')
-
-            // Send 8 commands with strict delays between each
-            for (let i = 0; i < 8; i++) {
-                const opIndex = 20 + i
-                const value = ops[i]
-
-                if (currentOps && currentOps.length > opIndex) {
-                    if (currentOps[opIndex] === value.toString()) {
-                        log(`[BLE CMD] Skipping OP${opIndex} (already set to ${value})`)
-                        continue
-                    }
-                }
-
-                log(`[BLE CMD] Setting OP${opIndex} = ${value} (chunk ${i + 1}/8)`)
-
-                try {
-                    // Use the optimized setOperationalParam which now performs its own Read-Before-Write check.
-                    // We allow retries here because writing 8 chunks is prone to racing with the device's summary stats (Sleep).
-                    await setOperationalParam(peripheral, opIndex, value.toString())
-                } catch (error) {
-                    logError(`[BLE CMD] Failed to write chunk ${i + 1}:`, error)
-                    throw error
-                }
-            }
-            log('[BLE CMD] Deployment ID OPs sent successfully')
-        },
-        [setOperationalParam, getOrFetchOperationalParams] // Changed dependency from 'write' to 'setOperationalParam'
-    )
+    // NOTE: setDeploymentIdAsOps (OP indices 20-27) has been removed.
+    // Firmware no longer uses OP-based deployment ID chunks.
+    // Use setDeploymentIdAsString (AI setdid) exclusively.
 
     const setDeploymentIdAsString = useCallback(
         async (peripheral: ExtendedPeripheral, id: string | null) => {
@@ -282,7 +250,6 @@ export const useBleCommands = () => {
         runDisconnect,
         setUtc,
         getUtc,
-        setDeploymentIdAsOps,
         setDeploymentIdAsString,
         getDeploymentIdAsString,
         // LoRaWAN

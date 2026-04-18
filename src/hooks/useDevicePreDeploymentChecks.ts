@@ -6,6 +6,7 @@ import ReferenceDataService from '../services/ReferenceDataService'
 import { extractErrorBits } from '../ble/messageClassifier'
 import { COMMANDS, CommandNames } from '../ble/types'
 import { log, logWarn } from '../utils/logger'
+import { convertBleToSemanticVersion } from '../utils/versionUtils'
 import { InitPayload } from '../navigation/types'
 
 export const useDevicePreDeploymentChecks = () => {
@@ -83,7 +84,8 @@ export const useDevicePreDeploymentChecks = () => {
                 const version = fwMatch[1]
                 payload.deviceFirmwareVersion = version
                 const latest = await ReferenceDataService.getLatestFirmware('ble')
-                if (latest && version !== latest.version) {
+                const normalizedVersion = convertBleToSemanticVersion(version)
+                if (latest && normalizedVersion !== latest.version) {
                     payload.bleFirmwareUpdateAvailable = true
                     newErrors.deviceHealth.push(`Newer firmware available: ${latest.version}`)
                 }

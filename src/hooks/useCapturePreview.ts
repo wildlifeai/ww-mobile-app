@@ -5,7 +5,7 @@ import { imageReassemblerEmitter } from '../ble/emitters'
 import { bleCommandManager } from '../ble/commandManager'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { log, logError } from '../utils/logger'
-import { CommandNames, CommandControlTypes } from '../ble/types'
+
 
 
 interface UseCapturePreviewOptions {
@@ -31,7 +31,7 @@ interface UseCapturePreviewReturn {
     /** Capture progress (0-1) */
     captureProgress: number
     /** Function to start image capture */
-    startCapture: () => Promise<void>
+    startCapture: (captureCount?: number, captureInterval?: number) => Promise<void>
     /** Function to clear captured image */
     clearImage: () => void
 }
@@ -139,7 +139,7 @@ export const useCapturePreview = ({
     }, [])
 
     // Start capture process
-    const startCapture = useCallback(async () => {
+    const startCapture = useCallback(async (captureCount: number = 1, captureInterval: number = 1) => {
         if (!device) {
             const error = new Error('No device connected')
             logError('[useCapturePreview]', error.message)
@@ -148,7 +148,7 @@ export const useCapturePreview = ({
             return
         }
 
-        log('[useCapturePreview] startCapture called')
+        log(`[useCapturePreview] startCapture called (count=${captureCount}, interval=${captureInterval})`)
 
         try {
             setIsCapturing(true)
@@ -180,28 +180,42 @@ export const useCapturePreview = ({
                 logError('[useCapturePreview] Timeout waiting for sleep. Proceeding anyway.', e)
             }
 
-            // 2. Send Capture Command (interval 1 allows capture even if MD/TL is disabled)
-            setCaptureStage('Capturing image...')
-            log('[useCapturePreview] Sending capture command (AI capture 1 1)...')
-            await write(device, [[CommandNames.CAPTURE_PREVIEW, { control: CommandControlTypes.WRITE }]], { maxRetries: 0 })
-            
+            // 2b. Start listening for the "Captured" message before requesting file download.
+            // The raw string write block below resolves on the first response ("About to capture..."),
+            // but the actual capture may take seconds. By starting the listener before the write, 
+            // we avoid race conditions if the "Captured" message arrives very quickly after the first response.
+            const captureTimeout = Math.max(30000, captureCount * captureInterval + 15000)
+            log(`[useCapturePreview] Setting up listener for 'Captured' message (timeout ${captureTimeout}ms)...`)
+            const capturePromise = bleCommandManager.waitForMessage(/Captured/i, captureTimeout)
+
+            // 2. Send Capture Command with dynamic parameters
+            setCaptureStage(`Capturing ${captureCount} image(s)...`)
+            log(`[useCapturePreview] Sending capture command (AI capture ${captureCount} ${captureInterval})...`)
+            await write(device, [`AI capture ${captureCount} ${captureInterval}`], { maxRetries: 0 })
+
+            try {
+                await capturePromise
+                log('[useCapturePreview] Capture confirmed by device.')
+            } catch (e) {
+                logError('[useCapturePreview] Timed out waiting for Captured message.', e)
+                throw new Error('Capture timed out - device did not confirm image capture')
+            }
+
             // 3. Start Download
             downloadRequested.current = true
             
             // Set safety timeout for download
-            const DOWNLOAD_TIMEOUT = 20000
+            const DOWNLOAD_TIMEOUT = 30000
             downloadTimeoutRef.current = setTimeout(() => {
                 if (downloadRequested.current) {
-                    logError('[useCapturePreview] Download timed out (20s). Force finalizing.')
+                    logError('[useCapturePreview] Download timed out (30s). Force finalizing.')
                     imageReassemblerEmitter.emit('force_finalize')
-                    // The reassembler will decide if it has enough data to emit complete
-                    // or if it resets. If it emits complete, our handleImageComplete will fire.
                 }
             }, DOWNLOAD_TIMEOUT)
 
-            setCaptureStage('Processing image...')
+            setCaptureStage('Downloading image...')
             log('[useCapturePreview] Requesting file download...')
-            await write(device, ['AI txfile .'], { maxRetries: 0 })
+            await write(device, ['AI txfile .'], { maxRetries: 1 })
 
         } catch (error) {
             const err = error as Error

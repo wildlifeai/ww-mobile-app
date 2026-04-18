@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Alert } from 'react-native'
 import { DeploymentService } from '../../../services/DeploymentService'
 import { log, logError, logWarn } from '../../../utils/logger'
@@ -10,7 +10,7 @@ interface UseEndDeploymentParams {
     retrievalNotes: string
     navigation: any
     quiesceDevice: (source: string, fast?: boolean, cachedOps?: string[] | null) => Promise<void>
-    setDeploymentIdAsOps: (device: any, id: string | null, cachedOps?: string[] | null) => Promise<void>
+    setDeploymentIdAsString: (device: any, id: string | null) => Promise<void>
     clearGpsLocation: (device: any) => Promise<void>
     runDisconnect: (device: any) => Promise<void>
     getAllOperationalParams: (device: any) => Promise<string[] | null>
@@ -24,7 +24,7 @@ export const useEndDeployment = ({
     retrievalNotes,
     navigation,
     quiesceDevice,
-    setDeploymentIdAsOps,
+    setDeploymentIdAsString,
     clearGpsLocation,
     runDisconnect,
     getAllOperationalParams,
@@ -36,6 +36,16 @@ export const useEndDeployment = ({
     const [finishLogs, setFinishLogs] = useState<string[]>([])
     const [isFinishing, setIsFinishing] = useState(false)
     const [isEndDeploymentSuccess, setIsEndDeploymentSuccess] = useState(false)
+    const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    // Clean up navigation timer on unmount
+    useEffect(() => {
+        return () => {
+            if (navigationTimerRef.current) {
+                clearTimeout(navigationTimerRef.current)
+            }
+        }
+    }, [])
 
     const addFinishLog = useCallback((message: string) => {
         setFinishLogs(prev => [...prev, message])
@@ -58,19 +68,19 @@ export const useEndDeployment = ({
                             isNavigatingAway.current = true // Prevent alerts during force-end
                             setIsFinishing(true)
                             setFinishProgress(0.5)
-                            setFinishStep('Force ending...')
+                            setFinishStep('Force stopping...')
                             setFinishLogs(['Device disconnected'])
-                            addFinishLog('WARNING: Ending deployment without device connection')
+                            addFinishLog('WARNING: Stopping monitoring without device connection')
                             
                             try {
                                 const userId = user?.id || null
                                 await DeploymentService.endDeployment(deployment.id, userId, retrievalNotes)
-                                addFinishLog('Deployment ended in database')
+                                addFinishLog('Monitoring stopped in database')
                                 setFinishProgress(1.0)
                                 setIsEndDeploymentSuccess(true)
                             } catch (e) {
                                 setIsFinishing(false)
-                                Alert.alert('Error', 'Failed to force end')
+                                Alert.alert('Error', 'Failed to force stop')
                             } finally {
                                 setIsEnding(false)
                             }
@@ -85,7 +95,7 @@ export const useEndDeployment = ({
         setIsEnding(true)
         setIsFinishing(true)
         setFinishProgress(0)
-        setFinishStep('Starting...')
+        setFinishStep('Stopping...')
         setFinishLogs([])
         setIsEndDeploymentSuccess(false)
 
@@ -113,7 +123,7 @@ export const useEndDeployment = ({
                 while (!idCleared && attempts < 3) {
                     try {
                         attempts++
-                        await setDeploymentIdAsOps(storeDevice, null, cachedOps)
+                        await setDeploymentIdAsString(storeDevice, null)
                         log('[EndDeployment] ID cleared')
                         idCleared = true
                         addFinishLog('Configuration cleared')
@@ -137,7 +147,7 @@ export const useEndDeployment = ({
             }
 
             // 2. Update DB
-            addFinishLog('Updating deployment record...')
+            addFinishLog('Updating monitoring record...')
             setFinishStep('Updating record...')
             setFinishProgress(0.3)
             
@@ -178,16 +188,25 @@ export const useEndDeployment = ({
             setFinishStep('Complete')
             setFinishProgress(1.0)
             setIsEndDeploymentSuccess(true)
-            addFinishLog('Deployment ended successfully')
+            addFinishLog('Monitoring stopped successfully')
+
+            navigationTimerRef.current = setTimeout(() => {
+                navigationTimerRef.current = null
+                setIsFinishing(false)
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Home' }],
+                })
+            }, 1500)
 
         } catch (error) {
             logError(error)
             setIsFinishing(false)
-            Alert.alert("Error", "Failed to end deployment. Please try again.")
+            Alert.alert("Error", "Failed to stop monitoring. Please try again.")
         } finally {
             setIsEnding(false)
         }
-    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsOps, clearGpsLocation, runDisconnect, addFinishLog, isNavigatingAway, getAllOperationalParams])
+    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsString, clearGpsLocation, runDisconnect, addFinishLog, isNavigatingAway, getAllOperationalParams, navigation])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)

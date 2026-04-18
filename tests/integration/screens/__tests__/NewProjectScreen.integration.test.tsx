@@ -164,6 +164,8 @@ describe("NewProjectScreen - AI Model Integration", () => {
 			wrapper: createWrapper(store),
 		})
 
+		fireEvent.press(screen.getByText("Advanced Project Settings"))
+
 		// Assert - Wait for AI models to load
 		await waitFor(() => {
 			expect(screen.getByTestId("ai-model-select-dropdown")).toBeOnTheScreen()
@@ -239,6 +241,8 @@ describe("NewProjectScreen - AI Model Integration", () => {
 			wrapper: createWrapper(store),
 		})
 
+		fireEvent.press(screen.getByText("Advanced Project Settings"))
+
 		// Assert
 		await waitFor(() => {
 			expect(screen.getByText("No AI models available for this organisation")).toBeOnTheScreen()
@@ -264,6 +268,8 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		render(<NewProjectScreen />, {
 			wrapper: createWrapper(store),
 		})
+
+		fireEvent.press(screen.getByText("Advanced Project Settings"))
 
 		// Assert
 		expect(screen.getByTestId("ai-model-select-loading")).toBeOnTheScreen()
@@ -292,6 +298,8 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		render(<NewProjectScreen />, {
 			wrapper: createWrapper(store),
 		})
+
+		fireEvent.press(screen.getByText("Advanced Project Settings"))
 
 		// Assert
 		await waitFor(() => {
@@ -336,6 +344,8 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		render(<NewProjectScreen />, {
 			wrapper: createWrapper(store),
 		})
+
+		fireEvent.press(screen.getByText("Advanced Project Settings"))
 
 		// Fill only required fields
 		const nameInput = screen.getByTestId("project-name-input")
@@ -408,6 +418,8 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		render(<NewProjectScreen />, {
 			wrapper: createWrapper(store),
 		})
+
+		fireEvent.press(screen.getByText("Advanced Project Settings"))
 
 		const nameInput = screen.getByTestId("project-name-input")
 		fireEvent.changeText(nameInput, "Valid Project")

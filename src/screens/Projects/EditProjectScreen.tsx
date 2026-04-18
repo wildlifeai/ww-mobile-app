@@ -2,20 +2,21 @@
  * EditProjectScreen
  * Dedicated screen for editing project settings.
  * Navigated to from ProjectDetailsScreen via the gear icon.
+ * 
+ * Design: Matches the StartDeployment screen pattern with Card-based sections,
+ * consistent gap spacing, and WWScreenView for keyboard-aware scrolling.
  */
 
 import { useMemo, useEffect, useCallback, useRef } from "react"
-import { StyleSheet, View, ScrollView, Alert } from "react-native"
-import { Text, useTheme, ActivityIndicator, Divider } from "react-native-paper"
+import { StyleSheet, View, Alert } from "react-native"
+import { Text, useTheme, ActivityIndicator } from "react-native-paper"
 import { useRoute, useNavigation } from "@react-navigation/native"
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { WWScreenView } from "../../components/ui/WWScreenView"
 import { WWButton } from "../../components/ui/WWButton"
 import { AppParams } from "../../navigation/types"
 
-import { Field } from '../../components/form/Field'
-import { WWTextInput } from '../../components/ui/WWTextInput'
+import { NewProjectBasicInfoSection } from './components/NewProjectBasicInfoSection'
 import { NewProjectSettingsSection } from './components/NewProjectSettingsSection'
 import { useProjectDetails } from './hooks/useProjectDetails'
 import { useGetAiModelsQuery } from "../../redux/api/projectsApi"
@@ -25,7 +26,6 @@ export const EditProjectScreen = () => {
 	const route = useRoute<AppParams<"EditProjectScreen">>()
 	const navigation = useNavigation()
 	const { projectId } = route.params
-	const insets = useSafeAreaInsets()
 	const isSavingRef = useRef(false)
 
 	const {
@@ -57,7 +57,6 @@ export const EditProjectScreen = () => {
 	const dynamicStyles = useMemo(() => ({
 		loadingLabel: { color: theme.colors.onSurfaceVariant },
 		errorHeader: { color: theme.colors.error },
-		errorMessage: { color: theme.colors.onSurfaceVariant },
 	}), [theme])
 
 	// Set header title
@@ -140,54 +139,15 @@ export const EditProjectScreen = () => {
 	}
 
 	return (
-		<ScrollView style={styles.container}>
-			<View style={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
-				{/* Project Name */}
-				<Field
+		<WWScreenView style={styles.screenView}>
+			<View style={styles.container}>
+				{/* Project Details Card (shared with NewProject) */}
+				<NewProjectBasicInfoSection
 					control={control as any}
-					name="name"
-					label="Project Name"
-					required
-					rules={{
-						required: "Project name is required",
-						minLength: { value: 3, message: "At least 3 characters" },
-						maxLength: { value: 100, message: "Max 100 characters" },
-					}}
-				>
-					{(field) => (
-						<WWTextInput
-							{...field}
-							mode="outlined"
-							error={!!errors.name}
-							testID="project-name-input"
-						/>
-					)}
-				</Field>
+					errors={errors as any}
+				/>
 
-				{/* Description */}
-				<Field
-					control={control as any}
-					name="description"
-					label="Description"
-					rules={{
-						maxLength: { value: 500, message: "Max 500 characters" },
-					}}
-				>
-					{(field) => (
-						<WWTextInput
-							{...field}
-							mode="outlined"
-							multiline
-							numberOfLines={4}
-							error={!!errors.description}
-							testID="project-description-input"
-						/>
-					)}
-				</Field>
-
-				<Divider style={styles.divider} />
-
-				{/* Settings Section (reused from NewProject) */}
+				{/* Settings Section (shared with NewProject) */}
 				<NewProjectSettingsSection
 					control={control as any}
 					samplingDesignOptions={samplingDesignOptions}
@@ -202,40 +162,31 @@ export const EditProjectScreen = () => {
 					showArchiveToggle={true}
 				/>
 
-				{/* Action Buttons */}
-				<View style={styles.editActions}>
-					<WWButton
-						mode="outlined"
-						onPress={() => navigation.goBack()}
-						disabled={isUpdating}
-						style={styles.actionButton}
-						testID="cancel-button"
-					>
-						<Text>Cancel</Text>
-					</WWButton>
+				{/* Save Button */}
+				<View style={styles.footer}>
 					<WWButton
 						mode="contained"
 						onPress={handleSubmit(onSave)}
 						loading={isUpdating}
 						disabled={isUpdating || !isDirty}
-						style={styles.actionButton}
+						style={styles.saveButton}
 						testID="save-button"
 					>
 						<Text>Save Changes</Text>
 					</WWButton>
 				</View>
 			</View>
-		</ScrollView>
+		</WWScreenView>
 	)
 }
 
 const styles = StyleSheet.create({
+	screenView: {
+		paddingTop: 0,
+	},
 	container: {
 		flex: 1,
-	},
-	content: {
-		padding: 16,
-		paddingBottom: 32,
+		gap: 16,
 	},
 	centerContainer: {
 		flex: 1,
@@ -253,15 +204,11 @@ const styles = StyleSheet.create({
 	retryButton: {
 		marginTop: 8,
 	},
-	divider: {
-		marginVertical: 16,
-	},
-	editActions: {
-		flexDirection: "row",
-		gap: 12,
+	footer: {
 		marginTop: 24,
+		marginBottom: 32,
 	},
-	actionButton: {
-		flex: 1,
+	saveButton: {
+		paddingVertical: 8,
 	},
 })

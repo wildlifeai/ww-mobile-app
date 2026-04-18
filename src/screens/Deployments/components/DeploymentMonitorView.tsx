@@ -114,6 +114,13 @@ export const DeploymentMonitorView: React.FC<Props> = ({
             <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Timelapse</Text>
           </View>
         )}
+        {stats.deviceImageCount !== null && (
+          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+            <MaterialCommunityIcons name="image-multiple" size={24} color="#4CAF50" />
+            <Text style={[styles.statValue, { color: colors.onSurface }]}>{stats.deviceImageCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Stored</Text>
+          </View>
+        )}
       </View>
 
       <View style={[styles.timeContainer, { backgroundColor: colors.surfaceVariant }]}>
@@ -124,7 +131,7 @@ export const DeploymentMonitorView: React.FC<Props> = ({
       </View>
 
       {/* Activity Log */}
-      <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>Live Activity Log</Text>
+      <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>Live Monitoring Log</Text>
       <FlatList
         ref={flatListRef}
         data={activityLog}
@@ -144,7 +151,7 @@ export const DeploymentMonitorView: React.FC<Props> = ({
       {/* Footer */}
       <View style={[styles.footer, { borderTopColor: colors.surfaceVariant, paddingBottom: bottom + 16 }]}>
         <Text style={[styles.footerNote, { color: colors.onSurfaceVariant }]}>
-          The device will continue operating normally after disconnecting.
+          Note: The wildlife watcher will continue monitoring after disconnecting.
         </Text>
         <TouchableOpacity
           style={[styles.disconnectBtn, { borderColor: colors.error }]}

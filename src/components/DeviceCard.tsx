@@ -18,11 +18,10 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
     const statusInfo = useMemo(() => {
         const deployEndDate = device.deploymentEndDate ? new Date(device.deploymentEndDate) : null
 
-        // Logic 2: Active deployment (no end date)
         // If there is a last deployment date (start) but NO end date, it is active.
-        if (!deployEndDate && device.lastDeploymentDate && device.deploymentName) {
+        if (!deployEndDate && device.lastDeploymentDate && device.locationName) {
             return {
-                text: `Device is deployed: ${device.deploymentName}`,
+                text: `Device is monitoring: ${device.locationName}`,
                 color: '#4CAF50',
                 icon: 'map-marker' as const,
                 hasLink: true,
@@ -31,9 +30,9 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
         }
 
         // Logic 3: Last deployment ended
-        if (device.deploymentName && device.lastDeploymentDate && deployEndDate) {
+        if (device.locationName && device.lastDeploymentDate && deployEndDate) {
             return {
-                text: `Last deployment ${device.deploymentName}`,
+                text: `Last session: ${device.locationName}`,
                 color: theme.colors.onSurfaceVariant,
                 icon: 'history' as const,
                 hasLink: true,

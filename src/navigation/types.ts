@@ -33,11 +33,12 @@ export interface RootStackParamList extends ParamListBase {
 	DeviceDetails: { deviceId: string }
 	EngineerConsoleScreen: { deviceId: string }
 	StandaloneMotionDetectionScreen: { deviceId: string }
+	CameraSettingsTestScreen: { deviceId: string }
 
-	DeploymentDetailsStep: { projectId: string; deviceId: string; bleDeviceId: string; initPayload?: InitPayload }
+	StartMonitoringDetailsStep: { projectId?: string; deviceId?: string; bleDeviceId?: string; initPayload?: InitPayload }
 	DeploymentDetails: { deploymentId: string }
-	EndDeploymentWizard: { mode: 'end_deployment'; deploymentId?: string }
-	EndDeploymentDetailsStep: { deploymentId: string; deviceId: string; bleDeviceId: string; initPayload?: InitPayload }
+	StopMonitoringWizard: { mode: 'end_deployment'; deploymentId?: string }
+	StopMonitoringDetailsStep: { deploymentId: string; deviceId: string; bleDeviceId: string; initPayload?: InitPayload }
 }
 
 export type Routes = keyof RootStackParamList
