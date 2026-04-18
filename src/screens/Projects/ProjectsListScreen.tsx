@@ -42,7 +42,7 @@ export const Projects = () => {
 		isLoading,
 		isFetching,
 		error,
-		refetch,
+		refetch: forceRefetch,
 	} = useGetProjectsQuery(
 		{ userId: userId!, organisationId: organisationId! },
 		{ skip: !userId || !organisationId }
@@ -51,15 +51,15 @@ export const Projects = () => {
 	// Refetch when global sync finishes
 	useEffect(() => {
 		if (!isGlobalSyncing) {
-			refetch()
+			forceRefetch()
 		}
-	}, [isGlobalSyncing, refetch])
+	}, [isGlobalSyncing, forceRefetch])
 
 	// Refresh on focus
 	useFocusEffect(
 		useCallback(() => {
-			refetch()
-		}, [refetch])
+			forceRefetch()
+		}, [forceRefetch])
 	)
 
 	const handleRefresh = useCallback(async () => {
@@ -120,7 +120,7 @@ export const Projects = () => {
 			isFetching={isFetching || isGlobalSyncing || refreshing}
 			onRefresh={handleRefresh}
 			error={error}
-			onRetry={refetch}
+			onRetry={forceRefetch}
 			searchQuery={searchQuery}
 			onSearchChange={setSearchQuery}
 			searchPlaceholder="Search projects..."

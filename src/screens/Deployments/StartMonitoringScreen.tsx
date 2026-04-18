@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     projectSelectContainer: {
         marginBottom: 16,
         marginTop: 4,
-        zIndex: 1000, 
+        zIndex: 10, 
     },
     errorContainer: {
         flex: 1,
