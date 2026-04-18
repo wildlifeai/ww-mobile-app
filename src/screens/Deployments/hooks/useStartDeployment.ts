@@ -132,7 +132,7 @@ export const useStartDeployment = ({
 
     // BLE Hooks
     const { connectDevice } = useBle()
-    const { setUtc, runDisconnect, getBatteryLevel, checkSdCard, getDeviceVer, runSelfTest, runDfu, runReset, pingNetwork, getLorawanMetrics, getAiVer, updateHimaxFirmware } = useBleCommands()
+    const { setUtc, runDisconnect, getBatteryLevel, checkSdCard, getDeviceVer, runSelfTest, runDfu, runReset, pingNetwork, getLorawanMetrics, getAiVer } = useBleCommands()
     
     // NEW EVENT-FIRST ARCHITECTURE (SHADOW MODE)
     const bleSession = useBleSession(bleDevice)
@@ -917,17 +917,9 @@ export const useStartDeployment = ({
                             setIsHimaxUpdating(true)
                             setHimaxUpdateProgress('Sending firmware flash command...')
 
-                            const response = await updateHimaxFirmware(bleDevice)
+                            const success = await bleSession!.execute(commandRegistry.aifirmware)
 
-                            const match = response ? response.match(COMMANDS[CommandNames.ai_firmware].readRegex!) : null
-
-                            if (match && match[1].toUpperCase() === 'FAILED') {
-                                const errorMatch = response.match(/error\s+(-?\d+)/i)
-                                const errorCode = errorMatch ? errorMatch[1] : 'unknown'
-                                throw new Error(`Firmware update failed on device (error ${errorCode}). Existing firmware unchanged.`)
-                            }
-
-                            if (match && match[1].toUpperCase() === 'OK') {
+                            if (success) {
                                 setHimaxUpdateProgress('Firmware flashed! Sending reset...')
 
                                 try {
@@ -969,7 +961,7 @@ export const useStartDeployment = ({
                                     )
                                 }
                             } else {
-                                throw new Error('Unexpected response from device: ' + (response || '(no response)'))
+                                throw new Error('Unexpected response from device during firmware update')
                             }
                         } catch (error) {
                             logError('[Deployment] Himax firmware update failed:', error)
@@ -983,7 +975,7 @@ export const useStartDeployment = ({
                 }
             ]
         )
-    }, [bleDevice, bleDeviceId, batteryLevel, updateHimaxFirmware, runReset, runDisconnect, connectDevice, navigation, handleHimaxFirmwareCheck])
+    }, [bleDevice, bleDeviceId, batteryLevel, runReset, runDisconnect, connectDevice, navigation, handleHimaxFirmwareCheck, bleSession])
 
     return {
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,

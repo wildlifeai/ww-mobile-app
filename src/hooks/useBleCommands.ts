@@ -26,7 +26,7 @@ export const useBleCommands = () => {
     const runDfu = useMemo(() => createAction(write, CommandNames.dfu), [write])
     const runReset = useMemo(() => createAction(write, CommandNames.reset), [write])
     const runErase = useMemo(() => createAction(write, CommandNames.erase), [write])
-    const updateHimaxFirmware = useMemo(() => createCommand(write, CommandNames.ai_firmware, { timeout: 45000 }), [write])
+
 
     const runDisconnect = useCallback(async (peripheral: ExtendedPeripheral) => {
         try {
@@ -280,7 +280,5 @@ export const useBleCommands = () => {
         getOrFetchOperationalParams,
         setGpsLocation,
         clearGpsLocation,
-        // Himax
-        updateHimaxFirmware,
     }
 }

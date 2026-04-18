@@ -91,5 +91,18 @@ export const commandRegistry = {
     /^Error bits = 0x[0-9a-fA-F]+/i,
     (match) => match[0]
   ),
+  aifirmware: createSingleLineCommand<boolean>(
+    'aifirmware',
+    (filename?: string) => `AI firmware ${filename || 'output.img'}`,
+    /Firmware update (OK|FAILED)(?: \(error (-?\d+)\))?/i,
+    (match) => {
+      if (match[1].toUpperCase() === 'FAILED') {
+         const errorCode = match[2] ? match[2] : 'unknown';
+         throw new Error(`Firmware update failed on device (error ${errorCode}). Existing firmware unchanged.`);
+      }
+      return true;
+    },
+    45000 // 45 seconds timeout for SD read and flash write
+  ),
   // Additional commands will be migrated here
 };
