@@ -413,7 +413,6 @@ export const COMMANDS: {
 		readRegex: /Firmware update (OK|FAILED)/i,
 		description: "Update Himax firmware from SD card image",
 		type: 'command',
-		timeout: 120000,
 	},
 	[CommandNames.erasemodel]: {
 		name: CommandNames.erasemodel,

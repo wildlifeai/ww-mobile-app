@@ -130,7 +130,7 @@ export const useStartDeployment = ({
 
     // BLE Hooks
     const { connectDevice } = useBle()
-    const { setUtc, runDisconnect, getBatteryLevel, checkSdCard, getDeviceVer, runSelfTest, runDfu, runReset, pingNetwork, getLorawanMetrics, getHimaxVersion, updateHimaxFirmware } = useBleCommands()
+    const { setUtc, runDisconnect, getBatteryLevel, checkSdCard, getDeviceVer, runSelfTest, runDfu, runReset, pingNetwork, getLorawanMetrics, getAiVer, updateHimaxFirmware } = useBleCommands()
     // const { initialize } = useBleInitialization()
     const { configure: startConfigure } = useDeploymentConfiguration()
     useBleActions()
@@ -842,9 +842,9 @@ export const useStartDeployment = ({
         if (!bleDevice || !bleDevice.connected) return
         try {
             setIsCheckingHimaxVersion(true)
-            const response = await getHimaxVersion(bleDevice)
+            const response = await getAiVer(bleDevice)
             if (response) {
-                const match = response.match(/V\s*(\d+\.\d+\.\d+(?:-[\w.-]+)?)/i)
+                const match = response.match(COMMANDS[CommandNames.ai_ver].readRegex!)
                 if (match) {
                     setHimaxFirmwareVersion(match[1])
                     log('[Deployment] Himax firmware version:', match[1])
@@ -859,7 +859,7 @@ export const useStartDeployment = ({
         } finally {
             setIsCheckingHimaxVersion(false)
         }
-    }, [bleDevice, getHimaxVersion])
+    }, [bleDevice, getAiVer])
 
     const handleHimaxFirmwareUpdate = useCallback(async () => {
         if (!bleDevice || !bleDevice.connected) return
@@ -883,13 +883,15 @@ export const useStartDeployment = ({
 
                             const response = await updateHimaxFirmware(bleDevice)
 
-                            if (response && /FAILED/i.test(response)) {
+                            const match = response ? response.match(COMMANDS[CommandNames.ai_firmware].readRegex!) : null
+
+                            if (match && match[1].toUpperCase() === 'FAILED') {
                                 const errorMatch = response.match(/error\s+(-?\d+)/i)
                                 const errorCode = errorMatch ? errorMatch[1] : 'unknown'
                                 throw new Error(`Firmware update failed on device (error ${errorCode}). Existing firmware unchanged.`)
                             }
 
-                            if (response && /OK/i.test(response)) {
+                            if (match && match[1].toUpperCase() === 'OK') {
                                 setHimaxUpdateProgress('Firmware flashed! Sending reset...')
 
                                 try {
