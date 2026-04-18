@@ -46,6 +46,7 @@ export enum CommandNames {
 	md = "md",
 	setdid = "setdid",
 	getdid = "getdid",
+	ai_firmware = "ai_firmware",
 
 	// Process commands (UPPERCASE - app-specific workflows)
 	SET_UTC = "SET_UTC",
@@ -61,6 +62,7 @@ export enum CommandNames {
 	TX_FILE = "TX_FILE",
 	CAPTURE_PREVIEW = "CAPTURE_PREVIEW",
 	UPDATE_BLE_FIRMWARE = "UPDATE_BLE_FIRMWARE",
+	UPDATE_HIMAX_FIRMWARE = "UPDATE_HIMAX_FIRMWARE",
 	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
 	CAMERA_SETTINGS_TEST = "CAMERA_SETTINGS_TEST",
 
@@ -401,8 +403,17 @@ export const COMMANDS: {
 	[CommandNames.ai_ver]: {
 		name: CommandNames.ai_ver,
 		readCommand: "AI ver",
+		readRegex: /V\s*(\d+\.\d+\.\d+(?:-[\w.-]+)?)/i,
 		description: "Get AI processor version",
 		type: 'command',
+	},
+	[CommandNames.ai_firmware]: {
+		name: CommandNames.ai_firmware,
+		writeCommand: (filename?: string) => `AI firmware ${filename || 'output.img'}`,
+		readRegex: /Firmware update (OK|FAILED)/i,
+		description: "Update Himax firmware from SD card image",
+		type: 'command',
+		timeout: 120000,
 	},
 	[CommandNames.erasemodel]: {
 		name: CommandNames.erasemodel,
@@ -580,6 +591,11 @@ export const COMMANDS: {
 	[CommandNames.UPDATE_BLE_FIRMWARE]: {
 		name: CommandNames.UPDATE_BLE_FIRMWARE,
 		description: "Update BLE Firmware (DFU)",
+		type: 'process',
+	},
+	[CommandNames.UPDATE_HIMAX_FIRMWARE]: {
+		name: CommandNames.UPDATE_HIMAX_FIRMWARE,
+		description: "Update Himax Firmware from SD Card",
 		type: 'process',
 	},
 	[CommandNames.MOTION_DETECTION_PREVIEW]: {

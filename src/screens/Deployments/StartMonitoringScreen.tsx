@@ -49,7 +49,10 @@ export const StartMonitoringDetailsStep = () => {
         bleFirmwareUpdateAvailable, firmwareUpdateProgress, isUpdatingFirmware,
         isCheckingFirmware, isVerifyingUpdate, firmwareUpdateStatus,
         handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, handleBleFirmwareUpdate,
-        isMonitoring, handleMonitorDisconnect
+        isMonitoring, handleMonitorDisconnect,
+        // Himax Firmware
+        himaxFirmwareVersion, isHimaxUpdating, himaxUpdateProgress, isCheckingHimaxVersion,
+        handleHimaxFirmwareCheck, handleHimaxFirmwareUpdate
     } = useStartDeployment({ deviceId, bleDeviceId, projectId, navigation, initPayload })
 
     useEffect(() => {
@@ -237,6 +240,12 @@ export const StartMonitoringDetailsStep = () => {
                     handleSdCardCheck={handleSdCardCheck}
                     handleFirmwareCheck={handleFirmwareCheck}
                     handleBleFirmwareUpdate={handleBleFirmwareUpdate}
+                    himaxFirmwareVersion={himaxFirmwareVersion}
+                    isHimaxUpdating={isHimaxUpdating}
+                    himaxUpdateProgress={himaxUpdateProgress}
+                    isCheckingHimaxVersion={isCheckingHimaxVersion}
+                    handleHimaxFirmwareCheck={handleHimaxFirmwareCheck}
+                    handleHimaxFirmwareUpdate={handleHimaxFirmwareUpdate}
                     isInitializing={isInitializing}
                     bleDeviceConnected={!!bleDevice?.connected}
                     theme={theme}
