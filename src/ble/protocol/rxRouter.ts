@@ -23,23 +23,26 @@ class RxRouter {
     let buffer = this.buffers[deviceId];
 
     while (buffer.length > 0) {
-      // 1. Check for binary frame
-      if (buffer[0] === BINARY_MARKER) {
-        if (buffer.length < HEADER_SIZE) {
+      const binIndex = buffer.indexOf(BINARY_MARKER);
+      const nlIndex = buffer.indexOf('\n');
+
+      if (binIndex !== -1 && (nlIndex === -1 || binIndex < nlIndex)) {
+        // Binary packet appears before any newline.
+        if (buffer.length - binIndex < HEADER_SIZE) {
           // Need more bytes for header
           break;
         }
-        
-        const packetNum = buffer[1];
-        const payloadLength = buffer[2];
+
+        const packetNum = buffer[binIndex + 1];
+        const payloadLength = buffer[binIndex + 2];
         const fullFrameLength = HEADER_SIZE + payloadLength;
 
-        if (buffer.length < fullFrameLength) {
+        if (buffer.length - binIndex < fullFrameLength) {
           // Need more bytes to complete this binary frame
           break;
         }
 
-        const frameData = Uint8Array.prototype.slice.call(buffer, 0, fullFrameLength);
+        const frameData = Uint8Array.prototype.slice.call(buffer, binIndex, binIndex + fullFrameLength);
         
         bleEventBus.emitEvent({
           type: 'BINARY_PACKET',
@@ -50,30 +53,29 @@ class RxRouter {
           ts: Date.now()
         });
 
-        // Advance buffer past this binary frame
-        buffer = buffer.subarray(fullFrameLength);
+        // Safely splice it out of the buffer, stitching surrounding text bytes together
+        buffer = Buffer.concat([
+          buffer.subarray(0, binIndex),
+          buffer.subarray(binIndex + fullFrameLength)
+        ]);
         continue;
       }
 
-      // 2. Not a binary frame, look for text newline
-      const newlineIndex = buffer.indexOf('\n');
-      if (newlineIndex !== -1) {
-        // Extract line and remove \r if present
-        let line = buffer.subarray(0, newlineIndex).toString('utf-8');
+      if (nlIndex !== -1) {
+        // A newline appears before any binary packet.
+        let line = buffer.subarray(0, nlIndex).toString('utf-8');
         line = line.replace(/\r$/, '');
 
         // Advance buffer past the newline
-        buffer = buffer.subarray(newlineIndex + 1);
+        buffer = buffer.subarray(nlIndex + 1);
 
-        // Filter out completely empty lines if desired, or keep them. Often raw \r\n causes noise.
         if (line.trim().length > 0) {
           this.classifyAndEmitText(deviceId, line);
         }
         continue;
       }
 
-      // 3. No binary marker and no newline. 
-      // Could be an incomplete text line. Wait for more data.
+      // No complete text lines and no parsable binary packets left. Wait for more data.
       break;
     }
 
@@ -101,6 +103,7 @@ class RxRouter {
     }
 
     // Default: Emit as standard TEXT_LINE for the active command context
+    console.log('RX_ROUTER EMITTING TEXT_LINE:', line);
     bleEventBus.emitEvent({ type: 'TEXT_LINE', line, deviceId, ts });
   }
 
