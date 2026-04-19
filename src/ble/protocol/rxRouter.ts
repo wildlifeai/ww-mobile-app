@@ -130,17 +130,14 @@ class RxRouter {
     // Device Signals classification
     if (/^Sleep(\s+.*)?/i.test(trimmed)) {
       bleEventBus.emitEvent({ type: 'DEVICE_SIGNAL', signal: DeviceSignal.SLEEP, deviceId, ts });
-      return;
     }
     
     if (/^(Wake|Waking AI processor|AI processor is awake)/i.test(trimmed)) {
       bleEventBus.emitEvent({ type: 'DEVICE_SIGNAL', signal: DeviceSignal.WAKE, deviceId, ts });
-      return;
     }
     
     if (/^Camera system not enabled$/i.test(trimmed)) {
       bleEventBus.emitEvent({ type: 'DEVICE_SIGNAL', signal: DeviceSignal.BUSY, deviceId, ts });
-      return;
     }
 
     // Default: Emit as standard TEXT_LINE for the active command context

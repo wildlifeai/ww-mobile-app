@@ -36,7 +36,8 @@ export async function runCommandPipeline<T>(
   commandConstructor: () => CommandContext<T>,
   options?: { maxRetries?: number }
 ): Promise<T> {
-  const maxRetries = options?.maxRetries ?? BLE_PROTOCOL_RETRIES.DEFAULT_MAX_RETRIES;
+  const context = commandConstructor();
+  const maxRetries = options?.maxRetries ?? context.retryPolicy?.maxRetries ?? BLE_PROTOCOL_RETRIES.DEFAULT_MAX_RETRIES;
   let attempt = 0;
 
   while (true) {

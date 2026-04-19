@@ -66,10 +66,7 @@ class CommandQueue {
           this.transitionCommand(task, 'CANCELLED');
           task._reject(new Error('Command cancelled'));
           
-          if (this.activeTask?.id === task.id) {
-            this.activeTask = null;
-            this.processNext();
-          } else {
+          if (this.activeTask?.id !== task.id) {
             this.queue = this.queue.filter(t => t.id !== task.id);
           }
         }

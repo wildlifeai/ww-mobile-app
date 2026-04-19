@@ -278,7 +278,7 @@ export const commandRegistry = {
     (uuid: string | null) => `AI setdid ${uuid || '00000000-0000-0000-0000-000000000000'}`,
     /^Deployment ID set to/i,
     () => true,
-    { failureRegex: /invalid/i }
+    { failureRegex: /invalid/i, retryPolicy: { maxRetries: 3 } }
   ),
 
   setgps: createSingleLineCommand<boolean>(
