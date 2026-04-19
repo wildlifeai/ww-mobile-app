@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, StyleSheet, ScrollView, Alert } from 'react-native'
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
+import { View, StyleSheet, Alert } from 'react-native'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { useTheme, Text, Card } from 'react-native-paper'
@@ -11,7 +10,6 @@ import { WWTextInput } from '../../components/ui/WWTextInput'
 import { RootStackParamList } from '../../navigation/types'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { DeploymentService } from '../../services/DeploymentService'
-import { useBleCommands } from '../../hooks/useBleCommands'
 import { useDeviceSettings } from '../../hooks/useDeviceSettings'
 import { useBleActions } from '../../providers/BleEngineProvider'
 
@@ -25,7 +23,8 @@ import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog
 import { log } from '../../utils/logger'
 import { useEndDeployment } from './hooks/useEndDeployment'
 
-import { useDeploymentMonitor, ActivityLogEntry } from './hooks/useDeploymentMonitor'
+import { useDeploymentMonitor } from './hooks/useDeploymentMonitor'
+import { LiveActivityLog } from './components/LiveActivityLog'
 
 const formatMonitoringDuration = (startValue: Date | string | number) => {
     const start = startValue instanceof Date ? startValue.getTime() : new Date(startValue).getTime()
@@ -71,18 +70,16 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
     const route = useRoute<StopMonitoringDetailsStepRouteProp>()
     const { deviceId = '', bleDeviceId = '', initPayload } = route.params || {}
     useBleActions()
-    const { runDisconnect, setDeploymentIdAsString, clearGpsLocation, getAllOperationalParams } = useBleCommands()
 
     // Get full device object for BLE commands
     const devices = useAppSelector(state => state.devices)
     const storeDevice = devices[bleDeviceId]
-    const { quiesceDevice } = useDeviceSettings({ device: storeDevice })
+    const { quiesceDevice } = useDeviceSettings()
 
     // Get current user
     const user = useAppSelector(selectCurrentUser)
 
-    // Live activity log and stats (same feed as monitor screen)
-    const { activityLog, stats: monitorStats } = useDeploymentMonitor(storeDevice)
+    const { stats: monitorStats } = useDeploymentMonitor(storeDevice)
 
     // Track device in ref for use in intervals/callbacks to avoid stale closures
     const bleDeviceRef = useRef(storeDevice)
@@ -113,10 +110,6 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
         retrievalNotes,
         navigation,
         quiesceDevice,
-        setDeploymentIdAsString,
-        clearGpsLocation,
-        runDisconnect,
-        getAllOperationalParams,
         isNavigatingAway
     })
     
@@ -164,7 +157,10 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
                         
                         if (currentDevice?.connected) {
                             log('[EndDeployment] Back button pressed - disconnecting device...')
-                            await runDisconnect(currentDevice)
+                            const { createBleSession } = require('../../ble/session/createBleSession')
+                            const { commandRegistry } = require('../../ble/protocol/commandRegistry')
+                            const session = createBleSession(currentDevice)
+                            await session.execute(commandRegistry.disconnect)
                         }
                             
                             // Now allow navigation
@@ -176,7 +172,7 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
         })
 
         return unsubscribe
-    }, [navigation, isEnding, isEndDeploymentSuccess, runDisconnect])
+    }, [navigation, isEnding, isEndDeploymentSuccess])
 
 
 
@@ -222,26 +218,8 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
                 <Card style={styles.section}>
                     <Card.Title title="Monitoring Activity" />
                     <Card.Content>
-                        <View style={[styles.activityLogBox, { backgroundColor: theme.colors.surface }]}>
-                            {activityLog.length === 0 ? (
-                                <View style={styles.emptyLogContainer}>
-                                    <MaterialCommunityIcons name="radar" size={32} color={theme.colors.onSurfaceVariant} style={styles.radarIcon} />
-                                    <Text style={[styles.emptyLogText, { color: theme.colors.onSurfaceVariant }]}>Waiting for device activity...</Text>
-                                </View>
-                            ) : (
-                                <ScrollView nestedScrollEnabled>
-                                    {activityLog.slice(0, 50).map((item: ActivityLogEntry) => (
-                                        <View key={item.id} style={styles.logEntry}>
-                                            <MaterialCommunityIcons name={item.icon} size={16} color={theme.colors.primary} style={styles.logEntryIcon} />
-                                            <Text style={[styles.logEntryLabel, { color: theme.colors.onSurface }]} numberOfLines={1}>{item.label}</Text>
-                                            <Text style={[styles.logEntryTime, { color: theme.colors.onSurfaceVariant }]}>
-                                                {new Date(item.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                            </Text>
-                                        </View>
-                                    ))}
-                                </ScrollView>
-                            )}
-                        </View>
+                        <LiveActivityLog device={storeDevice} />
+
                     </Card.Content>
                 </Card>
 
@@ -315,42 +293,6 @@ const styles = StyleSheet.create({
     },
     notesTitle: {
         marginBottom: 8
-    },
-    activityLogBox: {
-        borderRadius: 12,
-        padding: 8,
-        maxHeight: 220,
-        minHeight: 100,
-    },
-    emptyLogContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 24,
-    },
-    emptyLogText: {
-        marginTop: 8,
-        fontSize: 13,
-    },
-    radarIcon: {
-        opacity: 0.5
-    },
-    logEntry: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 6,
-        paddingHorizontal: 4,
-    },
-    logEntryIcon: {
-        marginRight: 8,
-    },
-    logEntryLabel: {
-        flex: 1,
-        fontSize: 13,
-        fontWeight: '500',
-    },
-    logEntryTime: {
-        fontSize: 11,
-        marginLeft: 8,
     }
 })
 

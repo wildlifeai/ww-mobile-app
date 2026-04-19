@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { bleCommandManager } from '../../../ble/commandManager'
 import { classifyForMonitor, MonitorEvent } from '../../../ble/messageClassifier'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { useBleCommands } from '../../../hooks/useBleCommands'
+import { createBleSession } from '../../../ble/session/createBleSession'
+import { commandRegistry } from '../../../ble/protocol/commandRegistry'
+import { bleEventBus, BleEvent } from '../../../ble/protocol/eventBus'
 import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
 
 
@@ -33,7 +34,6 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
     })
 
     const startTimeRef = useRef<number>(Date.now())
-    const { getOperationalParam } = useBleCommands()
 
     // 1. Poll IMAGES_COUNT from device periodically
     useEffect(() => {
@@ -43,7 +43,8 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
 
         const fetchImageCount = async () => {
             try {
-                const value = await getOperationalParam(device, OP_PARAMETER.IMAGES_COUNT)
+                const session = createBleSession(device)
+                const value = await session.execute(() => commandRegistry.getop(OP_PARAMETER.IMAGES_COUNT))
                 if (value !== null && isMounted) {
                     const count = parseInt(value, 10)
                     if (!isNaN(count)) {
@@ -65,7 +66,7 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
             isMounted = false
             clearInterval(intervalId)
         }
-    }, [device, device?.connected, getOperationalParam])
+    }, [device, device?.connected])
 
     // 2. Track time active
     useEffect(() => {
@@ -80,7 +81,9 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
 
     // 3. Listen to raw BLE messages natively to parse activities
     useEffect(() => {
-        const handleRawMessage = (rawMessage: string) => {
+        const handleEvent = (event: BleEvent & { type: 'TEXT_LINE' }) => {
+            if (!device || event.deviceId !== device.id) return;
+            const rawMessage = event.line;
             const classified = classifyForMonitor(rawMessage)
             if (!classified) return // Ignored message
 
@@ -120,12 +123,12 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
             })
         }
 
-        bleCommandManager.addMessageListener(handleRawMessage)
+        bleEventBus.on('textLine', handleEvent)
         
         return () => {
-            bleCommandManager.removeMessageListener(handleRawMessage)
+            bleEventBus.removeListener('textLine', handleEvent)
         }
-    }, [])
+    }, [device])
 
     return {
         activityLog,

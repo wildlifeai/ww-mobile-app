@@ -119,7 +119,7 @@ For detailed EAS configuration, see the [EAS Guide](./documentation/resources/Ex
 | Android build failures | Ensure SDK 35 + Java 17. Run `npx expo prebuild --clean` to reset native files |
 | Windows `MAX_PATH` errors | Use short path like `C:\dev\ww`. Try `git config --global core.longpaths true` |
 | Sync not working | Check network, verify `.env` credentials, check Metro logs |
-| BLE connection issues | Enable Bluetooth + permissions, keep within 5m, check Metro for `[BLE CMD Manager]` logs |
+| BLE connection issues | Enable Bluetooth + permissions, keep within 5m, check Metro for `[RxRouter]` / `[bleEventBus]` logs |
 | Database corrupted | Clear app data, reinstall — data re-syncs from Supabase on next login |
 
 ## Database Migrations

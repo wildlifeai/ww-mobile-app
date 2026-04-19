@@ -14,7 +14,16 @@ export interface CommandTask<T = any> {
   _state: CommandState;
   _resolve: (value: T) => void;
   _reject: (err: Error) => void;
+  _abortHandler?: () => void;
 }
+
+export const emitQueueState = (isBusy: boolean) => {
+  bleEventBus.emitEvent({
+    type: 'QUEUE_STATE_CHANGED',
+    isBusy,
+    ts: Date.now()
+  });
+};
 
 class CommandQueue {
   private state: QueueState = 'IDLE';
@@ -24,6 +33,10 @@ class CommandQueue {
 
   constructor() {
     bleEventBus.on('deviceSignal', this.handleDeviceSignal.bind(this));
+  }
+
+  public isBusy(): boolean {
+    return this.isProcessing || this.activeTask !== null || this.queue.length > 0;
   }
 
   /**
@@ -48,7 +61,7 @@ class CommandQueue {
         return reject(new Error('Command cancelled before enqueue'));
       }
 
-      options?.signal?.addEventListener('abort', () => {
+      const abortHandler = () => {
         if (task._state !== 'COMPLETED' && task._state !== 'FAILED') {
           this.transitionCommand(task, 'CANCELLED');
           task._reject(new Error('Command cancelled'));
@@ -60,7 +73,12 @@ class CommandQueue {
             this.queue = this.queue.filter(t => t.id !== task.id);
           }
         }
-      });
+      };
+
+      if (options?.signal) {
+        options.signal.addEventListener('abort', abortHandler);
+        task._abortHandler = abortHandler;
+      }
 
       this.queue.push(task);
       this.processNext();
@@ -118,6 +136,7 @@ class CommandQueue {
     }
 
     this.isProcessing = true;
+    emitQueueState(true);
     this.transitionQueue('RUNNING');
     
     const task = this.queue.shift()!;
@@ -126,6 +145,7 @@ class CommandQueue {
     if (task._state === 'CANCELLED') {
       this.activeTask = null;
       this.isProcessing = false;
+      if (this.queue.length === 0) emitQueueState(false);
       this.processNext();
       return;
     }
@@ -149,8 +169,12 @@ class CommandQueue {
          task._reject(err);
       }
     } finally {
+      if (task.abortSignal && task._abortHandler) {
+        task.abortSignal.removeEventListener('abort', task._abortHandler);
+      }
       this.activeTask = null;
       this.isProcessing = false;
+      if (this.queue.length === 0) emitQueueState(false);
       this.processNext();
     }
   }

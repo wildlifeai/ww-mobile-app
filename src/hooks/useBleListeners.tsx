@@ -1,6 +1,5 @@
 import { useRef, useCallback, useEffect } from "react"
 import { NativeEventEmitter, NativeModules, Platform } from "react-native"
-import { Buffer } from "buffer"
 import BleManager, { Peripheral } from "react-native-ble-manager"
 
 import { guard, log } from "./../utils/logger"
@@ -18,8 +17,8 @@ import { useBleActions } from "../providers/BleEngineProvider"
 import { isOurDevice } from "../utils/helpers"
 import { ImageReassembler } from "../utils/ImageReassembler"
 import { imageReassemblerEmitter, readlineParserEmitter } from "../ble/emitters"
-import { bleCommandManager } from "../ble/commandManager"
 import { rxRouter } from "../ble/protocol/rxRouter"
+import { bleEventBus, BleEvent } from "../ble/protocol/eventBus"
 
 // Lazy-load the emitter to avoid accessing NativeModules during import
 let _bleManagerEmitter: NativeEventEmitter | null = null
@@ -97,69 +96,57 @@ export const useBleListeners = () => {
 				return
 			}
 
-			// Check for newline character in the received data
-			const newlineIndex = Buffer.from(value).indexOf("\n")
-
-			if (newlineIndex !== -1) {
-				readlineParserEmitter.emit(
-					"BleManagerDidUpdateValueForCharacteristicReadlineParser",
-					{
-						...data,
-						value,
-					},
-				)
-			} else {
-				readlineParserEmitter.emit(
-					"BleManagerDidUpdateValueForCharacteristicReadlineParser",
-					{ peripheral: peripheral, value: [...value, 10, 13] },
-				)
-			}
 		},
 		[],
 	)
+    // Subscribe to bleEventBus for telemetry rendering in UI
+    useEffect(() => {
+        const handleRawRx = (event: BleEvent & { type: 'RAW_RX' }) => {
+            log(`[useBleListeners] RAW_RX received for ${event.deviceId}: ${event.line}`)
+            
+            // Look for transfer startup string (e.g. "12169 bytes in 592009C0.JPG")
+            const imageStartMatch = event.line.match(/^\s*(\d+)\s+bytes\s+in\s+([A-Za-z0-9_.-]+)/i)
+            if (imageStartMatch) {
+                const size = parseInt(imageStartMatch[1], 10)
+                const filename = imageStartMatch[2]
+                log(`[useBleListeners] Detected image transfer start: ${filename} (${size} bytes)`)
+                reassemblerRef.current?.initialize(size)
+            }
 
-	const deviceValueUpdatedEvent = useCallback(
-		(data: UpdateValueEventType) => {
-			const { peripheral, value, isLocal } = data
+            dispatch(
+                logAdded({
+                    id: event.deviceId,
+                    log: {
+                        timestamp: event.ts,
+                        content: `< RX: ${event.line}${event.line.endsWith('\n') ? '' : '\n'}`,
+                        type: "rx",
+                    },
+                })
+            )
+        };
 
-			const dataArray = value as number[]
+        const handleRawTx = (event: BleEvent & { type: 'RAW_TX' }) => {
+            log(`[useBleListeners] RAW_TX received for ${event.deviceId}: ${event.command}`)
+            dispatch(
+                logAdded({
+                    id: event.deviceId,
+                    log: {
+                        timestamp: event.ts,
+                        content: `> TX: ${event.command}\n`,
+                        type: "tx",
+                    },
+                })
+            )
+        };
 
-			// Binary image packets (0x06) are now handled directly in readlineParser 
-			// to reduce JS thread latency. We only process text/responses here.
+        bleEventBus.on('rawRx', handleRawRx)
+        bleEventBus.on('rawTx', handleRawTx)
 
-			const hex = Buffer.from(dataArray).toString("hex")
-			log(`${isLocal ? 'TX' : 'RX'} Hex: ${hex}`)
-
-			const text = Buffer.from(value).toString()
-
-			// Feed to Command Manager for response tracking
-			bleCommandManager.handleIncomingMessage(text)
-
-			// Check for Image Transfer Start Message
-			// Example: "10361 bytes in TL000019.JPG"
-			const imageStartMatch = text.match(/(\d+) bytes in (.+)/)
-			if (imageStartMatch) {
-				const size = parseInt(imageStartMatch[1], 10)
-				const filename = imageStartMatch[2]
-				log(`Detected image transfer start: ${filename} (${size} bytes)`)
-				reassemblerRef.current?.initialize(size)
-			}
-
-			const formattedText = `${isLocal ? '> TX: ' : '< RX: '}${text}${text.endsWith('\n') ? '' : '\n'}`
-
-			dispatch(
-				logAdded({
-					id: peripheral,
-					log: {
-						timestamp: Date.now(),
-						content: formattedText,
-						type: isLocal ? "tx" : "rx",
-					},
-				}),
-			)
-		},
-		[dispatch],
-	)
+        return () => {
+            bleEventBus.removeListener('rawRx', handleRawRx)
+            bleEventBus.removeListener('rawTx', handleRawTx)
+        }
+    }, [dispatch]);
 
 	const discoveredPeripheralEvent = useCallback(
 		(peripheral: ExtendedPeripheral) => {
@@ -195,8 +182,7 @@ export const useBleListeners = () => {
 				`Peripheral disconnect event triggered. Disconnecting: ${data.peripheral}`,
 			)
 
-			// CRITICAL: Clear any pending commands to prevent stuck state on reconnect
-			bleCommandManager.clear()
+			// CRITICAL: Clear any pending buffers to prevent stuck state on reconnect
 			rxRouter.clearBuffer(data.peripheral)
 
 			/** Clear the device out on Android systems */
@@ -273,21 +259,11 @@ export const useBleListeners = () => {
 			readlineParser,
 		)
 
-		readlineParserEmitter.on(
-			"BleManagerDidUpdateValueForCharacteristicReadlineParser",
-			deviceValueUpdatedEvent,
-		)
-
 		return () => {
 			discoverDeviceFunc.remove()
 			scanStoppedEventFunc.remove()
 			deviceDisconnectedEventFunc.remove()
 			readlineParserFunc.remove()
-
-			readlineParserEmitter.removeListener(
-				"BleManagerDidUpdateValueForCharacteristicReadlineParser",
-				deviceValueUpdatedEvent,
-			)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])

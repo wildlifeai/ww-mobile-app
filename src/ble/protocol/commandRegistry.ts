@@ -5,22 +5,57 @@ export interface CommandContext<T = any> {
   name: string;
   /** Generate the UART string to send to the device */
   build: (params?: any) => string;
-  /** Check if an incoming line is relevant to this command */
+  
+  /** Matchers for line-by-line processing */
+  successMatcher: (line: string) => boolean;
+  failureMatcher: (line: string) => boolean;
+  
+  /** Check if an incoming line is relevant to this command (matches either success or failure) */
   match: (line: string) => boolean;
+  
   /** Accumulate matched lines */
   collect: (line: string) => void;
   /** Sole authority on whether collection is finished */
   isComplete: () => boolean;
+  
   /** Format and return the final data */
-  getResult: () => T;
+  parser: () => T;
+  getResult: () => T; // Alias to parser for backwards compatibility during migration
   
   /** Optional handler for logging unmatched lines during active state (MUST NOT mutate completion) */
   onUnexpected?: (line: string) => void;
   /** Optional handler for translating a timeout into a specific failure state (e.g., assigning a default) */
   onTimeout?: () => void;
   
-  /** Individual override, falls back to BLE_PROTOCOL_TIMINGS defaults */
+  /** Timeout in milliseconds before the command is considered dead */
   timeoutMs?: number;
+  
+  /** Retry boundaries (violent retry of raw submission if timeout or failure occurs) */
+  retryPolicy?: {
+      maxRetries: number;
+      delayMs?: number;
+  };
+  
+  /** Defines if this command expects a response, is fire-and-forget, or is a continuous stream */
+  responseMode?: 'single_line' | 'multi_line' | 'fire_and_forget' | 'stream';
+  
+  /** Whether the command is safe to execute multiple times (helps queue decide if it can be violently retried safely) */
+  idempotent?: boolean;
+  
+  /** Whether the command can be safely sent while a binary stream is active without corrupting it */
+  safeDuringStreaming?: boolean;
+}
+
+export interface CommandDefinitionOptions {
+   timeoutMs?: number;
+   retryPolicy?: {
+       maxRetries: number;
+       delayMs?: number;
+   };
+   failureRegex?: RegExp;
+   responseMode?: 'single_line' | 'multi_line' | 'fire_and_forget' | 'stream';
+   idempotent?: boolean;
+   safeDuringStreaming?: boolean;
 }
 
 /**
@@ -28,32 +63,93 @@ export interface CommandContext<T = any> {
  */
 export function createSingleLineCommand<T>(
   name: string,
-  buildCommand: (params?: any) => string,
+  buildCommand: (...args: any[]) => string,
   regex: RegExp,
-  parseResult: (match: RegExpMatchArray) => T,
-  timeoutMs?: number
-): () => CommandContext<T> {
-  return (params?: any) => {
+  _parseResult: (match: RegExpMatchArray, line?: string) => T,
+  options?: CommandDefinitionOptions
+): (...args: any[]) => CommandContext<T> {
+  return (...args: any[]) => {
     let matchedString: string | null = null;
+    let failedString: string | null = null;
 
     return {
       id: `${name}_${Date.now()}`,
       name,
-      timeoutMs,
-      build: () => buildCommand(params),
-      match: (line: string) => regex.test(line),
+      timeoutMs: options?.timeoutMs,
+      retryPolicy: options?.retryPolicy,
+      responseMode: options?.responseMode || 'single_line',
+      idempotent: options?.idempotent,
+      safeDuringStreaming: options?.safeDuringStreaming,
+      build: () => buildCommand(...args),
+      successMatcher: (line: string) => regex.test(line),
+      failureMatcher: (line: string) => options?.failureRegex?.test(line) ?? false,
+      match: (line: string) => regex.test(line) || (options?.failureRegex?.test(line) ?? false),
       collect: (line: string) => {
-        if (regex.test(line)) {
-          matchedString = line;
+        if (options?.failureRegex?.test(line)) {
+            failedString = line;
+        } else if (regex.test(line)) {
+            matchedString = line;
         }
       },
-      isComplete: () => matchedString !== null,
-      getResult: () => {
-        if (!matchedString) throw new Error("Result accessed before complete");
+      isComplete: () => matchedString !== null || failedString !== null,
+      parser: () => {
+        if (failedString) throw new Error(`${name} failed: ${failedString}`);
+        if (!matchedString) throw new Error(`${name}: Result accessed before complete`);
         const match = matchedString.match(regex);
-        if (!match) throw new Error("Parse failure on getResult");
-        return parseResult(match);
-      }
+        if (!match) throw new Error(`${name}: Parse failure on getResult`);
+        return _parseResult(match, matchedString);
+      },
+      getResult: function() { return this.parser(); }
+    };
+  };
+}
+
+/**
+ * Helper to create a multi-line matching command.
+ */
+export function createMultiLineCommand<T>(
+  name: string,
+  buildCommand: (...args: any[]) => string,
+  lineMatcher: RegExp,
+  endMatcher: RegExp,
+  parseResult: (lines: string[]) => T,
+  options?: CommandDefinitionOptions
+): (...args: any[]) => CommandContext<T> {
+  return (...args: any[]) => {
+    const lines: string[] = [];
+    let isDone = false;
+    let failedString: string | null = null;
+
+    return {
+      id: `${name}_${Date.now()}`,
+      name,
+      timeoutMs: options?.timeoutMs,
+      retryPolicy: options?.retryPolicy,
+      responseMode: options?.responseMode || 'multi_line',
+      idempotent: options?.idempotent,
+      safeDuringStreaming: options?.safeDuringStreaming,
+      build: () => buildCommand(...args),
+      successMatcher: (line: string) => lineMatcher.test(line) || endMatcher.test(line),
+      failureMatcher: (line: string) => options?.failureRegex?.test(line) ?? false,
+      match: (line: string) => lineMatcher.test(line) || endMatcher.test(line) || (options?.failureRegex?.test(line) ?? false),
+      collect: (line: string) => {
+        if (options?.failureRegex?.test(line)) {
+            failedString = line;
+            isDone = true;
+        } else if (endMatcher.test(line)) {
+          lines.push(line);
+          isDone = true;
+        } else if (lineMatcher.test(line)) {
+          lines.push(line);
+        }
+      },
+      isComplete: () => isDone,
+      parser: () => {
+        if (failedString) throw new Error(`${name} failed: ${failedString}`);
+        if (!isDone) throw new Error(`${name}: Result accessed before complete`);
+        return parseResult(lines);
+      },
+      getResult: function() { return this.parser(); }
     };
   };
 }
@@ -65,25 +161,32 @@ export const commandRegistry = {
   battery: createSingleLineCommand<number>(
     'battery',
     () => 'battery',
-    /battery(?: is)? (\d+)/i, // legacy regex was: /(?:(?:battery(?: is)?\s*)|(?:voltage\s*(?:\()?(?:mv)?(?:\))?\s*))(?:=\s*)?(\d+)/i
+    /battery.*?(\d+)%/i,
     (match) => parseInt(match[1], 10)
   ),
-  aiinfo: createSingleLineCommand<{ total?: number; free?: number; error?: string }>(
+  aiinfo: createMultiLineCommand<{ total?: number; free?: number; error?: string }>(
     'aiinfo',
     () => 'AI info',
-    /(?:SD\s*.*?(\d+)\s+MB\s*.*?(\d+)\s+MB)|(?:AI\s*NACK)/i, // Matches SD stats or Failure
-    (match) => {
-      if (match[0].toUpperCase().includes('NACK')) {
-         return { error: 'AI NACK' };
-      }
-      return { total: parseInt(match[1], 10), free: parseInt(match[2], 10) };
-    }
+    /(?:Label|Serial|drive space)/i,
+    /(?:available|NACK)/i,
+    (lines) => {
+      const full = lines.join(' ');
+      if (full.toUpperCase().includes('NACK')) return { error: 'AI NACK' };
+      const totalMatch = full.match(/(\d+)\s*[Kk]\s*total/i);
+      const freeMatch = full.match(/(\d+)\s*[Kk]\s*available/i);
+      return {
+        total: totalMatch ? parseInt(totalMatch[1], 10) : undefined,
+        free: freeMatch ? parseInt(freeMatch[1], 10) : undefined,
+      };
+    },
+    { timeoutMs: 12000, retryPolicy: { maxRetries: 0 }, failureRegex: /^(?:NACK|AI processor not responding)/i }
   ),
   wake: createSingleLineCommand<boolean>(
     'wake',
     () => 'wake',
     /^(Wake|Waking AI processor|AI processor is awake)/i,
-    () => true
+    () => true,
+    { timeoutMs: 3000, retryPolicy: { maxRetries: 3 } }
   ),
   selftest: createSingleLineCommand<string>(
     'selftest',
@@ -102,7 +205,199 @@ export const commandRegistry = {
       }
       return true;
     },
-    45000 // 45 seconds timeout for SD read and flash write
+    { timeoutMs: 120000, retryPolicy: { maxRetries: 0 }, idempotent: false, failureRegex: /^Error/i }
   ),
-  // Additional commands will be migrated here
+  version: createSingleLineCommand<string>(
+    'version',
+    () => 'ver',
+    /V\s+(\d+\.\d+\.\d+(?:-[\w.-]+)?)/i,
+    (match) => match[1]
+  ),
+  aiver: createSingleLineCommand<string>(
+    'aiver',
+    () => 'AI ver',
+    /((?:WW500_[A-Z0-9_]+.+)|(?:V\s*\d+\.\d+\.\d+(?:-[\w.-]+)?))/i,
+    (match) => match[1]
+  ),
+  dfu: createSingleLineCommand<boolean>(
+    'dfu',
+    () => 'dfu',
+    /(Device will enter DFU mode after disconnecting.)\s*/,
+    () => true
+  ),
+  reset: createSingleLineCommand<boolean>(
+    'reset',
+    () => 'reset',
+    /(Device will reset after disconnecting.)\s*/,
+    () => true
+  ),
+  ping: createSingleLineCommand<boolean>(
+    'ping',
+    () => 'ping',
+    /(Joined|Not Joined)/i,
+    (match) => match[1].toLowerCase() === 'joined'
+  ),
+  network: createSingleLineCommand<{ rssi: number; snr: number; joined: boolean }>(
+    'network',
+    () => 'network',
+    /RSSI: (-?\d+)dB, SNR: (-?\d+)dB|No network comms yet/i,
+    (match) => {
+      if (match[0].toLowerCase().includes('no network')) {
+        return { rssi: 0, snr: 0, joined: false };
+      }
+      return { rssi: parseInt(match[1], 10), snr: parseInt(match[2], 10), joined: true };
+    }
+  ),
+  setutc: createSingleLineCommand<boolean>(
+    'setutc',
+    (isoDateStr?: string) => {
+      const stamp = (isoDateStr || new Date().toISOString()).split('.')[0] + 'Z';
+      return `setutc ${stamp}`;
+    },
+    /(RTC\s+set\s+to|System\s+time\s+set\s+successfully|UTC\s+is:)/i,
+    () => true
+  ),
+  disconnect: createSingleLineCommand<boolean>(
+    'disconnect',
+    () => 'dis',
+    /Disconnect/i,
+    () => true,
+    { timeoutMs: 2000, retryPolicy: { maxRetries: 0 } }
+  ),
+  enableCamera: createSingleLineCommand<boolean>(
+    'enableCamera',
+    () => 'AI enable',
+    /Camera Enabled/i,
+    () => true,
+    { timeoutMs: 10000, failureRegex: /already enabled/i }
+  ),
+
+  // -- Deployment & Operations --
+  setdid: createSingleLineCommand<boolean>(
+    'setdid',
+    (uuid: string | null) => `AI setdid ${uuid || '00000000-0000-0000-0000-000000000000'}`,
+    /^Deployment ID set to/i,
+    () => true,
+    { failureRegex: /invalid/i }
+  ),
+
+  setgps: createSingleLineCommand<boolean>(
+    'setgps',
+    (gpsString: string) => `AI setgps ${gpsString}`,
+    /^Device GPS set/i,
+    () => true,
+    { failureRegex: /format error/i }
+  ),
+
+  setop: createSingleLineCommand<boolean>(
+    'setop',
+    ({ index, value }: { index: number, value: number | string }) => `AI setop ${index} ${value}`,
+    /^(?:Set\s+OpParam.*?|Op(?:Param)?(?:\s+|\[)\d+\]?\s*=)/i,
+    () => true,
+    { failureRegex: /Failed|Invalid/i, retryPolicy: { maxRetries: 2 } }
+  ),
+
+  getops: createSingleLineCommand<string[]>(
+    'getops',
+    () => `AI getop -1`,
+    /^OpParams\s+(.+)$/i,
+    (match) => match[1].trim().split(/\s+/)
+  ),
+
+  getop: createSingleLineCommand<string>(
+    'getop',
+    (index: number | string) => `AI getop ${index}`,
+    /^Op(?:Param)?(?:\s+|\[)\d+\]?\s*=\s*(.*)$/i,
+    (match) => match[1].trim()
+  ),
+
+  capture: createSingleLineCommand<boolean>(
+    'capture',
+    (count: number, interval: number) => `AI capture ${count} ${interval}`,
+    /Captured/i,
+    () => true,
+    { timeoutMs: 30000, retryPolicy: { maxRetries: 0 } }
+  ),
+
+  txfile: createSingleLineCommand<boolean>(
+    'txfile',
+    () => `AI txfile .`,
+    /(\d+\s+bytes\s+in|Failed to open)/i, 
+    (match) => {
+      if (match[0].toLowerCase().includes('failed')) {
+        throw new Error('No files found on device to download');
+      }
+      return true;
+    },
+    { timeoutMs: 10000, retryPolicy: { maxRetries: 0 } }
+  ),
+
+  // -- LoRaWAN Network Commands --
+  pingToNetwork: createSingleLineCommand<boolean>(
+    'pingToNetwork',
+    () => 'ping',
+    /^Pong|Sent ping/i,
+    () => true,
+    { failureRegex: /^Error|Failed/i }
+  ),
+  
+  deveui: createSingleLineCommand<string>(
+    'deveui',
+    () => 'get deveui',
+    /DevEui\s+(.+)/i,
+    (match) => match[1].trim()
+  ),
+  
+  appeui: createSingleLineCommand<string>(
+    'appeui',
+    () => 'get appeui',
+    /AppEui\s+(.+)/i,
+    (match) => match[1].trim()
+  ),
+  
+  appkey: createSingleLineCommand<string>(
+    'appkey',
+    () => 'get appkey',
+    /AppKey\s+(.+)/i,
+    (match) => match[1].trim()
+  ),
+
+  // -- AI Advanced Commands --
+  md: createSingleLineCommand<boolean>(
+    'md',
+    (level: number) => `md ${level}`,
+    /^MD Set/i,
+    () => true
+  ),
+
+  erasemodel: createSingleLineCommand<boolean>(
+    'erasemodel',
+    () => 'erasemodel',
+    /Erased/i,
+    () => true,
+    { timeoutMs: 15000 }
+  ),
+
+  loadmodel: createSingleLineCommand<boolean>(
+    'loadmodel',
+    () => 'loadmodel',
+    /Loaded/i,
+    () => true,
+    { timeoutMs: 30000, failureRegex: /Error loading/i }
+  ),
+
+  camera_type: createSingleLineCommand<string>(
+    'camera_type',
+    () => 'camera_type',
+    /Camera type: (.*)/i,
+    (match) => match[1].trim()
+  ),
+  
+  flashh: createSingleLineCommand<boolean>(
+    'flashh',
+    () => 'flashh',
+    /Flash header ok/i,
+    () => true,
+    { failureRegex: /Flash error/i }
+  )
 };

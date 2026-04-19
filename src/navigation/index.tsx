@@ -30,7 +30,7 @@ import { EditProjectScreen } from "../screens/Projects/EditProjectScreen"
 
 // Deployment screens
 // import { Deployments as DeploymentsListScreen } from "../screens/Deployments/DeploymentsListScreen"
-import { AddDeployment } from "../screens/Deployments/AddDeploymentScreen"
+
 import { DeploymentDetailsScreen } from "../screens/Deployments/DeploymentDetailsScreen"
 import { StartMonitoringDetailsStep } from "../screens/Deployments/StartMonitoringScreen"
 import { StopMonitoringDetailsStep } from "../screens/Deployments/StopMonitoringScreen"
@@ -42,6 +42,7 @@ import { DeviceDetailsScreen } from "../screens/Devices/DeviceDetailsScreen"
 import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
 import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMotionDetectionScreen"
 import { CameraSettingsTestScreen } from "../screens/Devices/CameraSettingsTestScreen"
+import { HimaxFirmwareUpdateScreen } from "../screens/Devices/HimaxFirmwareUpdateScreen"
 import { DfuScreen } from "../screens/Devices/DfuScreen"
 
 // Developer screens
@@ -153,11 +154,7 @@ export const MainNavigation = () => {
 							component={DfuScreen}
 							options={{ title: "Firmware Update" }}
 						/>
-						<Stack.Screen
-							name="AddDeployment"
-							component={AddDeployment}
-							options={{ title: "Start monitoring" }}
-						/>
+
 						<Stack.Screen
 							name="NewProjectScreen"
 							component={NewProjectScreen}
@@ -186,7 +183,7 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="DeviceDiscovery"
 							component={DeviceDiscoveryScreen}
-							options={{ title: "Select Device", headerTitleAlign: 'center' }}
+							options={{ title: "Wildlife Watcher Scan", headerTitleAlign: 'center' }}
 						/>
 						<Stack.Screen
 							name="DeviceDetails"
@@ -208,22 +205,17 @@ export const MainNavigation = () => {
 							options={{ title: "Camera Settings Test" }}
 						/>
 						<Stack.Screen
-							name="StartDeploymentWizard"
-							component={DeviceDiscoveryScreen}
-							initialParams={{ mode: 'deployment' }}
-							options={{ title: "Select Device", headerTitleAlign: 'center' }}
+							name="HimaxFirmwareUpdateScreen"
+							component={HimaxFirmwareUpdateScreen}
+							options={{ title: "Himax Firmware Update" }}
 						/>
+
 						<Stack.Screen
 							name="StartMonitoringDetailsStep"
 							component={StartMonitoringDetailsStep}
 							options={{ title: "Device Interaction", headerTitleAlign: 'center' }}
 						/>
-						<Stack.Screen
-							name="StopMonitoringWizard"
-							component={DeviceDiscoveryScreen}
-							options={{ title: "End Monitoring" }}
-							initialParams={{ mode: 'end_deployment' }}
-						/>
+
 						<Stack.Screen
 							name="StopMonitoringDetailsStep"
 							component={StopMonitoringDetailsStep}

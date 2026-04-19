@@ -2,7 +2,8 @@ import { useState, useCallback, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Card, Button, Text, useTheme, List } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { useBleCommands } from '../../../hooks/useBleCommands'
+import { createBleSession } from '../../../ble/session/createBleSession'
+import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { logError } from '../../../utils/logger'
 
@@ -14,7 +15,6 @@ interface Props {
 
 export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
     const theme = useTheme()
-    const { pingNetwork } = useBleCommands()
     const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'failed'>('idle')
     const [message, setMessage] = useState('')
     const [expanded, setExpanded] = useState(false)
@@ -24,7 +24,8 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
         setStatus('testing')
         setMessage('Sending ping...')
         try {
-            await pingNetwork(device)
+            const session = createBleSession(device)
+            await session.execute(commandRegistry.pingToNetwork)
             setStatus('success')
             setMessage('Ping command sent successfully. Verify reception on server.')
         } catch (error) {
@@ -32,7 +33,7 @@ export const LoRaWANSection = ({ device, onShowHelp }: Props) => {
             setStatus('failed')
             setMessage('Failed to send ping command.')
         }
-    }, [device, pingNetwork])
+    }, [device])
 
     const dynamicStyles = useMemo(() => ({
         statusText: { flex: 1, color: theme.colors.onSurface },

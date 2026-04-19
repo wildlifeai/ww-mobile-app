@@ -37,7 +37,7 @@ src/
 ├── hooks/                  # Custom React hooks (BLE, sync, auth)
 ├── utils/                  # Utility functions
 ├── providers/              # React context providers
-├── ble/                    # BLE type definitions and constants
+├── ble/                    # BLE protocol engine (protocol/, session/, command registry)
 ├── features/               # Feature-specific modules (maps)
 └── assets/                 # Images, fonts
 ```
@@ -178,11 +178,11 @@ export class ProjectService {
 
 ```
 hooks/
-├── useBle.ts                  # Low-level BLE connect/write/read
-├── useBleCommands.ts          # Typed BLE command wrappers
+├── useBle.ts                  # Low-level BLE connect/writeRaw/disconnect
+├── useBleSession.ts           # React hook wrapping createBleSession (deterministic workflows)
 ├── useBleInitialization.ts    # Shared self-test + UTC sync
-├── useBleListeners.tsx        # BLE event listeners
-├── useEngineerConnect.ts      # Engineer Console BLE quick-connect from side drawer
+├── useBleListeners.tsx        # BLE event listeners → rxRouter
+├── useBleHeartbeat.ts         # 58s inactivity keep-alive
 ├── useDeploymentConfiguration.ts # Atomic deployment config
 ├── useCapturePreview.ts       # Image capture flow
 ├── useDeviceSettings.ts       # Device quiesce + settings
@@ -191,6 +191,30 @@ hooks/
 ├── useUserOrganisations.ts    # Org management
 ├── useGPSLocation.ts          # GPS access
 └── useAppNavigation.tsx       # Typed navigation hook
+```
+
+### `src/ble/` — BLE Protocol Engine
+
+```
+ble/
+├── types.ts                    # UI command definitions (CommandNames, COMMANDS for Console)
+├── commandManager.ts           # ⛔ DEAD trap file — throws if imported
+├── transport.ts                # Raw BLE write + service discovery
+├── messageClassifier.ts        # UI-only log categorization for monitoring display
+├── emitters.ts                 # Legacy EventEmitter3 (retained for ImageReassembler)
+├── protocol/                   # Event-driven command engine
+│   ├── eventBus.ts             # bleEventBus — 6 frozen event types
+│   ├── rxRouter.ts             # Binary/text classification
+│   ├── commandRegistry.ts      # Typed command factories (frozen schema)
+│   ├── commandQueue.ts         # Serialized execution queue
+│   ├── runCommand.ts           # Single command executor
+│   ├── runCommandPipeline.ts   # Multi-command sequential executor
+│   ├── protocolConstants.ts    # Timing constants
+│   ├── deviceSignals.ts        # Sleep/Wake/Busy signals
+│   └── streamRegistry.ts       # Active stream tracking
+├── session/                    # Deterministic workflow API
+│   └── createBleSession.ts     # Session factory
+└── workflows/                  # Reusable BLE workflow functions
 ```
 
 ### `src/providers/` — Context Providers
@@ -363,8 +387,10 @@ const syncSlice = createSlice({
 | WatermelonDB schema | `src/database/schema.ts` |
 | API layer | `src/redux/api/` |
 | Supabase client | `src/services/supabase.ts` (use `getSupabaseClient()`) |
-| BLE commands | `src/hooks/useBleCommands.ts` |
-| BLE types/constants | `src/ble/types.ts` |
+| BLE commands | `src/ble/protocol/commandRegistry.ts` |
+| BLE events | `src/ble/protocol/eventBus.ts` |
+| BLE sessions | `src/ble/session/createBleSession.ts` |
+| BLE types/constants | `src/ble/types.ts` (UI definitions only) |
 | Custom hooks | `src/hooks/` |
 | UI components | `src/components/ui/` |
 | Screens | `src/screens/{Feature}/` |
@@ -382,4 +408,4 @@ const syncSlice = createSlice({
 
 ---
 
-*Last Updated: March 27, 2026*
+*Last Updated: April 19, 2026*

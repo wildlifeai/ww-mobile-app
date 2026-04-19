@@ -16,7 +16,7 @@ export const BleEngineProvider = ({ children }: PropsWithChildren<{}>) => {
 		stopScan,
 		connectDevice,
 		disconnectDevice,
-		write,
+		writeRaw,
 		pingsPause,
 		pingsPaused,
 	} = useBle()
@@ -29,7 +29,7 @@ export const BleEngineProvider = ({ children }: PropsWithChildren<{}>) => {
 				stopScan,
 				connectDevice,
 				disconnectDevice,
-				write,
+				writeRaw,
 				pingsPause,
 				pingsPaused,
 			}}

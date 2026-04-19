@@ -1,10 +1,10 @@
 import { ParamListBase, RouteProp } from "@react-navigation/native"
-import type { Option } from "../components/ui/WWSelect"
 
 export interface InitPayload {
     batteryLevel: number | null
     sdCardStatus: { total: number; free: number } | null
     deviceFirmwareVersion: string | null
+    himaxFirmwareVersion: string | null
     bleFirmwareUpdateAvailable: boolean
     initErrors: { selftest?: string; setUtc?: string; deviceHealth?: string[] }
 }
@@ -20,7 +20,6 @@ export interface RootStackParamList extends ParamListBase {
 	ForgotPassword:
 	| { token?: string; refreshToken?: string; mode?: string }
 	| undefined
-	AddDeployment: { selectedProject?: Option } | undefined
 	NewProjectScreen: undefined
 	ProjectDetailsScreen: { projectId: string }
 	EditProjectScreen: { projectId: string }
@@ -34,10 +33,10 @@ export interface RootStackParamList extends ParamListBase {
 	EngineerConsoleScreen: { deviceId: string }
 	StandaloneMotionDetectionScreen: { deviceId: string }
 	CameraSettingsTestScreen: { deviceId: string }
+	HimaxFirmwareUpdateScreen: { deviceId: string }
 
 	StartMonitoringDetailsStep: { projectId?: string; deviceId?: string; bleDeviceId?: string; initPayload?: InitPayload }
 	DeploymentDetails: { deploymentId: string }
-	StopMonitoringWizard: { mode: 'end_deployment'; deploymentId?: string }
 	StopMonitoringDetailsStep: { deploymentId: string; deviceId: string; bleDeviceId: string; initPayload?: InitPayload }
 }
 

@@ -1,9 +1,8 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { StyleSheet, View, Image } from 'react-native'
-import { Card, Button, Text, ProgressBar, useTheme, List } from 'react-native-paper'
+import { Card, Button, Text, ProgressBar, useTheme } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useCapturePreview } from '../../../hooks/useCapturePreview'
-import { useBle } from '../../../hooks/useBle'
 
 import { WWButton } from '../../../components/ui/WWButton'
 import { logError } from '../../../utils/logger'
@@ -17,8 +16,6 @@ interface Props {
 
 export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props) => {
     const theme = useTheme()
-    const { write } = useBle()
-    const [expanded, setExpanded] = useState(false)
 
     const {
         startCapture,
@@ -28,7 +25,6 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
         captureStage,
     } = useCapturePreview({
         device: device || undefined,
-        write,
         onImageReceived: onImageCaptured,
         onError: (err) => {
             logError('Capture error:', err)
@@ -45,21 +41,9 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
         </Button>
     ), [onShowHelp])
 
-    const renderRightIcon = useCallback((props: any) => <List.Icon {...props} icon={expanded ? "chevron-up" : "chevron-down"} />, [expanded])
-
     return (
         <View>
-            { }
-            <List.Item
-                title="Camera View Test"
-                right={renderRightIcon}
-                onPress={() => setExpanded(!expanded)}
-                style={styles.accordionHeader}
-                left={props => <List.Icon {...props} icon="camera" />}
-            />
-            { }
-            {expanded && (
-                <Card style={styles.card}>
+            <Card style={styles.card}>
                     <Card.Title
                         title="Camera View"
                         right={renderRight}
@@ -96,16 +80,11 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                 </WWButton>
                 </Card.Content>
             </Card>
-            )}
         </View>
     )
 }
 
 const styles = StyleSheet.create({
-    accordionHeader: {
-        backgroundColor: 'transparent',
-        paddingHorizontal: 0,
-    },
     card: {
         marginBottom: 8
     },

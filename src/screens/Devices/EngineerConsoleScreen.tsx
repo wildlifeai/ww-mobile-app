@@ -1,4 +1,4 @@
-import { useEffect, useRef, useLayoutEffect, useCallback, useReducer } from 'react'
+import { useEffect, useRef, useLayoutEffect, useCallback, useReducer, useState } from 'react'
 import { View, Text } from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
 
@@ -8,11 +8,11 @@ import { useExtendedTheme } from '../../theme'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useBle } from '../../hooks/useBle'
-import { useCapturePreview } from '../../hooks/useCapturePreview'
 import { BleConsoleOutput, ConsoleEntry } from '../../components/BleConsoleOutput'
 import { CommandReferenceModal } from '../../components/CommandReferenceModal'
-import { ImagePreviewModal } from '../../components/ImagePreviewModal'
+import { FlowsReferenceModal } from '../../components/FlowsReferenceModal'
 import { log } from '../../utils/logger'
+import { bleEventBus, BleEvent } from '../../ble/protocol/eventBus'
 
 import { styles } from './components/EngineerConsoleScreen.styles'
 import { consoleReducer, initialConsoleState } from './hooks/useConsoleReducer'
@@ -23,6 +23,15 @@ import { useEngineerConsoleActions } from './hooks/useEngineerConsoleActions'
 export const EngineerConsoleScreen = () => {
     const route = useRoute<any>()
     const navigation = useNavigation<any>()
+    const [isQueueBusy, setIsQueueBusy] = useState(false)
+
+    useEffect(() => {
+        const handler = (event: BleEvent & { type: 'QUEUE_STATE_CHANGED' }) => {
+            setIsQueueBusy(event.isBusy)
+        }
+        bleEventBus.on('queueStateChanged', handler)
+        return () => { bleEventBus.removeListener('queueStateChanged', handler); }
+    }, [])
 
     const { colors } = useExtendedTheme()
     const deviceId = route.params?.deviceId
@@ -30,19 +39,9 @@ export const EngineerConsoleScreen = () => {
     const device = useAppSelector(state => state.devices[deviceId || ''])
     const logs = useAppSelector(state => state.logs[deviceId || ''] || [])
 
-    const { write, disconnectDevice } = useBle()
+    const { writeRaw, disconnectDevice } = useBle()
     const [consoleState, dispatch] = useReducer(consoleReducer, initialConsoleState)
     const isNavigatingAway = useRef(false)
-
-    // Use capture preview hook
-    const { capturedImageUri: previewImageUri, isCapturing: isWaitingForCapture, startCapture } = useCapturePreview({
-        device: device,
-        write: write,
-        onImageReceived: (imageUri) => {
-            log('[EngineerConsole] Image received:', imageUri)
-            dispatch({ type: 'SET_SHOW_PREVIEW_MODAL', payload: true })
-        }
-    })
 
     const {
         handleSend,
@@ -53,7 +52,6 @@ export const EngineerConsoleScreen = () => {
         device,
         consoleState,
         dispatch,
-        startCapture,
         navigation
     })
 
@@ -125,10 +123,10 @@ export const EngineerConsoleScreen = () => {
 
         dispatch({
             type: 'APPEND_LOGS_AND_AUTOMATION',
-            payload: { newEntries: historyEntries, isWaitingForCapture }
+            payload: { newEntries: historyEntries, isWaitingForCapture: false }
         })
 
-    }, [logs, isWaitingForCapture, device, write])
+    }, [logs, device, writeRaw])
 
 
     if (!device) {
@@ -148,6 +146,7 @@ export const EngineerConsoleScreen = () => {
                 isConnecting={consoleState.isConnecting}
                 onConnect={handleConnect}
                 onShowHelp={() => dispatch({ type: 'SET_IS_HELP_VISIBLE', payload: true })}
+                onShowFlows={() => dispatch({ type: 'SET_IS_FLOWS_VISIBLE', payload: true })}
             />
 
             <View style={styles.consoleContainer}>
@@ -156,7 +155,7 @@ export const EngineerConsoleScreen = () => {
 
             <ConsoleInput
                 inputText={consoleState.inputText}
-                isConnected={device.connected && !consoleState.isConnecting}
+                isConnected={device.connected && !consoleState.isConnecting && !isQueueBusy}
                 onInputChange={(text) => dispatch({ type: 'SET_INPUT_TEXT', payload: text })}
                 onSend={() => handleSend()}
             />
@@ -167,14 +166,12 @@ export const EngineerConsoleScreen = () => {
                     onDismiss={() => dispatch({ type: 'SET_IS_HELP_VISIBLE', payload: false })}
                     onRunCommand={onRunHelpCommand}
                 />
-
+                <FlowsReferenceModal
+                    visible={consoleState.isFlowsVisible}
+                    onDismiss={() => dispatch({ type: 'SET_IS_FLOWS_VISIBLE', payload: false })}
+                    onRunFlow={onRunHelpCommand}
+                />
             </Portal>
-
-            <ImagePreviewModal
-                visible={consoleState.showPreviewModal}
-                imageUri={previewImageUri}
-                onDismiss={() => dispatch({ type: 'SET_SHOW_PREVIEW_MODAL', payload: false })}
-            />
         </SafeAreaView>
     )
 }

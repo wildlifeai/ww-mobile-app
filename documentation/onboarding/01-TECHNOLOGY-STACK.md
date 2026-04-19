@@ -327,22 +327,28 @@ The app has a custom component library in `src/components/ui/`. **Always check h
 
 **Package:** `react-native-ble-manager` ^11.3.2
 
-Communication with Wildlife Watcher cameras. Uses a centralised hook-based architecture.
+Communication with Wildlife Watcher cameras. Uses an event-driven architecture with typed command registry and session-based execution.
 
-**Command definitions:** [ble/types.ts](file:///c:/dev/ww/src/ble/types.ts) — single source of truth for all BLE commands
+**Command definitions:** [ble/protocol/commandRegistry.ts](file:///c:/dev/ww/src/ble/protocol/commandRegistry.ts) — single source of truth for all BLE commands and response parsers
 
 | Layer | File | Purpose |
 |-------|------|---------|
-| Types | `src/ble/types.ts` | Command enum, regex patterns, timeouts |
-| Low-level | `src/hooks/useBle.ts` | Connect, write, read, disconnect |
-| Commands | `src/hooks/useBleCommands.ts` | Typed wrappers (battery, SD card, GPS, etc.) |
-| Deployment | `src/hooks/useDeploymentConfiguration.ts` | Atomic deployment configuration |
-| Capture | `src/hooks/useCapturePreview.ts` | Image capture flow |
-| Init | `src/hooks/useBleInitialization.ts` | Shared self-test + UTC sync |
-| Settings | `src/hooks/useDeviceSettings.ts` | Quiesce device, configure intervals |
+| Protocol | `src/ble/protocol/eventBus.ts` | Central event dispatcher (6 frozen event types) |
+| Protocol | `src/ble/protocol/rxRouter.ts` | Binary/text classification from raw bytes |
+| Protocol | `src/ble/protocol/commandRegistry.ts` | Typed command factories with success/failure matchers |
+| Protocol | `src/ble/protocol/commandQueue.ts` | Serialized command execution queue |
+| Session | `src/ble/session/createBleSession.ts` | Deterministic workflow execution API |
+| Hook | `src/hooks/useBle.ts` | Connect, writeRaw, disconnect |
+| Hook | `src/hooks/useBleSession.ts` | React hook wrapping session factory |
+| Hook | `src/hooks/useBleListeners.tsx` | Native event routing to rxRouter |
+| Hook | `src/hooks/useDeploymentConfiguration.ts` | Atomic deployment configuration |
+| Hook | `src/hooks/useCapturePreview.ts` | Image capture flow |
+| Hook | `src/hooks/useBleInitialization.ts` | Shared self-test + UTC sync |
+| Hook | `src/hooks/useDeviceSettings.ts` | Quiesce device, configure intervals |
+| UI-only | `src/ble/messageClassifier.ts` | Log categorization for monitoring display |
 
 > [!IMPORTANT]
-> **Critical timing constraint:** The device enters Deep Power Down (DPD) after 1000ms of inactivity. Commands must be spaced ≥500ms apart. The device has a single-slot command buffer — rapid commands are discarded.
+> **Critical timing constraint:** The device enters Deep Power Down (DPD) after 1000ms of inactivity. The `commandQueue` handles serialization automatically. The device has a single-slot command buffer — the queue ensures only one command is in-flight.
 
 **See:** [BLE Architecture Guide](../resources/BLE_Architecture.md) for complete patterns and firmware constraints.
 
@@ -353,10 +359,9 @@ Communication with Wildlife Watcher cameras. Uses a centralised hook-based archi
 Over-the-air firmware updates using Nordic Semiconductor's DFU protocol. Handles DFU mode transitions, bootloader detection, and firmware image upload.
 
 **Current limitations:**
-- **nRF firmware only** — Himax AI processor updates are planned but not yet supported
-- **No AI model transfer** — Cannot flash AI model files to the device
+- **ZIP format required** — Must use Nordic DFU-compatible ZIP packages for BLE (nRF) firmware
+- **Himax AI processor** — Supported via `AI firmware` + `reset` commands (binary upload over BLE characteristic)
 - **No SD card config** — Cannot write to `CONFIG.TXT` on the SD card (planned)
-- **ZIP format required** — Must use Nordic DFU-compatible ZIP packages
 
 ---
 

@@ -10,7 +10,6 @@ import ReferenceDataService from '../../../services/ReferenceDataService'
 import Device from '../../../database/models/Device'
 import Deployment from '../../../database/models/Deployment'
 import { DeviceService } from '../../../services/DeviceService'
-import { useBleCommands } from '../../../hooks/useBleCommands'
 import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { checkSdCard as newCheckSdCardWorkflow } from '../../../ble/workflows/checkSdCard'
@@ -24,7 +23,7 @@ import { DfuService } from '../../../services/DfuService'
 import FirmwareService from '../../../services/FirmwareService'
 import Firmware from '../../../database/models/Firmware'
 import { extractErrorBits } from '../../../ble/messageClassifier'
-import { COMMANDS, CommandNames } from '../../../ble/types'
+// unused import
 import { log, logError, logWarn } from '../../../utils/logger'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { ProjectWithDetails } from '../../../types/project'
@@ -131,8 +130,7 @@ export const useStartDeployment = ({
     const currentOrganisation = useAppSelector(selectCurrentOrganisation)
 
     // BLE Hooks
-    const { connectDevice } = useBle()
-    const { setUtc, runDisconnect, getBatteryLevel, checkSdCard, getDeviceVer, runSelfTest, runDfu, runReset, pingNetwork, getLorawanMetrics, getAiVer } = useBleCommands()
+    const { connectDevice, disconnectDevice } = useBle()
     
     // NEW EVENT-FIRST ARCHITECTURE (SHADOW MODE)
     const bleSession = useBleSession(bleDevice)
@@ -147,6 +145,7 @@ export const useStartDeployment = ({
     const [batteryLevel, setBatteryLevel] = useState<number | null>(initPayload?.batteryLevel || null)
     const [sdCardStatus, setSdCardStatus] = useState<{ total: number; free: number } | null>(initPayload?.sdCardStatus || null)
     const [latestBleFirmware, setLatestBleFirmware] = useState<Firmware | null>(null)
+    const [latestHimaxFirmware, setLatestHimaxFirmware] = useState<Firmware | null>(null)
     const [deviceFirmwareVersion, setDeviceFirmwareVersion] = useState<string | null>(initPayload?.deviceFirmwareVersion || null)
     const [bleFirmwareUpdateAvailable, setBleFirmwareUpdateAvailable] = useState(initPayload?.bleFirmwareUpdateAvailable || false)
     const [firmwareUpdateProgress, setFirmwareUpdateProgress] = useState<number>(0)
@@ -160,7 +159,7 @@ export const useStartDeployment = ({
     const isReconnectingAfterDfu = useRef(false)
 
     // Himax Firmware State
-    const [himaxFirmwareVersion, setHimaxFirmwareVersion] = useState<string | null>(null)
+    const [himaxFirmwareVersion, setHimaxFirmwareVersion] = useState<string | null>(initPayload?.himaxFirmwareVersion || null)
     const [isHimaxUpdating, setIsHimaxUpdating] = useState(false)
     const [himaxUpdateProgress, setHimaxUpdateProgress] = useState('')
     const [isCheckingHimaxVersion, setIsCheckingHimaxVersion] = useState(false)
@@ -226,20 +225,24 @@ export const useStartDeployment = ({
 
     useEffect(() => {
         bleDeviceRef.current = bleDevice
-    }, [bleDevice])
+    }, [bleDevice]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Fetch latest BLE firmware from the local database so the update button works
+    // Fetch latest firmwares from the local database
     useEffect(() => {
-        const fetchLatestFirmware = async () => {
+        const fetchLatestFirmwares = async () => {
             try {
-                const latest = await ReferenceDataService.getLatestFirmware('ble')
-                setLatestBleFirmware(latest)
-                log('[Deployment] Latest BLE firmware loaded:', latest?.version || 'none found')
+                const latestBle = await ReferenceDataService.getLatestFirmware('ble')
+                setLatestBleFirmware(latestBle)
+                log('[Deployment] Latest BLE firmware loaded:', latestBle?.version || 'none found')
+
+                const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
+                setLatestHimaxFirmware(latestHimax)
+                log('[Deployment] Latest Himax firmware loaded:', latestHimax?.version || 'none found')
             } catch (e) {
-                logWarn('[Deployment] Failed to load latest BLE firmware:', e)
+                logWarn('[Deployment] Failed to load latest firmwares:', e)
             }
         }
-        fetchLatestFirmware()
+        fetchLatestFirmwares()
     }, [])
 
     const loadProjectAndDevice = useCallback(async () => {
@@ -409,7 +412,7 @@ export const useStartDeployment = ({
              if (project?.lorawan_required && bleDevice?.connected) {
                   log('[Deployment] Project requires LoRaWAN. Pinging network...')
                   try {
-                      await pingNetwork(bleDevice)
+                      await bleSession?.execute(commandRegistry.ping)
                       log('[Deployment] LoRaWAN ping successful.')
                       if (isMounted) {
                           setInitErrors(prev => ({
@@ -439,7 +442,7 @@ export const useStartDeployment = ({
         }
         checkLorawan()
         return () => { isMounted = false }
-    }, [project?.lorawan_required, bleDevice?.connected, pingNetwork, bleDevice])
+    }, [project?.lorawan_required, bleDevice?.connected, bleDevice]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Navigation Interceptor
     useEffect(() => {
@@ -456,7 +459,7 @@ export const useStartDeployment = ({
                 isNavigatingAway.current = true
 
                 if (bleDevice) {
-                    runDisconnect(bleDevice).catch((err: any) => logWarn('[Deployment] Auto-disconnect failed:', err))
+                    bleSession?.execute(commandRegistry.disconnect).finally(() => disconnectDevice(bleDevice)).catch((err: any) => logWarn('[Deployment] Auto-disconnect failed:', err))
                 }
 
                 navigation.navigate('Home', { initialTab: 'deployment' })
@@ -464,7 +467,7 @@ export const useStartDeployment = ({
         })
 
         return unsubscribe
-    }, [navigation, bleDevice, runDisconnect])
+    }, [navigation, bleDevice]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Robust Connection Lost Alert
     useEffect(() => {
@@ -487,7 +490,7 @@ export const useStartDeployment = ({
                 )
             }
         }
-    }, [bleDevice, submitting, navigation, isInitializing, isMonitoring])
+    }, [bleDevice, submitting, navigation, isInitializing, isMonitoring]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleStartDeployment = useCallback(async () => {
         if (!bleDevice?.connected) {
@@ -517,7 +520,7 @@ export const useStartDeployment = ({
             setFinishStep('Checking time...')
             setFinishProgress(0.1)
             
-            if (bleDevice) await setUtc(bleDevice)
+            if (bleDevice) await bleSession?.execute(commandRegistry.setutc)
             addFinishLog('Time check complete')
 
             addFinishLog('Gathering snapshot data...')
@@ -531,14 +534,11 @@ export const useStartDeployment = ({
             if (bleDevice && project?.lorawan_required) {
                 try {
                     addFinishLog('Reading LoRaWAN metrics...')
-                    const networkResp = await getLorawanMetrics(bleDevice)
-                    if (networkResp) {
-                        const match = networkResp.match(/RSSI: (-?\d+)dB(?:m)?, SNR: (-?\d+)/i) // Adapting regex just in case
-                        if (match) {
-                            lorawanRssi = parseInt(match[1], 10)
-                            lorawanSnr = parseFloat(match[2])
-                            addFinishLog(`LoRaWAN metrics: RSSI ${lorawanRssi}, SNR ${lorawanSnr}`)
-                        }
+                    const networkResp = await bleSession?.execute(commandRegistry.network)
+                    if (networkResp && networkResp.joined) {
+                        lorawanRssi = networkResp.rssi
+                        lorawanSnr = networkResp.snr
+                        addFinishLog(`LoRaWAN metrics: RSSI ${lorawanRssi}, SNR ${lorawanSnr}`)
                     }
                 } catch (e) {
                     logWarn('Failed to read LoRaWAN metrics:', e)
@@ -645,7 +645,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, project, user, deviceId, startConfigure, addFinishLog, setUtc, batteryLevel, device?.deviceEui, deviceFirmwareVersion, getLorawanMetrics, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total])
+    }, [formState.cameraHeight, formState.notes, bleDevice, project, user, deviceId, startConfigure, addFinishLog, batteryLevel, device?.deviceEui, deviceFirmwareVersion, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)
@@ -657,7 +657,7 @@ export const useStartDeployment = ({
     const handleMonitorDisconnect = useCallback(async () => {
         try {
             if (bleDevice) {
-                await runDisconnect(bleDevice)
+                try { await bleSession?.execute(commandRegistry.disconnect) } catch(e) {} finally { await disconnectDevice(bleDevice) }
             }
             setIsMonitoring(false)
         } catch (error) {
@@ -666,7 +666,7 @@ export const useStartDeployment = ({
             isNavigatingAway.current = true
             navigation.navigate('Home', { initialTab: 'deployment' })
         }
-    }, [bleDevice, runDisconnect, navigation])
+    }, [bleDevice, navigation]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const [helpVisible, setHelpVisible] = useState(false)
     const [helpTitle, setHelpTitle] = useState('')
@@ -685,24 +685,15 @@ export const useStartDeployment = ({
     const handleBatteryCheck = useCallback(async () => {
         if (!bleDevice || !bleDevice.connected) return
         try {
-            // SHADOW MODE: Try new architecture
-            if (bleSession) {
-                const batteryLevelValue = await bleSession.execute(commandRegistry.battery)
+            const batteryLevelValue = await bleSession?.execute(commandRegistry.battery)
+            if (batteryLevelValue) {
                 setBatteryLevel(batteryLevelValue)
-                return
-            }
-            
-            const response = await getBatteryLevel(bleDevice)
-            const match = response.match(COMMANDS[CommandNames.battery].readRegex!)
-            if (match) {
-                const level = parseInt(match[1], 10)
-                setBatteryLevel(level)
             }
         } catch (error) {
             logError('Battery check failed:', error)
             Alert.alert('Error', 'Failed to check battery level')
         }
-    }, [bleDevice, bleSession, getBatteryLevel])
+    }, [bleDevice, bleSession]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSdCardCheck = useCallback(async () => {
         if (!bleDevice || !bleDevice.connected) return
@@ -719,7 +710,7 @@ export const useStartDeployment = ({
                          return
                     }
                     // Proceed to selftest fallback block if normal check failed
-                    const statusStr = await bleSession.execute<string>(commandRegistry.selftest)
+                    const statusStr = await bleSession?.execute<string>(commandRegistry.selftest)
                     const hexBits = extractErrorBits(statusStr)
                     // eslint-disable-next-line no-bitwise
                     if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
@@ -730,41 +721,25 @@ export const useStartDeployment = ({
                     throw err; // Re-throw if it wasn't the SD card bit
                 }
             }
-            
-            const sdStatus = await checkSdCard(bleDevice)
-            if (sdStatus && sdStatus.total > 0) {
-                 setSdCardStatus(sdStatus)
-                 return
-            }
-            const statusMsg = await runSelfTest(bleDevice)
-            const hexBits = extractErrorBits(statusMsg)
-            // eslint-disable-next-line no-bitwise
-            if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
-                Alert.alert('No SD Card Detected', 'The device reports no SD card is inserted.', [{ text: 'OK' }])
-                setSdCardStatus(null)
-                return
-            }
-            setSdCardStatus(null)
         } catch (error) {
             logError('SD card check failed:', error)
             Alert.alert('Error', 'Failed to check SD card status')
         }
-    }, [bleDevice, bleSession, checkSdCard, runSelfTest])
+    }, [bleSession]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleFirmwareCheck = useCallback(async () => {
         if (!bleDevice || !bleDevice.connected) return
         try {
             setIsCheckingFirmware(true)
             setDeviceFirmwareVersion(null)
-            const response = await getDeviceVer(bleDevice)
-            const match = response.match(COMMANDS[CommandNames.ver].readRegex!)
-            if (match) setDeviceFirmwareVersion(match[1])
+            const response = await bleSession?.execute(commandRegistry.version)
+            if (response) setDeviceFirmwareVersion(response)
             setIsCheckingFirmware(false)
         } catch (error) {
             setIsCheckingFirmware(false)
             Alert.alert('Error', 'Failed to check firmware version')
         }
-    }, [bleDevice, getDeviceVer])
+    }, [bleDevice]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleBleFirmwareUpdate = useCallback(async () => {
         if (!latestBleFirmware || !device || !bleDevice) return
@@ -792,9 +767,9 @@ export const useStartDeployment = ({
                             if (bleDevice.connected) {
                                 setFirmwareUpdateStatus('Switching to DFU mode...')
                                 try {
-                                    await runDfu(bleDevice)
+                                    await bleSession?.execute(commandRegistry.dfu)
                                     await new Promise(r => setTimeout(r, 500))
-                                    await runDisconnect(bleDevice)
+                                    try { await bleSession?.execute(commandRegistry.disconnect) } catch(e) {} finally { await disconnectDevice(bleDevice) }
                                     await new Promise(r => setTimeout(r, 5000))
                                 } catch (e) {
                                     logWarn('[Deployment DFU] Failed DFU command:', e)
@@ -870,7 +845,7 @@ export const useStartDeployment = ({
                 }
             ]
         )
-    }, [latestBleFirmware, device, bleDevice, bleDeviceId, batteryLevel, handleFirmwareCheck, runDisconnect, runDfu, connectDevice, navigation])
+    }, [latestBleFirmware, device, bleDevice, bleDeviceId, batteryLevel, handleFirmwareCheck, connectDevice, navigation]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // --- Himax Firmware Handlers ---
 
@@ -878,16 +853,10 @@ export const useStartDeployment = ({
         if (!bleDevice || !bleDevice.connected) return
         try {
             setIsCheckingHimaxVersion(true)
-            const response = await getAiVer(bleDevice)
+            const response = await bleSession?.execute(commandRegistry.aiver)
             if (response) {
-                const match = response.match(COMMANDS[CommandNames.ai_ver].readRegex!)
-                if (match) {
-                    setHimaxFirmwareVersion(match[1])
-                    log('[Deployment] Himax firmware version:', match[1])
-                } else {
-                    // Use raw response if no version pattern found
-                    setHimaxFirmwareVersion(response.trim())
-                }
+                setHimaxFirmwareVersion(response)
+                log('[Deployment] Himax firmware version:', response)
             }
         } catch (error) {
             logError('[Deployment] Himax version check failed:', error)
@@ -895,7 +864,7 @@ export const useStartDeployment = ({
         } finally {
             setIsCheckingHimaxVersion(false)
         }
-    }, [bleDevice, getAiVer])
+    }, [bleDevice]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleHimaxFirmwareUpdate = useCallback(async () => {
         if (!bleDevice || !bleDevice.connected) return
@@ -923,9 +892,9 @@ export const useStartDeployment = ({
                                 setHimaxUpdateProgress('Firmware flashed! Sending reset...')
 
                                 try {
-                                    await runReset(bleDevice)
+                                    await bleSession?.execute(commandRegistry.reset)
                                     await new Promise(r => setTimeout(r, 500))
-                                    await runDisconnect(bleDevice)
+                                    try { await bleSession?.execute(commandRegistry.disconnect) } catch(e) {} finally { await disconnectDevice(bleDevice) }
                                 } catch (resetErr) {
                                     logWarn('[Deployment] Reset/disconnect after Himax update:', resetErr)
                                 }
@@ -975,7 +944,7 @@ export const useStartDeployment = ({
                 }
             ]
         )
-    }, [bleDevice, bleDeviceId, batteryLevel, runReset, runDisconnect, connectDevice, navigation, handleHimaxFirmwareCheck, bleSession])
+    }, [bleDevice, bleDeviceId, batteryLevel, connectDevice, navigation, handleHimaxFirmwareCheck, bleSession]) // eslint-disable-line react-hooks/exhaustive-deps
 
     return {
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
@@ -993,7 +962,7 @@ export const useStartDeployment = ({
         isCheckingFirmware, isVerifyingUpdate, firmwareUpdateStatus,
         handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, handleBleFirmwareUpdate,
         // Himax Firmware Exports
-        himaxFirmwareVersion, isHimaxUpdating, himaxUpdateProgress, isCheckingHimaxVersion,
+        latestHimaxFirmware, himaxFirmwareVersion, isHimaxUpdating, himaxUpdateProgress, isCheckingHimaxVersion,
         handleHimaxFirmwareCheck, handleHimaxFirmwareUpdate
     }
 }

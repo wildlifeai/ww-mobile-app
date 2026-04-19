@@ -121,8 +121,8 @@ The `react-doctor.yml` GitHub Action also runs on all PRs (informational):
 
 ## Known Issues
 
-- **BLE Command Manager Tests**: `src/ble/__tests__/commandManager.test.ts` is skipped (`.skip.ts`) due to Jest worker crashes from unhandled promise rejections. Needs refactor.
+- **Legacy BLE Command Manager Tests**: `src/ble/__tests__/commandManager.test.ts` is skipped (`.skip.ts`). The legacy `BleCommandManager` has been fully replaced by the event-driven `protocol/` layer. New BLE tests are in `src/ble/protocol/__tests__/` and `src/ble/session/__tests__/`.
 
 ---
 
-**Last Updated**: 2026-02-19
+**Last Updated**: 2026-04-19

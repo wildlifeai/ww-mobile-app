@@ -8,8 +8,7 @@ import { Peripheral } from "react-native-ble-manager"
 import { BLE_SERVICE_UUID } from "../utils/constants"
 import {
 	invokeWithTimeout,
-	isOurDevice,
-	sleep,
+	isOurDevice
 } from "../utils/helpers"
 import { guard, log, logError, logWarn } from '../utils/logger'
 import { useAppDispatch, useAppSelector } from "../redux"
@@ -24,16 +23,11 @@ import { scanError, scanStart } from "../redux/slices/scanningSlice"
 import { clearAllDeviceIntervals } from "../utils/helpers"
 import { extractServiceAndCharacteristic, writeToDevice } from "../ble/transport"
 import {
-	BleCommandOptions,
 	CommandConstructOptions,
-	// CommandControlTypes,
 	CommandNames,
-	// COMMANDS,
 	Services,
 } from "../ble/types"
-import { constructCommandString } from "../ble/types"
-import { bleCommandManager, isCommandClearedError, isDisconnectCommand } from "../ble/commandManager"
-import { getCommandByName } from "../ble/types"
+import { bleEventBus } from "../ble/protocol/eventBus"
 
 export type WriteData = [CommandNames, CommandConstructOptions]
 
@@ -46,16 +40,14 @@ export type ReturnType = {
 		timeout?: number,
 	) => Promise<ExtendedPeripheral>
 	disconnectDevice: (peripheral: ExtendedPeripheral) => void
-	write: (
+	writeRaw: (
 		peripheral: ExtendedPeripheral,
-		data: (string | WriteData)[],
-		options?: BleCommandOptions,
-	) => Promise<string[]>
+		data: string,
+	) => Promise<void>
 	pingsPause: (toggle: boolean) => void
 	pingsPaused: React.MutableRefObject<boolean>
 }
 
-const PAUSE = 20
 
 export const useBle = (): ReturnType => {
 	const { initialized } = useAppSelector((state) => state.bleLibrary)
@@ -110,95 +102,29 @@ export const useBle = (): ReturnType => {
 	const disconnectDevice = useCallback(
 		async (peripheral: Peripheral | ExtendedPeripheral) => {
 			if (!initialized) return
-			bleCommandManager.clear()
 			await guard(() => BleManager.disconnect(peripheral.id))
 			dispatch(deviceDisconnect({ id: peripheral.id }))
 		},
 		[dispatch, initialized],
 	)
 
-	const write = useCallback(
-		async (
-			peripheral: ExtendedPeripheral,
-			data: (WriteData | string)[],
-			options: BleCommandOptions = {},
-		): Promise<string[]> => {
-			if (!initialized) return []
-
-
-
-			const results: string[] = []
-
-			for (const strOrCommand of data) {
-				let commandString: string | undefined
-
-				if (typeof strOrCommand === "string") {
-					commandString = strOrCommand
-				} else {
-					const [commandName, constructOptions] = strOrCommand
-					commandString = constructCommandString(commandName, constructOptions)
-				}
-
-				if (commandString) {
-					try {
-						// Look up command definition for regex pattern if not already provided
-						let lookupName = typeof strOrCommand === "string" ? strOrCommand : strOrCommand[0]
-						const cmdDef = getCommandByName(lookupName)
-						const cmdOptions = { ...options }
-						if (cmdOptions.expectedPattern === undefined && cmdDef?.readRegex) {
-							cmdOptions.expectedPattern = cmdDef.readRegex
-						}
-						// Use command-specific timeout if no override provided in options
-						if (cmdOptions.timeout === undefined && cmdDef?.timeout) {
-							cmdOptions.timeout = cmdDef.timeout
-						}
-
-						const response = await bleCommandManager.sendCommand(
-							peripheral,
-							{ name: lookupName || 'UNKNOWN', string: commandString },
-							writeToDevice,
-							cmdOptions,
-						)
-						results.push(response)
-						// Add small delay between commands to be nice to firmware
-						await sleep(PAUSE)
-					} catch (error) {
-						const errMsg = error instanceof Error ? error.message : String(error)
-                        const isCleared = isCommandClearedError(error)
-                        const isDisconnect = isDisconnectCommand(commandString, commandString)
-                        
-                        // Treat cleared command manager during explicit disconnects gracefully
-                        if (isCleared && isDisconnect) {
-                            log(`[useBle] Command manager cleared during disconnect command (expected)`)
-                        } else {
-						    logError(`Error writing command ${commandString}: ${errMsg}`)
-                        }
-                        
-						results.push(`ERROR: ${errMsg}`)
-						
-						// Stop the sequence if the error is fatal (disconnection or cancelled)
-						const isFatal = 
-							errMsg.includes('Peripheral not found') || 
-							errMsg.includes('not connected') || 
-							isCleared ||
-							errMsg.includes('disconnected')
-
-						if (isFatal) {
-                            if (isCleared && isDisconnect) {
-                                log(`[useBle] Stopping command sequence normally due to explicit disconnect`)
-                            } else {
-							    logWarn(`[useBle] Fatal error detected, stopping command sequence: ${errMsg}`)
-                            }
-							throw error
-						}
-					}
-				}
-			}
-
-			return results
-		},
-		[initialized],
-	)
+	const writeRaw = useCallback(async (peripheral: ExtendedPeripheral, data: string) => {
+		if (!initialized) return
+		
+		try {
+			await writeToDevice(peripheral, data)
+			bleEventBus.emitEvent({
+				type: 'RAW_TX',
+				command: data.trim(),
+				deviceId: peripheral.id,
+				ts: Date.now()
+			} as any)
+		} catch (error) {
+			const errMsg = error instanceof Error ? error.message : String(error)
+			logError(`[RAW_TX] Error writing to device: ${errMsg}`)
+			throw error
+		}
+	}, [initialized])
 
 	const isDeviceReconnecting = useRef<{ [x: string]: boolean }>({})
 
@@ -378,7 +304,7 @@ export const useBle = (): ReturnType => {
 		stopScan,
 		connectDevice,
 		disconnectDevice,
-		write,
+		writeRaw,
 		pingsPause,
 		pingsPaused: pingsPauseRef,
 	}

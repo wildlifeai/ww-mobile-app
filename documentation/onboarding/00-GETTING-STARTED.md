@@ -184,7 +184,7 @@ src/
 ├── database/            # WatermelonDB schema and models
 ├── services/            # Business logic (Sync, Auth, Deployment)
 ├── hooks/               # Custom hooks (useBle, useDeviceSettings)
-└── ble/                 # BLE command definitions and classifiers
+└── ble/                 # BLE protocol engine (protocol/, session/, command registry)
 ```
 
 ---
@@ -212,11 +212,11 @@ npm test              # Run Jest tests
 ## 💡 Key Tips for Success
 
 1. **Think Offline**: Always consider what happens if the user has no signal.
-2. **BLE Safety**: Our BLE queue uses 500ms intervals to prevent device overflow.
+2. **BLE Architecture**: Commands are serialized through `commandQueue` and matched via typed `commandRegistry` parsers. Use `bleSession.execute()` for deployment workflows and `writeRaw()` only for the Engineer Console.
 3. **Type Safety**: TypeScript is mandatory. Use existing types from `src/types/`.
 4. **Custom Components**: Always check `src/components/ui/` before building a custom element (Buttons, Text, Icons).
 
 **Ready to dive deeper?** Move on to **[01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md)**. 🚀
 
 ---
-*Last Updated: February 17, 2026*
+*Last Updated: April 19, 2026*

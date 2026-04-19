@@ -1,6 +1,6 @@
 # Wildlife Watcher Mobile App: Whitelist & Source of Truth
 
-> **Generated on:** April 3rd, 2026.
+> **Generated on:** April 19th, 2026.
 > This document outlines the explicit boundaries of the refactored Wildlife Watcher Mobile Application (`v2.x`). Any code, screen, hook, or service mapping **not** detailed in this list is formally deprecated, legacy, or dead code, and can be removed without affecting the application's runtime boundaries.
 
 ---
@@ -26,7 +26,7 @@ The main interface revolves exclusively around 3 horizontal modes:
     *   **End**: `StopMonitoringWizard` -> `EndStartMonitoringDetailsStep`.
 *   **Hardware / Connectivity**:
     *   `DeviceDetails`: Management screen for a synchronized device.
-    *   `EngineerConsoleScreen`: Direct serial/command access to the BLE module.
+    *   `EngineerConsoleScreen`: Pure terminal — raw serial access to the BLE module via `writeRaw()`.
     *   `DfuScreen`: Firmware flashing / OTA updates.
     *   `StandaloneMotionDetectionScreen`: Localized hardware debugging.
 
@@ -35,9 +35,9 @@ The main interface revolves exclusively around 3 horizontal modes:
 ## 2. Key User Flows
 
 *   **Initialization Gate**: Checks Android/iOS permissions -> Verifies Bluetooth Adapter State -> Validates Local Auth Token. If any fail, intercepts the user with an explicit remediation screen before permitting access to Bottom Tabs.
-*   **Deployment Assembly (Start)**: The user scans a device using `StartDeploymentWizard` -> App executes connection and validates Battery/Firmware/SD metrics natively using `useBleInitialization` & `useDevicePreDeploymentChecks` -> The user supplements GPS data -> App issues Native Settings push -> WatermelonDB commits the record locally via `DeploymentService` and queues an upstream push to Supabase via `SyncOutbox`.
+*   **Deployment Assembly (Start)**: The user scans a device using `StartDeploymentWizard` -> App connects and validates Battery/Firmware/SD metrics via `useBleSession` + `commandRegistry` -> The user supplements GPS data -> App issues configuration via `useDeploymentConfiguration` -> WatermelonDB commits the record locally via `DeploymentService` and queues an upstream push to Supabase via `SyncOutbox`.
 *   **End Deployment Sequence**: The user initiates a wrap-up -> the App reconnects to retrieve final statistics from the board -> locally terminates deployment -> attempts remote sync.
-*   **Engineering Management**: Specialized users use `EngineerConsoleScreen` manually piping `useEngineerConnect` and `useBleCommandFactory` to trigger overrides directly to the hardware characteristics to bypass logic limits or test raw hardware limits.
+*   **Engineering Management**: Specialized users use `EngineerConsoleScreen` to send raw text commands via `writeRaw()` and observe responses passively through `bleEventBus` subscriptions. The console is a **pure terminal** — it does not execute workflows like DFU, capture, or GPS setting.
 
 ---
 
@@ -61,10 +61,23 @@ The main interface revolves exclusively around 3 horizontal modes:
 
 ## 4. Public APIs / Hooks
 
-The `useBle*` family of hooks explicitly drives the hardware workflow:
-*   **Hardware Connectors**: `useBle.ts` (Core Adapter), `useBleListeners.tsx` (Listener Subscriptions), `useBluetoothStatus.ts`.
-*   **Hardware Logic**: `useBleCommands.ts`, `useBleCommandFactory.ts`, `useBleHeartbeat.ts`, `useBleInitialization.ts`.
-*   **Feature Modules**: `useCapturePreview.ts` (Camera validation interface), `useEngineerConnect.ts`.
+The BLE stack is split into three layers:
+
+**Protocol Layer** (`src/ble/protocol/`):
+*   `eventBus.ts` — Central `bleEventBus` dispatcher (6 frozen event types).
+*   `rxRouter.ts` — Binary/text classification from raw bytes.
+*   `commandRegistry.ts` — Typed command factories with frozen schema.
+*   `commandQueue.ts` — Serialized command execution queue.
+*   `runCommand.ts` / `runCommandPipeline.ts` — Single and multi-command executors.
+
+**Session Layer** (`src/ble/session/`):
+*   `createBleSession.ts` — Deterministic command execution for deployment workflows.
+
+**Hook Layer** (`src/hooks/`):
+*   **Core**: `useBle.ts` (scan, connect, writeRaw), `useBleListeners.tsx` (native event routing to `rxRouter`), `useBluetoothStatus.ts`.
+*   **Session**: `useBleSession.ts` (React hook wrapping `createBleSession`).
+*   **Lifecycle**: `useBleHeartbeat.ts` (inactivity keep-alive), `useBleInitialization.ts` (selftest + UTC sync).
+*   **Features**: `useCapturePreview.ts` (camera capture flow), `useDeviceSettings.ts` (CONFIG.TXT management).
 
 The Application Logic relies fundamentally on:
 *   `useSupabaseAuth.ts` / `useSupabaseClient.ts`: Remote authentication logic.

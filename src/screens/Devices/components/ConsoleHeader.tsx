@@ -9,6 +9,7 @@ interface ConsoleHeaderProps {
     isConnecting: boolean;
     onConnect: () => void;
     onShowHelp: () => void;
+    onShowFlows: () => void;
 }
 
 export const ConsoleHeader = ({
@@ -17,26 +18,34 @@ export const ConsoleHeader = ({
     isConnected,
     isConnecting,
     onConnect,
-    onShowHelp
+    onShowHelp,
+    onShowFlows
 }: ConsoleHeaderProps) => {
     const theme = useTheme();
 
     return (
         <>
             <View style={styles.header}>
-                <View>
-                    <Text style={styles.deviceName}>{deviceName || 'Unknown Device'}</Text>
-                </View>
-                <View style={styles.statusContainer}>
+                <View style={styles.nameRow}>
                     <View style={[styles.statusDot, isConnected ? styles.statusDotConnected : styles.statusDotDisconnected]} />
-                    <Text style={styles.statusText}>{isConnected ? 'Connected' : 'Disconnected'}</Text>
+                    <Text style={styles.deviceName} numberOfLines={1}>{deviceName || 'Unknown Device'}</Text>
+                </View>
+                <View style={styles.buttonRow}>
                     <Button
                         mode="outlined"
                         compact
+                        icon="console-line"
                         onPress={onShowHelp}
-                        style={styles.helpButton}
                     >
-                        <Text>Command Reference</Text>
+                        <Text>Commands</Text>
+                    </Button>
+                    <Button
+                        mode="outlined"
+                        compact
+                        icon="chart-timeline-variant"
+                        onPress={onShowFlows}
+                    >
+                        <Text>Flows</Text>
                     </Button>
                 </View>
             </View>
@@ -63,26 +72,28 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
         backgroundColor: '#FFF',
         borderBottomWidth: 1,
         borderBottomColor: '#E0E0E0',
+    },
+    nameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexShrink: 1,
+        marginRight: 8,
     },
     deviceName: {
         fontSize: 18,
         fontWeight: 'bold',
         color: '#333',
     },
-
-    statusContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
     statusDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        marginRight: 6,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        marginRight: 8,
     },
     statusDotConnected: {
         backgroundColor: '#4CAF50',
@@ -90,9 +101,9 @@ const styles = StyleSheet.create({
     statusDotDisconnected: {
         backgroundColor: '#F44336',
     },
-    statusText: {
-        fontSize: 14,
-        color: '#666',
+    buttonRow: {
+        flexDirection: 'row',
+        gap: 6,
     },
     connectButton: {
         backgroundColor: '#2196F3',
@@ -101,7 +112,4 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: 'center',
     },
-    helpButton: {
-        marginLeft: 8,
-    }
 });

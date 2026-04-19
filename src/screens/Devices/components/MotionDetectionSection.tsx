@@ -6,8 +6,8 @@ import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { useBle } from '../../../hooks/useBle'
-import { useBleCommands } from '../../../hooks/useBleCommands'
+import { createBleSession } from '../../../ble/session/createBleSession'
+import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { useMotionDetectionStream } from '../hooks/useMotionDetectionStream'
 import { log, logError } from '../../../utils/logger'
 
@@ -25,8 +25,6 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
     onShowHelp
 }) => {
     const theme = useTheme()
-    const { write } = useBle()
-    const { setMdSensitivity } = useBleCommands()
     const [sensitivity, setSensitivity] = useState<string>('0')
     const [isSetting, setIsSetting] = useState(false)
 
@@ -37,21 +35,22 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
         stopTest,
         mdBlocksCount,
         motionDetected
-    } = useMotionDetectionStream({ device: bleDevice, write })
+    } = useMotionDetectionStream({ device: bleDevice })
 
     const handleSensitivityChange = useCallback(async (val: string) => {
         if (!bleDevice) return
         setSensitivity(val)
         setIsSetting(true)
         try {
-            await setMdSensitivity(bleDevice, val)
+            const session = createBleSession(bleDevice)
+            await session.execute(() => commandRegistry.md(parseInt(val, 10)))
             log(`[MotionDetection] Sensitivity set to ${val}`)
         } catch (error) {
             logError('[MotionDetection] Failed to set sensitivity', error)
         } finally {
             setIsSetting(false)
         }
-    }, [bleDevice, setMdSensitivity])
+    }, [bleDevice])
 
     useEffect(() => {
         if (bleDeviceConnected && !isInitializing) {

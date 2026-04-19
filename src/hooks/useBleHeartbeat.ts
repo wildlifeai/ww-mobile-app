@@ -13,7 +13,7 @@
  */
 import { useEffect, useRef } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
-import { bleCommandManager } from '../ble/commandManager'
+import { bleEventBus, BleEvent } from '../ble/protocol/eventBus'
 import { log, logWarn } from '../utils/logger'
 import { useBle } from './useBle'
 
@@ -22,12 +22,14 @@ const HEARTBEAT_DELAY_MS = 58_000 // 58s (device disconnects at 60s inactivity)
 export const useBleHeartbeat = (device: ExtendedPeripheral | null) => {
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const deviceRef = useRef(device)
-    const { write } = useBle()
-    const writeRef = useRef(write)
+    const { writeRaw } = useBle()
+    const writeRawRef = useRef(writeRaw)
 
     // Keep refs current to avoid stale closures in the 58s timer callback
     useEffect(() => { deviceRef.current = device }, [device])
-    useEffect(() => { writeRef.current = write }, [write])
+    useEffect(() => { writeRawRef.current = writeRaw }, [writeRaw])
+
+    const isPausedRef = useRef(false)
 
     useEffect(() => {
         if (!device?.connected) {
@@ -46,9 +48,24 @@ export const useBleHeartbeat = (device: ExtendedPeripheral | null) => {
                 timerRef.current = null
                 const currentDevice = deviceRef.current
                 if (!currentDevice?.connected) return
+                
+                if (isPausedRef.current) {
+                    log('[BLE Heartbeat] 58s idle — sending benign BLE ping (UART heartbeat is paused)...')
+                    try {
+                        import('react-native-ble-manager').then(BleManager => {
+                           BleManager.default.readRSSI(currentDevice.id).catch(() => {})
+                        })
+                    } catch (e) {}
+                    
+                    // Reset timer purely to keep the loop running
+                    resetTimer()
+                    return
+                }
+
                 log('[BLE Heartbeat] 58s idle — sending heartbeat (get heartbeat)...')
                 try {
-                    await writeRef.current(currentDevice, ['get heartbeat'])
+                    // Send fire-and-forget heartbeat raw string
+                    await writeRawRef.current(currentDevice, 'get heartbeat')
                     log('[BLE Heartbeat] Heartbeat sent. Timer will reset on response.')
                 } catch (err) {
                     logWarn('[BLE Heartbeat] Heartbeat failed:', err)
@@ -58,14 +75,20 @@ export const useBleHeartbeat = (device: ExtendedPeripheral | null) => {
 
         // Any BLE message = activity → reset the 58s countdown
         const listener = () => resetTimer()
+        const pauseListener = (event: BleEvent & { type: 'HEARTBEAT_PAUSE' }) => {
+            isPausedRef.current = event.isPaused
+            log(`[BLE Heartbeat] UART heartbeat paused state changed to: ${event.isPaused}`)
+        }
 
-        bleCommandManager.addMessageListener(listener)
+        bleEventBus.on('any', listener)
+        bleEventBus.on('heartbeatPause', pauseListener)
 
         // Start the first timer immediately
         resetTimer()
 
         return () => {
-            bleCommandManager.removeMessageListener(listener)
+            bleEventBus.removeListener('any', listener)
+            bleEventBus.removeListener('heartbeatPause', pauseListener)
             if (timerRef.current) {
                 clearTimeout(timerRef.current)
                 timerRef.current = null

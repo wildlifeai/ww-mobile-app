@@ -5,6 +5,7 @@ export interface ConsoleState {
     consoleHistory: ConsoleEntry[];
     isConnecting: boolean;
     isHelpVisible: boolean;
+    isFlowsVisible: boolean;
     showPreviewModal: boolean;
 }
 
@@ -12,6 +13,7 @@ export type ConsoleAction =
     | { type: 'SET_INPUT_TEXT'; payload: string }
     | { type: 'SET_IS_CONNECTING'; payload: boolean }
     | { type: 'SET_IS_HELP_VISIBLE'; payload: boolean }
+    | { type: 'SET_IS_FLOWS_VISIBLE'; payload: boolean }
     | { type: 'SET_SHOW_PREVIEW_MODAL'; payload: boolean }
     | { type: 'CLEAR_HISTORY' }
     | { type: 'APPEND_HISTORY'; payload: ConsoleEntry | ConsoleEntry[] }
@@ -23,6 +25,7 @@ export const initialConsoleState: ConsoleState = {
     consoleHistory: [],
     isConnecting: false,
     isHelpVisible: false,
+    isFlowsVisible: false,
     showPreviewModal: false,
 };
 
@@ -36,6 +39,9 @@ export const consoleReducer = (state: ConsoleState, action: ConsoleAction): Cons
         
         case 'SET_IS_HELP_VISIBLE':
             return { ...state, isHelpVisible: action.payload };
+        
+        case 'SET_IS_FLOWS_VISIBLE':
+            return { ...state, isFlowsVisible: action.payload };
             
         case 'SET_SHOW_PREVIEW_MODAL':
             return { ...state, showPreviewModal: action.payload };

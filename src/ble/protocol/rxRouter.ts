@@ -1,90 +1,131 @@
 import { Buffer } from 'buffer';
 import { bleEventBus } from './eventBus';
 import { DeviceSignal } from './deviceSignals';
+import { log } from '../../utils/logger';
 
 const BINARY_MARKER = 0x06;
 const HEADER_SIZE = 3;
 
 class RxRouter {
-  private buffers: Record<string, Buffer> = {};
+  private mainBuffers: Record<string, Buffer> = {};
+  private textBuffers: Record<string, Buffer> = {};
 
   public handleIncomingBytes(deviceId: string, data: number[] | Uint8Array) {
     const chunk = Buffer.from(data);
     
-    if (!this.buffers[deviceId]) {
-      this.buffers[deviceId] = Buffer.alloc(0);
+    if (!this.mainBuffers[deviceId]) {
+      this.mainBuffers[deviceId] = Buffer.alloc(0);
+      this.textBuffers[deviceId] = Buffer.alloc(0);
     }
     
-    this.buffers[deviceId] = Buffer.concat([this.buffers[deviceId], chunk]);
+    this.mainBuffers[deviceId] = Buffer.concat([this.mainBuffers[deviceId], chunk]);
+    log(`[RxRouter] handleIncomingBytes: ${chunk.toString('hex')}`)
     this.processBuffer(deviceId);
   }
 
   private processBuffer(deviceId: string) {
-    let buffer = this.buffers[deviceId];
+    let mainBuffer = this.mainBuffers[deviceId];
+    let textBuffer = this.textBuffers[deviceId];
+    const MAX_FRAME_SIZE = 255;
 
-    while (buffer.length > 0) {
-      const binIndex = buffer.indexOf(BINARY_MARKER);
-      const nlIndex = buffer.indexOf('\n');
+    while (mainBuffer.length > 0) {
+      let binIndex = mainBuffer.indexOf(BINARY_MARKER);
 
-      if (binIndex !== -1 && (nlIndex === -1 || binIndex < nlIndex)) {
-        // Binary packet appears before any newline.
-        if (buffer.length - binIndex < HEADER_SIZE) {
-          // Need more bytes for header
-          break;
-        }
+      if (binIndex === -1) {
+        // No binary marker found. The rest of the stream is purely text.
+        textBuffer = Buffer.concat([textBuffer, mainBuffer]);
+        mainBuffer = Buffer.alloc(0);
+        break; 
+      }
 
-        const packetNum = buffer[binIndex + 1];
-        const payloadLength = buffer[binIndex + 2];
-        const fullFrameLength = HEADER_SIZE + payloadLength;
-
-        if (buffer.length - binIndex < fullFrameLength) {
-          // Need more bytes to complete this binary frame
-          break;
-        }
-
-        const frameData = Uint8Array.prototype.slice.call(buffer, binIndex, binIndex + fullFrameLength);
-        
-        bleEventBus.emitEvent({
-          type: 'BINARY_PACKET',
-          data: frameData,
-          deviceId,
-          packetNum,
-          length: payloadLength,
-          ts: Date.now()
-        });
-
-        // Safely splice it out of the buffer, stitching surrounding text bytes together
-        buffer = Buffer.concat([
-          buffer.subarray(0, binIndex),
-          buffer.subarray(binIndex + fullFrameLength)
-        ]);
+      if (binIndex > 0) {
+        // Binary marker exists, but not at index 0. Extract preceding bytes as text unconditionally.
+        textBuffer = Buffer.concat([textBuffer, mainBuffer.subarray(0, binIndex)]);
+        mainBuffer = mainBuffer.subarray(binIndex);
         continue;
       }
 
-      if (nlIndex !== -1) {
-        // A newline appears before any binary packet.
-        let line = buffer.subarray(0, nlIndex).toString('utf-8');
-        line = line.replace(/\r$/, '');
+      // Marker found exactly at index 0.
+      if (mainBuffer.length < HEADER_SIZE) {
+        // Need more bytes to evaluate header
+        break;
+      }
 
-        // Advance buffer past the newline
-        buffer = buffer.subarray(nlIndex + 1);
+      const packetNum = mainBuffer[1];
+      const payloadLength = mainBuffer[2];
+      const fullFrameLength = HEADER_SIZE + payloadLength;
 
-        if (line.trim().length > 0) {
-          this.classifyAndEmitText(deviceId, line);
-        }
+      if (fullFrameLength > MAX_FRAME_SIZE || fullFrameLength < HEADER_SIZE) {
+        // Header corrupted (insane length). Invalid marker candidate.
+        // Force the marker byte into the text buffer and continue searching.
+        textBuffer = Buffer.concat([textBuffer, mainBuffer.subarray(0, 1)]);
+        mainBuffer = mainBuffer.subarray(1);
         continue;
       }
 
-      // No complete text lines and no parsable binary packets left. Wait for more data.
-      break;
+      if (mainBuffer.length < fullFrameLength) {
+        // Valid header, but incomplete frame. Block until data arrives.
+        break;
+      }
+
+      // -> COMPLETE & VALID BINARY FRAME <-
+
+      // 1. Drain text BEFORE emitting binary to guarantee strict chronological byte-order extraction.
+      textBuffer = this.drainTextBuffer(deviceId, textBuffer);
+
+      // 2. Extract and emit binary packet
+      const frameData = Uint8Array.prototype.slice.call(mainBuffer, 0, fullFrameLength);
+      bleEventBus.emitEvent({
+        type: 'BINARY_PACKET',
+        data: frameData,
+        deviceId,
+        packetNum,
+        length: payloadLength,
+        ts: Date.now()
+      });
+
+      // 3. Remove frame from stream
+      mainBuffer = mainBuffer.subarray(fullFrameLength);
     }
 
-    this.buffers[deviceId] = buffer;
+    // Post-loop sweep to drain newly extracted text
+    textBuffer = this.drainTextBuffer(deviceId, textBuffer);
+
+    this.mainBuffers[deviceId] = mainBuffer;
+    this.textBuffers[deviceId] = textBuffer;
+  }
+
+  private drainTextBuffer(deviceId: string, textBuffer: Buffer): Buffer {
+    let splitIndex = this.findSplitIndex(textBuffer);
+    while (splitIndex !== -1) {
+      let line = Buffer.from(textBuffer.subarray(0, splitIndex)).toString('utf-8');
+      line = line.replace(/[\r\n\0]+/g, '');
+      
+      textBuffer = Buffer.from(textBuffer.subarray(splitIndex + 1));
+      
+      if (line.trim().length > 0) {
+        this.classifyAndEmitText(deviceId, line);
+      }
+      
+      splitIndex = this.findSplitIndex(textBuffer);
+    }
+    return textBuffer;
+  }
+
+  private findSplitIndex(buffer: Buffer): number {
+    for (let i = 0; i < buffer.length; i++) {
+      if (buffer[i] === 10 || buffer[i] === 13 || buffer[i] === 0) return i;
+    }
+    return -1;
   }
 
   private classifyAndEmitText(deviceId: string, line: string) {
     const trimmed = line.trim();
     const ts = Date.now();
+    log(`[RxRouter] classifyAndEmitText: "${line}"`)
+
+    // Emit RAW_RX explicitly for UI teletype parsing (Engineer Console)
+    bleEventBus.emitEvent({ type: 'RAW_RX', line, deviceId, ts });
 
     // Device Signals classification
     if (/^Sleep(\s+.*)?/i.test(trimmed)) {
@@ -103,12 +144,12 @@ class RxRouter {
     }
 
     // Default: Emit as standard TEXT_LINE for the active command context
-    console.log('RX_ROUTER EMITTING TEXT_LINE:', line);
     bleEventBus.emitEvent({ type: 'TEXT_LINE', line, deviceId, ts });
   }
 
   public clearBuffer(deviceId: string) {
-    delete this.buffers[deviceId];
+    delete this.mainBuffers[deviceId];
+    delete this.textBuffers[deviceId];
   }
 }
 

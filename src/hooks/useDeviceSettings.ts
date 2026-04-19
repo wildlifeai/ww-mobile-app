@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert } from 'react-native'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
-import { useBleCommands } from './useBleCommands'
+import { createBleSession } from '../ble/session/createBleSession'
+import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { log, logError, logWarn } from '../utils/logger'
 
 
@@ -57,10 +58,17 @@ export interface UseDeviceSettingsOptions {
     onError?: (error: Error) => void
 }
 
+export interface QuiesceOptions {
+    quickMode?: boolean
+    isEndDeployment?: boolean
+    cachedOps?: string[] | null
+    sessionScope?: any
+}
+
 export interface UseDeviceSettingsReturn {
-    updateSettings: (settings: Partial<DeviceSettings>) => Promise<void>
-    applyPreset: (preset: 'default' | 'motion-detect' | 'timelapse') => Promise<void>
-    quiesceDevice: (logPrefix?: string, optimized?: boolean, cachedOps?: string[] | null) => Promise<void>
+    updateSettings: (device: ExtendedPeripheral, settings: Partial<DeviceSettings>) => Promise<void>
+    applyPreset: (device: ExtendedPeripheral, preset: 'default' | 'motion-detect' | 'timelapse') => Promise<void>
+    quiesceDevice: (device: ExtendedPeripheral, options?: QuiesceOptions) => Promise<void>
     isUpdating: boolean
 }
 
@@ -82,13 +90,9 @@ export interface UseDeviceSettingsReturn {
  * await applyPreset('motion-detect')
  * ```
  */
-export const useDeviceSettings = ({
-    device,
-    onSettingsUpdated,
-    onError
-}: UseDeviceSettingsOptions): UseDeviceSettingsReturn => {
+export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, onError?: (err: Error) => void }): UseDeviceSettingsReturn => {
+    const { onSettingsUpdated, onError } = options || {}
     const [isUpdating, setIsUpdating] = useState(false)
-    const { setOperationalParam, getOrFetchOperationalParams } = useBleCommands()
 
     // Safety: Track if component is still mounted to avoid state updates/commands after unmount
     const isMounted = useRef(true)
@@ -100,7 +104,7 @@ export const useDeviceSettings = ({
     /**
      * Update multiple operational parameters on the device
      */
-    const updateSettings = useCallback(async (settings: Partial<DeviceSettings>) => {
+    const updateSettings = useCallback(async (device: ExtendedPeripheral, settings: Partial<DeviceSettings>) => {
         if (!device || !device.connected) {
             const error = new Error('No device connected')
             if (onError) onError(error)
@@ -144,7 +148,13 @@ export const useDeviceSettings = ({
                 updates.push({ index: OP_PARAMETER.CAMERA_ENABLED, value: settings.cameraEnabled ? 1 : 0 })
             }
 
-            const currentOps = await getOrFetchOperationalParams(device, null, '[useDeviceSettings]')
+            const session = createBleSession(device)
+            let currentOps: string[] | null = null
+            try {
+                currentOps = await session.execute(commandRegistry.getops)
+            } catch (err) {
+                logWarn('[useDeviceSettings] Pre-fetch Ops bulk fetch failed, proceeding blindly', err)
+            }
 
             // Send each update with a small delay to avoid overwhelming the device
             for (const { index, value } of updates) {
@@ -161,7 +171,7 @@ export const useDeviceSettings = ({
                 }
 
                 log(`[useDeviceSettings] Setting parameter ${index} to ${value}`)
-                await setOperationalParam(device, index, value.toString())
+                await session.execute(() => commandRegistry.setop({ index, value }))
             }
 
             log('[useDeviceSettings] All settings updated successfully')
@@ -179,12 +189,12 @@ export const useDeviceSettings = ({
         } finally {
             setIsUpdating(false)
         }
-    }, [device, setOperationalParam, onSettingsUpdated, onError, getOrFetchOperationalParams])
+    }, [onSettingsUpdated, onError])
 
     /**
      * Apply a preset configuration
      */
-    const applyPreset = useCallback(async (preset: 'default' | 'motion-detect' | 'timelapse') => {
+    const applyPreset = useCallback(async (device: ExtendedPeripheral, preset: 'default' | 'motion-detect' | 'timelapse') => {
         log(`[useDeviceSettings] Applying preset: ${preset}`)
 
         const settings: Partial<DeviceSettings> = {
@@ -212,7 +222,7 @@ export const useDeviceSettings = ({
             })
         }
 
-        await updateSettings(settings)
+        await updateSettings(device, settings)
     }, [updateSettings])
 
     /**
@@ -221,25 +231,32 @@ export const useDeviceSettings = ({
      * Actions:
      * 1. Clear Motion Detection interval (Op 11 = 0)
      * 2. Clear Timelapse interval (Op 7 = 0)
-     * 3. Enable Camera (Op 10 = 1) - Ensures device is ready for commands/preview
+     * 3. Enable Camera (Op 10 = 1) - Ensures device is ready for commands/preview unless isEndDeployment is true
      * 
-     * @param logPrefix Custom prefix for logs
-     * @param optimized Legacy parameter (unused in current logic)
+     * @param options Quiesce configurations
      */
-    const quiesceDevice = useCallback(async (logPrefix: string = '[DeviceSettings]', optimized: boolean = false, cachedOps?: string[] | null) => {
+    const quiesceDevice = useCallback(async (device: ExtendedPeripheral, options?: QuiesceOptions) => {
+        const logPrefix = '[DeviceSettings]'
         if (!device || !device.connected) {
             logWarn(`${logPrefix} Skipping quiesce: Device not connected`)
             return
         }
 
-        log(`${logPrefix} Quiescing device (Optimized: ${optimized})...`)
+        log(`${logPrefix} Quiescing device (EndDeployment: ${options?.isEndDeployment})...`)
         try {
-            // Note: Camera Enable (Op 10=1) was previously forced here but removed 
-            // to avoid needing to unlock parameters if they are already correct.
-
-            // Use cached ops if provided, otherwise fetch
             if (!isMounted.current || !device.connected) return
-            const currentOps = await getOrFetchOperationalParams(device, cachedOps, logPrefix)
+            
+            // Allow caller to inject existing session context to prevent overlapping flows
+            const session = options?.sessionScope || createBleSession(device)
+            let currentOps = options?.cachedOps
+            
+            if (!currentOps) {
+                try {
+                    currentOps = await session.execute(commandRegistry.getops)
+                } catch (err) {
+                    logWarn(`${logPrefix} Ops fetch failed, continuing without state`, err)
+                }
+            }
 
             // 2. Clear Intervals (Op 11 = 0, Op 7 = 0) - ALWAYS do this
             log(`${logPrefix} 2. Clearing Motion & Timelapse intervals...`)
@@ -247,12 +264,12 @@ export const useDeviceSettings = ({
             try {
                 if (!isMounted.current || !device.connected) return
                 if (!currentOps || currentOps[OP_PARAMETER.MD_INTERVAL] !== '0') {
-                    await setOperationalParam(device, OP_PARAMETER.MD_INTERVAL, '0')
+                    await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.MD_INTERVAL, value: '0' }))
                 }
 
                 if (!isMounted.current || !device.connected) return
                 if (!currentOps || currentOps[OP_PARAMETER.TIMELAPSE_INTERVAL] !== '0') {
-                    await setOperationalParam(device, OP_PARAMETER.TIMELAPSE_INTERVAL, '0')
+                    await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: '0' }))
                 }
             } catch (err) {
                 // If the error is fatal, we stop.
@@ -265,33 +282,37 @@ export const useDeviceSettings = ({
             
             if (!isMounted.current || !device.connected) return
             
-            // 3. Enable Camera (Op 10 = 1)
-            // We want the camera ON for previews/testing, but triggers OFF (steps above)
-            log(`${logPrefix} 3. Enabling camera (Op 10=1)...`)
-            try {
-                if (!isMounted.current || !device.connected) return
-                
-                if (!currentOps || currentOps[OP_PARAMETER.CAMERA_ENABLED] !== '1') {
-                    await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '1')
-                } else {
-                    log(`${logPrefix} Camera already enabled (Op 10=1), skipping write.`)
+            // 3. Optional Enable Camera (Op 10 = 1)
+            // If optimizing for End Deployment, skip camera enable since we are disconnecting soon
+            if (options?.isEndDeployment) {
+                log(`${logPrefix} 3. Skipping Camera Enable due to end deployment...`)
+            } else {
+                log(`${logPrefix} 3. Enabling camera (Op 10=1)...`)
+                try {
+                    if (!isMounted.current || !device.connected) return
+                    
+                    if (!currentOps || currentOps[OP_PARAMETER.CAMERA_ENABLED] !== '1') {
+                        await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAMERA_ENABLED, value: '1' }))
+                    } else {
+                        log(`${logPrefix} Camera already enabled (Op 10=1), skipping write.`)
+                    }
+                } catch (err) {
+                     const errMsg = err instanceof Error ? err.message : String(err)
+                     if (errMsg.includes('disconnected') || errMsg.includes('found') || errMsg.includes('cleared')) {
+                         throw err
+                     }
+    
+                     logWarn(`${logPrefix} Check failed, forcing enable...`)
+                     if (!isMounted.current || !device.connected) return
+                     await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAMERA_ENABLED, value: '1' }))
                 }
-            } catch (err) {
-                 const errMsg = err instanceof Error ? err.message : String(err)
-                 if (errMsg.includes('disconnected') || errMsg.includes('found') || errMsg.includes('cleared')) {
-                     throw err
-                 }
-
-                 logWarn(`${logPrefix} Check failed, forcing enable...`)
-                 if (!isMounted.current || !device.connected) return
-                 await setOperationalParam(device, OP_PARAMETER.CAMERA_ENABLED, '1')
             }
             log(`${logPrefix} Device quiesced successfully.`)
         } catch (error) {
             logError(`${logPrefix} Error quiescing device:`, error)
             throw error
         }
-    }, [device, setOperationalParam, getOrFetchOperationalParams])
+    }, [])
 
     return {
         updateSettings,
