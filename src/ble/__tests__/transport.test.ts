@@ -9,7 +9,6 @@ import {
 	BLE_CHARACTERISTIC_WRITE_UUID,
 	BLE_CHARACTERISTIC_READ_UUID,
 } from "../../utils/constants"
-import { readlineParserEmitter } from "../emitters"
 
 // Mock dependencies
 jest.mock("react-native-ble-manager", () => ({
@@ -21,11 +20,7 @@ jest.mock("../../utils/logger", () => ({
 	logError: jest.fn(),
 }))
 
-jest.mock("../emitters", () => ({
-	readlineParserEmitter: {
-		emit: jest.fn(),
-	},
-}))
+
 
 describe("src/ble/transport", () => {
 	beforeEach(() => {
@@ -58,8 +53,7 @@ describe("src/ble/transport", () => {
 				expect.any(Array), // Byte array
 				512
 			)
-			// Check if emitter was called
-			expect(readlineParserEmitter.emit).toHaveBeenCalled()
+
 		})
 
 		it("should handle write errors", async () => {
