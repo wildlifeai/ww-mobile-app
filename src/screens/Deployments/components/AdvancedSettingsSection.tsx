@@ -31,6 +31,13 @@ interface AdvancedSettingsSectionProps {
     handleSdCardCheck: () => void
     handleFirmwareCheck: () => void
     handleBleFirmwareUpdate: () => void
+    // Himax Firmware
+    himaxFirmwareVersion: string | null
+    isHimaxUpdating: boolean
+    himaxUpdateProgress: string
+    isCheckingHimaxVersion: boolean
+    handleHimaxFirmwareCheck: () => void
+    handleHimaxFirmwareUpdate: () => void
     isInitializing: boolean
     bleDeviceConnected: boolean
     theme: any
@@ -59,6 +66,13 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
     handleSdCardCheck,
     handleFirmwareCheck,
     handleBleFirmwareUpdate,
+    // Himax Firmware
+    himaxFirmwareVersion,
+    isHimaxUpdating,
+    himaxUpdateProgress,
+    isCheckingHimaxVersion,
+    handleHimaxFirmwareCheck,
+    handleHimaxFirmwareUpdate,
     isInitializing,
     bleDeviceConnected,
     theme,
@@ -107,6 +121,17 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
             {...props} 
             icon="help-circle-outline" 
             onPress={() => onShowHelp('Location & Camera Settings', 'Site Name: Name of the monitoring site.\n\nCamera Height: The height of the camera lens from the ground in centimeters.')}
+        >
+            <Text>Help</Text>
+        </Button>
+    ), [onShowHelp])
+
+
+    const renderHimaxFirmwareHelp = useCallback((props: any) => (
+        <Button 
+            {...props} 
+            icon="help-circle-outline" 
+            onPress={() => onShowHelp('Himax Firmware', 'The AI processor (Himax WE2) firmware. To update, place the output.img file in the /MANIFEST/ folder on the SD card, then press Update.')}
         >
             <Text>Help</Text>
         </Button>
@@ -311,6 +336,68 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                                 <WWButton
                                     mode="outlined"
                                     onPress={handleFirmwareCheck}
+                                    disabled={isInitializing || !bleDeviceConnected}
+                                    style={styles.actionButton}
+                                >
+                                    <Text>Refresh Version</Text>
+                                </WWButton>
+                            </View>
+                        ) : null}
+                    </Card.Content>
+                </Card>
+
+                {/* Himax Firmware Card */}
+                <Card style={styles.card}>
+                    <Card.Title
+                        title="Himax AI Firmware"
+                        right={renderHimaxFirmwareHelp}
+                    />
+                    <Card.Content>
+                        {himaxFirmwareVersion && (
+                            <WWText style={styles.firmwareVersionText}>
+                                <Text>AI Processor Version: {himaxFirmwareVersion}</Text>
+                            </WWText>
+                        )}
+
+                        {!himaxFirmwareVersion && !isCheckingHimaxVersion && (
+                            <WWButton
+                                mode="outlined"
+                                onPress={handleHimaxFirmwareCheck}
+                                disabled={isInitializing || !bleDeviceConnected}
+                                style={styles.actionButton}
+                            >
+                                <Text>Check AI Firmware Version</Text>
+                            </WWButton>
+                        )}
+
+                        {isCheckingHimaxVersion && (
+                            <WWText variant="bodySmall" style={styles.statusHint}>
+                                <Text>Checking AI firmware version...</Text>
+                            </WWText>
+                        )}
+
+                        {isHimaxUpdating ? (
+                            <View style={styles.updatingContainer}>
+                                <WWText variant="bodyMedium">
+                                    <Text>🔄 {himaxUpdateProgress || 'Updating...'}</Text>
+                                </WWText>
+                                <WWText variant="bodySmall" style={styles.statusHint}>
+                                    <Text>Do not disconnect the device or remove the SD card...</Text>
+                                </WWText>
+                            </View>
+                        ) : himaxFirmwareVersion ? (
+                            <View>
+                                <WWButton
+                                    mode="outlined"
+                                    onPress={handleHimaxFirmwareUpdate}
+                                    disabled={isInitializing || !bleDeviceConnected}
+                                    style={styles.actionButton}
+                                >
+                                    <Text>Flash Firmware from SD Card</Text>
+                                </WWButton>
+                                <WWButton
+                                    mode="text"
+                                    onPress={handleHimaxFirmwareCheck}
                                     disabled={isInitializing || !bleDeviceConnected}
                                     style={styles.actionButton}
                                 >

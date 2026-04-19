@@ -130,7 +130,7 @@ export const useStartDeployment = ({
 
     // BLE Hooks
     const { connectDevice } = useBle()
-    const { setUtc, runDisconnect, getBatteryLevel, checkSdCard, getDeviceVer, runSelfTest, runDfu, pingNetwork, getLorawanMetrics } = useBleCommands()
+    const { setUtc, runDisconnect, getBatteryLevel, checkSdCard, getDeviceVer, runSelfTest, runDfu, runReset, pingNetwork, getLorawanMetrics, getAiVer, updateHimaxFirmware } = useBleCommands()
     // const { initialize } = useBleInitialization()
     const { configure: startConfigure } = useDeploymentConfiguration()
     useBleActions()
@@ -153,6 +153,12 @@ export const useStartDeployment = ({
     // Refs for DFU
     const isDfuInProgress = useRef(false)
     const isReconnectingAfterDfu = useRef(false)
+
+    // Himax Firmware State
+    const [himaxFirmwareVersion, setHimaxFirmwareVersion] = useState<string | null>(null)
+    const [isHimaxUpdating, setIsHimaxUpdating] = useState(false)
+    const [himaxUpdateProgress, setHimaxUpdateProgress] = useState('')
+    const [isCheckingHimaxVersion, setIsCheckingHimaxVersion] = useState(false)
 
     const [formState, setFormState] = useState({
         notes: '',
@@ -830,6 +836,119 @@ export const useStartDeployment = ({
         )
     }, [latestBleFirmware, device, bleDevice, bleDeviceId, batteryLevel, handleFirmwareCheck, runDisconnect, runDfu, connectDevice, navigation])
 
+    // --- Himax Firmware Handlers ---
+
+    const handleHimaxFirmwareCheck = useCallback(async () => {
+        if (!bleDevice || !bleDevice.connected) return
+        try {
+            setIsCheckingHimaxVersion(true)
+            const response = await getAiVer(bleDevice)
+            if (response) {
+                const match = response.match(COMMANDS[CommandNames.ai_ver].readRegex!)
+                if (match) {
+                    setHimaxFirmwareVersion(match[1])
+                    log('[Deployment] Himax firmware version:', match[1])
+                } else {
+                    // Use raw response if no version pattern found
+                    setHimaxFirmwareVersion(response.trim())
+                }
+            }
+        } catch (error) {
+            logError('[Deployment] Himax version check failed:', error)
+            Alert.alert('Error', 'Failed to check Himax firmware version')
+        } finally {
+            setIsCheckingHimaxVersion(false)
+        }
+    }, [bleDevice, getAiVer])
+
+    const handleHimaxFirmwareUpdate = useCallback(async () => {
+        if (!bleDevice || !bleDevice.connected) return
+
+        const isLowBattery = batteryLevel !== null && batteryLevel < 30
+        const batteryWarning = isLowBattery
+            ? "\n\n⚠️ WARNING: Battery is low. Updating with low battery increases the risk of device failure."
+            : ""
+
+        Alert.alert(
+            'Update Himax Firmware',
+            `This will flash the firmware image from the SD card (output.img in /MANIFEST/).\n\nEnsure the correct firmware file is on the SD card before proceeding.\n\nThe process takes 20-30 seconds.${batteryWarning}`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Update',
+                    onPress: async () => {
+                        try {
+                            setIsHimaxUpdating(true)
+                            setHimaxUpdateProgress('Sending firmware flash command...')
+
+                            const response = await updateHimaxFirmware(bleDevice)
+
+                            const match = response ? response.match(COMMANDS[CommandNames.ai_firmware].readRegex!) : null
+
+                            if (match && match[1].toUpperCase() === 'FAILED') {
+                                const errorMatch = response.match(/error\s+(-?\d+)/i)
+                                const errorCode = errorMatch ? errorMatch[1] : 'unknown'
+                                throw new Error(`Firmware update failed on device (error ${errorCode}). Existing firmware unchanged.`)
+                            }
+
+                            if (match && match[1].toUpperCase() === 'OK') {
+                                setHimaxUpdateProgress('Firmware flashed! Sending reset...')
+
+                                try {
+                                    await runReset(bleDevice)
+                                    await new Promise(r => setTimeout(r, 500))
+                                    await runDisconnect(bleDevice)
+                                } catch (resetErr) {
+                                    logWarn('[Deployment] Reset/disconnect after Himax update:', resetErr)
+                                }
+
+                                setHimaxUpdateProgress('Rebooting device...')
+                                isReconnectingAfterDfu.current = true
+                                await new Promise(r => setTimeout(r, 8000))
+
+                                setHimaxUpdateProgress('Reconnecting...')
+                                try {
+                                    const foundId = await scanForOriginalDevice(bleDeviceId!, 20000)
+                                    if (foundId && bleDevice) {
+                                        setHimaxUpdateProgress('Connecting...')
+                                        await connectDevice(bleDevice, 20000)
+                                        await new Promise(r => setTimeout(r, 2000))
+                                        setHimaxUpdateProgress('Verifying new version...')
+                                        await handleHimaxFirmwareCheck()
+                                        Alert.alert('Success', 'Himax firmware updated successfully!')
+                                    } else {
+                                        throw new Error('Device not found after reboot')
+                                    }
+                                } catch (reconnectErr) {
+                                    Alert.alert(
+                                        'Reconnect Failed',
+                                        'Firmware was flashed but failed to reconnect. Please reconnect manually.',
+                                        [{
+                                            text: 'OK',
+                                            onPress: () => {
+                                                isNavigatingAway.current = true
+                                                navigation.navigate('DeviceDiscovery')
+                                            }
+                                        }]
+                                    )
+                                }
+                            } else {
+                                throw new Error('Unexpected response from device: ' + (response || '(no response)'))
+                            }
+                        } catch (error) {
+                            logError('[Deployment] Himax firmware update failed:', error)
+                            Alert.alert('Update Failed', error instanceof Error ? error.message : 'Unknown error')
+                        } finally {
+                            isReconnectingAfterDfu.current = false
+                            setIsHimaxUpdating(false)
+                            setHimaxUpdateProgress('')
+                        }
+                    }
+                }
+            ]
+        )
+    }, [bleDevice, bleDeviceId, batteryLevel, updateHimaxFirmware, runReset, runDisconnect, connectDevice, navigation, handleHimaxFirmwareCheck])
+
     return {
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
@@ -844,6 +963,9 @@ export const useStartDeployment = ({
         batteryLevel, sdCardStatus, latestBleFirmware, deviceFirmwareVersion,
         bleFirmwareUpdateAvailable, firmwareUpdateProgress, isUpdatingFirmware,
         isCheckingFirmware, isVerifyingUpdate, firmwareUpdateStatus,
-        handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, handleBleFirmwareUpdate
+        handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, handleBleFirmwareUpdate,
+        // Himax Firmware Exports
+        himaxFirmwareVersion, isHimaxUpdating, himaxUpdateProgress, isCheckingHimaxVersion,
+        handleHimaxFirmwareCheck, handleHimaxFirmwareUpdate
     }
 }
