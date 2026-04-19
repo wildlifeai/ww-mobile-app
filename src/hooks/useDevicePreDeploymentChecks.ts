@@ -1,16 +1,14 @@
 import { useCallback } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
-import { useBleCommands } from './useBleCommands'
 import { useBleInitialization } from './useBleInitialization'
+import { createBleSession } from '../ble/session/createBleSession'
+import { commandRegistry } from '../ble/protocol/commandRegistry'
 import ReferenceDataService from '../services/ReferenceDataService'
-import { extractErrorBits } from '../ble/messageClassifier'
-import { COMMANDS, CommandNames } from '../ble/types'
 import { log, logWarn } from '../utils/logger'
 import { convertBleToSemanticVersion } from '../utils/versionUtils'
 import { InitPayload } from '../navigation/types'
 
 export const useDevicePreDeploymentChecks = () => {
-    const { getBatteryLevel, checkSdCard, getDeviceVer, runSelfTest } = useBleCommands()
     const { initialize: runBleStandardInit } = useBleInitialization()
 
     const runChecks = useCallback(async (
@@ -21,6 +19,7 @@ export const useDevicePreDeploymentChecks = () => {
             batteryLevel: null,
             sdCardStatus: null,
             deviceFirmwareVersion: null,
+            himaxFirmwareVersion: null,
             bleFirmwareUpdateAvailable: false,
             initErrors: {}
         }
@@ -37,17 +36,15 @@ export const useDevicePreDeploymentChecks = () => {
             deviceHealth: initResult.errors?.deviceHealth || []
         }
 
+        const session = createBleSession(device)
+
         // 1. Battery Check
         try {
             onProgress('Checking battery...')
-            const batteryResponse = await getBatteryLevel(device)
-            const batteryMatch = batteryResponse.match(COMMANDS[CommandNames.battery].readRegex!)
-            if (batteryMatch) {
-                const level = parseInt(batteryMatch[1], 10)
-                payload.batteryLevel = level
-                if (level < 20) {
-                    newErrors.deviceHealth.push(`Battery is low (${level}%)`)
-                }
+            const level = await session.execute(commandRegistry.battery)
+            payload.batteryLevel = level
+            if (level < 20) {
+                newErrors.deviceHealth.push(`Battery is low (${level}%)`)
             }
         } catch (e) {
             logWarn('[Pre-Deployment] Battery check failed:', e)
@@ -56,20 +53,17 @@ export const useDevicePreDeploymentChecks = () => {
         // 2. SD Card Check
         try {
             onProgress('Checking SD card...')
-            const sdStatus = await checkSdCard(device)
-            if (sdStatus && sdStatus.total > 0) {
-                payload.sdCardStatus = sdStatus
-                const percentFull = ((sdStatus.total - sdStatus.free) / sdStatus.total) * 100
+            const sdStatus = await session.execute(commandRegistry.aiinfo)
+            if (sdStatus.error) {
+                 newErrors.deviceHealth.push('AI Processor check failed or SD card missing')
+            } else if (sdStatus.total !== undefined && sdStatus.total > 0) {
+                payload.sdCardStatus = sdStatus as any
+                const percentFull = ((sdStatus.total - (sdStatus.free || 0)) / sdStatus.total) * 100
                 if (percentFull > 90) {
                     newErrors.deviceHealth.push(`SD Card is almost full (${percentFull.toFixed(1)}% used)`)
                 }
             } else {
-                const statusMsg = await runSelfTest(device)
-                const hexBits = extractErrorBits(statusMsg)
-                // eslint-disable-next-line no-bitwise
-                if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
-                    newErrors.deviceHealth.push('No SD Card detected')
-                }
+                 newErrors.deviceHealth.push('No SD Card detected or total space is 0')
             }
         } catch (e) {
             logWarn('[Pre-Deployment] SD Card check failed:', e)
@@ -78,26 +72,36 @@ export const useDevicePreDeploymentChecks = () => {
         // 3. Firmware Check
         try {
             onProgress('Checking firmware...')
-            const firmwareResponse = await getDeviceVer(device)
-            const fwMatch = firmwareResponse.match(COMMANDS[CommandNames.ver].readRegex!)
-            if (fwMatch) {
-                const version = fwMatch[1]
-                payload.deviceFirmwareVersion = version
-                const latest = await ReferenceDataService.getLatestFirmware('ble')
-                const normalizedVersion = convertBleToSemanticVersion(version)
-                if (latest && normalizedVersion !== latest.version) {
-                    payload.bleFirmwareUpdateAvailable = true
-                    newErrors.deviceHealth.push(`Newer firmware available: ${latest.version}`)
-                }
+            const version = await session.execute(commandRegistry.version)
+            payload.deviceFirmwareVersion = version
+            const latest = await ReferenceDataService.getLatestFirmware('ble')
+            const normalizedVersion = convertBleToSemanticVersion(version)
+            if (latest && normalizedVersion !== latest.version) {
+                payload.bleFirmwareUpdateAvailable = true
+                newErrors.deviceHealth.push(`Newer firmware available: ${latest.version}`)
             }
         } catch (e) {
             logWarn('[Pre-Deployment] Firmware check failed:', e)
         }
 
+        // 4. Himax (AI Processor) Firmware Check
+        try {
+            onProgress('Checking AI firmware...')
+            const aiVersion = await session.execute(commandRegistry.aiver)
+            payload.himaxFirmwareVersion = aiVersion
+            log(`[Pre-Deployment] Himax firmware: ${aiVersion}`)
+            const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
+            if (latestHimax && aiVersion && !aiVersion.includes(latestHimax.version)) {
+                newErrors.deviceHealth.push(`Newer AI firmware available: ${latestHimax.version}`)
+            }
+        } catch (e) {
+            logWarn('[Pre-Deployment] Himax firmware check failed:', e)
+        }
+
         payload.initErrors = newErrors
         return payload
 
-    }, [runBleStandardInit, getBatteryLevel, checkSdCard, runSelfTest, getDeviceVer])
+    }, [runBleStandardInit])
 
     return { runChecks }
 }

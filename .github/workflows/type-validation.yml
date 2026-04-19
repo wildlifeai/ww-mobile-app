@@ -41,21 +41,21 @@ jobs:
       - name: Link to cloud-dev project
         run: |
           echo "Linking to cloud-dev Supabase instance..."
-          npx supabase link --project-ref qegeovogqxiouqbrxmnh
+          npx supabase link --project-ref nuhwmubvygxyddkycmpa
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Generate fresh types from cloud-dev
         run: |
           echo "Generating types from cloud-dev Supabase instance..."
-          npx supabase gen types typescript --project-id qegeovogqxiouqbrxmnh > /tmp/fresh-types.ts
+          npx supabase gen types typescript --project-id nuhwmubvygxyddkycmpa > /tmp/fresh-types.ts
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Compare with committed types
         run: |
           echo "Comparing generated types with committed types..."
-          if ! diff -u src/types/database.types.ts /tmp/fresh-types.ts; then
+          if ! diff -u --strip-trailing-cr src/types/database.types.ts /tmp/fresh-types.ts; then
             echo ""
             echo "❌ ERROR: Types are out of sync with cloud-dev schema"
             echo ""

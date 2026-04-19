@@ -3,17 +3,19 @@ import { Alert } from 'react-native'
 import { DeploymentService } from '../../../services/DeploymentService'
 import { log, logError, logWarn } from '../../../utils/logger'
 
+import { createBleSession } from '../../../ble/session/createBleSession'
+import { commandRegistry } from '../../../ble/protocol/commandRegistry'
+import { formatGPSString } from '../../../utils/gpsUtils'
+import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
+import { QuiesceOptions } from '../../../hooks/useDeviceSettings'
+
 interface UseEndDeploymentParams {
     deployment: any
     user: any
-    storeDevice: any
+    storeDevice: ExtendedPeripheral | undefined
     retrievalNotes: string
     navigation: any
-    quiesceDevice: (source: string, fast?: boolean, cachedOps?: string[] | null) => Promise<void>
-    setDeploymentIdAsString: (device: any, id: string | null) => Promise<void>
-    clearGpsLocation: (device: any) => Promise<void>
-    runDisconnect: (device: any) => Promise<void>
-    getAllOperationalParams: (device: any) => Promise<string[] | null>
+    quiesceDevice: (device: ExtendedPeripheral, options?: QuiesceOptions) => Promise<void>
     isNavigatingAway: React.MutableRefObject<boolean>
 }
 
@@ -24,10 +26,6 @@ export const useEndDeployment = ({
     retrievalNotes,
     navigation,
     quiesceDevice,
-    setDeploymentIdAsString,
-    clearGpsLocation,
-    runDisconnect,
-    getAllOperationalParams,
     isNavigatingAway
 }: UseEndDeploymentParams) => {
     const [isEnding, setIsEnding] = useState(false)
@@ -102,45 +100,37 @@ export const useEndDeployment = ({
         try {
             // Pre-fetch all ops once for the entire end-deployment sequence
             let cachedOps: string[] | null = null
+            let session: any = null
             if (storeDevice) {
                 try {
-                    cachedOps = await getAllOperationalParams(storeDevice)
+                    session = createBleSession(storeDevice)
+                    cachedOps = await session.execute(commandRegistry.getops)
                     log('[EndDeployment] Pre-fetched bulk ops for end-deployment')
                 } catch (err) {
                     logWarn('[EndDeployment] Bulk ops fetch failed, proceeding without cache', err)
                 }
             }
 
-            // 1. Clear Configuration (ID)
-            if (storeDevice) {
+            // 1. Clear Configuration (ID and GPS)
+            if (storeDevice && session) {
                 addFinishLog('Clearing configuration...')
                 setFinishStep('Clearing config...')
                 setFinishProgress(0.2)
                 
                 log('[EndDeployment] Clearing Deployment ID...')
-                let idCleared = false
-                let attempts = 0
-                while (!idCleared && attempts < 3) {
-                    try {
-                        attempts++
-                        await setDeploymentIdAsString(storeDevice, null)
-                        log('[EndDeployment] ID cleared')
-                        idCleared = true
-                        addFinishLog('Configuration cleared')
-                    } catch (e) {
-                        logWarn(`[EndDeployment] Clear ID failed (attempt ${attempts}):`, e)
-                        if (attempts < 3) {
-                            addFinishLog(`Retry ${attempts}/3...`)
-                            await new Promise(r => setTimeout(r, 1000))
-                        }
-                    }
+                try {
+                    await session.execute(() => commandRegistry.setdid(null))
+                    log('[EndDeployment] ID cleared')
+                    addFinishLog('Configuration cleared')
+                } catch (e) {
+                    logWarn(`[EndDeployment] Clear ID failed:`, e)
+                    addFinishLog('Warning: Config clear partially failed')
                 }
-
-                if (!idCleared) addFinishLog('Warning: Config clear failed')
 
                 // 2. Clear GPS (Legacy/Safety)
                 try {
-                    await clearGpsLocation(storeDevice)
+                    const gpsStr = formatGPSString(0, 0, 0)
+                    await session.execute(() => commandRegistry.setgps(gpsStr))
                 } catch (e) {
                     logWarn('[EndDeployment] Failed to clear GPS:', e)
                 }
@@ -155,14 +145,14 @@ export const useEndDeployment = ({
             await DeploymentService.endDeployment(deployment.id, userId, retrievalNotes)
             addFinishLog('Record updated successfully')
 
-            // 3. Quiesce Device (Final Stop) - Optimized mode skips camera enable
-            if (storeDevice) {
+            // 3. Quiesce Device (Final Stop)
+            if (storeDevice && session) {
                 addFinishLog('Finalizing stop...')
                 setFinishStep('Finalizing...')
                 setFinishProgress(0.6)
                 
                 try {
-                    await quiesceDevice('[EndDeployment]', true, cachedOps)  // Use optimized mode (skip camera enable)
+                    await quiesceDevice(storeDevice, { isEndDeployment: true, cachedOps, sessionScope: session })
                     addFinishLog('Device stopped')
                 } catch (e) {
                     logWarn('[EndDeployment] Final stop warning:', e)
@@ -175,9 +165,9 @@ export const useEndDeployment = ({
             setFinishStep('Disconnecting...')
             setFinishProgress(0.8)
             
-            if (storeDevice) {
+            if (storeDevice && session) {
                 try {
-                    await runDisconnect(storeDevice)
+                    await session.execute(commandRegistry.disconnect)
                     addFinishLog('Device disconnected')
                 } catch (e) {
                     logWarn('[EndDeployment] Disconnect error:', e)
@@ -206,7 +196,7 @@ export const useEndDeployment = ({
         } finally {
             setIsEnding(false)
         }
-    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, setDeploymentIdAsString, clearGpsLocation, runDisconnect, addFinishLog, isNavigatingAway, getAllOperationalParams, navigation])
+    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, addFinishLog, isNavigatingAway, navigation])
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)

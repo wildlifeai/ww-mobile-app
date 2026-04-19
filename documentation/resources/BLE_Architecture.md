@@ -2,11 +2,31 @@
 
 ## Overview
 
-The Wildlife Watcher mobile app communicates with hardware devices over **Bluetooth Low Energy (BLE)** using the Nordic UART Service (NUS). All communication is routed through a centralized `BleCommandManager` that serializes commands, matches responses, and handles error recovery.
+The Wildlife Watcher mobile app communicates with hardware devices over **Bluetooth Low Energy (BLE)** using the Nordic UART Service (NUS). All communication is routed through an **event-driven architecture** built around `bleEventBus`, `commandRegistry`, and `commandQueue`. Commands are serialized, matched against typed response parsers, and resolved through a deterministic pipeline.
 
 The app supports two data channels on the same BLE characteristic:
 - **Text commands** — ASCII strings for configuration and control (e.g. `AI capture 1 1`)
 - **Binary image data** — Raw JPEG bytes prefixed with a `0x06` marker
+
+> [!CAUTION]
+> The legacy `BleCommandManager` (`commandManager.ts`) is **dead code**. It exists only as a quarantine trap file that throws an error if imported. All command execution now flows through `bleEventBus` → `commandQueue` → `commandRegistry`. Do NOT reference or import it.
+
+---
+
+## Command Routing Decision Matrix
+
+Developers **must** use the correct write path for each use case. Misuse causes unpredictable firmware behavior.
+
+| Use Case | Correct Path | Why |
+|---|---|---|
+| Raw terminal / Engineer Console | `writeRaw()` | Passive observation; no state dependencies or expected callbacks. |
+| Deployment workflow / Safe UI actions | `bleSession.execute()` | Enqueues deterministic commands, blocks UI, handles timeout and parse matching. |
+| Internal serialization | `commandQueue` | Underlying queue engine managing the `bleSession` promises. |
+| Binary streaming (Images) | passive `bleEventBus` only | Byte-level routing via `rxRouter`, entirely out-of-band. |
+| Motion detection events | passive `textLine` subscription | Async text lines parsed via the stream/event bus. |
+
+> [!WARNING]
+> **Never** call `writeRaw()` from a deployment workflow. Never call `bleSession.execute()` from the Engineer Console. These boundaries exist to prevent determinism violations.
 
 ---
 
@@ -18,10 +38,17 @@ graph TB
     B -->|"initialized = true"| C[BleEngineProvider]
     C -->|"provides useBle actions"| D[ListenToBleEngineProvider]
     D -->|"useBleListeners()"| E[Native BLE Event Listeners]
+    E -->|"raw bytes"| F[rxRouter]
+    F -->|"text lines"| G[bleEventBus]
+    F -->|"binary packets"| G
+    G -->|"textLine"| H[commandQueue / runCommand]
+    G -->|"binaryPacket"| I[ImageReassembler]
+    G -->|"rawRx"| J[Redux Log Store]
 
     style A fill:#4a9eff,color:#fff
     style C fill:#6c5ce7,color:#fff
-    style D fill:#6c5ce7,color:#fff
+    style F fill:#e17055,color:#fff
+    style G fill:#00b894,color:#fff
 ```
 
 > [!IMPORTANT]
@@ -29,33 +56,53 @@ graph TB
 
 ---
 
+## Event Taxonomy (Frozen)
+
+The `bleEventBus` emits **6 event types**. This contract is frozen. All events include `ts` (timestamp) and `deviceId` to prevent crosstalk during multi-device scanning.
+
+| Event | Channel Name | Payload | Purpose |
+|---|---|---|---|
+| `TEXT_LINE` | `textLine` | `{ line: string, ts: number, deviceId: string }` | Parsed ASCII response from device |
+| `RAW_TX` | `rawTx` | `{ command: string, ts: number, deviceId: string }` | Outbound command echo (for logging) |
+| `RAW_RX` | `rawRx` | `{ line: string, ts: number, deviceId: string }` | Raw inbound text (for logging) |
+| `BINARY_PACKET` | `binaryPacket` | `{ data: Uint8Array, ts: number, deviceId: string, packetNum: number, length: number }` | Image binary data |
+| `QUEUE_STATE_CHANGED` | `queueStateChanged` | `{ isBusy: boolean, ts: number, deviceId?: string }` | Command queue busy/idle transitions |
+| `DEVICE_SIGNAL` | `deviceSignal` | `{ signal: DeviceSignalType, ts: number, deviceId: string }` | Sleep/Wake/Busy lifecycle signals |
+
+`DeviceSignalType` is one of: `'SLEEP'`, `'WAKE'`, `'BUSY'`.
+
+**File:** [eventBus.ts](../../src/ble/protocol/eventBus.ts), [deviceSignals.ts](../../src/ble/protocol/deviceSignals.ts)
+
+---
+
 ## Data Flow
 
-### Text Command Pipeline
+### Text Command Pipeline (Session-Based)
 
 ```mermaid
 sequenceDiagram
     participant UI as Screen/Hook
-    participant Cmd as useBleCommands
-    participant Write as useBle.write
-    participant Mgr as BleCommandManager
+    participant Sess as useBleSession
+    participant Queue as commandQueue
+    participant Run as runCommand
+    participant Reg as commandRegistry
     participant TX as transport.ts
     participant FW as Firmware
+    participant Bus as bleEventBus
 
-    UI->>Cmd: getBatteryLevel(device)
-    Cmd->>Write: write(device, [[battery, READ]])
-    Write->>Mgr: sendCommand(device, battery, writeToDevice, opts)
-    Mgr->>TX: writeToDevice(device, battery)
+    UI->>Sess: session.execute(commandRegistry.battery)
+    Sess->>Queue: enqueue(commandContext)
+    Queue->>Run: runCommand(peripheral, context)
+    Run->>Bus: subscribe to textLine
+    Run->>TX: writeToDevice(peripheral, "battery")
     TX->>FW: BLE WriteWithoutResponse
-    FW-->>TX: Echo: battery
-    Note over Mgr: Echo matched → mark echoReceived
-    FW-->>TX: Response: Battery = 3305mV 100%
-    TX-->>Mgr: readlineParser → deviceValueUpdatedEvent
-    Note over Mgr: classifyMessage → RESPONSE
-    Note over Mgr: readRegex matches → resolve Promise
-    Mgr-->>Write: Battery = 3305mV 100%
-    Write-->>Cmd: [Battery = 3305mV 100%]
-    Cmd-->>UI: Battery = 3305mV 100%
+    FW-->>Bus: rxRouter → textLine event
+    Bus-->>Run: event.line matches context.successMatcher
+    Run->>Run: context.collect(line)
+    Run->>Run: context.isComplete() → true
+    Run-->>Queue: context.parser() → 100
+    Queue-->>Sess: resolve(100)
+    Sess-->>UI: batteryLevel = 100
 ```
 
 ### Binary Image Pipeline
@@ -63,23 +110,24 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant UI as useCapturePreview
-    participant Write as useBle.write
-    participant Mgr as BleCommandManager
-    participant RL as readlineParser
-    participant DVU as deviceValueUpdatedEvent
+    participant Sess as useBleSession
+    participant TX as transport.ts
+    participant Router as rxRouter
+    participant Bus as bleEventBus
     participant IR as ImageReassembler
     participant FS as FileSystem
 
-    UI->>Write: write(device, AI capture 1 0)
-    Write->>Mgr: sendCommand
-    Mgr-->>UI: response: Captured 1 images...
-    UI->>Write: write(device, AI txfile .)
-    Note over DVU: 7272 bytes in TL000163.JPG
-    DVU->>IR: initialize(7272)
+    UI->>Sess: session.execute(capture)
+    Sess-->>UI: "Captured 1 images..."
+    UI->>Sess: session.execute(txfile)
+    Note over Router: "7272 bytes in TL000163.JPG"
+    Router->>Bus: textLine (announces byte count)
+    Bus->>IR: initialize(7272)
 
     loop For each BLE notification
-        Note over RL: value[0] == 0x06? → binary
-        RL->>IR: processPacket(data)
+        Note over Router: value[0] == 0x06? → binary
+        Router->>Bus: binaryPacket event
+        Bus->>IR: processPacket(data)
         IR-->>UI: emit onImageProgress 0.45
     end
 
@@ -87,12 +135,85 @@ sequenceDiagram
     IR->>FS: writeAsStringAsync(base64)
     IR-->>UI: emit onImageComplete fileUri
 
-    Note over DVU: Finished sending 7272 bytes
-    DVU-->>UI: force_finalize safety net
+    Note over Router: "Finished sending 7272 bytes"
+    Router-->>UI: force_finalize safety net
 ```
 
 > [!NOTE]
-> Image packets are **intercepted in `readlineParser` before any string conversion** to avoid JS thread congestion. They are routed directly to the `ImageReassembler` and never logged.
+> Image packets are **intercepted in `rxRouter` before any string conversion** to avoid JS thread congestion. They are routed directly to the `ImageReassembler` via `bleEventBus.binaryPacket` and never logged.
+
+---
+
+## Command Registry Schema (Frozen)
+
+Every command in `commandRegistry.ts` is a factory function that returns a `CommandContext<T>`. The schema is frozen:
+
+```typescript
+interface CommandContext<T> {
+  id: string;
+  name: string;
+  build: (params?: any) => string;          // UART payload generator
+
+  // --- Matchers ---
+  successMatcher: (line: string) => boolean; // Identifies success lines
+  failureMatcher: (line: string) => boolean; // Identifies failure lines
+  match: (line: string) => boolean;          // Combined (success OR failure)
+
+  // --- Collection ---
+  collect: (line: string) => void;           // Accumulate matched lines
+  isComplete: () => boolean;                 // Authority on lifecycle
+
+  // --- Extraction ---
+  parser: () => T;                           // Semantic result extraction
+  getResult: () => T;                        // Alias (backwards compat)
+
+  // --- Safety & Lifecycle ---
+  timeoutMs?: number;                        // Per-command timeout
+  retryPolicy?: {
+    maxRetries: number;
+    delayMs?: number;
+  };
+  responseMode?: 'single_line' | 'multi_line' | 'fire_and_forget' | 'stream';
+  idempotent?: boolean;                      // Safe to retry without side effects
+  safeDuringStreaming?: boolean;              // Can be sent during active binary stream
+
+  // --- Hooks ---
+  onUnexpected?: (line: string) => void;     // Logging for unmatched lines
+  onTimeout?: () => void;                    // Custom timeout recovery
+}
+```
+
+**Two factory helpers** simplify creation:
+- `createSingleLineCommand<T>()` — for commands expecting one response line
+- `createMultiLineCommand<T>()` — for commands expecting multiple lines terminated by an end marker
+
+**File:** [commandRegistry.ts](../../src/ble/protocol/commandRegistry.ts)
+
+---
+
+## Multi-Step Workflow Failure Semantics
+
+Deployment workflows (e.g. `useStartDeployment`) execute multiple BLE commands as an ordered pipeline. The failure contract is:
+
+### Atomic Segments
+Configuration bursts (e.g. `setdid` → `setgps` → `setop` × N → `setutc`) are executed sequentially via `commandQueue`.
+
+### Fail-Fast Boundary
+If **any** step times out or fails (e.g., Step 3 `setop` fails), the entire sequence aborts immediately. The queue does not attempt subsequent commands.
+
+### No Automatic Rollback
+The BLE queue does **not** revert previously sent commands. Previously-written OpParams remain on the device. This is intentional — it preserves the device state for debugging.
+
+### Partial Success Handling
+The UI tracks partial failures explicitly (e.g. `initErrors = { setUtc: "Timeout" }`), transitioning to a "Failed Initialization" state that requires **operator intervention** to retry the workflow from scratch.
+
+### Operator Recovery Path
+1. Operator sees the specific error in the UI (e.g. "GPS set failed: Timeout")
+2. Operator can retry the entire deployment flow (which re-runs all steps)
+3. Read-before-write checks (`getAllOperationalParams()`) skip parameters already at the target value
+
+> [!IMPORTANT]
+> There is no partial-retry mechanism. The entire configuration burst is re-executed from scratch. The read-before-write pattern ensures this is safe (already-set values are skipped).
 
 ---
 
@@ -108,7 +229,7 @@ Calls `BleManager.start()` on app launch and updates the `bleLibrarySlice` Redux
 
 ### 2. Engine Provider (`BleEngineProvider`)
 
-React Context that wraps the core `useBle` hook. Provides `startScan`, `stopScan`, `connectDevice`, `disconnectDevice`, `write` and scan/connection control to the entire app tree.
+React Context that wraps the core `useBle` hook. Provides `startScan`, `stopScan`, `connectDevice`, `disconnectDevice`, `writeRaw` and scan/connection control to the entire app tree.
 
 **File:** [BleEngineProvider.tsx](../../src/providers/BleEngineProvider.tsx)
 
@@ -131,8 +252,8 @@ The foundational hook providing:
 | `startScan(length?)` | Scan for nearby Wildlife Watcher devices |
 | `stopScan()` | Stop an active discovery scan |
 | `connectDevice(peripheral)` | Connect, discover services, enable notifications, negotiate MTU |
-| `disconnectDevice(peripheral)` | Clean disconnect + clear command manager |
-| `write(peripheral, data[], options?)` | Route commands through `BleCommandManager` with auto regex lookup |
+| `disconnectDevice(peripheral)` | Clean disconnect |
+| `writeRaw(peripheral, command)` | Send raw ASCII string to device (no queue, no parsing) |
 
 **Connection sequence on Android:**
 1. `BleManager.connect()`
@@ -148,29 +269,129 @@ The foundational hook providing:
 3. `BleManager.startNotification()` — enable CCCD
 
 > [!NOTE]
-> iOS handles MTU negotiation automatically at the Core Bluetooth level (typically 185–512 bytes depending on the iOS version and peripheral). `requestConnectionPriority` and `requestMTU` are **Android-only** APIs and are skipped on iOS. The connection interval on iOS is managed by the OS and cannot be changed by the app.
+> iOS handles MTU negotiation automatically at the Core Bluetooth level (typically 185–512 bytes depending on the iOS version and peripheral). `requestConnectionPriority` and `requestMTU` are **Android-only** APIs and are skipped on iOS.
 
 **File:** [useBle.ts](../../src/hooks/useBle.ts)
 
 ---
 
+### 5. Rx Router (`rxRouter`)
+
+The first function to touch raw incoming bytes from BLE notifications. Performs binary detection and event routing:
+
+```
+if value[0] == 0x06 or (value[0] == 0x80 && value[1] == 0x06):
+    → bleEventBus.emitEvent({ type: 'BINARY_PACKET', ... })
+    → return early (skip ALL string processing)
+else:
+    → classify text → bleEventBus.emitEvent({ type: 'TEXT_LINE', ... })
+    → bleEventBus.emitEvent({ type: 'RAW_RX', ... })
+```
+
+**File:** [rxRouter.ts](../../src/ble/protocol/rxRouter.ts)
+
+---
+
+### 6. BLE Listeners (`useBleListeners`)
+
+Registers four native event handlers via `BleManagerEmitter`:
+
+| Event | Handler |
+|---|---|
+| `BleManagerDiscoverPeripheral` | Add device to Redux store |
+| `BleManagerStopScan` | Mark scan complete, reconcile lost devices |
+| `BleManagerDisconnectPeripheral` | Update Redux |
+| `BleManagerDidUpdateValueForCharacteristic` | Route to `rxRouter` |
+
+**File:** [useBleListeners.tsx](../../src/hooks/useBleListeners.tsx)
+
+---
+
+### 7. Command Queue (`commandQueue`)
+
+Serialized execution queue ensuring only one command is in-flight at a time. Managed by `runCommand` and `runCommandPipeline`.
+
+**Lifecycle of a command:**
+
+```mermaid
+stateDiagram-v2
+    [*] --> Queued: enqueue(context)
+    Queued --> Running: processQueue()
+    Running --> Listening: subscribe to bleEventBus.textLine
+    Listening --> Collecting: successMatcher(line) → true
+    Collecting --> Complete: isComplete() → true
+    Complete --> Resolved: parser() returns T
+    Listening --> Failed: failureMatcher(line) → true
+    Listening --> Timeout: timeoutMs elapsed
+    Timeout --> Retry: retryPolicy.maxRetries > 0
+    Retry --> Running: re-send command
+    Timeout --> Rejected: no retries left
+
+    Resolved --> [*]
+    Failed --> [*]
+    Rejected --> [*]
+```
+
+**Key features:**
+- **No echo dependency:** Unlike the legacy manager, there is no echo-waiting phase. The command matches against `successMatcher` / `failureMatcher` directly.
+- **Retry with policy:** Each command defines its own `retryPolicy` (max retries and optional delay).
+- **Queue state broadcasting:** Emits `QUEUE_STATE_CHANGED` events so UI can show busy/idle state.
+
+**Files:** [commandQueue.ts](../../src/ble/protocol/commandQueue.ts), [runCommand.ts](../../src/ble/protocol/runCommand.ts), [runCommandPipeline.ts](../../src/ble/protocol/runCommandPipeline.ts)
+
+---
+
+### 8. Message Classifier (`messageClassifier.ts`)
+
+> [!IMPORTANT]
+> **Scope restriction:** `messageClassifier.ts` is retained exclusively for **UI presentation**. It categorizes raw log lines for display in the deployment monitoring UI (color-coding errors, filtering noise like `Sleep`/`Wake`). It has **no authority** over protocol logic. All command matching is handled by `commandRegistry`.
+
+| UI Role | Example | Action |
+|---|---|---|
+| Error highlighting | `AI NACK`, `I2C error` | Red text in monitoring log |
+| Response display | `Battery = 3305mV 100%` | Standard log entry |
+| Noise suppression | `Sleep`, `Wake` | Silently discarded from UI |
+| Metric translation | `OpParam 19 = 5` | Displayed as "5 stored images" |
+
+**File:** [messageClassifier.ts](../../src/ble/messageClassifier.ts)
+
+---
+
+### 9. BLE Session (`createBleSession` / `useBleSession`)
+
+Provides a deterministic execution API for deployment workflows:
+
+```typescript
+const session = useBleSession(bleDevice)
+
+// Execute a single command with typed result
+const battery = await session.execute(commandRegistry.battery)
+
+// Execute a command with parameters
+const gpsSet = await session.execute(() => commandRegistry.setgps(gpsString))
+```
+
+**File:** [createBleSession.ts](../../src/ble/session/createBleSession.ts)
+
+---
+
 ### DFU (Device Firmware Update)
 
-The app supports over-the-air firmware updates using the **Nordic DFU** protocol via `@getquip/expo-nordic-dfu`. The update flow involves switching the device into bootloader mode and transferring a firmware `.zip` package.
+The app supports over-the-air firmware updates using the **Nordic DFU** protocol via `@getquip/expo-nordic-dfu`. Both **BLE (nRF)** and **Himax AI processor** firmware can be updated.
 
 ```mermaid
 sequenceDiagram
-    participant UI as DeviceDiscoveryScreen
-    participant BLE as useBleCommands
+    participant UI as StartMonitoringScreen
+    participant Sess as useBleSession
     participant FW as Firmware (Device)
     participant Scan as BleManager.scan
     participant Boot as DfuTarg (Bootloader)
     participant DFU as DfuService
 
-    UI->>BLE: runDfu(device)
-    BLE->>FW: "dfu" command
-    FW-->>BLE: Acknowledged
-    UI->>BLE: runDisconnect(device)
+    UI->>Sess: execute(commandRegistry.dfu)
+    Sess->>FW: "dfu" command
+    FW-->>Sess: "Device will enter DFU mode after disconnecting."
+    UI->>Sess: disconnectDevice()
     Note over FW: Device reboots into bootloader mode
     Note over UI: Wait ~5s for reboot
 
@@ -185,204 +406,29 @@ sequenceDiagram
     Note over FW: Device reboots with new firmware
     UI->>Scan: scanForOriginalDevice(deviceId)
     Scan-->>UI: Device rediscovered
-    UI->>BLE: connectDevice + getDeviceVer
-    BLE-->>UI: New version confirmed
+    UI->>Sess: reconnect + verify version
 ```
-
-**DFU pipeline steps:**
-
-| Step | Action | Key Code |
-|------|--------|----------|
-| 1 | Download firmware `.zip` (cached locally via `FirmwareService`) | `FirmwareService.ensureFirmwareDownloaded()` |
-| 2 | Send `dfu` command to device via BLE | `runDfu(device)` in `useBleCommands` |
-| 3 | Disconnect from device | `runDisconnect(device)` |
-| 4 | Wait ~5s for device to reboot into bootloader | `setTimeout(5000)` |
-| 5 | Scan for bootloader advertising as `"WW500_DFU"` or `"DfuTarg"` | `scanForBootloader(10000)` |
-| 6 | Request Android notification permission (Android 13+) | `PermissionsAndroid.request(POST_NOTIFICATIONS)` |
-| 7 | Transfer firmware via Nordic DFU protocol | `DfuService.startDFU(bootloaderAddress, fileUri)` |
-| 8 | Wait for device to reboot, scan for original MAC | `scanForOriginalDevice(deviceId)` |
-| 9 | Reconnect and verify new firmware version | `connectDevice()` + `getDeviceVer()` |
 
 > [!IMPORTANT]
 > During DFU, the device disconnects and re-advertises under a different name (`WW500_DFU` / `DfuTarg`). The app must suppress "Connection Lost" alerts during this expected disconnection using an `isDfuInProgress` ref flag.
 
-**Platform differences:**
-- **Android:** The firmware file is copied from the document picker URI to `FileSystem.cacheDirectory` before DFU, because the Nordic DFU library cannot read from content URIs directly. The temporary file is cleaned up in a `finally` block.
-- **iOS:** The document picker URI is used directly — no file copy is needed.
-
-**Files:** [DfuService.ts](../../src/services/DfuService.ts), [DfuScreen.tsx](../../src/screens/Devices/DfuScreen.tsx), [DeviceDiscoveryScreen.tsx](../../src/screens/Devices/DeviceDiscoveryScreen.tsx)
+**Files:** [DfuService.ts](../../src/services/DfuService.ts), [DfuScreen.tsx](../../src/screens/Devices/DfuScreen.tsx)
 
 ---
 
-### 5. BLE Listeners (`useBleListeners`)
-
-Registers four native event handlers via `BleManagerEmitter`:
-
-| Event | Handler |
-|---|---|
-| `BleManagerDiscoverPeripheral` | Add device to Redux store |
-| `BleManagerStopScan` | Mark scan complete, reconcile lost devices |
-| `BleManagerDisconnectPeripheral` | Clear command manager, update Redux |
-| `BleManagerDidUpdateValueForCharacteristic` | Route to `readlineParser` |
-
-**`readlineParser`** is the first function to touch raw incoming data. It performs a **critical binary check:**
-
-```
-if value[0] == 0x06 or (value[0] == 0x80 && value[1] == 0x06):
-    → route directly to ImageReassembler.processPacket()
-    → return early (skip ALL string processing)
-else:
-    → emit to deviceValueUpdatedEvent for text processing
-```
-
-**`deviceValueUpdatedEvent`** then:
-1. Converts to hex/text for logging
-2. Feeds text to `bleCommandManager.handleIncomingMessage()`
-3. Checks for image transfer start messages (e.g. `7272 bytes in TL000163.JPG`)
-4. Dispatches to Redux log store
-
-**File:** [useBleListeners.tsx](../../src/hooks/useBleListeners.tsx)
-
----
-
-### 6. Command Manager (`BleCommandManager`)
-
-The central nervous system. Manages a **serialized queue** ensuring only one command is in-flight at a time.
-
-**Lifecycle of a command:**
-
-```mermaid
-stateDiagram-v2
-    [*] --> Queued: sendCommand()
-    Queued --> Sending: processQueue()
-    Sending --> WaitingForEcho: writeToDevice()
-    WaitingForEcho --> WaitingForResponse: Echo received
-    WaitingForResponse --> Resolved: readRegex matched
-    WaitingForResponse --> Timeout: No match within timeoutMs
-    WaitingForEcho --> Timeout: No echo within timeoutMs
-
-    WaitingForResponse --> NACK: AI NACK received
-    NACK --> WaitForWake: Wait for Wake + Error bits
-    WaitForWake --> Sending: Retry up to maxRetries
-    WaitForWake --> Rejected: Max retries exceeded
-
-    Sending --> FireAndForget: expectedPattern === false
-    FireAndForget --> Resolved: Echo received
-
-    Resolved --> [*]
-    Timeout --> [*]
-    Rejected --> [*]
-```
-
-**Key features:**
-- **Echo verification:** Every sent command is echoed by firmware. The manager waits for this echo before considering responses.
-- **Fire-and-forget mode:** Setting `expectedPattern: false` resolves the command as soon as the echo arrives (no response waiting).
-- **AI NACK auto-retry:** If the AI processor is sleeping, firmware responds with `AI NACK`. The manager automatically waits for the wake sequence (`Wake` + `Error bits = 0x0000`) then retries the command.
-- **Message listeners:** `waitForMessage(regex, timeout)` lets any hook wait for arbitrary firmware messages without blocking the command queue.
-
-**File:** [commandManager.ts](../../src/ble/commandManager.ts)
-
----
-
-### 7. Message Classifier (`messageClassifier.ts`)
-
-Categorizes every incoming text message into one of four types:
-
-| Type | Example | Action |
-|---|---|---|
-| **ERROR** | `AI NACK`, `I2C error` | Triggers retry or rejection |
-| **RESPONSE** | `Battery = 3305mV 100%` | Resolves pending command |
-| **UNSOLICITED** | `Sleep`, `MD...`, `setutc ...` | Forwarded to unsolicited listeners |
-| **INFO** | `Wake`, `Error bits = 0x0000` | Informational, used in wake sequences |
-
-**Classification order:** ERROR → Expected Pattern → INFO → UNSOLICITED → Default to RESPONSE
-
-> [!NOTE]
-> The subsystem also implements `classifyForMonitor`, which abstracts and filters incoming messages specifically for the UI's Live Monitoring Log. It silently discards telemetry noise like `Sleep` or `Wake` states to reduce clutter, and explicitly translates dense diagnostic markers (e.g. mapping `Error bits = 0x0000` to "No motion" and interpreting specific `OpParam` queries, like `OpParam 19`, into human-readable stored image metrics).
-
-**File:** [messageClassifier.ts](../../src/ble/messageClassifier.ts)
-
----
-
-### 8. Command Registry (`types.ts`)
-
-Every known command is defined in the `COMMANDS` object. **Note:** BLE types and enums (like `CommandNames`) are centrally exported via `src/types/index.ts` to align with the app's type architecture. Always import BLE types from `src/types` to avoid relative path hell.
-
-Each entry specifies:
-
-```typescript
-{
-  name: CommandNames.battery,
-  readCommand: "battery",       // String to send for reads
-  writeCommand: (v?) => "...",  // Function to build write string
-  readRegex: /Battery\s=\s.../,  // Regex to match response
-  description: "...",
-  type: 'command' | 'process' | 'local',
-  timeout?: number,             // Optional per-command timeout
-}
-```
-
-**Command types:**
-- `command` — Direct firmware commands (e.g. `battery`, `ver`, `selftest`)
-- `process` — Multi-step workflows (e.g. `CAPTURE_PREVIEW`, `ENABLE_CAMERA`)
-- `local` — App-only actions (e.g. `CLEAR_CONSOLE`)
-
-**File:** [types.ts](../../src/ble/types.ts)
-
----
-
-### 9. Transport Layer (`transport.ts`)
+### 10. Transport Layer (`transport.ts`)
 
 Handles the raw BLE write operation:
 1. Sanitizes trailing newlines/CRs
 2. Converts string to byte array
-3. Emits local echo to `readlineParserEmitter`
-4. Calls `BleManager.writeWithoutResponse()` with a 5-second timeout
-5. Service/characteristic discovery with fallback logic
+3. Calls `BleManager.writeWithoutResponse()` with a 5-second timeout
+4. Service/characteristic discovery with fallback logic
 
 **File:** [transport.ts](../../src/ble/transport.ts)
 
 ---
 
-### 10. Event Buses (`emitters.ts`)
-
-Two global `EventEmitter3` instances:
-
-| Emitter | Purpose |
-|---|---|
-| `readlineParserEmitter` | Routes text messages between native listener and `deviceValueUpdatedEvent` |
-| `imageReassemblerEmitter` | Connects `ImageReassembler` events (`onImageComplete`, `onImageProgress`, `onImageError`, `force_finalize`) to `useCapturePreview` |
-
-**`imageReassemblerEmitter` events:**
-
-| Event | Payload | Description |
-|---|---|---|
-| `onImageProgress` | `number` (0–1) | Emitted per packet with current completeness ratio |
-| `onImageComplete` | `string` (file URI) | Image saved successfully |
-| `onImageError` | `string` (error message) | Image corrupt, incomplete, or failed to save |
-| `force_finalize` | none | External signal to finalize a stalled transfer |
-
-**File:** [emitters.ts](../../src/ble/emitters.ts)
-
----
-
-### 11. High-Level API (`useBleCommands` + `useBleCommandFactory`)
-
-`useBleCommands` exposes ready-to-use functions for every device operation. Uses `createCommand` and `createAction` factory functions to eliminate boilerplate:
-
-```typescript
-// Factory creates a typed async function that sends the command and returns the response
-const getBatteryLevel = createCommand(write, CommandNames.battery)
-
-// Usage
-const batteryStr = await getBatteryLevel(device)
-```
-
-**Files:** [useBleCommands.ts](../../src/hooks/useBleCommands.ts), [useBleCommandFactory.ts](../../src/hooks/useBleCommandFactory.ts)
-
----
-
-### 12. Image Reassembler (`ImageReassembler`)
+### 11. Image Reassembler (`ImageReassembler`)
 
 Reconstructs JPEG images from multiple BLE packets.
 
@@ -402,7 +448,6 @@ byte[3..] = payload          // actual JPEG image data
 - **Watchdog:** 3-second inter-packet timeout triggers `finalizePartial()`
 - **Force finalize:** Firmware sends `"Finished sending X bytes."` — `useCapturePreview` catches this and emits `force_finalize`
 - **Integrity checks on finalize:** Validates JPEG magic bytes (`0xFF 0xD8`), rejects images below 90% completeness
-- **Error reporting:** Emits `onImageError` event (instead of silently saving corrupt data)
 - **Storage:** Converts binary buffer to base64, writes via `FileSystem.writeAsStringAsync()`
 
 > [!CAUTION]
@@ -412,76 +457,40 @@ byte[3..] = payload          // actual JPEG image data
 
 ---
 
-### 13. Capture Preview (`useCapturePreview`)
+### 12. Capture Preview (`useCapturePreview`)
 
 Orchestrates the full capture-preview flow with robust camera initialization:
 
 1. **Check Camera Status:** `AI getop 10`
    - If disabled (`0`): `AI setop 10 1` -> **Wait for Sleep** -> Wait 1s buffer -> **Send Capture** (wakes device immediately).
-   - *Reason:* Camera hardware initializes only on the next wake cycle. We confirm sleep (settings applied), then actively wake it to proceed without delay.
-2. **Single Image Capture:** Send `AI capture 1 0` (Capture 1 image, interval 0ms, effectively bypassing MD check)
-3. **Motion Detection Capture Test:** Send `AI capture 2 500` (Capture 2 images, 500ms apart). The HM0360 requires a minimum of 2 frames to detect motion so it can compare Frame 2 against Frame 1. An interval < 1000ms is required to prevent the firmware's inactivity timer from sending a premature `Sleep`.
-4. **Start Download:** Send `AI txfile .` -> Firmware announces byte count
-5. **Receive:** `ImageReassembler` processes binary packets
-   - Listens for `onImageProgress`, `onImageComplete`, and `onImageError`
-6. **Completion:**
-   - Normal: `ImageReassembler` detects `bytesReceived >= bytesExpected`
-   - Fallback: Firmware sends `"Finished sending X bytes"`. If image incomplete, app waits 500ms grace period then emits `force_finalize`.
-7. **Timeout:** 20-second safety timeout triggers `force_finalize`.
+2. **Single Image Capture:** Send `AI capture 1 0`
+3. **Start Download:** Send `AI txfile .` → Firmware announces byte count
+4. **Receive:** `ImageReassembler` processes binary packets via `bleEventBus.binaryPacket`
+5. **Completion:** Normal or `force_finalize` fallback
+6. **Timeout:** 20-second safety timeout triggers `force_finalize`
 
 **File:** [useCapturePreview.ts](../../src/hooks/useCapturePreview.ts)
 
 ---
 
-### 14. Device Initialization (`useBleInitialization`)
+### 13. Device Initialization (`useBleInitialization`)
 
 Standard post-connection procedure:
 
 1. Wait 1.5s for device stabilization
 2. `selftest` → parse error bits → report hardware warnings
-3. `setutc` → synchronize device clock to phone UTC (firmware confirms via `UTC is: <time>` response)
+3. `setutc` → synchronize device clock to phone UTC
 
 > [!NOTE]
-> `setutc` already returns the confirmed time in its response. A separate `getutc` verification is **not** needed and has been removed to save a BLE round-trip.
+> `setutc` already returns the confirmed time in its response. A separate `getutc` verification is **not** needed.
 
 **File:** [useBleInitialization.ts](../../src/hooks/useBleInitialization.ts)
 
 ---
 
-### 15. Device Settings (`useDeviceSettings`)
+### 14. BLE Heartbeat (`useBleHeartbeat`)
 
-Manages CONFIG.TXT operational parameters (OpParams 5-13) on the device:
-
-- `updateSettings({ cameraEnabled: true })` — write individual params (pre-checks via `AI getop -1`)
-- `applyPreset('motion-detect')` — batch apply a preset configuration
-- `quiesceDevice(logPrefix?, optimized?, cachedOps?)` — ensure device settles after changes; accepts optional pre-fetched OP cache
-
-All write operations use `getAllOperationalParams()` to perform a **read-before-write check**, skipping `setop` commands for parameters that already match the target value.
-
-**File:** [useDeviceSettings.ts](../../src/hooks/useDeviceSettings.ts)
-
----
-
-### 16. BLE Heartbeat (`useBleHeartbeat`)
-
-Prevents device disconnection due to the firmware's 60-second BLE inactivity timeout. Implemented as a **pure inactivity timer** — any incoming BLE message resets a 58-second countdown.
-
-```mermaid
-stateDiagram-v2
-    [*] --> Idle: Device connected
-    Idle --> Countdown: Start 58s timer
-    Countdown --> Countdown: BLE message received → reset timer
-    Countdown --> SendHeartbeat: 58s elapsed with no messages
-    SendHeartbeat --> Countdown: AI selftest response resets timer
-    SendHeartbeat --> [*]: Device disconnected
-    Countdown --> [*]: Device disconnected
-```
-
-**Key design decisions:**
-- Uses `useRef` for `device`, `write`, and `timer` to avoid stale closures in the 58s callback
-- Listens via `bleCommandManager.addMessageListener()` — reacts to **all** raw messages, not just specific types
-- The heartbeat command (`get heartbeat`) produces a response, which itself resets the timer — creating a self-sustaining keep-alive cycle
-- Effect only re-registers when `device?.connected` changes, not on every Redux state update
+Prevents device disconnection due to the firmware's 60-second BLE inactivity timeout. Implemented as a **pure inactivity timer** — any incoming BLE event resets a 58-second countdown.
 
 **Mounted in:** `ListenToBleEngineProvider` — active whenever any device is connected.
 
@@ -489,75 +498,35 @@ stateDiagram-v2
 
 ---
 
-## Development Workflow
-
-### Adding a New Command
-
-1. **Define in `types.ts`:**
-   ```typescript
-   // Add to CommandNames enum
-   myCmd = "myCmd",
-
-   // Add to COMMANDS object
-   [CommandNames.myCmd]: {
-     name: CommandNames.myCmd,
-     writeCommand: (value?) => `my-command ${value || ''}`,
-     readRegex: /MyValue is (\d+)/,
-     description: "Fetches my value",
-     type: 'command'
-   }
-   ```
-
-2. **Expose in `useBleCommands.ts`:**
-   ```typescript
-   const getMyValue = useMemo(
-     () => createCommand(write, CommandNames.myCmd),
-     [write]
-   )
-   ```
-
-3. **Use in UI:**
-   ```typescript
-   const { getMyValue } = useBleCommands()
-   const val = await getMyValue(device)
-   ```
-
-### Creating a Multi-Step Process
-
-For complex flows, combine `bleCommandManager.waitForMessage()` with the standard `write()`:
-
-```typescript
-// Send command
-await write(device, ['AI capture 1 0'])
-
-// Wait for async confirmation (no busy-waiting!)
-await bleCommandManager.waitForMessage(/Captured/, 30000)
-
-// Trigger next step
-await write(device, ['AI txfile .'])
-```
-
----
-
 ## Debugging
 
 ### Engineer Console
 
-The **Engineer Console** (`EngineerConsoleScreen.tsx`) is the primary testing ground:
-- Type any command to see raw hex TX/RX and text responses
+The **Engineer Console** (`EngineerConsoleScreen.tsx`) is a **pure terminal** — a passive teletype that sends raw bytes via `writeRaw()` and displays responses via `bleEventBus` subscriptions.
+
+**What the Engineer Console does:**
+- Type any text command and see raw hex TX/RX and text responses
+- View the Command Reference Modal (filtered to `type === 'command'` only)
 - Verify regex patterns match expected firmware output
-- Test image capture flow end-to-end
+
+**What the Engineer Console does NOT do:**
+- ❌ Execute workflow actions (DFU, capture, GPS, motion detection)
+- ❌ Import or use `useCapturePreview`, `useGPSLocation`, or `firmwareUpdateHelper`
+- ❌ Parse or interpret command responses beyond display
+
+> [!WARNING]
+> Workflow actions (DFU, capture, GPS set, motion detection test) belong in the **Deployment flow** (`useStartDeployment`, `useBleSession`), not in the console. This separation ensures the console cannot accidentally corrupt deployment state.
 
 ### Common Issues
 
 | Problem | Likely Cause | Fix |
 |---|---|---|
-| Command timeout | `readRegex` doesn't match actual response | Check regex in `types.ts`. Increase `timeout` if needed. |
-| `AI NACK` | AI processor was sleeping | Handled automatically. Check logs for retry attempts. |
-| Device disconnected mid-command | Connection dropped | `BleCommandManager.clear()` is called automatically. Handle error in UI. |
+| Command timeout | `successMatcher` regex doesn't match response | Check regex in `commandRegistry.ts`. Adjust `timeoutMs`. |
+| `AI NACK` | AI processor was sleeping | Device auto-wakes. Check logs for retry attempts. |
 | Image glitched (shifted/gray) | Firmware buffer overflow | Check for `BLE out: Failed to send` in firmware logs. Ensure `ConnectionPriority.High` succeeded. |
 | Image not saved | `expo-file-system` wrong import | Must use `'expo-file-system/legacy'` import path. |
 | Silent BLE failures | `ListenToBleEngineProvider` missing | Verify it exists in the `App.tsx` provider tree. |
+| No events received | `rxRouter` not classifying | Check `rxRouter.ts` for hex-to-text conversion errors. |
 
 ---
 
@@ -566,39 +535,99 @@ The **Engineer Console** (`EngineerConsoleScreen.tsx`) is the primary testing gr
 ```
 src/
 ├── ble/
-│   ├── types.ts                 # Command Registry — start here
-│   ├── commandManager.ts        # Serialized queue + retry logic
-│   ├── transport.ts             # Raw BLE write + service discovery
-│   ├── messageClassifier.ts     # Incoming message categorization
-│   ├── emitters.ts              # EventEmitter3 instances
-│   └── __tests__/               # Unit tests for all above
+│   ├── types.ts                    # UI command definitions (CommandNames, COMMANDS)
+│   ├── commandManager.ts           # ⛔ DEAD — trap file, throws on import
+│   ├── transport.ts                # Raw BLE write + service discovery
+│   ├── messageClassifier.ts        # UI-only log categorization (NOT protocol logic)
+│   ├── emitters.ts                 # Legacy EventEmitter3 instances (retained for ImageReassembler)
+│   ├── protocol/                   # ✅ NEW — Event-driven command engine
+│   │   ├── eventBus.ts             # BleEventBus — central event dispatcher
+│   │   ├── rxRouter.ts             # Binary/text classification from raw bytes
+│   │   ├── commandRegistry.ts      # Typed command factories with frozen schema
+│   │   ├── commandQueue.ts         # Serialized command execution queue
+│   │   ├── runCommand.ts           # Single command executor (subscribe → send → resolve)
+│   │   ├── runCommandPipeline.ts   # Multi-command sequential executor
+│   │   ├── protocolConstants.ts    # Timing constants (timeouts, intervals)
+│   │   ├── deviceSignals.ts        # Sleep/Wake/Busy signal types
+│   │   ├── streamRegistry.ts       # Active stream tracking
+│   │   └── __tests__/              # Protocol unit tests
+│   ├── session/                    # ✅ NEW — Deterministic workflow API
+│   │   ├── createBleSession.ts     # Session factory for deployment workflows
+│   │   └── __tests__/              # Session unit tests
+│   ├── workflows/                  # ✅ NEW — Reusable BLE workflow functions
+│   └── __tests__/                  # Legacy tests (skipped)
 ├── hooks/
-│   ├── useBle.ts                # Core: scan, connect, write
-│   ├── useBleListeners.tsx      # Native event handlers + data routing
-│   ├── useBleCommands.ts        # High-level command API
-│   ├── useBleCommandFactory.ts  # Factory for createCommand / createAction
-│   ├── useBleInitialization.ts  # Post-connect: selftest + time sync
-│   ├── useBleHeartbeat.ts       # 58s inactivity keep-alive
-│   ├── useCapturePreview.ts     # Image capture flow
-│   ├── useDeviceSettings.ts     # CONFIG.TXT parameter management
+│   ├── useBle.ts                   # Core: scan, connect, writeRaw
+│   ├── useBleListeners.tsx         # Native event handlers → rxRouter
+│   ├── useBleSession.ts            # React hook wrapping createBleSession
+│   ├── useBleInitialization.ts     # Post-connect: selftest + time sync
+│   ├── useBleHeartbeat.ts          # 58s inactivity keep-alive
+│   ├── useCapturePreview.ts        # Image capture flow
+│   ├── useDeviceSettings.ts        # CONFIG.TXT parameter management
 │   ├── useDeploymentConfiguration.ts # Deployment config (bulk getop + conditional writes)
-│   └── useSetupBLELibrary.ts    # BleManager.start() lifecycle
+│   └── useSetupBLELibrary.ts       # BleManager.start() lifecycle
 ├── providers/
-│   ├── BleEngineProvider.tsx     # React Context for useBle
+│   ├── BleEngineProvider.tsx        # React Context for useBle
 │   └── ListenToBleEngineProvider.tsx  # Listener registration
 ├── redux/slices/
-│   └── bleLibrarySlice.ts       # Library init state
+│   └── bleLibrarySlice.ts          # Library init state
 └── utils/
-    └── ImageReassembler.ts      # Binary → JPEG reconstruction
+    └── ImageReassembler.ts         # Binary → JPEG reconstruction
+```
+
+---
+
+## Development Workflow
+
+### Adding a New Command
+
+1. **Define in `commandRegistry.ts`:**
+   ```typescript
+   myCmd: createSingleLineCommand<number>(
+     'myCmd',
+     (value?: string) => `my-command ${value || ''}`,
+     /MyValue is (\d+)/,
+     (match) => parseInt(match[1], 10),
+     { timeoutMs: 5000, idempotent: true }
+   ),
+   ```
+
+2. **Use via session in a deployment hook:**
+   ```typescript
+   const session = useBleSession(bleDevice)
+   const value = await session.execute(commandRegistry.myCmd)
+   ```
+
+3. **Or test via Engineer Console:**
+   Type `my-command 42` directly — `writeRaw()` sends it, response appears in console log.
+
+### Creating a Multi-Step Workflow
+
+Use `runCommandPipeline` for atomic sequences:
+
+```typescript
+import { runCommandPipeline } from '../ble/protocol/runCommandPipeline'
+
+const results = await runCommandPipeline(peripheral, [
+  commandRegistry.setdid(deploymentId),
+  commandRegistry.setgps(gpsString),
+  commandRegistry.setop({ index: 5, value: numPictures }),
+  commandRegistry.setutc(),
+])
+// If any step fails, the pipeline throws immediately
 ```
 
 ---
 
 ## Maintenance Rules
 
-- **Adding features**: Always start in `types.ts` — define the command, then expose it.
-- **Type Imports**: Always import BLE types from the central `src/types/index.ts` export to keep file sizes small.
-- **Modifying low-level logic**: Check `commandManager.ts` first.
-- **Modifying app-level logic**: Check `useBleCommands.ts` or the relevant process hook.
-- **Performance concerns**: Never log image data. Process binary packets before any string operations.
-- **Testing**: Use the Engineer Console before building UI. Run `src/ble/__tests__/` for unit tests.
+- **Adding commands**: Always start in `commandRegistry.ts` — define the factory, then use it via session.
+- **UI command definitions**: `types.ts` (`COMMANDS` object) is used only for the Engineer Console's Command Reference Modal.
+- **Protocol logic**: Check `protocol/` directory first. Never modify `commandManager.ts`.
+- **Message classifier**: Only for monitoring UI display. Never use it for command matching.
+- **Performance**: Never log binary image data. Process binary packets before any string operations.
+- **Testing**: Use `protocol/__tests__/` for command tests. Use Engineer Console for manual verification.
+
+---
+
+*Last Updated: April 19, 2026*

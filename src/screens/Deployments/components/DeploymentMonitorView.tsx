@@ -1,10 +1,11 @@
-import React, { useRef } from 'react'
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native'
+import React from 'react'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useExtendedTheme } from '../../../theme'
-import { useDeploymentMonitor, ActivityLogEntry } from '../hooks/useDeploymentMonitor'
+import { useDeploymentMonitor } from '../hooks/useDeploymentMonitor'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
+import { LiveActivityLog } from './LiveActivityLog'
 
 interface Props {
   device: ExtendedPeripheral | null
@@ -24,12 +25,6 @@ const formatTime = (ms: number) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
 }
 
-const formatDate = (timestamp: number) => {
-  const d = new Date(timestamp)
-  return d.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
-}
-
-
 export const DeploymentMonitorView: React.FC<Props> = ({
   device,
   captureMethodId,
@@ -37,62 +32,13 @@ export const DeploymentMonitorView: React.FC<Props> = ({
 }) => {
   const { colors } = useExtendedTheme()
   const { bottom } = useSafeAreaInsets()
-  const { activityLog, stats } = useDeploymentMonitor(device)
+  const { stats } = useDeploymentMonitor(device)
 
   const showMotion = captureMethodId === 1 || captureMethodId === 3
   const showTimelapse = captureMethodId === 2 || captureMethodId === 3
-  const flatListRef = useRef<FlatList>(null)
-
-  const getEventColor = (category: string) => {
-    switch (category) {
-      case 'capture':
-      case 'nn_positive':
-      case 'selftest_ok':
-        return colors.success
-      case 'wake':
-      case 'info':
-        return colors.primary
-      case 'sleep':
-        return colors.onSurfaceVariant
-      case 'selftest_warn':
-        return colors.error
-      case 'motion':
-        return colors.tertiary || '#FF9800' // Using orange if tertiary isn't available
-      case 'timelapse':
-        return '#9C27B0' // Purple
-      default:
-        return colors.onSurfaceVariant
-    }
-  }
-
-  const renderLogItem = ({ item }: { item: ActivityLogEntry }) => {
-    const iconColor = getEventColor(item.category)
-    
-    return (
-      <View style={[styles.logItem, { backgroundColor: colors.surfaceVariant }]}>
-        <View style={styles.logIconContainer}>
-          <MaterialCommunityIcons name={item.icon} size={20} color={iconColor} />
-        </View>
-        <View style={styles.logContent}>
-          <View style={styles.logHeader}>
-            <Text style={[styles.logLabel, { color: colors.onSurface }]}>{item.label}</Text>
-            <Text style={[styles.logTime, { color: colors.onSurfaceVariant }]}>{formatDate(item.timestamp)}</Text>
-          </View>
-          {!!item.details && (
-            <Text style={[styles.logDetails, { color: colors.onSurfaceVariant }]} numberOfLines={2}>
-              {item.details}
-            </Text>
-          )}
-        </View>
-      </View>
-    )
-  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      
-
-
       {/* Stats Bar */}
       <View style={styles.statsContainer}>
         <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
@@ -132,21 +78,12 @@ export const DeploymentMonitorView: React.FC<Props> = ({
 
       {/* Activity Log */}
       <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>Live Monitoring Log</Text>
-      <FlatList
-        ref={flatListRef}
-        data={activityLog}
-        keyExtractor={item => item.id}
-        renderItem={renderLogItem}
-        contentContainerStyle={styles.logListContent}
-        showsVerticalScrollIndicator={false}
-        inverted // Shows latest items at the top
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="radar" size={48} color={colors.onSurfaceVariant} style={styles.emptyIcon} />
-            <Text style={[styles.emptyText, { color: colors.onSurfaceVariant }]}>Waiting for device activity...</Text>
-          </View>
-        }
-      />
+      <View style={styles.logContainer}>
+        <LiveActivityLog device={device} />
+      </View>
+
+      {/* Spacer to push footer down */}
+      <View style={{ flex: 1 }} />
 
       {/* Footer */}
       <View style={[styles.footer, { borderTopColor: colors.surfaceVariant, paddingBottom: bottom + 16 }]}>
@@ -168,31 +105,6 @@ export const DeploymentMonitorView: React.FC<Props> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  activeHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 4,
-  },
-  activePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  pulseCircle: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  activeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -239,57 +151,8 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 8,
   },
-  logListContent: {
+  logContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
-    flexGrow: 1,
-  },
-  logItem: {
-    flexDirection: 'row',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  logIconContainer: {
-    width: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  logContent: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  logHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  logLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    flex: 1,
-    marginRight: 8,
-  },
-  logTime: {
-    fontSize: 12,
-  },
-  logDetails: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  emptyIcon: {
-    opacity: 0.5,
-  },
-  emptyText: {
-    marginTop: 12,
-    fontSize: 14,
   },
   footer: {
     padding: 16,

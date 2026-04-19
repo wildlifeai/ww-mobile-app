@@ -1,21 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-import { bleCommandManager } from '../../../ble/commandManager'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { log, logError } from '../../../utils/logger'
+import { bleEventBus, BleEvent } from '../../../ble/protocol/eventBus'
 
 // Constants for motion detection stream testing timings
 const MOTION_DETECTION_FRAME_INTERVAL_MS = 300
-const MOTION_DETECTION_INACTIVITY_MS = 1000
-const MOTION_DETECTION_CAPTURE_TIMEOUT_MS = 10000
+const MOTION_DETECTION_INACTIVITY_MS = 10000
 const MOTION_DETECTION_LOOP_INTERVAL_MS = 2000
+
+import { commandRegistry } from '../../../ble/protocol/commandRegistry'
+import { createBleSession } from '../../../ble/session/createBleSession'
 
 interface UseMotionDetectionStreamOptions {
     device: ExtendedPeripheral | undefined
-    write: (peripheral: ExtendedPeripheral, data: (string | [any, any])[], options?: any) => Promise<string[]>
 }
 
-export const useMotionDetectionStream = ({ device, write }: UseMotionDetectionStreamOptions) => {
+export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOptions) => {
     // 16x16 grid initialized to false
     const [mdGrid, setMdGrid] = useState<boolean[][]>(Array(16).fill(Array(16).fill(false)))
     const [isTesting, setIsTesting] = useState(false)
@@ -29,7 +30,10 @@ export const useMotionDetectionStream = ({ device, write }: UseMotionDetectionSt
     const expectingHexRef = useRef<boolean>(false)
 
     useEffect(() => {
-        const messageListener = (msg: string) => {
+        const messageListener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
+            if (!device || event.deviceId !== device.id) return;
+            const msg = event.line;
+
             // Detect Wake (MD) — HM0360 internal threshold exceeded
             if (/Wake \(MD\)/i.test(msg) || /^MD \d{4}-/i.test(msg.trim())) {
                 log('[MotionDetectionStream] Motion threshold exceeded!')
@@ -68,11 +72,11 @@ export const useMotionDetectionStream = ({ device, write }: UseMotionDetectionSt
             }
         }
 
-        bleCommandManager.addMessageListener(messageListener)
+        bleEventBus.on('textLine', messageListener)
         return () => {
-            bleCommandManager.removeMessageListener(messageListener)
+            bleEventBus.removeListener('textLine', messageListener)
         }
-    }, [])
+    }, [device])
 
     const processHexGrid = (bytes: number[]) => {
         const newGrid: boolean[][] = []
@@ -107,8 +111,8 @@ export const useMotionDetectionStream = ({ device, write }: UseMotionDetectionSt
 
         try {
             log('[MotionDetectionStream] Starting MD Test Loop...')
-            // 1. Ensure camera subsystem is enabled so pictures can trigger hardware
-            await write(device, ['AI setop 10 1'], { maxRetries: 0 })
+            const session = createBleSession(device)
+            await session.execute(() => commandRegistry.setop({ index: 10, value: 1 }))
             
             // Wait a moment for DPD to settle
             await new Promise(resolve => setTimeout(resolve, 1000))
@@ -116,22 +120,22 @@ export const useMotionDetectionStream = ({ device, write }: UseMotionDetectionSt
             // 2. Set picture interval between images in a burst (300ms)
             // IMPORTANT: Must be < 1000ms to avoid firmware inactivity timer sending
             // a premature Sleep between frames, which breaks frame 2's motion output.
-            await write(device, [`AI setop 6 ${MOTION_DETECTION_FRAME_INTERVAL_MS}`], { maxRetries: 0 })
+            await session.execute(() => commandRegistry.setop({ index: 6, value: MOTION_DETECTION_FRAME_INTERVAL_MS }))
 
             // 3. Enable MD interval so the HM0360 sensor engages motion detection mode
-            await write(device, [`AI setop 11 ${MOTION_DETECTION_INACTIVITY_MS}`], { maxRetries: 0 })
+            await session.execute(() => commandRegistry.setop({ index: 11, value: MOTION_DETECTION_INACTIVITY_MS }))
 
             // 4. Capture 2 frames per cycle: frame 1 = reference, frame 2 = motion comparison.
             // After DPD wake, the HM0360 has no previous frame, so a single-frame capture
             // always reports 0 motion blocks. Two frames lets it compare frame 2 vs frame 1.
             // Interval of 300ms keeps both frames within the 1000ms inactivity window.
             testIntervalRef.current = setInterval(() => {
-                write(device, [`AI capture 2 ${MOTION_DETECTION_FRAME_INTERVAL_MS}`], { maxRetries: 0, timeout: MOTION_DETECTION_CAPTURE_TIMEOUT_MS })
+                createBleSession(device).execute(() => commandRegistry.capture(2, MOTION_DETECTION_FRAME_INTERVAL_MS))
                     .catch(e => logError('[MotionDetection] capture loop iteration failed', e))
             }, MOTION_DETECTION_LOOP_INTERVAL_MS)
 
             // Trigger the first one immediately
-            write(device, [`AI capture 2 ${MOTION_DETECTION_FRAME_INTERVAL_MS}`], { maxRetries: 0, timeout: MOTION_DETECTION_CAPTURE_TIMEOUT_MS })
+            createBleSession(device).execute(() => commandRegistry.capture(2, MOTION_DETECTION_FRAME_INTERVAL_MS))
                 .catch(e => logError('[MotionDetection] Initial capture failed', e))
 
         } catch (error) {
@@ -139,7 +143,7 @@ export const useMotionDetectionStream = ({ device, write }: UseMotionDetectionSt
             setIsTesting(false)
             // Failed gracefully so the user can continue deployment
         }
-    }, [device, write])
+    }, [device])
 
     const stopTest = useCallback(async () => {
         if (testIntervalRef.current) {
@@ -152,13 +156,14 @@ export const useMotionDetectionStream = ({ device, write }: UseMotionDetectionSt
         if (device) {
             try {
                 // Disable the motion detection interval to stop the test on the device side.
-                await write(device, ['AI setop 11 0'])
+                const session = createBleSession(device)
+                await session.execute(() => commandRegistry.setop({ index: 11, value: 0 }))
                 log('[MotionDetectionStream] MD test mode disabled on device.')
             } catch (error) {
                 logError('[MotionDetectionStream] Failed to send stop command to device:', error)
             }
         }
-    }, [device, write])
+    }, [device])
 
     // Ensure we clean up interval on unmount
     useEffect(() => {

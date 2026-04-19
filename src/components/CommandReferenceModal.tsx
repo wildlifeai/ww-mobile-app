@@ -14,8 +14,10 @@ type Props = {
 export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Props) => {
     const { colors, spacing } = useExtendedTheme()
 
-    // Flatten commands for display
-    const commandList = Object.values(COMMANDS).map((cmd) => ({
+    // Flatten commands for display - filtering out process/workflow commands to keep the console pure
+    const commandList = Object.values(COMMANDS)
+        .filter(cmd => cmd.type === 'command' || !cmd.type)
+        .map((cmd) => ({
         name: cmd.name,
         read: cmd.readCommand || "-",
         write: cmd.writeCommand ? "Yes" : "-",
@@ -46,7 +48,7 @@ export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Prop
         <Portal>
             <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={[styles.modal, dynamicStyles.modal]}>
                 <View style={styles.header}>
-                    <WWText variant="titleLarge"><Text>Command Reference</Text></WWText>
+                    <WWText variant="titleLarge"><Text>Commands</Text></WWText>
                     <IconButton icon="close" onPress={onDismiss} />
                 </View>
 

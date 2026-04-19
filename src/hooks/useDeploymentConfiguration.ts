@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
-import { useBleCommands } from './useBleCommands'
+import { createBleSession } from '../ble/session/createBleSession'
+import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { OP_PARAMETER } from './useDeviceSettings'
 import { log, logError, logWarn } from '../utils/logger'
 
@@ -19,7 +20,6 @@ export interface DeploymentConfig {
 }
 
 export const useDeploymentConfiguration = () => {
-    const { setDeploymentIdAsString, setGpsLocation, setOperationalParam, getOrFetchOperationalParams } = useBleCommands()
 
     /**
      * Sets deployment ID on device using the modern single-line approach (AI setdid)
@@ -28,35 +28,33 @@ export const useDeploymentConfiguration = () => {
      * has been removed as firmware no longer supports those parameters.
      */
     const setDeploymentId = useCallback(async (
-        device: ExtendedPeripheral,
+        session: any,
         deploymentId: string,
         location?: { latitude: number; longitude: number; altitude: number },
-        recordGpsInImages?: boolean,
-        _cachedOps?: string[] | null
+        recordGpsInImages?: boolean
     ): Promise<void> => {
         log('[DeployConfig] Setting deployment ID:', deploymentId)
 
-        await setDeploymentIdAsString(device, deploymentId)
+        await session.execute(() => commandRegistry.setdid(deploymentId))
         log('[DeployConfig] Deployment ID set successfully via AI setdid')
 
         // Always enforce GPS writing based on privacy setting
         if (recordGpsInImages && location) {
             const { latitude, longitude, altitude } = location
-            await setGpsLocation(device, latitude, longitude, altitude)
+            const gpsStr = `${latitude.toFixed(6)},${longitude.toFixed(6)},${altitude.toFixed(1)}`
+            await session.execute(() => commandRegistry.setgps(gpsStr))
             log('[DeployConfig] Real GPS location set as EXIF fallback')
         } else {
             // Use 0,0,0 if privacy enabled or no location provided
-            await setGpsLocation(device, 0, 0, 0)
+            await session.execute(() => commandRegistry.setgps('0,0,0'))
             log('[DeployConfig] GPS zeroed out (Privacy mode or missing location)')
         }
-    }, [setDeploymentIdAsString, setGpsLocation])
+    }, [])
 
     /**
      * Helper to apply updates sequentially
      */
-    const applyUpdates = useCallback(async (device: ExtendedPeripheral, updates: { index: number, value: number }[], cachedOps?: string[] | null) => {
-        const currentOps = await getOrFetchOperationalParams(device, cachedOps, '[DeployConfig]')
-
+    const applyUpdates = useCallback(async (session: any, updates: { index: number, value: number }[], currentOps: string[]) => {
         for (const { index, value } of updates) {
             if (currentOps && currentOps.length > index) {
                 if (currentOps[index] === value.toString()) {
@@ -66,17 +64,17 @@ export const useDeploymentConfiguration = () => {
             }
 
             log(`[DeployConfig] Setting parameter ${index} to ${value}`)
-            await setOperationalParam(device, index, value.toString())
+            await session.execute(() => commandRegistry.setop({ index, value: value.toString() }))
         }
-    }, [setOperationalParam, getOrFetchOperationalParams])
+    }, [])
 
     /**
      * Configures capture method settings (motion detection or timelapse)
      */
     const configureCaptureMethod = useCallback(async (
-        device: ExtendedPeripheral,
+        session: any,
         config: DeploymentConfig,
-        cachedOps?: string[] | null
+        currentOps: string[]
     ): Promise<void> => {
         log('[DeployConfig] Configuring capture method:', config.captureMethod)
 
@@ -114,7 +112,7 @@ export const useDeploymentConfiguration = () => {
             return
         }
 
-        await applyUpdates(device, updates, cachedOps)
+        await applyUpdates(session, updates, currentOps)
     }, [applyUpdates])
 
     /**
@@ -124,24 +122,25 @@ export const useDeploymentConfiguration = () => {
         device: ExtendedPeripheral,
         config: DeploymentConfig
     ): Promise<void> => {
-        log('[DeployConfig] Starting deployment configuration...')
+        log('[DeployConfig] Starting deployment configuration sequence...')
+        const session = createBleSession(device)
 
         try {
-            // Pre-fetch all ops once for the entire configuration sequence
-            const cachedOps = await getOrFetchOperationalParams(device, null, '[DeployConfig] Configuration sequence:')
+            // Transaction pre-flight: fetch ops
+            const currentOps = await session.execute(commandRegistry.getops)
 
             // 1. Set deployment ID (with auto-fallback and GPS enforce)
-            await setDeploymentId(device, config.deploymentId, config.location, config.recordGpsInImages, cachedOps)
+            await setDeploymentId(session, config.deploymentId, config.location, config.recordGpsInImages)
 
             // 2. Configure capture settings
-            await configureCaptureMethod(device, config, cachedOps)
+            await configureCaptureMethod(session, config, currentOps)
 
-            log('[DeployConfig] Deployment configuration complete')
+            log('[DeployConfig] Deployment configuration complete (Atomic)')
         } catch (error) {
-            logError('[DeployConfig] Configuration failed:', error)
+            logError('[DeployConfig] Configuration transaction failed:', error)
             throw new Error(`Failed to configure deployment: ${error}`)
         }
-    }, [setDeploymentId, configureCaptureMethod, getOrFetchOperationalParams])
+    }, [setDeploymentId, configureCaptureMethod])
 
     return {
         configure,

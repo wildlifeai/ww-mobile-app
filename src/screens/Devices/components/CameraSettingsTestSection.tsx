@@ -32,6 +32,7 @@ const NumericInput = ({ label, value, onChange, min, max, disabled }: { label: s
                     setLocalValue(t)
                 }}
                 onBlur={() => {
+                    // Final clamp + format on blur
                     let v = parseInt(localValue.replace(/[^0-9]/g, ''), 10)
                     if (isNaN(v)) v = min
                     if (v < min) v = min

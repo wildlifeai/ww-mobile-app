@@ -209,6 +209,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                             batteryLevel: null,
                                             sdCardStatus: null,
                                             deviceFirmwareVersion: null,
+                                            himaxFirmwareVersion: null,
                                             bleFirmwareUpdateAvailable: false,
                                             initErrors: {
                                                 setUtc: initResult.errors?.setUtc,
@@ -301,6 +302,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                 batteryLevel: null,
                                 sdCardStatus: null,
                                 deviceFirmwareVersion: null,
+                                himaxFirmwareVersion: null,
                                 bleFirmwareUpdateAvailable: false,
                                 initErrors: {
                                     setUtc: initResult.errors?.setUtc,

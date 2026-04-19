@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { useBle } from '../../../hooks/useBle'
+// unused import
 import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
 import { useCapturePreview } from '../../../hooks/useCapturePreview'
-import { bleCommandManager } from '../../../ble/commandManager'
+import { bleEventBus, BleEvent } from '../../../ble/protocol/eventBus'
+import { createBleSession } from '../../../ble/session/createBleSession'
+import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { logError } from '../../../utils/logger'
 
 export interface CameraTestParams {
@@ -38,8 +40,6 @@ const DEFAULT_PARAMS: CameraTestParams = {
 }
 
 export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) => {
-    const { write } = useBle()
-    
     const [testModeBits, setTestModeBits] = useState<number>(0)
     const [cameraParams, setCameraParams] = useState<CameraTestParams>(DEFAULT_PARAMS)
     const [aeData, setAeData] = useState<AEData | null>(null)
@@ -71,7 +71,6 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     // Setup Capture Preview hook
     const capturePreview = useCapturePreview({
         device,
-        write,
         onImageReceived: handleImageReceived,
         onError: handleCaptureError
     })
@@ -85,7 +84,9 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     //   AE Mean = 73
     //   AEConverged?: Y
     useEffect(() => {
-        const messageListener = (msg: string) => {
+        const messageListener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
+            if (!device || event.deviceId !== device.id) return;
+            const msg = event.line;
             const match = msg.match(/Integration time\s*=\s*(\d+)\s*lines[\s\S]*?Analog gain\s*=\s*(\d+)[\s\S]*?Digital gain\s*=\s*(\d+)[\s\S]*?AE Mean\s*=\s*(\d+)[\s\S]*?AEConverged\?:\s*(Y|N)/i)
             if (match) {
                 setAeData({
@@ -97,9 +98,9 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
                 })
             }
         }
-        bleCommandManager.addMessageListener(messageListener)
-        return () => bleCommandManager.removeMessageListener(messageListener)
-    }, [])
+        bleEventBus.on('textLine', messageListener)
+        return () => { bleEventBus.removeListener('textLine', messageListener); }
+    }, [device])
 
     const updateCameraParam = useCallback(<K extends keyof CameraTestParams>(key: K, value: CameraTestParams[K]) => {
         setCameraParams(prev => {
@@ -126,23 +127,12 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             //    MD_INTERVAL=0 and TIMELAPSE_INTERVAL=0 are critical: if a prior
             //    deployment left these non-zero, the device re-enters monitoring mode
             //    after the test capture and fires the flash LED repeatedly.
-            const ops = [
-                `AI setop ${OP_PARAMETER.MD_INTERVAL} 0`,
-                `AI setop ${OP_PARAMETER.TIMELAPSE_INTERVAL} 0`,
-                `AI setop ${OP_PARAMETER.LED_BRIGHTNESS} ${cameraParams.ledBrightness}`,
-                `AI setop ${OP_PARAMETER.FLASH_DURATION} ${cameraParams.flashDuration}`,
-                `AI setop ${OP_PARAMETER.FLASH_LED} ${cameraParams.flashLed}`,
-            ]
-            
-            // Batch write (allow 1 retry per command for transient sleep events)
-            await write(device, ops, { maxRetries: 1 })
-            
-            // 2. Wait for device to enter DPD so all OPs are committed to CONFIG.TXT
-            try {
-                await bleCommandManager.waitForMessage(/^Sleep/i, 10000)
-            } catch {
-                // Timeout – device may already be sleeping; proceed anyway
-            }
+            const session = createBleSession(device);
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.MD_INTERVAL, value: 0 }))
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: 0 }))
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: cameraParams.ledBrightness }))
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_DURATION, value: cameraParams.flashDuration }))
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: cameraParams.flashLed }))
             
             // Small buffer to let DPD fully settle
             await new Promise(res => setTimeout(res, 500))
@@ -152,21 +142,15 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             //    then issues 'AI capture 1 1000'.
             await capturePreview.startCapture(1, 1000)
 
-            // 4. After capture completes, disable camera so the device returns
-            //    to a quiesced idle state and does not re-enter monitoring mode.
-            await write(device, [`AI setop ${OP_PARAMETER.CAMERA_ENABLED} 0`], { maxRetries: 1 })
-            try {
-                await bleCommandManager.waitForMessage(/^Sleep/i, 8000)
-            } catch {
-                // Device may not sleep if already idle — safe to ignore
-            }
+            const postSession = createBleSession(device);
+            await postSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAMERA_ENABLED, value: 0 }))
 
         } catch (e) {
             logError('[CameraSettingsTest] Error applying params or capturing:', e)
         } finally {
             setIsApplying(false)
         }
-    }, [device, cameraParams, write, capturePreview])
+    }, [device, cameraParams, capturePreview])
 
     const resetTestMode = useCallback(async () => {
         setTestModeBits(0)

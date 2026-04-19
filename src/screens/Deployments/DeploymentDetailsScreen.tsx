@@ -86,7 +86,7 @@ const DeploymentDetailsScreenComponent: React.FC<Props> = ({ deployment, device,
                 <Menu.Item
                     onPress={() => {
                         setMenuVisible(false)
-                        navigation.navigate('StopMonitoringWizard', { mode: 'end_deployment' } as any)
+                        navigation.navigate('DeviceDiscovery', { mode: 'end_deployment' })
                     }}
                     title="End Monitoring"
                     leadingIcon="stop"

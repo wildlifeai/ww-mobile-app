@@ -13,8 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useGetAiModelsQuery } from '../../redux/api/projectsApi'
 
 import { LoRaWANSection } from './components/LoRaWANSection'
-import { CameraViewSection } from './components/CameraViewSection'
-import { DeploymentMotionDetectionSection } from './components/DeploymentMotionDetectionSection'
+
 import { MetadataSection } from './components/MetadataSection'
 import { HelpDialog } from '../../components/ui/HelpDialog'
 import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog'
@@ -51,7 +50,7 @@ export const StartMonitoringDetailsStep = () => {
         handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, handleBleFirmwareUpdate,
         isMonitoring, handleMonitorDisconnect,
         // Himax Firmware
-        himaxFirmwareVersion, isHimaxUpdating, himaxUpdateProgress, isCheckingHimaxVersion,
+        latestHimaxFirmware, himaxFirmwareVersion, isHimaxUpdating, himaxUpdateProgress, isCheckingHimaxVersion,
         handleHimaxFirmwareCheck, handleHimaxFirmwareUpdate
     } = useStartDeployment({ deviceId, bleDeviceId, projectId, navigation, initPayload })
 
@@ -200,17 +199,6 @@ export const StartMonitoringDetailsStep = () => {
                     />
                 ) : null}
 
-                <CameraViewSection
-                    device={bleDevice}
-                    onImageCaptured={handleImageCaptured}
-                    onShowHelp={showHelp}
-                />
-
-                <DeploymentMotionDetectionSection
-                    device={bleDevice}
-                    project={project}
-                    onShowHelp={showHelp}
-                />
 
                 <MetadataSection
                     notes={formState.notes}
@@ -219,6 +207,9 @@ export const StartMonitoringDetailsStep = () => {
                 />
 
                 <AdvancedSettingsSection
+                    device={bleDevice}
+                    project={project}
+                    onImageCaptured={handleImageCaptured}
                     cameraHeight={formState.cameraHeight}
                     onCameraHeightChange={handleCameraHeightChange}
                     locationName={locationName}
@@ -240,6 +231,7 @@ export const StartMonitoringDetailsStep = () => {
                     handleSdCardCheck={handleSdCardCheck}
                     handleFirmwareCheck={handleFirmwareCheck}
                     handleBleFirmwareUpdate={handleBleFirmwareUpdate}
+                    latestHimaxFirmware={latestHimaxFirmware}
                     himaxFirmwareVersion={himaxFirmwareVersion}
                     isHimaxUpdating={isHimaxUpdating}
                     himaxUpdateProgress={himaxUpdateProgress}

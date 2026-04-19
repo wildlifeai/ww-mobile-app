@@ -259,9 +259,24 @@ export interface MonitorEvent {
 export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
   const content = rawMessage.replace(/\0/g, '').trim()
 
-  // --- WAKE EVENTS ---
+  // --- WAKE & MOTION EVENTS ---
   if (/^MD[\s.]/i.test(content) || /^Wake\s*\(MD\)/i.test(content)) return { category: 'motion', label: 'Motion detected', icon: 'run', details: content }
+  
+  // Himax WW500 hardware outputs block counts dynamically
+  const motionMatch = content.match(/^HM0360 motion in (\d+) blocks:/i)
+  if (motionMatch) {
+    const blocks = parseInt(motionMatch[1], 10)
+    if (blocks > 0) {
+      return { category: 'motion', label: `Motion detected (${blocks} blocks)`, icon: 'run', details: content }
+    } else {
+      return null // Safely ignore 0 block updates to prevent UI noise
+    }
+  }
+
+  // --- TIMELAPSE EVENTS ---
   if (/^Timer\s/i.test(content) || /^Wake\s*\(Timer\)/i.test(content)) return { category: 'timelapse', label: 'Timelapse triggered', icon: 'timer-sand', details: content }
+
+
 
   // --- CAPTURE EVENTS ---
   const captureMatch = content.match(/^Captured\s+(\d+)\s+images/i)
@@ -290,8 +305,10 @@ export function classifyForMonitor(rawMessage: string): MonitorEvent | null {
     /^setutc\s/i, /^AI setop\s/i, /^AI getop/i, /^setgps\s/i, /^AI info/i, /^ver/i, /^battery/i, /^get heartbeat/i, /^flash[rgb]\s/i, /^selftest/i, /^status/i, /^getutc/i,
     // OpParam responses (already shown in stats header)
     /^Op(?:Param)?(?:\s+|\[)\d+\]?\s*=/i, /^Set\s+OpParam/i,
-    // Debug
-    /^HM0360 AE regs:/i, /^HM0360 motion in/i, /^Integration time/i, /^Analog gain/i, /^Digital gain/i, /^AE Mean/i, /^AEConverged/i
+    // Debug & Matrix Noise
+    /^HM0360 AE regs:/i, /^Integration time/i, /^Analog gain/i, /^Digital gain/i, /^AE Mean/i, /^AEConverged/i,
+    // Catches pure hex matrices, often dumped out over device UART during motion scan checks
+    /^([0-9a-fA-F]{2}\s*)+$/i
   ]
 
   for (const pattern of ignoredPatterns) {

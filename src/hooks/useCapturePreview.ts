@@ -2,8 +2,11 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Alert } from 'react-native'
 
 import { imageReassemblerEmitter } from '../ble/emitters'
-import { bleCommandManager } from '../ble/commandManager'
+import { bleEventBus, BleEvent } from '../ble/protocol/eventBus'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
+import { createBleSession } from '../ble/session/createBleSession'
+import { commandRegistry } from '../ble/protocol/commandRegistry'
+import { DeviceSignal } from '../ble/protocol/deviceSignals'
 import { log, logError } from '../utils/logger'
 
 
@@ -11,8 +14,6 @@ import { log, logError } from '../utils/logger'
 interface UseCapturePreviewOptions {
     /** BLE device to capture from */
     device: ExtendedPeripheral | undefined
-    /** Write function from useBle hook */
-    write: (peripheral: ExtendedPeripheral, data: (string | [any, any])[], options?: any) => Promise<string[]>
     /** Optional callback when capture starts */
     onCaptureStart?: () => void
     /** Optional callback when image is received */
@@ -43,7 +44,6 @@ interface UseCapturePreviewReturn {
  */
 export const useCapturePreview = ({
     device,
-    write,
     onCaptureStart,
     onImageReceived,
     onError
@@ -115,7 +115,9 @@ export const useCapturePreview = ({
 
     // Listen for "Finished sending" message
     useEffect(() => {
-        const messageListener = (msg: string) => {
+        const messageListener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
+            if (!device || event.deviceId !== device.id) return;
+            const msg = event.line;
             // Check if we are expecting a download and receive the finish signal
             if (downloadRequested.current && msg.includes('Finished sending')) {
                 const match = msg.match(/sending (\d+) bytes/)
@@ -131,12 +133,12 @@ export const useCapturePreview = ({
             }
         }
 
-        bleCommandManager.addMessageListener(messageListener)
+        bleEventBus.on('textLine', messageListener)
 
         return () => {
-            bleCommandManager.removeMessageListener(messageListener)
+            bleEventBus.removeListener('textLine', messageListener)
         }
-    }, [])
+    }, [device])
 
     // Start capture process
     const startCapture = useCallback(async (captureCount: number = 1, captureInterval: number = 1) => {
@@ -160,51 +162,47 @@ export const useCapturePreview = ({
 
             if (onCaptureStart) onCaptureStart()
 
-            // 1. Enable camera blindly (OpParam 10) to avoid unnecessary getop roundtrip
-            log('[useCapturePreview] Enabling camera blindly (Op10=1)...')
-            await write(device, ['AI setop 10 1'], { maxRetries: 0 })
-            log('[useCapturePreview] Camera enabled. Waiting for device sleep/wake cycle to initialize hardware...')
+            const session = createBleSession(device);
+
+            // 1. Enable camera (OpParam 10)
+            log('[useCapturePreview] Enabling camera (Op10=1)...')
+            await session.execute(() => commandRegistry.setop({ index: 10, value: 1 }))
             
-            // CRITICAL FIX: After 'AI setop 10 1', the device sends 'Sleep' and enters DPD.
-            // We must catch this 'Sleep' event to know it's cycling.
-            // WE DO NOT WAIT FOR 'Wake' PASSIVELY - the device stays asleep until we wake it!
-            // So: Wait for Sleep -> Wait 1s (allow DPD entry) -> Send Capture (wakes device)
+            // 2. Wait explicitly for device to Sleep via EventBus
             try {
                 setCaptureStage('Waking camera hardware...')
                 log('[useCapturePreview] Waiting for device to sleep (applied settings)...')
-                await bleCommandManager.waitForMessage(/^Sleep/i, 10000)
+                await new Promise<void>((resolve, reject) => {
+                    const sleepListener = (ev: BleEvent & { type: 'DEVICE_SIGNAL' }) => {
+                        if (ev.deviceId === device.id && ev.signal === DeviceSignal.SLEEP) {
+                            cleanup();
+                            resolve();
+                        }
+                    };
+                    const timeout = setTimeout(() => {
+                        cleanup();
+                        reject(new Error("Sleep timeout"));
+                    }, 10000);
+                    const cleanup = () => {
+                        clearTimeout(timeout);
+                        bleEventBus.removeListener('deviceSignal', sleepListener);
+                    };
+                    bleEventBus.on('deviceSignal', sleepListener);
+                });
                 log('[useCapturePreview] Device sleeping. Waiting 1s buffer before waking...')
                 await new Promise(resolve => setTimeout(resolve, 1000))
-                log('[useCapturePreview] Buffer done. Sending capture to wake device.')
             } catch (e) {
                 logError('[useCapturePreview] Timeout waiting for sleep. Proceeding anyway.', e)
             }
 
-            // 2b. Start listening for the "Captured" message before requesting file download.
-            // The raw string write block below resolves on the first response ("About to capture..."),
-            // but the actual capture may take seconds. By starting the listener before the write, 
-            // we avoid race conditions if the "Captured" message arrives very quickly after the first response.
-            const captureTimeout = Math.max(30000, captureCount * captureInterval + 15000)
-            log(`[useCapturePreview] Setting up listener for 'Captured' message (timeout ${captureTimeout}ms)...`)
-            const capturePromise = bleCommandManager.waitForMessage(/Captured/i, captureTimeout)
-
-            // 2. Send Capture Command with dynamic parameters
+            // 3. Send Capture Command
             setCaptureStage(`Capturing ${captureCount} image(s)...`)
             log(`[useCapturePreview] Sending capture command (AI capture ${captureCount} ${captureInterval})...`)
-            await write(device, [`AI capture ${captureCount} ${captureInterval}`], { maxRetries: 0 })
+            await session.execute(() => commandRegistry.capture(captureCount, captureInterval))
 
-            try {
-                await capturePromise
-                log('[useCapturePreview] Capture confirmed by device.')
-            } catch (e) {
-                logError('[useCapturePreview] Timed out waiting for Captured message.', e)
-                throw new Error('Capture timed out - device did not confirm image capture')
-            }
-
-            // 3. Start Download
+            // 4. Start Download Process Tracker
             downloadRequested.current = true
             
-            // Set safety timeout for download
             const DOWNLOAD_TIMEOUT = 30000
             downloadTimeoutRef.current = setTimeout(() => {
                 if (downloadRequested.current) {
@@ -215,7 +213,7 @@ export const useCapturePreview = ({
 
             setCaptureStage('Downloading image...')
             log('[useCapturePreview] Requesting file download...')
-            await write(device, ['AI txfile .'], { maxRetries: 1 })
+            await session.execute(commandRegistry.txfile)
 
         } catch (error) {
             const err = error as Error
@@ -229,7 +227,7 @@ export const useCapturePreview = ({
             if (onError) onError(err)
             else Alert.alert('Error', `Capture failed: ${err.message}`)
         }
-    }, [device, write, onCaptureStart, onError])
+    }, [device, onCaptureStart, onError])
 
     // Clear captured image
     const clearImage = useCallback(() => {

@@ -2,7 +2,7 @@ import BleManager from "react-native-ble-manager"
 import { Buffer } from "buffer"
 import dayjs from "dayjs"
 import { log } from "../utils/logger"
-import { readlineParserEmitter } from "./emitters"
+import { } from "./emitters"
 import { Services, WriteFunction } from "./types"
 import {
 	BLE_CHARACTERISTIC_READ_UUID,
@@ -31,12 +31,6 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 
 			// log('DEBUG: byteArray content:', byteArray)
 			log(`TX Hex: ${logHex}`)
-
-			// Push a LF-CR (LF = 10, CR = 13 in decimal) to local listener for UI feedback
-			readlineParserEmitter.emit(
-				"BleManagerDidUpdateValueForCharacteristicReadlineParser",
-				{ peripheral: peripheral.id, value: [...byteArray], isLocal: true }, // Use the same terminated array
-			)
 
 			await invokeWithTimeout(
 				() => BleManager.writeWithoutResponse(

@@ -1,7 +1,8 @@
 /* eslint-disable no-bitwise */
 import { useCallback, useRef } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
-import { useBleCommands } from './useBleCommands'
+import { createBleSession } from '../ble/session/createBleSession'
+import { commandRegistry } from '../ble/protocol/commandRegistry'
 import { extractErrorBits } from '../ble/messageClassifier'
 
 import { log, logError, logWarn } from '../utils/logger'
@@ -32,7 +33,6 @@ export interface BleInitResult {
  * The hook does NOT handle connection itself - the device must already be connected.
  */
 export const useBleInitialization = () => {
-  const { setUtc, runSelfTest } = useBleCommands()
   const isInitializing = useRef(false)
 
   const initialize = useCallback(async (
@@ -53,16 +53,19 @@ export const useBleInitialization = () => {
       options?.onProgress?.('Checking hardware...', 0.1)
       log('[BLE Init] Checking hardware status prior to time sync...')
 
-      // 1. Check Hardware Status (Selftest) - FIRST
-      // Add delay to allow device to stabilize after connection (especially if joining LoRaWAN)
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Brief delay to allow device to stabilize after connection
+      await new Promise(resolve => setTimeout(resolve, 300))
       
       let statusMsg = ''
       let hexBits: string | null = null
       let bits = 0
       
       try {
-          statusMsg = await runSelfTest(device)
+          const session = createBleSession(device)
+          
+          // The MKL62BA auto-wakes the Himax when it receives any command,
+          // so we skip the explicit wake and go straight to selftest.
+          statusMsg = await session.execute(commandRegistry.selftest)
           log('[BLE Init] Self-test result:', statusMsg)
           
           hexBits = extractErrorBits(statusMsg)
@@ -132,10 +135,11 @@ export const useBleInitialization = () => {
       }
 
       try {
+        const session = createBleSession(device)
         // 2. Set UTC Time
         options?.onProgress?.('Synchronizing time...', 0.5)
         log('[BLE Init] Setting UTC time...')
-        await setUtc(device)
+        await session.execute(() => commandRegistry.setutc())
         // setUtc already waits for the firmware response ("UTC is: <time>"),
         // confirming the time was set. No need for a separate getUtc verification.
         log('[BLE Init] UTC time synchronized successfully')
@@ -156,7 +160,7 @@ export const useBleInitialization = () => {
       isInitializing.current = false
       return { success: false, errors: { setUtc: 'Initialization failed unexpectedly' } }
     }
-  }, [setUtc, runSelfTest])
+  }, [])
 
   return { initialize }
 }

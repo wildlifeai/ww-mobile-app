@@ -1,13 +1,13 @@
 import React, { useCallback, useState } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Button, Text, useTheme, List } from 'react-native-paper'
+import { Card, Button, Text, useTheme } from 'react-native-paper'
 
 import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { useBle } from '../../../hooks/useBle'
-import { useBleCommands } from '../../../hooks/useBleCommands'
+import { createBleSession } from '../../../ble/session/createBleSession'
+import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { useMotionDetectionStream } from '../../Devices/hooks/useMotionDetectionStream'
 import { logError } from '../../../utils/logger'
 
@@ -26,10 +26,7 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
     onShowHelp
 }) => {
     const theme = useTheme()
-    const { write } = useBle()
-    const { setMdSensitivity } = useBleCommands()
     const [isPreparing, setIsPreparing] = useState(false)
-    const [expanded, setExpanded] = useState(false)
 
     const {
         mdGrid,
@@ -38,7 +35,7 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
         stopTest,
         mdBlocksCount,
         motionDetected
-    } = useMotionDetectionStream({ device, write })
+    } = useMotionDetectionStream({ device })
 
     const handleStartTest = useCallback(async () => {
         // Use activity_detection_sensitivity_id and provide a default
@@ -47,14 +44,15 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
         setIsPreparing(true)
         try {
             // Apply project's sensitivity first before engaging the test loop
-            await setMdSensitivity(device, (project.activity_detection_sensitivity_id ?? 3).toString()) // Changed to activity_detection_sensitivity_id with default
+            const session = createBleSession(device)
+            await session.execute(() => commandRegistry.md(project.activity_detection_sensitivity_id ?? 3))
             await startTest()
         } catch (error) {
             logError('[DeploymentMD] Failed to set sensitivity for test', error)
         } finally {
             setIsPreparing(false)
         }
-    }, [device, project, setMdSensitivity, startTest])
+    }, [device, project, startTest])
 
     const renderHelp = useCallback((props: any) => (
         <Button 
@@ -66,8 +64,6 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
         </Button>
     ), [onShowHelp])
 
-    const renderRightIcon = useCallback((props: any) => <List.Icon {...props} icon={expanded ? "chevron-up" : "chevron-down"} />, [expanded])
-
     // Use capture_method_id
     if (!project || project.capture_method_id !== 1) { // Changed to capture_method_id
         return null // Only render for Activity Detection projects
@@ -77,17 +73,7 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
 
     return (
         <View>
-            { }
-            <List.Item
-                title="Motion Detection Test"
-                right={renderRightIcon}
-                onPress={() => setExpanded(!expanded)}
-                style={styles.accordionHeader}
-                left={props => <List.Icon {...props} icon="run" />}
-            />
-            { }
-            {expanded && (
-                <Card style={styles.card}>
+            <Card style={styles.card}>
                     <Card.Title
                         title="Motion Detection"
                         right={renderHelp}
@@ -153,16 +139,11 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
                 )}
             </Card.Content>
         </Card>
-        )}
         </View>
     )
 }
 
 const styles = StyleSheet.create({
-    accordionHeader: {
-        backgroundColor: 'transparent',
-        paddingHorizontal: 0,
-    },
     card: {
         marginBottom: 8
     },

@@ -8,8 +8,15 @@ import { WWSelect } from '../../../components/ui/WWSelect'
 
 import Firmware from '../../../database/models/Firmware'
 import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
+import { CameraViewSection } from './CameraViewSection'
+import { DeploymentMotionDetectionSection } from './DeploymentMotionDetectionSection'
+import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
+
 
 interface AdvancedSettingsSectionProps {
+    device?: ExtendedPeripheral
+    project?: any
+    onImageCaptured: (path: string) => void
     cameraHeight: string
     onCameraHeightChange: (text: string) => void
     locationName: string
@@ -32,6 +39,7 @@ interface AdvancedSettingsSectionProps {
     handleFirmwareCheck: () => void
     handleBleFirmwareUpdate: () => void
     // Himax Firmware
+    latestHimaxFirmware: Firmware | null
     himaxFirmwareVersion: string | null
     isHimaxUpdating: boolean
     himaxUpdateProgress: string
@@ -45,6 +53,9 @@ interface AdvancedSettingsSectionProps {
 }
 
 export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = ({
+    device,
+    project,
+    onImageCaptured,
     cameraHeight,
     onCameraHeightChange,
     locationName,
@@ -67,6 +78,7 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
     handleFirmwareCheck,
     handleBleFirmwareUpdate,
     // Himax Firmware
+    latestHimaxFirmware,
     himaxFirmwareVersion,
     isHimaxUpdating,
     himaxUpdateProgress,
@@ -203,6 +215,19 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                         </View>
                     </Card.Content>
                 </Card>
+
+                {/* Camera View & MD Rendered inside Advanced Settings */}
+                <CameraViewSection
+                    device={device}
+                    onImageCaptured={onImageCaptured}
+                    onShowHelp={onShowHelp}
+                />
+
+                <DeploymentMotionDetectionSection
+                    device={device}
+                    project={project}
+                    onShowHelp={onShowHelp}
+                />
 
                 {/* Battery Check Card */}
                 <Card style={styles.card}>
@@ -353,9 +378,15 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                         right={renderHimaxFirmwareHelp}
                     />
                     <Card.Content>
+                        {latestHimaxFirmware && (
+                            <WWText variant="bodyMedium" style={styles.firmwareVersionText}>
+                                <Text>Latest Available: {latestHimaxFirmware.version}</Text>
+                            </WWText>
+                        )}
+
                         {himaxFirmwareVersion && (
                             <WWText style={styles.firmwareVersionText}>
-                                <Text>AI Processor Version: {himaxFirmwareVersion}</Text>
+                                <Text>Device Version: {himaxFirmwareVersion}</Text>
                             </WWText>
                         )}
 
