@@ -6,7 +6,7 @@ import { bleEventBus, BleEvent } from '../../../ble/protocol/eventBus'
 
 // Constants for motion detection stream testing timings
 const MOTION_DETECTION_FRAME_INTERVAL_MS = 300
-const MOTION_DETECTION_INACTIVITY_MS = 1000
+const MOTION_DETECTION_INACTIVITY_MS = 10000
 const MOTION_DETECTION_LOOP_INTERVAL_MS = 2000
 
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'

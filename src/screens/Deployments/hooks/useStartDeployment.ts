@@ -225,7 +225,7 @@ export const useStartDeployment = ({
 
     useEffect(() => {
         bleDeviceRef.current = bleDevice
-    }, [bleDevice]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [bleDevice])  
 
     // Fetch latest firmwares from the local database
     useEffect(() => {
@@ -484,13 +484,15 @@ export const useStartDeployment = ({
                     [{
                         text: 'OK', onPress: () => {
                             isNavigatingAway.current = true
-                            navigation.goBack()
+                            if (navigation.canGoBack()) {
+                                navigation.goBack()
+                            }
                         }
                     }]
                 )
             }
         }
-    }, [bleDevice, submitting, navigation, isInitializing, isMonitoring]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [bleDevice, submitting, navigation, isInitializing, isMonitoring])  
 
     const handleStartDeployment = useCallback(async () => {
         if (!bleDevice?.connected) {
@@ -693,7 +695,7 @@ export const useStartDeployment = ({
             logError('Battery check failed:', error)
             Alert.alert('Error', 'Failed to check battery level')
         }
-    }, [bleDevice, bleSession]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [bleDevice, bleSession])  
 
     const handleSdCardCheck = useCallback(async () => {
         if (!bleDevice || !bleDevice.connected) return
