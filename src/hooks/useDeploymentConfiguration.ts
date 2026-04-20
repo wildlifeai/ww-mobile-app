@@ -38,6 +38,13 @@ export const useDeploymentConfiguration = () => {
         await session.execute(() => commandRegistry.setdid(deploymentId))
         log('[DeployConfig] Deployment ID set successfully via AI setdid')
 
+        // Reset image directory counters so the new deployment starts at IMAGES.000
+        // Firmware creates /MEDIA/<id>/IMAGES.<NNN>/ subdirectories but does not
+        // auto-reset the index when setdid is called.
+        await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.IMAGES_FILE_INDEX, value: 0 }))
+        await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.IMAGES_COUNT, value: 0 }))
+        log('[DeployConfig] Image directory counters reset (Op 19+20 = 0)')
+
         // Always enforce GPS writing based on privacy setting
         if (recordGpsInImages && location) {
             const { latitude, longitude, altitude } = location
