@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useMemo } from 'react'
 import { log } from '../../../utils/logger'
 
 /**
@@ -63,5 +63,11 @@ export function useAutoConnectStateMachine() {
     stateMap.current.delete(deviceId)
   }, [])
 
-  return { getState, transition, canAutoConnect, resetAll, resetDevice }
+  return useMemo(() => ({
+    getState,
+    transition,
+    canAutoConnect,
+    resetAll,
+    resetDevice,
+  }), [getState, transition, canAutoConnect, resetAll, resetDevice])
 }

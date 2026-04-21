@@ -42,15 +42,20 @@ class CommandQueue {
 
   /**
    * Enqueues a command execution task into the single-flight queue.
+   *
+   * @param lockHolder  If provided and matches the current transport lock holder,
+   *                    the command is allowed through. This prevents deadlock when
+   *                    the lock holder (e.g. file transfer pipeline) needs to
+   *                    execute sub-commands while holding the lock.
    */
   public enqueue<T>(
     executeFn: () => Promise<T>,
-    options?: { signal?: AbortSignal }
+    options?: { signal?: AbortSignal; lockHolder?: string }
   ): Promise<T> {
     return new Promise((resolve, reject) => {
       // Enforce exclusive transport lock — reject if a long-running
-      // operation (e.g. firmware update) currently holds the lock
-      if (transportLock.isLocked) {
+      // operation currently holds the lock, UNLESS the caller IS the holder
+      if (transportLock.isLocked && !transportLock.isHeldBy(options?.lockHolder ?? '')) {
         return reject(new Error(
           `Transport locked by '${transportLock.holder}'. ` +
           `Command rejected to protect active operation.`

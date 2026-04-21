@@ -42,19 +42,24 @@ export async function runCommandPipeline<T>(
   const maxRetries = options?.maxRetries ?? context.retryPolicy?.maxRetries ?? BLE_PROTOCOL_RETRIES.DEFAULT_MAX_RETRIES;
   let attempt = 0;
 
-  // ── Long-running: Pause heartbeats automatically ──
-  if (context.isLongRunning) {
-    bleEventBus.emitEvent({
-      type: 'HEARTBEAT_PAUSE', isPaused: true, ts: Date.now()
-    });
-  }
-
-  // ── Exclusive lock: Acquire ──
-  if (context.requiresExclusiveLock) {
-    transportLock.acquire(context.name);
-  }
+  let lockAcquired = false;
+  let heartbeatsPaused = false;
 
   try {
+    // ── Exclusive lock: Acquire first ──
+    if (context.requiresExclusiveLock) {
+      transportLock.acquire(context.name);
+      lockAcquired = true;
+    }
+
+    // ── Long-running: Pause heartbeats only after lock is secured ──
+    if (context.isLongRunning) {
+      bleEventBus.emitEvent({
+        type: 'HEARTBEAT_PAUSE', isPaused: true, ts: Date.now()
+      });
+      heartbeatsPaused = true;
+    }
+
     while (true) {
       try {
         return await runCommand(peripheral, commandConstructor);
@@ -62,7 +67,7 @@ export async function runCommandPipeline<T>(
         if (attempt >= maxRetries || !isRetryable(error)) {
           throw error;
         }
-        
+
         attempt++;
 
         // If the error was DEVICE_BUSY, we inject a delay via the Constant
@@ -71,21 +76,21 @@ export async function runCommandPipeline<T>(
           // Also manually tell the queue it can unpause from BUSY
           commandQueue.resumeFromBusy();
         }
-        
+
         // If the error was DEVICE_SLEEP, the commandQueue itself will be paused 
         // waiting for a WAKE signal. We just loop around, and the queue processor
         // won't let this run until the state machine transitions to RUNNING again.
       }
     }
   } finally {
-    // ── Always release, regardless of success/failure ──
-    if (context.requiresExclusiveLock) {
-      transportLock.release();
-    }
-    if (context.isLongRunning) {
+    // ── Only release what THIS instance acquired ──
+    if (heartbeatsPaused) {
       bleEventBus.emitEvent({
         type: 'HEARTBEAT_PAUSE', isPaused: false, ts: Date.now()
       });
+    }
+    if (lockAcquired) {
+      transportLock.release(context.name);
     }
   }
 }
