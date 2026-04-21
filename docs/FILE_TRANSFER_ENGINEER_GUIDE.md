@@ -6,6 +6,53 @@ The mobile app now implements the **app-side** of the BLE file transfer protocol
 
 The nRF52 relay code (`fileTx.c`) is already complete. **The HX6538 side needs to be implemented** to handle FILE_START, FILE_DATA, and FILE_END I2C messages, write to SD card, and send back `ftx ack/err/done` responses.
 
+**Protocol version:** v1 (no version byte in packets — reserved for future extension).
+
+---
+
+## Sequence Diagram
+
+```
+App                          nRF52                        HX6538
+ |                             |                             |
+ |-- FILE_START (BLE) -------->|-- I2C FILE_START ---------->|
+ |                             |<-- "ftx ack 0" ------------|
+ |<-- "ftx ack 0" (BLE) ------|                             |
+ |                             |                             |
+ |-- FILE_DATA pkt 1 (BLE) -->|-- I2C FILE_DATA pkt 1 ---->|
+ |                             |<-- "ftx ack 1" ------------|
+ |<-- "ftx ack 1" (BLE) ------|                             |
+ |                             |                             |
+ |-- FILE_DATA pkt 2 (BLE) -->|-- I2C FILE_DATA pkt 2 ---->|
+ |                             |<-- "ftx ack 2" ------------|
+ |<-- "ftx ack 2" (BLE) ------|                             |
+ |                             |                             |
+ |         ... repeat for all chunks ...                     |
+ |                             |                             |
+ |-- FILE_END (BLE) --------->|-- I2C FILE_END ------------>|
+ |                             |<-- "ftx ack end" ----------|
+ |<-- "ftx done" (BLE) -------|  (nRF52 translates)         |
+```
+
+---
+
+## Transport Guarantees (Stop-and-Wait)
+
+The protocol is **strict stop-and-wait**. These guarantees are non-negotiable:
+
+| Rule | Description |
+|------|-------------|
+| **One packet at a time** | App sends exactly one FILE_DATA packet, then waits for ACK |
+| **No pipelining** | App will NOT send the next packet until `ftx ack <N>` is received |
+| **Ordered ACKs** | ACKs must match the last sent packet number exactly |
+| **Duplicate tolerance** | BLE may retry at the link layer — duplicate ACKs must be tolerated |
+| **Retry on timeout** | App retries the *same* packet up to 3 times before aborting |
+
+**Firmware must:**
+
+- Treat duplicate packet numbers as **idempotent** — if the same packet number arrives again, do NOT append data, but DO send `ftx ack <N>` again
+- Reject genuinely out-of-order packets with `ftx err 9`
+
 ---
 
 ## Protocol Quick Reference
@@ -27,7 +74,7 @@ The nRF52 relay code (`fileTx.c`) is already complete. **The HX6538 side needs t
 | `ftx done` | FILE_END accepted, CRC verified | After FILE_END |
 | `ftx err <N>` | Error, transfer aborted | Any time |
 
-### CRC Algorithm
+### CRC Algorithm & Scope
 
 **CRC-16/CCITT-FALSE** (not XMODEM, not augmented)
 
@@ -39,6 +86,13 @@ Final XOR:  None
 ```
 
 **Test vector:** `"123456789"` (9 ASCII bytes, no null) → `0x29B1`
+
+**CRC scope — computed over file data bytes ONLY:**
+- ✅ The raw file content bytes (exactly what gets written to SD)
+- ❌ Does NOT include filename
+- ❌ Does NOT include packet headers (type, pkt num, length)
+- ❌ Does NOT include packet numbers
+- ❌ Does NOT include null terminators from filename
 
 Reference C implementation:
 ```c
@@ -95,6 +149,22 @@ Byte:  09  00  02  XX XX
 
 ---
 
+## App Retry Behavior
+
+| Packet | Write Mode | Retry Behavior |
+|--------|-----------|----------------|
+| FILE_START | `write()` (with BLE response) | BLE-level confirmation; no app retries |
+| FILE_DATA | `writeWithoutResponse()` | Retries same packet up to 3x on ACK timeout |
+| FILE_END | `write()` (with BLE response) | BLE-level confirmation; no app retries |
+
+**On retry, the app re-sends the identical packet** (same packet number, same data). Firmware must:
+
+- **NOT append the data again** if the packet number matches the last received
+- **DO re-send `ftx ack <N>`** for the duplicate packet
+- Treat it as a no-op for file writes
+
+---
+
 ## Testing Approach: Text Files for Easy Verification
 
 The app transfers files as raw binary regardless of content. For testing, you can send **text files** and verify the content just by reading them on the SD card. This is the simplest way to validate end-to-end.
@@ -116,6 +186,19 @@ The app transfers files as raw binary regardless of content. For testing, you ca
 3. **Content matches** byte-for-byte (for text files, just open and read)
 4. **No extra bytes** at end of file
 5. **No truncation** — last line intact
+
+### Failure Injection Tests
+
+| Test | What to Do | Expected Outcome |
+|------|-----------|-----------------|
+| Wrong packet number | App sends pkt 3, firmware expects pkt 2 | `ftx err 9`, transfer aborted |
+| Skipped packet | App sends pkt 1, then pkt 3 | `ftx err 9`, transfer aborted |
+| Wrong CRC | Modify FILE_END CRC bytes | `ftx err 6`, file deleted |
+| Disconnect mid-transfer | Kill BLE connection during FILE_DATA | Partial file deleted on next boot/abort |
+| Double FILE_START | Send FILE_START while already ACTIVE | `ftx err 1`, existing transfer aborted |
+| Duplicate FILE_DATA | Send same packet number twice | No duplicate data written, `ftx ack <N>` re-sent |
+| SD card removed | Remove card before FILE_START | `ftx err 5` |
+| SD card full | Fill SD card, then transfer | `ftx err 7` |
 
 ---
 
@@ -149,34 +232,112 @@ Responses are sent as strings back through the AI state machine (same path as ot
 ```
 IDLE
   → FILE_START received
-  → open /MANIFEST/<filename> for write
+  → validate: is SD card present? (if no → "ftx err 5")
+  → validate: enough space for declared size? (if no → "ftx err 7")
+  → create /MANIFEST/<filename>.tmp for write
+  → set expectedPktNum = 1
   → respond "ftx ack 0"
   → ACTIVE
 
 ACTIVE
   → FILE_DATA received
-  → write data bytes to file (NOT the packet number byte)
-  → verify packet number matches expected
+  → extract pkt_num from payload[0]
+  → if pkt_num == lastReceivedPktNum:
+      → (duplicate) respond "ftx ack <N>" but do NOT write data
+  → if pkt_num != expectedPktNum:
+      → respond "ftx err 9", delete .tmp file → IDLE
+  → write payload[1..] to file (NOT the packet number byte)
+  → set lastReceivedPktNum = pkt_num
+  → set expectedPktNum = next(pkt_num)  (255→1 wrap)
   → respond "ftx ack <N>"
   → ACTIVE (continue)
 
   → FILE_END received
-  → close file
-  → recompute CRC on the written file
-  → if CRC matches: respond "ftx ack end"
-  → if CRC mismatch: respond "ftx err 6" (suggested code)
+  → close .tmp file
+  → recompute CRC over the entire written file
+  → if CRC matches:
+      → rename .tmp → final filename
+      → respond "ftx ack end"
+  → if CRC mismatch:
+      → delete .tmp file
+      → respond "ftx err 6"
   → IDLE
+
+  → FILE_START received (while ACTIVE)
+  → respond "ftx err 1", delete .tmp file → IDLE
 ```
 
-### Suggested HX6538 Error Codes
+### File Write Atomicity
 
-| Code | Meaning |
-|------|---------|
-| 5 | SD card not present or not mounted |
-| 6 | CRC mismatch (file corrupted during transfer) |
-| 7 | SD card full (insufficient space) |
-| 8 | File open/write error |
-| 9 | Packet sequence mismatch |
+Files must **never appear as complete until FILE_END succeeds**:
+
+| Requirement | Details |
+|-------------|---------|
+| **Temp file during transfer** | Write to `/MANIFEST/<filename>.tmp` during ACTIVE |
+| **Rename on success** | Rename `.tmp` → final filename only after CRC verification passes |
+| **Delete on failure** | Delete `.tmp` file on any error, abort, or CRC mismatch |
+| **No partial files** | A file at `/MANIFEST/<filename>` (without `.tmp`) is always complete and verified |
+
+### Power Loss / Reset Recovery
+
+If the device resets or loses power during ACTIVE:
+
+1. **On boot:** Scan `/MANIFEST/` for any `*.tmp` files
+2. **Delete them** — they are incomplete transfers
+3. **Reset state machine to IDLE** — no attempt to resume
+4. The app will detect the disconnect and start a fresh transfer
+
+> **IMPORTANT:** Never attempt to resume a partial transfer. The app always starts fresh after reconnect.
+
+### Storage Constraints
+
+| Constraint | Value |
+|------------|-------|
+| Max filename length | 12 characters (8.3 format, no null) |
+| Max file size (app enforced) | 10 MB |
+| Target directory | `/MANIFEST/` — must exist on SD card |
+| Directory creation | Firmware should create `/MANIFEST/` if it doesn't exist |
+
+### Invalid State Handling
+
+The firmware must reject packets that arrive in the wrong state:
+
+| Condition | Current State | Expected Response |
+|-----------|--------------|-------------------|
+| FILE_DATA received | IDLE | `ftx err 1` (wrong state) |
+| FILE_END received | IDLE | `ftx err 1` (wrong state) |
+| FILE_START received | ACTIVE | `ftx err 1` (wrong state) |
+| Malformed packet (too short) | Any | `ftx err 2` (malformed) |
+| Invalid filename | IDLE | `ftx err 3` (bad filename) |
+
+### Complete Error Code Table
+
+| Code | Source | Meaning | App Retry Policy |
+|------|--------|---------|-----------------|
+| 1 | nRF52 | Wrong state (packet in unexpected phase) | Auto-retry once |
+| 2 | nRF52 | Malformed packet (too short / bad length) | Never retry |
+| 3 | nRF52 | Bad filename (not 8.3 uppercase) | Never retry |
+| 4 | nRF52 | I2C send to HX6538 failed | Operator retry |
+| 5 | HX6538 | SD card not present or not mounted | Operator retry |
+| 6 | HX6538 | CRC mismatch (file corrupted) | Auto-retry once |
+| 7 | HX6538 | SD card full (insufficient space) | Manual intervention |
+| 8 | HX6538 | File open/write/close error | Operator retry |
+| 9 | HX6538 | Packet sequence mismatch (out-of-order) | Never retry |
+
+### Required Firmware Logs
+
+Firmware must log these events for debugging (via UART console):
+
+```
+ftx: FILE_START received, file=HELLO.TXT, size=13
+ftx: FILE_DATA pkt 1 received, 13 bytes written
+ftx: FILE_DATA pkt 1 duplicate, ignored
+ftx: FILE_END received, CRC=0x29B1, verified=OK
+ftx: ERROR code=9, expected pkt 3 got pkt 5
+ftx: Transfer complete, 13 bytes, 1 packets
+ftx: Abort received, partial file deleted
+ftx: Boot cleanup: deleted HELLO.TXT.tmp
+```
 
 ---
 
@@ -192,7 +353,7 @@ These are not required for basic testing but will improve production reliability
 // String command "ftx abort" handled in ble_commands.c
 // Action:
 //   1. Close any open SD file handle
-//   2. Delete partial file
+//   2. Delete partial .tmp file
 //   3. Reset fileTx state to IDLE
 //   4. Respond "ftx aborted"
 ```
@@ -222,6 +383,17 @@ App sends:   "ftx ready"
 Device:      "ftx ready sd=1 free=30511056"
 ```
 
+### 5. Protocol Version (LOW Priority, Future-Proofing)
+
+If the protocol evolves, consider adding a version byte to FILE_START:
+
+```
+Current:  [size_u32][filename\0]
+Future:   [version_u8][size_u32][filename\0]
+```
+
+For v1, this is not required. The app does not send a version byte.
+
 ---
 
 ## App Behavior Summary
@@ -230,15 +402,16 @@ Device:      "ftx ready sd=1 free=30511056"
 
 1. **Validates filename** — rejects if not 8.3 uppercase format
 2. **Validates file size** — rejects if > 10MB
-3. **Computes CRC-16/CCITT-FALSE** before transfer starts
+3. **Computes CRC-16/CCITT-FALSE** over file data before transfer starts
 4. **Pauses heartbeat** for the entire transfer session
 5. **Acquires exclusive transport lock** — rejects all other BLE commands
 6. **Sends FILE_START** with `write()` (with BLE response confirmation)
-7. **Sends FILE_DATA chunks** with `writeWithoutResponse()` — stop-and-wait, waits for `ftx ack <N>`
-8. **Sends FILE_END** with `write()` (with BLE response confirmation)
-9. **Waits for `ftx done`** before declaring success
-10. **Releases lock, resumes heartbeat** in `finally` block
-11. **Aborts immediately** on disconnect, user cancel, or 3 consecutive timeouts
+7. **Sends FILE_DATA chunks** with `writeWithoutResponse()` — strict stop-and-wait
+8. **Retries same packet** up to 3 times on ACK timeout
+9. **Sends FILE_END** with `write()` (with BLE response confirmation)
+10. **Waits for `ftx done`** before declaring success
+11. **Releases lock, resumes heartbeat** in `finally` block
+12. **Aborts immediately** on disconnect, user cancel, or 3 consecutive timeouts
 
 ### Timeout Values
 
@@ -256,9 +429,21 @@ Device:      "ftx ready sd=1 free=30511056"
 - 2MB file = ~33 wrap cycles — this is normal
 - App tracks a monotonic internal counter for progress, wire number for ACKs
 
+### Expected Performance
+
+| Metric | Value |
+|--------|-------|
+| Chunk size | ≤241 bytes per FILE_DATA packet |
+| Estimated throughput | ~2-4 KB/s (stop-and-wait over BLE) |
+| 2KB file estimated time | ~1-2 seconds |
+| 2MB file estimated time | ~8-16 minutes |
+| 10MB file estimated time | ~40-80 minutes |
+
+> **Note:** Actual throughput depends on BLE connection interval, signal strength, and HX6538 SD write speed. If you observe significantly lower throughput, check UART logs for errors or long ACK delays.
+
 ---
 
-## Debugging Tips
+## Debugging & Validation
 
 ### nRF52 Console Output
 
@@ -284,8 +469,24 @@ fileTx AI resp: 'ack end' state=1     ← CRC verified, translates to "ftx done"
 | `ftx err 1` immediately | Device was already in ACTIVE state from a previous failed transfer. Disconnect and reconnect. |
 | `ftx err 3` | Filename not 8.3 uppercase. Check app is sending valid filename. |
 | `ftx err 4` | I2C bus failure. Check physical connection between nRF52 and HX6538. |
+| `ftx err 9` on packet 2+ | Duplicate or out-of-order packet. Check BLE retry behavior. |
 | App timeout after FILE_START | HX6538 not responding to I2C file message. Is the HX6538 handler implemented? |
 | CRC mismatch | Different CRC algorithm variants. Verify test vector: `"123456789"` → `0x29B1` on both sides. |
+| Partial file on SD | Transfer interrupted. Check for `.tmp` file — should be cleaned up on boot. |
+
+### Wire-Level Validation
+
+**Recommended tools:**
+- nRF Sniffer (Wireshark plugin) for BLE packet capture
+- UART console logs from nRF52
+- Hex dump comparison (`xxd` or similar)
+
+**Validation checklist:**
+1. Capture BLE packets during transfer
+2. Verify packet sequence: START → DATA 1 → ACK 1 → DATA 2 → ACK 2 → ... → END → done
+3. Verify payload lengths match byte[2] in each packet
+4. Verify CRC in FILE_END matches CRC computed over all DATA payloads
+5. Compare file on SD card byte-for-byte against the original
 
 ---
 
@@ -296,13 +497,19 @@ fileTx AI resp: 'ack end' state=1     ← CRC verified, translates to "ftx done"
 - [ ] Implement HX6538 handler for `AI_PROCESSOR_MSG_FILE_DATA` (8)
 - [ ] Implement HX6538 handler for `AI_PROCESSOR_MSG_FILE_END` (9)
 - [ ] Verify CRC-16/CCITT-FALSE: `"123456789"` → `0x29B1`
+- [ ] Verify CRC covers data bytes only (no headers, no filename)
 - [ ] Write `ftx ack 0` response for FILE_START
 - [ ] Write `ftx ack <N>` response for FILE_DATA (echo packet number)
 - [ ] Write `ftx ack end` response for FILE_END (nRF52 translates to `ftx done`)
-- [ ] Write `ftx err <N>` response for errors
-- [ ] Test with `HELLO.TXT` containing "Hello World!" — check file on SD card
+- [ ] Write `ftx err <N>` response for errors (see error code table)
+- [ ] Handle duplicate FILE_DATA idempotently (re-ACK, don't re-write)
+- [ ] Reject out-of-order packets with `ftx err 9`
+- [ ] Write to `.tmp` file, rename on success, delete on failure
+- [ ] Delete `.tmp` files on boot (power loss recovery)
+- [ ] Ensure `/MANIFEST/` directory exists (create if missing)
+- [ ] Test with `HELLO.TXT` — check file on SD card
 - [ ] Test with 2KB file — verify multi-packet
 - [ ] Test with 62KB+ file — verify packet number wrap
-- [ ] Test error paths: remove SD card, send bad filename, disconnect mid-transfer
+- [ ] Run failure injection tests (see table above)
 - [ ] (Optional) Implement `ftx abort` string command
 - [ ] (Optional) Implement transfer session ID
