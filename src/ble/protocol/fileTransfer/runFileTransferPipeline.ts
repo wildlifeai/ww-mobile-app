@@ -39,7 +39,7 @@ import {
 } from './fileTransferTypes'
 import { log, logError } from '../../../utils/logger'
 
- 
+// Same pattern as NativeModulesSection.tsx — Metro bundles package.json at build time
 const appVersion: string = require('../../../../package.json').version ?? '0.0.0'
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -199,16 +199,18 @@ export async function runFileTransferPipeline(
     }
   }
 
-  // User cancel
+  // User cancel — handler extracted so it can be removed in finally
+  let abortHandler: (() => void) | null = null
   const abortPromise = new Promise<never>((_resolve, reject) => {
     if (!abortSignal) return
     if (abortSignal.aborted) {
       reject(new FileTransferError('ABORTED', 'Transfer cancelled'))
       return
     }
-    abortSignal.addEventListener('abort', () => {
+    abortHandler = () => {
       reject(new FileTransferError('ABORTED', 'Transfer cancelled by user'))
-    })
+    }
+    abortSignal.addEventListener('abort', abortHandler)
   })
 
   // Helper: race ACK wait against disconnect + abort + silence
@@ -376,6 +378,9 @@ export async function runFileTransferPipeline(
     if (silenceTimer) clearTimeout(silenceTimer)
     bleEventBus.removeListener('textLine', silenceHandler)
     disconnectCleanup?.()
+    if (abortSignal && abortHandler) {
+      abortSignal.removeEventListener('abort', abortHandler)
+    }
     transportLock.release(transferId)
     bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: false, ts: Date.now() })
     log(`[FileTransfer] Pipeline cleanup complete`)
