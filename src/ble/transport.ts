@@ -4,6 +4,7 @@ import dayjs from "dayjs"
 import { log } from "../utils/logger"
 import { } from "./emitters"
 import { Services, WriteFunction } from "./types"
+import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
 import {
 	BLE_CHARACTERISTIC_READ_UUID,
 	BLE_CHARACTERISTIC_WRITE_UUID,
@@ -62,6 +63,39 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 			throw error
 		}
 	}
+}
+
+/**
+ * Write raw binary data to the device.
+ *
+ * Used exclusively by the file transfer pipeline. Unlike writeToDevice(),
+ * this function does NOT string-encode the data — it sends raw bytes.
+ *
+ * @param withResponse  If true, uses write-with-response (reliable, slower).
+ *                      Use for FILE_START and FILE_END. If false, uses
+ *                      write-without-response (fast, ACK-confirmed by protocol).
+ *                      Use for FILE_DATA.
+ */
+export const writeBinaryToDevice = async (
+	peripheral: ExtendedPeripheral,
+	data: Uint8Array,
+	withResponse: boolean = false,
+): Promise<void> => {
+	if (!peripheral.connected) {
+		throw new Error('Device disconnected')
+	}
+
+	const byteArray = Array.from(data)
+	const serviceUuid = peripheral.services?.serviceCharacteristic || BLE_SERVICE_UUID
+	const charUuid = peripheral.services?.writeCharacteristic || BLE_CHARACTERISTIC_WRITE_UUID
+
+	const writeFn = withResponse
+		? () => BleManager.write(peripheral.id, serviceUuid, charUuid, byteArray, byteArray.length)
+		: () => BleManager.writeWithoutResponse(peripheral.id, serviceUuid, charUuid, byteArray, byteArray.length)
+
+	const label = withResponse ? 'BleManager.write' : 'BleManager.writeWithoutResponse'
+
+	await invokeWithTimeout(writeFn, label, 5000)
 }
 
 
