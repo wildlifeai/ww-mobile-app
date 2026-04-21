@@ -44,6 +44,14 @@ export interface CommandContext<T = any> {
   
   /** Whether the command can be safely sent while a binary stream is active without corrupting it */
   safeDuringStreaming?: boolean;
+
+  /** If true, runCommandPipeline will automatically pause heartbeats for the
+   *  duration of this command and resume them on completion/failure. */
+  isLongRunning?: boolean;
+
+  /** If true, the command acquires an exclusive transport lock.
+   *  While held, the commandQueue rejects all other enqueue attempts. */
+  requiresExclusiveLock?: boolean;
 }
 
 export interface CommandDefinitionOptions {
@@ -56,6 +64,8 @@ export interface CommandDefinitionOptions {
    responseMode?: 'single_line' | 'multi_line' | 'fire_and_forget' | 'stream';
    idempotent?: boolean;
    safeDuringStreaming?: boolean;
+   isLongRunning?: boolean;
+   requiresExclusiveLock?: boolean;
 }
 
 /**
@@ -80,6 +90,8 @@ export function createSingleLineCommand<T>(
       responseMode: options?.responseMode || 'single_line',
       idempotent: options?.idempotent,
       safeDuringStreaming: options?.safeDuringStreaming,
+      isLongRunning: options?.isLongRunning,
+      requiresExclusiveLock: options?.requiresExclusiveLock,
       build: () => buildCommand(...args),
       successMatcher: (line: string) => regex.test(line),
       failureMatcher: (line: string) => options?.failureRegex?.test(line) ?? false,
@@ -128,6 +140,8 @@ export function createMultiLineCommand<T>(
       responseMode: options?.responseMode || 'multi_line',
       idempotent: options?.idempotent,
       safeDuringStreaming: options?.safeDuringStreaming,
+      isLongRunning: options?.isLongRunning,
+      requiresExclusiveLock: options?.requiresExclusiveLock,
       build: () => buildCommand(...args),
       successMatcher: (line: string) => lineMatcher.test(line) || endMatcher.test(line),
       failureMatcher: (line: string) => options?.failureRegex?.test(line) ?? false,
@@ -205,7 +219,14 @@ export const commandRegistry = {
       }
       return true;
     },
-    { timeoutMs: 120000, retryPolicy: { maxRetries: 0 }, idempotent: false, failureRegex: /^Error/i }
+    {
+      timeoutMs: 120000,
+      retryPolicy: { maxRetries: 0 },
+      idempotent: false,
+      failureRegex: /^Error/i,
+      isLongRunning: true,
+      requiresExclusiveLock: true,
+    }
   ),
   version: createSingleLineCommand<string>(
     'version',

@@ -31,8 +31,6 @@ export const HimaxFirmwareUpdateScreen = () => {
     useEffect(() => {
         return () => {
             unmountedRef.current = true
-            // Ensure heartbeats are unpaused if user forces back out early
-            requestAnimationFrame(() => bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: false, ts: Date.now() }))
         }
     }, [])
 
@@ -47,6 +45,8 @@ export const HimaxFirmwareUpdateScreen = () => {
                     line.includes('Erasing') || 
                     line.toLowerCase().includes('writing') || 
                     line.toLowerCase().includes('error') ||
+                    line.toLowerCase().includes('firmware update') ||
+                    line.toLowerCase().includes('verified') ||
                     line.includes('bytes written')
                 ) {
                     setProgressLogs(prev => {
@@ -72,8 +72,8 @@ export const HimaxFirmwareUpdateScreen = () => {
         setStatus('Preparing to update from SD card (output.img)...')
         setProgressLogs([])
 
-        // 1. Pause heartbeats! Himax Flash erase blocks UART making standard heartbeat kill the BLE link.
-        bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: true, ts: Date.now() })
+        // Heartbeat pause and transport lock are handled automatically
+        // by the protocol layer (aifirmware has isLongRunning + requiresExclusiveLock)
 
         try {
             const session = createBleSession(device)
@@ -110,7 +110,6 @@ export const HimaxFirmwareUpdateScreen = () => {
         } finally {
             if (!unmountedRef.current) {
                 setIsUpdating(false)
-                bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: false, ts: Date.now() })
             }
         }
     }, [device, navigation])

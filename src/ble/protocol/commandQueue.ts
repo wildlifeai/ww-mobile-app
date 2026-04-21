@@ -1,6 +1,7 @@
 import { bleEventBus, BleEvent } from './eventBus';
 import { BLE_PROTOCOL_TIMINGS } from './protocolConstants';
 import { DeviceSignal } from './deviceSignals';
+import { transportLock } from './transportLock';
 
 export type QueueState = 'IDLE' | 'RUNNING' | 'PAUSED_SLEEP' | 'PAUSED_BUSY';
 export type CommandState = 'CREATED' | 'ACTIVE' | 'COMPLETING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
@@ -47,6 +48,15 @@ class CommandQueue {
     options?: { signal?: AbortSignal }
   ): Promise<T> {
     return new Promise((resolve, reject) => {
+      // Enforce exclusive transport lock — reject if a long-running
+      // operation (e.g. firmware update) currently holds the lock
+      if (transportLock.isLocked) {
+        return reject(new Error(
+          `Transport locked by '${transportLock.holder}'. ` +
+          `Command rejected to protect active operation.`
+        ));
+      }
+
       const task: CommandTask<T> = {
         id: `cmd_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         execute: executeFn,

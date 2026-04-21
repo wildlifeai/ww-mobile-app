@@ -1,7 +1,12 @@
 import { StyleSheet } from 'react-native'
 import { Portal, Dialog, Button, Text } from 'react-native-paper'
 
-export type ScannerRoutingState = 'idle' | 'no_projects' | 'no_access_active_deployment'
+export type ScannerRoutingState =
+  | 'idle'
+  | 'no_projects'
+  | 'no_access_active_deployment'
+  | 'network_error'
+  | 'loading_timeout'
 
 type Props = {
     visible: boolean
@@ -56,6 +61,38 @@ export const ScannerRoutingDialog = ({
                         <Button onPress={commonDialogProps.onDismiss} disabled={isProcessing}><Text>Cancel</Text></Button>
                         <Button mode="contained" onPress={onCreateProject} disabled={isProcessing}>
                             <Text>Create Project</Text>
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            )}
+
+            {state === 'network_error' && (
+                <Dialog {...commonDialogProps}>
+                    <Dialog.Title><Text>Connection Error</Text></Dialog.Title>
+                    <Dialog.Content>
+                        <Text variant="bodyLarge">
+                            Could not reach the server to check your projects. Please check your internet connection and try again.
+                        </Text>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <Button mode="contained" onPress={commonDialogProps.onDismiss} disabled={isProcessing}>
+                            <Text>OK</Text>
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            )}
+
+            {state === 'loading_timeout' && (
+                <Dialog {...commonDialogProps}>
+                    <Dialog.Title><Text>Server Slow</Text></Dialog.Title>
+                    <Dialog.Content>
+                        <Text variant="bodyLarge">
+                            The server is taking too long to respond. Please try again in a few moments.
+                        </Text>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <Button mode="contained" onPress={commonDialogProps.onDismiss} disabled={isProcessing}>
+                            <Text>OK</Text>
                         </Button>
                     </Dialog.Actions>
                 </Dialog>

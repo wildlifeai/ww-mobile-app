@@ -7,11 +7,9 @@ import { useAppSelector } from '../../redux'
 import { useExtendedTheme } from '../../theme'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { useBle } from '../../hooks/useBle'
 import { BleConsoleOutput, ConsoleEntry } from '../../components/BleConsoleOutput'
 import { CommandReferenceModal } from '../../components/CommandReferenceModal'
 import { FlowsReferenceModal } from '../../components/FlowsReferenceModal'
-import { log } from '../../utils/logger'
 import { bleEventBus, BleEvent } from '../../ble/protocol/eventBus'
 
 import { styles } from './components/EngineerConsoleScreen.styles'
@@ -39,9 +37,7 @@ export const EngineerConsoleScreen = () => {
     const device = useAppSelector(state => state.devices[deviceId || ''])
     const logs = useAppSelector(state => state.logs[deviceId || ''] || [])
 
-    const { writeRaw, disconnectDevice } = useBle()
     const [consoleState, dispatch] = useReducer(consoleReducer, initialConsoleState)
-    const isNavigatingAway = useRef(false)
 
     const {
         handleSend,
@@ -69,24 +65,10 @@ export const EngineerConsoleScreen = () => {
         })
     }, [navigation, headerLeft])
 
-    // Intercept Back Navigation (swipe/pop) to ensure device disconnection
-    useEffect(() => {
-        const unsubscribe = navigation.addListener('beforeRemove', async (e: any) => {
-            if (isNavigatingAway.current) return
-
-            e.preventDefault()
-
-            if (device?.connected) {
-                log('[EngineerConsole] Back navigated - disconnecting device...')
-                isNavigatingAway.current = true
-                await disconnectDevice(device)
-            }
-
-            navigation.dispatch(e.data.action)
-        })
-
-        return unsubscribe
-    }, [navigation, device, disconnectDevice])
+    // Connection Ownership: Engineer Console is a CHILD screen.
+    // It must NOT disconnect on back-navigation.
+    // The parent screen (StartMonitoring / StopMonitoring) owns the BLE lifecycle.
+    // See: src/ble/CONNECTION_OWNERSHIP.md
 
     const lastProcessedLogLength = useRef<number>(0)
 
@@ -126,7 +108,7 @@ export const EngineerConsoleScreen = () => {
             payload: { newEntries: historyEntries, isWaitingForCapture: false }
         })
 
-    }, [logs, device, writeRaw])
+    }, [logs, device])  
 
 
     if (!device) {

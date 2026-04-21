@@ -3,6 +3,8 @@ import { ExtendedPeripheral } from '../../redux/slices/devicesSlice';
 import { CommandContext } from './commandRegistry';
 import { BLE_PROTOCOL_RETRIES, BLE_PROTOCOL_TIMINGS } from './protocolConstants';
 import { commandQueue } from './commandQueue';
+import { bleEventBus } from './eventBus';
+import { transportLock } from './transportLock';
 
 /**
  * Classifies if an error is eligible for a retry.
@@ -40,26 +42,50 @@ export async function runCommandPipeline<T>(
   const maxRetries = options?.maxRetries ?? context.retryPolicy?.maxRetries ?? BLE_PROTOCOL_RETRIES.DEFAULT_MAX_RETRIES;
   let attempt = 0;
 
-  while (true) {
-    try {
-      return await runCommand(peripheral, commandConstructor);
-    } catch (error: any) {
-      if (attempt >= maxRetries || !isRetryable(error)) {
-        throw error;
-      }
-      
-      attempt++;
+  // ── Long-running: Pause heartbeats automatically ──
+  if (context.isLongRunning) {
+    bleEventBus.emitEvent({
+      type: 'HEARTBEAT_PAUSE', isPaused: true, ts: Date.now()
+    });
+  }
 
-      // If the error was DEVICE_BUSY, we inject a delay via the Constant
-      if (error.message.includes('DEVICE_BUSY')) {
-        await new Promise(r => setTimeout(r, BLE_PROTOCOL_TIMINGS.BUSY_RETRY_DELAY_MS));
-        // Also manually tell the queue it can unpause from BUSY
-        commandQueue.resumeFromBusy();
+  // ── Exclusive lock: Acquire ──
+  if (context.requiresExclusiveLock) {
+    transportLock.acquire(context.name);
+  }
+
+  try {
+    while (true) {
+      try {
+        return await runCommand(peripheral, commandConstructor);
+      } catch (error: any) {
+        if (attempt >= maxRetries || !isRetryable(error)) {
+          throw error;
+        }
+        
+        attempt++;
+
+        // If the error was DEVICE_BUSY, we inject a delay via the Constant
+        if (error.message.includes('DEVICE_BUSY')) {
+          await new Promise(r => setTimeout(r, BLE_PROTOCOL_TIMINGS.BUSY_RETRY_DELAY_MS));
+          // Also manually tell the queue it can unpause from BUSY
+          commandQueue.resumeFromBusy();
+        }
+        
+        // If the error was DEVICE_SLEEP, the commandQueue itself will be paused 
+        // waiting for a WAKE signal. We just loop around, and the queue processor
+        // won't let this run until the state machine transitions to RUNNING again.
       }
-      
-      // If the error was DEVICE_SLEEP, the commandQueue itself will be paused 
-      // waiting for a WAKE signal. We just loop around, and the queue processor
-      // won't let this run until the state machine transitions to RUNNING again.
+    }
+  } finally {
+    // ── Always release, regardless of success/failure ──
+    if (context.requiresExclusiveLock) {
+      transportLock.release();
+    }
+    if (context.isLongRunning) {
+      bleEventBus.emitEvent({
+        type: 'HEARTBEAT_PAUSE', isPaused: false, ts: Date.now()
+      });
     }
   }
 }
