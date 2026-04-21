@@ -15,6 +15,18 @@
 import { bleEventBus, BleEvent } from './eventBus'
 import { log } from '../../utils/logger'
 
+/**
+ * Thrown when a waitFor() call exceeds its timeout.
+ * Callers should use instanceof StreamTimeoutError instead of
+ * checking error.message strings.
+ */
+export class StreamTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Stream timed out after ${timeoutMs}ms`)
+    this.name = 'StreamTimeoutError'
+  }
+}
+
 export class TextStreamScope {
   private handler: ((event: BleEvent & { type: 'TEXT_LINE' }) => void) | null = null
   private destroyed = false
@@ -51,7 +63,7 @@ export class TextStreamScope {
 
       timer = setTimeout(() => {
         cleanup()
-        reject(new Error('TIMEOUT'))
+        reject(new StreamTimeoutError(timeoutMs))
       }, timeoutMs)
 
       this.handler = (event: BleEvent & { type: 'TEXT_LINE' }) => {

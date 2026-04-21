@@ -20,7 +20,7 @@ import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { writeBinaryToDevice } from '../../transport'
 import { bleEventBus, BleEvent } from '../eventBus'
 import { transportLock } from '../transportLock'
-import { TextStreamScope } from '../textStreamScope'
+import { TextStreamScope, StreamTimeoutError } from '../textStreamScope'
 import { crc16ccitt } from './crc16ccitt'
 import { isValid83Filename } from './filenameValidator'
 import { buildFileStartPacket, buildFileDataPacket, buildFileEndPacket } from './fileTransferPackets'
@@ -38,6 +38,9 @@ import {
   MAX_CONSECUTIVE_TIMEOUTS,
 } from './fileTransferTypes'
 import { log, logError } from '../../../utils/logger'
+
+ 
+const appVersion: string = require('../../../../package.json').version ?? '0.0.0'
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -128,44 +131,72 @@ export async function runFileTransferPipeline(
     disconnectOccurred: false,
     crcVerified: false,
     platform: Platform.OS,
-    appVersion: '1.0.0', // TODO: read from app config
+    appVersion,
   }
 
-  // ── Scoped stream + disconnect + abort promises ────────────────
+  // ── Scoped stream + disconnect + abort + silence promises ──────
   const stream = new TextStreamScope(
     peripheral.id,
     (line: string) => line.startsWith('ftx '),
   )
 
-  // Silence tracking — only ftx lines reset the timer
-  let lastTransferActivityTs = Date.now()
-  let silenceChecker: ReturnType<typeof setInterval> | null = null
+  // Silence tracking — rejects when no ftx-prefixed UART activity
+  // for SILENCE_TIMEOUT_MS. Uses a promise (not setInterval) so it
+  // participates properly in Promise.race inside waitForAck.
+  let silenceReject: ((err: Error) => void) | null = null
+  let silenceTimer: ReturnType<typeof setTimeout> | null = null
+
+  function resetSilenceTimer() {
+    if (silenceTimer) clearTimeout(silenceTimer)
+    silenceTimer = setTimeout(() => {
+      silenceReject?.(
+        new FileTransferError(
+          'DEVICE_SILENT',
+          'No transfer response for 15 seconds — device may be stuck',
+        ),
+      )
+    }, SILENCE_TIMEOUT_MS)
+  }
+
+  const silencePromise = new Promise<never>((_resolve, reject) => {
+    silenceReject = reject
+  })
+
   const silenceHandler = (event: BleEvent & { type: 'TEXT_LINE' }) => {
     if (event.deviceId !== peripheral.id) return
     if (typeof event.line === 'string' && event.line.startsWith('ftx ')) {
-      lastTransferActivityTs = Date.now()
+      resetSilenceTimer()
     }
   }
 
-  // Disconnect detection
+  // Disconnect detection — explicit NativeModules guard
   let disconnectCleanup: (() => void) | null = null
   let disconnectReject: ((err: Error) => void) | null = null
   const disconnectPromise = new Promise<never>((_resolve, reject) => {
     disconnectReject = reject
   })
 
-  // Setup native listener separately so cleanup ref is always assigned
-  try {
-    const emitter = new NativeEventEmitter(NativeModules.BleManager)
-    const sub = emitter.addListener('BleManagerDisconnectPeripheral', (event: { peripheral: string }) => {
-      if (event.peripheral === peripheral.id) {
-        disconnectOccurred = true
-        disconnectReject?.(new FileTransferError('DISCONNECTED', 'Device disconnected during transfer'))
-      }
-    })
-    disconnectCleanup = () => sub.remove()
-  } catch {
-    // In test environment, NativeModules may not be available
+  if (NativeModules.BleManager) {
+    try {
+      const emitter = new NativeEventEmitter(NativeModules.BleManager)
+      const sub = emitter.addListener(
+        'BleManagerDisconnectPeripheral',
+        (event: { peripheral: string }) => {
+          if (event.peripheral === peripheral.id) {
+            disconnectOccurred = true
+            disconnectReject?.(
+              new FileTransferError(
+                'DISCONNECTED',
+                'Device disconnected during transfer',
+              ),
+            )
+          }
+        },
+      )
+      disconnectCleanup = () => sub.remove()
+    } catch {
+      // Safety net — should not occur if NativeModules.BleManager exists
+    }
   }
 
   // User cancel
@@ -182,7 +213,7 @@ export async function runFileTransferPipeline(
 
   // Helper: race ACK wait against disconnect + abort + silence
   async function waitForAck(expected: ExpectedAck): Promise<string> {
-    lastTransferActivityTs = Date.now() // reset on send
+    resetSilenceTimer() // reset on send
 
     const ackPromise = stream.waitFor((line: string) => {
       const result = matchAck(line, expected)
@@ -196,7 +227,7 @@ export async function runFileTransferPipeline(
       return false
     }, ACK_TIMEOUT_MS)
 
-    const races: Promise<any>[] = [ackPromise, disconnectPromise]
+    const races: Promise<any>[] = [ackPromise, disconnectPromise, silencePromise]
     if (abortSignal) races.push(abortPromise)
 
     return Promise.race(races)
@@ -212,11 +243,7 @@ export async function runFileTransferPipeline(
 
     // Start silence monitoring
     bleEventBus.on('textLine', silenceHandler)
-    silenceChecker = setInterval(() => {
-      if (Date.now() - lastTransferActivityTs > SILENCE_TIMEOUT_MS) {
-        throw new FileTransferError('DEVICE_SILENT', 'No transfer response for 15 seconds — device may be stuck')
-      }
-    }, 1000)
+    resetSilenceTimer()
 
     // ── Phase 1: FILE_START ────────────────────────────────────────
     emitProgress('starting')
@@ -248,31 +275,41 @@ export async function runFileTransferPipeline(
 
       const dataPacket = buildFileDataPacket(wirePacketNum, chunk)
 
-      try {
-        await writeBinaryToDevice(peripheral, dataPacket, false) // write without response
-        const ackStartTime = Date.now()
-        await waitForAck({ phase: 'data', packetNum: wirePacketNum })
+      // Retry loop for this single packet
+      let packetAcked = false
+      while (!packetAcked) {
+        try {
+          await writeBinaryToDevice(peripheral, dataPacket, false)
+          const ackStartTime = Date.now()
+          await waitForAck({ phase: 'data', packetNum: wirePacketNum })
 
-        // Track timing for ETA
-        ackTimes.push(Date.now() - ackStartTime)
-        consecutiveTimeouts = 0
-      } catch (err: any) {
-        if (err instanceof FileTransferError && err.reason === 'ACK_TIMEOUT') {
-          consecutiveTimeouts++
-          if (consecutiveTimeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
-            throw new FileTransferError('ACK_TIMEOUT', `${MAX_CONSECUTIVE_TIMEOUTS} consecutive ACK timeouts — Bluetooth connection unstable`)
+          // Success — track timing for ETA
+          ackTimes.push(Date.now() - ackStartTime)
+          consecutiveTimeouts = 0
+          packetAcked = true
+        } catch (err: any) {
+          // Classify: is this a timeout we can retry?
+          const isTimeout =
+            err instanceof StreamTimeoutError ||
+            (err instanceof FileTransferError && err.reason === 'ACK_TIMEOUT')
+
+          if (!isTimeout) {
+            // Non-timeout errors (disconnect, abort, device error) are fatal
+            throw err
           }
-          // For TIMEOUT errors from the stream, wrap with our type
-          throw err
-        }
-        if (err instanceof Error && err.message === 'TIMEOUT') {
+
           consecutiveTimeouts++
+          log(`[FileTransfer] ACK timeout for packet ${wirePacketNum} (${consecutiveTimeouts}/${MAX_CONSECUTIVE_TIMEOUTS})`)
+
           if (consecutiveTimeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
-            throw new FileTransferError('ACK_TIMEOUT', `${MAX_CONSECUTIVE_TIMEOUTS} consecutive ACK timeouts — Bluetooth connection unstable`)
+            throw new FileTransferError(
+              'ACK_TIMEOUT',
+              `${MAX_CONSECUTIVE_TIMEOUTS} consecutive ACK timeouts — Bluetooth connection unstable`,
+            )
           }
-          throw new FileTransferError('ACK_TIMEOUT', `ACK timeout for packet ${wirePacketNum}`)
+
+          // Retry: re-send the same packet (loop continues)
         }
-        throw err
       }
 
       bytesSent = chunkEnd
@@ -336,7 +373,7 @@ export async function runFileTransferPipeline(
   } finally {
     // ALWAYS cleanup, even on crash
     stream.destroy()
-    if (silenceChecker) clearInterval(silenceChecker)
+    if (silenceTimer) clearTimeout(silenceTimer)
     bleEventBus.removeListener('textLine', silenceHandler)
     disconnectCleanup?.()
     transportLock.release(transferId)
