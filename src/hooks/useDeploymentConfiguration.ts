@@ -31,12 +31,30 @@ export const useDeploymentConfiguration = () => {
         session: any,
         deploymentId: string,
         location?: { latitude: number; longitude: number; altitude: number },
-        recordGpsInImages?: boolean
+        recordGpsInImages?: boolean,
+        currentOps?: string[]
     ): Promise<void> => {
         log('[DeployConfig] Setting deployment ID:', deploymentId)
 
         await session.execute(() => commandRegistry.setdid(deploymentId))
         log('[DeployConfig] Deployment ID set successfully via AI setdid')
+
+        // Reset image directory counters so the new deployment starts at IMAGES.000
+        // Firmware creates /MEDIA/<id>/IMAGES.<NNN>/ subdirectories but does not
+        // auto-reset the index when setdid is called.
+        if (!currentOps || currentOps.length <= OP_PARAMETER.IMAGES_FILE_INDEX || currentOps[OP_PARAMETER.IMAGES_FILE_INDEX] !== '0') {
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.IMAGES_FILE_INDEX, value: 0 }))
+        } else {
+            log('[DeployConfig] Skipping reset of Op 20 (already 0)')
+        }
+
+        if (!currentOps || currentOps.length <= OP_PARAMETER.IMAGES_COUNT || currentOps[OP_PARAMETER.IMAGES_COUNT] !== '0') {
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.IMAGES_COUNT, value: 0 }))
+        } else {
+            log('[DeployConfig] Skipping reset of Op 19 (already 0)')
+        }
+        
+        log('[DeployConfig] Image directory counters handled (Op 19+20)')
 
         // Always enforce GPS writing based on privacy setting
         if (recordGpsInImages && location) {
@@ -130,7 +148,7 @@ export const useDeploymentConfiguration = () => {
             const currentOps = await session.execute(commandRegistry.getops)
 
             // 1. Set deployment ID (with auto-fallback and GPS enforce)
-            await setDeploymentId(session, config.deploymentId, config.location, config.recordGpsInImages)
+            await setDeploymentId(session, config.deploymentId, config.location, config.recordGpsInImages, currentOps)
 
             // 2. Configure capture settings
             await configureCaptureMethod(session, config, currentOps)
