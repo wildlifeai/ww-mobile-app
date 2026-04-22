@@ -76,16 +76,16 @@ The protocol is **strict stop-and-wait**. These guarantees are non-negotiable:
 
 ### CRC Algorithm & Scope
 
-**CRC-16/CCITT-FALSE** (not XMODEM, not augmented)
+**CRC-16/CCITT (Augmented)** (matches firmware `crc16_ccitt.c`)
 
 ```
 Polynomial: 0x1021
 Init:       0xFFFF  
 Reflect:    No
-Final XOR:  None
+Augment:    2 bytes of 0x00 appended after data
 ```
 
-**Test vector:** `"123456789"` (9 ASCII bytes, no null) → `0x29B1`
+**Test vector:** `"123456789"` (9 ASCII bytes, no null) → `0xE5CC`
 
 **CRC scope — computed over file data bytes ONLY:**
 - ✅ The raw file content bytes (exactly what gets written to SD)
@@ -94,18 +94,17 @@ Final XOR:  None
 - ❌ Does NOT include packet numbers
 - ❌ Does NOT include null terminators from filename
 
-Reference C implementation:
+Reference C implementation (from firmware `crc16_ccitt.c`):
 ```c
-uint16_t crc16_ccitt(const uint8_t *data, size_t len) {
-    uint16_t crc = 0xFFFF;
-    for (size_t i = 0; i < len; i++) {
-        crc ^= ((uint16_t)data[i] << 8);
-        for (int j = 0; j < 8; j++) {
-            if (crc & 0x8000)
-                crc = (crc << 1) ^ 0x1021;
-            else
-                crc = crc << 1;
-        }
+uint16_t crc16_ccitt_update(uint8_t byte, uint16_t crc) {
+    crc = ((crc << 8) | byte) ^ crc16_ccitt_table[crc >> 8];
+    return crc;
+}
+
+uint16_t crc16_ccitt_finalize(uint16_t crc) {
+    /* Augment 16 zero-bits */
+    for (int i = 0; i < 2; i++) {
+        crc = crc16_ccitt_update(0, crc);
     }
     return crc;
 }
@@ -318,11 +317,12 @@ The firmware must reject packets that arrive in the wrong state:
 | 2 | nRF52 | Malformed packet (too short / bad length) | Never retry |
 | 3 | nRF52 | Bad filename (not 8.3 uppercase) | Never retry |
 | 4 | nRF52 | I2C send to HX6538 failed | Operator retry |
-| 5 | HX6538 | SD card not present or not mounted | Operator retry |
-| 6 | HX6538 | CRC mismatch (file corrupted) | Auto-retry once |
-| 7 | HX6538 | SD card full (insufficient space) | Manual intervention |
-| 8 | HX6538 | File open/write/close error | Operator retry |
-| 9 | HX6538 | Packet sequence mismatch (out-of-order) | Never retry |
+| 5 | HX6538 | Filename validation failed on AI processor | Never retry |
+| 6 | HX6538 | Failed to open or create file on SD card | Operator retry |
+| 7 | HX6538 | SD card write failed | Operator retry |
+| 8 | HX6538 | Packet sequence mismatch (out-of-order) | Never retry |
+| 9 | HX6538 | CRC mismatch (file corrupted) | Auto-retry once |
+| 10 | HX6538 | Malformed frame (e.g. zero-length chunk) | Never retry |
 
 ### Required Firmware Logs
 
@@ -332,8 +332,8 @@ Firmware must log these events for debugging (via UART console):
 ftx: FILE_START received, file=HELLO.TXT, size=13
 ftx: FILE_DATA pkt 1 received, 13 bytes written
 ftx: FILE_DATA pkt 1 duplicate, ignored
-ftx: FILE_END received, CRC=0x29B1, verified=OK
-ftx: ERROR code=9, expected pkt 3 got pkt 5
+ftx: FILE_END received, CRC=0xE5CC, verified=OK
+ftx: ERROR code=8, expected pkt 3 got pkt 5
 ftx: Transfer complete, 13 bytes, 1 packets
 ftx: Abort received, partial file deleted
 ftx: Boot cleanup: deleted HELLO.TXT.tmp
@@ -471,7 +471,7 @@ fileTx AI resp: 'ack end' state=1     ← CRC verified, translates to "ftx done"
 | `ftx err 4` | I2C bus failure. Check physical connection between nRF52 and HX6538. |
 | `ftx err 9` on packet 2+ | Duplicate or out-of-order packet. Check BLE retry behavior. |
 | App timeout after FILE_START | HX6538 not responding to I2C file message. Is the HX6538 handler implemented? |
-| CRC mismatch | Different CRC algorithm variants. Verify test vector: `"123456789"` → `0x29B1` on both sides. |
+| `ftx err 9` | CRC mismatch. Check that firmware computes CRC with 2 zero-bytes augmentation. Verify test vector: `"123456789"` → `0xE5CC` on both sides. |
 | Partial file on SD | Transfer interrupted. Check for `.tmp` file — should be cleaned up on boot. |
 
 ### Wire-Level Validation
@@ -496,7 +496,7 @@ fileTx AI resp: 'ack end' state=1     ← CRC verified, translates to "ftx done"
 - [ ] Implement HX6538 handler for `AI_PROCESSOR_MSG_FILE_START` (7)
 - [ ] Implement HX6538 handler for `AI_PROCESSOR_MSG_FILE_DATA` (8)
 - [ ] Implement HX6538 handler for `AI_PROCESSOR_MSG_FILE_END` (9)
-- [ ] Verify CRC-16/CCITT-FALSE: `"123456789"` → `0x29B1`
+- [ ] Verify CRC-16/CCITT (Augmented): `"123456789"` → `0xE5CC`
 - [ ] Verify CRC covers data bytes only (no headers, no filename)
 - [ ] Write `ftx ack 0` response for FILE_START
 - [ ] Write `ftx ack <N>` response for FILE_DATA (echo packet number)

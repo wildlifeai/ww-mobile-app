@@ -43,6 +43,7 @@ import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
 import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMotionDetectionScreen"
 import { CameraSettingsTestScreen } from "../screens/Devices/CameraSettingsTestScreen"
 import { HimaxFirmwareUpdateScreen } from "../screens/Devices/HimaxFirmwareUpdateScreen"
+import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScreen"
 import { DfuScreen } from "../screens/Devices/DfuScreen"
 
 // Developer screens
@@ -208,6 +209,11 @@ export const MainNavigation = () => {
 							name="HimaxFirmwareUpdateScreen"
 							component={HimaxFirmwareUpdateScreen}
 							options={{ title: "Himax Firmware Update" }}
+						/>
+						<Stack.Screen
+							name="FileTransferTestScreen"
+							component={FileTransferTestScreen}
+							options={{ title: "File Transfer Test" }}
 						/>
 
 						<Stack.Screen

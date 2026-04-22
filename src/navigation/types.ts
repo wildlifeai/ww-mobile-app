@@ -34,6 +34,7 @@ export interface RootStackParamList extends ParamListBase {
 	StandaloneMotionDetectionScreen: { deviceId: string }
 	CameraSettingsTestScreen: { deviceId: string }
 	HimaxFirmwareUpdateScreen: { deviceId: string }
+	FileTransferTestScreen: { deviceId: string }
 
 	StartMonitoringDetailsStep: { projectId?: string; deviceId?: string; bleDeviceId?: string; initPayload?: InitPayload }
 	DeploymentDetails: { deploymentId: string }

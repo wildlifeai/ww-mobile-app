@@ -108,6 +108,10 @@ export const useEngineerConsoleActions = ({
             navigation.navigate('HimaxFirmwareUpdateScreen', { deviceId: device?.id })
             return
         }
+        if (cmdName === CommandNames.FILE_TRANSFER_TEST) {
+            navigation.navigate('FileTransferTestScreen', { deviceId: device?.id })
+            return
+        }
 
         // Handle local commands
         if (cmdName === CommandNames.CLEAR_CONSOLE) {

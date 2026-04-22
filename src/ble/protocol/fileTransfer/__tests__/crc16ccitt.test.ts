@@ -1,9 +1,9 @@
 import { crc16ccitt } from '../crc16ccitt'
 
 describe('crc16ccitt', () => {
-  it('matches test vector: "123456789" → 0x29B1', () => {
+  it('matches firmware test vector: "123456789" → 0xE5CC', () => {
     const data = new TextEncoder().encode('123456789')
-    expect(crc16ccitt(data)).toBe(0x29B1)
+    expect(crc16ccitt(data)).toBe(0xE5CC)
   })
 
   it('returns 0xFFFF augmented for empty input', () => {
