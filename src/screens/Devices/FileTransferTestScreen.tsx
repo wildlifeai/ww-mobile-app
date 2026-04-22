@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
-import { Button, Appbar, ProgressBar, Chip, Divider } from 'react-native-paper'
+import { Button, Appbar, ProgressBar, Chip, Divider, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
 
@@ -92,7 +92,7 @@ export const FileTransferTestScreen = () => {
     const [isTransferring, setIsTransferring] = useState(false)
     const [progress, setProgress] = useState<FileTransferProgress | null>(null)
     const [result, setResult] = useState<{ success: boolean; message: string; details?: string } | null>(null)
-    const [transferLog, setTransferLog] = useState<string[]>([])
+    const [transferLog, setTransferLog] = useState<{ id: string; text: string }[]>([])
     const abortRef = useRef<AbortController | null>(null)
     const unmountedRef = useRef(false)
 
@@ -101,7 +101,11 @@ export const FileTransferTestScreen = () => {
     }, [])
 
     const addLog = useCallback((msg: string) => {
-        setTransferLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`])
+        const timestamp = new Date().toLocaleTimeString()
+        setTransferLog(prev => [
+            ...prev,
+            { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] ${msg}` }
+        ])
     }, [])
 
     const startTransfer = useCallback(async (index: number) => {
@@ -207,7 +211,7 @@ export const FileTransferTestScreen = () => {
                             <View style={styles.fileCardHeader}>
                                 <WWText variant="titleSmall">{file.name}</WWText>
                                 <Chip compact textStyle={{ fontSize: 10 }}>
-                                    CRC: 0x{fileCrc.toString(16).toUpperCase().padStart(4, '0')}
+                                    <Text>CRC: 0x{fileCrc.toString(16).toUpperCase().padStart(4, '0')}</Text>
                                 </Chip>
                             </View>
                             <WWText variant="bodySmall" style={{ opacity: 0.7, marginBottom: 8 }}>
@@ -308,9 +312,9 @@ export const FileTransferTestScreen = () => {
                             Transfer Log
                         </WWText>
                         <View style={[styles.logBox, { backgroundColor: colors.surfaceVariant }]}>
-                            {transferLog.map((line, i) => (
-                                <WWText key={`log-${i}`} variant="bodySmall" style={[styles.logLine, { color: colors.onSurfaceVariant }]}>
-                                    {line}
+                            {transferLog.map((logItem) => (
+                                <WWText key={logItem.id} variant="bodySmall" style={[styles.logLine, { color: colors.onSurfaceVariant }]}>
+                                    {logItem.text}
                                 </WWText>
                             ))}
                         </View>
