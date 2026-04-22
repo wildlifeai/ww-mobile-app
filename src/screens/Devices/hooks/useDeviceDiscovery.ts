@@ -38,7 +38,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const { runChecks: runPreDeploymentChecks } = useDevicePreDeploymentChecks()
     const { initialize: runBleStandardInit } = useBleInitialization()
     const devices = useAppSelector((state) => state.devices)
-    const { isScanning } = useAppSelector((state) => state.scanning)
+    const { isScanning, isEngineerConsoleActive } = useAppSelector((state) => state.scanning)
     const currentOrganisation = useAppSelector(selectCurrentOrganisation)
     const user = useAppSelector((state) => state.authentication.user)
 
@@ -138,7 +138,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                     scanCommandLockRef.current = false
                 }, 500)
             }
-        } else if ((!isActuallyFocused || !scanSessionActiveRef.current) && isScanning && !scanCommandLockRef.current) {
+        } else if ((!isActuallyFocused || !scanSessionActiveRef.current) && isScanning && !scanCommandLockRef.current && !isEngineerConsoleActive) {
             scanCommandLockRef.current = true
             stopScan().then(() => {
                 setTimeout(() => {
@@ -148,7 +148,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 scanCommandLockRef.current = false
             })
         }
-    }, [isFocused, isDrawerOpen, isActiveTab, isScanning, isBleConnecting, processing, connectingDevice, startScan, stopScan, scanSessionActive])
+    }, [isFocused, isDrawerOpen, isActiveTab, isScanning, isBleConnecting, processing, connectingDevice, startScan, stopScan, scanSessionActive, isEngineerConsoleActive])
 
     const handleScan = useCallback(() => {
         startScanSession()
@@ -420,7 +420,6 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     }, [disconnectDevice, devices, updateRoutingState, connectingDevice, autoConnect])
 
     // Auto-connect logic
-    const { isEngineerConsoleActive } = useAppSelector((state) => state.scanning)
 
     // Reset all device states whenever focus returns to this screen
     // or when the user changes organisation.
