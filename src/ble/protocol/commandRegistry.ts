@@ -223,7 +223,6 @@ export const commandRegistry = {
       timeoutMs: 120000,
       retryPolicy: { maxRetries: 0 },
       idempotent: false,
-      failureRegex: /^Error/i,
       isLongRunning: true,
       requiresExclusiveLock: true,
     }
