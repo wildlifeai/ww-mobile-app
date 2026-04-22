@@ -20,6 +20,7 @@ import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { writeBinaryToDevice } from '../../transport'
 import { bleEventBus, BleEvent } from '../eventBus'
 import { transportLock } from '../transportLock'
+import { commandQueue } from '../commandQueue'
 import { TextStreamScope, StreamTimeoutError } from '../textStreamScope'
 import { crc16ccitt } from './crc16ccitt'
 import { isValid83Filename } from './filenameValidator'
@@ -237,6 +238,11 @@ export async function runFileTransferPipeline(
 
   // ── Acquire transport lock + execute transfer ──────────────────
   try {
+    // Ensure no other commands are running
+    if (commandQueue.isBusy()) {
+      throw new FileTransferError('VALIDATION_FAILED', 'Cannot start transfer while another command is in progress')
+    }
+
     // Acquire lock
     transportLock.acquire(transferId)
     
