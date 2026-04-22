@@ -169,6 +169,19 @@ export function createMultiLineCommand<T>(
 }
 
 /**
+ * HX6538 firmware update error codes returned by xip_update_firmware_from_sd().
+ * Maps numeric codes to human-readable descriptions for field debugging.
+ */
+const FIRMWARE_ERROR_CODES: Record<number, string> = {
+  [-1]: 'firmware file not found on SD card (/MANIFEST/output.img)',
+  [-2]: 'SD card read error',
+  [-3]: 'flash erase failed',
+  [-4]: 'flash write failed',
+  [-5]: 'flash verify mismatch — data written does not match source',
+  [-6]: 'slot selector write failed',
+};
+
+/**
  * Exported registry of constructed commands.
  */
 export const commandRegistry = {
@@ -210,12 +223,13 @@ export const commandRegistry = {
   ),
   aifirmware: createSingleLineCommand<boolean>(
     'aifirmware',
-    (filename?: string) => `AI firmware ${filename || 'output.img'}`,
+    (filename: string) => `AI firmware ${filename}`,
     /Firmware update (OK|FAILED)(?: \(error (-?\d+)\))?/i,
     (match) => {
       if (match[1].toUpperCase() === 'FAILED') {
-         const errorCode = match[2] ? match[2] : 'unknown';
-         throw new Error(`Firmware update failed on device (error ${errorCode}). Existing firmware unchanged.`);
+         const errorCode = match[2] ? parseInt(match[2], 10) : NaN;
+         const errorMsg = FIRMWARE_ERROR_CODES[errorCode] ?? `unknown error (${match[2] ?? '?'})`;
+         throw new Error(`Firmware update failed: ${errorMsg}`);
       }
       return true;
     },

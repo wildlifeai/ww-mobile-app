@@ -888,7 +888,7 @@ export const useStartDeployment = ({
                             setIsHimaxUpdating(true)
                             setHimaxUpdateProgress('Sending firmware flash command...')
 
-                            const success = await bleSession!.execute(commandRegistry.aifirmware)
+                            const success = await bleSession!.execute(() => commandRegistry.aifirmware('output.img'))
 
                             if (success) {
                                 setHimaxUpdateProgress('Firmware flashed! Sending reset...')
