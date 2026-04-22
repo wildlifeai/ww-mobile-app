@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
-import { Button, Appbar, ActivityIndicator } from 'react-native-paper'
+import { Button, ActivityIndicator } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
 
@@ -116,11 +116,6 @@ export const HimaxFirmwareUpdateScreen = () => {
 
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
-            <Appbar.Header style={{ backgroundColor: colors.surface }}>
-                <Appbar.BackAction onPress={() => navigation.goBack()} disabled={isUpdating} />
-                <Appbar.Content title="AI Firmware Update" />
-            </Appbar.Header>
-
             <ScrollView contentContainerStyle={[styles.content, { padding: spacing }]}>
                 
                 <WWText variant="titleLarge" style={{ marginBottom: spacing }}>
