@@ -331,7 +331,7 @@ export const HimaxFirmwareUpdateScreen = () => {
                     {progressLogs.length > 0 && (
                         <View style={styles.marginTop16}>
                             {progressLogs.map((logLine, idx) => (
-                                <WWText key={`fwlog-${idx}-${logLine.substring(0, 20)}`} variant="bodySmall" style={[styles.logText, { color: colors.onSurfaceVariant }]}>
+                                <WWText key={logLine + idx.toString()} variant="bodySmall" style={[styles.logText, { color: colors.onSurfaceVariant }]}>
                                     → {logLine}
                                 </WWText>
                             ))}

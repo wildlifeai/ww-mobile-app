@@ -144,7 +144,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                                     contentStyle={styles.searchButtonContent}
                                     labelStyle={styles.searchButtonLabel}
                                 >
-                                    Search Again
+                                    <Text>Search Again</Text>
                                 </Button>
                             </>
                         )}
