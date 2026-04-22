@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
-import { Button, ActivityIndicator, ProgressBar } from 'react-native-paper'
+import { Button, ActivityIndicator, ProgressBar, IconButton } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
 
@@ -25,8 +25,8 @@ type UpdatePhase = 'idle' | 'sending' | 'waking' | 'erasing' | 'writing' | 'veri
 const PHASE_PROGRESS: Record<UpdatePhase, number> = {
     idle:      0,
     sending:   0.05,
-    waking:    0.08,
-    erasing:   0.15,
+    waking:    0.10,
+    erasing:   0.25,
     writing:   0.60,
     verifying: 0.85,
     complete:  1.0,
@@ -36,11 +36,11 @@ const PHASE_PROGRESS: Record<UpdatePhase, number> = {
 const PHASE_LABEL: Record<UpdatePhase, string> = {
     idle:      'Ready to update.',
     sending:   'Sending firmware update command...',
-    waking:    'Waking AI processor...',
+    waking:    'Waking AI processor & running selftest...',
     erasing:   'Erasing flash slot...',
     writing:   'Writing firmware to flash...',
     verifying: 'Verifying written firmware...',
-    complete:  'Update successful! Rebooting device...',
+    complete:  'Update complete!',
     failed:    'Update failed.',
 }
 
@@ -56,6 +56,11 @@ export const HimaxFirmwareUpdateScreen = () => {
     const [phase, setPhase] = useState<UpdatePhase>('idle')
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
     const [progressLogs, setProgressLogs] = useState<string[]>([])
+
+    // Version tracking
+    const [previousVersion, setPreviousVersion] = useState<string | null>(null)
+    const [newVersion, setNewVersion] = useState<string | null>(null)
+    const [isQueryingVersion, setIsQueryingVersion] = useState(false)
 
     const unmountedRef = useRef(false)
     const phaseRef = useRef<UpdatePhase>('idle')
@@ -78,6 +83,34 @@ export const HimaxFirmwareUpdateScreen = () => {
         }
     }, [])
 
+    // Query AI processor version on mount so we have a "before" value
+    useEffect(() => {
+        if (!device?.connected) return
+        let cancelled = false
+
+        const queryVersion = async () => {
+            setIsQueryingVersion(true)
+            try {
+                const session = createBleSession(device)
+                const ver = await session.execute(() => commandRegistry.aiver())
+                if (!cancelled) {
+                    setPreviousVersion(ver)
+                    log(`[HimaxFirmwareUpdate] Current AI version: ${ver}`)
+                }
+            } catch (e) {
+                log(`[HimaxFirmwareUpdate] Could not query AI version: ${e}`)
+                // Non-fatal — just means we can't show "from version X"
+            } finally {
+                if (!cancelled) setIsQueryingVersion(false)
+            }
+        }
+
+        queryVersion()
+        return () => { cancelled = true }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
     // Listen for UART lines to synthesise progress phases and capture logs
     useEffect(() => {
         if (!isUpdating) return
@@ -97,6 +130,10 @@ export const HimaxFirmwareUpdateScreen = () => {
                     advancePhase('verifying')
                 } else if (line.includes('slot selector') && line.includes('written OK')) {
                     advancePhase('verifying')
+                } else if (/Firmware update OK/i.test(line)) {
+                    // nRF52 may not relay intermediate lines, so jump directly
+                    // to complete when we see the final OK over UART
+                    advancePhase('complete')
                 }
 
                 // Capture relevant log lines for display (last 5)
@@ -157,6 +194,21 @@ export const HimaxFirmwareUpdateScreen = () => {
         })
     }, [device?.id])
 
+    // Query the new AI version after update + reset
+    const queryNewVersion = useCallback(async () => {
+        if (!device?.connected) return
+        try {
+            const session = createBleSession(device)
+            const ver = await session.execute(() => commandRegistry.aiver())
+            if (!unmountedRef.current) {
+                setNewVersion(ver)
+                log(`[HimaxFirmwareUpdate] New AI version after update: ${ver}`)
+            }
+        } catch (e) {
+            log(`[HimaxFirmwareUpdate] Could not query new AI version: ${e}`)
+        }
+    }, [device])
+
     const startUpdate = useCallback(async () => {
         if (!device?.connected) {
             setErrorMsg('Device disconnected.')
@@ -165,6 +217,7 @@ export const HimaxFirmwareUpdateScreen = () => {
 
         setIsUpdating(true)
         setErrorMsg(null)
+        setNewVersion(null)
         advancePhase('sending')
         setProgressLogs([])
 
@@ -193,8 +246,12 @@ export const HimaxFirmwareUpdateScreen = () => {
             } catch (e) {
                 // Usually throws because BLE drops exactly when reset happens. This is OK.
             }
+
+            // Stay on this screen and query the new version if still connected
             if (!unmountedRef.current) {
-                navigation.navigate('Home', { initialTab: 'devices' })
+                // Give the device a moment to reboot and the BLE stack to stabilize
+                await new Promise(resolve => setTimeout(resolve, 3000))
+                await queryNewVersion()
             }
 
         } catch (err: any) {
@@ -208,7 +265,7 @@ export const HimaxFirmwareUpdateScreen = () => {
                 setIsUpdating(false)
             }
         }
-    }, [device, navigation, advancePhase, waitForDeviceReady])
+    }, [device, advancePhase, waitForDeviceReady, queryNewVersion])
 
     const progress = PHASE_PROGRESS[phase]
     const statusLabel = PHASE_LABEL[phase]
@@ -220,26 +277,43 @@ export const HimaxFirmwareUpdateScreen = () => {
             <ScrollView contentContainerStyle={[styles.content, { padding: spacing }]}>
                 
                 <WWText variant="titleLarge" style={{ marginBottom: spacing }}>
-                    SD Card Update
+                    AI Processor Firmware Update
                 </WWText>
                 
                 <WWText style={{ marginBottom: spacing }}>
-                    This flow updates the Himax AI processor using an `output.img` file stored in the `/MANIFEST/` directory of the device's SD Card.
-                </WWText>
-                <WWText style={{ marginBottom: spacing * 2, color: colors.error }}>
-                    Do not close the app or disconnect the device during this process. It takes approximately 1-2 minutes.
+                    Updates the Himax AI processor using {"`output.img`"} from the device's SD card.
                 </WWText>
 
+                {/* Current version display */}
+                {previousVersion && !isComplete && (
+                    <View style={[styles.versionBox, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
+                        <WWText variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                            Current AI version
+                        </WWText>
+                        <WWText variant="titleSmall" style={{ color: colors.onSurfaceVariant }}>
+                            {previousVersion}
+                        </WWText>
+                    </View>
+                )}
+
+                {!isComplete && (
+                    <WWText style={{ marginBottom: spacing * 2, color: colors.error }}>
+                        Do not close the app or disconnect the device during this process. It takes approximately 20-60 seconds.
+                    </WWText>
+                )}
+
                 <View style={[styles.statusBox, { backgroundColor: colors.surfaceVariant, marginBottom: spacing * 2 }]}>
-                    <WWText variant="titleMedium" style={[styles.statusTitle, { color: colors.onSurfaceVariant }]}>Status</WWText>
+                    <WWText variant="titleMedium" style={[styles.statusTitle, { color: colors.onSurfaceVariant }]}>
+                        Status
+                    </WWText>
                     <WWText style={{ color: colors.onSurfaceVariant }}>{statusLabel}</WWText>
                     
                     {/* Deterministic progress bar based on detected phase */}
-                    {isUpdating && (
+                    {(isUpdating || isComplete) && (
                         <View style={styles.marginTop16}>
                             <ProgressBar 
                                 progress={progress} 
-                                color={colors.primary} 
+                                color={isComplete ? colors.primary : colors.primary} 
                                 style={styles.progressBar} 
                             />
                             <WWText variant="bodySmall" style={{ color: colors.onSurfaceVariant, textAlign: 'right', marginTop: 4 }}>
@@ -248,7 +322,7 @@ export const HimaxFirmwareUpdateScreen = () => {
                         </View>
                     )}
 
-                    {isUpdating && (
+                    {isUpdating && !isComplete && (
                         <View style={styles.marginTop16}>
                             <ActivityIndicator animating={true} color={colors.primary} size="large" />
                         </View>
@@ -269,13 +343,57 @@ export const HimaxFirmwareUpdateScreen = () => {
                     )}
                 </View>
 
+                {/* Success: show version comparison */}
+                {isComplete && !isUpdating && (
+                    <View style={[styles.successBox, { backgroundColor: '#1B5E20', marginBottom: spacing * 2 }]}>
+                        <View style={styles.successHeader}>
+                            <IconButton icon="check-circle" iconColor="#A5D6A7" size={28} style={{ margin: 0 }} />
+                            <WWText variant="titleMedium" style={{ color: '#A5D6A7', flex: 1 }}>
+                                Firmware Updated Successfully
+                            </WWText>
+                        </View>
+
+                        {previousVersion && (
+                            <WWText variant="bodyMedium" style={{ color: '#E8F5E9', marginTop: 8 }}>
+                                Previous version: {previousVersion}
+                            </WWText>
+                        )}
+                        {newVersion && (
+                            <WWText variant="bodyMedium" style={{ color: '#E8F5E9' }}>
+                                New version: {newVersion}
+                            </WWText>
+                        )}
+                        {previousVersion && newVersion && previousVersion === newVersion && (
+                            <WWText variant="bodySmall" style={{ color: '#FFCC80', marginTop: 4 }}>
+                                ⓘ Versions match — the firmware image may be the same build.
+                            </WWText>
+                        )}
+                        {!newVersion && (
+                            <WWText variant="bodySmall" style={{ color: '#E8F5E9', marginTop: 4 }}>
+                                Device has been sent the reset command. The new firmware will be active on the next boot.
+                            </WWText>
+                        )}
+                    </View>
+                )}
+
+                {/* Action buttons */}
                 {!isComplete && !isUpdating && (
                     <Button 
                         mode="contained" 
                         onPress={startUpdate} 
-                        disabled={!device?.connected}
+                        disabled={!device?.connected || isQueryingVersion}
+                        loading={isQueryingVersion}
                     >
                         <WWText>{isFailed ? 'Retry Update' : 'Start Update'}</WWText>
+                    </Button>
+                )}
+
+                {isComplete && !isUpdating && (
+                    <Button 
+                        mode="contained" 
+                        onPress={() => navigation.goBack()}
+                    >
+                        <WWText>Back to Engineer Console</WWText>
                     </Button>
                 )}
 
@@ -290,6 +408,10 @@ const styles = StyleSheet.create({
     },
     content: {
         flexGrow: 1,
+    },
+    versionBox: {
+        padding: 12,
+        borderRadius: 8,
     },
     statusBox: {
         padding: 16,
@@ -307,5 +429,14 @@ const styles = StyleSheet.create({
     },
     logText: {
         opacity: 0.7,
-    }
+    },
+    successBox: {
+        padding: 16,
+        borderRadius: 8,
+    },
+    successHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
 })
