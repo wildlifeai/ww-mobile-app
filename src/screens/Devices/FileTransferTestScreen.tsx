@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
-import { Button, Appbar, ProgressBar, Chip, Divider, Text } from 'react-native-paper'
+import { Button, ProgressBar, Chip, Divider, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRoute, useNavigation } from '@react-navigation/native'
+import { useRoute } from '@react-navigation/native'
 
 import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
@@ -81,7 +81,6 @@ function generateTestFiles(): TestFile[] {
 
 export const FileTransferTestScreen = () => {
     const route = useRoute<any>()
-    const navigation = useNavigation<any>()
     const { colors, spacing } = useExtendedTheme()
 
     const deviceId = route.params?.deviceId
@@ -180,11 +179,6 @@ export const FileTransferTestScreen = () => {
 
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
-            <Appbar.Header style={{ backgroundColor: colors.surface }}>
-                <Appbar.BackAction onPress={() => navigation.goBack()} disabled={isTransferring} />
-                <Appbar.Content title="File Transfer Test" />
-            </Appbar.Header>
-
             <ScrollView contentContainerStyle={[styles.content, { padding: spacing }]}>
 
                 <WWText variant="titleMedium" style={{ marginBottom: spacing / 2 }}>

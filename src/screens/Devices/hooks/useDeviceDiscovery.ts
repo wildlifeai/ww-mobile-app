@@ -65,6 +65,12 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const [connectingDevice, setConnectingDevice] = useState<ExtendedPeripheral | null>(null)
     const [connectionLogs, setConnectionLogs] = useState<string[]>([])
 
+    // Scan session state — scanning only runs when user presses "Search"
+    const [scanSessionActive, setScanSessionActive] = useState(false)
+    const [scanSecondsRemaining, setScanSecondsRemaining] = useState(60)
+    const [scanSessionExpired, setScanSessionExpired] = useState(false)
+    const scanSessionActiveRef = useRef(false)
+
     // Scanner Routing Dialog state
     const [routingState, setRoutingState] = useState<ScannerRoutingState>('idle')
     const [routingParams, setRoutingParams] = useState<any>({})
@@ -83,25 +89,56 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const isFocused = useIsFocused()
     const scanCommandLockRef = useRef(false)
 
-    // Continuous state-driven scan loop
+    // Start or restart a 60-second scan session
+    const startScanSession = useCallback(() => {
+        setScanSessionActive(true)
+        setScanSecondsRemaining(60)
+        setScanSessionExpired(false)
+        scanSessionActiveRef.current = true
+        log('[Scanner] Scan session started (60s)')
+    }, [])
+
+    // Countdown timer — ticks every second while session is active and focused
+    useEffect(() => {
+        const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
+
+        if (!scanSessionActive || !isActuallyFocused || processing) return
+
+        const interval = setInterval(() => {
+            setScanSecondsRemaining(prev => {
+                if (prev <= 1) {
+                    // Session expired
+                    clearInterval(interval)
+                    setScanSessionActive(false)
+                    setScanSessionExpired(true)
+                    scanSessionActiveRef.current = false
+                    stopScan()
+                    log('[Scanner] Scan session expired — no device found')
+                    return 0
+                }
+                return prev - 1
+            })
+        }, 1000)
+
+        return () => clearInterval(interval)
+    }, [scanSessionActive, isFocused, isDrawerOpen, isActiveTab, processing, stopScan])
+
+    // Session-gated scan loop — only scans when session is active
     useEffect(() => {
         isReadyToScanRef.current = !isBleConnecting && !isScanning && !processing && !connectingDevice
 
         const isReadyForNewScan = !isBleConnecting && !processing && !connectingDevice
-
-        // Treat an open drawer the same as not being focused (pause background operations)
-        // Also ensure that if we are a tab, we are the active tab
         const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
 
-        if (isActuallyFocused && isReadyForNewScan) {
+        if (isActuallyFocused && isReadyForNewScan && scanSessionActiveRef.current) {
             if (!isScanning && !scanCommandLockRef.current) {
                 scanCommandLockRef.current = true
-                startScan(5)
+                startScan(3)
                 setTimeout(() => {
                     scanCommandLockRef.current = false
                 }, 500)
             }
-        } else if (!isActuallyFocused && isScanning && !scanCommandLockRef.current) {
+        } else if ((!isActuallyFocused || !scanSessionActiveRef.current) && isScanning && !scanCommandLockRef.current) {
             scanCommandLockRef.current = true
             stopScan().then(() => {
                 setTimeout(() => {
@@ -111,15 +148,11 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 scanCommandLockRef.current = false
             })
         }
-    }, [isFocused, isDrawerOpen, isActiveTab, isScanning, isBleConnecting, processing, connectingDevice, startScan, stopScan])
+    }, [isFocused, isDrawerOpen, isActiveTab, isScanning, isBleConnecting, processing, connectingDevice, startScan, stopScan, scanSessionActive])
 
     const handleScan = useCallback(() => {
-        if (!isBleConnecting && !processing && !connectingDevice && !isScanning) {
-            startScan(5)
-        } else {
-            log('Scanning already taking place or blocked, skipping.')
-        }
-    }, [isBleConnecting, processing, connectingDevice, isScanning, startScan])
+        startScanSession()
+    }, [startScanSession])
 
     const addLog = useCallback(async (message: string) => {
         setConnectionLogs(prev => [...prev, message])
@@ -403,8 +436,9 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
 
         // Prevent auto-connect if we're not focused, processing a connection, ANY device is currently connecting,
-        // OR the Engineer Console is actively scanning for a device
-        if (isActuallyFocused && !isAnyDeviceConnecting && !isEngineerConsoleActive && devicesToDisplay.length >= 1) {
+        // OR the Engineer Console is actively scanning for a device,
+        // OR no scan session is active (user hasn't pressed Search yet)
+        if (isActuallyFocused && !isAnyDeviceConnecting && !isEngineerConsoleActive && scanSessionActiveRef.current && devicesToDisplay.length >= 1) {
             const deviceToConnect = devicesToDisplay.find(d =>
                 !d.signalLost && !d.connected && !d.loading && !processing && autoConnect.canAutoConnect(d.id)
             )
@@ -421,7 +455,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 }
             })
         }
-    }, [isFocused, isDrawerOpen, isActiveTab, isAnyDeviceConnecting, isEngineerConsoleActive, devicesToDisplay, mode, processing, handleDeviceSelect, autoConnect])
+    }, [isFocused, isDrawerOpen, isActiveTab, isAnyDeviceConnecting, isEngineerConsoleActive, devicesToDisplay, mode, processing, handleDeviceSelect, autoConnect, scanSessionActive])
 
     const handleDisconnect = useCallback(async (device: ExtendedPeripheral) => {
         log(`Disconnecting from ${device.id}`)
@@ -447,6 +481,11 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         connectingDevice,
         connectionLogs,
         processing,
+        // Scan session
+        scanSessionActive,
+        scanSecondsRemaining,
+        scanSessionExpired,
+        startScanSession,
         // Scanner Routing Dialog
         routingState,
         routingParams,
