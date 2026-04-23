@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect, useMemo, useReducer } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
 import { Button, ProgressBar, Chip, Divider, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -65,6 +65,7 @@ function generateTestFiles(): TestFile[] {
     // 4. Binary — 500 bytes of deterministic pattern (not random, so Steve can verify)
     const binData = new Uint8Array(500)
     for (let i = 0; i < binData.length; i++) {
+        // eslint-disable-next-line no-bitwise
         binData[i] = i & 0xFF  // 0x00, 0x01, ..., 0xFF, 0x00, ...
     }
     const binary: TestFile = {
@@ -77,6 +78,50 @@ function generateTestFiles(): TestFile[] {
     return [tiny, medium, big, binary]
 }
 
+// ─── State Management ──────────────────────────────────────────────────
+
+interface TransferState {
+    selectedIndex: number | null
+    isTransferring: boolean
+    progress: FileTransferProgress | null
+    result: { success: boolean; message: string; details?: string } | null
+    transferLog: { id: string; text: string }[]
+}
+
+const initialState: TransferState = {
+    selectedIndex: null,
+    isTransferring: false,
+    progress: null,
+    result: null,
+    transferLog: [],
+}
+
+type TransferAction =
+    | { type: 'START'; payload: { index: number; logs: { id: string; text: string }[] } }
+    | { type: 'ADD_LOG'; payload: { id: string; text: string } }
+    | { type: 'SET_PROGRESS'; payload: FileTransferProgress }
+    | { type: 'COMPLETE'; payload: { result: TransferState['result']; logs: { id: string; text: string }[] } }
+    | { type: 'ERROR'; payload: { result: TransferState['result']; logs: { id: string; text: string }[] } }
+    | { type: 'END' }
+
+function transferReducer(state: TransferState, action: TransferAction): TransferState {
+    switch (action.type) {
+        case 'START':
+            return { ...initialState, selectedIndex: action.payload.index, isTransferring: true, transferLog: action.payload.logs }
+        case 'ADD_LOG':
+            return { ...state, transferLog: [...state.transferLog, action.payload] }
+        case 'SET_PROGRESS':
+            return { ...state, progress: action.payload }
+        case 'COMPLETE':
+        case 'ERROR':
+            return { ...state, result: action.payload.result, transferLog: [...state.transferLog, ...action.payload.logs] }
+        case 'END':
+            return { ...state, isTransferring: false }
+        default:
+            return state
+    }
+}
+
 // ─── Component ───────────────────────────────────────────────────────
 
 export const FileTransferTestScreen = () => {
@@ -86,12 +131,10 @@ export const FileTransferTestScreen = () => {
     const deviceId = route.params?.deviceId
     const device = useAppSelector(state => state.devices[deviceId || ''])
 
-    const [testFiles] = useState(() => generateTestFiles())
-    const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
-    const [isTransferring, setIsTransferring] = useState(false)
-    const [progress, setProgress] = useState<FileTransferProgress | null>(null)
-    const [result, setResult] = useState<{ success: boolean; message: string; details?: string } | null>(null)
-    const [transferLog, setTransferLog] = useState<{ id: string; text: string }[]>([])
+    const testFiles = useMemo(() => generateTestFiles(), [])
+    const [state, dispatch] = useReducer(transferReducer, initialState)
+    const { selectedIndex, isTransferring, progress, result, transferLog } = state
+
     const abortRef = useRef<AbortController | null>(null)
     const unmountedRef = useRef(false)
 
@@ -101,32 +144,30 @@ export const FileTransferTestScreen = () => {
 
     const addLog = useCallback((msg: string) => {
         const timestamp = new Date().toLocaleTimeString()
-        setTransferLog(prev => [
-            ...prev,
-            { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] ${msg}` }
-        ])
+        dispatch({ type: 'ADD_LOG', payload: { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] ${msg}` } })
     }, [])
 
     const startTransfer = useCallback(async (index: number) => {
         if (!device?.connected) {
-            setResult({ success: false, message: 'Device disconnected.' })
+            dispatch({
+                type: 'ERROR',
+                payload: { result: { success: false, message: 'Device disconnected.' }, logs: [] }
+            })
             return
         }
 
         const file = testFiles[index]
         const fileCrc = crc16ccitt(file.data)
+        const timestamp = new Date().toLocaleTimeString()
 
-        setSelectedIndex(index)
-        setIsTransferring(true)
-        setResult(null)
-        setProgress(null)
-        setTransferLog([])
+        const initialLogs = [
+            { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] Selected: ${file.filename} (${file.data.length} bytes)` },
+            { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] CRC: 0x${fileCrc.toString(16).toUpperCase().padStart(4, '0')}` },
+            { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] Packets: ${Math.ceil(file.data.length / 241)}` },
+            { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] Starting transfer...` }
+        ]
 
-        addLog(`Selected: ${file.filename} (${file.data.length} bytes)`)
-        addLog(`CRC: 0x${fileCrc.toString(16).toUpperCase().padStart(4, '0')}`)
-        addLog(`Packets: ${Math.ceil(file.data.length / 241)}`)
-        addLog('Starting transfer...')
-
+        dispatch({ type: 'START', payload: { index, logs: initialLogs } })
         abortRef.current = new AbortController()
 
         try {
@@ -134,40 +175,55 @@ export const FileTransferTestScreen = () => {
                 filename: file.filename,
                 data: file.data,
                 onProgress: (p) => {
-                    if (!unmountedRef.current) setProgress(p)
+                    if (!unmountedRef.current) dispatch({ type: 'SET_PROGRESS', payload: p })
                 },
                 abortSignal: abortRef.current.signal,
             })
 
             if (unmountedRef.current) return
 
-            addLog(`✅ Transfer complete in ${(transferResult.durationMs / 1000).toFixed(1)}s`)
-            addLog(`File "${transferResult.filename}" is now on the SD card at /MANIFEST/`)
-            setResult({
-                success: true,
-                message: `${file.filename} transferred successfully!`,
-                details: `${transferResult.sizeBytes} bytes in ${(transferResult.durationMs / 1000).toFixed(1)}s · CRC verified`,
+            const ts = new Date().toLocaleTimeString()
+            dispatch({
+                type: 'COMPLETE',
+                payload: {
+                    result: {
+                        success: true,
+                        message: `${file.filename} transferred successfully!`,
+                        details: `${transferResult.sizeBytes} bytes in ${(transferResult.durationMs / 1000).toFixed(1)}s · CRC verified`,
+                    },
+                    logs: [
+                        { id: Math.random().toString(36).substr(2, 9), text: `[${ts}] ✅ Transfer complete in ${(transferResult.durationMs / 1000).toFixed(1)}s` },
+                        { id: Math.random().toString(36).substr(2, 9), text: `[${ts}] File "${transferResult.filename}" is now on the SD card at /MANIFEST/` }
+                    ]
+                }
             })
         } catch (err: any) {
             if (unmountedRef.current) return
 
             const errorCode = err.errorCode
             const friendlyMsg = errorCode ? getErrorMessage(errorCode) : err.message
-            addLog(`❌ Failed: ${friendlyMsg}`)
+            const ts = new Date().toLocaleTimeString()
+            
             logError('[FileTransferTest]', err)
 
-            setResult({
-                success: false,
-                message: `Transfer failed: ${friendlyMsg}`,
-                details: errorCode ? `Error code ${errorCode} — ${err.reason}` : err.reason || undefined,
+            dispatch({
+                type: 'ERROR',
+                payload: {
+                    result: {
+                        success: false,
+                        message: `Transfer failed: ${friendlyMsg}`,
+                        details: errorCode ? `Error code ${errorCode} — ${err.reason}` : err.reason || undefined,
+                    },
+                    logs: [{ id: Math.random().toString(36).substr(2, 9), text: `[${ts}] ❌ Failed: ${friendlyMsg}` }]
+                }
             })
         } finally {
             if (!unmountedRef.current) {
-                setIsTransferring(false)
+                dispatch({ type: 'END' })
                 abortRef.current = null
             }
         }
-    }, [device, testFiles, addLog])
+    }, [device, testFiles])
 
     const cancelTransfer = useCallback(() => {
         abortRef.current?.abort()
@@ -184,7 +240,7 @@ export const FileTransferTestScreen = () => {
                 <WWText variant="titleMedium" style={{ marginBottom: spacing / 2 }}>
                     Test Files
                 </WWText>
-                <WWText variant="bodySmall" style={{ marginBottom: spacing, opacity: 0.7 }}>
+                <WWText variant="bodySmall" style={styles.descriptionText}>
                     Select a file to send to the device's SD card via BLE.
                     Steve can compare these on the SD card to verify integrity.
                 </WWText>
@@ -204,11 +260,11 @@ export const FileTransferTestScreen = () => {
                         >
                             <View style={styles.fileCardHeader}>
                                 <WWText variant="titleSmall">{file.name}</WWText>
-                                <Chip compact textStyle={{ fontSize: 10 }}>
+                                <Chip compact textStyle={styles.chipText}>
                                     <Text>CRC: 0x{fileCrc.toString(16).toUpperCase().padStart(4, '0')}</Text>
                                 </Chip>
                             </View>
-                            <WWText variant="bodySmall" style={{ opacity: 0.7, marginBottom: 8 }}>
+                            <WWText variant="bodySmall" style={styles.fileDescText}>
                                 {file.description}
                             </WWText>
                             <Button
@@ -241,7 +297,7 @@ export const FileTransferTestScreen = () => {
                         <ProgressBar
                             progress={pct}
                             color={progress.phase === 'failed' ? colors.error : colors.primary}
-                            style={{ height: 8, borderRadius: 4, marginBottom: spacing / 2 }}
+                            style={styles.progressBar}
                         />
 
                         <View style={styles.progressRow}>
@@ -255,7 +311,7 @@ export const FileTransferTestScreen = () => {
                             <WWText variant="bodySmall">
                                 Packet {progress.currentPacket}/{progress.totalPackets}
                             </WWText>
-                            <WWText variant="bodySmall" style={{ textTransform: 'uppercase' }}>
+                            <WWText variant="bodySmall" style={styles.phaseText}>
                                 {progress.phase}
                             </WWText>
                             {progress.estimatedRemainingMs > 0 && (
@@ -290,7 +346,7 @@ export const FileTransferTestScreen = () => {
                         {result.details && (
                             <WWText
                                 variant="bodySmall"
-                                style={{ opacity: 0.7, color: result.success ? colors.onPrimaryContainer : colors.onErrorContainer }}
+                                style={[styles.resultDetails, { color: result.success ? colors.onPrimaryContainer : colors.onErrorContainer }]}
                             >
                                 {result.details}
                             </WWText>
@@ -351,5 +407,27 @@ const styles = StyleSheet.create({
         fontFamily: 'monospace',
         fontSize: 11,
         lineHeight: 16,
+    },
+    descriptionText: {
+        marginBottom: 16,
+        opacity: 0.7,
+    },
+    chipText: {
+        fontSize: 10,
+    },
+    fileDescText: {
+        opacity: 0.7,
+        marginBottom: 8,
+    },
+    progressBar: {
+        height: 8,
+        borderRadius: 4,
+        marginBottom: 8,
+    },
+    phaseText: {
+        textTransform: 'uppercase',
+    },
+    resultDetails: {
+        opacity: 0.7,
     },
 })

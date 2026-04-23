@@ -255,7 +255,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         run()
         return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [device?.connected, target])
 
     // ── Himax UART phase listener ──────────────────────────────────
 
@@ -263,7 +263,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         if (target !== 'himax' || !isUpdating) return
 
         const onRx = (event: any) => {
-            if (event.type !== 'RAW_RX' || event.deviceId !== device?.id) return
+            if (event.type !== 'TEXT_LINE' || event.deviceId !== device?.id) return
             const line: string = event.line
 
             if (line.includes('Wake') && !line.includes('Wakeup_event')) {
@@ -277,15 +277,15 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             } else if (line.includes('chunk-verified OK') || line.includes('full verify OK')) {
                 appendLog(line)
             } else if (/Firmware update OK/i.test(line)) {
-                advancePhase('complete')
+                // Don't advance to complete yet, runHimaxUpdate handles the sequence
                 appendLog(line)
             } else if (/Firmware update FAILED/i.test(line)) {
                 appendLog(line)
             }
         }
 
-        bleEventBus.on('rawRx', onRx)
-        return () => { bleEventBus.removeListener('rawRx', onRx) }
+        bleEventBus.on('textLine', onRx)
+        return () => { bleEventBus.removeListener('textLine', onRx) }
     }, [target, isUpdating, device?.id, advancePhase, appendLog])
 
     // ── Wait for "Sleep" line (Himax only) ─────────────────────────
@@ -296,17 +296,17 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             const done = () => {
                 if (resolved) return
                 resolved = true
-                bleEventBus.removeListener('rawRx', onRx)
+                bleEventBus.removeListener('textLine', onRx)
                 clearTimeout(fallback)
                 resolve()
             }
             const onRx = (event: any) => {
-                if (event.type === 'RAW_RX' && event.deviceId === device?.id && event.line.startsWith('Sleep')) {
+                if (event.type === 'TEXT_LINE' && event.deviceId === device?.id && event.line.startsWith('Sleep')) {
                     log('[FW Update] Device sent Sleep — ready for reset')
                     done()
                 }
             }
-            bleEventBus.on('rawRx', onRx)
+            bleEventBus.on('textLine', onRx)
             const fallback = setTimeout(() => {
                 log('[FW Update] Sleep not received in 5s — proceeding')
                 done()
@@ -415,7 +415,6 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         if (unmountedRef.current) return
 
-        advancePhase('complete')
         appendLog('Firmware write complete. Waiting for device...')
 
         // Wait for Sleep signal

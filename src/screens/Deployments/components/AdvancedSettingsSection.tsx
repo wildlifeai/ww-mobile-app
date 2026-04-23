@@ -11,6 +11,8 @@ import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
 import { CameraViewSection } from './CameraViewSection'
 import { DeploymentMotionDetectionSection } from './DeploymentMotionDetectionSection'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
+import { BatteryLevelCard } from './BatteryLevelCard'
+import { SdCardStatusCard } from './SdCardStatusCard'
 
 
 interface AdvancedSettingsSectionProps {
@@ -230,62 +232,24 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                 />
 
                 {/* Battery Check Card */}
-                <Card style={styles.card}>
-                    <Card.Title
-                        title="Battery Level"
-                        right={renderBatteryHelp}
-                    />
-                    <Card.Content>
-                        {batteryLevel !== null ? (
-                            <View>
-                                <View style={styles.statusDisplay}>
-                                    <WWText variant="bodyLarge"><Text>🔋 {batteryLevel}%</Text></WWText>
-                                    <WWText variant="bodySmall" style={styles.statusHint}>
-                                        <Text>{batteryLevel > 30 ? 'Battery level sufficient' : 'Battery level low - charge before monitoring'}</Text>
-                                    </WWText>
-                                </View>
-                                <WWButton mode="outlined" onPress={handleBatteryCheck} style={styles.actionButton} disabled={isInitializing || !bleDeviceConnected}>
-                                    <Text>Check Again</Text>
-                                </WWButton>
-                            </View>
-                        ) : (
-                            <WWButton mode="outlined" onPress={handleBatteryCheck} disabled={isInitializing || !bleDeviceConnected}>
-                                <Text>Check Battery Level</Text>
-                            </WWButton>
-                        )}
-                    </Card.Content>
-                </Card>
+                <BatteryLevelCard
+                    batteryLevel={batteryLevel}
+                    handleBatteryCheck={handleBatteryCheck}
+                    isInitializing={isInitializing}
+                    bleDeviceConnected={bleDeviceConnected}
+                    renderBatteryHelp={renderBatteryHelp}
+                    styles={styles}
+                />
 
                 {/* SD Card Check Card */}
-                <Card style={styles.card}>
-                    <Card.Title
-                        title="SD Card Status"
-                        right={renderSdCardHelp}
-                    />
-                    <Card.Content>
-                        {sdCardStatus !== null ? (
-                            <View>
-                                <View style={styles.statusDisplay}>
-                                    <WWText variant="bodyLarge">
-                                        <Text>💾 {Math.round((sdCardStatus.free / sdCardStatus.total) * 100)}% available of {Math.round(sdCardStatus.total / 1024 / 1024)}GB</Text>
-                                    </WWText>
-                                    <WWText variant="bodySmall" style={styles.statusHint}>
-                                        <Text>{(sdCardStatus.free / sdCardStatus.total) > 0.1
-                                            ? 'SD card has sufficient space'
-                                            : 'SD card is nearly full - free up space'}</Text>
-                                    </WWText>
-                                </View>
-                                <WWButton mode="outlined" onPress={handleSdCardCheck} style={styles.actionButton} disabled={isInitializing || !bleDeviceConnected}>
-                                    <Text>Check Again</Text>
-                                </WWButton>
-                            </View>
-                        ) : (
-                            <WWButton mode="outlined" onPress={handleSdCardCheck} disabled={isInitializing || !bleDeviceConnected}>
-                                <Text>Check SD Card</Text>
-                            </WWButton>
-                        )}
-                    </Card.Content>
-                </Card>
+                <SdCardStatusCard
+                    sdCardStatus={sdCardStatus}
+                    handleSdCardCheck={handleSdCardCheck}
+                    isInitializing={isInitializing}
+                    bleDeviceConnected={bleDeviceConnected}
+                    renderSdCardHelp={renderSdCardHelp}
+                    styles={styles}
+                />
 
                 {/* Firmware Card */}
                 <Card style={styles.card}>

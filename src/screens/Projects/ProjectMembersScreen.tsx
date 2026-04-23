@@ -12,7 +12,7 @@
  * - Only project admins can add/remove/change roles
  */
 
-import { useEffect, useCallback, useMemo, useReducer, useState } from "react"
+import { useEffect, useCallback, useMemo, useReducer } from "react"
 import {
 	View,
 	ScrollView,
@@ -22,14 +22,11 @@ import {
 } from "react-native"
 import {
 	Text,
-	Button,
 	ActivityIndicator,
 	useTheme,
-	SegmentedButtons,
-	Card,
 } from "react-native-paper"
 import { useRoute, RouteProp } from "@react-navigation/native"
-import { WWTextInput } from "../../components/ui/WWTextInput"
+
 
 // UI Helper Functions
 export const getRoleBadgeColor = (role: ProjectRole): string => {
@@ -76,6 +73,7 @@ import { ChangeRoleDialog } from "./components/ChangeRoleDialog"
 import { RemoveMemberDialog } from "./components/RemoveMemberDialog"
 import { MemberListItem } from "./components/MemberListItem"
 import { PendingInvitationsList } from "./components/PendingInvitationsList"
+import { InviteMemberCard } from "./components/InviteMemberCard"
 
 
 type RouteParams = {
@@ -122,11 +120,6 @@ export const ProjectMembersScreen = () => {
 	})
 
 	const { members, loading, refreshing, dialogState, pendingInvitations, menuVisible } = state
-
-	// Inline Invite State
-	const [inviteEmail, setInviteEmail] = useState("")
-	const [inviteRole, setInviteRole] = useState<ProjectRole>("project_member")
-	const [inviteLoading, setInviteLoading] = useState(false)
 
 	// Permission checks
 	const currentUserProjectRole = members.find((m) => m.id === user?.id)?.role
@@ -201,37 +194,11 @@ export const ProjectMembersScreen = () => {
 		}
 	}, [projectId, user])
 
-	const handleInviteMember = useCallback(async () => {
-		if (!inviteEmail.trim()) {
-			Alert.alert("Error", "Please enter an email address")
-			return
-		}
-		if (!user) {
-			Alert.alert("Error", "User authentication required")
-			return
-		}
-
-		setInviteLoading(true)
-		try {
-			log(`📧 Inviting ${inviteEmail}...`)
-			await InvitationService.sendInvitation(
-				projectId!,
-				inviteEmail.trim(),
-				inviteRole as "project_admin" | "project_member"
-			)
-			Alert.alert("Success", "Invitation sent successfully")
-			setInviteEmail("")
-			setInviteRole("project_member")
-			dispatch({ refreshing: true })
-			await loadMembers()
-			dispatch({ refreshing: false })
-		} catch (err: any) {
-			logError("❌ Error sending invitation:", err)
-			Alert.alert("Error", err.message || "Failed to send invitation")
-		} finally {
-			setInviteLoading(false)
-		}
-	}, [inviteEmail, user, projectId, inviteRole, loadMembers])
+	const handleInviteSent = useCallback(async () => {
+		dispatch({ refreshing: true })
+		await loadMembers()
+		dispatch({ refreshing: false })
+	}, [loadMembers])
 
 	// Load data
 	useEffect(() => {
@@ -323,46 +290,11 @@ export const ProjectMembersScreen = () => {
 
 			{/* Inline Add Member (admin only) */}
 			{canManageMembers && (
-				<Card style={styles.inviteCard} mode="contained">
-					<Card.Title title="Invite Member" />
-					<Card.Content>
-						<Text variant="bodyMedium" style={styles.inviteDesc}>
-							Enter the email address of the user you want to invite to this project.
-						</Text>
-						<WWTextInput
-							label="Email Address"
-							value={inviteEmail}
-							onChange={setInviteEmail}
-							keyboardType="email-address"
-							autoCapitalize="none"
-							autoCorrect={false}
-							style={styles.inviteInput}
-						/>
-						<Text variant="titleSmall" style={styles.roleLabel}>Role:</Text>
-						<SegmentedButtons
-							value={inviteRole}
-							onValueChange={(value) => setInviteRole(value as ProjectRole)}
-							buttons={[
-								{
-									value: "project_member", label: "Member", icon: "account",
-								},
-								{
-									value: "project_admin", label: "Admin", icon: "shield-account",
-								},
-							]}
-							style={styles.segmentedButtons}
-						/>
-						<Button
-							onPress={handleInviteMember}
-							disabled={!inviteEmail.trim() || inviteLoading}
-							mode="contained"
-							style={styles.sendInviteButton}
-							loading={inviteLoading}
-						>
-							<Text>Send Invite</Text>
-						</Button>
-					</Card.Content>
-				</Card>
+				<InviteMemberCard
+					projectId={projectId!}
+					onInviteSent={handleInviteSent}
+					styles={styles}
+				/>
 			)}
 
 			{/* Pending Invitations List (Admin Only) */}

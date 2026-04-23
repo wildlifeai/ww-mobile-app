@@ -176,7 +176,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                                     onPress={startScanSession}
                                     style={styles.restartButton}
                                 >
-                                    Restart Search
+                                    <Text>Restart Search</Text>
                                 </Button>
                             </>
                         )}
@@ -195,7 +195,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                                     contentStyle={styles.searchButtonContent}
                                     labelStyle={styles.searchButtonLabel}
                                 >
-                                    Search for Devices
+                                    <Text>Search for Devices</Text>
                                 </Button>
                             </>
                         )}
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     searchButton: {
         marginTop: 8,
         borderRadius: 28,
-        elevation: 2,
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
     },
     searchButtonContent: {
         paddingVertical: 8,
