@@ -5,12 +5,14 @@
  * Sends file data from the app to the WW500 device's SD card.
  *
  * Invariants:
+ *   - AI processor is confirmed awake (IDLE) via text command before FILE_START
  *   - Uses TextStreamScope, never raw bleEventBus.on()
  *   - Acquires exclusive transport lock for the entire START→DONE session
  *   - Heartbeats are paused automatically
  *   - Disconnect is detected immediately (event-driven)
  *   - User cancel via AbortSignal
  *   - Silence timeout is transfer-scoped (ftx lines only)
+ *   - FILE_START uses adaptive timeout (20s) for cold-start overhead
  *   - All outcomes produce FileTransferLog
  */
 
@@ -22,6 +24,8 @@ import { bleEventBus, BleEvent } from '../eventBus'
 import { transportLock } from '../transportLock'
 import { commandQueue } from '../commandQueue'
 import { TextStreamScope, StreamTimeoutError } from '../textStreamScope'
+import { createBleSession } from '../../session/createBleSession'
+import { commandRegistry } from '../commandRegistry'
 import { crc16ccitt } from './crc16ccitt'
 import { isValid83Filename } from './filenameValidator'
 import { buildFileStartPacket, buildFileDataPacket, buildFileEndPacket } from './fileTransferPackets'
@@ -38,7 +42,7 @@ import {
   SILENCE_TIMEOUT_MS,
   MAX_CONSECUTIVE_TIMEOUTS,
 } from './fileTransferTypes'
-import { log, logError } from '../../../utils/logger'
+import { log, logError, logWarn } from '../../../utils/logger'
 
 // Same pattern as NativeModulesSection.tsx — Metro bundles package.json at build time
 const appVersion: string = require('../../../../package.json').version ?? '0.0.0'
@@ -57,6 +61,14 @@ function formatSpeed(bytesPerMs: number): string {
   const kbps = (bytesPerMs * 1000) / 1024
   return kbps < 1 ? `${(kbps * 1024).toFixed(0)} B/s` : `${kbps.toFixed(1)} KB/s`
 }
+
+/**
+ * FILE_START timeout is longer than subsequent DATA ACKs because:
+ * - The AI processor may still be transitioning from wake→selftest→idle
+ * - The HX6538 needs to open/create the file on the SD card
+ * - First packet in a session has cold-start overhead
+ */
+const FILE_START_ACK_TIMEOUT_MS = 20_000
 
 // ─── Main Pipeline ───────────────────────────────────────────────────
 
@@ -215,7 +227,7 @@ export async function runFileTransferPipeline(
   })
 
   // Helper: race ACK wait against disconnect + abort + silence
-  async function waitForAck(expected: ExpectedAck): Promise<string> {
+  async function waitForAck(expected: ExpectedAck, timeoutMs?: number): Promise<string> {
     resetSilenceTimer() // reset on send
 
     const ackPromise = stream.waitFor((line: string) => {
@@ -228,7 +240,7 @@ export async function runFileTransferPipeline(
         logIgnoredAck(result)
       }
       return false
-    }, ACK_TIMEOUT_MS)
+    }, timeoutMs ?? ACK_TIMEOUT_MS)
 
     const races: Promise<any>[] = [ackPromise, disconnectPromise, silencePromise]
     if (abortSignal) races.push(abortPromise)
@@ -249,6 +261,40 @@ export async function runFileTransferPipeline(
     // Pause heartbeats
     bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: true, ts: Date.now() })
 
+    // ── Phase 0: AI READINESS CHECK ─────────────────────────────────
+    // The AI processor must be in AI_STATE_IDLE to accept file packets.
+    // If it's in SLEEP, FILE_START is silently dropped (UNHANDLED event).
+    // Sending a text command ('AI ver') wakes the processor through the
+    // firmware's existing wake-and-defer mechanism, guaranteeing IDLE
+    // state before the binary transfer begins.
+    emitProgress('checking')
+    log(`[FileTransfer] Ensuring AI processor is awake...`)
+    try {
+      // Release the transport lock temporarily so the text command can run
+      transportLock.release(transferId)
+      bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: false, ts: Date.now() })
+
+      const session = createBleSession(peripheral)
+      const aiVersion = await session.execute(() => commandRegistry.aiver())
+      log(`[FileTransfer] AI processor ready (version: ${aiVersion})`)
+
+      // Re-acquire lock for the binary transfer
+      if (commandQueue.isBusy()) {
+        throw new FileTransferError('VALIDATION_FAILED', 'Another command started while preparing transfer')
+      }
+      transportLock.acquire(transferId)
+      bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: true, ts: Date.now() })
+    } catch (err: any) {
+      // If the readiness check fails, the AI processor is unreachable.
+      // This is fatal — don't proceed with the transfer.
+      if (err instanceof FileTransferError) throw err
+      logWarn(`[FileTransfer] AI readiness check failed: ${err.message}`)
+      throw new FileTransferError(
+        'VALIDATION_FAILED',
+        `AI processor not responding. Ensure the device is powered and nearby. (${err.message})`,
+      )
+    }
+
     // Start silence monitoring
     bleEventBus.on('textLine', silenceHandler)
     resetSilenceTimer()
@@ -259,7 +305,7 @@ export async function runFileTransferPipeline(
     await writeBinaryToDevice(peripheral, startPacket, true) // write with response
     log(`[FileTransfer] FILE_START sent: ${filename} (${data.length} bytes)`)
 
-    await waitForAck({ phase: 'start' })
+    await waitForAck({ phase: 'start' }, FILE_START_ACK_TIMEOUT_MS)
     log(`[FileTransfer] FILE_START ACKed`)
 
     // ── Phase 2: FILE_DATA ─────────────────────────────────────────
