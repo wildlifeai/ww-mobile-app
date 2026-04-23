@@ -44,6 +44,7 @@ import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMo
 import { CameraSettingsTestScreen } from "../screens/Devices/CameraSettingsTestScreen"
 import { FirmwareUpdateScreen } from "../screens/Devices/FirmwareUpdateScreen"
 import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScreen"
+import { ConfigTransferScreen } from "../screens/Devices/ConfigTransferScreen"
 import { DfuScreen } from "../screens/Devices/DfuScreen"
 
 // Developer screens
@@ -214,6 +215,11 @@ export const MainNavigation = () => {
 							name="FileTransferTestScreen"
 							component={FileTransferTestScreen}
 							options={{ title: "File Transfer Test" }}
+						/>
+						<Stack.Screen
+							name="ConfigTransferScreen"
+							component={ConfigTransferScreen}
+							options={{ title: "Config Transfer" }}
 						/>
 
 						<Stack.Screen

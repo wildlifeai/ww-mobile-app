@@ -116,6 +116,21 @@ class FirmwareService {
     }
 
     /**
+     * Reads a downloaded firmware file as raw bytes for BLE file transfer.
+     */
+    async readFirmwareAsBytes(localUri: string): Promise<Uint8Array> {
+        const base64 = await FileSystem.readAsStringAsync(localUri, {
+            encoding: FileSystem.EncodingType.Base64,
+        })
+        const binary = atob(base64)
+        const bytes = new Uint8Array(binary.length)
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i)
+        }
+        return bytes
+    }
+
+    /**
      * Resolves a firmware UUID by its type and version string.
      */
     async getFirmwareIdByVersion(type: 'ble' | 'himax' | 'config', version: string): Promise<string | null> {

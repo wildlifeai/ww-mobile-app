@@ -116,6 +116,18 @@ export const useEngineerConsoleActions = ({
             navigation.navigate('FileTransferTestScreen', { deviceId: device?.id })
             return
         }
+        if (cmdName === CommandNames.TRANSFER_CONFIG) {
+            navigation.navigate('ConfigTransferScreen', { deviceId: device?.id })
+            return
+        }
+        if (cmdName === CommandNames.TRANSFER_AI_MODEL) {
+            navigation.navigate('AiModelTransferScreen', { deviceId: device?.id })
+            return
+        }
+        if (cmdName === CommandNames.FIRMWARE_STATUS) {
+            navigation.navigate('FirmwareStatusScreen', { deviceId: device?.id })
+            return
+        }
 
         // Handle local commands
         if (cmdName === CommandNames.CLEAR_CONSOLE) {
