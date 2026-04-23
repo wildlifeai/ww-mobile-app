@@ -8,6 +8,8 @@ export default class AiModel extends Model {
     @field('name') name!: string
     @field('version') version!: string
     @field('description') description?: string
+    @field('storage_path') storagePath!: string
+    @field('file_size_bytes') fileSizeBytes!: number
     @field('organisation_id') organisationId!: string
     @readonly @date('created_at') createdAt!: Date
     @readonly @date('updated_at') updatedAt!: Date
