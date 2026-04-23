@@ -21,6 +21,8 @@ import { AdvancedSettingsSection } from './components/AdvancedSettingsSection'
 import { DeploymentMonitorView } from './components/DeploymentMonitorView'
 
 import { useStartDeployment } from './hooks/useStartDeployment'
+import { useFirmwareStatus } from '../Devices/hooks/useFirmwareStatus'
+import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 
 
 type StartMonitoringDetailsRouteProp = RouteProp<RootStackParamList, 'StartMonitoringDetailsStep'>;
@@ -44,14 +46,9 @@ export const StartMonitoringDetailsStep = () => {
         // Dropdown & Additional Location State
         locationName, setLocationName, availableLocations, isCustomLocation, setIsCustomLocation,
         // Advanced Settings
-        batteryLevel, sdCardStatus, latestBleFirmware, deviceFirmwareVersion,
-        bleFirmwareUpdateAvailable, firmwareUpdateProgress, isUpdatingFirmware,
-        isCheckingFirmware, isVerifyingUpdate, firmwareUpdateStatus,
-        handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, handleBleFirmwareUpdate,
+        batteryLevel, sdCardStatus,
+        handleBatteryCheck, handleSdCardCheck,
         isMonitoring, handleMonitorDisconnect,
-        // Himax Firmware
-        latestHimaxFirmware, himaxFirmwareVersion, isHimaxUpdating, himaxUpdateProgress, isCheckingHimaxVersion,
-        handleHimaxFirmwareCheck, handleHimaxFirmwareUpdate
     } = useStartDeployment({ deviceId, bleDeviceId, projectId, navigation, initPayload })
 
     useEffect(() => {
@@ -61,6 +58,16 @@ export const StartMonitoringDetailsStep = () => {
         }
         navigation.setOptions({ title })
     }, [device?.name, bleDevice?.name, navigation, isMonitoring])
+
+    const firmwareStatus = useFirmwareStatus({ 
+        device: (device || bleDevice) as ExtendedPeripheral | undefined 
+    })
+
+    const isAnyFirmwareOutdated = !firmwareStatus.isChecking && (
+        firmwareStatus.statuses.ble.isOutdated || 
+        firmwareStatus.statuses.himax.isOutdated || 
+        firmwareStatus.statuses.config.isOutdated
+    )
 
     const headerLeft = useCallback(() => (
         <IconButton
@@ -132,6 +139,21 @@ export const StartMonitoringDetailsStep = () => {
                         warningHintText="You can still proceed with monitoring, but we recommend addressing these issues if possible."
                         hideDeviceDetails={true}
                     />
+                )}
+
+                {/* Firmware Warning Banner */}
+                {isAnyFirmwareOutdated && (
+                    <View style={{ backgroundColor: '#FFF3E0', marginBottom: 16, padding: 12, borderRadius: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                            <WWIcon source="alert-circle-outline" size={24} color="#E65100" />
+                            <Text variant="titleSmall" style={{ color: '#E65100', marginLeft: 8, flex: 1 }}>
+                                Firmware Update Available
+                            </Text>
+                        </View>
+                        <Text variant="bodySmall" style={{ color: '#E65100' }}>
+                            One or more firmware components are outdated. We recommend updating them via the Engineer Console for optimal performance, but you may proceed with monitoring.
+                        </Text>
+                    </View>
                 )}
 
                 {/* Associated Project */}
@@ -219,29 +241,13 @@ export const StartMonitoringDetailsStep = () => {
                     setIsCustomLocation={setIsCustomLocation}
                     batteryLevel={batteryLevel}
                     sdCardStatus={sdCardStatus}
-                    latestBleFirmware={latestBleFirmware}
-                    deviceFirmwareVersion={deviceFirmwareVersion}
-                    bleFirmwareUpdateAvailable={bleFirmwareUpdateAvailable}
-                    firmwareUpdateProgress={firmwareUpdateProgress}
-                    isUpdatingFirmware={isUpdatingFirmware}
-                    isCheckingFirmware={isCheckingFirmware}
-                    isVerifyingUpdate={isVerifyingUpdate}
-                    firmwareUpdateStatus={firmwareUpdateStatus}
                     handleBatteryCheck={handleBatteryCheck}
                     handleSdCardCheck={handleSdCardCheck}
-                    handleFirmwareCheck={handleFirmwareCheck}
-                    handleBleFirmwareUpdate={handleBleFirmwareUpdate}
-                    latestHimaxFirmware={latestHimaxFirmware}
-                    himaxFirmwareVersion={himaxFirmwareVersion}
-                    isHimaxUpdating={isHimaxUpdating}
-                    himaxUpdateProgress={himaxUpdateProgress}
-                    isCheckingHimaxVersion={isCheckingHimaxVersion}
-                    handleHimaxFirmwareCheck={handleHimaxFirmwareCheck}
-                    handleHimaxFirmwareUpdate={handleHimaxFirmwareUpdate}
                     isInitializing={isInitializing}
                     bleDeviceConnected={!!bleDevice?.connected}
                     theme={theme}
                     onShowHelp={showHelp}
+                    firmwareStatus={firmwareStatus}
                 />
 
                 <View style={styles.footer}>
