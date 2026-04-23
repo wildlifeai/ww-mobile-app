@@ -422,7 +422,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         await waitForSleep()
         if (unmountedRef.current) return
 
-        // Reset
+        // Reset — the nRF responds "Device will reset after disconnecting",
+        // so we MUST drop the BLE link for the reset to actually happen.
         advancePhase('rebooting')
         appendLog('Sending reset command...')
         try {
@@ -432,8 +433,18 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             // Usually throws because BLE drops on reset. Expected.
         }
 
-        // Wait for device to come back
-        await new Promise(r => setTimeout(r, 8000))
+        // Explicitly disconnect so the nRF triggers its post-disconnect reset
+        appendLog('Disconnecting to trigger reboot...')
+        try {
+            const disSession = createBleSession(device)
+            await disSession.execute(() => commandRegistry.disconnect())
+        } catch (_e) { /* expected */ }
+        try {
+            await disconnectDevice(device)
+        } catch (_e) { /* expected */ }
+
+        // Wait for the device to fully reboot
+        await new Promise(r => setTimeout(r, 10000))
         if (unmountedRef.current) return
 
         advancePhase('reconnecting')
@@ -459,7 +470,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         }
 
         advancePhase('complete')
-    }, [device, advancePhase, appendLog, waitForSleep, connectDevice])
+    }, [device, advancePhase, appendLog, waitForSleep, connectDevice, disconnectDevice])
 
     // ── Public start ───────────────────────────────────────────────
 
