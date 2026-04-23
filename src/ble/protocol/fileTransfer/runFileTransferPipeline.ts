@@ -226,8 +226,12 @@ export async function runFileTransferPipeline(
     abortSignal.addEventListener('abort', abortHandler)
   })
 
-  // Helper: race ACK wait against disconnect + abort + silence
-  async function waitForAck(expected: ExpectedAck, timeoutMs?: number): Promise<string> {
+  // Helper: set up ACK listener and race against disconnect + abort + silence.
+  // Returns a Promise that resolves when the expected ACK arrives.
+  // IMPORTANT: Call this BEFORE sending the packet so the listener is
+  // registered before the device can respond.  The device can ACK a packet
+  // faster than a JS `await writeBinaryToDevice(...)` resolves.
+  function prepareAckWait(expected: ExpectedAck, timeoutMs?: number): Promise<string> {
     resetSilenceTimer() // reset on send
 
     const ackPromise = stream.waitFor((line: string) => {
@@ -302,10 +306,14 @@ export async function runFileTransferPipeline(
     // ── Phase 1: FILE_START ────────────────────────────────────────
     emitProgress('starting')
     const startPacket = buildFileStartPacket(filename, data.length)
-    await writeBinaryToDevice(peripheral, startPacket, true) // write with response
+
+    // Register ACK listener BEFORE sending — the device can respond
+    // faster than writeBinaryToDevice resolves on the JS side.
+    const startAckPromise = prepareAckWait({ phase: 'start' }, FILE_START_ACK_TIMEOUT_MS)
+    await writeBinaryToDevice(peripheral, startPacket, true)
     log(`[FileTransfer] FILE_START sent: ${filename} (${data.length} bytes)`)
 
-    await waitForAck({ phase: 'start' }, FILE_START_ACK_TIMEOUT_MS)
+    await startAckPromise
     log(`[FileTransfer] FILE_START ACKed`)
 
     // ── Phase 2: FILE_DATA ─────────────────────────────────────────
@@ -333,9 +341,10 @@ export async function runFileTransferPipeline(
       let packetAcked = false
       while (!packetAcked) {
         try {
-          await writeBinaryToDevice(peripheral, dataPacket, false)
           const ackStartTime = Date.now()
-          await waitForAck({ phase: 'data', packetNum: wirePacketNum })
+          const dataAckPromise = prepareAckWait({ phase: 'data', packetNum: wirePacketNum })
+          await writeBinaryToDevice(peripheral, dataPacket, false)
+          await dataAckPromise
 
           // Success — track timing for ETA
           ackTimes.push(Date.now() - ackStartTime)
@@ -374,10 +383,12 @@ export async function runFileTransferPipeline(
     // ── Phase 3: FILE_END ──────────────────────────────────────────
     emitProgress('verifying')
     const endPacket = buildFileEndPacket(crc)
+    
+    const endAckPromise = prepareAckWait({ phase: 'end' })
     await writeBinaryToDevice(peripheral, endPacket, true) // write with response
     log(`[FileTransfer] FILE_END sent: CRC=0x${crc.toString(16).toUpperCase().padStart(4, '0')}`)
 
-    await waitForAck({ phase: 'end' })
+    await endAckPromise
     log(`[FileTransfer] Transfer complete: "ftx done" received`)
 
     // ── Success ────────────────────────────────────────────────────
