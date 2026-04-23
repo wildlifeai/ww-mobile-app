@@ -10,11 +10,11 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
   
   const execute = <T>(
     commandConstructor: () => import('../protocol/commandRegistry').CommandContext<T>, 
-    options?: { signal?: AbortSignal, maxRetries?: number }
+    options?: { signal?: AbortSignal, maxRetries?: number, lockHolder?: string }
   ): Promise<T> => {
     return commandQueue.enqueue<T>(
       () => runCommandPipeline(peripheral, commandConstructor, options),
-      { signal: options?.signal }
+      { signal: options?.signal, lockHolder: options?.lockHolder }
     );
   };
 

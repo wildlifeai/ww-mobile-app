@@ -41,9 +41,22 @@ export const useEngineerConnect = () => {
         setDialogState('scanning')
         setConnectingDevice(null)
         dispatch(setEngineerConsoleActive(true))
-        // Start a long scan — acts as continuous scanning until user cancels
-        startScan(300)
+        // Start a short 3-second scan burst. The effect below will restart it if needed.
+        startScan(3)
     }, [startScan, dispatch])
+
+    // Scan loop — keep restarting the scan in 3s bursts while in 'scanning' state
+    // This matches the fast-discovery strategy from useDeviceDiscovery
+    const scanCommandLockRef = useRef(false)
+    useEffect(() => {
+        if (dialogState === 'scanning' && !isConnectingRef.current && !isScanning && !scanCommandLockRef.current) {
+            scanCommandLockRef.current = true
+            startScan(3)
+            setTimeout(() => {
+                scanCommandLockRef.current = false
+            }, 500)
+        }
+    }, [dialogState, isScanning, startScan])
 
     // Auto-connect when device appears during scanning
     useEffect(() => {
@@ -84,7 +97,7 @@ export const useEngineerConnect = () => {
                 isConnectingRef.current = false
                 setDialogState('scanning')
                 setConnectingDevice(null)
-                startScan(300)
+                startScan(3)
             }
         } catch (error) {
             logError('[EngineerConnect] Connection error:', error)
@@ -92,7 +105,7 @@ export const useEngineerConnect = () => {
             isConnectingRef.current = false
             setDialogState('scanning')
             setConnectingDevice(null)
-            startScan(300)
+            startScan(3)
         }
     }, [connectDevice, navigation, dispatch, startScan])
 

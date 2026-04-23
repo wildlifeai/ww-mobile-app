@@ -1,6 +1,6 @@
 import { View, StyleSheet } from 'react-native'
 import { OfflineIndicator } from '../../components/ui/OfflineIndicator'
-import { ActivityIndicator, Text, IconButton, ProgressBar, useTheme } from 'react-native-paper'
+import { ActivityIndicator, Button, Text, IconButton, ProgressBar, useTheme } from 'react-native-paper'
 import { Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppDrawer } from '../../components/AppDrawer'
@@ -21,6 +21,11 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
         connectingDevice,
         connectionLogs,
         processing,
+        // Scan session
+        scanSessionActive,
+        scanSecondsRemaining,
+        scanSessionExpired,
+        startScanSession,
         // Scanner Routing Dialog
         routingState,
         routingParams,
@@ -90,6 +95,12 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
         )
     }
 
+    // Format remaining time as M:SS
+    const minutes = Math.floor(scanSecondsRemaining / 60)
+    const seconds = scanSecondsRemaining % 60
+    const countdownText = `${minutes}:${String(seconds).padStart(2, '0')}`
+    const scanProgress = 1 - (scanSecondsRemaining / 60)
+
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <OfflineIndicator />
@@ -116,14 +127,78 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                             />
                         </View>
 
-                        <Text variant="headlineMedium" style={styles.autoTitleBold}>
-                            Press the middle button on your device to connect to it
-                        </Text>
-                        
-                        <View style={[styles.scanningLogContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
-                            <ActivityIndicator size={16} color={theme.colors.primary} />
-                            <Text style={[styles.scanningLogText, { color: theme.colors.primary }]}>Searching for BLE connections...</Text>
-                        </View>
+                        {/* Expired state — no device found after 60s */}
+                        {scanSessionExpired && (
+                            <>
+                                <Text variant="headlineMedium" style={styles.autoTitleBold}>
+                                    No devices found
+                                </Text>
+                                <Text variant="bodyMedium" style={styles.subtitleText}>
+                                    Make sure your device is nearby and press its middle button to start Bluetooth advertising.
+                                </Text>
+                                <Button
+                                    mode="contained"
+                                    icon="magnify"
+                                    onPress={startScanSession}
+                                    style={styles.searchButton}
+                                    contentStyle={styles.searchButtonContent}
+                                    labelStyle={styles.searchButtonLabel}
+                                >
+                                    <Text>Search Again</Text>
+                                </Button>
+                            </>
+                        )}
+
+                        {/* Active session — scanning with countdown */}
+                        {scanSessionActive && (
+                            <>
+                                <Text variant="headlineMedium" style={styles.autoTitleBold}>
+                                    Press the middle button on your device to connect to it
+                                </Text>
+
+                                <View style={styles.countdownContainer}>
+                                    <ProgressBar
+                                        progress={scanProgress}
+                                        color={theme.colors.primary}
+                                        style={styles.countdownBar}
+                                    />
+                                    <View style={[styles.scanningLogContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
+                                        <ActivityIndicator size={16} color={theme.colors.primary} />
+                                        <Text style={[styles.scanningLogText, { color: theme.colors.primary }]}>
+                                            Searching for devices... {countdownText}
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <Button
+                                    mode="outlined"
+                                    icon="refresh"
+                                    onPress={startScanSession}
+                                    style={styles.restartButton}
+                                >
+                                    <Text>Restart Search</Text>
+                                </Button>
+                            </>
+                        )}
+
+                        {/* Initial state — no session started yet */}
+                        {!scanSessionActive && !scanSessionExpired && (
+                            <>
+                                <Text variant="headlineMedium" style={styles.autoTitleBold}>
+                                    Press the middle button on your device, then search
+                                </Text>
+                                <Button
+                                    mode="contained"
+                                    icon="magnify"
+                                    onPress={startScanSession}
+                                    style={styles.searchButton}
+                                    contentStyle={styles.searchButtonContent}
+                                    labelStyle={styles.searchButtonLabel}
+                                >
+                                    <Text>Search for Devices</Text>
+                                </Button>
+                            </>
+                        )}
                     </View>
                 </View>
             </View>
@@ -227,5 +302,37 @@ const styles = StyleSheet.create({
     },
     singleLogText: {
         fontSize: 14,
-    }
+    },
+    searchButton: {
+        marginTop: 8,
+        borderRadius: 28,
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
+    },
+    searchButtonContent: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+    },
+    searchButtonLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    restartButton: {
+        marginTop: 16,
+        borderRadius: 28,
+    },
+    countdownContainer: {
+        width: '100%',
+        marginTop: 8,
+    },
+    countdownBar: {
+        height: 4,
+        borderRadius: 2,
+        marginBottom: 8,
+    },
+    subtitleText: {
+        textAlign: 'center',
+        opacity: 0.7,
+        marginBottom: 24,
+        paddingHorizontal: 8,
+    },
 })

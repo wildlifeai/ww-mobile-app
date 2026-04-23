@@ -50,6 +50,9 @@ adb install ./path/to/app.apk
 > [!NOTE]
 > Environment variables must be in `eas.json` (not `.env.local`) for EAS builds. They're baked into the bundle at build time. See [.env.example](../../.env.example).
 
+> [!CAUTION]
+> **API Key Leaks via Expo Prebuild**: Because this is a Bare workflow project where the `android/` folder is tracked in Git, do NOT use `process.env` directly in `app.config.ts` for native config properties (like `android.config.googleMaps.apiKey`). If you do, running `npx expo prebuild` will bake the raw secret directly into `AndroidManifest.xml`, which will then be accidentally committed to Git. Instead, use a placeholder string in `app.config.ts` (e.g., `"${GOOGLE_MAPS_API_KEY_ANDROID}"`) and let Gradle resolve it from the environment dynamically.
+
 ## Device Setup (First Time)
 
 1. **Developer Options**: Settings → About Phone → tap "Build Number" 7 times

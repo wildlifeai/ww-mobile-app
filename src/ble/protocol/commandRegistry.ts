@@ -44,6 +44,14 @@ export interface CommandContext<T = any> {
   
   /** Whether the command can be safely sent while a binary stream is active without corrupting it */
   safeDuringStreaming?: boolean;
+
+  /** If true, runCommandPipeline will automatically pause heartbeats for the
+   *  duration of this command and resume them on completion/failure. */
+  isLongRunning?: boolean;
+
+  /** If true, the command acquires an exclusive transport lock.
+   *  While held, the commandQueue rejects all other enqueue attempts. */
+  requiresExclusiveLock?: boolean;
 }
 
 export interface CommandDefinitionOptions {
@@ -56,6 +64,8 @@ export interface CommandDefinitionOptions {
    responseMode?: 'single_line' | 'multi_line' | 'fire_and_forget' | 'stream';
    idempotent?: boolean;
    safeDuringStreaming?: boolean;
+   isLongRunning?: boolean;
+   requiresExclusiveLock?: boolean;
 }
 
 /**
@@ -80,6 +90,8 @@ export function createSingleLineCommand<T>(
       responseMode: options?.responseMode || 'single_line',
       idempotent: options?.idempotent,
       safeDuringStreaming: options?.safeDuringStreaming,
+      isLongRunning: options?.isLongRunning,
+      requiresExclusiveLock: options?.requiresExclusiveLock,
       build: () => buildCommand(...args),
       successMatcher: (line: string) => regex.test(line),
       failureMatcher: (line: string) => options?.failureRegex?.test(line) ?? false,
@@ -128,6 +140,8 @@ export function createMultiLineCommand<T>(
       responseMode: options?.responseMode || 'multi_line',
       idempotent: options?.idempotent,
       safeDuringStreaming: options?.safeDuringStreaming,
+      isLongRunning: options?.isLongRunning,
+      requiresExclusiveLock: options?.requiresExclusiveLock,
       build: () => buildCommand(...args),
       successMatcher: (line: string) => lineMatcher.test(line) || endMatcher.test(line),
       failureMatcher: (line: string) => options?.failureRegex?.test(line) ?? false,
@@ -153,6 +167,19 @@ export function createMultiLineCommand<T>(
     };
   };
 }
+
+/**
+ * HX6538 firmware update error codes returned by xip_update_firmware_from_sd().
+ * Maps numeric codes to human-readable descriptions for field debugging.
+ */
+const FIRMWARE_ERROR_CODES: Record<number, string> = {
+  [-1]: 'firmware file not found on SD card (/MANIFEST/output.img)',
+  [-2]: 'SD card read error',
+  [-3]: 'flash erase failed',
+  [-4]: 'flash write failed',
+  [-5]: 'flash verify mismatch — data written does not match source',
+  [-6]: 'slot selector write failed',
+};
 
 /**
  * Exported registry of constructed commands.
@@ -196,16 +223,23 @@ export const commandRegistry = {
   ),
   aifirmware: createSingleLineCommand<boolean>(
     'aifirmware',
-    (filename?: string) => `AI firmware ${filename || 'output.img'}`,
+    (filename: string) => `AI firmware ${filename}`,
     /Firmware update (OK|FAILED)(?: \(error (-?\d+)\))?/i,
     (match) => {
       if (match[1].toUpperCase() === 'FAILED') {
-         const errorCode = match[2] ? match[2] : 'unknown';
-         throw new Error(`Firmware update failed on device (error ${errorCode}). Existing firmware unchanged.`);
+         const errorCode = match[2] ? parseInt(match[2], 10) : NaN;
+         const errorMsg = FIRMWARE_ERROR_CODES[errorCode] ?? `unknown error (${match[2] ?? '?'})`;
+         throw new Error(`Firmware update failed: ${errorMsg}`);
       }
       return true;
     },
-    { timeoutMs: 120000, retryPolicy: { maxRetries: 0 }, idempotent: false, failureRegex: /^Error/i }
+    {
+      timeoutMs: 120000,
+      retryPolicy: { maxRetries: 0 },
+      idempotent: false,
+      isLongRunning: true,
+      requiresExclusiveLock: true,
+    }
   ),
   version: createSingleLineCommand<string>(
     'version',

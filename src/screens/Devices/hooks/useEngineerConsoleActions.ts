@@ -105,7 +105,15 @@ export const useEngineerConsoleActions = ({
             return
         }
         if (cmdName === CommandNames.UPDATE_HIMAX_FIRMWARE) {
-            navigation.navigate('HimaxFirmwareUpdateScreen', { deviceId: device?.id })
+            navigation.navigate('FirmwareUpdateScreen', { deviceId: device?.id, target: 'himax' })
+            return
+        }
+        if (cmdName === CommandNames.UPDATE_BLE_FIRMWARE) {
+            navigation.navigate('FirmwareUpdateScreen', { deviceId: device?.id, target: 'ble' })
+            return
+        }
+        if (cmdName === CommandNames.FILE_TRANSFER_TEST) {
+            navigation.navigate('FileTransferTestScreen', { deviceId: device?.id })
             return
         }
 

@@ -58,7 +58,7 @@ graph TB
 
 ## Event Taxonomy (Frozen)
 
-The `bleEventBus` emits **6 event types**. This contract is frozen. All events include `ts` (timestamp) and `deviceId` to prevent crosstalk during multi-device scanning.
+The `bleEventBus` emits **7 event types**. This contract is frozen. All events include `ts` (timestamp) and `deviceId` to prevent crosstalk during multi-device scanning.
 
 | Event | Channel Name | Payload | Purpose |
 |---|---|---|---|
@@ -68,6 +68,7 @@ The `bleEventBus` emits **6 event types**. This contract is frozen. All events i
 | `BINARY_PACKET` | `binaryPacket` | `{ data: Uint8Array, ts: number, deviceId: string, packetNum: number, length: number }` | Image binary data |
 | `QUEUE_STATE_CHANGED` | `queueStateChanged` | `{ isBusy: boolean, ts: number, deviceId?: string }` | Command queue busy/idle transitions |
 | `DEVICE_SIGNAL` | `deviceSignal` | `{ signal: DeviceSignalType, ts: number, deviceId: string }` | Sleep/Wake/Busy lifecycle signals |
+| `HEARTBEAT_PAUSE` | `heartbeatPause` | `{ isPaused: boolean, ts: number, deviceId?: string }` | Pauses/resumes heartbeat during long-running operations |
 
 `DeviceSignalType` is one of: `'SLEEP'`, `'WAKE'`, `'BUSY'`.
 
@@ -336,8 +337,9 @@ stateDiagram-v2
 - **No echo dependency:** Unlike the legacy manager, there is no echo-waiting phase. The command matches against `successMatcher` / `failureMatcher` directly.
 - **Retry with policy:** Each command defines its own `retryPolicy` (max retries and optional delay).
 - **Queue state broadcasting:** Emits `QUEUE_STATE_CHANGED` events so UI can show busy/idle state.
+- **Transport lock enforcement:** When a `transportLock` is held (e.g. during file transfer), the queue rejects new commands unless the caller is the lock holder. The lock holder can pass `{ lockHolder: name }` to `enqueue()` to bypass the guard.
 
-**Files:** [commandQueue.ts](../../src/ble/protocol/commandQueue.ts), [runCommand.ts](../../src/ble/protocol/runCommand.ts), [runCommandPipeline.ts](../../src/ble/protocol/runCommandPipeline.ts)
+**Files:** [commandQueue.ts](../../src/ble/protocol/commandQueue.ts), [runCommand.ts](../../src/ble/protocol/runCommand.ts), [runCommandPipeline.ts](../../src/ble/protocol/runCommandPipeline.ts), [transportLock.ts](../../src/ble/protocol/transportLock.ts)
 
 ---
 
@@ -418,11 +420,25 @@ sequenceDiagram
 
 ### 10. Transport Layer (`transport.ts`)
 
-Handles the raw BLE write operation:
+Handles all BLE write operations. Two functions:
+
+| Function | Purpose | BLE Mode |
+|---|---|---|
+| `writeToDevice()` | String commands (ASCII) | `writeWithoutResponse()` |
+| `writeBinaryToDevice()` | Raw binary packets (file transfer) | `write()` or `writeWithoutResponse()` |
+
+**`writeToDevice()`:**
 1. Sanitizes trailing newlines/CRs
 2. Converts string to byte array
 3. Calls `BleManager.writeWithoutResponse()` with a 5-second timeout
 4. Service/characteristic discovery with fallback logic
+
+**`writeBinaryToDevice()`:**
+1. Accepts `Uint8Array` directly — no string encoding
+2. Supports dual mode via `withResponse` flag:
+   - `true` → `BleManager.write()` (reliable, for FILE_START/END)
+   - `false` → `BleManager.writeWithoutResponse()` (fast, for FILE_DATA)
+3. Used exclusively by the file transfer pipeline
 
 **File:** [transport.ts](../../src/ble/transport.ts)
 
@@ -537,7 +553,7 @@ src/
 ├── ble/
 │   ├── types.ts                    # UI command definitions (CommandNames, COMMANDS)
 │   ├── commandManager.ts           # ⛔ DEAD — trap file, throws on import
-│   ├── transport.ts                # Raw BLE write + service discovery
+│   ├── transport.ts                # Raw BLE write + binary write + service discovery
 │   ├── messageClassifier.ts        # UI-only log categorization (NOT protocol logic)
 │   ├── emitters.ts                 # Legacy EventEmitter3 instances (retained for ImageReassembler)
 │   ├── protocol/                   # ✅ NEW — Event-driven command engine
@@ -549,7 +565,17 @@ src/
 │   │   ├── runCommandPipeline.ts   # Multi-command sequential executor
 │   │   ├── protocolConstants.ts    # Timing constants (timeouts, intervals)
 │   │   ├── deviceSignals.ts        # Sleep/Wake/Busy signal types
-│   │   ├── streamRegistry.ts       # Active stream tracking
+│   │   ├── streamRegistry.ts       # Active binary stream tracking
+│   │   ├── textStreamScope.ts      # Scoped text line listener (auto-cleanup)
+│   │   ├── transportLock.ts        # Exclusive transport lock (holder-verified)
+│   │   ├── fileTransfer/           # BLE file transfer to SD card
+│   │   │   ├── runFileTransferPipeline.ts  # Core ACK state machine
+│   │   │   ├── fileTransferPackets.ts      # Binary packet builders
+│   │   │   ├── fileTransferTypes.ts        # Types, error codes, retry policies
+│   │   │   ├── ackMatcher.ts               # Strict ACK validation
+│   │   │   ├── crc16ccitt.ts               # CRC-16/CCITT-FALSE
+│   │   │   ├── filenameValidator.ts        # 8.3 format validation
+│   │   │   └── __tests__/                  # 62 unit tests
 │   │   └── __tests__/              # Protocol unit tests
 │   ├── session/                    # ✅ NEW — Deterministic workflow API
 │   │   ├── createBleSession.ts     # Session factory for deployment workflows
@@ -630,4 +656,4 @@ const results = await runCommandPipeline(peripheral, [
 
 ---
 
-*Last Updated: April 19, 2026*
+*Last Updated: April 21, 2026*

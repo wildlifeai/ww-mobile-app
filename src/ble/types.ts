@@ -65,6 +65,7 @@ export enum CommandNames {
 	UPDATE_HIMAX_FIRMWARE = "UPDATE_HIMAX_FIRMWARE",
 	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
 	CAMERA_SETTINGS_TEST = "CAMERA_SETTINGS_TEST",
+	FILE_TRANSFER_TEST = "FILE_TRANSFER_TEST",
 
 	// Local commands (UPPERCASE - app-only actions)
 	CLEAR_CONSOLE = "CLEAR_CONSOLE",
@@ -605,6 +606,11 @@ export const COMMANDS: {
 	[CommandNames.CAMERA_SETTINGS_TEST]: {
 		name: CommandNames.CAMERA_SETTINGS_TEST,
 		description: "Open Camera Settings Test page",
+		type: 'process',
+	},
+	[CommandNames.FILE_TRANSFER_TEST]: {
+		name: CommandNames.FILE_TRANSFER_TEST,
+		description: "Send test files to device SD card via BLE",
 		type: 'process',
 	},
 	[CommandNames.CLEAR_CONSOLE]: {

@@ -18,6 +18,7 @@ import { log, logError } from '../../../utils/logger'
 import { sleep } from '../../../utils/helpers'
 import { ScannerRoutingState } from '../components/ScannerRoutingDialog'
 import { InitPayload } from '../../../navigation/types'
+import { useAutoConnectStateMachine } from './useAutoConnectStateMachine'
 
 
 type DeviceDiscoveryScreenRouteProp = RouteProp<RootStackParamList, 'DeviceDiscovery'>
@@ -37,7 +38,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const { runChecks: runPreDeploymentChecks } = useDevicePreDeploymentChecks()
     const { initialize: runBleStandardInit } = useBleInitialization()
     const devices = useAppSelector((state) => state.devices)
-    const { isScanning } = useAppSelector((state) => state.scanning)
+    const { isScanning, isEngineerConsoleActive } = useAppSelector((state) => state.scanning)
     const currentOrganisation = useAppSelector(selectCurrentOrganisation)
     const user = useAppSelector((state) => state.authentication.user)
 
@@ -64,6 +65,12 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const [connectingDevice, setConnectingDevice] = useState<ExtendedPeripheral | null>(null)
     const [connectionLogs, setConnectionLogs] = useState<string[]>([])
 
+    // Scan session state — scanning only runs when user presses "Search"
+    const [scanSessionActive, setScanSessionActive] = useState(false)
+    const [scanSecondsRemaining, setScanSecondsRemaining] = useState(60)
+    const [scanSessionExpired, setScanSessionExpired] = useState(false)
+    const scanSessionActiveRef = useRef(false)
+
     // Scanner Routing Dialog state
     const [routingState, setRoutingState] = useState<ScannerRoutingState>('idle')
     const [routingParams, setRoutingParams] = useState<any>({})
@@ -82,25 +89,56 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const isFocused = useIsFocused()
     const scanCommandLockRef = useRef(false)
 
-    // Continuous state-driven scan loop
+    // Start or restart a 60-second scan session
+    const startScanSession = useCallback(() => {
+        setScanSessionActive(true)
+        setScanSecondsRemaining(60)
+        setScanSessionExpired(false)
+        scanSessionActiveRef.current = true
+        log('[Scanner] Scan session started (60s)')
+    }, [])
+
+    // Countdown timer — ticks every second while session is active and focused
+    useEffect(() => {
+        const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
+
+        if (!scanSessionActive || !isActuallyFocused || processing) return
+
+        const interval = setInterval(() => {
+            setScanSecondsRemaining(prev => {
+                if (prev <= 1) {
+                    // Session expired
+                    clearInterval(interval)
+                    setScanSessionActive(false)
+                    setScanSessionExpired(true)
+                    scanSessionActiveRef.current = false
+                    stopScan()
+                    log('[Scanner] Scan session expired — no device found')
+                    return 0
+                }
+                return prev - 1
+            })
+        }, 1000)
+
+        return () => clearInterval(interval)
+    }, [scanSessionActive, isFocused, isDrawerOpen, isActiveTab, processing, stopScan])
+
+    // Session-gated scan loop — only scans when session is active
     useEffect(() => {
         isReadyToScanRef.current = !isBleConnecting && !isScanning && !processing && !connectingDevice
 
         const isReadyForNewScan = !isBleConnecting && !processing && !connectingDevice
-
-        // Treat an open drawer the same as not being focused (pause background operations)
-        // Also ensure that if we are a tab, we are the active tab
         const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
 
-        if (isActuallyFocused && isReadyForNewScan) {
+        if (isActuallyFocused && isReadyForNewScan && scanSessionActiveRef.current) {
             if (!isScanning && !scanCommandLockRef.current) {
                 scanCommandLockRef.current = true
-                startScan(5)
+                startScan(3)
                 setTimeout(() => {
                     scanCommandLockRef.current = false
                 }, 500)
             }
-        } else if (!isActuallyFocused && isScanning && !scanCommandLockRef.current) {
+        } else if ((!isActuallyFocused || !scanSessionActiveRef.current) && isScanning && !scanCommandLockRef.current && !isEngineerConsoleActive) {
             scanCommandLockRef.current = true
             stopScan().then(() => {
                 setTimeout(() => {
@@ -110,20 +148,19 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 scanCommandLockRef.current = false
             })
         }
-    }, [isFocused, isDrawerOpen, isActiveTab, isScanning, isBleConnecting, processing, connectingDevice, startScan, stopScan])
+    }, [isFocused, isDrawerOpen, isActiveTab, isScanning, isBleConnecting, processing, connectingDevice, startScan, stopScan, scanSessionActive, isEngineerConsoleActive])
 
     const handleScan = useCallback(() => {
-        if (!isBleConnecting && !processing && !connectingDevice && !isScanning) {
-            startScan(5)
-        } else {
-            log('Scanning already taking place or blocked, skipping.')
-        }
-    }, [isBleConnecting, processing, connectingDevice, isScanning, startScan])
+        startScanSession()
+    }, [startScanSession])
 
     const addLog = useCallback(async (message: string) => {
         setConnectionLogs(prev => [...prev, message])
         await sleep(400)
     }, [])
+
+    // Auto-connect state machine — declared early because handleDeviceSelect uses it
+    const autoConnect = useAutoConnectStateMachine()
 
     const handleDeviceSelect = useCallback(
         async (device: ExtendedPeripheral) => {
@@ -233,7 +270,18 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                             // Step 2 & 3: Not Deployed -> Check user projects & Auto-route to Start Deployment
                             await addLog('Checking available projects...')
                             if (user?.id && currentOrganisation?.id) {
-                                const projects = await ProjectService.getProjectsForUserInOrganisation(user.id, currentOrganisation.id)
+                                let projects: any[] = []
+                                try {
+                                    projects = await ProjectService.getProjectsForUserInOrganisation(user.id, currentOrganisation.id)
+                                } catch (fetchErr: any) {
+                                    logError('[DeviceDiscovery] Project fetch failed:', fetchErr)
+                                    if (fetchErr.message?.toLowerCase().includes('timeout') || fetchErr.message?.toLowerCase().includes('aborted')) {
+                                        updateRoutingState('loading_timeout')
+                                    } else {
+                                        updateRoutingState('network_error')
+                                    }
+                                    return
+                                }
 
                                 if (projects.length === 0) {
                                     updateRoutingState('no_projects')
@@ -328,7 +376,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                     { 
                         text: 'OK', 
                         onPress: () => {
-                            autoConnectIgnoredDevicesRef.current.delete(device.id)
+                            autoConnect.resetDevice(device.id)
                         } 
                     }
                 ])
@@ -342,8 +390,9 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 }
             }
         },
-        [connectDevice, disconnectDevice, navigation, currentOrganisation, mode, processing, user?.id, stopScan, addLog, updateRoutingState, runBleStandardInit, runPreDeploymentChecks]
+        [connectDevice, disconnectDevice, navigation, currentOrganisation, mode, processing, user?.id, stopScan, addLog, updateRoutingState, runBleStandardInit, runPreDeploymentChecks, autoConnect]
     )
+
 
     // --- Scanner Routing Dialog Callbacks ---
 
@@ -363,27 +412,22 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
             Object.values(devices).filter(d => d.connected).forEach(d => disconnectDevice(d))
         }
         
-        // 2-second cool off period before auto-connect can re-trigger
-        setTimeout(() => {
-            if (autoConnectIgnoredDevicesRef.current) {
-                autoConnectIgnoredDevicesRef.current.clear()
-            }
-        }, 2000)
-    }, [disconnectDevice, devices, updateRoutingState])
+        // Transition to IGNORED_FOR_SESSION — device stays ignored
+        // until screen re-focus or manual retry. No 2-second cool-off.
+        if (connectingDevice) {
+            autoConnect.transition(connectingDevice.id, 'IGNORED_FOR_SESSION')
+        }
+    }, [disconnectDevice, devices, updateRoutingState, connectingDevice, autoConnect])
 
     // Auto-connect logic
-    const autoConnectIgnoredDevicesRef = useRef<Set<string>>(new Set())
-    const { isEngineerConsoleActive } = useAppSelector((state) => state.scanning)
 
-    // Clear the ignore list (cool-off period) whenever focus returns to this screen
+    // Reset all device states whenever focus returns to this screen
     // or when the user changes organisation.
-    // This allows users to immediately reconnect to devices they just backed out of
-    // or if they switched orgs to find a project.
     useEffect(() => {
         if (isFocused) {
-            autoConnectIgnoredDevicesRef.current.clear()
+            autoConnect.resetAll()
         }
-    }, [isFocused, currentOrganisation?.id])
+    }, [isFocused, currentOrganisation?.id, autoConnect])
 
     useEffect(() => {
         // Treat an open drawer the same as not being focused (pause background operations)
@@ -391,25 +435,26 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
 
         // Prevent auto-connect if we're not focused, processing a connection, ANY device is currently connecting,
-        // OR the Engineer Console is actively scanning for a device
-        if (isActuallyFocused && !isAnyDeviceConnecting && !isEngineerConsoleActive && devicesToDisplay.length >= 1) {
+        // OR the Engineer Console is actively scanning for a device,
+        // OR no scan session is active (user hasn't pressed Search yet)
+        if (isActuallyFocused && !isAnyDeviceConnecting && !isEngineerConsoleActive && scanSessionActiveRef.current && devicesToDisplay.length >= 1) {
             const deviceToConnect = devicesToDisplay.find(d =>
-                !d.signalLost && !d.connected && !d.loading && !processing && !autoConnectIgnoredDevicesRef.current.has(d.id)
+                !d.signalLost && !d.connected && !d.loading && !processing && autoConnect.canAutoConnect(d.id)
             )
 
             if (deviceToConnect) {
                 log(`[DeviceDiscovery] Auto-connecting to discovered device: ${deviceToConnect.id}`)
-                autoConnectIgnoredDevicesRef.current.add(deviceToConnect.id)
+                autoConnect.transition(deviceToConnect.id, 'ROUTING_PENDING')
                 handleDeviceSelect(deviceToConnect)
             }
 
             devicesToDisplay.forEach(d => {
-                if (d.signalLost && autoConnectIgnoredDevicesRef.current.has(d.id)) {
-                    autoConnectIgnoredDevicesRef.current.delete(d.id)
+                if (d.signalLost && !autoConnect.canAutoConnect(d.id)) {
+                    autoConnect.resetDevice(d.id)
                 }
             })
         }
-    }, [isFocused, isDrawerOpen, isActiveTab, isAnyDeviceConnecting, isEngineerConsoleActive, devicesToDisplay, mode, processing, handleDeviceSelect])
+    }, [isFocused, isDrawerOpen, isActiveTab, isAnyDeviceConnecting, isEngineerConsoleActive, devicesToDisplay, mode, processing, handleDeviceSelect, autoConnect, scanSessionActive])
 
     const handleDisconnect = useCallback(async (device: ExtendedPeripheral) => {
         log(`Disconnecting from ${device.id}`)
@@ -420,13 +465,9 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
         await disconnectDevice(device)
 
-        // 2-second cool off period after explicit disconnect
-        setTimeout(() => {
-            if (autoConnectIgnoredDevicesRef.current) {
-                autoConnectIgnoredDevicesRef.current.delete(device.id)
-            }
-        }, 2000)
-    }, [disconnectDevice])
+        // Mark device as IGNORED_FOR_SESSION after explicit disconnect
+        autoConnect.transition(device.id, 'IGNORED_FOR_SESSION')
+    }, [disconnectDevice, autoConnect])
 
     return {
         devicesToDisplay,
@@ -439,6 +480,11 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         connectingDevice,
         connectionLogs,
         processing,
+        // Scan session
+        scanSessionActive,
+        scanSecondsRemaining,
+        scanSessionExpired,
+        startScanSession,
         // Scanner Routing Dialog
         routingState,
         routingParams,
