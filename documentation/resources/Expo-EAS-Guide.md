@@ -111,6 +111,9 @@ extra: {
 }
 ```
 
+> [!CAUTION]
+> **Native File Secret Leaks (Bare Workflow)**: Do NOT use `process.env.SECRET_KEY` in `app.config.ts` for native configuration fields like `android.config.googleMaps.apiKey`. Running `npx expo prebuild` locally will write the raw secret directly into `AndroidManifest.xml` and `Info.plist`. Since `android/` and `ios/` folders are tracked in version control, committing them will leak your secrets to GitHub! Instead, use Gradle placeholders (e.g., `"${GOOGLE_MAPS_API_KEY_ANDROID}"`) in `app.config.ts` so `prebuild` writes the placeholder, and resolve it dynamically in `build.gradle` or native code.
+
 ### Accessing Config in Code
 
 ```typescript

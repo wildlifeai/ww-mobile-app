@@ -49,7 +49,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
         config: {
             googleMaps: {
-                apiKey: process.env.GOOGLE_MAPS_API_KEY_ANDROID,
+                apiKey: "${GOOGLE_MAPS_API_KEY_ANDROID}",
             },
         },
         permissions: [
