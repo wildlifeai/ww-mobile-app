@@ -118,10 +118,10 @@ uint16_t crc16_ccitt_finalize(uint16_t crc) {
 
 **FILE_START:**
 ```
-Byte:  07  00  12  0D 00 00 00  48 45 4C 4C 4F 2E 54 58 54 00
+Byte:  07  00  0E  0D 00 00 00  48 45 4C 4C 4F 2E 54 58 54 00
        |   |   |   |           |
        |   |   |   size=13 LE  filename="HELLO.TXT\0"
-       |   |   payload_len=18
+       |   |   payload_len=14
        |   pkt_num=0
        type=FILE_START
 ```

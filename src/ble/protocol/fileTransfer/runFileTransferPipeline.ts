@@ -47,6 +47,21 @@ import { log, logError, logWarn } from '../../../utils/logger'
 // Same pattern as NativeModulesSection.tsx — Metro bundles package.json at build time
 const appVersion: string = require('../../../../package.json').version ?? '0.0.0'
 
+// Module-level singleton to avoid creating a new NativeEventEmitter per pipeline run.
+// Lazy-init: null until first use, guarded by NativeModules.BleManager existence.
+let bleManagerEmitter: NativeEventEmitter | null = null
+function getBleManagerEmitter(): NativeEventEmitter | null {
+  if (bleManagerEmitter) return bleManagerEmitter
+  if (NativeModules.BleManager) {
+    try {
+      bleManagerEmitter = new NativeEventEmitter(NativeModules.BleManager)
+    } catch {
+      // Guard: some environments (tests, web) may not have the native module
+    }
+  }
+  return bleManagerEmitter
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function generateTransferId(): string {
@@ -189,27 +204,23 @@ export async function runFileTransferPipeline(
     disconnectReject = reject
   })
 
-  if (NativeModules.BleManager) {
-    try {
-      const emitter = new NativeEventEmitter(NativeModules.BleManager)
-      const sub = emitter.addListener(
-        'BleManagerDisconnectPeripheral',
-        (event: { peripheral: string }) => {
-          if (event.peripheral === peripheral.id) {
-            disconnectOccurred = true
-            disconnectReject?.(
-              new FileTransferError(
-                'DISCONNECTED',
-                'Device disconnected during transfer',
-              ),
-            )
-          }
-        },
-      )
-      disconnectCleanup = () => sub.remove()
-    } catch {
-      // Safety net — should not occur if NativeModules.BleManager exists
-    }
+  const emitter = getBleManagerEmitter()
+  if (emitter) {
+    const sub = emitter.addListener(
+      'BleManagerDisconnectPeripheral',
+      (event: { peripheral: string }) => {
+        if (event.peripheral === peripheral.id) {
+          disconnectOccurred = true
+          disconnectReject?.(
+            new FileTransferError(
+              'DISCONNECTED',
+              'Device disconnected during transfer',
+            ),
+          )
+        }
+      },
+    )
+    disconnectCleanup = () => sub.remove()
   }
 
   // User cancel — handler extracted so it can be removed in finally

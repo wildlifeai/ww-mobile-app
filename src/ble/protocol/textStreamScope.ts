@@ -10,6 +10,7 @@
  *   - Device-scoped filtering
  *   - No orphan listeners on crash
  *   - Deterministic ownership
+ *   - Safe against overlapping waitFor() calls (Set-based tracking)
  */
 
 import { bleEventBus, BleEvent } from './eventBus'
@@ -28,7 +29,7 @@ export class StreamTimeoutError extends Error {
 }
 
 export class TextStreamScope {
-  private handler: ((event: BleEvent & { type: 'TEXT_LINE' }) => void) | null = null
+  private activeHandlers = new Set<(event: BleEvent & { type: 'TEXT_LINE' }) => void>()
   private destroyed = false
 
   constructor(
@@ -41,6 +42,10 @@ export class TextStreamScope {
    * Returns the matching line.
    *
    * Automatically cleans up the listener on resolve, reject, or destroy.
+   *
+   * The predicate is wrapped in try-catch so callers can throw from it
+   * (e.g. FileTransferError on device error lines) without crashing
+   * the EventEmitter dispatch loop.
    */
   waitFor(
     predicate: (line: string) => boolean,
@@ -53,11 +58,23 @@ export class TextStreamScope {
     return new Promise<string>((resolve, reject) => {
       let timer: ReturnType<typeof setTimeout>
 
-      const cleanup = () => {
-        if (this.handler) {
-          bleEventBus.removeListener('textLine', this.handler)
-          this.handler = null
+      const handler = (event: BleEvent & { type: 'TEXT_LINE' }) => {
+        if (event.deviceId !== this.deviceId) return
+        if (!this.filter(event.line)) return
+        try {
+          if (predicate(event.line)) {
+            cleanup()
+            resolve(event.line)
+          }
+        } catch (err) {
+          cleanup()
+          reject(err)
         }
+      }
+
+      const cleanup = () => {
+        bleEventBus.removeListener('textLine', handler)
+        this.activeHandlers.delete(handler)
         clearTimeout(timer)
       }
 
@@ -66,29 +83,22 @@ export class TextStreamScope {
         reject(new StreamTimeoutError(timeoutMs))
       }, timeoutMs)
 
-      this.handler = (event: BleEvent & { type: 'TEXT_LINE' }) => {
-        if (event.deviceId !== this.deviceId) return
-        if (!this.filter(event.line)) return
-        if (predicate(event.line)) {
-          cleanup()
-          resolve(event.line)
-        }
-      }
-
-      bleEventBus.on('textLine', this.handler)
+      this.activeHandlers.add(handler)
+      bleEventBus.on('textLine', handler)
     })
   }
 
   /**
    * Force teardown. Idempotent. Called in finally block.
+   * Removes all active listeners to prevent orphans.
    */
   destroy() {
     if (this.destroyed) return
     this.destroyed = true
-    if (this.handler) {
-      bleEventBus.removeListener('textLine', this.handler)
-      this.handler = null
+    for (const handler of this.activeHandlers) {
+      bleEventBus.removeListener('textLine', handler)
     }
+    this.activeHandlers.clear()
     log(`[TextStreamScope] Destroyed for device ${this.deviceId.substring(0, 8)}`)
   }
 }
