@@ -384,7 +384,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         if (!foundId) throw new Error('Device not found after DFU reboot.')
 
         appendLog('Connecting...')
-        await connectDevice(device, 20000)
+        await connectDevice({ ...device, connected: false } as ExtendedPeripheral, 20000)
         await new Promise(r => setTimeout(r, 2000))
 
         // 7. Verify
@@ -433,25 +433,33 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         }
 
         // Wait for device to come back
-        await new Promise(r => setTimeout(r, 3000))
+        await new Promise(r => setTimeout(r, 8000))
+        if (unmountedRef.current) return
+
+        advancePhase('reconnecting')
+        appendLog('Reconnecting...')
+        const foundId = await scanForOriginalDevice(device.id, 20000)
+        if (!foundId) throw new Error('Device not found after reset.')
+
+        appendLog('Connecting...')
+        await connectDevice({ ...device, connected: false } as ExtendedPeripheral, 20000)
+        await new Promise(r => setTimeout(r, 2000))
         if (unmountedRef.current) return
 
         // Try to query new version if still connected
         advancePhase('verifying')
         appendLog('Checking new version...')
         try {
-            if (device.connected) {
-                const verSession = createBleSession(device)
-                const ver = await verSession.execute(() => commandRegistry.aiver())
-                if (!unmountedRef.current) setNewVersion(ver)
-                appendLog(`New version: ${ver}`)
-            }
+            const verSession = createBleSession(device)
+            const ver = await verSession.execute(() => commandRegistry.aiver())
+            if (!unmountedRef.current) setNewVersion(ver)
+            appendLog(`New version: ${ver}`)
         } catch (e) {
             logWarn('[FW Update] Post-update version query failed:', e)
         }
 
         advancePhase('complete')
-    }, [device, advancePhase, appendLog, waitForSleep])
+    }, [device, advancePhase, appendLog, waitForSleep, connectDevice])
 
     // ── Public start ───────────────────────────────────────────────
 
