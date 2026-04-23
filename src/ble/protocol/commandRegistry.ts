@@ -414,7 +414,7 @@ export const commandRegistry = {
 
   loadmodel: createSingleLineCommand<boolean>(
     'loadmodel',
-    () => 'loadmodel',
+    (id: number, ver: number) => `loadmodel ${id} ${ver}`,
     /Loaded/i,
     () => true,
     { timeoutMs: 30000, failureRegex: /Error loading/i }

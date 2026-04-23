@@ -45,6 +45,7 @@ import { CameraSettingsTestScreen } from "../screens/Devices/CameraSettingsTestS
 import { FirmwareUpdateScreen } from "../screens/Devices/FirmwareUpdateScreen"
 import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScreen"
 import { ConfigTransferScreen } from "../screens/Devices/ConfigTransferScreen"
+import { AiModelTransferScreen } from "../screens/Devices/AiModelTransferScreen"
 import { DfuScreen } from "../screens/Devices/DfuScreen"
 
 // Developer screens
@@ -220,6 +221,11 @@ export const MainNavigation = () => {
 							name="ConfigTransferScreen"
 							component={ConfigTransferScreen}
 							options={{ title: "Config Transfer" }}
+						/>
+						<Stack.Screen
+							name="AiModelTransferScreen"
+							component={AiModelTransferScreen}
+							options={{ title: "AI Model Transfer" }}
 						/>
 
 						<Stack.Screen
