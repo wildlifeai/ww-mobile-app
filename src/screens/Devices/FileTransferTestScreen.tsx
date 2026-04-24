@@ -75,17 +75,17 @@ function generateTestFiles(): TestFile[] {
         description: '500 bytes — repeating 0x00–0xFF pattern, verifies binary integrity',
     }
 
-    // 5. Very Large Binary — ~3MB
-    const veryLargeData = new Uint8Array(3 * 1024 * 1024)
+    // 5. Large Binary — ~500KB
+    const veryLargeData = new Uint8Array(500 * 1024)
     for (let i = 0; i < veryLargeData.length; i++) {
         // eslint-disable-next-line no-bitwise
         veryLargeData[i] = i & 0xFF
     }
     const veryLarge: TestFile = {
-        name: 'Very Large Binary (~3MB)',
-        filename: 'LARGE.DAT',
+        name: 'Large Binary (~500KB)',
+        filename: 'LARGE.BIN',
         data: veryLargeData,
-        description: '3MB — verifies stability and performance for very long transfers',
+        description: '500KB — verifies stability for firmware-sized transfers (firmware is ~440KB)',
     }
 
     return [tiny, medium, big, binary, veryLarge]
