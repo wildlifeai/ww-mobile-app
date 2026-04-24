@@ -83,7 +83,7 @@ function generateTestFiles(): TestFile[] {
     }
     const veryLarge: TestFile = {
         name: 'Very Large Binary (~3MB)',
-        filename: '3MB.DAT',
+        filename: 'LARGE.DAT',
         data: veryLargeData,
         description: '3MB — verifies stability and performance for very long transfers',
     }
