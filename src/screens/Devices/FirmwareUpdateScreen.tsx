@@ -1,12 +1,14 @@
+import { useState, useEffect } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
-import { Button, ActivityIndicator, ProgressBar, IconButton } from 'react-native-paper'
+import { Button, ActivityIndicator, ProgressBar, IconButton, RadioButton } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
 
 import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
-import { useFirmwareUpdate, FirmwareTarget } from './hooks/useFirmwareUpdate'
+import { FileTransferProgressCard } from '../../components/FileTransferProgressCard'
+import { useFirmwareUpdate, FirmwareTarget, HimaxFirmwareSource } from './hooks/useFirmwareUpdate'
 
 const TARGET_TITLES: Record<FirmwareTarget, string> = {
     ble: 'BLE Firmware Update',
@@ -15,7 +17,7 @@ const TARGET_TITLES: Record<FirmwareTarget, string> = {
 
 const TARGET_DESCRIPTIONS: Record<FirmwareTarget, string> = {
     ble: 'Downloads the latest BLE firmware from the cloud and flashes it via Nordic DFU. The device will reboot into a bootloader, apply the update, then reconnect.',
-    himax: 'Flashes the Himax AI processor using output.img from the SD card (/MANIFEST/ directory). Ensure the correct firmware file is on the SD card before starting.',
+    himax: 'Flashes the Himax AI processor using MANIFEST/output.img from the SD card. Ensure the correct firmware file is on the SD card before starting.',
 }
 
 export const FirmwareUpdateScreen = () => {
@@ -26,6 +28,8 @@ export const FirmwareUpdateScreen = () => {
     const deviceId = route.params?.deviceId
     const target: FirmwareTarget = route.params?.target || 'himax'
     const device = useAppSelector(state => state.devices[deviceId || ''])
+    
+    const [himaxSource, setHimaxSource] = useState<HimaxFirmwareSource>('sdcard')
 
     const {
         progress,
@@ -35,6 +39,10 @@ export const FirmwareUpdateScreen = () => {
         isFailed,
         progressLogs,
         errorMsg,
+        downloadState,
+        downloadProgress,
+        fileTransferProgress,
+        phase,
         batteryLevel,
         isBatteryLow,
         previousVersion,
@@ -42,10 +50,19 @@ export const FirmwareUpdateScreen = () => {
         latestFirmware,
         isPreflightDone,
         startUpdate,
+        cancelUpdate,
     } = useFirmwareUpdate({ target, device })
 
     const title = TARGET_TITLES[target]
     const description = TARGET_DESCRIPTIONS[target]
+
+    useEffect(() => {
+        if (target === 'himax' && latestFirmware && himaxSource === 'sdcard') {
+            // Default to download if a newer firmware is available
+            setHimaxSource('download')
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [latestFirmware, target])
 
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
@@ -98,6 +115,29 @@ export const FirmwareUpdateScreen = () => {
                                 </WWText>
                             </View>
                         )}
+
+                        {/* Himax Source Selection */}
+                        {target === 'himax' && (
+                            <View style={styles.sourceSelection}>
+                                <WWText variant="titleSmall" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
+                                    Firmware Source
+                                </WWText>
+                                <RadioButton.Group onValueChange={value => setHimaxSource(value as HimaxFirmwareSource)} value={himaxSource}>
+                                    <View style={styles.radioRow}>
+                                        <RadioButton value="sdcard" />
+                                        <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1 }}>
+                                            Use existing MANIFEST/output.img on SD card
+                                        </WWText>
+                                    </View>
+                                    <View style={styles.radioRow}>
+                                        <RadioButton value="download" disabled={!latestFirmware} />
+                                        <WWText variant="bodyMedium" style={{ color: !latestFirmware ? colors.surfaceVariant : colors.onSurfaceVariant, flex: 1 }}>
+                                            Download {latestFirmware ? `"${latestFirmware.locationPath}"` : 'latest firmware'} from DB into MANIFEST/output.img on SD card
+                                        </WWText>
+                                    </View>
+                                </RadioButton.Group>
+                            </View>
+                        )}
                     </View>
                 )}
 
@@ -119,8 +159,45 @@ export const FirmwareUpdateScreen = () => {
                         {statusLabel}
                     </WWText>
 
-                    {/* Progress bar */}
-                    {(isUpdating || isComplete) && (
+                    {/* Dynamic Transfer Progress */}
+                    {phase === 'downloading' && (
+                        <View style={styles.marginTop12}>
+                            <FileTransferProgressCard
+                                title="Downloading Firmware"
+                                filename={latestFirmware?.locationPath}
+                                isIndeterminate={downloadProgress?.progress === null}
+                                progress={downloadProgress?.progress || 0}
+                                speedBytesPerSec={downloadProgress?.speedBytesPerSec}
+                                estimatedRemainingMs={downloadProgress?.estimatedRemainingMs}
+                                statusLabel={downloadState}
+                                onCancel={cancelUpdate}
+                                isFailed={downloadState === 'failed'}
+                                isComplete={downloadState === 'completed'}
+                                isPaused={downloadState === 'paused'}
+                            />
+                        </View>
+                    )}
+
+                    {phase === 'transferring' && fileTransferProgress && (
+                        <View style={styles.marginTop12}>
+                            <FileTransferProgressCard
+                                title="Transferring to Device"
+                                filename="OUTPUT.IMG"
+                                isIndeterminate={false}
+                                progress={fileTransferProgress.percentage / 100}
+                                speedBytesPerSec={fileTransferProgress.elapsedMs > 0 ? (fileTransferProgress.bytesSent / fileTransferProgress.elapsedMs) * 1000 : 0} 
+                                estimatedRemainingMs={fileTransferProgress.estimatedRemainingMs}
+                                bytesTransferred={fileTransferProgress.bytesSent}
+                                totalBytes={fileTransferProgress.totalBytes}
+                                statusLabel={fileTransferProgress.phase}
+                                isFailed={fileTransferProgress.phase === 'failed'}
+                                isComplete={fileTransferProgress.phase === 'complete'}
+                            />
+                        </View>
+                    )}
+
+                    {/* Overall Progress bar fallback for non-transfer phases */}
+                    {(isUpdating || isComplete) && phase !== 'downloading' && phase !== 'transferring' && (
                         <View style={styles.marginTop12}>
                             <ProgressBar
                                 progress={progress}
@@ -196,8 +273,7 @@ export const FirmwareUpdateScreen = () => {
                 {!isComplete && !isUpdating && (
                     <Button
                         mode="contained"
-                        onPress={startUpdate}
-                        disabled={!device?.connected || !isPreflightDone}
+                        onPress={() => startUpdate({ himaxSource })}
                         loading={!isPreflightDone}
                     >
                         <WWText>{isFailed ? 'Retry Update' : 'Start Update'}</WWText>
@@ -290,5 +366,16 @@ const styles = StyleSheet.create({
     successSubText: {
         color: '#E8F5E9',
         marginTop: 4,
+    },
+    sourceSelection: {
+        marginTop: 16,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.1)',
+    },
+    radioRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
     },
 })

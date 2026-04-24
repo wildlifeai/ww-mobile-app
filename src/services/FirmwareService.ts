@@ -3,11 +3,33 @@ import { Q } from '@nozbe/watermelondb'
 import database from '../database'
 import Firmware from '../database/models/Firmware'
 import { getSupabaseClient } from './supabase'
-import { log, logError } from '../utils/logger'
+import { log, logError, logWarn } from '../utils/logger'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const FIRMWARE_DIR = FileSystem.documentDirectory + 'firmware/'
 /** Tolerance in bytes when comparing file sizes (accounts for minor filesystem differences) */
 const FILE_SIZE_TOLERANCE_BYTES = 100
+
+export type DownloadState = 'idle' | 'downloading' | 'paused' | 'completed' | 'failed'
+
+export interface DownloadProgressData {
+    progress: number | null // 0-1, null for indeterminate
+    speedBytesPerSec: number
+    estimatedRemainingMs: number
+}
+
+export interface DownloadOptions {
+    onProgress?: (data: DownloadProgressData) => void
+    onStateChange?: (state: DownloadState) => void
+    signal?: AbortSignal
+}
+
+const ensureMinimumTime = async (startMs: number, minMs: number) => {
+    const elapsed = Date.now() - startMs
+    if (elapsed < minMs) {
+        await new Promise(resolve => setTimeout(resolve, minMs - elapsed))
+    }
+}
 
 class FirmwareService {
     private initialized = false
@@ -27,12 +49,10 @@ class FirmwareService {
      * If not, downloads it from Supabase Storage.
      * Returns the local file URI.
      */
-    async ensureFirmwareDownloaded(firmware: Firmware): Promise<string> {
+    async ensureFirmwareDownloaded(firmware: Firmware, options?: DownloadOptions): Promise<string> {
         await this.init()
+        const startMs = Date.now()
 
-        // Construct unique local filename
-        // locationPath is typically "type/filename.zip"
-        // locationPath is typically "type/filename.zip"
         const filename = this.getLocalFilename(firmware)
         const localUri = FIRMWARE_DIR + filename
 
@@ -40,54 +60,163 @@ class FirmwareService {
 
         if (fileInfo.exists) {
             const fileSize = fileInfo.size
-            
-            // Verify size if possible (approximate check)
             if (fileSize !== undefined && Math.abs(fileSize - firmware.fileSizeBytes) < FILE_SIZE_TOLERANCE_BYTES) {
                 log(`✅ Firmware already downloaded: ${localUri}`)
+                options?.onStateChange?.('completed')
+                await ensureMinimumTime(startMs, 500)
                 return localUri
             } else {
                 log(`⚠️ File size mismatch (Expected: ${firmware.fileSizeBytes}, Got: ${fileSize}). Re-downloading...`)
                 await FileSystem.deleteAsync(localUri, { idempotent: true })
+                await AsyncStorage.removeItem(`firmwareDownload_${firmware.id}`)
             }
         }
 
+        options?.onStateChange?.('downloading')
         log(`⬇️ Downloading firmware to ${localUri}...`)
 
+        let downloadResumable: FileSystem.DownloadResumable | null = null
+        let isAborted = false
+
+        // Cancel support
+        if (options?.signal) {
+            options.signal.addEventListener('abort', async () => {
+                isAborted = true
+                if (downloadResumable) {
+                    try {
+                        const snapshot = await downloadResumable.pauseAsync()
+                        if (snapshot) {
+                            await AsyncStorage.setItem(`firmwareDownload_${firmware.id}`, JSON.stringify(snapshot))
+                        }
+                    } catch (e) {
+                        logError('Failed to pause download on abort', e)
+                    }
+                }
+            })
+        }
+
         try {
-            const supabase = getSupabaseClient()
-            log(`Getting signed URL for path: ${firmware.locationPath}`)
+            let lastBytes = 0
+            let lastTime = Date.now()
 
-            const { data, error } = await supabase.storage
-                .from('firmware')
-                .createSignedUrl(firmware.locationPath, 60) // 60 seconds validity
+            const progressCallback = (downloadProgress: FileSystem.DownloadProgressData) => {
+                const now = Date.now()
+                const { totalBytesWritten, totalBytesExpectedToWrite } = downloadProgress
 
-            if (error || !data?.signedUrl) {
-                throw new Error(`Could not get signed URL: ${error?.message}`)
+                let progressValue: number | null = null
+                let speed = 0
+                let eta = 0
+
+                if (totalBytesExpectedToWrite > 0) {
+                    progressValue = totalBytesWritten / totalBytesExpectedToWrite
+                }
+
+                const timeDelta = (now - lastTime) / 1000 // seconds
+                if (timeDelta > 0.5) { // update speed every 500ms
+                    const bytesDelta = totalBytesWritten - lastBytes
+                    speed = bytesDelta / timeDelta
+                    if (speed > 0 && progressValue !== null) {
+                        eta = ((totalBytesExpectedToWrite - totalBytesWritten) / speed) * 1000
+                    }
+                    lastBytes = totalBytesWritten
+                    lastTime = now
+
+                    options?.onProgress?.({
+                        progress: progressValue,
+                        speedBytesPerSec: speed,
+                        estimatedRemainingMs: eta
+                    })
+                } else if (progressValue !== null && options?.onProgress) {
+                     // Still update just progress for smooth bar
+                     options.onProgress({
+                         progress: progressValue,
+                         speedBytesPerSec: speed,
+                         estimatedRemainingMs: eta
+                     })
+                }
             }
 
-            log(`Got signed URL, starting download...`)
+            // Check resumable state
+            const snapshotStr = await AsyncStorage.getItem(`firmwareDownload_${firmware.id}`)
+            if (snapshotStr) {
+                try {
+                    const snapshot = JSON.parse(snapshotStr)
+                    downloadResumable = new FileSystem.DownloadResumable(
+                        snapshot.url,
+                        snapshot.fileUri,
+                        snapshot.options,
+                        progressCallback,
+                        snapshot.resumeData
+                    )
+                    log(`Resuming download for ${firmware.locationPath}`)
+                } catch (e) {
+                    logWarn('Failed to parse download snapshot, starting fresh', e)
+                    await AsyncStorage.removeItem(`firmwareDownload_${firmware.id}`)
+                }
+            }
 
-            const downloadResumable = FileSystem.createDownloadResumable(
-                data.signedUrl,
-                localUri,
-                {}
-            )
+            if (!downloadResumable) {
+                const supabase = getSupabaseClient()
+                log(`Getting signed URL for path: ${firmware.locationPath}`)
+
+                const { data, error } = await supabase.storage
+                    .from('firmware')
+                    .createSignedUrl(firmware.locationPath, 60) // 60 seconds validity
+
+                if (error || !data?.signedUrl) {
+                    throw new Error(`Could not get signed URL: ${error?.message}`)
+                }
+
+                log(`Got signed URL, starting download...`)
+
+                downloadResumable = FileSystem.createDownloadResumable(
+                    data.signedUrl,
+                    localUri,
+                    {},
+                    progressCallback
+                )
+            }
+
+            if (isAborted) throw new Error('Download aborted')
 
             const result = await downloadResumable.downloadAsync()
             
+            if (isAborted) throw new Error('Download aborted')
+
             if (!result || !result.uri) {
                 throw new Error('Download failed to return a URI')
             }
 
+            // Check size again
+            const finalInfo = await FileSystem.getInfoAsync(result.uri)
+            if (finalInfo.exists && finalInfo.size !== undefined) {
+                 if (Math.abs(finalInfo.size - firmware.fileSizeBytes) > FILE_SIZE_TOLERANCE_BYTES) {
+                     throw new Error(`Downloaded file size mismatch. Expected ${firmware.fileSizeBytes}, Got ${finalInfo.size}`)
+                 }
+            }
+
             log(`✅ Firmware downloaded successfully: ${result.uri}`)
+            await AsyncStorage.removeItem(`firmwareDownload_${firmware.id}`)
+            options?.onStateChange?.('completed')
+            await ensureMinimumTime(startMs, 500)
             return result.uri
-        } catch (error) {
+        } catch (error: any) {
+            if (isAborted) {
+                options?.onStateChange?.('paused')
+                throw new Error('Download aborted by user')
+            }
+            options?.onStateChange?.('failed')
             logError('❌ Firmware download failed:', error)
-            // Cleanup partial file if needed
-            try {
-                await FileSystem.deleteAsync(localUri, { idempotent: true })
-            } catch (cleanupError) {
-                logError('❌ Failed to cleanup partial firmware file:', cleanupError)
+            // Save state if resumable
+            if (downloadResumable) {
+                try {
+                    const snapshot = await downloadResumable.pauseAsync()
+                    if (snapshot) {
+                         await AsyncStorage.setItem(`firmwareDownload_${firmware.id}`, JSON.stringify(snapshot))
+                    }
+                } catch (e) {
+                    // Ignore pause errors on failure
+                }
             }
             throw error
         }
@@ -96,18 +225,15 @@ class FirmwareService {
     /**
      * Deletes a local firmware file
      */
-    /**
-     * Deletes a local firmware file
-     */
     async deleteLocalFirmware(firmware: Firmware): Promise<void> {
         await this.init()
         const filename = this.getLocalFilename(firmware)
         const localUri = FIRMWARE_DIR + filename
         await FileSystem.deleteAsync(localUri, { idempotent: true })
+        await AsyncStorage.removeItem(`firmwareDownload_${firmware.id}`)
     }
 
     private getLocalFilename(firmware: Firmware): string {
-        // Sanitize type and version to prevent path traversal
         const sanitizedType = firmware.type.replace(/[^a-zA-Z0-9.-]/g, '_')
         const sanitizedVersion = firmware.version.replace(/[^a-zA-Z0-9.-]/g, '_')
         const originalFilename = firmware.locationPath.split('/').pop() || 'unknown'
@@ -115,9 +241,6 @@ class FirmwareService {
         return `${sanitizedType}_${sanitizedVersion}_${originalFilename}`
     }
 
-    /**
-     * Reads a downloaded firmware file as raw bytes for BLE file transfer.
-     */
     async readFirmwareAsBytes(localUri: string): Promise<Uint8Array> {
         const base64 = await FileSystem.readAsStringAsync(localUri, {
             encoding: FileSystem.EncodingType.Base64,
@@ -130,9 +253,6 @@ class FirmwareService {
         return bytes
     }
 
-    /**
-     * Resolves a firmware UUID by its type and version string.
-     */
     async getFirmwareIdByVersion(type: 'ble' | 'himax' | 'config', version: string): Promise<string | null> {
         try {
             const firmwareCollection = database.get<Firmware>('firmware')

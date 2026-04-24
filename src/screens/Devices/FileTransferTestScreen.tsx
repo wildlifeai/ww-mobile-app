@@ -75,7 +75,20 @@ function generateTestFiles(): TestFile[] {
         description: '500 bytes — repeating 0x00–0xFF pattern, verifies binary integrity',
     }
 
-    return [tiny, medium, big, binary]
+    // 5. Very Large Binary — ~3MB
+    const veryLargeData = new Uint8Array(3 * 1024 * 1024)
+    for (let i = 0; i < veryLargeData.length; i++) {
+        // eslint-disable-next-line no-bitwise
+        veryLargeData[i] = i & 0xFF
+    }
+    const veryLarge: TestFile = {
+        name: 'Very Large Binary (~3MB)',
+        filename: '3MB.DAT',
+        data: veryLargeData,
+        description: '3MB — verifies stability and performance for very long transfers',
+    }
+
+    return [tiny, medium, big, binary, veryLarge]
 }
 
 // ─── State Management ──────────────────────────────────────────────────
