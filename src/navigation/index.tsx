@@ -41,6 +41,7 @@ import { DeviceDiscoveryScreen } from "../screens/Devices/DeviceDiscoveryScreen"
 import { DeviceDetailsScreen } from "../screens/Devices/DeviceDetailsScreen"
 import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
 import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMotionDetectionScreen"
+import { StandaloneCapturePreviewScreen } from "../screens/Devices/StandaloneCapturePreviewScreen"
 import { CameraSettingsTestScreen } from "../screens/Devices/CameraSettingsTestScreen"
 import { FirmwareUpdateScreen } from "../screens/Devices/FirmwareUpdateScreen"
 import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScreen"
@@ -202,6 +203,10 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="StandaloneMotionDetectionScreen"
 							component={StandaloneMotionDetectionScreen}
+						/>
+						<Stack.Screen
+							name="StandaloneCapturePreviewScreen"
+							component={StandaloneCapturePreviewScreen}
 						/>
 						<Stack.Screen
 							name="CameraSettingsTestScreen"
