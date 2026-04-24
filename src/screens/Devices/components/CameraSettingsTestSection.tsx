@@ -69,7 +69,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
     }
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={[styles.content, { gap: spacing }]}>
+        <ScrollView style={styles.container} contentContainerStyle={[styles.content, { gap: spacing }]} keyboardShouldPersistTaps="handled">
             
             <WWText variant="titleMedium" style={{ marginTop: spacing }}>Camera Parameters</WWText>
             
