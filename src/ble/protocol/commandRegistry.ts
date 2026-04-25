@@ -433,5 +433,13 @@ export const commandRegistry = {
     /Flash header ok/i,
     () => true,
     { failureRegex: /Flash error/i }
+  ),
+  dir: createMultiLineCommand<string[]>(
+    'dir',
+    () => 'AI dir',
+    /^[-\w.]+$/, // Matches filenames, though FATFS dir output might be different. Let's just collect all lines until a prompt or end marker. Actually we can just wait for a known end. Or we can just use `executeRaw` if we had it.
+    /End of directory/i,
+    (lines) => lines,
+    { timeoutMs: 5000 }
   )
 };

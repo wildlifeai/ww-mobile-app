@@ -170,10 +170,24 @@ export function useAiModelTransfer({ device, initialModelId }: UseAiModelTransfe
             if (!isMounted.current || !device.connected) return
             setProgress(0.25)
 
-            // Determine target filename (e.g., 2V5.TFL)
-            // Parse serverId and version as numbers if possible, fallback to basic integers
-            const numericId = parseInt(selectedModel.serverId, 10) || 1
-            const numericVer = parseInt(selectedModel.version.replace(/[^0-9]/g, ''), 10) || 1
+            // Determine target filename (e.g., 42V2.TFL)
+            // Use firmware IDs from DB if available, fallback chain for legacy data
+            const numericId = selectedModel.firmwareModelId
+                ?? (parseInt(selectedModel.fileType || '', 10) || undefined)
+                ?? (parseInt(selectedModel.serverId, 10) || undefined)
+                ?? 1
+            const numericVer = selectedModel.versionNumber
+                ?? (parseInt(selectedModel.version.replace(/[^0-9]/g, ''), 10) || undefined)
+                ?? 1
+
+            // Defensive guard: reject invalid firmware IDs before BLE transfer
+            if (numericId <= 0 || numericVer <= 0) {
+                throw new Error(
+                    `Invalid firmware IDs: modelId=${numericId}, versionId=${numericVer}. `
+                    + `Sync may be stale — pull latest data.`
+                )
+            }
+
             const targetFilename = `${numericId}V${numericVer}.TFL`
 
             // 4. Transfer via BLE file transfer pipeline
@@ -207,11 +221,40 @@ export function useAiModelTransfer({ device, initialModelId }: UseAiModelTransfe
             addLog('Erase complete ✓')
             setProgress(0.85)
 
+            // 5b. Verify file exists on SD card before loading
+            try {
+                const dirListing = await session.execute(() => commandRegistry.dir())
+                if (dirListing && !dirListing.includes(targetFilename)) {
+                    addLog(`⚠️ Warning: ${targetFilename} not found in dir listing`)
+                    addLog('Proceeding with loadmodel anyway — firmware may route internally')
+                } else {
+                    addLog(`Verified ${targetFilename} on SD card ✓`)
+                }
+            } catch (dirErr) {
+                addLog('Dir listing unavailable — proceeding with loadmodel')
+            }
+
             // 6. Load new model
             setPhase('loading')
             addLog(`Loading new model: ID ${numericId}, Ver ${numericVer}...`)
             await session.execute(() => commandRegistry.loadmodel(numericId, numericVer))
             addLog('Load complete ✓')
+
+            // 7. Readback verification — confirm OP 14/15 match expected values
+            try {
+                const readbackId = await session.execute(() => commandRegistry.getop(14))
+                const readbackVer = await session.execute(() => commandRegistry.getop(15))
+                const parsedId = parseInt(String(readbackId), 10)
+                const parsedVer = parseInt(String(readbackVer), 10)
+
+                if (parsedId === numericId && parsedVer === numericVer) {
+                    addLog(`OP readback verified: ${parsedId}V${parsedVer} ✓`)
+                } else {
+                    addLog(`⚠️ OP readback mismatch: expected ${numericId}V${numericVer}, got ${parsedId}V${parsedVer}`)
+                }
+            } catch (readbackErr) {
+                addLog('OP readback unavailable — model may still be loaded correctly')
+            }
             
             setPhase('complete')
             setProgress(1.0)

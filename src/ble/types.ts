@@ -66,6 +66,7 @@ export enum CommandNames {
 	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
 	CAMERA_SETTINGS_TEST = "CAMERA_SETTINGS_TEST",
 	FILE_TRANSFER_TEST = "FILE_TRANSFER_TEST",
+	MODEL_VALIDATION_TEST = "MODEL_VALIDATION_TEST",
 	TRANSFER_CONFIG = "TRANSFER_CONFIG",
 	TRANSFER_AI_MODEL = "TRANSFER_AI_MODEL",
 	FIRMWARE_STATUS = "FIRMWARE_STATUS",
@@ -614,6 +615,11 @@ export const COMMANDS: {
 	[CommandNames.FILE_TRANSFER_TEST]: {
 		name: CommandNames.FILE_TRANSFER_TEST,
 		description: "Send test files to device SD card via BLE",
+		type: 'process',
+	},
+	[CommandNames.MODEL_VALIDATION_TEST]: {
+		name: CommandNames.MODEL_VALIDATION_TEST,
+		description: "Validate, download, and load an AI model",
 		type: 'process',
 	},
 	[CommandNames.TRANSFER_CONFIG]: {

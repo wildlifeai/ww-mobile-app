@@ -72,6 +72,7 @@ const getFlowGroups = (): FlowGroup[] => {
                 .filter(cmd => [
                     CommandNames.TX_FILE,
                     CommandNames.FILE_TRANSFER_TEST,
+                    CommandNames.MODEL_VALIDATION_TEST,
                 ].includes(cmd.name))
                 .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
         },

@@ -45,6 +45,7 @@ import { StandaloneCapturePreviewScreen } from "../screens/Devices/StandaloneCap
 import { CameraSettingsTestScreen } from "../screens/Devices/CameraSettingsTestScreen"
 import { FirmwareUpdateScreen } from "../screens/Devices/FirmwareUpdateScreen"
 import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScreen"
+import { ModelValidationTestScreen } from "../screens/Devices/ModelValidationTestScreen"
 import { ConfigTransferScreen } from "../screens/Devices/ConfigTransferScreen"
 import { AiModelTransferScreen } from "../screens/Devices/AiModelTransferScreen"
 import { FirmwareStatusScreen } from "../screens/Devices/FirmwareStatusScreen"
@@ -221,7 +222,18 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="FileTransferTestScreen"
 							component={FileTransferTestScreen}
-							options={{ title: "File Transfer Test" }}
+							options={{
+								title: "File Transfer Test",
+								headerBackTitle: "Back",
+							}}
+						/>
+						<Stack.Screen
+							name="ModelValidationTestScreen"
+							component={ModelValidationTestScreen}
+							options={{
+								title: "Model Validation Test",
+								headerBackTitle: "Back",
+							}}
 						/>
 						<Stack.Screen
 							name="ConfigTransferScreen"
