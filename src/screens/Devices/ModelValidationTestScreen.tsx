@@ -6,6 +6,7 @@ import type { RouteProp } from '@react-navigation/native'
 import type { RootStackParamList } from '../../navigation/types'
 
 import { useBle } from '../../hooks/useBle'
+import { useAppSelector } from '../../redux'
 import { createBleSession } from '../../ble/session/createBleSession'
 import { commandRegistry } from '../../ble/protocol/commandRegistry'
 import { runFileTransferPipeline } from '../../ble/protocol/fileTransfer'
@@ -21,9 +22,7 @@ export const ModelValidationTestScreen = () => {
     const theme = useTheme()
 
     const { } = useBle()
-    // The device state should be retrieved from Redux, similarly to other screens
-    const { devices } = require('../../../redux/store').store.getState()
-    const connectedDevice = deviceId ? devices[deviceId] : undefined
+    const connectedDevice = useAppSelector(state => state.devices[deviceId || ''])
 
     const [projectId, setProjectId] = useState<string>('')
     const [version, setVersion] = useState<string>('')

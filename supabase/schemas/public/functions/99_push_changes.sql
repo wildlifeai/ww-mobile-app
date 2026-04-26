@@ -14,9 +14,6 @@ DECLARE
     _devices_created jsonb;
     _devices_updated jsonb;
     _devices_deleted jsonb;
-    _device_prep_created jsonb;
-    _device_prep_updated jsonb;
-    _device_prep_deleted jsonb;
     _processed_count int := 0;
     _conflicts jsonb := '[]'::jsonb;
     _item jsonb;
@@ -29,10 +26,6 @@ BEGIN
     _devices_created := changes->'devices'->'created';
     _devices_updated := changes->'devices'->'updated';
     _devices_deleted := changes->'devices'->'deleted';
-    
-    _device_prep_created := changes->'device_preparation'->'created';
-    _device_prep_updated := changes->'device_preparation'->'updated';
-    _device_prep_deleted := changes->'device_preparation'->'deleted';
 
     _deployments_created := changes->'deployments'->'created';
     _deployments_updated := changes->'deployments'->'updated';
@@ -164,33 +157,6 @@ BEGIN
             UPDATE public.devices
             SET deleted_at = now()
             WHERE id = (_item#>>'{}')::uuid;
-            _processed_count := _processed_count + 1;
-        END LOOP;
-    END IF;
-
-    -- 3. DEVICE PREPARATION: Created (NO-OP Deprecated)
-    IF _device_prep_created IS NOT NULL THEN
-        FOR _item IN SELECT * FROM jsonb_array_elements(_device_prep_created)
-        LOOP
-            -- NO-OP
-            _processed_count := _processed_count + 1;
-        END LOOP;
-    END IF;
-
-    -- DEVICE PREPARATION: Updated (NO-OP Deprecated)
-    IF _device_prep_updated IS NOT NULL THEN
-        FOR _item IN SELECT * FROM jsonb_array_elements(_device_prep_updated)
-        LOOP
-            -- NO-OP
-            _processed_count := _processed_count + 1;
-        END LOOP;
-    END IF;
-
-    -- DEVICE PREPARATION: Deleted (NO-OP Deprecated)
-    IF _device_prep_deleted IS NOT NULL THEN
-        FOR _item IN SELECT * FROM jsonb_array_elements(_device_prep_deleted)
-        LOOP
-            -- NO-OP
             _processed_count := _processed_count + 1;
         END LOOP;
     END IF;

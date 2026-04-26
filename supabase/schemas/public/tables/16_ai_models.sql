@@ -35,11 +35,6 @@ COMMENT ON COLUMN ai_models.deleted_at IS 'Soft delete timestamp - NULL means ac
 
 ALTER TABLE ai_models ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Enable read access for authenticated users" ON "public"."ai_models"
-AS PERMISSIVE FOR SELECT
-TO authenticated
-USING (true);
-
 CREATE POLICY "Organisation managers can manage their models" ON "public"."ai_models"
 AS PERMISSIVE FOR ALL
 TO authenticated

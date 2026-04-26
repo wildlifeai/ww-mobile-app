@@ -108,6 +108,13 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				file_size_bytes: 1024,
 				file_type: "onnx",
 				uploaded_by: "user-123",
+				compiled_format: null,
+				error_message: null,
+				file_hash: null,
+				model_family_id: null,
+				processing_log: null,
+				status: "validated",
+				version_number: null,
 			},
 			{
 				id: "223e4567-e89b-12d3-a456-426614174001",
@@ -124,6 +131,13 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				file_size_bytes: 1024,
 				file_type: "onnx",
 				uploaded_by: "user-123",
+				compiled_format: null,
+				error_message: null,
+				file_hash: null,
+				model_family_id: null,
+				processing_log: null,
+				status: "validated",
+				version_number: null,
 			},
 		]
 
@@ -384,6 +398,13 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				file_size_bytes: 1024,
 				file_type: "onnx",
 				uploaded_by: "user-123",
+				compiled_format: null,
+				error_message: null,
+				file_hash: null,
+				model_family_id: null,
+				processing_log: null,
+				status: "validated",
+				version_number: null,
 			},
 		]
 

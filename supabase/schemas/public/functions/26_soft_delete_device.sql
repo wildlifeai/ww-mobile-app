@@ -1,5 +1,4 @@
 -- soft delete helper - devices
--- UPDATED: 2025-11-27 - Adapted for MVP2 schema (devices linked via device_preparation)
 create or replace function public.soft_delete_device(p_device_id uuid)
 returns void
 language plpgsql

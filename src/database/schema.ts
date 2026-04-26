@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 307,
+    version: 310,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -51,6 +51,23 @@ export default appSchema({
             ],
         }),
         tableSchema({
+            name: 'ai_model_families',
+            columns: [
+                { name: 'created_by', type: 'string', isOptional: true },
+                { name: 'description', type: 'string', isOptional: true },
+                { name: 'firmware_model_id', type: 'number', isIndexed: true },
+                { name: 'name', type: 'string' },
+                { name: 'organisation_id', type: 'string', isIndexed: true },
+                // System & Sync Fields
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+                { name: 'modified_by', type: 'string' },
+            ],
+        }),
+        tableSchema({
             name: 'ai_model_organisation',
             columns: [
                 { name: 'model_id', type: 'string', isIndexed: true },
@@ -67,15 +84,22 @@ export default appSchema({
         tableSchema({
             name: 'ai_models',
             columns: [
+                { name: 'compiled_format', type: 'string', isOptional: true },
                 { name: 'description', type: 'string', isOptional: true },
                 { name: 'detection_capabilities', type: 'string', isOptional: true },
+                { name: 'error_message', type: 'string', isOptional: true },
+                { name: 'file_hash', type: 'string', isOptional: true },
                 { name: 'file_size_bytes', type: 'number', isOptional: true },
                 { name: 'file_type', type: 'string', isOptional: true },
+                { name: 'model_family_id', type: 'string', isOptional: true, isIndexed: true },
                 { name: 'name', type: 'string' },
                 { name: 'organisation_id', type: 'string', isIndexed: true },
+                { name: 'processing_log', type: 'string', isOptional: true },
+                { name: 'status', type: 'string', isOptional: true },
                 { name: 'storage_path', type: 'string' },
                 { name: 'uploaded_by', type: 'string', isOptional: true },
                 { name: 'version', type: 'string' },
+                { name: 'version_number', type: 'number', isOptional: true },
                 { name: 'server_id', type: 'string', isIndexed: true },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
@@ -193,7 +217,6 @@ export default appSchema({
                 { name: 'deployment_status_id', type: 'number', isOptional: true, isIndexed: true },
                 { name: 'device_eui', type: 'string', isOptional: true },
                 { name: 'device_id', type: 'string', isIndexed: true },
-                { name: 'device_preparation_id_deprecated', type: 'string', isOptional: true, isIndexed: true },
                 { name: 'end_deployment_comments', type: 'string', isOptional: true },
                 { name: 'ended_by', type: 'string', isOptional: true },
                 { name: 'himax_firmware_id', type: 'string', isOptional: true, isIndexed: true },
@@ -218,42 +241,6 @@ export default appSchema({
                 { name: 'deployment_comments', type: 'string', isOptional: true },
                 { name: 'camera_location_description', type: 'string', isOptional: true },
                 { name: 'camera_location_image_path', type: 'string', isOptional: true },
-                // System & Sync Fields
-                { name: 'created_at', type: 'number' },
-                { name: 'updated_at', type: 'number' },
-                { name: 'deleted_at', type: 'number' },
-                { name: '_version', type: 'number' },
-                { name: '_custom_sync_status', type: 'string', isOptional: true },
-                { name: 'modified_by', type: 'string' },
-            ],
-        }),
-        tableSchema({
-            name: 'device_preparation',
-            columns: [
-                { name: 'ai_model_id', type: 'string', isOptional: true, isIndexed: true },
-                { name: 'battery_check_passed', type: 'boolean', isOptional: true },
-                { name: 'battery_level_at_check', type: 'number', isOptional: true },
-                { name: 'ble_firmware_id', type: 'string', isOptional: true, isIndexed: true },
-                { name: 'camera_model', type: 'string', isOptional: true },
-                { name: 'camera_view_test_passed', type: 'boolean', isOptional: true },
-                { name: 'completed_at', type: 'string', isOptional: true },
-                { name: 'config_firmware_id', type: 'string', isOptional: true, isIndexed: true },
-                { name: 'device_eui', type: 'string', isOptional: true },
-                { name: 'device_id', type: 'string', isIndexed: true },
-                { name: 'firmware_check_passed', type: 'boolean', isOptional: true },
-                { name: 'firmware_updated', type: 'boolean', isOptional: true },
-                { name: 'himax_firmware_id', type: 'string', isOptional: true, isIndexed: true },
-                { name: 'is_deployment_ready', type: 'boolean' },
-                { name: 'lorawan_last_verified_at', type: 'string', isOptional: true },
-                { name: 'lorawan_network', type: 'string', isOptional: true },
-                { name: 'lorawan_registration_completed', type: 'boolean' },
-                { name: 'lorawan_rssi_at_check', type: 'number', isOptional: true },
-                { name: 'lorawan_snr_at_check', type: 'number', isOptional: true },
-                { name: 'project_id', type: 'string', isOptional: true, isIndexed: true },
-                { name: 'sd_card_available_kb_at_check', type: 'number', isOptional: true },
-                { name: 'sd_card_check_passed', type: 'boolean', isOptional: true },
-                { name: 'sd_card_total_kb_at_check', type: 'number', isOptional: true },
-                { name: 'status', type: 'string' },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },

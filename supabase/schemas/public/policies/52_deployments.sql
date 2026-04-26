@@ -1,6 +1,5 @@
 -- *** Deployments RLS Policies ***
--- UPDATED: 2026-03-27 - Deprecated device_preparation (Phase 1)
--- Now uses native project_id on deployments table
+-- Uses native project_id on deployments table
 
 -- SELECT: Project members can view deployments for their project
 CREATE POLICY "Project members can view active deployments"

@@ -100,6 +100,13 @@ describe("AIModelSelect", () => {
 					file_size_bytes: 1024000,
 					file_type: "application/onnx",
 					uploaded_by: "user-123",
+					compiled_format: null,
+					error_message: null,
+					file_hash: null,
+					model_family_id: null,
+					processing_log: null,
+					status: "validated",
+					version_number: null,
 				},
 				{
 					id: "223e4567-e89b-12d3-a456-426614174001",
@@ -116,6 +123,13 @@ describe("AIModelSelect", () => {
 					file_size_bytes: 2048000,
 					file_type: "application/onnx",
 					uploaded_by: "user-456",
+					compiled_format: null,
+					error_message: null,
+					file_hash: null,
+					model_family_id: null,
+					processing_log: null,
+					status: "validated",
+					version_number: null,
 				},
 			]
 
@@ -156,6 +170,13 @@ describe("AIModelSelect", () => {
 					file_size_bytes: null,
 					file_type: null,
 					uploaded_by: null,
+					compiled_format: null,
+					error_message: null,
+					file_hash: null,
+					model_family_id: null,
+					processing_log: null,
+					status: "validated",
+					version_number: null,
 				},
 			]
 
@@ -312,6 +333,13 @@ describe("AIModelSelect", () => {
 					file_size_bytes: null,
 					file_type: null,
 					uploaded_by: null,
+					compiled_format: null,
+					error_message: null,
+					file_hash: null,
+					model_family_id: null,
+					processing_log: null,
+					status: "validated",
+					version_number: null,
 				},
 			]
 
@@ -430,6 +458,13 @@ describe("AIModelSelect", () => {
 					file_size_bytes: null,
 					file_type: null,
 					uploaded_by: null,
+					compiled_format: null,
+					error_message: null,
+					file_hash: null,
+					model_family_id: null,
+					processing_log: null,
+					status: "validated",
+					version_number: null,
 				},
 			]
 
