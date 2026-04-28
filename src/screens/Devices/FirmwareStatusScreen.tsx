@@ -113,12 +113,6 @@ export const FirmwareStatusScreen = () => {
                             () => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'himax' })
                         )}
 
-                        {renderComponentCard(
-                            'Configuration (CONFIG.TXT)', 
-                            statuses.config, 
-                            () => navigation.navigate('ConfigTransferScreen', { deviceId })
-                        )}
-
                         {lastChecked && (
                             <WWText variant="bodySmall" style={[styles.lastCheckedText, { marginTop: spacing }]}>
                                 Last checked: {lastChecked.toLocaleTimeString()}

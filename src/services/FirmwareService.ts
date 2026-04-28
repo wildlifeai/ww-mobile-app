@@ -5,6 +5,7 @@ import Firmware from '../database/models/Firmware'
 import { getSupabaseClient } from './supabase'
 import { log, logError, logWarn } from '../utils/logger'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { base64ToUint8Array } from '../utils/binaryUtils'
 
 const FIRMWARE_DIR = FileSystem.documentDirectory + 'firmware/'
 /** Tolerance in bytes when comparing file sizes (accounts for minor filesystem differences) */
@@ -245,12 +246,7 @@ class FirmwareService {
         const base64 = await FileSystem.readAsStringAsync(localUri, {
             encoding: FileSystem.EncodingType.Base64,
         })
-        const binary = atob(base64)
-        const bytes = new Uint8Array(binary.length)
-        for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i)
-        }
-        return bytes
+        return base64ToUint8Array(base64)
     }
 
     async getFirmwareIdByVersion(type: 'ble' | 'himax' | 'config', version: string): Promise<string | null> {

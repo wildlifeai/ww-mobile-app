@@ -65,8 +65,7 @@ export const StartMonitoringDetailsStep = () => {
 
     const isAnyFirmwareOutdated = !firmwareStatus.isChecking && (
         firmwareStatus.statuses.ble.isOutdated || 
-        firmwareStatus.statuses.himax.isOutdated || 
-        firmwareStatus.statuses.config.isOutdated
+        firmwareStatus.statuses.himax.isOutdated
     )
 
     const headerLeft = useCallback(() => (

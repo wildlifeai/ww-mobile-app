@@ -98,15 +98,12 @@ android {
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 
         // Read Google Maps API key from .env file for manifest placeholder resolution
+        def properties = new Properties()
         def envFile = new File(projectRoot, ".env")
-        def mapsKey = ""
         if (envFile.exists()) {
-            envFile.eachLine { line ->
-                if (line.startsWith("GOOGLE_MAPS_API_KEY_ANDROID=")) {
-                    mapsKey = line.split("=", 2)[1].trim()
-                }
-            }
+            properties.load(new FileInputStream(envFile))
         }
+        def mapsKey = properties.getProperty("GOOGLE_MAPS_API_KEY_ANDROID", "")
         manifestPlaceholders = [GOOGLE_MAPS_API_KEY_ANDROID: mapsKey]
     }
     signingConfigs {

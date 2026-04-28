@@ -13,7 +13,7 @@ import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
 // ────────────────────────────────────────────────────────────────────
 
 export interface FirmwareComponentStatus {
-    type: 'ble' | 'himax' | 'config'
+    type: 'ble' | 'himax'
     currentVersion: string | null
     latestVersion: string | null
     latestFirmware: Firmware | null
@@ -27,7 +27,7 @@ interface UseFirmwareStatusOptions {
 export interface UseFirmwareStatusReturn {
     isChecking: boolean
     lastChecked: Date | null
-    statuses: Record<'ble' | 'himax' | 'config', FirmwareComponentStatus>
+    statuses: Record<'ble' | 'himax', FirmwareComponentStatus>
     checkStatus: () => Promise<void>
     errorMsg: string | null
 }
@@ -37,10 +37,9 @@ export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirm
     const [lastChecked, setLastChecked] = useState<Date | null>(null)
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-    const [statuses, setStatuses] = useState<Record<'ble' | 'himax' | 'config', FirmwareComponentStatus>>({
+    const [statuses, setStatuses] = useState<Record<'ble' | 'himax', FirmwareComponentStatus>>({
         ble: { type: 'ble', currentVersion: null, latestVersion: null, latestFirmware: null, isOutdated: false },
         himax: { type: 'himax', currentVersion: null, latestVersion: null, latestFirmware: null, isOutdated: false },
-        config: { type: 'config', currentVersion: null, latestVersion: null, latestFirmware: null, isOutdated: false },
     })
 
     const isMounted = useRef(true)
@@ -59,7 +58,6 @@ export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirm
             // 1. Fetch Latest Cloud Versions
             const latestBle = await ReferenceDataService.getLatestFirmware('ble')
             const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
-            const latestConfig = await ReferenceDataService.getLatestFirmware('config')
 
             let currentBleVersion: string | null = null
             let currentHimaxVersion: string | null = null
@@ -85,17 +83,11 @@ export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirm
                 logWarn('[FirmwareStatus] Failed to read Himax version:', e)
             }
 
-            // Note: For Config, there is no `AI cfgver` command. The device cannot report its current 
-            // CONFIG.TXT version. We treat it as "Unknown" locally, and it will be updated unconditionally
-            // upon deployment start.
-
             if (!isMounted.current) return
 
             // 3. Compute Outdated Flags
             const bleOutdated = !!latestBle?.version && currentBleVersion !== latestBle.version
             const himaxOutdated = !!latestHimax?.version && currentHimaxVersion !== latestHimax.version
-            // Config is always treated as potentially outdated unless the cloud has no latest version
-            const configOutdated = !!latestConfig?.version
 
             setStatuses({
                 ble: {
@@ -112,13 +104,6 @@ export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirm
                     latestFirmware: latestHimax,
                     isOutdated: himaxOutdated,
                 },
-                config: {
-                    type: 'config',
-                    currentVersion: 'Unknown (Push-only)',
-                    latestVersion: latestConfig?.version || 'Unknown',
-                    latestFirmware: latestConfig,
-                    isOutdated: configOutdated,
-                }
             })
 
             setLastChecked(new Date())
@@ -133,7 +118,7 @@ export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirm
                 setIsChecking(false)
             }
         }
-    }, [device])
+    }, [device?.id, device?.connected]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Auto-check on mount or connection
     useEffect(() => {

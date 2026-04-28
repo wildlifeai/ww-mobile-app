@@ -50,8 +50,6 @@ export const FirmwareStatusCard: React.FC<FirmwareStatusCardProps> = ({
                 {renderRow('BLE Firmware', statuses.ble)}
                 <Divider style={styles.divider} />
                 {renderRow('AI Processor Firmware', statuses.himax)}
-                <Divider style={styles.divider} />
-                {renderRow('Configuration', statuses.config)}
 
                 <Button 
                     mode="outlined" 

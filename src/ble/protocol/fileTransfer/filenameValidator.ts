@@ -4,9 +4,11 @@
  * Matches the firmware validator in fileTx.c:isValid83Filename().
  * Allowed characters: uppercase letters, digits, hyphen, underscore.
  * Extension is optional (e.g. "README" is valid).
+ * Directory names additionally allow dots and forward slashes.
  */
 
-const VALID_CHAR = /^[A-Z0-9_/-]+$/
+const VALID_FILENAME_CHARS = /^[A-Z0-9_-]+$/
+const VALID_DIRNAME_CHARS = /^[A-Z0-9_./-]+$/
 
 export function isValid83Filename(name: string): boolean {
   if (name.length === 0 || name.endsWith('.')) return false
@@ -23,8 +25,8 @@ export function isValid83Filename(name: string): boolean {
     base.length >= 1 &&
     base.length <= 8 &&
     (ext === '' || (ext.length >= 1 && ext.length <= 3)) &&
-    VALID_CHAR.test(base) &&
-    (ext === '' || VALID_CHAR.test(ext)) &&
-    (dirname === '' || VALID_CHAR.test(dirname))
+    VALID_FILENAME_CHARS.test(base) &&
+    (ext === '' || VALID_FILENAME_CHARS.test(ext)) &&
+    (dirname === '' || VALID_DIRNAME_CHARS.test(dirname))
   )
 }

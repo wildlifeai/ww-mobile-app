@@ -110,7 +110,7 @@ export function useConfigTransfer({ device }: UseConfigTransferOptions): UseConf
 
         run()
         return () => { cancelled = true }
-    }, [device])
+    }, [device?.id, device?.connected]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Transfer action ───────────────────────────────────────────
     const startTransfer = useCallback(async () => {

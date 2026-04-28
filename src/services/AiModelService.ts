@@ -3,6 +3,7 @@ import database from '../database'
 import AiModel from '../database/models/AiModel'
 import { getSupabaseClient } from './supabase'
 import { log, logError } from '../utils/logger'
+import { base64ToUint8Array } from '../utils/binaryUtils'
 
 const AIMODELS_DIR = FileSystem.documentDirectory + 'aimodels/'
 /** Tolerance in bytes when comparing file sizes (accounts for minor filesystem differences) */
@@ -101,12 +102,7 @@ class AiModelService {
         const base64 = await FileSystem.readAsStringAsync(localUri, {
             encoding: FileSystem.EncodingType.Base64,
         })
-        const binary = atob(base64)
-        const bytes = new Uint8Array(binary.length)
-        for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i)
-        }
-        return bytes
+        return base64ToUint8Array(base64)
     }
 
     /**
