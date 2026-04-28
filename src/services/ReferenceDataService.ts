@@ -344,7 +344,7 @@ class ReferenceDataService {
     public async syncFirmware(): Promise<void> {
         const supabase = getSupabaseClient()
         // Sync all active firmware metadata
-        // log('[RefData] Syncing firmware...')
+        log('[RefData] Syncing firmware...')
         const { data, error } = await supabase
             .from('firmware')
             .select('*')
@@ -361,6 +361,7 @@ class ReferenceDataService {
             log('[RefData] No firmware data received from server')
             return
         }
+        log(`[RefData] Received ${data.length} firmware records from server`)
 
         await database.write(async () => {
             const collection = database.get<Firmware>('firmware')
@@ -383,6 +384,7 @@ class ReferenceDataService {
                     const existing = existingMap.get(row.id)
                     if (existing) {
                         await existing.update(rec => {
+                            rec.name = row.name || ''
                             rec.version = row.version || '0.0.0'
                             rec.type = row.type || 'ble'
                             rec.locationPath = row.location_path || ''
@@ -394,6 +396,7 @@ class ReferenceDataService {
                     } else {
                         await collection.create(rec => {
                             (rec._raw as any).id = row.id // Use Supabase UUID
+                            rec.name = row.name || ''
                             rec.version = row.version || '0.0.0'
                             rec.type = row.type || 'ble'
                             rec.locationPath = row.location_path || ''
@@ -415,10 +418,10 @@ class ReferenceDataService {
                 }
             }
 
-            // log('[RefData] Firmware sync complete.')
+            log('[RefData] Firmware sync complete.')
         })
 
-        // log(`   ✅ Synced ${data.length} firmware records`)
+        log(`   ✅ Synced ${data.length} firmware records`)
     }
 
     /**

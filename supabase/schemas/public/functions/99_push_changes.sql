@@ -2,7 +2,7 @@ CREATE OR REPLACE FUNCTION public.push_changes(changes jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'extensions', 'public', 'pg_temp'
+ SET search_path = ''
 AS $function$
 DECLARE
     _projects_created jsonb;
@@ -33,7 +33,7 @@ BEGIN
 
     -- 1. PROJECTS: Created
     IF _projects_created IS NOT NULL THEN
-        FOR _item IN SELECT * FROM jsonb_array_elements(_projects_created)
+        FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_projects_created)
         LOOP
             INSERT INTO public.projects (
                 id, name, description, organisation_id, created_by, modified_by,
@@ -69,7 +69,7 @@ BEGIN
 
     -- PROJECTS: Updated
     IF _projects_updated IS NOT NULL THEN
-        FOR _item IN SELECT * FROM jsonb_array_elements(_projects_updated)
+        FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_projects_updated)
         LOOP
             UPDATE public.projects
             SET
@@ -95,18 +95,18 @@ BEGIN
 
     -- PROJECTS: Deleted (String IDs)
     IF _projects_deleted IS NOT NULL THEN
-        FOR _item IN SELECT * FROM jsonb_array_elements(_projects_deleted)
+        FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_projects_deleted)
         LOOP
             UPDATE public.projects
-            SET deleted_at = now()
-            WHERE id = (_item#>>'{}')::uuid;
+            SET deleted_at = pg_catalog.now()
+            WHERE id = (_item#>>'{}'::text[])::uuid;
             _processed_count := _processed_count + 1;
         END LOOP;
     END IF;
 
     -- 2. DEVICES: Created
     IF _devices_created IS NOT NULL THEN
-        FOR _item IN SELECT * FROM jsonb_array_elements(_devices_created)
+        FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_devices_created)
         LOOP
             INSERT INTO public.devices (
                 id,
@@ -135,7 +135,7 @@ BEGIN
 
     -- DEVICES: Updated
     IF _devices_updated IS NOT NULL THEN
-        FOR _item IN SELECT * FROM jsonb_array_elements(_devices_updated)
+        FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_devices_updated)
         LOOP
             UPDATE public.devices
             SET
@@ -152,18 +152,18 @@ BEGIN
 
     -- DEVICES: Deleted (String IDs)
     IF _devices_deleted IS NOT NULL THEN
-        FOR _item IN SELECT * FROM jsonb_array_elements(_devices_deleted)
+        FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_devices_deleted)
         LOOP
             UPDATE public.devices
-            SET deleted_at = now()
-            WHERE id = (_item#>>'{}')::uuid;
+            SET deleted_at = pg_catalog.now()
+            WHERE id = (_item#>>'{}'::text[])::uuid;
             _processed_count := _processed_count + 1;
         END LOOP;
     END IF;
 
     -- 4. DEPLOYMENTS: Created
     IF _deployments_created IS NOT NULL THEN
-        FOR _item IN SELECT * FROM jsonb_array_elements(_deployments_created)
+        FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_deployments_created)
         LOOP
             INSERT INTO public.deployments (
                 id, 
@@ -209,7 +209,7 @@ BEGIN
                 public.safe_to_double(NULLIF(_item->>'longitude', '')),
                 CASE 
                     WHEN _item->>'camera_location_image_path' IS NOT NULL 
-                    THEN jsonb_build_array(_item->>'camera_location_image_path')
+                    THEN pg_catalog.jsonb_build_array(_item->>'camera_location_image_path')
                     WHEN _item->>'camera_location_image_paths' IS NOT NULL
                     THEN (_item->'camera_location_image_paths')
                     ELSE NULL
@@ -234,7 +234,7 @@ BEGIN
 
     -- DEPLOYMENTS: Updated
     IF _deployments_updated IS NOT NULL THEN
-        FOR _item IN SELECT * FROM jsonb_array_elements(_deployments_updated)
+        FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_deployments_updated)
         LOOP
             UPDATE public.deployments
             SET
@@ -251,7 +251,7 @@ BEGIN
                 longitude = public.safe_to_double(NULLIF(_item->>'longitude', '')),
                 camera_location_image_paths = CASE 
                     WHEN _item->>'camera_location_image_path' IS NOT NULL 
-                    THEN jsonb_build_array(_item->>'camera_location_image_path')
+                    THEN pg_catalog.jsonb_build_array(_item->>'camera_location_image_path')
                     WHEN _item->>'camera_location_image_paths' IS NOT NULL
                     THEN (_item->'camera_location_image_paths')
                     ELSE camera_location_image_paths
@@ -274,16 +274,16 @@ BEGIN
 
     -- DEPLOYMENTS: Deleted (String IDs)
     IF _deployments_deleted IS NOT NULL THEN
-        FOR _item IN SELECT * FROM jsonb_array_elements(_deployments_deleted)
+        FOR _item IN SELECT * FROM pg_catalog.jsonb_array_elements(_deployments_deleted)
         LOOP
             UPDATE public.deployments
-            SET deleted_at = now()
-            WHERE id = (_item#>>'{}')::uuid;
+            SET deleted_at = pg_catalog.now()
+            WHERE id = (_item#>>'{}'::text[])::uuid;
             _processed_count := _processed_count + 1;
         END LOOP;
     END IF;
 
-    RETURN jsonb_build_object(
+    RETURN pg_catalog.jsonb_build_object(
         'processed', _processed_count,
         'conflicts', _conflicts
     );

@@ -14,3 +14,9 @@ local.properties
 
 # Bundle artifacts
 *.jsbundle
+
+# Agent files
+.agents/
+.cursorrules
+.windsurfrules
+
