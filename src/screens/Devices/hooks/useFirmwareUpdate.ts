@@ -481,50 +481,55 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         if (unmountedRef.current) return
 
-        appendLog('Firmware write complete. Waiting for device...')
+        appendLog('Firmware write complete. Waiting for device to sleep...')
 
-        // Wait for Sleep signal
+        // Wait for the Himax to finish and send Sleep signal
         await waitForSleep()
         if (unmountedRef.current) return
 
-        // Reset — the nRF responds "Device will reset after disconnecting",
-        // so we MUST drop the BLE link for the reset to actually happen.
+        // The Himax resets itself after a firmware write — no need to reset
+        // the nRF or drop the BLE connection. Just wait for it to wake back
+        // up with the new firmware. The nRF will forward the Wake signal.
         advancePhase('rebooting')
-        appendLog('Sending reset command...')
-        try {
-            const resetSession = createBleSession(device)
-            await resetSession.execute(() => commandRegistry.reset())
-        } catch (_e) {
-            // Usually throws because BLE drops on reset. Expected.
-        }
+        appendLog('AI processor rebooting with new firmware...')
 
-        // Explicitly disconnect so the nRF triggers its post-disconnect reset
-        appendLog('Disconnecting to trigger reboot...')
-        try {
-            const disSession = createBleSession(device)
-            await disSession.execute(() => commandRegistry.disconnect())
-        } catch (_e) { /* expected */ }
-        try {
-            await disconnectDevice(device)
-        } catch (_e) { /* expected */ }
-
-        // Wait for the device to fully reboot
-        await new Promise(r => setTimeout(r, 10000))
+        // Wait for the Himax to complete its reboot cycle (DPD → wake → selftest)
+        // BLE stays connected to the nRF throughout.
+        await new Promise<void>((resolve) => {
+            let resolved = false
+            const done = () => {
+                if (resolved) return
+                resolved = true
+                bleEventBus.removeListener('textLine', onRx)
+                clearTimeout(fallback)
+                resolve()
+            }
+            const onRx = (event: any) => {
+                if (event.type === 'TEXT_LINE' && event.deviceId === device?.id) {
+                    const line: string = event.line
+                    // The nRF sends "Wake" when the Himax comes back up
+                    if (line.includes('Wake') && !line.includes('Wakeup_event')) {
+                        log('[FW Update] Himax woke up after firmware write')
+                        done()
+                    }
+                }
+            }
+            bleEventBus.on('textLine', onRx)
+            // Fallback: if we don't see Wake within 15s, proceed anyway
+            const fallback = setTimeout(() => {
+                log('[FW Update] Wake not received in 15s — proceeding to verify')
+                done()
+            }, 15000)
+        })
         if (unmountedRef.current) return
 
-        advancePhase('reconnecting')
-        appendLog('Reconnecting...')
-        const foundId = await scanForOriginalDevice(device.id, 20000)
-        if (!foundId) throw new Error('Device not found after reset.')
-
-        appendLog('Connecting...')
-        await connectDevice({ ...device, connected: false } as ExtendedPeripheral, 20000)
-        await new Promise(r => setTimeout(r, 2000))
+        // Give the Himax a moment to finish selftest after waking
+        await new Promise(r => setTimeout(r, 3000))
         if (unmountedRef.current) return
 
-        // Try to query new version if still connected
+        // Query new version — BLE is still connected, no reconnect needed
         advancePhase('verifying')
-        appendLog('Checking new version...')
+        appendLog('Checking new AI firmware version...')
         try {
             const verSession = createBleSession(device)
             const ver = await verSession.execute(() => commandRegistry.aiver())
@@ -535,7 +540,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         }
 
         advancePhase('complete')
-    }, [device, latestFirmware, advancePhase, appendLog, waitForSleep, connectDevice, disconnectDevice])
+    }, [device, latestFirmware, advancePhase, appendLog, waitForSleep])
 
     // ── Public start ───────────────────────────────────────────────
 

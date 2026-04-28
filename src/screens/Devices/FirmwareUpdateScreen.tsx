@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
 import { Button, ActivityIndicator, ProgressBar, IconButton, RadioButton } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -56,13 +56,8 @@ export const FirmwareUpdateScreen = () => {
     const title = TARGET_TITLES[target]
     const description = TARGET_DESCRIPTIONS[target]
 
-    useEffect(() => {
-        if (target === 'himax' && latestFirmware && himaxSource === 'sdcard') {
-            // Default to download if a newer firmware is available
-            setHimaxSource('download')
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [latestFirmware, target])
+
+
 
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
@@ -99,7 +94,7 @@ export const FirmwareUpdateScreen = () => {
                             <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
                                 Current Version
                             </WWText>
-                            <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+                            <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1, textAlign: 'right' }}>
                                 {previousVersion || (isPreflightDone ? 'Unknown' : '...')}
                             </WWText>
                         </View>
@@ -110,8 +105,8 @@ export const FirmwareUpdateScreen = () => {
                                 <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
                                     Latest Available
                                 </WWText>
-                                <WWText variant="bodyMedium" style={{ color: colors.primary }}>
-                                    {latestFirmware.version}
+                                <WWText variant="bodyMedium" style={{ color: colors.primary, flex: 1, textAlign: 'right' }}>
+                                    {target === 'himax' ? latestFirmware.name || latestFirmware.version : latestFirmware.version}
                                 </WWText>
                             </View>
                         )}
