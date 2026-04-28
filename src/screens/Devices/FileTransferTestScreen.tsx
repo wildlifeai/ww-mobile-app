@@ -91,6 +91,15 @@ function generateTestFiles(): TestFile[] {
     return [tiny, medium, big, binary, veryLarge]
 }
 
+// ─── Benchmark ───────────────────────────────────────────────────────
+
+interface BenchmarkResult {
+    round: number
+    durationMs: number
+    success: boolean
+    error?: string
+}
+
 // ─── State Management ──────────────────────────────────────────────────
 
 interface TransferState {
@@ -99,6 +108,8 @@ interface TransferState {
     progress: FileTransferProgress | null
     result: { success: boolean; message: string; details?: string } | null
     transferLog: { id: string; text: string }[]
+    isBenchmarking: boolean
+    benchmarkResults: BenchmarkResult[]
 }
 
 const initialState: TransferState = {
@@ -107,6 +118,8 @@ const initialState: TransferState = {
     progress: null,
     result: null,
     transferLog: [],
+    isBenchmarking: false,
+    benchmarkResults: [],
 }
 
 type TransferAction =
@@ -116,6 +129,9 @@ type TransferAction =
     | { type: 'COMPLETE'; payload: { result: TransferState['result']; logs: { id: string; text: string }[] } }
     | { type: 'ERROR'; payload: { result: TransferState['result']; logs: { id: string; text: string }[] } }
     | { type: 'END' }
+    | { type: 'BENCHMARK_START' }
+    | { type: 'BENCHMARK_ROUND'; payload: BenchmarkResult }
+    | { type: 'BENCHMARK_END' }
 
 function transferReducer(state: TransferState, action: TransferAction): TransferState {
     switch (action.type) {
@@ -130,6 +146,12 @@ function transferReducer(state: TransferState, action: TransferAction): Transfer
             return { ...state, result: action.payload.result, transferLog: [...state.transferLog, ...action.payload.logs] }
         case 'END':
             return { ...state, isTransferring: false }
+        case 'BENCHMARK_START':
+            return { ...state, isBenchmarking: true, benchmarkResults: [] }
+        case 'BENCHMARK_ROUND':
+            return { ...state, benchmarkResults: [...state.benchmarkResults, action.payload] }
+        case 'BENCHMARK_END':
+            return { ...state, isBenchmarking: false }
         default:
             return state
     }
@@ -146,7 +168,7 @@ export const FileTransferTestScreen = () => {
 
     const testFiles = useMemo(() => generateTestFiles(), [])
     const [state, dispatch] = useReducer(transferReducer, initialState)
-    const { selectedIndex, isTransferring, progress, result, transferLog } = state
+    const { selectedIndex, isTransferring, progress, result, transferLog, isBenchmarking, benchmarkResults } = state
 
     const abortRef = useRef<AbortController | null>(null)
     const unmountedRef = useRef(false)
@@ -243,6 +265,46 @@ export const FileTransferTestScreen = () => {
         addLog('⏹ User cancelled transfer')
     }, [addLog])
 
+    // ─── Latency Benchmark ───────────────────────────────────────────
+    const BENCHMARK_ROUNDS = 5
+    const benchmarkFile = testFiles[0] // TINY.TXT — single packet
+
+    const runBenchmark = useCallback(async () => {
+        if (!device?.connected || !benchmarkFile) return
+
+        dispatch({ type: 'BENCHMARK_START' })
+        addLog(`🏁 Starting latency benchmark (${BENCHMARK_ROUNDS} rounds of ${benchmarkFile.filename})...`)
+
+        for (let round = 1; round <= BENCHMARK_ROUNDS; round++) {
+            if (unmountedRef.current) return
+
+            const roundStart = Date.now()
+            try {
+                await runFileTransferPipeline(device, {
+                    filename: benchmarkFile.filename,
+                    data: benchmarkFile.data,
+                })
+                const duration = Date.now() - roundStart
+                dispatch({ type: 'BENCHMARK_ROUND', payload: { round, durationMs: duration, success: true } })
+                addLog(`  Round ${round}: ${duration}ms ✅`)
+            } catch (err: any) {
+                const duration = Date.now() - roundStart
+                dispatch({ type: 'BENCHMARK_ROUND', payload: { round, durationMs: duration, success: false, error: err.message } })
+                addLog(`  Round ${round}: ${duration}ms ❌ ${err.message}`)
+            }
+
+            // Small delay between rounds to let device settle
+            if (round < BENCHMARK_ROUNDS) {
+                await new Promise(r => setTimeout(r, 2000))
+            }
+        }
+
+        if (!unmountedRef.current) {
+            dispatch({ type: 'BENCHMARK_END' })
+            addLog('🏁 Benchmark complete')
+        }
+    }, [device, benchmarkFile, addLog])
+
     const selectedFile = selectedIndex !== null ? testFiles[selectedIndex] : null
     const pct = progress ? progress.percentage / 100 : 0
 
@@ -283,7 +345,7 @@ export const FileTransferTestScreen = () => {
                             <Button
                                 mode={selectedIndex === i && isTransferring ? 'outlined' : 'contained'}
                                 compact
-                                disabled={isTransferring && selectedIndex !== i}
+                                disabled={(isTransferring || isBenchmarking) && selectedIndex !== i}
                                 loading={isTransferring && selectedIndex === i}
                                 onPress={() => {
                                     if (isTransferring && selectedIndex === i) {
@@ -298,6 +360,56 @@ export const FileTransferTestScreen = () => {
                         </View>
                     )
                 })}
+
+                {/* Latency Benchmark Section */}
+                <Divider style={{ marginVertical: spacing }} />
+                <WWText variant="titleMedium" style={{ marginBottom: spacing / 2 }}>
+                    BLE Latency Benchmark
+                </WWText>
+                <WWText variant="bodySmall" style={styles.descriptionText}>
+                    Runs {BENCHMARK_ROUNDS} rounds of single-packet transfer (TINY.TXT) to measure
+                    BLE round-trip timing. Helps diagnose inactivity timer issues.
+                </WWText>
+                <Button
+                    mode="contained"
+                    compact
+                    disabled={isTransferring || isBenchmarking}
+                    loading={isBenchmarking}
+                    onPress={runBenchmark}
+                    style={{ marginBottom: spacing / 2 }}
+                >
+                    {isBenchmarking ? 'Running...' : 'Run Benchmark'}
+                </Button>
+
+                {benchmarkResults.length > 0 && (
+                    <View style={[styles.fileCard, { backgroundColor: colors.surfaceVariant, marginBottom: spacing / 2 }]}>
+                        {benchmarkResults.map((r) => (
+                            <View key={r.round} style={styles.progressRow}>
+                                <WWText variant="bodySmall">Round {r.round}</WWText>
+                                <WWText variant="bodySmall">{r.durationMs}ms</WWText>
+                                <WWText variant="bodySmall">{r.success ? '✅' : '❌'}</WWText>
+                            </View>
+                        ))}
+                        {(() => {
+                            const successful = benchmarkResults.filter(r => r.success)
+                            if (successful.length === 0) return null
+                            const times = successful.map(r => r.durationMs)
+                            const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length)
+                            const min = Math.min(...times)
+                            const max = Math.max(...times)
+                            return (
+                                <>
+                                    <Divider style={{ marginVertical: 4 }} />
+                                    <View style={styles.progressRow}>
+                                        <WWText variant="bodySmall" style={{ fontWeight: 'bold' }}>Avg: {avg}ms</WWText>
+                                        <WWText variant="bodySmall">Min: {min}ms</WWText>
+                                        <WWText variant="bodySmall">Max: {max}ms</WWText>
+                                    </View>
+                                </>
+                            )
+                        })()}
+                    </View>
+                )}
 
                 {/* Progress Section */}
                 {progress && selectedFile && (

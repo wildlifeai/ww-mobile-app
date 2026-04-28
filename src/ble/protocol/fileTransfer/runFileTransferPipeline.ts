@@ -84,6 +84,17 @@ function formatSpeed(bytesPerMs: number): string {
  */
 const FILE_START_ACK_TIMEOUT_MS = 20_000
 
+/**
+ * Maximum number of full-session retries on recoverable device errors
+ * (e.g. ftx err 7 = SD write fail due to inactivity-induced DPD).
+ * Each retry restarts from FILE_START.
+ */
+const MAX_SESSION_RETRIES = 2
+
+/** Delay before retrying a full session (ms). Gives the device time to
+ *  finish its sleep/wake cycle after a failed transfer. */
+const SESSION_RETRY_DELAY_MS = 3_000
+
 // ─── Main Pipeline ───────────────────────────────────────────────────
 
 export async function runFileTransferPipeline(
@@ -109,6 +120,27 @@ export async function runFileTransferPipeline(
   const crc = crc16ccitt(data)
   const totalPackets = Math.ceil(data.length / MAX_PAYLOAD_BYTES)
   log(`[FileTransfer] ${transferId}: ${filename} ${data.length} bytes, ${totalPackets} packets, CRC=0x${crc.toString(16).toUpperCase().padStart(4, '0')}`)
+
+  // ── Pre-build all FILE_DATA packets ────────────────────────────
+  // Moving packet construction out of the hot loop eliminates ~500ms
+  // of JS overhead per packet (data.slice + buildFileDataPacket).
+  // This is critical because the Himax inactivity timer is 1000ms —
+  // every millisecond saved between ACK receipt and next write matters.
+  const preBuiltPackets: { wireNum: number; chunkEnd: number; packet: Uint8Array }[] = []
+  {
+    let wireNum = 0
+    for (let offset = 0; offset < data.length; offset += MAX_PAYLOAD_BYTES) {
+      wireNum = nextWirePacketNum(wireNum)
+      const chunkEnd = Math.min(offset + MAX_PAYLOAD_BYTES, data.length)
+      const chunk = data.slice(offset, chunkEnd)
+      preBuiltPackets.push({
+        wireNum,
+        chunkEnd,
+        packet: buildFileDataPacket(wireNum, chunk),
+      })
+    }
+    log(`[FileTransfer] Pre-built ${preBuiltPackets.length} packets`)
+  }
 
   // ── Progress state ─────────────────────────────────────────────
   let bytesSent = 0
@@ -279,123 +311,190 @@ export async function runFileTransferPipeline(
     bleEventBus.on('textLine', silenceHandler)
     resetSilenceTimer()
 
-    // ── Phase 1: FILE_START ────────────────────────────────────────
-    emitProgress('starting')
-    const startPacket = buildFileStartPacket(filename, data.length)
+    // ── Session retry loop ─────────────────────────────────────────
+    // On ftx err 7 (SD write fail), the device closes the file and
+    // enters DPD. The only recovery is a full restart from FILE_START.
+    // This is typically caused by the Himax 1000ms inactivity timer
+    // firing between packets when the BLE round-trip is too slow.
+    let sessionAttempt = 0
 
-    // Register ACK listener BEFORE sending — the device can respond
-    // faster than writeBinaryToDevice resolves on the JS side.
-    const startAckPromise = prepareAckWait({ phase: 'start' }, FILE_START_ACK_TIMEOUT_MS)
-    await writeBinaryToDevice(peripheral, startPacket, true)
-    log(`[FileTransfer] FILE_START sent: ${filename} (${data.length} bytes)`)
+    while (true) {
+      // Reset progress state for this attempt
+      bytesSent = 0
+      packetsAcked = 0
+      wrapCycles = 0
+      wirePacketNum = 0
+      ackTimes.length = 0
 
-    await startAckPromise
-    log(`[FileTransfer] FILE_START ACKed`)
+      try {
+        // ── Phase 1: FILE_START ──────────────────────────────────────
+        emitProgress('starting')
+        const startPacket = buildFileStartPacket(filename, data.length)
 
-    // ── Phase 2: FILE_DATA ─────────────────────────────────────────
-    emitProgress('transferring')
-    let consecutiveTimeouts = 0
+        // Register ACK listener BEFORE sending — the device can respond
+        // faster than writeBinaryToDevice resolves on the JS side.
+        const startAckPromise = prepareAckWait({ phase: 'start' }, FILE_START_ACK_TIMEOUT_MS)
+        await writeBinaryToDevice(peripheral, startPacket, true)
+        log(`[FileTransfer] FILE_START sent: ${filename} (${data.length} bytes) [attempt ${sessionAttempt + 1}]`)
 
-    for (let offset = 0; offset < data.length; offset += MAX_PAYLOAD_BYTES) {
-      // Check abort before each packet
-      if (abortSignal?.aborted) {
-        throw new FileTransferError('ABORTED', 'Transfer cancelled by user')
-      }
+        await startAckPromise
+        log(`[FileTransfer] FILE_START ACKed`)
 
-      const chunkEnd = Math.min(offset + MAX_PAYLOAD_BYTES, data.length)
-      const chunk = data.slice(offset, chunkEnd)
-      wirePacketNum = nextWirePacketNum(wirePacketNum)
+        // ── Phase 2: FILE_DATA (pre-built packets) ───────────────────
+        emitProgress('transferring')
+        let consecutiveTimeouts = 0
+        let lastProgressEmitTime = Date.now()
+        const PROGRESS_THROTTLE_MS = 500    // emit progress at most every 500ms
+        const PROGRESS_THROTTLE_PKTS = 10   // or every 10 packets
 
-      if (wirePacketNum === 1 && packetsAcked > 0) {
-        wrapCycles++
-        log(`[FileTransfer] Packet number wrapped 255→1 (cycle ${wrapCycles})`)
-      }
-
-      const dataPacket = buildFileDataPacket(wirePacketNum, chunk)
-
-      // Retry loop for this single packet
-      let packetAcked = false
-      while (!packetAcked) {
-        try {
-          const ackStartTime = Date.now()
-          const dataAckPromise = prepareAckWait({ phase: 'data', packetNum: wirePacketNum })
-          
-          const writeStartTime = Date.now()
-          await writeBinaryToDevice(peripheral, dataPacket, false)
-          const writeEndTime = Date.now()
-          
-          await dataAckPromise
-          const ackEndTime = Date.now()
-
-          log(`[FileTransfer] Pkt ${wirePacketNum} timing | Write: ${writeEndTime - writeStartTime}ms | Wait for ACK: ${ackEndTime - writeEndTime}ms | Total Roundtrip: ${ackEndTime - ackStartTime}ms`)
-
-          // Success — track timing for ETA
-          ackTimes.push(ackEndTime - ackStartTime)
-          consecutiveTimeouts = 0
-          packetAcked = true
-        } catch (err: any) {
-          // Classify: is this a timeout we can retry?
-          const isTimeout =
-            err instanceof StreamTimeoutError ||
-            (err instanceof FileTransferError && err.reason === 'ACK_TIMEOUT')
-
-          if (!isTimeout) {
-            // Non-timeout errors (disconnect, abort, device error) are fatal
-            throw err
+        for (let i = 0; i < preBuiltPackets.length; i++) {
+          // Check abort before each packet
+          if (abortSignal?.aborted) {
+            throw new FileTransferError('ABORTED', 'Transfer cancelled by user')
           }
 
-          consecutiveTimeouts++
-          log(`[FileTransfer] ACK timeout for packet ${wirePacketNum} (${consecutiveTimeouts}/${MAX_CONSECUTIVE_TIMEOUTS})`)
+          const { wireNum, chunkEnd, packet: dataPacket } = preBuiltPackets[i]
+          wirePacketNum = wireNum
 
-          if (consecutiveTimeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
-            throw new FileTransferError(
-              'ACK_TIMEOUT',
-              `${MAX_CONSECUTIVE_TIMEOUTS} consecutive ACK timeouts — Bluetooth connection unstable`,
-            )
+          if (wirePacketNum === 1 && packetsAcked > 0) {
+            wrapCycles++
+            log(`[FileTransfer] Packet number wrapped 255→1 (cycle ${wrapCycles})`)
           }
 
-          // Retry: re-send the same packet (loop continues)
+          // Retry loop for this single packet (ACK timeout only)
+          let packetAcked = false
+          while (!packetAcked) {
+            try {
+              const ackStartTime = Date.now()
+              const dataAckPromise = prepareAckWait({ phase: 'data', packetNum: wirePacketNum })
+
+              await writeBinaryToDevice(peripheral, dataPacket, false)
+
+              await dataAckPromise
+              const roundtrip = Date.now() - ackStartTime
+
+              // Accumulate timing silently — no per-packet log in hot loop
+              ackTimes.push(roundtrip)
+              consecutiveTimeouts = 0
+              packetAcked = true
+            } catch (err: any) {
+              // Classify: is this a timeout we can retry?
+              const isTimeout =
+                err instanceof StreamTimeoutError ||
+                (err instanceof FileTransferError && err.reason === 'ACK_TIMEOUT')
+
+              if (!isTimeout) {
+                // Non-timeout errors (disconnect, abort, device error) are fatal
+                // for this attempt — they'll be caught by the session retry handler
+                throw err
+              }
+
+              consecutiveTimeouts++
+              log(`[FileTransfer] ACK timeout for packet ${wirePacketNum} (${consecutiveTimeouts}/${MAX_CONSECUTIVE_TIMEOUTS})`)
+
+              if (consecutiveTimeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
+                throw new FileTransferError(
+                  'ACK_TIMEOUT',
+                  `${MAX_CONSECUTIVE_TIMEOUTS} consecutive ACK timeouts — Bluetooth connection unstable`,
+                )
+              }
+
+              // Retry: re-send the same packet (loop continues)
+            }
+          }
+
+          bytesSent = chunkEnd
+          packetsAcked++
+
+          // Throttled progress emission — reduce React state update jitter
+          const now = Date.now()
+          if (
+            i === preBuiltPackets.length - 1 ||          // always emit on last packet
+            packetsAcked % PROGRESS_THROTTLE_PKTS === 0 || // every N packets
+            now - lastProgressEmitTime >= PROGRESS_THROTTLE_MS // or every Nms
+          ) {
+            emitProgress('transferring')
+            lastProgressEmitTime = now
+          }
         }
+
+        // Log timing summary after data loop
+        if (ackTimes.length > 0) {
+          const times = ackTimes
+          const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length)
+          const min = Math.min(...times)
+          const max = Math.max(...times)
+          log(`[FileTransfer] DATA phase complete: ${packetsAcked} pkts | avg=${avg}ms min=${min}ms max=${max}ms`)
+        }
+
+        // ── Phase 3: FILE_END ────────────────────────────────────────
+        emitProgress('verifying')
+        const endPacket = buildFileEndPacket(crc)
+        
+        const endAckPromise = prepareAckWait({ phase: 'end' })
+        await writeBinaryToDevice(peripheral, endPacket, true) // write with response
+        log(`[FileTransfer] FILE_END sent: CRC=0x${crc.toString(16).toUpperCase().padStart(4, '0')}`)
+
+        await endAckPromise
+        log(`[FileTransfer] Transfer complete: "ftx done" received`)
+
+        // ── Success ──────────────────────────────────────────────────
+        emitProgress('complete')
+        const duration = Date.now() - startTime
+
+        transferLog.endTime = new Date().toISOString()
+        transferLog.durationMs = duration
+        transferLog.packetsAcked = packetsAcked
+        transferLog.lastAckedPacket = wirePacketNum
+        transferLog.wrapCycles = wrapCycles
+        transferLog.finalStatus = 'success'
+        transferLog.crcVerified = true
+        transferLog.disconnectOccurred = disconnectOccurred
+        log(`[FileTransfer] LOG: ${JSON.stringify(transferLog)}`)
+
+        return {
+          success: true,
+          filename,
+          sizeBytes: data.length,
+          durationMs: duration,
+          totalPackets: packetsAcked,
+          crc,
+        }
+
+      } catch (sessionErr: any) {
+        // ── Session retry on recoverable device errors ────────────
+        const isFileTransferError = sessionErr instanceof FileTransferError
+        const hasDeviceErrorReason = sessionErr?.reason === 'DEVICE_ERROR'
+        const hasErrorCode7 = sessionErr?.errorCode === 7
+        const isRecoverable = isFileTransferError && hasDeviceErrorReason && hasErrorCode7
+
+        log(`[FileTransfer] Session error caught: instanceof=${isFileTransferError}, reason=${sessionErr?.reason}, errorCode=${sessionErr?.errorCode} (type=${typeof sessionErr?.errorCode}), isRecoverable=${isRecoverable}`)
+
+        sessionAttempt++
+
+        if (isRecoverable && sessionAttempt < MAX_SESSION_RETRIES) {
+          log(`[FileTransfer] ⚠️ ftx err 7 (SD write fail) — retrying full session (attempt ${sessionAttempt + 1}/${MAX_SESSION_RETRIES + 1})`)
+          log(`[FileTransfer] Waiting ${SESSION_RETRY_DELAY_MS}ms for device to complete sleep/wake cycle...`)
+          emitProgress('starting') // reset UI to "starting" for retry
+          await new Promise(resolve => setTimeout(resolve, SESSION_RETRY_DELAY_MS))
+
+          // Check if device disconnected during the wait
+          if (disconnectOccurred) {
+            throw new FileTransferError('DISCONNECTED', 'Device disconnected during retry wait')
+          }
+          if (abortSignal?.aborted) {
+            throw new FileTransferError('ABORTED', 'Transfer cancelled during retry wait')
+          }
+
+          // Loop continues → next attempt from FILE_START
+          continue
+        }
+
+        // Non-recoverable or retries exhausted — propagate
+        throw sessionErr
       }
+    } // end session retry loop
 
-      bytesSent = chunkEnd
-      packetsAcked++
-      emitProgress('transferring')
-    }
-
-    // ── Phase 3: FILE_END ──────────────────────────────────────────
-    emitProgress('verifying')
-    const endPacket = buildFileEndPacket(crc)
-    
-    const endAckPromise = prepareAckWait({ phase: 'end' })
-    await writeBinaryToDevice(peripheral, endPacket, true) // write with response
-    log(`[FileTransfer] FILE_END sent: CRC=0x${crc.toString(16).toUpperCase().padStart(4, '0')}`)
-
-    await endAckPromise
-    log(`[FileTransfer] Transfer complete: "ftx done" received`)
-
-    // ── Success ────────────────────────────────────────────────────
-    emitProgress('complete')
-    const duration = Date.now() - startTime
-
-    transferLog.endTime = new Date().toISOString()
-    transferLog.durationMs = duration
-    transferLog.packetsAcked = packetsAcked
-    transferLog.lastAckedPacket = wirePacketNum
-    transferLog.wrapCycles = wrapCycles
-    transferLog.finalStatus = 'success'
-    transferLog.crcVerified = true
-    transferLog.disconnectOccurred = disconnectOccurred
-    log(`[FileTransfer] LOG: ${JSON.stringify(transferLog)}`)
-
-    return {
-      success: true,
-      filename,
-      sizeBytes: data.length,
-      durationMs: duration,
-      totalPackets: packetsAcked,
-      crc,
-    }
   } catch (err: any) {
     const duration = Date.now() - startTime
     transferLog.endTime = new Date().toISOString()

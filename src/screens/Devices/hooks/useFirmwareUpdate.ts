@@ -80,7 +80,7 @@ const HIMAX_PHASE_LABELS: Record<UpdatePhase, string> = {
     scanning: '',
     transferring: 'Transferring firmware to SD card...',
     sending: 'Sending firmware update command...',
-    waking: 'Waking AI processor & running selftest...',
+    waking: 'AI processor waking up...',
     flashing: 'Writing firmware to flash...',
     rebooting: 'Rebooting device...',
     reconnecting: 'Reconnecting to device...',
@@ -219,8 +219,11 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         const currentIdx = ordering.indexOf(phaseRef.current)
         const newIdx = ordering.indexOf(newPhase)
         if (newPhase === 'failed' || newIdx > currentIdx) {
+            log(`[FW Update] Phase: ${phaseRef.current} → ${newPhase}`)
             phaseRef.current = newPhase
             if (!unmountedRef.current) setPhase(newPhase)
+        } else {
+            log(`[FW Update] Phase advance BLOCKED: ${phaseRef.current} → ${newPhase} (not forward)`)
         }
     }, [])
 
@@ -474,7 +477,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         appendLog('Sending firmware flash command...')
 
         const session = createBleSession(device)
-        await session.execute(() => commandRegistry.aifirmware('MANIFEST/output.img'))
+        await session.execute(() => commandRegistry.aifirmware('output.img'))
 
         if (unmountedRef.current) return
 
@@ -546,6 +549,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         setDownloadProgress(null)
         setDownloadState('idle')
         phaseRef.current = 'idle'
+        setPhase('idle')
         
         abortControllerRef.current = new AbortController()
 
