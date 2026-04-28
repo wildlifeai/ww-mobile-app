@@ -39,7 +39,6 @@ interface Props {
     isTimeLapse: boolean
     isLoadingModels: boolean
     modelsError: any
-    hasAiModels: boolean
     showArchiveToggle?: boolean
 }
 
@@ -53,7 +52,6 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
     isTimeLapse,
     isLoadingModels,
     modelsError,
-    hasAiModels,
     showArchiveToggle = false
 }) => {
     const theme = useTheme()
@@ -189,19 +187,17 @@ export const NewProjectSettingsSection: React.FC<Props> = ({
                                         </View>
                                     )
                                 }
-                                if (!hasAiModels) {
-                                    return (
-                                        <View testID="ai-model-select-empty">
-                                            <Text>No AI models available for this organisation</Text>
-                                        </View>
-                                    )
-                                }
+                                // Prepend "None" option; use sentinel value since WWSelect ignores empty strings
+                                const optionsWithNone = [
+                                    { label: 'None (no AI identification)', value: '__none__' },
+                                    ...aiModelOptions,
+                                ]
                                 return (
                                     <WWSelect
-                                        value={value}
-                                        onChange={onChange}
+                                        value={value || '__none__'}
+                                        onChange={(v: string) => onChange(v === '__none__' ? '' : v)}
                                         testID="ai-model-select-dropdown"
-                                        options={aiModelOptions}
+                                        options={optionsWithNone}
                                         label="Default AI Model"
                                     />
                                 )

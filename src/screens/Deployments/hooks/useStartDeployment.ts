@@ -497,8 +497,24 @@ export const useStartDeployment = ({
                     logWarn('Failed to update AI model:', e)
                     addFinishLog('AI model update failed, continuing...')
                 }
-            } else if (!project.model_id) {
-                addFinishLog('No AI model assigned to project')
+            } else {
+                // No AI model assigned — check if device has a stale model loaded
+                try {
+                    await bleSession?.execute(() => commandRegistry.aiver())
+                    const ops = await bleSession?.execute(() => commandRegistry.getops()) as unknown as number[]
+                    const currentId = ops?.[14] ?? 0
+
+                    if (currentId !== 0) {
+                        addFinishLog(`Device has stale model (ID: ${currentId}) — erasing...`)
+                        await bleSession?.execute(() => commandRegistry.erasemodel())
+                        addFinishLog('Stale AI model erased')
+                    } else {
+                        addFinishLog('No AI model required — device clear')
+                    }
+                } catch (e) {
+                    logWarn('Failed to check/erase device model:', e)
+                    addFinishLog('Could not verify device model state, continuing...')
+                }
             }
 
             addFinishLog('Gathering snapshot data...')

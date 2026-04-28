@@ -226,7 +226,8 @@ describe("NewProjectScreen - AI Model Integration", () => {
 					description: "A project to monitor wildlife in national park",
 					organisation_id: "org-123",
 					is_baited: true,
-					model_id: "123e4567-e89b-12d3-a456-426614174000",
+					// model_id is undefined because no model was auto-selected
+					// (user must explicitly choose one now)
 				}),
 			)
 		})
@@ -257,9 +258,9 @@ describe("NewProjectScreen - AI Model Integration", () => {
 
 		fireEvent.press(screen.getByText("Advanced Project Settings"))
 
-		// Assert
+		// Assert — empty list still shows the dropdown with a "None" option
 		await waitFor(() => {
-			expect(screen.getByText("No AI models available for this organisation")).toBeOnTheScreen()
+			expect(screen.getByTestId("ai-model-select-dropdown")).toBeOnTheScreen()
 		})
 	})
 
@@ -449,10 +450,11 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		const submitButton = screen.getByText("Create Project")
 		fireEvent.press(submitButton)
 
+		// model_id defaults to "" (None) — no auto-selection anymore
 		await waitFor(() => {
 			expect(mockCreateProject).toHaveBeenCalledWith(
 				expect.objectContaining({
-					model_id: "123e4567-e89b-12d3-a456-426614174000",
+					model_id: undefined,
 				}),
 			)
 		})

@@ -148,6 +148,7 @@ export async function runFileTransferPipeline(
   let wrapCycles = 0
   let wirePacketNum = 0
   let disconnectOccurred = false
+  let isDisconnected = false
   const ackTimes: number[] = [] // rolling window for ETA
 
   const emitProgress = (phase: FileTransferProgress['phase']) => {
@@ -241,6 +242,7 @@ export async function runFileTransferPipeline(
       'BleManagerDisconnectPeripheral',
       (event: { peripheral: string }) => {
         if (event.peripheral === peripheral.id) {
+          isDisconnected = true
           disconnectOccurred = true
           disconnectReject?.(
             new FileTransferError(
@@ -274,15 +276,27 @@ export async function runFileTransferPipeline(
   // registered before the device can respond.  The device can ACK a packet
   // faster than a JS `await writeBinaryToDevice(...)` resolves.
   function prepareAckWait(expected: ExpectedAck, timeoutMs?: number): Promise<string> {
+    // Short-circuit if already disconnected
+    if (isDisconnected) {
+      return Promise.reject(
+        new FileTransferError('DISCONNECTED', 'Device disconnected'),
+      )
+    }
+
     resetSilenceTimer() // reset on send
 
+    // Cancellation-aware: prevent late-arriving ACKs from executing logic
+    // after a timeout/disconnect has already won the race.
+    let active = true
+
     const ackPromise = stream.waitFor((line: string) => {
+      if (!active) return false
       const result = matchAck(line, expected)
       if (result.type === 'accept') return true
       if (result.type === 'error') {
         throw new FileTransferError('DEVICE_ERROR', `Device error: ${line}`, result.code)
       }
-      if (result.type === 'ignore') {
+      if (result.type === 'ignore' && __DEV__) {
         logIgnoredAck(result)
       }
       return false
@@ -291,7 +305,7 @@ export async function runFileTransferPipeline(
     const races: Promise<any>[] = [ackPromise, disconnectPromise, silencePromise]
     if (abortSignal) races.push(abortPromise)
 
-    return Promise.race(races)
+    return Promise.race(races).finally(() => { active = false })
   }
 
   // ── Acquire transport lock + execute transfer ──────────────────
@@ -334,6 +348,7 @@ export async function runFileTransferPipeline(
         // Register ACK listener BEFORE sending — the device can respond
         // faster than writeBinaryToDevice resolves on the JS side.
         const startAckPromise = prepareAckWait({ phase: 'start' }, FILE_START_ACK_TIMEOUT_MS)
+        if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected before FILE_START')
         await writeBinaryToDevice(peripheral, startPacket, true)
         log(`[FileTransfer] FILE_START sent: ${filename} (${data.length} bytes) [attempt ${sessionAttempt + 1}]`)
 
@@ -348,7 +363,8 @@ export async function runFileTransferPipeline(
         const PROGRESS_THROTTLE_PKTS = 10   // or every 10 packets
 
         for (let i = 0; i < preBuiltPackets.length; i++) {
-          // Check abort before each packet
+          // Check abort and disconnect before each packet
+          if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected during transfer')
           if (abortSignal?.aborted) {
             throw new FileTransferError('ABORTED', 'Transfer cancelled by user')
           }
@@ -368,6 +384,7 @@ export async function runFileTransferPipeline(
               const ackStartTime = Date.now()
               const dataAckPromise = prepareAckWait({ phase: 'data', packetNum: wirePacketNum })
 
+              if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected before write')
               await writeBinaryToDevice(peripheral, dataPacket, false)
 
               await dataAckPromise
@@ -432,6 +449,7 @@ export async function runFileTransferPipeline(
         const endPacket = buildFileEndPacket(crc)
         
         const endAckPromise = prepareAckWait({ phase: 'end' })
+        if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected before FILE_END')
         await writeBinaryToDevice(peripheral, endPacket, true) // write with response
         log(`[FileTransfer] FILE_END sent: CRC=0x${crc.toString(16).toUpperCase().padStart(4, '0')}`)
 

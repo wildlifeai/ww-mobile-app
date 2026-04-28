@@ -1,6 +1,6 @@
 import { useCallback, useRef, useEffect, useMemo, useReducer } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
-import { Button, ProgressBar, Chip, Divider, Text } from 'react-native-paper'
+import { Button, ProgressBar, Chip, Divider, Text, RadioButton } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute } from '@react-navigation/native'
 
@@ -110,6 +110,7 @@ interface TransferState {
     transferLog: { id: string; text: string }[]
     isBenchmarking: boolean
     benchmarkResults: BenchmarkResult[]
+    transferMode: 'stop-and-wait' | 'sliding-window'
 }
 
 const initialState: TransferState = {
@@ -120,6 +121,7 @@ const initialState: TransferState = {
     transferLog: [],
     isBenchmarking: false,
     benchmarkResults: [],
+    transferMode: 'stop-and-wait',
 }
 
 type TransferAction =
@@ -132,6 +134,7 @@ type TransferAction =
     | { type: 'BENCHMARK_START' }
     | { type: 'BENCHMARK_ROUND'; payload: BenchmarkResult }
     | { type: 'BENCHMARK_END' }
+    | { type: 'SET_MODE'; payload: 'stop-and-wait' | 'sliding-window' }
 
 function transferReducer(state: TransferState, action: TransferAction): TransferState {
     switch (action.type) {
@@ -152,6 +155,8 @@ function transferReducer(state: TransferState, action: TransferAction): Transfer
             return { ...state, benchmarkResults: [...state.benchmarkResults, action.payload] }
         case 'BENCHMARK_END':
             return { ...state, isBenchmarking: false }
+        case 'SET_MODE':
+            return { ...state, transferMode: action.payload }
         default:
             return state
     }
@@ -168,7 +173,7 @@ export const FileTransferTestScreen = () => {
 
     const testFiles = useMemo(() => generateTestFiles(), [])
     const [state, dispatch] = useReducer(transferReducer, initialState)
-    const { selectedIndex, isTransferring, progress, result, transferLog, isBenchmarking, benchmarkResults } = state
+    const { selectedIndex, isTransferring, progress, result, transferLog, isBenchmarking, benchmarkResults, transferMode } = state
 
     const abortRef = useRef<AbortController | null>(null)
     const unmountedRef = useRef(false)
@@ -195,7 +200,10 @@ export const FileTransferTestScreen = () => {
         const fileCrc = crc16ccitt(file.data)
         const timestamp = new Date().toLocaleTimeString()
 
+        const modeLabel = state.transferMode === 'sliding-window' ? 'Sliding Window (2-pkt)' : 'Stop-and-Wait'
+
         const initialLogs = [
+            { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] Mode: ${modeLabel}` },
             { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] Selected: ${file.filename} (${file.data.length} bytes)` },
             { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] CRC: 0x${fileCrc.toString(16).toUpperCase().padStart(4, '0')}` },
             { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] Packets: ${Math.ceil(file.data.length / 241)}` },
@@ -206,6 +214,11 @@ export const FileTransferTestScreen = () => {
         abortRef.current = new AbortController()
 
         try {
+            // Sliding window mode: placeholder — falls back to S&W pipeline
+            if (state.transferMode === 'sliding-window') {
+                addLog('⚠️ Sliding window pipeline not yet implemented — using Stop-and-Wait')
+            }
+
             const transferResult = await runFileTransferPipeline(device, {
                 filename: file.filename,
                 data: file.data,
@@ -258,7 +271,7 @@ export const FileTransferTestScreen = () => {
                 abortRef.current = null
             }
         }
-    }, [device, testFiles])
+    }, [device, testFiles, state.transferMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const cancelTransfer = useCallback(() => {
         abortRef.current?.abort()
@@ -319,6 +332,39 @@ export const FileTransferTestScreen = () => {
                     Select a file to send to the device's SD card via BLE.
                     Steve can compare these on the SD card to verify integrity.
                 </WWText>
+
+                {/* Transfer Mode Selector */}
+                <View style={[styles.fileCard, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
+                    <WWText variant="titleSmall" style={{ marginBottom: 4 }}>Transfer Mode</WWText>
+                    <RadioButton.Group
+                        value={transferMode}
+                        onValueChange={(v) => dispatch({ type: 'SET_MODE', payload: v as 'stop-and-wait' | 'sliding-window' })}
+                    >
+                        <View style={styles.radioRow}>
+                            <RadioButton.Item
+                                label="Stop-and-Wait (current)"
+                                value="stop-and-wait"
+                                disabled={isTransferring || isBenchmarking}
+                                style={styles.radioItem}
+                                labelStyle={styles.radioLabel}
+                            />
+                        </View>
+                        <View style={styles.radioRow}>
+                            <RadioButton.Item
+                                label="Sliding Window (2-packet)"
+                                value="sliding-window"
+                                disabled={isTransferring || isBenchmarking}
+                                style={styles.radioItem}
+                                labelStyle={styles.radioLabel}
+                            />
+                        </View>
+                    </RadioButton.Group>
+                    {transferMode === 'sliding-window' && (
+                        <WWText variant="bodySmall" style={{ opacity: 0.7, marginTop: 4 }}>
+                            ⚠️ Requires firmware with sliding window support. Falls back to S&W on older firmware.
+                        </WWText>
+                    )}
+                </View>
 
                 {testFiles.map((file, i) => {
                     const fileCrc = crc16ccitt(file.data)
@@ -554,5 +600,14 @@ const styles = StyleSheet.create({
     },
     resultDetails: {
         opacity: 0.7,
+    },
+    radioRow: {
+        marginVertical: -4,
+    },
+    radioItem: {
+        paddingVertical: 2,
+    },
+    radioLabel: {
+        fontSize: 13,
     },
 })

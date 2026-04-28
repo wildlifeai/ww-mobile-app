@@ -114,11 +114,7 @@ export const NewProjectScreen = () => {
 		}
 	}, [activitySensitivities, watch, setValue])
 
-	useEffect(() => {
-		if (aiModels?.length && !watch("model_id")) {
-			setValue("model_id", aiModels[0].id)
-		}
-	}, [aiModels, watch, setValue])
+	// AI model defaults to "" (None) — project managers can optionally select one
 
 	// Options for Select components
 	const captureMethodOptions = useMemo(
@@ -248,7 +244,6 @@ export const NewProjectScreen = () => {
 					isTimeLapse={isTimeLapse}
 					isLoadingModels={isLoadingModels}
 					modelsError={modelsError}
-					hasAiModels={!!aiModels?.length}
 				/>
 
 				{/* Submit Button */}
