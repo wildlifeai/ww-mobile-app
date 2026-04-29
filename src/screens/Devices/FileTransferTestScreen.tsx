@@ -214,14 +214,12 @@ export const FileTransferTestScreen = () => {
         abortRef.current = new AbortController()
 
         try {
-            // Sliding window mode: placeholder — falls back to S&W pipeline
-            if (state.transferMode === 'sliding-window') {
-                addLog('⚠️ Sliding window pipeline not yet implemented — using Stop-and-Wait')
-            }
+            const transferWindowSize = state.transferMode === 'sliding-window' ? 2 : 1
 
             const transferResult = await runFileTransferPipeline(device, {
                 filename: file.filename,
                 data: file.data,
+                windowSize: transferWindowSize,
                 onProgress: (p) => {
                     if (!unmountedRef.current) dispatch({ type: 'SET_PROGRESS', payload: p })
                 },
@@ -271,7 +269,7 @@ export const FileTransferTestScreen = () => {
                 abortRef.current = null
             }
         }
-    }, [device, testFiles, state.transferMode]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [device, testFiles, state.transferMode])  
 
     const cancelTransfer = useCallback(() => {
         abortRef.current?.abort()
@@ -308,7 +306,7 @@ export const FileTransferTestScreen = () => {
 
             // Small delay between rounds to let device settle
             if (round < BENCHMARK_ROUNDS) {
-                await new Promise(r => setTimeout(r, 2000))
+                await new Promise(r => setTimeout(r, 500))
             }
         }
 
@@ -361,7 +359,7 @@ export const FileTransferTestScreen = () => {
                     </RadioButton.Group>
                     {transferMode === 'sliding-window' && (
                         <WWText variant="bodySmall" style={{ opacity: 0.7, marginTop: 4 }}>
-                            ⚠️ Requires firmware with sliding window support. Falls back to S&W on older firmware.
+                            ⚠️ Requires firmware with 2-slot packet buffer. Falls back gracefully on older firmware.
                         </WWText>
                     )}
                 </View>

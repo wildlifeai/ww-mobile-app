@@ -196,15 +196,46 @@ export const ModelValidationTestScreen = () => {
                         <View style={styles.metadataContainer}>
                             <View style={styles.chipRow}>
                                 <Text style={styles.metadataLabel}>OP 14 (ID):</Text>
-                                <Text style={styles.metadataValue}>{selectedModel.firmwareModelId ?? 'N/A'}</Text>
+                                <Text style={[styles.metadataValue, !selectedModel.firmwareModelId && styles.metadataMissing]}>
+                                    {selectedModel.firmwareModelId ?? 'Not synced'}
+                                </Text>
                             </View>
                             <View style={styles.chipRow}>
                                 <Text style={styles.metadataLabel}>OP 15 (Ver):</Text>
-                                <Text style={styles.metadataValue}>{selectedModel.versionNumber ?? 'N/A'}</Text>
+                                <Text style={[styles.metadataValue, !selectedModel.versionNumber && styles.metadataMissing]}>
+                                    {selectedModel.versionNumber ?? 'Not synced'}
+                                </Text>
                             </View>
                             <View style={styles.chipRow}>
                                 <Text style={styles.metadataLabel}>Filename:</Text>
-                                <Text style={styles.metadataValue}>{selectedModel.firmwareModelId}V{selectedModel.versionNumber}.TFL</Text>
+                                <Text style={styles.metadataValue}>
+                                    {(selectedModel.firmwareModelId ?? '?')}V{(selectedModel.versionNumber ?? '?')}.TFL
+                                </Text>
+                            </View>
+                            <View style={styles.divider} />
+                            <View style={styles.chipRow}>
+                                <Text style={styles.metadataLabel}>Model Path:</Text>
+                                <Text style={[styles.metadataPathValue, !selectedModel.modelPath && styles.metadataMissing]} numberOfLines={2}>
+                                    {selectedModel.modelPath ?? '⚠️ Not set'}
+                                </Text>
+                            </View>
+                            <View style={styles.chipRow}>
+                                <Text style={styles.metadataLabel}>Labels Path:</Text>
+                                <Text style={[styles.metadataPathValue, !selectedModel.labelsPath && styles.metadataMissing]} numberOfLines={2}>
+                                    {selectedModel.labelsPath ?? '⚠️ Not set'}
+                                </Text>
+                            </View>
+                            <View style={styles.chipRow}>
+                                <Text style={styles.metadataLabel}>Size:</Text>
+                                <Text style={styles.metadataValue}>
+                                    {selectedModel.fileSizeBytes ? `${(selectedModel.fileSizeBytes / 1024).toFixed(1)} KB` : 'Unknown'}
+                                </Text>
+                            </View>
+                            <View style={styles.chipRow}>
+                                <Text style={styles.metadataLabel}>Status:</Text>
+                                <Text style={styles.metadataValue}>
+                                    {selectedModel.status ?? 'Unknown'}
+                                </Text>
                             </View>
                         </View>
                     )}
@@ -286,7 +317,7 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     metadataContainer: {
-        backgroundColor: '#e8e8e8',
+        backgroundColor: '#2a2a2a',
         padding: 12,
         borderRadius: 8,
         marginBottom: 16,
@@ -294,15 +325,32 @@ const styles = StyleSheet.create({
     chipRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 4,
+        marginBottom: 6,
     },
     metadataLabel: {
         fontWeight: 'bold',
         fontSize: 12,
-        color: '#666',
+        color: '#aaa',
     },
     metadataValue: {
         fontSize: 12,
         fontFamily: 'monospace',
-    }
+        color: '#e0e0e0',
+    },
+    metadataPathValue: {
+        fontSize: 10,
+        fontFamily: 'monospace',
+        color: '#e0e0e0',
+        maxWidth: '65%',
+        textAlign: 'right',
+    },
+    metadataMissing: {
+        color: '#ff9800',
+        fontStyle: 'italic',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#444',
+        marginVertical: 8,
+    },
 })

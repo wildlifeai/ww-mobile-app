@@ -438,8 +438,8 @@ export const commandRegistry = {
     'dir',
     () => 'AI dir',
     /.+/, // Matches any non-empty line to ensure all directory entries are collected
-    /End of directory/i,
+    /End of directory|\d+\s+dirs?,\s+\d+\s+files?\.?/i,
     (lines) => lines,
-    { timeoutMs: 5000 }
+    { timeoutMs: 10000 }
   )
 };

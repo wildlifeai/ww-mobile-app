@@ -75,14 +75,6 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
             
             <Surface style={[styles.card, { backgroundColor: colors.surface }]} elevation={1}>
                 
-                <NumericInput
-                    label="Flash Duration (0-2000 ms)"
-                    value={cameraParams.flashDuration}
-                    onChange={(v: number) => updateCameraParam('flashDuration', v)}
-                    min={0}
-                    max={2000}
-                    disabled={isApplying || capturePreview.isCapturing}
-                />
                 
                 <View style={styles.inputGroup}>
                     <WWText variant="labelLarge">Flash LED Type</WWText>
@@ -217,7 +209,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                 {selectedImage && (
                     <View style={{ marginTop: 8, paddingHorizontal: 4, width: '100%' }}>
                         <WWText variant="labelMedium" style={{ color: colors.onSurfaceVariant }}>
-                            Flash: {['Off', 'Visible', 'IR'][selectedImage.params.flashLed]} ({selectedImage.params.ledBrightness}%, {selectedImage.params.flashDuration}ms)
+                            Flash: {['Off', 'Visible', 'IR'][selectedImage.params.flashLed]} ({selectedImage.params.ledBrightness}%)
                         </WWText>
                         {selectedImage.aeData && (
                             <WWText variant="labelMedium" style={{ color: colors.primary, marginTop: 2 }}>

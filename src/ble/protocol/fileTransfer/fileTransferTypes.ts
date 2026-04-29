@@ -165,4 +165,6 @@ export interface FileTransferOptions {
   data: Uint8Array
   onProgress?: (progress: FileTransferProgress) => void
   abortSignal?: AbortSignal
+  /** Window size for pipelining. 1 = stop-and-wait (default), 2 = sliding window. */
+  windowSize?: number
 }

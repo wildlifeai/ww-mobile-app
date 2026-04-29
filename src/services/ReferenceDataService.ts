@@ -205,7 +205,7 @@ class ReferenceDataService {
         const supabase = getSupabaseClient()
         const { data, error } = await supabase
             .from('ai_models')
-            .select('*')
+            .select('*, ai_model_families(firmware_model_id)')
             .is('deleted_at', null)
             .order('name')
 
@@ -222,6 +222,7 @@ class ReferenceDataService {
 
             // Upsert
             for (const row of data) {
+                const familyData = row.ai_model_families as { firmware_model_id: number } | null
                 const existing = existingMap.get(row.id)
                 if (existing) {
                     await existing.update(rec => {
@@ -229,6 +230,15 @@ class ReferenceDataService {
                         rec.version = row.version
                         rec.description = row.description ?? undefined
                         rec.organisationId = row.organisation_id
+                        rec.modelPath = row.model_path ?? undefined
+                        rec.labelsPath = row.labels_path ?? undefined
+                        rec.fileSizeBytes = row.file_size_bytes ?? 0
+                        rec.fileType = row.file_type ?? undefined
+                        rec.fileHash = row.file_hash ?? undefined
+                        rec.status = row.status ?? undefined
+                        rec.modelFamilyId = row.model_family_id ?? undefined
+                        rec.versionNumber = row.version_number ?? undefined
+                        rec.firmwareModelId = familyData?.firmware_model_id ?? undefined
                     })
                 } else {
                     await collection.create(rec => {
@@ -237,6 +247,15 @@ class ReferenceDataService {
                         rec.version = row.version
                         rec.description = row.description ?? undefined
                         rec.organisationId = row.organisation_id
+                        rec.modelPath = row.model_path ?? undefined
+                        rec.labelsPath = row.labels_path ?? undefined
+                        rec.fileSizeBytes = row.file_size_bytes ?? 0
+                        rec.fileType = row.file_type ?? undefined
+                        rec.fileHash = row.file_hash ?? undefined
+                        rec.status = row.status ?? undefined
+                        rec.modelFamilyId = row.model_family_id ?? undefined
+                        rec.versionNumber = row.version_number ?? undefined
+                        rec.firmwareModelId = familyData?.firmware_model_id ?? undefined
                     })
                 }
             }

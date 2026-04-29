@@ -50,6 +50,7 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     const currentParamsRef = useRef(cameraParams)
     const currentTestModeBitsRef = useRef(testModeBits)
     const currentAeDataRef = useRef(aeData)
+    const pendingCameraDisableRef = useRef(false)
 
     useEffect(() => { currentParamsRef.current = cameraParams }, [cameraParams])
     useEffect(() => { currentTestModeBitsRef.current = testModeBits }, [testModeBits])
@@ -62,7 +63,18 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             testModeBits: currentTestModeBitsRef.current,
             aeData: currentAeDataRef.current
         }, ...prev])
-    }, [])
+
+        // Disable camera AFTER the image download is complete.
+        // Previously this was done inline in applyAndCapture() but that
+        // sent setop 10 0 while the binary image was still streaming,
+        // causing a TIMEOUT error on the command response.
+        if (pendingCameraDisableRef.current && device) {
+            pendingCameraDisableRef.current = false
+            const session = createBleSession(device)
+            session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAMERA_ENABLED, value: 0 }))
+                .catch(e => logError('[CameraSettingsTest] Failed to disable camera after capture:', e))
+        }
+    }, [device])
     
     const handleCaptureError = useCallback((e: Error) => {
         logError('[CameraSettingsTest] Capture failed:', e)
@@ -159,10 +171,11 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             // 3. Trigger capture via the standard capture flow.
             //    startCapture enables the camera (setop 10 1), waits for DPD,
             //    then issues 'AI capture 1 1000'.
+            //    NOTE: startCapture resolves after txfile is acknowledged, NOT
+            //    after the binary download completes. Camera disable is deferred
+            //    to handleImageReceived to avoid sending commands during transfer.
+            pendingCameraDisableRef.current = true
             await capturePreview.startCapture(1, 1000)
-
-            const postSession = createBleSession(device);
-            await postSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAMERA_ENABLED, value: 0 }))
 
         } catch (e) {
             logError('[CameraSettingsTest] Error applying params or capturing:', e)
