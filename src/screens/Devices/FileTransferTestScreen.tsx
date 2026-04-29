@@ -10,6 +10,9 @@ import { WWText } from '../../components/ui/WWText'
 import { logError } from '../../utils/logger'
 import { runFileTransferPipeline } from '../../ble/protocol/fileTransfer'
 import { crc16ccitt } from '../../ble/protocol/fileTransfer/crc16ccitt'
+import { buildFileLoopbackPacket } from '../../ble/protocol/fileTransfer/fileTransferPackets'
+import { writeBinaryToDevice } from '../../ble/transport'
+import { bleEventBus, BleEvent } from '../../ble/protocol/eventBus'
 import {
     FileTransferProgress,
     getErrorMessage,
@@ -93,11 +96,16 @@ function generateTestFiles(): TestFile[] {
 
 // ─── Benchmark ───────────────────────────────────────────────────────
 
+const BENCHMARK_ROUNDS = 10
+const LOOPBACK_TIMEOUT_MS = 5000
+const LOOPBACK_PAYLOAD_SIZES = [5, 100, 241] // test small, medium, max
+
 interface BenchmarkResult {
     round: number
     durationMs: number
     success: boolean
     error?: string
+    payloadSize?: number
 }
 
 // ─── State Management ──────────────────────────────────────────────────
@@ -276,45 +284,73 @@ export const FileTransferTestScreen = () => {
         addLog('⏹ User cancelled transfer')
     }, [addLog])
 
-    // ─── Latency Benchmark ───────────────────────────────────────────
-    const BENCHMARK_ROUNDS = 5
-    const benchmarkFile = testFiles[0] // TINY.TXT — single packet
+    // ─── FILE_LOOPBACK Latency Benchmark ─────────────────────────────
+    // Uses packet type 10 — device echoes binary packet immediately
+    // without I2C or SD card involvement. Measures pure BLE round-trip.
 
     const runBenchmark = useCallback(async () => {
-        if (!device?.connected || !benchmarkFile) return
+        if (!device?.connected) return
 
         dispatch({ type: 'BENCHMARK_START' })
-        addLog(`🏁 Starting latency benchmark (${BENCHMARK_ROUNDS} rounds of ${benchmarkFile.filename})...`)
+        addLog(`🏁 Starting FILE_LOOPBACK benchmark (${BENCHMARK_ROUNDS} rounds × ${LOOPBACK_PAYLOAD_SIZES.length} sizes)...`)
 
-        for (let round = 1; round <= BENCHMARK_ROUNDS; round++) {
-            if (unmountedRef.current) return
+        let round = 0
+        for (const payloadSize of LOOPBACK_PAYLOAD_SIZES) {
+            addLog(`  📏 Payload size: ${payloadSize} bytes`)
+            for (let i = 0; i < BENCHMARK_ROUNDS; i++) {
+                if (unmountedRef.current) return
+                round++
+                const seqNum = round % 256
+                const payload = new Uint8Array(payloadSize).fill(seqNum)
+                const packet = buildFileLoopbackPacket(seqNum, payload)
 
-            const roundStart = Date.now()
-            try {
-                await runFileTransferPipeline(device, {
-                    filename: benchmarkFile.filename,
-                    data: benchmarkFile.data,
-                })
-                const duration = Date.now() - roundStart
-                dispatch({ type: 'BENCHMARK_ROUND', payload: { round, durationMs: duration, success: true } })
-                addLog(`  Round ${round}: ${duration}ms ✅`)
-            } catch (err: any) {
-                const duration = Date.now() - roundStart
-                dispatch({ type: 'BENCHMARK_ROUND', payload: { round, durationMs: duration, success: false, error: err.message } })
-                addLog(`  Round ${round}: ${duration}ms ❌ ${err.message}`)
-            }
+                const roundStart = Date.now()
+                try {
+                    // Wait for binary echo with matching seq number
+                    const echoPromise = new Promise<void>((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            bleEventBus.off('binaryPacket', handler)
+                            reject(new Error(`Loopback timeout (${LOOPBACK_TIMEOUT_MS}ms)`))
+                        }, LOOPBACK_TIMEOUT_MS)
 
-            // Small delay between rounds to let device settle
-            if (round < BENCHMARK_ROUNDS) {
-                await new Promise(r => setTimeout(r, 500))
+                        const handler = (evt: BleEvent & { type: 'BINARY_PACKET' }) => {
+                            if (evt.deviceId !== device.id) return
+                            // The device echoes via 0x06 binary framing:
+                            // [0x06, packetNum, length, ...echoed payload]
+                            // Match on packetNum which carries our seqNum
+                            if (evt.packetNum === seqNum) {
+                                clearTimeout(timeout)
+                                bleEventBus.off('binaryPacket', handler)
+                                resolve()
+                            }
+                        }
+                        bleEventBus.on('binaryPacket', handler)
+                    })
+
+                    await writeBinaryToDevice(device, packet, false)
+                    await echoPromise
+
+                    const duration = Date.now() - roundStart
+                    dispatch({ type: 'BENCHMARK_ROUND', payload: { round, durationMs: duration, success: true, payloadSize } })
+                    addLog(`    R${i + 1}: ${duration}ms ✅`)
+                } catch (err: any) {
+                    const duration = Date.now() - roundStart
+                    dispatch({ type: 'BENCHMARK_ROUND', payload: { round, durationMs: duration, success: false, error: err.message, payloadSize } })
+                    addLog(`    R${i + 1}: ${duration}ms ❌ ${err.message}`)
+                }
+
+                // Brief pause between rounds
+                if (i < BENCHMARK_ROUNDS - 1) {
+                    await new Promise(r => setTimeout(r, 100))
+                }
             }
         }
 
         if (!unmountedRef.current) {
             dispatch({ type: 'BENCHMARK_END' })
-            addLog('🏁 Benchmark complete')
+            addLog('🏁 Loopback benchmark complete')
         }
-    }, [device, benchmarkFile, addLog])
+    }, [device, addLog])
 
     const selectedFile = selectedIndex !== null ? testFiles[selectedIndex] : null
     const pct = progress ? progress.percentage / 100 : 0
@@ -408,11 +444,11 @@ export const FileTransferTestScreen = () => {
                 {/* Latency Benchmark Section */}
                 <Divider style={{ marginVertical: spacing }} />
                 <WWText variant="titleMedium" style={{ marginBottom: spacing / 2 }}>
-                    BLE Latency Benchmark
+                    BLE Loopback Benchmark
                 </WWText>
                 <WWText variant="bodySmall" style={styles.descriptionText}>
-                    Runs {BENCHMARK_ROUNDS} rounds of single-packet transfer (TINY.TXT) to measure
-                    BLE round-trip timing. Helps diagnose inactivity timer issues.
+                    Sends FILE_LOOPBACK packets (type 10) at 3 payload sizes ({LOOPBACK_PAYLOAD_SIZES.join(', ')} bytes).
+                    Device echoes immediately — no I2C/SD card. Measures pure BLE round-trip.
                 </WWText>
                 <Button
                     mode="contained"
@@ -427,30 +463,31 @@ export const FileTransferTestScreen = () => {
 
                 {benchmarkResults.length > 0 && (
                     <View style={[styles.fileCard, { backgroundColor: colors.surfaceVariant, marginBottom: spacing / 2 }]}>
-                        {benchmarkResults.map((r) => (
-                            <View key={r.round} style={styles.progressRow}>
-                                <WWText variant="bodySmall">Round {r.round}</WWText>
-                                <WWText variant="bodySmall">{r.durationMs}ms</WWText>
-                                <WWText variant="bodySmall">{r.success ? '✅' : '❌'}</WWText>
-                            </View>
-                        ))}
                         {(() => {
-                            const successful = benchmarkResults.filter(r => r.success)
-                            if (successful.length === 0) return null
-                            const times = successful.map(r => r.durationMs)
-                            const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length)
-                            const min = Math.min(...times)
-                            const max = Math.max(...times)
-                            return (
-                                <>
-                                    <Divider style={{ marginVertical: 4 }} />
-                                    <View style={styles.progressRow}>
-                                        <WWText variant="bodySmall" style={{ fontWeight: 'bold' }}>Avg: {avg}ms</WWText>
-                                        <WWText variant="bodySmall">Min: {min}ms</WWText>
-                                        <WWText variant="bodySmall">Max: {max}ms</WWText>
+                            // Group results by payload size for cleaner display
+                            const sizes = [...new Set(benchmarkResults.map(r => r.payloadSize ?? 0))]
+                            return sizes.map(size => {
+                                const sizeResults = benchmarkResults.filter(r => (r.payloadSize ?? 0) === size)
+                                const successful = sizeResults.filter(r => r.success)
+                                const times = successful.map(r => r.durationMs)
+                                const avg = times.length > 0 ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0
+                                const min = times.length > 0 ? Math.min(...times) : 0
+                                const max = times.length > 0 ? Math.max(...times) : 0
+                                return (
+                                    <View key={size}>
+                                        <WWText variant="labelSmall" style={{ marginTop: 4, fontWeight: 'bold' }}>
+                                            {size}B payload — {successful.length}/{sizeResults.length} ok
+                                        </WWText>
+                                        {times.length > 0 && (
+                                            <View style={styles.progressRow}>
+                                                <WWText variant="bodySmall">Avg: {avg}ms</WWText>
+                                                <WWText variant="bodySmall">Min: {min}ms</WWText>
+                                                <WWText variant="bodySmall">Max: {max}ms</WWText>
+                                            </View>
+                                        )}
                                     </View>
-                                </>
-                            )
+                                )
+                            })
                         })()}
                     </View>
                 )}

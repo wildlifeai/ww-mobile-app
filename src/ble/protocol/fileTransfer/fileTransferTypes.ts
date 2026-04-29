@@ -6,9 +6,10 @@
  */
 
 // ─── Packet type bytes (BLE packet byte 0) ───────────────────────────
-export const FILE_START = 7
-export const FILE_DATA  = 8
-export const FILE_END   = 9
+export const FILE_START    = 7
+export const FILE_DATA     = 8
+export const FILE_END      = 9
+export const FILE_LOOPBACK = 10
 
 // ─── Limits ──────────────────────────────────────────────────────────
 /** Hard application limit. Real files: firmware ~2MB, models ~1-5MB. */
