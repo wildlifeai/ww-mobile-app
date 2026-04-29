@@ -345,17 +345,17 @@ export const commandRegistry = {
     (match) => match[1].trim()
   ),
 
-  capture: createSingleLineCommand<boolean>(
+  capture: createSingleLineCommand<string | boolean>(
     'capture',
     (count: number, interval: number) => `AI capture ${count} ${interval}`,
-    /Captured/i,
-    () => true,
+    /Captured.*?Last is ([\w.]+)/i,
+    (match) => match[1] || true,
     { timeoutMs: 30000, retryPolicy: { maxRetries: 0 } }
   ),
 
   txfile: createSingleLineCommand<boolean>(
     'txfile',
-    () => `AI txfile .`,
+    (filename: string = '.') => `AI txfile ${filename}`,
     /(\d+\s+bytes\s+in|Failed to open)/i, 
     (match) => {
       if (match[0].toLowerCase().includes('failed')) {
@@ -437,7 +437,7 @@ export const commandRegistry = {
   dir: createMultiLineCommand<string[]>(
     'dir',
     () => 'AI dir',
-    /^[-\w.]+$/, // Matches filenames, though FATFS dir output might be different. Let's just collect all lines until a prompt or end marker. Actually we can just wait for a known end. Or we can just use `executeRaw` if we had it.
+    /.+/, // Matches any non-empty line to ensure all directory entries are collected
     /End of directory/i,
     (lines) => lines,
     { timeoutMs: 5000 }

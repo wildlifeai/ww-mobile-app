@@ -24,7 +24,8 @@ import { bleEventBus, BleEvent } from '../eventBus'
 import { transportLock } from '../transportLock'
 import { commandQueue } from '../commandQueue'
 import { TextStreamScope, StreamTimeoutError } from '../textStreamScope'
-// Removed unused createBleSession and commandRegistry
+import { createBleSession } from '../../session/createBleSession'
+import { commandRegistry } from '../commandRegistry'
 import { crc16ccitt } from './crc16ccitt'
 import { isValid83Filename } from './filenameValidator'
 import { buildFileStartPacket, buildFileDataPacket, buildFileEndPacket } from './fileTransferPackets'
@@ -313,6 +314,17 @@ export async function runFileTransferPipeline(
     // Ensure no other commands are running
     if (commandQueue.isBusy()) {
       throw new FileTransferError('VALIDATION_FAILED', 'Cannot start transfer while another command is in progress')
+    }
+
+    // ── Phase 0: Wake AI Processor ───────────────────────────────────
+    // Essential to ensure Himax is in AI_STATE_IDLE before receiving binary
+    try {
+      emitProgress('starting')
+      const session = createBleSession(peripheral)
+      await session.execute(() => commandRegistry.aiver())
+      log(`[FileTransfer] Phase 0: AI readiness check passed`)
+    } catch (e) {
+      log(`[FileTransfer] Phase 0: AI readiness check failed/timeout — proceeding with caution`)
     }
 
     // Acquire lock

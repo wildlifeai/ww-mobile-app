@@ -87,16 +87,35 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
         const messageListener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
             if (!device || event.deviceId !== device.id) return;
             const msg = event.line;
-            const match = msg.match(/Integration time\s*=\s*(\d+)\s*lines[\s\S]*?Analog gain\s*=\s*(\d+)[\s\S]*?Digital gain\s*=\s*(\d+)[\s\S]*?AE Mean\s*=\s*(\d+)[\s\S]*?AEConverged\?:\s*(Y|N)/i)
-            if (match) {
-                setAeData({
-                    integration: match[1],
-                    analogGain: match[2],
-                    digitalGain: match[3],
-                    aeMean: match[4],
-                    aeConverged: match[5]
-                })
-            }
+            
+            setAeData(prev => {
+                const newData = { ...(prev || {
+                    integration: '',
+                    analogGain: '',
+                    digitalGain: '',
+                    aeMean: '',
+                    aeConverged: ''
+                }) }
+                
+                let updated = false;
+
+                const intMatch = msg.match(/Integration time\s*=\s*(\d+)/i)
+                if (intMatch) { newData.integration = intMatch[1]; updated = true; }
+
+                const agMatch = msg.match(/Analog gain\s*=\s*(\d+)/i)
+                if (agMatch) { newData.analogGain = agMatch[1]; updated = true; }
+
+                const dgMatch = msg.match(/Digital gain\s*=\s*(\d+)/i)
+                if (dgMatch) { newData.digitalGain = dgMatch[1]; updated = true; }
+
+                const aeMatch = msg.match(/AE Mean\s*=\s*(\d+)/i)
+                if (aeMatch) { newData.aeMean = aeMatch[1]; updated = true; }
+
+                const convMatch = msg.match(/AEConverged\?:\s*(Y|N)/i)
+                if (convMatch) { newData.aeConverged = convMatch[1]; updated = true; }
+
+                return updated ? newData as AEData : prev;
+            });
         }
         bleEventBus.on('textLine', messageListener)
         return () => { bleEventBus.removeListener('textLine', messageListener); }

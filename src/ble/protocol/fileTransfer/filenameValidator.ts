@@ -8,25 +8,26 @@
  */
 
 const VALID_FILENAME_CHARS = /^[A-Z0-9_-]+$/
-const VALID_DIRNAME_CHARS = /^[A-Z0-9_./-]+$/
 
 export function isValid83Filename(name: string): boolean {
   if (name.length === 0 || name.endsWith('.')) return false
   
-  // Extract just the basename for 8.3 validation if a path is provided
-  const basename = name.includes('/') ? name.split('/').pop() || '' : name
+  const pathComponents = name.split('/')
   
-  const parts = basename.split('.')
-  if (parts.length > 2) return false
-  const [base, ext = ''] = parts
-  const dirname = name.includes('/') ? name.substring(0, name.lastIndexOf('/')) : ''
+  // Validate every component (directories and filename) conforms to 8.3
+  for (const component of pathComponents) {
+      if (component.length === 0) continue // Allow leading/trailing slashes loosely, or empty parts
 
-  return (
-    base.length >= 1 &&
-    base.length <= 8 &&
-    (ext === '' || (ext.length >= 1 && ext.length <= 3)) &&
-    VALID_FILENAME_CHARS.test(base) &&
-    (ext === '' || VALID_FILENAME_CHARS.test(ext)) &&
-    (dirname === '' || VALID_DIRNAME_CHARS.test(dirname))
-  )
+      const parts = component.split('.')
+      if (parts.length > 2) return false
+      
+      const [base, ext = ''] = parts
+      
+      if (base.length < 1 || base.length > 8) return false
+      if (ext !== '' && (ext.length < 1 || ext.length > 3)) return false
+      if (!VALID_FILENAME_CHARS.test(base)) return false
+      if (ext !== '' && !VALID_FILENAME_CHARS.test(ext)) return false
+  }
+
+  return true
 }
