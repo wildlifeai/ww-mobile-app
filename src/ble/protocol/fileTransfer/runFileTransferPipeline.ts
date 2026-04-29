@@ -133,7 +133,7 @@ export async function runFileTransferPipeline(
     for (let offset = 0; offset < data.length; offset += MAX_PAYLOAD_BYTES) {
       wireNum = nextWirePacketNum(wireNum)
       const chunkEnd = Math.min(offset + MAX_PAYLOAD_BYTES, data.length)
-      const chunk = data.slice(offset, chunkEnd)
+      const chunk = data.subarray(offset, chunkEnd)
       preBuiltPackets.push({
         wireNum,
         chunkEnd,
@@ -150,7 +150,8 @@ export async function runFileTransferPipeline(
   let wirePacketNum = 0
   let disconnectOccurred = false
   let isDisconnected = false
-  const ackTimes: number[] = [] // rolling window for ETA
+  const ackTimes: number[] = [] // capped rolling window for ETA
+  const ACK_TIMES_MAX = 50
 
   const emitProgress = (phase: FileTransferProgress['phase']) => {
     const elapsed = Date.now() - startTime
@@ -461,6 +462,7 @@ export async function runFileTransferPipeline(
 
               // ── ACCOUNTING (next write is already in BLE stack) ────
               ackTimes.push(roundtrip)
+              if (ackTimes.length > ACK_TIMES_MAX) ackTimes.shift()
               consecutiveTimeouts = 0
               bytesSent = preBuiltPackets[i].chunkEnd
               packetsAcked++
@@ -545,6 +547,7 @@ export async function runFileTransferPipeline(
 
                 // Update progress
                 ackTimes.push(roundtrip)
+                if (ackTimes.length > ACK_TIMES_MAX) ackTimes.shift()
                 wirePacketNum = preBuiltPackets[entry.index].wireNum
                 bytesSent = preBuiltPackets[entry.index].chunkEnd
                 packetsAcked++
@@ -645,7 +648,7 @@ export async function runFileTransferPipeline(
 
         sessionAttempt++
 
-        if (isRecoverable && sessionAttempt < MAX_SESSION_RETRIES) {
+        if (isRecoverable && sessionAttempt <= MAX_SESSION_RETRIES) {
           log(`[FileTransfer] ⚠️ ftx err 7 (SD write fail) — retrying full session (attempt ${sessionAttempt + 1}/${MAX_SESSION_RETRIES + 1})`)
           log(`[FileTransfer] Waiting ${SESSION_RETRY_DELAY_MS}ms for device to complete sleep/wake cycle...`)
           emitProgress('starting') // reset UI to "starting" for retry

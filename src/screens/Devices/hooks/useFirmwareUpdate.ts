@@ -45,8 +45,8 @@ const PHASE_PROGRESS: Record<UpdatePhase, number> = {
     entering_dfu: 0.12,
     scanning: 0.18,
     transferring: 0.50,
-    sending: 0.05,
-    waking: 0.10,
+    sending: 0.52,
+    waking: 0.55,
     flashing: 0.60,
     rebooting: 0.82,
     reconnecting: 0.90,
@@ -587,7 +587,9 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         // Interpolate between scanning(0.18) and rebooting(0.82)
         progress = 0.18 + (dfuProgress / 100) * (0.82 - 0.18)
     } else if (target === 'himax' && phase === 'transferring') {
-        progress = fileTransferProgress ? fileTransferProgress.percentage / 100 : PHASE_PROGRESS.transferring
+        // Interpolate between downloading(0.08) and sending(0.52) so the bar never jumps backwards
+        const pct = fileTransferProgress ? fileTransferProgress.percentage / 100 : 0
+        progress = PHASE_PROGRESS.downloading + pct * (PHASE_PROGRESS.sending - PHASE_PROGRESS.downloading)
     } else {
         progress = PHASE_PROGRESS[phase]
     }

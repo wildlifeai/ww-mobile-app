@@ -99,14 +99,14 @@ class FirmwareService {
         try {
             let lastBytes = 0
             let lastTime = Date.now()
+            let lastSpeed = 0
+            let lastEta = 0
 
             const progressCallback = (downloadProgress: FileSystem.DownloadProgressData) => {
                 const now = Date.now()
                 const { totalBytesWritten, totalBytesExpectedToWrite } = downloadProgress
 
                 let progressValue: number | null = null
-                let speed = 0
-                let eta = 0
 
                 if (totalBytesExpectedToWrite > 0) {
                     progressValue = totalBytesWritten / totalBytesExpectedToWrite
@@ -115,24 +115,24 @@ class FirmwareService {
                 const timeDelta = (now - lastTime) / 1000 // seconds
                 if (timeDelta > 0.5) { // update speed every 500ms
                     const bytesDelta = totalBytesWritten - lastBytes
-                    speed = bytesDelta / timeDelta
-                    if (speed > 0 && progressValue !== null) {
-                        eta = ((totalBytesExpectedToWrite - totalBytesWritten) / speed) * 1000
+                    lastSpeed = bytesDelta / timeDelta
+                    if (lastSpeed > 0 && progressValue !== null) {
+                        lastEta = ((totalBytesExpectedToWrite - totalBytesWritten) / lastSpeed) * 1000
                     }
                     lastBytes = totalBytesWritten
                     lastTime = now
 
                     options?.onProgress?.({
                         progress: progressValue,
-                        speedBytesPerSec: speed,
-                        estimatedRemainingMs: eta
+                        speedBytesPerSec: lastSpeed,
+                        estimatedRemainingMs: lastEta
                     })
                 } else if (progressValue !== null && options?.onProgress) {
-                     // Still update just progress for smooth bar
+                     // Still update just progress for smooth bar, reuse last speed/eta
                      options.onProgress({
                          progress: progressValue,
-                         speedBytesPerSec: speed,
-                         estimatedRemainingMs: eta
+                         speedBytesPerSec: lastSpeed,
+                         estimatedRemainingMs: lastEta
                      })
                 }
             }
