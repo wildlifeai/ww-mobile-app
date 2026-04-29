@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
 import { Button, ActivityIndicator, ProgressBar, IconButton, RadioButton } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -6,6 +6,8 @@ import { useRoute, useNavigation } from '@react-navigation/native'
 
 import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
+import ReferenceDataService from '../../services/ReferenceDataService'
+import { log, logWarn } from '../../utils/logger'
 import { WWText } from '../../components/ui/WWText'
 import { FileTransferProgressCard } from '../../components/FileTransferProgressCard'
 import { useFirmwareUpdate, FirmwareTarget, HimaxFirmwareSource } from './hooks/useFirmwareUpdate'
@@ -52,6 +54,14 @@ export const FirmwareUpdateScreen = () => {
         startUpdate,
         cancelUpdate,
     } = useFirmwareUpdate({ target, device })
+    
+    useEffect(() => {
+        // Force a re-sync of firmware data when entering this screen
+        // to ensure we have the latest records from the DB
+        ReferenceDataService.syncFirmware()
+            .then(() => log('[FW Update Screen] Firmware sync complete'))
+            .catch(err => logWarn('[FW Update Screen] Firmware sync failed:', err))
+    }, [target])
 
     const title = TARGET_TITLES[target]
     const description = TARGET_DESCRIPTIONS[target]
@@ -126,7 +136,7 @@ export const FirmwareUpdateScreen = () => {
                                     </View>
                                     <View style={styles.radioRow}>
                                         <RadioButton value="download" disabled={!latestFirmware} />
-                                        <WWText variant="bodyMedium" style={{ color: !latestFirmware ? colors.surfaceVariant : colors.onSurfaceVariant, flex: 1 }}>
+                                        <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1 }}>
                                             Download {latestFirmware ? `"${latestFirmware.locationPath}"` : 'latest firmware'} from DB into MANIFEST/output.img on SD card
                                         </WWText>
                                     </View>

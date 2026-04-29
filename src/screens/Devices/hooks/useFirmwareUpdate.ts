@@ -82,7 +82,7 @@ const HIMAX_PHASE_LABELS: Record<UpdatePhase, string> = {
     sending: 'Sending firmware update command...',
     waking: 'AI processor waking up...',
     flashing: 'Writing firmware to flash...',
-    rebooting: 'Rebooting device...',
+    rebooting: 'Rebooting AI processor (takes 6-10s)...',
     reconnecting: 'Reconnecting to device...',
     verifying: 'Verifying new firmware version...',
     complete: 'Update complete!',
@@ -492,6 +492,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         // up with the new firmware. The nRF will forward the Wake signal.
         advancePhase('rebooting')
         appendLog('AI processor rebooting with new firmware...')
+        appendLog('This normally takes 6-10 seconds...')
 
         // Wait for the Himax to complete its reboot cycle (DPD → wake → selftest)
         // BLE stays connected to the nRF throughout.
