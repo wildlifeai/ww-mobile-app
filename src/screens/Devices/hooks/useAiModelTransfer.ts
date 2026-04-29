@@ -4,6 +4,7 @@ import database from '../../../database'
 import { createBleSession } from '../../../ble/session/createBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import AiModelService from '../../../services/AiModelService'
+import ReferenceDataService from '../../../services/ReferenceDataService'
 import AiModel from '../../../database/models/AiModel'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { runFileTransferPipeline } from '../../../ble/protocol/fileTransfer'
@@ -149,16 +150,10 @@ export function useAiModelTransfer({ device, initialModelId }: UseAiModelTransfe
             if (!isMounted.current || !device.connected) return
             setProgress(0.15)
 
-            // Determine target firmware IDs
-            const numericId = selectedModel.firmwareModelId ?? 1
-            const numericVer = selectedModel.versionNumber ?? 1
-
-            if (numericId <= 0 || numericVer <= 0) {
-                throw new Error(
-                    `Invalid firmware IDs: modelId=${numericId}, versionId=${numericVer}. `
-                    + `Sync may be stale — pull latest data.`
-                )
-            }
+            // Determine target firmware IDs from the model family relationship
+            addLog('Looking up firmware identity...')
+            const { firmwareModelId: numericId, versionNumber: numericVer } = await ReferenceDataService.getFirmwareIds(selectedModel)
+            addLog(`Firmware identity: family=${numericId}, version=${numericVer}`)
 
             // 2. Read as bytes
             addLog('Reading model files...')

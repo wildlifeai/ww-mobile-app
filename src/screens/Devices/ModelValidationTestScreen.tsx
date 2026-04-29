@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { Text, Button, Card, useTheme } from 'react-native-paper'
 import { useRoute } from '@react-navigation/native'
@@ -11,10 +11,11 @@ import { createBleSession } from '../../ble/session/createBleSession'
 import { commandRegistry } from '../../ble/protocol/commandRegistry'
 import { runFileTransferPipeline } from '../../ble/protocol/fileTransfer'
 import AiModelService from '../../services/AiModelService'
+import ReferenceDataService from '../../services/ReferenceDataService'
 import database from '../../database'
 import AiModel from '../../database/models/AiModel'
 import { WWSelect, Option } from '../../components/ui/WWSelect'
-import { useEffect } from 'react'
+import { logError } from '../../utils/logger'
 
 type RouteType = RouteProp<RootStackParamList, 'ModelValidationTestScreen'>
 
@@ -30,6 +31,7 @@ export const ModelValidationTestScreen = () => {
     const [selectedModelId, setSelectedModelId] = useState<string>('')
     const [logs, setLogs] = useState<string[]>([])
     const [isProcessing, setIsProcessing] = useState(false)
+    const [resolvedFirmwareIds, setResolvedFirmwareIds] = useState<{ firmwareModelId: number; versionNumber: number } | null>(null)
 
     useEffect(() => {
         const fetchModels = async () => {
@@ -51,6 +53,22 @@ export const ModelValidationTestScreen = () => {
 
     const selectedModel = models.find(m => m.id === selectedModelId)
 
+    // Resolve firmware IDs when selected model changes
+    useEffect(() => {
+        if (!selectedModel) {
+            setResolvedFirmwareIds(null)
+            return
+        }
+        let cancelled = false
+        ReferenceDataService.getFirmwareIds(selectedModel)
+            .then(ids => { if (!cancelled) setResolvedFirmwareIds(ids) })
+            .catch(err => {
+                logError('Failed to resolve firmware IDs:', err)
+                if (!cancelled) setResolvedFirmwareIds(null)
+            })
+        return () => { cancelled = true }
+    }, [selectedModel])
+
     const addLog = (message: string) => {
         setLogs(prev => [...prev, `[${new Date().toISOString().substring(11, 19)}] ${message}`])
     }
@@ -68,9 +86,15 @@ export const ModelValidationTestScreen = () => {
 
         setIsProcessing(true)
         setLogs([]) // Clear old logs
-        
-        const pid = selectedModel.firmwareModelId || 0
-        const ver = selectedModel.versionNumber || 0
+
+        if (!resolvedFirmwareIds) {
+            addLog('Error: Could not resolve firmware IDs for this model. Sync may be stale.')
+            setIsProcessing(false)
+            return
+        }
+
+        const pid = resolvedFirmwareIds.firmwareModelId
+        const ver = resolvedFirmwareIds.versionNumber
         const tflFilename = `${pid}V${ver}.TFL`
         const labelsFilename = `${pid}V${ver}.TXT`
 
@@ -196,20 +220,20 @@ export const ModelValidationTestScreen = () => {
                         <View style={styles.metadataContainer}>
                             <View style={styles.chipRow}>
                                 <Text style={styles.metadataLabel}>OP 14 (ID):</Text>
-                                <Text style={[styles.metadataValue, !selectedModel.firmwareModelId && styles.metadataMissing]}>
-                                    {selectedModel.firmwareModelId ?? 'Not synced'}
+                                <Text style={[styles.metadataValue, !resolvedFirmwareIds && styles.metadataMissing]}>
+                                    {resolvedFirmwareIds?.firmwareModelId ?? 'Not synced'}
                                 </Text>
                             </View>
                             <View style={styles.chipRow}>
                                 <Text style={styles.metadataLabel}>OP 15 (Ver):</Text>
-                                <Text style={[styles.metadataValue, !selectedModel.versionNumber && styles.metadataMissing]}>
-                                    {selectedModel.versionNumber ?? 'Not synced'}
+                                <Text style={[styles.metadataValue, !resolvedFirmwareIds && styles.metadataMissing]}>
+                                    {resolvedFirmwareIds?.versionNumber ?? 'Not synced'}
                                 </Text>
                             </View>
                             <View style={styles.chipRow}>
                                 <Text style={styles.metadataLabel}>Filename:</Text>
                                 <Text style={styles.metadataValue}>
-                                    {(selectedModel.firmwareModelId ?? '?')}V{(selectedModel.versionNumber ?? '?')}.TFL
+                                    {(resolvedFirmwareIds?.firmwareModelId ?? '?')}V{(resolvedFirmwareIds?.versionNumber ?? '?')}.TFL
                                 </Text>
                             </View>
                             <View style={styles.divider} />

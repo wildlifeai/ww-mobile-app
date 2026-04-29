@@ -460,8 +460,7 @@ export const useStartDeployment = ({
                     const targetModel = await AiModelService.getModelById(project.model_id)
 
                     if (targetModel) {
-                        const numericId = targetModel.firmwareModelId || 1
-                        const numericVer = targetModel.versionNumber || 1
+                        const { firmwareModelId: numericId, versionNumber: numericVer } = await ReferenceDataService.getFirmwareIds(targetModel)
 
                         if (currentId !== numericId || currentVer !== numericVer) {
                             addFinishLog(`Model mismatch (Device: ${currentId}v${currentVer}, Target: ${numericId}v${numericVer})`)

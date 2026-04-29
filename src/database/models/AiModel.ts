@@ -14,10 +14,9 @@ export default class AiModel extends Model {
     @field('file_type') fileType?: string
     @field('organisation_id') organisationId!: string
 
-    // ── Firmware ID fields (from ai_model_families) ──────────
+    // ── Family & versioning ───────────────────────────────────
     @field('model_family_id') modelFamilyId?: string // UUID FK to ai_model_families
     @field('version_number') versionNumber?: number  // Integer for firmware OP 15
-    @field('firmware_model_id') firmwareModelId?: number // Integer for firmware OP 14
 
     // ── Lifecycle & integrity ────────────────────────────────
     @field('status') status?: string     // ai_model_status enum

@@ -149,13 +149,14 @@ class AiModelService {
     }
 
     private getLocalFilename(model: AiModel, type: 'model' | 'labels'): string {
-        const pid = model.firmwareModelId || 'unknown'
-        const ver = model.versionNumber || 'unknown'
+        // Use serverId for local caching — firmware filenames ({familyId}V{ver}.TFL)
+        // are constructed in the transfer hook via ReferenceDataService.getFirmwareIds()
+        const cacheKey = model.serverId || model.id
         
         if (type === 'model') {
-            return `model_${pid}V${ver}.TFL`
+            return `model_${cacheKey}.tfl`
         } else {
-            return `labels_${pid}V${ver}.TXT`
+            return `labels_${cacheKey}.txt`
         }
     }
 }

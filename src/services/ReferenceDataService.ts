@@ -3,6 +3,7 @@ import database from '../database'
 import CaptureMethod from '../database/models/CaptureMethod'
 import ActivitySensitivity from '../database/models/ActivitySensitivity'
 import AiModel from '../database/models/AiModel'
+import AiModelFamily from '../database/models/AiModelFamily'
 import SamplingDesign from '../database/models/SamplingDesign'
 import Firmware from '../database/models/Firmware'
 import { getSupabaseClient } from './supabase'
@@ -60,6 +61,7 @@ class ReferenceDataService {
             await Promise.all([
                 (async () => { /* log('📚 Syncing capture methods...'); */ await this.syncCaptureMethods() })(),
                 (async () => { /* log('📚 Syncing activity sensitivity...'); */ await this.syncActivitySensitivity() })(),
+                (async () => { /* log('📚 Syncing AI model families...'); */ await this.syncAiModelFamilies() })(),
                 (async () => { /* log('📚 Syncing AI models...'); */ await this.syncAiModels() })(),
                 (async () => { /* log('📚 Syncing sampling designs...'); */ await this.syncSamplingDesigns() })(),
                 (async () => { /* log('📚 Syncing firmware...'); */ await this.syncFirmware() })(),
@@ -198,6 +200,62 @@ class ReferenceDataService {
     }
 
     // =========================================================================
+    // AI Model Families
+    // =========================================================================
+
+    private async syncAiModelFamilies(): Promise<void> {
+        const supabase = getSupabaseClient()
+        const { data, error } = await supabase
+            .from('ai_model_families')
+            .select('*')
+            .is('deleted_at', null)
+            .order('firmware_model_id')
+
+        if (error) {
+            logError('Failed to fetch AI model families:', error)
+            return
+        }
+
+        await database.write(async () => {
+            const collection = database.get<AiModelFamily>('ai_model_families')
+            const existingRecords = await collection.query().fetch()
+            // ai_model_families uses UUID for ID
+            const existingMap = new Map(existingRecords.map(r => [r.id, r]))
+            const serverIds = new Set(data.map(d => d.id))
+
+            for (const row of data) {
+                const existing = existingMap.get(row.id)
+                if (existing) {
+                    await existing.update(rec => {
+                        rec.name = row.name
+                        rec.description = row.description ?? undefined
+                        rec.firmwareModelId = row.firmware_model_id
+                        rec.organisationId = row.organisation_id
+                        rec.createdBy = row.created_by ?? undefined
+                    })
+                } else {
+                    await collection.create(rec => {
+                        (rec._raw as any).id = row.id
+                        rec.name = row.name
+                        rec.description = row.description ?? undefined
+                        rec.firmwareModelId = row.firmware_model_id
+                        rec.organisationId = row.organisation_id
+                        rec.createdBy = row.created_by ?? undefined
+                    })
+                }
+            }
+
+            for (const rec of existingRecords) {
+                if (!serverIds.has(rec.id)) {
+                    await rec.destroyPermanently()
+                }
+            }
+        })
+
+        // log(`   ✅ Synced ${data.length} AI model families`)
+    }
+
+    // =========================================================================
     // AI Models
     // =========================================================================
 
@@ -205,7 +263,7 @@ class ReferenceDataService {
         const supabase = getSupabaseClient()
         const { data, error } = await supabase
             .from('ai_models')
-            .select('*, ai_model_families(firmware_model_id)')
+            .select('*')
             .is('deleted_at', null)
             .order('name')
 
@@ -222,7 +280,6 @@ class ReferenceDataService {
 
             // Upsert
             for (const row of data) {
-                const familyData = row.ai_model_families as { firmware_model_id: number } | null
                 const existing = existingMap.get(row.id)
                 if (existing) {
                     await existing.update(rec => {
@@ -238,7 +295,6 @@ class ReferenceDataService {
                         rec.status = row.status ?? undefined
                         rec.modelFamilyId = row.model_family_id ?? undefined
                         rec.versionNumber = row.version_number ?? undefined
-                        rec.firmwareModelId = familyData?.firmware_model_id ?? undefined
                     })
                 } else {
                     await collection.create(rec => {
@@ -255,7 +311,6 @@ class ReferenceDataService {
                         rec.status = row.status ?? undefined
                         rec.modelFamilyId = row.model_family_id ?? undefined
                         rec.versionNumber = row.version_number ?? undefined
-                        rec.firmwareModelId = familyData?.firmware_model_id ?? undefined
                     })
                 }
             }
@@ -269,6 +324,41 @@ class ReferenceDataService {
         })
 
         // log(`   ✅ Synced ${data.length} AI models`)
+    }
+
+    /**
+     * Look up the firmware IDs for an AI model by querying its model family.
+     *
+     * Returns:
+     *   - firmwareModelId: integer for OP 14 (from ai_model_families)
+     *   - versionNumber: integer for OP 15 (from ai_models)
+     *
+     * These are used to construct the device filename ({firmwareModelId}V{versionNumber}.TFL)
+     * and the loadmodel command.
+     */
+    async getFirmwareIds(model: AiModel): Promise<{ firmwareModelId: number; versionNumber: number }> {
+        const versionNumber = model.versionNumber
+        if (!versionNumber || versionNumber <= 0) {
+            throw new Error(`AI model "${model.name}" has no version_number. Sync may be stale.`)
+        }
+
+        if (!model.modelFamilyId) {
+            throw new Error(`AI model "${model.name}" has no model_family_id. Cannot determine firmware ID.`)
+        }
+
+        // Query the family from local WatermelonDB
+        const family = await database.get<AiModelFamily>('ai_model_families').find(model.modelFamilyId)
+
+        if (!family) {
+            throw new Error(`AI model family ${model.modelFamilyId} not found locally. Sync may be stale.`)
+        }
+
+        const firmwareModelId = family.firmwareModelId
+        if (!firmwareModelId || firmwareModelId <= 0) {
+            throw new Error(`AI model family "${family.name}" has no firmware_model_id.`)
+        }
+
+        return { firmwareModelId, versionNumber }
     }
 
     async getAiModels(): Promise<Array<{ id: string; name: string; version: string; description: string | null }>> {
