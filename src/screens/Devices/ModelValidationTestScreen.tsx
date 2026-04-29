@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useReducer } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { Text, Button, Card, useTheme } from 'react-native-paper'
 import { useRoute } from '@react-navigation/native'
@@ -19,6 +19,42 @@ import { logError } from '../../utils/logger'
 
 type RouteType = RouteProp<RootStackParamList, 'ModelValidationTestScreen'>
 
+interface ValidationState {
+    models: AiModel[]
+    selectedModelId: string
+    logs: string[]
+    isProcessing: boolean
+    resolvedFirmwareIds: { firmwareModelId: number; versionNumber: number } | null
+}
+
+type ValidationAction =
+    | { type: 'SET_MODELS'; payload: AiModel[] }
+    | { type: 'SET_SELECTED_MODEL_ID'; payload: string }
+    | { type: 'APPEND_LOG'; payload: string }
+    | { type: 'CLEAR_LOGS' }
+    | { type: 'SET_PROCESSING'; payload: boolean }
+    | { type: 'SET_FIRMWARE_IDS'; payload: { firmwareModelId: number; versionNumber: number } | null }
+
+const initialState: ValidationState = {
+    models: [],
+    selectedModelId: '',
+    logs: [],
+    isProcessing: false,
+    resolvedFirmwareIds: null,
+}
+
+const validationReducer = (state: ValidationState, action: ValidationAction): ValidationState => {
+    switch (action.type) {
+        case 'SET_MODELS': return { ...state, models: action.payload }
+        case 'SET_SELECTED_MODEL_ID': return { ...state, selectedModelId: action.payload }
+        case 'APPEND_LOG': return { ...state, logs: [...state.logs, action.payload] }
+        case 'CLEAR_LOGS': return { ...state, logs: [] }
+        case 'SET_PROCESSING': return { ...state, isProcessing: action.payload }
+        case 'SET_FIRMWARE_IDS': return { ...state, resolvedFirmwareIds: action.payload }
+        default: return state
+    }
+}
+
 export const ModelValidationTestScreen = () => {
     const route = useRoute<RouteType>()
     const deviceId = route.params?.deviceId
@@ -27,18 +63,15 @@ export const ModelValidationTestScreen = () => {
     const { } = useBle()
     const connectedDevice = useAppSelector(state => state.devices[deviceId || ''])
 
-    const [models, setModels] = useState<AiModel[]>([])
-    const [selectedModelId, setSelectedModelId] = useState<string>('')
-    const [logs, setLogs] = useState<string[]>([])
-    const [isProcessing, setIsProcessing] = useState(false)
-    const [resolvedFirmwareIds, setResolvedFirmwareIds] = useState<{ firmwareModelId: number; versionNumber: number } | null>(null)
+    const [state, dispatch] = useReducer(validationReducer, initialState)
+    const { models, selectedModelId, logs, isProcessing, resolvedFirmwareIds } = state
 
     useEffect(() => {
         const fetchModels = async () => {
             try {
                 const aiModelsCollection = database.get<AiModel>('ai_models')
                 const allModels = await aiModelsCollection.query().fetch()
-                setModels(allModels)
+                dispatch({ type: 'SET_MODELS', payload: allModels })
             } catch (err) {
                 addLog(`Error fetching models: ${err}`)
             }
@@ -53,24 +86,26 @@ export const ModelValidationTestScreen = () => {
 
     const selectedModel = models.find(m => m.id === selectedModelId)
 
+    const setSelectedModelId = (id: string) => dispatch({ type: 'SET_SELECTED_MODEL_ID', payload: id })
+
     // Resolve firmware IDs when selected model changes
     useEffect(() => {
         if (!selectedModel) {
-            setResolvedFirmwareIds(null)
+            dispatch({ type: 'SET_FIRMWARE_IDS', payload: null })
             return
         }
         let cancelled = false
         ReferenceDataService.getFirmwareIds(selectedModel)
-            .then(ids => { if (!cancelled) setResolvedFirmwareIds(ids) })
+            .then(ids => { if (!cancelled) dispatch({ type: 'SET_FIRMWARE_IDS', payload: ids }) })
             .catch(err => {
                 logError('Failed to resolve firmware IDs:', err)
-                if (!cancelled) setResolvedFirmwareIds(null)
+                if (!cancelled) dispatch({ type: 'SET_FIRMWARE_IDS', payload: null })
             })
         return () => { cancelled = true }
     }, [selectedModel])
 
     const addLog = (message: string) => {
-        setLogs(prev => [...prev, `[${new Date().toISOString().substring(11, 19)}] ${message}`])
+        dispatch({ type: 'APPEND_LOG', payload: `[${new Date().toISOString().substring(11, 19)}] ${message}` })
     }
 
     const startValidationFlow = async () => {
@@ -84,12 +119,12 @@ export const ModelValidationTestScreen = () => {
             return
         }
 
-        setIsProcessing(true)
-        setLogs([]) // Clear old logs
+        dispatch({ type: 'SET_PROCESSING', payload: true })
+        dispatch({ type: 'CLEAR_LOGS' })
 
         if (!resolvedFirmwareIds) {
             addLog('Error: Could not resolve firmware IDs for this model. Sync may be stale.')
-            setIsProcessing(false)
+            dispatch({ type: 'SET_PROCESSING', payload: false })
             return
         }
 
@@ -182,7 +217,7 @@ export const ModelValidationTestScreen = () => {
         } catch (error) {
             addLog(`❌ Error: ${error}`)
         } finally {
-            setIsProcessing(false)
+            dispatch({ type: 'SET_PROCESSING', payload: false })
         }
     }
 
@@ -287,8 +322,8 @@ export const ModelValidationTestScreen = () => {
                 <Card.Content>
                     <Text variant="titleSmall" style={styles.consoleTitle}>Console Output</Text>
                     <View style={styles.logContainer}>
-                        {logs.map((log, index) => (
-                            <Text key={index} style={styles.logText}>{log}</Text>
+                        {logs.map((log) => (
+                            <Text key={log} style={styles.logText}>{log}</Text>
                         ))}
                         {logs.length === 0 && <Text style={styles.logText}>Ready...</Text>}
                     </View>

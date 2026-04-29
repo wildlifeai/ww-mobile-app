@@ -10,6 +10,28 @@ interface FirmwareStatusCardProps {
     onShowHelp: (title: string, content: string) => void
 }
 
+interface FirmwareRowProps {
+    title: string
+    status: any
+    theme: any
+}
+
+const FirmwareRow: React.FC<FirmwareRowProps> = ({ title, status, theme }) => (
+    <View style={styles.row}>
+        <View style={styles.rowHeader}>
+            <WWText variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>{title}</WWText>
+            {status.isOutdated ? (
+                <WWText variant="labelSmall" style={{ color: theme.colors.error, fontWeight: 'bold' }}>UPDATE AVAILABLE</WWText>
+            ) : (
+                <WWText variant="labelSmall" style={{ color: '#4CAF50', fontWeight: 'bold' }}>UP TO DATE</WWText>
+            )}
+        </View>
+        <WWText variant="bodySmall" style={{ opacity: 0.7 }}>
+            Current: {status.currentVersion} | Latest: {status.latestVersion}
+        </WWText>
+    </View>
+)
+
 export const FirmwareStatusCard: React.FC<FirmwareStatusCardProps> = ({
     firmwareStatus,
     theme,
@@ -23,33 +45,17 @@ export const FirmwareStatusCard: React.FC<FirmwareStatusCardProps> = ({
             icon="help-circle-outline" 
             onPress={() => onShowHelp('Firmware Versions', 'Displays the currently installed firmware versions versus the latest available versions in the cloud. You can update firmware from the Engineer Console.')}
         >
-            Help
+            <WWText>Help</WWText>
         </Button>
     ), [onShowHelp])
-
-    const renderRow = (title: string, status: any) => (
-        <View style={styles.row}>
-            <View style={styles.rowHeader}>
-                <WWText variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>{title}</WWText>
-                {status.isOutdated ? (
-                    <WWText variant="labelSmall" style={{ color: theme.colors.error, fontWeight: 'bold' }}>UPDATE AVAILABLE</WWText>
-                ) : (
-                    <WWText variant="labelSmall" style={{ color: '#4CAF50', fontWeight: 'bold' }}>UP TO DATE</WWText>
-                )}
-            </View>
-            <WWText variant="bodySmall" style={{ opacity: 0.7 }}>
-                Current: {status.currentVersion} | Latest: {status.latestVersion}
-            </WWText>
-        </View>
-    )
 
     return (
         <Card style={styles.card}>
             <Card.Title title="Firmware Versions" right={renderHelp} />
             <Card.Content>
-                {renderRow('BLE Firmware', statuses.ble)}
+                <FirmwareRow title="BLE Firmware" status={statuses.ble} theme={theme} />
                 <Divider style={styles.divider} />
-                {renderRow('AI Processor Firmware', statuses.himax)}
+                <FirmwareRow title="AI Processor Firmware" status={statuses.himax} theme={theme} />
 
                 <Button 
                     mode="outlined" 
@@ -58,7 +64,7 @@ export const FirmwareStatusCard: React.FC<FirmwareStatusCardProps> = ({
                     disabled={isChecking}
                     style={styles.checkButton}
                 >
-                    Refresh Status
+                    <WWText>Refresh Status</WWText>
                 </Button>
             </Card.Content>
         </Card>

@@ -8,6 +8,64 @@ import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
 import { useFirmwareStatus, FirmwareComponentStatus } from './hooks/useFirmwareStatus'
 
+interface FirmwareComponentCardProps {
+    title: string
+    status: FirmwareComponentStatus
+    colors: any
+    spacing: number
+    isChecking: boolean
+    isConnected: boolean
+    onUpdate: () => void
+}
+
+const FirmwareComponentCard = ({ title, status, colors, spacing, isChecking, isConnected, onUpdate }: FirmwareComponentCardProps) => (
+    <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
+        <View style={styles.cardHeader}>
+            <WWText variant="titleMedium" style={{ color: colors.onSurfaceVariant }}>
+                {title}
+            </WWText>
+            {status.isOutdated ? (
+                <WWText variant="labelMedium" style={[styles.statusText, { color: colors.error }]}>
+                    OUTDATED
+                </WWText>
+            ) : (
+                <WWText variant="labelMedium" style={[styles.statusText, styles.statusOk]}>
+                    UP TO DATE
+                </WWText>
+            )}
+        </View>
+
+        <Divider style={styles.divider} />
+
+        <View style={styles.versionRow}>
+            <WWText variant="bodyMedium" style={[styles.flex1, { color: colors.onSurfaceVariant }]}>
+                Device Version:
+            </WWText>
+            <WWText variant="bodyMedium" style={[styles.boldText, { color: status.isOutdated ? colors.error : colors.onSurfaceVariant }]}>
+                {status.currentVersion}
+            </WWText>
+        </View>
+
+        <View style={styles.versionRow}>
+            <WWText variant="bodyMedium" style={[styles.flex1, { color: colors.onSurfaceVariant }]}>
+                Latest Available:
+            </WWText>
+            <WWText variant="bodyMedium" style={[styles.boldText, { color: colors.primary }]}>
+                {status.latestVersion}
+            </WWText>
+        </View>
+
+        <Button
+            mode="contained"
+            style={styles.marginTop12}
+            onPress={onUpdate}
+            disabled={!isConnected || isChecking}
+        >
+            <WWText>Update {title}</WWText>
+        </Button>
+    </View>
+)
+
 export const FirmwareStatusScreen = () => {
     const route = useRoute<any>()
     const navigation = useNavigation<any>()
@@ -23,56 +81,6 @@ export const FirmwareStatusScreen = () => {
         checkStatus,
         errorMsg,
     } = useFirmwareStatus({ device })
-
-    const renderComponentCard = (title: string, status: FirmwareComponentStatus, updateAction: () => void) => {
-        return (
-            <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
-                <View style={styles.cardHeader}>
-                    <WWText variant="titleMedium" style={{ color: colors.onSurfaceVariant }}>
-                        {title}
-                    </WWText>
-                    {status.isOutdated ? (
-                        <WWText variant="labelMedium" style={[styles.statusText, { color: colors.error }]}>
-                            OUTDATED
-                        </WWText>
-                    ) : (
-                        <WWText variant="labelMedium" style={[styles.statusText, styles.statusOk]}>
-                            UP TO DATE
-                        </WWText>
-                    )}
-                </View>
-
-                <Divider style={styles.divider} />
-
-                <View style={styles.versionRow}>
-                    <WWText variant="bodyMedium" style={[styles.flex1, { color: colors.onSurfaceVariant }]}>
-                        Device Version:
-                    </WWText>
-                    <WWText variant="bodyMedium" style={[styles.boldText, { color: status.isOutdated ? colors.error : colors.onSurfaceVariant }]}>
-                        {status.currentVersion}
-                    </WWText>
-                </View>
-
-                <View style={styles.versionRow}>
-                    <WWText variant="bodyMedium" style={[styles.flex1, { color: colors.onSurfaceVariant }]}>
-                        Latest Available:
-                    </WWText>
-                    <WWText variant="bodyMedium" style={[styles.boldText, { color: colors.primary }]}>
-                        {status.latestVersion}
-                    </WWText>
-                </View>
-
-                <Button
-                    mode="contained"
-                    style={styles.marginTop12}
-                    onPress={updateAction}
-                    disabled={!device?.connected || isChecking}
-                >
-                    Update {title}
-                </Button>
-            </View>
-        )
-    }
 
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
@@ -101,17 +109,25 @@ export const FirmwareStatusScreen = () => {
                     <ActivityIndicator animating size="large" color={colors.primary} style={styles.loadingSpinner} />
                 ) : (
                     <>
-                        {renderComponentCard(
-                            'BLE Firmware (nRF52)', 
-                            statuses.ble, 
-                            () => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'ble' })
-                        )}
+                        <FirmwareComponentCard
+                            title="BLE Firmware (nRF52)"
+                            status={statuses.ble}
+                            colors={colors}
+                            spacing={spacing}
+                            isChecking={isChecking}
+                            isConnected={!!device?.connected}
+                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'ble' })}
+                        />
                         
-                        {renderComponentCard(
-                            'AI Processor Firmware (Himax)', 
-                            statuses.himax, 
-                            () => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'himax' })
-                        )}
+                        <FirmwareComponentCard
+                            title="AI Processor Firmware (Himax)"
+                            status={statuses.himax}
+                            colors={colors}
+                            spacing={spacing}
+                            isChecking={isChecking}
+                            isConnected={!!device?.connected}
+                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'himax' })}
+                        />
 
                         {lastChecked && (
                             <WWText variant="bodySmall" style={[styles.lastCheckedText, { marginTop: spacing }]}>
