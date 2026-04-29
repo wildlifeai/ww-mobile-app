@@ -144,15 +144,27 @@ export function useAiModelTransfer({ device, initialModelId }: UseAiModelTransfe
 
         try {
             // 1. Download model from Supabase
-            addLog(`Downloading model: ${selectedModel.name} v${selectedModel.version}...`)
-            const localUri = await AiModelService.ensureModelDownloaded(selectedModel)
+            addLog(`Downloading files for model: ${selectedModel.name} v${selectedModel.version}...`)
+            const localFiles = await AiModelService.ensureFilesDownloaded(selectedModel)
             if (!isMounted.current || !device.connected) return
             setProgress(0.15)
 
+            // Determine target firmware IDs
+            const numericId = selectedModel.firmwareModelId ?? 1
+            const numericVer = selectedModel.versionNumber ?? 1
+
+            if (numericId <= 0 || numericVer <= 0) {
+                throw new Error(
+                    `Invalid firmware IDs: modelId=${numericId}, versionId=${numericVer}. `
+                    + `Sync may be stale — pull latest data.`
+                )
+            }
+
             // 2. Read as bytes
-            addLog('Reading model file...')
-            const bytes = await AiModelService.readModelAsBytes(localUri)
-            addLog(`Model file: ${(bytes.length / 1024).toFixed(1)} KB`)
+            addLog('Reading model files...')
+            const modelBytes = await AiModelService.readModelAsBytes(localFiles.modelUri)
+            const labelsBytes = localFiles.labelsUri ? await AiModelService.readModelAsBytes(localFiles.labelsUri) : null
+            addLog(`Model file: ${(modelBytes.length / 1024).toFixed(1)} KB`)
             if (!isMounted.current || !device.connected) return
             setProgress(0.20)
 
@@ -170,48 +182,52 @@ export function useAiModelTransfer({ device, initialModelId }: UseAiModelTransfe
             if (!isMounted.current || !device.connected) return
             setProgress(0.25)
 
-            // Determine target filename (e.g., 42V2.TFL)
-            // Use firmware IDs from DB if available, fallback chain for legacy data
-            const numericId = selectedModel.firmwareModelId
-                ?? (parseInt(selectedModel.fileType || '', 10) || undefined)
-                ?? (parseInt(selectedModel.serverId, 10) || undefined)
-                ?? 1
-            const numericVer = selectedModel.versionNumber
-                ?? (parseInt(selectedModel.version.replace(/[^0-9]/g, ''), 10) || undefined)
-                ?? 1
-
-            // Defensive guard: reject invalid firmware IDs before BLE transfer
-            if (numericId <= 0 || numericVer <= 0) {
-                throw new Error(
-                    `Invalid firmware IDs: modelId=${numericId}, versionId=${numericVer}. `
-                    + `Sync may be stale — pull latest data.`
-                )
-            }
-
-            const targetFilename = `${numericId}V${numericVer}.TFL`
-
             // 4. Transfer via BLE file transfer pipeline
             setPhase('transferring')
-            addLog(`Transferring ${targetFilename} (${bytes.length} bytes)...`)
+            const tflFilename = `${numericId}V${numericVer}.TFL`
+            addLog(`Transferring ${tflFilename} (${modelBytes.length} bytes)...`)
 
-            const result = await runFileTransferPipeline(device, {
-                filename: targetFilename,
-                data: bytes,
+            const modelResult = await runFileTransferPipeline(device, {
+                filename: tflFilename,
+                data: modelBytes,
                 onProgress: (p) => {
                     if (isMounted.current) {
-                        // Map file transfer progress (0-1) to our range (0.25 - 0.75)
-                        setProgress(0.25 + (p.percentage / 100) * 0.50)
+                        // Map file transfer progress (0-1) to our range (0.25 - 0.60)
+                        setProgress(0.25 + (p.percentage / 100) * 0.35)
                     }
                 },
             })
 
             if (!isMounted.current) return
 
-            if (!result.success) {
-                throw new Error(result.errorMessage || 'Transfer failed')
+            if (!modelResult.success) {
+                throw new Error(modelResult.errorMessage || 'Model transfer failed')
             }
             
-            addLog(`Transfer complete ✓ (${result.sizeBytes} bytes)`)
+            addLog(`Model transfer complete ✓ (${modelResult.sizeBytes} bytes)`)
+
+            // Transfer Labels if available
+            if (labelsBytes) {
+                const labelsFilename = `${numericId}V${numericVer}.TXT`
+                addLog(`Transferring ${labelsFilename} (${labelsBytes.length} bytes)...`)
+                const labelsResult = await runFileTransferPipeline(device, {
+                    filename: labelsFilename,
+                    data: labelsBytes,
+                    onProgress: (p) => {
+                        if (isMounted.current) {
+                            // Map labels progress (0-1) to our range (0.60 - 0.75)
+                            setProgress(0.60 + (p.percentage / 100) * 0.15)
+                        }
+                    },
+                })
+
+                if (!isMounted.current) return
+                if (!labelsResult.success) {
+                    throw new Error(labelsResult.errorMessage || 'Labels transfer failed')
+                }
+                addLog(`Labels transfer complete ✓ (${labelsResult.sizeBytes} bytes)`)
+            }
+
             setProgress(0.75)
 
             // 5. Erase old model
@@ -221,14 +237,21 @@ export function useAiModelTransfer({ device, initialModelId }: UseAiModelTransfe
             addLog('Erase complete ✓')
             setProgress(0.85)
 
-            // 5b. Verify file exists on SD card before loading
+            // 5b. Verify files exist on SD card before loading
             try {
                 const dirListing = await session.execute(() => commandRegistry.dir())
-                if (dirListing && !dirListing.includes(targetFilename)) {
-                    addLog(`⚠️ Warning: ${targetFilename} not found in dir listing`)
+                
+                if (dirListing && !dirListing.includes(tflFilename)) {
+                    addLog(`⚠️ Warning: ${tflFilename} not found in dir listing`)
                     addLog('Proceeding with loadmodel anyway — firmware may route internally')
                 } else {
-                    addLog(`Verified ${targetFilename} on SD card ✓`)
+                    addLog(`Verified ${tflFilename} on SD card ✓`)
+                }
+
+                if (labelsBytes && dirListing && !dirListing.includes(`${numericId}V${numericVer}.TXT`)) {
+                    addLog(`⚠️ Warning: ${numericId}V${numericVer}.TXT not found in dir listing`)
+                } else if (labelsBytes) {
+                    addLog(`Verified ${numericId}V${numericVer}.TXT on SD card ✓`)
                 }
             } catch (dirErr) {
                 addLog('Dir listing unavailable — proceeding with loadmodel')

@@ -23,76 +23,95 @@ class AiModelService {
     }
 
     /**
-     * Checks if the AI model file exists locally and matches the expected size.
-     * If not, downloads it from Supabase storage.
-     * Returns the local URI to the file.
+     * Checks if both AI model files (.tflite and labels) exist locally.
+     * If not, downloads them from Supabase storage.
+     * Returns the local URIs to the files.
      */
-    async ensureModelDownloaded(model: AiModel): Promise<string> {
+    async ensureFilesDownloaded(model: AiModel): Promise<{ modelUri: string, labelsUri: string | null }> {
         await this.init()
 
-        if (!model.storagePath) {
-            throw new Error(`AI model ${model.id} has no storage_path specified`)
+        if (!model.modelPath) {
+            throw new Error(`AI model ${model.id} has no model_path specified`)
         }
 
-        const filename = this.getLocalFilename(model)
-        const localUri = AIMODELS_DIR + filename
+        const modelFilename = this.getLocalFilename(model, 'model')
+        const labelsFilename = this.getLocalFilename(model, 'labels')
+        
+        const localModelUri = AIMODELS_DIR + modelFilename
+        const localLabelsUri = AIMODELS_DIR + labelsFilename
 
-        // 1. Check if file already exists
+        // 1. Download Model Binary
+        const downloadedModelUri = await this.downloadFileIfMissing(model.modelPath, localModelUri, model.fileSizeBytes || 0)
+
+        // 2. Download Labels Text (if path is provided)
+        let downloadedLabelsUri: string | null = null
+        if (model.labelsPath) {
+            downloadedLabelsUri = await this.downloadFileIfMissing(model.labelsPath, localLabelsUri, 0) // No size check for labels
+        }
+
+        return {
+            modelUri: downloadedModelUri,
+            labelsUri: downloadedLabelsUri
+        }
+    }
+
+    /**
+     * Helper to check and download a single file from Supabase
+     */
+    private async downloadFileIfMissing(storagePath: string, localUri: string, expectedSize: number): Promise<string> {
         const fileInfo = await FileSystem.getInfoAsync(localUri)
+        
         if (fileInfo.exists) {
-            // 2. Verify file size matches (with tolerance)
-            const expectedSize = model.fileSizeBytes || 0
             const actualSize = fileInfo.size || 0
             const sizeDiff = Math.abs(actualSize - expectedSize)
 
-            if (expectedSize > 0 && sizeDiff <= FILE_SIZE_TOLERANCE_BYTES) {
-                log(`✅ AI model already downloaded and verified: ${localUri}`)
+            if (expectedSize === 0 || sizeDiff <= FILE_SIZE_TOLERANCE_BYTES) {
+                log(`✅ File already downloaded and verified: ${localUri}`)
                 return localUri
             }
 
-            log(`⚠️ AI model size mismatch (expected: ${expectedSize}, actual: ${actualSize}). Redownloading...`)
+            log(`⚠️ File size mismatch (expected: ${expectedSize}, actual: ${actualSize}). Redownloading...`)
             await FileSystem.deleteAsync(localUri, { idempotent: true })
         }
 
-        // 3. Download from Supabase
-        log(`Downloading AI model from Supabase: ${model.storagePath}`)
+        log(`Downloading file from Supabase: ${storagePath}`)
         const supabase = await getSupabaseClient()
 
         try {
             const { data, error } = await supabase.storage
                 .from('ai-models')
-                .createSignedUrl(model.storagePath, 60) // 60 seconds validity
+                .createSignedUrl(storagePath, 60) // 60 seconds validity
 
             if (error || !data?.signedUrl) {
                 throw new Error(`Could not get signed URL: ${error?.message}`)
             }
 
-            log(`Got signed URL, starting download...`)
-
-            const downloadResumable = FileSystem.createDownloadResumable(
-                data.signedUrl,
-                localUri,
-                {}
-            )
-
+            const downloadResumable = FileSystem.createDownloadResumable(data.signedUrl, localUri, {})
             const result = await downloadResumable.downloadAsync()
             
             if (!result || !result.uri) {
                 throw new Error('Download failed to return a URI')
             }
 
-            log(`✅ AI model downloaded successfully: ${result.uri}`)
+            log(`✅ File downloaded successfully: ${result.uri}`)
             return result.uri
         } catch (error) {
-            logError('❌ AI model download failed:', error)
-            // Cleanup partial file if needed
+            logError('❌ File download failed:', error)
             try {
                 await FileSystem.deleteAsync(localUri, { idempotent: true })
             } catch (cleanupError) {
-                logError('❌ Failed to cleanup partial AI model file:', cleanupError)
+                logError('❌ Failed to cleanup partial file:', cleanupError)
             }
             throw error
         }
+    }
+
+    /**
+     * @deprecated Use ensureFilesDownloaded instead
+     */
+    async ensureModelDownloaded(model: AiModel): Promise<string> {
+        const result = await this.ensureFilesDownloaded(model)
+        return result.modelUri
     }
 
     /**
@@ -110,9 +129,10 @@ class AiModelService {
      */
     async deleteLocalModel(model: AiModel): Promise<void> {
         await this.init()
-        const filename = this.getLocalFilename(model)
-        const localUri = AIMODELS_DIR + filename
-        await FileSystem.deleteAsync(localUri, { idempotent: true })
+        const modelFilename = this.getLocalFilename(model, 'model')
+        const labelsFilename = this.getLocalFilename(model, 'labels')
+        await FileSystem.deleteAsync(AIMODELS_DIR + modelFilename, { idempotent: true })
+        await FileSystem.deleteAsync(AIMODELS_DIR + labelsFilename, { idempotent: true })
     }
 
     /**
@@ -128,12 +148,15 @@ class AiModelService {
         }
     }
 
-    private getLocalFilename(model: AiModel): string {
-        // Sanitize version to prevent path traversal
-        const sanitizedVersion = model.version.replace(/[^a-zA-Z0-9.-]/g, '_')
-        const originalFilename = model.storagePath.split('/').pop() || 'unknown'
+    private getLocalFilename(model: AiModel, type: 'model' | 'labels'): string {
+        const pid = model.firmwareModelId || 'unknown'
+        const ver = model.versionNumber || 'unknown'
         
-        return `model_${sanitizedVersion}_${originalFilename}`
+        if (type === 'model') {
+            return `model_${pid}V${ver}.TFL`
+        } else {
+            return `labels_${pid}V${ver}.TXT`
+        }
     }
 }
 

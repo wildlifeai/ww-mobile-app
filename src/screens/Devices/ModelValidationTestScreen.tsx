@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
-import { Text, TextInput, Button, Card, useTheme } from 'react-native-paper'
+import { Text, Button, Card, useTheme } from 'react-native-paper'
 import { useRoute } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import type { RootStackParamList } from '../../navigation/types'
@@ -13,6 +13,8 @@ import { runFileTransferPipeline } from '../../ble/protocol/fileTransfer'
 import AiModelService from '../../services/AiModelService'
 import database from '../../database'
 import AiModel from '../../database/models/AiModel'
+import { WWSelect, Option } from '../../components/ui/WWSelect'
+import { useEffect } from 'react'
 
 type RouteType = RouteProp<RootStackParamList, 'ModelValidationTestScreen'>
 
@@ -24,19 +26,38 @@ export const ModelValidationTestScreen = () => {
     const { } = useBle()
     const connectedDevice = useAppSelector(state => state.devices[deviceId || ''])
 
-    const [projectId, setProjectId] = useState<string>('')
-    const [version, setVersion] = useState<string>('')
-
+    const [models, setModels] = useState<AiModel[]>([])
+    const [selectedModelId, setSelectedModelId] = useState<string>('')
     const [logs, setLogs] = useState<string[]>([])
     const [isProcessing, setIsProcessing] = useState(false)
+
+    useEffect(() => {
+        const fetchModels = async () => {
+            try {
+                const aiModelsCollection = database.get<AiModel>('ai_models')
+                const allModels = await aiModelsCollection.query().fetch()
+                setModels(allModels)
+            } catch (err) {
+                addLog(`Error fetching models: ${err}`)
+            }
+        }
+        fetchModels()
+    }, [])
+
+    const modelOptions: Option[] = models.map(m => ({
+        label: `${m.name} (${m.version})`,
+        value: m.id
+    }))
+
+    const selectedModel = models.find(m => m.id === selectedModelId)
 
     const addLog = (message: string) => {
         setLogs(prev => [...prev, `[${new Date().toISOString().substring(11, 19)}] ${message}`])
     }
 
     const startValidationFlow = async () => {
-        if (!projectId || !version) {
-            addLog("Error: Please enter both Project ID and Version.")
+        if (!selectedModel) {
+            addLog("Error: Please select a model.")
             return
         }
 
@@ -48,61 +69,94 @@ export const ModelValidationTestScreen = () => {
         setIsProcessing(true)
         setLogs([]) // Clear old logs
         
-        const pid = parseInt(projectId, 10)
-        const ver = parseInt(version, 10)
-        const filename = `${pid}V${ver}.TFL`
+        const pid = selectedModel.firmwareModelId || 0
+        const ver = selectedModel.versionNumber || 0
+        const tflFilename = `${pid}V${ver}.TFL`
+        const labelsFilename = `${pid}V${ver}.TXT`
 
-        addLog(`Starting validation for model: ${filename}`)
+        addLog(`🚀 Starting validation for model: ${selectedModel.name}`)
+        addLog(`   Metadata: OP14=${pid}, OP15=${ver}`)
 
         try {
             const session = createBleSession(connectedDevice)
-
-            // Step 1: Check if the file exists on the SD card
-            // We use dir command, but since dir output format is unknown and we might not have a reliable regex, 
-            // another approach is to just proceed with loadmodel and see if it fails.
-            // But let's try to just download it anyway if it's an engineering flow, or we can just query the DB.
-            addLog("Looking for model in local WatermelonDB...")
             
-            // Query ai_models table to find a model whose storage_path ends with the filename
-            const aiModelsCollection = database.get<AiModel>('ai_models')
-            const allModels = await aiModelsCollection.query().fetch()
-            
-            const matchingModel = allModels.find(m => m.storagePath?.toUpperCase().endsWith(filename.toUpperCase()))
+            // Wake up AI processor
+            addLog("Waking AI processor...")
+            await session.execute(() => commandRegistry.aiver())
 
-            if (!matchingModel) {
-                addLog(`❌ Error: Could not find an AI model in the local database that corresponds to ${filename}.`)
-                setIsProcessing(false)
-                return
+            // Step 1: Check if the files exist on the SD card
+            addLog("Step 1: Checking SD card for existing files...")
+            const files = await session.execute(commandRegistry.dir) as string[]
+            const hasTfl = files.some(f => f.toUpperCase().includes(tflFilename.toUpperCase()))
+            const hasLabels = files.some(f => f.toUpperCase().includes(labelsFilename.toUpperCase()))
+
+            if (hasTfl && hasLabels) {
+                addLog(`✅ Files already exist on SD card. Skipping transfer.`)
+            } else {
+                if (!hasTfl) addLog(`📥 ${tflFilename} missing on SD.`)
+                if (!hasLabels) addLog(`📥 ${labelsFilename} missing on SD.`)
+
+                // Step 2: Download from Supabase
+                addLog("Step 2: Ensuring model files are downloaded...")
+                const localFiles = await AiModelService.ensureFilesDownloaded(selectedModel)
+                addLog(`✅ Local model path: ${localFiles.modelUri}`)
+                if (localFiles.labelsUri) addLog(`✅ Local labels path: ${localFiles.labelsUri}`)
+
+                // Step 3: Transfer files via BLE
+                addLog(`Step 3: Transferring files to device...`)
+                
+                // Transfer TFL
+                if (!hasTfl) {
+                    addLog(`Sending ${tflFilename}...`)
+                    const tflBytes = await AiModelService.readModelAsBytes(localFiles.modelUri)
+                    await runFileTransferPipeline(connectedDevice, {
+                        filename: tflFilename,
+                        data: tflBytes,
+                        onProgress: (prog) => {
+                            if (prog.percentage % 20 === 0) {
+                                addLog(`  ${tflFilename}: ${prog.percentage}%`)
+                            }
+                        }
+                    })
+                    addLog(`✅ ${tflFilename} transferred.`)
+                }
+
+                // Transfer Labels
+                if (!hasLabels && localFiles.labelsUri) {
+                    addLog(`Sending ${labelsFilename}...`)
+                    const labelsBytes = await AiModelService.readModelAsBytes(localFiles.labelsUri)
+                    await runFileTransferPipeline(connectedDevice, {
+                        filename: labelsFilename,
+                        data: labelsBytes,
+                        onProgress: (prog) => {
+                            if (prog.percentage % 20 === 0) {
+                                addLog(`  ${labelsFilename}: ${prog.percentage}%`)
+                            }
+                        }
+                    })
+                    addLog(`✅ ${labelsFilename} transferred.`)
+                }
             }
 
-            addLog(`Found matching model in DB: ${matchingModel.name} (ID: ${matchingModel.id})`)
-
-            // Step 2: Download from Supabase using AiModelService
-            addLog("Downloading model from Supabase...")
-            const localUri = await AiModelService.ensureModelDownloaded(matchingModel)
-            addLog(`✅ Downloaded to: ${localUri}`)
-
-            // Step 3: Transfer file via BLE
-            addLog(`Starting BLE file transfer of ${filename} to device...`)
-            const rawBytes = await AiModelService.readModelAsBytes(localUri)
+            // Step 4: Verify files exist on SD card
+            addLog("Step 4: Verifying files on SD card...")
+            const finalFiles = await session.execute(commandRegistry.dir) as string[]
+            const verifiedTfl = finalFiles.some(f => f.toUpperCase().includes(tflFilename.toUpperCase()))
+            const verifiedLabels = finalFiles.some(f => f.toUpperCase().includes(labelsFilename.toUpperCase()))
             
-            await runFileTransferPipeline(connectedDevice, {
-                filename: filename,
-                data: rawBytes,
-                onProgress: (prog: any) => {
-                    if (prog.percentage % 10 === 0) {
-                        addLog(`Transferring... ${Math.round(prog.percentage)}% (${prog.bytesSent}/${prog.totalBytes} bytes)`)
-                    }
-                }
-            })
-
-            addLog(`✅ File transfer complete.`)
-
-            // Step 4: Load the model
-            await loadModel(pid, ver, session)
+            if (verifiedTfl) {
+                addLog(`✅ VERIFIED: ${tflFilename} is present on SD card.`)
+                if (verifiedLabels) addLog(`✅ VERIFIED: ${labelsFilename} is present on SD card.`)
+                
+                // Final load check
+                addLog("Final Step: Attempting to load model...")
+                await loadModel(pid, ver, session)
+            } else {
+                addLog(`❌ FAILED: ${tflFilename} not found on SD card after transfer.`)
+            }
 
         } catch (error) {
-            addLog(`❌ Error during validation flow: ${error}`)
+            addLog(`❌ Error: ${error}`)
         } finally {
             setIsProcessing(false)
         }
@@ -122,32 +176,38 @@ export const ModelValidationTestScreen = () => {
         <ScrollView style={styles.container}>
             <Card style={styles.card}>
                 <Card.Content>
-                    <Text variant="titleMedium" style={{ marginBottom: 16 }}>
+                    <Text variant="titleMedium" style={styles.title}>
                         Test Model Validation Flow
                     </Text>
-                    <Text variant="bodyMedium" style={{ marginBottom: 16 }}>
+                    <Text variant="bodyMedium" style={styles.description}>
                         Input the Operational Parameter (OP) numbers for the model to test against. The flow will download from Supabase if missing, transfer via BLE, and load the model.
                     </Text>
 
-                    <TextInput
-                        label="Project ID (OP 14)"
-                        value={projectId}
-                        onChangeText={setProjectId}
-                        keyboardType="numeric"
-                        mode="outlined"
-                        style={styles.input}
+                    <WWSelect
+                        label="Select AI Model"
+                        options={modelOptions}
+                        value={selectedModelId}
+                        onChange={setSelectedModelId}
                         disabled={isProcessing}
+                        style={styles.input}
                     />
 
-                    <TextInput
-                        label="Version (OP 15)"
-                        value={version}
-                        onChangeText={setVersion}
-                        keyboardType="numeric"
-                        mode="outlined"
-                        style={styles.input}
-                        disabled={isProcessing}
-                    />
+                    {selectedModel && (
+                        <View style={styles.metadataContainer}>
+                            <View style={styles.chipRow}>
+                                <Text style={styles.metadataLabel}>OP 14 (ID):</Text>
+                                <Text style={styles.metadataValue}>{selectedModel.firmwareModelId ?? 'N/A'}</Text>
+                            </View>
+                            <View style={styles.chipRow}>
+                                <Text style={styles.metadataLabel}>OP 15 (Ver):</Text>
+                                <Text style={styles.metadataValue}>{selectedModel.versionNumber ?? 'N/A'}</Text>
+                            </View>
+                            <View style={styles.chipRow}>
+                                <Text style={styles.metadataLabel}>Filename:</Text>
+                                <Text style={styles.metadataValue}>{selectedModel.firmwareModelId}V{selectedModel.versionNumber}.TFL</Text>
+                            </View>
+                        </View>
+                    )}
 
                     <Button 
                         mode="contained" 
@@ -160,7 +220,8 @@ export const ModelValidationTestScreen = () => {
                     </Button>
 
                     {!connectedDevice?.connected && (
-                        <Text style={{ color: theme.colors.error, marginTop: 8 }}>
+                         
+                        <Text style={[styles.errorText, { color: theme.colors.error }]}>
                             Device is not connected.
                         </Text>
                     )}
@@ -169,7 +230,7 @@ export const ModelValidationTestScreen = () => {
 
             <Card style={styles.logCard}>
                 <Card.Content>
-                    <Text variant="titleSmall" style={{ marginBottom: 8 }}>Console Output</Text>
+                    <Text variant="titleSmall" style={styles.consoleTitle}>Console Output</Text>
                     <View style={styles.logContainer}>
                         {logs.map((log, index) => (
                             <Text key={index} style={styles.logText}>{log}</Text>
@@ -200,6 +261,18 @@ const styles = StyleSheet.create({
     logCard: {
         marginBottom: 32,
     },
+    title: {
+        marginBottom: 16,
+    },
+    description: {
+        marginBottom: 16,
+    },
+    errorText: {
+        marginTop: 8,
+    },
+    consoleTitle: {
+        marginBottom: 8,
+    },
     logContainer: {
         backgroundColor: '#1e1e1e',
         padding: 12,
@@ -211,5 +284,25 @@ const styles = StyleSheet.create({
         fontFamily: 'monospace',
         fontSize: 12,
         marginBottom: 4,
+    },
+    metadataContainer: {
+        backgroundColor: '#e8e8e8',
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 16,
+    },
+    chipRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    metadataLabel: {
+        fontWeight: 'bold',
+        fontSize: 12,
+        color: '#666',
+    },
+    metadataValue: {
+        fontSize: 12,
+        fontFamily: 'monospace',
     }
 })

@@ -453,31 +453,42 @@ export const useStartDeployment = ({
                     await bleSession.execute(() => commandRegistry.aiver())
 
                     // Check current model
-                    const ops = await bleSession.execute(() => commandRegistry.getops()) as unknown as number[]
-                    const currentId = ops[14]
-                    const currentVer = ops[15]
+                    const ops = await bleSession.execute(() => commandRegistry.getops()) as unknown as string[]
+                    const currentId = parseInt(ops[14], 10)
+                    const currentVer = parseInt(ops[15], 10)
 
                     const targetModel = await AiModelService.getModelById(project.model_id)
 
                     if (targetModel) {
-                        const numericId = parseInt(targetModel.serverId, 10) || 1
-                        const numericVer = parseInt(targetModel.version.replace(/[^0-9]/g, ''), 10) || 1
+                        const numericId = targetModel.firmwareModelId || 1
+                        const numericVer = targetModel.versionNumber || 1
 
                         if (currentId !== numericId || currentVer !== numericVer) {
                             addFinishLog(`Model mismatch (Device: ${currentId}v${currentVer}, Target: ${numericId}v${numericVer})`)
-                            addFinishLog('Downloading AI model...')
+                            addFinishLog('Downloading AI model files...')
                             
-                            const localUri = await AiModelService.ensureModelDownloaded(targetModel)
-                            const modelBytes = await AiModelService.readModelAsBytes(localUri)
+                            const localFiles = await AiModelService.ensureFilesDownloaded(targetModel)
+                            const modelBytes = await AiModelService.readModelAsBytes(localFiles.modelUri)
+                            const labelsBytes = localFiles.labelsUri ? await AiModelService.readModelAsBytes(localFiles.labelsUri) : null
                             
                             if (modelBytes) {
                                 addFinishLog('Transferring AI model...')
-                                const filename = `${numericId}V${numericVer}.TFL`
+                                const tflFilename = `${numericId}V${numericVer}.TFL`
                                 await runFileTransferPipeline(bleDevice, {
-                                    filename,
+                                    filename: tflFilename,
                                     data: modelBytes,
                                     onProgress: (p) => setFinishProgress(0.15 + (p.percentage / 100) * 0.05) // max 0.2
                                 })
+
+                                if (labelsBytes) {
+                                    addFinishLog('Transferring model labels...')
+                                    const labelsFilename = `${numericId}V${numericVer}.TXT`
+                                    await runFileTransferPipeline(bleDevice, {
+                                        filename: labelsFilename,
+                                        data: labelsBytes,
+                                        onProgress: () => {} // minor progress, skip ui update
+                                    })
+                                }
                                 
                                 addFinishLog('Erasing old model...')
                                 await bleSession.execute(() => commandRegistry.erasemodel())

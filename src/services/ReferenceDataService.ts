@@ -19,18 +19,8 @@ import { log, logError } from '../utils/logger'
  * - capture_methods: Wildlife capture methods (motion detection, time lapse, etc.)
  * - activity_sensitivity: Motion detection sensitivity levels (low, medium, high)
  * - ai_models: AI models available for wildlife detection
-
-/**
- * ReferenceDataService
- * 
- * Manages read-only reference data (lookup tables) stored in WatermelonDB.
- * These tables are synced one-way from Supabase and enable offline form functionality.
- * 
- * Reference tables:
- * - capture_methods: Wildlife capture methods (motion detection, time lapse, etc.)
- * - activity_sensitivity: Motion detection sensitivity levels (low, medium, high)
- * - ai_models: AI models available for wildlife detection
  * - sampling_designs: Sampling design methods (random, systematic, etc.)
+ * - firmware: Device firmware binaries (BLE, Himax, Config)
  */
 class ReferenceDataService {
     /**
@@ -358,10 +348,12 @@ class ReferenceDataService {
         }
 
         if (!data || data.length === 0) {
-            log('[RefData] No firmware data received from server')
+            log('[RefData] No active firmware data received from server (is_active=true)')
             return
         }
-        log(`[RefData] Received ${data.length} firmware records from server`)
+        const types = data.map(d => d.type).join(', ')
+        log(`[RefData] Received ${data.length} firmware records from server (Types: ${types})`)
+        log(`[RefData] Himax records: ${data.filter(d => d.type === 'himax').length}`)
 
         await database.write(async () => {
             const collection = database.get<Firmware>('firmware')

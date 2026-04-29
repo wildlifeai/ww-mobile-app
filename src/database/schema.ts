@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 314,
+    version: 317,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -91,12 +91,13 @@ export default appSchema({
                 { name: 'file_hash', type: 'string', isOptional: true },
                 { name: 'file_size_bytes', type: 'number', isOptional: true },
                 { name: 'file_type', type: 'string', isOptional: true },
+                { name: 'labels_path', type: 'string' },
                 { name: 'model_family_id', type: 'string', isOptional: true, isIndexed: true },
+                { name: 'model_path', type: 'string' },
                 { name: 'name', type: 'string' },
                 { name: 'organisation_id', type: 'string', isIndexed: true },
                 { name: 'processing_log', type: 'string', isOptional: true },
                 { name: 'status', type: 'string', isOptional: true },
-                { name: 'storage_path', type: 'string' },
                 { name: 'uploaded_by', type: 'string', isOptional: true },
                 { name: 'version', type: 'string' },
                 { name: 'version_number', type: 'number', isOptional: true },

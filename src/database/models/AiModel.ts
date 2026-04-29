@@ -8,7 +8,8 @@ export default class AiModel extends Model {
     @field('name') name!: string
     @field('version') version!: string // Semantic display version (e.g. "v1.1")
     @field('description') description?: string
-    @field('storage_path') storagePath!: string
+    @field('model_path') modelPath?: string
+    @field('labels_path') labelsPath?: string
     @field('file_size_bytes') fileSizeBytes!: number
     @field('file_type') fileType?: string
     @field('organisation_id') organisationId!: string

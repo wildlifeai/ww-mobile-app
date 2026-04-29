@@ -245,13 +245,14 @@ export type Database = {
           file_size_bytes: number | null
           file_type: string | null
           id: string
+          labels_path: string
           model_family_id: string | null
+          model_path: string
           modified_by: string
           name: string
           organisation_id: string
           processing_log: Json | null
           status: Database["public"]["Enums"]["ai_model_status"] | null
-          storage_path: string
           updated_at: string | null
           uploaded_by: string | null
           version: string
@@ -268,13 +269,14 @@ export type Database = {
           file_size_bytes?: number | null
           file_type?: string | null
           id?: string
+          labels_path: string
           model_family_id?: string | null
+          model_path: string
           modified_by: string
           name: string
           organisation_id: string
           processing_log?: Json | null
           status?: Database["public"]["Enums"]["ai_model_status"] | null
-          storage_path: string
           updated_at?: string | null
           uploaded_by?: string | null
           version: string
@@ -291,13 +293,14 @@ export type Database = {
           file_size_bytes?: number | null
           file_type?: string | null
           id?: string
+          labels_path?: string
           model_family_id?: string | null
+          model_path?: string
           modified_by?: string
           name?: string
           organisation_id?: string
           processing_log?: Json | null
           status?: Database["public"]["Enums"]["ai_model_status"] | null
-          storage_path?: string
           updated_at?: string | null
           uploaded_by?: string | null
           version?: string
