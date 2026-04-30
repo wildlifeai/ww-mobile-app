@@ -359,10 +359,17 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
             setIsUpdating(true)
             const session = createBleSession(device)
 
-            // Step 1: Wake AI processor
+            // Step 1: Wake AI processor and extend DPD timeout
+            // The AI processor enters Deep Power Down after INTERVAL_BEFORE_DPD (default 1000ms).
+            // We must extend this immediately to prevent the processor from sleeping between commands,
+            // which would cause the commandQueue to transition to PAUSED_SLEEP and deadlock.
             onProgress?.('Waking AI processor...', 0.05)
             log('[ResetDefaults] Waking AI processor...')
             await session.execute(() => commandRegistry.aiver())
+
+            onProgress?.('Extending DPD timeout...', 0.07)
+            log('[ResetDefaults] Extending DPD timeout to 30s to keep AI awake during reset...')
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 30000 }))
 
             // Step 2: Read current OPs to skip unnecessary writes
             onProgress?.('Reading current parameters...', 0.1)
