@@ -406,7 +406,7 @@ export const commandRegistry = {
 
   erasemodel: createSingleLineCommand<boolean>(
     'erasemodel',
-    () => 'erasemodel',
+    () => 'AI erasemodel',
     /Erased/i,
     () => true,
     { timeoutMs: 15000 }
@@ -414,7 +414,7 @@ export const commandRegistry = {
 
   loadmodel: createSingleLineCommand<boolean>(
     'loadmodel',
-    (id: number, ver: number) => `loadmodel ${id} ${ver}`,
+    (id: number, ver: number) => `AI loadmodel ${id} ${ver}`,
     /Loaded/i,
     () => true,
     { timeoutMs: 30000, failureRegex: /Error loading/i }
