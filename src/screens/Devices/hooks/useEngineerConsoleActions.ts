@@ -136,6 +136,10 @@ export const useEngineerConsoleActions = ({
             navigation.navigate('FirmwareStatusScreen', { deviceId: device?.id })
             return
         }
+        if (cmdName === CommandNames.RESET_TO_DEFAULTS) {
+            navigation.navigate('DeviceResetScreen', { deviceId: device?.id })
+            return
+        }
 
         // Handle local commands
         if (cmdName === CommandNames.CLEAR_CONSOLE) {

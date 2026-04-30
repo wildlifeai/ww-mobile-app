@@ -40,6 +40,7 @@ export interface RootStackParamList extends ParamListBase {
 	ConfigTransferScreen: { deviceId: string }
 	AiModelTransferScreen: { deviceId: string; modelId?: string }
 	FirmwareStatusScreen: { deviceId: string }
+	DeviceResetScreen: { deviceId: string }
 
 	StartMonitoringDetailsStep: { projectId?: string; deviceId?: string; bleDeviceId?: string; initPayload?: InitPayload }
 	DeploymentDetails: { deploymentId: string }

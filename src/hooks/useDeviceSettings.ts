@@ -34,6 +34,34 @@ export const OP_PARAMETER = {
     IMAGES_FILE_INDEX: 20,
 } as const
 
+/**
+ * Factory default values for ALL operational parameters.
+ * These match the firmware's behaviour when no MANIFEST folder exists on SD card.
+ */
+export const FACTORY_DEFAULTS: Record<number, number> = {
+    [OP_PARAMETER.SEQUENCE_NUMBER]: 0,
+    [OP_PARAMETER.NUM_NN_ANALYSES]: 0,
+    [OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES]: 0,
+    [OP_PARAMETER.NUM_COLD_BOOTS]: 0,
+    [OP_PARAMETER.NUM_WARM_BOOTS]: 0,
+    [OP_PARAMETER.NUM_PICTURES]: 3,
+    [OP_PARAMETER.PICTURE_INTERVAL]: 1500,
+    [OP_PARAMETER.TIMELAPSE_INTERVAL]: 0,
+    [OP_PARAMETER.INTERVAL_BEFORE_DPD]: 1000,
+    [OP_PARAMETER.LED_BRIGHTNESS]: 5,
+    [OP_PARAMETER.CAMERA_ENABLED]: 0,
+    [OP_PARAMETER.MD_INTERVAL]: 0,
+    [OP_PARAMETER.FLASH_DURATION]: 100,
+    [OP_PARAMETER.FLASH_LED]: 0,
+    [OP_PARAMETER.MODEL_PROJECT]: 0,
+    [OP_PARAMETER.MODEL_VERSION]: 0,
+    [OP_PARAMETER.MODEL_THRESHOLD]: 50,
+    [OP_PARAMETER.MD_SENSITIVITY]: 1,
+    [OP_PARAMETER.TEST_MODE_BITS]: 0,
+    [OP_PARAMETER.IMAGES_COUNT]: 0,
+    [OP_PARAMETER.IMAGES_FILE_INDEX]: 0,
+}
+
 
 
 /**
@@ -69,6 +97,7 @@ export interface UseDeviceSettingsReturn {
     updateSettings: (device: ExtendedPeripheral, settings: Partial<DeviceSettings>) => Promise<void>
     applyPreset: (device: ExtendedPeripheral, preset: 'default' | 'motion-detect' | 'timelapse') => Promise<void>
     quiesceDevice: (device: ExtendedPeripheral, options?: QuiesceOptions) => Promise<void>
+    resetToDefaults: (device: ExtendedPeripheral, onProgress?: (step: string, progress: number) => void) => Promise<void>
     isUpdating: boolean
 }
 
@@ -314,10 +343,114 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
         }
     }, [])
 
+    /**
+     * Full factory reset: resets ALL 21 operational parameters to firmware defaults,
+     * erases any loaded AI model, clears the deployment ID, and zeroes GPS.
+     * 
+     * @param device The connected BLE device
+     * @param onProgress Optional callback for progress updates (step description, 0-1 progress)
+     */
+    const resetToDefaults = useCallback(async (device: ExtendedPeripheral, onProgress?: (step: string, progress: number) => void) => {
+        if (!device || !device.connected) {
+            throw new Error('Device not connected')
+        }
+
+        try {
+            setIsUpdating(true)
+            const session = createBleSession(device)
+
+            // Step 1: Wake AI processor
+            onProgress?.('Waking AI processor...', 0.05)
+            log('[ResetDefaults] Waking AI processor...')
+            await session.execute(() => commandRegistry.aiver())
+
+            // Step 2: Read current OPs to skip unnecessary writes
+            onProgress?.('Reading current parameters...', 0.1)
+            log('[ResetDefaults] Reading current operational parameters...')
+            let currentOps: string[] | null = null
+            try {
+                currentOps = await session.execute(commandRegistry.getops)
+            } catch (err) {
+                logWarn('[ResetDefaults] Could not read current OPs, will write all defaults', err)
+            }
+
+            // Step 3: Erase loaded AI model (clears OP 14/15 on the firmware side too)
+            onProgress?.('Erasing AI model...', 0.2)
+            log('[ResetDefaults] Erasing AI model...')
+            try {
+                await session.execute(() => commandRegistry.erasemodel())
+                log('[ResetDefaults] AI model erased')
+            } catch (err) {
+                logWarn('[ResetDefaults] erasemodel failed (may not have a model loaded):', err)
+            }
+
+            // Step 4: Reset all OPs to factory defaults
+            const entries = Object.entries(FACTORY_DEFAULTS)
+            const totalOps = entries.length
+            let opsWritten = 0
+
+            for (const [indexStr, defaultValue] of entries) {
+                const index = parseInt(indexStr, 10)
+
+                if (!isMounted.current || !device.connected) {
+                    throw new Error('Reset cancelled: Device disconnected or component unmounted')
+                }
+
+                // Skip if already at default
+                if (currentOps && currentOps.length > index && currentOps[index] === defaultValue.toString()) {
+                    log(`[ResetDefaults] OP ${index} already at default (${defaultValue}), skipping`)
+                    opsWritten++
+                    continue
+                }
+
+                log(`[ResetDefaults] Setting OP ${index} = ${defaultValue}`)
+                await session.execute(() => commandRegistry.setop({ index, value: defaultValue }))
+                opsWritten++
+
+                // Progress: 0.3 to 0.8 across all OP writes
+                onProgress?.(`Resetting parameter ${index}...`, 0.3 + (opsWritten / totalOps) * 0.5)
+            }
+
+            // Step 5: Clear deployment ID
+            onProgress?.('Clearing deployment ID...', 0.85)
+            log('[ResetDefaults] Clearing deployment ID...')
+            await session.execute(() => commandRegistry.setdid(null))
+
+            // Step 6: Zero GPS
+            onProgress?.('Zeroing GPS...', 0.9)
+            log('[ResetDefaults] Zeroing GPS...')
+            await session.execute(() => commandRegistry.setgps('0,0,0'))
+
+            // Step 7: Verify
+            onProgress?.('Verifying reset...', 0.95)
+            log('[ResetDefaults] Verifying reset...')
+            const verifyOps = await session.execute(commandRegistry.getops)
+            const mismatches: string[] = []
+            for (const [indexStr, defaultValue] of entries) {
+                const index = parseInt(indexStr, 10)
+                if (verifyOps && verifyOps.length > index && verifyOps[index] !== defaultValue.toString()) {
+                    mismatches.push(`OP ${index}: expected ${defaultValue}, got ${verifyOps[index]}`)
+                }
+            }
+            if (mismatches.length > 0) {
+                logWarn('[ResetDefaults] Verification mismatches:', mismatches)
+            }
+
+            onProgress?.('Reset complete', 1.0)
+            log('[ResetDefaults] Factory reset complete')
+        } catch (error) {
+            logError('[ResetDefaults] Error during factory reset:', error)
+            throw error
+        } finally {
+            setIsUpdating(false)
+        }
+    }, [])
+
     return {
         updateSettings,
         applyPreset,
         quiesceDevice,
+        resetToDefaults,
         isUpdating
     }
 }

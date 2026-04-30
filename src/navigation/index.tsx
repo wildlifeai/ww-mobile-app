@@ -49,6 +49,7 @@ import { ModelValidationTestScreen } from "../screens/Devices/ModelValidationTes
 import { ConfigTransferScreen } from "../screens/Devices/ConfigTransferScreen"
 import { AiModelTransferScreen } from "../screens/Devices/AiModelTransferScreen"
 import { FirmwareStatusScreen } from "../screens/Devices/FirmwareStatusScreen"
+import { DeviceResetScreen } from "../screens/Devices/DeviceResetScreen"
 import { DfuScreen } from "../screens/Devices/DfuScreen"
 
 // Developer screens
@@ -249,6 +250,11 @@ export const MainNavigation = () => {
 							name="FirmwareStatusScreen"
 							component={FirmwareStatusScreen}
 							options={{ title: "Firmware Status" }}
+						/>
+						<Stack.Screen
+							name="DeviceResetScreen"
+							component={DeviceResetScreen}
+							options={{ title: "Reset to Defaults" }}
 						/>
 
 						<Stack.Screen
