@@ -154,7 +154,7 @@ class AiModelService {
         const cacheKey = model.serverId || model.id
         
         if (type === 'model') {
-            return `model_${cacheKey}.tfl`
+            return `model_${cacheKey}.tflite`
         } else {
             return `labels_${cacheKey}.txt`
         }

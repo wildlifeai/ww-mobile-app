@@ -179,7 +179,7 @@ export function useAiModelTransfer({ device, initialModelId }: UseAiModelTransfe
 
             // 4. Transfer via BLE file transfer pipeline
             setPhase('transferring')
-            const tflFilename = `${numericId}V${numericVer}.TFL`
+            const tflFilename = `${numericId}V${numericVer}.tflite`
             addLog(`Transferring ${tflFilename} (${modelBytes.length} bytes)...`)
 
             const modelResult = await runFileTransferPipeline(device, {
@@ -203,7 +203,7 @@ export function useAiModelTransfer({ device, initialModelId }: UseAiModelTransfe
 
             // Transfer Labels if available
             if (labelsBytes) {
-                const labelsFilename = `${numericId}V${numericVer}.TXT`
+                const labelsFilename = `${numericId}V${numericVer}.txt`
                 addLog(`Transferring ${labelsFilename} (${labelsBytes.length} bytes)...`)
                 const labelsResult = await runFileTransferPipeline(device, {
                     filename: labelsFilename,
@@ -243,10 +243,10 @@ export function useAiModelTransfer({ device, initialModelId }: UseAiModelTransfe
                     addLog(`Verified ${tflFilename} on SD card ✓`)
                 }
 
-                if (labelsBytes && dirListing && !dirListing.includes(`${numericId}V${numericVer}.TXT`)) {
-                    addLog(`⚠️ Warning: ${numericId}V${numericVer}.TXT not found in dir listing`)
+                if (labelsBytes && dirListing && !dirListing.includes(`${numericId}V${numericVer}.txt`)) {
+                    addLog(`⚠️ Warning: ${numericId}V${numericVer}.txt not found in dir listing`)
                 } else if (labelsBytes) {
-                    addLog(`Verified ${numericId}V${numericVer}.TXT on SD card ✓`)
+                    addLog(`Verified ${numericId}V${numericVer}.txt on SD card ✓`)
                 }
             } catch (dirErr) {
                 addLog('Dir listing unavailable — proceeding with loadmodel')

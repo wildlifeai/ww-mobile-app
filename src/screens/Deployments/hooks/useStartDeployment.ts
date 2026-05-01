@@ -475,7 +475,7 @@ export const useStartDeployment = ({
                             
                             if (modelBytes) {
                                 addFinishLog('Transferring AI model...')
-                                const tflFilename = `${numericId}V${numericVer}.TFL`
+                                const tflFilename = `${numericId}V${numericVer}.tflite`
                                 await runFileTransferPipeline(bleDevice, {
                                     filename: tflFilename,
                                     data: modelBytes,
@@ -484,7 +484,7 @@ export const useStartDeployment = ({
 
                                 if (labelsBytes) {
                                     addFinishLog('Transferring model labels...')
-                                    const labelsFilename = `${numericId}V${numericVer}.TXT`
+                                    const labelsFilename = `${numericId}V${numericVer}.txt`
                                     await runFileTransferPipeline(bleDevice, {
                                         filename: labelsFilename,
                                         data: labelsBytes,

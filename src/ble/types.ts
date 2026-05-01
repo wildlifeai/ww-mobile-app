@@ -431,7 +431,7 @@ export const COMMANDS: {
 		name: CommandNames.loadmodel,
 		writeCommand: (id?: string, ver?: string) => `AI loadmodel ${id || '0'} ${ver || '0'}`,
 		readRegex: /(OK|loaded|failed)/i,
-		description: "Load model <id> <ver> from SD (e.g. 1V1.TFL) and update lines 14 & 15 of CONFIG.TXT",
+		description: "Load model <id> <ver> from SD (e.g. 1V1.tflite) and update lines 14 & 15 of CONFIG.TXT",
 		type: 'command',
 	},
 	[CommandNames.wake]: {

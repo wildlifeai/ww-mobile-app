@@ -137,8 +137,8 @@ export const ModelValidationTestScreen = () => {
 
         const pid = resolvedFirmwareIds.firmwareModelId
         const ver = resolvedFirmwareIds.versionNumber
-        const tflFilename = `${pid}V${ver}.TFL`
-        const labelsFilename = `${pid}V${ver}.TXT`
+        const tflFilename = `${pid}V${ver}.tflite`
+        const labelsFilename = `${pid}V${ver}.txt`
 
         addLog(`🚀 Starting validation for model: ${selectedModel.name}`)
         addLog(`   Metadata: OP14=${pid}, OP15=${ver}`)
@@ -276,7 +276,7 @@ export const ModelValidationTestScreen = () => {
                             <View style={styles.chipRow}>
                                 <Text style={styles.metadataLabel}>Filename:</Text>
                                 <Text style={styles.metadataValue}>
-                                    {(resolvedFirmwareIds?.firmwareModelId ?? '?')}V{(resolvedFirmwareIds?.versionNumber ?? '?')}.TFL
+                                    {(resolvedFirmwareIds?.firmwareModelId ?? '?')}V{(resolvedFirmwareIds?.versionNumber ?? '?')}.tflite
                                 </Text>
                             </View>
                             <View style={styles.divider} />

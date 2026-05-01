@@ -335,7 +335,7 @@ class ReferenceDataService {
      *   - firmwareModelId: integer for OP 14 (from ai_model_families)
      *   - versionNumber: integer for OP 15 (from ai_models)
      *
-     * These are used to construct the device filename ({firmwareModelId}V{versionNumber}.TFL)
+     * These are used to construct the device filename ({firmwareModelId}V{versionNumber}.tflite)
      * and the loadmodel command.
      */
     async getFirmwareIds(model: AiModel): Promise<{ firmwareModelId: number; versionNumber: number }> {
