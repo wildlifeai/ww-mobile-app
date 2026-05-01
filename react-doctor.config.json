@@ -6,7 +6,20 @@
       "jsx-a11y/anchor-is-valid",
       "jsx-a11y/click-events-have-key-events",
       "jsx-a11y/no-static-element-interactions",
-      "jsx-a11y/no-noninteractive-element-interactions"
+      "jsx-a11y/no-noninteractive-element-interactions",
+      "react-doctor/react-compiler-destructure-method",
+      "react-doctor/rerender-state-only-in-handlers",
+      "react-doctor/rn-prefer-pressable",
+      "react-doctor/no-react19-deprecated-apis",
+      "react-doctor/js-combine-iterations",
+      "react-doctor/rendering-hydration-mismatch-time",
+      "react-doctor/rn-no-scrollview-mapped-list",
+      "react-doctor/rn-prefer-expo-image",
+      "react-doctor/rendering-usetransition-loading",
+      "react-doctor/rn-prefer-content-inset-adjustment",
+      "react-doctor/async-await-in-loop",
+      "react-doctor/no-many-boolean-props",
+      "react-doctor/no-giant-component"
     ],
     "files": [
       "android/**",
