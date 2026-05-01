@@ -137,9 +137,8 @@ export const ModelValidationTestScreen = () => {
 
         const pid = resolvedFirmwareIds.firmwareModelId
         const ver = resolvedFirmwareIds.versionNumber
-        const tflExt = selectedModel.modelPath ? selectedModel.modelPath.split('.').pop() : 'tflite'
+        const { modelExt: tflExt, labelsExt } = AiModelService.getModelFileExtensions(selectedModel)
         const tflFilename = `${pid}V${ver}.${tflExt}`
-        const labelsExt = selectedModel.labelsPath ? selectedModel.labelsPath.split('.').pop() : 'txt'
         const labelsFilename = `${pid}V${ver}.${labelsExt}`
 
         addLog(`🚀 Starting validation for model: ${selectedModel.name}`)

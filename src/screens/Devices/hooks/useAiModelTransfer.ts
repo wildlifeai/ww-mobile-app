@@ -179,7 +179,7 @@ export function useAiModelTransfer({ device, initialModelId }: UseAiModelTransfe
 
             // 4. Transfer via BLE file transfer pipeline
             setPhase('transferring')
-            const tflExt = selectedModel.modelPath ? selectedModel.modelPath.split('.').pop() : 'tflite'
+            const { modelExt: tflExt } = AiModelService.getModelFileExtensions(selectedModel)
             const tflFilename = `${numericId}V${numericVer}.${tflExt}`
             addLog(`Transferring ${tflFilename} (${modelBytes.length} bytes)...`)
 
@@ -204,7 +204,7 @@ export function useAiModelTransfer({ device, initialModelId }: UseAiModelTransfe
 
             // Transfer Labels if available
             if (labelsBytes) {
-                const labelsExt = selectedModel.labelsPath ? selectedModel.labelsPath.split('.').pop() : 'txt'
+                const { labelsExt } = AiModelService.getModelFileExtensions(selectedModel)
                 const labelsFilename = `${numericId}V${numericVer}.${labelsExt}`
                 addLog(`Transferring ${labelsFilename} (${labelsBytes.length} bytes)...`)
                 const labelsResult = await runFileTransferPipeline(device, {
@@ -245,7 +245,7 @@ export function useAiModelTransfer({ device, initialModelId }: UseAiModelTransfe
                     addLog(`Verified ${tflFilename} on SD card ✓`)
                 }
 
-                const labelsExt = selectedModel.labelsPath ? selectedModel.labelsPath.split('.').pop() : 'txt'
+                const { labelsExt } = AiModelService.getModelFileExtensions(selectedModel)
                 if (labelsBytes && dirListing && !dirListing.includes(`${numericId}V${numericVer}.${labelsExt}`)) {
                     addLog(`⚠️ Warning: ${numericId}V${numericVer}.${labelsExt} not found in dir listing`)
                 } else if (labelsBytes) {
