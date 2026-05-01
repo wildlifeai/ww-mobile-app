@@ -453,7 +453,10 @@ export const useStartDeployment = ({
                     await bleSession.execute(() => commandRegistry.aiver())
 
                     // Check current model
-                    const ops = await bleSession.execute(() => commandRegistry.getops()) as unknown as string[]
+                    const ops = await bleSession.execute(() => commandRegistry.getops())
+                    if (!ops) {
+                        throw new Error('Failed to get operational parameters from device.')
+                    }
                     const currentId = parseInt(ops[14], 10)
                     const currentVer = parseInt(ops[15], 10)
 
@@ -511,8 +514,8 @@ export const useStartDeployment = ({
                 // No AI model assigned — check if device has a stale model loaded
                 try {
                     await bleSession?.execute(() => commandRegistry.aiver())
-                    const ops = await bleSession?.execute(() => commandRegistry.getops()) as unknown as number[]
-                    const currentId = ops?.[14] ?? 0
+                    const ops = await bleSession?.execute(() => commandRegistry.getops())
+                    const currentId = ops ? parseInt(ops[14], 10) : 0
 
                     if (currentId !== 0) {
                         addFinishLog(`Device has stale model (ID: ${currentId}) — erasing...`)
