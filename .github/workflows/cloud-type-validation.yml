@@ -5,7 +5,14 @@ name: Cloud Type Validation
 
 on:
   pull_request:
-    branches: [main]
+    branches: [dev]
+    paths:
+      - 'src/types/database.types.ts'
+      - 'src/**/*.ts'
+      - 'src/**/*.tsx'
+      - '.github/workflows/cloud-type-validation.yml'
+  push:
+    branches: [dev]
     paths:
       - 'src/types/database.types.ts'
       - 'src/**/*.ts'
@@ -74,7 +81,7 @@ jobs:
         id: compare
         run: |
           echo "Comparing generated types with committed types..."
-          if diff -u src/types/database.types.ts /tmp/cloud-dev-types.ts > /tmp/type-diff.txt; then
+          if diff -u --strip-trailing-cr src/types/database.types.ts /tmp/cloud-dev-types.ts > /tmp/type-diff.txt; then
             echo "✅ Types are synchronized with cloud-dev"
             echo "status=success" >> $GITHUB_OUTPUT
           else
@@ -161,7 +168,7 @@ jobs:
         id: compare
         run: |
           echo "Comparing generated types with committed types..."
-          if diff -u src/types/database.types.ts /tmp/cloud-prod-types.ts > /tmp/type-diff.txt; then
+          if diff -u --strip-trailing-cr src/types/database.types.ts /tmp/cloud-prod-types.ts > /tmp/type-diff.txt; then
             echo "✅ Types are synchronized with staging (cloud-prod)"
             echo "status=success" >> $GITHUB_OUTPUT
           else
