@@ -50,16 +50,18 @@ export const Projects = () => {
 
 	// Refetch when global sync finishes
 	useEffect(() => {
-		if (!isGlobalSyncing) {
+		if (!isGlobalSyncing && userId && organisationId) {
 			forceRefetch()
 		}
-	}, [isGlobalSyncing, forceRefetch])
+	}, [isGlobalSyncing, forceRefetch, userId, organisationId])
 
 	// Refresh on focus
 	useFocusEffect(
 		useCallback(() => {
-			forceRefetch()
-		}, [forceRefetch])
+			if (userId && organisationId) {
+				forceRefetch()
+			}
+		}, [forceRefetch, userId, organisationId])
 	)
 
 	const handleRefresh = useCallback(async () => {
