@@ -2,7 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy'
 import database from '../database'
 import AiModel from '../database/models/AiModel'
 import { getSupabaseClient } from './supabase'
-import { log, logError } from '../utils/logger'
+import { log, logError, logWarn } from '../utils/logger'
 import { base64ToUint8Array } from '../utils/binaryUtils'
 
 const AIMODELS_DIR = FileSystem.documentDirectory + 'aimodels/'
@@ -143,7 +143,7 @@ class AiModelService {
             const model = await database.get<AiModel>('ai_models').find(modelId)
             return model
         } catch (error) {
-            logError(`Failed to find AiModel with ID ${modelId}:`, error)
+            logWarn(`Failed to find AiModel with ID ${modelId}:`, error)
             return null
         }
     }

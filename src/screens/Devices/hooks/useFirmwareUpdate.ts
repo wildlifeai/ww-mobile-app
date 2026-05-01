@@ -497,45 +497,11 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         if (unmountedRef.current) return
 
         // The Himax resets itself after a firmware write — no need to reset
-        // the nRF or drop the BLE connection. Just wait for it to wake back
-        // up with the new firmware. The nRF will forward the Wake signal.
+        // the nRF or drop the BLE connection. When it goes to Sleep, it powers
+        // down completely. Sending 'aiver' will wake it up, effectively booting
+        // the new firmware, so we can verify it immediately without waiting.
         advancePhase('rebooting')
         appendLog('AI processor rebooting with new firmware...')
-        appendLog('This normally takes 6-10 seconds...')
-
-        // Wait for the Himax to complete its reboot cycle (DPD → wake → selftest)
-        // BLE stays connected to the nRF throughout.
-        await new Promise<void>((resolve) => {
-            let resolved = false
-            const done = () => {
-                if (resolved) return
-                resolved = true
-                bleEventBus.removeListener('textLine', onRx)
-                clearTimeout(fallback)
-                resolve()
-            }
-            const onRx = (event: any) => {
-                if (event.type === 'TEXT_LINE' && event.deviceId === device?.id) {
-                    const line: string = event.line
-                    // The nRF sends "Wake" when the Himax comes back up
-                    if (line.includes('Wake') && !line.includes('Wakeup_event')) {
-                        log('[FW Update] Himax woke up after firmware write')
-                        done()
-                    }
-                }
-            }
-            bleEventBus.on('textLine', onRx)
-            // Fallback: if we don't see Wake within 15s, proceed anyway
-            const fallback = setTimeout(() => {
-                log('[FW Update] Wake not received in 15s — proceeding to verify')
-                done()
-            }, 15000)
-        })
-        if (unmountedRef.current) return
-
-        // Give the Himax a moment to finish selftest after waking
-        await new Promise(r => setTimeout(r, 3000))
-        if (unmountedRef.current) return
 
         // Query new version — BLE is still connected, no reconnect needed
         advancePhase('verifying')

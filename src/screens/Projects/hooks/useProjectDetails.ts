@@ -113,7 +113,6 @@ export const useProjectDetails = (projectId: string) => {
 	)
 
 	const aiModelOptions = useMemo(() => [
-		{ label: 'None (no AI identification)', value: '__none__' },
 		...(aiModels?.map(m => ({ label: `${m.name} (${m.version})`, value: m.id })) || []),
 	], [aiModels])
 

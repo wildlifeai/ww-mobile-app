@@ -161,9 +161,20 @@ export const StartMonitoringDetailsStep = () => {
                                 Firmware Update Available
                             </Text>
                         </View>
-                        <Text variant="bodySmall" style={{ color: '#E65100' }}>
+                        <Text variant="bodySmall" style={{ color: '#E65100', marginBottom: 8 }}>
                             One or more firmware components are outdated. We recommend updating them via the Engineer Console for optimal performance, but you may proceed with monitoring.
                         </Text>
+                        <Button
+                            mode="contained"
+                            buttonColor="#E65100"
+                            textColor="#FFFFFF"
+                            onPress={() => {
+                                isDfuInProgress.current = true
+                                navigation.navigate('FirmwareStatusScreen', { deviceId: bleDeviceId! })
+                            }}
+                        >
+                            Update Firmware
+                        </Button>
                     </View>
                 )}
 

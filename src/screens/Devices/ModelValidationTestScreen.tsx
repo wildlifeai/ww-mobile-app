@@ -79,10 +79,13 @@ export const ModelValidationTestScreen = () => {
         fetchModels()
     }, [])
 
-    const modelOptions: Option[] = models.map(m => ({
-        label: `${m.name} (${m.version})`,
-        value: m.id
-    }))
+    const modelOptions: Option[] = [
+        { label: 'No model', value: 'none' },
+        ...models.map(m => ({
+            label: `${m.name} (${m.version})`,
+            value: m.id
+        }))
+    ]
 
     const selectedModel = models.find(m => m.id === selectedModelId)
 
@@ -123,7 +126,11 @@ export const ModelValidationTestScreen = () => {
         dispatch({ type: 'CLEAR_LOGS' })
 
         if (!resolvedFirmwareIds) {
-            addLog('Error: Could not resolve firmware IDs for this model. Sync may be stale.')
+            if (selectedModelId === 'none') {
+                addLog('No model selected. Please select a model to test.')
+            } else {
+                addLog('Error: Could not resolve firmware IDs for this model. Sync may be stale.')
+            }
             dispatch({ type: 'SET_PROCESSING', payload: false })
             return
         }
@@ -145,6 +152,7 @@ export const ModelValidationTestScreen = () => {
 
             // Step 1: Check if the files exist on the SD card
             addLog("Step 1: Checking SD card for existing files...")
+            
             const files = await session.execute(commandRegistry.dir) as string[]
             const hasTfl = files.some(f => f.toUpperCase().includes(tflFilename.toUpperCase()))
             const hasLabels = files.some(f => f.toUpperCase().includes(labelsFilename.toUpperCase()))

@@ -415,9 +415,9 @@ export const commandRegistry = {
   loadmodel: createSingleLineCommand<boolean>(
     'loadmodel',
     (id: number, ver: number) => `AI loadmodel ${id} ${ver}`,
-    /Loaded/i,
+    /(Loaded|Updated OK)/i,
     () => true,
-    { timeoutMs: 30000, failureRegex: /Error loading/i }
+    { timeoutMs: 30000, failureRegex: /Error loading|Update failed/i }
   ),
 
   camera_type: createSingleLineCommand<string>(

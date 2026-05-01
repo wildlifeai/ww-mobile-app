@@ -213,12 +213,12 @@ if (pending_slot.occupied) {
 6. Compare the `avg` round-trip time with Stop-and-Wait mode
 7. **Expected improvement:** ~30–50% faster per-packet average
 
-### Test 3: Latency Benchmark
+### Test 3: BLE Loopback Benchmark
 
-1. Select **Stop-and-Wait** mode
-2. Tap **Run Benchmark** — runs 5 rounds of TINY.TXT
-3. Note the average/min/max times
-4. These numbers represent the baseline BLE round-trip
+1. Tap **Run Benchmark** — sends FILE_LOOPBACK packets (type 10) at 3 payload sizes (5, 100, 241 bytes)
+2. The device should echo each packet immediately — no I2C or SD card involvement
+3. Results are grouped by payload size, showing avg/min/max round-trip times
+4. **⚠️ Currently blocked:** The nRF52 firmware recognises FILE_LOOPBACK but does not send the echo response. All benchmark rounds will time out until firmware implements the echo. See Questions section.
 
 ### Test 4: Error Recovery
 
@@ -267,8 +267,28 @@ All packets use the existing binary format over the BLE UART service:
 | `0x07` | FILE_START | filename (8.3, null-padded) + file size (4 bytes LE) |
 | `0x08` | FILE_DATA | packet number (1 byte) + chunk data (up to 241 bytes) |
 | `0x09` | FILE_END | CRC-16-CCITT (2 bytes LE) |
+| `0x0A` | FILE_LOOPBACK | arbitrary payload — device should echo back immediately (see below) |
 
 Wire packet numbers: 1–255, wrap back to 1 (never 0).
+
+### FILE_LOOPBACK (Packet Type 10)
+
+Per the app developer spec, FILE_LOOPBACK is a BLE speed test diagnostic. The app sends:
+
+```
+Byte 0:  10  (FILE_LOOPBACK)
+Byte 1:  sequence number (app-defined, for tracking)
+Byte 2:  payload length
+Bytes 3+: arbitrary payload
+```
+
+The device should echo the entire packet back as a binary notification (using `0x06` framing),
+without involving I2C or the AI processor. No `ftx ack` string should be sent.
+
+**Current status (2026-04-29):** The nRF52 firmware **receives** FILE_LOOPBACK packets
+(logs show `BLE fileTx LOOPBACK N bytes`) but does **not send the echo response**.
+The loopback benchmark in the mobile app times out on all attempts. This is a ~5-line
+firmware change — see "Required firmware action" in the Questions section.
 
 ---
 
@@ -424,3 +444,19 @@ void handle_ftx_error(void) {
 5. **nRF52 I2C gating:** Is the nRF52 currently blocking on I2C ACK before forwarding the next BLE packet? If so, removing this gate is required for sliding window mode.
 
 6. **SD card init on wake:** When waking from DPD to handle FILE_START, how long does the SD card subsystem take to initialise? Benchmark shows ~700-1050ms for a cold FILE_START ACK.
+
+7. **FILE_LOOPBACK echo (new):** The nRF52 firmware receives FILE_LOOPBACK packets (`BLE fileTx LOOPBACK N bytes` in logs) but does not send the echo response. The mobile app has a ready-to-use benchmark that tests pure BLE round-trip latency at 3 payload sizes. To enable it, the nRF52 needs to echo the received packet back via NUS TX wrapped in `0x06` binary framing:
+
+   ```c
+   // In fileTx.c, handle_loopback() or equivalent:
+   case FILE_LOOPBACK:
+       // Echo the entire received packet back as a binary notification
+       // Wrap in 0x06 framing: [0x06, seqNum, payloadLen, ...payload]
+       uint8_t echo_buf[3 + payload_len];
+       echo_buf[0] = 0x06;           // binary marker
+       echo_buf[1] = pkt_num;        // sequence number from received packet
+       echo_buf[2] = payload_len;    // payload length
+       memcpy(&echo_buf[3], payload, payload_len);
+       nus_send(echo_buf, 3 + payload_len);
+       break;
+   ```

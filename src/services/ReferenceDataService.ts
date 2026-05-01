@@ -298,6 +298,7 @@ class ReferenceDataService {
                     })
                 } else {
                     await collection.create(rec => {
+                        (rec._raw as any).id = row.id
                         rec.serverId = row.id
                         rec.name = row.name
                         rec.version = row.version
