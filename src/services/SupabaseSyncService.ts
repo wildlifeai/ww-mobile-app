@@ -389,6 +389,35 @@ class SupabaseSyncService {
                 })
             }
 
+            // FK GUARD: Validate project model_id references exist in cloud ai_models
+            if (tableName === 'projects') {
+                for (const opType of ['created', 'updated'] as const) {
+                    const records = changes.projects?.[opType] as any[] | undefined
+                    if (!records) continue
+                    for (const record of records) {
+                        if (record.model_id) {
+                            const { data: modelExists } = await client
+                                .from('ai_models')
+                                .select('id')
+                                .eq('id', record.model_id)
+                                .maybeSingle()
+                            if (!modelExists) {
+                                log(`🔧 Nulling stale model_id ${record.model_id} on project ${record.id} (not found in cloud)`)
+                                record.model_id = null
+                                // Also update the local WatermelonDB record
+                                try {
+                                    const projectsCollection = database.get<Project>('projects')
+                                    const localProject = await projectsCollection.find(record.id)
+                                    await database.write(async () => {
+                                        await localProject.update(p => { p.modelId = null })
+                                    })
+                                } catch (e) { /* local record may not exist */ }
+                            }
+                        }
+                    }
+                }
+            }
+
             try {
                 const { data, error } = await (client as any).rpc('push_changes', { changes })
 
