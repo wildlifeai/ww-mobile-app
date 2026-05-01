@@ -247,6 +247,10 @@ export const StartMonitoringDetailsStep = () => {
                     theme={theme}
                     onShowHelp={showHelp}
                     firmwareStatus={firmwareStatus}
+                    onUpdateFirmware={(target) => {
+                        const id = bleDevice?.id || deviceId
+                        if (id) navigation.navigate('FirmwareUpdateScreen', { deviceId: id, target })
+                    }}
                 />
 
                 <View style={styles.footer}>

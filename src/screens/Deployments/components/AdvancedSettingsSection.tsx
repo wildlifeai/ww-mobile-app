@@ -33,6 +33,7 @@ interface AdvancedSettingsSectionProps {
     theme: any
     onShowHelp: (title: string, content: string) => void
     firmwareStatus: UseFirmwareStatusReturn
+    onUpdateFirmware?: (target: 'ble' | 'himax') => void
 }
 
 export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = ({
@@ -54,7 +55,8 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
     bleDeviceConnected,
     theme,
     onShowHelp,
-    firmwareStatus
+    firmwareStatus,
+    onUpdateFirmware
 }) => {
     const [expanded, setExpanded] = useState(false)
 
@@ -199,6 +201,7 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                     firmwareStatus={firmwareStatus}
                     theme={theme}
                     onShowHelp={onShowHelp}
+                    onUpdateFirmware={onUpdateFirmware}
                 />
 
                 </View>
