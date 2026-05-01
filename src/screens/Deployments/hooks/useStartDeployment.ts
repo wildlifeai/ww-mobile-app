@@ -749,6 +749,8 @@ export const useStartDeployment = ({
         locationName, setLocationName, availableLocations, isCustomLocation, setIsCustomLocation,
         // Advanced Settings Exports
         batteryLevel, sdCardStatus,
-        handleBatteryCheck, handleSdCardCheck
+        handleBatteryCheck, handleSdCardCheck,
+        // DFU control
+        isDfuInProgress,
     }
 }

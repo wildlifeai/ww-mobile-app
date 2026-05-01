@@ -394,31 +394,39 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         // 5. Flash via Nordic DFU
         advancePhase('flashing')
-        appendLog('Flashing firmware...')
+        appendLog('Flashing firmware via Nordic DFU...')
+        let lastMilestone = 0
         await DfuService.startDFU(bootloaderAddr, localUri, (progress: number) => {
             if (!unmountedRef.current) setDfuProgress(progress)
-            if (progress > 95) appendLog('Finalizing...')
+            // Log at 25% milestones for user visibility
+            const milestone = Math.floor(progress / 25) * 25
+            if (milestone > lastMilestone && milestone <= 100) {
+                lastMilestone = milestone
+                appendLog(`DFU progress: ${milestone}%`)
+            }
         })
 
         setDfuProgress(100)
+        appendLog('DFU transfer complete.')
 
         // 6. Reboot and reconnect
         advancePhase('rebooting')
-        appendLog('Device rebooting...')
+        appendLog('Device rebooting with new firmware...')
         await new Promise(r => setTimeout(r, 6000))
 
         advancePhase('reconnecting')
-        appendLog('Reconnecting...')
+        appendLog('Scanning for device after reboot...')
         const foundId = await scanForOriginalDevice(device.id, 20000)
         if (!foundId) throw new Error('Device not found after DFU reboot.')
 
-        appendLog('Connecting...')
+        appendLog('Device found. Reconnecting...')
         await connectDevice({ ...device, connected: false } as ExtendedPeripheral, 20000)
+        appendLog('Reconnected successfully.')
         await new Promise(r => setTimeout(r, 2000))
 
         // 7. Verify
         advancePhase('verifying')
-        appendLog('Checking new version...')
+        appendLog('Querying new firmware version...')
         try {
             const session = createBleSession(device)
             const ver = await session.execute(() => commandRegistry.version())
@@ -426,6 +434,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             appendLog(`New version: ${ver}`)
         } catch (e) {
             logWarn('[FW Update] Post-DFU version query failed:', e)
+            appendLog('Version query failed — check manually.')
         }
 
         advancePhase('complete')

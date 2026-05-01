@@ -49,6 +49,8 @@ export const StartMonitoringDetailsStep = () => {
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
         isMonitoring, handleMonitorDisconnect,
+        // DFU control
+        isDfuInProgress,
     } = useStartDeployment({ deviceId, bleDeviceId, projectId, navigation, initPayload })
 
     useEffect(() => {
@@ -58,6 +60,16 @@ export const StartMonitoringDetailsStep = () => {
         }
         navigation.setOptions({ title })
     }, [device?.name, bleDevice?.name, navigation, isMonitoring])
+
+    // Reset DFU flag when this screen regains focus (after returning from FirmwareUpdateScreen)
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            if (isDfuInProgress.current) {
+                isDfuInProgress.current = false
+            }
+        })
+        return unsubscribe
+    }, [navigation, isDfuInProgress])
 
     const firmwareStatus = useFirmwareStatus({ 
         device: (device || bleDevice) as ExtendedPeripheral | undefined 
@@ -249,7 +261,11 @@ export const StartMonitoringDetailsStep = () => {
                     firmwareStatus={firmwareStatus}
                     onUpdateFirmware={(target) => {
                         const id = bleDevice?.id || deviceId
-                        if (id) navigation.navigate('FirmwareUpdateScreen', { deviceId: id, target })
+                        if (id) {
+                            // Suppress the disconnect alert during BLE DFU
+                            isDfuInProgress.current = true
+                            navigation.navigate('FirmwareUpdateScreen', { deviceId: id, target })
+                        }
                     }}
                 />
 
