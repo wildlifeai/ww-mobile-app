@@ -9,6 +9,14 @@ const HEADER_SIZE = 3;
 class RxRouter {
   private mainBuffers: Record<string, Buffer> = {};
   private textBuffers: Record<string, Buffer> = {};
+  private flushTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+  /**
+   * Time in ms to wait after the last received bytes before flushing
+   * undrained text. Short enough to not feel like a delay, long enough
+   * to allow MTU-fragmented chunks to reassemble.
+   */
+  private static readonly FLUSH_DEBOUNCE_MS = 50;
 
   public handleIncomingBytes(deviceId: string, data: number[] | Uint8Array) {
     const chunk = Buffer.from(data);
@@ -21,6 +29,18 @@ class RxRouter {
     this.mainBuffers[deviceId] = Buffer.concat([this.mainBuffers[deviceId], chunk]);
     log(`[RxRouter] handleIncomingBytes: ${chunk.toString('hex')}`)
     this.processBuffer(deviceId);
+
+    // BLE notification boundary flush (debounced):
+    // The firmware sends each response as a separate BLE notification WITHOUT line
+    // terminators (\n, \r, \0). When the text buffer has content that never drains,
+    // we flush it after a brief idle period. The debounce prevents premature flushing
+    // of MTU-fragmented chunks that arrive as rapid successive notifications.
+    if (this.flushTimers[deviceId]) {
+      clearTimeout(this.flushTimers[deviceId]);
+    }
+    this.flushTimers[deviceId] = setTimeout(() => {
+      this.flushStaleTextBuffer(deviceId);
+    }, RxRouter.FLUSH_DEBOUNCE_MS);
   }
 
   private processBuffer(deviceId: string) {
@@ -144,7 +164,34 @@ class RxRouter {
     bleEventBus.emitEvent({ type: 'TEXT_LINE', line, deviceId, ts });
   }
 
+  /**
+   * Flushes any stale text remaining in the text buffer after the debounce period.
+   * Called by the flush timer when no new bytes arrive within FLUSH_DEBOUNCE_MS.
+   */
+  private flushStaleTextBuffer(deviceId: string) {
+    const textBuffer = this.textBuffers[deviceId];
+    if (!textBuffer || textBuffer.length === 0) return;
+
+    // Only flush if there's no pending split character (i.e., a complete but unterminated line)
+    if (this.findSplitIndex(textBuffer) !== -1) {
+      // There's a split character — drain normally instead
+      this.textBuffers[deviceId] = this.drainTextBuffer(deviceId, textBuffer);
+      return;
+    }
+
+    const line = textBuffer.toString('utf-8').replace(/[\r\n\0]+/g, '');
+    this.textBuffers[deviceId] = Buffer.alloc(0);
+    if (line.trim().length > 0) {
+      log(`[RxRouter] Flushing stale text buffer: "${line}"`);
+      this.classifyAndEmitText(deviceId, line);
+    }
+  }
+
   public clearBuffer(deviceId: string) {
+    if (this.flushTimers[deviceId]) {
+      clearTimeout(this.flushTimers[deviceId]);
+      delete this.flushTimers[deviceId];
+    }
     delete this.mainBuffers[deviceId];
     delete this.textBuffers[deviceId];
   }

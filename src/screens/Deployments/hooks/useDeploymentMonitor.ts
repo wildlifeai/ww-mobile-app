@@ -37,13 +37,14 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
 
     // 1. Poll IMAGES_COUNT from device periodically
     useEffect(() => {
-        if (!device || !device.connected) return
+        if (!device?.id || !device?.connected) return
 
         let isMounted = true
+        const deviceRef = device
 
         const fetchImageCount = async () => {
             try {
-                const session = createBleSession(device)
+                const session = createBleSession(deviceRef)
                 const value = await session.execute(() => commandRegistry.getop(OP_PARAMETER.IMAGES_COUNT))
                 if (value !== null && isMounted) {
                     const count = parseInt(value, 10)
@@ -56,17 +57,20 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
             }
         }
 
-        // Initial fetch
-        fetchImageCount()
+        // Initial fetch after a short delay to let device settle into DPD first
+        const initialTimeout = setTimeout(fetchImageCount, 5000)
 
-        // Set up polling
+        // Set up polling at the configured interval
         const intervalId = setInterval(fetchImageCount, IMAGE_COUNT_POLL_INTERVAL_MS)
 
         return () => {
             isMounted = false
+            clearTimeout(initialTimeout)
             clearInterval(intervalId)
         }
-    }, [device, device?.connected])
+    // Use stable references to avoid re-triggering on every Redux device update
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [device?.id, device?.connected])
 
     // 2. Track time active
     useEffect(() => {

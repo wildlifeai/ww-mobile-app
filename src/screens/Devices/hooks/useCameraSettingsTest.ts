@@ -50,6 +50,7 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     const currentParamsRef = useRef(cameraParams)
     const currentTestModeBitsRef = useRef(testModeBits)
     const currentAeDataRef = useRef(aeData)
+    const pendingCameraDisableRef = useRef(false)
 
     useEffect(() => { currentParamsRef.current = cameraParams }, [cameraParams])
     useEffect(() => { currentTestModeBitsRef.current = testModeBits }, [testModeBits])
@@ -62,7 +63,18 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             testModeBits: currentTestModeBitsRef.current,
             aeData: currentAeDataRef.current
         }, ...prev])
-    }, [])
+
+        // Disable camera AFTER the image download is complete.
+        // Previously this was done inline in applyAndCapture() but that
+        // sent setop 10 0 while the binary image was still streaming,
+        // causing a TIMEOUT error on the command response.
+        if (pendingCameraDisableRef.current && device) {
+            pendingCameraDisableRef.current = false
+            const session = createBleSession(device)
+            session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAMERA_ENABLED, value: 0 }))
+                .catch(e => logError('[CameraSettingsTest] Failed to disable camera after capture:', e))
+        }
+    }, [device])
     
     const handleCaptureError = useCallback((e: Error) => {
         logError('[CameraSettingsTest] Capture failed:', e)
@@ -87,16 +99,35 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
         const messageListener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
             if (!device || event.deviceId !== device.id) return;
             const msg = event.line;
-            const match = msg.match(/Integration time\s*=\s*(\d+)\s*lines[\s\S]*?Analog gain\s*=\s*(\d+)[\s\S]*?Digital gain\s*=\s*(\d+)[\s\S]*?AE Mean\s*=\s*(\d+)[\s\S]*?AEConverged\?:\s*(Y|N)/i)
-            if (match) {
-                setAeData({
-                    integration: match[1],
-                    analogGain: match[2],
-                    digitalGain: match[3],
-                    aeMean: match[4],
-                    aeConverged: match[5]
-                })
-            }
+            
+            setAeData(prev => {
+                const newData = { ...(prev || {
+                    integration: '',
+                    analogGain: '',
+                    digitalGain: '',
+                    aeMean: '',
+                    aeConverged: ''
+                }) }
+                
+                let updated = false;
+
+                const intMatch = msg.match(/Integration time\s*=\s*(\d+)/i)
+                if (intMatch) { newData.integration = intMatch[1]; updated = true; }
+
+                const agMatch = msg.match(/Analog gain\s*=\s*(\d+)/i)
+                if (agMatch) { newData.analogGain = agMatch[1]; updated = true; }
+
+                const dgMatch = msg.match(/Digital gain\s*=\s*(\d+)/i)
+                if (dgMatch) { newData.digitalGain = dgMatch[1]; updated = true; }
+
+                const aeMatch = msg.match(/AE Mean\s*=\s*(\d+)/i)
+                if (aeMatch) { newData.aeMean = aeMatch[1]; updated = true; }
+
+                const convMatch = msg.match(/AEConverged\?:\s*(Y|N)/i)
+                if (convMatch) { newData.aeConverged = convMatch[1]; updated = true; }
+
+                return updated ? newData as AEData : prev;
+            });
         }
         bleEventBus.on('textLine', messageListener)
         return () => { bleEventBus.removeListener('textLine', messageListener); }
@@ -140,10 +171,11 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             // 3. Trigger capture via the standard capture flow.
             //    startCapture enables the camera (setop 10 1), waits for DPD,
             //    then issues 'AI capture 1 1000'.
+            //    NOTE: startCapture resolves after txfile is acknowledged, NOT
+            //    after the binary download completes. Camera disable is deferred
+            //    to handleImageReceived to avoid sending commands during transfer.
+            pendingCameraDisableRef.current = true
             await capturePreview.startCapture(1, 1000)
-
-            const postSession = createBleSession(device);
-            await postSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAMERA_ENABLED, value: 0 }))
 
         } catch (e) {
             logError('[CameraSettingsTest] Error applying params or capturing:', e)

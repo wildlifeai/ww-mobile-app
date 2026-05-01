@@ -2,7 +2,7 @@
  * Packet builders for the BLE file transfer protocol.
  *
  * Packet format (3-byte header + payload):
- *   Byte 0: packet type (7=START, 8=DATA, 9=END)
+ *   Byte 0: packet type (7=START, 8=DATA, 9=END, 10=LOOPBACK)
  *   Byte 1: packet number
  *   Byte 2: payload length
  *   Byte 3+: payload
@@ -10,7 +10,7 @@
  * Maximum total packet size: 244 bytes (BLE MTU limit).
  */
 
-import { FILE_START, FILE_DATA, FILE_END } from './fileTransferTypes'
+import { FILE_START, FILE_DATA, FILE_END, FILE_LOOPBACK } from './fileTransferTypes'
 
 function buildPacket(type: number, pktNum: number, payload: Uint8Array): Uint8Array {
   const packet = new Uint8Array(3 + payload.length)
@@ -56,4 +56,18 @@ export function buildFileEndPacket(crc: number): Uint8Array {
   const payload = new Uint8Array(2)
   new DataView(payload.buffer).setUint16(0, crc, true) // little-endian
   return buildPacket(FILE_END, 0, payload)
+}
+
+/**
+ * Build a FILE_LOOPBACK packet for BLE round-trip latency measurement.
+ *
+ * The device echoes the entire packet back as a binary notification
+ * WITHOUT involving I2C or the AI processor. No `ftx ack` string is sent.
+ * Loopback packets are always accepted regardless of transfer state.
+ *
+ * @param seqNum   Sequence number for tracking (0–255)
+ * @param payload  Arbitrary payload (device echoes it back unchanged)
+ */
+export function buildFileLoopbackPacket(seqNum: number, payload: Uint8Array): Uint8Array {
+  return buildPacket(FILE_LOOPBACK, seqNum, payload)
 }

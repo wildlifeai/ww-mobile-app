@@ -92,7 +92,7 @@ export const useProjectDetails = (projectId: string) => {
 			capture_method_id: project.capture_method_id?.toString() || "",
 			activity_detection_sensitivity_id: project.activity_detection_sensitivity_id?.toString() || "",
 			timelapse_interval_seconds: project.timelapse_interval_seconds?.toString() || "",
-			model_id: project.model_id || "",
+			model_id: project.model_id || "__none__",
 			is_archived: project.is_archived || project.is_active === false,
 			lorawan_required: project.lorawan_required || false,
 		} : undefined,
@@ -112,10 +112,9 @@ export const useProjectDetails = (projectId: string) => {
 		[activitySensitivities]
 	)
 
-	const aiModelOptions = useMemo(() =>
-		aiModels?.map(m => ({ label: `${m.name} (${m.version})`, value: m.id })) || [],
-		[aiModels]
-	)
+	const aiModelOptions = useMemo(() => [
+		...(aiModels?.map(m => ({ label: `${m.name} (${m.version})`, value: m.id })) || []),
+	], [aiModels])
 
 	const samplingDesignOptions = useMemo(() =>
 		samplingDesigns?.map(sd => ({ label: sd.value, value: sd.id.toString() })) || [],
@@ -162,7 +161,7 @@ export const useProjectDetails = (projectId: string) => {
 							capture_method_id: data.capture_method_id ? Number(data.capture_method_id) : null,
 							activity_detection_sensitivity_id: data.activity_detection_sensitivity_id ? Number(data.activity_detection_sensitivity_id) : null,
 							timelapse_interval_seconds: data.timelapse_interval_seconds ? Number(data.timelapse_interval_seconds) : null,
-							model_id: data.model_id || null,
+							model_id: (data.model_id && data.model_id !== '__none__') ? data.model_id : null,
 							is_active: !data.is_archived,
 							is_archived: data.is_archived,
 							lorawan_required: data.lorawan_required,

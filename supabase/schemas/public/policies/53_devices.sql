@@ -1,6 +1,5 @@
 -- *** Devices RLS Policies ***
--- UPDATED: 2026-03-27 - Deprecated device_preparation (Phase 1)
--- Now joins deployments via device_id natively
+-- Joins deployments via device_id natively
 
 -- SELECT: Project members can view devices linked to their projects via deployments
 CREATE POLICY "Project members can view active devices"
@@ -63,4 +62,4 @@ CREATE POLICY "Organisation managers can soft-delete devices"
   );
 
 COMMENT ON POLICY "Project members can view active devices" ON devices
-IS 'Updated 2025-11-27: Uses user_roles and device_preparation for project/organisation association';
+IS 'Uses user_roles and deployments for project/organisation association';

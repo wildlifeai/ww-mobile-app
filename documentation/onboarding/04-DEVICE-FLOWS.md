@@ -27,8 +27,7 @@ flowchart TD
     G -- No --> H["Show 'No Projects' dialog"]
     H --> I["Route → Create Project"]
     G -- Yes --> J["Look up last project used"]
-    J --> K["Auto-create background prep record"]
-    K --> L["Route → Start Deployment"]
+    J --> L["Route → Start Deployment"]
 ```
 
 ### ScannerRoutingDialog States
@@ -63,8 +62,7 @@ The **Engineer Console** is accessible via the hamburger menu in the side drawer
 flowchart TD
     A["Device Discovery & BLE Connect"] --> B{"Device Routing Logic"}
     B -- "Already deployed" --> C["Active Deployment routing"]
-    B -- "Ready or New" --> D["Auto-create prep record"]
-    D --> E["StartMonitoringDetailsStep Screen"]
+    B -- "Ready or New" --> E["StartMonitoringDetailsStep Screen"]
     
     E --> F["BLE Initialization (shared hook)"]
     F --> G["Load Device & Project Data"]
@@ -207,7 +205,7 @@ All three flows use the **bulk parameter fetch** command `AI getop -1` to minimi
 
 **Key files:**
 - [types.ts](../../src/ble/types.ts) — `getop_all` command definition (requires both `readCommand` and `writeCommand`)
-- [useBleCommands.ts](../../src/hooks/useBleCommands.ts) — `getAllOperationalParams()` function
+- [useBleSession.ts](../../src/hooks/useBleSession.ts) — `session.execute(commandRegistry.getops)` replaces the former `getAllOperationalParams()`
 - [useDeviceSettings.ts](../../src/hooks/useDeviceSettings.ts) — `quiesceDevice(cachedOps?)` accepts cached ops
 - [useDeploymentConfiguration.ts](../../src/hooks/useDeploymentConfiguration.ts) — `configure()` fetches once for both deployment ID and capture method
 
@@ -290,5 +288,5 @@ They are accessed directly via the **Engineer Console** (`EngineerConsoleScreen.
 > [!NOTE]
 > The flash LED hardware is driven by the Himax AI processor (HX6538), not the nRF52 (WW500). The nRF only stores and forwards the OP values — the Himax reads them from CONFIG.TXT during the capture wake cycle.
 
-*Last Updated: April 13, 2026*
+*Last Updated: April 26, 2026*
 

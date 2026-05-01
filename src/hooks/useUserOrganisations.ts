@@ -18,6 +18,7 @@ import {
 	UserOrganisation,
 } from "../redux/slices/authSlice"
 import { projectsApi } from "../redux/api/projectsApi"
+import SupabaseSyncService from "../services/SupabaseSyncService"
 
 export const useUserOrganisations = () => {
 	const dispatch = useAppDispatch()
@@ -50,6 +51,11 @@ export const useUserOrganisations = () => {
 
 			// Clear RTK Query cache to refetch data for new organisation
 			dispatch(projectsApi.util.resetApiState())
+
+			// Trigger a database sync to pull down data for the new organisation (e.g. AI Models)
+			SupabaseSyncService.sync().catch(err => {
+				console.warn("Failed to sync after switching organisations:", err)
+			})
 
 			return targetOrg
 		},

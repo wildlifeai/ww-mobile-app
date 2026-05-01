@@ -2,7 +2,7 @@ export { runFileTransferPipeline } from './runFileTransferPipeline'
 export { crc16ccitt } from './crc16ccitt'
 export { isValid83Filename } from './filenameValidator'
 export { matchAck, logIgnoredAck } from './ackMatcher'
-export { buildFileStartPacket, buildFileDataPacket, buildFileEndPacket } from './fileTransferPackets'
+export { buildFileStartPacket, buildFileDataPacket, buildFileEndPacket, buildFileLoopbackPacket } from './fileTransferPackets'
 export type {
   FileTransferOptions,
   FileTransferResult,

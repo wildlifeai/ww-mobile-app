@@ -6,9 +6,11 @@ import { createBleSession } from '../../../ble/session/createBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { bleEventBus } from '../../../ble/protocol/eventBus'
 import { DfuService } from '../../../services/DfuService'
-import FirmwareService from '../../../services/FirmwareService'
+import FirmwareService, { DownloadState, DownloadProgressData } from '../../../services/FirmwareService'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Firmware from '../../../database/models/Firmware'
+import { runFileTransferPipeline } from '../../../ble/protocol/fileTransfer'
+import { FileTransferProgress } from '../../../ble/protocol/fileTransfer/fileTransferTypes'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useBle } from '../../../hooks/useBle'
 import { log, logError, logWarn } from '../../../utils/logger'
@@ -26,6 +28,7 @@ export type UpdatePhase =
     | 'downloading'    // BLE only: downloading .zip from Supabase
     | 'entering_dfu'   // BLE only: sending `dfu` command
     | 'scanning'       // BLE only: scanning for DfuTarg bootloader
+    | 'transferring'   // Himax only: transferring firmware via BLE file transfer
     | 'sending'        // Himax only: sending aifirmware command
     | 'waking'         // Himax only: AI processor waking
     | 'flashing'       // DFU in progress / Himax writing
@@ -41,8 +44,9 @@ const PHASE_PROGRESS: Record<UpdatePhase, number> = {
     downloading: 0.08,
     entering_dfu: 0.12,
     scanning: 0.18,
-    sending: 0.05,
-    waking: 0.10,
+    transferring: 0.50,
+    sending: 0.52,
+    waking: 0.55,
     flashing: 0.60,
     rebooting: 0.82,
     reconnecting: 0.90,
@@ -57,6 +61,7 @@ const BLE_PHASE_LABELS: Record<UpdatePhase, string> = {
     downloading: 'Downloading firmware package...',
     entering_dfu: 'Entering DFU mode...',
     scanning: 'Scanning for bootloader...',
+    transferring: '',
     sending: '',
     waking: '',
     flashing: 'Flashing firmware...',
@@ -70,13 +75,14 @@ const BLE_PHASE_LABELS: Record<UpdatePhase, string> = {
 const HIMAX_PHASE_LABELS: Record<UpdatePhase, string> = {
     idle: 'Ready to update.',
     preflight: 'Running pre-flight checks...',
-    downloading: '',
+    downloading: 'Downloading firmware package...',
     entering_dfu: '',
     scanning: '',
+    transferring: 'Transferring firmware to SD card...',
     sending: 'Sending firmware update command...',
-    waking: 'Waking AI processor & running selftest...',
+    waking: 'AI processor waking up...',
     flashing: 'Writing firmware to flash...',
-    rebooting: 'Rebooting device...',
+    rebooting: 'Rebooting AI processor (takes 6-10s)...',
     reconnecting: 'Reconnecting to device...',
     verifying: 'Verifying new firmware version...',
     complete: 'Update complete!',
@@ -163,6 +169,12 @@ function scanForOriginalDevice(deviceId: string, timeoutMs = 20000): Promise<str
 // Hook
 // ────────────────────────────────────────────────────────────────────
 
+export type HimaxFirmwareSource = 'sdcard' | 'download'
+
+export interface StartUpdateOptions {
+    himaxSource?: HimaxFirmwareSource
+}
+
 interface UseFirmwareUpdateOptions {
     target: FirmwareTarget
     device: ExtendedPeripheral | undefined
@@ -171,12 +183,17 @@ interface UseFirmwareUpdateOptions {
 export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) {
     const { connectDevice, disconnectDevice } = useBle()
 
-    // State
     const [phase, setPhase] = useState<UpdatePhase>('idle')
     const [dfuProgress, setDfuProgress] = useState(0) // 0-100 for BLE DFU
+    const [fileTransferProgress, setFileTransferProgress] = useState<FileTransferProgress | null>(null)
     const [isUpdating, setIsUpdating] = useState(false)
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
     const [progressLogs, setProgressLogs] = useState<string[]>([])
+
+    const [downloadState, setDownloadState] = useState<DownloadState>('idle')
+    const [downloadProgress, setDownloadProgress] = useState<DownloadProgressData | null>(null)
+    
+    const abortControllerRef = useRef<AbortController | null>(null)
 
     // Pre-flight
     const [batteryLevel, setBatteryLevel] = useState<number | null>(null)
@@ -195,15 +212,18 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     // Phase advancement (forward-only, except to failed)
     const advancePhase = useCallback((newPhase: UpdatePhase) => {
         const ordering: UpdatePhase[] = [
-            'idle', 'preflight', 'downloading', 'entering_dfu', 'scanning',
+            'idle', 'preflight', 'downloading', 'entering_dfu', 'scanning', 'transferring',
             'sending', 'waking', 'flashing', 'rebooting', 'reconnecting',
             'verifying', 'complete',
         ]
         const currentIdx = ordering.indexOf(phaseRef.current)
         const newIdx = ordering.indexOf(newPhase)
         if (newPhase === 'failed' || newIdx > currentIdx) {
+            log(`[FW Update] Phase: ${phaseRef.current} → ${newPhase}`)
             phaseRef.current = newPhase
             if (!unmountedRef.current) setPhase(newPhase)
+        } else {
+            log(`[FW Update] Phase advance BLOCKED: ${phaseRef.current} → ${newPhase} (not forward)`)
         }
     }, [])
 
@@ -324,7 +344,16 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         appendLog('Downloading firmware package...')
 
         if (!latestFirmware) throw new Error('No firmware available for download. Sync reference data first.')
-        const localUri = await FirmwareService.ensureFirmwareDownloaded(latestFirmware)
+        
+        const localUri = await FirmwareService.ensureFirmwareDownloaded(latestFirmware, {
+            signal: abortControllerRef.current?.signal,
+            onStateChange: (state) => {
+                if (!unmountedRef.current) setDownloadState(state)
+            },
+            onProgress: (data) => {
+                if (!unmountedRef.current) setDownloadProgress(data)
+            }
+        })
         appendLog(`Downloaded: ${latestFirmware.version}`)
 
         // 2. Enter DFU mode
@@ -365,31 +394,39 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         // 5. Flash via Nordic DFU
         advancePhase('flashing')
-        appendLog('Flashing firmware...')
-        await DfuService.startDFU(bootloaderAddr, localUri, (progress) => {
+        appendLog('Flashing firmware via Nordic DFU...')
+        let lastMilestone = 0
+        await DfuService.startDFU(bootloaderAddr, localUri, (progress: number) => {
             if (!unmountedRef.current) setDfuProgress(progress)
-            if (progress > 95) appendLog('Finalizing...')
+            // Log at 25% milestones for user visibility
+            const milestone = Math.floor(progress / 25) * 25
+            if (milestone > lastMilestone && milestone <= 100) {
+                lastMilestone = milestone
+                appendLog(`DFU progress: ${milestone}%`)
+            }
         })
 
         setDfuProgress(100)
+        appendLog('DFU transfer complete.')
 
         // 6. Reboot and reconnect
         advancePhase('rebooting')
-        appendLog('Device rebooting...')
+        appendLog('Device rebooting with new firmware...')
         await new Promise(r => setTimeout(r, 6000))
 
         advancePhase('reconnecting')
-        appendLog('Reconnecting...')
+        appendLog('Scanning for device after reboot...')
         const foundId = await scanForOriginalDevice(device.id, 20000)
         if (!foundId) throw new Error('Device not found after DFU reboot.')
 
-        appendLog('Connecting...')
+        appendLog('Device found. Reconnecting...')
         await connectDevice({ ...device, connected: false } as ExtendedPeripheral, 20000)
+        appendLog('Reconnected successfully.')
         await new Promise(r => setTimeout(r, 2000))
 
         // 7. Verify
         advancePhase('verifying')
-        appendLog('Checking new version...')
+        appendLog('Querying new firmware version...')
         try {
             const session = createBleSession(device)
             const ver = await session.execute(() => commandRegistry.version())
@@ -397,6 +434,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             appendLog(`New version: ${ver}`)
         } catch (e) {
             logWarn('[FW Update] Post-DFU version query failed:', e)
+            appendLog('Version query failed — check manually.')
         }
 
         advancePhase('complete')
@@ -404,8 +442,45 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
     // ── Himax flow ─────────────────────────────────────────────────
 
-    const runHimaxUpdate = useCallback(async () => {
+    const runHimaxUpdate = useCallback(async (source: HimaxFirmwareSource = 'sdcard') => {
         if (!device?.connected) throw new Error('Device disconnected.')
+
+        if (source === 'download') {
+            if (!latestFirmware) throw new Error('No firmware available for download. Sync reference data first.')
+            
+            // 1. Download firmware
+            advancePhase('downloading')
+            appendLog('Downloading firmware package...')
+            const localUri = await FirmwareService.ensureFirmwareDownloaded(latestFirmware, {
+                signal: abortControllerRef.current?.signal,
+                onStateChange: (state) => {
+                    if (!unmountedRef.current) setDownloadState(state)
+                },
+                onProgress: (data) => {
+                    if (!unmountedRef.current) setDownloadProgress(data)
+                }
+            })
+            appendLog(`Downloaded: ${latestFirmware.version}`)
+
+            // 2. Transfer firmware to SD card
+            advancePhase('transferring')
+            appendLog('Transferring firmware to device SD card...')
+            const configBytes = await FirmwareService.readFirmwareAsBytes(localUri)
+            
+            if (configBytes) {
+                await runFileTransferPipeline(device, {
+                    filename: 'OUTPUT.IMG',
+                    data: configBytes,
+                    abortSignal: abortControllerRef.current?.signal,
+                    onProgress: (p) => {
+                        if (!unmountedRef.current) setFileTransferProgress(p)
+                    }
+                })
+                appendLog('Transfer complete.')
+            } else {
+                throw new Error('Failed to read firmware bytes')
+            }
+        }
 
         advancePhase('sending')
         appendLog('Sending firmware flash command...')
@@ -415,50 +490,22 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         if (unmountedRef.current) return
 
-        appendLog('Firmware write complete. Waiting for device...')
+        appendLog('Firmware write complete. Waiting for device to sleep...')
 
-        // Wait for Sleep signal
+        // Wait for the Himax to finish and send Sleep signal
         await waitForSleep()
         if (unmountedRef.current) return
 
-        // Reset — the nRF responds "Device will reset after disconnecting",
-        // so we MUST drop the BLE link for the reset to actually happen.
+        // The Himax resets itself after a firmware write — no need to reset
+        // the nRF or drop the BLE connection. When it goes to Sleep, it powers
+        // down completely. Sending 'aiver' will wake it up, effectively booting
+        // the new firmware, so we can verify it immediately without waiting.
         advancePhase('rebooting')
-        appendLog('Sending reset command...')
-        try {
-            const resetSession = createBleSession(device)
-            await resetSession.execute(() => commandRegistry.reset())
-        } catch (_e) {
-            // Usually throws because BLE drops on reset. Expected.
-        }
+        appendLog('AI processor rebooting with new firmware...')
 
-        // Explicitly disconnect so the nRF triggers its post-disconnect reset
-        appendLog('Disconnecting to trigger reboot...')
-        try {
-            const disSession = createBleSession(device)
-            await disSession.execute(() => commandRegistry.disconnect())
-        } catch (_e) { /* expected */ }
-        try {
-            await disconnectDevice(device)
-        } catch (_e) { /* expected */ }
-
-        // Wait for the device to fully reboot
-        await new Promise(r => setTimeout(r, 10000))
-        if (unmountedRef.current) return
-
-        advancePhase('reconnecting')
-        appendLog('Reconnecting...')
-        const foundId = await scanForOriginalDevice(device.id, 20000)
-        if (!foundId) throw new Error('Device not found after reset.')
-
-        appendLog('Connecting...')
-        await connectDevice({ ...device, connected: false } as ExtendedPeripheral, 20000)
-        await new Promise(r => setTimeout(r, 2000))
-        if (unmountedRef.current) return
-
-        // Try to query new version if still connected
+        // Query new version — BLE is still connected, no reconnect needed
         advancePhase('verifying')
-        appendLog('Checking new version...')
+        appendLog('Checking new AI firmware version...')
         try {
             const verSession = createBleSession(device)
             const ver = await verSession.execute(() => commandRegistry.aiver())
@@ -469,23 +516,29 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         }
 
         advancePhase('complete')
-    }, [device, advancePhase, appendLog, waitForSleep, connectDevice, disconnectDevice])
+    }, [device, latestFirmware, advancePhase, appendLog, waitForSleep])
 
     // ── Public start ───────────────────────────────────────────────
 
-    const startUpdate = useCallback(async () => {
+    const startUpdate = useCallback(async (options?: StartUpdateOptions) => {
         setIsUpdating(true)
         setErrorMsg(null)
         setNewVersion(null)
         setProgressLogs([])
         setDfuProgress(0)
+        setFileTransferProgress(null)
+        setDownloadProgress(null)
+        setDownloadState('idle')
         phaseRef.current = 'idle'
+        setPhase('idle')
+        
+        abortControllerRef.current = new AbortController()
 
         try {
             if (target === 'ble') {
                 await runBleDfu()
             } else {
-                await runHimaxUpdate()
+                await runHimaxUpdate(options?.himaxSource)
             }
         } catch (err: any) {
             if (!unmountedRef.current) {
@@ -503,14 +556,24 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     const labels = target === 'ble' ? BLE_PHASE_LABELS : HIMAX_PHASE_LABELS
     const statusLabel = labels[phase]
 
-    // For BLE DFU, interpolate real progress during flashing phase
+    // For BLE DFU and Himax File Transfer, interpolate real progress during specific phases
     let progress: number
     if (target === 'ble' && phase === 'flashing') {
         // Interpolate between scanning(0.18) and rebooting(0.82)
         progress = 0.18 + (dfuProgress / 100) * (0.82 - 0.18)
+    } else if (target === 'himax' && phase === 'transferring') {
+        // Interpolate between downloading(0.08) and sending(0.52) so the bar never jumps backwards
+        const pct = fileTransferProgress ? fileTransferProgress.percentage / 100 : 0
+        progress = PHASE_PROGRESS.downloading + pct * (PHASE_PROGRESS.sending - PHASE_PROGRESS.downloading)
     } else {
         progress = PHASE_PROGRESS[phase]
     }
+
+    const cancelUpdate = useCallback(() => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort()
+        }
+    }, [])
 
     const isBatteryLow = batteryLevel !== null && batteryLevel < 30
     const isComplete = phase === 'complete'
@@ -533,6 +596,11 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         isFailed,
         progressLogs,
         errorMsg,
+        
+        // Raw transfer state
+        downloadState,
+        downloadProgress,
+        fileTransferProgress,
 
         // Pre-flight
         batteryLevel,
@@ -544,5 +612,6 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         // Actions
         startUpdate,
+        cancelUpdate,
     }
 }

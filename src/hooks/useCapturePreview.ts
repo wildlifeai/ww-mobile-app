@@ -198,7 +198,9 @@ export const useCapturePreview = ({
             // 3. Send Capture Command
             setCaptureStage(`Capturing ${captureCount} image(s)...`)
             log(`[useCapturePreview] Sending capture command (AI capture ${captureCount} ${captureInterval})...`)
-            await session.execute(() => commandRegistry.capture(captureCount, captureInterval))
+            const captureResult = await session.execute(() => commandRegistry.capture(captureCount, captureInterval))
+            const capturedFilename = typeof captureResult === 'string' ? captureResult : '.'
+            log(`[useCapturePreview] Capture result: ${captureResult}. Target filename: ${capturedFilename}`)
 
             // 4. Start Download Process Tracker
             downloadRequested.current = true
@@ -212,8 +214,8 @@ export const useCapturePreview = ({
             }, DOWNLOAD_TIMEOUT)
 
             setCaptureStage('Downloading image...')
-            log('[useCapturePreview] Requesting file download...')
-            await session.execute(commandRegistry.txfile)
+            log(`[useCapturePreview] Requesting file download for: ${capturedFilename}...`)
+            await session.execute(() => commandRegistry.txfile(capturedFilename))
 
         } catch (error) {
             const err = error as Error

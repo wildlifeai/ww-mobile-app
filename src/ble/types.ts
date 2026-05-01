@@ -66,6 +66,11 @@ export enum CommandNames {
 	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
 	CAMERA_SETTINGS_TEST = "CAMERA_SETTINGS_TEST",
 	FILE_TRANSFER_TEST = "FILE_TRANSFER_TEST",
+	MODEL_VALIDATION_TEST = "MODEL_VALIDATION_TEST",
+	TRANSFER_CONFIG = "TRANSFER_CONFIG",
+	TRANSFER_AI_MODEL = "TRANSFER_AI_MODEL",
+	FIRMWARE_STATUS = "FIRMWARE_STATUS",
+	RESET_TO_DEFAULTS = "RESET_TO_DEFAULTS",
 
 	// Local commands (UPPERCASE - app-only actions)
 	CLEAR_CONSOLE = "CLEAR_CONSOLE",
@@ -611,6 +616,31 @@ export const COMMANDS: {
 	[CommandNames.FILE_TRANSFER_TEST]: {
 		name: CommandNames.FILE_TRANSFER_TEST,
 		description: "Send test files to device SD card via BLE",
+		type: 'process',
+	},
+	[CommandNames.MODEL_VALIDATION_TEST]: {
+		name: CommandNames.MODEL_VALIDATION_TEST,
+		description: "Validate, download, and load an AI model",
+		type: 'process',
+	},
+	[CommandNames.TRANSFER_CONFIG]: {
+		name: CommandNames.TRANSFER_CONFIG,
+		description: "Download config from cloud and transfer to device SD card (CONFIG.TXT)",
+		type: 'process',
+	},
+	[CommandNames.TRANSFER_AI_MODEL]: {
+		name: CommandNames.TRANSFER_AI_MODEL,
+		description: "Download AI model, transfer to SD card, erase old model, load new model",
+		type: 'process',
+	},
+	[CommandNames.FIRMWARE_STATUS]: {
+		name: CommandNames.FIRMWARE_STATUS,
+		description: "Check all firmware versions (BLE, Himax, Config) and update if needed",
+		type: 'process',
+	},
+	[CommandNames.RESET_TO_DEFAULTS]: {
+		name: CommandNames.RESET_TO_DEFAULTS,
+		description: "Reset ALL operational parameters to factory defaults, erase AI model, clear deployment ID",
 		type: 'process',
 	},
 	[CommandNames.CLEAR_CONSOLE]: {

@@ -50,9 +50,7 @@ export const EditProjectScreen = () => {
 	const {
 		isLoading: isLoadingModels,
 		error: modelsError,
-		data: aiModels
 	} = useGetAiModelsQuery()
-	const hasAiModels = !!(aiModels && aiModels.length > 0)
 
 	const dynamicStyles = useMemo(() => ({
 		loadingLabel: { color: theme.colors.onSurfaceVariant },
@@ -158,7 +156,6 @@ export const EditProjectScreen = () => {
 					isTimeLapse={isTimeLapse}
 					isLoadingModels={isLoadingModels}
 					modelsError={modelsError}
-					hasAiModels={hasAiModels}
 					showArchiveToggle={true}
 				/>
 

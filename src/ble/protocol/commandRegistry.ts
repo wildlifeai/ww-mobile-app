@@ -345,17 +345,17 @@ export const commandRegistry = {
     (match) => match[1].trim()
   ),
 
-  capture: createSingleLineCommand<boolean>(
+  capture: createSingleLineCommand<string | boolean>(
     'capture',
     (count: number, interval: number) => `AI capture ${count} ${interval}`,
-    /Captured/i,
-    () => true,
+    /Captured.*?Last is ([\w.]+)/i,
+    (match) => match[1] || true,
     { timeoutMs: 30000, retryPolicy: { maxRetries: 0 } }
   ),
 
   txfile: createSingleLineCommand<boolean>(
     'txfile',
-    () => `AI txfile .`,
+    (filename: string = '.') => `AI txfile ${filename}`,
     /(\d+\s+bytes\s+in|Failed to open)/i, 
     (match) => {
       if (match[0].toLowerCase().includes('failed')) {
@@ -406,7 +406,7 @@ export const commandRegistry = {
 
   erasemodel: createSingleLineCommand<boolean>(
     'erasemodel',
-    () => 'erasemodel',
+    () => 'AI erasemodel',
     /Erased/i,
     () => true,
     { timeoutMs: 15000 }
@@ -414,10 +414,10 @@ export const commandRegistry = {
 
   loadmodel: createSingleLineCommand<boolean>(
     'loadmodel',
-    () => 'loadmodel',
-    /Loaded/i,
+    (id: number, ver: number) => `AI loadmodel ${id} ${ver}`,
+    /(Loaded|Updated OK)/i,
     () => true,
-    { timeoutMs: 30000, failureRegex: /Error loading/i }
+    { timeoutMs: 30000, failureRegex: /Error loading|Update failed/i }
   ),
 
   camera_type: createSingleLineCommand<string>(
@@ -433,5 +433,13 @@ export const commandRegistry = {
     /Flash header ok/i,
     () => true,
     { failureRegex: /Flash error/i }
+  ),
+  dir: createMultiLineCommand<string[]>(
+    'dir',
+    () => 'AI dir',
+    /.+/, // Matches any non-empty line to ensure all directory entries are collected
+    /End of directory|\d+\s+dirs?,\s+\d+\s+files?\.?/i,
+    (lines) => lines,
+    { timeoutMs: 10000 }
   )
 };

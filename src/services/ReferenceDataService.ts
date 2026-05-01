@@ -3,6 +3,7 @@ import database from '../database'
 import CaptureMethod from '../database/models/CaptureMethod'
 import ActivitySensitivity from '../database/models/ActivitySensitivity'
 import AiModel from '../database/models/AiModel'
+import AiModelFamily from '../database/models/AiModelFamily'
 import SamplingDesign from '../database/models/SamplingDesign'
 import Firmware from '../database/models/Firmware'
 import { getSupabaseClient } from './supabase'
@@ -19,18 +20,8 @@ import { log, logError } from '../utils/logger'
  * - capture_methods: Wildlife capture methods (motion detection, time lapse, etc.)
  * - activity_sensitivity: Motion detection sensitivity levels (low, medium, high)
  * - ai_models: AI models available for wildlife detection
-
-/**
- * ReferenceDataService
- * 
- * Manages read-only reference data (lookup tables) stored in WatermelonDB.
- * These tables are synced one-way from Supabase and enable offline form functionality.
- * 
- * Reference tables:
- * - capture_methods: Wildlife capture methods (motion detection, time lapse, etc.)
- * - activity_sensitivity: Motion detection sensitivity levels (low, medium, high)
- * - ai_models: AI models available for wildlife detection
  * - sampling_designs: Sampling design methods (random, systematic, etc.)
+ * - firmware: Device firmware binaries (BLE, Himax, Config)
  */
 class ReferenceDataService {
     /**
@@ -70,6 +61,7 @@ class ReferenceDataService {
             await Promise.all([
                 (async () => { /* log('📚 Syncing capture methods...'); */ await this.syncCaptureMethods() })(),
                 (async () => { /* log('📚 Syncing activity sensitivity...'); */ await this.syncActivitySensitivity() })(),
+                (async () => { /* log('📚 Syncing AI model families...'); */ await this.syncAiModelFamilies() })(),
                 (async () => { /* log('📚 Syncing AI models...'); */ await this.syncAiModels() })(),
                 (async () => { /* log('📚 Syncing sampling designs...'); */ await this.syncSamplingDesigns() })(),
                 (async () => { /* log('📚 Syncing firmware...'); */ await this.syncFirmware() })(),
@@ -208,6 +200,62 @@ class ReferenceDataService {
     }
 
     // =========================================================================
+    // AI Model Families
+    // =========================================================================
+
+    private async syncAiModelFamilies(): Promise<void> {
+        const supabase = getSupabaseClient()
+        const { data, error } = await supabase
+            .from('ai_model_families')
+            .select('*')
+            .is('deleted_at', null)
+            .order('firmware_model_id')
+
+        if (error) {
+            logError('Failed to fetch AI model families:', error)
+            return
+        }
+
+        await database.write(async () => {
+            const collection = database.get<AiModelFamily>('ai_model_families')
+            const existingRecords = await collection.query().fetch()
+            // ai_model_families uses UUID for ID
+            const existingMap = new Map(existingRecords.map(r => [r.id, r]))
+            const serverIds = new Set(data.map(d => d.id))
+
+            for (const row of data) {
+                const existing = existingMap.get(row.id)
+                if (existing) {
+                    await existing.update(rec => {
+                        rec.name = row.name
+                        rec.description = row.description ?? undefined
+                        rec.firmwareModelId = row.firmware_model_id
+                        rec.organisationId = row.organisation_id
+                        rec.createdBy = row.created_by ?? undefined
+                    })
+                } else {
+                    await collection.create(rec => {
+                        (rec._raw as any).id = row.id
+                        rec.name = row.name
+                        rec.description = row.description ?? undefined
+                        rec.firmwareModelId = row.firmware_model_id
+                        rec.organisationId = row.organisation_id
+                        rec.createdBy = row.created_by ?? undefined
+                    })
+                }
+            }
+
+            for (const rec of existingRecords) {
+                if (!serverIds.has(rec.id)) {
+                    await rec.destroyPermanently()
+                }
+            }
+        })
+
+        // log(`   ✅ Synced ${data.length} AI model families`)
+    }
+
+    // =========================================================================
     // AI Models
     // =========================================================================
 
@@ -239,14 +287,31 @@ class ReferenceDataService {
                         rec.version = row.version
                         rec.description = row.description ?? undefined
                         rec.organisationId = row.organisation_id
+                        rec.modelPath = row.model_path ?? undefined
+                        rec.labelsPath = row.labels_path ?? undefined
+                        rec.fileSizeBytes = row.file_size_bytes ?? 0
+                        rec.fileType = row.file_type ?? undefined
+                        rec.fileHash = row.file_hash ?? undefined
+                        rec.status = row.status ?? undefined
+                        rec.modelFamilyId = row.model_family_id ?? undefined
+                        rec.versionNumber = row.version_number ?? undefined
                     })
                 } else {
                     await collection.create(rec => {
+                        (rec._raw as any).id = row.id
                         rec.serverId = row.id
                         rec.name = row.name
                         rec.version = row.version
                         rec.description = row.description ?? undefined
                         rec.organisationId = row.organisation_id
+                        rec.modelPath = row.model_path ?? undefined
+                        rec.labelsPath = row.labels_path ?? undefined
+                        rec.fileSizeBytes = row.file_size_bytes ?? 0
+                        rec.fileType = row.file_type ?? undefined
+                        rec.fileHash = row.file_hash ?? undefined
+                        rec.status = row.status ?? undefined
+                        rec.modelFamilyId = row.model_family_id ?? undefined
+                        rec.versionNumber = row.version_number ?? undefined
                     })
                 }
             }
@@ -260,6 +325,41 @@ class ReferenceDataService {
         })
 
         // log(`   ✅ Synced ${data.length} AI models`)
+    }
+
+    /**
+     * Look up the firmware IDs for an AI model by querying its model family.
+     *
+     * Returns:
+     *   - firmwareModelId: integer for OP 14 (from ai_model_families)
+     *   - versionNumber: integer for OP 15 (from ai_models)
+     *
+     * These are used to construct the device filename ({firmwareModelId}V{versionNumber}.TFL)
+     * and the loadmodel command.
+     */
+    async getFirmwareIds(model: AiModel): Promise<{ firmwareModelId: number; versionNumber: number }> {
+        const versionNumber = model.versionNumber
+        if (!versionNumber || versionNumber <= 0) {
+            throw new Error(`AI model "${model.name}" has no version_number. Sync may be stale.`)
+        }
+
+        if (!model.modelFamilyId) {
+            throw new Error(`AI model "${model.name}" has no model_family_id. Cannot determine firmware ID.`)
+        }
+
+        // Query the family from local WatermelonDB
+        const family = await database.get<AiModelFamily>('ai_model_families').find(model.modelFamilyId)
+
+        if (!family) {
+            throw new Error(`AI model family ${model.modelFamilyId} not found locally. Sync may be stale.`)
+        }
+
+        const firmwareModelId = family.firmwareModelId
+        if (!firmwareModelId || firmwareModelId <= 0) {
+            throw new Error(`AI model family "${family.name}" has no firmware_model_id.`)
+        }
+
+        return { firmwareModelId, versionNumber }
     }
 
     async getAiModels(): Promise<Array<{ id: string; name: string; version: string; description: string | null }>> {
@@ -344,7 +444,7 @@ class ReferenceDataService {
     public async syncFirmware(): Promise<void> {
         const supabase = getSupabaseClient()
         // Sync all active firmware metadata
-        // log('[RefData] Syncing firmware...')
+        log('[RefData] Syncing firmware...')
         const { data, error } = await supabase
             .from('firmware')
             .select('*')
@@ -358,9 +458,12 @@ class ReferenceDataService {
         }
 
         if (!data || data.length === 0) {
-            log('[RefData] No firmware data received from server')
+            log('[RefData] No active firmware data received from server (is_active=true)')
             return
         }
+        const types = data.map(d => d.type).join(', ')
+        log(`[RefData] Received ${data.length} firmware records from server (Types: ${types})`)
+        log(`[RefData] Himax records: ${data.filter(d => d.type === 'himax').length}`)
 
         await database.write(async () => {
             const collection = database.get<Firmware>('firmware')
@@ -383,6 +486,7 @@ class ReferenceDataService {
                     const existing = existingMap.get(row.id)
                     if (existing) {
                         await existing.update(rec => {
+                            rec.name = row.name || ''
                             rec.version = row.version || '0.0.0'
                             rec.type = row.type || 'ble'
                             rec.locationPath = row.location_path || ''
@@ -394,6 +498,7 @@ class ReferenceDataService {
                     } else {
                         await collection.create(rec => {
                             (rec._raw as any).id = row.id // Use Supabase UUID
+                            rec.name = row.name || ''
                             rec.version = row.version || '0.0.0'
                             rec.type = row.type || 'ble'
                             rec.locationPath = row.location_path || ''
@@ -415,10 +520,10 @@ class ReferenceDataService {
                 }
             }
 
-            // log('[RefData] Firmware sync complete.')
+            log('[RefData] Firmware sync complete.')
         })
 
-        // log(`   ✅ Synced ${data.length} firmware records`)
+        log(`   ✅ Synced ${data.length} firmware records`)
     }
 
     /**

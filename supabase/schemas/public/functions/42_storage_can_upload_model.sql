@@ -1,6 +1,6 @@
 -- Debug Table
 CREATE TABLE IF NOT EXISTS public.debug_storage_logs (
-    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    id uuid DEFAULT extensions.gen_random_uuid() PRIMARY KEY,
     message text,
     details jsonb,
     created_at timestamptz DEFAULT now()
@@ -14,7 +14,7 @@ CREATE OR REPLACE FUNCTION public.storage_can_upload_model(bucket_id text, objec
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, auth, storage, extensions
+SET search_path = ''
 AS $$
 DECLARE
   v_user_id uuid := auth.uid();
@@ -22,7 +22,7 @@ DECLARE
 BEGIN
   -- Log entry
   INSERT INTO public.debug_storage_logs (message, details) 
-  VALUES ('storage_can_upload_model called', jsonb_build_object('bucket', bucket_id, 'path', object_name, 'user_id', v_user_id));
+  VALUES ('storage_can_upload_model called', pg_catalog.jsonb_build_object('bucket', bucket_id, 'path', object_name, 'user_id', v_user_id));
   
   -- 1. Must be authenticated
   IF v_user_id IS NULL THEN
@@ -38,7 +38,7 @@ BEGIN
 
   -- 3. Extract the first part of the path (Organisation ID)
   -- storage.objects.name format: "org_id/filename"
-  v_path_part := split_part(object_name, '/', 1);
+  v_path_part := pg_catalog.split_part(object_name, '/', 1);
   INSERT INTO public.debug_storage_logs (message) VALUES ('Path first part: ' || v_path_part);
 
   -- 4. Check Permissions
@@ -96,11 +96,12 @@ CREATE OR REPLACE FUNCTION public.debug_get_policies()
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = ''
 AS $$
 BEGIN
   RETURN (
-    SELECT jsonb_agg(row_to_json(p))
-    FROM pg_policies p
+    SELECT pg_catalog.jsonb_agg(pg_catalog.row_to_json(p))
+    FROM pg_catalog.pg_policies p
     WHERE p.schemaname = 'storage' AND p.tablename = 'objects'
   );
 END;

@@ -16,14 +16,14 @@ CREATE POLICY "ww_admin_all_firmware"
         AND role = 'ww_admin'
         AND scope_type = 'system'
         AND is_active = true
-        AND deleted_at IS NULL
+        AND deleted_at IS null
     )
   );
 
 -- All authenticated users can view firmware (needed for device management)
 CREATE POLICY "authenticated_read_firmware"
   ON firmware FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+  USING (auth.uid() IS NOT null);
 
 -- Anonymous users: Can view all firmware (needed for public firmware downloads)
 CREATE POLICY "anon_read_firmware"
@@ -47,7 +47,7 @@ CREATE POLICY "ww_admin_all_activity_sensitivity"
         AND role = 'ww_admin'
         AND scope_type = 'system'
         AND is_active = true
-        AND deleted_at IS NULL
+        AND deleted_at IS null
     )
   );
 
@@ -60,18 +60,18 @@ CREATE POLICY "ww_admin_all_sampling_designs"
         AND role = 'ww_admin'
         AND scope_type = 'system'
         AND is_active = true
-        AND deleted_at IS NULL
+        AND deleted_at IS null
     )
   );
 
 -- All authenticated users can view lookup tables (needed for project creation/editing)
 CREATE POLICY "authenticated_read_activity_sensitivity"
   ON activity_sensitivity FOR SELECT
-  USING (auth.uid() IS NOT NULL AND is_active = true AND deleted_at IS NULL);
+  USING (auth.uid() IS NOT null AND is_active = true AND deleted_at IS null);
 
 CREATE POLICY "authenticated_read_sampling_designs"
   ON sampling_designs FOR SELECT
-  USING (auth.uid() IS NOT NULL AND is_active = true AND deleted_at IS NULL);
+  USING (auth.uid() IS NOT null AND is_active = true AND deleted_at IS null);
 
 -- ==================================================================
 -- LORAWAN TABLES POLICIES (lorawan_messages, lorawan_parsed_messages)
@@ -90,7 +90,7 @@ CREATE POLICY "ww_admin_all_lorawan_messages"
         AND role = 'ww_admin'
         AND scope_type = 'system'
         AND is_active = true
-        AND deleted_at IS NULL
+        AND deleted_at IS null
     )
   );
 
@@ -103,7 +103,7 @@ CREATE POLICY "ww_admin_all_lorawan_parsed_messages"
         AND role = 'ww_admin'
         AND scope_type = 'system'
         AND is_active = true
-        AND deleted_at IS NULL
+        AND deleted_at IS null
     )
   );
 
@@ -111,39 +111,43 @@ CREATE POLICY "ww_admin_all_lorawan_parsed_messages"
 CREATE POLICY "project_access_view_lorawan_messages"
   ON lorawan_messages FOR SELECT
   USING (
-    lorawan_messages.deployment_id IN (
-      SELECT d.id
-      FROM deployments d
-      INNER JOIN device_preparation dp ON dp.id = d.device_preparation_id
-      JOIN user_roles ur ON (
-        (ur.scope_type = 'project' AND ur.scope_id = dp.project_id)
+    EXISTS (
+      SELECT 1
+      FROM deployments AS d
+      INNER JOIN user_roles AS ur ON (
+        (ur.scope_type = 'project' AND d.project_id = ur.scope_id)
         OR (ur.scope_type = 'organisation' AND ur.scope_id = (
-          SELECT organisation_id FROM projects WHERE id = dp.project_id
+          SELECT projects.organisation_id
+          FROM projects
+          WHERE projects.id = d.project_id
         ))
       )
-      WHERE ur.user_id = (SELECT auth.uid())
+      WHERE d.id = lorawan_messages.deployment_id
+        AND ur.user_id = (SELECT auth.uid())
         AND ur.is_active = true
-        AND ur.deleted_at IS NULL
+        AND ur.deleted_at IS null
     )
   );
 
 CREATE POLICY "project_access_view_lorawan_parsed_messages"
   ON lorawan_parsed_messages FOR SELECT
   USING (
-    lorawan_parsed_messages.lorawan_message_id IN (
-      SELECT lm.id
-      FROM lorawan_messages lm
-      JOIN deployments d ON d.id = lm.deployment_id
-      INNER JOIN device_preparation dp ON dp.id = d.device_preparation_id
-      JOIN user_roles ur ON (
-        (ur.scope_type = 'project' AND ur.scope_id = dp.project_id)
+    EXISTS (
+      SELECT 1
+      FROM lorawan_messages AS lm
+      INNER JOIN deployments AS d ON lm.deployment_id = d.id
+      INNER JOIN user_roles AS ur ON (
+        (ur.scope_type = 'project' AND d.project_id = ur.scope_id)
         OR (ur.scope_type = 'organisation' AND ur.scope_id = (
-          SELECT organisation_id FROM projects WHERE id = dp.project_id
+          SELECT projects.organisation_id
+          FROM projects
+          WHERE projects.id = d.project_id
         ))
       )
-      WHERE ur.user_id = (SELECT auth.uid())
+      WHERE lm.id = lorawan_parsed_messages.lorawan_message_id
+        AND ur.user_id = (SELECT auth.uid())
         AND ur.is_active = true
-        AND ur.deleted_at IS NULL
+        AND ur.deleted_at IS null
     )
   );
 

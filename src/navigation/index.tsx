@@ -41,9 +41,15 @@ import { DeviceDiscoveryScreen } from "../screens/Devices/DeviceDiscoveryScreen"
 import { DeviceDetailsScreen } from "../screens/Devices/DeviceDetailsScreen"
 import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
 import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMotionDetectionScreen"
+import { StandaloneCapturePreviewScreen } from "../screens/Devices/StandaloneCapturePreviewScreen"
 import { CameraSettingsTestScreen } from "../screens/Devices/CameraSettingsTestScreen"
 import { FirmwareUpdateScreen } from "../screens/Devices/FirmwareUpdateScreen"
 import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScreen"
+import { ModelValidationTestScreen } from "../screens/Devices/ModelValidationTestScreen"
+import { ConfigTransferScreen } from "../screens/Devices/ConfigTransferScreen"
+import { AiModelTransferScreen } from "../screens/Devices/AiModelTransferScreen"
+import { FirmwareStatusScreen } from "../screens/Devices/FirmwareStatusScreen"
+import { DeviceResetScreen } from "../screens/Devices/DeviceResetScreen"
 import { DfuScreen } from "../screens/Devices/DfuScreen"
 
 // Developer screens
@@ -201,6 +207,10 @@ export const MainNavigation = () => {
 							component={StandaloneMotionDetectionScreen}
 						/>
 						<Stack.Screen
+							name="StandaloneCapturePreviewScreen"
+							component={StandaloneCapturePreviewScreen}
+						/>
+						<Stack.Screen
 							name="CameraSettingsTestScreen"
 							component={CameraSettingsTestScreen}
 							options={{ title: "Camera Settings Test" }}
@@ -213,7 +223,38 @@ export const MainNavigation = () => {
 						<Stack.Screen
 							name="FileTransferTestScreen"
 							component={FileTransferTestScreen}
-							options={{ title: "File Transfer Test" }}
+							options={{
+								title: "File Transfer Test",
+								headerBackTitle: "Back",
+							}}
+						/>
+						<Stack.Screen
+							name="ModelValidationTestScreen"
+							component={ModelValidationTestScreen}
+							options={{
+								title: "Model Validation Test",
+								headerBackTitle: "Back",
+							}}
+						/>
+						<Stack.Screen
+							name="ConfigTransferScreen"
+							component={ConfigTransferScreen}
+							options={{ title: "Config Transfer" }}
+						/>
+						<Stack.Screen
+							name="AiModelTransferScreen"
+							component={AiModelTransferScreen}
+							options={{ title: "AI Model Transfer" }}
+						/>
+						<Stack.Screen
+							name="FirmwareStatusScreen"
+							component={FirmwareStatusScreen}
+							options={{ title: "Firmware Status" }}
+						/>
+						<Stack.Screen
+							name="DeviceResetScreen"
+							component={DeviceResetScreen}
+							options={{ title: "Reset to Defaults" }}
 						/>
 
 						<Stack.Screen

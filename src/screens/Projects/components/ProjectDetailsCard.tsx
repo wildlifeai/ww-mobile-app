@@ -172,22 +172,22 @@ export const ProjectDetailsCard: React.FC<Props> = ({
                         </View>
                     )}
 
-                    {project.model_id && (
-                        <View style={styles.settingRow}>
-                            <Text
-                                variant="bodyMedium"
-                                style={dynamicStyles.settingLabel}
-                            >
-                                AI Model:
-                            </Text>
-                            <Text
-                                variant="bodyMedium"
-                                style={dynamicStyles.settingValue}
-                            >
-                                {getLabel(aiModelOptions, project.model_id) as React.ReactNode}
-                            </Text>
-                        </View>
-                    )}
+                    <View style={styles.settingRow}>
+                        <Text
+                            variant="bodyMedium"
+                            style={dynamicStyles.settingLabel}
+                        >
+                            AI Model:
+                        </Text>
+                        <Text
+                            variant="bodyMedium"
+                            style={project.model_id ? dynamicStyles.settingValue : dynamicStyles.noDescription}
+                        >
+                            {project.model_id
+                                ? (getLabel(aiModelOptions, project.model_id) as React.ReactNode)
+                                : 'None'}
+                        </Text>
+                    </View>
 
                     {project.website && (
                         <View style={styles.settingRow}>

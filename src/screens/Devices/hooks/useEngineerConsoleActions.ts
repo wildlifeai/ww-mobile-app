@@ -104,6 +104,10 @@ export const useEngineerConsoleActions = ({
             navigation.navigate('StandaloneMotionDetectionScreen', { deviceId: device?.id })
             return
         }
+        if (cmdName === CommandNames.CAPTURE_PREVIEW) {
+            navigation.navigate('StandaloneCapturePreviewScreen', { deviceId: device?.id })
+            return
+        }
         if (cmdName === CommandNames.UPDATE_HIMAX_FIRMWARE) {
             navigation.navigate('FirmwareUpdateScreen', { deviceId: device?.id, target: 'himax' })
             return
@@ -114,6 +118,26 @@ export const useEngineerConsoleActions = ({
         }
         if (cmdName === CommandNames.FILE_TRANSFER_TEST) {
             navigation.navigate('FileTransferTestScreen', { deviceId: device?.id })
+            return
+        }
+        if (cmdName === CommandNames.MODEL_VALIDATION_TEST) {
+            navigation.navigate('ModelValidationTestScreen', { deviceId: device?.id })
+            return
+        }
+        if (cmdName === CommandNames.TRANSFER_CONFIG) {
+            navigation.navigate('ConfigTransferScreen', { deviceId: device?.id })
+            return
+        }
+        if (cmdName === CommandNames.TRANSFER_AI_MODEL) {
+            navigation.navigate('AiModelTransferScreen', { deviceId: device?.id })
+            return
+        }
+        if (cmdName === CommandNames.FIRMWARE_STATUS) {
+            navigation.navigate('FirmwareStatusScreen', { deviceId: device?.id })
+            return
+        }
+        if (cmdName === CommandNames.RESET_TO_DEFAULTS) {
+            navigation.navigate('DeviceResetScreen', { deviceId: device?.id })
             return
         }
 

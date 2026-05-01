@@ -89,6 +89,85 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_model_families: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          firmware_model_id: number
+          id: string
+          name: string
+          organisation_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          firmware_model_id?: number
+          id?: string
+          name: string
+          organisation_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          firmware_model_id?: number
+          id?: string
+          name?: string
+          organisation_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_model_families_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "ai_model_families_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "ai_model_families_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_model_families_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_model_families_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["organisation_id"]
+          },
+          {
+            foreignKeyName: "ai_model_families_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["organisation_id"]
+          },
+        ]
+      }
       ai_model_organisation: {
         Row: {
           model_id: string
@@ -156,54 +235,85 @@ export type Database = {
       }
       ai_models: {
         Row: {
+          compiled_format: string | null
           created_at: string | null
           deleted_at: string | null
           description: string | null
           detection_capabilities: string[] | null
+          error_message: string | null
+          file_hash: string | null
           file_size_bytes: number | null
           file_type: string | null
           id: string
+          labels_path: string
+          model_family_id: string | null
+          model_path: string
           modified_by: string
           name: string
           organisation_id: string
-          storage_path: string
+          processing_log: Json | null
+          status: Database["public"]["Enums"]["ai_model_status"] | null
           updated_at: string | null
           uploaded_by: string | null
           version: string
+          version_number: number | null
         }
         Insert: {
+          compiled_format?: string | null
           created_at?: string | null
           deleted_at?: string | null
           description?: string | null
           detection_capabilities?: string[] | null
+          error_message?: string | null
+          file_hash?: string | null
           file_size_bytes?: number | null
           file_type?: string | null
           id?: string
+          labels_path: string
+          model_family_id?: string | null
+          model_path: string
           modified_by: string
           name: string
           organisation_id: string
-          storage_path: string
+          processing_log?: Json | null
+          status?: Database["public"]["Enums"]["ai_model_status"] | null
           updated_at?: string | null
           uploaded_by?: string | null
           version: string
+          version_number?: number | null
         }
         Update: {
+          compiled_format?: string | null
           created_at?: string | null
           deleted_at?: string | null
           description?: string | null
           detection_capabilities?: string[] | null
+          error_message?: string | null
+          file_hash?: string | null
           file_size_bytes?: number | null
           file_type?: string | null
           id?: string
+          labels_path?: string
+          model_family_id?: string | null
+          model_path?: string
           modified_by?: string
           name?: string
           organisation_id?: string
-          storage_path?: string
+          processing_log?: Json | null
+          status?: Database["public"]["Enums"]["ai_model_status"] | null
           updated_at?: string | null
           uploaded_by?: string | null
           version?: string
+          version_number?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ai_models_model_family_id_fkey"
+            columns: ["model_family_id"]
+            isOneToOne: false
+            referencedRelation: "ai_model_families"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ai_models_organisation_id_fkey"
             columns: ["organisation_id"]
@@ -527,7 +637,6 @@ export type Database = {
           deployment_status_id: number | null
           device_eui: string | null
           device_id: string
-          device_preparation_id_deprecated: string | null
           end_deployment_comments: string | null
           ended_by: string | null
           himax_firmware_id: string | null
@@ -572,7 +681,6 @@ export type Database = {
           deployment_status_id?: number | null
           device_eui?: string | null
           device_id: string
-          device_preparation_id_deprecated?: string | null
           end_deployment_comments?: string | null
           ended_by?: string | null
           himax_firmware_id?: string | null
@@ -617,7 +725,6 @@ export type Database = {
           deployment_status_id?: number | null
           device_eui?: string | null
           device_id?: string
-          device_preparation_id_deprecated?: string | null
           end_deployment_comments?: string | null
           ended_by?: string | null
           himax_firmware_id?: string | null
@@ -700,13 +807,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "deployments_device_preparation_id_fkey"
-            columns: ["device_preparation_id_deprecated"]
-            isOneToOne: false
-            referencedRelation: "device_preparation"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "deployments_himax_firmware_id_fkey"
             columns: ["himax_firmware_id"]
             isOneToOne: false
@@ -743,180 +843,6 @@ export type Database = {
           },
           {
             foreignKeyName: "deployments_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects_with_stats"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      device_preparation: {
-        Row: {
-          ai_model_id: string | null
-          battery_check_passed: boolean | null
-          battery_level_at_check: number | null
-          ble_firmware_id: string | null
-          camera_model: string | null
-          camera_view_test_passed: boolean | null
-          completed_at: string | null
-          config_firmware_id: string | null
-          created_at: string | null
-          deleted_at: string | null
-          device_eui: string | null
-          device_id: string
-          firmware_check_passed: boolean | null
-          firmware_updated: boolean | null
-          himax_firmware_id: string | null
-          id: string
-          is_deployment_ready: boolean
-          lorawan_last_verified_at: string | null
-          lorawan_network: string | null
-          lorawan_registration_completed: boolean
-          lorawan_rssi_at_check: number | null
-          lorawan_snr_at_check: number | null
-          modified_by: string
-          project_id: string | null
-          sd_card_available_kb_at_check: number | null
-          sd_card_check_passed: boolean | null
-          sd_card_total_kb_at_check: number | null
-          status: string
-          updated_at: string | null
-        }
-        Insert: {
-          ai_model_id?: string | null
-          battery_check_passed?: boolean | null
-          battery_level_at_check?: number | null
-          ble_firmware_id?: string | null
-          camera_model?: string | null
-          camera_view_test_passed?: boolean | null
-          completed_at?: string | null
-          config_firmware_id?: string | null
-          created_at?: string | null
-          deleted_at?: string | null
-          device_eui?: string | null
-          device_id: string
-          firmware_check_passed?: boolean | null
-          firmware_updated?: boolean | null
-          himax_firmware_id?: string | null
-          id?: string
-          is_deployment_ready?: boolean
-          lorawan_last_verified_at?: string | null
-          lorawan_network?: string | null
-          lorawan_registration_completed?: boolean
-          lorawan_rssi_at_check?: number | null
-          lorawan_snr_at_check?: number | null
-          modified_by: string
-          project_id?: string | null
-          sd_card_available_kb_at_check?: number | null
-          sd_card_check_passed?: boolean | null
-          sd_card_total_kb_at_check?: number | null
-          status?: string
-          updated_at?: string | null
-        }
-        Update: {
-          ai_model_id?: string | null
-          battery_check_passed?: boolean | null
-          battery_level_at_check?: number | null
-          ble_firmware_id?: string | null
-          camera_model?: string | null
-          camera_view_test_passed?: boolean | null
-          completed_at?: string | null
-          config_firmware_id?: string | null
-          created_at?: string | null
-          deleted_at?: string | null
-          device_eui?: string | null
-          device_id?: string
-          firmware_check_passed?: boolean | null
-          firmware_updated?: boolean | null
-          himax_firmware_id?: string | null
-          id?: string
-          is_deployment_ready?: boolean
-          lorawan_last_verified_at?: string | null
-          lorawan_network?: string | null
-          lorawan_registration_completed?: boolean
-          lorawan_rssi_at_check?: number | null
-          lorawan_snr_at_check?: number | null
-          modified_by?: string
-          project_id?: string | null
-          sd_card_available_kb_at_check?: number | null
-          sd_card_check_passed?: boolean | null
-          sd_card_total_kb_at_check?: number | null
-          status?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "device_preparation_ai_model_id_fkey"
-            columns: ["ai_model_id"]
-            isOneToOne: false
-            referencedRelation: "ai_models"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_preparation_ble_firmware_id_fkey"
-            columns: ["ble_firmware_id"]
-            isOneToOne: false
-            referencedRelation: "firmware"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_preparation_config_firmware_id_fkey"
-            columns: ["config_firmware_id"]
-            isOneToOne: false
-            referencedRelation: "firmware"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_preparation_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["device_id"]
-          },
-          {
-            foreignKeyName: "device_preparation_device_id_fkey"
-            columns: ["device_id"]
-            isOneToOne: false
-            referencedRelation: "devices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_preparation_himax_firmware_id_fkey"
-            columns: ["himax_firmware_id"]
-            isOneToOne: false
-            referencedRelation: "firmware"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_preparation_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "device_preparation_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "project_members_detailed"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "device_preparation_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "project_summary"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "device_preparation_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "device_preparation_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects_with_stats"
@@ -2371,6 +2297,7 @@ export type Database = {
         Returns: boolean
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      next_version_number: { Args: { p_family_id: string }; Returns: number }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
         | { Args: { use_typmod?: boolean }; Returns: string }
@@ -3042,7 +2969,14 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      ai_model_status:
+        | "draft"
+        | "uploading"
+        | "uploaded"
+        | "validated"
+        | "failed"
+        | "deployed"
+        | "deprecated"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -3177,6 +3111,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      ai_model_status: [
+        "draft",
+        "uploading",
+        "uploaded",
+        "validated",
+        "failed",
+        "deployed",
+        "deprecated",
+      ],
+    },
   },
 } as const

@@ -18,6 +18,7 @@ import Firmware from './models/Firmware'
 import CaptureMethod from './models/CaptureMethod'
 import ActivitySensitivity from './models/ActivitySensitivity'
 import AiModel from './models/AiModel'
+import AiModelFamily from './models/AiModelFamily'
 import SamplingDesign from './models/SamplingDesign'
 import { logError } from '../utils/logger'
 
@@ -47,6 +48,7 @@ const database = new Database({
         CaptureMethod,
         ActivitySensitivity,
         AiModel,
+        AiModelFamily,
         SamplingDesign,
     ],
 })

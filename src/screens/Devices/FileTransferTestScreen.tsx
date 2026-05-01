@@ -1,6 +1,6 @@
 import { useCallback, useRef, useEffect, useMemo, useReducer } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
-import { Button, ProgressBar, Chip, Divider, Text } from 'react-native-paper'
+import { Button, ProgressBar, Chip, Divider, Text, RadioButton } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute } from '@react-navigation/native'
 
@@ -10,6 +10,9 @@ import { WWText } from '../../components/ui/WWText'
 import { logError } from '../../utils/logger'
 import { runFileTransferPipeline } from '../../ble/protocol/fileTransfer'
 import { crc16ccitt } from '../../ble/protocol/fileTransfer/crc16ccitt'
+import { buildFileLoopbackPacket } from '../../ble/protocol/fileTransfer/fileTransferPackets'
+import { writeBinaryToDevice } from '../../ble/transport'
+import { bleEventBus, BleEvent } from '../../ble/protocol/eventBus'
 import {
     FileTransferProgress,
     getErrorMessage,
@@ -75,7 +78,34 @@ function generateTestFiles(): TestFile[] {
         description: '500 bytes — repeating 0x00–0xFF pattern, verifies binary integrity',
     }
 
-    return [tiny, medium, big, binary]
+    // 5. Large Binary — ~500KB
+    const veryLargeData = new Uint8Array(500 * 1024)
+    for (let i = 0; i < veryLargeData.length; i++) {
+        // eslint-disable-next-line no-bitwise
+        veryLargeData[i] = i & 0xFF
+    }
+    const veryLarge: TestFile = {
+        name: 'Large Binary (~500KB)',
+        filename: 'LARGE.BIN',
+        data: veryLargeData,
+        description: '500KB — verifies stability for firmware-sized transfers (firmware is ~440KB)',
+    }
+
+    return [tiny, medium, big, binary, veryLarge]
+}
+
+// ─── Benchmark ───────────────────────────────────────────────────────
+
+const BENCHMARK_ROUNDS = 10
+const LOOPBACK_TIMEOUT_MS = 5000
+const LOOPBACK_PAYLOAD_SIZES = [5, 100, 241] // test small, medium, max
+
+interface BenchmarkResult {
+    round: number
+    durationMs: number
+    success: boolean
+    error?: string
+    payloadSize?: number
 }
 
 // ─── State Management ──────────────────────────────────────────────────
@@ -86,6 +116,9 @@ interface TransferState {
     progress: FileTransferProgress | null
     result: { success: boolean; message: string; details?: string } | null
     transferLog: { id: string; text: string }[]
+    isBenchmarking: boolean
+    benchmarkResults: BenchmarkResult[]
+    transferMode: 'stop-and-wait' | 'sliding-window'
 }
 
 const initialState: TransferState = {
@@ -94,6 +127,9 @@ const initialState: TransferState = {
     progress: null,
     result: null,
     transferLog: [],
+    isBenchmarking: false,
+    benchmarkResults: [],
+    transferMode: 'stop-and-wait',
 }
 
 type TransferAction =
@@ -103,6 +139,10 @@ type TransferAction =
     | { type: 'COMPLETE'; payload: { result: TransferState['result']; logs: { id: string; text: string }[] } }
     | { type: 'ERROR'; payload: { result: TransferState['result']; logs: { id: string; text: string }[] } }
     | { type: 'END' }
+    | { type: 'BENCHMARK_START' }
+    | { type: 'BENCHMARK_ROUND'; payload: BenchmarkResult }
+    | { type: 'BENCHMARK_END' }
+    | { type: 'SET_MODE'; payload: 'stop-and-wait' | 'sliding-window' }
 
 function transferReducer(state: TransferState, action: TransferAction): TransferState {
     switch (action.type) {
@@ -117,6 +157,14 @@ function transferReducer(state: TransferState, action: TransferAction): Transfer
             return { ...state, result: action.payload.result, transferLog: [...state.transferLog, ...action.payload.logs] }
         case 'END':
             return { ...state, isTransferring: false }
+        case 'BENCHMARK_START':
+            return { ...state, isBenchmarking: true, benchmarkResults: [] }
+        case 'BENCHMARK_ROUND':
+            return { ...state, benchmarkResults: [...state.benchmarkResults, action.payload] }
+        case 'BENCHMARK_END':
+            return { ...state, isBenchmarking: false }
+        case 'SET_MODE':
+            return { ...state, transferMode: action.payload }
         default:
             return state
     }
@@ -133,7 +181,7 @@ export const FileTransferTestScreen = () => {
 
     const testFiles = useMemo(() => generateTestFiles(), [])
     const [state, dispatch] = useReducer(transferReducer, initialState)
-    const { selectedIndex, isTransferring, progress, result, transferLog } = state
+    const { selectedIndex, isTransferring, progress, result, transferLog, isBenchmarking, benchmarkResults, transferMode } = state
 
     const abortRef = useRef<AbortController | null>(null)
     const unmountedRef = useRef(false)
@@ -160,7 +208,10 @@ export const FileTransferTestScreen = () => {
         const fileCrc = crc16ccitt(file.data)
         const timestamp = new Date().toLocaleTimeString()
 
+        const modeLabel = state.transferMode === 'sliding-window' ? 'Sliding Window (2-pkt)' : 'Stop-and-Wait'
+
         const initialLogs = [
+            { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] Mode: ${modeLabel}` },
             { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] Selected: ${file.filename} (${file.data.length} bytes)` },
             { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] CRC: 0x${fileCrc.toString(16).toUpperCase().padStart(4, '0')}` },
             { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] Packets: ${Math.ceil(file.data.length / 241)}` },
@@ -171,9 +222,12 @@ export const FileTransferTestScreen = () => {
         abortRef.current = new AbortController()
 
         try {
+            const transferWindowSize = state.transferMode === 'sliding-window' ? 2 : 1
+
             const transferResult = await runFileTransferPipeline(device, {
                 filename: file.filename,
                 data: file.data,
+                windowSize: transferWindowSize,
                 onProgress: (p) => {
                     if (!unmountedRef.current) dispatch({ type: 'SET_PROGRESS', payload: p })
                 },
@@ -223,12 +277,80 @@ export const FileTransferTestScreen = () => {
                 abortRef.current = null
             }
         }
-    }, [device, testFiles])
+    }, [device, testFiles, state.transferMode])  
 
     const cancelTransfer = useCallback(() => {
         abortRef.current?.abort()
         addLog('⏹ User cancelled transfer')
     }, [addLog])
+
+    // ─── FILE_LOOPBACK Latency Benchmark ─────────────────────────────
+    // Uses packet type 10 — device echoes binary packet immediately
+    // without I2C or SD card involvement. Measures pure BLE round-trip.
+
+    const runBenchmark = useCallback(async () => {
+        if (!device?.connected) return
+
+        dispatch({ type: 'BENCHMARK_START' })
+        addLog(`🏁 Starting FILE_LOOPBACK benchmark (${BENCHMARK_ROUNDS} rounds × ${LOOPBACK_PAYLOAD_SIZES.length} sizes)...`)
+
+        let round = 0
+        for (const payloadSize of LOOPBACK_PAYLOAD_SIZES) {
+            addLog(`  📏 Payload size: ${payloadSize} bytes`)
+            for (let i = 0; i < BENCHMARK_ROUNDS; i++) {
+                if (unmountedRef.current) return
+                round++
+                const seqNum = round % 256
+                const payload = new Uint8Array(payloadSize).fill(seqNum)
+                const packet = buildFileLoopbackPacket(seqNum, payload)
+
+                const roundStart = Date.now()
+                try {
+                    // Wait for binary echo with matching seq number
+                    const echoPromise = new Promise<void>((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            bleEventBus.off('binaryPacket', handler)
+                            reject(new Error(`Loopback timeout (${LOOPBACK_TIMEOUT_MS}ms)`))
+                        }, LOOPBACK_TIMEOUT_MS)
+
+                        const handler = (evt: BleEvent & { type: 'BINARY_PACKET' }) => {
+                            if (evt.deviceId !== device.id) return
+                            // The device echoes via 0x06 binary framing:
+                            // [0x06, packetNum, length, ...echoed payload]
+                            // Match on packetNum which carries our seqNum
+                            if (evt.packetNum === seqNum) {
+                                clearTimeout(timeout)
+                                bleEventBus.off('binaryPacket', handler)
+                                resolve()
+                            }
+                        }
+                        bleEventBus.on('binaryPacket', handler)
+                    })
+
+                    await writeBinaryToDevice(device, packet, false)
+                    await echoPromise
+
+                    const duration = Date.now() - roundStart
+                    dispatch({ type: 'BENCHMARK_ROUND', payload: { round, durationMs: duration, success: true, payloadSize } })
+                    addLog(`    R${i + 1}: ${duration}ms ✅`)
+                } catch (err: any) {
+                    const duration = Date.now() - roundStart
+                    dispatch({ type: 'BENCHMARK_ROUND', payload: { round, durationMs: duration, success: false, error: err.message, payloadSize } })
+                    addLog(`    R${i + 1}: ${duration}ms ❌ ${err.message}`)
+                }
+
+                // Brief pause between rounds
+                if (i < BENCHMARK_ROUNDS - 1) {
+                    await new Promise(r => setTimeout(r, 100))
+                }
+            }
+        }
+
+        if (!unmountedRef.current) {
+            dispatch({ type: 'BENCHMARK_END' })
+            addLog('🏁 Loopback benchmark complete')
+        }
+    }, [device, addLog])
 
     const selectedFile = selectedIndex !== null ? testFiles[selectedIndex] : null
     const pct = progress ? progress.percentage / 100 : 0
@@ -244,6 +366,39 @@ export const FileTransferTestScreen = () => {
                     Select a file to send to the device's SD card via BLE.
                     Steve can compare these on the SD card to verify integrity.
                 </WWText>
+
+                {/* Transfer Mode Selector */}
+                <View style={[styles.fileCard, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
+                    <WWText variant="titleSmall" style={{ marginBottom: 4 }}>Transfer Mode</WWText>
+                    <RadioButton.Group
+                        value={transferMode}
+                        onValueChange={(v) => dispatch({ type: 'SET_MODE', payload: v as 'stop-and-wait' | 'sliding-window' })}
+                    >
+                        <View style={styles.radioRow}>
+                            <RadioButton.Item
+                                label="Stop-and-Wait (current)"
+                                value="stop-and-wait"
+                                disabled={isTransferring || isBenchmarking}
+                                style={styles.radioItem}
+                                labelStyle={styles.radioLabel}
+                            />
+                        </View>
+                        <View style={styles.radioRow}>
+                            <RadioButton.Item
+                                label="Sliding Window (2-packet)"
+                                value="sliding-window"
+                                disabled={isTransferring || isBenchmarking}
+                                style={styles.radioItem}
+                                labelStyle={styles.radioLabel}
+                            />
+                        </View>
+                    </RadioButton.Group>
+                    {transferMode === 'sliding-window' && (
+                        <WWText variant="bodySmall" style={{ opacity: 0.7, marginTop: 4 }}>
+                            ⚠️ Requires firmware with 2-slot packet buffer. Falls back gracefully on older firmware.
+                        </WWText>
+                    )}
+                </View>
 
                 {testFiles.map((file, i) => {
                     const fileCrc = crc16ccitt(file.data)
@@ -270,7 +425,7 @@ export const FileTransferTestScreen = () => {
                             <Button
                                 mode={selectedIndex === i && isTransferring ? 'outlined' : 'contained'}
                                 compact
-                                disabled={isTransferring && selectedIndex !== i}
+                                disabled={(isTransferring || isBenchmarking) && selectedIndex !== i}
                                 loading={isTransferring && selectedIndex === i}
                                 onPress={() => {
                                     if (isTransferring && selectedIndex === i) {
@@ -285,6 +440,57 @@ export const FileTransferTestScreen = () => {
                         </View>
                     )
                 })}
+
+                {/* Latency Benchmark Section */}
+                <Divider style={{ marginVertical: spacing }} />
+                <WWText variant="titleMedium" style={{ marginBottom: spacing / 2 }}>
+                    BLE Loopback Benchmark
+                </WWText>
+                <WWText variant="bodySmall" style={styles.descriptionText}>
+                    Sends FILE_LOOPBACK packets (type 10) at 3 payload sizes ({LOOPBACK_PAYLOAD_SIZES.join(', ')} bytes).
+                    Device echoes immediately — no I2C/SD card. Measures pure BLE round-trip.
+                </WWText>
+                <Button
+                    mode="contained"
+                    compact
+                    disabled={isTransferring || isBenchmarking}
+                    loading={isBenchmarking}
+                    onPress={runBenchmark}
+                    style={{ marginBottom: spacing / 2 }}
+                >
+                    {isBenchmarking ? 'Running...' : 'Run Benchmark'}
+                </Button>
+
+                {benchmarkResults.length > 0 && (
+                    <View style={[styles.fileCard, { backgroundColor: colors.surfaceVariant, marginBottom: spacing / 2 }]}>
+                        {(() => {
+                            // Group results by payload size for cleaner display
+                            const sizes = [...new Set(benchmarkResults.map(r => r.payloadSize ?? 0))]
+                            return sizes.map(size => {
+                                const sizeResults = benchmarkResults.filter(r => (r.payloadSize ?? 0) === size)
+                                const successful = sizeResults.filter(r => r.success)
+                                const times = successful.map(r => r.durationMs)
+                                const avg = times.length > 0 ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0
+                                const min = times.length > 0 ? Math.min(...times) : 0
+                                const max = times.length > 0 ? Math.max(...times) : 0
+                                return (
+                                    <View key={size}>
+                                        <WWText variant="labelSmall" style={{ marginTop: 4, fontWeight: 'bold' }}>
+                                            {size}B payload — {successful.length}/{sizeResults.length} ok
+                                        </WWText>
+                                        {times.length > 0 && (
+                                            <View style={styles.progressRow}>
+                                                <WWText variant="bodySmall">Avg: {avg}ms</WWText>
+                                                <WWText variant="bodySmall">Min: {min}ms</WWText>
+                                                <WWText variant="bodySmall">Max: {max}ms</WWText>
+                                            </View>
+                                        )}
+                                    </View>
+                                )
+                            })
+                        })()}
+                    </View>
+                )}
 
                 {/* Progress Section */}
                 {progress && selectedFile && (
@@ -429,5 +635,14 @@ const styles = StyleSheet.create({
     },
     resultDetails: {
         opacity: 0.7,
+    },
+    radioRow: {
+        marginVertical: -4,
+    },
+    radioItem: {
+        paddingVertical: 2,
+    },
+    radioLabel: {
+        fontSize: 13,
     },
 })

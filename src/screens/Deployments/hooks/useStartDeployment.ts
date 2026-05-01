@@ -10,20 +10,18 @@ import ReferenceDataService from '../../../services/ReferenceDataService'
 import Device from '../../../database/models/Device'
 import Deployment from '../../../database/models/Deployment'
 import { DeviceService } from '../../../services/DeviceService'
+import FirmwareService from '../../../services/FirmwareService'
+import AiModelService from '../../../services/AiModelService'
 import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
-import { checkSdCard as newCheckSdCardWorkflow } from '../../../ble/workflows/checkSdCard'
+import { runFileTransferPipeline } from '../../../ble/protocol/fileTransfer'
+import { checkSdCard } from '../../../ble/workflows/checkSdCard'
+import { extractErrorBits } from '../../../ble/messageClassifier'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
-import BleManager, { Peripheral } from 'react-native-ble-manager'
-import { PermissionsAndroid, Platform } from 'react-native'
-import { DfuService } from '../../../services/DfuService'
-import FirmwareService from '../../../services/FirmwareService'
-import Firmware from '../../../database/models/Firmware'
-import { extractErrorBits } from '../../../ble/messageClassifier'
-// unused import
+
 import { log, logError, logWarn } from '../../../utils/logger'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { ProjectWithDetails } from '../../../types/project'
@@ -31,82 +29,6 @@ import { InitPayload } from '../../../navigation/types'
 import { calculateDistance } from '../../../utils/gpsUtils'
 
 // const INITIALIZATION_GUARD_TIMEOUT = 2000
-
-/**
- * Scans for the Nordic DFU booth loader which advertises as "DfuTarg"
- */
-const scanForBootloader = (timeoutMs: number = 10000): Promise<string | null> => {
-    return new Promise((resolve, reject) => {
-        let timeoutHandle: NodeJS.Timeout
-
-        const eventEmitter = BleManager.addListener('BleManagerDiscoverPeripheral', (peripheral: Peripheral) => {
-            log('[scanForBootloader] Discovered:', peripheral.name, peripheral.id)
-            if (peripheral.name === 'WW500_DFU' || peripheral.name === 'DfuTarg') {
-                log('[scanForBootloader] Found bootloader at:', peripheral.id)
-                BleManager.stopScan().catch(err => logWarn('Failed to stop scan:', err))
-                clearTimeout(timeoutHandle)
-                eventEmitter.remove()
-                resolve(peripheral.id)
-            }
-        })
-
-        BleManager.scan([], timeoutMs / 1000)
-            .then(() => log('[scanForBootloader] Scan started for DfuTarg'))
-            .catch(err => {
-                logError('[scanForBootloader] Scan failed:', err)
-                clearTimeout(timeoutHandle)
-                eventEmitter.remove()
-                reject(err)
-            })
-
-        timeoutHandle = setTimeout(() => {
-            log('[scanForBootloader] Scan timeout, bootloader not found')
-            BleManager.stopScan().catch(err => logWarn('Failed to stop scan:', err))
-            eventEmitter.remove()
-            resolve(null)
-        }, timeoutMs)
-
-        eventEmitter.remove = ((originalRemove) => () => {
-             clearTimeout(timeoutHandle)
-             originalRemove()
-        })(eventEmitter.remove)
-    })
-}
-
-/**
- * Scans for the original device after DFU reboot
- */
-const scanForOriginalDevice = (deviceId: string, timeoutMs: number = 10000): Promise<string | null> => {
-    return new Promise((resolve, reject) => {
-        let timeoutHandle: NodeJS.Timeout
-
-        const eventEmitter = BleManager.addListener('BleManagerDiscoverPeripheral', (peripheral: Peripheral) => {
-            if (peripheral.id === deviceId) {
-                 log('[scanForOriginalDevice] Found original device:', peripheral.id)
-                 BleManager.stopScan().catch(err => logWarn('Failed to stop scan:', err))
-                 clearTimeout(timeoutHandle)
-                 eventEmitter.remove()
-                 resolve(peripheral.id)
-            }
-        })
-
-        BleManager.scan([], timeoutMs / 1000)
-            .then(() => log('[scanForOriginalDevice] Scan started for:', deviceId))
-            .catch(err => {
-                logError('[scanForOriginalDevice] Scan failed:', err)
-                clearTimeout(timeoutHandle)
-                eventEmitter.remove()
-                reject(err)
-            })
-
-        timeoutHandle = setTimeout(() => {
-            log('[scanForOriginalDevice] Scan timeout')
-            BleManager.stopScan().catch(err => logWarn('Failed to stop scan:', err))
-            eventEmitter.remove()
-            resolve(null)
-        }, timeoutMs)
-    })
-}
 
 interface UseStartDeploymentParams {
     deviceId?: string
@@ -130,7 +52,7 @@ export const useStartDeployment = ({
     const currentOrganisation = useAppSelector(selectCurrentOrganisation)
 
     // BLE Hooks
-    const { connectDevice, disconnectDevice } = useBle()
+    const { disconnectDevice } = useBle()
     
     // NEW EVENT-FIRST ARCHITECTURE (SHADOW MODE)
     const bleSession = useBleSession(bleDevice)
@@ -144,25 +66,13 @@ export const useStartDeployment = ({
     // Advanced Settings State
     const [batteryLevel, setBatteryLevel] = useState<number | null>(initPayload?.batteryLevel || null)
     const [sdCardStatus, setSdCardStatus] = useState<{ total: number; free: number } | null>(initPayload?.sdCardStatus || null)
-    const [latestBleFirmware, setLatestBleFirmware] = useState<Firmware | null>(null)
-    const [latestHimaxFirmware, setLatestHimaxFirmware] = useState<Firmware | null>(null)
-    const [deviceFirmwareVersion, setDeviceFirmwareVersion] = useState<string | null>(initPayload?.deviceFirmwareVersion || null)
-    const [bleFirmwareUpdateAvailable, setBleFirmwareUpdateAvailable] = useState(initPayload?.bleFirmwareUpdateAvailable || false)
-    const [firmwareUpdateProgress, setFirmwareUpdateProgress] = useState<number>(0)
-    const [isUpdatingFirmware, setIsUpdatingFirmware] = useState(false)
-    const [isCheckingFirmware, setIsCheckingFirmware] = useState(false)
-    const [isVerifyingUpdate, setIsVerifyingUpdate] = useState(false)
-    const [firmwareUpdateStatus, setFirmwareUpdateStatus] = useState<string>('')
+
     
     // Refs for DFU
     const isDfuInProgress = useRef(false)
     const isReconnectingAfterDfu = useRef(false)
 
-    // Himax Firmware State
-    const [himaxFirmwareVersion, setHimaxFirmwareVersion] = useState<string | null>(initPayload?.himaxFirmwareVersion || null)
-    const [isHimaxUpdating, setIsHimaxUpdating] = useState(false)
-    const [himaxUpdateProgress, setHimaxUpdateProgress] = useState('')
-    const [isCheckingHimaxVersion, setIsCheckingHimaxVersion] = useState(false)
+
 
     const [formState, setFormState] = useState({
         notes: '',
@@ -227,23 +137,7 @@ export const useStartDeployment = ({
         bleDeviceRef.current = bleDevice
     }, [bleDevice])  
 
-    // Fetch latest firmwares from the local database
-    useEffect(() => {
-        const fetchLatestFirmwares = async () => {
-            try {
-                const latestBle = await ReferenceDataService.getLatestFirmware('ble')
-                setLatestBleFirmware(latestBle)
-                log('[Deployment] Latest BLE firmware loaded:', latestBle?.version || 'none found')
 
-                const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
-                setLatestHimaxFirmware(latestHimax)
-                log('[Deployment] Latest Himax firmware loaded:', latestHimax?.version || 'none found')
-            } catch (e) {
-                logWarn('[Deployment] Failed to load latest firmwares:', e)
-            }
-        }
-        fetchLatestFirmwares()
-    }, [])
 
     const loadProjectAndDevice = useCallback(async () => {
         try {
@@ -525,6 +419,117 @@ export const useStartDeployment = ({
             if (bleDevice) await bleSession?.execute(commandRegistry.setutc)
             addFinishLog('Time check complete')
 
+            // Config push
+            addFinishLog('Updating configuration...')
+            setFinishStep('Config push...')
+            setFinishProgress(0.12)
+            
+            try {
+                const latestConfig = await ReferenceDataService.getLatestFirmware('config')
+                if (latestConfig?.locationPath && bleDevice && bleSession) {
+                    const configBytes = await FirmwareService.readFirmwareAsBytes(latestConfig.locationPath)
+                    if (configBytes) {
+                        await runFileTransferPipeline(bleDevice, {
+                            filename: 'CONFIG.TXT',
+                            data: configBytes,
+                            onProgress: (p) => setFinishProgress(0.12 + (p.percentage / 100) * 0.03) // max 0.15
+                        })
+                        addFinishLog('Configuration pushed successfully')
+                    }
+                }
+            } catch (e) {
+                logWarn('Failed to push config:', e)
+                addFinishLog('Configuration push failed, continuing...')
+            }
+
+            // AI Model check
+            addFinishLog('Checking AI model...')
+            setFinishStep('AI Model...')
+            setFinishProgress(0.15)
+
+            if (project.model_id && bleSession && bleDevice) {
+                try {
+                    // Wake up AI
+                    await bleSession.execute(() => commandRegistry.aiver())
+
+                    // Check current model
+                    const ops = await bleSession.execute(() => commandRegistry.getops())
+                    if (!ops) {
+                        throw new Error('Failed to get operational parameters from device.')
+                    }
+                    const currentId = parseInt(ops[14], 10)
+                    const currentVer = parseInt(ops[15], 10)
+
+                    const targetModel = await AiModelService.getModelById(project.model_id)
+
+                    if (targetModel) {
+                        const { firmwareModelId: numericId, versionNumber: numericVer } = await ReferenceDataService.getFirmwareIds(targetModel)
+
+                        if (currentId !== numericId || currentVer !== numericVer) {
+                            addFinishLog(`Model mismatch (Device: ${currentId}v${currentVer}, Target: ${numericId}v${numericVer})`)
+                            addFinishLog('Downloading AI model files...')
+                            
+                            const localFiles = await AiModelService.ensureFilesDownloaded(targetModel)
+                            const modelBytes = await AiModelService.readModelAsBytes(localFiles.modelUri)
+                            const labelsBytes = localFiles.labelsUri ? await AiModelService.readModelAsBytes(localFiles.labelsUri) : null
+                            
+                            if (modelBytes) {
+                                addFinishLog('Transferring AI model...')
+                                const tflFilename = `${numericId}V${numericVer}.TFL`
+                                await runFileTransferPipeline(bleDevice, {
+                                    filename: tflFilename,
+                                    data: modelBytes,
+                                    onProgress: (p) => setFinishProgress(0.15 + (p.percentage / 100) * 0.05) // max 0.2
+                                })
+
+                                if (labelsBytes) {
+                                    addFinishLog('Transferring model labels...')
+                                    const labelsFilename = `${numericId}V${numericVer}.TXT`
+                                    await runFileTransferPipeline(bleDevice, {
+                                        filename: labelsFilename,
+                                        data: labelsBytes,
+                                        onProgress: () => {} // minor progress, skip ui update
+                                    })
+                                }
+                                
+                                addFinishLog('Erasing old model...')
+                                await bleSession.execute(() => commandRegistry.erasemodel())
+                                
+                                addFinishLog('Loading new model...')
+                                await bleSession.execute(() => commandRegistry.loadmodel(numericId, numericVer))
+                                
+                                addFinishLog('AI model updated successfully')
+                            }
+                        } else {
+                            addFinishLog('AI model up to date')
+                        }
+                    } else {
+                        addFinishLog('Assigned AI model not found locally')
+                    }
+                } catch (e) {
+                    logWarn('Failed to update AI model:', e)
+                    addFinishLog('AI model update failed, continuing...')
+                }
+            } else {
+                // No AI model assigned — check if device has a stale model loaded
+                try {
+                    await bleSession?.execute(() => commandRegistry.aiver())
+                    const ops = await bleSession?.execute(() => commandRegistry.getops())
+                    const currentId = ops ? parseInt(ops[14], 10) : 0
+
+                    if (currentId !== 0) {
+                        addFinishLog(`Device has stale model (ID: ${currentId}) — erasing...`)
+                        await bleSession?.execute(() => commandRegistry.erasemodel())
+                        addFinishLog('Stale AI model erased')
+                    } else {
+                        addFinishLog('No AI model required — device clear')
+                    }
+                } catch (e) {
+                    logWarn('Failed to check/erase device model:', e)
+                    addFinishLog('Could not verify device model state, continuing...')
+                }
+            }
+
             addFinishLog('Gathering snapshot data...')
             setFinishStep('Reading metrics...')
             setFinishProgress(0.2)
@@ -548,12 +553,16 @@ export const useStartDeployment = ({
                 }
             }
 
-            if (deviceFirmwareVersion) {
-                addFinishLog('Resolving firmware ID...')
-                const resolvedId = await FirmwareService.getFirmwareIdByVersion('ble', deviceFirmwareVersion)
-                if (resolvedId) {
-                    bleFirmwareId = resolvedId
+            try {
+                const response = await bleSession?.execute(commandRegistry.version)
+                if (response) {
+                    const resolvedId = await FirmwareService.getFirmwareIdByVersion('ble', response)
+                    if (resolvedId) {
+                        bleFirmwareId = resolvedId
+                    }
                 }
+            } catch (e) {
+                logWarn('Failed to resolve firmware ID:', e)
             }
 
             addFinishLog('Creating deployment record...')
@@ -647,7 +656,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, project, user, deviceId, startConfigure, addFinishLog, batteryLevel, device?.deviceEui, deviceFirmwareVersion, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [formState.cameraHeight, formState.notes, bleDevice, project, user, deviceId, startConfigure, addFinishLog, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleFinishDismiss = useCallback(() => {
         setIsFinishing(false)
@@ -703,7 +712,7 @@ export const useStartDeployment = ({
             // SHADOW MODE: Try new architecture
             if (bleSession) {
                 try {
-                    const sdStatus = await newCheckSdCardWorkflow(bleSession)
+                    const sdStatus = await checkSdCard(bleSession)
                     setSdCardStatus({ total: sdStatus.totalSpaceMb, free: sdStatus.freeSpaceMb })
                     return
                 } catch (err: any) {
@@ -729,224 +738,7 @@ export const useStartDeployment = ({
         }
     }, [bleSession]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleFirmwareCheck = useCallback(async () => {
-        if (!bleDevice || !bleDevice.connected) return
-        try {
-            setIsCheckingFirmware(true)
-            setDeviceFirmwareVersion(null)
-            const response = await bleSession?.execute(commandRegistry.version)
-            if (response) setDeviceFirmwareVersion(response)
-            setIsCheckingFirmware(false)
-        } catch (error) {
-            setIsCheckingFirmware(false)
-            Alert.alert('Error', 'Failed to check firmware version')
-        }
-    }, [bleDevice]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleBleFirmwareUpdate = useCallback(async () => {
-        if (!latestBleFirmware || !device || !bleDevice) return
-        const isLowBattery = batteryLevel !== null && batteryLevel < 30
-        const batteryWarning = isLowBattery
-            ? "\n\n⚠️ WARNING: Battery is low. Updating with low battery increases the risk of device failure."
-            : "\n\nMake sure the device battery is above 30%."
-
-        Alert.alert(
-            'Update BLE Firmware',
-            `This will update the BLE firmware to version ${latestBleFirmware.version}. The process takes 2-3 minutes.${batteryWarning}`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Update',
-                    onPress: async () => {
-                        try {
-                            setIsUpdatingFirmware(true)
-                            setFirmwareUpdateStatus('Preparing update...')
-                            isDfuInProgress.current = true
-                            setFirmwareUpdateProgress(0)
-
-                            const localUri = await FirmwareService.ensureFirmwareDownloaded(latestBleFirmware)
-
-                            if (bleDevice.connected) {
-                                setFirmwareUpdateStatus('Switching to DFU mode...')
-                                try {
-                                    await bleSession?.execute(commandRegistry.dfu)
-                                    await new Promise(r => setTimeout(r, 500))
-                                    try { await bleSession?.execute(commandRegistry.disconnect) } catch(e) {} finally { await disconnectDevice(bleDevice) }
-                                    await new Promise(r => setTimeout(r, 5000))
-                                } catch (e) {
-                                    logWarn('[Deployment DFU] Failed DFU command:', e)
-                                }
-                            }
-
-                            if (Platform.OS === 'android' && Platform.Version >= 33) {
-                                try {
-                                    const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS)
-                                    if (granted !== PermissionsAndroid.RESULTS.GRANTED) throw new Error('Notification permission required')
-                                } catch (permErr) {}
-                            }
-
-                            setFirmwareUpdateStatus('Searching for bootloader...')
-                            const bootloaderAddress = await scanForBootloader(10000)
-                            if (!bootloaderAddress) throw new Error('Bootloader not found.')
-
-                            setFirmwareUpdateStatus('Updating firmware...')
-                            await DfuService.startDFU(bootloaderAddress, localUri, (progress) => {
-                                setFirmwareUpdateProgress(progress)
-                                if (progress > 95) setFirmwareUpdateStatus('Finalizing update...')
-                            })
-
-                            setFirmwareUpdateProgress(100)
-                            setFirmwareUpdateStatus('Rebooting device...')
-                            setDeviceFirmwareVersion(null)
-                            setIsCheckingFirmware(true)
-                            setIsVerifyingUpdate(true)
-                            setBleFirmwareUpdateAvailable(false)
-
-                            isReconnectingAfterDfu.current = true
-                            isDfuInProgress.current = false
-                            
-                            await new Promise(r => setTimeout(r, 6000))
-
-                            setFirmwareUpdateStatus('Reconnecting...')
-                            
-                            try {
-                                const foundId = await scanForOriginalDevice(bleDeviceId!, 20000)
-                                if (foundId && bleDevice) {
-                                    setFirmwareUpdateStatus('Connecting...')
-                                    await connectDevice(bleDevice, 20000)
-                                    await new Promise(r => setTimeout(r, 2000))
-                                    setFirmwareUpdateStatus('Verifying version...')
-                                    handleFirmwareCheck()
-                                } else {
-                                    throw new Error('Device not found after DFU reboot')
-                                }
-                            } catch (reconnectErr) {
-                                setIsVerifyingUpdate(false)
-                                setDeviceFirmwareVersion(null)
-                                Alert.alert(
-                                    'Reconnect Failed', 
-                                    'Failed to auto reconnect. Please reconnect manually.', 
-                                    [{ 
-                                        text: 'OK',
-                                        onPress: () => {
-                                            isNavigatingAway.current = true
-                                            navigation.navigate('DeviceDiscovery')
-                                        }
-                                    }]
-                                )
-                            }
-                        } catch (error) {
-                            Alert.alert('Update Failed', error instanceof Error ? error.message : 'Unknown error')
-                        } finally {
-                            isReconnectingAfterDfu.current = false
-                            setIsUpdatingFirmware(false)
-                            isDfuInProgress.current = false
-                            setFirmwareUpdateStatus('')
-                        }
-                    }
-                }
-            ]
-        )
-    }, [latestBleFirmware, device, bleDevice, bleDeviceId, batteryLevel, handleFirmwareCheck, connectDevice, navigation]) // eslint-disable-line react-hooks/exhaustive-deps
-
-    // --- Himax Firmware Handlers ---
-
-    const handleHimaxFirmwareCheck = useCallback(async () => {
-        if (!bleDevice || !bleDevice.connected) return
-        try {
-            setIsCheckingHimaxVersion(true)
-            const response = await bleSession?.execute(commandRegistry.aiver)
-            if (response) {
-                setHimaxFirmwareVersion(response)
-                log('[Deployment] Himax firmware version:', response)
-            }
-        } catch (error) {
-            logError('[Deployment] Himax version check failed:', error)
-            Alert.alert('Error', 'Failed to check Himax firmware version')
-        } finally {
-            setIsCheckingHimaxVersion(false)
-        }
-    }, [bleDevice]) // eslint-disable-line react-hooks/exhaustive-deps
-
-    const handleHimaxFirmwareUpdate = useCallback(async () => {
-        if (!bleDevice || !bleDevice.connected) return
-
-        const isLowBattery = batteryLevel !== null && batteryLevel < 30
-        const batteryWarning = isLowBattery
-            ? "\n\n⚠️ WARNING: Battery is low. Updating with low battery increases the risk of device failure."
-            : ""
-
-        Alert.alert(
-            'Update Himax Firmware',
-            `This will flash the firmware image from the SD card (output.img in /MANIFEST/).\n\nEnsure the correct firmware file is on the SD card before proceeding.\n\nThe process takes 20-30 seconds.${batteryWarning}`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Update',
-                    onPress: async () => {
-                        try {
-                            setIsHimaxUpdating(true)
-                            setHimaxUpdateProgress('Sending firmware flash command...')
-
-                            const success = await bleSession!.execute(() => commandRegistry.aifirmware('output.img'))
-
-                            if (success) {
-                                setHimaxUpdateProgress('Firmware flashed! Sending reset...')
-
-                                try {
-                                    await bleSession?.execute(commandRegistry.reset)
-                                    await new Promise(r => setTimeout(r, 500))
-                                    try { await bleSession?.execute(commandRegistry.disconnect) } catch(e) {} finally { await disconnectDevice(bleDevice) }
-                                } catch (resetErr) {
-                                    logWarn('[Deployment] Reset/disconnect after Himax update:', resetErr)
-                                }
-
-                                setHimaxUpdateProgress('Rebooting device...')
-                                isReconnectingAfterDfu.current = true
-                                await new Promise(r => setTimeout(r, 8000))
-
-                                setHimaxUpdateProgress('Reconnecting...')
-                                try {
-                                    const foundId = await scanForOriginalDevice(bleDeviceId!, 20000)
-                                    if (foundId && bleDevice) {
-                                        setHimaxUpdateProgress('Connecting...')
-                                        await connectDevice(bleDevice, 20000)
-                                        await new Promise(r => setTimeout(r, 2000))
-                                        setHimaxUpdateProgress('Verifying new version...')
-                                        await handleHimaxFirmwareCheck()
-                                        Alert.alert('Success', 'Himax firmware updated successfully!')
-                                    } else {
-                                        throw new Error('Device not found after reboot')
-                                    }
-                                } catch (reconnectErr) {
-                                    Alert.alert(
-                                        'Reconnect Failed',
-                                        'Firmware was flashed but failed to reconnect. Please reconnect manually.',
-                                        [{
-                                            text: 'OK',
-                                            onPress: () => {
-                                                isNavigatingAway.current = true
-                                                navigation.navigate('DeviceDiscovery')
-                                            }
-                                        }]
-                                    )
-                                }
-                            } else {
-                                throw new Error('Unexpected response from device during firmware update')
-                            }
-                        } catch (error) {
-                            logError('[Deployment] Himax firmware update failed:', error)
-                            Alert.alert('Update Failed', error instanceof Error ? error.message : 'Unknown error')
-                        } finally {
-                            isReconnectingAfterDfu.current = false
-                            setIsHimaxUpdating(false)
-                            setHimaxUpdateProgress('')
-                        }
-                    }
-                }
-            ]
-        )
-    }, [bleDevice, bleDeviceId, batteryLevel, connectDevice, navigation, handleHimaxFirmwareCheck, bleSession]) // eslint-disable-line react-hooks/exhaustive-deps
 
     return {
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
@@ -959,12 +751,9 @@ export const useStartDeployment = ({
         // Dropdown & Additional Location State
         locationName, setLocationName, availableLocations, isCustomLocation, setIsCustomLocation,
         // Advanced Settings Exports
-        batteryLevel, sdCardStatus, latestBleFirmware, deviceFirmwareVersion,
-        bleFirmwareUpdateAvailable, firmwareUpdateProgress, isUpdatingFirmware,
-        isCheckingFirmware, isVerifyingUpdate, firmwareUpdateStatus,
-        handleBatteryCheck, handleSdCardCheck, handleFirmwareCheck, handleBleFirmwareUpdate,
-        // Himax Firmware Exports
-        latestHimaxFirmware, himaxFirmwareVersion, isHimaxUpdating, himaxUpdateProgress, isCheckingHimaxVersion,
-        handleHimaxFirmwareCheck, handleHimaxFirmwareUpdate
+        batteryLevel, sdCardStatus,
+        handleBatteryCheck, handleSdCardCheck,
+        // DFU control
+        isDfuInProgress,
     }
 }

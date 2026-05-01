@@ -103,11 +103,19 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				deleted_at: null,
 				description: "General model for wildlife classification",
 				modified_by: "user-123",
-				storage_path: "models/test-model.onnx",
+				model_path: "models/test-model.tflite",
+				labels_path: "models/test-model-labels.txt",
 				detection_capabilities: ["animal", "person"],
 				file_size_bytes: 1024,
 				file_type: "onnx",
 				uploaded_by: "user-123",
+				compiled_format: null,
+				error_message: null,
+				file_hash: null,
+				model_family_id: null,
+				processing_log: null,
+				status: "validated",
+				version_number: null,
 			},
 			{
 				id: "223e4567-e89b-12d3-a456-426614174001",
@@ -119,11 +127,19 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				deleted_at: null,
 				description: "Specialized model for bird species identification",
 				modified_by: "user-123",
-				storage_path: "models/test-model.onnx",
+				model_path: "models/test-model.tflite",
+				labels_path: "models/test-model-labels.txt",
 				detection_capabilities: ["bird"],
 				file_size_bytes: 1024,
 				file_type: "onnx",
 				uploaded_by: "user-123",
+				compiled_format: null,
+				error_message: null,
+				file_hash: null,
+				model_family_id: null,
+				processing_log: null,
+				status: "validated",
+				version_number: null,
 			},
 		]
 
@@ -212,7 +228,8 @@ describe("NewProjectScreen - AI Model Integration", () => {
 					description: "A project to monitor wildlife in national park",
 					organisation_id: "org-123",
 					is_baited: true,
-					model_id: "123e4567-e89b-12d3-a456-426614174000",
+					// model_id is undefined because no model was auto-selected
+					// (user must explicitly choose one now)
 				}),
 			)
 		})
@@ -243,9 +260,9 @@ describe("NewProjectScreen - AI Model Integration", () => {
 
 		fireEvent.press(screen.getByText("Advanced Project Settings"))
 
-		// Assert
+		// Assert — empty list still shows the dropdown with a "None" option
 		await waitFor(() => {
-			expect(screen.getByText("No AI models available for this organisation")).toBeOnTheScreen()
+			expect(screen.getByTestId("ai-model-select-dropdown")).toBeOnTheScreen()
 		})
 	})
 
@@ -379,11 +396,19 @@ describe("NewProjectScreen - AI Model Integration", () => {
 				deleted_at: null,
 				description: "General model for wildlife classification",
 				modified_by: "user-123",
-				storage_path: "models/test-model.onnx",
+				model_path: "models/test-model.tflite",
+				labels_path: "models/test-model-labels.txt",
 				detection_capabilities: ["animal", "person"],
 				file_size_bytes: 1024,
 				file_type: "onnx",
 				uploaded_by: "user-123",
+				compiled_format: null,
+				error_message: null,
+				file_hash: null,
+				model_family_id: null,
+				processing_log: null,
+				status: "validated",
+				version_number: null,
 			},
 		]
 
@@ -428,10 +453,11 @@ describe("NewProjectScreen - AI Model Integration", () => {
 		const submitButton = screen.getByText("Create Project")
 		fireEvent.press(submitButton)
 
+		// model_id defaults to "" (None) — no auto-selection anymore
 		await waitFor(() => {
 			expect(mockCreateProject).toHaveBeenCalledWith(
 				expect.objectContaining({
-					model_id: "123e4567-e89b-12d3-a456-426614174000",
+					model_id: undefined,
 				}),
 			)
 		})

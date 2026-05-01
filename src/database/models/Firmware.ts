@@ -4,6 +4,7 @@ import { field, text, date, readonly } from '@nozbe/watermelondb/decorators'
 export default class Firmware extends Model {
     static table = 'firmware'
 
+    @text('name') name!: string
     @text('version') version!: string
     @text('type') type!: string
     @text('location_path') locationPath!: string
