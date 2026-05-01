@@ -265,6 +265,7 @@ class ReferenceDataService {
             .from('ai_models')
             .select('*')
             .is('deleted_at', null)
+            .eq('status', 'validated')
             .order('name')
 
         if (error) {

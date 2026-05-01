@@ -106,9 +106,11 @@ describe("aiModelsApi", () => {
 					select: jest.fn().mockReturnValue({
 						eq: jest.fn().mockReturnValue({
 							is: jest.fn().mockReturnValue({
-								order: jest.fn().mockResolvedValue({
-									data: mockModels,
-									error: null,
+								eq: jest.fn().mockReturnValue({
+									order: jest.fn().mockResolvedValue({
+										data: mockModels,
+										error: null,
+									}),
 								}),
 							}),
 						}),
@@ -142,9 +144,11 @@ describe("aiModelsApi", () => {
 					select: jest.fn().mockReturnValue({
 						eq: jest.fn().mockReturnValue({
 							is: jest.fn().mockReturnValue({
-								order: jest.fn().mockResolvedValue({
-									data: null,
-									error: mockError,
+								eq: jest.fn().mockReturnValue({
+									order: jest.fn().mockResolvedValue({
+										data: null,
+										error: mockError,
+									}),
 								}),
 							}),
 						}),
@@ -281,9 +285,11 @@ describe("aiModelsApi", () => {
 					select: jest.fn().mockReturnValue({
 						eq: jest.fn().mockReturnValue({
 							is: jest.fn().mockReturnValue({
-								order: jest.fn().mockResolvedValue({
-									data: [],
-									error: null,
+								eq: jest.fn().mockReturnValue({
+									order: jest.fn().mockResolvedValue({
+										data: [],
+										error: null,
+									}),
 								}),
 							}),
 						}),
