@@ -236,7 +236,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     // ── Pre-flight: run on mount ───────────────────────────────────
 
     useEffect(() => {
-        if (!device?.connected) return
+        if (!device?.connected || isUpdating) return
         let cancelled = false
 
         const run = async () => {
@@ -275,7 +275,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         run()
         return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [device?.connected, target])
+    }, [device?.connected, target, isUpdating])
 
     // ── Himax UART phase listener ──────────────────────────────────
 
