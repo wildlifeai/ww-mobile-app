@@ -173,6 +173,7 @@ export const StartMonitoringDetailsStep = () => {
                                 navigation.navigate('FirmwareStatusScreen', { deviceId: bleDeviceId! })
                             }}
                         >
+                            { }
                             Update Firmware
                         </Button>
                     </View>
