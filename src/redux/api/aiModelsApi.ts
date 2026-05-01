@@ -52,6 +52,7 @@ export const aiModelsApi = createApi({
 						.select("*")
 						.eq("organisation_id", organisationId)
 						.is("deleted_at", null) // Exclude soft-deleted models
+						.eq("status", "validated") // Only include fully validated models
 						.order("name", { ascending: true })
 
 					if (error) {
