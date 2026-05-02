@@ -152,9 +152,13 @@ class AiModelService {
      * Extracts the file extensions for the given model from its path properties.
      */
     getModelFileExtensions(model: { modelPath?: string | null, labelsPath?: string | null }): { modelExt: string, labelsExt: string } {
+        const getExt = (path: string | null | undefined, fallback: string) => {
+            if (!path || !path.includes('.')) return fallback
+            return path.split('.').pop() || fallback
+        }
         return {
-            modelExt: model.modelPath ? model.modelPath.split('.').pop() || 'tflite' : 'tflite',
-            labelsExt: model.labelsPath ? model.labelsPath.split('.').pop() || 'txt' : 'txt'
+            modelExt: getExt(model.modelPath, 'tflite'),
+            labelsExt: getExt(model.labelsPath, 'txt')
         }
     }
 
