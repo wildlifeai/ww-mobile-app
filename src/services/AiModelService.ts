@@ -148,17 +148,30 @@ class AiModelService {
         }
     }
 
+    /**
+     * Extracts the file extensions for the given model from its path properties.
+     */
+    getModelFileExtensions(model: { modelPath?: string | null, labelsPath?: string | null }): { modelExt: string, labelsExt: string } {
+        const getExt = (path: string | null | undefined, fallback: string) => {
+            if (!path || !path.includes('.')) return fallback
+            return path.split('.').pop() || fallback
+        }
+        return {
+            modelExt: getExt(model.modelPath, 'tflite'),
+            labelsExt: getExt(model.labelsPath, 'txt')
+        }
+    }
+
     private getLocalFilename(model: AiModel, type: 'model' | 'labels'): string {
         // Use serverId for local caching — firmware filenames ({familyId}V{ver}.[ext])
         // are constructed in the transfer hook via ReferenceDataService.getFirmwareIds()
         const cacheKey = model.serverId || model.id
+        const { modelExt, labelsExt } = this.getModelFileExtensions(model)
         
         if (type === 'model') {
-            const ext = model.modelPath ? model.modelPath.split('.').pop() : 'tflite'
-            return `model_${cacheKey}.${ext}`
+            return `model_${cacheKey}.${modelExt}`
         } else {
-            const ext = model.labelsPath ? model.labelsPath.split('.').pop() : 'txt'
-            return `labels_${cacheKey}.${ext}`
+            return `labels_${cacheKey}.${labelsExt}`
         }
     }
 }

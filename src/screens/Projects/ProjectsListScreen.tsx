@@ -13,7 +13,7 @@
  * - Navigation to project details and new project creation
  */
 
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { ListRenderItemInfo } from "react-native"
 import { useFocusEffect } from "@react-navigation/native"
 import { useGetProjectsQuery } from "../../redux/api/projectsApi"
@@ -49,15 +49,22 @@ export const Projects = () => {
 	)
 
 	// Refetch when global sync finishes
+	const wasSyncing = useRef(isGlobalSyncing)
 	useEffect(() => {
-		if (!isGlobalSyncing && userId && organisationId) {
+		if (wasSyncing.current && !isGlobalSyncing && userId && organisationId) {
 			forceRefetch()
 		}
+		wasSyncing.current = isGlobalSyncing
 	}, [isGlobalSyncing, forceRefetch, userId, organisationId])
 
-	// Refresh on focus
+	// Refresh on subsequent focus (skip initial mount)
+	const isFirstFocus = useRef(true)
 	useFocusEffect(
 		useCallback(() => {
+			if (isFirstFocus.current) {
+				isFirstFocus.current = false
+				return
+			}
 			if (userId && organisationId) {
 				forceRefetch()
 			}
