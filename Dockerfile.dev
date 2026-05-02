@@ -1,0 +1,63 @@
+# Wildlife Watcher Development Environment
+# Matches production environment: Node 20.19.4, Expo CLI 0.18.31, EAS CLI 16.17.3
+
+FROM node:20.19.4-bullseye
+
+# Set up environment
+ENV DEBIAN_FRONTEND=noninteractive
+ENV USER=developer
+ENV HOME=/home/$USER
+ENV EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
+ENV REACT_NATIVE_PACKAGER_HOSTNAME=0.0.0.0
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    wget \
+    curl \
+    unzip \
+    openjdk-17-jdk \
+    android-tools-adb \
+    android-tools-fastboot \
+    vim \
+    nano \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create developer user
+RUN groupadd -r $USER && useradd -r -g $USER -m -s /bin/bash $USER \
+    && echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Install exact CLI versions to match your environment
+RUN npm install -g @expo/cli@0.18.31 eas-cli@16.17.3
+
+# Create workspace
+WORKDIR /app
+RUN chown -R $USER:$USER /app
+
+# Switch to developer user
+USER $USER
+
+# Set up Android SDK (optional, for building)
+ENV ANDROID_HOME=$HOME/android-sdk
+ENV PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+
+# Create .bashrc with helpful aliases
+RUN echo 'alias ll="ls -la"' >> $HOME/.bashrc \
+    && echo 'alias gs="git status"' >> $HOME/.bashrc \
+    && echo 'alias npm-start="npm start"' >> $HOME/.bashrc \
+    && echo 'alias expo-start="npx expo start"' >> $HOME/.bashrc \
+    && echo 'alias eas-build="eas build --profile development --platform android"' >> $HOME/.bashrc \
+    && echo 'echo "🦎 Wildlife Watcher Development Environment Ready!"' >> $HOME/.bashrc \
+    && echo 'echo "Node: $(node --version) | npm: $(npm --version)"' >> $HOME/.bashrc \
+    && echo 'echo "Expo CLI: $(npx @expo/cli --version) | EAS CLI: $(eas --version)"' >> $HOME/.bashrc
+
+# Copy package files for dependency installation
+COPY --chown=$USER:$USER package*.json ./
+
+# Install dependencies (will be overridden by volume mount in development)
+RUN npm install
+
+EXPOSE 8081 19000 19001 19002
+
+CMD ["bash"]

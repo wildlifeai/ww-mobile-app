@@ -1,0 +1,118 @@
+import NetInfo, { NetInfoState } from "@react-native-community/netinfo"
+import { NetworkStatus } from "../../types/offline"
+import SupabaseSyncService from "../SupabaseSyncService"
+import store from "../../redux"
+import { networkOnline, networkOffline } from "../../redux/slices/networkSlice"
+import { log, logError, logWarn } from '../../utils/logger'
+
+
+/**
+ * OfflineService - Network status monitoring
+ * 
+ * Refactored for WatermelonDB Native Sync:
+ * - Removed custom queue management (replaced by WatermelonDB Sync)
+ * - Retained network monitoring to trigger syncs
+ */
+export class OfflineService {
+	private networkStatus: NetworkStatus
+	private networkUnsubscribe?: () => void
+	private initialized = false
+
+	constructor() {
+		this.networkStatus = {
+			isConnected: false,
+			type: "none",
+		}
+	}
+
+	/**
+	 * Initialize the offline service with network monitoring
+	 */
+	async initialize(): Promise<void> {
+		if (this.initialized) return
+
+		// Set up network monitoring
+		await this.setupNetworkMonitoring()
+
+		this.initialized = true
+	}
+
+	/**
+	 * Set up network state monitoring and sync triggers
+	 */
+	private async setupNetworkMonitoring(): Promise<void> {
+		// Get initial network state
+		const initialState = await NetInfo.fetch()
+		this.updateNetworkStatus(initialState)
+		log("📡 Initial network state:", this.networkStatus)
+
+		// Listen for network changes
+		this.networkUnsubscribe = NetInfo.addEventListener(
+			(state: NetInfoState) => {
+				if (!state) {
+					logWarn("📡 Received undefined network state from NetInfo")
+					return
+				}
+
+				const wasOffline = !this.networkStatus.isConnected
+				this.updateNetworkStatus(state)
+				const isNowOnline = this.networkStatus.isConnected
+
+				log("📡 ============ NETWORK STATE CHANGE ============")
+				log("📡 Was offline:", wasOffline)
+				log("📡 Is now online:", isNowOnline)
+				log("📡 Network type:", this.networkStatus.type)
+
+				// Trigger sync when coming online
+				if (wasOffline && isNowOnline) {
+					log("📡 🔄 TRANSITIONING FROM OFFLINE → ONLINE")
+					log("📡 Triggering WatermelonDB sync...")
+					SupabaseSyncService.sync().catch((error) => {
+						logError("📡 ❌ Failed to trigger sync:", error)
+					})
+				}
+			},
+		)
+	}
+
+	/**
+	 * Update internal network status and dispatch to Redux
+	 */
+	private updateNetworkStatus(state: NetInfoState): void {
+		if (!state) {
+			logWarn("📡 updateNetworkStatus called with undefined state")
+			return
+		}
+
+		this.networkStatus = {
+			isConnected: state.isConnected ?? false,
+			type: state.type || "none",
+		}
+
+		// Dispatch to Redux store so entire app knows network state
+		if (this.networkStatus.isConnected) {
+			store.dispatch(networkOnline({
+				connectionType: this.networkStatus.type as any,
+				isInternetReachable: state.isInternetReachable ?? false
+			}))
+		} else {
+			store.dispatch(networkOffline())
+		}
+	}
+
+	/**
+	 * Get current network status
+	 */
+	getNetworkStatus(): NetworkStatus {
+		return { ...this.networkStatus }
+	}
+
+	// Deprecated methods stubs to prevent immediate crashes if called, 
+	// but they should be removed from callers.
+
+	async queueOperation(_operation: any): Promise<void> {
+		logWarn("⚠️ queueOperation is deprecated. Use WatermelonDB models directly.")
+	}
+}
+
+export default new OfflineService()

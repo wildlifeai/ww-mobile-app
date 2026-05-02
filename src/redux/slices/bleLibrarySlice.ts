@@ -11,7 +11,7 @@ const initialState: BleLibState = {
 	initialLoad: true,
 }
 
-export const scanningSlice = createSlice({
+export const bleLibrarySlice = createSlice({
 	name: "bleLibrary",
 	initialState: initialState,
 	reducers: {
@@ -28,6 +28,6 @@ export const scanningSlice = createSlice({
 	},
 })
 
-export const { libStarted, libError } = scanningSlice.actions
+export const { libStarted, libError } = bleLibrarySlice.actions
 
-export default scanningSlice.reducer
+export default bleLibrarySlice.reducer

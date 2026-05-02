@@ -1,0 +1,5 @@
+appId: com.wildlife.wildlifewatcher.expo
+---
+# Launch the app and capture startup state
+- launchApp
+- takeScreenshot: startup-error.png

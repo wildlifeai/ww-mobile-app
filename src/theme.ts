@@ -9,7 +9,9 @@ import {
 	adaptNavigationTheme,
 	useTheme,
 } from "react-native-paper"
-import merge from "deepmerge"
+// Fix for React Native - deepmerge has non-standard exports
+const deepmergeModule = require("deepmerge")
+const merge = deepmergeModule.default || deepmergeModule
 
 const { LightTheme, DarkTheme } = adaptNavigationTheme({
 	reactNavigationLight: NavigationDefaultTheme,
@@ -30,9 +32,9 @@ const darkColors = {
 	onPrimary: "rgb(255, 255, 255)",
 	primaryContainer: "rgb(76, 175, 80)",
 	onPrimaryContainer: "rgb(255, 255, 255)",
-	secondary: "rgb(254, 213, 78)",
+	secondary: "rgb(76, 175, 80)",
 	onSecondary: "rgb(255, 255, 255)",
-	secondaryContainer: "rgb(254, 213, 78)",
+	secondaryContainer: "rgb(56, 142, 60)",
 	onSecondaryContainer: "rgb(255, 255, 255)",
 	tertiary: "rgb(255, 255, 255)",
 	onTertiary: "rgb(255, 255, 255)",
@@ -74,10 +76,10 @@ const lightColors = {
 	onPrimary: "rgb(255, 255, 255)",
 	primaryContainer: "rgb(148, 249, 144)",
 	onPrimaryContainer: "rgb(0, 34, 4)",
-	secondary: "rgb(115, 92, 0)",
+	secondary: "rgb(46, 125, 50)",
 	onSecondary: "rgb(255, 255, 255)",
-	secondaryContainer: "rgb(255, 224, 133)",
-	onSecondaryContainer: "rgb(35, 27, 0)",
+	secondaryContainer: "rgb(200, 230, 201)",
+	onSecondaryContainer: "rgb(27, 94, 32)",
 	tertiary: "rgb(0, 104, 116)",
 	onTertiary: "rgb(255, 255, 255)",
 	tertiaryContainer: "rgb(151, 240, 255)",

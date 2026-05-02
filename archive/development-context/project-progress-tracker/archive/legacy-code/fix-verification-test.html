@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tab Interface Fix Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .test-pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .test-fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .test-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .test-button { background: #007bff; color: white; padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .test-button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Tab Interface Fix Verification</h1>
+    <p>This page tests the fixes applied to the tabbed interface.</p>
+
+    <div id="results"></div>
+
+    <button class="test-button" onclick="runAllTests()">🧪 Run All Tests</button>
+    <button class="test-button" onclick="testTabSwitching()">🔄 Test Tab Switching</button>
+    <button class="test-button" onclick="testContentRendering()">📄 Test Content Rendering</button>
+    <button class="test-button" onclick="testDOMSelectors()">🎯 Test DOM Selectors</button>
+
+    <script>
+        function logResult(test, status, message) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result test-${status}`;
+            div.innerHTML = `<strong>${test}:</strong> ${message}`;
+            results.appendChild(div);
+        }
+
+        function testDOMSelectors() {
+            logResult('DOM Selector Test', 'info', 'Testing DOM element selection...');
+
+            // Test tab buttons selector
+            const tabButtons = document.querySelectorAll('.tab-button');
+            if (tabButtons.length > 0) {
+                logResult('Tab Buttons', 'pass', `Found ${tabButtons.length} tab buttons with .tab-button class`);
+            } else {
+                logResult('Tab Buttons', 'fail', 'No elements found with .tab-button class');
+            }
+
+            // Test tab content selector
+            const tabContents = document.querySelectorAll('.tab-content');
+            if (tabContents.length > 0) {
+                logResult('Tab Contents', 'pass', `Found ${tabContents.length} tab content containers`);
+            } else {
+                logResult('Tab Contents', 'fail', 'No elements found with .tab-content class');
+            }
+
+            // Test specific content containers
+            const containers = ['overviewContent', 'streamsGrid', 'tasksGrid', 'agentsGridTab', 'activityFeed'];
+            containers.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    logResult(`Container #${id}`, 'pass', 'Container exists and is accessible');
+                } else {
+                    logResult(`Container #${id}`, 'fail', 'Container not found');
+                }
+            });
+        }
+
+        function testTabSwitching() {
+            logResult('Tab Switching Test', 'info', 'Testing tab switching functionality...');
+
+            // Test if dashboard object exists
+            if (typeof dashboard === 'undefined') {
+                logResult('Dashboard Object', 'fail', 'Dashboard object not found');
+                return;
+            } else {
+                logResult('Dashboard Object', 'pass', 'Dashboard object is available');
+            }
+
+            // Test if switchTab function exists
+            if (typeof dashboard.switchTab === 'function') {
+                logResult('switchTab Function', 'pass', 'switchTab function is available');
+            } else {
+                logResult('switchTab Function', 'fail', 'switchTab function not found or not a function');
+                return;
+            }
+
+            // Test actual tab switching
+            try {
+                dashboard.switchTab('overview');
+                logResult('Switch to Overview', 'pass', 'Successfully switched to overview tab');
+
+                dashboard.switchTab('streams');
+                logResult('Switch to Streams', 'pass', 'Successfully switched to streams tab');
+
+                dashboard.switchTab('tasks');
+                logResult('Switch to Tasks', 'pass', 'Successfully switched to tasks tab');
+
+                // Switch back to overview
+                dashboard.switchTab('overview');
+
+            } catch (error) {
+                logResult('Tab Switching', 'fail', `Error during tab switching: ${error.message}`);
+            }
+        }
+
+        function testContentRendering() {
+            logResult('Content Rendering Test', 'info', 'Testing content rendering...');
+
+            if (typeof dashboard === 'undefined') {
+                logResult('Dashboard Check', 'fail', 'Dashboard object not available');
+                return;
+            }
+
+            // Test data loading
+            if (dashboard.data && dashboard.data.mvp2Tasks) {
+                logResult('Mock Data', 'pass', `Mock data loaded with ${dashboard.data.mvp2Tasks.length} tasks`);
+            } else {
+                logResult('Mock Data', 'fail', 'No mock data found');
+            }
+
+            // Test render functions
+            const renderFunctions = ['renderOverviewTab', 'renderStreamsTab', 'renderTasksTab', 'renderAgentsTab', 'renderActivityTab'];
+            renderFunctions.forEach(funcName => {
+                if (typeof dashboard[funcName] === 'function') {
+                    logResult(`${funcName}`, 'pass', 'Render function exists');
+                    try {
+                        dashboard[funcName]();
+                        logResult(`${funcName} Execution`, 'pass', 'Render function executed without error');
+                    } catch (error) {
+                        logResult(`${funcName} Execution`, 'fail', `Error: ${error.message}`);
+                    }
+                } else {
+                    logResult(`${funcName}`, 'fail', 'Render function not found');
+                }
+            });
+        }
+
+        function runAllTests() {
+            document.getElementById('results').innerHTML = '';
+            logResult('Test Suite', 'info', 'Starting comprehensive tab interface verification...');
+
+            setTimeout(() => testDOMSelectors(), 100);
+            setTimeout(() => testTabSwitching(), 200);
+            setTimeout(() => testContentRendering(), 300);
+
+            setTimeout(() => {
+                logResult('Test Suite', 'info', 'All tests completed. Check results above.');
+            }, 400);
+        }
+
+        // Auto-run basic tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                logResult('Page Load', 'info', 'Verification page loaded. Click buttons to run tests.');
+            }, 100);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+# Setup Test User Flow
+# Reusable flow for setting up test users with different roles
+
+appId: com.wildlifeai.wildlifewatcher
+name: "Setup Test User"
+description: "Configure test user with specified role and organisation"
+
+env:
+  TEST_USER_ROLE: "project_admin"
+  TEST_ORG_ID: "test-org-1"
+
+---
+
+# Launch app and navigate to test setup
+- launchApp
+- assertVisible: "Wildlife Watcher"
+
+# Access test/dev mode (only available in development builds)
+- tapOn: 
+    point: "90%,10%" # Top right corner for dev menu
+    longPress: true
+- assertVisible: "Development Menu"
+- tapOn: "Test Mode"
+
+# Configure test user
+- tapOn: "Set Test User"
+- inputText:
+    text: "${TEST_USER_ROLE}"
+    index: 0
+- inputText:
+    text: "${TEST_ORG_ID}"
+    index: 1
+- tapOn: "Apply Test User"
+
+- assertVisible: "Test user configured"
+- assertVisible: "Role: ${TEST_USER_ROLE}"
+- assertVisible: "Organisation: ${TEST_ORG_ID}"
+
+# Initialize offline services for test user
+- tapOn: "Initialize Offline Mode"
+- assertVisible: "Offline services initialized"
+- assertVisible: "Database ready"
+- assertVisible: "Network monitor active"
+
+- tapOn: "Continue to App"

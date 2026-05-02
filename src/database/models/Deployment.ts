@@ -1,0 +1,78 @@
+import { Model } from '@nozbe/watermelondb'
+import { field, text, date, relation, readonly, json } from '@nozbe/watermelondb/decorators'
+
+export default class Deployment extends Model {
+    static table = 'deployments'
+    static associations = {
+        projects: { type: 'belongs_to', key: 'project_id' },
+        users: { type: 'belongs_to', key: 'setup_by' },
+        devices: { type: 'belongs_to', key: 'device_id' },
+        capture_methods: { type: 'belongs_to', key: 'capture_method_id' },
+        activity_sensitivity: { type: 'belongs_to', key: 'activity_detection_sensitivity_id' },
+    } as const
+
+    @field('project_id') projectId!: string
+    @field('device_id') deviceId!: string
+
+    @field('deployment_status_id') deploymentStatusId?: number
+    @field('capture_method_id') captureMethodId?: number
+    @field('activity_detection_sensitivity_id') activityDetectionSensitivityId?: number
+    @field('timelapse_interval_seconds') timelapseIntervalSeconds?: number
+
+    // Device Snapshot (captured at deployment start)
+    @text('camera_model') cameraModel?: string
+    @text('lorawan_network') lorawanNetwork?: string
+    @text('device_eui') deviceEui?: string
+    @field('lorawan_registration_completed') lorawanRegistrationCompleted?: boolean
+    @date('lorawan_last_verified_at') lorawanLastVerifiedAt?: Date | null
+    @field('ai_model_id') aiModelId?: string
+    @field('ble_firmware_id') bleFirmwareId?: string
+    @field('himax_firmware_id') himaxFirmwareId?: string
+    @field('config_firmware_id') configFirmwareId?: string
+    @field('battery_level_at_start') batteryLevelAtStart?: number
+    @field('sd_card_total_kb_at_start') sdCardTotalKbAtStart?: number
+    @field('sd_card_available_kb_at_start') sdCardAvailableKbAtStart?: number
+    @field('lorawan_rssi_at_start') lorawanRssiAtStart?: number
+    @field('lorawan_snr_at_start') lorawanSnrAtStart?: number
+
+    @text('name') name?: string
+    @field('setup_by') setupBy!: string
+    @field('ended_by') endedBy?: string
+
+    // Location
+    @text('location_name') locationName!: string
+    @json('location', (raw: any) => raw) location: any
+    @field('latitude') latitude?: number
+    @field('longitude') longitude?: number
+    @field('altitude') altitude?: number
+    @field('accuracy') accuracy?: number
+    @text('location_description') locationDescription?: string
+    @json('camera_location_image_paths', (raw: any) => raw) cameraLocationImagePaths: any
+    @field('camera_height') cameraHeight?: number
+
+    // Lifecycle
+    @date('deployment_start') deploymentStart!: Date
+    @date('deployment_end') deploymentEnd?: Date | null
+
+    // Comments
+    @text('start_deployment_comments') startDeploymentComments?: string
+    @text('end_deployment_comments') endDeploymentComments?: string
+
+    // Legacy fields - kept to avoid breakages if used elsewhere, but marked
+    @text('deployment_comments') deploymentComments?: string
+    @text('camera_location_description') cameraLocationDescription?: string
+    @text('camera_location_image_path') cameraLocationImagePath?: string
+    @json('deployment_photos', (raw: any) => raw) deploymentPhotos: any
+
+    @field('modified_by') modifiedBy!: string
+
+    @readonly @date('created_at') createdAt!: Date
+    @readonly @date('updated_at') updatedAt!: Date
+    @readonly @date('deleted_at') deletedAt?: Date | null
+
+    @relation('projects', 'project_id') project: any
+    @relation('users', 'setup_by') user: any
+    @relation('devices', 'device_id') device: any
+    @relation('capture_methods', 'capture_method_id') captureMethod: any
+    @relation('activity_sensitivity', 'activity_detection_sensitivity_id') activityDetectionSensitivity: any
+}

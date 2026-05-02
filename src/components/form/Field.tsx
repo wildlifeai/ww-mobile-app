@@ -1,5 +1,6 @@
 import { PropsWithChildren, ReactNode } from "react"
 import { StyleSheet, View, ViewStyle } from "react-native"
+import { Text } from "react-native-paper"
 import {
 	Control,
 	ControllerRenderProps,
@@ -57,10 +58,10 @@ export const Field = <
 			{label && (
 				<View style={styles.labelContainer}>
 					<WWText style={styles.label}>
-						{label}
-						{required && <WWText style={styles.required}> *</WWText>}
+						<Text>{label}</Text>
+						{required && <WWText style={styles.required}><Text> *</Text></WWText>}
 					</WWText>
-					{subText && <WWText style={styles.subText}>{subText}</WWText>}
+					{subText && <WWText style={styles.subText}><Text>{subText}</Text></WWText>}
 				</View>
 			)}
 			{children({
@@ -68,9 +69,9 @@ export const Field = <
 				hasError,
 			})}
 			{helpText && !hasError && (
-				<WWText style={styles.helpText}>{helpText}</WWText>
+				<WWText style={styles.helpText}><Text>{helpText}</Text></WWText>
 			)}
-			{hasError && <WWText style={styles.errorText}>{error?.message}</WWText>}
+			{hasError && <WWText style={styles.errorText}><Text>{error?.message}</Text></WWText>}
 		</View>
 	)
 }
@@ -95,15 +96,15 @@ export const UncontrolledField = ({
 		<View style={[style, styles.fieldWrapper]}>
 			{label && (
 				<View style={styles.labelContainer}>
-					<WWText style={styles.label}>{label}</WWText>
-					{subText && <WWText style={styles.subText}>{subText}</WWText>}
+					<WWText style={styles.label}><Text>{label}</Text></WWText>
+					{subText && <WWText style={styles.subText}><Text>{subText}</Text></WWText>}
 				</View>
 			)}
 			{children}
 			{helpText && !errorText && (
-				<WWText style={styles.helpText}>{helpText}</WWText>
+				<WWText style={styles.helpText}><Text>{helpText}</Text></WWText>
 			)}
-			{errorText && <WWText style={styles.errorText}>{errorText}</WWText>}
+			{errorText && <WWText style={styles.errorText}><Text>{errorText}</Text></WWText>}
 		</View>
 	)
 }

@@ -1,55 +1,73 @@
 import { PropsWithChildren } from "react"
 import {
 	Keyboard,
-	ScrollView,
+	Platform,
 	ScrollViewProps,
 	StyleSheet,
 	TouchableWithoutFeedback,
 	View,
 	ViewProps,
 } from "react-native"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { useExtendedTheme } from "../../theme"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context"
 
 type Props = PropsWithChildren<ViewProps | ScrollViewProps> & {
 	scrollable?: boolean
+	/**
+	 * Set to true when this screen has a navigation header.
+	 * This prevents double top padding since the header already handles safe area.
+	 * @default true
+	 */
+	withHeader?: boolean
 }
 
 export const WWScreenView = ({
-	children,
-	scrollable = true,
-	...props
+    children,
+    scrollable = true,
+    withHeader = true, // Default to true since most screens have headers
+    ...props
 }: Props) => {
-	const { appPadding } = useExtendedTheme()
-	const { bottom } = useSafeAreaInsets()
+    const { appPadding } = useExtendedTheme()
+    const { bottom, top } = useSafeAreaInsets()
 
-	return (
-		<TouchableWithoutFeedback style={styles.view} onPress={Keyboard.dismiss}>
-			{scrollable ? (
-				<ScrollView
-					style={styles.scrollView}
-					contentContainerStyle={[
-						{ padding: appPadding, paddingBottom: appPadding + bottom },
-						styles.scrollContent,
-						props.style,
-					]}
-					keyboardShouldPersistTaps="handled"
-				>
-					{children}
-				</ScrollView>
-			) : (
-				<View
-					style={[
-						{ padding: appPadding, paddingBottom: appPadding + bottom },
-						styles.view,
-						props.style,
-					]}
-				>
-					{children}
-				</View>
-			)}
-		</TouchableWithoutFeedback>
-	)
+    // Only apply top safe area padding when there's NO navigation header
+    // When withHeader=true, the navigation header already handles the safe area
+    const safeTop = withHeader ? 0 : (top > 0 ? top : (Platform.OS === 'android' ? 30 : 0))
+
+    const content = scrollable ? (
+        <KeyboardAwareScrollView
+            style={styles.scrollView}
+            contentContainerStyle={[
+                { padding: appPadding, paddingTop: appPadding + safeTop },
+                styles.scrollContent,
+                props.style,
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bottomOffset={bottom}
+        >
+            {children}
+        </KeyboardAwareScrollView>
+    ) : (
+        <View
+            style={[
+                { padding: appPadding, paddingTop: appPadding + safeTop },
+                styles.view,
+                props.style,
+            ]}
+        >
+            {children}
+        </View>
+    );
+
+    return (
+        <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.view}>
+            <TouchableWithoutFeedback style={styles.view} onPress={Keyboard.dismiss}>
+                {content}
+            </TouchableWithoutFeedback>
+        </SafeAreaView>
+    );
 }
 
 const styles = StyleSheet.create({

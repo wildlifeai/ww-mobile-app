@@ -1,0 +1,78 @@
+name: EAS Build & Submit
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Build profile'
+        required: true
+        type: choice
+        options:
+          - preview
+          - production
+      platform:
+        description: 'Platform'
+        required: true
+        type: choice
+        options:
+          - all
+          - android
+          - ios
+
+jobs:
+  build:
+    name: EAS Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Determine build profile
+        id: config
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "profile=${{ inputs.profile }}" >> $GITHUB_OUTPUT
+            echo "platform=${{ inputs.platform }}" >> $GITHUB_OUTPUT
+            if [[ "${{ inputs.profile }}" == "production" ]]; then
+              echo "submit=true" >> $GITHUB_OUTPUT
+            else
+              echo "submit=false" >> $GITHUB_OUTPUT
+            fi
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "profile=production" >> $GITHUB_OUTPUT
+            echo "platform=all" >> $GITHUB_OUTPUT
+            echo "submit=true" >> $GITHUB_OUTPUT
+          else
+            echo "profile=preview" >> $GITHUB_OUTPUT
+            echo "platform=all" >> $GITHUB_OUTPUT
+            echo "submit=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: EAS Build
+        run: |
+          eas build \
+            --profile ${{ steps.config.outputs.profile }} \
+            --platform ${{ steps.config.outputs.platform }} \
+            --non-interactive
+
+      - name: Submit to stores
+        if: steps.config.outputs.submit == 'true'
+        run: |
+          eas submit \
+            --profile production \
+            --platform ${{ steps.config.outputs.platform }} \
+            --non-interactive

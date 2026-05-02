@@ -1,0 +1,41 @@
+{
+  "name": "mvp2-dashboard",
+  "version": "1.0.0",
+  "description": "Wildlife Watcher MVP2 Cross-Repository Progress Dashboard",
+  "main": "mvp2-dashboard-server.js",
+  "scripts": {
+    "start": "node mvp2-dashboard-server.js",
+    "dev": "nodemon mvp2-dashboard-server.js",
+    "dashboard": "npm start && open http://localhost:3334",
+    "test": "echo \"Dashboard tests not implemented yet\" && exit 0",
+    "install-deps": "npm install express cors chokidar",
+    "setup": "npm run install-deps && npm start"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "chokidar": "^3.5.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "mvp2",
+    "dashboard",
+    "progress-tracking",
+    "cross-repository",
+    "wildlife-watcher",
+    "aadf",
+    "task-management",
+    "ai-agents"
+  ],
+  "author": "MVP2 Development Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "wildlife-watcher-mobile-app/project-context/MVP2-Tasks"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

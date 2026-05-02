@@ -1,0 +1,65 @@
+name: E2E UI Tests
+
+on:
+  workflow_run:
+    workflows: ["Native Build Validation"]
+    types: [completed]
+
+jobs:
+  maestro-e2e:
+    name: Maestro E2E Tests
+    runs-on: ubuntu-latest
+    # Only run if the build workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download APK from Build Workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-apk
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Install KVM for hardware acceleration on Ubuntu runner
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install Maestro
+        run: curl -Ls "https://get.maestro.mobile.dev" | bash
+
+      - name: Add Maestro to Path
+        run: echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Run Maestro Tests on Local Emulator
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb install -r ./app-debug.apk
+            npm run test:maestro:offline
+
+      - name: Upload Maestro Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-screenshots-and-logs
+          path: ~/.maestro/tests/
+          retention-days: 7

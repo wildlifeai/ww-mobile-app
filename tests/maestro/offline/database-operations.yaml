@@ -1,0 +1,107 @@
+# Maestro E2E Test: SQLite Database Operations
+# Tests offline database functionality and organisation multi-tenancy
+
+appId: com.wildlifewatcher.mobile
+tags:
+  - offline
+  - database
+  - multi-tenancy
+
+---
+
+# Test SQLite Database Initialization and Multi-Tenancy
+- launchApp
+- assertVisible: "Wildlife Watcher"
+
+# Navigate to Settings to check database status
+- tapOn: "Settings"
+- assertVisible: "Database Status"
+- assertVisible: "Online"
+
+# Simulate offline mode
+- tapOn: "Offline Mode"
+- assertVisible: "Offline Mode Enabled"
+- assertVisible: "Using Local Database"
+
+# Test organisation switching in offline mode
+- tapOn: "Switch Organisation"
+- assertVisible: "Available Organisations"
+- tapOn: "Test Wildlife Organisation"
+- assertVisible: "Switched to Test Wildlife Organisation"
+
+# Test project creation while offline
+- tapOn: "Projects"
+- tapOn: "Create Project"
+- inputText: "Wildlife Survey 2025"
+- tapOn: "Project Name"
+- inputText: "Annual population survey"
+- tapOn: "Description"
+- tapOn: "Create"
+- assertVisible: "Project created offline"
+- assertVisible: "Will sync when online"
+
+# Test deployment creation while offline
+- tapOn: "Deployments"
+- tapOn: "New Deployment"
+- tapOn: "Select Project"
+- tapOn: "Wildlife Survey 2025"
+- tapOn: "Select Device"
+- tapOn: "WW-CAM-001"
+- inputText: "40.7128,-74.0060"
+- tapOn: "Location"
+- tapOn: "Deploy"
+- assertVisible: "Deployment queued for sync"
+
+# Test device status monitoring (LoRaWAN integration)
+- tapOn: "Device Status"
+- assertVisible: "Battery: 85%"
+- assertVisible: "Storage: 45% used"
+- assertVisible: "Status: Online"
+- assertVisible: "Last seen:"
+
+# Test offline queue management
+- tapOn: "Settings"
+- tapOn: "Sync Status"
+- assertVisible: "Pending Operations"
+- assertVisible: "2 items queued"
+- assertVisible: "create_project"
+- assertVisible: "create_deployment"
+
+# Test role-based access in offline mode
+- tapOn: "User Profile"
+- assertVisible: "Role: Project Admin"
+- assertVisible: "Organisation: Test Wildlife Organisation"
+
+# For WW Admin users only
+- runFlow: 
+    when:
+      visible: "Role: WW Admin"
+    steps:
+      - tapOn: "Admin Panel"
+      - assertVisible: "User Management"
+      - assertVisible: "Cross-Organisation Access"
+      - tapOn: "Provision User"
+      - assertVisible: "Available Organisations"
+
+# Test network reconnection and sync
+- tapOn: "Network Settings"
+- tapOn: "Reconnect"
+- assertVisible: "Connecting..."
+- assertVisible: "Syncing offline data"
+- assertVisible: "2 operations synced successfully"
+
+# Verify data persistence after sync
+- tapOn: "Projects"
+- assertVisible: "Wildlife Survey 2025"
+- assertVisible: "Synced"
+
+- tapOn: "Deployments" 
+- assertVisible: "WW-CAM-001"
+- assertVisible: "Active"
+- assertVisible: "Battery: 85%"
+
+# Test conflict resolution
+- tapOn: "Settings"
+- tapOn: "Sync History"
+- assertVisible: "All operations completed"
+- assertVisible: "No conflicts detected"

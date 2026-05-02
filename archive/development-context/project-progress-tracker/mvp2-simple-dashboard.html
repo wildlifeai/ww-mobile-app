@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wildlife Watcher MVP2 Dashboard - Simple View</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            color: #27ae60;
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .header p {
+            color: #7f8c8d;
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid #3498db;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        .card h3 {
+            margin: 0 0 20px 0;
+            color: #2c3e50;
+            font-size: 1.3em;
+        }
+        .status-good { border-left-color: #27ae60; }
+        .status-warning { border-left-color: #f39c12; }
+        .status-error { border-left-color: #e74c3c; }
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: #ecf0f1;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #27ae60, #2ecc71);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 12px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .metric:last-child {
+            border-bottom: none;
+        }
+        .metric strong {
+            color: #2c3e50;
+            font-size: 1.05em;
+        }
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: white;
+            font-size: 1.2em;
+        }
+        .refresh-btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 15px 0;
+            font-size: 1em;
+            font-weight: 600;
+            transition: transform 0.2s ease;
+        }
+        .refresh-btn:hover {
+            transform: scale(1.05);
+        }
+        .task-item {
+            background: #f8f9fa;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        .task-done {
+            border-left-color: #27ae60;
+            opacity: 0.7;
+        }
+        .task-active {
+            border-left-color: #f39c12;
+            background: #fff9e6;
+        }
+        .task-item strong {
+            color: #2c3e50;
+        }
+        .task-item small {
+            color: #7f8c8d;
+            display: block;
+            margin-top: 5px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🦅 Wildlife Watcher MVP2 Dashboard</h1>
+            <p>Simple Overview • Real-time Progress • Cross-Project Coordination</p>
+            <button class="refresh-btn" onclick="loadDashboard()">🔄 Refresh Data</button>
+        </div>
+
+        <div id="dashboard" class="loading">
+            <div class="loading-spinner"></div>
+            <p>Loading dashboard data...</p>
+        </div>
+    </div>
+
+    <script>
+        async function loadDashboard() {
+            const dashboard = document.getElementById('dashboard');
+            dashboard.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Fetching latest data...</p></div>';
+
+            try {
+                const [overview, streams, metrics] = await Promise.all([
+                    fetch('/api/overview').then(r => r.json()),
+                    fetch('/api/streams').then(r => r.json()).catch(() => ({ data: { streams: [] } })),
+                    fetch('/api/metrics').then(r => r.json()).catch(() => ({
+                        data: {
+                            totalTasks: 23,
+                            completedTasks: 10,
+                            completionRate: 43.5,
+                            daysElapsed: 0,
+                            projectedCompletion: 20
+                        }
+                    }))
+                ]);
+
+                // Default/mock data for display
+                const projectData = {
+                    phase: overview.mobile?.currentTask?.title || 'MVP2 Development',
+                    mobileProgress: overview.mobile?.progress || 43,
+                    backendReady: overview.backend?.mvp2Ready !== false,
+                    currentTasks: overview.mobile?.currentTask ? [overview.mobile.currentTask] : [],
+                    nextTasks: overview.mobile?.nextTasks || [
+                        { id: '12', title: 'Projects CRUD Operations', priority: 'high' },
+                        { id: '13', title: 'Project Member Management', priority: 'high' },
+                        { id: '14.5', title: 'Maestro E2E Testing Framework', priority: 'high' }
+                    ],
+                    backend: {
+                        status: overview.backend?.status || 'deployed',
+                        readiness: overview.backend?.readiness || 85
+                    }
+                };
+
+                const streamsData = streams.data?.streams || [
+                    { name: 'Stream A: Project Management', progress: 0, completed: 0, total: 4 },
+                    { name: 'Stream B: Deployment Workflows', progress: 0, completed: 0, total: 3 },
+                    { name: 'Stream C: Devices & Maps', progress: 0, completed: 0, total: 3 }
+                ];
+
+                const metricsData = metrics.data || {
+                    totalTasks: 23,
+                    completedTasks: 10,
+                    completionRate: 43.5,
+                    daysElapsed: 0,
+                    projectedCompletion: 20
+                };
+
+                dashboard.innerHTML = `
+                    <div class="grid">
+                        <div class="card ${projectData.mobileProgress > 50 ? 'status-good' : 'status-warning'}">
+                            <h3>📊 Project Status</h3>
+                            <div class="metric">
+                                <span>Phase:</span>
+                                <strong>${projectData.phase}</strong>
+                            </div>
+                            <div class="metric">
+                                <span>Mobile Progress:</span>
+                                <strong>${projectData.mobileProgress}%</strong>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${projectData.mobileProgress}%">
+                                    ${projectData.mobileProgress > 10 ? projectData.mobileProgress + '%' : ''}
+                                </div>
+                            </div>
+                            <div class="metric">
+                                <span>Backend Ready:</span>
+                                <strong style="color: ${projectData.backendReady ? '#27ae60' : '#e74c3c'}">
+                                    ${projectData.backendReady ? '✅ Yes' : '❌ No'}
+                                </strong>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3>🎯 Current Tasks</h3>
+                            ${projectData.currentTasks.length > 0 ?
+                                projectData.currentTasks.map(task => `
+                                    <div class="task-item task-active">
+                                        <strong>Task ${task.id}:</strong> ${task.title}
+                                        <small>Priority: ${task.priority || 'medium'}</small>
+                                    </div>
+                                `).join('') :
+                                '<p style="color: #7f8c8d; text-align: center;">No active tasks</p>'
+                            }
+                        </div>
+
+                        <div class="card">
+                            <h3>⏭️ Next Tasks</h3>
+                            ${projectData.nextTasks.slice(0, 3).map(task => `
+                                <div class="task-item">
+                                    <strong>Task ${task.id}:</strong> ${task.title}
+                                    <small>Priority: ${task.priority}</small>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="card">
+                            <h3>🚀 Development Streams</h3>
+                            ${streamsData.map(stream => `
+                                <div class="metric">
+                                    <span>${stream.name}:</span>
+                                    <strong>${stream.progress}% (${stream.completed}/${stream.total})</strong>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${stream.progress}%; background: ${
+                                        stream.progress === 0 ? '#95a5a6' :
+                                        stream.progress < 50 ? '#f39c12' : '#27ae60'
+                                    }">
+                                        ${stream.progress > 10 ? stream.progress + '%' : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="card">
+                            <h3>📈 Metrics Summary</h3>
+                            <div class="metric">
+                                <span>Total Tasks:</span>
+                                <strong>${metricsData.totalTasks}</strong>
+                            </div>
+                            <div class="metric">
+                                <span>Completed:</span>
+                                <strong>${metricsData.completedTasks}</strong>
+                            </div>
+                            <div class="metric">
+                                <span>Completion Rate:</span>
+                                <strong>${metricsData.completionRate}%</strong>
+                            </div>
+                            <div class="metric">
+                                <span>Days Elapsed:</span>
+                                <strong>${metricsData.daysElapsed}</strong>
+                            </div>
+                            <div class="metric">
+                                <span>Projected Completion:</span>
+                                <strong>${metricsData.projectedCompletion} days</strong>
+                            </div>
+                        </div>
+
+                        <div class="card ${projectData.backend.readiness > 80 ? 'status-good' : 'status-warning'}">
+                            <h3>⚡ Backend Integration</h3>
+                            <div class="metric">
+                                <span>Status:</span>
+                                <strong>${projectData.backend.status}
+                                    <span class="status-badge badge-${projectData.backend.status === 'deployed' ? 'success' : 'info'}">
+                                        ${projectData.backend.status.toUpperCase()}
+                                    </span>
+                                </strong>
+                            </div>
+                            <div class="metric">
+                                <span>MVP2 Ready:</span>
+                                <strong style="color: ${projectData.backendReady ? '#27ae60' : '#e74c3c'}">
+                                    ${projectData.backendReady ? '✅ Yes' : '❌ No'}
+                                </strong>
+                            </div>
+                            <div class="metric">
+                                <span>Readiness:</span>
+                                <strong>${projectData.backend.readiness}%</strong>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${projectData.backend.readiness}%">
+                                    ${projectData.backend.readiness > 10 ? projectData.backend.readiness + '%' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                dashboard.innerHTML = `
+                    <div class="card status-error">
+                        <h3>⚠️ Error Loading Dashboard</h3>
+                        <p>Failed to load dashboard data: ${error.message}</p>
+                        <button class="refresh-btn" onclick="loadDashboard()">🔄 Try Again</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadDashboard, 30000);
+
+        // Add last updated timestamp
+        function updateTimestamp() {
+            const timestamp = new Date().toLocaleTimeString();
+            const header = document.querySelector('.header p');
+            if (header && !header.innerHTML.includes('Last updated')) {
+                header.innerHTML += ` • Last updated: <strong>${timestamp}</strong>`;
+            } else if (header) {
+                header.innerHTML = header.innerHTML.replace(/Last updated: <strong>.*?<\/strong>/, `Last updated: <strong>${timestamp}</strong>`);
+            }
+        }
+
+        // Update timestamp on each refresh
+        setInterval(updateTimestamp, 1000);
+    </script>
+</body>
+</html>

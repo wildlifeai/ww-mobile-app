@@ -1,109 +1,133 @@
 import { memo } from "react"
-import { StyleSheet, TouchableOpacity, View } from "react-native"
-import { WWText } from "./ui/WWText"
-import { Deployment } from "../redux/api/types"
+import { StyleSheet, View } from "react-native"
+import { Card, Text, useTheme } from "react-native-paper"
+import { WWIcon } from "./ui/WWIcon"
 
-type Props = {
-	deployment: Deployment
-	onPress?: (deploymentId: string) => void
-}
 
-export const DeploymentCard = memo<Props>(({ deployment, onPress }) => {
+
+// Helper to safely access fields from either API type (snake_case) or Model (camelCase)
+const getField = (obj: any, snake: string, camel: string) => obj[snake] ?? obj[camel]
+
+export const DeploymentCard = memo<{ deployment: any, onPress?: (id: string) => void }>(({ deployment, onPress }) => {
+	const theme = useTheme()
+
+	const deploymentStart = getField(deployment, 'deployment_start', 'deploymentStart')
+	const deploymentEnd = getField(deployment, 'deployment_end', 'deploymentEnd')
+	const locationName = getField(deployment, 'location_name', 'locationName')
+
 	const getStatusColor = () => {
-		// Not started = white, Active = green, Ended = red
-		if (!deployment.deploymentStart) return "#FFFFFF"
+		if (!deploymentStart) return theme.colors.onSurfaceDisabled
 		const now = new Date()
-		const start = new Date(deployment.deploymentStart)
-		const end = deployment.deploymentEnd
-			? new Date(deployment.deploymentEnd)
+		const start = new Date(deploymentStart)
+		const end = deploymentEnd
+			? new Date(deploymentEnd)
 			: null
 
-		if (now < start) return "#FFFFFF" // Not started
+		if (now < start) return theme.colors.onSurfaceDisabled // Not started
 		if (!end || now < end) return "#4CAF50" // Active/Green
-		return "#F44336" // Ended/Red
+		return theme.colors.error // Ended/Red
 	}
 
 	const getStatusText = () => {
-		if (!deployment.deploymentStart) return "Not started"
+		if (!deploymentStart) return "Not started"
 		const now = new Date()
-		const start = new Date(deployment.deploymentStart)
-		const end = deployment.deploymentEnd
-			? new Date(deployment.deploymentEnd)
+		const start = new Date(deploymentStart)
+		const end = deploymentEnd
+			? new Date(deploymentEnd)
 			: null
 
 		if (now < start) return "Not started"
-		if (!end || now < end) {
-			// If active, show start date
+		if (!end || end.getTime() === 0 || now < end) {
 			return `Started ${start.toLocaleDateString()}`
 		}
 		return `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`
 	}
 
 	return (
-		<TouchableOpacity
-			style={styles.container}
+		<Card
+			mode="outlined"
+			style={styles.card}
 			onPress={() => onPress?.(deployment.id)}
 		>
-			<View style={styles.content}>
+			<Card.Content style={styles.content}>
+				{/* Header: Name and Status Dot */}
 				<View style={styles.header}>
-					<WWText variant="titleMedium">
-						{deployment.locationName ||
-							`Deployment #${deployment.id.slice(-4)}`}
-					</WWText>
+					<Text
+						variant="headlineSmall"
+						style={[styles.title, { color: theme.colors.onSurface }]}
+						numberOfLines={1}
+					>
+						{locationName ||
+							`Session #${deployment.id.slice(-4)}`}
+					</Text>
 					<View
 						style={[styles.statusDot, { backgroundColor: getStatusColor() }]}
 					/>
 				</View>
-				<WWText variant="bodyMedium" style={styles.date}>
-					{getStatusText()}
-				</WWText>
-				{deployment.deviceID && (
-					<View style={styles.stats}>
-						<View style={styles.stat}>
-							<WWText variant="bodySmall">512 mb</WWText>
-						</View>
-						<View style={styles.stat}>
-							<WWText variant="bodySmall">50%</WWText>
-						</View>
-					</View>
-				)}
-			</View>
-		</TouchableOpacity>
+
+				{/* Date / Status Text */}
+				<View style={styles.row}>
+					<WWIcon
+						source="calendar"
+						size={16}
+						color={theme.colors.onSurfaceVariant}
+						containerStyle={styles.icon}
+					/>
+					<Text
+						variant="bodyMedium"
+						style={{ color: theme.colors.onSurfaceVariant }}
+					>
+						{getStatusText()}
+					</Text>
+				</View>
+
+				{/* Stats - Hidden until we have real data from LoRaWAN */}
+			</Card.Content>
+		</Card>
 	)
 })
 
 const styles = StyleSheet.create({
-	container: {
-		backgroundColor: "#424242",
-		borderRadius: 12,
+	card: {
 		marginBottom: 12,
-		overflow: "hidden",
 	},
 	content: {
-		padding: 16,
+		paddingVertical: 12,
 	},
 	header: {
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "center",
-		marginBottom: 4,
+		marginBottom: 8,
+	},
+	title: {
+		fontWeight: "600",
+		flex: 1,
+		marginRight: 8,
 	},
 	statusDot: {
 		width: 12,
 		height: 12,
 		borderRadius: 6,
 	},
-	date: {
-		opacity: 0.7,
+	row: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 4,
 	},
-	stats: {
+	icon: {
+		marginRight: 6,
+	},
+	statsRow: {
 		flexDirection: "row",
 		marginTop: 8,
 		gap: 16,
+		paddingTop: 8,
+		borderTopWidth: 1,
+		borderTopColor: "rgba(0, 0, 0, 0.08)",
 	},
-	stat: {
+	statItem: {
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 4,
 	},
 })

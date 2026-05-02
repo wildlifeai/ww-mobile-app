@@ -13,11 +13,10 @@ export const BleEngineProvider = ({ children }: PropsWithChildren<{}>) => {
 	const {
 		isBleConnecting,
 		startScan,
+		stopScan,
 		connectDevice,
 		disconnectDevice,
-		write,
-		enginePause,
-		enginePaused,
+		writeRaw,
 		pingsPause,
 		pingsPaused,
 	} = useBle()
@@ -27,11 +26,10 @@ export const BleEngineProvider = ({ children }: PropsWithChildren<{}>) => {
 			value={{
 				isBleConnecting,
 				startScan,
+				stopScan,
 				connectDevice,
 				disconnectDevice,
-				write,
-				enginePause,
-				enginePaused,
+				writeRaw,
 				pingsPause,
 				pingsPaused,
 			}}

@@ -1,0 +1,575 @@
+{
+  "dashboard": {
+    "title": "Wildlife Watcher MVP2 Progress Dashboard",
+    "version": "1.0.0",
+    "api_version": "v1",
+    "refresh_interval": 5000,
+    "auto_refresh": true,
+    "default_view": "overview"
+  },
+  "repositories": {
+    "mobile": {
+      "name": "wildlife-watcher-mobile-app",
+      "path": "/home/adarsh/dev/wildlifeai/wildlife-watcher-mobile-app",
+      "branch": "dev-mvp2-development-claude-flow-test",
+      "api_endpoint": "http://localhost:3334/api/mobile",
+      "status": "active",
+      "priority": 1
+    },
+    "backend": {
+      "name": "wildlife-watcher-backend",
+      "path": "/home/adarsh/dev/wildlifeai/wildlife-watcher-backend",
+      "branch": "main",
+      "api_endpoint": "http://localhost:3335/api/backend",
+      "status": "ready",
+      "priority": 2
+    }
+  },
+  "streams": {
+    "foundation": {
+      "id": "foundation",
+      "title": "Foundation Layer",
+      "description": "Complete SQLite foundation and core architecture",
+      "tasks": ["11.4", "11.5", "11.6", "11.7"],
+      "estimated_hours": 12,
+      "status": "active",
+      "progress_target": 100,
+      "eas_build_id": 1,
+      "dependencies": [],
+      "quality_gates": ["test_coverage", "typescript_errors", "build_status"],
+      "agent_assignments": ["mobile-dev"]
+    },
+    "stream-a": {
+      "id": "stream-a",
+      "title": "Stream A: Project Management",
+      "description": "Project list interface, role management, organization switching",
+      "tasks": ["12", "13", "14"],
+      "estimated_hours": 18,
+      "status": "pending",
+      "progress_target": 100,
+      "eas_build_id": 2,
+      "dependencies": ["foundation"],
+      "quality_gates": ["test_coverage", "typescript_errors", "build_status", "performance_budget"],
+      "agent_assignments": ["mobile-dev", "quality-assurance-engineer"]
+    },
+    "stream-b": {
+      "id": "stream-b",
+      "title": "Stream B: Deployment Workflows",
+      "description": "6-step deployment wizard and device configuration interfaces",
+      "tasks": ["15", "16", "17"],
+      "estimated_hours": 24,
+      "status": "pending",
+      "progress_target": 100,
+      "eas_build_id": 3,
+      "dependencies": ["stream-a"],
+      "quality_gates": ["test_coverage", "typescript_errors", "build_status", "performance_budget", "security_scan"],
+      "agent_assignments": ["mobile-dev", "devops"]
+    },
+    "stream-c": {
+      "id": "stream-c",
+      "title": "Stream C: Devices & Maps",
+      "description": "Device management dashboard, map integration, LoRaWAN communication",
+      "tasks": ["18", "19", "20"],
+      "estimated_hours": 30,
+      "status": "pending",
+      "progress_target": 100,
+      "eas_build_id": 4,
+      "dependencies": ["stream-b"],
+      "quality_gates": ["test_coverage", "typescript_errors", "build_status", "performance_budget", "security_scan"],
+      "agent_assignments": ["mobile-dev", "supabase-admin"]
+    },
+    "integration": {
+      "id": "integration",
+      "title": "Integration Phase",
+      "description": "Comprehensive testing, optimization, production deployment preparation",
+      "tasks": ["21", "22", "23"],
+      "estimated_hours": 16,
+      "status": "pending",
+      "progress_target": 100,
+      "eas_build_id": 5,
+      "dependencies": ["stream-c"],
+      "quality_gates": ["test_coverage", "typescript_errors", "build_status", "performance_budget", "security_scan", "dependency_audit"],
+      "agent_assignments": ["quality-assurance-engineer", "devops", "mobile-dev"]
+    }
+  },
+  "tasks": {
+    "11.4": {
+      "id": "11.4",
+      "title": "Conflict Resolution Implementation",
+      "description": "Implement robust conflict resolution for offline/online data synchronization",
+      "stream": "foundation",
+      "estimated_hours": 3,
+      "priority": "high",
+      "status": "active",
+      "agent": "mobile-dev",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Conflict detection algorithm implemented",
+        "User-friendly conflict resolution UI",
+        "Comprehensive test coverage for conflict scenarios"
+      ]
+    },
+    "11.5": {
+      "id": "11.5",
+      "title": "Advanced Sync Operations",
+      "description": "Implement advanced synchronization operations and batch processing",
+      "stream": "foundation",
+      "estimated_hours": 3,
+      "priority": "high",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["11.4"],
+      "acceptance_criteria": [
+        "Batch sync operations implemented",
+        "Sync progress indicators",
+        "Error handling and retry mechanisms"
+      ]
+    },
+    "11.6": {
+      "id": "11.6",
+      "title": "Performance Optimization",
+      "description": "Optimize SQLite queries and sync performance for large datasets",
+      "stream": "foundation",
+      "estimated_hours": 3,
+      "priority": "medium",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["11.5"],
+      "acceptance_criteria": [
+        "Query performance benchmarks met",
+        "Memory usage optimized",
+        "Large dataset handling verified"
+      ]
+    },
+    "11.7": {
+      "id": "11.7",
+      "title": "SQLite Testing Suite",
+      "description": "Comprehensive testing suite for SQLite operations and edge cases",
+      "stream": "foundation",
+      "estimated_hours": 3,
+      "priority": "high",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["11.6"],
+      "acceptance_criteria": [
+        "Unit tests for all SQLite operations",
+        "Integration tests for sync workflows",
+        "Edge case and error condition tests"
+      ]
+    },
+    "12": {
+      "id": "12",
+      "title": "Project List Interface",
+      "description": "Implement project listing, filtering, and selection interface",
+      "stream": "stream-a",
+      "estimated_hours": 6,
+      "priority": "high",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["foundation"],
+      "acceptance_criteria": [
+        "Project list with search and filter",
+        "Project details view",
+        "Responsive design for mobile devices"
+      ]
+    },
+    "13": {
+      "id": "13",
+      "title": "Role Management System",
+      "description": "Implement user role management and permissions system",
+      "stream": "stream-a",
+      "estimated_hours": 6,
+      "priority": "high",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["12"],
+      "acceptance_criteria": [
+        "Role-based access control implemented",
+        "Permission validation system",
+        "Admin role management interface"
+      ]
+    },
+    "14": {
+      "id": "14",
+      "title": "Organization Switching",
+      "description": "Multi-tenancy organization switching functionality",
+      "stream": "stream-a",
+      "estimated_hours": 6,
+      "priority": "medium",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["13"],
+      "acceptance_criteria": [
+        "Organization selector interface",
+        "Context switching implementation",
+        "Data isolation verification"
+      ]
+    },
+    "15": {
+      "id": "15",
+      "title": "6-Step Deployment Wizard - Part 1",
+      "description": "First 3 steps of deployment wizard: project setup, device pairing, location setup",
+      "stream": "stream-b",
+      "estimated_hours": 8,
+      "priority": "high",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["stream-a"],
+      "acceptance_criteria": [
+        "Step 1: Project configuration interface",
+        "Step 2: Device pairing workflow",
+        "Step 3: Location setup and validation"
+      ]
+    },
+    "16": {
+      "id": "16",
+      "title": "6-Step Deployment Wizard - Part 2",
+      "description": "Steps 4-6: camera settings, testing, deployment confirmation",
+      "stream": "stream-b",
+      "estimated_hours": 8,
+      "priority": "high",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["15"],
+      "acceptance_criteria": [
+        "Step 4: Camera configuration interface",
+        "Step 5: System testing and validation",
+        "Step 6: Deployment confirmation and documentation"
+      ]
+    },
+    "17": {
+      "id": "17",
+      "title": "Device Configuration Interface",
+      "description": "Advanced device settings and configuration management",
+      "stream": "stream-b",
+      "estimated_hours": 8,
+      "priority": "medium",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["16"],
+      "acceptance_criteria": [
+        "Device settings management interface",
+        "Configuration backup and restore",
+        "Bulk configuration operations"
+      ]
+    },
+    "18": {
+      "id": "18",
+      "title": "Device Management Dashboard",
+      "description": "Comprehensive device monitoring and management dashboard",
+      "stream": "stream-c",
+      "estimated_hours": 10,
+      "priority": "high",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["stream-b"],
+      "acceptance_criteria": [
+        "Device status monitoring interface",
+        "Battery and storage level indicators",
+        "Device health alerts and notifications"
+      ]
+    },
+    "19": {
+      "id": "19",
+      "title": "Map Integration & Location Services",
+      "description": "Interactive map with device locations and deployment visualization",
+      "stream": "stream-c",
+      "estimated_hours": 10,
+      "priority": "high",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["18"],
+      "acceptance_criteria": [
+        "Interactive map with device markers",
+        "Location accuracy validation",
+        "Offline map support for remote areas"
+      ]
+    },
+    "20": {
+      "id": "20",
+      "title": "LoRaWAN Communication Layer",
+      "description": "LoRaWAN device communication and webhook integration",
+      "stream": "stream-c",
+      "estimated_hours": 10,
+      "priority": "medium",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["19"],
+      "acceptance_criteria": [
+        "LoRaWAN communication protocol implementation",
+        "Webhook integration for battery/storage monitoring",
+        "Real-time device communication status"
+      ]
+    },
+    "21": {
+      "id": "21",
+      "title": "Comprehensive Testing Suite",
+      "description": "End-to-end testing and quality assurance validation",
+      "stream": "integration",
+      "estimated_hours": 6,
+      "priority": "high",
+      "status": "pending",
+      "agent": "quality-assurance-engineer",
+      "dependencies": ["stream-c"],
+      "acceptance_criteria": [
+        "E2E test suite covering all user workflows",
+        "Performance testing and benchmarks",
+        "Device compatibility testing"
+      ]
+    },
+    "22": {
+      "id": "22",
+      "title": "Performance Optimization",
+      "description": "Final performance tuning and optimization",
+      "stream": "integration",
+      "estimated_hours": 5,
+      "priority": "medium",
+      "status": "pending",
+      "agent": "mobile-dev",
+      "dependencies": ["21"],
+      "acceptance_criteria": [
+        "App startup time optimization",
+        "Memory usage profiling and optimization",
+        "Network efficiency improvements"
+      ]
+    },
+    "23": {
+      "id": "23",
+      "title": "Production Deployment Preparation",
+      "description": "Final production deployment setup and documentation",
+      "stream": "integration",
+      "estimated_hours": 5,
+      "priority": "high",
+      "status": "pending",
+      "agent": "devops",
+      "dependencies": ["22"],
+      "acceptance_criteria": [
+        "Production build configuration",
+        "Deployment documentation",
+        "App store submission preparation"
+      ]
+    }
+  },
+  "eas_builds": {
+    "1": {
+      "id": 1,
+      "name": "Foundation Validation Build",
+      "purpose": "Validate SQLite foundation and core architecture",
+      "stream": "foundation",
+      "device_testing_required": false,
+      "test_scenarios": [
+        "SQLite operations validation",
+        "Offline/online sync testing",
+        "Basic app functionality verification"
+      ],
+      "success_criteria": [
+        "No critical bugs in core functionality",
+        "SQLite operations perform within benchmarks",
+        "App launches successfully on test devices"
+      ]
+    },
+    "2": {
+      "id": 2,
+      "name": "Project Management Build",
+      "purpose": "Test project management and role-based features",
+      "stream": "stream-a",
+      "device_testing_required": true,
+      "test_scenarios": [
+        "Project list and selection",
+        "Role-based access control",
+        "Organization switching"
+      ],
+      "success_criteria": [
+        "All project management workflows functional",
+        "Role permissions enforced correctly",
+        "Multi-tenancy isolation verified"
+      ]
+    },
+    "3": {
+      "id": 3,
+      "name": "Deployment Workflow Build",
+      "purpose": "Validate 6-step deployment wizard functionality",
+      "stream": "stream-b",
+      "device_testing_required": true,
+      "test_scenarios": [
+        "Complete 6-step deployment workflow",
+        "Device configuration and pairing",
+        "Location setup and validation"
+      ],
+      "success_criteria": [
+        "All 6 deployment steps complete successfully",
+        "Device pairing works with real hardware",
+        "Location accuracy meets requirements"
+      ]
+    },
+    "4": {
+      "id": 4,
+      "name": "Device Integration Build",
+      "purpose": "Test device management and LoRaWAN communication",
+      "stream": "stream-c",
+      "device_testing_required": true,
+      "test_scenarios": [
+        "Device monitoring dashboard",
+        "Map integration and location services",
+        "LoRaWAN communication testing"
+      ],
+      "success_criteria": [
+        "Real-time device monitoring functional",
+        "Map integration works offline and online",
+        "LoRaWAN communication established"
+      ]
+    },
+    "5": {
+      "id": 5,
+      "name": "Production Release Build",
+      "purpose": "Final integration testing and production readiness",
+      "stream": "integration",
+      "device_testing_required": true,
+      "test_scenarios": [
+        "Complete end-to-end user workflows",
+        "Performance under production load",
+        "Production environment compatibility"
+      ],
+      "success_criteria": [
+        "All user workflows complete successfully",
+        "Performance meets production requirements",
+        "App store submission ready"
+      ]
+    }
+  },
+  "agents": {
+    "mobile-dev": {
+      "id": "mobile-dev",
+      "name": "Mobile Development Agent",
+      "description": "React Native/Expo development specialist",
+      "capabilities": [
+        "React Native development",
+        "Expo SDK integration",
+        "SQLite database operations",
+        "Offline-first architecture",
+        "UI/UX implementation"
+      ],
+      "current_capacity": 100,
+      "max_concurrent_tasks": 2
+    },
+    "supabase-admin": {
+      "id": "supabase-admin",
+      "name": "Supabase Administration Agent",
+      "description": "Database schema and backend API specialist",
+      "capabilities": [
+        "Database schema design",
+        "API endpoint development",
+        "Real-time subscriptions",
+        "Authentication management",
+        "Edge function deployment"
+      ],
+      "current_capacity": 100,
+      "max_concurrent_tasks": 1
+    },
+    "quality-assurance-engineer": {
+      "id": "quality-assurance-engineer",
+      "name": "QA Testing Engineer Agent",
+      "description": "Test-driven development and quality assurance specialist",
+      "capabilities": [
+        "TDD/BDD test development",
+        "End-to-end testing",
+        "Performance testing",
+        "Device compatibility testing",
+        "Quality gate validation"
+      ],
+      "current_capacity": 100,
+      "max_concurrent_tasks": 3
+    },
+    "devops": {
+      "id": "devops",
+      "name": "DevOps Deployment Agent",
+      "description": "Build pipeline and deployment automation specialist",
+      "capabilities": [
+        "EAS build configuration",
+        "CI/CD pipeline setup",
+        "Production deployment",
+        "App store submission",
+        "Infrastructure management"
+      ],
+      "current_capacity": 100,
+      "max_concurrent_tasks": 2
+    }
+  },
+  "quality_gates": {
+    "test_coverage": {
+      "name": "Test Coverage",
+      "description": "Minimum test coverage percentage for code quality",
+      "threshold": 80,
+      "threshold_type": "minimum",
+      "measurement_unit": "percentage",
+      "criticality": "high"
+    },
+    "typescript_errors": {
+      "name": "TypeScript Errors",
+      "description": "Zero tolerance for TypeScript compilation errors",
+      "threshold": 0,
+      "threshold_type": "maximum",
+      "measurement_unit": "count",
+      "criticality": "critical"
+    },
+    "build_status": {
+      "name": "Build Status",
+      "description": "Successful build compilation status",
+      "threshold": "passing",
+      "threshold_type": "exact",
+      "measurement_unit": "status",
+      "criticality": "critical"
+    },
+    "performance_budget": {
+      "name": "Performance Budget",
+      "description": "Application performance within acceptable limits",
+      "threshold": "within_limits",
+      "threshold_type": "exact",
+      "measurement_unit": "status",
+      "criticality": "high"
+    },
+    "security_scan": {
+      "name": "Security Scan",
+      "description": "No security vulnerabilities in dependencies",
+      "threshold": "clean",
+      "threshold_type": "exact",
+      "measurement_unit": "status",
+      "criticality": "high"
+    },
+    "dependency_audit": {
+      "name": "Dependency Audit",
+      "description": "All dependencies are secure and up-to-date",
+      "threshold": "no_vulnerabilities",
+      "threshold_type": "exact",
+      "measurement_unit": "status",
+      "criticality": "medium"
+    }
+  },
+  "metrics": {
+    "tracking_enabled": true,
+    "variance_analysis": true,
+    "time_tracking": true,
+    "velocity_calculation": true,
+    "quality_scoring": true,
+    "automated_reporting": true
+  },
+  "api": {
+    "base_url": "http://localhost:3334/api",
+    "endpoints": {
+      "mobile_status": "/mobile/status",
+      "backend_status": "/backend/status",
+      "tasks": "/tasks",
+      "streams": "/streams",
+      "builds": "/builds",
+      "agents": "/agents",
+      "quality_gates": "/quality-gates",
+      "metrics": "/metrics"
+    },
+    "refresh_endpoints": [
+      "/mobile/status",
+      "/tasks",
+      "/quality-gates",
+      "/metrics"
+    ]
+  }
+}

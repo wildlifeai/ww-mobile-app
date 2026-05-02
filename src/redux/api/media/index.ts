@@ -12,9 +12,9 @@ export const mediaApi = api.injectEndpoints({
 			providesTags: (_result) =>
 				_result
 					? [
-							..._result.map(({ _id }) => ({
+							..._result.map(({ id }) => ({
 								type: "Media" as const,
-								id: _id,
+								id: id,
 							})),
 							{ type: "Media", id: "LIST" },
 					  ]

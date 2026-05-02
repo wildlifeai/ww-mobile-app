@@ -1,0 +1,31 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Get current branch
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+# Define protected branches
+case "$branch" in
+  main|master|dev|development)
+    echo "=========================================================="
+    echo "❌ BLOCKED: Committing directly to '$branch' is forbidden."
+    echo "=========================================================="
+    echo "To fix this:"
+    echo "1. Stash or keep your changes"
+    echo "2. Create a new branch: git checkout -b feature/my-feature"
+    echo "3. Run your commit again"
+    echo "----------------------------------------------------------"
+    echo "🤖 REMINDER: Have you followed the /commit-checklist flow?"
+    echo "Make sure to check documentation before committing!"
+    echo "=========================================================="
+    exit 1
+    ;;
+esac
+
+echo "----------------------------------------------------------"
+echo "🤖 REMINDER: Have you followed the /commit-checklist flow?"
+echo "   📂 Docs live in: documentation/ (not docs/)"
+echo "   📋 Org CONTRIBUTING: github.com/wildlifeai/.github"
+echo "----------------------------------------------------------"
+
+npx lint-staged

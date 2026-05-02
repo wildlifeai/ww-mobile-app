@@ -1,3 +1,5 @@
+import { ExtendedPeripheral } from "../redux/slices/devicesSlice"
+
 export type ParseCommands = {
 	value?: string
 	command?: Command | null
@@ -5,22 +7,73 @@ export type ParseCommands = {
 }
 
 export enum CommandNames {
-	ID = "ID",
-	VERSION = "VERSION",
-	BATTERY = "BATTERY",
-	HEARTBEAT = "HEARTBEAT",
-	DEVEUI = "DEVEUI",
-	APPEUI = "APPEUI",
-	APPKEY = "APPKEY",
-	PING = "PING",
-	RESET = "RESET",
-	ERASE = "ERASE",
-	DISCONNECT = "DISCONNECT",
-	DFU = "DFU",
-	SENSOR = "SENSOR",
-	TRAP = "TRAP",
-	LORAWAN = "LORAWAN",
-	DEVICE = "DEVICE",
+	// Firmware commands (lowercase - match actual BLE commands)
+	id = "id",
+	ver = "ver",
+	battery = "battery",
+	heartbeat = "heartbeat",
+	deveui = "deveui",
+	appeui = "appeui",
+	appkey = "appkey",
+	ping = "ping",
+	reset = "reset",
+	erase = "erase",
+	dis = "dis",
+	dfu = "dfu",
+	status = "status",
+	device = "device",
+	aiinfo = "aiinfo",
+	selftest = "selftest",
+	flashr = "flashr",
+	flashg = "flashg",
+	flashb = "flashb",
+	temp = "temp",
+	network = "network",
+	join = "join",
+	getgps = "getgps",
+	setgps = "setgps",
+	getutc = "getutc",
+	state = "state",
+	setop = "setop",
+	getop = "getop",
+	getop_all = "getop_all",
+	getops = "getops",
+	ai_ver = "ai_ver",
+	erasemodel = "erasemodel",
+	loadmodel = "loadmodel",
+	wake = "wake",
+	camera_type = "camera_type",
+	md = "md",
+	setdid = "setdid",
+	getdid = "getdid",
+	ai_firmware = "ai_firmware",
+
+	// Process commands (UPPERCASE - app-specific workflows)
+	SET_UTC = "SET_UTC",
+	SET_GPS = "SET_GPS",
+	SET_NUM_PICTURES = "SET_NUM_PICTURES",
+	SET_PICTURE_INTERVAL = "SET_PICTURE_INTERVAL",
+	SET_TIMELAPSE_INTERVAL = "SET_TIMELAPSE_INTERVAL",
+	SET_MOTION_DETECT_INTERVAL = "SET_MOTION_DETECT_INTERVAL",
+	DISABLE_MOTION_DETECT = "DISABLE_MOTION_DETECT",
+	DISABLE_TIMELAPSE = "DISABLE_TIMELAPSE",
+	ENABLE_CAMERA = "ENABLE_CAMERA",
+	DISABLE_CAMERA = "DISABLE_CAMERA",
+	TX_FILE = "TX_FILE",
+	CAPTURE_PREVIEW = "CAPTURE_PREVIEW",
+	UPDATE_BLE_FIRMWARE = "UPDATE_BLE_FIRMWARE",
+	UPDATE_HIMAX_FIRMWARE = "UPDATE_HIMAX_FIRMWARE",
+	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
+	CAMERA_SETTINGS_TEST = "CAMERA_SETTINGS_TEST",
+	FILE_TRANSFER_TEST = "FILE_TRANSFER_TEST",
+	MODEL_VALIDATION_TEST = "MODEL_VALIDATION_TEST",
+	TRANSFER_CONFIG = "TRANSFER_CONFIG",
+	TRANSFER_AI_MODEL = "TRANSFER_AI_MODEL",
+	FIRMWARE_STATUS = "FIRMWARE_STATUS",
+	RESET_TO_DEFAULTS = "RESET_TO_DEFAULTS",
+
+	// Local commands (UPPERCASE - app-only actions)
+	CLEAR_CONSOLE = "CLEAR_CONSOLE",
 }
 
 /**
@@ -35,22 +88,67 @@ export enum CommandNames {
 export type Command = {
 	name: CommandNames
 	readCommand?: string
-	writeCommand?: (value?: string) => string
+	writeCommand?: (value?: string, value2?: string) => string
 	readRegex?: RegExp
+	description?: string
+	type?: 'command' | 'process' | 'local'
+	timeout?: number
+	expectedPattern?: RegExp | string | false
 }
 
-export const getCommandByName = (name: CommandNames | string) => {
-	if (typeof name === "string" && !(name in CommandNames)) {
-		return null
+export const getCommandByName = (name: CommandNames | string): Command | null => {
+	if (!name) return null
+
+	// Normalized lookup: Handle "AI info" or "AI setop" by looking for the last part
+	// and handle common prefixes
+	const parts = name.toString().toLowerCase().split(' ')
+	const candidates = [
+		name.toString(),
+		parts[parts.length - 1], // "info" from "AI info"
+		parts.join(''), // "aiinfo" 
+		parts.slice(1).join(''), // "info" from "AI info"
+	]
+
+	for (const candidate of candidates) {
+		// Exact match in Enum values
+		const enumValue = Object.values(CommandNames).find(v => v.toLowerCase() === candidate.toLowerCase())
+		if (enumValue && COMMANDS[enumValue as CommandNames]) {
+			return COMMANDS[enumValue as CommandNames]
+		}
+		// Exact match in Enum keys
+		if (candidate.toUpperCase() in CommandNames) {
+			return COMMANDS[CommandNames[candidate.toUpperCase() as keyof typeof CommandNames]]
+		}
 	}
 
-	const response = COMMANDS[name as CommandNames]
-
-	if (!response) {
-		return null
+	// Secondary lookup: Try stripping trailing numeric arguments (e.g. "AI capture 1 1" -> "AI capture")
+	const stripped = name.toString().replace(/\b\d+\b/g, '').replace(/\s+/g, ' ').trim()
+	if (stripped && stripped !== name.toString()) {
+		return getCommandByName(stripped)
 	}
 
-	return response
+	return null
+}
+
+export const constructCommandString = (
+	name: CommandNames | string,
+	options: CommandConstructOptions,
+) => {
+	const command = getCommandByName(name)
+
+	if (!command) {
+		return undefined
+	}
+
+	if (options.control === CommandControlTypes.WRITE && command.writeCommand) {
+		return command.writeCommand(options.value)
+	}
+
+	if (options.control === CommandControlTypes.READ && command.readCommand) {
+		return command.readCommand
+	}
+
+	return undefined
 }
 
 export enum CommandControlTypes {
@@ -63,91 +161,492 @@ export type CommandConstructOptions = {
 	value?: string
 }
 
+export type WriteFunction = (
+	peripheral: ExtendedPeripheral,
+	data: string | undefined,
+) => Promise<void>
+
+/**
+ * Options for BLE command execution with response tracking
+ */
+export interface BleCommandOptions {
+	/** Timeout in milliseconds (default: 3000) */
+	timeout?: number
+	/** Maximum number of retries (default: 1) */
+	maxRetries?: number
+	/** Expected response pattern to prioritize over regex matching (optional). Set to false to disable default regex. */
+	expectedPattern?: RegExp | false
+}
+
+/**
+ * Represents a command waiting for a response
+ */
+export interface PendingCommand {
+	/** Unique request ID */
+	id: string
+	/** Command name from CommandNames enum */
+	commandName: CommandNames | string
+	/** Actual command string sent to device */
+	commandString: string
+	/** Timestamp when command was sent */
+	sentAt: number
+	/** Timeout in milliseconds */
+	timeoutMs: number
+	/** Resolve promise with response */
+	resolve: (response: string) => void
+	/** Reject promise with error */
+	reject: (error: Error) => void
+	/** Number of times this command has been retried */
+	retryCount: number
+	/** Maximum retries allowed */
+	maxRetries: number
+	/** Expected response pattern (optional) */
+	expectedPattern?: RegExp | false
+	/** Timeout handle to clear when command completes */
+	timeoutHandle?: any 
+    /** Function to write to device (needed for retries) */
+    writeToDevice: WriteFunction
+    /** Peripheral to write to */
+    peripheral: ExtendedPeripheral
+    /** Whether the command echo has been received */
+    echoReceived?: boolean
+}
+
 export const COMMANDS: {
 	[key in CommandNames]: Command
 } = {
-	[CommandNames.ID]: {
-		name: CommandNames.ID,
+	[CommandNames.id]: {
+		name: CommandNames.id,
 		readCommand: "id",
+		description: "Send BLE name",
+		type: 'command',
 	},
-	[CommandNames.VERSION]: {
-		name: CommandNames.VERSION,
+	[CommandNames.ver]: {
+		name: CommandNames.ver,
 		readCommand: "ver",
+		// Matches "WW500-A00 V 00.20.07 22:30:18 Jan 28 2026"
+		readRegex: /[a-zA-Z0-9-]+\s+V\s+(\d+\.\d+\.\d+(?:-[\w.-]+)?)/i,
+		description: "Device, firmware version, build date",
+		type: 'command',
 	},
-	[CommandNames.BATTERY]: {
-		name: CommandNames.BATTERY,
+	[CommandNames.battery]: {
+		name: CommandNames.battery,
 		readCommand: "battery",
-		readRegex: /\bBattery\s=\s(100|\d{1,3})%/,
+		// Matches "Battery = 3305mV 100%" or "Battery = 100%"
+		readRegex: /\bBattery\s=\s(?:\d+mV\s)?(100|\d{1,3})%/,
+		description: "Report battery voltage",
+		type: 'command',
 	},
-	[CommandNames.SENSOR]: {
-		name: CommandNames.SENSOR,
+	[CommandNames.status]: {
+		name: CommandNames.status,
 		readCommand: "status",
-		readRegex:
-			/Trap: (\w+). Sensor: (enabled|disabled). LoRaWan: ((?:\w+\s*)+)./,
-		writeCommand: (value?: string) => `${value}`,
+		// Matches full status response including sensor, LoRaWAN, and sequence
+		readRegex: /(?:Trap: \w+\.\s)?Sensor: (enabled|disabled)\./,
+		writeCommand: (value?: string) => value || "status",
+		description: "Get device status (sensor, LoRaWAN, sequence)",
+		type: 'command',
 	},
-	[CommandNames.TRAP]: {
-		name: CommandNames.TRAP,
-		readCommand: "status",
-		readRegex:
-			/Trap: (\w+). Sensor: (enabled|disabled). LoRaWan: ((?:\w+\s*)+)./,
-	},
-	[CommandNames.LORAWAN]: {
-		name: CommandNames.LORAWAN,
-		readCommand: "status",
-		readRegex:
-			/Trap: (\w+). Sensor: (enabled|disabled). LoRaWan: ((?:\w+\s*)+)./,
-	},
-	[CommandNames.HEARTBEAT]: {
-		name: CommandNames.HEARTBEAT,
+	[CommandNames.heartbeat]: {
+		name: CommandNames.heartbeat,
 		readCommand: "get heartbeat",
 		readRegex: /\bheartbeat\s+is\s+(\d+d|\d+h|\d+m|\d+s)\b/,
-		writeCommand: (value?: string) => `heartbeat ${value}`,
+		writeCommand: (value?: string) => value ? `heartbeat ${value}` : "get heartbeat",
+		description: "Report/set heartbeat rate",
+		type: 'command',
 	},
-	[CommandNames.DEVEUI]: {
-		name: CommandNames.DEVEUI,
+	[CommandNames.deveui]: {
+		name: CommandNames.deveui,
 		readCommand: "get deveui",
 		readRegex: /\DevEui:\s([a-zA-Z0-9:]+)\b/,
-		writeCommand: (value?: string) => `deveui ${value}`,
+		writeCommand: (value?: string) => value ? `deveui ${value}` : "get deveui",
+		description: "Report/set LoRaWan DevEUI",
+		type: 'command',
 	},
-	[CommandNames.APPEUI]: {
-		name: CommandNames.APPEUI,
+	[CommandNames.appeui]: {
+		name: CommandNames.appeui,
 		readCommand: "get appeui",
 		readRegex: /\bAppEui:\s([a-zA-Z0-9:]+)\b/,
-		writeCommand: (value?: string) => `appeui ${value}`,
+		writeCommand: (value?: string) => value ? `appeui ${value}` : "get appeui",
+		description: "Report/set LoRaWan AppEUI",
+		type: 'command',
 	},
-	[CommandNames.APPKEY]: {
-		name: CommandNames.APPKEY,
+	[CommandNames.appkey]: {
+		name: CommandNames.appkey,
 		readCommand: "get appkey",
 		readRegex: /\bAppKey:\s([a-zA-Z0-9:]+)\b/,
-		writeCommand: (value?: string) => `appkey ${value}`,
+		writeCommand: (value?: string) => value ? `set appkey ${value}` : "get appkey",
+		description: "Report/set LoRaWan AppKey (Note: get appkey may fail with 'Failed 2')",
+		type: 'command',
 	},
-	[CommandNames.PING]: {
-		name: CommandNames.PING,
+	[CommandNames.ping]: {
+		name: CommandNames.ping,
 		writeCommand: () => "ping",
+		readRegex: /(Joined|Not Joined)/i,
+		description: "Send LoRaWAN packet",
+		type: 'command',
 	},
-	[CommandNames.RESET]: {
-		name: CommandNames.RESET,
+	[CommandNames.reset]: {
+		name: CommandNames.reset,
 		writeCommand: () => "reset",
 		readRegex: /(Device will reset after disconnecting.)\s*/,
+		description: "Board will reset after disconnect",
+		type: 'command',
 	},
-	[CommandNames.ERASE]: {
-		name: CommandNames.ERASE,
+	[CommandNames.erase]: {
+		name: CommandNames.erase,
 		writeCommand: () => "erase",
 		readRegex: /(NVM will be erased after disconnecting.)\s*/,
+		description: "Erase NVM after disconnect",
+		type: 'command',
 	},
-	[CommandNames.DISCONNECT]: {
-		name: CommandNames.DISCONNECT,
+	[CommandNames.dis]: {
+		name: CommandNames.dis,
 		writeCommand: () => "dis",
+		readRegex: /^Disconnecting$/i,
+		description: "BLE disconnect",
+		type: 'command',
 	},
-	[CommandNames.DFU]: {
-		name: CommandNames.DFU,
+	[CommandNames.dfu]: {
+		name: CommandNames.dfu,
 		writeCommand: () => "dfu",
 		readRegex: /(Device will enter DFU mode after disconnecting.)\s*/,
+		description: "Enter DFU mode after disconnect",
+		type: 'command',
 	},
-	[CommandNames.DEVICE]: {
-		name: CommandNames.DEVICE,
+	[CommandNames.device]: {
+		name: CommandNames.device,
 		readCommand: "device",
+		description: "Product name (e.g. WW500-C00)",
+		type: 'command',
+	},
+	[CommandNames.aiinfo]: {
+		name: CommandNames.aiinfo,
+		writeCommand: () => "AI info",
+		// Matches total and available drive space response
+		// Example: "30515200 K total drive space.\n  30511056 K available."
+		readRegex: /(\d+)\s*[Kk]\s*total\s*drive\s*space\.\s*(\d+)\s*[Kk]\s*available/i,
+		description: "Get AI module info (label, serial, total/available drive space in KB)",
+		type: 'command',
+	},
+	[CommandNames.selftest]: {
+		name: CommandNames.selftest,
+		writeCommand: () => "selftest",
+		readRegex: /Error\s*bits\s*=\s*(0x[0-9A-Fa-f]+)/,
+		description: "Returns self test bit mask",
+		type: 'command',
+	},
+	[CommandNames.flashr]: {
+		name: CommandNames.flashr,
+		writeCommand: (value?: string) => `flashr ${value || '2 500'}`,
+		readRegex: /Flashing\s+(\d+)ms\s+(\d+)\s+times/i,
+		description: "Flash red LED (count duration_ms)",
+		type: 'command',
+	},
+	[CommandNames.flashg]: {
+		name: CommandNames.flashg,
+		writeCommand: (value?: string) => `flashg ${value || '2 500'}`,
+		readRegex: /Flashing\s+(\d+)ms\s+(\d+)\s+times/i,
+		description: "Flash green LED (count duration_ms)",
+		type: 'command',
+	},
+	[CommandNames.flashb]: {
+		name: CommandNames.flashb,
+		writeCommand: (value?: string) => `flashb ${value || '2 500'}`,
+		readRegex: /Flashing\s+(\d+)ms\s+(\d+)\s+times/i,
+		description: "Flash blue LED (count duration_ms)",
+		type: 'command',
+	},
+	[CommandNames.SET_UTC]: {
+		name: CommandNames.SET_UTC,
+		writeCommand: () => {
+			// Format: setutc YYYY-MM-DDTHH:MM:SSZ
+			const now = new Date()
+			const iso = now.toISOString()
+			// Strip milliseconds: "2024-12-07T12:00:00.123Z" -> "2024-12-07T12:00:00Z"
+			const timestamp = iso.split('.')[0] + 'Z'
+			return `setutc ${timestamp}`
+		},
+		// Matches "RTC set to..." OR "System time set successfully" OR "UTC is: ..." (device echo/response variations)
+		readRegex: /(RTC\s+set\s+to|System\s+time\s+set\s+successfully|UTC\s+is:)/i,
+		description: "Set system time from UTC string",
+		type: 'process',
+	},
+	[CommandNames.SET_GPS]: {
+		name: CommandNames.SET_GPS,
+		description: "Set GPS location from phone (requires location access)",
+		type: 'process',
+	},
+	[CommandNames.setop]: {
+		name: CommandNames.setop,
+		writeCommand: (index?: string, value?: string) => `AI setop ${index || ''} ${value || ''}`.trim(),
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
+		description: "Set Operational Parameter <index> to <value> (Advanced)",
+		type: 'command',
+	},
+	[CommandNames.getop]: {
+		name: CommandNames.getop,
+		readCommand: "AI getop",
+		writeCommand: (index?: string) => `AI getop ${index || ''}`.trim(),
+		readRegex: /^Op(?:Param\s+|\[)(\d+)\]?\s+=\s+(.+)$/i,
+		description: "Get Operational Parameter <index> (Advanced)",
+		type: 'command',
+	},
+	[CommandNames.getop_all]: {
+		name: CommandNames.getop_all,
+		readCommand: "AI getop -1",
+		writeCommand: () => `AI getop -1`,
+		readRegex: /^OpParams\s+(.+)$/i,
+		description: "Get all Operational Parameters at once",
+		type: 'command',
+	},
+	[CommandNames.getops]: {
+		name: CommandNames.getops,
+		readCommand: "getops",
+		readRegex: /OpParams:\s(.+)/,
+		description: "Get all operational parameters (array)",
+		type: 'command',
+	},
+	[CommandNames.ai_ver]: {
+		name: CommandNames.ai_ver,
+		readCommand: "AI ver",
+		readRegex: /V\s*(\d+\.\d+\.\d+(?:-[\w.-]+)?)/i,
+		description: "Get AI processor version",
+		type: 'command',
+	},
+	[CommandNames.ai_firmware]: {
+		name: CommandNames.ai_firmware,
+		writeCommand: (filename?: string) => `AI firmware ${filename || 'output.img'}`,
+		readRegex: /Firmware update (OK|FAILED)/i,
+		description: "Update Himax firmware from SD card image",
+		type: 'command',
+	},
+	[CommandNames.erasemodel]: {
+		name: CommandNames.erasemodel,
+		writeCommand: () => "AI erasemodel",
+		readRegex: /(OK|erased|failed)/i,
+		description: "Erases the model and write 0, 0 to the CONFIG.TXT lines 14 & 15",
+		type: 'command',
+	},
+	[CommandNames.loadmodel]: {
+		name: CommandNames.loadmodel,
+		writeCommand: (id?: string, ver?: string) => `AI loadmodel ${id || '0'} ${ver || '0'}`,
+		readRegex: /(OK|loaded|failed)/i,
+		description: "Load model <id> <ver> from SD (e.g. 1V1.tflite) and update lines 14 & 15 of CONFIG.TXT",
+		type: 'command',
+	},
+	[CommandNames.wake]: {
+		name: CommandNames.wake,
+		writeCommand: () => 'wake',
+		readRegex: /(AI processor is awake|Waking AI processor|Wake)/i,
+		description: "Wake AI processor from Deep Power Down (firmware v0.8.14+)",
+		type: 'command',
+	},
+	[CommandNames.camera_type]: {
+		name: CommandNames.camera_type,
+		readCommand: "AI camera",
+        readRegex: /\b(HM0360|RP2|RP3)\b/i,
+		description: "Get connected camera type",
+		type: 'command',
+	},
+	[CommandNames.md]: {
+		name: CommandNames.md,
+		writeCommand: (level?: string) => `AI md ${level || '0'}`,
+		expectedPattern: false,
+		description: "Set motion detection sensitivity (0-3)",
+		type: 'process',
+	},
+	[CommandNames.setdid]: {
+		name: CommandNames.setdid,
+		writeCommand: (id?: string) => `AI setdid ${id || ''}`.trim(),
+		expectedPattern: false,
+		description: "Set Deployment ID as a single string",
+		type: 'command',
+	},
+	[CommandNames.getdid]: {
+		name: CommandNames.getdid,
+		writeCommand: () => "AI getdid", // In case we want to write it explicitly instead of read
+		readCommand: "AI getdid",
+		readRegex: /\b([a-fA-F0-9-]{36})\b/, // Matches UUID-formatted deployment IDs
+		description: "Get Deployment ID (string)",
+		type: 'command',
+	},
+	// Preset Operational Parameter Commands
+	[CommandNames.SET_NUM_PICTURES]: {
+		name: CommandNames.SET_NUM_PICTURES,
+		writeCommand: (count?: string) => `AI setop 5 ${count || '3'}`,
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
+		description: "Set number of images per trigger (default: 3)",
+		type: 'process',
+	},
+	[CommandNames.SET_PICTURE_INTERVAL]: {
+		name: CommandNames.SET_PICTURE_INTERVAL,
+		writeCommand: (intervalMs?: string) => `AI setop 6 ${intervalMs || '1500'}`,
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
+		description: "Set interval between images in ms (default: 1500)",
+		type: 'process',
+	},
+	[CommandNames.SET_TIMELAPSE_INTERVAL]: {
+		name: CommandNames.SET_TIMELAPSE_INTERVAL,
+		writeCommand: (intervalSec?: string) => `AI setop 7 ${intervalSec || '900'}`,
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
+		description: "Set timelapse interval in seconds, 0=off (default: 900)",
+		type: 'process',
+	},
+	[CommandNames.SET_MOTION_DETECT_INTERVAL]: {
+		name: CommandNames.SET_MOTION_DETECT_INTERVAL,
+		writeCommand: (intervalMs?: string) => `AI setop 11 ${intervalMs || '1000'}`,
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
+		description: "Set motion detection interval in ms, 0=off (default: 1000)",
+		type: 'process',
+	},
+	[CommandNames.DISABLE_MOTION_DETECT]: {
+		name: CommandNames.DISABLE_MOTION_DETECT,
+		writeCommand: () => 'AI setop 11 0',
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
+		description: "Disable motion detection",
+		type: 'process',
+	},
+	[CommandNames.DISABLE_TIMELAPSE]: {
+		name: CommandNames.DISABLE_TIMELAPSE,
+		writeCommand: () => 'AI setop 7 0',
+		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
+		description: "Disable timelapse capture",
+		type: 'process',
+	},
+	[CommandNames.ENABLE_CAMERA]: {
+		name: CommandNames.ENABLE_CAMERA,
+		writeCommand: () => 'AI setop 10 1',
+		readRegex: /Set\s+OpParam\s+10\s+=\s+1/i,
+		description: "Enable camera and AI system",
+		type: 'process',
+		timeout: 10000,
+	},
+	[CommandNames.DISABLE_CAMERA]: {
+		name: CommandNames.DISABLE_CAMERA,
+		writeCommand: () => 'AI setop 10 0',
+		readRegex: /Set\s+OpParam\s+10\s+=\s+0/i,
+		description: "Disable camera and AI system",
+		type: 'process',
+		timeout: 10000,
+	},
+	[CommandNames.temp]: {
+		name: CommandNames.temp,
+		readCommand: "temp",
+		readRegex: /Temperature: (-?\d+)\.(\d+)C/,
+		description: "Report temperature",
+		type: 'command',
+	},
+	[CommandNames.network]: {
+		name: CommandNames.network,
+		readCommand: "network",
+		readRegex: /RSSI: (-?\d+)dB, SNR: (-?\d+)dB|No network comms yet/i,
+		description: "Most recent RSSI, SNR etc",
+		type: 'command',
+	},
+	[CommandNames.join]: {
+		name: CommandNames.join,
+		writeCommand: () => "join",
+		readRegex: /^(Already joined|OK|Wrong state)/i,
+		description: "Request a LoRaWAN join",
+		type: 'command',
+	},
+	[CommandNames.getgps]: {
+		name: CommandNames.getgps,
+		readCommand: "getgps",
+		readRegex: /Location is: (.*)/,
+		description: "Get the GPS location",
+		type: 'command',
+	},
+	[CommandNames.setgps]: {
+		name: CommandNames.setgps,
+		writeCommand: (gpsString?: string) => `setgps ${gpsString || ''}`,
+		readRegex: /Device GPS set/i,
+		description: "Set the GPS location",
+		type: 'command',
+	},
+	[CommandNames.getutc]: {
+		name: CommandNames.getutc,
+		readCommand: "getutc",
+		readRegex: /UTC is: (.*)/,
+		description: "Get the system time",
+		type: 'command',
+	},
+	[CommandNames.state]: {
+		name: CommandNames.state,
+		readCommand: "state",
+		readRegex: /State = (.*)/,
+		description: "Returns state machine state",
+		type: 'command',
+	},
+	[CommandNames.TX_FILE]: {
+		name: CommandNames.TX_FILE,
+		// "AI txfile ." requests the last captured file
+		writeCommand: () => "AI txfile .",
+		readRegex: /(sending\s+\d+\s+bytes|no\s+file)/i,
+		description: "Request last captured file from AI module",
+		type: 'process',
+	},
+	[CommandNames.CAPTURE_PREVIEW]: {
+		name: CommandNames.CAPTURE_PREVIEW,
+		writeCommand: () => "AI capture 1 1",
+		readRegex: /Captured/i,
+		description: "Capture image for preview",
+		type: 'process',
+	},
+	[CommandNames.UPDATE_BLE_FIRMWARE]: {
+		name: CommandNames.UPDATE_BLE_FIRMWARE,
+		description: "Update BLE Firmware (DFU)",
+		type: 'process',
+	},
+	[CommandNames.UPDATE_HIMAX_FIRMWARE]: {
+		name: CommandNames.UPDATE_HIMAX_FIRMWARE,
+		description: "Update Himax Firmware from SD Card",
+		type: 'process',
+	},
+	[CommandNames.MOTION_DETECTION_PREVIEW]: {
+		name: CommandNames.MOTION_DETECTION_PREVIEW,
+		description: "Open standalone motion detection preview page",
+		type: 'process',
+	},
+	[CommandNames.CAMERA_SETTINGS_TEST]: {
+		name: CommandNames.CAMERA_SETTINGS_TEST,
+		description: "Open Camera Settings Test page",
+		type: 'process',
+	},
+	[CommandNames.FILE_TRANSFER_TEST]: {
+		name: CommandNames.FILE_TRANSFER_TEST,
+		description: "Send test files to device SD card via BLE",
+		type: 'process',
+	},
+	[CommandNames.MODEL_VALIDATION_TEST]: {
+		name: CommandNames.MODEL_VALIDATION_TEST,
+		description: "Validate, download, and load an AI model",
+		type: 'process',
+	},
+	[CommandNames.TRANSFER_CONFIG]: {
+		name: CommandNames.TRANSFER_CONFIG,
+		description: "Download config from cloud and transfer to device SD card (CONFIG.TXT)",
+		type: 'process',
+	},
+	[CommandNames.TRANSFER_AI_MODEL]: {
+		name: CommandNames.TRANSFER_AI_MODEL,
+		description: "Download AI model, transfer to SD card, erase old model, load new model",
+		type: 'process',
+	},
+	[CommandNames.FIRMWARE_STATUS]: {
+		name: CommandNames.FIRMWARE_STATUS,
+		description: "Check all firmware versions (BLE, Himax, Config) and update if needed",
+		type: 'process',
+	},
+	[CommandNames.RESET_TO_DEFAULTS]: {
+		name: CommandNames.RESET_TO_DEFAULTS,
+		description: "Reset ALL operational parameters to factory defaults, erase AI model, clear deployment ID",
+		type: 'process',
+	},
+	[CommandNames.CLEAR_CONSOLE]: {
+		name: CommandNames.CLEAR_CONSOLE,
+		description: "Clear Console Output",
+		type: 'local',
 	},
 }
 
@@ -156,6 +655,7 @@ type CharacteristicProperty =
 	| "Write"
 	| "WriteWithoutResponse"
 	| "Notify"
+	| "Indicate"
 
 type CharacteristicProperties = {
 	[key in CharacteristicProperty]?: CharacteristicProperty
@@ -204,7 +704,7 @@ export type Services = {
 	characteristics: Characteristic[]
 	services: Service[]
 	advertising: Advertising
-	name: string
+	name?: string
 	rssi: number
 	id: string
 }

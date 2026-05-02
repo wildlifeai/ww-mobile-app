@@ -1,0 +1,149 @@
+{
+  "description": "Dependency validation rules for Wildlife Watcher Expo SDK 54",
+  "lastUpdated": "2026-02-19T10:26:08+13:00",
+  "rules": {
+    "expo": {
+      "required": "~54.0.0",
+      "severity": "warning",
+      "reason": "Expo SDK 54 Migration",
+      "allowedRange": ">=54.0.0 <54.1.0"
+    },
+    "react-native": {
+      "required": "0.81.5",
+      "severity": "error",
+      "reason": "Expo SDK 54 compatibility requirement - must match exactly"
+    },
+    "typescript": {
+      "required": "~5.3.3",
+      "severity": "error",
+      "reason": "Expo SDK 54 compatibility"
+    },
+    "react-native-ble-manager": {
+      "required": "11.3.2",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Native module - will be installed in Phase 2"
+    },
+    "react-native-bluetooth-state-manager": {
+      "required": "1.3.5",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Native module - will be installed in Phase 2"
+    },
+    "react-native-reanimated": {
+      "required": "~4.1.1",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Required by Expo SDK 54"
+    },
+    "expo-dev-client": {
+      "required": "~6.0.20",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Expo development client for managed workflow"
+    },
+    "react-native-maps": {
+      "required": "1.20.1",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Expo SDK 54 compatible version"
+    },
+    "@reduxjs/toolkit": {
+      "required": "^2.5.0",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Redux state management from WW app architecture"
+    },
+    "react-redux": {
+      "required": "^9.2.0",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Redux bindings from WW app architecture"
+    },
+    "@react-navigation/native": {
+      "required": "^6.1.12",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Navigation foundation from WW app architecture"
+    },
+    "@react-navigation/bottom-tabs": {
+      "required": "latest",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Tab navigation from WW app architecture"
+    },
+    "@react-navigation/drawer": {
+      "required": "^4.2.1",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Drawer navigation from WW app architecture"
+    },
+    "@react-navigation/native-stack": {
+      "required": "^6.9.20",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Stack navigation from WW app architecture"
+    },
+    "react-native-paper": {
+      "required": "^5.12.3",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Material Design components from WW app"
+    },
+    "expo-file-system": {
+      "required": "~19.0.21",
+      "severity": "warning",
+      "optional": true,
+      "reason": "File system operations"
+    },
+    "expo-constants": {
+      "required": "~18.0.12",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Environment variable access"
+    },
+    "expo-localization": {
+      "required": "~17.0.8",
+      "severity": "info",
+      "optional": true,
+      "reason": "Localization support"
+    },
+    "expo-splash-screen": {
+      "required": "~31.0.13",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Splash screen management"
+    },
+    "@react-native-community/netinfo": {
+      "required": "^11.3.1",
+      "severity": "warning",
+      "optional": true,
+      "reason": "Expo SDK 54 compatible version"
+    }
+  },
+  "blockedPackages": {
+    "@expo/vector-icons": {
+      "reason": "Deprecated in Expo SDK 52+. Use react-native-vector-icons or expo-symbols instead.",
+      "alternative": "react-native-vector-icons",
+      "severity": "warning"
+    }
+  },
+  "overrideRequirements": {
+    "react": "19.1.0",
+    "react-test-renderer": "19.1.0"
+  },
+  "sdkCompatibility": {
+    "54": {
+      "expo-dev-client": "~6.0.20",
+      "react-native": "0.81.5"
+    }
+  },
+  "validationSettings": {
+    "blockOnError": false,
+    "blockOnWarning": false,
+    "runExpoDoctor": true,
+    "checkOverrides": true,
+    "checkDuplicates": true,
+    "migrationMode": false
+  }
+}

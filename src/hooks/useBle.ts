@@ -7,71 +7,47 @@ import { Peripheral } from "react-native-ble-manager"
 
 import { BLE_SERVICE_UUID } from "../utils/constants"
 import {
-	extractServiceAndCharacteristic,
 	invokeWithTimeout,
-	isOurDevice,
-	sleep,
+	isOurDevice
 } from "../utils/helpers"
-import { guard, log, logError } from "../utils/logger"
+import { guard, log, logError, logWarn } from '../utils/logger'
 import { useAppDispatch, useAppSelector } from "../redux"
-import {
-	deviceConfigClear,
-	deviceConfigInitiated,
-} from "../redux/slices/configurationSlice"
 import {
 	ExtendedPeripheral,
 	deviceDisconnect,
 	deviceLoading,
 	deviceUpdate,
 } from "../redux/slices/devicesSlice"
-import { deviceLogChange } from "../redux/slices/logsSlice"
+import { clearLogs } from "../redux/slices/logsSlice"
 import { scanError, scanStart } from "../redux/slices/scanningSlice"
-import { useInterval } from "../hooks/useInterval"
-import { clearAllDeviceIntervals, writeToDevice } from "../utils/helpers"
+import { clearAllDeviceIntervals } from "../utils/helpers"
+import { extractServiceAndCharacteristic, writeToDevice } from "../ble/transport"
 import {
 	CommandConstructOptions,
-	CommandControlTypes,
 	CommandNames,
 	Services,
 } from "../ble/types"
-import { constructCommandString } from "../ble/parser"
+import { bleEventBus } from "../ble/protocol/eventBus"
 
 export type WriteData = [CommandNames, CommandConstructOptions]
 
 export type ReturnType = {
 	isBleConnecting: boolean | undefined
 	startScan: (length?: number) => void
+	stopScan: () => Promise<void>
 	connectDevice: (
 		peripheral: ExtendedPeripheral,
 		timeout?: number,
 	) => Promise<ExtendedPeripheral>
 	disconnectDevice: (peripheral: ExtendedPeripheral) => void
-	write: (
+	writeRaw: (
 		peripheral: ExtendedPeripheral,
-		data: (string | WriteData)[],
+		data: string,
 	) => Promise<void>
-	enginePause: (toggle: boolean) => void
 	pingsPause: (toggle: boolean) => void
-	enginePaused: React.MutableRefObject<boolean>
 	pingsPaused: React.MutableRefObject<boolean>
 }
 
-type FunctionEngine = {
-	fun: Function
-	canBeIgnored?: boolean
-	pausesTheEngine?: boolean
-}
-
-/**
- * These commands can have a bigger pause implemented after they're executed.
- */
-const PAUSE = 500
-
-/**
- * This special command will be ignored by the engine if
- * BLE is writing any information at that moment.
- */
-const PING_REQUEST: string[] = []
 
 export const useBle = (): ReturnType => {
 	const { initialized } = useAppSelector((state) => state.bleLibrary)
@@ -83,59 +59,10 @@ export const useBle = (): ReturnType => {
 
 	const dispatch = useAppDispatch()
 
-	const bleWriteFunctionsToCall = useRef<FunctionEngine[]>([])
-	const isBleWriting = useRef(false)
-	const enginePauseRef = useRef(false)
 	const pingsPauseRef = useRef(false)
 
-	const clearPings = () => {
-		bleWriteFunctionsToCall.current = bleWriteFunctionsToCall.current.filter(
-			({ canBeIgnored }) => !canBeIgnored,
-		)
-	}
-
-	/**
-	 * Heart of the BLE - device bridge. It makes sure functions are
-	 * called with a delay, it's actually possible to be faster then
-	 * the device buffer.
-	 */
-	useInterval(async () => {
-		if (enginePauseRef.current) {
-			clearPings()
-			return
-		}
-
-		if (isBleWriting.current) {
-			return
-		}
-
-		isBleWriting.current = true
-		if (bleWriteFunctionsToCall.current.length > 0) {
-			while (bleWriteFunctionsToCall.current.length > 0) {
-				const next = bleWriteFunctionsToCall.current.shift()
-				if (next) {
-					const { fun, canBeIgnored } = next
-
-					if (pingsPauseRef.current && canBeIgnored) {
-						log(`Pinging paused`)
-					} else {
-						await fun()
-
-						await sleep(PAUSE)
-					}
-				}
-			}
-		}
-		isBleWriting.current = false
-	}, 500)
-
-	const enginePause = useCallback((toggle: boolean) => {
-		log(`Engine turning: ${toggle ? "off" : "on"}`)
-		enginePauseRef.current = toggle
-	}, [])
 
 	const pingsPause = useCallback((toggle: boolean) => {
-		log(`Pinging paused: ${toggle ? "YES" : "NO"}`)
 		pingsPauseRef.current = toggle
 	}, [])
 
@@ -146,8 +73,10 @@ export const useBle = (): ReturnType => {
 			if (!scanning.isScanning) {
 				try {
 					pingsPause(true)
-					await BleManager.scan([], length)
-					log("Scan started")
+					// Use specific service UUID to avoid Android throttling wide-open scans
+					// Force Android into SCAN_MODE_LOW_LATENCY (2) to minimize advertisement drop rates
+					await BleManager.scan([BLE_SERVICE_UUID], length, true, { scanMode: 2, matchMode: 1 })
+					// log("Scan started")
 					dispatch(scanStart())
 				} catch (e: any) {
 					logError(e)
@@ -158,83 +87,44 @@ export const useBle = (): ReturnType => {
 		[initialized, scanning.isScanning, pingsPause, dispatch],
 	)
 
+	const stopScan = useCallback(
+		async () => {
+			if (!initialized) return
+			try {
+				await BleManager.stopScan()
+			} catch (e: any) {
+				logWarn('Failed to stop scan:', e)
+			}
+		},
+		[initialized],
+	)
+
 	const disconnectDevice = useCallback(
 		async (peripheral: Peripheral | ExtendedPeripheral) => {
 			if (!initialized) return
-			bleWriteFunctionsToCall.current = []
 			await guard(() => BleManager.disconnect(peripheral.id))
 			dispatch(deviceDisconnect({ id: peripheral.id }))
 		},
 		[dispatch, initialized],
 	)
 
-	const write = useCallback(
-		async (peripheral: ExtendedPeripheral, data: (WriteData | string)[]) => {
-			if (!initialized) return
-
-			const currentPeripheral = devices[peripheral.id]
-
-			if (currentPeripheral) {
-				dispatch(
-					deviceConfigInitiated({
-						id: peripheral.id,
-						data: data
-							.filter((strOrCommand) => typeof strOrCommand !== "string")
-							.map(([name]) => {
-								return name as CommandNames
-							}),
-					}),
-				)
-			}
-
-			/**
-			 * Simply maps the data in preparation for the BLE functions
-			 * engine.
-			 */
-			interface MappedData extends Omit<FunctionEngine, "fun"> {
-				str: string | undefined
-			}
-
-			const mappedData: MappedData[] = data.map((strOrCommand) => {
-				if (typeof strOrCommand === "string")
-					return {
-						str: strOrCommand,
-						canBeIgnored: PING_REQUEST.includes(strOrCommand),
-					}
-				const [commandName, options] = strOrCommand
-
-				return {
-					str: constructCommandString(commandName, options),
-					canBeIgnored: PING_REQUEST.includes(commandName),
-				}
-			})
-
-			mappedData.forEach(({ str, ...rest }) => {
-				bleWriteFunctionsToCall.current.push({
-					fun: () =>
-						writeToDevice(peripheral, str)
-							.then((e?: Error) => {
-								if (e) {
-									log(
-										`Disconnecting device ${
-											peripheral.id
-										} due to an error (${JSON.stringify(e)})`,
-									)
-									disconnectDevice(peripheral)
-								}
-							})
-							.catch(() => {
-								log(
-									`Disconnecting device ${peripheral.id} due to an error while calling writeToDevice`,
-								)
-								disconnectDevice(peripheral)
-							}),
-					...rest,
-				})
-			})
-		},
-		[devices, disconnectDevice, dispatch, initialized],
-	)
+	const writeRaw = useCallback(async (peripheral: ExtendedPeripheral, data: string) => {
+		if (!initialized) return
+		
+		try {
+			await writeToDevice(peripheral, data)
+			bleEventBus.emitEvent({
+				type: 'RAW_TX',
+				command: data.trim(),
+				deviceId: peripheral.id,
+				ts: Date.now()
+			} as any)
+		} catch (error) {
+			const errMsg = error instanceof Error ? error.message : String(error)
+			logError(`[RAW_TX] Error writing to device: ${errMsg}`)
+			throw error
+		}
+	}, [initialized])
 
 	const isDeviceReconnecting = useRef<{ [x: string]: boolean }>({})
 
@@ -253,9 +143,9 @@ export const useBle = (): ReturnType => {
 			 * Basically, use the timeout.
 			 */
 			if (isDeviceReconnecting.current[peripheral.id]) {
-				log(
-					`Cancelling the connection request for ${peripheral.id}. connectDevice is already running.`,
-				)
+				// log(
+				// 	`Cancelling the connection request for ${peripheral.id}. connectDevice is already running.`,
+				// )
 				return peripheral
 			}
 
@@ -274,11 +164,10 @@ export const useBle = (): ReturnType => {
 
 			if (!newPeripheral.connected) {
 				try {
-					log(`Device ${deviceIdentification} will try to connect`)
+					// log(`Device ${deviceIdentification} will try to connect`)
 
-					// if (Platform.OS === "android") {
-					// 	await BleManager.createBond(newPeripheral.id)
-					// }
+					// Clear logs BEFORE starting connection/notifications to ensure we don't wipe early firmware messages
+					dispatch(clearLogs({ id: newPeripheral.id }))
 
 					await invokeWithTimeout(
 						() => BleManager.connect(newPeripheral.id),
@@ -286,45 +175,66 @@ export const useBle = (): ReturnType => {
 						timeout,
 					)
 
-					dispatch(deviceLogChange({ id: newPeripheral.id, log: "" }))
-					dispatch(deviceConfigClear({ id: newPeripheral.id }))
-
-					log(`Device ${deviceIdentification} connected`)
-
-					const services = (await invokeWithTimeout(
+					const services = await invokeWithTimeout(
 						() => BleManager.retrieveServices(newPeripheral.id),
 						"BleManager.retrieveServices",
 						timeout,
-					)) as Services
+					)
+					// log("Discovered services: " + JSON.stringify(services))
 
-					log(`Device ${deviceIdentification} services retireved`)
+					// Cast to correct type
+					newPeripheral.services = extractServiceAndCharacteristic(services as unknown as Services)
 
-					const extractedServices = extractServiceAndCharacteristic(services)
+					const {
+						serviceCharacteristic,
+						readCharacteristic,
+					} = newPeripheral.services
 
-					newPeripheral.services = extractedServices
-
-					await BleManager.startNotification(
-						newPeripheral.id,
-						extractedServices.serviceCharacteristic,
-						extractedServices.readCharacteristic,
+					// CRITICAL: Enable notifications IMMEDIATELY after service discovery
+					// This triggers BLE_NUS_EVT_COMM_STARTED firmware event
+					// MTU negotiation is moved AFTER this to avoid blocking the GATT queue
+					await invokeWithTimeout(
+						() =>
+							BleManager.startNotification(
+								newPeripheral.id,
+								serviceCharacteristic,
+								readCharacteristic,
+							),
+						"BleManager.startNotification",
+						timeout,
 					)
 
-					log(`Device ${deviceIdentification} notifications started`)
+					log(`Notifications started for ${readCharacteristic}`)
 
-					/** Acts as the PING request */
-					const ping = () =>
-						guard(() =>
-							write(newPeripheral, [
-								[CommandNames.BATTERY, { control: CommandControlTypes.READ }],
-							]),
-						)
+					// MTU optimization - do this AFTER notifications to avoid blocking CCCD write
+					// This prevents the 8-second delay caused by MTU blocking the GATT queue
+					if (Platform.OS === "android") {
+						try {
+                            // Request high priority (1) for faster transfer
+                            await invokeWithTimeout(
+                                () => BleManager.requestConnectionPriority(newPeripheral.id, 1),
+                                "BleManager.requestConnectionPriority",
+                                timeout
+                            )
+                            log("Connection priority: High")
 
-					await ping()
+							await invokeWithTimeout(
+								() => BleManager.requestMTU(newPeripheral.id, 512),
+								"BleManager.requestMTU",
+								timeout,
+							)
+							log("MTU negotiated to 512 bytes")
+						} catch (mtuError) {
+							logWarn("MTU/Priority negotiation failed, using default:", mtuError)
+						}
+					}
+
+					await BleManager.readRSSI(newPeripheral.id)
+
+					log(`Device ${deviceIdentification} connected`)
 
 					newPeripheral.connected = true
-					newPeripheral.intervals = {
-						ping: setInterval(async () => await ping(), 40000),
-					}
+					newPeripheral.intervals = {}
 
 					dispatch(deviceUpdate({ ...newPeripheral }))
 				} catch (e: any) {
@@ -343,7 +253,7 @@ export const useBle = (): ReturnType => {
 
 			return newPeripheral
 		},
-		[initialized, scanning.isScanning, dispatch, write, disconnectDevice],
+		[initialized, scanning.isScanning, dispatch, disconnectDevice],
 	)
 
 	const removeLeftoverDevices = useCallback(() => {
@@ -361,6 +271,11 @@ export const useBle = (): ReturnType => {
 			}
 
 			results.map(async (peripheral) => {
+				// Prevent disconnecting devices that are already handled by the app state
+				if (devices[peripheral.id]?.connected) {
+					return
+				}
+
 				if (
 					Platform.OS === "android" &&
 					(await BleManager.isPeripheralConnected(peripheral.id, [
@@ -386,11 +301,10 @@ export const useBle = (): ReturnType => {
 	return {
 		isBleConnecting,
 		startScan,
+		stopScan,
 		connectDevice,
 		disconnectDevice,
-		write,
-		enginePause,
-		enginePaused: enginePauseRef,
+		writeRaw,
 		pingsPause,
 		pingsPaused: pingsPauseRef,
 	}

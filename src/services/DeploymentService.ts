@@ -1,0 +1,437 @@
+
+import { Q } from '@nozbe/watermelondb'
+import database from '../database'
+import Deployment from '../database/models/Deployment'
+import OutboxService from './OutboxService'
+import SupabaseSyncService from './SupabaseSyncService'
+import ProjectService from './ProjectService'
+import { log, logError, logWarn } from '../utils/logger'
+
+
+// Deployment Status IDs based on backend schema
+// 1 = deployed (Active)
+// 2 = recovery (Ended)
+// 3 = failed (Failed)
+export const DEPLOYMENT_STATUS = {
+    DEPLOYED: 1,
+    RECOVERY: 2,
+    FAILED: 3
+}
+
+export const DeploymentService = {
+    /**
+     * Create a new deployment
+     */
+    createDeployment: async (
+        data: {
+            name: string
+            projectId: string
+            deviceId: string
+            setupBy: string
+            locationName: string
+            latitude?: number
+            longitude?: number
+            altitude?: number
+            accuracy?: number
+            startComments?: string
+            cameraImagePaths?: string[]
+            cameraHeight?: number
+            locationDescription?: string
+            captureMethodId?: number
+            // Device Snapshot Fields
+            cameraModel?: string
+            lorawanNetwork?: string
+            deviceEui?: string
+            lorawanRegistrationCompleted?: boolean
+            lorawanLastVerifiedAt?: Date | null
+            aiModelId?: string
+            bleFirmwareId?: string
+            himaxFirmwareId?: string
+            configFirmwareId?: string
+            batteryLevelAtStart?: number
+            sdCardTotalKbAtStart?: number
+            sdCardAvailableKbAtStart?: number
+            lorawanRssiAtStart?: number
+            lorawanSnrAtStart?: number
+        }
+    ): Promise<Deployment> => {
+        log('[DeploymentService] Creating deployment:', data.name)
+
+        // Fetch Project Settings for Snapshot
+        const project = await ProjectService.getProjectById(data.projectId)
+        const sensitivityId = project?.activity_detection_sensitivity_id
+        const timelapseInterval = project?.timelapse_interval_seconds
+
+        let newDeployment: Deployment | undefined
+
+        await database.write(async () => {
+            const deploymentsCollection = database.get<Deployment>('deployments')
+
+            try {
+                // 1. Prepare record
+                log('[DeploymentService] Step 1: Preparing deployment record')
+                newDeployment = deploymentsCollection.prepareCreate((deployment) => {
+                    deployment.name = data.name
+                    deployment.projectId = data.projectId
+                    // deployment.userId = data.userId // REMOVED
+                    deployment.deviceId = data.deviceId
+                    deployment.setupBy = data.setupBy
+                    deployment.deploymentStart = new Date()
+                    deployment.deploymentStatusId = DEPLOYMENT_STATUS.DEPLOYED
+
+                    // Add capture method if provided
+                    if (data.captureMethodId) {
+                        deployment.captureMethodId = data.captureMethodId
+                    }
+
+                    // Snapshot Project Settings
+                    if (sensitivityId) deployment.activityDetectionSensitivityId = sensitivityId
+                    if (timelapseInterval) deployment.timelapseIntervalSeconds = timelapseInterval
+
+                    // Location data
+                    deployment.locationName = data.locationName
+                    deployment.latitude = data.latitude
+                    deployment.longitude = data.longitude
+                    deployment.altitude = data.altitude
+                    deployment.accuracy = data.accuracy
+                    deployment.locationDescription = data.locationDescription
+
+                    // Standardize Camera Height to meters (input is cm)
+                    if (data.cameraHeight) {
+                        deployment.cameraHeight = data.cameraHeight / 100
+                    }
+
+                    // Store image paths as JSON string array if provided
+                    if (data.cameraImagePaths) {
+                        deployment.cameraLocationImagePaths = data.cameraImagePaths
+                    }
+
+                    deployment.startDeploymentComments = data.startComments
+
+                    // Initialize required JSON fields to defaults to prevent schema validation errors
+                    deployment.location = {}
+                    deployment.deploymentPhotos = []
+                    deployment.modifiedBy = data.setupBy
+
+                    // Device Snapshot
+                    deployment.cameraModel = data.cameraModel
+                    deployment.lorawanNetwork = data.lorawanNetwork
+                    deployment.deviceEui = data.deviceEui
+                    deployment.lorawanRegistrationCompleted = data.lorawanRegistrationCompleted
+                    deployment.lorawanLastVerifiedAt = data.lorawanLastVerifiedAt
+                    deployment.aiModelId = data.aiModelId
+                    deployment.bleFirmwareId = data.bleFirmwareId
+                    deployment.himaxFirmwareId = data.himaxFirmwareId
+                    deployment.configFirmwareId = data.configFirmwareId
+                    deployment.batteryLevelAtStart = data.batteryLevelAtStart
+                    deployment.sdCardTotalKbAtStart = data.sdCardTotalKbAtStart
+                    deployment.sdCardAvailableKbAtStart = data.sdCardAvailableKbAtStart
+                    deployment.lorawanRssiAtStart = data.lorawanRssiAtStart
+                    deployment.lorawanSnrAtStart = data.lorawanSnrAtStart
+
+                    log('[DeploymentService] Preparation function complete')
+                })
+
+                log('[DeploymentService] Step 1 complete: Record prepared with ID:', newDeployment.id)
+
+                // 2. Prepare outbox record
+                log('[DeploymentService] Step 2: Mapping payload')
+                let payload
+                try {
+                    payload = mapModelToPayload(newDeployment)
+                    log('[DeploymentService] Payload mapped successfully')
+                } catch (mapErr) {
+                    logError('[DeploymentService] Error mapping payload:', mapErr)
+                    throw mapErr
+                }
+
+                log('[DeploymentService] Step 3: Recording operation')
+                const outboxOp = OutboxService.recordOperation({
+                    operation: 'CREATE',
+                    tableName: 'deployments',
+                    recordId: newDeployment.id,
+                    payload,
+                    userId: data.setupBy,
+                })
+                log('[DeploymentService] Step 3 complete: Outbox op prepared')
+
+                // 3. Execute batch
+                log('[DeploymentService] Step 4: Batching operations')
+                await database.batch(newDeployment, outboxOp)
+                log('[DeploymentService] Created deployment and outbox record:', newDeployment.id)
+            } catch (err) {
+                logError('[DeploymentService] Critical error in createDeployment batch:', err)
+                throw err
+            }
+        })
+
+        if (!newDeployment) throw new Error("Failed to create deployment instance")
+
+        // 4. Touch Device to trigger observers/refresh
+        try {
+            await database.write(async () => {
+                const device = await database.get('devices').find(data.deviceId)
+                await device.update(() => {
+                    // Just update the timestamp to trigger reactivity
+                    // (WatermelonDB models update updatedAt automatically on save)
+                })
+            })
+            log('[DeploymentService] Touched device:', data.deviceId)
+        } catch (e) {
+            logWarn('[DeploymentService] Failed to touch device:', e)
+        }
+
+        // Trigger background sync
+        SupabaseSyncService.debouncedSync()
+
+        return newDeployment
+    },
+
+    /**
+     * End a deployment
+     */
+    endDeployment: async (
+        deploymentId: string,
+        endedBy: string | null,
+        notes?: string
+    ): Promise<Deployment> => {
+        log('[DeploymentService] Ending deployment:', deploymentId)
+
+        return await database.write(async () => {
+            const deploymentsCollection = database.get<Deployment>('deployments')
+            const deployment = await deploymentsCollection.find(deploymentId)
+
+            // 1. Prepare update
+            const updateOp = deployment.prepareUpdate((record) => {
+                record.deploymentStatusId = DEPLOYMENT_STATUS.RECOVERY
+                record.deploymentEnd = new Date()
+                record.endedBy = endedBy ?? undefined
+                record.endDeploymentComments = notes
+                record.modifiedBy = endedBy ?? 'system'
+            })
+
+            // 2. Prepare outbox record
+            const outboxOp = OutboxService.recordOperation({
+                operation: 'UPDATE',
+                tableName: 'deployments',
+                recordId: deployment.id,
+                payload: mapModelToPayload(deployment),
+                userId: endedBy ?? 'system', // Fallback if null, but should be provided
+            })
+
+            // 3. Execute batch
+            await database.batch(updateOp, outboxOp)
+
+            // Trigger background sync
+            SupabaseSyncService.debouncedSync()
+
+            return deployment
+        })
+    },
+
+    /**
+     * Get deployment by ID
+     */
+    getDeploymentById: async (id: string): Promise<Deployment | undefined> => {
+        try {
+            const deploymentsCollection = database.get<Deployment>('deployments')
+            return await deploymentsCollection.find(id)
+        } catch (error) {
+            log('[DeploymentService] Deployment not found locally:', id)
+            return undefined
+        }
+    },
+
+    /**
+     * Observe deployment by ID
+     */
+    observeDeploymentById: (id: string) => {
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        return deploymentsCollection.findAndObserve(id)
+    },
+
+    /**
+     * Get active deployment for a device
+     */
+    getActiveDeploymentForDevice: async (deviceId: string): Promise<Deployment | undefined> => {
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        const deployments = await deploymentsCollection.query(
+            Q.where('device_id', deviceId),
+            Q.where('deployment_status_id', DEPLOYMENT_STATUS.DEPLOYED),
+            Q.sortBy('deployment_start', Q.desc)
+        ).fetch()
+
+        return deployments[0]
+    },
+
+    /**
+     * Get active deployment for a device by Device ID
+     */
+    getActiveDeploymentForDeviceId: async (deviceId: string): Promise<Deployment | undefined> => {
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        const deployments = await deploymentsCollection.query(
+            Q.where('device_id', deviceId),
+            Q.where('deployment_status_id', DEPLOYMENT_STATUS.DEPLOYED),
+            Q.sortBy('deployment_start', Q.desc)
+        ).fetch()
+
+        return deployments[0]
+    },
+
+    /**
+     * Get last ended deployment for a device
+     */
+    getLastEndedDeploymentForDeviceId: async (deviceId: string): Promise<Deployment | undefined> => {
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        const deployments = await deploymentsCollection.query(
+            Q.where('device_id', deviceId),
+            Q.where('deployment_status_id', Q.notEq(DEPLOYMENT_STATUS.DEPLOYED)), // Ended or Failed
+            Q.sortBy('deployment_end', Q.desc),
+            Q.take(1)
+        ).fetch()
+
+        return deployments[0]
+    },
+
+    /**
+     * Observe all deployments (sorted by creation date)
+     */
+    observeDeployments: () => {
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        return deploymentsCollection.query(
+            Q.sortBy('created_at', Q.desc)
+        ).observe()
+    },
+
+    /**
+     * Observe deployments filtered to a specific organisation.
+     * Joins through projects table to find deployments whose project belongs to the given org.
+     */
+    observeDeploymentsForOrganisation: (organisationId: string) => {
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        return deploymentsCollection.query(
+            Q.on('projects', 'organisation_id', organisationId),
+            Q.sortBy('created_at', Q.desc)
+        ).observe()
+    },
+
+    /**
+     * Get deployments that the user has access to
+     */
+    getDeploymentsForUser: async (userId: string): Promise<Deployment[]> => {
+        const userProjects = await ProjectService.getProjectsForUser(userId)
+        const projectIds = new Set(userProjects.map((p: any) => p.id))
+
+        if (projectIds.size === 0) {
+            // Check global admin
+            const userRolesCollection = database.get('user_roles')
+            const userRoles = await userRolesCollection.query(
+                Q.where('user_id', userId),
+                Q.where('is_active', true)
+            ).fetch()
+
+            const isGlobalAdmin = userRoles.some((r: any) => r.scopeType === 'global')
+            if (isGlobalAdmin) {
+                const deploymentsCollection = database.get<Deployment>('deployments')
+                return await deploymentsCollection.query(Q.sortBy('created_at', Q.desc)).fetch()
+            }
+            return []
+        }
+
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        return await deploymentsCollection.query(
+            Q.where('project_id', Q.oneOf(Array.from(projectIds) as string[])),
+            Q.sortBy('created_at', Q.desc)
+        ).fetch()
+    },
+
+    /**
+     * Get deployments for user in a specific organisation
+     */
+    getDeploymentsForUserInOrganisation: async (userId: string, organisationId: string): Promise<Deployment[]> => {
+        const userProjects = await ProjectService.getProjectsForUserInOrganisation(userId, organisationId)
+        const projectIds = new Set(userProjects.map((p: any) => p.id))
+
+        if (projectIds.size === 0) {
+            // Check global/org admin
+            const userRolesCollection = database.get('user_roles')
+            const userRoles = await userRolesCollection.query(
+                Q.where('user_id', userId),
+                Q.where('is_active', true)
+            ).fetch()
+
+            const hasFullAccess = userRoles.some((r: any) =>
+                r.scopeType === 'global' ||
+                (r.scopeType === 'organisation' && r.scopeId === organisationId && (r.role === 'project_admin' || r.role === 'ww_admin'))
+            )
+
+            if (hasFullAccess) {
+                const deploymentsCollection = database.get<Deployment>('deployments')
+                return await deploymentsCollection.query(
+                    Q.on('projects', 'organisation_id', organisationId),
+                    Q.sortBy('created_at', Q.desc)
+                ).fetch()
+            }
+            return []
+        }
+
+        const deploymentsCollection = database.get<Deployment>('deployments')
+        return await deploymentsCollection.query(
+            Q.where('project_id', Q.oneOf(Array.from(projectIds) as string[])),
+            Q.sortBy('created_at', Q.desc)
+        ).fetch()
+    }
+}
+
+/**
+ * Helper to map model to plain object for sync (snake_case)
+ */
+function mapModelToPayload(model: Deployment): any {
+    return {
+        id: model.id,
+        project_id: model.projectId,
+        // user_id: model.userId, // REMOVED
+        device_id: model.deviceId,
+        name: model.name,
+        setup_by: model.setupBy,
+        deployment_start: new Date(model.deploymentStart).toISOString(),
+        ended_by: model.endedBy || null,
+        deployment_end: (model.deploymentEnd && model.deploymentEnd.getTime() > 1000) ? new Date(model.deploymentEnd).toISOString() : null,
+        deployment_status_id: model.deploymentStatusId,
+        capture_method_id: model.captureMethodId || null,
+        activity_detection_sensitivity_id: model.activityDetectionSensitivityId || null,
+        timelapse_interval_seconds: model.timelapseIntervalSeconds || null,
+        start_deployment_comments: model.startDeploymentComments || null,
+        end_deployment_comments: model.endDeploymentComments || null,
+
+        location_name: model.locationName,
+        location_description: model.locationDescription || null,
+        altitude: model.altitude || null,
+        accuracy: model.accuracy || null,
+        camera_location_image_paths: (model.cameraLocationImagePaths && typeof model.cameraLocationImagePaths === 'string')
+            ? JSON.parse(model.cameraLocationImagePaths)
+            : (model.cameraLocationImagePaths || null),
+        latitude: model.latitude || null,
+        longitude: model.longitude || null,
+
+        // Device Snapshot Fields
+        camera_model: model.cameraModel || null,
+        lorawan_network: model.lorawanNetwork || null,
+        device_eui: model.deviceEui || null,
+        lorawan_registration_completed: model.lorawanRegistrationCompleted || false,
+        lorawan_last_verified_at: model.lorawanLastVerifiedAt ? new Date(model.lorawanLastVerifiedAt).toISOString() : null,
+        ai_model_id: model.aiModelId || null,
+        ble_firmware_id: model.bleFirmwareId || null,
+        himax_firmware_id: model.himaxFirmwareId || null,
+        config_firmware_id: model.configFirmwareId || null,
+        battery_level_at_start: model.batteryLevelAtStart ?? null,
+        sd_card_total_kb_at_start: model.sdCardTotalKbAtStart ?? null,
+        sd_card_available_kb_at_start: model.sdCardAvailableKbAtStart ?? null,
+        lorawan_rssi_at_start: model.lorawanRssiAtStart ?? null,
+        lorawan_snr_at_start: model.lorawanSnrAtStart ?? null,
+
+        created_at: new Date(model.createdAt).toISOString(),
+        updated_at: new Date(model.updatedAt).toISOString(),
+        deleted_at: model.deletedAt ? new Date(model.deletedAt).toISOString() : null,
+    }
+}

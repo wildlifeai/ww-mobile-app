@@ -4,20 +4,17 @@ export type LoginRequest = {
 }
 
 export type RegisterRequest = {
-	username: string
+	name: string
 	email: string
 	password: string
+	organization?: string
 }
 
-export type AuthResponse = {
-	jwt: string
-	user: {
-		id: number
-		username: string
-		email: string
-		confirmed: boolean
-		blocked: boolean
-		createdAt: string
-		updatedAt: string
-	}
-}
+// Re-export the canonical AuthResponse from authSlice for Supabase MVP2
+export type {
+	AuthResponse,
+	User,
+	UserRole,
+	UserOrganisation,
+	UserProfile,
+} from "../../slices/authSlice"

@@ -1,71 +1,91 @@
 import { useEffect } from "react"
-import { ParamListBase, RouteProp, useRoute } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { useAppSelector } from "../redux"
-import { BluetoothProblems } from "./screens/BluetoothProblems"
-import { LocationProblems } from "./screens/LocationProblems"
-import { BleProblems } from "./screens/BleProblems"
-import { DeviceReconnectProvider } from "../providers/DeviceReconnectProvider"
-import { Terminal } from "./screens/TerminalScreen"
-import BootSplash from "react-native-bootsplash"
+// System screens
+import { BluetoothProblems } from "./screens/system/BluetoothProblemsScreen"
+
+import { BleProblems } from "./screens/system/BleProblemsScreen"
+import * as SplashScreen from "expo-splash-screen"
 import { NavigationBar } from "../components/NavigationBar"
-import { AppLoading } from "./screens/AppLoading"
+import { AppLoading } from "./screens/system/AppLoadingScreen"
 import { AppDrawer } from "../components/AppDrawer"
-import { Notifications } from "./screens/Notifications"
-import { CommunityDiscussion } from "./screens/CommunityDiscussion"
-import { Profile } from "./screens/Profile"
-import { Settings } from "./screens/Settings"
-import { DfuScreen } from "./screens/DfuScreen"
-// import { Login } from "./screens/Login"
-// import { Register } from "./screens/Register"
-import { AddDeployment } from "./screens/AddDeployment"
-import type { Option } from "../components/ui/WWSelect"
-import { AddProject } from "./screens/AddProject"
+
+// User screens
+import { Notifications } from "./screens/user/NotificationsScreen"
+import { Profile } from "./screens/user/ProfileScreen"
+import { Settings } from "./screens/user/SettingsScreen"
+
+// Auth screens
+import { Login } from "./screens/auth/LoginScreen"
+import { Register } from "./screens/auth/RegisterScreen"
+import { ForgotPassword } from "./screens/auth/ForgotPasswordScreen"
+
+// Project screens
+// import { Projects as ProjectsListScreen } from "../screens/Projects/ProjectsListScreen"
+import { NewProjectScreen } from "../screens/Projects/NewProjectScreen"
+import { ProjectDetailsScreen } from "../screens/Projects/ProjectDetailsScreen"
+import { ProjectMembersScreen } from "../screens/Projects/ProjectMembersScreen"
+import { ProjectDevicesScreen } from "../screens/Projects/ProjectDevicesScreen"
+import { EditProjectScreen } from "../screens/Projects/EditProjectScreen"
+
+// Deployment screens
+// import { Deployments as DeploymentsListScreen } from "../screens/Deployments/DeploymentsListScreen"
+
+import { DeploymentDetailsScreen } from "../screens/Deployments/DeploymentDetailsScreen"
+import { StartMonitoringDetailsStep } from "../screens/Deployments/StartMonitoringScreen"
+import { StopMonitoringDetailsStep } from "../screens/Deployments/StopMonitoringScreen"
+
+// Device screens
+// import { Devices as DevicesListScreen } from "../screens/Devices/DevicesListScreen"
+import { DeviceDiscoveryScreen } from "../screens/Devices/DeviceDiscoveryScreen"
+import { DeviceDetailsScreen } from "../screens/Devices/DeviceDetailsScreen"
+import { EngineerConsoleScreen } from "../screens/Devices/EngineerConsoleScreen"
+import { StandaloneMotionDetectionScreen } from "../screens/Devices/StandaloneMotionDetectionScreen"
+import { StandaloneCapturePreviewScreen } from "../screens/Devices/StandaloneCapturePreviewScreen"
+import { CameraSettingsTestScreen } from "../screens/Devices/CameraSettingsTestScreen"
+import { FirmwareUpdateScreen } from "../screens/Devices/FirmwareUpdateScreen"
+import { FileTransferTestScreen } from "../screens/Devices/FileTransferTestScreen"
+import { ModelValidationTestScreen } from "../screens/Devices/ModelValidationTestScreen"
+import { ConfigTransferScreen } from "../screens/Devices/ConfigTransferScreen"
+import { AiModelTransferScreen } from "../screens/Devices/AiModelTransferScreen"
+import { FirmwareStatusScreen } from "../screens/Devices/FirmwareStatusScreen"
+import { DeviceResetScreen } from "../screens/Devices/DeviceResetScreen"
+import { DfuScreen } from "../screens/Devices/DfuScreen"
+
+// Developer screens
+import { DevBuildInfo } from "./screens/developer/DevBuildInfoScreen"
+import { AuthTestScreen } from "./screens/developer/AuthTestScreen"
+import { DeveloperSettingsScreen } from "./screens/developer/DeveloperSettingsScreen"
+
+// Other
 import { BottomTabs } from "./BottomTabs"
+import { useDeepLinking } from "../hooks/useDeepLinking"
 
-export interface RootStackParamList extends ParamListBase {
-	CommunityDiscussion: undefined
-	Notifications: undefined
-	Profile: undefined
-	Settings: undefined
-	Home: undefined
-	DeviceNavigator: { deviceId: string }
-	Terminal: { deviceId: string }
-	DfuScreen: { deviceId: string }
-	Login: undefined
-	Register: undefined
-	AddDeployment: { selectedProject?: Option } | undefined
-	AddProject: undefined
-}
-
-export type Routes = keyof RootStackParamList
-
-export type AppParams<T extends keyof RootStackParamList> = RouteProp<
-	RootStackParamList,
-	T
->
+import { RootStackParamList } from "./types"
 
 export const Stack = createNativeStackNavigator<RootStackParamList>()
+
+const renderHeader = (props: any) => <NavigationBar {...props} />
 
 export const MainNavigation = () => {
 	const { status, initialLoad: blLoading } = useAppSelector(
 		(state) => state.blStatus,
 	)
-	const { locationEnabled, initialLoad: locLoading } = useAppSelector(
-		(state) => state.locationStatus,
-	)
 	const { initialized, initialLoad: bleLoading } = useAppSelector(
 		(state) => state.bleLibrary,
 	)
-	// const { token, initialLoad: authLoading } = useAppSelector(
-	// 	(state) => state.authentication,
-	// )
+	const { token, initialLoad: authLoading } = useAppSelector(
+		(state) => state.authentication,
+	)
 
-	const appLoading = blLoading || locLoading || bleLoading // || authLoading
+	// Initialize deep linking
+	useDeepLinking()
+
+	const appLoading = blLoading || bleLoading || authLoading
 
 	useEffect(() => {
 		if (!appLoading) {
-			BootSplash.hide({ fade: true })
+			SplashScreen.hideAsync()
 		}
 	}, [appLoading])
 
@@ -89,23 +109,12 @@ export const MainNavigation = () => {
 
 	return (
 		<AppDrawer>
-			<Stack.Navigator
-				initialRouteName="Home"
-				screenOptions={{
-					header: NavigationBar,
-				}}
-			>
+			<Stack.Navigator initialRouteName="Home">
 				{!["PoweredOn", "Unsupported"].includes(status) ? (
 					<Stack.Screen
 						name="BluetoothProblems"
 						component={BluetoothProblems}
 						options={{ headerShown: false }}
-					/>
-				) : !locationEnabled ? (
-					<Stack.Screen
-						options={{ headerShown: false }}
-						name="LocationProblems"
-						component={LocationProblems}
 					/>
 				) : !initialized ? (
 					<Stack.Screen
@@ -113,28 +122,29 @@ export const MainNavigation = () => {
 						name="BLEProblems"
 						component={BleProblems}
 					/>
+				) : !token ? (
+					<Stack.Group screenOptions={{ headerShown: false }}>
+						<Stack.Screen name="Login" component={Login} />
+						<Stack.Screen name="Register" component={Register} />
+						<Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+					</Stack.Group>
 				) : (
-					// ) : !token ? (
-					// 	<Stack.Group screenOptions={{ headerShown: false }}>
-					// 		<Stack.Screen name="Login" component={Login} />
-					// 		<Stack.Screen name="Register" component={Register} />
-					// 	</Stack.Group>
-					<Stack.Group>
+					<Stack.Group
+						screenOptions={{
+							header: renderHeader,
+						}}
+					>
 						<Stack.Screen
 							name="Home"
 							component={BottomTabs}
-							options={{ title: "Wildlife Watcher" }}
+							options={{ headerShown: false }}
 						/>
 						<Stack.Screen
 							name="Notifications"
 							component={Notifications}
 							options={{ title: "Notifications" }}
 						/>
-						<Stack.Screen
-							name="CommunityDiscussion"
-							component={CommunityDiscussion}
-							options={{ title: "Community Discussion" }}
-						/>
+
 						<Stack.Screen
 							name="Profile"
 							component={Profile}
@@ -145,54 +155,146 @@ export const MainNavigation = () => {
 							component={Settings}
 							options={{ title: "Settings" }}
 						/>
-						<Stack.Screen
-							name="DeviceNavigator"
-							options={{ title: "Configure device" }}
-							component={DeviceNavigation} // Nested navigator here
-						/>
+
 						<Stack.Screen
 							name="DfuScreen"
 							component={DfuScreen}
 							options={{ title: "Firmware Update" }}
 						/>
+
 						<Stack.Screen
-							name="AddDeployment"
-							component={AddDeployment}
-							options={{ title: "Start deployment" }}
+							name="NewProjectScreen"
+							component={NewProjectScreen}
+							options={{ title: "Create Project" }}
 						/>
 						<Stack.Screen
-							name="AddProject"
-							component={AddProject}
-							options={{ title: "New project details" }}
+							name="ProjectDetailsScreen"
+							component={ProjectDetailsScreen}
+							options={{ title: "Project Details" }}
 						/>
+						<Stack.Screen
+							name="EditProjectScreen"
+							component={EditProjectScreen}
+							options={{ title: "Edit Project" }}
+						/>
+						<Stack.Screen
+							name="ProjectMembersScreen"
+							component={ProjectMembersScreen}
+							options={{ title: "Project Members" }}
+						/>
+						<Stack.Screen
+							name="ProjectDevicesScreen"
+							component={ProjectDevicesScreen}
+							options={{ headerBackTitleVisible: false }}
+						/>
+						<Stack.Screen
+							name="DeviceDiscovery"
+							component={DeviceDiscoveryScreen}
+							options={{ title: "Wildlife Watcher Scan", headerTitleAlign: 'center' }}
+						/>
+						<Stack.Screen
+							name="DeviceDetails"
+							component={DeviceDetailsScreen}
+							options={{ title: "Device Details" }}
+						/>
+						<Stack.Screen
+							name="EngineerConsoleScreen"
+							component={EngineerConsoleScreen}
+							options={{ title: "Engineer Console", headerTitleAlign: 'center' }}
+						/>
+						<Stack.Screen
+							name="StandaloneMotionDetectionScreen"
+							component={StandaloneMotionDetectionScreen}
+						/>
+						<Stack.Screen
+							name="StandaloneCapturePreviewScreen"
+							component={StandaloneCapturePreviewScreen}
+						/>
+						<Stack.Screen
+							name="CameraSettingsTestScreen"
+							component={CameraSettingsTestScreen}
+							options={{ title: "Camera Settings Test" }}
+						/>
+						<Stack.Screen
+							name="FirmwareUpdateScreen"
+							component={FirmwareUpdateScreen}
+							options={{ title: "Firmware Update" }}
+						/>
+						<Stack.Screen
+							name="FileTransferTestScreen"
+							component={FileTransferTestScreen}
+							options={{
+								title: "File Transfer Test",
+								headerBackTitle: "Back",
+							}}
+						/>
+						<Stack.Screen
+							name="ModelValidationTestScreen"
+							component={ModelValidationTestScreen}
+							options={{
+								title: "Model Validation Test",
+								headerBackTitle: "Back",
+							}}
+						/>
+						<Stack.Screen
+							name="ConfigTransferScreen"
+							component={ConfigTransferScreen}
+							options={{ title: "Config Transfer" }}
+						/>
+						<Stack.Screen
+							name="AiModelTransferScreen"
+							component={AiModelTransferScreen}
+							options={{ title: "AI Model Transfer" }}
+						/>
+						<Stack.Screen
+							name="FirmwareStatusScreen"
+							component={FirmwareStatusScreen}
+							options={{ title: "Firmware Status" }}
+						/>
+						<Stack.Screen
+							name="DeviceResetScreen"
+							component={DeviceResetScreen}
+							options={{ title: "Reset to Defaults" }}
+						/>
+
+						<Stack.Screen
+							name="StartMonitoringDetailsStep"
+							component={StartMonitoringDetailsStep}
+							options={{ title: "Device Interaction", headerTitleAlign: 'center' }}
+						/>
+
+						<Stack.Screen
+							name="StopMonitoringDetailsStep"
+							component={StopMonitoringDetailsStep}
+							options={{ title: "End monitoring" }}
+						/>
+						<Stack.Screen
+							name="DeploymentDetails"
+							component={DeploymentDetailsScreen}
+							options={{ title: "Monitoring Session" }}
+						/>
+						{__DEV__ && (
+							<>
+								<Stack.Screen
+									name="DevBuildInfo"
+									component={DevBuildInfo}
+									options={{ title: "Dev Build Info" }}
+								/>
+								<Stack.Screen
+									name="AuthTestScreen"
+									component={AuthTestScreen}
+									options={{ title: "🔐 Auth Test" }}
+								/>
+								<Stack.Screen
+									name="DeveloperSettings"
+									component={DeveloperSettingsScreen}
+									options={{ title: "Developer Settings" }}
+								/>
+							</>
+						)}
 					</Stack.Group>
 				)}
 			</Stack.Navigator>
 		</AppDrawer>
-	)
-}
-
-/**
- * This is just a wrapper for device that checks whether the device
- * is locked/connected/inBootloader/upgrading or not. As a provider,
- * it is unique, other providers will later on wrap the navigators
- * as DeviceProviders in the <Device /> component once the device is
- * unlocked.
- */
-export const DeviceNavigation = () => {
-	const {
-		params: { deviceId },
-	} = useRoute<AppParams<"DeviceNavigator">>()
-
-	return (
-		<DeviceReconnectProvider deviceId={deviceId}>
-			<Stack.Navigator screenOptions={{ headerShown: false }}>
-				<Stack.Screen
-					name="Terminal"
-					component={Terminal}
-					initialParams={{ deviceId }}
-				/>
-			</Stack.Navigator>
-		</DeviceReconnectProvider>
 	)
 }

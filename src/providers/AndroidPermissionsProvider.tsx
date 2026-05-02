@@ -4,8 +4,8 @@ import { StyleSheet, View } from "react-native"
 
 import { useAndroidPermissions } from "../hooks/useAndroidPermissions"
 import { useAppSelector } from "../redux"
-import { NoAndroidPermissions } from "../navigation/screens/NoAndroidPermissions"
-import BootSplash from "react-native-bootsplash"
+import { NoAndroidPermissions } from "../navigation/screens/system/NoAndroidPermissionsScreen"
+import * as SplashScreen from "expo-splash-screen"
 import { ActivityIndicator } from "react-native-paper"
 import { Stack } from "../navigation"
 /**
@@ -22,13 +22,13 @@ export const AndroidPermissionsProvider = ({
 	)
 
 	useEffect(() => {
-		const hideBootSplash = async () => {
-			if (!initialLoad && !permissionsGranted && (await BootSplash.isVisible)) {
-				BootSplash.hide({ fade: true })
+		const hideSplashScreen = async () => {
+			if (!initialLoad && !permissionsGranted) {
+				await SplashScreen.hideAsync()
 			}
 		}
 
-		hideBootSplash()
+		hideSplashScreen()
 	}, [permissionsGranted, initialLoad])
 
 	if (initialLoad) {
