@@ -92,8 +92,8 @@ android {
         applicationId 'com.wildlife.wildlifewatcher'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 46
-        versionName "0.0.46"
+        versionCode 51
+        versionName "0.0.51"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 
