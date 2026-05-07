@@ -94,7 +94,6 @@ describe("Supabase Client Environment Switching", () => {
 		mockGetEnvironmentConfig.mockResolvedValue({
 			supabaseUrl: "https://test.supabase.co",
 			supabaseAnonKey: "test-anon-key",
-			websiteUrl: "https://wildlifewatcher.ai",
 			displayName: "Test Environment",
 			description: "Test description",
 			isProduction: false,
@@ -211,7 +210,6 @@ describe("Supabase Client Environment Switching", () => {
 			mockGetEnvironmentConfig.mockResolvedValueOnce({
 				supabaseUrl: "https://new.supabase.co",
 				supabaseAnonKey: "new-anon-key",
-				websiteUrl: "https://wildlifewatcher.ai",
 				displayName: "New Environment",
 				description: "New description",
 				isProduction: false,
@@ -336,8 +334,7 @@ describe("Supabase Client Environment Switching", () => {
 			mockGetEnvironmentConfig.mockResolvedValueOnce({
 				supabaseUrl: "https://test.supabase.co",
 				supabaseAnonKey: "test-key",
-				websiteUrl: "https://wildlifewatcher.ai",
-				displayName: "Test Env",
+					displayName: "Test Env",
 				description: "Test",
 				isProduction: false,
 			})
@@ -348,8 +345,7 @@ describe("Supabase Client Environment Switching", () => {
 			expect(env).toEqual({
 				supabaseUrl: "https://test.supabase.co",
 				supabaseAnonKey: "test-key",
-				websiteUrl: "https://wildlifewatcher.ai",
-				displayName: "Test Env",
+					displayName: "Test Env",
 				description: "Test",
 				isProduction: false,
 			})
@@ -366,7 +362,6 @@ describe("Supabase Client Environment Switching", () => {
 			mockGetEnvironmentConfig.mockResolvedValueOnce({
 				supabaseUrl: "https://new.supabase.co",
 				supabaseAnonKey: "new-key",
-				websiteUrl: "https://wildlifewatcher.ai",
 				displayName: "New Env",
 				description: "New",
 				isProduction: true,
@@ -386,7 +381,6 @@ describe("Supabase Client Environment Switching", () => {
 			mockGetEnvironmentConfig.mockResolvedValueOnce({
 				supabaseUrl: "http://localhost:54321",
 				supabaseAnonKey: "local-key",
-				websiteUrl: "http://localhost:5173",
 				displayName: "Local",
 				description: "Local Supabase",
 				isProduction: false,
@@ -399,7 +393,6 @@ describe("Supabase Client Environment Switching", () => {
 			mockGetEnvironmentConfig.mockResolvedValueOnce({
 				supabaseUrl: "https://cloud.supabase.co",
 				supabaseAnonKey: "cloud-key",
-				websiteUrl: "https://wildlifewatcher.ai",
 				displayName: "Cloud Dev",
 				description: "Cloud Development",
 				isProduction: false,
@@ -438,7 +431,6 @@ describe("Supabase Client Environment Switching", () => {
 			mockGetEnvironmentConfig.mockResolvedValueOnce({
 				supabaseUrl: "",
 				supabaseAnonKey: "",
-				websiteUrl: "https://wildlifewatcher.ai",
 				displayName: "Invalid",
 				description: "Invalid config",
 				isProduction: false,

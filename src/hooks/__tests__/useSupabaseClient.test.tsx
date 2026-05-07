@@ -80,7 +80,6 @@ describe("useSupabaseClient", () => {
 		mockGetEnvironmentConfig.mockResolvedValue({
 			supabaseUrl: "https://test.supabase.co",
 			supabaseAnonKey: "test-key",
-			websiteUrl: "https://wildlifewatcher.ai",
 			displayName: "Test",
 			description: "Test environment",
 			isProduction: false,

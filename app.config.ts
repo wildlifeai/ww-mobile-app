@@ -70,8 +70,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 autoVerify: true,
                 data: [
                     {
-                        scheme: "https",
+                        scheme: IS_DEV ? "http" : "https",
                         host: IS_DEV ? "localhost" : "wildlifewatcher.ai",
+                        ...(IS_DEV && { port: "5173" }),
                         pathPrefix: "/reset-password"
                     }
                 ],
