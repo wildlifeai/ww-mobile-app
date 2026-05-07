@@ -2,6 +2,7 @@ import { LinkingOptions } from "@react-navigation/native"
 import * as Linking from "expo-linking"
 import { getStateFromPath } from "@react-navigation/native"
 import { log } from '../utils/logger'
+import { WEBSITE_URL } from '../config/environments'
 
 
 const prefix = Linking.createURL("/")
@@ -13,7 +14,7 @@ export const linking: LinkingOptions<any> = {
 		prefix,
 		"wildlifewatcher://",
 		"com.wildlife.wildlifewatcher://",
-		"https://wildlifewatcher.ai/",
+		`${WEBSITE_URL}/`,
 		"exp://localhost:8081/",
 		"exp://192.168.1.8:8081/", // Your local IP
 	],

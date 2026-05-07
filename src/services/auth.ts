@@ -13,6 +13,7 @@ import {
 } from "../redux/api/auth/types"
 
 import { log, logError, logWarn } from '../utils/logger'
+import { WEBSITE_URL } from "../config/environments"
 
 
 /**
@@ -482,7 +483,7 @@ export const setupAuthListener = (
 export const resetPassword = async (email: string): Promise<void> => {
 	try {
 		const { error } = await supabase().auth.resetPasswordForEmail(email, {
-			redirectTo: "https://wildlifewatcher.ai/reset-password",
+			redirectTo: `${WEBSITE_URL}/reset-password`,
 		})
 
 		if (error) {

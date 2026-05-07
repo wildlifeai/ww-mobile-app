@@ -39,7 +39,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             NSPhotoLibraryAddUsageDescription: "We need access to save deployment photos to your library.",
             ITSAppUsesNonExemptEncryption: false
         },
-        associatedDomains: [
+        associatedDomains: IS_DEV ? [] : [
             'applinks:wildlifewatcher.ai'
         ]
     },
@@ -71,7 +71,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 data: [
                     {
                         scheme: "https",
-                        host: "wildlifewatcher.ai",
+                        host: IS_DEV ? "localhost" : "wildlifewatcher.ai",
                         pathPrefix: "/reset-password"
                     }
                 ],

@@ -15,10 +15,20 @@ export type SupabaseEnvironment = "local" | "cloud-dev" | "cloud-staging" | "clo
 export interface EnvironmentConfig {
 	supabaseUrl: string
 	supabaseAnonKey: string
+	websiteUrl: string
 	displayName: string
 	description: string
 	isProduction: boolean
 }
+
+/**
+ * Website URL per environment, used for:
+ * - Password reset email redirects (resetPasswordForEmail redirectTo)
+ * - Universal Links / App Links prefix in React Navigation
+ */
+export const WEBSITE_URL = __DEV__
+	? "http://localhost:5173"
+	: "https://wildlifewatcher.ai"
 
 /**
  * Environment-specific Supabase configurations
@@ -35,6 +45,7 @@ export const ENVIRONMENT_CONFIGS: Record<
 	local: {
 		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || "http://192.168.1.239:54321",
 		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "YOUR_LOCAL_ANON_KEY",
+		websiteUrl: "http://localhost:5173",
 		displayName: "Local Development",
 		description: "WSL Supabase (LAN: 192.168.1.239:54321)",
 		isProduction: false,
@@ -42,6 +53,7 @@ export const ENVIRONMENT_CONFIGS: Record<
 	"cloud-dev": {
 		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || Constants.expoConfig?.extra?.supabaseUrl || "",
 		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || Constants.expoConfig?.extra?.supabaseAnonKey || "",
+		websiteUrl: "https://wildlifewatcher.ai",
 		displayName: "Cloud Development",
 		description: "Dev Supabase instance (active development, may break)",
 		isProduction: false,
@@ -49,6 +61,7 @@ export const ENVIRONMENT_CONFIGS: Record<
 	"cloud-staging": {
 		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || Constants.expoConfig?.extra?.supabaseUrl || "",
 		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || Constants.expoConfig?.extra?.supabaseAnonKey || "",
+		websiteUrl: "https://wildlifewatcher.ai",
 		displayName: "Cloud Staging",
 		description: "Staging Supabase instance (pre-production validation)",
 		isProduction: false,
@@ -56,6 +69,7 @@ export const ENVIRONMENT_CONFIGS: Record<
 	"cloud-prod": {
 		supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || Constants.expoConfig?.extra?.supabaseUrl || "",
 		supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || Constants.expoConfig?.extra?.supabaseAnonKey || "",
+		websiteUrl: "https://wildlifewatcher.ai",
 		displayName: "Cloud Production",
 		description:
 			"Production Supabase instance (requires production credentials)",
