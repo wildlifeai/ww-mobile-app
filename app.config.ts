@@ -26,7 +26,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ios: {
         supportsTablet: true,
         bundleIdentifier: BUNDLE_ID,
-        buildNumber: "45",
+        buildNumber: "52",
         config: {
             googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY_IOS,
         },
@@ -39,13 +39,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             NSPhotoLibraryAddUsageDescription: "We need access to save deployment photos to your library.",
             ITSAppUsesNonExemptEncryption: false
         },
-        associatedDomains: IS_DEV ? [] : [
+        associatedDomains: [
             'applinks:wildlifewatcher.ai'
         ]
     },
     android: {
         package: BUNDLE_ID,
-        versionCode: 46,
+        versionCode: 52,
         adaptiveIcon: {
             foregroundImage: "./assets/adaptive-icon.png",
             backgroundColor: "#ffffff"
@@ -70,9 +70,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 autoVerify: true,
                 data: [
                     {
-                        scheme: IS_DEV ? "http" : "https",
-                        host: IS_DEV ? "localhost" : "wildlifewatcher.ai",
-                        ...(IS_DEV && { port: "5173" }),
+                        scheme: "https",
+                        host: "wildlifewatcher.ai",
                         pathPrefix: "/reset-password"
                     }
                 ],
