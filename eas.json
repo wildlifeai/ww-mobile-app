@@ -66,7 +66,6 @@
       }
     },
     "production": {
-      "autoIncrement": true,
       "env": {
         "NODE_ENV": "production",
         "EXPO_PUBLIC_SUPABASE_ENV": "cloud-staging",
