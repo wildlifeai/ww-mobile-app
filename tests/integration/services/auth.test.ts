@@ -389,7 +389,7 @@ describe("Authentication Service", () => {
 			expect(
 				mockSupabaseClient.auth.resetPasswordForEmail,
 			).toHaveBeenCalledWith("test@example.com", {
-				redirectTo: "wildlifewatcher://auth/reset-password",
+				redirectTo: "https://wildlifewatcher.ai/reset-password",
 			})
 		})
 

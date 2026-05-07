@@ -482,7 +482,7 @@ export const setupAuthListener = (
 export const resetPassword = async (email: string): Promise<void> => {
 	try {
 		const { error } = await supabase().auth.resetPasswordForEmail(email, {
-			redirectTo: "wildlifewatcher://auth/reset-password",
+			redirectTo: "https://wildlifewatcher.ai/reset-password",
 		})
 
 		if (error) {

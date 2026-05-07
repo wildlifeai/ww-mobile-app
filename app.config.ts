@@ -38,7 +38,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             NSPhotoLibraryUsageDescription: "We need access to your photo library to select deployment photos.",
             NSPhotoLibraryAddUsageDescription: "We need access to save deployment photos to your library.",
             ITSAppUsesNonExemptEncryption: false
-        }
+        },
+        associatedDomains: [
+            'applinks:wildlifewatcher.ai'
+        ]
     },
     android: {
         package: BUNDLE_ID,
@@ -61,6 +64,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             "BLUETOOTH_SCAN"
         ],
         softwareKeyboardLayoutMode: "pan",
+        intentFilters: [
+            {
+                action: "VIEW",
+                autoVerify: true,
+                data: [
+                    {
+                        scheme: "https",
+                        host: "wildlifewatcher.ai",
+                        pathPrefix: "/reset-password"
+                    }
+                ],
+                category: ["BROWSABLE", "DEFAULT"]
+            }
+        ],
     },
     web: {
         favicon: "./assets/favicon.png"

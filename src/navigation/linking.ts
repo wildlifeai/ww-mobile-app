@@ -13,6 +13,7 @@ export const linking: LinkingOptions<any> = {
 		prefix,
 		"wildlifewatcher://",
 		"com.wildlife.wildlifewatcher://",
+		"https://wildlifewatcher.ai",
 		"exp://localhost:8081/",
 		"exp://192.168.1.8:8081/", // Your local IP
 	],
