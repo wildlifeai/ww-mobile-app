@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Button, Text, SegmentedButtons, useTheme } from 'react-native-paper'
+import { Card, Text, SegmentedButtons, useTheme } from 'react-native-paper'
 
 import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
@@ -15,17 +15,16 @@ interface MotionDetectionSectionProps {
     bleDevice: ExtendedPeripheral | undefined
     isInitializing: boolean
     bleDeviceConnected: boolean
-    onShowHelp: (title: string, content: string) => void
+    onShowHelp?: (title: string, content: string) => void
 }
 
 export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
     bleDevice,
     isInitializing,
     bleDeviceConnected,
-    onShowHelp
 }) => {
     const theme = useTheme()
-    const [sensitivity, setSensitivity] = useState<string>('0')
+    const [sensitivity, setSensitivity] = useState<string>('1')
     const [isSetting, setIsSetting] = useState(false)
 
     const {
@@ -63,33 +62,40 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
         }
     }, [bleDeviceConnected, isInitializing, startTest, stopTest])
 
-    const renderIcon = useCallback((props: any) => <WWIcon {...props} source="paw" />, [])
-    const renderHelp = useCallback((props: any) => (
-        <Button 
-            {...props} 
-            icon="help-circle-outline" 
-            onPress={() => onShowHelp('Motion Detection Test', 'Adjust sensitivity and start the test to see the 16x16 motion grid live. Motion blocks will light up.')}
-        >
-            <Text>Help</Text>
-        </Button>
-    ), [onShowHelp])
-
     const disabled = isInitializing || !bleDeviceConnected
 
     return (
         <Card style={styles.card}>
-            <Card.Title
-                title="Motion Detection Test"
-                left={renderIcon}
-                right={renderHelp}
-            />
             <Card.Content>
+                {/* Start / Stop buttons */}
+                <View style={styles.buttonsRow}>
+                    <WWButton
+                        mode="contained"
+                        onPress={startTest}
+                        disabled={disabled || isTesting}
+                        icon="play-circle-outline"
+                        style={styles.actionButton}
+                    >
+                        <Text>Start Test</Text>
+                    </WWButton>
+
+                    <WWButton
+                        mode="outlined"
+                        onPress={stopTest}
+                        disabled={disabled || !isTesting}
+                        icon="stop-circle-outline"
+                        style={styles.actionButton}
+                    >
+                        <Text>Stop Test</Text>
+                    </WWButton>
+                </View>
+
+                {/* Sensitivity level */}
                 <WWText variant="bodyMedium" style={styles.label}>Sensitivity</WWText>
                 <SegmentedButtons
                     value={sensitivity}
                     onValueChange={handleSensitivityChange}
                     buttons={[
-                        { value: '0', label: 'Off', disabled: disabled || isSetting },
                         { value: '1', label: 'Low', disabled: disabled || isSetting },
                         { value: '2', label: 'Med', disabled: disabled || isSetting },
                         { value: '3', label: 'High', disabled: disabled || isSetting }
@@ -97,23 +103,11 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                     style={styles.segmented}
                 />
 
-                <View style={styles.controlsRow}>
-                    <WWButton 
-                        mode={isTesting ? 'outlined' : 'contained'}
-                        onPress={isTesting ? stopTest : startTest}
-                        disabled={disabled || (sensitivity === '0' && !isTesting)}
-                        icon={isTesting ? "stop-circle-outline" : "play-circle-outline"}
-                        style={styles.testButton}
-                    >
-                        <Text>{isTesting ? 'Stop Test' : 'Start Test'}</Text>
-                    </WWButton>
-                    
-                    {isTesting && (
-                        <WWText variant="bodySmall" style={styles.blocksText}>
-                            Motion in {mdBlocksCount} blocks
-                        </WWText>
-                    )}
-                </View>
+                {isTesting && (
+                    <WWText variant="bodySmall" style={styles.blocksText}>
+                        Motion in {mdBlocksCount} blocks
+                    </WWText>
+                )}
 
                 {/* Grid Visualizers */}
                 {isTesting && (
@@ -146,8 +140,6 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                             <View style={styles.gridContainer}>
                                 {Array.from({ length: 15 }).map((_, rowIndex) => (
                                     <View key={`row-15-${rowIndex}`} style={styles.gridRow}>
-                                        {/* 16x15 means 16 columns, 15 rows. Total 240 bits. 
-                                            We take pixels from the flattened 16x16 array (256 bits) but only first 240. */}
                                         {Array.from({ length: 16 }).map((__, colIndex) => {
                                             const flatIndex = rowIndex * 16 + colIndex
                                             const cell = mdGrid.flat()[flatIndex]
@@ -179,7 +171,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                         motionDetected && styles.motionIndicatorActive
                     ]}>
                         <WWIcon 
-                            source={motionDetected ? 'paw' : 'paw-off'} 
+                            source={motionDetected ? 'motion-sensor' : 'motion-sensor-off'} 
                             size={18}
                             color={motionDetected ? '#4CAF50' : theme.colors.onSurfaceVariant}
                         />
@@ -203,24 +195,24 @@ const styles = StyleSheet.create({
     card: {
         marginBottom: 16,
     },
+    buttonsRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 20,
+    },
+    actionButton: {
+        flex: 1,
+    },
     label: {
         marginBottom: 8,
     },
     segmented: {
         marginBottom: 16,
     },
-    controlsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 16,
-    },
-    testButton: {
-        flex: 1,
-    },
     blocksText: {
-        marginLeft: 16,
         fontStyle: 'italic',
+        marginBottom: 12,
+        textAlign: 'center',
     },
     dualGridContainer: {
         flexDirection: 'row',
@@ -273,3 +265,4 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     }
 })
+
