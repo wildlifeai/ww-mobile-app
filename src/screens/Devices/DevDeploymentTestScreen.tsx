@@ -197,18 +197,20 @@ export const DevDeploymentTestScreen = () => {
 
                         {(captureMethodOverride === 1 || captureMethodOverride === 3) && (
                             <View style={styles.spacer}>
-                                <WWText variant="labelLarge">Motion Detection Interval (ms)</WWText>
-                                <TextInput
-                                    label="Motion Detect Interval (ms)"
-                                    value={(motionSensitivityOverride ?? 1000).toString()}
-                                    onChangeText={(t) => {
-                                        const v = parseInt(t.replace(/[^0-9]/g, ''), 10)
-                                        setMotionSensitivityOverride(isNaN(v) ? 0 : v)
-                                    }}
-                                    mode="outlined"
-                                    keyboardType="numeric"
-                                    right={<TextInput.Affix text="ms" />}
-                                />
+                                <WWText variant="labelLarge">Motion Sensitivity</WWText>
+                                {sensitivityOptions.length > 0 ? (
+                                    <SegmentedButtons
+                                        value={motionSensitivityOverride?.toString() || ''}
+                                        onValueChange={(val) => setMotionSensitivityOverride(parseInt(val, 10))}
+                                        buttons={sensitivityOptions.map(s => ({
+                                            value: s.id.toString(),
+                                            label: s.value,
+                                        }))}
+                                        style={styles.segmented}
+                                    />
+                                ) : (
+                                    <Text variant="bodySmall" style={{ opacity: 0.6 }}>Loading sensitivities...</Text>
+                                )}
                             </View>
                         )}
 
@@ -238,28 +240,11 @@ export const DevDeploymentTestScreen = () => {
                 </Card>
 
                 {/* ═══════════════════════════════════════ */}
-                {/* 1b. MOTION & AI SETTINGS */}
+                {/* 1b. AI & CONNECTIVITY SETTINGS */}
                 {/* ═══════════════════════════════════════ */}
                 <Card style={styles.card}>
-                    <Card.Title title="Motion & AI" subtitle="Activity sensitivity and model selection" />
+                    <Card.Title title="AI & Connectivity" subtitle="Model selection and network options" />
                     <Card.Content style={styles.cardContent}>
-                        <WWText variant="labelLarge">Motion Sensitivity</WWText>
-                        {sensitivityOptions.length > 0 ? (
-                            <SegmentedButtons
-                                value={motionSensitivityOverride?.toString() || ''}
-                                onValueChange={(val) => setMotionSensitivityOverride(parseInt(val, 10))}
-                                buttons={sensitivityOptions.map(s => ({
-                                    value: s.id.toString(),
-                                    label: s.value,
-                                }))}
-                                style={styles.segmented}
-                            />
-                        ) : (
-                            <Text variant="bodySmall" style={{ opacity: 0.6 }}>Loading sensitivities...</Text>
-                        )}
-
-                        <View style={styles.spacer} />
-
                         <WWText variant="labelLarge">AI Model</WWText>
                         <WWSelect
                             label="Model"
