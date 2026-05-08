@@ -119,6 +119,15 @@ export const devicesSlice = createSlice({
 				state[id].dfuInProgress = status
 			}
 		},
+		/** Remove all non-connected devices from state (flush stale scan results) */
+		clearDiscoveredDevices: (state) => {
+			Object.keys(state).forEach(id => {
+				if (!state[id].connected) {
+					clearAllDeviceIntervals(state[id])
+					delete state[id]
+				}
+			})
+		},
 	},
 })
 
@@ -129,6 +138,7 @@ export const {
 	deviceSignalChanged,
 	removeDevice,
 	setDfuStatus,
+	clearDiscoveredDevices,
 } = devicesSlice.actions
 
 export default devicesSlice.reducer

@@ -1,12 +1,13 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { Alert } from 'react-native'
+import { Alert, Platform } from 'react-native'
 import { useIsFocused, useNavigation, useRoute, RouteProp } from '@react-navigation/native'
+import BleManager from 'react-native-ble-manager'
 
 import { useBleActions } from '../../../providers/BleEngineProvider'
 
 import { useDevicePreDeploymentChecks } from '../../../hooks/useDevicePreDeploymentChecks'
-import { useAppSelector } from '../../../redux'
-import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
+import { useAppSelector, useAppDispatch } from '../../../redux'
+import { ExtendedPeripheral, clearDiscoveredDevices } from '../../../redux/slices/devicesSlice'
 import { DeviceService } from '../../../services/DeviceService'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { DeploymentService } from '../../../services/DeploymentService'
@@ -14,8 +15,8 @@ import ProjectService from '../../../services/ProjectService'
 import { RootStackParamList } from '../../../navigation/types'
 import { useBleInitialization } from '../../../hooks/useBleInitialization'
 import { getSupabaseClient } from '../../../services/supabase'
-import { log, logError } from '../../../utils/logger'
-import { sleep } from '../../../utils/helpers'
+import { log, logError, logWarn } from '../../../utils/logger'
+import { sleep, isOurDevice } from '../../../utils/helpers'
 import { ScannerRoutingState } from '../components/ScannerRoutingDialog'
 import { InitPayload } from '../../../navigation/types'
 import { useAutoConnectStateMachine } from './useAutoConnectStateMachine'
@@ -41,6 +42,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const { isScanning, isEngineerConsoleActive } = useAppSelector((state) => state.scanning)
     const currentOrganisation = useAppSelector(selectCurrentOrganisation)
     const user = useAppSelector((state) => state.authentication.user)
+    const dispatch = useAppDispatch()
 
     const mode = route.params?.mode || 'auto'
 
@@ -89,14 +91,35 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const isFocused = useIsFocused()
     const scanCommandLockRef = useRef(false)
 
+    // Auto-connect state machine — declared early because startScanSession and handleDeviceSelect use it
+    const autoConnect = useAutoConnectStateMachine()
+
     // Start or restart a 60-second scan session
-    const startScanSession = useCallback(() => {
+    const startScanSession = useCallback(async () => {
+        // Fix B: Clear stale Redux devices from prior session
+        dispatch(clearDiscoveredDevices())
+        autoConnect.resetAll()
+
+        // Fix C: Flush Android native BLE cache of non-connected peripherals
+        if (Platform.OS === 'android') {
+            try {
+                const cached = await BleManager.getDiscoveredPeripherals()
+                for (const p of cached) {
+                    if (p.name && isOurDevice(p.name) && !devices[p.id]?.connected) {
+                        await BleManager.removePeripheral(p.id)
+                    }
+                }
+            } catch (e) {
+                logWarn('[Scanner] Failed to flush BLE cache:', e)
+            }
+        }
+
         setScanSessionActive(true)
         setScanSecondsRemaining(60)
         setScanSessionExpired(false)
         scanSessionActiveRef.current = true
         log('[Scanner] Scan session started (60s)')
-    }, [])
+    }, [dispatch, autoConnect, devices])
 
     // Countdown timer — ticks every second while session is active and focused
     useEffect(() => {
@@ -159,8 +182,6 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         await sleep(400)
     }, [])
 
-    // Auto-connect state machine — declared early because handleDeviceSelect uses it
-    const autoConnect = useAutoConnectStateMachine()
 
     const handleDeviceSelect = useCallback(
         async (device: ExtendedPeripheral) => {
