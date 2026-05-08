@@ -17,6 +17,7 @@ interface ProjectDevice {
     isActive: boolean
     activeDeploymentId?: string
     activeDeploymentLocationName?: string
+    lastDeploymentId?: string
 }
 
 export const ProjectDevicesScreen = () => {
@@ -75,6 +76,13 @@ export const ProjectDevicesScreen = () => {
                         isActive: !!activeDeployment,
                         activeDeploymentId: activeDeployment?.id,
                         activeDeploymentLocationName: activeDeployment?.locationName || 'Unknown Location',
+                        lastDeploymentId: deployments
+                            .filter((d: Deployment) => d.deviceId === device.id && d.deploymentEnd)
+                            .sort((a: Deployment, b: Deployment) => {
+                                const aEnd = a.deploymentEnd ? new Date(a.deploymentEnd).getTime() : 0
+                                const bEnd = b.deploymentEnd ? new Date(b.deploymentEnd).getTime() : 0
+                                return bEnd - aEnd
+                            })[0]?.id,
                     }
                 })
 
@@ -102,63 +110,90 @@ export const ProjectDevicesScreen = () => {
         loadDevices()
     }, [loadDevices])
 
+    const handleDevicePress = useCallback((item: ProjectDevice) => {
+        navigation.navigate('DeviceMonitoringSummary', { deviceId: item.id })
+    }, [navigation])
+
+    const handleCameraIconPress = useCallback((item: ProjectDevice) => {
+        if (item.isActive && item.activeDeploymentId) {
+            navigation.navigate('DeviceMonitoringSummary', { deploymentId: item.activeDeploymentId })
+        } else if (item.lastDeploymentId) {
+            navigation.navigate('DeviceMonitoringSummary', { deploymentId: item.lastDeploymentId })
+        } else {
+            navigation.navigate('DeviceMonitoringSummary', { deviceId: item.id })
+        }
+    }, [navigation])
+
     const renderDeviceItem = useCallback(({ item }: { item: ProjectDevice }) => (
         <Card mode="outlined" style={styles.card}>
-            <Card.Content style={styles.cardContent}>
-                <View style={styles.deviceRow}>
-                    {/* Status Icon */}
-                    <WWIcon
-                        source="camera"
-                        size={22}
-                        color={item.isActive ? '#4CAF50' : theme.colors.onSurfaceVariant}
-                    />
-
-                    {/* Device Name */}
-                    <View style={styles.deviceInfo}>
-                        <Text
-                            variant="titleMedium"
-                            style={[styles.deviceName, dynamicStyles.deviceName]}
-                            numberOfLines={1}
-                        >
-                            {item.name && item.name !== 'Unknown Device' ? item.name : item.bluetoothId}
-                        </Text>
-                        {item.isActive && item.activeDeploymentLocationName && (
-                            <Text
-                                variant="bodySmall"
-                                style={dynamicStyles.activeText}
-                            >
-                                Deployed at {item.activeDeploymentLocationName}
-                            </Text>
-                        )}
-                        {!item.isActive && (
-                            <Text
-                                variant="bodySmall"
-                                style={dynamicStyles.inactiveText}
-                            >
-                                not deployed
-                            </Text>
-                        )}
-                    </View>
-
-                    {/* View on Map action (active only) */}
-                    {item.isActive && (
+            <TouchableRipple onPress={() => handleDevicePress(item)} borderless>
+                <Card.Content style={styles.cardContent}>
+                    <View style={styles.deviceRow}>
+                        {/* Status Icon */}
                         <TouchableRipple
-                            onPress={() => navigation.navigate('Home', { initialTab: 'maps', selectedDeploymentId: item.activeDeploymentId })}
-                            style={styles.mapButton}
+                            onPress={() => handleCameraIconPress(item)}
                             borderless
+                            style={styles.iconTouchable}
                         >
-                            <View style={styles.mapButtonInner}>
-                                <WWIcon source="map-marker" size={18} color="#4CAF50" />
-                                <Text variant="labelSmall" style={dynamicStyles.mapButtonText}>
-                                    Map
-                                </Text>
+                            <View>
+                                <WWIcon
+                                    source="camera"
+                                    size={22}
+                                    color={item.isActive ? '#4CAF50' : theme.colors.onSurfaceVariant}
+                                />
                             </View>
                         </TouchableRipple>
-                    )}
-                </View>
-            </Card.Content>
+
+                        {/* Device Name */}
+                        <View style={styles.deviceInfo}>
+                            <Text
+                                variant="titleMedium"
+                                style={[styles.deviceName, dynamicStyles.deviceName]}
+                                numberOfLines={1}
+                            >
+                                {item.name && item.name !== 'Unknown Device' ? item.name : item.bluetoothId}
+                            </Text>
+                            {item.isActive && item.activeDeploymentLocationName && (
+                                <Text
+                                    variant="bodySmall"
+                                    style={dynamicStyles.activeText}
+                                >
+                                    Deployed at {item.activeDeploymentLocationName}
+                                </Text>
+                            )}
+                            {!item.isActive && (
+                                <Text
+                                    variant="bodySmall"
+                                    style={dynamicStyles.inactiveText}
+                                >
+                                    not deployed
+                                </Text>
+                            )}
+                        </View>
+
+                        {/* View on Map action (active only) */}
+                        {item.isActive && (
+                            <TouchableRipple
+                                onPress={() => navigation.navigate('Home', { initialTab: 'maps', selectedDeploymentId: item.activeDeploymentId })}
+                                style={styles.mapButton}
+                                borderless
+                            >
+                                <View style={styles.mapButtonInner}>
+                                    <WWIcon source="map-marker" size={18} color="#4CAF50" />
+                                    <Text variant="labelSmall" style={dynamicStyles.mapButtonText}>
+                                        Map
+                                    </Text>
+                                </View>
+                            </TouchableRipple>
+                        )}
+
+                        {/* Chevron */}
+                        <WWIcon source="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
+                    </View>
+                </Card.Content>
+            </TouchableRipple>
         </Card>
-    ), [theme, navigation, dynamicStyles])
+    ), [theme, navigation, dynamicStyles, handleDevicePress, handleCameraIconPress])
 
     // Loading
     if (loading) {
@@ -244,6 +279,10 @@ const styles = StyleSheet.create({
     },
     deviceName: {
         fontWeight: '600',
+    },
+    iconTouchable: {
+        borderRadius: 16,
+        padding: 4,
     },
     mapButton: {
         borderRadius: 8,

@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Text, IconButton, Divider, ActivityIndicator, Avatar, useTheme } from 'react-native-paper'
+import { Card, Text, IconButton, Divider, ActivityIndicator, useTheme, TouchableRipple } from 'react-native-paper'
 import { useAppNavigation } from '../../../hooks/useAppNavigation'
 import { ProjectWithDetails, ProjectMember } from '../../../types/project'
 import { getDisplayName } from '../../../utils/userUtils'
@@ -25,36 +25,37 @@ export const ProjectMembersCard: React.FC<Props> = ({
 
     const dynamicStyles = {
         membersTitle: { color: theme.colors.onSurface },
-        memberInitialBg: { backgroundColor: theme.colors.primaryContainer },
-        memberInitialLabel: { color: theme.colors.onPrimaryContainer, fontSize: 12 },
-        memberNameAdmin: { color: theme.colors.onSurface, fontWeight: 'bold' as const },
-        memberNameMember: { color: theme.colors.onSurface, fontWeight: 'normal' as const },
-        memberRoleText: { color: theme.colors.onSurfaceVariant },
+        memberName: { color: theme.colors.onSurface },
+        memberRole: { color: theme.colors.onSurfaceVariant },
         membersEmpty: { color: theme.colors.onSurfaceVariant },
+    }
+
+    const handleSectionPress = () => {
+        navigation.navigate('ProjectMembersScreen', {
+            projectId: project.id,
+            projectName: project.name,
+        })
     }
 
     return (
         <Card mode="outlined" style={styles.card}>
             <Card.Content>
-                <View style={styles.sectionHeader}>
-                    <Text
-                        variant="titleMedium"
-                        style={dynamicStyles.membersTitle}
-                    >
-                        Members ({members?.length || 0})
-                    </Text>
-                    <IconButton
-                        icon={isProjectAdmin ? "account-cog" : "eye"}
-                        size={24}
-                        onPress={() => {
-                            navigation.navigate("ProjectMembersScreen", {
-                                projectId: project.id,
-                                projectName: project.name,
-                            })
-                        }}
-                        testID={isProjectAdmin ? "manage-members-button" : "view-members-button"}
-                    />
-                </View>
+                <TouchableRipple onPress={handleSectionPress} borderless style={styles.headerTouchable}>
+                    <View style={styles.sectionHeader}>
+                        <Text
+                            variant="titleMedium"
+                            style={dynamicStyles.membersTitle}
+                        >
+                            Members ({members?.length || 0})
+                        </Text>
+                        <IconButton
+                            icon={isProjectAdmin ? "account-cog" : "eye"}
+                            size={24}
+                            onPress={handleSectionPress}
+                            testID={isProjectAdmin ? "manage-members-button" : "view-members-button"}
+                        />
+                    </View>
+                </TouchableRipple>
 
                 <Divider style={styles.divider} />
 
@@ -70,49 +71,29 @@ export const ProjectMembersCard: React.FC<Props> = ({
                                     : "Me")
                                 : getDisplayName(member.user_profile || (member.user_profile as any)?.profile, false)
 
-                            const initials = (displayName || "")
-                                .split(" ")
-                                .map(n => n[0])
-                                .join("")
-                                .toUpperCase()
-                                .substring(0, 2)
-
                             return (
                                 <View
                                     key={member.user_id || `member-${index}`}
                                     style={styles.memberListItem}
                                 >
                                     <View style={styles.memberInfo}>
-                                        <Avatar.Text
-                                            size={32}
-                                            label={initials}
-                                            style={dynamicStyles.memberInitialBg}
-                                            labelStyle={dynamicStyles.memberInitialLabel}
-                                        />
-                                        <View style={styles.memberDetails}>
+                                        <Text
+                                            variant="bodyMedium"
+                                            style={[
+                                                dynamicStyles.memberName,
+                                                isMe && styles.memberNameBold,
+                                            ]}
+                                        >
+                                            {displayName} {isMe && "(You)"}
+                                        </Text>
+                                        {member.role && (
                                             <Text
-                                                variant="bodyMedium"
-                                                style={isMe ? dynamicStyles.memberNameAdmin : dynamicStyles.memberNameMember}
+                                                variant="bodySmall"
+                                                style={dynamicStyles.memberRole}
                                             >
-                                                {displayName} {isMe && "(You)"}
+                                                {member.role === 'project_admin' ? 'Admin' : 'Member'}
                                             </Text>
-                                            {!isMe && member.user_profile?.email && member.user_profile.email !== displayName && (
-                                                <Text
-                                                    variant="bodySmall"
-                                                    style={dynamicStyles.memberRoleText}
-                                                >
-                                                    {member.user_profile.email}
-                                                </Text>
-                                            )}
-                                            {member.role && (
-                                                <Text
-                                                    variant="bodySmall"
-                                                    style={dynamicStyles.memberRoleText}
-                                                >
-                                                    {member.role === 'project_admin' ? 'Admin' : 'Member'}
-                                                </Text>
-                                            )}
-                                        </View>
+                                        )}
                                     </View>
                                 </View>
                             )
@@ -135,32 +116,30 @@ const styles = StyleSheet.create({
     card: {
         marginBottom: 16,
     },
+    headerTouchable: {
+        borderRadius: 8,
+    },
     sectionHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
         flexWrap: "wrap",
         minHeight: 40,
-        marginBottom: 8,
     },
     divider: {
         marginBottom: 16,
     },
     membersList: {
-        gap: 16,
+        gap: 12,
     },
     memberListItem: {
         flexDirection: "row",
         alignItems: "center",
-        justifyContent: "space-between",
     },
     memberInfo: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
         flex: 1,
     },
-    memberDetails: {
-        flex: 1,
+    memberNameBold: {
+        fontWeight: 'bold',
     },
 })

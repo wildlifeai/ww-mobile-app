@@ -21,6 +21,9 @@ import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
+import { useDeviceSettings } from '../../../hooks/useDeviceSettings'
+import { createBleSession } from '../../../ble/session/createBleSession'
+import { formatGPSString } from '../../../utils/gpsUtils'
 
 import { log, logError, logWarn } from '../../../utils/logger'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
@@ -53,6 +56,7 @@ export const useStartDeployment = ({
 
     // BLE Hooks
     const { disconnectDevice } = useBle()
+    const { quiesceDevice } = useDeviceSettings()
     
     // NEW EVENT-FIRST ARCHITECTURE (SHADOW MODE)
     const bleSession = useBleSession(bleDevice)
@@ -106,6 +110,8 @@ export const useStartDeployment = ({
     const [isFinishing, setIsFinishing] = useState(false)
     const [isStartSuccess, setIsStartSuccess] = useState(false)
     const [isMonitoring, setIsMonitoring] = useState(false)
+    const [isStoppingMonitoring, setIsStoppingMonitoring] = useState(false)
+    const deploymentIdRef = useRef<string | null>(null)
 
     const addFinishLog = useCallback((message: string) => {
         setFinishLogs(prev => [...prev, message])
@@ -600,6 +606,7 @@ export const useStartDeployment = ({
                 startComments: formState.notes,
                 cameraImagePaths: [],
             })
+            deploymentIdRef.current = newDeployment.id
             addFinishLog(`Deployment created: ${newDeployment.id.substring(0, 8)}...`)
 
             addFinishLog('Configuring device settings...')
@@ -668,18 +675,124 @@ export const useStartDeployment = ({
     }, [isStartSuccess])
 
     const handleMonitorDisconnect = useCallback(async () => {
-        try {
-            if (bleDevice) {
-                try { await bleSession?.execute(commandRegistry.disconnect) } catch(e) {} finally { await disconnectDevice(bleDevice) }
-            }
-            setIsMonitoring(false)
-        } catch (error) {
-            logError('Monitor disconnect failed:', error)
-        } finally {
-            isNavigatingAway.current = true
-            navigation.navigate('Home', { initialTab: 'deployment' })
-        }
+        Alert.alert(
+            'Wildlife Watcher Monitoring',
+            'The bluetooth will be disconnected but the camera will continue monitoring for animals.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Disconnect',
+                    style: 'default',
+                    onPress: async () => {
+                        try {
+                            if (bleDevice) {
+                                try { await bleSession?.execute(commandRegistry.disconnect) } catch(e) {} finally { await disconnectDevice(bleDevice) }
+                            }
+                            setIsMonitoring(false)
+                        } catch (error) {
+                            logError('Monitor disconnect failed:', error)
+                        } finally {
+                            isNavigatingAway.current = true
+                            navigation.navigate('Home', { initialTab: 'deployment' })
+                        }
+                    }
+                }
+            ]
+        )
     }, [bleDevice, navigation]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleStopMonitoring = useCallback(async (notes: string) => {
+        if (!deploymentIdRef.current) {
+            Alert.alert('Error', 'No active deployment found.')
+            return
+        }
+
+        setIsStoppingMonitoring(true)
+        setIsFinishing(true)
+        setFinishProgress(0)
+        setFinishStep('Stopping...')
+        setFinishLogs([])
+        setIsStartSuccess(false)
+
+        try {
+            let cachedOps: string[] | null = null
+            let session: any = null
+            if (bleDevice) {
+                try {
+                    session = createBleSession(bleDevice)
+                    cachedOps = await session.execute(commandRegistry.getops)
+                    log('[StopFromMonitor] Pre-fetched bulk ops')
+                } catch (err) {
+                    logWarn('[StopFromMonitor] Bulk ops fetch failed', err)
+                }
+            }
+
+            // Clear deployment ID on device
+            if (bleDevice && session) {
+                setFinishStep('Clearing config...')
+                setFinishProgress(0.2)
+                try {
+                    await session.execute(() => commandRegistry.setdid(null))
+                    log('[StopFromMonitor] ID cleared')
+                } catch (e) {
+                    logWarn('[StopFromMonitor] Clear ID failed:', e)
+                }
+
+                // Clear GPS
+                try {
+                    const gpsStr = formatGPSString(0, 0, 0)
+                    await session.execute(() => commandRegistry.setgps(gpsStr))
+                } catch (e) {
+                    logWarn('[StopFromMonitor] Failed to clear GPS:', e)
+                }
+            }
+
+            // Update DB
+            setFinishStep('Updating record...')
+            setFinishProgress(0.3)
+            const userId = user?.id || null
+            await DeploymentService.endDeployment(deploymentIdRef.current, userId, notes)
+
+            // Quiesce device
+            if (bleDevice && session) {
+                setFinishStep('Finalizing...')
+                setFinishProgress(0.6)
+                try {
+                    await quiesceDevice(bleDevice, { isEndDeployment: true, cachedOps, sessionScope: session })
+                } catch (e) {
+                    logWarn('[StopFromMonitor] Final stop warning:', e)
+                }
+            }
+
+            // Disconnect
+            setFinishStep('Disconnecting...')
+            setFinishProgress(0.8)
+            if (bleDevice && session) {
+                try {
+                    await session.execute(commandRegistry.disconnect)
+                } catch (e) {
+                    logWarn('[StopFromMonitor] Disconnect error:', e)
+                }
+            }
+
+            setFinishStep('Complete')
+            setFinishProgress(1.0)
+
+            setTimeout(() => {
+                setIsFinishing(false)
+                setIsMonitoring(false)
+                isNavigatingAway.current = true
+                navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
+            }, 1500)
+
+        } catch (error) {
+            logError('[StopFromMonitor] Failed:', error)
+            setIsFinishing(false)
+            Alert.alert('Error', 'Failed to stop monitoring. Please try again.')
+        } finally {
+            setIsStoppingMonitoring(false)
+        }
+    }, [bleDevice, user, navigation, quiesceDevice])
 
     const [helpVisible, setHelpVisible] = useState(false)
     const [helpTitle, setHelpTitle] = useState('')
@@ -746,7 +859,7 @@ export const useStartDeployment = ({
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
-        isMonitoring, handleMonitorDisconnect,
+        isMonitoring, handleMonitorDisconnect, handleStopMonitoring, isStoppingMonitoring,
         isNavigatingAway, handleImageCaptured, handleNotesChange, handleProjectChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
         helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp,

@@ -87,6 +87,15 @@ const getFlowGroups = (): FlowGroup[] => {
                 .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
         },
         {
+            title: 'Deployment Testing',
+            icon: 'play-circle-outline',
+            commands: processCommands
+                .filter(cmd => [
+                    CommandNames.DEV_DEPLOYMENT_TEST,
+                ].includes(cmd.name))
+                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
+        },
+        {
             title: 'Other',
             icon: 'dots-horizontal-circle-outline',
             commands: processCommands

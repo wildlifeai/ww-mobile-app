@@ -39,23 +39,23 @@ export const OP_PARAMETER = {
  * These match the firmware's behaviour when no MANIFEST folder exists on SD card.
  */
 export const FACTORY_DEFAULTS: Record<number, number> = {
-    [OP_PARAMETER.SEQUENCE_NUMBER]: 0,
+    [OP_PARAMETER.SEQUENCE_NUMBER]: 1,
     [OP_PARAMETER.NUM_NN_ANALYSES]: 0,
     [OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES]: 0,
     [OP_PARAMETER.NUM_COLD_BOOTS]: 0,
     [OP_PARAMETER.NUM_WARM_BOOTS]: 0,
-    [OP_PARAMETER.NUM_PICTURES]: 3,
-    [OP_PARAMETER.PICTURE_INTERVAL]: 1500,
+    [OP_PARAMETER.NUM_PICTURES]: 1,
+    [OP_PARAMETER.PICTURE_INTERVAL]: 1000,
     [OP_PARAMETER.TIMELAPSE_INTERVAL]: 0,
     [OP_PARAMETER.INTERVAL_BEFORE_DPD]: 1000,
     [OP_PARAMETER.LED_BRIGHTNESS]: 5,
-    [OP_PARAMETER.CAMERA_ENABLED]: 0,
+    [OP_PARAMETER.CAMERA_ENABLED]: 1,
     [OP_PARAMETER.MD_INTERVAL]: 0,
     [OP_PARAMETER.FLASH_DURATION]: 100,
     [OP_PARAMETER.FLASH_LED]: 0,
     [OP_PARAMETER.MODEL_PROJECT]: 0,
     [OP_PARAMETER.MODEL_VERSION]: 0,
-    [OP_PARAMETER.MODEL_THRESHOLD]: 50,
+    [OP_PARAMETER.MODEL_THRESHOLD]: 64,
     [OP_PARAMETER.MD_SENSITIVITY]: 1,
     [OP_PARAMETER.TEST_MODE_BITS]: 0,
     [OP_PARAMETER.IMAGES_COUNT]: 0,
@@ -69,13 +69,13 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
  * Only includes user-configurable parameters (5-13)
  */
 export interface DeviceSettings {
-    numPictures?: number              // Index 5 - Images per trigger (default: 3)
-    pictureInterval?: number           // Index 6 - Interval between images in ms (default: 1500)
-    timelapseInterval?: number         // Index 7 - Timelapse interval in seconds, 0=disabled (default: 60)
+    numPictures?: number              // Index 5 - Images per trigger (default: 1)
+    pictureInterval?: number           // Index 6 - Interval between images in ms (default: 1000)
+    timelapseInterval?: number         // Index 7 - Timelapse interval in seconds, 0=disabled (default: 0)
     intervalBeforeDpd?: number         // Index 8 - Inactivity timeout in ms (default: 1000)
-    ledBrightness?: number             // Index 9 - LED brightness 0-100%, 0=off (default: 5)
+    ledBrightness?: number             // Index 9 - LED brightness 0-100%, 0=dim (default: 5)
     cameraEnabled?: boolean            // Index 10 - 0=disabled, 1=enabled (default: 1)
-    motionDetectInterval?: number      // Index 11 - Motion detection interval in ms, 0=disabled (default: 1000)
+    motionDetectInterval?: number      // Index 11 - Motion detection interval in ms, 0=disabled (default: 0)
     flashDuration?: number             // Index 12 - Flash duration in ms (default: 100)
     flashLed?: number                  // Index 13 - LED mask: 0=off, 1=visible, 2=IR (default: 0)
 }

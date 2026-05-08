@@ -191,7 +191,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments, selectedDeploymentId
 	const handleViewDetails = React.useCallback(() => {
 		if (selectedDeploymentId) {
 			log('[MapScreen] Navigating to details:', selectedDeploymentId)
-			navigation.navigate('DeploymentDetails', { deploymentId: selectedDeploymentId })
+			navigation.navigate('DeviceMonitoringSummary', { deploymentId: selectedDeploymentId })
 			dispatch({ selectedDeploymentId: null })
 		}
 	}, [selectedDeploymentId, navigation])
