@@ -102,6 +102,9 @@ export const useBle = (): ReturnType => {
 	const disconnectDevice = useCallback(
 		async (peripheral: Peripheral | ExtendedPeripheral) => {
 			if (!initialized) return
+			// Clear reconnecting guard to prevent stale state blocking future connects
+			isDeviceReconnecting.current[peripheral.id] = false
+			setIsBleConnecting(false)
 			await guard(() => BleManager.disconnect(peripheral.id))
 			dispatch(deviceDisconnect({ id: peripheral.id }))
 		},
@@ -143,10 +146,16 @@ export const useBle = (): ReturnType => {
 			 * Basically, use the timeout.
 			 */
 			if (isDeviceReconnecting.current[peripheral.id]) {
-				// log(
-				// 	`Cancelling the connection request for ${peripheral.id}. connectDevice is already running.`,
-				// )
-				return peripheral
+				// If the device is no longer connected, the previous connect attempt
+				// was interrupted (e.g. unexpected disconnect/DPD). Clear the stale
+				// guard so we can reconnect.
+				if (!peripheral.connected) {
+					log(`Clearing stale reconnecting guard for ${peripheral.id}`)
+					isDeviceReconnecting.current[peripheral.id] = false
+					setIsBleConnecting(false)
+				} else {
+					return peripheral
+				}
 			}
 
 			/** Clean up intervals */
