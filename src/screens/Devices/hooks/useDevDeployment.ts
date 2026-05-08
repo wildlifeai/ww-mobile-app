@@ -309,7 +309,7 @@ export const useDevDeployment = ({
             const newDeployment = await DeploymentService.createDeployment({
                 name: locationName || 'Dev Deployment Test',
                 projectId: project.id,
-                deviceId: deviceId || '',
+                deviceId: device?.id || '',
                 setupBy: user.id,
                 locationName: locationName || 'Dev Deployment Test',
                 cameraHeight: cameraHeight ? parseFloat(cameraHeight) : undefined,
@@ -366,7 +366,7 @@ export const useDevDeployment = ({
             isStartDeploymentInProgress.current = false
         }
     }, [
-        bleDevice, bleSession, project, user, deviceId, device,
+        bleDevice, bleSession, project, user, device,
         startConfigure, progress, persistProjectSettings,
         batteryLevel, gpsLocation, locationName, cameraHeight, notes,
         sdCardStatus, flashParams, effectiveCaptureMethod, effectiveTimelapseInterval,

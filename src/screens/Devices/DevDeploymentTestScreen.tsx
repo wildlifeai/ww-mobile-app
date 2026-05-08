@@ -195,6 +195,23 @@ export const DevDeploymentTestScreen = () => {
                             </View>
                         )}
 
+                        {(captureMethodOverride === 1 || captureMethodOverride === 3) && (
+                            <View style={styles.spacer}>
+                                <WWText variant="labelLarge">Motion Detection Interval (ms)</WWText>
+                                <TextInput
+                                    label="Motion Detect Interval (ms)"
+                                    value={(motionSensitivityOverride ?? 1000).toString()}
+                                    onChangeText={(t) => {
+                                        const v = parseInt(t.replace(/[^0-9]/g, ''), 10)
+                                        setMotionSensitivityOverride(isNaN(v) ? 0 : v)
+                                    }}
+                                    mode="outlined"
+                                    keyboardType="numeric"
+                                    right={<TextInput.Affix text="ms" />}
+                                />
+                            </View>
+                        )}
+
                         {/* Feature summary */}
                         <Divider style={styles.divider} />
                         <View style={styles.featureRow}>
