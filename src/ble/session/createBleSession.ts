@@ -12,6 +12,11 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
     commandConstructor: () => import('../protocol/commandRegistry').CommandContext<T>, 
     options?: { signal?: AbortSignal, maxRetries?: number, lockHolder?: string }
   ): Promise<T> => {
+    // Fail-fast: reject immediately if the device is already disconnected
+    // rather than enqueuing a command that will timeout on a dead link.
+    if (!peripheral.connected) {
+      return Promise.reject(new Error('DEVICE_DISCONNECTED'));
+    }
     return commandQueue.enqueue<T>(
       () => runCommandPipeline(peripheral, commandConstructor, options),
       { signal: options?.signal, lockHolder: options?.lockHolder }
