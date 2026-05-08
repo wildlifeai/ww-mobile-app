@@ -25,7 +25,6 @@ import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfigur
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
 import { useDeviceSettings, OP_PARAMETER } from '../../../hooks/useDeviceSettings'
-import { createBleSession } from '../../../ble/session/createBleSession'
 import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
 import { useMonitoringActions } from '../../../hooks/useMonitoringActions'
 import * as pipeline from '../../../ble/workflows/deploymentPipeline'
@@ -342,7 +341,7 @@ export const useDevDeployment = ({
             progress.addLog('Setting flash parameters...')
             progress.setFinishStep('Flash settings...')
             progress.setFinishProgress(0.7)
-            const session = createBleSession(bleDevice)
+            const session = bleSession
             await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: flashParams.ledBrightness }))
             await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashParams.flashLed }))
             progress.addLog(`Flash: ${['Off', 'Visible', 'IR'][flashParams.flashLed]} @ ${flashParams.ledBrightness}%`)

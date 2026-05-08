@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 
 /**
  * useDeploymentProgress — Shared progress dialog state machine.
@@ -27,14 +27,14 @@ export function useDeploymentProgress() {
         setIsSuccess(false)
     }, [])
 
-    return {
+    return useMemo(() => ({
         isFinishing, setIsFinishing,
         finishProgress, setFinishProgress,
         finishStep, setFinishStep,
         finishLogs,
         isSuccess, setIsSuccess,
         addLog, reset,
-    }
+    }), [isFinishing, finishProgress, finishStep, finishLogs, isSuccess, addLog, reset])
 }
 
 export type DeploymentProgress = ReturnType<typeof useDeploymentProgress>

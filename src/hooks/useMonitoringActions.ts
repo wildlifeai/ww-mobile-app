@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { Alert } from 'react-native'
 import { DeploymentService } from '../services/DeploymentService'
 import { createBleSession } from '../ble/session/createBleSession'
@@ -165,10 +165,10 @@ export function useMonitoringActions({
         }
     }, [bleDevice, userId, navigation, quiesceDevice, deploymentIdRef, isNavigatingAway, progress])
 
-    return {
+    return useMemo(() => ({
         isMonitoring, setIsMonitoring,
         isStoppingMonitoring,
         handleMonitorDisconnect,
         handleStopMonitoring,
-    }
+    }), [isMonitoring, isStoppingMonitoring, handleMonitorDisconnect, handleStopMonitoring])
 }

@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Text, SegmentedButtons, useTheme } from 'react-native-paper'
+import { Card, SegmentedButtons, useTheme } from 'react-native-paper'
 
 import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
@@ -69,25 +69,27 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
             <Card.Content>
                 {/* Start / Stop buttons */}
                 <View style={styles.buttonsRow}>
-                    <WWButton
-                        mode="contained"
-                        onPress={startTest}
-                        disabled={disabled || isTesting}
-                        icon="play-circle-outline"
-                        style={styles.actionButton}
-                    >
-                        <Text>Start Test</Text>
-                    </WWButton>
+                    <View style={styles.buttonWrapper}>
+                        <WWButton
+                            mode="contained"
+                            onPress={startTest}
+                            disabled={disabled || isTesting}
+                            icon="play-circle-outline"
+                        >
+                            Start Test
+                        </WWButton>
+                    </View>
 
-                    <WWButton
-                        mode="outlined"
-                        onPress={stopTest}
-                        disabled={disabled || !isTesting}
-                        icon="stop-circle-outline"
-                        style={styles.actionButton}
-                    >
-                        <Text>Stop Test</Text>
-                    </WWButton>
+                    <View style={styles.buttonWrapper}>
+                        <WWButton
+                            mode="outlined"
+                            onPress={stopTest}
+                            disabled={disabled || !isTesting}
+                            icon="stop-circle-outline"
+                        >
+                            Stop Test
+                        </WWButton>
+                    </View>
                 </View>
 
                 {/* Sensitivity level */}
@@ -200,7 +202,7 @@ const styles = StyleSheet.create({
         gap: 12,
         marginBottom: 20,
     },
-    actionButton: {
+    buttonWrapper: {
         flex: 1,
     },
     label: {
