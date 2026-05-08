@@ -178,6 +178,13 @@ export const useBle = (): ReturnType => {
 					// Clear logs BEFORE starting connection/notifications to ensure we don't wipe early firmware messages
 					dispatch(clearLogs({ id: newPeripheral.id }))
 
+					// Android BLE stack needs time to release a previous GATT connection
+					// after removePeripheral. Without this, rapid reconnect races with
+					// cleanup causing "Disconnect called before connect callback invoked".
+					if (Platform.OS === "android") {
+						await new Promise(resolve => setTimeout(resolve, 500))
+					}
+
 					await invokeWithTimeout(
 						() => BleManager.connect(newPeripheral.id),
 						"BleManager.connect",

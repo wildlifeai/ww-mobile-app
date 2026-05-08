@@ -177,7 +177,7 @@ export const useBleListeners = () => {
 	)
 
 	const deviceDisconnectedEvent = useCallback(
-		(data: { peripheral: string }) => {
+		async (data: { peripheral: string }) => {
 			log(
 				`Peripheral disconnect event triggered. Disconnecting: ${data.peripheral}`,
 			)
@@ -185,9 +185,10 @@ export const useBleListeners = () => {
 			// CRITICAL: Clear any pending buffers to prevent stuck state on reconnect
 			rxRouter.clearBuffer(data.peripheral)
 
-			/** Clear the device out on Android systems */
-			Platform.OS === "android" &&
-				guard(() => BleManager.removePeripheral(data.peripheral))
+			/** Clear the device out on Android systems and wait for GATT cleanup */
+			if (Platform.OS === "android") {
+				await guard(() => BleManager.removePeripheral(data.peripheral))
+			}
 
 			dispatch(deviceDisconnect({ id: data.peripheral }))
 		},
