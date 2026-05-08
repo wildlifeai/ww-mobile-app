@@ -14,7 +14,6 @@ export const useEngineerConnect = () => {
     const dispatch = useAppDispatch()
     const { startScan, stopScan, connectDevice } = useBleActions()
     const devices = useAppSelector((state) => state.devices)
-    const { isScanning } = useAppSelector((state) => state.scanning)
 
     const [dialogState, setDialogState] = useState<EngineerConnectState>('idle')
     const [connectingDevice, setConnectingDevice] = useState<ExtendedPeripheral | null>(null)
@@ -46,17 +45,17 @@ export const useEngineerConnect = () => {
     }, [startScan, dispatch])
 
     // Scan loop — keep restarting the scan in 3s bursts while in 'scanning' state
-    // This matches the fast-discovery strategy from useDeviceDiscovery
+    // startScan() already calls stopScan() internally, so no need to gate on isScanning.
     const scanCommandLockRef = useRef(false)
     useEffect(() => {
-        if (dialogState === 'scanning' && !isConnectingRef.current && !isScanning && !scanCommandLockRef.current) {
+        if (dialogState === 'scanning' && !isConnectingRef.current && !scanCommandLockRef.current) {
             scanCommandLockRef.current = true
             startScan(3)
             setTimeout(() => {
                 scanCommandLockRef.current = false
             }, 500)
         }
-    }, [dialogState, isScanning, startScan])
+    }, [dialogState, startScan])
 
     // Auto-connect when device appears during scanning
     useEffect(() => {
@@ -116,10 +115,8 @@ export const useEngineerConnect = () => {
         hasNavigatedRef.current = false
         isConnectingRef.current = false
         dispatch(setEngineerConsoleActive(false))
-        if (isScanning) {
-            stopScan()
-        }
-    }, [isScanning, stopScan, dispatch])
+        stopScan()
+    }, [stopScan, dispatch])
 
     return {
         dialogState,

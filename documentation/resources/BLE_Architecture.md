@@ -235,14 +235,11 @@ React Context that wraps the core `useBle` hook. Provides `startScan`, `stopScan
 **File:** [BleEngineProvider.tsx](../../src/providers/BleEngineProvider.tsx)
 
 ---
-
 ### 3. Listener Provider (`ListenToBleEngineProvider`)
 
 Thin wrapper that calls `useBleListeners()` to register native event handlers. This is the entry point for **all incoming BLE data**.
 
 **File:** [ListenToBleEngineProvider.tsx](../../src/providers/ListenToBleEngineProvider.tsx)
-
----
 
 ### 4. Connection & Write (`useBle`)
 
@@ -256,24 +253,86 @@ The foundational hook providing:
 | `disconnectDevice(peripheral)` | Clean disconnect |
 | `writeRaw(peripheral, command)` | Send raw ASCII string to device (no queue, no parsing) |
 
+**Scan lifecycle:**
+`startScan()` always calls `BleManager.stopScan()` before starting a new scan. This eliminates a race condition where the native `BleManagerStopScan` event could lag behind, leaving the Redux `isScanning` flag stale and silently blocking subsequent scan cycles. The function does **not** gate on `isScanning` state — the stop-before-start pattern is unconditionally safe.
+
 **Connection sequence on Android:**
-1. 500ms GATT cleanup delay (prevents race with previous `removePeripheral`)
-2. `BleManager.connect()`
-3. `BleManager.retrieveServices()` → find Nordic UART (NUS) service
-4. `BleManager.startNotification()` — enable CCCD **before** MTU negotiation
-5. `requestConnectionPriority(HIGH)` — reduce connection interval (~11-15ms)
-6. `requestMTU(512)` — maximize packet size for image transfers
-7. `BleManager.readRSSI()` — read signal strength
+1. `BleManager.stopScan()` (always, even if no scan is active)
+2. 500ms GATT cleanup delay (prevents race with previous `removePeripheral`)
+3. `BleManager.connect()`
+4. `BleManager.retrieveServices()` → find Nordic UART (NUS) service
+5. `BleManager.startNotification()` — enable CCCD **before** MTU negotiation
+6. `requestConnectionPriority(HIGH)` — reduce connection interval (~11-15ms)
+7. `requestMTU(512)` — maximize packet size for image transfers
+8. `BleManager.readRSSI()` — read signal strength
 
 **Connection sequence on iOS:**
-1. `BleManager.connect()`
-2. `BleManager.retrieveServices()` → find Nordic UART (NUS) service
-3. `BleManager.startNotification()` — enable CCCD
+1. `BleManager.stopScan()` (always)
+2. `BleManager.connect()`
+3. `BleManager.retrieveServices()` → find Nordic UART (NUS) service
+4. `BleManager.startNotification()` — enable CCCD
 
 > [!NOTE]
 > iOS handles MTU negotiation automatically at the Core Bluetooth level (typically 185–512 bytes depending on the iOS version and peripheral). `requestConnectionPriority` and `requestMTU` are **Android-only** APIs and are skipped on iOS.
 
 **File:** [useBle.ts](../../src/hooks/useBle.ts)
+
+---
+
+### 4a. Scanning & Discovery
+
+Two independent scan consumers exist in the app. Both share the same `startScan()` / `stopScan()` primitives from `useBle`, but manage their own session lifecycle:
+
+#### Device Discovery Scanner (`useDeviceDiscovery`)
+
+Used by the main **DeviceDiscoveryScreen** for deployment workflows. Features:
+
+| Feature | Implementation |
+|---|---|
+| **Session-based** | User presses "Search" → 60-second countdown session |
+| **3-second scan bursts** | `startScan(3)` fires in a tight loop while session is active |
+| **Cache flush on start** | `clearDiscoveredDevices()` + `autoConnect.resetAll()` + Android `removePeripheral` sweep |
+| **Auto-connect** | Strongest-signal device auto-connected via `useAutoConnectStateMachine` |
+| **Signal tracking** | Devices marked `signalLost: true` when not found in scan results |
+
+**Session start sequence:**
+1. Dispatch `clearDiscoveredDevices()` — removes all non-connected devices from Redux
+2. Reset auto-connect state machine — all devices return to `DISCOVERED` state
+3. (Android) Flush native BLE cache — `removePeripheral()` on all cached, non-connected devices
+4. Start 60-second countdown timer
+5. Begin 3-second scan burst loop
+
+**File:** [useDeviceDiscovery.ts](../../src/screens/Devices/hooks/useDeviceDiscovery.ts)
+
+#### Engineer Console Scanner (`useEngineerConnect`)
+
+Used by the **Engineer Console** for quick device access. Simpler than the main scanner:
+
+| Feature | Implementation |
+|---|---|
+| **Dialog-driven** | `beginScan()` opens the search dialog |
+| **3-second scan bursts** | Same `startScan(3)` loop pattern |
+| **Auto-connect first device** | Immediately connects to the strongest signal device |
+| **No session timeout** | Scans until a device is found or the dialog is dismissed |
+
+> [!IMPORTANT]
+> Both scan consumers rely on `startScan()` calling `stopScan()` internally. Neither consumer gates scan restarts on the Redux `isScanning` flag. This avoids the stale-state race condition where the native `BleManagerStopScan` event lags behind the actual scan completion.
+
+**File:** [useEngineerConnect.ts](../../src/hooks/useEngineerConnect.ts)
+
+#### Auto-Connect State Machine (`useAutoConnectStateMachine`)
+
+Manages per-device auto-connect eligibility to prevent reconnect loops:
+
+```
+DISCOVERED → ROUTING_PENDING → ACCEPTED
+                              → REJECTED → IGNORED_FOR_SESSION
+Any → DISCOVERED  (on screen re-focus / resetAll)
+```
+
+Only `DISCOVERED` devices are eligible for auto-connect. Once a device transitions to `IGNORED_FOR_SESSION` (via dialog dismiss or explicit disconnect), it stays ignored until the user navigates away and back.
+
+**File:** [useAutoConnectStateMachine.ts](../../src/screens/Devices/hooks/useAutoConnectStateMachine.ts)
 
 ---
 
@@ -714,4 +773,4 @@ const results = await runCommandPipeline(peripheral, [
 
 ---
 
-*Last Updated: May 8, 2026*
+*Last Updated: May 9, 2026*
