@@ -18,17 +18,17 @@ import ProjectService from '../../../services/ProjectService'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Device from '../../../database/models/Device'
 import { DeviceService } from '../../../services/DeviceService'
-import FirmwareService from '../../../services/FirmwareService'
-import AiModelService from '../../../services/AiModelService'
 import { useBleSession } from '../../../hooks/useBleSession'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
-import { runFileTransferPipeline } from '../../../ble/protocol/fileTransfer'
 import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
 import { useDeviceSettings, OP_PARAMETER } from '../../../hooks/useDeviceSettings'
 import { createBleSession } from '../../../ble/session/createBleSession'
+import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
+import { useMonitoringActions } from '../../../hooks/useMonitoringActions'
+import * as pipeline from '../../../ble/workflows/deploymentPipeline'
 
 import { log, logError, logWarn } from '../../../utils/logger'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
@@ -100,23 +100,25 @@ export const useDevDeployment = ({
     // Submission
     const [submitting, setSubmitting] = useState(false)
     const [device, setDevice] = useState<Device | undefined>()
-    const [isMonitoring, setIsMonitoring] = useState(false)
-    const [isStoppingMonitoring, setIsStoppingMonitoring] = useState(false)
-
-    // Progress dialog
-    const [isFinishing, setIsFinishing] = useState(false)
-    const [finishProgress, setFinishProgress] = useState(0)
-    const [finishStep, setFinishStep] = useState('')
-    const [finishLogs, setFinishLogs] = useState<string[]>([])
-    const [isStartSuccess, setIsStartSuccess] = useState(false)
 
     const isNavigatingAway = useRef(false)
     const isStartDeploymentInProgress = useRef(false)
     const deploymentIdRef = useRef<string | null>(null)
 
-    const addFinishLog = useCallback((msg: string) => {
-        setFinishLogs(prev => [...prev, msg])
-    }, [])
+    // Shared progress dialog
+    const progress = useDeploymentProgress()
+
+    // Shared monitoring actions
+    const monitoring = useMonitoringActions({
+        bleDevice,
+        disconnectDevice,
+        quiesceDevice,
+        userId: user?.id,
+        navigation,
+        deploymentIdRef,
+        isNavigatingAway,
+        progress,
+    })
 
     // Effective values (override > project)
     const effectiveCaptureMethod = captureMethodOverride ?? project?.capture_method_id ?? 1
@@ -271,107 +273,38 @@ export const useDevDeployment = ({
             Alert.alert('Error', 'Missing project or user information.')
             return
         }
+        if (!bleSession) {
+            Alert.alert('Error', 'BLE session not available.')
+            return
+        }
 
-        setIsFinishing(true)
+        progress.reset('Starting dev deployment...')
         setSubmitting(true)
-        setFinishProgress(0)
-        setFinishStep('Starting dev deployment...')
-        setFinishLogs([])
-        setIsStartSuccess(false)
         isStartDeploymentInProgress.current = true
 
+        const cb = {
+            addLog: progress.addLog,
+            setStep: progress.setFinishStep,
+            setProgress: progress.setFinishProgress,
+        }
+
         try {
-            // 1. Time sync
-            addFinishLog('Syncing time...')
-            setFinishStep('Time sync...')
-            setFinishProgress(0.1)
-            if (bleDevice) await bleSession?.execute(commandRegistry.setutc)
-            addFinishLog('Time synced')
+            // 1-3. Shared pipeline steps
+            await pipeline.syncTime(bleSession, cb)
+            await pipeline.pushConfig(bleDevice, bleSession, cb)
+            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb)
 
-            // 2. Config push
-            addFinishLog('Pushing config...')
-            setFinishStep('Config push...')
-            setFinishProgress(0.12)
-            try {
-                const latestConfig = await ReferenceDataService.getLatestFirmware('config')
-                if (latestConfig?.locationPath && bleDevice && bleSession) {
-                    const configBytes = await FirmwareService.readFirmwareAsBytes(latestConfig.locationPath)
-                    if (configBytes) {
-                        await runFileTransferPipeline(bleDevice, {
-                            filename: 'CONFIG.TXT',
-                            data: configBytes,
-                            onProgress: (p) => setFinishProgress(0.12 + (p.percentage / 100) * 0.03)
-                        })
-                        addFinishLog('Config pushed')
-                    }
-                }
-            } catch (e) {
-                logWarn('Config push failed:', e)
-                addFinishLog('Config push failed, continuing...')
-            }
-
-            // 3. AI Model
-            addFinishLog('Checking AI model...')
-            setFinishStep('AI Model...')
-            setFinishProgress(0.15)
-            if (project.model_id && bleSession && bleDevice) {
-                try {
-                    await bleSession.execute(() => commandRegistry.aiver())
-                    const ops = await bleSession.execute(() => commandRegistry.getops())
-                    if (!ops) throw new Error('Failed to get ops')
-                    const currentId = parseInt(ops[14], 10)
-                    const currentVer = parseInt(ops[15], 10)
-                    const targetModel = await AiModelService.getModelById(project.model_id)
-
-                    if (targetModel) {
-                        const { firmwareModelId: numericId, versionNumber: numericVer } = await ReferenceDataService.getFirmwareIds(targetModel)
-                        if (currentId !== numericId || currentVer !== numericVer) {
-                            addFinishLog(`Model mismatch — transferring...`)
-                            const localFiles = await AiModelService.ensureFilesDownloaded(targetModel)
-                            const modelBytes = await AiModelService.readModelAsBytes(localFiles.modelUri)
-                            if (modelBytes) {
-                                const { modelExt: tflExt } = AiModelService.getModelFileExtensions(targetModel)
-                                await runFileTransferPipeline(bleDevice, {
-                                    filename: `${numericId}V${numericVer}.${tflExt}`,
-                                    data: modelBytes,
-                                    onProgress: (p) => setFinishProgress(0.15 + (p.percentage / 100) * 0.05)
-                                })
-                                const labelsBytes = localFiles.labelsUri ? await AiModelService.readModelAsBytes(localFiles.labelsUri) : null
-                                if (labelsBytes) {
-                                    const { labelsExt } = AiModelService.getModelFileExtensions(targetModel)
-                                    await runFileTransferPipeline(bleDevice, {
-                                        filename: `${numericId}V${numericVer}.${labelsExt}`,
-                                        data: labelsBytes,
-                                        onProgress: () => {}
-                                    })
-                                }
-                                await bleSession.execute(() => commandRegistry.erasemodel())
-                                await bleSession.execute(() => commandRegistry.loadmodel(numericId, numericVer))
-                                addFinishLog('AI model updated')
-                            }
-                        } else {
-                            addFinishLog('AI model up to date')
-                        }
-                    }
-                } catch (e) {
-                    logWarn('AI model update failed:', e)
-                    addFinishLog('AI model update failed, continuing...')
-                }
-            } else {
-                addFinishLog('No AI model required')
-            }
-
-            // 4. Persist project settings
-            addFinishLog('Saving project settings...')
-            setFinishStep('Saving settings...')
-            setFinishProgress(0.25)
+            // 4. Persist project settings (dev-specific)
+            progress.addLog('Saving project settings...')
+            progress.setFinishStep('Saving settings...')
+            progress.setFinishProgress(0.25)
             await persistProjectSettings()
-            addFinishLog('Project settings saved')
+            progress.addLog('Project settings saved')
 
             // 5. Create deployment record
-            addFinishLog('Creating deployment record...')
-            setFinishStep('Creating record...')
-            setFinishProgress(0.3)
+            progress.addLog('Creating deployment record...')
+            progress.setFinishStep('Creating record...')
+            progress.setFinishProgress(0.3)
 
             const newDeployment = await DeploymentService.createDeployment({
                 name: locationName || 'Dev Deployment Test',
@@ -394,142 +327,58 @@ export const useDevDeployment = ({
                 cameraImagePaths: [],
             })
             deploymentIdRef.current = newDeployment.id
-            addFinishLog(`Deployment created: ${newDeployment.id.substring(0, 8)}...`)
+            progress.addLog(`Deployment created: ${newDeployment.id.substring(0, 8)}...`)
 
-            // 6. Configure device OPs
-            addFinishLog('Configuring device...')
-            setFinishStep('Configuring device...')
-            setFinishProgress(0.5)
-
-            let method: 'activity' | 'timelapse' | 'mixed' | 'unknown' = 'unknown'
-            if (effectiveCaptureMethod === 1) method = 'activity'
-            else if (effectiveCaptureMethod === 2) method = 'timelapse'
-            else if (effectiveCaptureMethod === 3) method = 'mixed'
-
-            await startConfigure(bleDevice, {
+            // 6. Configure device OPs (shared pipeline)
+            await pipeline.configureDevice(bleDevice, startConfigure, {
                 deploymentId: newDeployment.id,
-                captureMethod: method,
-                motionInterval: 1000,
-                timelapseInterval: effectiveTimelapseInterval || 300,
+                captureMethodId: effectiveCaptureMethod,
+                timelapseInterval: effectiveTimelapseInterval,
                 recordGpsInImages: project.record_gps_in_images || false,
-                location: gpsLocation && gpsLocation.latitude !== undefined && gpsLocation.longitude !== undefined ? {
-                    latitude: gpsLocation.latitude,
-                    longitude: gpsLocation.longitude,
-                    altitude: gpsLocation.altitude || 0
-                } : undefined
-            })
-            addFinishLog('Device OPs configured')
+                gpsLocation,
+            }, cb)
 
             // 7. Flash OPs (dev-specific)
-            addFinishLog('Setting flash parameters...')
-            setFinishStep('Flash settings...')
-            setFinishProgress(0.7)
+            progress.addLog('Setting flash parameters...')
+            progress.setFinishStep('Flash settings...')
+            progress.setFinishProgress(0.7)
             const session = createBleSession(bleDevice)
             await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: flashParams.ledBrightness }))
             await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashParams.flashLed }))
-            addFinishLog(`Flash: ${['Off', 'Visible', 'IR'][flashParams.flashLed]} @ ${flashParams.ledBrightness}%`)
+            progress.addLog(`Flash: ${['Off', 'Visible', 'IR'][flashParams.flashLed]} @ ${flashParams.ledBrightness}%`)
 
             // 8. Done
-            setFinishStep('Complete')
-            setFinishProgress(1.0)
-            setIsStartSuccess(true)
-            addFinishLog('Dev deployment started successfully')
+            progress.setFinishStep('Complete')
+            progress.setFinishProgress(1.0)
+            progress.setIsSuccess(true)
+            progress.addLog('Dev deployment started successfully')
 
             setTimeout(() => {
-                setIsFinishing(false)
-                setIsMonitoring(true)
+                progress.setIsFinishing(false)
+                monitoring.setIsMonitoring(true)
                 isStartDeploymentInProgress.current = false
             }, 1500)
 
         } catch (error) {
             logError('Dev deployment failed:', error)
-            setIsFinishing(false)
+            progress.setIsFinishing(false)
             Alert.alert('Error', 'Failed to start dev deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
     }, [
         bleDevice, bleSession, project, user, deviceId, device,
-        startConfigure, addFinishLog, persistProjectSettings,
+        startConfigure, progress, persistProjectSettings,
         batteryLevel, gpsLocation, locationName, cameraHeight, notes,
-        sdCardStatus, flashParams, effectiveCaptureMethod, effectiveTimelapseInterval
+        sdCardStatus, flashParams, effectiveCaptureMethod, effectiveTimelapseInterval,
+        monitoring
     ])
 
-    // --- Monitor disconnect ---
-    const handleMonitorDisconnect = useCallback(async () => {
-        Alert.alert(
-            'Wildlife Watcher Monitoring',
-            'The bluetooth will be disconnected but the camera will continue monitoring for animals.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Disconnect',
-                    style: 'default',
-                    onPress: async () => {
-                        try {
-                            if (bleDevice) {
-                                try { await bleSession?.execute(commandRegistry.disconnect) } catch {} finally { await disconnectDevice(bleDevice) }
-                            }
-                            setIsMonitoring(false)
-                        } catch (error) {
-                            logError('Monitor disconnect failed:', error)
-                        } finally {
-                            isNavigatingAway.current = true
-                            navigation.navigate('Home', { initialTab: 'deployment' })
-                        }
-                    }
-                }
-            ]
-        )
-    }, [bleDevice, bleSession, disconnectDevice, navigation])
-
-    // --- Stop monitoring ---
-    const handleStopMonitoring = useCallback(async (notes?: string) => {
-        if (!deploymentIdRef.current || !bleDevice) return
-        setIsStoppingMonitoring(true)
-        setIsFinishing(true)
-        setFinishProgress(0)
-        setFinishStep('Stopping monitoring...')
-        setFinishLogs([])
-
-        try {
-            addFinishLog('Quiescing device...')
-            await quiesceDevice(bleDevice, { isEndDeployment: true })
-            addFinishLog('Ending deployment...')
-            setFinishProgress(0.5)
-
-            await DeploymentService.endDeployment(
-                deploymentIdRef.current,
-                user?.id || null,
-                notes || 'Stopped from Dev Deployment Test'
-            )
-
-            setFinishProgress(1.0)
-            setFinishStep('Complete')
-            addFinishLog('Monitoring stopped')
-
-            setTimeout(() => {
-                setIsFinishing(false)
-                setIsStoppingMonitoring(false)
-                if (bleDevice) {
-                    disconnectDevice(bleDevice)
-                }
-                isNavigatingAway.current = true
-                navigation.navigate('Home', { initialTab: 'deployment' })
-            }, 1500)
-        } catch (error) {
-            logError('Stop monitoring failed:', error)
-            setIsFinishing(false)
-            setIsStoppingMonitoring(false)
-            Alert.alert('Error', 'Failed to stop monitoring: ' + (error as any).message)
-        }
-    }, [bleDevice, quiesceDevice, disconnectDevice, navigation, addFinishLog, user?.id])
-
     const handleFinishDismiss = useCallback(() => {
-        setIsFinishing(false)
-        if (isStartSuccess) {
-            setIsMonitoring(true)
+        progress.setIsFinishing(false)
+        if (progress.isSuccess) {
+            monitoring.setIsMonitoring(true)
         }
-    }, [isStartSuccess])
+    }, [progress, monitoring])
 
     return {
         // Device
@@ -563,13 +412,17 @@ export const useDevDeployment = ({
         // Deployment
         submitting,
         handleStartDeployment,
-        // Monitoring
-        isMonitoring,
-        handleMonitorDisconnect,
-        handleStopMonitoring,
-        isStoppingMonitoring,
-        // Progress
-        isFinishing, finishProgress, finishStep, finishLogs,
-        isStartSuccess, handleFinishDismiss,
+        // Monitoring (from shared hook)
+        isMonitoring: monitoring.isMonitoring,
+        handleMonitorDisconnect: monitoring.handleMonitorDisconnect,
+        handleStopMonitoring: monitoring.handleStopMonitoring,
+        isStoppingMonitoring: monitoring.isStoppingMonitoring,
+        // Progress (from shared hook)
+        isFinishing: progress.isFinishing,
+        finishProgress: progress.finishProgress,
+        finishStep: progress.finishStep,
+        finishLogs: progress.finishLogs,
+        isStartSuccess: progress.isSuccess,
+        handleFinishDismiss,
     }
 }
