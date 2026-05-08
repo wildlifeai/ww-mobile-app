@@ -220,8 +220,12 @@ All three flows use the **bulk parameter fetch** command `AI getop -1` to minimi
 | Navigation Guard | `isNavigatingAway` ref | `isNavigatingAway` ref |
 | In-Progress Guard | `isStartDeploymentInProgress` ref | `isEnding` state |
 | Unmount Cleanup | Auto-disconnect (unless navigating) | Auto-disconnect |
+| Disconnect Fail-Fast | `DEVICE_SIGNAL(DISCONNECT)` → `commandQueue.clearAll()` | Same |
 
 All screens use `bleDeviceRef` (a `useRef`) for device state inside `setInterval` callbacks, preventing stale closure bugs.
+
+> [!NOTE]
+> On unexpected disconnect, the BLE pipeline rejects all in-flight and queued commands **instantly** via the `DISCONNECT` signal (see [BLE Architecture — Disconnect Resilience](../resources/BLE_Architecture.md#disconnect-resilience)). This prevents 3s×N hangs that previously occurred when commands timed out sequentially.
 
 ---
 
@@ -288,5 +292,5 @@ They are accessed directly via the **Engineer Console** (`EngineerConsoleScreen.
 > [!NOTE]
 > The flash LED hardware is driven by the Himax AI processor (HX6538), not the nRF52 (WW500). The nRF only stores and forwards the OP values — the Himax reads them from CONFIG.TXT during the capture wake cycle.
 
-*Last Updated: April 26, 2026*
+*Last Updated: May 8, 2026*
 
