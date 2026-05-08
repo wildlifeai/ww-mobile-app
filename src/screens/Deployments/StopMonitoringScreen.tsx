@@ -145,9 +145,15 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
     const pendingStopRef = useRef(false)
 
     const handleStopMonitoring = useCallback((notes: string) => {
-        setRetrievalNotes(notes)
-        pendingStopRef.current = true
-    }, [])
+        if (notes === retrievalNotes) {
+            // Notes unchanged (e.g. both empty) — call directly since
+            // setRetrievalNotes won't trigger a re-render / effect.
+            handleEndDeployment()
+        } else {
+            setRetrievalNotes(notes)
+            pendingStopRef.current = true
+        }
+    }, [retrievalNotes, handleEndDeployment])
 
     // Once retrievalNotes updates AND we're pending stop, trigger end deployment
     useEffect(() => {

@@ -170,11 +170,11 @@ export const DeploymentMonitorView: React.FC<Props> = ({
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modalStopBtn, { backgroundColor: colors.error }]}
+                style={[styles.modalStopBtn, { borderColor: colors.outline }]}
                 onPress={handleStopConfirm}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalStopText}>Stop Monitoring</Text>
+                <Text style={[styles.modalStopText, { color: colors.error }]}>Stop Monitoring</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -320,6 +320,7 @@ const styles = StyleSheet.create({
   },
   modalStopBtn: {
     flex: 1,
+    borderWidth: 1,
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
@@ -328,6 +329,5 @@ const styles = StyleSheet.create({
   modalStopText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
 })
