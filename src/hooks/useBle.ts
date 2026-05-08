@@ -55,7 +55,6 @@ export const useBle = (): ReturnType => {
 	const [isBleConnecting, setIsBleConnecting] = useState(false)
 
 	const devices = useAppSelector((state) => state.devices)
-	const scanning = useAppSelector((state) => state.scanning)
 
 	const dispatch = useAppDispatch()
 
@@ -70,21 +69,22 @@ export const useBle = (): ReturnType => {
 		async (length: number = 6) => {
 			if (!initialized) return
 
-			if (!scanning.isScanning) {
-				try {
-					pingsPause(true)
-					// Use specific service UUID to avoid Android throttling wide-open scans
-					// Force Android into SCAN_MODE_LOW_LATENCY (2) to minimize advertisement drop rates
-					await BleManager.scan([BLE_SERVICE_UUID], length, true, { scanMode: 2, matchMode: 1 })
-					// log("Scan started")
-					dispatch(scanStart())
-				} catch (e: any) {
-					logError(e)
-					dispatch(scanError(e))
-				}
+			try {
+				// Always stop first — the native BleManagerStopScan event can lag
+				// behind, leaving isScanning stale and blocking the next cycle.
+				await BleManager.stopScan()
+				pingsPause(true)
+				// Use specific service UUID to avoid Android throttling wide-open scans
+				// Force Android into SCAN_MODE_LOW_LATENCY (2) to minimize advertisement drop rates
+				await BleManager.scan([BLE_SERVICE_UUID], length, true, { scanMode: 2, matchMode: 1 })
+				// log("Scan started")
+				dispatch(scanStart())
+			} catch (e: any) {
+				logError(e)
+				dispatch(scanError(e))
 			}
 		},
-		[initialized, scanning.isScanning, pingsPause, dispatch],
+		[initialized, pingsPause, dispatch],
 	)
 
 	const stopScan = useCallback(
@@ -135,9 +135,8 @@ export const useBle = (): ReturnType => {
 		async (peripheral: ExtendedPeripheral, timeout?: number) => {
 			if (!initialized || peripheral.loading) return peripheral
 
-			if (scanning.isScanning) {
-				await BleManager.stopScan()
-			}
+			// Always stop scan before connecting — safe to call when not scanning
+			await BleManager.stopScan()
 			/**
 			 * If multiple connectDevice functions are called for a certain device,
 			 * this makes sure to avoid any idiotic disconnects when some calls
@@ -269,7 +268,7 @@ export const useBle = (): ReturnType => {
 
 			return newPeripheral
 		},
-		[initialized, scanning.isScanning, dispatch, disconnectDevice],
+		[initialized, dispatch, disconnectDevice],
 	)
 
 	const removeLeftoverDevices = useCallback(() => {
