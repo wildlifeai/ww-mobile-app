@@ -169,8 +169,7 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             await new Promise(res => setTimeout(res, 500))
 
             // 3. Trigger capture via the standard capture flow.
-            //    startCapture enables the camera (setop 10 1), waits for DPD,
-            //    then issues 'AI capture 1 1000'.
+            //    startCapture issues 'AI capture 1 1000' (OP 10 is always enabled now).
             //    NOTE: startCapture resolves after txfile is acknowledged, NOT
             //    after the binary download completes. Camera disable is deferred
             //    to handleImageReceived to avoid sending commands during transfer.

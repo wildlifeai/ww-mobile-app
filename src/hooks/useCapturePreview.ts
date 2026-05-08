@@ -6,7 +6,6 @@ import { bleEventBus, BleEvent } from '../ble/protocol/eventBus'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
-import { DeviceSignal } from '../ble/protocol/deviceSignals'
 import { log, logError } from '../utils/logger'
 
 
@@ -141,7 +140,7 @@ export const useCapturePreview = ({
     }, [device])
 
     // Start capture process
-    const startCapture = useCallback(async (captureCount: number = 1, captureInterval: number = 1) => {
+    const startCapture = useCallback(async (captureCount: number = 1, captureInterval: number = 500) => {
         if (!device) {
             const error = new Error('No device connected')
             logError('[useCapturePreview]', error.message)
@@ -164,36 +163,11 @@ export const useCapturePreview = ({
 
             const session = createBleSession(device);
 
-            // 1. Enable camera (OpParam 10)
-            log('[useCapturePreview] Enabling camera (Op10=1)...')
-            await session.execute(() => commandRegistry.setop({ index: 10, value: 1 }))
-            
-            // 2. Wait explicitly for device to Sleep via EventBus
-            try {
-                setCaptureStage('Waking camera hardware...')
-                log('[useCapturePreview] Waiting for device to sleep (applied settings)...')
-                await new Promise<void>((resolve, reject) => {
-                    const sleepListener = (ev: BleEvent & { type: 'DEVICE_SIGNAL' }) => {
-                        if (ev.deviceId === device.id && ev.signal === DeviceSignal.SLEEP) {
-                            cleanup();
-                            resolve();
-                        }
-                    };
-                    const timeout = setTimeout(() => {
-                        cleanup();
-                        reject(new Error("Sleep timeout"));
-                    }, 10000);
-                    const cleanup = () => {
-                        clearTimeout(timeout);
-                        bleEventBus.removeListener('deviceSignal', sleepListener);
-                    };
-                    bleEventBus.on('deviceSignal', sleepListener);
-                });
-                log('[useCapturePreview] Device sleeping. Waiting 1s buffer before waking...')
-                await new Promise(resolve => setTimeout(resolve, 1000))
-            } catch (e) {
-                logError('[useCapturePreview] Timeout waiting for sleep. Proceeding anyway.', e)
-            }
+            // OP 10 (camera enabled) is now always 1 in firmware defaults.
+            // No need to send setop 10 1 — it would trigger an unnecessary DPD/wake cycle.
+            // await session.execute(() => commandRegistry.setop({ index: 10, value: 1 }))
+
+            setCaptureStage('Waking camera hardware...')
 
             // 3. Send Capture Command
             setCaptureStage(`Capturing ${captureCount} image(s)...`)

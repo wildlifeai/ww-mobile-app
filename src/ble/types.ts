@@ -71,6 +71,7 @@ export enum CommandNames {
 	TRANSFER_AI_MODEL = "TRANSFER_AI_MODEL",
 	FIRMWARE_STATUS = "FIRMWARE_STATUS",
 	RESET_TO_DEFAULTS = "RESET_TO_DEFAULTS",
+	DEV_DEPLOYMENT_TEST = "DEV_DEPLOYMENT_TEST",
 
 	// Local commands (UPPERCASE - app-only actions)
 	CLEAR_CONSOLE = "CLEAR_CONSOLE",
@@ -588,7 +589,7 @@ export const COMMANDS: {
 	},
 	[CommandNames.CAPTURE_PREVIEW]: {
 		name: CommandNames.CAPTURE_PREVIEW,
-		writeCommand: () => "AI capture 1 1",
+		writeCommand: () => "AI capture 1 500",
 		readRegex: /Captured/i,
 		description: "Capture image for preview",
 		type: 'process',
@@ -641,6 +642,11 @@ export const COMMANDS: {
 	[CommandNames.RESET_TO_DEFAULTS]: {
 		name: CommandNames.RESET_TO_DEFAULTS,
 		description: "Reset ALL operational parameters to factory defaults, erase AI model, clear deployment ID",
+		type: 'process',
+	},
+	[CommandNames.DEV_DEPLOYMENT_TEST]: {
+		name: CommandNames.DEV_DEPLOYMENT_TEST,
+		description: "Start monitoring with full parameter control (developer testing)",
 		type: 'process',
 	},
 	[CommandNames.CLEAR_CONSOLE]: {
