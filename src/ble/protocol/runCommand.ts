@@ -61,6 +61,8 @@ export async function runCommand<T>(
       if (event.deviceId !== peripheral.id) return;
       if (event.signal === DeviceSignal.BUSY) {
         idempotentReject(new Error('DEVICE_BUSY'));
+      } else if (event.signal === DeviceSignal.DISCONNECT) {
+        idempotentReject(new Error('DEVICE_DISCONNECTED'));
       }
     };
 

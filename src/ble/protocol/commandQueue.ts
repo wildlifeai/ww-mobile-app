@@ -122,6 +122,10 @@ class CommandQueue {
         this.transitionQueue('RUNNING');
         this.processNext(); // Resume
       }
+    } else if (event.signal === DeviceSignal.DISCONNECT) {
+      // Fail-fast: reject all queued + active commands immediately
+      // instead of letting each one time out sequentially (3s × N).
+      this.clearAll();
     }
   }
 

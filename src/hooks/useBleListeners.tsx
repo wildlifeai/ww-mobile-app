@@ -182,6 +182,15 @@ export const useBleListeners = () => {
 				`Peripheral disconnect event triggered. Disconnecting: ${data.peripheral}`,
 			)
 
+			// CRITICAL: Emit DISCONNECT signal FIRST so commandQueue and runCommand
+			// reject all in-flight/queued commands immediately (fail-fast).
+			bleEventBus.emitEvent({
+				type: 'DEVICE_SIGNAL',
+				signal: 'DISCONNECT',
+				deviceId: data.peripheral,
+				ts: Date.now(),
+			})
+
 			// CRITICAL: Clear any pending buffers to prevent stuck state on reconnect
 			rxRouter.clearBuffer(data.peripheral)
 

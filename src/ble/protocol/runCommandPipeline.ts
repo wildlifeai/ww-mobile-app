@@ -24,6 +24,11 @@ function isRetryable(error: Error): boolean {
     return false;
   }
 
+  // Connection lost — no point retrying on a dead link
+  if (msg.includes('DEVICE_DISCONNECTED') || msg.includes('DISCONNECTED')) {
+    return false;
+  }
+
   // Allowed to retry
   if (msg.includes('TIMEOUT') || msg.includes('DEVICE_SLEEP') || msg.includes('DEVICE_BUSY')) {
     return true;
