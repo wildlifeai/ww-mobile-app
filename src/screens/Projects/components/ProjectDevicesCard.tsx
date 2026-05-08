@@ -59,26 +59,31 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
                         .fetch()
                         
                     if (isMounted) {
+                        // Pre-group deployments by deviceId for O(1) lookup
+                        const deploymentsByDeviceId = new Map<string, { active?: Deployment; lastEnded?: Deployment }>()
+                        for (const d of deployments) {
+                            const entry = deploymentsByDeviceId.get(d.deviceId) || {}
+                            if (!d.deploymentEnd) {
+                                entry.active = d
+                            } else if (
+                                !entry.lastEnded ||
+                                new Date(d.deploymentEnd).getTime() > new Date(entry.lastEnded.deploymentEnd!).getTime()
+                            ) {
+                                entry.lastEnded = d
+                            }
+                            deploymentsByDeviceId.set(d.deviceId, entry)
+                        }
+
                         const devicesWithStatus: DeviceItem[] = uniqueDevices.map(device => {
-                            const deviceDeployments = deployments.filter(d => d.deviceId === device.id)
-                            const activeDeployment = deviceDeployments.find(d => !d.deploymentEnd)
-                            
-                            // Find most recent ended deployment
-                            const endedDeployments = deviceDeployments
-                                .filter(d => d.deploymentEnd)
-                                .sort((a, b) => {
-                                    const aEnd = a.deploymentEnd ? new Date(a.deploymentEnd).getTime() : 0
-                                    const bEnd = b.deploymentEnd ? new Date(b.deploymentEnd).getTime() : 0
-                                    return bEnd - aEnd
-                                })
+                            const grouped = deploymentsByDeviceId.get(device.id)
 
                             return {
                                 id: device.id,
                                 name: device.name || device.bluetoothId || 'Unknown Device',
                                 bluetoothId: device.bluetoothId,
-                                isActive: !!activeDeployment,
-                                activeDeploymentId: activeDeployment?.id,
-                                lastDeploymentId: endedDeployments[0]?.id,
+                                isActive: !!grouped?.active,
+                                activeDeploymentId: grouped?.active?.id,
+                                lastDeploymentId: grouped?.lastEnded?.id,
                             }
                         })
                         

@@ -93,9 +93,9 @@ export async function syncAiModel(
 
             // Check current model
             const ops = await session.execute(() => commandRegistry.getops())
-            if (!ops) throw new Error('Failed to get operational parameters from device.')
-            const currentId = parseInt(ops[14], 10)
-            const currentVer = parseInt(ops[15], 10)
+            if (!ops || ops.length < 16) throw new Error('Insufficient operational parameters from device.')
+            const currentId = parseInt(ops[14] ?? '0', 10) || 0
+            const currentVer = parseInt(ops[15] ?? '0', 10) || 0
 
             const targetModel = await AiModelService.getModelById(modelId)
 
@@ -152,7 +152,7 @@ export async function syncAiModel(
         try {
             await session.execute(() => commandRegistry.aiver())
             const ops = await session.execute(() => commandRegistry.getops())
-            const currentId = ops ? parseInt(ops[14], 10) : 0
+            const currentId = ops && ops.length > 14 ? parseInt(ops[14] ?? '0', 10) || 0 : 0
 
             if (currentId !== 0) {
                 addLog(`Device has stale model (ID: ${currentId}) — erasing...`)

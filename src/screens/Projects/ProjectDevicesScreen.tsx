@@ -59,30 +59,36 @@ export const ProjectDevicesScreen = () => {
             const deviceIds = new Set(deployments.map(d => d.deviceId))
 
             if (deviceIds.size > 0) {
+                // Pre-group deployments by deviceId for O(1) lookup per device
+                const deploymentsByDeviceId = new Map<string, { active?: Deployment; lastEnded?: Deployment }>()
+                for (const d of deployments) {
+                    const entry = deploymentsByDeviceId.get(d.deviceId) || {}
+                    if (!d.deploymentEnd) {
+                        entry.active = d
+                    } else if (
+                        !entry.lastEnded ||
+                        new Date(d.deploymentEnd).getTime() > new Date(entry.lastEnded.deploymentEnd!).getTime()
+                    ) {
+                        entry.lastEnded = d
+                    }
+                    deploymentsByDeviceId.set(d.deviceId, entry)
+                }
+
                 const uniqueDevices = await database.get<Device>('devices')
                     .query(Q.where('id', Q.oneOf(Array.from(deviceIds))))
                     .fetch()
 
                 const listItems: ProjectDevice[] = uniqueDevices.map((device) => {
-                    // Find active deployment for this device (no end date)
-                    const activeDeployment = deployments.find(
-                        (d: Deployment) => d.deviceId === device.id && !d.deploymentEnd
-                    )
+                    const grouped = deploymentsByDeviceId.get(device.id)
 
                     return {
                         id: device.id,
                         bluetoothId: device.bluetoothId,
                         name: device.name || 'Unknown Device',
-                        isActive: !!activeDeployment,
-                        activeDeploymentId: activeDeployment?.id,
-                        activeDeploymentLocationName: activeDeployment?.locationName || 'Unknown Location',
-                        lastDeploymentId: deployments
-                            .filter((d: Deployment) => d.deviceId === device.id && d.deploymentEnd)
-                            .sort((a: Deployment, b: Deployment) => {
-                                const aEnd = a.deploymentEnd ? new Date(a.deploymentEnd).getTime() : 0
-                                const bEnd = b.deploymentEnd ? new Date(b.deploymentEnd).getTime() : 0
-                                return bEnd - aEnd
-                            })[0]?.id,
+                        isActive: !!grouped?.active,
+                        activeDeploymentId: grouped?.active?.id,
+                        activeDeploymentLocationName: grouped?.active?.locationName || 'Unknown Location',
+                        lastDeploymentId: grouped?.lastEnded?.id,
                     }
                 })
 

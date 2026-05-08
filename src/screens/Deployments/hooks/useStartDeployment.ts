@@ -499,7 +499,8 @@ export const useStartDeployment = ({
                 }, cb)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)
-                progress.addLog('Configuration warning: Verify settings in console')
+                progress.addLog('Configuration failed — aborting deployment')
+                throw configError
             }
 
             progress.setFinishStep('Complete')

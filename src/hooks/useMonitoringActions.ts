@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Alert } from 'react-native'
 import { DeploymentService } from '../services/DeploymentService'
 import { createBleSession } from '../ble/session/createBleSession'
@@ -40,6 +40,14 @@ export function useMonitoringActions({
     const [isMonitoring, setIsMonitoring] = useState(false)
     const [isStoppingMonitoring, setIsStoppingMonitoring] = useState(false)
     const bleSession = bleDevice ? createBleSession(bleDevice) : null
+    const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    // Clean up timer on unmount to prevent state updates on dead components
+    useEffect(() => {
+        return () => {
+            if (navigationTimerRef.current) clearTimeout(navigationTimerRef.current)
+        }
+    }, [])
 
     const handleMonitorDisconnect = useCallback(async () => {
         Alert.alert(
@@ -140,7 +148,8 @@ export function useMonitoringActions({
             progress.setFinishStep('Complete')
             progress.setFinishProgress(1.0)
 
-            setTimeout(() => {
+            navigationTimerRef.current = setTimeout(() => {
+                navigationTimerRef.current = null
                 progress.setIsFinishing(false)
                 setIsMonitoring(false)
                 isNavigatingAway.current = true
