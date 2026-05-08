@@ -45,7 +45,7 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     [OP_PARAMETER.NUM_COLD_BOOTS]: 0,
     [OP_PARAMETER.NUM_WARM_BOOTS]: 0,
     [OP_PARAMETER.NUM_PICTURES]: 1,
-    [OP_PARAMETER.PICTURE_INTERVAL]: 1000,
+    [OP_PARAMETER.PICTURE_INTERVAL]: 500,
     [OP_PARAMETER.TIMELAPSE_INTERVAL]: 0,
     [OP_PARAMETER.INTERVAL_BEFORE_DPD]: 1000,
     [OP_PARAMETER.LED_BRIGHTNESS]: 5,
@@ -55,7 +55,7 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     [OP_PARAMETER.FLASH_LED]: 0,
     [OP_PARAMETER.MODEL_PROJECT]: 0,
     [OP_PARAMETER.MODEL_VERSION]: 0,
-    [OP_PARAMETER.MODEL_THRESHOLD]: 64,
+    [OP_PARAMETER.MODEL_THRESHOLD]: 18,
     [OP_PARAMETER.MD_SENSITIVITY]: 1,
     [OP_PARAMETER.TEST_MODE_BITS]: 0,
     [OP_PARAMETER.IMAGES_COUNT]: 0,
@@ -70,7 +70,7 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
  */
 export interface DeviceSettings {
     numPictures?: number              // Index 5 - Images per trigger (default: 1)
-    pictureInterval?: number           // Index 6 - Interval between images in ms (default: 1000)
+    pictureInterval?: number           // Index 6 - Interval between images in ms (default: 500)
     timelapseInterval?: number         // Index 7 - Timelapse interval in seconds, 0=disabled (default: 0)
     intervalBeforeDpd?: number         // Index 8 - Inactivity timeout in ms (default: 1000)
     ledBrightness?: number             // Index 9 - LED brightness 0-100%, 0=dim (default: 5)
