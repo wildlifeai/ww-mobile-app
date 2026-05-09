@@ -68,10 +68,11 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     const pendingFramesRef = useRef<FrameSnapshot[]>([])
 
     // Throttle live grid renders: at fast intervals (0.5s), the grid
-    // can't keep up with every frame. Only repaint at most every 200ms.
-    // (Reduced from 500ms because TextGrid is much lighter than 256 Views.)
+    // can't keep up with every frame. Only repaint at most every 100ms.
+    // (Reduced from 200ms because SkiaGrid renders directly to GPU
+    // without React reconciliation or bridge overhead.)
     const lastGridRenderRef = useRef<number>(0)
-    const GRID_RENDER_THROTTLE_MS = 200
+    const GRID_RENDER_THROTTLE_MS = 100
 
     // Previous grid bytes for diff check — skip render if unchanged.
     const prevGridBytesRef = useRef<Uint8Array>(new Uint8Array(32))

@@ -1,5 +1,5 @@
-import React, { useCallback, useState, useEffect, useMemo } from 'react'
-import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native'
+import React, { useCallback, useState, useEffect } from 'react'
+import { View, StyleSheet, ScrollView } from 'react-native'
 import { Card, SegmentedButtons, TextInput, ProgressBar, Banner, useTheme } from 'react-native-paper'
 
 import { WWText } from '../../../components/ui/WWText'
@@ -8,6 +8,7 @@ import { WWIcon } from '../../../components/ui/WWIcon'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useMotionDetectionStream, FrameSnapshot } from '../hooks/useMotionDetectionStream'
 import { log } from '../../../utils/logger'
+import { SkiaGrid, SkiaMiniGrid } from './SkiaGrid'
 
 const MIN_INTERVAL_SEC = 0.3
 const MAX_INTERVAL_SEC = 20
@@ -22,83 +23,6 @@ interface MotionDetectionSectionProps {
     bleDeviceConnected: boolean
     onShowHelp?: (title: string, content: string) => void
 }
-
-// ─── Block characters for text-based grid rendering ───
-const BLOCK_ON  = '██'   // Full block × 2 for square cells
-const BLOCK_OFF = '░░'   // Light shade × 2
-
-const MONO_FONT = Platform.OS === 'ios' ? 'Menlo' : 'monospace'
-
-/** Run-length encode a boolean row into segments to minimize Text nodes. */
-function encodeRow(row: boolean[]): { active: boolean; length: number }[] {
-    const segments: { active: boolean; length: number }[] = []
-    let current = row[0]
-    let len = 1
-    for (let c = 1; c < row.length; c++) {
-        if (row[c] === current) {
-            len++
-        } else {
-            segments.push({ active: current, length: len })
-            current = row[c]
-            len = 1
-        }
-    }
-    segments.push({ active: current, length: len })
-    return segments
-}
-
-/**
- * Text-based 16×16 grid renderer.
- *
- * Renders the entire grid as ONE <Text> node with run-length encoded
- * colored segments. Replaces 272 native Views (16 rows + 256 cells)
- * with ~30-48 lightweight Text spans.
- */
-const TextGrid = React.memo<{ grid: boolean[][]; fontSize?: number }>(({ grid, fontSize = 14 }) => {
-    const theme = useTheme()
-    const textStyle = useMemo(() => ({
-        fontFamily: MONO_FONT,
-        fontSize,
-        lineHeight: fontSize * 1.15,
-        letterSpacing: -1,
-    }), [fontSize])
-    const activeColor = useMemo(() => ({ color: '#4CAF50' }), [])
-    const inactiveColor = useMemo(() => ({ color: theme.colors.surfaceVariant }), [theme.colors.surfaceVariant])
-
-    return (
-        <Text style={textStyle}>
-            {grid.map((row, ri) => {
-                const segments = encodeRow(row)
-                return (
-                    <React.Fragment key={ri}>
-                        {segments.map((seg, si) => (
-                            <Text
-                                key={si}
-                                style={seg.active ? activeColor : inactiveColor}
-                            >
-                                {(seg.active ? BLOCK_ON : BLOCK_OFF).repeat(seg.length)}
-                            </Text>
-                        ))}
-                        {ri < 15 ? '\n' : ''}
-                    </React.Fragment>
-                )
-            })}
-        </Text>
-    )
-})
-
-/** Compact text-based mini-grid for the frame history thumbnails. */
-const MiniGrid = React.memo<{ grid: boolean[][] }>(({ grid }) => {
-    return (
-        <View style={miniStyles.gridBox}>
-            <TextGrid grid={grid} fontSize={5} />
-        </View>
-    )
-})
-
-const miniStyles = StyleSheet.create({
-    gridBox: { alignItems: 'center', borderRadius: 4, padding: 2, backgroundColor: '#00000010' },
-})
 
 export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
     bleDevice,
@@ -396,7 +320,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                 </WWText>
                             )}
                             <View style={styles.gridBox}>
-                                <TextGrid grid={mdGrid} />
+                                <SkiaGrid grid={mdGrid} />
                             </View>
                         </View>
 
@@ -450,7 +374,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                             isSelected ? null : snap.frameIndex
                                         )}
                                     >
-                                        <MiniGrid grid={snap.grid} />
+                                        <SkiaMiniGrid grid={snap.grid} />
                                         <WWText variant="labelSmall" style={styles.historyFrameLabel}>
                                             #{snap.frameIndex}
                                         </WWText>
@@ -475,7 +399,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                     Frame #{selectedSnapshot.frameIndex} — {selectedSnapshot.blockCount} motion blocks
                                 </WWText>
                                 <View style={styles.gridBox}>
-                                    <TextGrid grid={selectedSnapshot.grid} />
+                                    <SkiaGrid grid={selectedSnapshot.grid} />
                                 </View>
                             </View>
                         )}
