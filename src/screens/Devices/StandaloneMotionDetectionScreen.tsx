@@ -1,5 +1,5 @@
 import { useLayoutEffect, useCallback } from 'react'
-import { StyleSheet, Alert } from 'react-native'
+import { StyleSheet, Alert, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { Appbar } from 'react-native-paper'
@@ -53,12 +53,18 @@ export const StandaloneMotionDetectionScreen = () => {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-            <MotionDetectionSection
-                bleDevice={device}
-                isInitializing={false}
-                bleDeviceConnected={device.connected}
-                onShowHelp={handleShowHelp}
-            />
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
+                <MotionDetectionSection
+                    bleDevice={device}
+                    isInitializing={false}
+                    bleDeviceConnected={device.connected}
+                    onShowHelp={handleShowHelp}
+                />
+            </ScrollView>
         </SafeAreaView>
     )
 }
@@ -66,7 +72,10 @@ export const StandaloneMotionDetectionScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    scrollContent: {
         padding: 16,
+        paddingBottom: 32,
     },
     centerContainer: {
         flex: 1,

@@ -16,7 +16,7 @@ class RxRouter {
    * undrained text. Short enough to not feel like a delay, long enough
    * to allow MTU-fragmented chunks to reassemble.
    */
-  private static readonly FLUSH_DEBOUNCE_MS = 50;
+  private static readonly FLUSH_DEBOUNCE_MS = 15;
 
   public handleIncomingBytes(deviceId: string, data: number[] | Uint8Array) {
     const chunk = Buffer.from(data);

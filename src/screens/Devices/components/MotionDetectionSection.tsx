@@ -1,15 +1,20 @@
-import React, { useCallback, useState, useEffect } from 'react'
-import { View, StyleSheet } from 'react-native'
-import { Card, SegmentedButtons, useTheme } from 'react-native-paper'
+import React, { useCallback, useState, useEffect, useMemo } from 'react'
+import { View, StyleSheet, ScrollView } from 'react-native'
+import { Card, SegmentedButtons, TextInput, ProgressBar, Banner, useTheme } from 'react-native-paper'
 
 import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { createBleSession } from '../../../ble/session/createBleSession'
-import { commandRegistry } from '../../../ble/protocol/commandRegistry'
-import { useMotionDetectionStream } from '../hooks/useMotionDetectionStream'
-import { log, logError } from '../../../utils/logger'
+import { useMotionDetectionStream, FrameSnapshot } from '../hooks/useMotionDetectionStream'
+import { log } from '../../../utils/logger'
+
+const MIN_INTERVAL_SEC = 0.3
+const MAX_INTERVAL_SEC = 20
+const DEFAULT_INTERVAL_SEC = '1.0'
+const MIN_PHOTOS = 1
+const MAX_PHOTOS = 60
+const DEFAULT_PHOTOS = '20'
 
 interface MotionDetectionSectionProps {
     bleDevice: ExtendedPeripheral | undefined
@@ -18,6 +23,38 @@ interface MotionDetectionSectionProps {
     onShowHelp?: (title: string, content: string) => void
 }
 
+/** Compact 16×16 mini-grid for the frame history list. */
+const MiniGrid = React.memo<{ grid: boolean[][]; size?: number }>(({ grid, size = 8 }) => {
+    const theme = useTheme()
+    const cellStyles = useMemo(() => {
+        const base = { width: size, height: size, margin: 0.5, borderRadius: 1 }
+        return {
+            active: { ...base, backgroundColor: '#4CAF50' },
+            inactive: { ...base, backgroundColor: theme.colors.surfaceVariant },
+        }
+    }, [size, theme.colors.surfaceVariant])
+
+    return (
+        <View style={miniStyles.gridBox}>
+            {grid.map((row, ri) => (
+                <View key={`mr-${ri}`} style={miniStyles.gridRow}>
+                    {row.map((cell, ci) => (
+                        <View
+                            key={`mc-${ri}-${ci}`}
+                            style={cell ? cellStyles.active : cellStyles.inactive}
+                        />
+                    ))}
+                </View>
+            ))}
+        </View>
+    )
+})
+
+const miniStyles = StyleSheet.create({
+    gridBox: { alignItems: 'center', borderRadius: 4, padding: 2, backgroundColor: '#00000010' },
+    gridRow: { flexDirection: 'row' as const },
+})
+
 export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
     bleDevice,
     isInitializing,
@@ -25,111 +62,258 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
 }) => {
     const theme = useTheme()
     const [sensitivity, setSensitivity] = useState<string>('1')
-    const [isSetting, setIsSetting] = useState(false)
+    const [intervalText, setIntervalText] = useState(DEFAULT_INTERVAL_SEC)
+    const [intervalError, setIntervalError] = useState<string | undefined>(undefined)
+    const [photosText, setPhotosText] = useState(DEFAULT_PHOTOS)
+    const [photosError, setPhotosError] = useState<string | undefined>(undefined)
+    const [selectedFrame, setSelectedFrame] = useState<number | null>(null)
 
     const {
         mdGrid,
         isTesting,
         startTest,
-        stopTest,
         mdBlocksCount,
-        motionDetected
+        motionDetected,
+        frameCount,
+        frameHistory,
+        statusMessage,
+        errorMessage,
+        clearError,
     } = useMotionDetectionStream({ device: bleDevice })
 
-    const handleSensitivityChange = useCallback(async (val: string) => {
-        if (!bleDevice) return
+    // Sensitivity is only changed while test is stopped.
+    const handleSensitivityChange = useCallback((val: string) => {
         setSensitivity(val)
-        setIsSetting(true)
-        try {
-            const session = createBleSession(bleDevice)
-            await session.execute(() => commandRegistry.md(parseInt(val, 10)))
-            log(`[MotionDetection] Sensitivity set to ${val}`)
-        } catch (error) {
-            logError('[MotionDetection] Failed to set sensitivity', error)
-        } finally {
-            setIsSetting(false)
-        }
-    }, [bleDevice])
+    }, [])
 
+    // Validate and clamp interval input
+    const validateInterval = useCallback((text: string): number | null => {
+        const val = parseFloat(text)
+        if (isNaN(val)) {
+            setIntervalError('Enter a number')
+            return null
+        }
+        if (val < MIN_INTERVAL_SEC) {
+            setIntervalError(`Min ${MIN_INTERVAL_SEC}s`)
+            return null
+        }
+        if (val > MAX_INTERVAL_SEC) {
+            setIntervalError(`Max ${MAX_INTERVAL_SEC}s`)
+            return null
+        }
+        setIntervalError(undefined)
+        return val
+    }, [])
+
+    const handleIntervalChange = useCallback((text: string) => {
+        setIntervalText(text)
+        validateInterval(text)
+    }, [validateInterval])
+
+    // Validate photo count input
+    const validatePhotos = useCallback((text: string): number | null => {
+        const val = parseInt(text, 10)
+        if (isNaN(val)) {
+            setPhotosError('Enter a number')
+            return null
+        }
+        if (val < MIN_PHOTOS) {
+            setPhotosError(`Min ${MIN_PHOTOS}`)
+            return null
+        }
+        if (val > MAX_PHOTOS) {
+            setPhotosError(`Max ${MAX_PHOTOS}`)
+            return null
+        }
+        setPhotosError(undefined)
+        return val
+    }, [])
+
+    const handlePhotosChange = useCallback((text: string) => {
+        setPhotosText(text)
+        validatePhotos(text)
+    }, [validatePhotos])
+
+    // Compute total test duration for display
+    const totalDurationSec = (() => {
+        const interval = parseFloat(intervalText)
+        const photos = parseInt(photosText, 10)
+        if (isNaN(interval) || isNaN(photos)) return null
+        return Math.round(interval * photos)
+    })()
+
+    // Start the test with the currently selected sensitivity, interval and photo count
+    const handleStartTest = useCallback(() => {
+        const level = parseInt(sensitivity, 10)
+        const intervalSec = validateInterval(intervalText)
+        const photoCount = validatePhotos(photosText)
+        if (intervalSec === null || photoCount === null) return
+
+        const intervalMs = Math.round(intervalSec * 1000)
+        log(`[MotionDetectionSection] Starting test: sensitivity=${level}, interval=${intervalMs}ms, photos=${photoCount}`)
+        setSelectedFrame(null)
+        startTest(level, intervalMs, photoCount)
+    }, [sensitivity, intervalText, photosText, validateInterval, validatePhotos, startTest])
+
+    // Cleanup on unmount only — no auto-start
     useEffect(() => {
-        if (bleDeviceConnected && !isInitializing) {
-            log('[MotionDetectionSection] Auto-starting test on mount')
-            startTest()
-        }
         return () => {
-            log('[MotionDetectionSection] Stopping test on unmount')
-            stopTest()
+            log('[MotionDetectionSection] Unmounting')
         }
-    }, [bleDeviceConnected, isInitializing, startTest, stopTest])
+    }, [])
 
     const disabled = isInitializing || !bleDeviceConnected
+    const hasInputError = !!intervalError || !!photosError
+
+    // Pre-compute cell styles to avoid inline object allocation (256 cells × every render)
+    const gridCellStyles = useMemo(() => ({
+        active: [styles.gridCell, { backgroundColor: '#4CAF50' }],
+        inactive: [styles.gridCell, { backgroundColor: theme.colors.surfaceVariant }],
+    }), [theme.colors.surfaceVariant])
+
+    // The currently displayed detail frame (selected from history, or live grid)
+    const selectedSnapshot: FrameSnapshot | null =
+        selectedFrame !== null
+            ? frameHistory.find(f => f.frameIndex === selectedFrame) ?? null
+            : null
 
     return (
         <Card style={styles.card}>
             <Card.Content>
-                {/* Start / Stop buttons */}
-                <View style={styles.buttonsRow}>
-                    <View style={styles.buttonWrapper}>
+
+                {/* ───────── Controls: hidden during test ───────── */}
+                {!isTesting && (
+                    <>
+                        {/* Sensitivity level */}
+                        <WWText variant="bodyMedium" style={styles.label}>Sensitivity</WWText>
+                        <SegmentedButtons
+                            value={sensitivity}
+                            onValueChange={handleSensitivityChange}
+                            buttons={[
+                                { value: '1', label: 'Low', disabled },
+                                { value: '2', label: 'Med', disabled },
+                                { value: '3', label: 'High', disabled }
+                            ]}
+                            style={styles.segmented}
+                        />
+
+                        {/* Detection interval and photo count side by side */}
+                        <View style={styles.inputsRow}>
+                            <View style={styles.inputWrapper}>
+                                <WWText variant="bodyMedium" style={styles.label}>Interval</WWText>
+                                <TextInput
+                                    mode="outlined"
+                                    value={intervalText}
+                                    onChangeText={handleIntervalChange}
+                                    keyboardType="decimal-pad"
+                                    right={<TextInput.Affix text="sec" />}
+                                    disabled={disabled}
+                                    error={!!intervalError}
+                                    dense
+                                />
+                                {intervalError ? (
+                                    <WWText variant="bodySmall" style={styles.errorText}>
+                                        {intervalError}
+                                    </WWText>
+                                ) : (
+                                    <WWText variant="bodySmall" style={styles.hintText}>
+                                        {MIN_INTERVAL_SEC}s – {MAX_INTERVAL_SEC}s
+                                    </WWText>
+                                )}
+                            </View>
+
+                            <View style={styles.inputWrapper}>
+                                <WWText variant="bodyMedium" style={styles.label}>Photos</WWText>
+                                <TextInput
+                                    mode="outlined"
+                                    value={photosText}
+                                    onChangeText={handlePhotosChange}
+                                    keyboardType="number-pad"
+                                    right={<TextInput.Affix text="pics" />}
+                                    disabled={disabled}
+                                    error={!!photosError}
+                                    dense
+                                />
+                                {photosError ? (
+                                    <WWText variant="bodySmall" style={styles.errorText}>
+                                        {photosError}
+                                    </WWText>
+                                ) : (
+                                    <WWText variant="bodySmall" style={styles.hintText}>
+                                        {MIN_PHOTOS} – {MAX_PHOTOS}
+                                    </WWText>
+                                )}
+                            </View>
+                        </View>
+
+                        {/* Estimated duration */}
+                        {totalDurationSec !== null && !hasInputError && (
+                            <WWText variant="bodySmall" style={styles.durationText}>
+                                Estimated duration: ~{totalDurationSec}s
+                            </WWText>
+                        )}
+
+                        {/* Start button */}
                         <WWButton
                             mode="contained"
-                            onPress={startTest}
-                            disabled={disabled || isTesting}
+                            onPress={handleStartTest}
+                            disabled={disabled || hasInputError}
                             icon="play-circle-outline"
+                            style={styles.startButton}
                         >
                             Start Test
                         </WWButton>
-                    </View>
-
-                    <View style={styles.buttonWrapper}>
-                        <WWButton
-                            mode="outlined"
-                            onPress={stopTest}
-                            disabled={disabled || !isTesting}
-                            icon="stop-circle-outline"
-                        >
-                            Stop Test
-                        </WWButton>
-                    </View>
-                </View>
-
-                {/* Sensitivity level */}
-                <WWText variant="bodyMedium" style={styles.label}>Sensitivity</WWText>
-                <SegmentedButtons
-                    value={sensitivity}
-                    onValueChange={handleSensitivityChange}
-                    buttons={[
-                        { value: '1', label: 'Low', disabled: disabled || isSetting },
-                        { value: '2', label: 'Med', disabled: disabled || isSetting },
-                        { value: '3', label: 'High', disabled: disabled || isSetting }
-                    ]}
-                    style={styles.segmented}
-                />
-
-                {isTesting && (
-                    <WWText variant="bodySmall" style={styles.blocksText}>
-                        Motion in {mdBlocksCount} blocks
-                    </WWText>
+                    </>
                 )}
 
-                {/* Grid Visualizers */}
+                {/* ───────── Error banner ───────── */}
+                {!!errorMessage && !isTesting && (
+                    <Banner
+                        visible
+                        icon="alert-circle-outline"
+                        actions={[{
+                            label: 'Dismiss',
+                            onPress: clearError,
+                        }]}
+                        style={[styles.errorBanner, { backgroundColor: theme.colors.errorContainer }]}
+                    >
+                        {errorMessage}
+                    </Banner>
+                )}
+
+                {/* ───────── Live test view ───────── */}
                 {isTesting && (
-                    <View style={styles.dualGridContainer}>
-                        <View style={styles.gridWrapper}>
-                            <WWText variant="labelSmall" style={styles.gridLabel}>16x16 Grid</WWText>
-                            <View style={styles.gridContainer}>
+                    <>
+                        {/* Dynamic status progress */}
+                        <View style={styles.statusContainer}>
+                            <View style={styles.statusRow}>
+                                <WWIcon source="pulse" size={16} color={theme.colors.primary} />
+                                <WWText variant="bodySmall" style={[styles.statusText, { color: theme.colors.primary }]}>
+                                    {statusMessage || 'Initializing…'}
+                                </WWText>
+                            </View>
+                            <ProgressBar
+                                progress={frameCount / Math.max(parseInt(photosText, 10) || 1, 1)}
+                                color={theme.colors.primary}
+                                style={styles.progressBar}
+                            />
+                        </View>
+
+                        {/* Frame count + blocks info */}
+                        <WWText variant="bodySmall" style={styles.blocksText}>
+                            Frame {frameCount}/{photosText} · Motion in {mdBlocksCount} blocks
+                        </WWText>
+
+                        {/* Live Motion Grid */}
+                        <View style={styles.gridContainer}>
+                            <WWText variant="labelSmall" style={styles.gridLabel}>Live — Motion Detection Grid (16×16)</WWText>
+                            <View style={styles.gridBox}>
                                 {mdGrid.map((row, rowIndex) => (
-                                    <View key={`row-16-${rowIndex}`} style={styles.gridRow}>
+                                    <View key={`row-${rowIndex}`} style={styles.gridRow}>
                                         {row.map((cell, colIndex) => (
                                             <View
-                                                key={`cell-16-${rowIndex}-${colIndex}`}
-                                                style={[
-                                                    styles.gridCell,
-                                                    {
-                                                        backgroundColor: cell 
-                                                            ? theme.colors.primary 
-                                                            : theme.colors.surfaceVariant
-                                                    }
-                                                ]}
+                                                key={`cell-${rowIndex}-${colIndex}`}
+                                                style={cell ? gridCellStyles.active : gridCellStyles.inactive}
                                             />
                                         ))}
                                     </View>
@@ -137,55 +321,94 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                             </View>
                         </View>
 
-                        <View style={styles.gridWrapper}>
-                            <WWText variant="labelSmall" style={styles.gridLabel}>16x15 Grid</WWText>
-                            <View style={styles.gridContainer}>
-                                {Array.from({ length: 15 }).map((_, rowIndex) => (
-                                    <View key={`row-15-${rowIndex}`} style={styles.gridRow}>
-                                        {Array.from({ length: 16 }).map((__, colIndex) => {
-                                            const flatIndex = rowIndex * 16 + colIndex
-                                            const cell = mdGrid.flat()[flatIndex]
-                                            return (
-                                                <View
-                                                    key={`cell-15-${rowIndex}-${colIndex}`}
-                                                    style={[
-                                                        styles.gridCell,
-                                                        {
-                                                            backgroundColor: cell 
-                                                                ? theme.colors.tertiary
-                                                                : theme.colors.surfaceVariant
-                                                        }
-                                                    ]}
-                                                />
-                                            )
-                                        })}
-                                    </View>
-                                ))}
-                            </View>
+                        {/* Motion threshold indicator */}
+                        <View style={[
+                            styles.motionIndicator,
+                            motionDetected && styles.motionIndicatorActive
+                        ]}>
+                            <WWIcon
+                                source={motionDetected ? 'motion-sensor' : 'motion-sensor-off'}
+                                size={18}
+                                color={motionDetected ? '#4CAF50' : theme.colors.onSurfaceVariant}
+                            />
+                            <WWText
+                                variant="bodySmall"
+                                style={[
+                                    styles.motionText,
+                                    motionDetected && styles.motionTextActive
+                                ]}
+                            >
+                                {motionDetected ? 'Motion threshold exceeded!' : 'No motion'}
+                            </WWText>
                         </View>
-                    </View>
+                    </>
                 )}
 
-                {/* Motion threshold indicator */}
-                {isTesting && (
-                    <View style={[
-                        styles.motionIndicator,
-                        motionDetected && styles.motionIndicatorActive
-                    ]}>
-                        <WWIcon 
-                            source={motionDetected ? 'motion-sensor' : 'motion-sensor-off'} 
-                            size={18}
-                            color={motionDetected ? '#4CAF50' : theme.colors.onSurfaceVariant}
-                        />
-                        <WWText 
-                            variant="bodySmall" 
-                            style={[
-                                styles.motionText,
-                                motionDetected && styles.motionTextActive
-                            ]}
-                        >
-                            {motionDetected ? 'Motion threshold exceeded!' : 'No motion'}
+                {/* ───────── Frame history (after test or while testing) ───────── */}
+                {frameHistory.length > 0 && (
+                    <View style={styles.historySection}>
+                        <WWText variant="labelMedium" style={styles.historyTitle}>
+                            Frame History ({frameHistory.length})
                         </WWText>
+
+                        {/* Horizontal scrollable mini-grid thumbnails */}
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.historyScroll}
+                        >
+                            {frameHistory.map((snap) => {
+                                const isSelected = selectedFrame === snap.frameIndex
+                                const hasMotion = snap.blockCount > 0
+                                return (
+                                    <View
+                                        key={`hist-${snap.frameIndex}`}
+                                        style={[
+                                            styles.historyItem,
+                                            isSelected && { borderColor: theme.colors.primary, borderWidth: 2 },
+                                        ]}
+                                        onTouchEnd={() => setSelectedFrame(
+                                            isSelected ? null : snap.frameIndex
+                                        )}
+                                    >
+                                        <MiniGrid grid={snap.grid} size={6} />
+                                        <WWText variant="labelSmall" style={styles.historyFrameLabel}>
+                                            #{snap.frameIndex}
+                                        </WWText>
+                                        <WWText
+                                            variant="labelSmall"
+                                            style={[
+                                                styles.historyBlockLabel,
+                                                hasMotion && { color: '#4CAF50' },
+                                            ]}
+                                        >
+                                            {snap.blockCount} blk
+                                        </WWText>
+                                    </View>
+                                )
+                            })}
+                        </ScrollView>
+
+                        {/* Selected frame detail view */}
+                        {selectedSnapshot && (
+                            <View style={styles.detailSection}>
+                                <WWText variant="labelSmall" style={styles.gridLabel}>
+                                    Frame #{selectedSnapshot.frameIndex} — {selectedSnapshot.blockCount} motion blocks
+                                </WWText>
+                                <View style={styles.gridBox}>
+                                    {selectedSnapshot.grid.map((row, ri) => (
+                                        <View key={`detail-r-${ri}`} style={styles.gridRow}>
+                                            {row.map((cell, ci) => (
+                                                <View
+                                                    key={`detail-c-${ri}-${ci}`}
+                                                    style={cell ? gridCellStyles.active : gridCellStyles.inactive}
+                                                />
+                                            ))}
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        )}
                     </View>
                 )}
             </Card.Content>
@@ -197,54 +420,101 @@ const styles = StyleSheet.create({
     card: {
         marginBottom: 16,
     },
-    buttonsRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 20,
-    },
-    buttonWrapper: {
-        flex: 1,
-    },
     label: {
         marginBottom: 8,
     },
     segmented: {
         marginBottom: 16,
     },
+    inputsRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 4,
+    },
+    inputWrapper: {
+        flex: 1,
+    },
+    errorText: {
+        color: '#D32F2F',
+        marginTop: 2,
+        marginBottom: 8,
+    },
+    hintText: {
+        opacity: 0.5,
+        marginTop: 2,
+        marginBottom: 8,
+    },
+    durationText: {
+        opacity: 0.6,
+        fontStyle: 'italic',
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    startButton: {
+        marginBottom: 12,
+    },
+    statusContainer: {
+        marginBottom: 12,
+    },
+    statusRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 6,
+    },
+    statusText: {
+        flex: 1,
+        fontStyle: 'italic',
+    },
+    progressBar: {
+        borderRadius: 4,
+        height: 4,
+    },
+    errorBanner: {
+        marginBottom: 12,
+        borderRadius: 8,
+    },
+    infoBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        marginBottom: 12,
+        gap: 8,
+    },
+    infoText: {
+        flex: 1,
+    },
     blocksText: {
         fontStyle: 'italic',
         marginBottom: 12,
         textAlign: 'center',
     },
-    dualGridContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'flex-start',
-        paddingVertical: 8,
-        backgroundColor: '#00000010',
-        borderRadius: 8,
-    },
-    gridWrapper: {
-        alignItems: 'center',
-    },
-    gridLabel: {
-        marginBottom: 4,
-        opacity: 0.7,
-        fontWeight: '700',
-    },
     gridContainer: {
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: 4,
+        marginBottom: 8,
+    },
+    gridLabel: {
+        marginBottom: 6,
+        opacity: 0.7,
+        fontWeight: '700',
+        textAlign: 'center',
+    },
+    gridBox: {
+        borderRadius: 8,
+        padding: 8,
+        alignItems: 'center',
+        backgroundColor: '#00000010',
     },
     gridRow: {
         flexDirection: 'row',
     },
     gridCell: {
-        width: 10,
-        height: 10,
-        margin: 0.5,
-        borderRadius: 1,
+        width: 18,
+        height: 18,
+        margin: 1,
+        borderRadius: 2,
     },
     motionIndicator: {
         flexDirection: 'row',
@@ -265,6 +535,38 @@ const styles = StyleSheet.create({
     motionTextActive: {
         color: '#4CAF50',
         fontWeight: '600',
-    }
+    },
+    // ── Frame history ──
+    historySection: {
+        marginTop: 16,
+    },
+    historyTitle: {
+        marginBottom: 8,
+        fontWeight: '700',
+    },
+    historyScroll: {
+        paddingVertical: 4,
+        gap: 8,
+    },
+    historyItem: {
+        alignItems: 'center',
+        borderRadius: 8,
+        padding: 4,
+        backgroundColor: '#00000008',
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    historyFrameLabel: {
+        marginTop: 2,
+        opacity: 0.6,
+        fontSize: 10,
+    },
+    historyBlockLabel: {
+        fontSize: 10,
+        opacity: 0.5,
+    },
+    detailSection: {
+        marginTop: 12,
+        alignItems: 'center',
+    },
 })
-
