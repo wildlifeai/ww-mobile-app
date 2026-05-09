@@ -276,18 +276,34 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             // Clear any stale commands from a previous test so the queue
             // is immediately ready for new commands.
             bleTransport.clearAll()
-            setStatusMessage('Waking device…')
+            setStatusMessage('Reading device parameters…')
             setErrorMessage('')
 
             const session = createBleSession(device)
+
+            // 0. Query current OP values so we only send setops for changes.
+            //    getops returns all OPs as a string[] indexed by OP number.
+            //    This single I2C round-trip (with DPD wake) replaces up to 4
+            //    individual setop round-trips when values are already correct.
+            let currentOps: string[] | null = null
+            try {
+                currentOps = await session.execute(() => commandRegistry.getops())
+                log(`[MotionDetectionStream] Current OPs: ${currentOps?.join(' ')}`)
+            } catch (e) {
+                log(`[MotionDetectionStream] getops failed, will set all params: ${e}`)
+            }
+
+            const currentTestBits = currentOps ? parseInt(currentOps[OP_PARAMETER.TEST_MODE_BITS] ?? '0', 10) : -1
+            const currentFlashLed = currentOps ? parseInt(currentOps[OP_PARAMETER.FLASH_LED] ?? '0', 10) : -1
+            const currentBrightness = currentOps ? parseInt(currentOps[OP_PARAMETER.LED_BRIGHTNESS] ?? '0', 10) : -1
 
             // 1. Set MD sensitivity on the HM0360 via DIRECT BLE write.
             //    This bypasses the command queue because the md command has no
             //    reliable response — the nRF52 Wake(MD) firmware bug prevents
             //    the "MD sensitivity set to N" confirmation from arriving.
-            //    We wait 1.1s after sending to let the nRF52 fully process the
+            //    We wait 3.3s after sending to let the nRF52 fully process the
             //    command before sending the next one.
-            //    TODO: Remove the 1.1s delay once firmware sends a proper md response.
+            //    TODO: Remove the 3.3s delay once firmware sends a proper md response.
             if (sensitivityLevel !== undefined && sensitivityLevel > 0) {
                 setStatusMessage(`Setting sensitivity to ${sensitivityLevel}…`)
                 log(`[MotionDetectionStream] Setting MD sensitivity to ${sensitivityLevel} (direct BLE write)`)
@@ -296,26 +312,30 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 await new Promise(r => setTimeout(r, 3300))
             }
 
-            // 2. Enable TEST_BIT_SKIP_FILE_CREATION via direct BLE write.
-            //    This MUST NOT wait for a response before sending capture.
-            //    The round-trip latency of waiting for "Set OpParam 18 = 8"
-            //    (Himax I2C → nRF52 BLE → app JS → BLE write → nRF52 I2C)
-            //    is sometimes >1000ms, which races against the firmware's
-            //    inactivity timer. If the timer fires first, the IMAGE task
-            //    enters Save State and silently drops the capture event.
-            //    Sending setop as fire-and-forget with a 500ms gap ensures
-            //    both setop and capture arrive at the nRF52 within its
-            //    internal I2C processing window.
+            // 2. Enable TEST_BIT_SKIP_FILE_CREATION — only if not already set.
             setStatusMessage('Configuring test mode…')
-            log('[MotionDetectionStream] Setting test mode bits (direct BLE write)')
-            await writeToDevice(device, `AI setop ${OP_PARAMETER.TEST_MODE_BITS} ${TEST_BIT_SKIP_FILE_CREATION}`)
-                .catch(() => log('[MotionDetectionStream] setop write failed (non-critical)'))
+            if (currentTestBits !== TEST_BIT_SKIP_FILE_CREATION) {
+                log('[MotionDetectionStream] Setting test mode bits (direct BLE write)')
+                await writeToDevice(device, `AI setop ${OP_PARAMETER.TEST_MODE_BITS} ${TEST_BIT_SKIP_FILE_CREATION}`)
+                    .catch(() => log('[MotionDetectionStream] setop write failed (non-critical)'))
+            } else {
+                log('[MotionDetectionStream] Test mode bits already set — skipping')
+            }
 
-            // 2b. Set flash parameters if configured.
+            // 2b. Set flash parameters only if they differ from current values.
             if (flashLed > 0) {
-                log(`[MotionDetectionStream] Setting flash LED=${flashLed}, brightness=${ledBrightness}`)
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashLed }))
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: ledBrightness }))
+                if (currentFlashLed !== flashLed) {
+                    log(`[MotionDetectionStream] Setting flash LED=${flashLed} (was ${currentFlashLed})`)
+                    await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashLed }))
+                } else {
+                    log(`[MotionDetectionStream] Flash LED already ${flashLed} — skipping`)
+                }
+                if (currentBrightness !== ledBrightness) {
+                    log(`[MotionDetectionStream] Setting LED brightness=${ledBrightness} (was ${currentBrightness})`)
+                    await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: ledBrightness }))
+                } else {
+                    log(`[MotionDetectionStream] LED brightness already ${ledBrightness} — skipping`)
+                }
             }
 
             // Check before firing the capture
