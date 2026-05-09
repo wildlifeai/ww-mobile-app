@@ -269,22 +269,10 @@ export const useBleListeners = () => {
 	}, [dispatch, pingsPause])
 
 	useEffect(() => {
-		const discoverDeviceFunc = getBleManagerEmitter().addListener(
-			"BleManagerDiscoverPeripheral",
-			discoveredPeripheralEvent,
-		)
-		const scanStoppedEventFunc = getBleManagerEmitter().addListener(
-			"BleManagerStopScan",
-			scanStoppedEvent,
-		)
-		const deviceDisconnectedEventFunc = getBleManagerEmitter().addListener(
-			"BleManagerDisconnectPeripheral",
-			deviceDisconnectedEvent,
-		)
-		const readlineParserFunc = getBleManagerEmitter().addListener(
-			"BleManagerDidUpdateValueForCharacteristic",
-			readlineParser,
-		)
+		const discoverDeviceFunc = getBleManagerEmitter().addListener("BleManagerDiscoverPeripheral", discoveredPeripheralEvent)
+		const scanStoppedEventFunc = getBleManagerEmitter().addListener("BleManagerStopScan", scanStoppedEvent)
+		const deviceDisconnectedEventFunc = getBleManagerEmitter().addListener("BleManagerDisconnectPeripheral", deviceDisconnectedEvent)
+		const readlineParserFunc = getBleManagerEmitter().addListener("BleManagerDidUpdateValueForCharacteristic", readlineParser)
 
 		return () => {
 			discoverDeviceFunc.remove()

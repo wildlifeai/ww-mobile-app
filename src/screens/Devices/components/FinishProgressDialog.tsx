@@ -31,11 +31,13 @@ export const FinishProgressDialog: React.FC<FinishProgressDialogProps> = ({
 
     // Auto-scroll logs to bottom
     React.useEffect(() => {
+        let timeoutId: NodeJS.Timeout
         if (logs.length > 0) {
-            setTimeout(() => {
+            timeoutId = setTimeout(() => {
                 scrollViewRef.current?.scrollToEnd({ animated: true })
             }, 100)
         }
+        return () => clearTimeout(timeoutId)
     }, [logs.length])
 
 // Using an ID generator memo to avoid index as key warning while keeping keys stable for append-only logs

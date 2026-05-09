@@ -37,6 +37,37 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
     const [photosError, setPhotosError] = useState<string | undefined>(undefined)
     const [selectedFrame, setSelectedFrame] = useState<number | null>(null)
 
+    // Extracted FlatList renderItem to avoid re-creation on every render
+    const renderHistoryItem = useCallback(({ item: snap }: { item: FrameSnapshot }) => {
+        const isSelected = selectedFrame === snap.frameIndex
+        const hasMotion = snap.blockCount > 0
+        return (
+            <View
+                style={[
+                    styles.historyItem,
+                    isSelected && { borderColor: theme.colors.primary, borderWidth: 2 },
+                ]}
+                onTouchEnd={() => setSelectedFrame(
+                    isSelected ? null : snap.frameIndex
+                )}
+            >
+                <MiniGrid gridString={snap.gridString} />
+                <WWText variant="labelSmall" style={styles.historyFrameLabel}>
+                    #{snap.frameIndex}
+                </WWText>
+                <WWText
+                    variant="labelSmall"
+                    style={[
+                        styles.historyBlockLabel,
+                        hasMotion && { color: '#4CAF50' },
+                    ]}
+                >
+                    {snap.blockCount} blk
+                </WWText>
+            </View>
+        )
+    }, [selectedFrame, theme.colors.primary])
+
     // Flash parameters
     const [flashLed, setFlashLed] = useState<string>('0')
     const [ledBrightness, setLedBrightness] = useState<string>('5')
@@ -268,7 +299,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                             icon="play-circle-outline"
                             style={styles.startButton}
                         >
-                            Start Test
+                            <WWText>Start Test</WWText>
                         </WWButton>
                     </>
                 )}
@@ -313,7 +344,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
 
                         {/* Live Motion Grid */}
                         <View style={styles.gridContainer}>
-                            <WWText variant="labelSmall" style={styles.gridLabel}>Live — Motion Detection Grid (16×16)</WWText>
+                            <WWText variant="labelSmall" style={styles.gridLabel}>Live: Motion Detection Grid (16×16)</WWText>
                             {parseFloat(intervalText) < 1.0 && (
                                 <WWText variant="labelSmall" style={styles.throttleNote}>
                                     ⚡ Live grid refreshes at 5fps for stability
@@ -365,42 +396,14 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                             maxToRenderPerBatch={5}
                             removeClippedSubviews
                             keyExtractor={(item) => `hist-${item.frameIndex}`}
-                            renderItem={({ item: snap }) => {
-                                const isSelected = selectedFrame === snap.frameIndex
-                                const hasMotion = snap.blockCount > 0
-                                return (
-                                    <View
-                                        style={[
-                                            styles.historyItem,
-                                            isSelected && { borderColor: theme.colors.primary, borderWidth: 2 },
-                                        ]}
-                                        onTouchEnd={() => setSelectedFrame(
-                                            isSelected ? null : snap.frameIndex
-                                        )}
-                                    >
-                                        <MiniGrid gridString={snap.gridString} />
-                                        <WWText variant="labelSmall" style={styles.historyFrameLabel}>
-                                            #{snap.frameIndex}
-                                        </WWText>
-                                        <WWText
-                                            variant="labelSmall"
-                                            style={[
-                                                styles.historyBlockLabel,
-                                                hasMotion && { color: '#4CAF50' },
-                                            ]}
-                                        >
-                                            {snap.blockCount} blk
-                                        </WWText>
-                                    </View>
-                                )
-                            }}
+                            renderItem={renderHistoryItem}
                         />
 
                         {/* Selected frame detail view */}
                         {selectedSnapshot && (
                             <View style={styles.detailSection}>
                                 <WWText variant="labelSmall" style={styles.gridLabel}>
-                                    Frame #{selectedSnapshot.frameIndex} — {selectedSnapshot.blockCount} motion blocks
+                                    Frame #{selectedSnapshot.frameIndex}: {selectedSnapshot.blockCount} motion blocks
                                 </WWText>
                                 <View style={styles.gridBox}>
                                     <MotionGrid gridString={selectedSnapshot.gridString} />

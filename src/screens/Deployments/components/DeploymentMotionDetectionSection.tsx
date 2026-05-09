@@ -175,7 +175,7 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
                             <View style={[styles.noticeBanner, { backgroundColor: theme.colors.secondaryContainer }]}>
                                 <WWIcon source="information-outline" size={16} color={theme.colors.onSecondaryContainer} />
                                 <WWText variant="bodySmall" style={[styles.noticeText, { color: theme.colors.onSecondaryContainer }]}>
-                                    Test in progress — the device controls the capture sequence and cannot be stopped from the app.
+                                Test in progress. The device controls the capture sequence and cannot be stopped from the app.
                                 </WWText>
                             </View>
 
@@ -216,7 +216,7 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
                         <View style={[styles.noticeBanner, { backgroundColor: '#4CAF5018' }]}>
                             <WWIcon source="check-circle-outline" size={16} color="#4CAF50" />
                             <WWText variant="bodySmall" style={[styles.noticeText, { color: '#4CAF50' }]}>
-                                Test completed — {frameCount} frames captured in {formatTime(elapsedSec)}.
+                                Test completed: {frameCount} frames captured in {formatTime(elapsedSec)}.
                             </WWText>
                         </View>
                     )}
