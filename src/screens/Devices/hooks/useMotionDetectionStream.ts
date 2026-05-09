@@ -7,7 +7,6 @@ import { bleEventBus, BleEvent } from '../../../ble/protocol/eventBus'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { bleTransport } from '../../../ble/protocol/bleTransportController'
 import { createBleSession } from '../../../ble/session/createBleSession'
-import { writeToDevice } from '../../../ble/transport'
 import { OP_PARAMETER } from '../../../hooks/useDeviceSettings'
 
 /** Maximum number of frames per test run. */
@@ -244,15 +243,16 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
 
     /**
      * Start the motion detection test.
-     * 
-     * Sends a single `AI capture 999 <intervalMs>` command to the firmware.
-     * The device captures 999 frames at the specified interval, streaming
-     * MD grid data for every frame over BLE. No JPEG files are saved
+     *
+     * Configures device OPs (test bits, flash, brightness) via session,
+     * sets MD sensitivity, then fires a capture command.
+     * The device captures `captureCount` frames at `intervalMs` intervals,
+     * streaming MD grid data over BLE. No JPEG files are saved
      * (TEST_BIT_SKIP_FILE_CREATION is enabled).
-     * 
+     *
      * @param sensitivityLevel - MD sensitivity (1=Low, 2=Med, 3=High)
      * @param intervalMs - Interval between frames in milliseconds (default 1000)
-     * @param captureCount - Number of frames to capture
+     * @param captureCount - Number of frames to capture (capped at MAX_CAPTURE_COUNT)
      * @param flashLed - Flash LED type (0=Off, 1=Visible, 2=IR)
      * @param ledBrightness - LED brightness (0-100%)
      */
@@ -327,28 +327,22 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             // Check before firing md
             if (!activeRef.current) {
                 log('[MotionDetectionStream] Start aborted — stop was called during setup.')
-                writeToDevice(device, `AI setop ${OP_PARAMETER.TEST_MODE_BITS} 0`).catch(() => {})
+                session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: 0 })).catch(() => {})
                 return
             }
 
-            // 2. Set MD sensitivity via DIRECT BLE write.
-            //    The md command bypasses the session because the nRF52
-            //    Wake(MD) firmware bug makes the response unreliable.
-            //    After md, the firmware goes: Wake(MD) → Sleep → DPD → reboot.
-            //    We wait 3.3s for this full cycle to complete.
+            // 2. Set MD sensitivity via session.
             if (sensitivityLevel !== undefined && sensitivityLevel > 0) {
                 setStatusMessage(`Setting sensitivity to ${sensitivityLevel}…`)
-                log(`[MotionDetectionStream] Setting MD sensitivity to ${sensitivityLevel} (direct BLE write)`)
-                await writeToDevice(device, `AI md ${sensitivityLevel}`)
-                    .catch(() => log('[MotionDetectionStream] md write failed (non-critical)'))
-                await new Promise(r => setTimeout(r, 3300))
+                log(`[MotionDetectionStream] Setting MD sensitivity to ${sensitivityLevel}`)
+                await session.execute(() => commandRegistry.md(sensitivityLevel))
+                    .catch(() => log('[MotionDetectionStream] md command failed (non-critical)'))
             }
 
             // 3. Fire the capture command with retry logic.
-            //    The device may be in DPD after the md-triggered reboot.
-            //    The capture command must wake it and be acknowledged with
-            //    "About to capture N images..." — if not received within 10s,
-            //    retry up to 3 more times.
+            //    After setops + md, the device may enter DPD (1000ms inactivity).
+            //    The capture command wakes it; we wait for 'About to capture'
+            //    confirmation. If not received within 10s, retry up to 3 more times.
             const MAX_CAPTURE_ATTEMPTS = 4
             let captureConfirmed = false
 

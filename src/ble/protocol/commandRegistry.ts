@@ -405,12 +405,10 @@ export const commandRegistry = {
   ),
 
   // -- AI Advanced Commands --
-  // NOTE: The md command response "MD sensitivity set to N" is often NOT forwarded
-  // to BLE due to a firmware race condition: setting the HM0360 sensitivity triggers
-  // an immediate Wake(MD) event that interrupts the nRF52 AI state machine while
-  // it's still in PROCESSING state, preventing the response from being sent.
-  // The firmware DOES set the sensitivity — the confirmation just doesn't arrive.
-  // We set maxRetries: 0 to avoid a wasted DPD wake cycle on retry.
+  // The md command sets the HM0360 motion detection sensitivity.
+  // Response: "MD sensitivity set to N". We keep maxRetries: 0 because
+  // the sensitivity is persisted to CONFIG.TXT regardless of whether
+  // the response arrives over BLE.
   md: createSingleLineCommand<boolean>(
     'md',
     (level: number) => `AI md ${level}`,
