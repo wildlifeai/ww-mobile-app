@@ -67,6 +67,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     // This avoids O(N²) array spreads and prevents N re-renders of the MiniGrid list.
     const pendingFramesRef = useRef<FrameSnapshot[]>([])
 
+    // Original INTERVAL_BEFORE_DPD value before test extension.
+    // Restored to this value when the test completes naturally.
+    const originalDpdRef = useRef<number | null>(null)
+
     // Throttle live grid renders: at fast intervals (0.5s), the grid
     // can't keep up with every frame. Only repaint at most every 100ms.
     // (Reduced from 200ms because SkiaGrid renders directly to GPU
@@ -110,6 +114,15 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 })
                 bleTransport.clearAll()
                 log('[MotionDetectionStream] Command queue cleared — ready for next test.')
+
+                // Restore INTERVAL_BEFORE_DPD if we extended it for this test
+                if (originalDpdRef.current !== null && device) {
+                    const restoreVal = originalDpdRef.current
+                    originalDpdRef.current = null
+                    log(`[MotionDetectionStream] Restoring DPD timeout to ${restoreVal}ms`)
+                    writeToDevice(device, `AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} ${restoreVal}`)
+                        .catch(() => log('[MotionDetectionStream] DPD restore failed (non-critical)'))
+                }
             }
 
             // Detect firmware errors that prevent capture
@@ -297,6 +310,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             const currentTestBits = currentOps ? parseInt(currentOps[OP_PARAMETER.TEST_MODE_BITS] ?? '0', 10) : -1
             const currentFlashLed = currentOps ? parseInt(currentOps[OP_PARAMETER.FLASH_LED] ?? '0', 10) : -1
             const currentBrightness = currentOps ? parseInt(currentOps[OP_PARAMETER.LED_BRIGHTNESS] ?? '0', 10) : -1
+            const currentDpd = currentOps ? parseInt(currentOps[OP_PARAMETER.INTERVAL_BEFORE_DPD] ?? '1000', 10) : 1000
 
             // 1. Set MD sensitivity on the HM0360 via DIRECT BLE write.
             //    This bypasses the command queue because the md command has no
@@ -337,6 +351,23 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 } else {
                     log(`[MotionDetectionStream] LED brightness already ${ledBrightness} — skipping`)
                 }
+            }
+
+            // 2c. Extend INTERVAL_BEFORE_DPD if capture interval exceeds it.
+            //     The firmware enters Deep Power Down after DPD timeout of inactivity.
+            //     With an 8s capture interval and 1s DPD, the Himax powers down after
+            //     frame 1 — aborting the entire test. We extend DPD to interval + 2s
+            //     margin so the firmware stays awake between frames.
+            const requiredDpd = intervalMs + 2000
+            if (requiredDpd > currentDpd) {
+                log(`[MotionDetectionStream] Extending DPD timeout: ${currentDpd}ms → ${requiredDpd}ms (interval=${intervalMs}ms)`)
+                setStatusMessage('Extending sleep timeout…')
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: requiredDpd }))
+                // Store original DPD value so we can restore it on completion
+                originalDpdRef.current = currentDpd
+            } else {
+                log(`[MotionDetectionStream] DPD timeout ${currentDpd}ms already covers interval ${intervalMs}ms`)
+                originalDpdRef.current = null
             }
 
             // Check before firing the capture

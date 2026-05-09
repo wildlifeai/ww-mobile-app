@@ -43,11 +43,15 @@ export const useEngineerConnect = () => {
     const beginScan = useCallback(async () => {
         hasNavigatedRef.current = false
         isConnectingRef.current = false
-        setDialogState('scanning')
         setConnectingDevice(null)
         dispatch(setEngineerConsoleActive(true))
-        // Flush stale BLE state before scanning
+        // Flush stale BLE state BEFORE enabling the scan loop.
+        // On Android, removePeripheral() inside flushBleCache blocks the
+        // BLE scanner for 10-60s. If we set dialogState='scanning' first,
+        // the scan loop starts while the cache is still being flushed,
+        // causing the first scan burst to find nothing.
         await flushBleCache()
+        setDialogState('scanning')
     }, [dispatch, flushBleCache])
 
     // Auto-connect when device appears during scanning
