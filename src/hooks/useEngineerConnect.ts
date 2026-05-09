@@ -5,6 +5,7 @@ import { useBleActions } from '../providers/BleEngineProvider'
 import { useAppSelector, useAppDispatch } from '../redux'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { setEngineerConsoleActive } from '../redux/slices/scanningSlice'
+import { useScanLoop } from './useScanLoop'
 import { log, logError } from '../utils/logger'
 
 export type EngineerConnectState = 'idle' | 'scanning' | 'no_devices' | 'connecting' | 'select'
@@ -12,7 +13,7 @@ export type EngineerConnectState = 'idle' | 'scanning' | 'no_devices' | 'connect
 export const useEngineerConnect = () => {
     const navigation = useNavigation<any>()
     const dispatch = useAppDispatch()
-    const { startScan, stopScan, connectDevice } = useBleActions()
+    const { stopScan, connectDevice } = useBleActions()
     const devices = useAppSelector((state) => state.devices)
 
     const [dialogState, setDialogState] = useState<EngineerConnectState>('idle')
@@ -33,29 +34,21 @@ export const useEngineerConnect = () => {
             .filter((device) => !device.signalLost)
     }, [devices])
 
+    // ── Shared scan loop ──
+    const { flushBleCache } = useScanLoop({
+        active: dialogState === 'scanning' && !isConnectingRef.current,
+    })
+
     // Start the continuous scan flow
-    const beginScan = useCallback(() => {
+    const beginScan = useCallback(async () => {
         hasNavigatedRef.current = false
         isConnectingRef.current = false
         setDialogState('scanning')
         setConnectingDevice(null)
         dispatch(setEngineerConsoleActive(true))
-        // Start a short 3-second scan burst. The effect below will restart it if needed.
-        startScan(3)
-    }, [startScan, dispatch])
-
-    // Scan loop — keep restarting the scan in 3s bursts while in 'scanning' state
-    // startScan() already calls stopScan() internally, so no need to gate on isScanning.
-    const scanCommandLockRef = useRef(false)
-    useEffect(() => {
-        if (dialogState === 'scanning' && !isConnectingRef.current && !scanCommandLockRef.current) {
-            scanCommandLockRef.current = true
-            startScan(3)
-            setTimeout(() => {
-                scanCommandLockRef.current = false
-            }, 500)
-        }
-    }, [dialogState, startScan])
+        // Flush stale BLE state before scanning
+        await flushBleCache()
+    }, [dispatch, flushBleCache])
 
     // Auto-connect when device appears during scanning
     useEffect(() => {
@@ -96,7 +89,6 @@ export const useEngineerConnect = () => {
                 isConnectingRef.current = false
                 setDialogState('scanning')
                 setConnectingDevice(null)
-                startScan(3)
             }
         } catch (error) {
             logError('[EngineerConnect] Connection error:', error)
@@ -104,9 +96,8 @@ export const useEngineerConnect = () => {
             isConnectingRef.current = false
             setDialogState('scanning')
             setConnectingDevice(null)
-            startScan(3)
         }
-    }, [connectDevice, navigation, dispatch, startScan])
+    }, [connectDevice, navigation, dispatch])
 
     // Reset state when dialog is dismissed / user cancels
     const reset = useCallback(() => {

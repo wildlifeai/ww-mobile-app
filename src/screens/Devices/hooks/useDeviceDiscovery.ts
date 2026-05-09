@@ -1,13 +1,12 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { Alert, Platform } from 'react-native'
+import { Alert } from 'react-native'
 import { useIsFocused, useNavigation, useRoute, RouteProp } from '@react-navigation/native'
-import BleManager from 'react-native-ble-manager'
 
 import { useBleActions } from '../../../providers/BleEngineProvider'
 
 import { useDevicePreDeploymentChecks } from '../../../hooks/useDevicePreDeploymentChecks'
-import { useAppSelector, useAppDispatch } from '../../../redux'
-import { ExtendedPeripheral, clearDiscoveredDevices } from '../../../redux/slices/devicesSlice'
+import { useAppSelector } from '../../../redux'
+import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { DeviceService } from '../../../services/DeviceService'
 import { selectCurrentOrganisation } from '../../../redux/slices/authSlice'
 import { DeploymentService } from '../../../services/DeploymentService'
@@ -15,11 +14,12 @@ import ProjectService from '../../../services/ProjectService'
 import { RootStackParamList } from '../../../navigation/types'
 import { useBleInitialization } from '../../../hooks/useBleInitialization'
 import { getSupabaseClient } from '../../../services/supabase'
-import { log, logError, logWarn } from '../../../utils/logger'
-import { sleep, isOurDevice } from '../../../utils/helpers'
+import { log, logError } from '../../../utils/logger'
+import { sleep } from '../../../utils/helpers'
 import { ScannerRoutingState } from '../components/ScannerRoutingDialog'
 import { InitPayload } from '../../../navigation/types'
 import { useAutoConnectStateMachine } from './useAutoConnectStateMachine'
+import { useScanLoop } from '../../../hooks/useScanLoop'
 
 
 type DeviceDiscoveryScreenRouteProp = RouteProp<RootStackParamList, 'DeviceDiscovery'>
@@ -35,14 +35,14 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const navigation = useNavigation()
     const route = useRoute<DeviceDiscoveryScreenRouteProp>()
 
-    const { isBleConnecting, startScan, stopScan, connectDevice, disconnectDevice } = useBleActions()
+    const { isBleConnecting, stopScan, connectDevice, disconnectDevice } = useBleActions()
     const { runChecks: runPreDeploymentChecks } = useDevicePreDeploymentChecks()
     const { initialize: runBleStandardInit } = useBleInitialization()
     const devices = useAppSelector((state) => state.devices)
-    const { isScanning, isEngineerConsoleActive } = useAppSelector((state) => state.scanning)
+    const { isEngineerConsoleActive } = useAppSelector((state) => state.scanning)
     const currentOrganisation = useAppSelector(selectCurrentOrganisation)
     const user = useAppSelector((state) => state.authentication.user)
-    const dispatch = useAppDispatch()
+
 
     const mode = route.params?.mode || 'auto'
 
@@ -84,48 +84,51 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     }, [])
     const [routingIsProcessing] = useState(false)
 
-    // We use a ref so the effect doesn't constantly re-run and interrupt scans
-    const isReadyToScanRef = useRef(!isBleConnecting && !isScanning && !processing && !connectingDevice)
-    isReadyToScanRef.current = !isBleConnecting && !isScanning && !processing && !connectingDevice
+    // We use a ref so effects can read the latest values without re-running
+    const isReadyToScanRef = useRef(!isBleConnecting && !processing && !connectingDevice)
+    isReadyToScanRef.current = !isBleConnecting && !processing && !connectingDevice
 
     const isFocused = useIsFocused()
-    const scanCommandLockRef = useRef(false)
+
+    // True when screen is visible AND scan session is active
+    const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
+    const scanLoopActive = isActuallyFocused
+        && isReadyToScanRef.current
+        && scanSessionActiveRef.current
+        && !isEngineerConsoleActive
+
+    // ── Shared scan loop ──
+    const { isScanning, flushBleCache } = useScanLoop({ active: scanLoopActive })
 
     // Auto-connect state machine — declared early because startScanSession and handleDeviceSelect use it
     const autoConnect = useAutoConnectStateMachine()
 
     // Start or restart a 60-second scan session
     const startScanSession = useCallback(async () => {
-        // Fix B: Clear stale Redux devices from prior session
-        dispatch(clearDiscoveredDevices())
         autoConnect.resetAll()
 
-        // Fix C: Flush Android native BLE cache of non-connected peripherals
-        if (Platform.OS === 'android') {
-            try {
-                const cached = await BleManager.getDiscoveredPeripherals()
-                for (const p of cached) {
-                    if (p.name && isOurDevice(p.name) && !devices[p.id]?.connected) {
-                        await BleManager.removePeripheral(p.id)
-                    }
-                }
-            } catch (e) {
-                logWarn('[Scanner] Failed to flush BLE cache:', e)
-            }
-        }
+        // Flush stale Redux devices and native BLE cache
+        await flushBleCache()
 
         setScanSessionActive(true)
         setScanSecondsRemaining(60)
         setScanSessionExpired(false)
         scanSessionActiveRef.current = true
         log('[Scanner] Scan session started (60s)')
-    }, [dispatch, autoConnect, devices])
+    }, [autoConnect, flushBleCache])
 
-    // Countdown timer — ticks every second while session is active and focused
+    // Countdown timer — stops (not pauses) when screen loses focus
     useEffect(() => {
-        const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
-
-        if (!scanSessionActive || !isActuallyFocused || processing) return
+        if (!scanSessionActive || !isActuallyFocused || processing) {
+            // If the session was active and we lost focus, STOP the session
+            if (scanSessionActive && !isActuallyFocused) {
+                setScanSessionActive(false)
+                scanSessionActiveRef.current = false
+                stopScan()
+                log('[Scanner] Scan session stopped — screen lost focus')
+            }
+            return
+        }
 
         const interval = setInterval(() => {
             setScanSecondsRemaining(prev => {
@@ -144,34 +147,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         }, 1000)
 
         return () => clearInterval(interval)
-    }, [scanSessionActive, isFocused, isDrawerOpen, isActiveTab, processing, stopScan])
-
-    // Session-gated scan loop — only scans when session is active
-    useEffect(() => {
-        isReadyToScanRef.current = !isBleConnecting && !isScanning && !processing && !connectingDevice
-
-        const isReadyForNewScan = !isBleConnecting && !processing && !connectingDevice
-        const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
-
-        if (isActuallyFocused && isReadyForNewScan && scanSessionActiveRef.current) {
-            if (!isScanning && !scanCommandLockRef.current) {
-                scanCommandLockRef.current = true
-                startScan(3)
-                setTimeout(() => {
-                    scanCommandLockRef.current = false
-                }, 500)
-            }
-        } else if ((!isActuallyFocused || !scanSessionActiveRef.current) && isScanning && !scanCommandLockRef.current && !isEngineerConsoleActive) {
-            scanCommandLockRef.current = true
-            stopScan().then(() => {
-                setTimeout(() => {
-                    scanCommandLockRef.current = false
-                }, 500)
-            }).catch(() => {
-                scanCommandLockRef.current = false
-            })
-        }
-    }, [isFocused, isDrawerOpen, isActiveTab, isScanning, isBleConnecting, processing, connectingDevice, startScan, stopScan, scanSessionActive, isEngineerConsoleActive])
+    }, [scanSessionActive, isActuallyFocused, processing, stopScan])
 
     const handleScan = useCallback(() => {
         startScanSession()
@@ -453,12 +429,12 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     useEffect(() => {
         // Treat an open drawer the same as not being focused (pause background operations)
         // Also ensure that if we are a tab, we are the active tab
-        const isActuallyFocused = isFocused && !isDrawerOpen && isActiveTab
+        const isFocusedForAutoConnect = isFocused && !isDrawerOpen && isActiveTab
 
         // Prevent auto-connect if we're not focused, processing a connection, ANY device is currently connecting,
         // OR the Engineer Console is actively scanning for a device,
         // OR no scan session is active (user hasn't pressed Search yet)
-        if (isActuallyFocused && !isAnyDeviceConnecting && !isEngineerConsoleActive && scanSessionActiveRef.current && devicesToDisplay.length >= 1) {
+        if (isFocusedForAutoConnect && !isAnyDeviceConnecting && !isEngineerConsoleActive && scanSessionActiveRef.current && devicesToDisplay.length >= 1) {
             const deviceToConnect = devicesToDisplay.find(d =>
                 !d.signalLost && !d.connected && !d.loading && !processing && autoConnect.canAutoConnect(d.id)
             )

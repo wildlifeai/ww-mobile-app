@@ -19,6 +19,7 @@ import { ImageReassembler } from "../utils/ImageReassembler"
 import { imageReassemblerEmitter, readlineParserEmitter } from "../ble/emitters"
 import { rxRouter } from "../ble/protocol/rxRouter"
 import { bleEventBus, BleEvent } from "../ble/protocol/eventBus"
+import { markPeripheralRemoved } from "./useScanLoop"
 
 // Lazy-load the emitter to avoid accessing NativeModules during import
 let _bleManagerEmitter: NativeEventEmitter | null = null
@@ -47,9 +48,17 @@ export type UpdateValueEventType = {
 */
 export const useBleListeners = () => {
 	const devices = useAppSelector((state) => state.devices)
+	const isEngineerConsoleActive = useAppSelector((state) => state.scanning.isEngineerConsoleActive)
 	const { pingsPause } = useBleActions()
 
 	const dispatch = useAppDispatch()
+
+	// Ref so the scanStoppedEvent callback can read the latest value
+	// without needing it as a dependency (which would re-register all listeners).
+	const isEngineerConsoleActiveRef = useRef(isEngineerConsoleActive)
+	useEffect(() => {
+		isEngineerConsoleActiveRef.current = isEngineerConsoleActive
+	}, [isEngineerConsoleActive])
 	
     // Create a persistent instance of ImageReassembler for this session
     const reassemblerRef = useRef<ImageReassembler | null>(null)
@@ -197,6 +206,9 @@ export const useBleListeners = () => {
 			/** Clear the device out on Android systems and wait for GATT cleanup */
 			if (Platform.OS === "android") {
 				await guard(() => BleManager.removePeripheral(data.peripheral))
+				// Mark as already removed so flushBleCache skips the redundant
+				// removePeripheral call that blocks Android's BLE scanner.
+				markPeripheralRemoved(data.peripheral)
 			}
 
 			dispatch(deviceDisconnect({ id: data.peripheral }))
@@ -216,22 +228,27 @@ export const useBleListeners = () => {
 			return p.name && isOurDevice(p.name)
 		})
 
+		// During Engineer Console scanning, skip the notFoundAnymore cleanup.
+		// getDiscoveredPeripherals() returns stale data when removePeripheral
+		// was called on a previous disconnect, causing a signalLost flip-flop
+		// that blocks auto-connect for ~20 seconds.
 		const notFoundAnymore: Peripheral[] = []
-
-		Object.keys(devicesRef.current).forEach((key) => {
-			const peripheral = devicesRef.current[key]
-			if (
-				!filteredPeripherals.find(
-					(filteredPeripheral) => filteredPeripheral.id === peripheral.id,
-				)
-			) {
-				if (peripheral.connected) {
-					log(`Disconnecting device ${peripheral.id} after scan stopped.`)
-					// disconnectDevice(peripheral) // USER REQUEST: Prevent auto-disconnect
+		if (!isEngineerConsoleActiveRef.current) {
+			Object.keys(devicesRef.current).forEach((key) => {
+				const peripheral = devicesRef.current[key]
+				if (
+					!filteredPeripherals.find(
+						(filteredPeripheral) => filteredPeripheral.id === peripheral.id,
+					)
+				) {
+					if (peripheral.connected) {
+						log(`Disconnecting device ${peripheral.id} after scan stopped.`)
+						// disconnectDevice(peripheral) // USER REQUEST: Prevent auto-disconnect
+					}
+					notFoundAnymore.push(peripheral)
 				}
-				notFoundAnymore.push(peripheral)
-			}
-		})
+			})
+		}
 
 		dispatch(
 			deviceSignalChanged({
