@@ -1,6 +1,6 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useState, useEffect, useRef } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { Card, Button, Text, useTheme } from 'react-native-paper'
+import { Card, Button, Text, ProgressBar, useTheme } from 'react-native-paper'
 
 import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
@@ -9,6 +9,10 @@ import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useMotionDetectionStream } from '../../Devices/hooks/useMotionDetectionStream'
 import { MotionGrid } from '../../Devices/components/MotionGrid'
 import { logError } from '../../../utils/logger'
+
+/** Default capture settings for deployment MD test */
+const CAPTURE_COUNT = 20
+const CAPTURE_INTERVAL_MS = 1000
 
 interface DeploymentMotionDetectionSectionProps {
     device?: ExtendedPeripheral
@@ -30,20 +34,46 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
     const {
         mdGrid,
         isTesting,
+        testFinished,
         startTest,
-        stopTest,
         mdBlocksCount,
-        motionDetected
+        motionDetected,
+        frameCount,
+        statusMessage,
     } = useMotionDetectionStream({ device })
 
+    // Elapsed time counter — ticks every second while testing
+    const [elapsedSec, setElapsedSec] = useState(0)
+    const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+    useEffect(() => {
+        if (isTesting) {
+            setElapsedSec(0)
+            timerRef.current = setInterval(() => setElapsedSec(s => s + 1), 1000)
+        } else {
+            if (timerRef.current) clearInterval(timerRef.current)
+            timerRef.current = null
+        }
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current)
+        }
+    }, [isTesting])
+
+    // Estimated total duration (capture count × interval + setup overhead)
+    const estimatedTotalSec = Math.ceil(
+        (CAPTURE_COUNT * CAPTURE_INTERVAL_MS) / 1000 + 5 // 5s setup overhead
+    )
+
     const handleStartTest = useCallback(async () => {
-        // Use activity_detection_sensitivity_id and provide a default
         if (!device || !project?.activity_detection_sensitivity_id) return
-        
+
         setIsPreparing(true)
         try {
-            // startTest now handles sensitivity, interval, and capture count internally
-            await startTest(project.activity_detection_sensitivity_id ?? 3, 1000, 20)
+            await startTest(
+                project.activity_detection_sensitivity_id ?? 3,
+                CAPTURE_INTERVAL_MS,
+                CAPTURE_COUNT,
+            )
         } catch (error) {
             logError('[DeploymentMD] Failed to start motion detection test', error)
         } finally {
@@ -52,74 +82,146 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
     }, [device, project, startTest])
 
     const renderHelp = useCallback((props: any) => (
-        <Button 
-            {...props} 
-            icon="help-circle-outline" 
-            onPress={() => onShowHelp('Motion Detection Test', 'Start the test to see the 16x16 motion grid live. Motion blocks will light up if the camera detects movement using your project\'s sensitivity settings.')}
+        <Button
+            {...props}
+            icon="help-circle-outline"
+            onPress={() => onShowHelp(
+                'Motion Detection Test',
+                `Starts a ${CAPTURE_COUNT}-frame motion detection test using your project's sensitivity settings.\n\n` +
+                `Once started, the test runs for approximately ${estimatedTotalSec} seconds and cannot be stopped early — ` +
+                'the firmware controls the capture sequence internally.\n\n' +
+                'The 16×16 grid shows which zones detected movement between frames.'
+            )}
         >
             <Text>Help</Text>
         </Button>
-    ), [onShowHelp])
+    ), [onShowHelp, estimatedTotalSec])
 
-    // Use capture_method_id
-    if (!project || project.capture_method_id !== 1) { // Changed to capture_method_id
-        return null // Only render for Activity Detection projects
+    // Only render for Activity Detection projects
+    if (!project || project.capture_method_id !== 1) {
+        return null
     }
 
-    const disabled = !device || isPreparing
+    const disabled = !device || isPreparing || isTesting
+    const progress = CAPTURE_COUNT > 0 ? frameCount / CAPTURE_COUNT : 0
+
+    /** Format seconds as m:ss */
+    const formatTime = (sec: number) => {
+        const m = Math.floor(sec / 60)
+        const s = sec % 60
+        return `${m}:${s.toString().padStart(2, '0')}`
+    }
 
     return (
         <View>
             <Card style={styles.card}>
-                    <Card.Title
-                        title="Motion Detection"
-                        right={renderHelp}
-                    />
-                    <Card.Content>
-                <WWButton 
-                    mode="outlined"
-                    onPress={isTesting ? stopTest : handleStartTest}
-                    disabled={disabled}
-                    loading={isPreparing}
-                >
-                    <Text>{isTesting ? 'Stop Test' : (isPreparing ? 'Preparing...' : 'Test Motion Detection')}</Text>
-                </WWButton>
+                <Card.Title
+                    title="Motion Detection"
+                    right={renderHelp}
+                />
+                <Card.Content>
+                    {/* Start button — disabled once test is running */}
+                    <WWButton
+                        mode="outlined"
+                        onPress={handleStartTest}
+                        disabled={disabled}
+                        loading={isPreparing}
+                    >
+                        <Text>
+                            {isPreparing
+                                ? 'Preparing…'
+                                : isTesting
+                                    ? 'Test Running…'
+                                    : testFinished
+                                        ? 'Run Again'
+                                        : 'Test Motion Detection'}
+                        </Text>
+                    </WWButton>
 
-                {/* 16x16 Grid Visualizer */}
-                {isTesting && (
-                    <View style={styles.gridContainer}>
-                        <WWText variant="bodySmall" style={styles.blocksText}>
-                            Motion in {mdBlocksCount} blocks
+                    {/* Duration info — shown before and during test */}
+                    {!isTesting && !testFinished && (
+                        <WWText variant="bodySmall" style={styles.durationHint}>
+                            ⏱ Test captures {CAPTURE_COUNT} frames (~{estimatedTotalSec}s).
+                            Once started, it cannot be stopped early.
                         </WWText>
-                        <MotionGrid gridString={mdGrid} />
-                    </View>
-                )}
+                    )}
 
-                {/* Motion threshold indicator */}
-                {isTesting && (
-                    <View style={[
-                        styles.motionIndicator,
-                        motionDetected && styles.motionIndicatorActive
-                    ]}>
-                        <WWIcon 
-                            source={motionDetected ? 'paw' : 'paw-off'} 
-                            size={18}
-                            color={motionDetected ? theme.colors.primary : theme.colors.onSurfaceVariant}
-                        />
-                        <WWText 
-                            variant="bodySmall" 
-                            style={[
-                                styles.motionText,
-                                motionDetected && styles.motionTextActive,
-                                motionDetected && { color: theme.colors.primary }
-                            ]}
-                        >
-                            {motionDetected ? 'Motion threshold exceeded!' : 'No motion'}
-                        </WWText>
-                    </View>
-                )}
-            </Card.Content>
-        </Card>
+                    {/* ───────── Active test view ───────── */}
+                    {isTesting && (
+                        <>
+                            {/* Progress bar + timing log */}
+                            <View style={styles.progressSection}>
+                                <ProgressBar
+                                    progress={progress}
+                                    color={theme.colors.primary}
+                                    style={styles.progressBar}
+                                />
+                                <View style={styles.timingRow}>
+                                    <WWText variant="labelSmall" style={styles.timingText}>
+                                        Frame {frameCount}/{CAPTURE_COUNT}
+                                    </WWText>
+                                    <WWText variant="labelSmall" style={styles.timingText}>
+                                        {formatTime(elapsedSec)} / ~{formatTime(estimatedTotalSec)}
+                                    </WWText>
+                                </View>
+                                {statusMessage ? (
+                                    <WWText variant="bodySmall" style={styles.statusText}>
+                                        {statusMessage}
+                                    </WWText>
+                                ) : null}
+                            </View>
+
+                            {/* Cannot-stop notice */}
+                            <View style={[styles.noticeBanner, { backgroundColor: theme.colors.secondaryContainer }]}>
+                                <WWIcon source="information-outline" size={16} color={theme.colors.onSecondaryContainer} />
+                                <WWText variant="bodySmall" style={[styles.noticeText, { color: theme.colors.onSecondaryContainer }]}>
+                                    Test in progress — the device controls the capture sequence and cannot be stopped from the app.
+                                </WWText>
+                            </View>
+
+                            {/* 16x16 Grid */}
+                            <View style={styles.gridContainer}>
+                                <WWText variant="bodySmall" style={styles.blocksText}>
+                                    Motion in {mdBlocksCount} blocks
+                                </WWText>
+                                <MotionGrid gridString={mdGrid} />
+                            </View>
+
+                            {/* Motion threshold indicator */}
+                            <View style={[
+                                styles.motionIndicator,
+                                motionDetected && styles.motionIndicatorActive
+                            ]}>
+                                <WWIcon
+                                    source={motionDetected ? 'paw' : 'paw-off'}
+                                    size={18}
+                                    color={motionDetected ? theme.colors.primary : theme.colors.onSurfaceVariant}
+                                />
+                                <WWText
+                                    variant="bodySmall"
+                                    style={[
+                                        styles.motionText,
+                                        motionDetected && styles.motionTextActive,
+                                        motionDetected && { color: theme.colors.primary }
+                                    ]}
+                                >
+                                    {motionDetected ? 'Motion threshold exceeded!' : 'No motion'}
+                                </WWText>
+                            </View>
+                        </>
+                    )}
+
+                    {/* ───────── Test complete view ───────── */}
+                    {testFinished && !isTesting && (
+                        <View style={[styles.noticeBanner, { backgroundColor: '#4CAF5018' }]}>
+                            <WWIcon source="check-circle-outline" size={16} color="#4CAF50" />
+                            <WWText variant="bodySmall" style={[styles.noticeText, { color: '#4CAF50' }]}>
+                                Test completed — {frameCount} frames captured in {formatTime(elapsedSec)}.
+                            </WWText>
+                        </View>
+                    )}
+                </Card.Content>
+            </Card>
         </View>
     )
 }
@@ -128,9 +230,41 @@ const styles = StyleSheet.create({
     card: {
         marginBottom: 8
     },
-    sectionDescription: {
+    durationHint: {
         opacity: 0.6,
-        marginBottom: 16,
+        marginTop: 8,
+        textAlign: 'center',
+    },
+    progressSection: {
+        marginTop: 12,
+    },
+    progressBar: {
+        height: 4,
+        borderRadius: 2,
+    },
+    timingRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 4,
+    },
+    timingText: {
+        opacity: 0.6,
+    },
+    statusText: {
+        opacity: 0.5,
+        marginTop: 2,
+    },
+    noticeBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginTop: 12,
+        borderRadius: 8,
+        gap: 8,
+    },
+    noticeText: {
+        flex: 1,
     },
     blocksText: {
         opacity: 0.7,
@@ -138,13 +272,12 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     gridContainer: {
-        marginTop: 16,
+        marginTop: 12,
         alignItems: 'center',
         padding: 4,
         backgroundColor: '#00000008',
         borderRadius: 8,
     },
-
     motionIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
