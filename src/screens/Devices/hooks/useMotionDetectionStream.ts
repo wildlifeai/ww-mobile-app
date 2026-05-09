@@ -67,6 +67,11 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     // This avoids O(N²) array spreads and prevents N re-renders of the MiniGrid list.
     const pendingFramesRef = useRef<FrameSnapshot[]>([])
 
+    // Throttle live grid renders: at fast intervals (0.5s), the 256-cell grid
+    // can't keep up with every frame. Only repaint at most every 500ms.
+    const lastGridRenderRef = useRef<number>(0)
+    const GRID_RENDER_THROTTLE_MS = 500
+
     useEffect(() => {
         const messageListener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
             if (!device || event.deviceId !== device.id) return;
@@ -90,6 +95,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 pendingFramesRef.current = []
                 unstable_batchedUpdates(() => {
                     setFrameHistory(frames)
+                    // Show the last frame's grid in the live view
+                    if (frames.length > 0) {
+                        setMdGrid(frames[frames.length - 1].grid)
+                    }
                     setIsTesting(false)
                     setTestFinished(true)
                     setStatusMessage('')
@@ -151,10 +160,18 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                         // Batch the minimal live-feedback state updates into a single render
                         const idx = frameIndexRef.current
                         const blocks = blockCountRef.current
+                        const now = Date.now()
+                        const shouldRenderGrid = (now - lastGridRenderRef.current) >= GRID_RENDER_THROTTLE_MS
+
                         unstable_batchedUpdates(() => {
                             setFrameCount(idx)
                             setMdBlocksCount(blocks)
                             setStatusMessage(`Capturing \u2014 frame ${idx} received`)
+                            // Only repaint the 256-cell grid if enough time has passed
+                            if (shouldRenderGrid) {
+                                setMdGrid(grid)
+                                lastGridRenderRef.current = now
+                            }
                         })
                     }
                     expectingHexRef.current = false
@@ -169,7 +186,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
         }
     }, [device])
 
-    /** Parse 32 hex bytes into a 16×16 boolean grid. Updates state and returns the grid. */
+    /** Parse 32 hex bytes into a 16×16 boolean grid (pure — no setState). */
     const processHexGrid = (bytes: number[]): boolean[][] => {
         // Each row is 2 bytes: byte[0] covers columns 0-7, byte[1] covers columns 8-15.
         // Within each byte, bit N → column N (LSB = col 0, MSB = col 7 within the byte).
@@ -192,7 +209,6 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             }
             newGrid.push(rowBools)
         }
-        setMdGrid(newGrid)
         return newGrid
     }
 
