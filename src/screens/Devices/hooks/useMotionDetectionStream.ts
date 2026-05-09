@@ -71,7 +71,6 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
 
     // Throttle live grid renders: at fast intervals (0.5s), the grid
     // can't keep up with every frame. Only repaint at most every 100ms.
-    // (Reduced from 200ms because SkiaGrid renders directly to GPU
     // without React reconciliation or bridge overhead.)
     const lastGridRenderRef = useRef<number>(0)
     const GRID_RENDER_THROTTLE_MS = 100
@@ -285,22 +284,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
 
             const session = createBleSession(device)
 
-            // 1. Set MD sensitivity via DIRECT BLE write.
-            //    The md command bypasses the session because the nRF52
-            //    Wake(MD) firmware bug makes the response unreliable.
-            //    After md, the firmware goes: Wake(MD) → Sleep → DPD → reboot.
-            //    We wait 3.3s for this full cycle to complete.
-            if (sensitivityLevel !== undefined && sensitivityLevel > 0) {
-                setStatusMessage(`Setting sensitivity to ${sensitivityLevel}…`)
-                log(`[MotionDetectionStream] Setting MD sensitivity to ${sensitivityLevel} (direct BLE write)`)
-                await writeToDevice(device, `AI md ${sensitivityLevel}`)
-                    .catch(() => log('[MotionDetectionStream] md write failed (non-critical)'))
-                await new Promise(r => setTimeout(r, 3300))
-            }
-
-            // 2. Read current OPs after the md-triggered reboot.
-            //    The device is now in DPD. This getops call wakes it and
-            //    gives us the fresh OP state for diff-based setops below.
+            // 1. Read current OPs — device wakes from DPD for this call.
             setStatusMessage('Reading device parameters…')
             let currentOps: string[] | null = null
             try {
@@ -314,7 +298,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             const currentFlashLed = currentOps ? parseInt(currentOps[OP_PARAMETER.FLASH_LED] ?? '0', 10) : -1
             const currentBrightness = currentOps ? parseInt(currentOps[OP_PARAMETER.LED_BRIGHTNESS] ?? '0', 10) : -1
 
-            // 2a. Enable TEST_BIT_SKIP_FILE_CREATION — only if not already set.
+            // 1a. Enable TEST_BIT_SKIP_FILE_CREATION — only if not already set.
             setStatusMessage('Configuring test mode…')
             if (currentTestBits !== TEST_BIT_SKIP_FILE_CREATION) {
                 log('[MotionDetectionStream] Setting test mode bits via session')
@@ -323,38 +307,102 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 log('[MotionDetectionStream] Test mode bits already set — skipping')
             }
 
-            // 2b. Set LED brightness if flash is enabled and value differs.
+            // 1b. Set LED brightness if flash is enabled and value differs.
             if (flashLed > 0 && currentBrightness !== ledBrightness) {
                 log(`[MotionDetectionStream] Setting LED brightness=${ledBrightness} (was ${currentBrightness})`)
                 await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: ledBrightness }))
             }
 
-            // 2c. Set flash LED if enabled and value differs.
+            // 1c. Set flash LED if enabled and value differs.
             if (flashLed > 0 && currentFlashLed !== flashLed) {
                 log(`[MotionDetectionStream] Setting flash LED=${flashLed} (was ${currentFlashLed})`)
                 await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashLed }))
             }
 
-            // Check before firing the capture
+            // Check before firing md
             if (!activeRef.current) {
                 log('[MotionDetectionStream] Start aborted — stop was called during setup.')
                 writeToDevice(device, `AI setop ${OP_PARAMETER.TEST_MODE_BITS} 0`).catch(() => {})
                 return
             }
 
-            // 500ms gap: let the nRF52 finish processing the last setop.
-            await new Promise(r => setTimeout(r, 500))
+            // 2. Set MD sensitivity via DIRECT BLE write.
+            //    The md command bypasses the session because the nRF52
+            //    Wake(MD) firmware bug makes the response unreliable.
+            //    After md, the firmware goes: Wake(MD) → Sleep → DPD → reboot.
+            //    We wait 3.3s for this full cycle to complete.
+            if (sensitivityLevel !== undefined && sensitivityLevel > 0) {
+                setStatusMessage(`Setting sensitivity to ${sensitivityLevel}…`)
+                log(`[MotionDetectionStream] Setting MD sensitivity to ${sensitivityLevel} (direct BLE write)`)
+                await writeToDevice(device, `AI md ${sensitivityLevel}`)
+                    .catch(() => log('[MotionDetectionStream] md write failed (non-critical)'))
+                await new Promise(r => setTimeout(r, 3300))
+            }
 
-            // 3. Fire the capture command — don't await completion.
-            //    The firmware handles all timing internally.
-            //    Natural completion ("Captured N images") is detected via the
-            //    BLE event listener, which calls bleTransport.clearAll().
-            setStatusMessage(`Starting capture — ${count} frames @ ${intervalMs}ms…`)
-            session.execute(() => commandRegistry.capture(count, intervalMs))
-                .catch(e => {
-                    if (e?.message === 'Session Reset') return
-                    log(`[MotionDetectionStream] Capture command ended: ${e?.message || 'ok'}`)
+            // 3. Fire the capture command with retry logic.
+            //    The device may be in DPD after the md-triggered reboot.
+            //    The capture command must wake it and be acknowledged with
+            //    "About to capture N images..." — if not received within 10s,
+            //    retry up to 3 more times.
+            const MAX_CAPTURE_ATTEMPTS = 4
+            let captureConfirmed = false
+
+            for (let attempt = 1; attempt <= MAX_CAPTURE_ATTEMPTS; attempt++) {
+                if (!activeRef.current) break
+
+                setStatusMessage(`Starting capture (attempt ${attempt}/${MAX_CAPTURE_ATTEMPTS})…`)
+                log(`[MotionDetectionStream] Sending capture command (attempt ${attempt}/${MAX_CAPTURE_ATTEMPTS})`)
+
+                // Set up a one-shot listener for the "About to capture" confirmation
+                const confirmPromise = new Promise<void>(resolve => {
+                    const onConfirm = (event: BleEvent & { type: 'TEXT_LINE' }) => {
+                        if (!device || event.deviceId !== device.id) return
+                        if (/About to capture/i.test(event.line)) {
+                            bleEventBus.removeListener('textLine', onConfirm)
+                            resolve()
+                        }
+                    }
+                    bleEventBus.on('textLine', onConfirm)
+                    // Clean up listener on timeout
+                    setTimeout(() => bleEventBus.removeListener('textLine', onConfirm), 10000)
                 })
+
+                // Send capture — fire and forget (session handles the BLE write)
+                bleTransport.clearAll()
+                const captureSession = createBleSession(device)
+                captureSession.execute(() => commandRegistry.capture(count, intervalMs))
+                    .catch(e => {
+                        if (e?.message === 'Session Reset') return
+                        log(`[MotionDetectionStream] Capture command ended: ${e?.message || 'ok'}`)
+                    })
+
+                // Wait up to 10s for confirmation
+                const timeout = new Promise<'timeout'>(resolve =>
+                    setTimeout(() => resolve('timeout'), 10000)
+                )
+                const result = await Promise.race([
+                    confirmPromise.then(() => 'confirmed' as const),
+                    timeout,
+                ])
+
+                if (result === 'confirmed') {
+                    captureConfirmed = true
+                    log(`[MotionDetectionStream] Capture confirmed on attempt ${attempt}`)
+                    break
+                } else {
+                    log(`[MotionDetectionStream] Capture attempt ${attempt} timed out — no 'About to capture' received`)
+                    bleTransport.clearAll()
+                }
+            }
+
+            if (!captureConfirmed) {
+                log('[MotionDetectionStream] All capture attempts failed')
+                activeRef.current = false
+                setIsTesting(false)
+                setStatusMessage('')
+                setErrorMessage('Capture command not acknowledged by device after 4 attempts.')
+                return
+            }
 
             setStatusMessage(`Capturing — waiting for frame 1/${count}…`)
             log(`[MotionDetectionStream] Capture ${count} frames @ ${intervalMs}ms — firmware running.`)
