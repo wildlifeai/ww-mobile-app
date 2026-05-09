@@ -61,7 +61,6 @@
     "@react-navigation/native": "^6.1.12",
     "@react-navigation/native-stack": "^6.9.20",
     "@reduxjs/toolkit": "^2.5.0",
-    "@shopify/react-native-skia": "2.2.12",
     "@supabase/supabase-js": "^2.53.0",
     "@types/lodash.isempty": "^4.4.9",
     "@types/uuid": "^10.0.0",

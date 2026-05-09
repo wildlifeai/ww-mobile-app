@@ -8,7 +8,7 @@ import { WWIcon } from '../../../components/ui/WWIcon'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useMotionDetectionStream, FrameSnapshot } from '../hooks/useMotionDetectionStream'
 import { log } from '../../../utils/logger'
-import { SkiaGrid, SkiaMiniGrid } from './SkiaGrid'
+import { MotionGrid, MiniGrid } from './MotionGrid'
 
 const MIN_INTERVAL_SEC = 0.3
 const MAX_INTERVAL_SEC = 20
@@ -320,7 +320,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                 </WWText>
                             )}
                             <View style={styles.gridBox}>
-                                <SkiaGrid grid={mdGrid} />
+                                <MotionGrid grid={mdGrid} />
                             </View>
                         </View>
 
@@ -374,7 +374,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                             isSelected ? null : snap.frameIndex
                                         )}
                                     >
-                                        <SkiaMiniGrid grid={snap.grid} />
+                                        <MiniGrid grid={snap.grid} />
                                         <WWText variant="labelSmall" style={styles.historyFrameLabel}>
                                             #{snap.frameIndex}
                                         </WWText>
@@ -399,7 +399,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                     Frame #{selectedSnapshot.frameIndex} — {selectedSnapshot.blockCount} motion blocks
                                 </WWText>
                                 <View style={styles.gridBox}>
-                                    <SkiaGrid grid={selectedSnapshot.grid} />
+                                    <MotionGrid grid={selectedSnapshot.grid} />
                                 </View>
                             </View>
                         )}
