@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
 const healthStyles = StyleSheet.create({
     card: {
         width: '100%',
-        elevation: 0,
+        boxShadow: "none",
     },
     content: {
         gap: 8,
