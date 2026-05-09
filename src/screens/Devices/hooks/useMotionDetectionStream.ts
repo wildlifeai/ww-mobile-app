@@ -67,9 +67,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     // This avoids O(N²) array spreads and prevents N re-renders of the MiniGrid list.
     const pendingFramesRef = useRef<FrameSnapshot[]>([])
 
-    // Original INTERVAL_BEFORE_DPD value before test extension.
-    // Restored to this value when the test completes naturally.
-    const originalDpdRef = useRef<number | null>(null)
+
 
     // Throttle live grid renders: at fast intervals (0.5s), the grid
     // can't keep up with every frame. Only repaint at most every 100ms.
@@ -115,14 +113,6 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 bleTransport.clearAll()
                 log('[MotionDetectionStream] Command queue cleared — ready for next test.')
 
-                // Restore INTERVAL_BEFORE_DPD if we extended it for this test
-                if (originalDpdRef.current !== null && device) {
-                    const restoreVal = originalDpdRef.current
-                    originalDpdRef.current = null
-                    log(`[MotionDetectionStream] Restoring DPD timeout to ${restoreVal}ms`)
-                    writeToDevice(device, `AI setop ${OP_PARAMETER.INTERVAL_BEFORE_DPD} ${restoreVal}`)
-                        .catch(() => log('[MotionDetectionStream] DPD restore failed (non-critical)'))
-                }
             }
 
             // Detect firmware errors that prevent capture
@@ -295,10 +285,23 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
 
             const session = createBleSession(device)
 
-            // 0. Query current OP values so we only send setops for changes.
-            //    getops returns all OPs as a string[] indexed by OP number.
-            //    This single I2C round-trip (with DPD wake) replaces up to 4
-            //    individual setop round-trips when values are already correct.
+            // 1. Set MD sensitivity via DIRECT BLE write.
+            //    The md command bypasses the session because the nRF52
+            //    Wake(MD) firmware bug makes the response unreliable.
+            //    After md, the firmware goes: Wake(MD) → Sleep → DPD → reboot.
+            //    We wait 3.3s for this full cycle to complete.
+            if (sensitivityLevel !== undefined && sensitivityLevel > 0) {
+                setStatusMessage(`Setting sensitivity to ${sensitivityLevel}…`)
+                log(`[MotionDetectionStream] Setting MD sensitivity to ${sensitivityLevel} (direct BLE write)`)
+                await writeToDevice(device, `AI md ${sensitivityLevel}`)
+                    .catch(() => log('[MotionDetectionStream] md write failed (non-critical)'))
+                await new Promise(r => setTimeout(r, 3300))
+            }
+
+            // 2. Read current OPs after the md-triggered reboot.
+            //    The device is now in DPD. This getops call wakes it and
+            //    gives us the fresh OP state for diff-based setops below.
+            setStatusMessage('Reading device parameters…')
             let currentOps: string[] | null = null
             try {
                 currentOps = await session.execute(() => commandRegistry.getops())
@@ -310,45 +313,8 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             const currentTestBits = currentOps ? parseInt(currentOps[OP_PARAMETER.TEST_MODE_BITS] ?? '0', 10) : -1
             const currentFlashLed = currentOps ? parseInt(currentOps[OP_PARAMETER.FLASH_LED] ?? '0', 10) : -1
             const currentBrightness = currentOps ? parseInt(currentOps[OP_PARAMETER.LED_BRIGHTNESS] ?? '0', 10) : -1
-            const currentDpd = currentOps ? parseInt(currentOps[OP_PARAMETER.INTERVAL_BEFORE_DPD] ?? '1000', 10) : 1000
 
-            // 1. Set MD sensitivity on the HM0360 via DIRECT BLE write.
-            //    This bypasses the command queue because the md command has no
-            //    reliable response — the nRF52 Wake(MD) firmware bug prevents
-            //    the "MD sensitivity set to N" confirmation from arriving.
-            //    We wait 3.3s after sending to let the nRF52 fully process the
-            //    command before sending the next one.
-            //    TODO: Remove the 3.3s delay once firmware sends a proper md response.
-            if (sensitivityLevel !== undefined && sensitivityLevel > 0) {
-                setStatusMessage(`Setting sensitivity to ${sensitivityLevel}…`)
-                log(`[MotionDetectionStream] Setting MD sensitivity to ${sensitivityLevel} (direct BLE write)`)
-                await writeToDevice(device, `AI md ${sensitivityLevel}`)
-                    .catch(() => log('[MotionDetectionStream] md write failed (non-critical)'))
-                await new Promise(r => setTimeout(r, 3300))
-            }
-
-            // 2. Extend INTERVAL_BEFORE_DPD FIRST — this must be the first
-            //    session command after the md delay. After md, the firmware
-            //    enters DPD due to the Wake(MD) bug. The DPD extension wakes
-            //    the device and keeps it alive for subsequent setop + capture.
-            //    Without this, the 1000ms inactivity timer fires between
-            //    commands, putting the IMAGE task into "Save State" which
-            //    drops the capture event.
-            const requiredDpd = intervalMs + 2000
-            if (requiredDpd > currentDpd) {
-                log(`[MotionDetectionStream] Extending DPD timeout: ${currentDpd}ms → ${requiredDpd}ms (interval=${intervalMs}ms)`)
-                setStatusMessage('Extending sleep timeout…')
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: requiredDpd }))
-                originalDpdRef.current = currentDpd
-            } else {
-                log(`[MotionDetectionStream] DPD timeout ${currentDpd}ms already covers interval ${intervalMs}ms`)
-                originalDpdRef.current = null
-            }
-
-            // 2b. Enable TEST_BIT_SKIP_FILE_CREATION via session (not direct write).
-            //     Using session.execute ensures proper sequencing with the DPD
-            //     extension above — direct writes collide with session writes on
-            //     the nRF52, causing "Dropped BLE message - busy".
+            // 2a. Enable TEST_BIT_SKIP_FILE_CREATION — only if not already set.
             setStatusMessage('Configuring test mode…')
             if (currentTestBits !== TEST_BIT_SKIP_FILE_CREATION) {
                 log('[MotionDetectionStream] Setting test mode bits via session')
@@ -357,20 +323,16 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 log('[MotionDetectionStream] Test mode bits already set — skipping')
             }
 
-            // 2c. Set flash parameters only if they differ from current values.
-            if (flashLed > 0) {
-                if (currentFlashLed !== flashLed) {
-                    log(`[MotionDetectionStream] Setting flash LED=${flashLed} (was ${currentFlashLed})`)
-                    await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashLed }))
-                } else {
-                    log(`[MotionDetectionStream] Flash LED already ${flashLed} — skipping`)
-                }
-                if (currentBrightness !== ledBrightness) {
-                    log(`[MotionDetectionStream] Setting LED brightness=${ledBrightness} (was ${currentBrightness})`)
-                    await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: ledBrightness }))
-                } else {
-                    log(`[MotionDetectionStream] LED brightness already ${ledBrightness} — skipping`)
-                }
+            // 2b. Set LED brightness if flash is enabled and value differs.
+            if (flashLed > 0 && currentBrightness !== ledBrightness) {
+                log(`[MotionDetectionStream] Setting LED brightness=${ledBrightness} (was ${currentBrightness})`)
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: ledBrightness }))
+            }
+
+            // 2c. Set flash LED if enabled and value differs.
+            if (flashLed > 0 && currentFlashLed !== flashLed) {
+                log(`[MotionDetectionStream] Setting flash LED=${flashLed} (was ${currentFlashLed})`)
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashLed }))
             }
 
             // Check before firing the capture
@@ -380,18 +342,17 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 return
             }
 
-            // 500ms gap: let the nRF52 accept setop before sending capture.
-            // Without this, the nRF52 drops the capture ("Dropped BLE message - busy").
+            // 500ms gap: let the nRF52 finish processing the last setop.
             await new Promise(r => setTimeout(r, 500))
 
             // 3. Fire the capture command — don't await completion.
-            //    The firmware handles all timing internally with its hardware timer.
-            //    Natural completion ("Captured N images") is detected via the BLE
-            //    event listener, which calls bleTransport.clearAll() to free the queue.
+            //    The firmware handles all timing internally.
+            //    Natural completion ("Captured N images") is detected via the
+            //    BLE event listener, which calls bleTransport.clearAll().
             setStatusMessage(`Starting capture — ${count} frames @ ${intervalMs}ms…`)
             session.execute(() => commandRegistry.capture(count, intervalMs))
                 .catch(e => {
-                    if (e?.message === 'Session Reset') return // Expected on natural completion
+                    if (e?.message === 'Session Reset') return
                     log(`[MotionDetectionStream] Capture command ended: ${e?.message || 'ok'}`)
                 })
 
