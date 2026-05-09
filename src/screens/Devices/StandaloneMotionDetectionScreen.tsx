@@ -8,6 +8,7 @@ import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
 import { MotionDetectionSection } from './components/MotionDetectionSection'
+import { useBleHeartbeat } from '../../hooks/useBleHeartbeat'
 
 export const StandaloneMotionDetectionScreen = () => {
     const route = useRoute<any>()
@@ -16,6 +17,11 @@ export const StandaloneMotionDetectionScreen = () => {
 
     const deviceId = route.params?.deviceId
     const device = useAppSelector(state => state.devices[deviceId || ''])
+
+    // Keep BLE connection alive during idle configuration/review periods.
+    // The global heartbeat in ListenToBleEngineProvider may not have an
+    // up-to-date device reference when navigating from the Engineer Console.
+    useBleHeartbeat(device?.connected ? device : null)
 
     const handleBack = useCallback(() => {
         navigation.goBack()
