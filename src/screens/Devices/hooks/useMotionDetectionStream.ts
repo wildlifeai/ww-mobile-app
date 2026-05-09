@@ -67,10 +67,14 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     // This avoids O(N²) array spreads and prevents N re-renders of the MiniGrid list.
     const pendingFramesRef = useRef<FrameSnapshot[]>([])
 
-    // Throttle live grid renders: at fast intervals (0.5s), the 256-cell grid
-    // can't keep up with every frame. Only repaint at most every 500ms.
+    // Throttle live grid renders: at fast intervals (0.5s), the grid
+    // can't keep up with every frame. Only repaint at most every 200ms.
+    // (Reduced from 500ms because TextGrid is much lighter than 256 Views.)
     const lastGridRenderRef = useRef<number>(0)
-    const GRID_RENDER_THROTTLE_MS = 500
+    const GRID_RENDER_THROTTLE_MS = 200
+
+    // Previous grid bytes for diff check — skip render if unchanged.
+    const prevGridBytesRef = useRef<Uint8Array>(new Uint8Array(32))
 
     useEffect(() => {
         const messageListener = (event: BleEvent & { type: 'TEXT_LINE' }) => {
@@ -148,7 +152,25 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 if (hexBufferRef.current.length >= 32) {
                     // Skip frame 1 (no reference frame after wake → always 0 motion)
                     if (frameIndexRef.current > 0) {
-                        const grid = processHexGrid(hexBufferRef.current.slice(0, 32))
+                        const rawBytes = hexBufferRef.current.slice(0, 32)
+
+                        // Fast byte-level diff: skip grid processing if unchanged
+                        const newBytes = new Uint8Array(rawBytes)
+                        let gridChanged = false
+                        for (let i = 0; i < 32; i++) {
+                            if (newBytes[i] !== prevGridBytesRef.current[i]) {
+                                gridChanged = true
+                                break
+                            }
+                        }
+                        prevGridBytesRef.current = newBytes
+
+                        const grid = gridChanged
+                            ? processHexGrid(rawBytes)
+                            : pendingFramesRef.current.length > 0
+                                ? pendingFramesRef.current[pendingFramesRef.current.length - 1].grid
+                                : processHexGrid(rawBytes)
+
                         const snapshot: FrameSnapshot = {
                             frameIndex: frameIndexRef.current,
                             grid,
@@ -161,13 +183,13 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                         const idx = frameIndexRef.current
                         const blocks = blockCountRef.current
                         const now = Date.now()
-                        const shouldRenderGrid = (now - lastGridRenderRef.current) >= GRID_RENDER_THROTTLE_MS
+                        const shouldRenderGrid = gridChanged && (now - lastGridRenderRef.current) >= GRID_RENDER_THROTTLE_MS
 
                         unstable_batchedUpdates(() => {
                             setFrameCount(idx)
                             setMdBlocksCount(blocks)
                             setStatusMessage(`Capturing \u2014 frame ${idx} received`)
-                            // Only repaint the 256-cell grid if enough time has passed
+                            // Only repaint if data changed AND throttle allows
                             if (shouldRenderGrid) {
                                 setMdGrid(grid)
                                 lastGridRenderRef.current = now
@@ -222,11 +244,16 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
      * 
      * @param sensitivityLevel - MD sensitivity (1=Low, 2=Med, 3=High)
      * @param intervalMs - Interval between frames in milliseconds (default 1000)
+     * @param captureCount - Number of frames to capture
+     * @param flashLed - Flash LED type (0=Off, 1=Visible, 2=IR)
+     * @param ledBrightness - LED brightness (0-100%)
      */
     const startTest = useCallback(async (
         sensitivityLevel?: number,
         intervalMs: number = 1000,
-        captureCount: number = 20
+        captureCount: number = 20,
+        flashLed: number = 0,
+        ledBrightness: number = 5,
     ) => {
         if (!device) return
         const count = Math.min(Math.max(1, Math.round(captureCount)), MAX_CAPTURE_COUNT)
@@ -283,6 +310,13 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
             log('[MotionDetectionStream] Setting test mode bits (direct BLE write)')
             await writeToDevice(device, `AI setop ${OP_PARAMETER.TEST_MODE_BITS} ${TEST_BIT_SKIP_FILE_CREATION}`)
                 .catch(() => log('[MotionDetectionStream] setop write failed (non-critical)'))
+
+            // 2b. Set flash parameters if configured.
+            if (flashLed > 0) {
+                log(`[MotionDetectionStream] Setting flash LED=${flashLed}, brightness=${ledBrightness}`)
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashLed }))
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: ledBrightness }))
+            }
 
             // Check before firing the capture
             if (!activeRef.current) {

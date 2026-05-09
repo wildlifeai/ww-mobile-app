@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react'
-import { View, StyleSheet, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native'
 import { Card, SegmentedButtons, TextInput, ProgressBar, Banner, useTheme } from 'react-native-paper'
 
 import { WWText } from '../../../components/ui/WWText'
@@ -23,36 +23,81 @@ interface MotionDetectionSectionProps {
     onShowHelp?: (title: string, content: string) => void
 }
 
-/** Compact 16×16 mini-grid for the frame history list. */
-const MiniGrid = React.memo<{ grid: boolean[][]; size?: number }>(({ grid, size = 8 }) => {
-    const theme = useTheme()
-    const cellStyles = useMemo(() => {
-        const base = { width: size, height: size, margin: 0.5, borderRadius: 1 }
-        return {
-            active: { ...base, backgroundColor: '#4CAF50' },
-            inactive: { ...base, backgroundColor: theme.colors.surfaceVariant },
+// ─── Block characters for text-based grid rendering ───
+const BLOCK_ON  = '██'   // Full block × 2 for square cells
+const BLOCK_OFF = '░░'   // Light shade × 2
+
+const MONO_FONT = Platform.OS === 'ios' ? 'Menlo' : 'monospace'
+
+/** Run-length encode a boolean row into segments to minimize Text nodes. */
+function encodeRow(row: boolean[]): { active: boolean; length: number }[] {
+    const segments: { active: boolean; length: number }[] = []
+    let current = row[0]
+    let len = 1
+    for (let c = 1; c < row.length; c++) {
+        if (row[c] === current) {
+            len++
+        } else {
+            segments.push({ active: current, length: len })
+            current = row[c]
+            len = 1
         }
-    }, [size, theme.colors.surfaceVariant])
+    }
+    segments.push({ active: current, length: len })
+    return segments
+}
+
+/**
+ * Text-based 16×16 grid renderer.
+ *
+ * Renders the entire grid as ONE <Text> node with run-length encoded
+ * colored segments. Replaces 272 native Views (16 rows + 256 cells)
+ * with ~30-48 lightweight Text spans.
+ */
+const TextGrid = React.memo<{ grid: boolean[][]; fontSize?: number }>(({ grid, fontSize = 14 }) => {
+    const theme = useTheme()
+    const textStyle = useMemo(() => ({
+        fontFamily: MONO_FONT,
+        fontSize,
+        lineHeight: fontSize * 1.15,
+        letterSpacing: -1,
+    }), [fontSize])
+    const activeColor = useMemo(() => ({ color: '#4CAF50' }), [])
+    const inactiveColor = useMemo(() => ({ color: theme.colors.surfaceVariant }), [theme.colors.surfaceVariant])
 
     return (
+        <Text style={textStyle}>
+            {grid.map((row, ri) => {
+                const segments = encodeRow(row)
+                return (
+                    <React.Fragment key={ri}>
+                        {segments.map((seg, si) => (
+                            <Text
+                                key={si}
+                                style={seg.active ? activeColor : inactiveColor}
+                            >
+                                {(seg.active ? BLOCK_ON : BLOCK_OFF).repeat(seg.length)}
+                            </Text>
+                        ))}
+                        {ri < 15 ? '\n' : ''}
+                    </React.Fragment>
+                )
+            })}
+        </Text>
+    )
+})
+
+/** Compact text-based mini-grid for the frame history thumbnails. */
+const MiniGrid = React.memo<{ grid: boolean[][] }>(({ grid }) => {
+    return (
         <View style={miniStyles.gridBox}>
-            {grid.map((row, ri) => (
-                <View key={`mr-${ri}`} style={miniStyles.gridRow}>
-                    {row.map((cell, ci) => (
-                        <View
-                            key={`mc-${ri}-${ci}`}
-                            style={cell ? cellStyles.active : cellStyles.inactive}
-                        />
-                    ))}
-                </View>
-            ))}
+            <TextGrid grid={grid} fontSize={5} />
         </View>
     )
 })
 
 const miniStyles = StyleSheet.create({
     gridBox: { alignItems: 'center', borderRadius: 4, padding: 2, backgroundColor: '#00000010' },
-    gridRow: { flexDirection: 'row' as const },
 })
 
 export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
@@ -67,6 +112,10 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
     const [photosText, setPhotosText] = useState(DEFAULT_PHOTOS)
     const [photosError, setPhotosError] = useState<string | undefined>(undefined)
     const [selectedFrame, setSelectedFrame] = useState<number | null>(null)
+
+    // Flash parameters
+    const [flashLed, setFlashLed] = useState<string>('0')
+    const [ledBrightness, setLedBrightness] = useState<string>('5')
 
     const {
         mdGrid,
@@ -150,10 +199,12 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
         if (intervalSec === null || photoCount === null) return
 
         const intervalMs = Math.round(intervalSec * 1000)
-        log(`[MotionDetectionSection] Starting test: sensitivity=${level}, interval=${intervalMs}ms, photos=${photoCount}`)
+        const flashLedVal = parseInt(flashLed, 10)
+        const ledBrightnessVal = Math.min(100, Math.max(0, parseInt(ledBrightness, 10) || 0))
+        log(`[MotionDetectionSection] Starting test: sensitivity=${level}, interval=${intervalMs}ms, photos=${photoCount}, flash=${flashLedVal}, brightness=${ledBrightnessVal}`)
         setSelectedFrame(null)
-        startTest(level, intervalMs, photoCount)
-    }, [sensitivity, intervalText, photosText, validateInterval, validatePhotos, startTest])
+        startTest(level, intervalMs, photoCount, flashLedVal, ledBrightnessVal)
+    }, [sensitivity, intervalText, photosText, flashLed, ledBrightness, validateInterval, validatePhotos, startTest])
 
     // Cleanup on unmount only — no auto-start
     useEffect(() => {
@@ -166,10 +217,8 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
     const hasInputError = !!intervalError || !!photosError
 
     // Pre-compute cell styles to avoid inline object allocation (256 cells × every render)
-    const gridCellStyles = useMemo(() => ({
-        active: [styles.gridCell, { backgroundColor: '#4CAF50' }],
-        inactive: [styles.gridCell, { backgroundColor: theme.colors.surfaceVariant }],
-    }), [theme.colors.surfaceVariant])
+    // Note: gridCellStyles removed — TextGrid uses colored text spans instead of View styles
+
 
     // The currently displayed detail frame (selected from history, or live grid)
     const selectedSnapshot: FrameSnapshot | null =
@@ -253,6 +302,40 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                             </WWText>
                         )}
 
+                        {/* Flash LED controls */}
+                        <WWText variant="bodyMedium" style={styles.label}>Flash LED Type</WWText>
+                        <SegmentedButtons
+                            value={flashLed}
+                            onValueChange={setFlashLed}
+                            buttons={[
+                                { value: '0', label: 'Off', disabled },
+                                { value: '1', label: 'Visible', disabled },
+                                { value: '2', label: 'IR', disabled },
+                            ]}
+                            style={styles.segmented}
+                        />
+
+                        {flashLed !== '0' && (
+                            <View style={styles.brightnessRow}>
+                                <WWText variant="bodyMedium" style={styles.label}>LED Brightness</WWText>
+                                <TextInput
+                                    mode="outlined"
+                                    value={ledBrightness}
+                                    onChangeText={(t) => {
+                                        const cleaned = t.replace(/[^0-9]/g, '')
+                                        const val = Math.min(100, Math.max(0, parseInt(cleaned, 10) || 0))
+                                        setLedBrightness(val.toString())
+                                    }}
+                                    keyboardType="numeric"
+                                    right={<TextInput.Affix text="%" />}
+                                    disabled={disabled}
+                                    style={styles.brightnessInput}
+                                    dense
+                                />
+                                <WWText variant="bodySmall" style={styles.hintText}>0 – 100</WWText>
+                            </View>
+                        )}
+
                         {/* Start button */}
                         <WWButton
                             mode="contained"
@@ -307,17 +390,13 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                         {/* Live Motion Grid */}
                         <View style={styles.gridContainer}>
                             <WWText variant="labelSmall" style={styles.gridLabel}>Live — Motion Detection Grid (16×16)</WWText>
+                            {parseFloat(intervalText) < 1.0 && (
+                                <WWText variant="labelSmall" style={styles.throttleNote}>
+                                    ⚡ Live grid refreshes at 5fps for stability
+                                </WWText>
+                            )}
                             <View style={styles.gridBox}>
-                                {mdGrid.map((row, rowIndex) => (
-                                    <View key={`row-${rowIndex}`} style={styles.gridRow}>
-                                        {row.map((cell, colIndex) => (
-                                            <View
-                                                key={`cell-${rowIndex}-${colIndex}`}
-                                                style={cell ? gridCellStyles.active : gridCellStyles.inactive}
-                                            />
-                                        ))}
-                                    </View>
-                                ))}
+                                <TextGrid grid={mdGrid} />
                             </View>
                         </View>
 
@@ -371,7 +450,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                             isSelected ? null : snap.frameIndex
                                         )}
                                     >
-                                        <MiniGrid grid={snap.grid} size={6} />
+                                        <MiniGrid grid={snap.grid} />
                                         <WWText variant="labelSmall" style={styles.historyFrameLabel}>
                                             #{snap.frameIndex}
                                         </WWText>
@@ -396,16 +475,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                     Frame #{selectedSnapshot.frameIndex} — {selectedSnapshot.blockCount} motion blocks
                                 </WWText>
                                 <View style={styles.gridBox}>
-                                    {selectedSnapshot.grid.map((row, ri) => (
-                                        <View key={`detail-r-${ri}`} style={styles.gridRow}>
-                                            {row.map((cell, ci) => (
-                                                <View
-                                                    key={`detail-c-${ri}-${ci}`}
-                                                    style={cell ? gridCellStyles.active : gridCellStyles.inactive}
-                                                />
-                                            ))}
-                                        </View>
-                                    ))}
+                                    <TextGrid grid={selectedSnapshot.grid} />
                                 </View>
                             </View>
                         )}
@@ -449,6 +519,12 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         textAlign: 'center',
         marginBottom: 8,
+    },
+    brightnessRow: {
+        marginBottom: 12,
+    },
+    brightnessInput: {
+        marginBottom: 4,
     },
     startButton: {
         marginBottom: 12,
@@ -501,20 +577,17 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         textAlign: 'center',
     },
+    throttleNote: {
+        opacity: 0.5,
+        textAlign: 'center',
+        marginBottom: 4,
+        fontSize: 10,
+    },
     gridBox: {
         borderRadius: 8,
         padding: 8,
         alignItems: 'center',
         backgroundColor: '#00000010',
-    },
-    gridRow: {
-        flexDirection: 'row',
-    },
-    gridCell: {
-        width: 18,
-        height: 18,
-        margin: 1,
-        borderRadius: 2,
     },
     motionIndicator: {
         flexDirection: 'row',
