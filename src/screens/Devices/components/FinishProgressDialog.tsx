@@ -22,7 +22,7 @@ export const FinishProgressDialog: React.FC<FinishProgressDialogProps> = ({
     logs,
     isComplete,
     onDismiss,
-    loadingTitle = 'Processing...',
+    loadingTitle = 'Processing…',
     successTitle = 'Completed Successfully',
     hideOkButton = false
 }) => {

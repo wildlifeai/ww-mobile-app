@@ -75,7 +75,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                     loading={isCapturing}
                 >
                     <Text>{isCapturing
-                        ? (captureProgress > 0 ? `${captureStage} ${Math.round(captureProgress * 100)}%` : (captureStage || 'Capturing...'))
+                        ? (captureProgress > 0 ? `${captureStage} ${Math.round(captureProgress * 100)}%` : (captureStage || 'Capturing…'))
                         : (capturedImageUri ? 'Test Again' : 'Test Camera View')}</Text>
                 </WWButton>
                 </Card.Content>

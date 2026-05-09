@@ -13,7 +13,7 @@ export const CameraSettingsTestScreen = ({ route }: { route: AppParams<'CameraSe
         return (
             <View style={styles.center}>
                 <ActivityIndicator size="large" />
-                <WWText style={{ marginTop: 16 }}>Locating device...</WWText>
+                <WWText style={{ marginTop: 16 }}>Locating device…</WWText>
             </View>
         )
     }

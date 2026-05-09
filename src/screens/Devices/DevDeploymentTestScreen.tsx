@@ -209,7 +209,7 @@ export const DevDeploymentTestScreen = () => {
                                         style={styles.segmented}
                                     />
                                 ) : (
-                                    <Text variant="bodySmall" style={{ opacity: 0.6 }}>Loading sensitivities...</Text>
+                                    <Text variant="bodySmall" style={{ opacity: 0.6 }}>Loading sensitivities…</Text>
                                 )}
                             </View>
                         )}

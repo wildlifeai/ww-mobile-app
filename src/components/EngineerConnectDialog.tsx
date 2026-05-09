@@ -36,7 +36,7 @@ export const EngineerConnectDialog = ({
                     <Dialog.Content>
                         <View style={styles.centered}>
                             <ActivityIndicator size="large" color="#4CAF50" style={styles.spinner} />
-                            <Text variant="bodyLarge">Scanning for devices...</Text>
+                            <Text variant="bodyLarge">Scanning for devices…</Text>
                             <Text variant="bodySmall" style={styles.messageText}>
                                 Turn on your Wildlife Watcher device to connect
                             </Text>
@@ -77,7 +77,7 @@ export const EngineerConnectDialog = ({
                         <View style={styles.centered}>
                             <ActivityIndicator size="large" color="#4CAF50" style={styles.spinner} />
                             <Text variant="bodyLarge">
-                                Connecting to {connectingDevice?.name || connectingDevice?.id || 'device'}...
+                                Connecting to {connectingDevice?.name || connectingDevice?.id || 'device'}…
                             </Text>
                         </View>
                     </Dialog.Content>

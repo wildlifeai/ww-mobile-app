@@ -6,7 +6,7 @@ import { useExtendedTheme } from '../../../theme'
 import { useCameraSettingsTest, CapturedImageInfo } from '../hooks/useCameraSettingsTest'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { ImagePreviewModal } from '../../../components/ImagePreviewModal'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 interface Props {
     device: ExtendedPeripheral
@@ -16,10 +16,13 @@ const NumericInput = ({ label, value, onChange, min, max, disabled }: { label: s
     const { spacing } = useExtendedTheme()
     const [localValue, setLocalValue] = useState(() => value.toString())
 
-    // Sync external changes (e.g. preset or reset)
-    useEffect(() => {
+    const [prevValue, setPrevValue] = useState(value)
+
+    // Sync external changes (e.g. preset or reset) during render
+    if (value !== prevValue) {
+        setPrevValue(value)
         setLocalValue(value.toString())
-    }, [value])
+    }
 
     return (
         <View style={{ marginBottom: spacing }}>
@@ -126,7 +129,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                 <View style={styles.progressContainer}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                         <ActivityIndicator size="small" />
-                        <WWText>{capturePreview.captureStage || 'Capturing...'}</WWText>
+                        <WWText>{capturePreview.captureStage || 'Capturing…'}</WWText>
                     </View>
                     {capturePreview.captureProgress > 0 && (
                         <View style={{ width: '100%', marginTop: 16 }}>

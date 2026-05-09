@@ -64,7 +64,7 @@ export const ProjectVisualizationScreen = () => {
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" />
                     <Text variant="bodyMedium" style={[styles.loadingText, dynamicStyles.loadingLabel]}>
-                        Loading project...
+                        Loading project…
                     </Text>
                 </View>
             </WWScreenView>

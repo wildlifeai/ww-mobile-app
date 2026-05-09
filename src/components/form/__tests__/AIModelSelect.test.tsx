@@ -77,7 +77,7 @@ describe("AIModelSelect", () => {
 			expect(
 				screen.getByTestId("ai-model-select-loading-placeholder"),
 			).toBeOnTheScreen()
-			expect(screen.getByText("Loading AI models...")).toBeOnTheScreen()
+			expect(screen.getByText("Loading AI models…")).toBeOnTheScreen()
 		})
 	})
 

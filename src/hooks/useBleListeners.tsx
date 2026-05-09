@@ -267,18 +267,19 @@ export const useBleListeners = () => {
 
 		dispatch(scanStop())
 	}, [dispatch, pingsPause])
+	const setupSubscriptions = useCallback(() => {
+		return [
+			getBleManagerEmitter().addListener("BleManagerDiscoverPeripheral", discoveredPeripheralEvent),
+			getBleManagerEmitter().addListener("BleManagerStopScan", scanStoppedEvent),
+			getBleManagerEmitter().addListener("BleManagerDisconnectPeripheral", deviceDisconnectedEvent),
+			getBleManagerEmitter().addListener("BleManagerDidUpdateValueForCharacteristic", readlineParser),
+		]
+	}, [discoveredPeripheralEvent, scanStoppedEvent, deviceDisconnectedEvent, readlineParser])
 
 	useEffect(() => {
-		const discoverDeviceFunc = getBleManagerEmitter().addListener("BleManagerDiscoverPeripheral", discoveredPeripheralEvent)
-		const scanStoppedEventFunc = getBleManagerEmitter().addListener("BleManagerStopScan", scanStoppedEvent)
-		const deviceDisconnectedEventFunc = getBleManagerEmitter().addListener("BleManagerDisconnectPeripheral", deviceDisconnectedEvent)
-		const readlineParserFunc = getBleManagerEmitter().addListener("BleManagerDidUpdateValueForCharacteristic", readlineParser)
-
+		const subs = setupSubscriptions()
 		return () => {
-			discoverDeviceFunc.remove()
-			scanStoppedEventFunc.remove()
-			deviceDisconnectedEventFunc.remove()
-			readlineParserFunc.remove()
+			subs.forEach(sub => sub.remove())
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])

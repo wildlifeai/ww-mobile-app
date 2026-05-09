@@ -1,11 +1,11 @@
 /**
- * MotionGrid — Text-based 16×16 motion detection grid.
+ * MotionGrid: Text-based 16×16 motion detection grid.
  *
  * Renders the precomputed grid string as a single <Text> node.
  * Uses block characters (█ for motion, · for none) with a monospace font.
  *
  * Performance: 1 Text node instead of 256 Views.
- * Zero reconciliation overhead — just a string swap.
+ * Zero reconciliation overhead: just a string swap.
  */
 import React from 'react'
 import { Text, Platform, StyleSheet } from 'react-native'
@@ -13,13 +13,13 @@ import { Text, Platform, StyleSheet } from 'react-native'
 interface MotionGridProps {
     /** Precomputed display string (16 lines of 16 chars). */
     gridString: string
-    /** Font size in dp — controls the overall grid size */
+    /** Font size in dp: controls the overall grid size */
     fontSize?: number
 }
 
 /**
  * Renders a 16×16 grid as a single monospace <Text> node.
- * The gridString is precomputed at parse time — this component
+ * The gridString is precomputed at parse time: this component
  * does ZERO computation. Just renders the string.
  */
 export const MotionGrid = React.memo<MotionGridProps>(({ gridString, fontSize = 16 }) => (

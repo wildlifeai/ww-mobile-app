@@ -37,7 +37,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
 
 
     if (processing && connectingDevice) {
-        const latestLog = connectionLogs.length > 0 ? connectionLogs[connectionLogs.length - 1] : 'Initializing...'
+        const latestLog = connectionLogs.length > 0 ? connectionLogs[connectionLogs.length - 1] : 'Initializing…'
         // Cap progress at 95% until complete (Using 8 as a good median for deployment connection logs)
         const progressValue = Math.min((connectionLogs.length / 8), 0.95)
 
@@ -127,7 +127,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                             />
                         </View>
 
-                        {/* Expired state — no device found after 60s */}
+                        {/* Expired state: no device found after 60s */}
                         {scanSessionExpired && (
                             <>
                                 <Text variant="headlineMedium" style={styles.autoTitleBold}>
@@ -149,7 +149,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                             </>
                         )}
 
-                        {/* Active session — scanning with countdown */}
+                        {/* Active session: scanning with countdown */}
                         {scanSessionActive && (
                             <>
                                 <Text variant="headlineMedium" style={styles.autoTitleBold}>
@@ -165,7 +165,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                                     <View style={[styles.scanningLogContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
                                         <ActivityIndicator size={16} color={theme.colors.primary} />
                                         <Text style={[styles.scanningLogText, { color: theme.colors.primary }]}>
-                                            Searching for devices... {countdownText}
+                                            Searching for devices… {countdownText}
                                         </Text>
                                     </View>
                                 </View>
@@ -181,7 +181,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                             </>
                         )}
 
-                        {/* Initial state — no session started yet */}
+                        {/* Initial state: no session started yet */}
                         {!scanSessionActive && !scanSessionExpired && (
                             <>
                                 <Text variant="headlineMedium" style={styles.autoTitleBold}>

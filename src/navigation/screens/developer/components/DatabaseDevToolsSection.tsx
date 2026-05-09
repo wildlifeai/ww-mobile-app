@@ -95,7 +95,7 @@ export const DatabaseDevToolsSection: React.FC<DatabaseDevToolsSectionProps> = (
                 <List.Subheader><Text>Database (Dev Tools)</Text></List.Subheader>
                 <List.Item
                     title="Database Adapter"
-                    description={dbStatus ? dbStatus.adapter : "Loading..."}
+                    description={dbStatus ? dbStatus.adapter : "Loading…"}
                     left={Icons.database}
                 />
                 <List.Item
@@ -107,7 +107,7 @@ export const DatabaseDevToolsSection: React.FC<DatabaseDevToolsSectionProps> = (
                                 : dbStatus.supabaseUrl.includes("supabase.co")
                                     ? "Cloud Dev"
                                     : "Unknown"
-                            : "Loading..."
+                            : "Loading…"
                     }
                     left={Icons.cloud}
                 />

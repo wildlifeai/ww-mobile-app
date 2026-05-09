@@ -36,45 +36,39 @@ export const DeviceMonitoringSummaryScreen = () => {
 
     const [deviceWithStatus, setDeviceWithStatus] = useState<DeviceWithStatus | undefined>()
     const [loading, setLoading] = useState(true)
-    const [resolvedDeviceId, setResolvedDeviceId] = useState<string | undefined>(paramDeviceId)
 
-    // Resolve deviceId from deploymentId if needed
-    useEffect(() => {
-        if (paramDeviceId) {
-            setResolvedDeviceId(paramDeviceId)
+    const loadDeviceData = useCallback(async () => {
+        let targetId = paramDeviceId
+
+        if (!targetId && paramDeploymentId) {
+            try {
+                const deployment = await database.get<Deployment>('deployments').find(paramDeploymentId)
+                targetId = deployment.deviceId
+            } catch (err) {
+                logError('Failed to resolve device from deployment:', err)
+                setLoading(false)
+                return
+            }
+        }
+
+        if (!targetId) {
+            setLoading(false)
             return
         }
-        if (paramDeploymentId) {
-            database.get<Deployment>('deployments')
-                .find(paramDeploymentId)
-                .then(deployment => {
-                    setResolvedDeviceId(deployment.deviceId)
-                })
-                .catch(err => {
-                    logError('Failed to resolve device from deployment:', err)
-                    setLoading(false)
-                })
-        }
-    }, [paramDeviceId, paramDeploymentId])
 
-    // Load device details once we have a deviceId
-    const loadDeviceDetails = useCallback(async () => {
-        if (!resolvedDeviceId) return
         try {
-            const details = await DeviceService.getDeviceWithStatus(resolvedDeviceId)
+            const details = await DeviceService.getDeviceWithStatus(targetId)
             setDeviceWithStatus(details)
         } catch (error) {
             logError('Error loading device details:', error)
         } finally {
             setLoading(false)
         }
-    }, [resolvedDeviceId])
+    }, [paramDeviceId, paramDeploymentId])
 
     useEffect(() => {
-        if (resolvedDeviceId) {
-            loadDeviceDetails()
-        }
-    }, [loadDeviceDetails, resolvedDeviceId])
+        loadDeviceData()
+    }, [loadDeviceData])
 
     // Set title
     useLayoutEffect(() => {
@@ -129,7 +123,7 @@ export const DeviceMonitoringSummaryScreen = () => {
         return (
             <WWScreenView>
                 <View style={styles.centerContainer}>
-                    <WWText variant="bodyMedium"><Text>Loading device details...</Text></WWText>
+                    <WWText variant="bodyMedium"><Text>Loading device details…</Text></WWText>
                 </View>
             </WWScreenView>
         )

@@ -38,7 +38,7 @@ const initialState: ResetState = {
 const resetReducer = (state: ResetState, action: ResetAction): ResetState => {
     switch (action.type) {
         case 'START':
-            return { ...state, status: 'running', currentStep: 'Starting...', progress: 0, logs: [], errorMessage: null }
+            return { ...state, status: 'running', currentStep: 'Starting…', progress: 0, logs: [], errorMessage: null }
         case 'PROGRESS':
             return { ...state, currentStep: action.step, progress: action.progress, logs: [...state.logs, action.step] }
         case 'LOG':

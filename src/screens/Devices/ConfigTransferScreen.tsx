@@ -42,7 +42,7 @@ export const ConfigTransferScreen = () => {
 
                 <WWText style={{ marginBottom: spacing }}>
                     Downloads the latest configuration file from the cloud and transfers it to the
-                    device SD card as CONFIG.TXT. No reboot is required — the device reads the
+                    device SD card as CONFIG.TXT. No reboot is required: the device reads the
                     new config on the next wake cycle.
                 </WWText>
 
@@ -70,7 +70,7 @@ export const ConfigTransferScreen = () => {
                                 Latest Config Version
                             </WWText>
                             <WWText variant="bodyMedium" style={{ color: colors.primary }}>
-                                {latestConfig?.version ?? (isPreflightDone ? 'None available' : '...')}
+                                {latestConfig?.version ?? (isPreflightDone ? 'None available' : '…')}
                             </WWText>
                         </View>
 

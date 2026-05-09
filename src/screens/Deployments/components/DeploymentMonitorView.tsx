@@ -107,7 +107,7 @@ export const DeploymentMonitorView: React.FC<Props> = ({
       {/* Spacer to push footer down */}
       <View style={{ flex: 1 }} />
 
-      {/* Footer — Two Buttons */}
+      {/* Footer: Two Buttons */}
       <View style={[styles.footer, { borderTopColor: colors.surfaceVariant, paddingBottom: bottom + 16 }]}>
         <TouchableOpacity
           style={[styles.continueBtn, { backgroundColor: '#4CAF50' }]}
@@ -126,7 +126,7 @@ export const DeploymentMonitorView: React.FC<Props> = ({
         >
           <MaterialCommunityIcons name="stop-circle-outline" size={20} color={colors.error} style={{ marginRight: 8 }} />
           <Text style={[styles.stopBtnText, { color: colors.error }]}>
-            {isStoppingMonitoring ? 'Stopping...' : 'Stop Monitoring'}
+            {isStoppingMonitoring ? 'Stopping…' : 'Stop Monitoring'}
           </Text>
         </TouchableOpacity>
       </View>

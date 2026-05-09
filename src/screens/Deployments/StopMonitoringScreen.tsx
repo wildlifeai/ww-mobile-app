@@ -109,7 +109,7 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
         navigation.setOptions({ title: `${deviceName} - Monitoring` })
     }, [deviceDb?.name, storeDevice?.name, navigation])
 
-    // Handle "Continue Monitoring" — shows alert then disconnects
+    // Handle "Continue Monitoring": shows alert then disconnects
     const handleContinueMonitoring = useCallback(() => {
         Alert.alert(
             'Wildlife Watcher Monitoring',
@@ -140,13 +140,13 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
         )
     }, [navigation])
 
-    // Handle "Stop Monitoring" from the modal — sets notes, then triggers end deployment
+    // Handle "Stop Monitoring" from the modal: sets notes, then triggers end deployment
     // Use a ref flag so the effect fires after React re-renders with updated retrievalNotes
     const pendingStopRef = useRef(false)
 
     const handleStopMonitoring = useCallback((notes: string) => {
         if (notes === retrievalNotes) {
-            // Notes unchanged (e.g. both empty) — call directly since
+            // Notes unchanged (e.g. both empty): call directly since
             // setRetrievalNotes won't trigger a re-render / effect.
             handleEndDeployment()
         } else {
@@ -221,7 +221,7 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
     if (!deployment) {
         return (
             <WWScreenView>
-                <WWText><Text>Loading monitoring session details...</Text></WWText>
+                <WWText><Text>Loading monitoring session details…</Text></WWText>
             </WWScreenView>
         )
     }
@@ -258,7 +258,7 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
                             loading={isEnding}
                             disabled={isEnding}
                         >
-                            <Text>{isEnding ? "Stopping..." : "Force End (Database Only)"}</Text>
+                            <Text>{isEnding ? "Stopping…" : "Force End (Database Only)"}</Text>
                         </WWButton>
                     </View>
 
@@ -278,7 +278,7 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
         )
     }
 
-    // Device is connected — show DeploymentMonitorView (same as post-start monitoring)
+    // Device is connected: show DeploymentMonitorView (same as post-start monitoring)
     return (
         <>
             <DeploymentMonitorView

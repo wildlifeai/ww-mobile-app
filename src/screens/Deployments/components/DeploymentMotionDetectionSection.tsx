@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect, useRef } from 'react'
+import React, { useCallback, useState, useEffect } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { Card, Button, Text, ProgressBar, useTheme } from 'react-native-paper'
 
@@ -8,6 +8,7 @@ import { WWIcon } from '../../../components/ui/WWIcon'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useMotionDetectionStream } from '../../Devices/hooks/useMotionDetectionStream'
 import { MotionGrid } from '../../Devices/components/MotionGrid'
+import { useTimer } from '../../../hooks/useTimer'
 import { logError } from '../../../utils/logger'
 
 /** Default capture settings for deployment MD test */
@@ -42,22 +43,15 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
         statusMessage,
     } = useMotionDetectionStream({ device })
 
-    // Elapsed time counter — ticks every second while testing
-    const [elapsedSec, setElapsedSec] = useState(0)
-    const timerRef = useRef<NodeJS.Timeout | null>(null)
+    // Elapsed time counter: ticks every second while testing
+    const { elapsedSec } = useTimer(isTesting)
 
+    // Reset elapsed time when test finishes
     useEffect(() => {
-        if (isTesting) {
-            setElapsedSec(0)
-            timerRef.current = setInterval(() => setElapsedSec(s => s + 1), 1000)
-        } else {
-            if (timerRef.current) clearInterval(timerRef.current)
-            timerRef.current = null
+        if (testFinished && !isTesting) {
+            // Keep the final elapsed time
         }
-        return () => {
-            if (timerRef.current) clearInterval(timerRef.current)
-        }
-    }, [isTesting])
+    }, [testFinished, isTesting])
 
     // Estimated total duration (capture count × interval + setup overhead)
     const estimatedTotalSec = Math.ceil(
@@ -88,7 +82,7 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
             onPress={() => onShowHelp(
                 'Motion Detection Test',
                 `Starts a ${CAPTURE_COUNT}-frame motion detection test using your project's sensitivity settings.\n\n` +
-                `Once started, the test runs for approximately ${estimatedTotalSec} seconds and cannot be stopped early — ` +
+                `Once started, the test runs for approximately ${estimatedTotalSec} seconds and cannot be stopped early: ` +
                 'the firmware controls the capture sequence internally.\n\n' +
                 'The 16×16 grid shows which zones detected movement between frames.'
             )}
@@ -120,7 +114,7 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
                     right={renderHelp}
                 />
                 <Card.Content>
-                    {/* Start button — disabled once test is running */}
+                    {/* Start button: disabled once test is running */}
                     <WWButton
                         mode="outlined"
                         onPress={handleStartTest}
@@ -138,7 +132,7 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
                         </Text>
                     </WWButton>
 
-                    {/* Duration info — shown before and during test */}
+                    {/* Duration info: shown before and during test */}
                     {!isTesting && !testFinished && (
                         <WWText variant="bodySmall" style={styles.durationHint}>
                             ⏱ Test captures {CAPTURE_COUNT} frames (~{estimatedTotalSec}s).

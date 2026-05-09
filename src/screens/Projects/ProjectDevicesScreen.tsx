@@ -134,7 +134,7 @@ export const ProjectDevicesScreen = () => {
         <Card mode="outlined" style={styles.card}>
             <Card.Content style={styles.cardContent}>
                 <View style={styles.deviceRow}>
-                    {/* Status Icon — navigates to deployment */}
+                    {/* Status Icon: navigates to deployment */}
                     <TouchableRipple
                         onPress={() => handleCameraIconPress(item)}
                         borderless
@@ -149,7 +149,7 @@ export const ProjectDevicesScreen = () => {
                         </View>
                     </TouchableRipple>
 
-                    {/* Device Info — navigates to device summary */}
+                    {/* Device Info: navigates to device summary */}
                     <TouchableRipple
                         onPress={() => handleDevicePress(item)}
                         borderless
@@ -211,7 +211,7 @@ export const ProjectDevicesScreen = () => {
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" />
                 <Text variant="bodyMedium" style={[styles.loadingText, dynamicStyles.loadingText]}>
-                    Loading devices...
+                    Loading devices…
                 </Text>
             </View>
         )

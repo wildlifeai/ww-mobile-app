@@ -284,7 +284,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments, selectedDeploymentId
 				<View style={styles.loadingOverlay}>
 					<View style={styles.loadingContainer}>
 						<ActivityIndicator size="large" color={colors.primary} />
-						<Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Getting your location...</Text>
+						<Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Getting your location…</Text>
 					</View>
 				</View>
 			)}

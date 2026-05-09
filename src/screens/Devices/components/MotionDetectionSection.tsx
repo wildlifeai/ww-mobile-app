@@ -161,7 +161,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
         startTest(level, intervalMs, photoCount, flashLedVal, ledBrightnessVal)
     }, [sensitivity, intervalText, photosText, flashLed, ledBrightness, validateInterval, validatePhotos, startTest])
 
-    // Cleanup on unmount only — no auto-start
+    // Cleanup on unmount only: no auto-start
     useEffect(() => {
         return () => {
             log('[MotionDetectionSection] Unmounting')
@@ -172,7 +172,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
     const hasInputError = !!intervalError || !!photosError
 
     // Pre-compute cell styles to avoid inline object allocation (256 cells × every render)
-    // Note: gridCellStyles removed — TextGrid uses colored text spans instead of View styles
+    // Note: gridCellStyles removed: TextGrid uses colored text spans instead of View styles
 
 
     // The currently displayed detail frame (selected from history, or live grid)

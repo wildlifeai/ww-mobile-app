@@ -73,7 +73,7 @@ export const AuthActionsCard: React.FC<AuthActionsCardProps> = ({
                         disabled={isSubmitting || loading}
                         style={styles.flex1}
                     >
-                        <Text>{isSubmitting ? "Registering..." : "Register"}</Text>
+                        <Text>{isSubmitting ? "Registering…" : "Register"}</Text>
                     </Button>
 
                     <Button
@@ -82,7 +82,7 @@ export const AuthActionsCard: React.FC<AuthActionsCardProps> = ({
                         disabled={isSubmitting || loading}
                         style={styles.flex1}
                     >
-                        <Text>{isSubmitting ? "Logging in..." : "Login"}</Text>
+                        <Text>{isSubmitting ? "Logging in…" : "Login"}</Text>
                     </Button>
                 </View>
 
