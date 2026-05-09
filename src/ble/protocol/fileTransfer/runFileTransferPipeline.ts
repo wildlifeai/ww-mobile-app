@@ -21,8 +21,7 @@ import { NativeEventEmitter, NativeModules } from 'react-native'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { writeBinaryToDevice } from '../../transport'
 import { bleEventBus, BleEvent } from '../eventBus'
-import { transportLock } from '../transportLock'
-import { commandQueue } from '../commandQueue'
+import { bleTransport } from '../bleTransportController'
 import { TextStreamScope, StreamTimeoutError } from '../textStreamScope'
 import { crc16ccitt } from './crc16ccitt'
 import { isValid83Filename } from './filenameValidator'
@@ -354,13 +353,13 @@ export async function runFileTransferPipeline(
   // ── Acquire transport lock + execute transfer ──────────────────
   try {
     // Ensure no other commands are running
-    if (commandQueue.isBusy()) {
+    if (bleTransport.isBusy()) {
       throw new FileTransferError('VALIDATION_FAILED', 'Cannot start transfer while another command is in progress')
     }
 
     // Acquire lock FIRST, then wake the device. This eliminates the gap
     // where the device can Sleep between the wake check and FILE_START.
-    transportLock.acquire(transferId)
+    bleTransport.acquireLock(transferId)
     
     // Pause heartbeats
     bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: true, ts: Date.now() })
@@ -702,7 +701,7 @@ export async function runFileTransferPipeline(
     if (abortSignal && abortHandler) {
       abortSignal.removeEventListener('abort', abortHandler)
     }
-    transportLock.release(transferId)
+    bleTransport.releaseLock(transferId)
     bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: false, ts: Date.now() })
     log(`[FileTransfer] Pipeline cleanup complete`)
   }

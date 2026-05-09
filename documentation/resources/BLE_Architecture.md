@@ -23,10 +23,14 @@ Developers **must** use the correct write path for each use case. Misuse causes 
 | Deployment workflow / Safe UI actions | `bleSession.execute()` | Enqueues deterministic commands, blocks UI, handles timeout and parse matching. |
 | Internal serialization | `commandQueue` | Underlying queue engine managing the `bleSession` promises. |
 | Binary streaming (Images) | passive `bleEventBus` only | Byte-level routing via `rxRouter`, entirely out-of-band. |
-| Motion detection events | passive `textLine` subscription | Async text lines parsed via the stream/event bus. |
+| Motion detection `md` sensitivity | direct `writeToDevice()` | Must bypass the command queue to avoid blocking `setop`/`capture`. The nRF52 drops concurrent BLE messages — a 500ms delay after the write prevents "Dropped BLE message - busy". |
+| Motion detection `setop`/`capture` | `bleSession.execute()` | Queued commands that follow the md sensitivity write. |
+| Motion detection grid events | passive `textLine` subscription | Async text lines parsed via `useMotionDetectionStream`. |
 
 > [!WARNING]
 > **Never** call `writeRaw()` from a deployment workflow. Never call `bleSession.execute()` from the Engineer Console. These boundaries exist to prevent determinism violations.
+>
+> The motion detection `md` command is the **one exception** to the queue rule — it uses direct `writeToDevice()` because the command always times out (~5s) due to the nRF52 Wake(MD) race, and that timeout blocks the queue, pushing `capture` into the Himax's Save State window.
 
 ---
 
@@ -281,42 +285,71 @@ The foundational hook providing:
 
 ### 4a. Scanning & Discovery
 
-Two independent scan consumers exist in the app. Both share the same `startScan()` / `stopScan()` primitives from `useBle`, but manage their own session lifecycle:
+Two scan consumers exist in the app. Both share the **same scan loop** via `useScanLoop`, which cycles 3-second scan bursts with a 300ms inter-burst delay.
+
+#### Shared Scan Loop (`useScanLoop`)
+
+Centralized hook that eliminates duplicate scan orchestration code:
+
+| Feature | Implementation |
+|---|---|
+| **Burst cycling** | 3-second scans via `startScan(3)`, 300ms gap between bursts |
+| **Active flag** | Consumer passes `active: boolean` — loop starts/stops reactively |
+| **Scan lock** | `scanLockRef` prevents double-start races (500ms cooldown) |
+| **Cache flush** | `flushBleCache()` clears Redux + Android native BLE cache |
+
+**`flushBleCache()` sequence:**
+1. Dispatch `clearDiscoveredDevices()` — removes all non-connected devices from Redux
+2. (Android) `getDiscoveredPeripherals()` → `removePeripheral()` on each cached, non-connected device
+3. Only peripherals still in the native cache are removed — devices already cleared during disconnect are skipped to avoid redundant GATT cleanup
+
+> [!WARNING]
+> The `flushBleCache` callback must **not** depend on `devices` state. Including it causes cascading re-renders and stale closures. The `dispatch(clearDiscoveredDevices())` is sufficient — the native cache check is independent.
+
+**File:** [useScanLoop.ts](../../src/hooks/useScanLoop.ts)
 
 #### Device Discovery Scanner (`useDeviceDiscovery`)
 
-Used by the main **DeviceDiscoveryScreen** for deployment workflows. Features:
+Used by the main **DeviceDiscoveryScreen** for deployment workflows:
 
 | Feature | Implementation |
 |---|---|
 | **Session-based** | User presses "Search" → 60-second countdown session |
-| **3-second scan bursts** | `startScan(3)` fires in a tight loop while session is active |
-| **Cache flush on start** | `clearDiscoveredDevices()` + `autoConnect.resetAll()` + Android `removePeripheral` sweep |
+| **Scan loop** | `useScanLoop({ active: isActuallyFocused && isReady && scanSessionActive && !isEngineerConsoleActive })` |
+| **Cache flush on start** | `flushBleCache()` + `autoConnect.resetAll()` |
 | **Auto-connect** | Strongest-signal device auto-connected via `useAutoConnectStateMachine` |
 | **Signal tracking** | Devices marked `signalLost: true` when not found in scan results |
+| **Stop on blur** | Session **stops entirely** when screen loses focus, drawer opens, or tab changes — user must press "Search" again |
 
 **Session start sequence:**
-1. Dispatch `clearDiscoveredDevices()` — removes all non-connected devices from Redux
-2. Reset auto-connect state machine — all devices return to `DISCOVERED` state
-3. (Android) Flush native BLE cache — `removePeripheral()` on all cached, non-connected devices
-4. Start 60-second countdown timer
-5. Begin 3-second scan burst loop
+1. Reset auto-connect state machine — all devices return to `DISCOVERED` state
+2. `flushBleCache()` — clears stale Redux devices and native BLE cache
+3. Start 60-second countdown timer
+4. `useScanLoop` begins burst cycling
+
+**Session stop triggers (any of):**
+- 60-second timer expires
+- Screen loses focus (`isFocused` → `false`)
+- Drawer opens (`isDrawerOpen` → `true`)
+- Tab changes (`isActiveTab` → `false`)
+- User cancels
 
 **File:** [useDeviceDiscovery.ts](../../src/screens/Devices/hooks/useDeviceDiscovery.ts)
 
 #### Engineer Console Scanner (`useEngineerConnect`)
 
-Used by the **Engineer Console** for quick device access. Simpler than the main scanner:
+Used by the **Engineer Console** for quick device access:
 
 | Feature | Implementation |
 |---|---|
 | **Dialog-driven** | `beginScan()` opens the search dialog |
-| **3-second scan bursts** | Same `startScan(3)` loop pattern |
+| **Scan loop** | `useScanLoop({ active: dialogState === 'scanning' && !isConnectingRef.current })` |
+| **Cache flush on start** | `flushBleCache()` called in `beginScan()` |
 | **Auto-connect first device** | Immediately connects to the strongest signal device |
 | **No session timeout** | Scans until a device is found or the dialog is dismissed |
 
 > [!IMPORTANT]
-> Both scan consumers rely on `startScan()` calling `stopScan()` internally. Neither consumer gates scan restarts on the Redux `isScanning` flag. This avoids the stale-state race condition where the native `BleManagerStopScan` event lags behind the actual scan completion.
+> Both scan consumers call `flushBleCache()` before starting. This ensures stale Redux devices and native BLE cache entries from prior sessions don't interfere with discovery.
 
 **File:** [useEngineerConnect.ts](../../src/hooks/useEngineerConnect.ts)
 
@@ -360,9 +393,15 @@ Registers four native event handlers via `BleManagerEmitter`:
 | Event | Handler |
 |---|---|
 | `BleManagerDiscoverPeripheral` | Add device to Redux store |
-| `BleManagerStopScan` | Mark scan complete, reconcile lost devices |
+| `BleManagerStopScan` | Mark scan complete, reconcile lost devices (see guard below) |
 | `BleManagerDisconnectPeripheral` | Emit `DEVICE_SIGNAL(DISCONNECT)`, clear buffers, await `removePeripheral` (Android), update Redux |
 | `BleManagerDidUpdateValueForCharacteristic` | Route to `rxRouter` |
+
+**`BleManagerStopScan` guard — `isEngineerConsoleActive`:**
+
+The `scanStoppedEvent` handler calls `BleManager.getDiscoveredPeripherals()` to reconcile which devices are still advertising. Devices NOT in the native cache are marked `signalLost: true`. However, on Android, `removePeripheral()` (called during disconnect) clears the device from the native cache. This causes a **signalLost flip-flop**: the device is discovered → marked `signalLost: false` → scan stops → not in native cache → `signalLost: true` → filtered out of auto-connect → repeat.
+
+When `isEngineerConsoleActive` is `true`, the `notFoundAnymore` cleanup is **skipped entirely**. The Engineer Console's auto-connect watches Redux state directly (updated by `BleManagerDiscoverPeripheral`) and doesn't need the native cache reconciliation.
 
 > [!NOTE]
 > The disconnect handler emits the `DISCONNECT` signal **first**, before clearing buffers or updating Redux. This ensures `commandQueue` and `runCommand` reject in-flight commands immediately.
@@ -371,15 +410,15 @@ Registers four native event handlers via `BleManagerEmitter`:
 
 ---
 
-### 7. Command Queue (`commandQueue`)
+### 7. BLE Transport Controller (`bleTransport`)
 
-Serialized execution queue ensuring only one command is in-flight at a time. Managed by `runCommand` and `runCommandPipeline`.
+Unified transport authority — owns the command queue, exclusive transport lock, and device signal handling. Ensures only one command is in-flight at a time.
 
 **Lifecycle of a command:**
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Queued: enqueue(context)
+    [*] --> Queued: bleTransport.enqueue(context)
     Queued --> Running: processQueue()
     Running --> Listening: subscribe to bleEventBus.textLine
     Listening --> Collecting: successMatcher(line) → true
@@ -396,14 +435,23 @@ stateDiagram-v2
     Rejected --> [*]
 ```
 
+**Transport states:** `IDLE` → `RUNNING` → `PAUSED_SLEEP` / `PAUSED_BUSY` (driven by device signals)
+
 **Key features:**
 - **No echo dependency:** Unlike the legacy manager, there is no echo-waiting phase. The command matches against `successMatcher` / `failureMatcher` directly.
 - **Retry with policy:** Each command defines its own `retryPolicy` (max retries and optional delay). `DEVICE_DISCONNECTED` errors are non-retryable.
 - **Queue state broadcasting:** Emits `QUEUE_STATE_CHANGED` events so UI can show busy/idle state.
-- **Disconnect fail-fast:** On `DEVICE_SIGNAL(DISCONNECT)`, the queue calls `clearAll()` — rejecting every queued and active command instantly instead of letting each time out.
-- **Transport lock enforcement:** When a `transportLock` is held (e.g. during file transfer), the queue rejects new commands unless the caller is the lock holder. The lock holder can pass `{ lockHolder: name }` to `enqueue()` to bypass the guard.
+- **Disconnect fail-fast:** On `DEVICE_SIGNAL(DISCONNECT)`, calls `clearAll()` — rejecting every queued and active command instantly instead of letting each time out.
+- **Built-in transport lock:** `acquireLock()` / `releaseLock()` for exclusive operations (file transfer, firmware flash). The queue rejects non-holder commands while locked.
 
-**Files:** [commandQueue.ts](../../src/ble/protocol/commandQueue.ts), [runCommand.ts](../../src/ble/protocol/runCommand.ts), [runCommandPipeline.ts](../../src/ble/protocol/runCommandPipeline.ts), [transportLock.ts](../../src/ble/protocol/transportLock.ts)
+**Files:** [bleTransportController.ts](../../src/ble/protocol/bleTransportController.ts), [runCommandPipeline.ts](../../src/ble/protocol/runCommandPipeline.ts)
+
+> [!NOTE]
+> This module consolidates what was previously spread across 4 separate files:
+> - `commandQueue.ts` → queue state + processing (now `BleTransportController`)
+> - `runCommand.ts` → subscribe/send/resolve (now inlined into `runCommandPipeline.ts`)
+> - `transportLock.ts` → exclusive lock (now built-in lock methods on `bleTransport`)
+> - `streamRegistry.ts` → binary stream fan-out (now inlined into `createBleSession.ts`)
 
 ---
 
@@ -673,18 +721,15 @@ src/
 │   ├── transport.ts                # Raw BLE write + binary write + service discovery
 │   ├── messageClassifier.ts        # UI-only log categorization (NOT protocol logic)
 │   ├── emitters.ts                 # Legacy EventEmitter3 instances (retained for ImageReassembler)
-│   ├── protocol/                   # ✅ NEW — Event-driven command engine
+│   ├── protocol/                   # Event-driven command engine
 │   │   ├── eventBus.ts             # BleEventBus — central event dispatcher
 │   │   ├── rxRouter.ts             # Binary/text classification from raw bytes
 │   │   ├── commandRegistry.ts      # Typed command factories with frozen schema
-│   │   ├── commandQueue.ts         # Serialized command execution queue
-│   │   ├── runCommand.ts           # Single command executor (subscribe → send → resolve)
-│   │   ├── runCommandPipeline.ts   # Multi-command sequential executor
+│   │   ├── bleTransportController.ts # Unified transport FSM: queue + lock + signal handling
+│   │   ├── runCommandPipeline.ts   # Single-command executor + retry logic (runCommand inlined)
 │   │   ├── protocolConstants.ts    # Timing constants (timeouts, intervals)
 │   │   ├── deviceSignals.ts        # Sleep/Wake/Busy signal types
-│   │   ├── streamRegistry.ts       # Active binary stream tracking
 │   │   ├── textStreamScope.ts      # Scoped text line listener (auto-cleanup)
-│   │   ├── transportLock.ts        # Exclusive transport lock (holder-verified)
 │   │   ├── fileTransfer/           # BLE file transfer to SD card
 │   │   │   ├── runFileTransferPipeline.ts  # Core ACK state machine
 │   │   │   ├── fileTransferPackets.ts      # Binary packet builders
@@ -694,26 +739,34 @@ src/
 │   │   │   ├── filenameValidator.ts        # 8.3 format validation
 │   │   │   └── __tests__/                  # 62 unit tests
 │   │   └── __tests__/              # Protocol unit tests
-│   ├── session/                    # ✅ NEW — Deterministic workflow API
+│   ├── session/                    # Deterministic workflow API
 │   │   ├── createBleSession.ts     # Session factory for deployment workflows
 │   │   └── __tests__/              # Session unit tests
-│   ├── workflows/                  # ✅ NEW — Reusable BLE workflow functions
+│   ├── workflows/                  # Reusable BLE workflow functions
 │   └── __tests__/                  # Legacy tests (skipped)
 ├── hooks/
 │   ├── useBle.ts                   # Core: scan, connect, writeRaw
-│   ├── useBleListeners.tsx         # Native event handlers → rxRouter
+│   ├── useBleListeners.tsx         # Native event handlers → rxRouter (+ signalLost guard)
 │   ├── useBleSession.ts            # React hook wrapping createBleSession
 │   ├── useBleInitialization.ts     # Post-connect: selftest + time sync
 │   ├── useBleHeartbeat.ts          # 58s inactivity keep-alive
 │   ├── useCapturePreview.ts        # Image capture flow
 │   ├── useDeviceSettings.ts        # CONFIG.TXT parameter management
 │   ├── useDeploymentConfiguration.ts # Deployment config (bulk getop + conditional writes)
+│   ├── useEngineerConnect.ts       # Engineer Console scan + auto-connect dialog
+│   ├── useScanLoop.ts              # Shared 3s burst scan loop + BLE cache flush
 │   └── useSetupBLELibrary.ts       # BleManager.start() lifecycle
+├── screens/Devices/hooks/
+│   ├── useDeviceDiscovery.ts       # Main scanner: session timer + auto-connect routing
+│   ├── useAutoConnectStateMachine.ts # Per-device auto-connect eligibility
+│   └── useMotionDetectionStream.ts # MD test lifecycle: direct md write + frame history
 ├── providers/
 │   ├── BleEngineProvider.tsx        # React Context for useBle
 │   └── ListenToBleEngineProvider.tsx  # Listener registration
 ├── redux/slices/
-│   └── bleLibrarySlice.ts          # Library init state
+│   ├── bleLibrarySlice.ts          # Library init state
+│   ├── devicesSlice.ts             # Device state (clearDiscoveredDevices, signalLost)
+│   └── scanningSlice.ts            # isScanning, isEngineerConsoleActive
 └── utils/
     └── ImageReassembler.ts         # Binary → JPEG reconstruction
 ```
@@ -773,4 +826,4 @@ const results = await runCommandPipeline(peripheral, [
 
 ---
 
-*Last Updated: May 9, 2026*
+*Last Updated: May 9, 2026 — Phase 4: renamed commandQueue → BleTransportController with formal TransportState*

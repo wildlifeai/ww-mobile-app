@@ -1,9 +1,39 @@
+/**
+ * BleTransportController
+ *
+ * Unified authority for BLE command transport state.
+ * Owns: command queue, transport lock, device signal handling.
+ *
+ * Consolidates what was previously spread across:
+ *   - commandQueue.ts (queue state + processing)
+ *   - transportLock.ts (exclusive lock)
+ *   - runCommand.ts (subscribe → send → resolve)
+ *
+ * Consumers interact via:
+ *   - bleTransport.enqueue()    — submit a command for execution
+ *   - bleTransport.clearAll()   — break-glass emergency reset
+ *   - bleTransport.acquireLock() / releaseLock() — exclusive transport
+ *   - bleTransport.isBusy()     — check if commands are in-flight
+ *   - bleTransport.resumeFromBusy() — externally driven BUSY → RUNNING
+ */
+
 import { bleEventBus, BleEvent } from './eventBus';
 import { BLE_PROTOCOL_TIMINGS } from './protocolConstants';
 import { DeviceSignal } from './deviceSignals';
-import { transportLock } from './transportLock';
+import { log, logWarn } from '../../utils/logger';
 
-export type QueueState = 'IDLE' | 'RUNNING' | 'PAUSED_SLEEP' | 'PAUSED_BUSY';
+/**
+ * Transport-level state. Represents what the BLE transport layer
+ * is doing RIGHT NOW — a single source of truth.
+ *
+ *   IDLE         — No commands queued or active, transport available
+ *   RUNNING      — Actively executing a command
+ *   PAUSED_SLEEP — Device is in DPD sleep; queue blocked until WAKE
+ *   PAUSED_BUSY  — Device reported BUSY; queue blocked until resume
+ *   LOCKED       — Exclusive lock held (e.g. file transfer); queue
+ *                  rejects non-holder commands
+ */
+export type TransportState = 'IDLE' | 'RUNNING' | 'PAUSED_SLEEP' | 'PAUSED_BUSY';
 export type CommandState = 'CREATED' | 'ACTIVE' | 'COMPLETING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export interface CommandTask<T = any> {
@@ -18,7 +48,7 @@ export interface CommandTask<T = any> {
   _abortHandler?: () => void;
 }
 
-export const emitQueueState = (isBusy: boolean) => {
+const emitQueueState = (isBusy: boolean) => {
   bleEventBus.emitEvent({
     type: 'QUEUE_STATE_CHANGED',
     isBusy,
@@ -26,15 +56,88 @@ export const emitQueueState = (isBusy: boolean) => {
   });
 };
 
-class CommandQueue {
-  private state: QueueState = 'IDLE';
+class BleTransportController {
+  private state: TransportState = 'IDLE';
   private queue: CommandTask[] = [];
   private activeTask: CommandTask | null = null;
   private isProcessing = false;
 
+  // ── Exclusive transport lock ──────────────────────────────────────
+  // When held, enqueue() rejects new commands unless the caller IS the
+  // lock holder. This prevents rogue battery checks, status polls, or
+  // Engineer Console writes from corrupting a long-running firmware
+  // update or flash erase operation.
+  //
+  // Acquired/released by runCommandPipeline for commands with
+  // `requiresExclusiveLock: true`, and by runFileTransferPipeline
+  // for the entire transfer session.
+  private _lockHolder: string | null = null;
+
   constructor() {
     bleEventBus.on('deviceSignal', this.handleDeviceSignal.bind(this));
   }
+
+  // ── State inspection ──────────────────────────────────────────────
+
+  /** Current transport state for debugging/telemetry. */
+  public get transportState(): TransportState {
+    return this.state;
+  }
+
+  // ── Lock API ──────────────────────────────────────────────────────
+
+  /**
+   * Acquire the exclusive transport lock.
+   * Throws if the lock is already held by a different holder.
+   */
+  public acquireLock(holder: string): void {
+    if (this._lockHolder) {
+      throw new Error(
+        `Transport lock already held by '${this._lockHolder}', ` +
+        `cannot acquire for '${holder}'`
+      );
+    }
+    this._lockHolder = holder;
+    log(`[BleTransport] Lock acquired by '${holder}'`);
+  }
+
+  /**
+   * Release the lock. Only the current holder can release it.
+   * Mismatched releases are logged but ignored to prevent
+   * one component from stealing another's lock.
+   */
+  public releaseLock(holder: string): void {
+    if (this._lockHolder === null) {
+      return; // Already released — no-op
+    }
+    if (this._lockHolder !== holder) {
+      logWarn(`[BleTransport] '${holder}' tried to release lock, but it is held by '${this._lockHolder}'. Ignoring.`);
+      return;
+    }
+    log(`[BleTransport] Lock released by '${holder}'`);
+    this._lockHolder = null;
+  }
+
+  /** Whether the exclusive transport lock is currently held. */
+  public get isLocked(): boolean {
+    return this._lockHolder !== null;
+  }
+
+  /** The current lock holder, or null if unlocked. */
+  public get lockHolder(): string | null {
+    return this._lockHolder;
+  }
+
+  /**
+   * Check if a specific holder owns the lock.
+   * Used internally to allow the lock holder's own commands
+   * through without deadlocking.
+   */
+  public isLockedBy(holder: string): boolean {
+    return this._lockHolder === holder;
+  }
+
+  // ── Queue API ─────────────────────────────────────────────────────
 
   public isBusy(): boolean {
     return this.isProcessing || this.activeTask !== null || this.queue.length > 0;
@@ -55,9 +158,9 @@ class CommandQueue {
     return new Promise((resolve, reject) => {
       // Enforce exclusive transport lock — reject if a long-running
       // operation currently holds the lock, UNLESS the caller IS the holder
-      if (transportLock.isLocked && !transportLock.isHeldBy(options?.lockHolder ?? '')) {
+      if (this._lockHolder && !this.isLockedBy(options?.lockHolder ?? '')) {
         return reject(new Error(
-          `Transport locked by '${transportLock.holder}'. ` +
+          `Transport locked by '${this._lockHolder}'. ` +
           `Command rejected to protect active operation.`
         ));
       }
@@ -97,7 +200,9 @@ class CommandQueue {
     });
   }
 
-  private transitionQueue(newState: QueueState) {
+  // ── State machine ─────────────────────────────────────────────────
+
+  private transitionQueue(newState: TransportState) {
     if (this.state === newState) return;
     // Prevent illegal transitions
     if (this.state === 'IDLE' && (newState === 'PAUSED_SLEEP' || newState === 'PAUSED_BUSY')) {
@@ -196,7 +301,9 @@ class CommandQueue {
   }
 
   /**
-   * Break-glass emergency API
+   * Break-glass emergency API.
+   * Immediately rejects all queued and active commands,
+   * resets the transport to IDLE state.
    */
   public clearAll() {
     const error = new Error('Session Reset');
@@ -216,4 +323,5 @@ class CommandQueue {
   }
 }
 
-export const commandQueue = new CommandQueue();
+/** Singleton BLE transport controller — the single authority for command transport state. */
+export const bleTransport = new BleTransportController();

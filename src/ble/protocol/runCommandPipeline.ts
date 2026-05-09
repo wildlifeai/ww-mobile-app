@@ -1,10 +1,111 @@
-import { runCommand } from './runCommand';
+import { bleEventBus, BleEvent } from './eventBus';
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice';
 import { CommandContext } from './commandRegistry';
 import { BLE_PROTOCOL_RETRIES, BLE_PROTOCOL_TIMINGS } from './protocolConstants';
-import { commandQueue } from './commandQueue';
-import { bleEventBus } from './eventBus';
-import { transportLock } from './transportLock';
+import { bleTransport } from './bleTransportController';
+import { writeToDevice } from '../transport';
+import { DeviceSignal } from './deviceSignals';
+
+/**
+ * Execute a single BLE command: subscribe → send → resolve/reject.
+ *
+ * Subscribes to `bleEventBus.textLine` and `bleEventBus.deviceSignal`
+ * BEFORE writing to the transport, so the response listener is always
+ * registered before the device can reply.
+ *
+ * Resolution:
+ *   - `successMatcher(line)` → `collect(line)` → `isComplete()` → `parser()` → resolve
+ *   - `failureMatcher(line)` → reject
+ *   - `DEVICE_BUSY` signal → reject (retried by the pipeline)
+ *   - `DEVICE_DISCONNECTED` signal → reject (non-retryable)
+ *   - timeout → reject (retried by the pipeline if eligible)
+ */
+function runCommand<T>(
+  peripheral: ExtendedPeripheral,
+  commandConstructor: () => CommandContext<T>
+): Promise<T> {
+  const context = commandConstructor();
+
+  return new Promise((resolve, reject) => {
+    let isResolved = false;
+    let timeoutHandle: NodeJS.Timeout;
+
+    const cleanup = () => {
+      bleEventBus.removeListener('textLine', handleEvent);
+      bleEventBus.removeListener('deviceSignal', handleDeviceSignal);
+      clearTimeout(timeoutHandle);
+    };
+
+    // Idempotency: Protect against duplicated parse/match triggers
+    const idempotentResolve = (result: T) => {
+      if (isResolved) return;
+      isResolved = true;
+      cleanup();
+      resolve(result);
+    };
+
+    const idempotentReject = (error: Error) => {
+      if (isResolved) return;
+      isResolved = true;
+      cleanup();
+      reject(error);
+    };
+
+    const handleEvent = (event: BleEvent & { type: 'TEXT_LINE' }) => {
+      if (event.deviceId !== peripheral.id) return;
+
+      // Defense: Ignore unmatched lines safely without mutating context state
+      if (!context.match(event.line)) {
+        context.onUnexpected?.(event.line);
+        return;
+      }
+
+      try {
+        context.collect(event.line);
+
+        // Authority: isComplete holds absolute authority over context lifecycle
+        if (context.isComplete()) {
+          idempotentResolve(context.getResult());
+        }
+      } catch (err: any) {
+        idempotentReject(err);
+      }
+    };
+
+    const handleDeviceSignal = (event: BleEvent & { type: 'DEVICE_SIGNAL' }) => {
+      if (event.deviceId !== peripheral.id) return;
+      if (event.signal === DeviceSignal.BUSY) {
+        idempotentReject(new Error('DEVICE_BUSY'));
+      } else if (event.signal === DeviceSignal.DISCONNECT) {
+        idempotentReject(new Error('DEVICE_DISCONNECTED'));
+      }
+    };
+
+    // 1. REGISTER BEFORE ACT: Listeners must attach before bytes are placed on the transport
+    bleEventBus.on('textLine', handleEvent);
+    bleEventBus.on('deviceSignal', handleDeviceSignal);
+
+    // 2. TIMEOUT PROTECTION
+    const timeoutThreshold = context.timeoutMs ?? BLE_PROTOCOL_TIMINGS.DEFAULT_RESPONSE_TIMEOUT_MS;
+    timeoutHandle = setTimeout(() => {
+      const timeoutError = new Error('TIMEOUT');
+      if (context.onTimeout) {
+         try {
+           context.onTimeout();
+           if (context.isComplete()) idempotentResolve(context.getResult());
+           else idempotentReject(timeoutError);
+         } catch(e: any) {
+           idempotentReject(e);
+         }
+      } else {
+         idempotentReject(timeoutError);
+      }
+    }, timeoutThreshold);
+
+    // 3. ACT: Send bytes
+    writeToDevice(peripheral, context.build()).catch(idempotentReject);
+  });
+}
 
 /**
  * Classifies if an error is eligible for a retry.
@@ -53,7 +154,7 @@ export async function runCommandPipeline<T>(
   try {
     // ── Exclusive lock: Acquire first ──
     if (context.requiresExclusiveLock) {
-      transportLock.acquire(context.name);
+      bleTransport.acquireLock(context.name);
       lockAcquired = true;
     }
 
@@ -79,7 +180,7 @@ export async function runCommandPipeline<T>(
         if (error.message.includes('DEVICE_BUSY')) {
           await new Promise(r => setTimeout(r, BLE_PROTOCOL_TIMINGS.BUSY_RETRY_DELAY_MS));
           // Also manually tell the queue it can unpause from BUSY
-          commandQueue.resumeFromBusy();
+          bleTransport.resumeFromBusy();
         }
 
         // If the error was DEVICE_SLEEP, the commandQueue itself will be paused 
@@ -95,7 +196,7 @@ export async function runCommandPipeline<T>(
       });
     }
     if (lockAcquired) {
-      transportLock.release(context.name);
+      bleTransport.releaseLock(context.name);
     }
   }
 }
