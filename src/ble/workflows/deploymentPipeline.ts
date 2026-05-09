@@ -12,6 +12,7 @@ import ReferenceDataService from '../../services/ReferenceDataService'
 import FirmwareService from '../../services/FirmwareService'
 import AiModelService from '../../services/AiModelService'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
+import { OP_PARAMETER, FACTORY_DEFAULTS } from '../../hooks/useDeviceSettings'
 import { log, logWarn } from '../../utils/logger'
 
 interface ProgressCallbacks {
@@ -29,9 +30,86 @@ export async function syncTime(
 ): Promise<void> {
     addLog('Performing final time check...')
     setStep('Checking time...')
-    setProgress(0.1)
+    setProgress(0.05)
     await session.execute(commandRegistry.setutc)
     addLog('Time check complete')
+}
+
+/**
+ * Step 1b: Reset all operational parameters to factory defaults.
+ *
+ * Ensures the device has a clean slate before deployment. Prevents leftover
+ * state from MD tests (TEST_MODE_BITS=8, extended DPD) or previous deployments
+ * from contaminating the new deployment.
+ *
+ * Uses diff-based logic: only writes OPs that differ from defaults.
+ * Auto-incrementing counter OPs (0-5) are excluded from the diff.
+ */
+export async function resetOps(
+    session: BleSession,
+    { addLog, setStep, setProgress }: ProgressCallbacks
+): Promise<void> {
+    addLog('Resetting operational parameters...')
+    setStep('Resetting device...')
+    setProgress(0.06)
+
+    // Counter OPs auto-increment on each wake — skip them in the diff
+    const COUNTER_OPS: Set<number> = new Set([
+        OP_PARAMETER.SEQUENCE_NUMBER,
+        OP_PARAMETER.NUM_NN_ANALYSES,
+        OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES,
+        OP_PARAMETER.NUM_COLD_BOOTS,
+        OP_PARAMETER.NUM_WARM_BOOTS,
+        OP_PARAMETER.NUM_PICTURES,
+    ])
+
+    try {
+        // Wake AI processor
+        await session.execute(() => commandRegistry.aiver())
+
+        // Read current OPs
+        let currentOps: string[] | null = null
+        try {
+            currentOps = await session.execute(commandRegistry.getops)
+            log(`[ResetOps] Current OPs: ${currentOps?.join(' ')}`)
+        } catch {
+            logWarn('[ResetOps] Could not read current OPs, will write all defaults')
+        }
+
+        // Compute diff (excluding counters)
+        const opsToWrite: { index: number; value: number }[] = []
+        for (const [indexStr, defaultValue] of Object.entries(FACTORY_DEFAULTS)) {
+            const index = parseInt(indexStr, 10)
+            if (COUNTER_OPS.has(index)) continue
+            if (currentOps && currentOps.length > index && currentOps[index] === defaultValue.toString()) continue
+            opsToWrite.push({ index, value: defaultValue })
+        }
+
+        if (opsToWrite.length === 0) {
+            addLog('OPs already at defaults — skipping')
+            log('[ResetOps] All configurable OPs already at defaults')
+        } else {
+            // Extend DPD to keep AI awake during reset
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 30000 }))
+
+            log(`[ResetOps] Writing ${opsToWrite.length} OPs to defaults`)
+            for (const { index, value } of opsToWrite) {
+                log(`[ResetOps] Setting OP ${index} = ${value}`)
+                await session.execute(() => commandRegistry.setop({ index, value }))
+            }
+            addLog(`Reset ${opsToWrite.length} parameters to defaults`)
+        }
+
+        // Always clear deployment ID and GPS for a clean slate
+        await session.execute(() => commandRegistry.setdid(null))
+        await session.execute(() => commandRegistry.setgps('0,0,0'))
+        addLog('Deployment ID and GPS cleared')
+
+        setProgress(0.09)
+    } catch (e) {
+        logWarn('[ResetOps] Reset failed, continuing:', e)
+        addLog('Parameter reset failed — continuing with deployment')
+    }
 }
 
 /**

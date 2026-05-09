@@ -123,6 +123,27 @@ export const useStartDeployment = ({
     // Standard BLE initialization plus initialization guard
     // const hasRunInitialization = useRef(false)
     const bleDeviceRef = useRef(bleDevice)
+    const hasRunInitReset = useRef(false)
+
+    // Reset OPs to factory defaults when the screen first mounts with a connected device.
+    // This clears any leftover MD test state (TEST_MODE_BITS, extended DPD, etc.)
+    // before the user configures the deployment.
+    useEffect(() => {
+        if (hasRunInitReset.current) return
+        if (!bleDevice?.connected || !bleSession) return
+
+        hasRunInitReset.current = true
+        log('[Deployment] Running initialization OP reset...')
+
+        const silentCb = {
+            addLog: (msg: string) => log(`[Deployment:InitReset] ${msg}`),
+            setStep: () => {},
+            setProgress: () => {},
+        }
+        pipeline.resetOps(bleSession, silentCb)
+            .then(() => log('[Deployment] Initialization OP reset complete'))
+            .catch(err => logWarn('[Deployment] Initialization OP reset failed (non-critical):', err))
+    }, [bleDevice?.connected, bleSession])
 
     
     // Memoized handlers to prevent infinite loops in child components
@@ -488,7 +509,15 @@ export const useStartDeployment = ({
             deploymentIdRef.current = newDeployment.id
             progress.addLog(`Deployment created: ${newDeployment.id.substring(0, 8)}...`)
 
-            // 6. Configure device OPs (shared pipeline)
+            // 6. Reset OPs to factory defaults before applying deployment config
+            try {
+                await pipeline.resetOps(bleSession, cb)
+            } catch (resetError) {
+                logWarn('[Deployment] OP reset failed, continuing with configuration:', resetError)
+                progress.addLog('OP reset failed — continuing with configuration')
+            }
+
+            // 7. Configure device OPs for this specific deployment (shared pipeline)
             try {
                 await pipeline.configureDevice(bleDevice, startConfigure, {
                     deploymentId: newDeployment.id,
