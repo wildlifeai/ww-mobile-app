@@ -25,16 +25,22 @@ interface UseMotionDetectionStreamOptions {
     device: ExtendedPeripheral | undefined
 }
 
+/** Block characters for grid rendering — monospace text, zero Views. */
+const ACTIVE_CHAR = '█'
+const INACTIVE_CHAR = '·'
+const EMPTY_GRID = Array(16).fill(INACTIVE_CHAR.repeat(16)).join('\n')
+
 /** A snapshot of one frame's motion detection grid. */
 export interface FrameSnapshot {
     frameIndex: number
-    grid: boolean[][]
+    /** Precomputed display string (16 lines of 16 chars). Ready to render as <Text>. */
+    gridString: string
     blockCount: number
 }
 
 export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOptions) => {
     // 16x16 grid initialized to false
-    const [mdGrid, setMdGrid] = useState<boolean[][]>(Array(16).fill(Array(16).fill(false)))
+    const [mdGrid, setMdGrid] = useState<string>(EMPTY_GRID)
     const [isTesting, setIsTesting] = useState(false)
     const [testFinished, setTestFinished] = useState(false)
     const [mdBlocksCount, setMdBlocksCount] = useState<number>(0)
@@ -103,7 +109,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                     setFrameHistory(frames)
                     // Show the last frame's grid in the live view
                     if (frames.length > 0) {
-                        setMdGrid(frames[frames.length - 1].grid)
+                        setMdGrid(frames[frames.length - 1].gridString)
                     }
                     setIsTesting(false)
                     setTestFinished(true)
@@ -168,15 +174,15 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                         }
                         prevGridBytesRef.current = newBytes
 
-                        const grid = gridChanged
-                            ? processHexGrid(rawBytes)
+                        const gridString = gridChanged
+                            ? bytesToGridString(rawBytes)
                             : pendingFramesRef.current.length > 0
-                                ? pendingFramesRef.current[pendingFramesRef.current.length - 1].grid
-                                : processHexGrid(rawBytes)
+                                ? pendingFramesRef.current[pendingFramesRef.current.length - 1].gridString
+                                : bytesToGridString(rawBytes)
 
                         const snapshot: FrameSnapshot = {
                             frameIndex: frameIndexRef.current,
-                            grid,
+                            gridString,
                             blockCount: blockCountRef.current,
                         }
                         // Accumulate in ref — no re-render until test completes
@@ -194,7 +200,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                             setStatusMessage(`Capturing \u2014 frame ${idx} received`)
                             // Only repaint if data changed AND throttle allows
                             if (shouldRenderGrid) {
-                                setMdGrid(grid)
+                                setMdGrid(gridString)
                                 lastGridRenderRef.current = now
                             }
                         })
@@ -211,30 +217,29 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
         }
     }, [device])
 
-    /** Parse 32 hex bytes into a 16×16 boolean grid (pure — no setState). */
-    const processHexGrid = (bytes: number[]): boolean[][] => {
-        // Each row is 2 bytes: byte[0] covers columns 0-7, byte[1] covers columns 8-15.
-        // Within each byte, bit N → column N (LSB = col 0, MSB = col 7 within the byte).
-        // This matches the firmware's text representation (dots and hashes).
-        const newGrid: boolean[][] = []
+    /**
+     * Convert 32 hex bytes into a precomputed 16-line display string.
+     * Each row is 2 bytes: byte[0] → columns 0-7, byte[1] → columns 8-15.
+     * LSB = col 0 within each byte. Output: '█' for motion, '·' for none.
+     * The resulting string is stored immutably — the UI does zero computation.
+     */
+    const bytesToGridString = (bytes: number[]): string => {
+        const rows: string[] = []
         for (let row = 0; row < 16; row++) {
-            const rowBools: boolean[] = []
+            let line = ''
             const byte1 = bytes[row * 2]
             const byte2 = bytes[row * 2 + 1]
-
-            // Columns 0-7 from byte1
             for (let bit = 0; bit < 8; bit++) {
                 // eslint-disable-next-line no-bitwise
-                rowBools.push(((byte1 >> bit) & 1) === 1)
+                line += ((byte1 >> bit) & 1) ? ACTIVE_CHAR : INACTIVE_CHAR
             }
-            // Columns 8-15 from byte2
             for (let bit = 0; bit < 8; bit++) {
                 // eslint-disable-next-line no-bitwise
-                rowBools.push(((byte2 >> bit) & 1) === 1)
+                line += ((byte2 >> bit) & 1) ? ACTIVE_CHAR : INACTIVE_CHAR
             }
-            newGrid.push(rowBools)
+            rows.push(line)
         }
-        return newGrid
+        return rows.join('\n')
     }
 
     /**
@@ -266,7 +271,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
         expectingHexRef.current = false
         frameIndexRef.current = 0
         activeRef.current = true
-        setMdGrid(Array(16).fill(Array(16).fill(false)))
+        setMdGrid(EMPTY_GRID)
         setMdBlocksCount(0)
         setFrameCount(0)
         setFrameHistory([])

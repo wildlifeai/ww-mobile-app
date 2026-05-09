@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react'
-import { View, StyleSheet, ScrollView } from 'react-native'
+import { View, StyleSheet, FlatList } from 'react-native'
 import { Card, SegmentedButtons, TextInput, ProgressBar, Banner, useTheme } from 'react-native-paper'
 
 import { WWText } from '../../../components/ui/WWText'
@@ -320,7 +320,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                 </WWText>
                             )}
                             <View style={styles.gridBox}>
-                                <MotionGrid grid={mdGrid} />
+                                <MotionGrid gridString={mdGrid} />
                             </View>
                         </View>
 
@@ -354,18 +354,22 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                             Frame History ({frameHistory.length})
                         </WWText>
 
-                        {/* Horizontal scrollable mini-grid thumbnails */}
-                        <ScrollView
+                        {/* Virtualized horizontal mini-grid thumbnails */}
+                        <FlatList
+                            data={frameHistory}
                             horizontal
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={styles.historyScroll}
-                        >
-                            {frameHistory.map((snap) => {
+                            initialNumToRender={5}
+                            windowSize={3}
+                            maxToRenderPerBatch={5}
+                            removeClippedSubviews
+                            keyExtractor={(item) => `hist-${item.frameIndex}`}
+                            renderItem={({ item: snap }) => {
                                 const isSelected = selectedFrame === snap.frameIndex
                                 const hasMotion = snap.blockCount > 0
                                 return (
                                     <View
-                                        key={`hist-${snap.frameIndex}`}
                                         style={[
                                             styles.historyItem,
                                             isSelected && { borderColor: theme.colors.primary, borderWidth: 2 },
@@ -374,7 +378,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                             isSelected ? null : snap.frameIndex
                                         )}
                                     >
-                                        <MiniGrid grid={snap.grid} />
+                                        <MiniGrid gridString={snap.gridString} />
                                         <WWText variant="labelSmall" style={styles.historyFrameLabel}>
                                             #{snap.frameIndex}
                                         </WWText>
@@ -389,8 +393,8 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                         </WWText>
                                     </View>
                                 )
-                            })}
-                        </ScrollView>
+                            }}
+                        />
 
                         {/* Selected frame detail view */}
                         {selectedSnapshot && (
@@ -399,7 +403,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                                     Frame #{selectedSnapshot.frameIndex} — {selectedSnapshot.blockCount} motion blocks
                                 </WWText>
                                 <View style={styles.gridBox}>
-                                    <MotionGrid grid={selectedSnapshot.grid} />
+                                    <MotionGrid gridString={selectedSnapshot.gridString} />
                                 </View>
                             </View>
                         )}

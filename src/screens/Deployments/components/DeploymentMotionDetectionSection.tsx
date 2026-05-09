@@ -7,6 +7,7 @@ import { WWButton } from '../../../components/ui/WWButton'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useMotionDetectionStream } from '../../Devices/hooks/useMotionDetectionStream'
+import { MotionGrid } from '../../Devices/components/MotionGrid'
 import { logError } from '../../../utils/logger'
 
 interface DeploymentMotionDetectionSectionProps {
@@ -90,23 +91,7 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
                         <WWText variant="bodySmall" style={styles.blocksText}>
                             Motion in {mdBlocksCount} blocks
                         </WWText>
-                        {mdGrid.map((row, rowIndex) => (
-                            <View key={`row-${rowIndex}`} style={styles.gridRow}>
-                                {row.map((cell, colIndex) => (
-                                    <View
-                                        key={`cell-${rowIndex}-${colIndex}`}
-                                        style={[
-                                            styles.gridCell,
-                                            {
-                                                backgroundColor: cell 
-                                                    ? theme.colors.primary 
-                                                    : theme.colors.surfaceVariant
-                                            }
-                                        ]}
-                                    />
-                                ))}
-                            </View>
-                        ))}
+                        <MotionGrid gridString={mdGrid} />
                     </View>
                 )}
 
@@ -159,15 +144,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#00000008',
         borderRadius: 8,
     },
-    gridRow: {
-        flexDirection: 'row',
-    },
-    gridCell: {
-        width: 14,
-        height: 14,
-        margin: 1,
-        borderRadius: 2,
-    },
+
     motionIndicator: {
         flexDirection: 'row',
         alignItems: 'center',

@@ -1,75 +1,53 @@
 /**
- * MotionGrid — Pure React Native 16×16 motion detection grid.
+ * MotionGrid — Text-based 16×16 motion detection grid.
  *
- * Lightweight replacement for SkiaGrid. Uses a flat list of Views
- * with absolute positioning to minimise reconciliation overhead.
- * No native dependencies required.
+ * Renders the precomputed grid string as a single <Text> node.
+ * Uses block characters (█ for motion, · for none) with a monospace font.
+ *
+ * Performance: 1 Text node instead of 256 Views.
+ * Zero reconciliation overhead — just a string swap.
  */
-import React, { useMemo } from 'react'
-import { View } from 'react-native'
-import { useTheme } from 'react-native-paper'
+import React from 'react'
+import { Text, Platform, StyleSheet } from 'react-native'
 
 interface MotionGridProps {
-    /** 16×16 boolean grid — true = motion detected */
-    grid: boolean[][]
-    /** Total width/height in dp */
-    size?: number
-    /** Gap between cells in dp */
-    gap?: number
+    /** Precomputed display string (16 lines of 16 chars). */
+    gridString: string
+    /** Font size in dp — controls the overall grid size */
+    fontSize?: number
 }
 
 /**
- * Renders a 16×16 boolean grid as colored rectangles.
- * Pre-computes cell styles to avoid per-frame object allocation.
+ * Renders a 16×16 grid as a single monospace <Text> node.
+ * The gridString is precomputed at parse time — this component
+ * does ZERO computation. Just renders the string.
  */
-export const MotionGrid = React.memo<MotionGridProps>(({ grid, size = 288, gap = 1 }) => {
-    const theme = useTheme()
-    const cellSize = (size - gap * 15) / 16
-    const activeColor = '#4CAF50'
-    const inactiveColor = theme.colors.surfaceVariant
-
-    // Pre-compute cell positions (only recalculated when size/gap change)
-    const cells = useMemo(() => {
-        const result: { key: number; x: number; y: number }[] = []
-        for (let row = 0; row < 16; row++) {
-            for (let col = 0; col < 16; col++) {
-                result.push({
-                    key: row * 16 + col,
-                    x: col * (cellSize + gap),
-                    y: row * (cellSize + gap),
-                })
-            }
-        }
-        return result
-    }, [cellSize, gap])
-
-    return (
-        <View style={{ width: size, height: size }}>
-            {cells.map(cell => {
-                const row = Math.floor(cell.key / 16)
-                const col = cell.key % 16
-                const isActive = grid[row]?.[col] ?? false
-                return (
-                    <View
-                        key={cell.key}
-                        style={{
-                            position: 'absolute',
-                            left: cell.x,
-                            top: cell.y,
-                            width: cellSize,
-                            height: cellSize,
-                            backgroundColor: isActive ? activeColor : inactiveColor,
-                        }}
-                    />
-                )
-            })}
-        </View>
-    )
-})
+export const MotionGrid = React.memo<MotionGridProps>(({ gridString, fontSize = 16 }) => (
+    <Text style={[styles.grid, { fontSize, lineHeight: fontSize * 1.1 }]}>
+        {gridString}
+    </Text>
+))
 
 /**
  * Compact version for frame history thumbnails.
  */
-export const MiniGrid = React.memo<{ grid: boolean[][]; size?: number }>(({ grid, size = 64 }) => {
-    return <MotionGrid grid={grid} size={size} gap={0.5} />
+export const MiniGrid = React.memo<{ gridString: string }>(({ gridString }) => (
+    <Text style={[styles.grid, styles.miniGrid]}>
+        {gridString}
+    </Text>
+))
+
+const styles = StyleSheet.create({
+    grid: {
+        fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+        fontSize: 16,
+        lineHeight: 16 * 1.1,
+        letterSpacing: 1,
+        color: '#4CAF50',
+    },
+    miniGrid: {
+        fontSize: 3.5,
+        lineHeight: 3.5 * 1.1,
+        letterSpacing: 0,
+    },
 })
