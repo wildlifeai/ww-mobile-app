@@ -344,9 +344,13 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
     }, [])
 
     /**
-     * Full factory reset: resets ALL 21 operational parameters to firmware defaults,
-     * erases any loaded AI model, clears the deployment ID, and zeroes GPS.
-     * 
+     * Full factory reset: reads current OPs, writes only those that differ
+     * from FACTORY_DEFAULTS, erases any loaded AI model, clears the
+     * deployment ID, and zeroes GPS.
+     *
+     * Each setop/setgps command receives a confirmation response from the
+     * firmware, so no verification pass is needed.
+     *
      * @param device The connected BLE device
      * @param onProgress Optional callback for progress updates (step description, 0-1 progress)
      */
@@ -355,28 +359,11 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
             throw new Error('Device not connected')
         }
 
-        // Counter OPs that the firmware auto-increments on each wake cycle.
-        // These will never match defaults after the initial boot, so skip them
-        // in the diff check to avoid pointless setop round-trips.
-        const COUNTER_OPS: Set<number> = new Set([
-            OP_PARAMETER.SEQUENCE_NUMBER,       // OP 0
-            OP_PARAMETER.NUM_NN_ANALYSES,       // OP 1
-            OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES, // OP 2
-            OP_PARAMETER.NUM_COLD_BOOTS,        // OP 3
-            OP_PARAMETER.NUM_WARM_BOOTS,        // OP 4
-            OP_PARAMETER.NUM_PICTURES,          // OP 5
-        ])
-
         try {
             setIsUpdating(true)
             const session = createBleSession(device)
 
-            // Step 1: Wake AI processor
-            onProgress?.('Waking AI processor...', 0.05)
-            log('[ResetDefaults] Waking AI processor...')
-            await session.execute(() => commandRegistry.aiver())
-
-            // Step 2: Read current OPs to determine what work is needed
+            // Step 1: Read current OPs (this also wakes the device from DPD)
             onProgress?.('Reading current parameters...', 0.1)
             log('[ResetDefaults] Reading current operational parameters...')
             let currentOps: string[] | null = null
@@ -387,11 +374,10 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
                 logWarn('[ResetDefaults] Could not read current OPs, will write all defaults', err)
             }
 
-            // Determine what needs changing (excluding counter OPs)
+            // Step 2: Diff against FACTORY_DEFAULTS — only write what differs
             const opsToWrite: { index: number; value: number }[] = []
             for (const [indexStr, defaultValue] of Object.entries(FACTORY_DEFAULTS)) {
                 const index = parseInt(indexStr, 10)
-                if (COUNTER_OPS.has(index)) continue // Skip auto-incrementing counters
                 if (currentOps && currentOps.length > index && currentOps[index] === defaultValue.toString()) continue
                 opsToWrite.push({ index, value: defaultValue })
             }
@@ -401,22 +387,9 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
                 (currentOps.length > OP_PARAMETER.MODEL_PROJECT && currentOps[OP_PARAMETER.MODEL_PROJECT] !== '0') ||
                 (currentOps.length > OP_PARAMETER.MODEL_VERSION && currentOps[OP_PARAMETER.MODEL_VERSION] !== '0')
 
-            // Early exit: if nothing to write, no model to erase, we're done
-            if (opsToWrite.length === 0 && !hasModel) {
-                onProgress?.('Already at defaults — nothing to do', 1.0)
-                log('[ResetDefaults] All OPs already at defaults and no model loaded. Skipping reset.')
-                return
-            }
-
             log(`[ResetDefaults] ${opsToWrite.length} OPs need writing, model loaded: ${hasModel}`)
 
-            // Step 3: Extend DPD timeout to keep AI awake during the reset
-            //         (only if we have actual work to do)
-            onProgress?.('Extending DPD timeout...', 0.15)
-            log('[ResetDefaults] Extending DPD timeout to 30s to keep AI awake during reset...')
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 30000 }))
-
-            // Step 4: Erase AI model only if one is loaded
+            // Step 3: Erase AI model if one is loaded
             if (hasModel) {
                 onProgress?.('Erasing AI model...', 0.2)
                 log('[ResetDefaults] Erasing AI model...')
@@ -426,11 +399,9 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
                 } catch (err) {
                     logWarn('[ResetDefaults] erasemodel failed (may not have a model loaded):', err)
                 }
-            } else {
-                log('[ResetDefaults] No model loaded (OP 14/15 = 0) — skipping erasemodel')
             }
 
-            // Step 5: Write only the OPs that differ from defaults
+            // Step 4: Write OPs that differ from defaults
             let opsWritten = 0
             for (const { index, value } of opsToWrite) {
                 if (!isMounted.current || !device.connected) {
@@ -442,46 +413,24 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
                 opsWritten++
 
                 // Progress: 0.3 to 0.7 across all OP writes
-                onProgress?.(`Resetting parameter ${index}...`, 0.3 + (opsWritten / opsToWrite.length) * 0.4)
+                const progress = opsToWrite.length > 0
+                    ? 0.3 + (opsWritten / opsToWrite.length) * 0.4
+                    : 0.7
+                onProgress?.(`Resetting parameter ${index}...`, progress)
             }
 
-            // Step 6: Clear deployment ID
-            onProgress?.('Clearing deployment ID...', 0.75)
+            // Step 5: Clear deployment ID
+            onProgress?.('Clearing deployment ID...', 0.8)
             log('[ResetDefaults] Clearing deployment ID...')
             await session.execute(() => commandRegistry.setdid(null))
 
-            // Step 7: Zero GPS
-            onProgress?.('Zeroing GPS...', 0.85)
+            // Step 6: Zero GPS
+            onProgress?.('Zeroing GPS...', 0.9)
             log('[ResetDefaults] Zeroing GPS...')
             await session.execute(() => commandRegistry.setgps('0,0,0'))
 
-            // Step 8: Reset counter OPs to zero (single pass, no verification needed)
-            onProgress?.('Resetting counters...', 0.9)
-            for (const counterOp of COUNTER_OPS) {
-                const defaultVal = FACTORY_DEFAULTS[counterOp]
-                if (currentOps && currentOps.length > counterOp && currentOps[counterOp] === defaultVal.toString()) continue
-                log(`[ResetDefaults] Resetting counter OP ${counterOp} = ${defaultVal}`)
-                await session.execute(() => commandRegistry.setop({ index: counterOp, value: defaultVal }))
-            }
-
-            // Step 9: Verify (exclude counters — they may already increment again)
-            onProgress?.('Verifying reset...', 0.95)
-            log('[ResetDefaults] Verifying reset...')
-            const verifyOps = await session.execute(commandRegistry.getops)
-            const mismatches: string[] = []
-            for (const [indexStr, defaultValue] of Object.entries(FACTORY_DEFAULTS)) {
-                const index = parseInt(indexStr, 10)
-                if (COUNTER_OPS.has(index)) continue // Don't verify counters
-                if (verifyOps && verifyOps.length > index && verifyOps[index] !== defaultValue.toString()) {
-                    mismatches.push(`OP ${index}: expected ${defaultValue}, got ${verifyOps[index]}`)
-                }
-            }
-            if (mismatches.length > 0) {
-                logWarn('[ResetDefaults] Verification mismatches:', mismatches)
-            }
-
             onProgress?.('Reset complete', 1.0)
-            log(`[ResetDefaults] Factory reset complete. ${opsWritten} OPs written, ${mismatches.length} mismatches.`)
+            log(`[ResetDefaults] Factory reset complete. ${opsWritten} OPs written.`)
         } catch (error) {
             logError('[ResetDefaults] Error during factory reset:', error)
             throw error
