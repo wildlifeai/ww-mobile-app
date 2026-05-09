@@ -6,8 +6,6 @@ import { WWText } from '../../../components/ui/WWText'
 import { WWButton } from '../../../components/ui/WWButton'
 import { WWIcon } from '../../../components/ui/WWIcon'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { createBleSession } from '../../../ble/session/createBleSession'
-import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { useMotionDetectionStream } from '../../Devices/hooks/useMotionDetectionStream'
 import { logError } from '../../../utils/logger'
 
@@ -43,12 +41,10 @@ export const DeploymentMotionDetectionSection: React.FC<DeploymentMotionDetectio
         
         setIsPreparing(true)
         try {
-            // Apply project's sensitivity first before engaging the test loop
-            const session = createBleSession(device)
-            await session.execute(() => commandRegistry.md(project.activity_detection_sensitivity_id ?? 3))
-            await startTest()
+            // startTest now handles sensitivity, interval, and capture count internally
+            await startTest(project.activity_detection_sensitivity_id ?? 3, 1000, 20)
         } catch (error) {
-            logError('[DeploymentMD] Failed to set sensitivity for test', error)
+            logError('[DeploymentMD] Failed to start motion detection test', error)
         } finally {
             setIsPreparing(false)
         }
