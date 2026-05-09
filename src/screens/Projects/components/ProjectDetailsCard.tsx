@@ -57,8 +57,8 @@ export const ProjectDetailsCard: React.FC<Props> = ({
     return (
         <Card mode="outlined" style={styles.card}>
             <Card.Content>
-                <TouchableRipple onPress={handleHeaderPress} borderless style={styles.headerTouchable}>
-                    <View style={styles.headerRow}>
+                <View style={styles.headerRow}>
+                    <TouchableRipple onPress={handleHeaderPress} borderless style={styles.headerTitleTouchable}>
                         <View style={styles.flex1}>
                             <Text
                                 variant="titleMedium"
@@ -75,26 +75,26 @@ export const ProjectDetailsCard: React.FC<Props> = ({
                                 </Text>
                             )}
                         </View>
+                    </TouchableRipple>
 
-                        <View style={styles.actionButtons}>
-                            {isProjectAdmin ? (
-                                <IconButton
-                                    icon="cog"
-                                    size={24}
-                                    onPress={handleHeaderPress}
-                                    testID="edit-button"
-                                />
-                            ) : (
-                                <IconButton
-                                    icon="chevron-right"
-                                    size={24}
-                                    onPress={handleHeaderPress}
-                                    testID="view-details-button"
-                                />
-                            )}
-                        </View>
+                    <View style={styles.actionButtons}>
+                        {isProjectAdmin ? (
+                            <IconButton
+                                icon="cog"
+                                size={24}
+                                onPress={handleHeaderPress}
+                                testID="edit-button"
+                            />
+                        ) : (
+                            <IconButton
+                                icon="chevron-right"
+                                size={24}
+                                onPress={handleHeaderPress}
+                                testID="view-details-button"
+                            />
+                        )}
                     </View>
-                </TouchableRipple>
+                </View>
 
                 <View>
                     {project.description ? (
@@ -296,9 +296,9 @@ const styles = StyleSheet.create({
     card: {
         marginBottom: 16,
     },
-    headerTouchable: {
+    headerTitleTouchable: {
+        flex: 1,
         borderRadius: 8,
-        marginBottom: 8,
     },
     headerRow: {
         flexDirection: "row",

@@ -134,22 +134,22 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
     return (
         <Card mode="outlined" style={styles.card}>
             <Card.Content>
-                <TouchableRipple onPress={handleSectionPress} borderless style={styles.headerTouchable}>
-                    <View style={styles.sectionHeader}>
+                <View style={styles.sectionHeader}>
+                    <TouchableRipple onPress={handleSectionPress} borderless style={styles.headerTitleTouchable}>
                         <Text
                             variant="titleMedium"
                             style={dynamicStyles.title}
                         >
                             Wildlife Watchers ({devices.length})
                         </Text>
-                        <IconButton
-                            icon="eye"
-                            size={24}
-                            onPress={handleSectionPress}
-                            testID="view-devices-button"
-                        />
-                    </View>
-                </TouchableRipple>
+                    </TouchableRipple>
+                    <IconButton
+                        icon="eye"
+                        size={24}
+                        onPress={handleSectionPress}
+                        testID="view-devices-button"
+                    />
+                </View>
 
                 <Divider style={styles.divider} />
 
@@ -158,32 +158,32 @@ export const ProjectDevicesCard: React.FC<Props> = ({ projectId, projectName }) 
                 ) : devices.length > 0 ? (
                     <View style={styles.devicesList}>
                         {devices.slice(0, 5).map((device) => (
-                            <TouchableRipple
+                            <View
                                 key={device.id}
-                                onPress={() => handleDevicePress(device)}
-                                borderless
-                                style={styles.deviceTouchable}
+                                style={styles.deviceListItem}
                             >
-                                <View style={styles.deviceListItem}>
-                                    <View style={styles.deviceInfo}>
-                                        <TouchableRipple
-                                            onPress={() => handleCameraIconPress(device)}
-                                            borderless
-                                            style={styles.iconTouchable}
-                                        >
-                                            <View style={styles.iconContainer}>
-                                                <WWIcon source="camera" size={24} color={device.isActive ? '#4CAF50' : '#9E9E9E'} />
-                                            </View>
-                                        </TouchableRipple>
-                                        <View style={styles.deviceDetails}>
-                                            <Text variant="bodyMedium" style={dynamicStyles.deviceName}>
-                                                {device.name}
-                                            </Text>
-                                        </View>
+                                <TouchableRipple
+                                    onPress={() => handleCameraIconPress(device)}
+                                    borderless
+                                    style={styles.iconTouchable}
+                                >
+                                    <View style={styles.iconContainer}>
+                                        <WWIcon source="camera" size={24} color={device.isActive ? '#4CAF50' : '#9E9E9E'} />
                                     </View>
-                                    <WWIcon source="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
-                                </View>
-                            </TouchableRipple>
+                                </TouchableRipple>
+                                <TouchableRipple
+                                    onPress={() => handleDevicePress(device)}
+                                    borderless
+                                    style={styles.deviceDetailsTouchable}
+                                >
+                                    <View style={styles.deviceDetails}>
+                                        <Text variant="bodyMedium" style={dynamicStyles.deviceName}>
+                                            {device.name}
+                                        </Text>
+                                    </View>
+                                </TouchableRipple>
+                                <WWIcon source="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
+                            </View>
                         ))}
                     </View>
                 ) : (
@@ -200,8 +200,10 @@ const styles = StyleSheet.create({
     card: {
         marginBottom: 16,
     },
-    headerTouchable: {
+    headerTitleTouchable: {
+        flex: 1,
         borderRadius: 8,
+        justifyContent: 'center',
     },
     sectionHeader: {
         flexDirection: "row",
@@ -216,7 +218,8 @@ const styles = StyleSheet.create({
     devicesList: {
         gap: 4,
     },
-    deviceTouchable: {
+    deviceDetailsTouchable: {
+        flex: 1,
         borderRadius: 8,
     },
     deviceListItem: {
@@ -226,12 +229,7 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 4,
     },
-    deviceInfo: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        flex: 1,
-    },
+
     deviceDetails: {
         flex: 1,
     },

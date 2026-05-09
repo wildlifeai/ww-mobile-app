@@ -40,22 +40,22 @@ export const ProjectMembersCard: React.FC<Props> = ({
     return (
         <Card mode="outlined" style={styles.card}>
             <Card.Content>
-                <TouchableRipple onPress={handleSectionPress} borderless style={styles.headerTouchable}>
-                    <View style={styles.sectionHeader}>
+                <View style={styles.sectionHeader}>
+                    <TouchableRipple onPress={handleSectionPress} borderless style={styles.headerTitleTouchable}>
                         <Text
                             variant="titleMedium"
                             style={dynamicStyles.membersTitle}
                         >
                             Members ({members?.length || 0})
                         </Text>
-                        <IconButton
-                            icon={isProjectAdmin ? "account-cog" : "eye"}
-                            size={24}
-                            onPress={handleSectionPress}
-                            testID={isProjectAdmin ? "manage-members-button" : "view-members-button"}
-                        />
-                    </View>
-                </TouchableRipple>
+                    </TouchableRipple>
+                    <IconButton
+                        icon={isProjectAdmin ? "account-cog" : "eye"}
+                        size={24}
+                        onPress={handleSectionPress}
+                        testID={isProjectAdmin ? "manage-members-button" : "view-members-button"}
+                    />
+                </View>
 
                 <Divider style={styles.divider} />
 
@@ -116,8 +116,10 @@ const styles = StyleSheet.create({
     card: {
         marginBottom: 16,
     },
-    headerTouchable: {
+    headerTitleTouchable: {
+        flex: 1,
         borderRadius: 8,
+        justifyContent: 'center',
     },
     sectionHeader: {
         flexDirection: "row",

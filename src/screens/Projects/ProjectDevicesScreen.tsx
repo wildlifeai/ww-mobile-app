@@ -132,25 +132,29 @@ export const ProjectDevicesScreen = () => {
 
     const renderDeviceItem = useCallback(({ item }: { item: ProjectDevice }) => (
         <Card mode="outlined" style={styles.card}>
-            <TouchableRipple onPress={() => handleDevicePress(item)} borderless>
-                <Card.Content style={styles.cardContent}>
-                    <View style={styles.deviceRow}>
-                        {/* Status Icon */}
-                        <TouchableRipple
-                            onPress={() => handleCameraIconPress(item)}
-                            borderless
-                            style={styles.iconTouchable}
-                        >
-                            <View>
-                                <WWIcon
-                                    source="camera"
-                                    size={22}
-                                    color={item.isActive ? '#4CAF50' : theme.colors.onSurfaceVariant}
-                                />
-                            </View>
-                        </TouchableRipple>
+            <Card.Content style={styles.cardContent}>
+                <View style={styles.deviceRow}>
+                    {/* Status Icon — navigates to deployment */}
+                    <TouchableRipple
+                        onPress={() => handleCameraIconPress(item)}
+                        borderless
+                        style={styles.iconTouchable}
+                    >
+                        <View>
+                            <WWIcon
+                                source="camera"
+                                size={22}
+                                color={item.isActive ? '#4CAF50' : theme.colors.onSurfaceVariant}
+                            />
+                        </View>
+                    </TouchableRipple>
 
-                        {/* Device Name */}
+                    {/* Device Info — navigates to device summary */}
+                    <TouchableRipple
+                        onPress={() => handleDevicePress(item)}
+                        borderless
+                        style={styles.deviceInfoTouchable}
+                    >
                         <View style={styles.deviceInfo}>
                             <Text
                                 variant="titleMedium"
@@ -176,28 +180,28 @@ export const ProjectDevicesScreen = () => {
                                 </Text>
                             )}
                         </View>
+                    </TouchableRipple>
 
-                        {/* View on Map action (active only) */}
-                        {item.isActive && (
-                            <TouchableRipple
-                                onPress={() => navigation.navigate('Home', { initialTab: 'maps', selectedDeploymentId: item.activeDeploymentId })}
-                                style={styles.mapButton}
-                                borderless
-                            >
-                                <View style={styles.mapButtonInner}>
-                                    <WWIcon source="map-marker" size={18} color="#4CAF50" />
-                                    <Text variant="labelSmall" style={dynamicStyles.mapButtonText}>
-                                        Map
-                                    </Text>
-                                </View>
-                            </TouchableRipple>
-                        )}
+                    {/* View on Map action (active only) */}
+                    {item.isActive && (
+                        <TouchableRipple
+                            onPress={() => navigation.navigate('Home', { initialTab: 'maps', selectedDeploymentId: item.activeDeploymentId })}
+                            style={styles.mapButton}
+                            borderless
+                        >
+                            <View style={styles.mapButtonInner}>
+                                <WWIcon source="map-marker" size={18} color="#4CAF50" />
+                                <Text variant="labelSmall" style={dynamicStyles.mapButtonText}>
+                                    Map
+                                </Text>
+                            </View>
+                        </TouchableRipple>
+                    )}
 
-                        {/* Chevron */}
-                        <WWIcon source="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
-                    </View>
-                </Card.Content>
-            </TouchableRipple>
+                    {/* Chevron */}
+                    <WWIcon source="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
+                </View>
+            </Card.Content>
         </Card>
     ), [theme, navigation, dynamicStyles, handleDevicePress, handleCameraIconPress])
 
@@ -282,6 +286,10 @@ const styles = StyleSheet.create({
     },
     deviceInfo: {
         flex: 1,
+    },
+    deviceInfoTouchable: {
+        flex: 1,
+        borderRadius: 8,
     },
     deviceName: {
         fontWeight: '600',
