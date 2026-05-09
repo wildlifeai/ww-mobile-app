@@ -327,17 +327,37 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 await new Promise(r => setTimeout(r, 3300))
             }
 
-            // 2. Enable TEST_BIT_SKIP_FILE_CREATION — only if not already set.
+            // 2. Extend INTERVAL_BEFORE_DPD FIRST — this must be the first
+            //    session command after the md delay. After md, the firmware
+            //    enters DPD due to the Wake(MD) bug. The DPD extension wakes
+            //    the device and keeps it alive for subsequent setop + capture.
+            //    Without this, the 1000ms inactivity timer fires between
+            //    commands, putting the IMAGE task into "Save State" which
+            //    drops the capture event.
+            const requiredDpd = intervalMs + 2000
+            if (requiredDpd > currentDpd) {
+                log(`[MotionDetectionStream] Extending DPD timeout: ${currentDpd}ms → ${requiredDpd}ms (interval=${intervalMs}ms)`)
+                setStatusMessage('Extending sleep timeout…')
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: requiredDpd }))
+                originalDpdRef.current = currentDpd
+            } else {
+                log(`[MotionDetectionStream] DPD timeout ${currentDpd}ms already covers interval ${intervalMs}ms`)
+                originalDpdRef.current = null
+            }
+
+            // 2b. Enable TEST_BIT_SKIP_FILE_CREATION via session (not direct write).
+            //     Using session.execute ensures proper sequencing with the DPD
+            //     extension above — direct writes collide with session writes on
+            //     the nRF52, causing "Dropped BLE message - busy".
             setStatusMessage('Configuring test mode…')
             if (currentTestBits !== TEST_BIT_SKIP_FILE_CREATION) {
-                log('[MotionDetectionStream] Setting test mode bits (direct BLE write)')
-                await writeToDevice(device, `AI setop ${OP_PARAMETER.TEST_MODE_BITS} ${TEST_BIT_SKIP_FILE_CREATION}`)
-                    .catch(() => log('[MotionDetectionStream] setop write failed (non-critical)'))
+                log('[MotionDetectionStream] Setting test mode bits via session')
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: TEST_BIT_SKIP_FILE_CREATION }))
             } else {
                 log('[MotionDetectionStream] Test mode bits already set — skipping')
             }
 
-            // 2b. Set flash parameters only if they differ from current values.
+            // 2c. Set flash parameters only if they differ from current values.
             if (flashLed > 0) {
                 if (currentFlashLed !== flashLed) {
                     log(`[MotionDetectionStream] Setting flash LED=${flashLed} (was ${currentFlashLed})`)
@@ -351,23 +371,6 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 } else {
                     log(`[MotionDetectionStream] LED brightness already ${ledBrightness} — skipping`)
                 }
-            }
-
-            // 2c. Extend INTERVAL_BEFORE_DPD if capture interval exceeds it.
-            //     The firmware enters Deep Power Down after DPD timeout of inactivity.
-            //     With an 8s capture interval and 1s DPD, the Himax powers down after
-            //     frame 1 — aborting the entire test. We extend DPD to interval + 2s
-            //     margin so the firmware stays awake between frames.
-            const requiredDpd = intervalMs + 2000
-            if (requiredDpd > currentDpd) {
-                log(`[MotionDetectionStream] Extending DPD timeout: ${currentDpd}ms → ${requiredDpd}ms (interval=${intervalMs}ms)`)
-                setStatusMessage('Extending sleep timeout…')
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: requiredDpd }))
-                // Store original DPD value so we can restore it on completion
-                originalDpdRef.current = currentDpd
-            } else {
-                log(`[MotionDetectionStream] DPD timeout ${currentDpd}ms already covers interval ${intervalMs}ms`)
-                originalDpdRef.current = null
             }
 
             // Check before firing the capture
