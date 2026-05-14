@@ -50,7 +50,7 @@ export interface CommandContext<T = any> {
   isLongRunning?: boolean;
 
   /** If true, the command acquires an exclusive transport lock.
-   *  While held, the commandQueue rejects all other enqueue attempts. */
+   *  While held, the transport controller rejects all other enqueue attempts. */
   requiresExclusiveLock?: boolean;
 }
 
@@ -240,6 +240,13 @@ export const commandRegistry = {
       isLongRunning: true,
       requiresExclusiveLock: true,
     }
+  ),
+  aireset: createSingleLineCommand<boolean>(
+    'aireset',
+    () => 'AI reset',
+    /Forcing reset/i,
+    () => true,
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 } }
   ),
   version: createSingleLineCommand<string>(
     'version',

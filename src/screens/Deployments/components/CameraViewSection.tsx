@@ -59,6 +59,14 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                     </View>
                 )}
 
+                {!device?.connected && (
+                    <View style={styles.disconnectedBanner}>
+                        <Text style={{ color: theme.colors.error, textAlign: 'center' }}>
+                            ⚠️ Bluetooth connection lost. Actions are disabled until the device reconnects.
+                        </Text>
+                    </View>
+                )}
+
                 {isCapturing && (
                     <View style={styles.progressContainer}>
                         <ProgressBar progress={captureProgress} color={theme.colors.primary} />
@@ -71,12 +79,14 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                 <WWButton
                     mode="outlined"
                     onPress={() => startCapture()}
-                    disabled={!device || isCapturing}
+                    disabled={!device?.connected || isCapturing}
                     loading={isCapturing}
                 >
-                    <Text>{isCapturing
-                        ? (captureProgress > 0 ? `${captureStage} ${Math.round(captureProgress * 100)}%` : (captureStage || 'Capturing…'))
-                        : (capturedImageUri ? 'Test Again' : 'Test Camera View')}</Text>
+                    <Text>{!device?.connected 
+                        ? 'Device Disconnected' 
+                        : isCapturing
+                            ? (captureProgress > 0 ? `${captureStage} ${Math.round(captureProgress * 100)}%` : (captureStage || 'Capturing…'))
+                            : (capturedImageUri ? 'Test Again' : 'Test Camera View')}</Text>
                 </WWButton>
                 </Card.Content>
             </Card>
@@ -108,5 +118,11 @@ const styles = StyleSheet.create({
     progressText: {
         textAlign: 'center',
         marginTop: 4,
+    },
+    disconnectedBanner: {
+        padding: 12,
+        backgroundColor: 'rgba(176, 0, 32, 0.1)',
+        borderRadius: 8,
+        marginBottom: 16,
     }
 })

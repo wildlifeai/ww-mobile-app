@@ -74,7 +74,7 @@ export interface DeviceSettings {
     timelapseInterval?: number         // Index 7 - Timelapse interval in seconds, 0=disabled (default: 0)
     intervalBeforeDpd?: number         // Index 8 - Inactivity timeout in ms (default: 1000)
     ledBrightness?: number             // Index 9 - LED brightness 0-100%, 0=dim (default: 5)
-    cameraEnabled?: boolean            // Index 10 - 0=disabled, 1=enabled (default: 1)
+    // Note: OP_PARAMETER.CAMERA_ENABLED (Index 10) is removed. The firmware permanently defaults it to 1.
     motionDetectInterval?: number      // Index 11 - Motion detection interval in ms, 0=disabled (default: 0)
     flashDuration?: number             // Index 12 - Flash duration in ms (default: 100)
     flashLed?: number                  // Index 13 - LED mask: 0=off, 1=visible, 2=IR (default: 0)
@@ -113,7 +113,7 @@ export interface UseDeviceSettingsReturn {
  * })
  * 
  * // Update individual settings
- * await updateSettings({ cameraEnabled: false, motionDetectInterval: 2000 })
+ * await updateSettings({ motionDetectInterval: 2000 })
  * 
  * // Apply a preset configuration
  * await applyPreset('motion-detect')
@@ -172,10 +172,7 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
                 updates.push({ index: OP_PARAMETER.FLASH_LED, value: settings.flashLed })
             }
 
-            // ALWAYS set Camera Enabled LAST to ensure it picks up the intervals set above
-            if (settings.cameraEnabled !== undefined) {
-                updates.push({ index: OP_PARAMETER.CAMERA_ENABLED, value: settings.cameraEnabled ? 1 : 0 })
-            }
+            // Camera is always enabled by firmware.
 
             const session = createBleSession(device)
             let currentOps: string[] | null = null
@@ -231,7 +228,7 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
             pictureInterval: 1500,
             timelapseInterval: 60,
             ledBrightness: 5,
-            cameraEnabled: true,
+            // Camera enabled is assumed to always be true by firmware defaults
             motionDetectInterval: 1000,
             flashDuration: 100,
             flashLed: 0
@@ -378,6 +375,25 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
             const opsToWrite: { index: number; value: number }[] = []
             for (const [indexStr, defaultValue] of Object.entries(FACTORY_DEFAULTS)) {
                 const index = parseInt(indexStr, 10)
+
+                // 1) Do not reset sequence number if it is higher than 0
+                if (index === OP_PARAMETER.SEQUENCE_NUMBER && currentOps && currentOps.length > index) {
+                    if (parseInt(currentOps[index], 10) > 0) continue
+                }
+
+                // 2) Do not reset tracking parameters and counters
+                if (
+                    index === OP_PARAMETER.NUM_NN_ANALYSES ||
+                    index === OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES ||
+                    index === OP_PARAMETER.NUM_COLD_BOOTS ||
+                    index === OP_PARAMETER.NUM_WARM_BOOTS ||
+                    index === OP_PARAMETER.NUM_PICTURES ||
+                    index === OP_PARAMETER.IMAGES_COUNT ||
+                    index === OP_PARAMETER.IMAGES_FILE_INDEX
+                ) {
+                    continue
+                }
+
                 if (currentOps && currentOps.length > index && currentOps[index] === defaultValue.toString()) continue
                 opsToWrite.push({ index, value: defaultValue })
             }

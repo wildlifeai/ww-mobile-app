@@ -14,7 +14,7 @@ export enum MessageType {
   INFO = 'INFO', // Successful status messages (Wake, Error bits check, etc.)
 }
 
-export type ErrorType = 'AI_NACK' | 'TIMEOUT' | 'I2C_ERROR' | 'DEVICE_SLEEP' | 'DEVICE_BUSY' | 'UNKNOWN'
+export type ErrorType = 'AI_NACK' | 'TIMEOUT' | 'I2C_ERROR' | 'DEVICE_SLEEP' | 'DEVICE_BUSY' | 'CONFIG_ERROR' | 'UNKNOWN'
 
 export interface ClassifiedMessage {
   type: MessageType
@@ -70,7 +70,7 @@ const ERROR_PATTERNS = [
   { pattern: /^AI NACK$/i, type: 'AI_NACK' as ErrorType },
   { pattern: /^I2C error: address NACK$/i, type: 'I2C_ERROR' as ErrorType },
   { pattern: /^Discarding message as there is already one pending$/i, type: 'I2C_ERROR' as ErrorType },
-  { pattern: /^Camera system not enabled$/i, type: 'DEVICE_BUSY' as ErrorType },
+  { pattern: /^Camera system not enabled$/i, type: 'CONFIG_ERROR' as ErrorType },
 ]
 
 /**

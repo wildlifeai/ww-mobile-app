@@ -100,8 +100,6 @@ const getFlowGroups = (): FlowGroup[] => {
             icon: 'dots-horizontal-circle-outline',
             commands: processCommands
                 .filter(cmd => [
-                    CommandNames.ENABLE_CAMERA,
-                    CommandNames.DISABLE_CAMERA,
                     CommandNames.md,
                     CommandNames.SET_MOTION_DETECT_INTERVAL,
                     CommandNames.DISABLE_MOTION_DETECT,

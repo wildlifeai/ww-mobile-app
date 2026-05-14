@@ -76,6 +76,11 @@ function runCommand<T>(
       if (event.deviceId !== peripheral.id) return;
       if (event.signal === DeviceSignal.BUSY) {
         idempotentReject(new Error('DEVICE_BUSY'));
+      } else if (event.signal === DeviceSignal.CONFIG_ERROR) {
+        // Non-retryable: device is in an invalid state (e.g. camera disabled).
+        // Retrying would just waste 1000ms per attempt on something that
+        // requires user/app intervention to fix.
+        idempotentReject(new Error('CONFIG_ERROR: Camera system not enabled'));
       } else if (event.signal === DeviceSignal.DISCONNECT) {
         idempotentReject(new Error('DEVICE_DISCONNECTED'));
       }
@@ -127,6 +132,11 @@ function isRetryable(error: Error): boolean {
 
   // Connection lost — no point retrying on a dead link
   if (msg.includes('DEVICE_DISCONNECTED') || msg.includes('DISCONNECTED')) {
+    return false;
+  }
+
+  // Configuration errors — device is in an invalid state that won't self-resolve
+  if (msg.includes('CONFIG_ERROR')) {
     return false;
   }
 
@@ -183,7 +193,7 @@ export async function runCommandPipeline<T>(
           bleTransport.resumeFromBusy();
         }
 
-        // If the error was DEVICE_SLEEP, the commandQueue itself will be paused 
+        // If the error was DEVICE_SLEEP, the transport controller itself will be paused 
         // waiting for a WAKE signal. We just loop around, and the queue processor
         // won't let this run until the state machine transitions to RUNNING again.
       }

@@ -28,6 +28,7 @@ import {
 	Services,
 } from "../ble/types"
 import { bleEventBus } from "../ble/protocol/eventBus"
+import { markPeripheralRemoved } from "./useScanLoop"
 
 export type WriteData = [CommandNames, CommandConstructOptions]
 
@@ -285,10 +286,13 @@ export const useBle = (): ReturnType => {
 				return
 			}
 
-			results.map(async (peripheral) => {
+			// Use for...of (not .map) so each removal completes before the next.
+			// removePeripheral blocks Android's BLE scanner — fire-and-forget
+			// caused the scanner to be blocked when the user started scanning.
+			for (const peripheral of results) {
 				// Prevent disconnecting devices that are already handled by the app state
 				if (devices[peripheral.id]?.connected) {
-					return
+					continue
 				}
 
 				if (
@@ -301,9 +305,12 @@ export const useBle = (): ReturnType => {
 						`Connected device ${peripheral.id} found when the app was initialized, clearing it from cache`,
 					)
 					await guard(() => BleManager.removePeripheral(peripheral.id))
+					// Mark as removed so flushBleCache skips the redundant
+					// removePeripheral call that would block the scanner again.
+					markPeripheralRemoved(peripheral.id)
 					await disconnectDevice(peripheral)
 				}
-			})
+			}
 		})
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [initialized])

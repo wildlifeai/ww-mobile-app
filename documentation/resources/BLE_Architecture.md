@@ -2,14 +2,14 @@
 
 ## Overview
 
-The Wildlife Watcher mobile app communicates with hardware devices over **Bluetooth Low Energy (BLE)** using the Nordic UART Service (NUS). All communication is routed through an **event-driven architecture** built around `bleEventBus`, `commandRegistry`, and `commandQueue`. Commands are serialized, matched against typed response parsers, and resolved through a deterministic pipeline.
+The Wildlife Watcher mobile app communicates with hardware devices over **Bluetooth Low Energy (BLE)** using the Nordic UART Service (NUS). All communication is routed through an **event-driven architecture** built around `bleEventBus`, `commandRegistry`, and `bleTransportController`. Commands are serialized, matched against typed response parsers, and resolved through a deterministic pipeline.
 
 The app supports two data channels on the same BLE characteristic:
 - **Text commands** — ASCII strings for configuration and control (e.g. `AI capture 1 1`)
 - **Binary image data** — Raw JPEG bytes prefixed with a `0x06` marker
 
 > [!CAUTION]
-> The legacy `BleCommandManager` (`commandManager.ts`) is **dead code**. It exists only as a quarantine trap file that throws an error if imported. All command execution now flows through `bleEventBus` → `commandQueue` → `commandRegistry`. Do NOT reference or import it.
+> The legacy `BleCommandManager` (`commandManager.ts`) is **dead code**. It exists only as a quarantine trap file that throws an error if imported. All command execution now flows through `bleEventBus` → `bleTransportController` → `commandRegistry`. Do NOT reference or import it.
 
 ---
 
@@ -21,9 +21,9 @@ Developers **must** use the correct write path for each use case. Misuse causes 
 |---|---|---|
 | Raw terminal / Engineer Console | `writeRaw()` | Passive observation; no state dependencies or expected callbacks. |
 | Deployment workflow / Safe UI actions | `bleSession.execute()` | Enqueues deterministic commands, blocks UI, handles timeout and parse matching. |
-| Internal serialization | `commandQueue` | Underlying queue engine managing the `bleSession` promises. |
+| Internal serialization | `bleTransportController` | Underlying queue engine managing the `bleSession` promises. |
 | Binary streaming (Images) | passive `bleEventBus` only | Byte-level routing via `rxRouter`, entirely out-of-band. |
-| Motion detection `md` sensitivity | direct `writeToDevice()` | Must bypass the command queue to avoid blocking `setop`/`capture`. The nRF52 drops concurrent BLE messages — a 500ms delay after the write prevents "Dropped BLE message - busy". |
+| Motion detection `md` sensitivity | direct `writeToDevice()` | Must bypass the transport controller to avoid blocking `setop`/`capture`. |
 | Motion detection `setop`/`capture` | `bleSession.execute()` | Queued commands that follow the md sensitivity write. |
 | Motion detection grid events | passive `textLine` subscription | Async text lines parsed via `useMotionDetectionStream`. |
 
@@ -45,7 +45,7 @@ graph TB
     E -->|"raw bytes"| F[rxRouter]
     F -->|"text lines"| G[bleEventBus]
     F -->|"binary packets"| G
-    G -->|"textLine"| H[commandQueue / runCommand]
+    G -->|"textLine"| H[bleTransportController / runCommandPipeline]
     G -->|"binaryPacket"| I[ImageReassembler]
     G -->|"rawRx"| J[Redux Log Store]
 
@@ -71,10 +71,13 @@ The `bleEventBus` emits **7 event types**. This contract is frozen. All events i
 | `RAW_RX` | `rawRx` | `{ line: string, ts: number, deviceId: string }` | Raw inbound text (for logging) |
 | `BINARY_PACKET` | `binaryPacket` | `{ data: Uint8Array, ts: number, deviceId: string, packetNum: number, length: number }` | Image binary data |
 | `QUEUE_STATE_CHANGED` | `queueStateChanged` | `{ isBusy: boolean, ts: number, deviceId?: string }` | Command queue busy/idle transitions |
-| `DEVICE_SIGNAL` | `deviceSignal` | `{ signal: DeviceSignalType, ts: number, deviceId: string }` | Sleep/Wake/Busy/Disconnect lifecycle signals |
+| `DEVICE_SIGNAL` | `deviceSignal` | `{ signal: DeviceSignalType, ts: number, deviceId: string }` | Sleep/Wake/Busy/ConfigError/Disconnect lifecycle signals |
 | `HEARTBEAT_PAUSE` | `heartbeatPause` | `{ isPaused: boolean, ts: number, deviceId?: string }` | Pauses/resumes heartbeat during long-running operations |
 
-`DeviceSignalType` is one of: `'SLEEP'`, `'WAKE'`, `'BUSY'`, `'DISCONNECT'`.
+`DeviceSignalType` is one of: `'SLEEP'`, `'WAKE'`, `'BUSY'`, `'CONFIG_ERROR'`, `'DISCONNECT'`.
+
+- **`BUSY`**: Transient. Device temporarily unavailable. Queue pauses, retries after delay.
+- **`CONFIG_ERROR`**: Persistent. Device in invalid state (e.g. `Camera system not enabled` = OP 10 is 0). Queue does NOT pause. Command rejected immediately, non-retryable.
 
 **File:** [eventBus.ts](../../src/ble/protocol/eventBus.ts), [deviceSignals.ts](../../src/ble/protocol/deviceSignals.ts)
 
@@ -371,16 +374,21 @@ Only `DISCOVERED` devices are eligible for auto-connect. Once a device transitio
 
 ### 5. Rx Router (`rxRouter`)
 
-The first function to touch raw incoming bytes from BLE notifications. Performs binary detection and event routing:
+The first function to touch raw incoming bytes from BLE notifications. Performs binary detection, text sanitisation, and event routing:
 
 ```
 if value[0] == 0x06 or (value[0] == 0x80 && value[1] == 0x06):
     → bleEventBus.emitEvent({ type: 'BINARY_PACKET', ... })
     → return early (skip ALL string processing)
 else:
-    → classify text → bleEventBus.emitEvent({ type: 'TEXT_LINE', ... })
-    → bleEventBus.emitEvent({ type: 'RAW_RX', ... })
+    → emit RAW_RX (unsanitised, for Engineer Console)
+    → sanitise: strip cmd> prompt, normalise \r\n\0, trim
+    → reject empty lines and hex dump noise
+    → classify device signals (Sleep, Wake, CONFIG_ERROR)
+    → emit TEXT_LINE (sanitised, for command pipeline)
 ```
+
+**Input Sanitisation:** Every text line is aggressively cleaned before reaching command listeners. This prevents `cmd>` prompt echoes, trailing whitespace, and hex dump debug output from triggering false regex matches in the command pipeline.
 
 **File:** [rxRouter.ts](../../src/ble/protocol/rxRouter.ts)
 
@@ -439,19 +447,14 @@ stateDiagram-v2
 
 **Key features:**
 - **No echo dependency:** Unlike the legacy manager, there is no echo-waiting phase. The command matches against `successMatcher` / `failureMatcher` directly.
-- **Retry with policy:** Each command defines its own `retryPolicy` (max retries and optional delay). `DEVICE_DISCONNECTED` errors are non-retryable.
+- **Retry with policy:** Each command defines its own `retryPolicy` (max retries and optional delay). `DEVICE_DISCONNECTED` and `CONFIG_ERROR` are non-retryable.
 - **Queue state broadcasting:** Emits `QUEUE_STATE_CHANGED` events so UI can show busy/idle state.
 - **Disconnect fail-fast:** On `DEVICE_SIGNAL(DISCONNECT)`, calls `clearAll()` — rejecting every queued and active command instantly instead of letting each time out.
+- **CONFIG_ERROR pass-through:** On `CONFIG_ERROR`, the queue does NOT pause (that would deadlock). The command pipeline rejects the active command immediately.
 - **Built-in transport lock:** `acquireLock()` / `releaseLock()` for exclusive operations (file transfer, firmware flash). The queue rejects non-holder commands while locked.
+- **Post-completion drain:** 10ms inter-command buffer (`POST_COMPLETION_DRAIN_WINDOW_MS`) allows trailing response characters to flush before the next command's listener attaches.
 
 **Files:** [bleTransportController.ts](../../src/ble/protocol/bleTransportController.ts), [runCommandPipeline.ts](../../src/ble/protocol/runCommandPipeline.ts)
-
-> [!NOTE]
-> This module consolidates what was previously spread across 4 separate files:
-> - `commandQueue.ts` → queue state + processing (now `BleTransportController`)
-> - `runCommand.ts` → subscribe/send/resolve (now inlined into `runCommandPipeline.ts`)
-> - `transportLock.ts` → exclusive lock (now built-in lock methods on `bleTransport`)
-> - `streamRegistry.ts` → binary stream fan-out (now inlined into `createBleSession.ts`)
 
 ---
 
@@ -687,9 +690,9 @@ Native BleManagerDisconnectPeripheral
 | Layer | Guardrail | File |
 |---|---|---|
 | Disconnect Signal | `DEVICE_SIGNAL(DISCONNECT)` emitted first in disconnect handler | `useBleListeners.tsx` |
-| Command Queue | `clearAll()` on `DISCONNECT` — rejects all pending commands instantly | `commandQueue.ts` |
-| Run Command | Subscribes to `DISCONNECT` → `idempotentReject('DEVICE_DISCONNECTED')` | `runCommand.ts` |
-| Retry Pipeline | `DEVICE_DISCONNECTED` is non-retryable — skips retry loop | `runCommandPipeline.ts` |
+| Transport Controller | `clearAll()` on `DISCONNECT` — rejects all pending commands instantly | `bleTransportController.ts` |
+| Command Pipeline | Subscribes to `DISCONNECT` → `idempotentReject('DEVICE_DISCONNECTED')` | `runCommandPipeline.ts` |
+| Retry Pipeline | `DEVICE_DISCONNECTED` and `CONFIG_ERROR` are non-retryable — skip retry loop | `runCommandPipeline.ts` |
 | Session | `execute()` checks `peripheral.connected` before enqueue | `createBleSession.ts` |
 | Transport | `writeToDevice` returns early if `!peripheral.connected` | `transport.ts:17` |
 | Transport | `writeBinaryToDevice` throws `'Device disconnected'` | `transport.ts:85` |
@@ -723,12 +726,12 @@ src/
 │   ├── emitters.ts                 # Legacy EventEmitter3 instances (retained for ImageReassembler)
 │   ├── protocol/                   # Event-driven command engine
 │   │   ├── eventBus.ts             # BleEventBus — central event dispatcher
-│   │   ├── rxRouter.ts             # Binary/text classification from raw bytes
+│   │   ├── rxRouter.ts             # Binary/text demux + input sanitisation
 │   │   ├── commandRegistry.ts      # Typed command factories with frozen schema
 │   │   ├── bleTransportController.ts # Unified transport FSM: queue + lock + signal handling
-│   │   ├── runCommandPipeline.ts   # Single-command executor + retry logic (runCommand inlined)
-│   │   ├── protocolConstants.ts    # Timing constants (timeouts, intervals)
-│   │   ├── deviceSignals.ts        # Sleep/Wake/Busy signal types
+│   │   ├── runCommandPipeline.ts   # Single-command executor + retry logic
+│   │   ├── protocolConstants.ts    # Timing constants (POST_COMPLETION_DRAIN=10ms, etc.)
+│   │   ├── deviceSignals.ts        # Sleep/Wake/Busy/ConfigError/Disconnect signal types
 │   │   ├── textStreamScope.ts      # Scoped text line listener (auto-cleanup)
 │   │   ├── fileTransfer/           # BLE file transfer to SD card
 │   │   │   ├── runFileTransferPipeline.ts  # Core ACK state machine
@@ -826,4 +829,39 @@ const results = await runCommandPipeline(peripheral, [
 
 ---
 
-*Last Updated: May 9, 2026 — Phase 4: renamed commandQueue → BleTransportController with formal TransportState*
+*Last Updated: May 14, 2026 — Added CONFIG_ERROR signal, input sanitisation in rxRouter, POST_COMPLETION_DRAIN reduced to 10ms, consolidated CONNECTION_OWNERSHIP.md into this document*
+
+---
+
+## Connection Ownership
+
+**The PARENT screen owns the BLE lifecycle. Child screens MUST NOT disconnect.**
+
+This is an architectural invariant. Violating it causes the connect-disconnect
+loops reported in field testing (CGP, April 2026).
+
+### Ownership Map
+
+| Screen                      | Role   | Can Connect | Can Disconnect |
+|-----------------------------|--------|-------------|----------------|
+| DeviceDiscoveryScreen       | Owner  | ✅          | ✅             |
+| StartMonitoringScreen       | Owner  | ✅          | ✅             |
+| StopMonitoringScreen        | Owner  | ✅          | ✅             |
+| EngineerConsoleScreen       | Child  | ❌          | ❌             |
+| HimaxFirmwareUpdateScreen   | Child  | ❌          | ❌             |
+| CameraSettingsTestScreen    | Child  | ❌          | ❌             |
+| StandaloneMotionDetection   | Child  | ❌          | ❌             |
+| AdvancedSettingsSection      | Child  | ❌          | ❌             |
+
+### Child Screen Rules
+
+1. **Observe** device state via Redux (`useAppSelector(state => state.devices[id])`)
+2. **Execute** commands via `session.execute(commandRegistry.xxx)`
+3. **NEVER** call `disconnectDevice()` or `session.disconnect()`
+4. **On back-navigation:** just `goBack()` — the parent screen handles cleanup
+
+### Owner Screen Rules
+
+1. Owner screens intercept `beforeRemove` to disconnect cleanly
+2. Owner screens show confirmation alerts before disconnecting mid-operation
+3. Owner screens transition to Home after disconnecting

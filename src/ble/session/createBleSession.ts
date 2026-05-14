@@ -75,10 +75,50 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
     await BleManager.disconnect(peripheral.id);
   };
 
+  /**
+   * Wait for the device to enter Deep Power Down (DPD).
+   * 
+   * @param timeoutMs Maximum time to wait in milliseconds (defaults to 3000ms).
+   * @returns Promise that resolves when the device sleeps or the timeout is reached.
+   * 
+   * Use this before sending commands (like `capture`) that require the device 
+   * to wake up from a clean state, preventing the command from racing against 
+   * the device's internal inactivity timer (which could cause it to ignore 
+   * the command and drop into DPD while the command is running).
+   */
+  const waitForSleep = (timeoutMs = 3000): Promise<void> => {
+    return new Promise((resolve) => {
+      const timeoutId = setTimeout(() => {
+        cleanup();
+        import('../../utils/logger').then(({ logWarn }) => {
+            logWarn(`[BleSession] Timed out waiting for Sleep signal after ${timeoutMs}ms.`);
+        });
+        resolve();
+      }, timeoutMs);
+
+      const cleanup = () => {
+        bleEventBus.removeListener('deviceSignal', onDeviceSignal);
+      };
+
+      const onDeviceSignal = (event: BleEvent & { type: 'DEVICE_SIGNAL' }) => {
+        import('../protocol/deviceSignals').then(({ DeviceSignal }) => {
+            if (event.deviceId === peripheral.id && event.signal === DeviceSignal.SLEEP) {
+              clearTimeout(timeoutId);
+              cleanup();
+              resolve();
+            }
+        });
+      };
+
+      bleEventBus.on('deviceSignal', onDeviceSignal);
+    });
+  };
+
   return {
     execute,
     reset,
     disconnect,
+    waitForSleep,
     subscribe: streamRegistry.registerStream.bind(streamRegistry),
     unsubscribe: streamRegistry.unregisterStream.bind(streamRegistry),
     // Attach listener for specific device signals or info

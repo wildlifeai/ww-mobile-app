@@ -305,9 +305,12 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
 
             // 1a. Enable TEST_BIT_SKIP_FILE_CREATION — only if not already set.
             setStatusMessage('Configuring test mode…')
-            if (currentTestBits !== TEST_BIT_SKIP_FILE_CREATION) {
-                log('[MotionDetectionStream] Setting test mode bits via session')
-                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: TEST_BIT_SKIP_FILE_CREATION }))
+            const targetBits = TEST_BIT_SKIP_FILE_CREATION;
+            const needsUpdate = currentTestBits === -1 || (currentTestBits & targetBits) !== targetBits;
+            if (needsUpdate) {
+                const newBits = currentTestBits === -1 ? targetBits : (currentTestBits | targetBits);
+                log('[MotionDetectionStream] Setting test mode bits via session');
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: newBits }));
             } else {
                 log('[MotionDetectionStream] Test mode bits already set — skipping')
             }
@@ -369,7 +372,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 // Send capture — fire and forget (session handles the BLE write)
                 bleTransport.clearAll()
                 const captureSession = createBleSession(device)
-                captureSession.execute(() => commandRegistry.capture(count, intervalMs))
+                captureSession.execute(() => commandRegistry.capture(count, intervalMs), { maxRetries: 0 })
                     .catch(e => {
                         if (e?.message === 'Session Reset') return
                         log(`[MotionDetectionStream] Capture command ended: ${e?.message || 'ok'}`)

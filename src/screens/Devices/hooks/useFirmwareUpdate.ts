@@ -201,13 +201,24 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     const [newVersion, setNewVersion] = useState<string | null>(null)
     const [latestFirmware, setLatestFirmware] = useState<Firmware | null>(null)
     const [isPreflightDone, setIsPreflightDone] = useState(false)
+    const preflightDoneRef = useRef(false)
 
     const unmountedRef = useRef(false)
     const phaseRef = useRef<UpdatePhase>('idle')
+    const deviceIdRef = useRef<string | undefined>(device?.id)
 
     useEffect(() => {
         return () => { unmountedRef.current = true }
     }, [])
+
+    // Reset preflight ref on disconnect or device ID change
+    useEffect(() => {
+        if (!device?.connected || device.id !== deviceIdRef.current) {
+            preflightDoneRef.current = false
+            setIsPreflightDone(false)
+            deviceIdRef.current = device?.id
+        }
+    }, [device?.connected, device?.id])
 
     // Phase advancement (forward-only, except to failed)
     const advancePhase = useCallback((newPhase: UpdatePhase) => {
@@ -236,7 +247,15 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     // ── Pre-flight: run on mount ───────────────────────────────────
 
     useEffect(() => {
-        if (!device?.connected || isUpdating) return
+        if (!device?.connected) {
+            preflightDoneRef.current = false
+            return
+        }
+
+        if (isUpdating) return
+        if (preflightDoneRef.current) return
+        
+        preflightDoneRef.current = true
         let cancelled = false
 
         const run = async () => {
@@ -275,7 +294,30 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         run()
         return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [device?.connected, target, isUpdating])
+    }, [device?.connected, isUpdating, target])
+
+    // ── Graceful Disconnect Fallback ───────────────────────────────
+    
+    useEffect(() => {
+        if (isUpdating && device && !device.connected) {
+            // Reconnecting and rebooting phases legitimately lose BLE connection
+            if (phase === 'reconnecting' || phase === 'rebooting') return
+            // Entering DFU disconnects to reboot into bootloader
+            if (target === 'ble' && phase === 'entering_dfu') return
+
+            logError('[FW Update] Device unexpectedly disconnected during phase:', phase)
+            
+            // Abort any ongoing operations
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort()
+            }
+
+            if (!unmountedRef.current) {
+                setErrorMsg('BLE connection lost halfway through the update.')
+                advancePhase('failed')
+            }
+        }
+    }, [isUpdating, device?.connected, device, phase, target, advancePhase])
 
     // ── Himax UART phase listener ──────────────────────────────────
 
@@ -308,31 +350,6 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         return () => { bleEventBus.removeListener('textLine', onRx) }
     }, [target, isUpdating, device?.id, advancePhase, appendLog])
 
-    // ── Wait for "Sleep" line (Himax only) ─────────────────────────
-
-    const waitForSleep = useCallback((): Promise<void> => {
-        return new Promise((resolve) => {
-            let resolved = false
-            const done = () => {
-                if (resolved) return
-                resolved = true
-                bleEventBus.removeListener('textLine', onRx)
-                clearTimeout(fallback)
-                resolve()
-            }
-            const onRx = (event: any) => {
-                if (event.type === 'TEXT_LINE' && event.deviceId === device?.id && event.line.startsWith('Sleep')) {
-                    log('[FW Update] Device sent Sleep — ready for reset')
-                    done()
-                }
-            }
-            bleEventBus.on('textLine', onRx)
-            const fallback = setTimeout(() => {
-                log('[FW Update] Sleep not received in 5s — proceeding')
-                done()
-            }, 5000)
-        })
-    }, [device?.id])
 
     // ── BLE DFU flow ───────────────────────────────────────────────
 
@@ -493,15 +510,22 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         appendLog('Firmware write complete. Waiting for device to sleep...')
 
         // Wait for the Himax to finish and send Sleep signal
-        await waitForSleep()
+        await session.waitForSleep(5000)
         if (unmountedRef.current) return
 
-        // The Himax resets itself after a firmware write — no need to reset
-        // the nRF or drop the BLE connection. When it goes to Sleep, it powers
-        // down completely. Sending 'aiver' will wake it up, effectively booting
-        // the new firmware, so we can verify it immediately without waiting.
+        // New flow: send AI reset to reload parameters, wait, then aiver
         advancePhase('rebooting')
-        appendLog('AI processor rebooting with new firmware...')
+        appendLog('Sending AI reset to reload parameters...')
+        try {
+            const resetSession = createBleSession(device)
+            await resetSession.execute(() => commandRegistry.aireset())
+        } catch (e) {
+            logWarn('[FW Update] AI reset command error/timeout (may be expected):', e)
+        }
+
+        appendLog('Waiting for AI processor to reboot...')
+        await new Promise(r => setTimeout(r, 4000))
+        if (unmountedRef.current) return
 
         // Query new version — BLE is still connected, no reconnect needed
         advancePhase('verifying')
@@ -516,7 +540,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         }
 
         advancePhase('complete')
-    }, [device, latestFirmware, advancePhase, appendLog, waitForSleep])
+    }, [device, latestFirmware, advancePhase, appendLog])
 
     // ── Public start ───────────────────────────────────────────────
 

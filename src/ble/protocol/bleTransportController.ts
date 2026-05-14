@@ -5,9 +5,9 @@
  * Owns: command queue, transport lock, device signal handling.
  *
  * Consolidates what was previously spread across:
- *   - commandQueue.ts (queue state + processing)
- *   - transportLock.ts (exclusive lock)
- *   - runCommand.ts (subscribe → send → resolve)
+ *   - commandQueue.ts (queue state + processing) → now in bleTransportController
+ *   - transportLock.ts (exclusive lock) → now in bleTransportController
+ *   - runCommand.ts (subscribe → send → resolve) → now runCommandPipeline.ts
  *
  * Consumers interact via:
  *   - bleTransport.enqueue()    — submit a command for execution
@@ -222,6 +222,12 @@ class BleTransportController {
       this.transitionQueue('PAUSED_SLEEP');
     } else if (event.signal === DeviceSignal.BUSY) {
       this.transitionQueue('PAUSED_BUSY');
+    } else if (event.signal === DeviceSignal.CONFIG_ERROR) {
+      // Intentionally NO queue pause. CONFIG_ERROR is a non-retryable
+      // configuration problem (e.g. "Camera system not enabled").
+      // runCommandPipeline handles it by rejecting the active command.
+      // Pausing the queue here would deadlock — the condition will
+      // never self-resolve.
     } else if (event.signal === DeviceSignal.WAKE) {
       if (this.state === 'PAUSED_SLEEP') {
         this.transitionQueue('RUNNING');
@@ -306,6 +312,7 @@ class BleTransportController {
    * resets the transport to IDLE state.
    */
   public clearAll() {
+    this._lockHolder = null;
     const error = new Error('Session Reset');
     if (this.activeTask) {
       this.transitionCommand(this.activeTask, 'CANCELLED');

@@ -58,12 +58,6 @@ const resetReducer = (state: ResetState, action: ResetAction): ResetState => {
  * Default values table data for display
  */
 const DEFAULT_VALUES_TABLE: { name: string; index: number; value: number }[] = [
-    { name: 'Sequence Number', index: OP_PARAMETER.SEQUENCE_NUMBER, value: FACTORY_DEFAULTS[OP_PARAMETER.SEQUENCE_NUMBER] },
-    { name: 'NN Analyses', index: OP_PARAMETER.NUM_NN_ANALYSES, value: FACTORY_DEFAULTS[OP_PARAMETER.NUM_NN_ANALYSES] },
-    { name: 'Positive NN', index: OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES, value: FACTORY_DEFAULTS[OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES] },
-    { name: 'Cold Boots', index: OP_PARAMETER.NUM_COLD_BOOTS, value: FACTORY_DEFAULTS[OP_PARAMETER.NUM_COLD_BOOTS] },
-    { name: 'Warm Boots', index: OP_PARAMETER.NUM_WARM_BOOTS, value: FACTORY_DEFAULTS[OP_PARAMETER.NUM_WARM_BOOTS] },
-    { name: 'Num Pictures', index: OP_PARAMETER.NUM_PICTURES, value: FACTORY_DEFAULTS[OP_PARAMETER.NUM_PICTURES] },
     { name: 'Picture Interval', index: OP_PARAMETER.PICTURE_INTERVAL, value: FACTORY_DEFAULTS[OP_PARAMETER.PICTURE_INTERVAL] },
     { name: 'Timelapse Interval', index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: FACTORY_DEFAULTS[OP_PARAMETER.TIMELAPSE_INTERVAL] },
     { name: 'Inactivity Timeout', index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: FACTORY_DEFAULTS[OP_PARAMETER.INTERVAL_BEFORE_DPD] },
@@ -77,8 +71,6 @@ const DEFAULT_VALUES_TABLE: { name: string; index: number; value: number }[] = [
     { name: 'Model Threshold', index: OP_PARAMETER.MODEL_THRESHOLD, value: FACTORY_DEFAULTS[OP_PARAMETER.MODEL_THRESHOLD] },
     { name: 'MD Sensitivity', index: OP_PARAMETER.MD_SENSITIVITY, value: FACTORY_DEFAULTS[OP_PARAMETER.MD_SENSITIVITY] },
     { name: 'Test Mode Bits', index: OP_PARAMETER.TEST_MODE_BITS, value: FACTORY_DEFAULTS[OP_PARAMETER.TEST_MODE_BITS] },
-    { name: 'Images Count', index: OP_PARAMETER.IMAGES_COUNT, value: FACTORY_DEFAULTS[OP_PARAMETER.IMAGES_COUNT] },
-    { name: 'Images File Index', index: OP_PARAMETER.IMAGES_FILE_INDEX, value: FACTORY_DEFAULTS[OP_PARAMETER.IMAGES_FILE_INDEX] },
 ]
 
 interface DefaultValueRowProps {
@@ -134,18 +126,9 @@ export const DeviceResetScreen = () => {
 
                 <Card style={styles.card}>
                     <Card.Content>
-                        <WWText variant="titleMedium" style={styles.cardTitle}>
-                            Factory Reset
-                        </WWText>
                         <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant, marginBottom: 12 }}>
-                            This will reset ALL operational parameters to their firmware defaults,
-                            erase any loaded AI model, clear the deployment ID, and zero the GPS coordinates.
+                            This will reset the following parameters to their default values, clear deployment ID and zero the GPS coordinates.
                         </WWText>
-                        <WWText variant="bodySmall" style={{ color: colors.error, marginBottom: 16 }}>
-                            ⚠️ This action cannot be undone. All counters (boot counts, NN analyses)
-                            will also be reset to zero.
-                        </WWText>
-
                         {!isConnected && (
                             <View style={[styles.banner, { backgroundColor: colors.errorContainer }]}>
                                 <WWText style={{ color: colors.onErrorContainer }}>
