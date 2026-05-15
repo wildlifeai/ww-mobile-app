@@ -20,15 +20,17 @@ This guide is your single entry point to understanding the project, setting up y
 
 ## 📚 Documentation Roadmap
 
-This folder contains six onboarding guides:
+This folder contains five onboarding guides:
 
 | # | Guide | What It Covers |
 |---|-------|----------------|
 | 1 | [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) | Framework versions, dependencies, architecture, and patterns |
 | 2 | [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) | Folder structure, state management, naming conventions |
 | 3 | [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) | WatermelonDB, Supabase sync, security model, offline patterns |
-| 4 | [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) | Device deployment, management, and retrieval |
-| 5 | [05-GIT-WORKFLOW.md](./05-GIT-WORKFLOW.md) | Git branching, Conventional Commits, and CI pipeline rules |
+| 4 | [04-ENGINEER-CONSOLE.md](./04-ENGINEER-CONSOLE.md) | BLE commands, OP parameters, hardware testing tools |
+| 5 | [05-DEVICE-FLOWS.md](./05-DEVICE-FLOWS.md) | Device deployment, monitoring, and retrieval flows |
+
+**Git Workflow:** See the organisation-level [git-SKILL.md](https://github.com/wildlifeai/.github/blob/main/agents/git-SKILL.md) for branching strategy, Conventional Commits, PR review workflow, and CI pipeline rules.
 
 **Deep-dive guides** in [`documentation/resources/`](../resources/):
 
@@ -37,15 +39,19 @@ This folder contains six onboarding guides:
 | [BLE_Architecture.md](../resources/BLE_Architecture.md) | BLE command system, timing, and firmware constraints |
 | [Dependency-Validation-System.md](../resources/Dependency-Validation-System.md) | npm dependency validation, version locking, and SDK compatibility |
 | [Authentication-Implementation-Guide.md](../resources/Authentication-Implementation-Guide.md) | Supabase auth, Redux integration, deep linking, roles and permissions |
-| [dev-database-reset-guide.md](../resources/dev-database-reset-guide.md) | WatermelonDB reset utility for dev/test workflows |
 | [Docker-Development-Guide.md](../resources/Docker-Development-Guide.md) | Docker setup for team development |
-| [GOOGLE-MAPS-SETUP.md](../resources/GOOGLE-MAPS-SETUP.md) | Google Maps API key configuration for Android and iOS |
-| [Testing-Guide.md](../resources/Testing-Guide.md) | Jest unit/integration tests, mocking patterns |
-| [Maestro-E2E-Testing-Guide.md](../resources/Maestro-E2E-Testing-Guide.md) | E2E testing with Maestro (device-based) |
+| [Maps.md](../resources/Maps.md) | Maps feature architecture and Google Maps API configuration |
+| [Testing-Guide.md](../resources/Testing-Guide.md) | Jest unit/integration tests, BDD, Maestro E2E, mocking patterns |
 | [publishing_guide.md](../resources/publishing_guide.md) | EAS builds, store submission (Android + iOS) |
 | [Android-Guide.md](../resources/Android-Guide.md) | JDK/SDK setup, local builds, device config, 16KB compliance |
 | [Expo-EAS-Guide.md](../resources/Expo-EAS-Guide.md) | EAS build profiles, dev client workflow, keystores |
 | [WSL2-Setup-Guide.md](../resources/WSL2-Setup-Guide.md) | WSL2 networking, port forwarding, .wslconfig tuning |
+| [Dev-Deployment-Guide.md](../resources/Dev-Deployment-Guide.md) | Developer deployment mode for testing capture, flash, and diagnostic settings |
+| [React-Doctor-Guide.md](../resources/React-Doctor-Guide.md) | React health-score CI check (60+ rules, 0–100 scoring) |
+| [whitelist.md](../resources/whitelist.md) | Source of truth: all active screens, services, hooks, and BLE modules |
+| [AI-Model-Integration.md](../resources/AI-Model-Integration.md) | AI model family/version architecture, firmware ID mapping, BLE transfer safety protocol |
+| [File-Transfer-Protocol.md](../resources/File-Transfer-Protocol.md) | BLE file transfer protocol — packet format, CRC, stop-and-wait, error codes |
+| [Himax-Firmware-Update.md](../resources/Himax-Firmware-Update.md) | Himax AI processor firmware update — A/B slot flash, sequence diagram, error codes |
 
 ---
 
@@ -219,4 +225,4 @@ npm test              # Run Jest tests
 **Ready to dive deeper?** Move on to **[01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md)**. 🚀
 
 ---
-*Last Updated: April 19, 2026*
+*Last Updated: May 16, 2026*

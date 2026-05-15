@@ -28,4 +28,5 @@ echo "   📂 Docs live in: documentation/ (not docs/)"
 echo "   📋 Org CONTRIBUTING: github.com/wildlifeai/.github"
 echo "----------------------------------------------------------"
 
+npm run validate:deps
 npx lint-staged

@@ -8,6 +8,7 @@ import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
 import { MotionDetectionSection } from './components/MotionDetectionSection'
+import { WWBleDisconnectedBanner } from '../../components/ui/WWBleDisconnectedBanner'
 import { useBleHeartbeat } from '../../hooks/useBleHeartbeat'
 
 export const StandaloneMotionDetectionScreen = () => {
@@ -64,6 +65,7 @@ export const StandaloneMotionDetectionScreen = () => {
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
             >
+                <WWBleDisconnectedBanner connected={!!device?.connected} />
                 <MotionDetectionSection
                     bleDevice={device}
                     isInitializing={false}

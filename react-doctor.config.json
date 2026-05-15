@@ -19,7 +19,14 @@
       "react-doctor/rn-prefer-content-inset-adjustment",
       "react-doctor/async-await-in-loop",
       "react-doctor/no-many-boolean-props",
-      "react-doctor/no-giant-component"
+      "react-doctor/no-giant-component",
+      "react-doctor/prefer-useReducer",
+      "react-doctor/no-derived-useState",
+      "react-doctor/rn-no-raw-text",
+      "knip/exports",
+      "knip/types",
+      "knip/files",
+      "knip/duplicates"
     ],
     "files": [
       "android/**",

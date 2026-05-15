@@ -71,16 +71,18 @@ export const useBleInitialization = () => {
           hexBits = extractErrorBits(statusMsg)
           if (hexBits) {
               bits = parseInt(hexBits, 16)
-              // If high byte is FF (0xFF00, 0xFFFF), it usually means system offline/not ready
-              // This can happen if the selftest runs before the system has fully initialized
-              const isSystemOffline = (bits & 0xFF00) === 0xFF00
-              
-              if (isSystemOffline) {
-                  logWarn(`[BLE Init] System reports initial state (${hexBits}). Assuming temporary initialization state.`)
-                  // We do NOT block here, as waiting for stats requires sleep (~1s) which we want to avoid blocking on.
-                  // We clear the bits for the purpose of error reporting to avoid showing "All Hardware Failed" to user
-                  bits = 0 
-                  hexBits = null
+              // Bits 8-15 are AI processor errors. The BLE processor pre-sets
+              // ALL of them (0xFF00) at boot and only clears them once the AI
+              // processor sends its own selftest result.  Because this selftest
+              // runs BEFORE we wake the AI processor, any AI-range bits that
+              // are still set are stale initialization values — not real errors.
+              // Mask them out so only BLE-processor bits (0-7) are evaluated.
+              const bleOnlyBits = bits & 0x00FF
+              if (bleOnlyBits !== bits) {
+                  const maskedBits = bits & 0xFF00
+                  logWarn(`[BLE Init] Masking stale AI processor bits 0x${maskedBits.toString(16).toUpperCase().padStart(4, '0')} (AI not yet awake). Keeping BLE bits: 0x${bleOnlyBits.toString(16).toUpperCase().padStart(4, '0')}`)
+                  bits = bleOnlyBits
+                  hexBits = bleOnlyBits === 0 ? null : bleOnlyBits.toString(16).toUpperCase().padStart(4, '0')
               }
           }
       } catch (e) {

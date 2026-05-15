@@ -1,6 +1,6 @@
 # Publishing Guide — Android & iOS
 
-> **Related**: [00-GETTING-STARTED.md](../onboarding/00-GETTING-STARTED.md) (project overview), [GOOGLE-MAPS-SETUP.md](GOOGLE-MAPS-SETUP.md) (Maps API keys).
+> **Related**: [00-GETTING-STARTED.md](../onboarding/00-GETTING-STARTED.md) (project overview), [Maps.md](Maps.md) (Maps API keys).
 
 ## Overview
 

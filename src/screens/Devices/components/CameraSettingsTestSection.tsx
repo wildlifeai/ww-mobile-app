@@ -6,6 +6,7 @@ import { useExtendedTheme } from '../../../theme'
 import { useCameraSettingsTest, CapturedImageInfo } from '../hooks/useCameraSettingsTest'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { ImagePreviewModal } from '../../../components/ImagePreviewModal'
+import { WWBleDisconnectedBanner } from '../../../components/ui/WWBleDisconnectedBanner'
 import { useState } from 'react'
 
 interface Props {
@@ -75,18 +76,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
         <ScrollView style={styles.container} contentContainerStyle={[styles.content, { gap: spacing }]} keyboardShouldPersistTaps="handled">
             
 
-            {!device?.connected && (
-                <View style={{
-                    padding: 12,
-                    backgroundColor: 'rgba(176, 0, 32, 0.1)',
-                    borderRadius: 8,
-                    marginTop: 8
-                }}>
-                    <WWText style={{ color: colors.error, textAlign: 'center' }}>
-                        ⚠️ Bluetooth connection lost. Actions are disabled until the device reconnects.
-                    </WWText>
-                </View>
-            )}
+            <WWBleDisconnectedBanner connected={!!device?.connected} />
 
             <Surface style={[styles.card, { backgroundColor: colors.surface, marginTop: 8 }]} elevation={1}>
                 

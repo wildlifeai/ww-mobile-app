@@ -14,7 +14,7 @@
 import { useEffect, useCallback } from 'react'
 import { View, StyleSheet, ScrollView, Switch } from 'react-native'
 import {
-    Card, Text, Button, SegmentedButtons, Surface, Divider,
+    Card, Text, Button, SegmentedButtons, Divider,
     TextInput, IconButton
 } from 'react-native-paper'
 import { useRoute, useNavigation } from '@react-navigation/native'
@@ -26,12 +26,14 @@ import { WWSelect } from '../../components/ui/WWSelect'
 import { WWText } from '../../components/ui/WWText'
 import { WWTextInput } from '../../components/ui/WWTextInput'
 import { WWIcon } from '../../components/ui/WWIcon'
+import { WWBleDisconnectedBanner } from '../../components/ui/WWBleDisconnectedBanner'
 import { RootStackParamList, AppParams } from '../../navigation/types'
 import { DeploymentMonitorView } from '../Deployments/components/DeploymentMonitorView'
 import { FinishProgressDialog } from './components/FinishProgressDialog'
 import { BatteryLevelCard } from '../Deployments/components/BatteryLevelCard'
 import { SdCardStatusCard } from '../Deployments/components/SdCardStatusCard'
 import { useDevDeployment } from './hooks/useDevDeployment'
+import { TEST_BIT_SAVE_BMP } from '../../hooks/useDeviceSettings'
 import { useExtendedTheme } from '../../theme'
 
 export const DevDeploymentTestScreen = () => {
@@ -54,6 +56,8 @@ export const DevDeploymentTestScreen = () => {
         recordGpsOverride, setRecordGpsOverride,
         sensitivityOptions, aiModelOptions,
         flashParams, setFlashParams,
+        numPictures, setNumPictures,
+        testModeBits, setTestModeBits,
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
         submitting,
@@ -143,14 +147,7 @@ export const DevDeploymentTestScreen = () => {
             <ScrollView contentContainerStyle={[styles.content, { gap: spacing }]} keyboardShouldPersistTaps="handled">
 
                 {/* Connection status banner */}
-                {!isConnected && (
-                    <Surface style={[styles.banner, { backgroundColor: '#FFF3E0' }]} elevation={0}>
-                        <WWIcon source="bluetooth-off" size={20} color="#E65100" />
-                        <Text variant="bodyMedium" style={{ color: '#E65100', flex: 1, marginLeft: 8 }}>
-                            Device not connected. Connect from the Engineer Console first.
-                        </Text>
-                    </Surface>
-                )}
+                <WWBleDisconnectedBanner connected={isConnected} />
 
                 {/* ═══════════════════════════════════════ */}
                 {/* 1. PROJECT SETTINGS */}
@@ -320,6 +317,49 @@ export const DevDeploymentTestScreen = () => {
                                 setFlashParams(prev => ({ ...prev, ledBrightness: v }))
                             }}
                         />
+                    </Card.Content>
+                </Card>
+
+                {/* ═══════════════════════════════════════ */}
+                {/* 2b. CAPTURE DIAGNOSTICS */}
+                {/* ═══════════════════════════════════════ */}
+                <Card style={styles.card}>
+                    <Card.Title title="Capture Diagnostics" subtitle="Op 18 (test bits) + Op 5 (pictures per trigger)" />
+                    <Card.Content style={styles.cardContent}>
+                        <WWText variant="labelLarge">Pictures per Trigger</WWText>
+                        <TextInput
+                            label="Num Pictures (default: 2 for JPG+BMP)"
+                            value={numPictures.toString()}
+                            onChangeText={(t) => {
+                                const v = parseInt(t.replace(/[^0-9]/g, ''), 10)
+                                setNumPictures(isNaN(v) ? 2 : v)
+                            }}
+                            mode="outlined"
+                            keyboardType="numeric"
+                            disabled={submitting}
+                        />
+
+                        <View style={styles.spacer} />
+
+                        <View style={styles.switchRow}>
+                            <View style={styles.switchLabel}>
+                                <WWIcon source="image-multiple" size={20} color={colors.onSurfaceVariant} />
+                                <WWText variant="bodyMedium" style={styles.switchText}>
+                                    Save BMP (alternating JPG/BMP)
+                                </WWText>
+                            </View>
+                            <Switch
+                                value={(testModeBits & TEST_BIT_SAVE_BMP) !== 0}
+                                onValueChange={(enabled) => {
+                                    // eslint-disable-next-line no-bitwise
+                                    setTestModeBits((prev: number) => enabled ? (prev | TEST_BIT_SAVE_BMP) : (prev & ~TEST_BIT_SAVE_BMP))
+                                    if (enabled && numPictures % 2 !== 0) {
+                                        setNumPictures((prev) => prev + 1)
+                                    }
+                                }}
+                                disabled={submitting}
+                            />
+                        </View>
                     </Card.Content>
                 </Card>
 

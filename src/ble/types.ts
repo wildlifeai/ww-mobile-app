@@ -37,7 +37,6 @@ export enum CommandNames {
 	setop = "setop",
 	getop = "getop",
 	getop_all = "getop_all",
-	getops = "getops",
 	ai_ver = "ai_ver",
 	erasemodel = "erasemodel",
 	loadmodel = "loadmodel",
@@ -47,10 +46,10 @@ export enum CommandNames {
 	setdid = "setdid",
 	getdid = "getdid",
 	ai_firmware = "ai_firmware",
+	inithm0360 = "inithm0360",
 
-	// Process commands (UPPERCASE - app-specific workflows)
-	SET_UTC = "SET_UTC",
-	SET_GPS = "SET_GPS",
+	// BLE-processor commands (lowercase)
+	setutc = "setutc",
 	SET_NUM_PICTURES = "SET_NUM_PICTURES",
 	SET_PICTURE_INTERVAL = "SET_PICTURE_INTERVAL",
 	SET_TIMELAPSE_INTERVAL = "SET_TIMELAPSE_INTERVAL",
@@ -355,8 +354,8 @@ export const COMMANDS: {
 		description: "Flash blue LED (count duration_ms)",
 		type: 'command',
 	},
-	[CommandNames.SET_UTC]: {
-		name: CommandNames.SET_UTC,
+	[CommandNames.setutc]: {
+		name: CommandNames.setutc,
 		writeCommand: () => {
 			// Format: setutc YYYY-MM-DDTHH:MM:SSZ
 			const now = new Date()
@@ -367,13 +366,8 @@ export const COMMANDS: {
 		},
 		// Matches "RTC set to..." OR "System time set successfully" OR "UTC is: ..." (device echo/response variations)
 		readRegex: /(RTC\s+set\s+to|System\s+time\s+set\s+successfully|UTC\s+is:)/i,
-		description: "Set system time from UTC string",
-		type: 'process',
-	},
-	[CommandNames.SET_GPS]: {
-		name: CommandNames.SET_GPS,
-		description: "Set GPS location from phone (requires location access)",
-		type: 'process',
+		description: "Sync device clock to phone UTC (auto-generates timestamp)",
+		type: 'command',
 	},
 	[CommandNames.setop]: {
 		name: CommandNames.setop,
@@ -396,13 +390,6 @@ export const COMMANDS: {
 		writeCommand: () => `AI getop -1`,
 		readRegex: /^OpParams\s+(.+)$/i,
 		description: "Get all Operational Parameters at once",
-		type: 'command',
-	},
-	[CommandNames.getops]: {
-		name: CommandNames.getops,
-		readCommand: "getops",
-		readRegex: /OpParams:\s(.+)/,
-		description: "Get all operational parameters (array)",
 		type: 'command',
 	},
 	[CommandNames.ai_ver]: {
@@ -447,12 +434,19 @@ export const COMMANDS: {
 		description: "Get connected camera type",
 		type: 'command',
 	},
+	[CommandNames.inithm0360]: {
+		name: CommandNames.inithm0360,
+		writeCommand: () => 'AI inithm0360',
+		readRegex: /^(OK|Error)/i,
+		description: "Reinitialise HM0360 camera sensor registers (diagnostic for black images)",
+		type: 'command',
+	},
 	[CommandNames.md]: {
 		name: CommandNames.md,
 		writeCommand: (level?: string) => `AI md ${level || '0'}`,
 		expectedPattern: false,
 		description: "Set motion detection sensitivity (0-3)",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.setdid]: {
 		name: CommandNames.setdid,
@@ -475,42 +469,42 @@ export const COMMANDS: {
 		writeCommand: (count?: string) => `AI setop 5 ${count || '3'}`,
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set number of images per trigger (default: 3)",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.SET_PICTURE_INTERVAL]: {
 		name: CommandNames.SET_PICTURE_INTERVAL,
 		writeCommand: (intervalMs?: string) => `AI setop 6 ${intervalMs || '1500'}`,
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set interval between images in ms (default: 1500)",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.SET_TIMELAPSE_INTERVAL]: {
 		name: CommandNames.SET_TIMELAPSE_INTERVAL,
 		writeCommand: (intervalSec?: string) => `AI setop 7 ${intervalSec || '900'}`,
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set timelapse interval in seconds, 0=off (default: 900)",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.SET_MOTION_DETECT_INTERVAL]: {
 		name: CommandNames.SET_MOTION_DETECT_INTERVAL,
 		writeCommand: (intervalMs?: string) => `AI setop 11 ${intervalMs || '1000'}`,
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Set motion detection interval in ms, 0=off (default: 1000)",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.DISABLE_MOTION_DETECT]: {
 		name: CommandNames.DISABLE_MOTION_DETECT,
 		writeCommand: () => 'AI setop 11 0',
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Disable motion detection",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.DISABLE_TIMELAPSE]: {
 		name: CommandNames.DISABLE_TIMELAPSE,
 		writeCommand: () => 'AI setop 7 0',
 		readRegex: /^Set\s+OpParam\s+(\d+)\s+=\s+(.*)$/i,
 		description: "Disable timelapse capture",
-		type: 'process',
+		type: 'command',
 	},
 	[CommandNames.temp]: {
 		name: CommandNames.temp,
@@ -542,9 +536,9 @@ export const COMMANDS: {
 	},
 	[CommandNames.setgps]: {
 		name: CommandNames.setgps,
-		writeCommand: (gpsString?: string) => `setgps ${gpsString || ''}`,
+		writeCommand: (gpsString?: string) => `AI setgps ${gpsString || ''}`.trim(),
 		readRegex: /Device GPS set/i,
-		description: "Set the GPS location",
+		description: "Set GPS location (lat,lng,alt)",
 		type: 'command',
 	},
 	[CommandNames.getutc]: {

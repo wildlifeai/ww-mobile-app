@@ -1,6 +1,6 @@
 # Android Development Guide
 
-> **Related**: [Expo-EAS-Guide.md](Expo-EAS-Guide.md) (EAS builds), [publishing_guide.md](publishing_guide.md) (store submission), [WSL2-Setup-Guide.md](WSL2-Setup-Guide.md) (WSL2 networking), [GOOGLE-MAPS-SETUP.md](GOOGLE-MAPS-SETUP.md) (Maps API keys).
+> **Related**: [Expo-EAS-Guide.md](Expo-EAS-Guide.md) (EAS builds), [publishing_guide.md](publishing_guide.md) (store submission), [WSL2-Setup-Guide.md](WSL2-Setup-Guide.md) (WSL2 networking), [Maps.md](Maps.md) (Maps API keys).
 
 ## Prerequisites
 

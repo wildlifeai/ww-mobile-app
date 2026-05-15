@@ -62,6 +62,9 @@ jobs:
             echo "submit=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Validate dependencies
+        run: npm run validate:deps
+
       - name: EAS Build
         run: |
           eas build \
