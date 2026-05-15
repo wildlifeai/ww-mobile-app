@@ -60,7 +60,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                     </View>
                 )}
 
-                <WWBleDisconnectedBanner connected={!!device?.connected} />
+                <WWBleDisconnectedBanner connected={!!device?.connected} dfuInProgress={!!device?.dfuInProgress} />
 
                 {isCapturing && (
                     <View style={styles.progressContainer}>

@@ -11,7 +11,8 @@ import ReferenceDataService from '../../../services/ReferenceDataService'
 import Firmware from '../../../database/models/Firmware'
 import { runFileTransferPipeline } from '../../../ble/protocol/fileTransfer'
 import { FileTransferProgress } from '../../../ble/protocol/fileTransfer/fileTransferTypes'
-import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
+import { ExtendedPeripheral, setDfuStatus } from '../../../redux/slices/devicesSlice'
+import { useAppDispatch } from '../../../redux'
 import { useBle } from '../../../hooks/useBle'
 import { log, logError, logWarn } from '../../../utils/logger'
 import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
@@ -182,6 +183,7 @@ interface UseFirmwareUpdateOptions {
 
 export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) {
     const { connectDevice, disconnectDevice } = useBle()
+    const dispatch = useAppDispatch()
 
     const [phase, setPhase] = useState<UpdatePhase>('idle')
     const [dfuProgress, setDfuProgress] = useState(0) // 0-100 for BLE DFU
@@ -558,6 +560,9 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         
         abortControllerRef.current = new AbortController()
 
+        // Mark DFU in progress so the disconnect banner is suppressed
+        if (device?.id) dispatch(setDfuStatus({ id: device.id, status: true }))
+
         try {
             if (target === 'ble') {
                 await runBleDfu()
@@ -571,9 +576,11 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 advancePhase('failed')
             }
         } finally {
+            // Clear DFU flag regardless of success/failure
+            if (device?.id) dispatch(setDfuStatus({ id: device.id, status: false }))
             if (!unmountedRef.current) setIsUpdating(false)
         }
-    }, [target, runBleDfu, runHimaxUpdate, advancePhase])
+    }, [target, runBleDfu, runHimaxUpdate, advancePhase, dispatch, device?.id])
 
     // ── Derived values ─────────────────────────────────────────────
 

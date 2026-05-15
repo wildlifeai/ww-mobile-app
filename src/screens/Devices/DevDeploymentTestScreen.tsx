@@ -147,7 +147,7 @@ export const DevDeploymentTestScreen = () => {
             <ScrollView contentContainerStyle={[styles.content, { gap: spacing }]} keyboardShouldPersistTaps="handled">
 
                 {/* Connection status banner */}
-                <WWBleDisconnectedBanner connected={isConnected} />
+                <WWBleDisconnectedBanner connected={isConnected} dfuInProgress={!!bleDevice?.dfuInProgress} />
 
                 {/* ═══════════════════════════════════════ */}
                 {/* 1. PROJECT SETTINGS */}
