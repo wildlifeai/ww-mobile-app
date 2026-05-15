@@ -358,6 +358,30 @@ const projects = await database.get('projects').query().fetch()
 console.log('Local projects:', projects.map(p => p.name))
 ```
 
+### Dev Database Reset
+
+A development-only utility resets the local WatermelonDB when testing with fresh seed data or after backend migrations.
+
+> [!WARNING]
+> Only available when `__DEV__ === true`. Throws in production builds.
+
+**Use cases:** New seed data deployed, testing multi-tenancy, database corruption, post-migration clean slate.
+
+```typescript
+import { resetDatabaseForDev } from '@/utils/devDatabaseReset';
+
+// Drops all data + schema, recreates from scratch
+await resetDatabaseForDev();
+```
+
+This calls `database.unsafeResetDatabase()` internally. After reset:
+1. Restart the app
+2. Log out → log back in to trigger a fresh initial sync
+
+The reset is also available from the **Database Dev Tools** UI section (`DatabaseDevToolsSection.tsx`).
+
+**Source:** `src/utils/devDatabaseReset.ts`
+
 ---
 
 ## Schema Drift Prevention
@@ -439,4 +463,4 @@ Based on past architectural issues, adhere strictly to these operational guardra
 
 ---
 
-*Last Updated: April 26, 2026*
+*Last Updated: May 16, 2026*

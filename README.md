@@ -175,7 +175,7 @@ All documentation is organised under `documentation/`:
 | [Docker Guide](./documentation/resources/Docker-Development-Guide.md) | Containerised development environment |
 | [EAS/Expo](./documentation/resources/Expo-EAS-Guide.md) | Cloud builds and OTA updates |
 | [WSL2 Guide](./documentation/resources/WSL2-Setup-Guide.md) | Windows Subsystem for Linux setup |
-| [Google Maps](./documentation/resources/GOOGLE-MAPS-SETUP.md) | Maps API key and configuration |
+| [Maps](./documentation/resources/Maps.md) | Maps feature architecture and API configuration |
 | [Testing](./documentation/resources/Testing-Guide.md) | Jest, Maestro, and E2E testing |
 | [Auth Guide](./documentation/resources/Authentication-Implementation-Guide.md) | Authentication implementation details |
 

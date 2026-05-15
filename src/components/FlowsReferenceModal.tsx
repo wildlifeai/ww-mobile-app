@@ -50,8 +50,6 @@ const getFlowGroups = (): FlowGroup[] => {
             icon: 'cog-outline',
             commands: processCommands
                 .filter(cmd => [
-                    CommandNames.SET_UTC,
-                    CommandNames.SET_GPS,
                     CommandNames.RESET_TO_DEFAULTS,
                 ].includes(cmd.name))
                 .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
@@ -95,22 +93,8 @@ const getFlowGroups = (): FlowGroup[] => {
                 ].includes(cmd.name))
                 .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
         },
-        {
-            title: 'Other',
-            icon: 'dots-horizontal-circle-outline',
-            commands: processCommands
-                .filter(cmd => [
-                    CommandNames.md,
-                    CommandNames.SET_MOTION_DETECT_INTERVAL,
-                    CommandNames.DISABLE_MOTION_DETECT,
-                    CommandNames.SET_TIMELAPSE_INTERVAL,
-                    CommandNames.DISABLE_TIMELAPSE,
-                    CommandNames.SET_NUM_PICTURES,
-                    CommandNames.SET_PICTURE_INTERVAL,
-                ].includes(cmd.name))
-                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
-        },
     ]
+
 
     // Only return groups that have commands
     return groups.filter(g => g.commands.length > 0)

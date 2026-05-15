@@ -108,16 +108,22 @@ screens/                       navigation/screens/
 │   └── ...                    ├── Settings.tsx
 ├── Devices/                   └── ForgotPassword.tsx
 │   ├── DeviceDiscoveryScreen
-│   ├── DeviceDetailsScreen
 │   ├── EngineerConsoleScreen
+│   ├── DevDeploymentTestScreen
+│   ├── DfuScreen
+│   ├── FirmwareUpdateScreen / FirmwareStatusScreen
+│   ├── AiModelTransferScreen / ConfigTransferScreen
+│   ├── FileTransferTestScreen
+│   ├── ModelValidationTestScreen / CameraSettingsTestScreen
+│   ├── StandaloneCapturePreviewScreen / StandaloneMotionDetectionScreen
+│   ├── DeviceResetScreen / DeviceMonitoringSummaryScreen
 │   ├── components/
-│   │   └── ScannerRoutingDialog.tsx  # Post-scan routing (project association, deployment start/stop)
+│   │   └── ScannerRoutingDialog.tsx  # Post-scan routing
 │   └── hooks/
 │       └── useDeviceDiscovery.ts     # Scanner auto-connect + routing logic
 ├── Projects/
-│   ├── ProjectDetailsScreen
+│   ├── ProjectDetailsScreen / ProjectVisualizationScreen
 │   └── ...
-└── AuthTestScreen.tsx (__DEV__)
 ```
 
 > [!NOTE]
@@ -143,18 +149,22 @@ The full route table with params is documented in [01-TECHNOLOGY-STACK.md](./01-
 ```
 services/
 ├── supabase.ts                # Supabase client (factory pattern)
-├── database.ts                # Typed Supabase operations
+├── auth.ts                    # Session lifecycle management
 ├── ProjectService.ts          # Project CRUD + outbox
-├── ProjectMemberService.ts    # Member invitations
 ├── DeploymentService.ts       # Deployment lifecycle
 ├── DeviceService.ts           # Device record management
+├── UserRoleService.ts         # User role management
+├── InvitationService.ts       # Member invitations
+├── AiModelService.ts          # AI model metadata and registration
 ├── ReferenceDataService.ts    # Downloaded reference data (capture methods, etc.)
+├── FirmwareService.ts         # Firmware blob management
 ├── DfuService.ts              # Firmware updates (Nordic DFU)
 ├── MockLoRaWANService.ts      # LoRaWAN mocking
 └── offline/                   # Offline-first core
-    ├── OfflineService.ts      # Network monitoring + sync triggers
     ├── SupabaseSyncService.ts # Bidirectional WatermelonDB ↔ Supabase sync
-    └── OutboxService.ts       # Queues offline operations for sync
+    ├── OutboxService.ts       # Queues offline operations for sync
+    ├── SyncStateService.ts    # Sync state tracking
+    └── SyncTriggerService.ts  # Sync coordination
 ```
 
 **Service Pattern** — all data services write to WatermelonDB first:
@@ -183,14 +193,26 @@ hooks/
 ├── useBleInitialization.ts    # Shared self-test + UTC sync
 ├── useBleListeners.tsx        # BLE event listeners → rxRouter
 ├── useBleHeartbeat.ts         # 58s inactivity keep-alive
-├── useDeploymentConfiguration.ts # Atomic deployment config
+├── useSetupBLELibrary.ts      # BLE library initialization
+├── useBluetoothStatus.ts      # Bluetooth adapter state
+├── useEngineerConnect.ts      # Console connection management
+├── useScanLoop.ts             # Continuous BLE scanning
+├── useDeploymentConfiguration.ts # Capture method → OP mapping
+├── useDeploymentProgress.ts   # Deployment progress tracking
+├── useDevicePreDeploymentChecks.ts # Battery/firmware/SD validation
+├── useMonitoringActions.ts    # Deployment monitoring commands
 ├── useCapturePreview.ts       # Image capture flow
-├── useDeviceSettings.ts       # Device quiesce + settings
+├── useDeviceSettings.ts       # CONFIG.TXT / OP parameter management
 ├── useOfflineSync.ts          # Offline sync triggers
+├── useOptimisticUpdate.ts     # UI responses before outbox confirms
 ├── useSupabaseAuth.ts         # Supabase auth hook
+├── useSupabaseClient.ts       # Supabase client hook
 ├── useUserOrganisations.ts    # Org management
 ├── useGPSLocation.ts          # GPS access
-└── useAppNavigation.tsx       # Typed navigation hook
+├── useAndroidPermissions.ts   # Android runtime permissions
+├── useDeepLinking.ts          # Deep link handling
+├── useAppNavigation.tsx       # Typed navigation hook
+└── useTimer.ts                # Timer utility
 ```
 
 ### `src/ble/` — BLE Protocol Engine
@@ -198,23 +220,29 @@ hooks/
 ```
 ble/
 ├── types.ts                    # UI command definitions (CommandNames, COMMANDS for Console)
-├── commandManager.ts           # ⛔ DEAD trap file — throws if imported
 ├── transport.ts                # Raw BLE write + service discovery
 ├── messageClassifier.ts        # UI-only log categorization for monitoring display
 ├── emitters.ts                 # Legacy EventEmitter3 (retained for ImageReassembler)
 ├── protocol/                   # Event-driven command engine
-│   ├── eventBus.ts             # bleEventBus — 6 frozen event types
+│   ├── eventBus.ts             # bleEventBus — frozen event types
 │   ├── rxRouter.ts             # Binary/text classification
 │   ├── commandRegistry.ts      # Typed command factories (frozen schema)
-│   ├── commandQueue.ts         # Serialized execution queue
-│   ├── runCommand.ts           # Single command executor
 │   ├── runCommandPipeline.ts   # Multi-command sequential executor
-│   ├── protocolConstants.ts    # Timing constants
+│   ├── bleTransportController.ts # Low-level BLE transport management
+│   ├── protocolConstants.ts    # Timing constants (MTU, timeouts)
 │   ├── deviceSignals.ts        # Sleep/Wake/Busy signals
-│   └── streamRegistry.ts       # Active stream tracking
+│   ├── textStreamScope.ts      # Text stream scoping for responses
+│   └── fileTransfer/           # Chunked file transfer protocol
+│       ├── runFileTransferPipeline.ts
+│       ├── fileTransferPackets.ts
+│       ├── ackMatcher.ts
+│       ├── crc16ccitt.ts
+│       └── filenameValidator.ts
 ├── session/                    # Deterministic workflow API
 │   └── createBleSession.ts     # Session factory
 └── workflows/                  # Reusable BLE workflow functions
+    ├── deploymentPipeline.ts   # Shared deployment pipeline
+    └── checkSdCard.ts          # SD card health validation
 ```
 
 ### `src/providers/` — Context Providers
@@ -408,4 +436,4 @@ const syncSlice = createSlice({
 
 ---
 
-*Last Updated: April 26, 2026*
+*Last Updated: May 16, 2026*
