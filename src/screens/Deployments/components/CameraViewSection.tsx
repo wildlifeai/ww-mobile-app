@@ -5,6 +5,7 @@ import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useCapturePreview } from '../../../hooks/useCapturePreview'
 
 import { WWButton } from '../../../components/ui/WWButton'
+import { WWBleDisconnectedBanner } from '../../../components/ui/WWBleDisconnectedBanner'
 import { logError } from '../../../utils/logger'
 
 
@@ -59,13 +60,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                     </View>
                 )}
 
-                {!device?.connected && (
-                    <View style={styles.disconnectedBanner}>
-                        <Text style={{ color: theme.colors.error, textAlign: 'center' }}>
-                            ⚠️ Bluetooth connection lost. Actions are disabled until the device reconnects.
-                        </Text>
-                    </View>
-                )}
+                <WWBleDisconnectedBanner connected={!!device?.connected} />
 
                 {isCapturing && (
                     <View style={styles.progressContainer}>

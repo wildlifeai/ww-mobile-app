@@ -20,15 +20,17 @@ This guide is your single entry point to understanding the project, setting up y
 
 ## 📚 Documentation Roadmap
 
-This folder contains six onboarding guides:
+This folder contains five onboarding guides:
 
 | # | Guide | What It Covers |
 |---|-------|----------------|
 | 1 | [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) | Framework versions, dependencies, architecture, and patterns |
 | 2 | [02-CODEBASE-GUIDE.md](./02-CODEBASE-GUIDE.md) | Folder structure, state management, naming conventions |
 | 3 | [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) | WatermelonDB, Supabase sync, security model, offline patterns |
-| 4 | [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) | Device deployment, management, and retrieval |
-| 5 | [05-GIT-WORKFLOW.md](./05-GIT-WORKFLOW.md) | Git branching, Conventional Commits, and CI pipeline rules |
+| 4 | [04-ENGINEER-CONSOLE.md](./04-ENGINEER-CONSOLE.md) | BLE commands, OP parameters, hardware testing tools |
+| 5 | [05-DEVICE-FLOWS.md](./05-DEVICE-FLOWS.md) | Device deployment, monitoring, and retrieval flows |
+
+**Git Workflow:** See the organisation-level [git-SKILL.md](https://github.com/wildlifeai/.github/blob/main/agents/git-SKILL.md) for branching strategy, Conventional Commits, PR review workflow, and CI pipeline rules.
 
 **Deep-dive guides** in [`documentation/resources/`](../resources/):
 
@@ -46,6 +48,7 @@ This folder contains six onboarding guides:
 | [Android-Guide.md](../resources/Android-Guide.md) | JDK/SDK setup, local builds, device config, 16KB compliance |
 | [Expo-EAS-Guide.md](../resources/Expo-EAS-Guide.md) | EAS build profiles, dev client workflow, keystores |
 | [WSL2-Setup-Guide.md](../resources/WSL2-Setup-Guide.md) | WSL2 networking, port forwarding, .wslconfig tuning |
+| [Dev-Deployment-Guide.md](../resources/Dev-Deployment-Guide.md) | Developer deployment mode for testing capture, flash, and diagnostic settings |
 
 ---
 
@@ -219,4 +222,4 @@ npm test              # Run Jest tests
 **Ready to dive deeper?** Move on to **[01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md)**. 🚀
 
 ---
-*Last Updated: April 19, 2026*
+*Last Updated: May 15, 2026*

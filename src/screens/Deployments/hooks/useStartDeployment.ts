@@ -439,9 +439,8 @@ export const useStartDeployment = ({
         }
 
         try {
-            // 1-3. Shared pipeline steps (time sync, config push, AI model)
+            // 1-2. Shared pipeline steps (time sync, AI model)
             await pipeline.syncTime(bleSession, cb)
-            await pipeline.pushConfig(bleDevice, bleSession, cb)
             await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true)
 
             // 4. Gather snapshot data (unique to production deployment)

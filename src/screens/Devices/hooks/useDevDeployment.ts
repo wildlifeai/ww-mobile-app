@@ -80,6 +80,11 @@ export const useDevDeployment = ({
         ledBrightness: 5,
     })
 
+    // Capture diagnostics: default JPG+BMP mode
+    // TEST_BIT_SAVE_BMP = (1 << 1) = 2 — alternates between JPG and BMP files
+    const [numPictures, setNumPictures] = useState(2)
+    const [testModeBits, setTestModeBits] = useState(2)
+
     // Project state
     const [project, setProject] = useState<ProjectWithDetails | null>(null)
     const [availableProjects, setAvailableProjects] = useState<ProjectWithDetails[]>([])
@@ -288,9 +293,8 @@ export const useDevDeployment = ({
         }
 
         try {
-            // 1-3. Shared pipeline steps
+            // 1-2. Shared pipeline steps
             await pipeline.syncTime(bleSession, cb)
-            await pipeline.pushConfig(bleDevice, bleSession, cb)
             await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb)
 
             // 4. Persist project settings (dev-specific)
@@ -346,6 +350,14 @@ export const useDevDeployment = ({
             await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashParams.flashLed }))
             progress.addLog(`Flash: ${['Off', 'Visible', 'IR'][flashParams.flashLed]} @ ${flashParams.ledBrightness}%`)
 
+            // 7b. Dev diagnostic: Enable JPG+BMP capture mode
+            progress.addLog('Setting capture diagnostics...')
+            progress.setFinishStep('Capture diagnostics...')
+            progress.setFinishProgress(0.75)
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: testModeBits }))
+            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.NUM_PICTURES, value: numPictures }))
+            progress.addLog(`Photo mode: ${numPictures} pics, test bits = ${testModeBits}`)
+
             // 8. Done
             progress.setFinishStep('Complete')
             progress.setFinishProgress(1.0)
@@ -368,7 +380,8 @@ export const useDevDeployment = ({
         bleDevice, bleSession, project, user, device,
         startConfigure, progress, persistProjectSettings,
         batteryLevel, gpsLocation, locationName, cameraHeight, notes,
-        sdCardStatus, flashParams, effectiveCaptureMethod, effectiveTimelapseInterval,
+        sdCardStatus, flashParams, numPictures, testModeBits,
+        effectiveCaptureMethod, effectiveTimelapseInterval,
         monitoring
     ])
 
@@ -405,6 +418,9 @@ export const useDevDeployment = ({
         sensitivityOptions, aiModelOptions,
         // Flash
         flashParams, setFlashParams,
+        // Capture diagnostics
+        numPictures, setNumPictures,
+        testModeBits, setTestModeBits,
         // Device health
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,

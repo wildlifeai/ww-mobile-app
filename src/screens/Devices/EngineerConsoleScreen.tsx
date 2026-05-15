@@ -11,6 +11,7 @@ import { BleConsoleOutput, ConsoleEntry } from '../../components/BleConsoleOutpu
 import { CommandReferenceModal } from '../../components/CommandReferenceModal'
 import { FlowsReferenceModal } from '../../components/FlowsReferenceModal'
 import { bleEventBus, BleEvent } from '../../ble/protocol/eventBus'
+import { WWBleDisconnectedBanner } from '../../components/ui/WWBleDisconnectedBanner'
 
 import { styles } from './components/EngineerConsoleScreen.styles'
 import { consoleReducer, initialConsoleState } from './hooks/useConsoleReducer'
@@ -130,6 +131,8 @@ export const EngineerConsoleScreen = () => {
                 onShowHelp={() => dispatch({ type: 'SET_IS_HELP_VISIBLE', payload: true })}
                 onShowFlows={() => dispatch({ type: 'SET_IS_FLOWS_VISIBLE', payload: true })}
             />
+
+            <WWBleDisconnectedBanner connected={!!device?.connected} />
 
             <View style={styles.consoleContainer}>
                 <BleConsoleOutput entries={consoleState.consoleHistory} />

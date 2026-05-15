@@ -9,7 +9,6 @@ import { BleSession } from '../session/createBleSession'
 import { commandRegistry } from '../protocol/commandRegistry'
 import { runFileTransferPipeline } from '../protocol/fileTransfer'
 import ReferenceDataService from '../../services/ReferenceDataService'
-import FirmwareService from '../../services/FirmwareService'
 import AiModelService from '../../services/AiModelService'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
 import { FACTORY_DEFAULTS } from '../../hooks/useDeviceSettings'
@@ -46,6 +45,20 @@ export async function syncTime(
  * values that differ from FACTORY_DEFAULTS. Each setop receives a
  * confirmation response, so no verification pass is needed.
  */
+/**
+ * OPs that configureDevice() will set — no point resetting these to defaults
+ * only to overwrite them 2 seconds later.
+ */
+const CONFIGURE_MANAGED_OPS = new Set([
+    7,  // TIMELAPSE_INTERVAL
+    8,  // INTERVAL_BEFORE_DPD
+    10, // CAMERA_ENABLED
+    11, // MD_INTERVAL
+    17, // MD_SENSITIVITY
+    19, // IMAGES_COUNT
+    20, // IMAGES_FILE_INDEX
+])
+
 export async function resetOps(
     session: BleSession,
     { addLog, setStep, setProgress }: ProgressCallbacks
@@ -64,10 +77,12 @@ export async function resetOps(
             logWarn('[ResetOps] Could not read current OPs, will write all defaults')
         }
 
-        // Diff against factory defaults — only write what differs
+        // Diff against factory defaults — only write what differs.
+        // Skip OPs managed by configureDevice() to avoid redundant BLE writes.
         const opsToWrite: { index: number; value: number }[] = []
         for (const [indexStr, defaultValue] of Object.entries(FACTORY_DEFAULTS)) {
             const index = parseInt(indexStr, 10)
+            if (CONFIGURE_MANAGED_OPS.has(index)) continue
             if (currentOps && currentOps.length > index && currentOps[index] === defaultValue.toString()) continue
             opsToWrite.push({ index, value: defaultValue })
         }
@@ -76,7 +91,7 @@ export async function resetOps(
             addLog('OPs already at defaults — skipping')
             log('[ResetOps] All OPs already at defaults')
         } else {
-            log(`[ResetOps] Writing ${opsToWrite.length} OPs to defaults`)
+            log(`[ResetOps] Writing ${opsToWrite.length} OPs to defaults (skipped ${CONFIGURE_MANAGED_OPS.size} configure-managed)`)
             for (const { index, value } of opsToWrite) {
                 log(`[ResetOps] Setting OP ${index} = ${value}`)
                 await session.execute(() => commandRegistry.setop({ index, value }))
@@ -84,10 +99,8 @@ export async function resetOps(
             addLog(`Reset ${opsToWrite.length} parameters to defaults`)
         }
 
-        // Always clear deployment ID and GPS for a clean slate
-        await session.execute(() => commandRegistry.setdid(null))
-        await session.execute(() => commandRegistry.setgps('0,0,0'))
-        addLog('Deployment ID and GPS cleared')
+        // Note: deployment ID and GPS are handled by configureDevice() —
+        // no need to clear them here and then immediately re-set them.
 
         setProgress(0.09)
     } catch (e) {
@@ -96,36 +109,6 @@ export async function resetOps(
     }
 }
 
-/**
- * Step 2: Push CONFIG.TXT to device SD card.
- */
-export async function pushConfig(
-    device: ExtendedPeripheral,
-    session: BleSession,
-    { addLog, setStep, setProgress }: ProgressCallbacks
-): Promise<void> {
-    addLog('Updating configuration...')
-    setStep('Config push...')
-    setProgress(0.12)
-
-    try {
-        const latestConfig = await ReferenceDataService.getLatestFirmware('config')
-        if (latestConfig?.locationPath) {
-            const configBytes = await FirmwareService.readFirmwareAsBytes(latestConfig.locationPath)
-            if (configBytes) {
-                await runFileTransferPipeline(device, {
-                    filename: 'CONFIG.TXT',
-                    data: configBytes,
-                    onProgress: (p) => setProgress(0.12 + (p.percentage / 100) * 0.03)
-                })
-                addLog('Configuration pushed successfully')
-            }
-        }
-    } catch (e) {
-        logWarn('Failed to push config:', e)
-        addLog('Configuration push failed, continuing...')
-    }
-}
 
 /**
  * Step 3: Ensure the correct AI model is loaded on the device.

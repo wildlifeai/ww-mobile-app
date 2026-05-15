@@ -403,7 +403,7 @@ const syncSlice = createSlice({
 ## Next Steps
 
 1. [03-DATA-AND-SYNC.md](./03-DATA-AND-SYNC.md) — WatermelonDB, Supabase sync, and security model
-2. [04-DEVICE-FLOWS.md](./04-DEVICE-FLOWS.md) — Device deployment lifecycle
+2. [05-DEVICE-FLOWS.md](./05-DEVICE-FLOWS.md) — Device deployment lifecycle
 3. [01-TECHNOLOGY-STACK.md](./01-TECHNOLOGY-STACK.md) — Complete dependency reference
 
 ---
