@@ -149,7 +149,7 @@ export const DeveloperSettingsScreen: React.FC = () => {
 						<View style={styles.loadingContainer} testID="loading-indicator">
 							<ActivityIndicator size="large" />
 							<WWText variant="bodyMedium" style={{ marginTop: spacing }}>
-								<Text>Restarting app...</Text>
+								<Text>Restarting app…</Text>
 							</WWText>
 						</View>
 					)}

@@ -1,5 +1,5 @@
-import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import React, { useState, useCallback } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Modal, KeyboardAvoidingView, Platform, TextInput } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useExtendedTheme } from '../../../theme'
@@ -10,7 +10,9 @@ import { LiveActivityLog } from './LiveActivityLog'
 interface Props {
   device: ExtendedPeripheral | null
   captureMethodId?: number | null
-  onDisconnect: () => void
+  onContinueMonitoring: () => void
+  onStopMonitoring: (notes: string) => void
+  isStoppingMonitoring?: boolean
 }
 
 const formatTime = (ms: number) => {
@@ -28,14 +30,34 @@ const formatTime = (ms: number) => {
 export const DeploymentMonitorView: React.FC<Props> = ({
   device,
   captureMethodId,
-  onDisconnect,
+  onContinueMonitoring,
+  onStopMonitoring,
+  isStoppingMonitoring,
 }) => {
   const { colors } = useExtendedTheme()
   const { bottom } = useSafeAreaInsets()
   const { stats } = useDeploymentMonitor(device)
 
+  const [stopModalVisible, setStopModalVisible] = useState(false)
+  const [endNotes, setEndNotes] = useState('')
+
   const showMotion = captureMethodId === 1 || captureMethodId === 3
   const showTimelapse = captureMethodId === 2 || captureMethodId === 3
+
+  const handleStopPress = useCallback(() => {
+    setStopModalVisible(true)
+  }, [])
+
+  const handleStopCancel = useCallback(() => {
+    setStopModalVisible(false)
+    setEndNotes('')
+  }, [])
+
+  const handleStopConfirm = useCallback(() => {
+    setStopModalVisible(false)
+    onStopMonitoring(endNotes)
+    setEndNotes('')
+  }, [endNotes, onStopMonitoring])
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -85,19 +107,79 @@ export const DeploymentMonitorView: React.FC<Props> = ({
       {/* Spacer to push footer down */}
       <View style={{ flex: 1 }} />
 
-      {/* Footer */}
+      {/* Footer: Two Buttons */}
       <View style={[styles.footer, { borderTopColor: colors.surfaceVariant, paddingBottom: bottom + 16 }]}>
-        <Text style={[styles.footerNote, { color: colors.onSurfaceVariant }]}>
-          Note: The wildlife watcher will continue monitoring after disconnecting.
-        </Text>
         <TouchableOpacity
-          style={[styles.disconnectBtn, { borderColor: colors.error }]}
-          onPress={onDisconnect}
+          style={[styles.continueBtn, { backgroundColor: '#4CAF50' }]}
+          onPress={onContinueMonitoring}
           activeOpacity={0.7}
         >
-          <Text style={[styles.disconnectText, { color: colors.error }]}>Disconnect from Wildlife Watcher</Text>
+          <MaterialCommunityIcons name="check-circle-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+          <Text style={styles.continueBtnText}>Disconnect & Continue Monitoring</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.stopBtn, { borderColor: colors.error }]}
+          onPress={handleStopPress}
+          activeOpacity={0.7}
+          disabled={isStoppingMonitoring}
+        >
+          <MaterialCommunityIcons name="stop-circle-outline" size={20} color={colors.error} style={{ marginRight: 8 }} />
+          <Text style={[styles.stopBtnText, { color: colors.error }]}>
+            {isStoppingMonitoring ? 'Stopping…' : 'Stop Monitoring'}
+          </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Stop Monitoring Confirmation Modal */}
+      <Modal
+        visible={stopModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleStopCancel}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.onSurface }]}>Stop Monitoring</Text>
+            <Text style={[styles.modalSubtitle, { color: colors.onSurfaceVariant }]}>
+              Are you sure you want to stop this device from monitoring?
+            </Text>
+
+            <Text style={[styles.modalNotesLabel, { color: colors.onSurface }]}>Notes</Text>
+            <TextInput
+              placeholder="e.g. SD card full, Battery low, Device damaged..."
+              placeholderTextColor={colors.onSurfaceVariant}
+              multiline
+              numberOfLines={8}
+              textAlignVertical="top"
+              value={endNotes}
+              onChangeText={setEndNotes}
+              style={[styles.modalInput, { color: colors.onSurface, borderColor: colors.outline, backgroundColor: colors.background }]}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { borderColor: colors.outline }]}
+                onPress={handleStopCancel}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.onSurface }]}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalStopBtn, { borderColor: colors.outline }]}
+                onPress={handleStopConfirm}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.modalStopText, { color: colors.error }]}>Stop Monitoring</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   )
 }
@@ -158,21 +240,94 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
     backgroundColor: 'transparent',
+    gap: 12,
   },
-  footerNote: {
-    fontSize: 12,
-    textAlign: 'center',
-    marginBottom: 12,
+  continueBtn: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  disconnectBtn: {
+  continueBtnText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  stopBtn: {
+    flexDirection: 'row',
     borderWidth: 1.5,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  disconnectText: {
+  stopBtnText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  modalContent: {
+    borderRadius: 16,
+    padding: 28,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 15,
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  modalNotesLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  modalInput: {
+    minHeight: 160,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalStopBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalStopText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 })

@@ -29,7 +29,8 @@ export interface RootStackParamList extends ParamListBase {
 	AuthTestScreen: undefined
 	DeveloperSettings: undefined
 	DeviceDiscovery: { mode: 'auto' | 'end_deployment' } | undefined
-	DeviceDetails: { deviceId: string }
+	DeviceMonitoringSummary: { deviceId?: string; deploymentId?: string }
+	ProjectVisualizationScreen: { projectId: string }
 	EngineerConsoleScreen: { deviceId: string }
 	StandaloneMotionDetectionScreen: { deviceId: string }
 	StandaloneCapturePreviewScreen: { deviceId: string }
@@ -41,9 +42,9 @@ export interface RootStackParamList extends ParamListBase {
 	AiModelTransferScreen: { deviceId: string; modelId?: string }
 	FirmwareStatusScreen: { deviceId: string }
 	DeviceResetScreen: { deviceId: string }
+	DevDeploymentTestScreen: { deviceId: string; bleDeviceId: string }
 
 	StartMonitoringDetailsStep: { projectId?: string; deviceId?: string; bleDeviceId?: string; initPayload?: InitPayload }
-	DeploymentDetails: { deploymentId: string }
 	StopMonitoringDetailsStep: { deploymentId: string; deviceId: string; bleDeviceId: string; initPayload?: InitPayload }
 }
 

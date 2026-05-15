@@ -1,5 +1,5 @@
 import { useLayoutEffect, useCallback } from 'react'
-import { StyleSheet, Alert } from 'react-native'
+import { StyleSheet, Alert, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { Appbar } from 'react-native-paper'
@@ -8,6 +8,7 @@ import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
 import { MotionDetectionSection } from './components/MotionDetectionSection'
+import { useBleHeartbeat } from '../../hooks/useBleHeartbeat'
 
 export const StandaloneMotionDetectionScreen = () => {
     const route = useRoute<any>()
@@ -16,6 +17,11 @@ export const StandaloneMotionDetectionScreen = () => {
 
     const deviceId = route.params?.deviceId
     const device = useAppSelector(state => state.devices[deviceId || ''])
+
+    // Keep BLE connection alive during idle configuration/review periods.
+    // The global heartbeat in ListenToBleEngineProvider may not have an
+    // up-to-date device reference when navigating from the Engineer Console.
+    useBleHeartbeat(device?.connected ? device : null)
 
     const handleBack = useCallback(() => {
         navigation.goBack()
@@ -53,12 +59,18 @@ export const StandaloneMotionDetectionScreen = () => {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-            <MotionDetectionSection
-                bleDevice={device}
-                isInitializing={false}
-                bleDeviceConnected={device.connected}
-                onShowHelp={handleShowHelp}
-            />
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
+                <MotionDetectionSection
+                    bleDevice={device}
+                    isInitializing={false}
+                    bleDeviceConnected={device.connected}
+                    onShowHelp={handleShowHelp}
+                />
+            </ScrollView>
         </SafeAreaView>
     )
 }
@@ -66,7 +78,10 @@ export const StandaloneMotionDetectionScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    scrollContent: {
         padding: 16,
+        paddingBottom: 32,
     },
     centerContainer: {
         flex: 1,

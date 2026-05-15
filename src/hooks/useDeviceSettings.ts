@@ -39,23 +39,23 @@ export const OP_PARAMETER = {
  * These match the firmware's behaviour when no MANIFEST folder exists on SD card.
  */
 export const FACTORY_DEFAULTS: Record<number, number> = {
-    [OP_PARAMETER.SEQUENCE_NUMBER]: 0,
+    [OP_PARAMETER.SEQUENCE_NUMBER]: 1,
     [OP_PARAMETER.NUM_NN_ANALYSES]: 0,
     [OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES]: 0,
     [OP_PARAMETER.NUM_COLD_BOOTS]: 0,
     [OP_PARAMETER.NUM_WARM_BOOTS]: 0,
-    [OP_PARAMETER.NUM_PICTURES]: 3,
-    [OP_PARAMETER.PICTURE_INTERVAL]: 1500,
+    [OP_PARAMETER.NUM_PICTURES]: 1,
+    [OP_PARAMETER.PICTURE_INTERVAL]: 500,
     [OP_PARAMETER.TIMELAPSE_INTERVAL]: 0,
     [OP_PARAMETER.INTERVAL_BEFORE_DPD]: 1000,
     [OP_PARAMETER.LED_BRIGHTNESS]: 5,
-    [OP_PARAMETER.CAMERA_ENABLED]: 0,
+    [OP_PARAMETER.CAMERA_ENABLED]: 1,
     [OP_PARAMETER.MD_INTERVAL]: 0,
     [OP_PARAMETER.FLASH_DURATION]: 100,
     [OP_PARAMETER.FLASH_LED]: 0,
     [OP_PARAMETER.MODEL_PROJECT]: 0,
     [OP_PARAMETER.MODEL_VERSION]: 0,
-    [OP_PARAMETER.MODEL_THRESHOLD]: 50,
+    [OP_PARAMETER.MODEL_THRESHOLD]: 18,
     [OP_PARAMETER.MD_SENSITIVITY]: 1,
     [OP_PARAMETER.TEST_MODE_BITS]: 0,
     [OP_PARAMETER.IMAGES_COUNT]: 0,
@@ -69,13 +69,13 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
  * Only includes user-configurable parameters (5-13)
  */
 export interface DeviceSettings {
-    numPictures?: number              // Index 5 - Images per trigger (default: 3)
-    pictureInterval?: number           // Index 6 - Interval between images in ms (default: 1500)
-    timelapseInterval?: number         // Index 7 - Timelapse interval in seconds, 0=disabled (default: 60)
+    numPictures?: number              // Index 5 - Images per trigger (default: 1)
+    pictureInterval?: number           // Index 6 - Interval between images in ms (default: 500)
+    timelapseInterval?: number         // Index 7 - Timelapse interval in seconds, 0=disabled (default: 0)
     intervalBeforeDpd?: number         // Index 8 - Inactivity timeout in ms (default: 1000)
-    ledBrightness?: number             // Index 9 - LED brightness 0-100%, 0=off (default: 5)
-    cameraEnabled?: boolean            // Index 10 - 0=disabled, 1=enabled (default: 1)
-    motionDetectInterval?: number      // Index 11 - Motion detection interval in ms, 0=disabled (default: 1000)
+    ledBrightness?: number             // Index 9 - LED brightness 0-100%, 0=dim (default: 5)
+    // Note: OP_PARAMETER.CAMERA_ENABLED (Index 10) is removed. The firmware permanently defaults it to 1.
+    motionDetectInterval?: number      // Index 11 - Motion detection interval in ms, 0=disabled (default: 0)
     flashDuration?: number             // Index 12 - Flash duration in ms (default: 100)
     flashLed?: number                  // Index 13 - LED mask: 0=off, 1=visible, 2=IR (default: 0)
 }
@@ -113,7 +113,7 @@ export interface UseDeviceSettingsReturn {
  * })
  * 
  * // Update individual settings
- * await updateSettings({ cameraEnabled: false, motionDetectInterval: 2000 })
+ * await updateSettings({ motionDetectInterval: 2000 })
  * 
  * // Apply a preset configuration
  * await applyPreset('motion-detect')
@@ -172,10 +172,7 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
                 updates.push({ index: OP_PARAMETER.FLASH_LED, value: settings.flashLed })
             }
 
-            // ALWAYS set Camera Enabled LAST to ensure it picks up the intervals set above
-            if (settings.cameraEnabled !== undefined) {
-                updates.push({ index: OP_PARAMETER.CAMERA_ENABLED, value: settings.cameraEnabled ? 1 : 0 })
-            }
+            // Camera is always enabled by firmware.
 
             const session = createBleSession(device)
             let currentOps: string[] | null = null
@@ -231,7 +228,7 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
             pictureInterval: 1500,
             timelapseInterval: 60,
             ledBrightness: 5,
-            cameraEnabled: true,
+            // Camera enabled is assumed to always be true by firmware defaults
             motionDetectInterval: 1000,
             flashDuration: 100,
             flashLed: 0
@@ -344,9 +341,13 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
     }, [])
 
     /**
-     * Full factory reset: resets ALL 21 operational parameters to firmware defaults,
-     * erases any loaded AI model, clears the deployment ID, and zeroes GPS.
-     * 
+     * Full factory reset: reads current OPs, writes only those that differ
+     * from FACTORY_DEFAULTS, erases any loaded AI model, clears the
+     * deployment ID, and zeroes GPS.
+     *
+     * Each setop/setgps command receives a confirmation response from the
+     * firmware, so no verification pass is needed.
+     *
      * @param device The connected BLE device
      * @param onProgress Optional callback for progress updates (step description, 0-1 progress)
      */
@@ -359,67 +360,83 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
             setIsUpdating(true)
             const session = createBleSession(device)
 
-            // Step 1: Wake AI processor and extend DPD timeout
-            // The AI processor enters Deep Power Down after INTERVAL_BEFORE_DPD (default 1000ms).
-            // We must extend this immediately to prevent the processor from sleeping between commands,
-            // which would cause the commandQueue to transition to PAUSED_SLEEP and deadlock.
-            onProgress?.('Waking AI processor...', 0.05)
-            log('[ResetDefaults] Waking AI processor...')
-            await session.execute(() => commandRegistry.aiver())
-
-            onProgress?.('Extending DPD timeout...', 0.07)
-            log('[ResetDefaults] Extending DPD timeout to 30s to keep AI awake during reset...')
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: 30000 }))
-
-            // Step 2: Read current OPs to skip unnecessary writes
+            // Step 1: Read current OPs (this also wakes the device from DPD)
             onProgress?.('Reading current parameters...', 0.1)
             log('[ResetDefaults] Reading current operational parameters...')
             let currentOps: string[] | null = null
             try {
                 currentOps = await session.execute(commandRegistry.getops)
+                log(`[ResetDefaults] Current OPs: ${currentOps?.join(' ')}`)
             } catch (err) {
                 logWarn('[ResetDefaults] Could not read current OPs, will write all defaults', err)
             }
 
-            // Step 3: Erase loaded AI model (clears OP 14/15 on the firmware side too)
-            onProgress?.('Erasing AI model...', 0.2)
-            log('[ResetDefaults] Erasing AI model...')
-            try {
-                await session.execute(() => commandRegistry.erasemodel())
-                log('[ResetDefaults] AI model erased')
-            } catch (err) {
-                logWarn('[ResetDefaults] erasemodel failed (may not have a model loaded):', err)
-            }
-
-            // Step 4: Reset all OPs to factory defaults
-            const entries = Object.entries(FACTORY_DEFAULTS)
-            const totalOps = entries.length
-            let opsWritten = 0
-
-            for (const [indexStr, defaultValue] of entries) {
+            // Step 2: Diff against FACTORY_DEFAULTS — only write what differs
+            const opsToWrite: { index: number; value: number }[] = []
+            for (const [indexStr, defaultValue] of Object.entries(FACTORY_DEFAULTS)) {
                 const index = parseInt(indexStr, 10)
 
+                // 1) Do not reset sequence number if it is higher than 0
+                if (index === OP_PARAMETER.SEQUENCE_NUMBER && currentOps && currentOps.length > index) {
+                    if (parseInt(currentOps[index], 10) > 0) continue
+                }
+
+                // 2) Do not reset tracking parameters and counters
+                if (
+                    index === OP_PARAMETER.NUM_NN_ANALYSES ||
+                    index === OP_PARAMETER.NUM_POSITIVE_NN_ANALYSES ||
+                    index === OP_PARAMETER.NUM_COLD_BOOTS ||
+                    index === OP_PARAMETER.NUM_WARM_BOOTS ||
+                    index === OP_PARAMETER.NUM_PICTURES ||
+                    index === OP_PARAMETER.IMAGES_COUNT ||
+                    index === OP_PARAMETER.IMAGES_FILE_INDEX
+                ) {
+                    continue
+                }
+
+                if (currentOps && currentOps.length > index && currentOps[index] === defaultValue.toString()) continue
+                opsToWrite.push({ index, value: defaultValue })
+            }
+
+            // Check if model needs erasing
+            const hasModel = !currentOps ||
+                (currentOps.length > OP_PARAMETER.MODEL_PROJECT && currentOps[OP_PARAMETER.MODEL_PROJECT] !== '0') ||
+                (currentOps.length > OP_PARAMETER.MODEL_VERSION && currentOps[OP_PARAMETER.MODEL_VERSION] !== '0')
+
+            log(`[ResetDefaults] ${opsToWrite.length} OPs need writing, model loaded: ${hasModel}`)
+
+            // Step 3: Erase AI model if one is loaded
+            if (hasModel) {
+                onProgress?.('Erasing AI model...', 0.2)
+                log('[ResetDefaults] Erasing AI model...')
+                try {
+                    await session.execute(() => commandRegistry.erasemodel())
+                    log('[ResetDefaults] AI model erased')
+                } catch (err) {
+                    logWarn('[ResetDefaults] erasemodel failed (may not have a model loaded):', err)
+                }
+            }
+
+            // Step 4: Write OPs that differ from defaults
+            let opsWritten = 0
+            for (const { index, value } of opsToWrite) {
                 if (!isMounted.current || !device.connected) {
                     throw new Error('Reset cancelled: Device disconnected or component unmounted')
                 }
 
-                // Skip if already at default
-                if (currentOps && currentOps.length > index && currentOps[index] === defaultValue.toString()) {
-                    log(`[ResetDefaults] OP ${index} already at default (${defaultValue}), skipping`)
-                    opsWritten++
-                    continue
-                }
-
-                log(`[ResetDefaults] Setting OP ${index} = ${defaultValue}`)
-                await session.execute(() => commandRegistry.setop({ index, value: defaultValue }))
+                log(`[ResetDefaults] Setting OP ${index} = ${value}`)
+                await session.execute(() => commandRegistry.setop({ index, value }))
                 opsWritten++
 
-                // Progress: 0.3 to 0.8 across all OP writes
-                onProgress?.(`Resetting parameter ${index}...`, 0.3 + (opsWritten / totalOps) * 0.5)
+                // Progress: 0.3 to 0.7 across all OP writes
+                const progress = opsToWrite.length > 0
+                    ? 0.3 + (opsWritten / opsToWrite.length) * 0.4
+                    : 0.7
+                onProgress?.(`Resetting parameter ${index}...`, progress)
             }
 
             // Step 5: Clear deployment ID
-            onProgress?.('Clearing deployment ID...', 0.85)
+            onProgress?.('Clearing deployment ID...', 0.8)
             log('[ResetDefaults] Clearing deployment ID...')
             await session.execute(() => commandRegistry.setdid(null))
 
@@ -428,23 +445,8 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
             log('[ResetDefaults] Zeroing GPS...')
             await session.execute(() => commandRegistry.setgps('0,0,0'))
 
-            // Step 7: Verify
-            onProgress?.('Verifying reset...', 0.95)
-            log('[ResetDefaults] Verifying reset...')
-            const verifyOps = await session.execute(commandRegistry.getops)
-            const mismatches: string[] = []
-            for (const [indexStr, defaultValue] of entries) {
-                const index = parseInt(indexStr, 10)
-                if (verifyOps && verifyOps.length > index && verifyOps[index] !== defaultValue.toString()) {
-                    mismatches.push(`OP ${index}: expected ${defaultValue}, got ${verifyOps[index]}`)
-                }
-            }
-            if (mismatches.length > 0) {
-                logWarn('[ResetDefaults] Verification mismatches:', mismatches)
-            }
-
             onProgress?.('Reset complete', 1.0)
-            log('[ResetDefaults] Factory reset complete')
+            log(`[ResetDefaults] Factory reset complete. ${opsWritten} OPs written.`)
         } catch (error) {
             logError('[ResetDefaults] Error during factory reset:', error)
             throw error

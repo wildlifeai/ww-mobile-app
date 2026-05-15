@@ -246,6 +246,7 @@ const transformSupabaseUser = async (
 			email: user.email || "",
 			role: "project_member", // Default fallback. Note: Redux authSlice preserves the cached role!
 			organisation_id: null,
+			created_at: user.created_at,
 			// organisations intentionally omitted to preserve offline cache
 		},
 	}

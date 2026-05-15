@@ -45,12 +45,13 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     const [aeData, setAeData] = useState<AEData | null>(null)
     const [capturedImages, setCapturedImages] = useState<CapturedImageInfo[]>([])
     const [isApplying, setIsApplying] = useState(false)
+    const [applyStage, setApplyStage] = useState<string>('')
 
     // Refs for closures
     const currentParamsRef = useRef(cameraParams)
     const currentTestModeBitsRef = useRef(testModeBits)
     const currentAeDataRef = useRef(aeData)
-    const pendingCameraDisableRef = useRef(false)
+
 
     useEffect(() => { currentParamsRef.current = cameraParams }, [cameraParams])
     useEffect(() => { currentTestModeBitsRef.current = testModeBits }, [testModeBits])
@@ -63,18 +64,7 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             testModeBits: currentTestModeBitsRef.current,
             aeData: currentAeDataRef.current
         }, ...prev])
-
-        // Disable camera AFTER the image download is complete.
-        // Previously this was done inline in applyAndCapture() but that
-        // sent setop 10 0 while the binary image was still streaming,
-        // causing a TIMEOUT error on the command response.
-        if (pendingCameraDisableRef.current && device) {
-            pendingCameraDisableRef.current = false
-            const session = createBleSession(device)
-            session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAMERA_ENABLED, value: 0 }))
-                .catch(e => logError('[CameraSettingsTest] Failed to disable camera after capture:', e))
-        }
-    }, [device])
+    }, [])
     
     const handleCaptureError = useCallback((e: Error) => {
         logError('[CameraSettingsTest] Capture failed:', e)
@@ -153,34 +143,35 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     const applyAndCapture = useCallback(async () => {
         if (!device) return
         setIsApplying(true)
+        setApplyStage('Reading current parameters...')
         try {
-            // 1. Write flash parameters AND quiesce background triggers.
-            //    MD_INTERVAL=0 and TIMELAPSE_INTERVAL=0 are critical: if a prior
-            //    deployment left these non-zero, the device re-enters monitoring mode
-            //    after the test capture and fires the flash LED repeatedly.
             const session = createBleSession(device);
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.MD_INTERVAL, value: 0 }))
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TIMELAPSE_INTERVAL, value: 0 }))
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: cameraParams.ledBrightness }))
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_DURATION, value: cameraParams.flashDuration }))
-            await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: cameraParams.flashLed }))
-            
-            // Small buffer to let DPD fully settle
-            await new Promise(res => setTimeout(res, 500))
 
-            // 3. Trigger capture via the standard capture flow.
-            //    startCapture enables the camera (setop 10 1), waits for DPD,
-            //    then issues 'AI capture 1 1000'.
-            //    NOTE: startCapture resolves after txfile is acknowledged, NOT
-            //    after the binary download completes. Camera disable is deferred
-            //    to handleImageReceived to avoid sending commands during transfer.
-            pendingCameraDisableRef.current = true
-            await capturePreview.startCapture(1, 1000)
+            // Read current params to avoid redundant writes.
+            // Only brightness (OP 9) and flash LED (OP 13) need checking.
+            const currentOps = await session.execute(() => commandRegistry.getops())
+
+            setApplyStage('Applying flash settings...')
+            if (currentOps[OP_PARAMETER.LED_BRIGHTNESS] !== String(cameraParams.ledBrightness)) {
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.LED_BRIGHTNESS, value: cameraParams.ledBrightness }))
+            }
+            if (currentOps[OP_PARAMETER.FLASH_LED] !== String(cameraParams.flashLed)) {
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: cameraParams.flashLed }))
+            }
+
+            // 2. Wait for the device to naturally enter DPD (Sleep).
+            setApplyStage('Waiting for device to sleep...')
+            await session.waitForSleep(3000)
+
+            // 3. Trigger capture via the standard capture flow (AI capture 1 500).
+            setApplyStage('')
+            await capturePreview.startCapture(1, 500)
 
         } catch (e) {
             logError('[CameraSettingsTest] Error applying params or capturing:', e)
         } finally {
             setIsApplying(false)
+            setApplyStage('')
         }
     }, [device, cameraParams, capturePreview])
 
@@ -196,6 +187,7 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
         applyAndCapture,
         resetTestMode,
         isApplying,
+        applyStage,
         aeData,
         capturedImages,
         capturePreview

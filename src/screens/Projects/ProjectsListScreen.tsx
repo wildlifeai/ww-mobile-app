@@ -132,7 +132,7 @@ export const Projects = () => {
 			onRetry={forceRefetch}
 			searchQuery={searchQuery}
 			onSearchChange={setSearchQuery}
-			searchPlaceholder="Search projects..."
+			searchPlaceholder="Search projects…"
 			primaryActionLabel="New Project"
 			onPrimaryAction={handleCreateProject}
 			emptyStateTitle={hasMultipleOrgs ? `No projects for ${organisationName}` : 'No projects yet'}

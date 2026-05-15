@@ -6,9 +6,7 @@ import { bleEventBus, BleEvent } from '../ble/protocol/eventBus'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
-import { DeviceSignal } from '../ble/protocol/deviceSignals'
-import { log, logError } from '../utils/logger'
-
+import { log, logError, logWarn } from '../utils/logger'
 
 
 interface UseCapturePreviewOptions {
@@ -58,12 +56,24 @@ export const useCapturePreview = ({
     const downloadTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     // Clear timeout helper
-    const clearDownloadTimeout = () => {
+    const clearDownloadTimeout = useCallback(() => {
         if (downloadTimeoutRef.current) {
             clearTimeout(downloadTimeoutRef.current)
             downloadTimeoutRef.current = null
         }
-    }
+    }, [])
+
+    // Reset inactivity timeout tracker
+    const resetDownloadTimeout = useCallback(() => {
+        clearDownloadTimeout()
+        const DOWNLOAD_TIMEOUT = 30000 // 30s allowed between data chunks
+        downloadTimeoutRef.current = setTimeout(() => {
+            if (downloadRequested.current) {
+                logError('[useCapturePreview] Download timed out (30s inactivity). Force finalizing.')
+                imageReassemblerEmitter.emit('force_finalize')
+            }
+        }, DOWNLOAD_TIMEOUT)
+    }, [clearDownloadTimeout])
 
     // Listen for image download completion and progress
     useEffect(() => {
@@ -83,6 +93,7 @@ export const useCapturePreview = ({
         }
 
         const handleImageProgress = (progress: number) => {
+            resetDownloadTimeout()
             setCaptureStage('Downloading...')
             setCaptureProgress(progress)
         }
@@ -111,7 +122,7 @@ export const useCapturePreview = ({
             imageReassemblerEmitter.off('onImageError', handleImageError)
             clearDownloadTimeout()
         }
-    }, [onImageReceived, onError])
+    }, [onImageReceived, onError, clearDownloadTimeout, resetDownloadTimeout])
 
     // Listen for "Finished sending" message
     useEffect(() => {
@@ -141,7 +152,7 @@ export const useCapturePreview = ({
     }, [device])
 
     // Start capture process
-    const startCapture = useCallback(async (captureCount: number = 1, captureInterval: number = 1) => {
+    const startCapture = useCallback(async (captureCount: number = 1, captureInterval: number = 500) => {
         if (!device) {
             const error = new Error('No device connected')
             logError('[useCapturePreview]', error.message)
@@ -164,58 +175,39 @@ export const useCapturePreview = ({
 
             const session = createBleSession(device);
 
-            // 1. Enable camera (OpParam 10)
-            log('[useCapturePreview] Enabling camera (Op10=1)...')
-            await session.execute(() => commandRegistry.setop({ index: 10, value: 1 }))
-            
-            // 2. Wait explicitly for device to Sleep via EventBus
-            try {
-                setCaptureStage('Waking camera hardware...')
-                log('[useCapturePreview] Waiting for device to sleep (applied settings)...')
-                await new Promise<void>((resolve, reject) => {
-                    const sleepListener = (ev: BleEvent & { type: 'DEVICE_SIGNAL' }) => {
-                        if (ev.deviceId === device.id && ev.signal === DeviceSignal.SLEEP) {
-                            cleanup();
-                            resolve();
-                        }
-                    };
-                    const timeout = setTimeout(() => {
-                        cleanup();
-                        reject(new Error("Sleep timeout"));
-                    }, 10000);
-                    const cleanup = () => {
-                        clearTimeout(timeout);
-                        bleEventBus.removeListener('deviceSignal', sleepListener);
-                    };
-                    bleEventBus.on('deviceSignal', sleepListener);
-                });
-                log('[useCapturePreview] Device sleeping. Waiting 1s buffer before waking...')
-                await new Promise(resolve => setTimeout(resolve, 1000))
-            } catch (e) {
-                logError('[useCapturePreview] Timeout waiting for sleep. Proceeding anyway.', e)
-            }
-
-            // 3. Send Capture Command
+            // Go straight to capture — no getops/setop round-trips.
+            // OP 10 (camera enabled) defaults to 1 in firmware and is set during deployment.
+            // If a device somehow has OP 10 = 0, the firmware returns "Camera system not
+            // enabled" which is classified as CONFIG_ERROR and surfaced to the user.
             setCaptureStage(`Capturing ${captureCount} image(s)...`)
             log(`[useCapturePreview] Sending capture command (AI capture ${captureCount} ${captureInterval})...`)
             const captureResult = await session.execute(() => commandRegistry.capture(captureCount, captureInterval))
             const capturedFilename = typeof captureResult === 'string' ? captureResult : '.'
             log(`[useCapturePreview] Capture result: ${captureResult}. Target filename: ${capturedFilename}`)
 
-            // 4. Start Download Process Tracker
+            // Start Download Process Tracker
             downloadRequested.current = true
             
-            const DOWNLOAD_TIMEOUT = 30000
-            downloadTimeoutRef.current = setTimeout(() => {
-                if (downloadRequested.current) {
-                    logError('[useCapturePreview] Download timed out (30s). Force finalizing.')
-                    imageReassemblerEmitter.emit('force_finalize')
-                }
-            }, DOWNLOAD_TIMEOUT)
+            resetDownloadTimeout()
 
             setCaptureStage('Downloading image...')
             log(`[useCapturePreview] Requesting file download for: ${capturedFilename}...`)
-            await session.execute(() => commandRegistry.txfile(capturedFilename))
+
+            let txfileSuccess = false;
+            let attempts = 0;
+            const maxAttempts = 3;
+
+            while (attempts < maxAttempts && !txfileSuccess) {
+                try {
+                    attempts++;
+                    await session.execute(() => commandRegistry.txfile(capturedFilename))
+                    txfileSuccess = true;
+                } catch (txErr) {
+                    if (attempts >= maxAttempts) throw txErr;
+                    logWarn(`[useCapturePreview] txfile attempt ${attempts} failed, retrying in 300ms...`, txErr);
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+            }
 
         } catch (error) {
             const err = error as Error
@@ -229,7 +221,7 @@ export const useCapturePreview = ({
             if (onError) onError(err)
             else Alert.alert('Error', `Capture failed: ${err.message}`)
         }
-    }, [device, onCaptureStart, onError])
+    }, [device, onCaptureStart, onError, clearDownloadTimeout, resetDownloadTimeout])
 
     // Clear captured image
     const clearImage = useCallback(() => {
@@ -238,7 +230,7 @@ export const useCapturePreview = ({
         downloadRequested.current = false
         setCaptureProgress(0)
         clearDownloadTimeout()
-    }, [])
+    }, [clearDownloadTimeout])
 
     return {
         capturedImageUri,

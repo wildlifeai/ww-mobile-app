@@ -126,7 +126,7 @@ export const AIModelSelect = <
 				name={name}
 				label={label}
 				required={required}
-				helpText="Loading AI models..."
+				helpText="Loading AI models…"
 			>
 				{(field) => (
 					<>
@@ -134,7 +134,7 @@ export const AIModelSelect = <
 						<WWSelect
 							{...field}
 							label={label}
-							options={[{ label: "Loading...", value: "" }]}
+							options={[{ label: "Loading…", value: "" }]}
 							disabled={true}
 							testID="ai-model-select-loading-placeholder"
 						/>

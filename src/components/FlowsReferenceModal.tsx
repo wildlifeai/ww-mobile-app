@@ -87,12 +87,19 @@ const getFlowGroups = (): FlowGroup[] => {
                 .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
         },
         {
+            title: 'Deployment Testing',
+            icon: 'play-circle-outline',
+            commands: processCommands
+                .filter(cmd => [
+                    CommandNames.DEV_DEPLOYMENT_TEST,
+                ].includes(cmd.name))
+                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
+        },
+        {
             title: 'Other',
             icon: 'dots-horizontal-circle-outline',
             commands: processCommands
                 .filter(cmd => [
-                    CommandNames.ENABLE_CAMERA,
-                    CommandNames.DISABLE_CAMERA,
                     CommandNames.md,
                     CommandNames.SET_MOTION_DETECT_INTERVAL,
                     CommandNames.DISABLE_MOTION_DETECT,

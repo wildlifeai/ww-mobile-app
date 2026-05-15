@@ -5,6 +5,7 @@ import { useBleActions } from '../providers/BleEngineProvider'
 import { useAppSelector, useAppDispatch } from '../redux'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { setEngineerConsoleActive } from '../redux/slices/scanningSlice'
+import { useScanLoop } from './useScanLoop'
 import { log, logError } from '../utils/logger'
 
 export type EngineerConnectState = 'idle' | 'scanning' | 'no_devices' | 'connecting' | 'select'
@@ -12,9 +13,8 @@ export type EngineerConnectState = 'idle' | 'scanning' | 'no_devices' | 'connect
 export const useEngineerConnect = () => {
     const navigation = useNavigation<any>()
     const dispatch = useAppDispatch()
-    const { startScan, stopScan, connectDevice } = useBleActions()
+    const { stopScan, connectDevice } = useBleActions()
     const devices = useAppSelector((state) => state.devices)
-    const { isScanning } = useAppSelector((state) => state.scanning)
 
     const [dialogState, setDialogState] = useState<EngineerConnectState>('idle')
     const [connectingDevice, setConnectingDevice] = useState<ExtendedPeripheral | null>(null)
@@ -34,29 +34,25 @@ export const useEngineerConnect = () => {
             .filter((device) => !device.signalLost)
     }, [devices])
 
+    // ── Shared scan loop ──
+    const { flushBleCache } = useScanLoop({
+        active: dialogState === 'scanning' && !isConnectingRef.current,
+    })
+
     // Start the continuous scan flow
-    const beginScan = useCallback(() => {
+    const beginScan = useCallback(async () => {
         hasNavigatedRef.current = false
         isConnectingRef.current = false
-        setDialogState('scanning')
         setConnectingDevice(null)
         dispatch(setEngineerConsoleActive(true))
-        // Start a short 3-second scan burst. The effect below will restart it if needed.
-        startScan(3)
-    }, [startScan, dispatch])
-
-    // Scan loop — keep restarting the scan in 3s bursts while in 'scanning' state
-    // This matches the fast-discovery strategy from useDeviceDiscovery
-    const scanCommandLockRef = useRef(false)
-    useEffect(() => {
-        if (dialogState === 'scanning' && !isConnectingRef.current && !isScanning && !scanCommandLockRef.current) {
-            scanCommandLockRef.current = true
-            startScan(3)
-            setTimeout(() => {
-                scanCommandLockRef.current = false
-            }, 500)
-        }
-    }, [dialogState, isScanning, startScan])
+        // Flush stale BLE state BEFORE enabling the scan loop.
+        // On Android, removePeripheral() inside flushBleCache blocks the
+        // BLE scanner for 10-60s. If we set dialogState='scanning' first,
+        // the scan loop starts while the cache is still being flushed,
+        // causing the first scan burst to find nothing.
+        await flushBleCache()
+        setDialogState('scanning')
+    }, [dispatch, flushBleCache])
 
     // Auto-connect when device appears during scanning
     useEffect(() => {
@@ -97,7 +93,6 @@ export const useEngineerConnect = () => {
                 isConnectingRef.current = false
                 setDialogState('scanning')
                 setConnectingDevice(null)
-                startScan(3)
             }
         } catch (error) {
             logError('[EngineerConnect] Connection error:', error)
@@ -105,9 +100,8 @@ export const useEngineerConnect = () => {
             isConnectingRef.current = false
             setDialogState('scanning')
             setConnectingDevice(null)
-            startScan(3)
         }
-    }, [connectDevice, navigation, dispatch, startScan])
+    }, [connectDevice, navigation, dispatch])
 
     // Reset state when dialog is dismissed / user cancels
     const reset = useCallback(() => {
@@ -116,10 +110,8 @@ export const useEngineerConnect = () => {
         hasNavigatedRef.current = false
         isConnectingRef.current = false
         dispatch(setEngineerConsoleActive(false))
-        if (isScanning) {
-            stopScan()
-        }
-    }, [isScanning, stopScan, dispatch])
+        stopScan()
+    }, [stopScan, dispatch])
 
     return {
         dialogState,

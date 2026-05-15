@@ -28,6 +28,7 @@ import {
 	Services,
 } from "../ble/types"
 import { bleEventBus } from "../ble/protocol/eventBus"
+import { markPeripheralRemoved } from "./useScanLoop"
 
 export type WriteData = [CommandNames, CommandConstructOptions]
 
@@ -55,7 +56,6 @@ export const useBle = (): ReturnType => {
 	const [isBleConnecting, setIsBleConnecting] = useState(false)
 
 	const devices = useAppSelector((state) => state.devices)
-	const scanning = useAppSelector((state) => state.scanning)
 
 	const dispatch = useAppDispatch()
 
@@ -70,21 +70,22 @@ export const useBle = (): ReturnType => {
 		async (length: number = 6) => {
 			if (!initialized) return
 
-			if (!scanning.isScanning) {
-				try {
-					pingsPause(true)
-					// Use specific service UUID to avoid Android throttling wide-open scans
-					// Force Android into SCAN_MODE_LOW_LATENCY (2) to minimize advertisement drop rates
-					await BleManager.scan([BLE_SERVICE_UUID], length, true, { scanMode: 2, matchMode: 1 })
-					// log("Scan started")
-					dispatch(scanStart())
-				} catch (e: any) {
-					logError(e)
-					dispatch(scanError(e))
-				}
+			try {
+				// Always stop first — the native BleManagerStopScan event can lag
+				// behind, leaving isScanning stale and blocking the next cycle.
+				await BleManager.stopScan()
+				pingsPause(true)
+				// Use specific service UUID to avoid Android throttling wide-open scans
+				// Force Android into SCAN_MODE_LOW_LATENCY (2) to minimize advertisement drop rates
+				await BleManager.scan([BLE_SERVICE_UUID], length, true, { scanMode: 2, matchMode: 1 })
+				// log("Scan started")
+				dispatch(scanStart())
+			} catch (e: any) {
+				logError(e)
+				dispatch(scanError(e))
 			}
 		},
-		[initialized, scanning.isScanning, pingsPause, dispatch],
+		[initialized, pingsPause, dispatch],
 	)
 
 	const stopScan = useCallback(
@@ -102,6 +103,9 @@ export const useBle = (): ReturnType => {
 	const disconnectDevice = useCallback(
 		async (peripheral: Peripheral | ExtendedPeripheral) => {
 			if (!initialized) return
+			// Clear reconnecting guard to prevent stale state blocking future connects
+			isDeviceReconnecting.current[peripheral.id] = false
+			setIsBleConnecting(false)
 			await guard(() => BleManager.disconnect(peripheral.id))
 			dispatch(deviceDisconnect({ id: peripheral.id }))
 		},
@@ -132,9 +136,8 @@ export const useBle = (): ReturnType => {
 		async (peripheral: ExtendedPeripheral, timeout?: number) => {
 			if (!initialized || peripheral.loading) return peripheral
 
-			if (scanning.isScanning) {
-				await BleManager.stopScan()
-			}
+			// Always stop scan before connecting — safe to call when not scanning
+			await BleManager.stopScan()
 			/**
 			 * If multiple connectDevice functions are called for a certain device,
 			 * this makes sure to avoid any idiotic disconnects when some calls
@@ -143,10 +146,16 @@ export const useBle = (): ReturnType => {
 			 * Basically, use the timeout.
 			 */
 			if (isDeviceReconnecting.current[peripheral.id]) {
-				// log(
-				// 	`Cancelling the connection request for ${peripheral.id}. connectDevice is already running.`,
-				// )
-				return peripheral
+				// If the device is no longer connected, the previous connect attempt
+				// was interrupted (e.g. unexpected disconnect/DPD). Clear the stale
+				// guard so we can reconnect.
+				if (!peripheral.connected) {
+					log(`Clearing stale reconnecting guard for ${peripheral.id}`)
+					isDeviceReconnecting.current[peripheral.id] = false
+					setIsBleConnecting(false)
+				} else {
+					return peripheral
+				}
 			}
 
 			/** Clean up intervals */
@@ -168,6 +177,13 @@ export const useBle = (): ReturnType => {
 
 					// Clear logs BEFORE starting connection/notifications to ensure we don't wipe early firmware messages
 					dispatch(clearLogs({ id: newPeripheral.id }))
+
+					// Android BLE stack needs time to release a previous GATT connection
+					// after removePeripheral. Without this, rapid reconnect races with
+					// cleanup causing "Disconnect called before connect callback invoked".
+					if (Platform.OS === "android") {
+						await new Promise(resolve => setTimeout(resolve, 500))
+					}
 
 					await invokeWithTimeout(
 						() => BleManager.connect(newPeripheral.id),
@@ -253,7 +269,7 @@ export const useBle = (): ReturnType => {
 
 			return newPeripheral
 		},
-		[initialized, scanning.isScanning, dispatch, disconnectDevice],
+		[initialized, dispatch, disconnectDevice],
 	)
 
 	const removeLeftoverDevices = useCallback(() => {
@@ -270,10 +286,13 @@ export const useBle = (): ReturnType => {
 				return
 			}
 
-			results.map(async (peripheral) => {
+			// Use for...of (not .map) so each removal completes before the next.
+			// removePeripheral blocks Android's BLE scanner — fire-and-forget
+			// caused the scanner to be blocked when the user started scanning.
+			for (const peripheral of results) {
 				// Prevent disconnecting devices that are already handled by the app state
 				if (devices[peripheral.id]?.connected) {
-					return
+					continue
 				}
 
 				if (
@@ -286,9 +305,12 @@ export const useBle = (): ReturnType => {
 						`Connected device ${peripheral.id} found when the app was initialized, clearing it from cache`,
 					)
 					await guard(() => BleManager.removePeripheral(peripheral.id))
+					// Mark as removed so flushBleCache skips the redundant
+					// removePeripheral call that would block the scanner again.
+					markPeripheralRemoved(peripheral.id)
 					await disconnectDevice(peripheral)
 				}
-			})
+			}
 		})
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [initialized])

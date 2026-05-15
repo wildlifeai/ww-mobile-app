@@ -8,6 +8,7 @@ import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { formatGPSString } from '../../../utils/gpsUtils'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { QuiesceOptions } from '../../../hooks/useDeviceSettings'
+import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
 
 interface UseEndDeploymentParams {
     deployment: any
@@ -29,11 +30,7 @@ export const useEndDeployment = ({
     isNavigatingAway
 }: UseEndDeploymentParams) => {
     const [isEnding, setIsEnding] = useState(false)
-    const [finishProgress, setFinishProgress] = useState(0)
-    const [finishStep, setFinishStep] = useState('')
-    const [finishLogs, setFinishLogs] = useState<string[]>([])
-    const [isFinishing, setIsFinishing] = useState(false)
-    const [isEndDeploymentSuccess, setIsEndDeploymentSuccess] = useState(false)
+    const progress = useDeploymentProgress()
     const navigationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     // Clean up navigation timer on unmount
@@ -43,10 +40,6 @@ export const useEndDeployment = ({
                 clearTimeout(navigationTimerRef.current)
             }
         }
-    }, [])
-
-    const addFinishLog = useCallback((message: string) => {
-        setFinishLogs(prev => [...prev, message])
     }, [])
 
     const handleEndDeployment = useCallback(async () => {
@@ -64,20 +57,19 @@ export const useEndDeployment = ({
                             // Allow forcing end if device is lost/damaged, but warn heavily
                             setIsEnding(true)
                             isNavigatingAway.current = true // Prevent alerts during force-end
-                            setIsFinishing(true)
-                            setFinishProgress(0.5)
-                            setFinishStep('Force stopping...')
-                            setFinishLogs(['Device disconnected'])
-                            addFinishLog('WARNING: Stopping monitoring without device connection')
+                            progress.reset('Force stopping...')
+                            progress.setFinishProgress(0.5)
+                            progress.addLog('Device disconnected')
+                            progress.addLog('WARNING: Stopping monitoring without device connection')
                             
                             try {
                                 const userId = user?.id || null
                                 await DeploymentService.endDeployment(deployment.id, userId, retrievalNotes)
-                                addFinishLog('Monitoring stopped in database')
-                                setFinishProgress(1.0)
-                                setIsEndDeploymentSuccess(true)
+                                progress.addLog('Monitoring stopped in database')
+                                progress.setFinishProgress(1.0)
+                                progress.setIsSuccess(true)
                             } catch (e) {
-                                setIsFinishing(false)
+                                progress.setIsFinishing(false)
                                 Alert.alert('Error', 'Failed to force stop')
                             } finally {
                                 setIsEnding(false)
@@ -91,11 +83,7 @@ export const useEndDeployment = ({
 
         // Reset and Show Progress Dialog
         setIsEnding(true)
-        setIsFinishing(true)
-        setFinishProgress(0)
-        setFinishStep('Stopping...')
-        setFinishLogs([])
-        setIsEndDeploymentSuccess(false)
+        progress.reset('Stopping...')
 
         try {
             // Pre-fetch all ops once for the entire end-deployment sequence
@@ -113,18 +101,18 @@ export const useEndDeployment = ({
 
             // 1. Clear Configuration (ID and GPS)
             if (storeDevice && session) {
-                addFinishLog('Clearing configuration...')
-                setFinishStep('Clearing config...')
-                setFinishProgress(0.2)
+                progress.addLog('Clearing configuration...')
+                progress.setFinishStep('Clearing config...')
+                progress.setFinishProgress(0.2)
                 
                 log('[EndDeployment] Clearing Deployment ID...')
                 try {
                     await session.execute(() => commandRegistry.setdid(null))
                     log('[EndDeployment] ID cleared')
-                    addFinishLog('Configuration cleared')
+                    progress.addLog('Configuration cleared')
                 } catch (e) {
                     logWarn(`[EndDeployment] Clear ID failed:`, e)
-                    addFinishLog('Warning: Config clear partially failed')
+                    progress.addLog('Warning: Config clear partially failed')
                 }
 
                 // 2. Clear GPS (Legacy/Safety)
@@ -137,52 +125,52 @@ export const useEndDeployment = ({
             }
 
             // 2. Update DB
-            addFinishLog('Updating monitoring record...')
-            setFinishStep('Updating record...')
-            setFinishProgress(0.3)
+            progress.addLog('Updating monitoring record...')
+            progress.setFinishStep('Updating record...')
+            progress.setFinishProgress(0.3)
             
             const userId = user?.id || null
             await DeploymentService.endDeployment(deployment.id, userId, retrievalNotes)
-            addFinishLog('Record updated successfully')
+            progress.addLog('Record updated successfully')
 
             // 3. Quiesce Device (Final Stop)
             if (storeDevice && session) {
-                addFinishLog('Finalizing stop...')
-                setFinishStep('Finalizing...')
-                setFinishProgress(0.6)
+                progress.addLog('Finalizing stop...')
+                progress.setFinishStep('Finalizing...')
+                progress.setFinishProgress(0.6)
                 
                 try {
                     await quiesceDevice(storeDevice, { isEndDeployment: true, cachedOps, sessionScope: session })
-                    addFinishLog('Device stopped')
+                    progress.addLog('Device stopped')
                 } catch (e) {
                     logWarn('[EndDeployment] Final stop warning:', e)
-                    addFinishLog('Warning: Final stop incomplete')
+                    progress.addLog('Warning: Final stop incomplete')
                 }
             }
 
             // 4. Disconnect
-            addFinishLog('Disconnecting...')
-            setFinishStep('Disconnecting...')
-            setFinishProgress(0.8)
+            progress.addLog('Disconnecting...')
+            progress.setFinishStep('Disconnecting...')
+            progress.setFinishProgress(0.8)
             
             if (storeDevice && session) {
                 try {
                     await session.execute(commandRegistry.disconnect)
-                    addFinishLog('Device disconnected')
+                    progress.addLog('Device disconnected')
                 } catch (e) {
                     logWarn('[EndDeployment] Disconnect error:', e)
                 }
             }
 
             // Success State
-            setFinishStep('Complete')
-            setFinishProgress(1.0)
-            setIsEndDeploymentSuccess(true)
-            addFinishLog('Monitoring stopped successfully')
+            progress.setFinishStep('Complete')
+            progress.setFinishProgress(1.0)
+            progress.setIsSuccess(true)
+            progress.addLog('Monitoring stopped successfully')
 
             navigationTimerRef.current = setTimeout(() => {
                 navigationTimerRef.current = null
-                setIsFinishing(false)
+                progress.setIsFinishing(false)
                 navigation.reset({
                     index: 0,
                     routes: [{ name: 'Home' }],
@@ -191,31 +179,31 @@ export const useEndDeployment = ({
 
         } catch (error) {
             logError(error)
-            setIsFinishing(false)
+            progress.setIsFinishing(false)
             Alert.alert("Error", "Failed to stop monitoring. Please try again.")
         } finally {
             setIsEnding(false)
         }
-    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, addFinishLog, isNavigatingAway, navigation])
+    }, [storeDevice, user, deployment.id, retrievalNotes, quiesceDevice, progress, isNavigatingAway, navigation])
 
     const handleFinishDismiss = useCallback(() => {
-        setIsFinishing(false)
-        if (isEndDeploymentSuccess) {
+        progress.setIsFinishing(false)
+        if (progress.isSuccess) {
             // Reset navigation stack to Home
             navigation.reset({
                 index: 0,
                 routes: [{ name: 'Home' }],
             })
         }
-    }, [isEndDeploymentSuccess, navigation])
+    }, [progress.isSuccess, navigation]) // eslint-disable-line react-hooks/exhaustive-deps
 
     return {
         isEnding,
-        finishProgress,
-        finishStep,
-        finishLogs,
-        isFinishing,
-        isEndDeploymentSuccess,
+        finishProgress: progress.finishProgress,
+        finishStep: progress.finishStep,
+        finishLogs: progress.finishLogs,
+        isFinishing: progress.isFinishing,
+        isEndDeploymentSuccess: progress.isSuccess,
         handleEndDeployment,
         handleFinishDismiss
     }

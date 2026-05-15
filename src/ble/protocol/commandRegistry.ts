@@ -50,7 +50,7 @@ export interface CommandContext<T = any> {
   isLongRunning?: boolean;
 
   /** If true, the command acquires an exclusive transport lock.
-   *  While held, the commandQueue rejects all other enqueue attempts. */
+   *  While held, the transport controller rejects all other enqueue attempts. */
   requiresExclusiveLock?: boolean;
 }
 
@@ -241,6 +241,13 @@ export const commandRegistry = {
       requiresExclusiveLock: true,
     }
   ),
+  aireset: createSingleLineCommand<boolean>(
+    'aireset',
+    () => 'AI reset',
+    /Forcing reset/i,
+    () => true,
+    { timeoutMs: 8000, retryPolicy: { maxRetries: 0 } }
+  ),
   version: createSingleLineCommand<string>(
     'version',
     () => 'ver',
@@ -251,7 +258,9 @@ export const commandRegistry = {
     'aiver',
     () => 'AI ver',
     /((?:WW500_[A-Z0-9_]+.+)|(?:V\s*\d+\.\d+\.\d+(?:-[\w.-]+)?))/i,
-    (match) => match[1]
+    (match) => match[1],
+    // 8s: AI processor may need DPD wake cycle (3-5s)
+    { timeoutMs: 8000 }
   ),
   dfu: createSingleLineCommand<boolean>(
     'dfu',
@@ -312,7 +321,7 @@ export const commandRegistry = {
     (uuid: string | null) => `AI setdid ${uuid || '00000000-0000-0000-0000-000000000000'}`,
     /^Deployment ID set to/i,
     () => true,
-    { failureRegex: /invalid/i, retryPolicy: { maxRetries: 3 } }
+    { timeoutMs: 8000, failureRegex: /invalid/i, retryPolicy: { maxRetries: 3 } }
   ),
 
   setgps: createSingleLineCommand<boolean>(
@@ -320,7 +329,7 @@ export const commandRegistry = {
     (gpsString: string) => `AI setgps ${gpsString}`,
     /^Device GPS set/i,
     () => true,
-    { failureRegex: /format error/i }
+    { timeoutMs: 8000, failureRegex: /format error/i }
   ),
 
   setop: createSingleLineCommand<boolean>(
@@ -328,21 +337,27 @@ export const commandRegistry = {
     ({ index, value }: { index: number, value: number | string }) => `AI setop ${index} ${value}`,
     /^(?:Set\s+OpParam.*?|Op(?:Param)?(?:\s+|\[)\d+\]?\s*=)/i,
     () => true,
-    { failureRegex: /Failed|Invalid/i, retryPolicy: { maxRetries: 2 } }
+    // 8s timeout: DPD wake cycle (boot → selftest → process → respond)
+    // takes 3-5s. Default 3s caused premature retries/duplicates.
+    { timeoutMs: 8000, failureRegex: /Failed|Invalid/i, retryPolicy: { maxRetries: 2 } }
   ),
 
   getops: createSingleLineCommand<string[]>(
     'getops',
     () => `AI getop -1`,
     /^OpParams\s+(.+)$/i,
-    (match) => match[1].trim().split(/\s+/)
+    (match) => match[1].trim().split(/\s+/),
+    // 8s: AI processor may need DPD wake cycle (3-5s)
+    { timeoutMs: 8000 }
   ),
 
   getop: createSingleLineCommand<string>(
     'getop',
     (index: number | string) => `AI getop ${index}`,
     /^Op(?:Param)?(?:\s+|\[)\d+\]?\s*=\s*(.*)$/i,
-    (match) => match[1].trim()
+    (match) => match[1].trim(),
+    // 8s: AI processor may need DPD wake cycle (3-5s)
+    { timeoutMs: 8000 }
   ),
 
   capture: createSingleLineCommand<string | boolean>(
@@ -397,11 +412,16 @@ export const commandRegistry = {
   ),
 
   // -- AI Advanced Commands --
+  // The md command sets the HM0360 motion detection sensitivity.
+  // Response: "MD sensitivity set to N". We keep maxRetries: 0 because
+  // the sensitivity is persisted to CONFIG.TXT regardless of whether
+  // the response arrives over BLE.
   md: createSingleLineCommand<boolean>(
     'md',
-    (level: number) => `md ${level}`,
-    /^MD Set/i,
-    () => true
+    (level: number) => `AI md ${level}`,
+    /^MD sensitivity set to/i,
+    () => true,
+    { timeoutMs: 5000, retryPolicy: { maxRetries: 0 } }
   ),
 
   erasemodel: createSingleLineCommand<boolean>(

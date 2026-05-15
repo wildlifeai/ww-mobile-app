@@ -92,7 +92,7 @@ export function StandardizedListLayout<T>({
                 <View style={styles.centerContainer}>
                     <ActivityIndicator size="large" />
                     <Text variant="bodyMedium" style={[styles.loadingText, { color: theme.colors.onSurfaceVariant }]}>
-                        Loading...
+                        Loading…
                     </Text>
                 </View>
             </SafeAreaView>

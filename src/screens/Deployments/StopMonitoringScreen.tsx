@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { View, StyleSheet, Alert } from 'react-native'
 import { useAppSelector } from '../../redux'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
-import { useTheme, Text, Card } from 'react-native-paper'
+import { Text, useTheme } from 'react-native-paper'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWText } from '../../components/ui/WWText'
 import { WWButton } from '../../components/ui/WWButton'
-import { WWTextInput } from '../../components/ui/WWTextInput'
 import { RootStackParamList } from '../../navigation/types'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { DeploymentService } from '../../services/DeploymentService'
@@ -20,40 +19,14 @@ import Device from '../../database/models/Device'
 import { DeviceService } from '../../services/DeviceService'
 import type Deployment from '../../database/models/Deployment'
 import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog'
-import { log } from '../../utils/logger'
+import { log, logWarn } from '../../utils/logger'
 import { useEndDeployment } from './hooks/useEndDeployment'
 
-import { useDeploymentMonitor } from './hooks/useDeploymentMonitor'
-import { LiveActivityLog } from './components/LiveActivityLog'
+import { DeploymentMonitorView } from './components/DeploymentMonitorView'
+import { IconButton } from 'react-native-paper'
 
-const formatMonitoringDuration = (startValue: Date | string | number) => {
-    const start = startValue instanceof Date ? startValue.getTime() : new Date(startValue).getTime()
-    const diffInSeconds = Math.max(0, Math.floor((Date.now() - start) / 1000))
-    
-    if (diffInSeconds < 60) {
-        return `${diffInSeconds} ${diffInSeconds === 1 ? 'second' : 'seconds'}`
-    }
-    const minutes = Math.floor(diffInSeconds / 60)
-    if (minutes < 60) {
-        return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`
-    }
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) {
-        const remMin = minutes % 60
-        if (remMin === 0) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
-        return `${hours} ${hours === 1 ? 'hour' : 'hours'} and ${remMin} ${remMin === 1 ? 'minute' : 'minutes'}`
-    }
-    const days = Math.floor(hours / 24)
-    if (days < 30) {
-        const remHours = hours % 24
-        if (remHours === 0) return `${days} ${days === 1 ? 'day' : 'days'}`
-        return `${days} ${days === 1 ? 'day' : 'days'} and ${remHours} ${remHours === 1 ? 'hour' : 'hours'}`
-    }
-    const months = Math.floor(days / 30)
-    const remDays = days % 30
-    if (remDays === 0) return `${months} ${months === 1 ? 'month' : 'months'}`
-    return `${months} ${months === 1 ? 'month' : 'months'} and ${remDays} ${remDays === 1 ? 'day' : 'days'}`
-}
+import { createBleSession } from '../../ble/session/createBleSession'
+import { commandRegistry } from '../../ble/protocol/commandRegistry'
 
 type StopMonitoringDetailsStepRouteProp = RouteProp<RootStackParamList, 'StopMonitoringDetailsStep'>
 
@@ -79,16 +52,20 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
     // Get current user
     const user = useAppSelector(selectCurrentUser)
 
-    const { stats: monitorStats } = useDeploymentMonitor(storeDevice)
-
     // Track device in ref for use in intervals/callbacks to avoid stale closures
     const bleDeviceRef = useRef(storeDevice)
     useEffect(() => {
         bleDeviceRef.current = storeDevice
     }, [storeDevice])
 
-    // Local state
+    // Use ref for retrieval notes so useEndDeployment always gets the latest value
+    const retrievalNotesRef = useRef('')
     const [retrievalNotes, setRetrievalNotes] = useState('')
+    
+    // Keep ref in sync with state
+    useEffect(() => {
+        retrievalNotesRef.current = retrievalNotes
+    }, [retrievalNotes])
 
     // Connection Guard Refs
     const isNavigatingAway = useRef(false)
@@ -126,13 +103,80 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
         DeviceService.getDeviceById(deviceId).then(setDeviceDb)
     }, [deviceId])
 
+    // Set title to "<device name> - Monitoring"
     useEffect(() => {
-        const title = deviceDb?.name || storeDevice?.name || 'Stop Monitoring'
-        navigation.setOptions({ title })
+        const deviceName = deviceDb?.name || storeDevice?.name || 'Device'
+        navigation.setOptions({ title: `${deviceName} - Monitoring` })
     }, [deviceDb?.name, storeDevice?.name, navigation])
 
+    // Handle "Continue Monitoring": shows alert then disconnects
+    const handleContinueMonitoring = useCallback(() => {
+        Alert.alert(
+            'Wildlife Watcher Monitoring',
+            'The bluetooth will be disconnected but the camera will continue monitoring for animals.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Disconnect',
+                    style: 'default',
+                    onPress: async () => {
+                        const currentDevice = bleDeviceRef.current
+                        isNavigatingAway.current = true
+                        
+                        if (currentDevice?.connected) {
+                            log('[EndDeployment] Continue monitoring - disconnecting device...')
+                            try {
+                                const session = createBleSession(currentDevice)
+                                await session.execute(commandRegistry.disconnect)
+                            } catch (e) {
+                                logWarn('[EndDeployment] Disconnect failed:', e)
+                            }
+                        }
+                        
+                        navigation.navigate('Home', { initialTab: 'deployment' })
+                    }
+                }
+            ]
+        )
+    }, [navigation])
 
-    // Back button handler: Disconnect BLE before navigating away
+    // Handle "Stop Monitoring" from the modal: sets notes, then triggers end deployment
+    // Use a ref flag so the effect fires after React re-renders with updated retrievalNotes
+    const pendingStopRef = useRef(false)
+
+    const handleStopMonitoring = useCallback((notes: string) => {
+        if (notes === retrievalNotes) {
+            // Notes unchanged (e.g. both empty): call directly since
+            // setRetrievalNotes won't trigger a re-render / effect.
+            handleEndDeployment()
+        } else {
+            setRetrievalNotes(notes)
+            pendingStopRef.current = true
+        }
+    }, [retrievalNotes, handleEndDeployment])
+
+    // Once retrievalNotes updates AND we're pending stop, trigger end deployment
+    useEffect(() => {
+        if (pendingStopRef.current) {
+            pendingStopRef.current = false
+            handleEndDeployment()
+        }
+    }, [retrievalNotes, handleEndDeployment])
+
+    // Override header back button to show same alert as "Continue Monitoring"
+    const headerLeft = useCallback(() => (
+        <IconButton
+            icon="arrow-left"
+            onPress={handleContinueMonitoring}
+        />
+    ), [handleContinueMonitoring])
+
+    useEffect(() => {
+        navigation.setOptions({ headerLeft })
+    }, [navigation, headerLeft])
+
+
+    // Back button handler: Same alert as "Continue Monitoring"
     useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', async (e) => {
             if (isNavigatingAway.current || isEnding || isEndDeploymentSuccess) return // Already handled
@@ -141,14 +185,14 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
             e.preventDefault()
             Alert.alert(
                 "Wildlife Watcher Monitoring",
-                "The wildlife watcher will keep monitoring for animals in the background.",
+                "The bluetooth will be disconnected but the camera will continue monitoring for animals.",
                 [
                     {
                         text: "Cancel",
                         style: "cancel"
                     },
                     {
-                        text: "Understood",
+                        text: "Disconnect",
                         style: "default",
                         onPress: async () => {
                         // Disconnect device
@@ -157,8 +201,6 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
                         
                         if (currentDevice?.connected) {
                             log('[EndDeployment] Back button pressed - disconnecting device...')
-                            const { createBleSession } = require('../../ble/session/createBleSession')
-                            const { commandRegistry } = require('../../ble/protocol/commandRegistry')
                             const session = createBleSession(currentDevice)
                             await session.execute(commandRegistry.disconnect)
                         }
@@ -176,96 +218,88 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
 
 
 
-    // Info left render removed
-
     if (!deployment) {
         return (
             <WWScreenView>
-                <WWText><Text>Loading monitoring session details...</Text></WWText>
+                <WWText><Text>Loading monitoring session details…</Text></WWText>
             </WWScreenView>
         )
     }
 
-    return (
-        <WWScreenView scrollable style={styles.screenView}>
-            <View style={styles.container}>
-                {/* Initialization Header (Set UTC, Hardware Check) */}
-                 {(deviceDb || storeDevice) && (
-                    <InitializationHeader
-                        device={deviceDb || { name: storeDevice?.name || 'Device', bluetoothId: bleDeviceId } as any}
-                        isInitializing={isInitializing}
-                        initProgress={initProgress}
-                        initStep={initStep}
-                        initErrors={initErrors}
-                        theme={theme}
-                        hideDeviceDetails={true}
-                    />
-                )}
-
-                {/* Deployment Info Section */}
-                <Card style={styles.section}>
-                    <Card.Content>
-
-                        <View style={styles.infoRow}>
-                            <WWText variant="bodyLarge"><Text>
-                                Monitoring time: {formatMonitoringDuration(deployment.deploymentStart)}.{monitorStats.deviceImageCount !== null ? ` Images recorded: ${monitorStats.deviceImageCount}.` : ''}
-                            </Text></WWText>
-                        </View>
-                    </Card.Content>
-                </Card>
-
-                {/* Live Activity Log */}
-                <Card style={styles.section}>
-                    <Card.Title title="Monitoring Activity" />
-                    <Card.Content>
-                        <LiveActivityLog device={storeDevice} />
-
-                    </Card.Content>
-                </Card>
-
-                {/* Retrieval Notes Input */}
-                <Card style={styles.section}>
-                    <Card.Title title="Notes" />
-                    <Card.Content>
-                        <WWTextInput
-                            mode="outlined"
-                            label="Notes"
-                            placeholder="e.g. SD card full, Battery low, Device damaged..."
-                            multiline
-                            numberOfLines={11}
-                            value={retrievalNotes}
-                            onChange={setRetrievalNotes}
-                            style={styles.input}
+    // If device is disconnected, show force-end fallback (old form layout)
+    if (!storeDevice?.connected) {
+        return (
+            <WWScreenView scrollable style={styles.screenView}>
+                <View style={styles.container}>
+                    {/* Initialization Header */}
+                    {(deviceDb || storeDevice) && (
+                        <InitializationHeader
+                            device={deviceDb || { name: storeDevice?.name || 'Device', bluetoothId: bleDeviceId } as any}
+                            isInitializing={isInitializing}
+                            initProgress={initProgress}
+                            initStep={initStep}
+                            initErrors={initErrors}
+                            theme={theme}
+                            hideDeviceDetails={true}
                         />
-                    </Card.Content>
-                </Card>
+                    )}
 
-                {/* Action Buttons */}
-                <View style={styles.footer}>
-                    <WWButton
-                        mode="contained"
-                        style={styles.deployButton}
-                        onPress={handleEndDeployment}
-                        loading={isEnding}
-                        disabled={isEnding}
-                    >
-                        <Text>{isEnding ? "Stopping..." : "Stop Monitoring"}</Text>
-                    </WWButton>
+                    <View style={styles.disconnectedBanner}>
+                        <Text variant="bodyLarge" style={{ textAlign: 'center', marginBottom: 12 }}>
+                            Device is not connected. You can force end the deployment in the database, but the device will need to be manually reset later.
+                        </Text>
+                    </View>
+
+                    <View style={styles.footer}>
+                        <WWButton
+                            mode="contained"
+                            style={styles.deployButton}
+                            onPress={handleEndDeployment}
+                            loading={isEnding}
+                            disabled={isEnding}
+                        >
+                            <Text>{isEnding ? "Stopping…" : "Force End (Database Only)"}</Text>
+                        </WWButton>
+                    </View>
+
+                    <FinishProgressDialog
+                        visible={isFinishing}
+                        progress={finishProgress}
+                        step={finishStep}
+                        logs={finishLogs}
+                        isComplete={isEndDeploymentSuccess}
+                        onDismiss={handleFinishDismiss}
+                        loadingTitle="Stopping"
+                        successTitle="Stopped"
+                        hideOkButton={true}
+                    />
                 </View>
+            </WWScreenView>
+        )
+    }
 
-                <FinishProgressDialog
-                    visible={isFinishing}
-                    progress={finishProgress}
-                    step={finishStep}
-                    logs={finishLogs}
-                    isComplete={isEndDeploymentSuccess}
-                    onDismiss={handleFinishDismiss}
-                    loadingTitle="Stopping"
-                    successTitle="Stopped"
-                    hideOkButton={true}
-                />
-            </View>
-        </WWScreenView>
+    // Device is connected: show DeploymentMonitorView (same as post-start monitoring)
+    return (
+        <>
+            <DeploymentMonitorView
+                device={storeDevice}
+                captureMethodId={deployment.captureMethodId}
+                onContinueMonitoring={handleContinueMonitoring}
+                onStopMonitoring={handleStopMonitoring}
+                isStoppingMonitoring={isEnding}
+            />
+            <FinishProgressDialog
+                visible={isFinishing}
+                progress={finishProgress}
+                step={finishStep}
+                logs={finishLogs}
+                isComplete={isEndDeploymentSuccess}
+                onDismiss={handleFinishDismiss}
+                loadingTitle="Stopping Monitoring"
+                successTitle="Monitoring Stopped"
+                hideOkButton={true}
+            />
+        </>
     )
 }
 
@@ -276,10 +310,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         gap: 16,
-        // padding: 16 // Removed to avoid double padding with WWScreenView
     },
-    section: { marginBottom: 16 },
-    infoRow: { marginBottom: 8 },
     footer: {
         marginTop: 24,
         marginBottom: 32
@@ -287,13 +318,10 @@ const styles = StyleSheet.create({
     deployButton: {
         paddingVertical: 8
     },
-    input: {
-        backgroundColor: '#fff',
-        minHeight: 165,
+    disconnectedBanner: {
+        padding: 16,
+        marginTop: 16,
     },
-    notesTitle: {
-        marginBottom: 8
-    }
 })
 
 // Wrapper to fetch deployment

@@ -93,7 +93,7 @@ export const EnvironmentItem = React.memo(({
                     accessibilityLabel={`Test connection to ${config.displayName}`}
                     accessibilityRole="button"
                 >
-                    <Text>{status === "testing" ? "Testing..." : "Test Connection"}</Text>
+                    <Text>{status === "testing" ? "Testing…" : "Test Connection"}</Text>
                 </Button>
             </View>
 

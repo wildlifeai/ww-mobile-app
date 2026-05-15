@@ -102,11 +102,11 @@ export const DeviceService = {
         if (!device) return undefined
 
         const status = await DeviceService.calculateDeviceStatus(deviceId)
+        const deploymentsCollection = database.get<Deployment>('deployments')
 
         // Get active deployment if deployed
         let activeDeployment: Deployment | undefined
         if (status === 'deployed') {
-            const deploymentsCollection = database.get<Deployment>('deployments')
             const deployments = await deploymentsCollection.query(
                 Q.where('device_id', deviceId),
                 Q.where('deployment_status_id', 1) // 1 = DEPLOYED
@@ -114,10 +114,21 @@ export const DeviceService = {
             activeDeployment = deployments[0]
         }
 
+        // Get most recent ended deployment (for "last session" display)
+        let lastDeployment: Deployment | undefined
+        const endedDeployments = await deploymentsCollection.query(
+            Q.where('device_id', deviceId),
+            Q.where('deployment_status_id', Q.notEq(1)),
+            Q.sortBy('deployment_end', Q.desc),
+            Q.take(1)
+        ).fetch()
+        lastDeployment = endedDeployments[0]
+
         return {
             device,
             status,
             activeDeployment,
+            lastDeployment,
         }
     },
 

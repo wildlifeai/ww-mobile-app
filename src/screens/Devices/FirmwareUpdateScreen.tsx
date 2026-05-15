@@ -105,7 +105,7 @@ export const FirmwareUpdateScreen = () => {
                                 Current Version
                             </WWText>
                             <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1, textAlign: 'right' }}>
-                                {previousVersion || (isPreflightDone ? 'Unknown' : '...')}
+                                {previousVersion || (isPreflightDone ? 'Unknown' : '…')}
                             </WWText>
                         </View>
 
@@ -263,7 +263,7 @@ export const FirmwareUpdateScreen = () => {
                         )}
                         {previousVersion && newVersion && previousVersion === newVersion && (
                             <WWText variant="bodySmall" style={styles.warningInfoText}>
-                                ⓘ Versions match — the firmware image may be the same build.
+                                ⓘ Versions match: the firmware image may be the same build.
                             </WWText>
                         )}
                         {!newVersion && (

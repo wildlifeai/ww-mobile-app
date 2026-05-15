@@ -25,6 +25,7 @@ export interface User {
 	organisation_id: string | null // Default organisation
 	profile?: UserProfile
 	organisations?: UserOrganisation[]
+	created_at?: string
 }
 
 export interface AuthResponse {

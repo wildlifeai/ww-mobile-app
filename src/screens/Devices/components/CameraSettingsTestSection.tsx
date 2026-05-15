@@ -6,7 +6,7 @@ import { useExtendedTheme } from '../../../theme'
 import { useCameraSettingsTest, CapturedImageInfo } from '../hooks/useCameraSettingsTest'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { ImagePreviewModal } from '../../../components/ImagePreviewModal'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 interface Props {
     device: ExtendedPeripheral
@@ -16,10 +16,13 @@ const NumericInput = ({ label, value, onChange, min, max, disabled }: { label: s
     const { spacing } = useExtendedTheme()
     const [localValue, setLocalValue] = useState(() => value.toString())
 
-    // Sync external changes (e.g. preset or reset)
-    useEffect(() => {
+    const [prevValue, setPrevValue] = useState(value)
+
+    // Sync external changes (e.g. preset or reset) during render
+    if (value !== prevValue) {
+        setPrevValue(value)
         setLocalValue(value.toString())
-    }, [value])
+    }
 
     return (
         <View style={{ marginBottom: spacing }}>
@@ -53,8 +56,8 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
         cameraParams,
         updateCameraParam,
         applyAndCapture,
-        resetTestMode,
         isApplying,
+        applyStage,
         aeData,
         capturedImages,
         capturePreview
@@ -71,9 +74,21 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
     return (
         <ScrollView style={styles.container} contentContainerStyle={[styles.content, { gap: spacing }]} keyboardShouldPersistTaps="handled">
             
-            <WWText variant="titleMedium" style={{ marginTop: spacing }}>Camera Parameters</WWText>
-            
-            <Surface style={[styles.card, { backgroundColor: colors.surface }]} elevation={1}>
+
+            {!device?.connected && (
+                <View style={{
+                    padding: 12,
+                    backgroundColor: 'rgba(176, 0, 32, 0.1)',
+                    borderRadius: 8,
+                    marginTop: 8
+                }}>
+                    <WWText style={{ color: colors.error, textAlign: 'center' }}>
+                        ⚠️ Bluetooth connection lost. Actions are disabled until the device reconnects.
+                    </WWText>
+                </View>
+            )}
+
+            <Surface style={[styles.card, { backgroundColor: colors.surface, marginTop: 8 }]} elevation={1}>
                 
                 
                 <View style={styles.inputGroup}>
@@ -82,51 +97,45 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                         value={cameraParams.flashLed.toString()}
                         onValueChange={(val) => updateCameraParam('flashLed', parseInt(val, 10))}
                         buttons={[
-                            { value: '0', label: 'Off' },
-                            { value: '1', label: 'Visible' },
-                            { value: '2', label: 'IR' },
+                            { value: '0', label: 'Off', disabled: !device?.connected },
+                            { value: '1', label: 'Visible', disabled: !device?.connected },
+                            { value: '2', label: 'IR', disabled: !device?.connected },
                         ]}
                         style={{ marginTop: 8 }}
                     />
                 </View>
 
-                <NumericInput
-                    label="LED Brightness (0-100%)"
-                    value={cameraParams.ledBrightness}
-                    onChange={(v: number) => updateCameraParam('ledBrightness', v)}
-                    min={0}
-                    max={100}
-                    disabled={isApplying || capturePreview.isCapturing}
-                />
+                {cameraParams.flashLed !== 0 && (
+                    <NumericInput
+                        label="LED Brightness (0-100%)"
+                        value={cameraParams.ledBrightness}
+                        onChange={(v: number) => updateCameraParam('ledBrightness', v)}
+                        min={0}
+                        max={100}
+                        disabled={!device?.connected || isApplying || capturePreview.isCapturing}
+                    />
+                )}
             </Surface>
 
 
 
             <View style={styles.actionRow}>
                 <Button 
-                    mode="outlined" 
-                    onPress={resetTestMode} 
-                    disabled={isApplying || capturePreview.isCapturing}
-                    style={{ flex: 1 }}
-                >
-                    <WWText>Reset</WWText>
-                </Button>
-                <Button 
                     mode="contained" 
                     onPress={applyAndCapture}
                     loading={isApplying || capturePreview.isCapturing}
-                    disabled={isApplying || capturePreview.isCapturing}
-                    style={{ flex: 2 }}
+                    disabled={!device?.connected || isApplying || capturePreview.isCapturing}
+                    style={{ flex: 1 }}
                 >
-                    <WWText style={{ color: 'white' }}>Capture Image</WWText>
+                    <WWText style={{ color: 'white' }}>{!device?.connected ? 'Disconnected' : 'Capture Image'}</WWText>
                 </Button>
             </View>
 
-            {capturePreview.isCapturing && (
+            {(isApplying || capturePreview.isCapturing) && (
                 <View style={styles.progressContainer}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                         <ActivityIndicator size="small" />
-                        <WWText>{capturePreview.captureStage || 'Capturing...'}</WWText>
+                        <WWText>{applyStage || capturePreview.captureStage || 'Processing…'}</WWText>
                     </View>
                     {capturePreview.captureProgress > 0 && (
                         <View style={{ width: '100%', marginTop: 16 }}>

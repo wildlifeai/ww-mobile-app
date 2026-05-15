@@ -77,7 +77,7 @@ export const ProjectDetailsScreen = () => {
 							dynamicStyles.loadingLabel,
 						]}
 					>
-						Loading project...
+						Loading project…
 					</Text>
 				</View>
 			</WWScreenView>

@@ -139,28 +139,51 @@ class RxRouter {
     return -1;
   }
 
-  private classifyAndEmitText(deviceId: string, line: string) {
-    const trimmed = line.trim();
+  /**
+   * Sanitise, classify, and emit a text line.
+   *
+   * Sanitisation is intentionally aggressive — every line that reaches a
+   * command listener MUST be a clean, meaningful payload. Noise (prompts,
+   * empty frames, raw hex dumps) is rejected before it can trigger false
+   * regex matches in the command pipeline.
+   */
+  private classifyAndEmitText(deviceId: string, rawLine: string) {
     const ts = Date.now();
-    log(`[RxRouter] classifyAndEmitText: "${line}"`)
 
-    // Emit RAW_RX explicitly for UI teletype parsing (Engineer Console)
-    bleEventBus.emitEvent({ type: 'RAW_RX', line, deviceId, ts });
+    // ── 1. Always emit raw line for Engineer Console / teletype ──
+    bleEventBus.emitEvent({ type: 'RAW_RX', line: rawLine, deviceId, ts });
 
-    // Device Signals classification
-    if (/^Sleep(\s+.*)?/i.test(trimmed)) {
+    // ── 2. Aggressive sanitisation ──
+    let line = rawLine
+      .replace(/^cmd>\s*/g, '')   // Strip firmware CLI prompt
+      .replace(/[\r\n\0]+/g, '')  // Normalise line endings
+      .trim();
+
+    // Reject empty lines after sanitisation
+    if (line.length === 0) return;
+
+    // Reject pure hex dump noise (e.g. "0A 3F B2 ..." from motion scan)
+    if (/^([0-9a-fA-F]{2}\s*)+$/.test(line)) return;
+
+    log(`[RxRouter] classifyAndEmitText: "${line}"`);
+
+    // ── 3. Device Signals classification ──
+    if (/^Sleep(\s+.*)?/i.test(line)) {
       bleEventBus.emitEvent({ type: 'DEVICE_SIGNAL', signal: DeviceSignal.SLEEP, deviceId, ts });
     }
     
-    if (/^(Wake|Waking AI processor|AI processor is awake)/i.test(trimmed)) {
+    if (/^(Wake|Waking AI processor|AI processor is awake)/i.test(line)) {
       bleEventBus.emitEvent({ type: 'DEVICE_SIGNAL', signal: DeviceSignal.WAKE, deviceId, ts });
     }
     
-    if (/^Camera system not enabled$/i.test(trimmed)) {
-      bleEventBus.emitEvent({ type: 'DEVICE_SIGNAL', signal: DeviceSignal.BUSY, deviceId, ts });
+    // "Camera system not enabled" is a CONFIG_ERROR, not BUSY.
+    // It means OP 10 = 0 in CONFIG.TXT — a persistent configuration problem
+    // that will never self-resolve. Retrying just wastes 1000ms per attempt.
+    if (/^Camera system not enabled$/i.test(line)) {
+      bleEventBus.emitEvent({ type: 'DEVICE_SIGNAL', signal: DeviceSignal.CONFIG_ERROR, deviceId, ts });
     }
 
-    // Default: Emit as standard TEXT_LINE for the active command context
+    // ── 4. Emit sanitised line for command pipeline ──
     bleEventBus.emitEvent({ type: 'TEXT_LINE', line, deviceId, ts });
   }
 

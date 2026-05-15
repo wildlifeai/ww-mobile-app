@@ -57,8 +57,6 @@ export enum CommandNames {
 	SET_MOTION_DETECT_INTERVAL = "SET_MOTION_DETECT_INTERVAL",
 	DISABLE_MOTION_DETECT = "DISABLE_MOTION_DETECT",
 	DISABLE_TIMELAPSE = "DISABLE_TIMELAPSE",
-	ENABLE_CAMERA = "ENABLE_CAMERA",
-	DISABLE_CAMERA = "DISABLE_CAMERA",
 	TX_FILE = "TX_FILE",
 	CAPTURE_PREVIEW = "CAPTURE_PREVIEW",
 	UPDATE_BLE_FIRMWARE = "UPDATE_BLE_FIRMWARE",
@@ -71,6 +69,7 @@ export enum CommandNames {
 	TRANSFER_AI_MODEL = "TRANSFER_AI_MODEL",
 	FIRMWARE_STATUS = "FIRMWARE_STATUS",
 	RESET_TO_DEFAULTS = "RESET_TO_DEFAULTS",
+	DEV_DEPLOYMENT_TEST = "DEV_DEPLOYMENT_TEST",
 
 	// Local commands (UPPERCASE - app-only actions)
 	CLEAR_CONSOLE = "CLEAR_CONSOLE",
@@ -513,22 +512,6 @@ export const COMMANDS: {
 		description: "Disable timelapse capture",
 		type: 'process',
 	},
-	[CommandNames.ENABLE_CAMERA]: {
-		name: CommandNames.ENABLE_CAMERA,
-		writeCommand: () => 'AI setop 10 1',
-		readRegex: /Set\s+OpParam\s+10\s+=\s+1/i,
-		description: "Enable camera and AI system",
-		type: 'process',
-		timeout: 10000,
-	},
-	[CommandNames.DISABLE_CAMERA]: {
-		name: CommandNames.DISABLE_CAMERA,
-		writeCommand: () => 'AI setop 10 0',
-		readRegex: /Set\s+OpParam\s+10\s+=\s+0/i,
-		description: "Disable camera and AI system",
-		type: 'process',
-		timeout: 10000,
-	},
 	[CommandNames.temp]: {
 		name: CommandNames.temp,
 		readCommand: "temp",
@@ -588,7 +571,7 @@ export const COMMANDS: {
 	},
 	[CommandNames.CAPTURE_PREVIEW]: {
 		name: CommandNames.CAPTURE_PREVIEW,
-		writeCommand: () => "AI capture 1 1",
+		writeCommand: () => "AI capture 1 500",
 		readRegex: /Captured/i,
 		description: "Capture image for preview",
 		type: 'process',
@@ -641,6 +624,11 @@ export const COMMANDS: {
 	[CommandNames.RESET_TO_DEFAULTS]: {
 		name: CommandNames.RESET_TO_DEFAULTS,
 		description: "Reset ALL operational parameters to factory defaults, erase AI model, clear deployment ID",
+		type: 'process',
+	},
+	[CommandNames.DEV_DEPLOYMENT_TEST]: {
+		name: CommandNames.DEV_DEPLOYMENT_TEST,
+		description: "Start monitoring with full parameter control (developer testing)",
 		type: 'process',
 	},
 	[CommandNames.CLEAR_CONSOLE]: {

@@ -89,7 +89,7 @@ export const EditProjectScreen = () => {
 	const onSave = useCallback(async (data: any) => {
 		try {
 			await handleSave(data)
-			// Bypass the beforeRemove guard — save succeeded, safe to leave
+			// Bypass the beforeRemove guard: save succeeded, safe to leave
 			isSavingRef.current = true
 			if (navigation.canGoBack()) {
 				navigation.goBack()
@@ -110,7 +110,7 @@ export const EditProjectScreen = () => {
 						variant="bodyMedium"
 						style={[styles.loadingText, dynamicStyles.loadingLabel]}
 					>
-						Loading project...
+						Loading project…
 					</Text>
 				</View>
 			</WWScreenView>

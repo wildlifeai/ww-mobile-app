@@ -48,15 +48,16 @@ export const StartMonitoringDetailsStep = () => {
         // Advanced Settings
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
-        isMonitoring, handleMonitorDisconnect,
+        isMonitoring, handleMonitorDisconnect, handleStopMonitoring, isStoppingMonitoring,
         // DFU control
         isDfuInProgress,
     } = useStartDeployment({ deviceId, bleDeviceId, projectId, navigation, initPayload })
 
     useEffect(() => {
-        let title = device?.name || bleDevice?.name || 'Start monitoring'
+        const deviceName = device?.name || bleDevice?.name || 'Device'
+        let title = deviceName
         if (isMonitoring) {
-            title = 'Monitoring'
+            title = `${deviceName} - Monitoring`
         }
         navigation.setOptions({ title })
     }, [device?.name, bleDevice?.name, navigation, isMonitoring])
@@ -127,11 +128,26 @@ export const StartMonitoringDetailsStep = () => {
 
     if (isMonitoring) {
         return (
-            <DeploymentMonitorView
-                device={bleDevice as any}
-                captureMethodId={project?.capture_method_id}
-                onDisconnect={handleMonitorDisconnect}
-            />
+            <>
+                <DeploymentMonitorView
+                    device={bleDevice as any}
+                    captureMethodId={project?.capture_method_id}
+                    onContinueMonitoring={handleMonitorDisconnect}
+                    onStopMonitoring={handleStopMonitoring}
+                    isStoppingMonitoring={isStoppingMonitoring}
+                />
+                <FinishProgressDialog
+                    visible={isFinishing}
+                    progress={finishProgress}
+                    step={finishStep}
+                    logs={finishLogs}
+                    isComplete={!isStoppingMonitoring && finishProgress >= 1}
+                    onDismiss={() => {}}
+                    loadingTitle="Stopping Monitoring"
+                    successTitle="Monitoring Stopped"
+                    hideOkButton={true}
+                />
+            </>
         )
     }
 

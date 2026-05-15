@@ -51,6 +51,12 @@ describe('Message Classifier', () => {
       expect(result.errorType).toBe('I2C_ERROR')
     })
 
+    it('should classify Camera system not enabled as CONFIG_ERROR, not DEVICE_BUSY', () => {
+      const result = classifyMessage('Camera system not enabled')
+      expect(result.type).toBe(MessageType.ERROR)
+      expect(result.errorType).toBe('CONFIG_ERROR')
+    })
+
     it('should classify Sleep message as UNSOLICITED', () => {
       const result = classifyMessage('Sleep')
       expect(result.type).toBe(MessageType.UNSOLICITED)

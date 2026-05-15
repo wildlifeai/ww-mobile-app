@@ -262,7 +262,7 @@ export const ProjectMembersScreen = () => {
 		return (
 			<View style={styles.loadingContainer}>
 				<ActivityIndicator size="large" />
-				<Text style={dynamicStyles.loadingText}>Loading project members...</Text>
+				<Text style={dynamicStyles.loadingText}>Loading project members…</Text>
 			</View>
 		)
 	}

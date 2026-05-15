@@ -32,7 +32,7 @@ export const App = () => {
 			<KeyboardProvider>
 				<SafeAreaProvider>
 					<StatusBar style="light" backgroundColor="#000000" />
-					<Suspense fallback={<Text>Loading...</Text>}>
+					<Suspense fallback={<Text>Loading…</Text>}>
 						<ReduxProvider store={store}>
 							<PaperProvider theme={CombinedDefaultTheme}>
 								<NavigationContainer theme={CombinedDefaultTheme} linking={linking}>

@@ -65,7 +65,7 @@ export const InitializationHeader: React.FC<InitializationHeaderProps> = ({
                                 <View style={styles.initializationProgressContainer}>
                                     <WWProgressBar progress={initProgress} style={styles.initProgressBar} />
                                     <WWText variant="bodySmall" style={styles.initStepText}>
-                                        <Text>{initStep || 'Preparing device...'}</Text>
+                                        <Text>{initStep || 'Preparing device…'}</Text>
                                     </WWText>
                                 </View>
                             )}
