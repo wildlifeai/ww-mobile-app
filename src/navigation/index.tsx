@@ -14,6 +14,7 @@ import { AppDrawer } from "../components/AppDrawer"
 import { Notifications } from "./screens/user/NotificationsScreen"
 import { Profile } from "./screens/user/ProfileScreen"
 import { Settings } from "./screens/user/SettingsScreen"
+import { TutorialScreen } from "./screens/user/TutorialScreen"
 
 // Auth screens
 import { Login } from "./screens/auth/LoginScreen"
@@ -75,7 +76,7 @@ export const MainNavigation = () => {
 	const { initialized, initialLoad: bleLoading } = useAppSelector(
 		(state) => state.bleLibrary,
 	)
-	const { token, initialLoad: authLoading } = useAppSelector(
+	const { token, initialLoad: authLoading, pendingTutorial } = useAppSelector(
 		(state) => state.authentication,
 	)
 
@@ -129,6 +130,12 @@ export const MainNavigation = () => {
 						<Stack.Screen name="Register" component={Register} />
 						<Stack.Screen name="ForgotPassword" component={ForgotPassword} />
 					</Stack.Group>
+				) : pendingTutorial ? (
+					<Stack.Screen
+						name="Tutorial"
+						component={TutorialScreen}
+						options={{ headerShown: false }}
+					/>
 				) : (
 					<Stack.Group
 						screenOptions={{
@@ -155,6 +162,11 @@ export const MainNavigation = () => {
 							name="Settings"
 							component={Settings}
 							options={{ title: "Settings" }}
+						/>
+						<Stack.Screen
+							name="Tutorial"
+							component={TutorialScreen}
+							options={{ headerShown: false }}
 						/>
 
 						<Stack.Screen

@@ -13,6 +13,7 @@ export interface RootStackParamList extends ParamListBase {
 	Notifications: undefined
 	Profile: undefined
 	Settings: undefined
+	Tutorial: undefined
 	Home: { initialTab?: string; selectedDeploymentId?: string } | undefined
 	DfuScreen: { deviceId: string }
 	Login: { confirmed?: boolean } | undefined

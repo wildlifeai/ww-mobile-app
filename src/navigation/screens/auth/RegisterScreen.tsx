@@ -7,7 +7,7 @@ import { WWTextInput } from "../../../components/ui/WWTextInput"
 import { Field } from "../../../components/form/Field"
 import { useRegisterMutation } from "../../../redux/api/auth"
 import { useAppDispatch } from "../../../redux"
-import { setCredentials } from "../../../redux/slices/authSlice"
+import { setCredentials, triggerTutorial } from "../../../redux/slices/authSlice"
 import { useAppNavigation } from "../../../hooks/useAppNavigation"
 import { WWText } from "../../../components/ui/WWText"
 import { KEYBOARD_AVOID_PADDING } from "../../../constants/layout"
@@ -65,6 +65,7 @@ export const Register = () => {
 			}
 
 			dispatch(setCredentials(response))
+			dispatch(triggerTutorial())
 		} catch (err) {
 			logError("Registration failed:", JSON.stringify(err))
 			Alert.alert(

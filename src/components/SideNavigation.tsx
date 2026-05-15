@@ -131,6 +131,14 @@ export const SideNavigation = ({ drawerControls }: Props) => {
 			<Button
 				textColor={colors.onBackground}
 				style={[dynamicStyles.link, styles.link]}
+				icon="school"
+				onPress={() => goTo("Tutorial")}
+			>
+				<Text>Tutorial</Text>
+			</Button>
+			<Button
+				textColor={colors.onBackground}
+				style={[dynamicStyles.link, styles.link]}
 				icon="wrench"
 				onPress={() => {
 					drawerControls(false)

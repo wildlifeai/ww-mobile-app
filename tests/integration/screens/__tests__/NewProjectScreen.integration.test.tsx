@@ -71,6 +71,7 @@ const createTestStore = (initialState = {}) => {
 				initialLoad: false,
 				sessionPersisted: true,
 				profileLoading: false,
+				pendingTutorial: false,
 				error: undefined,
 			},
 			...initialState,
