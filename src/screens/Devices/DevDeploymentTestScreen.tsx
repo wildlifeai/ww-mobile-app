@@ -354,7 +354,7 @@ export const DevDeploymentTestScreen = () => {
                                     // eslint-disable-next-line no-bitwise
                                     setTestModeBits((prev: number) => enabled ? (prev | TEST_BIT_SAVE_BMP) : (prev & ~TEST_BIT_SAVE_BMP))
                                     if (enabled && numPictures % 2 !== 0) {
-                                        setNumPictures(numPictures + 1)
+                                        setNumPictures((prev) => prev + 1)
                                     }
                                 }}
                                 disabled={submitting}
