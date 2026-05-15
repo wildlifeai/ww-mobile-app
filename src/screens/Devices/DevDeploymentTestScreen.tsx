@@ -33,6 +33,7 @@ import { FinishProgressDialog } from './components/FinishProgressDialog'
 import { BatteryLevelCard } from '../Deployments/components/BatteryLevelCard'
 import { SdCardStatusCard } from '../Deployments/components/SdCardStatusCard'
 import { useDevDeployment } from './hooks/useDevDeployment'
+import { TEST_BIT_SAVE_BMP } from '../../hooks/useDeviceSettings'
 import { useExtendedTheme } from '../../theme'
 
 export const DevDeploymentTestScreen = () => {
@@ -348,11 +349,10 @@ export const DevDeploymentTestScreen = () => {
                                 </WWText>
                             </View>
                             <Switch
-                                // eslint-disable-next-line no-bitwise
-                                value={(testModeBits & 2) !== 0}
+                                value={(testModeBits & TEST_BIT_SAVE_BMP) !== 0}
                                 onValueChange={(enabled) => {
                                     // eslint-disable-next-line no-bitwise
-                                    setTestModeBits((prev: number) => enabled ? (prev | 2) : (prev & ~2))
+                                    setTestModeBits((prev: number) => enabled ? (prev | TEST_BIT_SAVE_BMP) : (prev & ~TEST_BIT_SAVE_BMP))
                                     if (enabled && numPictures % 2 !== 0) {
                                         setNumPictures(numPictures + 1)
                                     }

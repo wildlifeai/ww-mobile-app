@@ -11,7 +11,7 @@ import { runFileTransferPipeline } from '../protocol/fileTransfer'
 import ReferenceDataService from '../../services/ReferenceDataService'
 import AiModelService from '../../services/AiModelService'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
-import { FACTORY_DEFAULTS } from '../../hooks/useDeviceSettings'
+import { FACTORY_DEFAULTS, OP_PARAMETER } from '../../hooks/useDeviceSettings'
 import { log, logWarn } from '../../utils/logger'
 
 interface ProgressCallbacks {
@@ -49,14 +49,14 @@ export async function syncTime(
  * OPs that configureDevice() will set — no point resetting these to defaults
  * only to overwrite them 2 seconds later.
  */
-const CONFIGURE_MANAGED_OPS = new Set([
-    7,  // TIMELAPSE_INTERVAL
-    8,  // INTERVAL_BEFORE_DPD
-    10, // CAMERA_ENABLED
-    11, // MD_INTERVAL
-    17, // MD_SENSITIVITY
-    19, // IMAGES_COUNT
-    20, // IMAGES_FILE_INDEX
+const CONFIGURE_MANAGED_OPS: Set<number> = new Set([
+    OP_PARAMETER.TIMELAPSE_INTERVAL,
+    OP_PARAMETER.INTERVAL_BEFORE_DPD,
+    OP_PARAMETER.CAMERA_ENABLED,
+    OP_PARAMETER.MD_INTERVAL,
+    OP_PARAMETER.MD_SENSITIVITY,
+    OP_PARAMETER.IMAGES_COUNT,
+    OP_PARAMETER.IMAGES_FILE_INDEX,
 ])
 
 export async function resetOps(

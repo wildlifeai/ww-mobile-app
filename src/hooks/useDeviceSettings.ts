@@ -35,6 +35,13 @@ export const OP_PARAMETER = {
 } as const
 
 /**
+ * Test mode bitmask flags for OP_PARAMETER.TEST_MODE_BITS.
+ * These control diagnostic capture behaviour on the Himax firmware.
+ */
+// eslint-disable-next-line no-bitwise
+export const TEST_BIT_SAVE_BMP = 1 << 1  // bit 1 = 2 — alternates between JPG and BMP files
+
+/**
  * Factory default values for ALL operational parameters.
  * These match the firmware's behaviour when no MANIFEST folder exists on SD card.
  */
