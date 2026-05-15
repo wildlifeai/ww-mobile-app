@@ -347,7 +347,7 @@ export const MotionDetectionSection: React.FC<MotionDetectionSectionProps> = ({
                             <WWText variant="labelSmall" style={styles.gridLabel}>Live: Motion Detection Grid (16×16)</WWText>
                             {parseFloat(intervalText) < 1.0 && (
                                 <WWText variant="labelSmall" style={styles.throttleNote}>
-                                    ⚡ Live grid refreshes at 5fps for stability
+                                    ⚡ Live grid refreshes up to 10fps for stability
                                 </WWText>
                             )}
                             <View style={styles.gridBox}>

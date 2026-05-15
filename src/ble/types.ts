@@ -47,6 +47,7 @@ export enum CommandNames {
 	setdid = "setdid",
 	getdid = "getdid",
 	ai_firmware = "ai_firmware",
+	inithm0360 = "inithm0360",
 
 	// Process commands (UPPERCASE - app-specific workflows)
 	SET_UTC = "SET_UTC",
@@ -445,6 +446,13 @@ export const COMMANDS: {
 		readCommand: "AI camera",
         readRegex: /\b(HM0360|RP2|RP3)\b/i,
 		description: "Get connected camera type",
+		type: 'command',
+	},
+	[CommandNames.inithm0360]: {
+		name: CommandNames.inithm0360,
+		writeCommand: () => 'AI inithm0360',
+		readRegex: /^(OK|Error)/i,
+		description: "Reinitialise HM0360 camera sensor registers (diagnostic for black images)",
 		type: 'command',
 	},
 	[CommandNames.md]: {

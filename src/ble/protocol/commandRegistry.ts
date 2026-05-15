@@ -461,5 +461,12 @@ export const commandRegistry = {
     /End of directory|\d+\s+dirs?,\s+\d+\s+files?\.?/i,
     (lines) => lines,
     { timeoutMs: 10000 }
-  )
+  ),
+  inithm0360: createSingleLineCommand<boolean>(
+    'inithm0360',
+    () => 'AI inithm0360',
+    /^OK$/i,
+    () => true,
+    { timeoutMs: 10000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Error/i }
+  ),
 };
