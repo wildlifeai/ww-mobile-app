@@ -39,14 +39,14 @@ const TUTORIAL_STEPS: TutorialStep[] = [
         id: 'welcome',
         title: 'Welcome to the Wildlife Watcher app',
         description:
-            'This quick tutorial will show you how to use the app. You will see three main pages: Scanner, Map and Projects.',
+            'This quick tutorial will show you how to use the app. There are three main pages: Scanner, Map, and Projects.',
         images: [require('../../../../assets/tutorial/homepage.png')],
     },
     {
         id: 'projects',
         title: 'Projects',
         description:
-            'The Wildlife Watchers use projects to group cameras monitoring for the same purpose or area. Note: You will need to have at least one project to use the Wildlife Watchers.',
+            'The app uses projects to help you use multiple cameras to monitoring for the same animal(s) or in a similar area.\n\n⚠️ Note: You need to have at least one project to use the Wildlife Watchers.',
         images: [require('../../../../assets/tutorial/project_page.png')],
     },
     {
@@ -68,9 +68,9 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     },
     {
         id: 'data',
-        title: 'Live Monitoring',
+        title: 'Live and Stop Monitoring',
         description:
-            'When a Wildlife Watcher is monitoring you can connect to it and see in real time the camera activity. You can also stop the monitoring from this page. On behalf of all the animals you will be watching, Thanks!',
+            'When a Wildlife Watcher is monitoring you can connect to it and see in real time the camera activity. You can also stop the monitoring from this page.\n\n🐾 Thanks for choosing the Wildlife Watchers for your conservation work!',
         images: [require('../../../../assets/tutorial/live_monitoring_page.png')],
     },
 ]
@@ -80,7 +80,7 @@ export const TutorialScreen = () => {
     const navigation = useAppNavigation()
     const { top, bottom } = useSafeAreaInsets()
     const { colors, spacing } = useExtendedTheme()
-    const { width: screenWidth } = useWindowDimensions()
+    const { width: screenWidth, height: screenHeight } = useWindowDimensions()
     const pendingTutorial = useAppSelector(
         (state) => state.authentication.pendingTutorial,
     )
@@ -120,26 +120,20 @@ export const TutorialScreen = () => {
         [screenWidth],
     )
 
-    // Phone frame dimensions — scale based on screen width
-    const phoneFrameHeight = screenWidth * 0.52
-    const phoneFrameWidth = phoneFrameHeight * 0.48
+    // Phone frame dimensions — fill most of the available vertical space
+    // Use screen height (not width) so the frame is substantial on tall phones
+    const phoneFrameHeight = screenHeight * 0.52
+    const phoneFrameWidth = Math.min(phoneFrameHeight * 0.48, screenWidth * 0.55)
     const hasMultipleImages = (item: TutorialStep) => item.images.length > 1
 
     const renderPhoneFrame = useCallback(
         (source: ImageSourcePropType, frameWidth: number, frameHeight: number) => (
             <View style={[styles.phoneFrame, { width: frameWidth, height: frameHeight, borderColor: colors.outlineVariant }]}>
-                {/* Notch */}
-                <View style={[styles.phoneNotch, { backgroundColor: colors.outlineVariant }]} />
-                {/* Screen content */}
-                <View style={styles.phoneScreen}>
-                    <Image
-                        source={source}
-                        style={styles.phoneImage}
-                        resizeMode="cover"
-                    />
-                </View>
-                {/* Home indicator */}
-                <View style={[styles.phoneHomeBar, { backgroundColor: colors.outlineVariant }]} />
+                <Image
+                    source={source}
+                    style={styles.phoneImage}
+                    resizeMode="cover"
+                />
             </View>
         ),
         [colors],
@@ -156,9 +150,9 @@ export const TutorialScreen = () => {
 
             return (
                 <View style={[styles.slide, { width: screenWidth }]}>
-                    {/* Fixed "Tutorial" header */}
-                    <WWText style={[styles.headerTitle, { color: colors.primary }]}>
-                        <Text>Tutorial</Text>
+                    {/* Title above the screenshot */}
+                    <WWText style={[styles.title, { color: colors.onBackground }]}>
+                        <Text>{item.title}</Text>
                     </WWText>
 
                     {/* Phone frame(s) */}
@@ -176,10 +170,7 @@ export const TutorialScreen = () => {
                         )}
                     </View>
 
-                    {/* Title + description */}
-                    <WWText style={[styles.title, { color: colors.onBackground }]}>
-                        <Text>{item.title}</Text>
-                    </WWText>
+                    {/* Description below the screenshot */}
                     <WWText
                         style={[
                             styles.description,
@@ -302,72 +293,45 @@ const styles = StyleSheet.create({
         paddingHorizontal: 28,
         paddingTop: 8,
     },
-    headerTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 1.5,
-        marginBottom: 16,
-    },
     imageContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 12,
     },
     multiImageRow: {
         flexDirection: 'row',
         gap: 12,
         alignItems: 'center',
     },
-    // Phone frame — mimics a mobile device bezel
+    // Phone frame — rounded border to convey "mobile screen"
     phoneFrame: {
-        borderWidth: 3,
-        borderRadius: 20,
-        overflow: 'hidden',
-        alignItems: 'center',
-        paddingTop: 12,
-        paddingBottom: 8,
-    },
-    phoneNotch: {
-        width: 40,
-        height: 4,
-        borderRadius: 2,
-        marginBottom: 6,
-    },
-    phoneScreen: {
-        flex: 1,
-        width: '100%',
+        borderWidth: 2,
+        borderRadius: 14,
         overflow: 'hidden',
     },
     phoneImage: {
         width: '100%',
         height: '100%',
     },
-    phoneHomeBar: {
-        width: 36,
-        height: 4,
-        borderRadius: 2,
-        marginTop: 6,
-    },
     title: {
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: 'bold',
         textAlign: 'center',
-        marginBottom: 10,
+        marginBottom: 6,
     },
     description: {
-        fontSize: 14,
+        fontSize: 13,
         textAlign: 'center',
-        lineHeight: 22,
+        lineHeight: 20,
         paddingHorizontal: 8,
-        marginBottom: 8,
+        marginBottom: 4,
     },
     paginationRow: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginVertical: 16,
+        marginVertical: 10,
         gap: 10,
     },
     dot: {
