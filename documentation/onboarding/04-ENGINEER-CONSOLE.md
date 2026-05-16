@@ -149,7 +149,7 @@ The following subset is directly used during deployment:
 | 14 | `MODEL_PROJECT` | Currently loaded AI model ID |
 | 15 | `MODEL_VERSION` | Currently loaded AI model version |
 | 17 | `MD_SENSITIVITY` | 1 for activity/mixed, 0 for timelapse |
-| 18 | `TEST_MODE_BITS` | Diagnostic bitmask (bit 1 = `TEST_BIT_SAVE_BMP`) |
+| 18 | `TEST_MODE_BITS` | Diagnostic bitmask (bit 1 = `TEST_BIT_SAVE_BMP`, bit 3 = `TEST_BIT_SKIP_FILE_CREATION`) |
 | 19 | `IMAGES_COUNT` | Total images captured (reset on new deployment) |
 | 20 | `IMAGES_FILE_INDEX` | Image subdirectory counter (reset on new deployment) |
 
@@ -197,7 +197,7 @@ All flows are accessible from the Engineer Console → **Flows** button. They ar
 
 | Flow | What It Does |
 |------|-------------|
-| `CAPTURE_PREVIEW` | Sends `AI capture 1 500`, receives the image via BLE binary transfer, and displays it in the console. Quick visual check without navigating to a dedicated screen. |
+| `CAPTURE_PREVIEW` | Runs a `getops` pre-flight to verify `CAMERA_ENABLED` (OP 10 = 1) and `TEST_MODE_BITS` (OP 18 = 0), fixing either if needed. Then sends `AI capture 1 500`, receives the image via BLE binary transfer, and displays it in the console. Quick visual check without navigating to a dedicated screen. |
 | `CAMERA_SETTINGS_TEST` | Navigates to the [Camera Settings Test Screen](#camera-settings-test-screen). Full flash/AE testing environment with gallery. |
 
 ### 🔲 Motion Detection
@@ -252,9 +252,11 @@ The following screens are accessed from the Engineer Console → Flows modal. Th
 **Purpose:** Real-time visualization of the HM0360 sensor's internal motion detection algorithm.
 
 **How it works:**
-- Uses `useMotionDetectionStream` to subscribe to device log messages
-- Parses 256-bit binary payload representing a 16×16 grid of motion blocks
-- Renders the grid natively — visual feedback loop helps understand environmental threshold behaviour
+- Uses `useMotionDetectionStream` to subscribe to `TEXT_LINE` events from `bleEventBus`
+- Sets `TEST_BIT_SKIP_FILE_CREATION` (OP 18, bit 3) before capture so firmware streams MD data without saving JPEGs
+- Parses `HM0360 motion in N blocks:` header + 32 hex-byte grid data from BLE text lines
+- Renders the 16×16 grid as a precomputed text string — visual feedback loop helps understand environmental threshold behaviour
+- **On completion/stop**, automatically resets `TEST_MODE_BITS` to 0 so subsequent captures (e.g., photo preview) save JPEG files normally
 
 ### Camera Settings Test Screen
 
@@ -404,6 +406,7 @@ Goal: Validate MD triggers when subject is only illuminated by flash.
 |---------|-----------|
 | Heartbeat | 58s idle → sends `get heartbeat` (or RSSI ping if UART paused) |
 | Disconnect Detection | `WWBleDisconnectedBanner` shown on all BLE-dependent screens |
+| DFU Suppression | Banner is hidden when `dfuInProgress` is `true` — the BLE disconnect during firmware updates is expected |
 | Disconnect Signal | `DEVICE_SIGNAL(DISCONNECT)` → `commandQueue.clearAll()` — rejects all in-flight commands instantly |
 | Navigation Guard | `isNavigatingAway` ref prevents spurious disconnect alerts during screen transitions |
 
@@ -411,6 +414,9 @@ All screens use `bleDeviceRef` (a `useRef`) for device state inside timer callba
 
 > [!NOTE]
 > On unexpected disconnect, the BLE pipeline rejects all in-flight and queued commands **instantly** via the `DISCONNECT` signal (see [BLE Architecture — Disconnect Resilience](../resources/BLE_Architecture.md#disconnect-resilience)).
+
+> [!NOTE]
+> During firmware updates (BLE DFU or Himax), `useFirmwareUpdate` dispatches `setDfuStatus(true)` to the device's Redux state. The `WWBleDisconnectedBanner` checks `dfuInProgress` and suppresses the error banner during expected DFU disconnections.
 
 ---
 

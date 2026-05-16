@@ -162,8 +162,10 @@ class RxRouter {
     // Reject empty lines after sanitisation
     if (line.length === 0) return;
 
-    // Reject pure hex dump noise (e.g. "0A 3F B2 ..." from motion scan)
-    if (/^([0-9a-fA-F]{2}\s*)+$/.test(line)) return;
+    // NOTE: Pure hex lines (e.g. "00 ff 80 3c ...") are intentionally NOT
+    // filtered here. The motion detection stream (useMotionDetectionStream)
+    // needs them as TEXT_LINE events to render the 16×16 MD grid.
+    // The command pipeline already ignores unrecognised patterns.
 
     log(`[RxRouter] classifyAndEmitText: "${line}"`);
 

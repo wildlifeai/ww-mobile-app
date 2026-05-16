@@ -383,12 +383,12 @@ if value[0] == 0x06 or (value[0] == 0x80 && value[1] == 0x06):
 else:
     → emit RAW_RX (unsanitised, for Engineer Console)
     → sanitise: strip cmd> prompt, normalise \r\n\0, trim
-    → reject empty lines and hex dump noise
+    → reject empty lines
     → classify device signals (Sleep, Wake, CONFIG_ERROR)
     → emit TEXT_LINE (sanitised, for command pipeline)
 ```
 
-**Input Sanitisation:** Every text line is aggressively cleaned before reaching command listeners. This prevents `cmd>` prompt echoes, trailing whitespace, and hex dump debug output from triggering false regex matches in the command pipeline.
+**Input Sanitisation:** Every text line is aggressively cleaned before reaching command listeners. This prevents `cmd>` prompt echoes and trailing whitespace from triggering false regex matches in the command pipeline. Pure hex lines (e.g. motion detection grid data) are intentionally passed through as `TEXT_LINE` events — `useMotionDetectionStream` depends on them for the 16×16 grid display.
 
 **File:** [rxRouter.ts](../../src/ble/protocol/rxRouter.ts)
 
@@ -529,7 +529,7 @@ sequenceDiagram
 ```
 
 > [!IMPORTANT]
-> During DFU, the device disconnects and re-advertises under a different name (`WW500_DFU` / `DfuTarg`). The app must suppress "Connection Lost" alerts during this expected disconnection using an `isDfuInProgress` ref flag.
+> During DFU, the device disconnects and re-advertises under a different name (`WW500_DFU` / `DfuTarg`). The app suppresses "Connection Lost" alerts via `setDfuStatus(true)` dispatched to the device's Redux state. The `WWBleDisconnectedBanner` component checks `dfuInProgress` and renders nothing when it is `true`. The flag is cleared via `setDfuStatus(false)` when the update completes or fails.
 
 **Files:** [DfuService.ts](../../src/services/DfuService.ts), [DfuScreen.tsx](../../src/screens/Devices/DfuScreen.tsx)
 
@@ -594,14 +594,15 @@ byte[3..] = payload          // actual JPEG image data
 
 Orchestrates the full capture-preview flow:
 
-1. **Single Image Capture:** Send `AI capture 1 500` (500ms interval allows AE settling)
-2. **Start Download:** Send `AI txfile .` → Firmware announces byte count
-3. **Receive:** `ImageReassembler` processes binary packets via `bleEventBus.binaryPacket`
-4. **Completion:** Normal or `force_finalize` fallback
-5. **Timeout:** 20-second safety timeout triggers `force_finalize`
+1. **Pre-flight Check:** `getops` to verify `CAMERA_ENABLED` (OP 10 = 1) and `TEST_MODE_BITS` (OP 18 = 0). Fixes either if needed (e.g. stale skip-file bit from a prior MD test).
+2. **Single Image Capture:** Send `AI capture 1 500` (500ms interval allows AE settling)
+3. **Start Download:** Send `AI txfile .` → Firmware announces byte count
+4. **Receive:** `ImageReassembler` processes binary packets via `bleEventBus.binaryPacket`
+5. **Completion:** Normal or `force_finalize` fallback
+6. **Timeout:** 20-second safety timeout triggers `force_finalize`
 
 > [!NOTE]
-> The `setop 10 1` camera enable step was removed — OP 10 is now always `1` in firmware defaults. The 500ms capture interval (vs the old `1ms`) gives the HM0360 AE algorithm time to settle after waking from DPD. Full AE convergence still requires a firmware-level streaming warm-up phase.
+> The pre-flight `getops` check ensures capture works correctly even if `TEST_BIT_SKIP_FILE_CREATION` (OP 18, bit 3) is still set from a prior motion detection test. Without it, the firmware captures but skips JPEG file creation, and the `txfile` download times out.
 
 **File:** [useCapturePreview.ts](../../src/hooks/useCapturePreview.ts)
 
@@ -829,7 +830,7 @@ const results = await runCommandPipeline(peripheral, [
 
 ---
 
-*Last Updated: May 14, 2026 — Added CONFIG_ERROR signal, input sanitisation in rxRouter, POST_COMPLETION_DRAIN reduced to 10ms, consolidated CONNECTION_OWNERSHIP.md into this document*
+*Last Updated: May 16, 2026 — Updated rxRouter to pass hex lines through for MD grid, DFU disconnect suppression via Redux, capture preview getops pre-flight*
 
 ---
 
