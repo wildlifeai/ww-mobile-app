@@ -12,14 +12,15 @@ import {
     View,
     FlatList,
     StyleSheet,
-    Dimensions,
     Animated,
     NativeSyntheticEvent,
     NativeScrollEvent,
+    Image,
+    ImageSourcePropType,
+    useWindowDimensions,
 } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useAppDispatch, useAppSelector } from '../../../redux'
 import { completeTutorial } from '../../../redux/slices/authSlice'
 import { useAppNavigation } from '../../../hooks/useAppNavigation'
@@ -30,54 +31,56 @@ interface TutorialStep {
     id: string
     title: string
     description: string
-    icon: keyof typeof MaterialCommunityIcons.glyphMap
+    images: ImageSourcePropType[]
 }
 
 const TUTORIAL_STEPS: TutorialStep[] = [
     {
         id: 'welcome',
-        title: 'Welcome to Wildlife Watcher',
+        title: 'Welcome to the Wildlife Watcher app',
         description:
-            'Monitor wildlife with smart camera traps. This quick tutorial will show you how the app works.',
-        icon: 'paw',
+            'This quick tutorial will show you how to use the app. You will see three main pages: Scanner, Map and Projects.',
+        images: [require('../../../../assets/tutorial/homepage.png')],
     },
     {
         id: 'projects',
-        title: 'Organise Your Projects',
+        title: 'Projects',
         description:
-            'Create projects for different monitoring locations. Each project groups deployments, devices, and captured data together.',
-        icon: 'folder-multiple',
+            'The Wildlife Watchers use projects to group cameras monitoring for the same purpose or area. Note: You will need to have at least one project to use the Wildlife Watchers.',
+        images: [require('../../../../assets/tutorial/project_page.png')],
     },
     {
         id: 'connect',
-        title: 'Connect Your Device',
+        title: 'Scanner',
         description:
-            'Use the Scanner tab to find nearby Wildlife Watcher devices via Bluetooth. Pair once, and the app remembers your device.',
-        icon: 'bluetooth-connect',
+            'Use the Scanner tab to find nearby Watchers and connect to them.',
+        images: [
+            require('../../../../assets/tutorial/homepage.png'),
+            require('../../../../assets/tutorial/connect_device_page.png'),
+        ],
     },
     {
         id: 'deploy',
         title: 'Start Monitoring',
         description:
-            'Configure your device settings — detection sensitivity, timelapse interval, AI model — then deploy to start capturing wildlife data.',
-        icon: 'camera-iris',
+            'When you connect to the Wildlife Watcher you need to specify the associated project for the monitoring and record any notes. You can also preview the field of view of the camera, motion detection and other advanced settings.',
+        images: [require('../../../../assets/tutorial/start_monitoring_page.png')],
     },
     {
         id: 'data',
-        title: 'Review & Share Data',
+        title: 'Live Monitoring',
         description:
-            'View captured images on the Map, review AI detections, and share results with your team. All data syncs automatically.',
-        icon: 'chart-bar',
+            'When a Wildlife Watcher is monitoring you can connect to it and see in real time the camera activity. You can also stop the monitoring from this page. On behalf of all the animals you will be watching, Thanks!',
+        images: [require('../../../../assets/tutorial/live_monitoring_page.png')],
     },
 ]
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 export const TutorialScreen = () => {
     const dispatch = useAppDispatch()
     const navigation = useAppNavigation()
     const { top, bottom } = useSafeAreaInsets()
     const { colors, spacing } = useExtendedTheme()
+    const { width: screenWidth } = useWindowDimensions()
     const pendingTutorial = useAppSelector(
         (state) => state.authentication.pendingTutorial,
     )
@@ -88,10 +91,8 @@ export const TutorialScreen = () => {
 
     const handleExit = useCallback(() => {
         if (pendingTutorial) {
-            // Gating mode — declarative swap happens automatically
             dispatch(completeTutorial())
         } else {
-            // Sidebar mode — go back to wherever we came from
             navigation.goBack()
         }
     }, [dispatch, navigation, pendingTutorial])
@@ -112,42 +113,85 @@ export const TutorialScreen = () => {
     const onMomentumScrollEnd = useCallback(
         (e: NativeSyntheticEvent<NativeScrollEvent>) => {
             const index = Math.round(
-                e.nativeEvent.contentOffset.x / SCREEN_WIDTH,
+                e.nativeEvent.contentOffset.x / screenWidth,
             )
             setCurrentIndex(index)
         },
-        [],
+        [screenWidth],
     )
 
-    const renderItem = useCallback(
-        ({ item }: { item: TutorialStep }) => (
-            <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
-                <View
-                    style={[
-                        styles.iconContainer,
-                        { backgroundColor: colors.primaryContainer },
-                    ]}
-                >
-                    <MaterialCommunityIcons
-                        name={item.icon}
-                        size={72}
-                        color={colors.primary}
+    // Phone frame dimensions — scale based on screen width
+    const phoneFrameHeight = screenWidth * 0.52
+    const phoneFrameWidth = phoneFrameHeight * 0.48
+    const hasMultipleImages = (item: TutorialStep) => item.images.length > 1
+
+    const renderPhoneFrame = useCallback(
+        (source: ImageSourcePropType, frameWidth: number, frameHeight: number) => (
+            <View style={[styles.phoneFrame, { width: frameWidth, height: frameHeight, borderColor: colors.outlineVariant }]}>
+                {/* Notch */}
+                <View style={[styles.phoneNotch, { backgroundColor: colors.outlineVariant }]} />
+                {/* Screen content */}
+                <View style={styles.phoneScreen}>
+                    <Image
+                        source={source}
+                        style={styles.phoneImage}
+                        resizeMode="cover"
                     />
                 </View>
-                <WWText style={[styles.title, { color: colors.onBackground }]}>
-                    <Text>{item.title}</Text>
-                </WWText>
-                <WWText
-                    style={[
-                        styles.description,
-                        { color: colors.onSurfaceVariant },
-                    ]}
-                >
-                    <Text>{item.description}</Text>
-                </WWText>
+                {/* Home indicator */}
+                <View style={[styles.phoneHomeBar, { backgroundColor: colors.outlineVariant }]} />
             </View>
         ),
         [colors],
+    )
+
+    const renderItem = useCallback(
+        ({ item }: { item: TutorialStep }) => {
+            const isMulti = hasMultipleImages(item)
+            const singleWidth = phoneFrameWidth
+            const singleHeight = phoneFrameHeight
+            // For dual images, make each smaller
+            const multiWidth = phoneFrameWidth * 0.78
+            const multiHeight = phoneFrameHeight * 0.78
+
+            return (
+                <View style={[styles.slide, { width: screenWidth }]}>
+                    {/* Fixed "Tutorial" header */}
+                    <WWText style={[styles.headerTitle, { color: colors.primary }]}>
+                        <Text>Tutorial</Text>
+                    </WWText>
+
+                    {/* Phone frame(s) */}
+                    <View style={styles.imageContainer}>
+                        {isMulti ? (
+                            <View style={styles.multiImageRow}>
+                                {item.images.map((img, i) => (
+                                    <View key={i}>
+                                        {renderPhoneFrame(img, multiWidth, multiHeight)}
+                                    </View>
+                                ))}
+                            </View>
+                        ) : (
+                            renderPhoneFrame(item.images[0], singleWidth, singleHeight)
+                        )}
+                    </View>
+
+                    {/* Title + description */}
+                    <WWText style={[styles.title, { color: colors.onBackground }]}>
+                        <Text>{item.title}</Text>
+                    </WWText>
+                    <WWText
+                        style={[
+                            styles.description,
+                            { color: colors.onSurfaceVariant },
+                        ]}
+                    >
+                        <Text>{item.description}</Text>
+                    </WWText>
+                </View>
+            )
+        },
+        [colors, screenWidth, phoneFrameWidth, phoneFrameHeight, renderPhoneFrame],
     )
 
     const isLastSlide = currentIndex === TUTORIAL_STEPS.length - 1
@@ -189,8 +233,8 @@ export const TutorialScreen = () => {
                 onMomentumScrollEnd={onMomentumScrollEnd}
                 scrollEventThrottle={16}
                 getItemLayout={(_, index) => ({
-                    length: SCREEN_WIDTH,
-                    offset: SCREEN_WIDTH * index,
+                    length: screenWidth,
+                    offset: screenWidth * index,
                     index,
                 })}
             />
@@ -199,9 +243,9 @@ export const TutorialScreen = () => {
             <View style={styles.paginationRow}>
                 {TUTORIAL_STEPS.map((step, i) => {
                     const inputRange = [
-                        (i - 1) * SCREEN_WIDTH,
-                        i * SCREEN_WIDTH,
-                        (i + 1) * SCREEN_WIDTH,
+                        (i - 1) * screenWidth,
+                        i * screenWidth,
+                        (i + 1) * screenWidth,
                     ]
                     const dotScale = scrollX.interpolate({
                         inputRange,
@@ -254,34 +298,76 @@ const styles = StyleSheet.create({
     },
     slide: {
         flex: 1,
-        justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 40,
+        paddingHorizontal: 28,
+        paddingTop: 8,
     },
-    iconContainer: {
-        width: 140,
-        height: 140,
-        borderRadius: 70,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 40,
-    },
-    title: {
-        fontSize: 26,
-        fontWeight: 'bold',
-        textAlign: 'center',
+    headerTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 1.5,
         marginBottom: 16,
     },
-    description: {
-        fontSize: 16,
+    imageContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    multiImageRow: {
+        flexDirection: 'row',
+        gap: 12,
+        alignItems: 'center',
+    },
+    // Phone frame — mimics a mobile device bezel
+    phoneFrame: {
+        borderWidth: 3,
+        borderRadius: 20,
+        overflow: 'hidden',
+        alignItems: 'center',
+        paddingTop: 12,
+        paddingBottom: 8,
+    },
+    phoneNotch: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        marginBottom: 6,
+    },
+    phoneScreen: {
+        flex: 1,
+        width: '100%',
+        overflow: 'hidden',
+    },
+    phoneImage: {
+        width: '100%',
+        height: '100%',
+    },
+    phoneHomeBar: {
+        width: 36,
+        height: 4,
+        borderRadius: 2,
+        marginTop: 6,
+    },
+    title: {
+        fontSize: 22,
+        fontWeight: 'bold',
         textAlign: 'center',
-        lineHeight: 24,
+        marginBottom: 10,
+    },
+    description: {
+        fontSize: 14,
+        textAlign: 'center',
+        lineHeight: 22,
+        paddingHorizontal: 8,
+        marginBottom: 8,
     },
     paginationRow: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginVertical: 24,
+        marginVertical: 16,
         gap: 10,
     },
     dot: {
