@@ -22,9 +22,8 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
         connectionLogs,
         processing,
         // Scan session
-        scanSessionActive,
+        scanSessionState,
         scanSecondsRemaining,
-        scanSessionExpired,
         startScanSession,
         // Scanner Routing Dialog
         routingState,
@@ -128,7 +127,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                         </View>
 
                         {/* Expired state: no device found after 60s */}
-                        {scanSessionExpired && (
+                        {scanSessionState === 'expired' && (
                             <>
                                 <Text variant="headlineMedium" style={styles.autoTitleBold}>
                                     No devices found
@@ -150,7 +149,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                         )}
 
                         {/* Active session: scanning with countdown */}
-                        {scanSessionActive && (
+                        {scanSessionState === 'active' && (
                             <>
                                 <Text variant="headlineMedium" style={styles.autoTitleBold}>
                                     Press the middle button on your device to connect to it
@@ -181,8 +180,30 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                             </>
                         )}
 
+                        {/* Suspended state: session paused by navigation, will resume on focus */}
+                        {scanSessionState === 'suspended' && (
+                            <>
+                                <Text variant="headlineMedium" style={styles.autoTitleBold}>
+                                    Search paused
+                                </Text>
+                                <Text variant="bodyMedium" style={styles.subtitleText}>
+                                    The search will resume automatically, or you can start a new search.
+                                </Text>
+                                <Button
+                                    mode="contained"
+                                    icon="magnify"
+                                    onPress={startScanSession}
+                                    style={styles.searchButton}
+                                    contentStyle={styles.searchButtonContent}
+                                    labelStyle={styles.searchButtonLabel}
+                                >
+                                    <Text>New Search</Text>
+                                </Button>
+                            </>
+                        )}
+
                         {/* Initial state: no session started yet */}
-                        {!scanSessionActive && !scanSessionExpired && (
+                        {scanSessionState === 'idle' && (
                             <>
                                 <Text variant="headlineMedium" style={styles.autoTitleBold}>
                                     Press the middle button on your device, then search

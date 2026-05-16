@@ -318,24 +318,88 @@ Used by the main **DeviceDiscoveryScreen** for deployment workflows:
 | Feature | Implementation |
 |---|---|
 | **Session-based** | User presses "Search" → 60-second countdown session |
-| **Scan loop** | `useScanLoop({ active: isActuallyFocused && isReady && scanSessionActive && !isEngineerConsoleActive })` |
-| **Cache flush on start** | `flushBleCache()` + `autoConnect.resetAll()` |
+| **Scan loop** | `useScanLoop({ active: isActuallyFocused && isReady && scanSessionState === 'active' && !isEngineerConsoleActive })` |
+| **Cache flush on NEW start** | `flushBleCache()` + `autoConnect.resetAll()` — only on fresh session, **not** on resume |
 | **Auto-connect** | Strongest-signal device auto-connected via `useAutoConnectStateMachine` |
 | **Signal tracking** | Devices marked `signalLost: true` when not found in scan results |
-| **Stop on blur** | Session **stops entirely** when screen loses focus, drawer opens, or tab changes — user must press "Search" again |
+| **Suspend on blur** | Session **suspends** when screen loses focus; **resumes** automatically on return |
+| **Operation tokens** | Each connection attempt gets a unique `operationId` to prevent stale async cleanup |
+| **Sync readiness** | Waits for initial data sync before concluding "no projects" |
 
-**Session start sequence:**
-1. Reset auto-connect state machine — all devices return to `DISCOVERED` state
+##### Scan Session State Machine
+
+The scan session uses a 4-state lifecycle instead of a boolean flag. This separates "transport capability" from "UI intent":
+
+```
+idle → active → suspended → active  (navigation round-trip)
+                           → expired (60s timeout)
+idle → active → expired              (no device found)
+```
+
+| State | Meaning | Scan Loop | Auto-Connect | Cache Flush |
+|---|---|---|---|---|
+| `idle` | No session started | ❌ | ❌ | N/A |
+| `active` | Scanning with countdown | ✅ | ✅ | Only on fresh start |
+| `suspended` | Screen lost focus mid-session | ❌ | ❌ | ❌ (preserves devices) |
+| `expired` | 60s countdown reached zero | ❌ | ❌ | N/A |
+
+**Session start sequence** (new session from `idle` or `expired`):
+1. `autoConnect.resetAll()` — all devices return to `DISCOVERED` state
 2. `flushBleCache()` — clears stale Redux devices and native BLE cache
-3. Start 60-second countdown timer
+3. `setScanSessionState('active')` + reset countdown to 60s
 4. `useScanLoop` begins burst cycling
 
-**Session stop triggers (any of):**
-- 60-second timer expires
-- Screen loses focus (`isFocused` → `false`)
-- Drawer opens (`isDrawerOpen` → `true`)
-- Tab changes (`isActiveTab` → `false`)
-- User cancels
+**Suspend** (screen loses focus during `active`):
+1. `setScanSessionState('suspended')` — countdown pauses
+2. `autoConnect.suspend()` — `DISCOVERED`/`ROUTING_PENDING` → `SUSPENDED`
+3. `stopScan()` — halt BLE transport
+4. Discovered devices and RSSI data preserved in Redux
+
+**Resume** (screen regains focus during `suspended`):
+1. `setScanSessionState('active')` — countdown resumes from where it paused
+2. `autoConnect.resume()` — `SUSPENDED` → `DISCOVERED`
+3. `useScanLoop` restarts burst cycling — **no cache flush, no device wipe**
+
+**Expire** (countdown reaches zero during `active`):
+1. `setScanSessionState('expired')`
+2. `stopScan()`
+
+> [!IMPORTANT]
+> Resuming a suspended session does **not** call `flushBleCache()`. Flushing destroys discovered devices, kills RSSI continuity, and forces a full re-scan — all unnecessary for a navigation round-trip where the device is still advertising.
+
+##### Connection Operation Tokens
+
+Each `handleDeviceSelect` call increments an `operationIdRef` counter. The `finally` block only cleans up `processing`/`connectingDevice` if the ref still matches the current operation. This prevents:
+
+- Stale async completions from corrupting state after navigation
+- `processing` remaining `true` when the user returns from a deployment screen
+- Double-connect overlaps from auto-connect firing during an in-flight connection
+
+```typescript
+const currentOp = ++operationIdRef.current
+try {
+    // ... connection + routing logic
+} finally {
+    if (operationIdRef.current === currentOp) {
+        setProcessing(false)
+        setConnectingDevice(null)
+    }
+}
+```
+
+##### Sync Readiness Barrier
+
+Before concluding "no projects" (routing to the `no_projects` dialog), the scanner checks `sync.hasCompletedInitialSync` from Redux. If `false` and `isGlobalSyncing` is `true`, it awaits `SyncBarrier.waitForInitialSync()` — an event-driven barrier that resolves when the sync slice transitions to `hasCompletedInitialSync: true` or times out after 15 seconds.
+
+This prevents the false "no projects" state that occurs when the user connects to a device faster than the post-login WatermelonDB hydration.
+
+Three semantically distinct routing outcomes:
+
+| Condition | Routing State | User Sees |
+|---|---|---|
+| `projects.length === 0` after sync | `no_projects` | "No projects" + Create button |
+| Never synced + offline | `projects_unavailable_offline` | "Connect to internet" |
+| Sync in progress | Connection log shows "Syncing project data…" | Progress bar |
 
 **File:** [useDeviceDiscovery.ts](../../src/screens/Devices/hooks/useDeviceDiscovery.ts)
 
@@ -352,7 +416,7 @@ Used by the **Engineer Console** for quick device access:
 | **No session timeout** | Scans until a device is found or the dialog is dismissed |
 
 > [!IMPORTANT]
-> Both scan consumers call `flushBleCache()` before starting. This ensures stale Redux devices and native BLE cache entries from prior sessions don't interfere with discovery.
+> Both scan consumers call `flushBleCache()` before starting a **new** session. The Device Discovery scanner does NOT flush on resume from suspension.
 
 **File:** [useEngineerConnect.ts](../../src/hooks/useEngineerConnect.ts)
 
@@ -363,10 +427,23 @@ Manages per-device auto-connect eligibility to prevent reconnect loops:
 ```
 DISCOVERED → ROUTING_PENDING → ACCEPTED
                               → REJECTED → IGNORED_FOR_SESSION
-Any → DISCOVERED  (on screen re-focus / resetAll)
+DISCOVERED → SUSPENDED  (on screen blur via suspend())
+SUSPENDED  → DISCOVERED (on screen focus via resume())
+Any        → DISCOVERED (on resetAll() — new scan session only)
 ```
 
-Only `DISCOVERED` devices are eligible for auto-connect. Once a device transitions to `IGNORED_FOR_SESSION` (via dialog dismiss or explicit disconnect), it stays ignored until the user navigates away and back.
+Only `DISCOVERED` devices are eligible for auto-connect. State preservation rules:
+
+| State | Survives suspend/resume? | Survives resetAll? |
+|---|---|---|
+| `DISCOVERED` | Suspended → Resumed | Reset |
+| `ROUTING_PENDING` | Suspended → Resumed | Reset |
+| `ACCEPTED` | ✅ Preserved | Reset |
+| `IGNORED_FOR_SESSION` | ✅ Preserved | Reset |
+| `SUSPENDED` | N/A (transitional) | Reset |
+
+> [!WARNING]
+> Avoid calling `resetAll()` on focus changes. Use `suspend()`/`resume()` instead. `resetAll()` clears `IGNORED_FOR_SESSION` devices, which can cause reconnect loops if a device was explicitly dismissed in the current session.
 
 **File:** [useAutoConnectStateMachine.ts](../../src/screens/Devices/hooks/useAutoConnectStateMachine.ts)
 
@@ -770,7 +847,10 @@ src/
 ├── redux/slices/
 │   ├── bleLibrarySlice.ts          # Library init state
 │   ├── devicesSlice.ts             # Device state (clearDiscoveredDevices, signalLost)
-│   └── scanningSlice.ts            # isScanning, isEngineerConsoleActive
+│   ├── scanningSlice.ts            # isScanning, isEngineerConsoleActive
+│   └── syncSlice.ts                # isGlobalSyncing, hasCompletedInitialSync
+├── services/
+│   └── SyncBarrier.ts              # Event-driven sync readiness barrier for routing
 └── utils/
     └── ImageReassembler.ts         # Binary → JPEG reconstruction
 ```
@@ -830,7 +910,7 @@ const results = await runCommandPipeline(peripheral, [
 
 ---
 
-*Last Updated: May 16, 2026 — Updated rxRouter to pass hex lines through for MD grid, DFU disconnect suppression via Redux, capture preview getops pre-flight*
+*Last Updated: May 16, 2026 — Scan session state machine (idle/active/suspended/expired), auto-connect suspend/resume, operation tokens, SyncBarrier for project readiness, updated rxRouter hex passthrough, DFU disconnect suppression via Redux, capture preview getops pre-flight*
 
 ---
 
