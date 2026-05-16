@@ -17,7 +17,6 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
     const { setIsOpen, isOpen } = useAppDrawer()
 
     const {
-        handleDisconnect,
         connectingDevice,
         connectionLogs,
         processing,
@@ -43,18 +42,6 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
                 <OfflineIndicator />
-                <View style={styles.headerContainer}>
-                    <IconButton
-                        icon="arrow-left"
-                        iconColor={theme.colors.onSurface}
-                        size={28}
-                        style={styles.menuIcon}
-                        onPress={() => {
-                            // Provide an out if it gets stuck
-                            handleDisconnect(connectingDevice)
-                        }}
-                    />
-                </View>
 
                 <View style={styles.centerContent}>
                     <View style={styles.graphicContainer}>
