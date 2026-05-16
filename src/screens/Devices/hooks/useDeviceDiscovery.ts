@@ -193,6 +193,10 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
             if (processing) return
             const currentOp = ++operationIdRef.current
 
+            // Abort helper — returns true if this operation was cancelled
+            // (e.g. user pressed back arrow, which increments operationIdRef)
+            const isCancelled = () => operationIdRef.current !== currentOp
+
             log(`Device selected: ${device.id}, mode: ${mode}`)
             setProcessing(true)
             setConnectingDevice(device)
@@ -207,6 +211,13 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 const connectedDevice = await connectDevice(device)
                 log(`Connect result: ${connectedDevice.connected}`)
 
+                // ── CHECKPOINT: abort if user cancelled during connect ──
+                if (isCancelled()) {
+                    log('[handleDeviceSelect] Operation cancelled after connect — aborting')
+                    if (connectedDevice.connected) await disconnectDevice(device)
+                    return
+                }
+
                 if (connectedDevice.connected) {
                     log(`Proceeding with mode: ${mode}`)
 
@@ -214,6 +225,12 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                     await addLog('Retrieving device profile...')
                     let dbDevice = await DeviceService.getDeviceByBluetoothId(device.id)
                     log(`DB Device found: ${!!dbDevice}`)
+
+                    if (isCancelled()) {
+                        log('[handleDeviceSelect] Operation cancelled after DB lookup — aborting')
+                        await disconnectDevice(device)
+                        return
+                    }
 
                     if (!dbDevice) {
                         if (currentOrganisation?.id && user?.id) {
@@ -245,6 +262,12 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                         if (dbDevice) {
                             const status = await DeviceService.calculateDeviceStatus(dbDevice.id)
 
+                            if (isCancelled()) {
+                                log('[handleDeviceSelect] Operation cancelled after status check — aborting')
+                                await disconnectDevice(device)
+                                return
+                            }
+
                             if (status === 'deployed') {
                                 const activeDeployment = await DeploymentService.getActiveDeploymentForDeviceId(dbDevice.id)
                                 if (activeDeployment) {
@@ -262,11 +285,23 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                         updateRoutingState('no_access_active_deployment', { projectName })
                                         return
                                     } else {
+                                        if (isCancelled()) {
+                                            log('[handleDeviceSelect] Operation cancelled before end-deployment init — aborting')
+                                            await disconnectDevice(device)
+                                            return
+                                        }
+
                                         // User has access -> Run Checks -> Route to End Deployment
                                         await addLog('Verifying device health...')
                                         const initResult = await runBleStandardInit(connectedDevice, {
                                             onProgress: (step) => addLog(step)
                                         })
+
+                                        if (isCancelled()) {
+                                            log('[handleDeviceSelect] Operation cancelled after init — aborting')
+                                            await disconnectDevice(device)
+                                            return
+                                        }
                                         
                                         const initPayload: InitPayload = {
                                             batteryLevel: null,
@@ -296,13 +331,15 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                             if (user?.id && currentOrganisation?.id) {
 
                                 // ── Sync readiness barrier ──
-                                // If the initial sync hasn't completed yet, wait for it before
-                                // concluding "no projects". This prevents the false-negative
-                                // that occurs when the user connects faster than the post-login
-                                // WatermelonDB hydration.
                                 if (!syncState.hasCompletedInitialSync && syncState.isGlobalSyncing) {
                                     await addLog('Syncing project data…')
                                     await waitForInitialSync()
+                                }
+
+                                if (isCancelled()) {
+                                    log('[handleDeviceSelect] Operation cancelled after sync barrier — aborting')
+                                    await disconnectDevice(device)
+                                    return
                                 }
 
                                 let projects: any[] = []
@@ -336,10 +373,22 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                         targetProjectId = lastEndedDeployment.projectId
                                     }
 
+                                    if (isCancelled()) {
+                                        log('[handleDeviceSelect] Operation cancelled before pre-deployment checks — aborting')
+                                        await disconnectDevice(device)
+                                        return
+                                    }
+
                                     // Pre-deployment Health Checks
                                     const initPayload = await runPreDeploymentChecks(connectedDevice, (step) => {
                                         addLog(step)
                                     })
+
+                                    if (isCancelled()) {
+                                        log('[handleDeviceSelect] Operation cancelled after pre-deployment checks — aborting')
+                                        await disconnectDevice(device)
+                                        return
+                                    }
                                     
                                     await addLog('Ready for deployment')
 
@@ -375,12 +424,24 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                 return
                             }
 
+                            if (isCancelled()) {
+                                log('[handleDeviceSelect] Operation cancelled before end-deployment — aborting')
+                                await disconnectDevice(device)
+                                return
+                            }
+
                             log(`activeDeployment found: ${activeDeployment.id}. Proceeding to End Deployment details.`);
                             
                             await addLog('Verifying device health...')
                             const initResult = await runBleStandardInit(connectedDevice, {
                                 onProgress: (step) => addLog(step)
                             })
+
+                            if (isCancelled()) {
+                                log('[handleDeviceSelect] Operation cancelled after end-deployment init — aborting')
+                                await disconnectDevice(device)
+                                return
+                            }
                             
                             const initPayload: InitPayload = {
                                 batteryLevel: null,
@@ -486,14 +547,20 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const handleDisconnect = useCallback(async (device: ExtendedPeripheral) => {
         log(`Disconnecting from ${device.id}`)
 
+        // Cancel any in-flight handleDeviceSelect — the incremented ref
+        // causes isCancelled() checks to return true, aborting the zombie flow
+        operationIdRef.current++
+
         setConnectingDevice(null)
         setConnectionLogs([])
         setProcessing(false)
 
         await disconnectDevice(device)
 
-        // Mark device as IGNORED_FOR_SESSION after explicit disconnect
-        autoConnect.transition(device.id, 'IGNORED_FOR_SESSION')
+        // Use resetDevice (not IGNORED_FOR_SESSION) — user pressed back
+        // because they want to retry, not because they want to ignore the device.
+        // IGNORED_FOR_SESSION is reserved for dialog-driven rejections.
+        autoConnect.resetDevice(device.id)
     }, [disconnectDevice, autoConnect])
 
     return {
