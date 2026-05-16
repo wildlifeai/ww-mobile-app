@@ -107,7 +107,7 @@ export const TutorialScreen = () => {
 
     const onScroll = Animated.event(
         [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-        { useNativeDriver: false },
+        { useNativeDriver: true },
     )
 
     const onMomentumScrollEnd = useCallback(
@@ -152,7 +152,7 @@ export const TutorialScreen = () => {
                 <View style={[styles.slide, { width: screenWidth }]}>
                     {/* Title above the screenshot */}
                     <WWText style={[styles.title, { color: colors.onBackground }]}>
-                        <Text>{item.title}</Text>
+                        {item.title}
                     </WWText>
 
                     {/* Phone frame(s) */}
@@ -177,7 +177,7 @@ export const TutorialScreen = () => {
                             { color: colors.onSurfaceVariant },
                         ]}
                     >
-                        <Text>{item.description}</Text>
+                        {item.description}
                     </WWText>
                 </View>
             )
