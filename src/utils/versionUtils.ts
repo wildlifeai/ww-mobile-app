@@ -5,19 +5,19 @@
  * - "01.05.01" → "1.5.1"
  */
 export const convertBleToSemanticVersion = (bleVersion: string): string => {
-    const parts = bleVersion.split('.')
-    if (parts.length === 1 && parts[0] === '0') return '0.0.0' // Handle "0" case
-    if (parts.length !== 3) return bleVersion
+    // Attempt to match the first pattern that looks like a version number (e.g., 00.30.03 or 1.2.3)
+    const match = bleVersion.match(/(\d+)\.(\d+)\.(\d+)/)
+    
+    if (match) {
+        const major = parseInt(match[1], 10)
+        const minor = parseInt(match[2], 10)
+        const build = parseInt(match[3], 10)
+        return `${major}.${minor}.${build}`
+    }
 
-    // Remove leading zeros from each part
-    const parsedMajor = parseInt(parts[0], 10)
-    const parsedMinor = parseInt(parts[1], 10)
-    const parsedBuild = parseInt(parts[2], 10)
+    // Handle "0" case or other fallback
+    if (bleVersion === '0') return '0.0.0'
 
-    const major = isNaN(parsedMajor) ? 0 : parsedMajor
-    const minor = isNaN(parsedMinor) ? 0 : parsedMinor
-    const build = isNaN(parsedBuild) ? 0 : parsedBuild
-
-    return `${major}.${minor}.${build}`
+    return bleVersion
 }
 

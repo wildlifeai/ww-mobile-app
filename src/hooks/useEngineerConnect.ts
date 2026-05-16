@@ -37,6 +37,7 @@ export const useEngineerConnect = () => {
     // ── Shared scan loop ──
     const { flushBleCache } = useScanLoop({
         active: dialogState === 'scanning' && !isConnectingRef.current,
+        scanDfu: true,
     })
 
     // Start the continuous scan flow
@@ -74,6 +75,19 @@ export const useEngineerConnect = () => {
     // Connect to a selected device and navigate
     const selectDevice = useCallback(async (device: ExtendedPeripheral) => {
         if (hasNavigatedRef.current) return // Prevent re-entry
+
+        // Handle DFU recovery interception
+        if (device.name?.includes('DfuTarg')) {
+            log(`[EngineerConnect] DFU Device selected, routing directly to FirmwareUpdateScreen`)
+            hasNavigatedRef.current = true
+            setDialogState('idle')
+            setConnectingDevice(null)
+            dispatch(setEngineerConsoleActive(false))
+            stopScan()
+            navigation.navigate('FirmwareUpdateScreen', { deviceId: device.id, target: 'ble' })
+            return
+        }
+
         setDialogState('connecting')
         setConnectingDevice(device)
         log(`[EngineerConnect] Connecting to ${device.name || device.id}`)
@@ -101,7 +115,7 @@ export const useEngineerConnect = () => {
             setDialogState('scanning')
             setConnectingDevice(null)
         }
-    }, [connectDevice, navigation, dispatch])
+    }, [connectDevice, navigation, dispatch, stopScan])
 
     // Reset state when dialog is dismissed / user cancels
     const reset = useCallback(() => {

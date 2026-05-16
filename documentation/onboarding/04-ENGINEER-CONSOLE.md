@@ -15,6 +15,16 @@ The Engineer Console is the developer's direct interface to the Wildlife Watcher
 
 The Engineer Console is accessible from the side drawer at any time, independent of the Scanner tab.
 
+### DFU Recovery (Device Firmware Update)
+
+If a device becomes stuck in Nordic DFU mode (advertising as `DfuTarg` with the `fe59` service UUID), it will be **invisible** to the normal Scanner tab to prevent users from accidentally interrupting operations. 
+
+To rescue a device in DFU mode:
+1. Open the Engineer Console.
+2. The Engineer Console scanner automatically includes the DFU service UUID in its scan.
+3. When the `DfuTarg` device is discovered, the Engineer Console will immediately intercept it and route you to the **DFU Firmware Update** screen.
+4. From there, you can select a firmware ZIP file from your phone and flash the device back to a working state.
+
 ---
 
 ## BLE Command Reference

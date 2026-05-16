@@ -130,7 +130,7 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 | 2 | AI Model Sync | Compares device model (ops[14]/ops[15]) vs project target. If mismatched: downloads model → transfers via BLE → `erasemodel` → `loadmodel` |
 | 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
-| 5 | Reset OPs | `pipeline.resetOps()` — diff-based reset of non-configure OPs to `FACTORY_DEFAULTS`. Skips OPs that `configureDevice()` will immediately set. |
+| 5 | Reset to Defaults | `pipeline.resetOps()` calls `executeResetToDefaults()` — shared workflow that intelligently resets parameters, skips tracking counters, and clears AI models. |
 | 6 | Configure Device | `pipeline.configureDevice()` — applies [capture method OPs](./04-ENGINEER-CONSOLE.md#capture-method-op-mapping), deployment ID, and GPS |
 | 7 | Live Monitor | Transitions to `DeploymentMonitorView` (remains connected) |
 | 8 | Disconnect | User initiates manual disconnect (`dis`) |
@@ -138,16 +138,15 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 > [!NOTE]
 > **On initial screen mount**, `resetOps` also runs silently once to clear any leftover MD test state (`TEST_MODE_BITS`, extended DPD, etc.) before the user even fills the form.
 
-### OP Factory Reset (`pipeline.resetOps`)
+### OP Factory Reset (`pipeline.resetOps` / `executeResetToDefaults`)
 
-Before applying deployment-specific configuration, the pipeline resets operational parameters that are NOT managed by `configureDevice()`:
+Before applying deployment-specific configuration, the pipeline resets the device using the shared `RESET_TO_DEFAULTS` workflow (`executeResetToDefaults`). This is the exact same logic used by the Engineer Console's manual reset:
 
 1. `AI getop -1` — [bulk fetch](./04-ENGINEER-CONSOLE.md#op-bulk-fetch-optimization-ai-getop--1) current OPs (also wakes device from DPD)
-2. Diff against `FACTORY_DEFAULTS` — only writes values that differ
-3. **Skips** OPs 7, 8, 10, 11, 17, 19, 20 (these will be set by `configureDevice()`)
-4. **Skips** `setdid` and `setgps` (also handled by `configureDevice()`)
-
-This optimization eliminates up to 9 redundant BLE round trips per deployment.
+2. **Skips Tracking Counters** — ignores OPs like `NUM_PICTURES`, `NUM_NN_ANALYSES`, etc., so device lifetime history is preserved
+3. **Erases AI Model** — automatically sends `erasemodel` if a model is currently loaded
+4. Diff against `FACTORY_DEFAULTS` — only writes values that differ to save BLE round trips
+5. Clears Deployment ID and zeroizes GPS natively
 
 ### Device Configuration (`useDeploymentConfiguration`)
 

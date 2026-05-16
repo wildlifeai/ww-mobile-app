@@ -5,7 +5,7 @@ import { Platform } from "react-native"
 import BleManager from "react-native-ble-manager"
 import { Peripheral } from "react-native-ble-manager"
 
-import { BLE_SERVICE_UUID } from "../utils/constants"
+import { BLE_SERVICE_UUID, BLE_DFU_SERVICE_UUID } from "../utils/constants"
 import {
 	invokeWithTimeout,
 	isOurDevice
@@ -34,7 +34,7 @@ export type WriteData = [CommandNames, CommandConstructOptions]
 
 export type ReturnType = {
 	isBleConnecting: boolean | undefined
-	startScan: (length?: number) => void
+	startScan: (length?: number, scanDfu?: boolean) => void
 	stopScan: () => Promise<void>
 	connectDevice: (
 		peripheral: ExtendedPeripheral,
@@ -67,7 +67,7 @@ export const useBle = (): ReturnType => {
 	}, [])
 
 	const startScan = useCallback(
-		async (length: number = 6) => {
+		async (length: number = 6, scanDfu: boolean = false) => {
 			if (!initialized) return
 
 			try {
@@ -77,7 +77,8 @@ export const useBle = (): ReturnType => {
 				pingsPause(true)
 				// Use specific service UUID to avoid Android throttling wide-open scans
 				// Force Android into SCAN_MODE_LOW_LATENCY (2) to minimize advertisement drop rates
-				await BleManager.scan([BLE_SERVICE_UUID], length, true, { scanMode: 2, matchMode: 1 })
+				const serviceUuids = scanDfu ? [BLE_SERVICE_UUID, BLE_DFU_SERVICE_UUID] : [BLE_SERVICE_UUID]
+				await BleManager.scan(serviceUuids, length, true, { scanMode: 2, matchMode: 1 })
 				// log("Scan started")
 				dispatch(scanStart())
 			} catch (e: any) {

@@ -63,6 +63,8 @@ export const FirmwareUpdateScreen = () => {
             .catch(err => logWarn('[FW Update Screen] Firmware sync failed:', err))
     }, [target])
 
+    const isDfuMode = !!device?.name?.includes('DfuTarg')
+
     const title = TARGET_TITLES[target]
     const description = TARGET_DESCRIPTIONS[target]
 
@@ -94,8 +96,8 @@ export const FirmwareUpdateScreen = () => {
                                 Battery
                             </WWText>
                             <WWText variant="bodyMedium" style={{ color: isBatteryLow ? colors.error : colors.onSurfaceVariant }}>
-                                {batteryLevel !== null ? `${batteryLevel}%` : '—'}
-                                {isBatteryLow ? ' ⚠️ Low' : batteryLevel !== null ? ' ✓' : ''}
+                                {isDfuMode ? 'N/A (DFU)' : (batteryLevel !== null ? `${batteryLevel}%` : '—')}
+                                {isBatteryLow ? ' ⚠️ Low' : (batteryLevel !== null && !isDfuMode ? ' ✓' : '')}
                             </WWText>
                         </View>
 
@@ -105,7 +107,7 @@ export const FirmwareUpdateScreen = () => {
                                 Current Version
                             </WWText>
                             <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1, textAlign: 'right' }}>
-                                {previousVersion || (isPreflightDone ? 'Unknown' : '…')}
+                                {isDfuMode ? 'N/A (DFU)' : (previousVersion || (isPreflightDone ? 'Unknown' : '…'))}
                             </WWText>
                         </View>
 

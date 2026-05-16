@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Modal, KeyboardAvoidingView, Platform, TextInput } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, TextInput } from 'react-native'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useExtendedTheme } from '../../../theme'
@@ -10,12 +10,14 @@ import { LiveActivityLog } from './LiveActivityLog'
 interface Props {
   device: ExtendedPeripheral | null
   captureMethodId?: number | null
+  deploymentStartTime?: Date | string | null
   onContinueMonitoring: () => void
   onStopMonitoring: (notes: string) => void
   isStoppingMonitoring?: boolean
 }
 
 const formatTime = (ms: number) => {
+  if (ms < 0) ms = 0
   const totalSeconds = Math.floor(ms / 1000)
   const hours = Math.floor(totalSeconds / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
@@ -30,34 +32,79 @@ const formatTime = (ms: number) => {
 export const DeploymentMonitorView: React.FC<Props> = ({
   device,
   captureMethodId,
+  deploymentStartTime,
   onContinueMonitoring,
   onStopMonitoring,
   isStoppingMonitoring,
 }) => {
   const { colors } = useExtendedTheme()
   const { bottom } = useSafeAreaInsets()
-  const { stats } = useDeploymentMonitor(device)
+  const { stats } = useDeploymentMonitor(device, deploymentStartTime)
 
-  const [stopModalVisible, setStopModalVisible] = useState(false)
+  const [isEnteringNotes, setIsEnteringNotes] = useState(false)
   const [endNotes, setEndNotes] = useState('')
 
   const showMotion = captureMethodId === 1 || captureMethodId === 3
   const showTimelapse = captureMethodId === 2 || captureMethodId === 3
 
   const handleStopPress = useCallback(() => {
-    setStopModalVisible(true)
+    setIsEnteringNotes(true)
   }, [])
 
   const handleStopCancel = useCallback(() => {
-    setStopModalVisible(false)
+    setIsEnteringNotes(false)
     setEndNotes('')
   }, [])
 
   const handleStopConfirm = useCallback(() => {
-    setStopModalVisible(false)
+    setIsEnteringNotes(false)
     onStopMonitoring(endNotes)
     setEndNotes('')
   }, [endNotes, onStopMonitoring])
+
+  if (isEnteringNotes) {
+    return (
+      <KeyboardAvoidingView 
+        style={[styles.container, { backgroundColor: colors.background }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.notesScrollContainer}>
+          <Text style={[styles.notesPageTitle, { color: colors.onSurface }]}>Stop Monitoring</Text>
+          <Text style={[styles.notesPageSubtitle, { color: colors.onSurfaceVariant }]}>
+            Please provide any notes about this deployment before stopping it.
+          </Text>
+
+          <Text style={[styles.notesPageLabel, { color: colors.onSurface }]}>Deployment Notes</Text>
+          <TextInput
+            placeholder="e.g. SD card full, Battery low, Device damaged..."
+            placeholderTextColor={colors.onSurfaceVariant}
+            multiline
+            textAlignVertical="top"
+            value={endNotes}
+            onChangeText={setEndNotes}
+            style={[styles.notesPageInput, { color: colors.onSurface, borderColor: colors.outline, backgroundColor: colors.surface }]}
+          />
+        </View>
+        <View style={[styles.notesPageFooter, { paddingBottom: bottom + 16, borderTopColor: colors.surfaceVariant }]}>
+          <TouchableOpacity
+            style={[styles.notesCancelBtn, { borderColor: colors.outline }]}
+            onPress={handleStopCancel}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.notesCancelText, { color: colors.onSurface }]}>Cancel</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.notesStopBtn, { backgroundColor: colors.error, borderColor: colors.error }]}
+            onPress={handleStopConfirm}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.notesStopText, { color: '#FFFFFF' }]}>Confirm Stop</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    )
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -130,56 +177,6 @@ export const DeploymentMonitorView: React.FC<Props> = ({
           </Text>
         </TouchableOpacity>
       </View>
-
-      {/* Stop Monitoring Confirmation Modal */}
-      <Modal
-        visible={stopModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={handleStopCancel}
-      >
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.onSurface }]}>Stop Monitoring</Text>
-            <Text style={[styles.modalSubtitle, { color: colors.onSurfaceVariant }]}>
-              Are you sure you want to stop this device from monitoring?
-            </Text>
-
-            <Text style={[styles.modalNotesLabel, { color: colors.onSurface }]}>Notes</Text>
-            <TextInput
-              placeholder="e.g. SD card full, Battery low, Device damaged..."
-              placeholderTextColor={colors.onSurfaceVariant}
-              multiline
-              numberOfLines={8}
-              textAlignVertical="top"
-              value={endNotes}
-              onChangeText={setEndNotes}
-              style={[styles.modalInput, { color: colors.onSurface, borderColor: colors.outline, backgroundColor: colors.background }]}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalCancelBtn, { borderColor: colors.outline }]}
-                onPress={handleStopCancel}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.modalCancelText, { color: colors.onSurface }]}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalStopBtn, { borderColor: colors.outline }]}
-                onPress={handleStopConfirm}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.modalStopText, { color: colors.error }]}>Stop Monitoring</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
     </View>
   )
 }
@@ -266,68 +263,64 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  // Modal styles
-  modalOverlay: {
+  // Notes Page Styles
+  notesScrollContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    paddingTop: 24,
   },
-  modalContent: {
-    borderRadius: 16,
-    padding: 28,
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 22,
+  notesPageTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
   },
-  modalSubtitle: {
-    fontSize: 15,
-    marginBottom: 20,
-    lineHeight: 22,
+  notesPageSubtitle: {
+    fontSize: 16,
+    marginBottom: 24,
+    lineHeight: 24,
   },
-  modalNotesLabel: {
-    fontSize: 15,
+  notesPageLabel: {
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  modalInput: {
-    minHeight: 160,
+  notesPageInput: {
+    flex: 1,
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    lineHeight: 22,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 24,
   },
-  modalButtons: {
+  notesPageFooter: {
     flexDirection: 'row',
+    padding: 16,
+    borderTopWidth: 1,
     gap: 12,
-    marginTop: 20,
   },
-  modalCancelBtn: {
+  notesCancelBtn: {
     flex: 1,
     borderWidth: 1,
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalCancelText: {
-    fontSize: 15,
+  notesCancelText: {
+    fontSize: 16,
     fontWeight: '600',
   },
-  modalStopBtn: {
+  notesStopBtn: {
     flex: 1,
     borderWidth: 1,
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalStopText: {
-    fontSize: 15,
+  notesStopText: {
+    fontSize: 16,
     fontWeight: '600',
   },
 })

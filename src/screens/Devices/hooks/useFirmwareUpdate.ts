@@ -249,7 +249,10 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     // ── Pre-flight: run on mount ───────────────────────────────────
 
     useEffect(() => {
-        if (!device?.connected) {
+        const isDfuMode = !!device?.name?.includes('DfuTarg')
+
+        // Normal devices must be connected for preflight. DFU devices can skip this requirement.
+        if (!device?.connected && !isDfuMode) {
             preflightDoneRef.current = false
             return
         }
@@ -261,25 +264,30 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         let cancelled = false
 
         const run = async () => {
-            const session = createBleSession(device)
-            try {
-                // Battery
-                const batt = await session.execute(() => commandRegistry.battery())
-                if (!cancelled) setBatteryLevel(batt)
-                log(`[FW Update] Battery: ${batt}%`)
-            } catch (e) {
-                logWarn('[FW Update] Battery query failed:', e)
-            }
+            // Only perform BLE command queries if it's NOT a DFU device
+            if (!isDfuMode) {
+                const session = createBleSession(device!)
+                try {
+                    // Battery
+                    const batt = await session.execute(() => commandRegistry.battery())
+                    if (!cancelled) setBatteryLevel(batt)
+                    log(`[FW Update] Battery: ${batt}%`)
+                } catch (e) {
+                    logWarn('[FW Update] Battery query failed:', e)
+                }
 
-            try {
-                // Current version
-                const ver = target === 'ble'
-                    ? await session.execute(() => commandRegistry.version())
-                    : await session.execute(() => commandRegistry.aiver())
-                if (!cancelled) setPreviousVersion(ver)
-                log(`[FW Update] Current ${target} version: ${ver}`)
-            } catch (e) {
-                logWarn('[FW Update] Version query failed:', e)
+                try {
+                    // Current version
+                    const ver = target === 'ble'
+                        ? await session.execute(() => commandRegistry.version())
+                        : await session.execute(() => commandRegistry.aiver())
+                    if (!cancelled) setPreviousVersion(ver)
+                    log(`[FW Update] Current ${target} version: ${ver}`)
+                } catch (e) {
+                    logWarn('[FW Update] Version query failed:', e)
+                }
+            } else {
+                log('[FW Update] Device is in DFU mode. Skipping battery/version checks.')
             }
 
             // Latest available firmware from local DB
@@ -296,7 +304,7 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         run()
         return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [device?.connected, isUpdating, target])
+    }, [device?.connected, device?.name, isUpdating, target])
 
     // ── Graceful Disconnect Fallback ───────────────────────────────
     
@@ -375,24 +383,29 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         })
         appendLog(`Downloaded: ${latestFirmware.version}`)
 
-        // 2. Enter DFU mode
-        advancePhase('entering_dfu')
-        appendLog('Switching to DFU mode...')
+        const isDfuMode = !!device?.name?.includes('DfuTarg')
+        let bootloaderAddr = device.id
 
-        if (device.connected) {
-            try {
-                const session = createBleSession(device)
-                await session.execute(() => commandRegistry.dfu())
-                await new Promise(r => setTimeout(r, 500))
+        // 2. Enter DFU mode (skip if already in DFU)
+        if (!isDfuMode) {
+            advancePhase('entering_dfu')
+            appendLog('Switching to DFU mode...')
+
+            if (device.connected) {
                 try {
-                    const disSession = createBleSession(device)
-                    await disSession.execute(() => commandRegistry.disconnect())
-                } catch (_e) { /* expected */ } finally {
-                    await disconnectDevice(device)
+                    const session = createBleSession(device)
+                    await session.execute(() => commandRegistry.dfu())
+                    await new Promise(r => setTimeout(r, 500))
+                    try {
+                        const disSession = createBleSession(device)
+                        await disSession.execute(() => commandRegistry.disconnect())
+                    } catch (_e) { /* expected */ } finally {
+                        await disconnectDevice(device)
+                    }
+                    await new Promise(r => setTimeout(r, 5000))
+                } catch (e) {
+                    logWarn('[FW Update] DFU command error (may be expected):', e)
                 }
-                await new Promise(r => setTimeout(r, 5000))
-            } catch (e) {
-                logWarn('[FW Update] DFU command error (may be expected):', e)
             }
         }
 
@@ -403,11 +416,14 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             } catch (_e) { /* non-fatal */ }
         }
 
-        // 4. Scan for bootloader
-        advancePhase('scanning')
-        appendLog('Searching for bootloader...')
-        const bootloaderAddr = await scanForBootloader(10000)
-        if (!bootloaderAddr) throw new Error('Bootloader not found. Make sure the device is nearby.')
+        // 4. Scan for bootloader (skip if already in DFU)
+        if (!isDfuMode) {
+            advancePhase('scanning')
+            appendLog('Searching for bootloader...')
+            const scannedAddr = await scanForBootloader(10000)
+            if (!scannedAddr) throw new Error('Bootloader not found. Make sure the device is nearby.')
+            bootloaderAddr = scannedAddr
+        }
 
         appendLog(`Found bootloader: ${bootloaderAddr}`)
 

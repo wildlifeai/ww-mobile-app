@@ -506,6 +506,7 @@ export const useStartDeployment = ({
                 cameraImagePaths: [],
             })
             deploymentIdRef.current = newDeployment.id
+            setDeploymentStartTime(newDeployment.deploymentStart || new Date())
             progress.addLog(`Deployment created: ${newDeployment.id.substring(0, 8)}...`)
 
             // 6. Reset OPs to factory defaults before applying deployment config
@@ -620,6 +621,9 @@ export const useStartDeployment = ({
 
 
 
+    // Keep track of start time when deployment is created
+    const [deploymentStartTime, setDeploymentStartTime] = useState<Date | null>(null)
+
     return {
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
         device, bleDevice, isInitializing, initProgress, initStep, initErrors,
@@ -627,6 +631,7 @@ export const useStartDeployment = ({
         finishLogs: progress.finishLogs, isFinishing: progress.isFinishing,
         isStartSuccess: progress.isSuccess,
         isMonitoring: monitoring.isMonitoring,
+        deploymentStartTime,
         handleMonitorDisconnect: monitoring.handleMonitorDisconnect,
         handleStopMonitoring: monitoring.handleStopMonitoring,
         isStoppingMonitoring: monitoring.isStoppingMonitoring,

@@ -32,6 +32,8 @@ export const markPeripheralRemoved = (id: string) => {
 interface UseScanLoopOptions {
     /** Whether the scan loop should be actively cycling. */
     active: boolean
+    /** Whether to include DFU devices in the scan (defaults to false) */
+    scanDfu?: boolean
 }
 
 /**
@@ -41,7 +43,7 @@ interface UseScanLoopOptions {
  * while `active` is true. When `active` becomes false the loop stops
  * (any in-flight burst will complete naturally, but no new burst starts).
  */
-export const useScanLoop = ({ active }: UseScanLoopOptions) => {
+export const useScanLoop = ({ active, scanDfu = false }: UseScanLoopOptions) => {
     const { startScan, stopScan } = useBleActions()
     const isScanning = useAppSelector(s => s.scanning.isScanning)
     const dispatch = useAppDispatch()
@@ -57,13 +59,13 @@ export const useScanLoop = ({ active }: UseScanLoopOptions) => {
             if (active && !scanLockRef.current) {
                 scanLockRef.current = true
                 log('[ScanLoop] Starting scan burst')
-                startScan(BURST_DURATION_S)
+                startScan(BURST_DURATION_S, scanDfu)
                 setTimeout(() => { scanLockRef.current = false }, 500)
             }
         }, INTER_BURST_DELAY_MS)
 
         return () => clearTimeout(timer)
-    }, [active, isScanning, startScan])
+    }, [active, isScanning, startScan, scanDfu])
 
     /**
      * Flush stale BLE state before starting a new scan session.

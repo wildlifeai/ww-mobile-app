@@ -330,6 +330,7 @@ export const useDevDeployment = ({
                 cameraImagePaths: [],
             })
             deploymentIdRef.current = newDeployment.id
+            setDeploymentStartTime(newDeployment.deploymentStart || new Date())
             progress.addLog(`Deployment created: ${newDeployment.id.substring(0, 8)}...`)
 
             // 6. Configure device OPs (shared pipeline)
@@ -385,6 +386,9 @@ export const useDevDeployment = ({
         monitoring
     ])
 
+    // Keep track of start time when deployment is created
+    const [deploymentStartTime, setDeploymentStartTime] = useState<Date | null>(null)
+
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)
         if (progress.isSuccess) {
@@ -426,6 +430,7 @@ export const useDevDeployment = ({
         handleBatteryCheck, handleSdCardCheck,
         // Deployment
         submitting,
+        deploymentStartTime,
         handleStartDeployment,
         // Monitoring (from shared hook)
         isMonitoring: monitoring.isMonitoring,

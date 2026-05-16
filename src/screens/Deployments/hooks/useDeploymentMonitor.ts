@@ -23,7 +23,7 @@ interface MonitorStats {
 const MAX_LOG_ENTRIES = 200
 const IMAGE_COUNT_POLL_INTERVAL_MS = 60000 // Poll every 60 seconds — frequent polling wakes AI processor from DPD and resets HM0360 MD
 
-export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
+export const useDeploymentMonitor = (device: ExtendedPeripheral | null, deploymentStartTime?: Date | string | null) => {
     const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([])
     const [stats, setStats] = useState<MonitorStats>({
         photoCount: 0,
@@ -33,7 +33,18 @@ export const useDeploymentMonitor = (device: ExtendedPeripheral | null) => {
         deviceImageCount: null,
     })
 
-    const startTimeRef = useRef<number>(Date.now())
+    const startTimeRef = useRef<number>(
+        deploymentStartTime 
+            ? new Date(deploymentStartTime).getTime() 
+            : Date.now()
+    )
+
+    // Update ref if deploymentStartTime changes
+    useEffect(() => {
+        if (deploymentStartTime) {
+            startTimeRef.current = new Date(deploymentStartTime).getTime()
+        }
+    }, [deploymentStartTime])
 
     // 1. Poll IMAGES_COUNT from device periodically
     useEffect(() => {

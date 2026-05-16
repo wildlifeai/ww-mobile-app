@@ -71,7 +71,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                 }
                 return -1
             })
-            .filter((device) => !device.signalLost)
+            .filter((device) => !device.signalLost && !device.name?.includes('DfuTarg'))
     }, [devices])
 
     const isAnyDeviceConnecting = useMemo(() => {
@@ -315,6 +315,8 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                             }
                                         }
 
+                                        autoConnect.transition(device.id, 'ACCEPTED')
+
                                         ;(navigation as any).navigate('StopMonitoringDetailsStep', {
                                             deploymentId: activeDeployment.id,
                                             deviceId: dbDevice.id,
@@ -389,9 +391,10 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                         await disconnectDevice(device)
                                         return
                                     }
-                                    
                                     await addLog('Ready for deployment')
 
+                                    autoConnect.transition(device.id, 'ACCEPTED')
+                                    
                                     // Route directly to Start Deployment
                                     ;(navigation as any).navigate('StartMonitoringDetailsStep', {
                                         projectId: targetProjectId,
@@ -454,6 +457,8 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                     deviceHealth: initResult.errors?.deviceHealth || []
                                 }
                             }
+
+                            autoConnect.transition(device.id, 'ACCEPTED')
 
                             ;(navigation as any).navigate('StopMonitoringDetailsStep', {
                                 deploymentId: activeDeployment.id,

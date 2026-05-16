@@ -52,7 +52,7 @@ export const Settings = () => {
 	}
 
 	const openPrivacyPolicy = () => {
-		Linking.openURL('https://wildlife.ai/privacy') 
+		Linking.openURL('https://wildlifewatcher.ai/privacy') 
 	}
 
 	const openAccountDeletion = () => {

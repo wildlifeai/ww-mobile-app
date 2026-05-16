@@ -49,6 +49,7 @@ export const StartMonitoringDetailsStep = () => {
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
         isMonitoring, handleMonitorDisconnect, handleStopMonitoring, isStoppingMonitoring,
+        deploymentStartTime,
         // DFU control
         isDfuInProgress,
     } = useStartDeployment({ deviceId, bleDeviceId, projectId, navigation, initPayload })
@@ -132,6 +133,7 @@ export const StartMonitoringDetailsStep = () => {
                 <DeploymentMonitorView
                     device={bleDevice as any}
                     captureMethodId={project?.capture_method_id}
+                    deploymentStartTime={deploymentStartTime}
                     onContinueMonitoring={handleMonitorDisconnect}
                     onStopMonitoring={handleStopMonitoring}
                     isStoppingMonitoring={isStoppingMonitoring}

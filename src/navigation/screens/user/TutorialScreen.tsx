@@ -211,7 +211,7 @@ export const TutorialScreen = () => {
             </View>
 
             {/* Carousel */}
-            <FlatList
+            <Animated.FlatList
                 ref={flatListRef}
                 data={TUTORIAL_STEPS}
                 renderItem={renderItem}
