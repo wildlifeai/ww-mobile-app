@@ -6,6 +6,7 @@ export interface InitPayload {
     deviceFirmwareVersion: string | null
     himaxFirmwareVersion: string | null
     bleFirmwareUpdateAvailable: boolean
+    aiProcessorFailed: boolean
     initErrors: { selftest?: string; setUtc?: string; deviceHealth?: string[] }
 }
 

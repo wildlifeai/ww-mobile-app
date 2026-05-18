@@ -85,7 +85,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
     const minutes = Math.floor(scanSecondsRemaining / 60)
     const seconds = scanSecondsRemaining % 60
     const countdownText = `${minutes}:${String(seconds).padStart(2, '0')}`
-    const scanProgress = 1 - (scanSecondsRemaining / 60)
+    const scanProgress = 1 - (scanSecondsRemaining / 30)
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -167,27 +167,6 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                             </>
                         )}
 
-                        {/* Suspended state: session paused by navigation, will resume on focus */}
-                        {scanSessionState === 'suspended' && (
-                            <>
-                                <Text variant="headlineMedium" style={styles.autoTitleBold}>
-                                    Search paused
-                                </Text>
-                                <Text variant="bodyMedium" style={styles.subtitleText}>
-                                    The search will resume automatically, or you can start a new search.
-                                </Text>
-                                <Button
-                                    mode="contained"
-                                    icon="magnify"
-                                    onPress={startScanSession}
-                                    style={styles.searchButton}
-                                    contentStyle={styles.searchButtonContent}
-                                    labelStyle={styles.searchButtonLabel}
-                                >
-                                    <Text>New Search</Text>
-                                </Button>
-                            </>
-                        )}
 
                         {/* Initial state: no session started yet */}
                         {scanSessionState === 'idle' && (
@@ -239,6 +218,7 @@ const styles = StyleSheet.create({
     },
     autoEmptyState: {
         flex: 1,
+        overflow: 'hidden',
     },
     menuIcon: {
         margin: 0,
@@ -252,7 +232,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingBottom: 60,
+        paddingBottom: 40,
         paddingHorizontal: 24,
     },
     connectingTitle: {
@@ -262,10 +242,10 @@ const styles = StyleSheet.create({
     },
     graphicContainer: {
         width: '100%',
-        height: 250,
+        maxHeight: 200,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 40,
+        marginBottom: 20,
     },
     scannerImage: {
         width: '100%',

@@ -223,6 +223,7 @@ export const TutorialScreen = () => {
                 onScroll={onScroll}
                 onMomentumScrollEnd={onMomentumScrollEnd}
                 scrollEventThrottle={16}
+                style={{ flex: 1 }}
                 getItemLayout={(_, index) => ({
                     length: screenWidth,
                     offset: screenWidth * index,

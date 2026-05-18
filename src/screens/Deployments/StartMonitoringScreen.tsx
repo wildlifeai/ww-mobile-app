@@ -37,7 +37,7 @@ export const StartMonitoringDetailsStep = () => {
     // Destructure everything from hook first
     const {
         formState, submitting, project, availableProjects, sensitivityLabel,
-        device, bleDevice, isInitializing, initProgress, initStep, initErrors,
+        device, bleDevice, isInitializing, initProgress, initStep, initErrors, aiProcessorFailed,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         handleImageCaptured,
         handleNotesChange, handleProjectChange,
@@ -76,6 +76,18 @@ export const StartMonitoringDetailsStep = () => {
     const firmwareStatus = useFirmwareStatus({ 
         device: (device || bleDevice) as ExtendedPeripheral | undefined 
     })
+
+    // Re-check firmware status when this screen regains focus
+    // (e.g. after returning from FirmwareUpdateScreen with a successful update)
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            if (bleDevice?.connected) {
+                firmwareStatus.checkStatus()
+            }
+        })
+        return unsubscribe
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [navigation, bleDevice?.connected])
 
     const isAnyFirmwareOutdated = !firmwareStatus.isChecking && (
         firmwareStatus.statuses.ble.isOutdated || 
@@ -170,8 +182,32 @@ export const StartMonitoringDetailsStep = () => {
                     />
                 )}
 
+                {/* AI Processor Failure — Critical Blocker */}
+                {aiProcessorFailed && (
+                    <View style={{ backgroundColor: '#FFEBEE', marginBottom: 16, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#EF5350' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                            <WWIcon source="alert-octagon" size={24} color="#C62828" />
+                            <Text variant="titleSmall" style={{ color: '#C62828', marginLeft: 8, flex: 1, fontWeight: 'bold' }}>
+                                AI Processor Not Responding
+                            </Text>
+                        </View>
+                        <Text variant="bodySmall" style={{ color: '#C62828', marginBottom: 8 }}>
+                            The AI processor (camera module) did not wake up after multiple attempts. The device cannot start monitoring without it. Please go back and try reconnecting to the device.
+                        </Text>
+                        <Button
+                            mode="contained"
+                            buttonColor="#C62828"
+                            textColor="#FFFFFF"
+                            icon="arrow-left"
+                            onPress={() => navigation.goBack()}
+                        >
+                            <Text style={{ color: '#FFFFFF' }}>Back to Scanner</Text>
+                        </Button>
+                    </View>
+                )}
+
                 {/* Firmware Warning Banner */}
-                {isAnyFirmwareOutdated && (
+                {isAnyFirmwareOutdated && !aiProcessorFailed && (
                     <View style={{ backgroundColor: '#FFF3E0', marginBottom: 16, padding: 12, borderRadius: 8 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                             <WWIcon source="alert-circle-outline" size={24} color="#E65100" />
@@ -303,6 +339,7 @@ export const StartMonitoringDetailsStep = () => {
                         mode="contained"
                         onPress={handleStartDeployment}
                         loading={submitting}
+                        disabled={aiProcessorFailed}
                         style={styles.deployButton}
                     >
                         <Text>Start Monitoring</Text>

@@ -99,6 +99,7 @@ export const useStartDeployment = ({
     const [initProgress, _setInitProgress] = useState(1.0)
     const [initStep, _setInitStep] = useState('Complete')
     const [initErrors, setInitErrors] = useState<{ selftest?: string; setUtc?: string; deviceHealth?: string[] }>(initPayload?.initErrors || {})
+    const aiProcessorFailed = initPayload?.aiProcessorFailed ?? false
 
     // Shared progress dialog state
     const progress = useDeploymentProgress()
@@ -427,6 +428,14 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'BLE session not available.')
             return
         }
+        if (aiProcessorFailed) {
+            Alert.alert(
+                'AI Processor Not Responding',
+                'The AI processor did not wake up during pre-deployment checks. The device cannot start monitoring. Please try reconnecting or check the hardware.',
+                [{ text: 'OK' }]
+            )
+            return
+        }
 
         progress.reset('Starting deployment...')
         setSubmitting(true)
@@ -551,7 +560,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total])  
+    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed])  
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)
@@ -626,7 +635,7 @@ export const useStartDeployment = ({
 
     return {
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
-        device, bleDevice, isInitializing, initProgress, initStep, initErrors,
+        device, bleDevice, isInitializing, initProgress, initStep, initErrors, aiProcessorFailed,
         finishProgress: progress.finishProgress, finishStep: progress.finishStep,
         finishLogs: progress.finishLogs, isFinishing: progress.isFinishing,
         isStartSuccess: progress.isSuccess,

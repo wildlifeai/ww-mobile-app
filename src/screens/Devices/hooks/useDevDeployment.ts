@@ -369,11 +369,13 @@ export const useDevDeployment = ({
                 progress.setIsFinishing(false)
                 monitoring.setIsMonitoring(true)
                 isStartDeploymentInProgress.current = false
+                setSubmitting(false)
             }, 1500)
 
         } catch (error) {
             logError('Dev deployment failed:', error)
             progress.setIsFinishing(false)
+            setSubmitting(false)
             Alert.alert('Error', 'Failed to start dev deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }

@@ -21,6 +21,7 @@ export const useDevicePreDeploymentChecks = () => {
             deviceFirmwareVersion: null,
             himaxFirmwareVersion: null,
             bleFirmwareUpdateAvailable: false,
+            aiProcessorFailed: false,
             initErrors: {}
         }
 
@@ -38,7 +39,7 @@ export const useDevicePreDeploymentChecks = () => {
 
         const session = createBleSession(device)
 
-        // 1. Battery Check
+        // 1. Battery Check (BLE-only, no AI processor needed)
         try {
             onProgress('Checking battery...')
             const level = await session.execute(commandRegistry.battery)
@@ -50,26 +51,54 @@ export const useDevicePreDeploymentChecks = () => {
             logWarn('[Pre-Deployment] Battery check failed:', e)
         }
 
-        // 2. SD Card Check
-        try {
-            onProgress('Checking SD card...')
-            const sdStatus = await session.execute(commandRegistry.aiinfo)
-            if (sdStatus.error) {
-                 newErrors.deviceHealth.push('AI Processor check failed or SD card missing')
-            } else if (sdStatus.total !== undefined && sdStatus.total > 0) {
-                payload.sdCardStatus = sdStatus as any
-                const percentFull = ((sdStatus.total - (sdStatus.free || 0)) / sdStatus.total) * 100
-                if (percentFull > 90) {
-                    newErrors.deviceHealth.push(`SD Card is almost full (${percentFull.toFixed(1)}% used)`)
+        // 2. AI Processor Wake-Up Gate
+        // Try to wake the AI processor via aiinfo up to 3 times.
+        // If it never responds, mark aiProcessorFailed and skip all AI commands.
+        const AI_WAKE_MAX_RETRIES = 3
+        const AI_WAKE_RETRY_DELAY_MS = 2000
+        let aiAwake = false
+
+        onProgress('Waking AI processor...')
+        for (let attempt = 1; attempt <= AI_WAKE_MAX_RETRIES; attempt++) {
+            try {
+                log(`[Pre-Deployment] AI wake attempt ${attempt}/${AI_WAKE_MAX_RETRIES}...`)
+                const sdStatus = await session.execute(commandRegistry.aiinfo)
+                // If we get a response (even an error response), the AI is awake
+                if (sdStatus && !sdStatus.error) {
+                    aiAwake = true
+                    // Store SD card data from the successful aiinfo response
+                    if (sdStatus.total !== undefined && sdStatus.total > 0) {
+                        payload.sdCardStatus = sdStatus as any
+                        const percentFull = ((sdStatus.total - (sdStatus.free || 0)) / sdStatus.total) * 100
+                        if (percentFull > 90) {
+                            newErrors.deviceHealth.push(`SD Card is almost full (${percentFull.toFixed(1)}% used)`)
+                        }
+                    } else {
+                        newErrors.deviceHealth.push('No SD Card detected or total space is 0')
+                    }
+                } else if (sdStatus?.error) {
+                    // AI responded but with an error — it IS awake
+                    aiAwake = true
+                    newErrors.deviceHealth.push('AI Processor check failed or SD card missing')
                 }
-            } else {
-                 newErrors.deviceHealth.push('No SD Card detected or total space is 0')
+                break // Got a response, stop retrying
+            } catch (e) {
+                logWarn(`[Pre-Deployment] AI wake attempt ${attempt} failed:`, e)
+                if (attempt < AI_WAKE_MAX_RETRIES) {
+                    onProgress(`AI processor not responding, retrying (${attempt}/${AI_WAKE_MAX_RETRIES})...`)
+                    await new Promise(resolve => setTimeout(resolve, AI_WAKE_RETRY_DELAY_MS))
+                }
             }
-        } catch (e) {
-            logWarn('[Pre-Deployment] SD Card check failed:', e)
         }
 
-        // 3. Firmware Check
+        if (!aiAwake) {
+            logWarn('[Pre-Deployment] AI processor failed to wake after all retries')
+            payload.aiProcessorFailed = true
+            newErrors.deviceHealth.push('AI processor did not respond — device cannot start monitoring')
+            onProgress('AI processor not responding')
+        }
+
+        // 3. Firmware Check (BLE firmware — no AI processor needed)
         try {
             onProgress('Checking firmware...')
             const version = await session.execute(commandRegistry.version)
@@ -84,18 +113,22 @@ export const useDevicePreDeploymentChecks = () => {
             logWarn('[Pre-Deployment] Firmware check failed:', e)
         }
 
-        // 4. Himax (AI Processor) Firmware Check
-        try {
-            onProgress('Checking AI firmware...')
-            const aiVersion = await session.execute(commandRegistry.aiver)
-            payload.himaxFirmwareVersion = aiVersion
-            log(`[Pre-Deployment] Himax firmware: ${aiVersion}`)
-            const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
-            if (latestHimax && aiVersion && !aiVersion.includes(latestHimax.version)) {
-                newErrors.deviceHealth.push(`Newer AI firmware available: ${latestHimax.version}`)
+        // 4. Himax (AI Processor) Firmware Check — SKIP if AI processor is dead
+        if (aiAwake) {
+            try {
+                onProgress('Checking AI firmware...')
+                const aiVersion = await session.execute(commandRegistry.aiver)
+                payload.himaxFirmwareVersion = aiVersion
+                log(`[Pre-Deployment] Himax firmware: ${aiVersion}`)
+                const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
+                if (latestHimax && aiVersion && !aiVersion.includes(latestHimax.version)) {
+                    newErrors.deviceHealth.push(`Newer AI firmware available: ${latestHimax.version}`)
+                }
+            } catch (e) {
+                logWarn('[Pre-Deployment] Himax firmware check failed:', e)
             }
-        } catch (e) {
-            logWarn('[Pre-Deployment] Himax firmware check failed:', e)
+        } else {
+            log('[Pre-Deployment] Skipping AI firmware check — AI processor not responding')
         }
 
         payload.initErrors = newErrors

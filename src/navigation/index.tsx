@@ -287,6 +287,12 @@ export const MainNavigation = () => {
 							options={{ title: "End monitoring" }}
 						/>
 
+						<Stack.Screen
+							name="DevDeploymentTestScreen"
+							component={DevDeploymentTestScreen}
+							options={{ title: "Dev Deployment Test" }}
+						/>
+
 						{__DEV__ && (
 							<>
 								<Stack.Screen
@@ -303,11 +309,6 @@ export const MainNavigation = () => {
 									name="DeveloperSettings"
 									component={DeveloperSettingsScreen}
 									options={{ title: "Developer Settings" }}
-								/>
-								<Stack.Screen
-									name="DevDeploymentTestScreen"
-									component={DevDeploymentTestScreen}
-									options={{ title: "Dev Deployment Test" }}
 								/>
 							</>
 						)}

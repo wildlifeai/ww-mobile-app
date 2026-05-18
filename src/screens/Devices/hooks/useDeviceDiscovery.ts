@@ -32,14 +32,13 @@ type UseDeviceDiscoveryOptions = {
 
 /**
  * Scan session lifecycle:
- *   idle → active → suspended → active  (navigation round-trip)
- *                              → expired (60s timeout)
- *   idle → active → expired              (no device found)
+ *   idle → active → expired (30s timeout or user leaves page)
  *
- * 'suspended' preserves discovered devices and RSSI — no cache flush on resume.
+ * When the user leaves the Scanner tab, the scan session is fully stopped
+ * and transitions to 'expired'. A new search must be started manually.
  * 'idle' and 'expired' require a fresh start with cache flush.
  */
-export type ScanSessionState = 'idle' | 'active' | 'suspended' | 'expired'
+export type ScanSessionState = 'idle' | 'active' | 'expired'
 
 export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const isDrawerOpen = options?.isDrawerOpen ?? false
@@ -91,7 +90,8 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         setScanSessionState(state)
     }, [])
 
-    const [scanSecondsRemaining, setScanSecondsRemaining] = useState(60)
+    const SCAN_DURATION_SECONDS = 30
+    const [scanSecondsRemaining, setScanSecondsRemaining] = useState(SCAN_DURATION_SECONDS)
 
     // ── Operation token for connection cleanup ──
     // Prevents stale async completions from corrupting state after navigation
@@ -127,7 +127,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     // Auto-connect state machine — declared early because startScanSession and handleDeviceSelect use it
     const autoConnect = useAutoConnectStateMachine()
 
-    // Start a NEW 60-second scan session (from idle or expired)
+    // Start a NEW 30-second scan session (always a clean restart)
     const startScanSession = useCallback(async () => {
         autoConnect.resetAll()
 
@@ -135,23 +135,19 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         await flushBleCache()
 
         updateScanSessionState('active')
-        setScanSecondsRemaining(60)
-        log('[Scanner] New scan session started (60s)')
+        setScanSecondsRemaining(SCAN_DURATION_SECONDS)
+        log(`[Scanner] New scan session started (${SCAN_DURATION_SECONDS}s)`)
     }, [autoConnect, flushBleCache, updateScanSessionState])
 
-    // ── Suspend/Resume on focus changes ──
+    // ── Stop scan when user leaves the page ──
     useEffect(() => {
         if (scanSessionStateRef.current === 'active' && !isActuallyFocused) {
-            // Suspend: preserve devices, pause countdown, halt BLE transport
-            updateScanSessionState('suspended')
-            autoConnect.suspend()
+            // Fully stop the scan session — user must start a new search when returning
+            updateScanSessionState('expired')
+            autoConnect.resetAll()
             stopScan()
-            log('[Scanner] Scan session suspended — screen lost focus')
-        } else if (scanSessionStateRef.current === 'suspended' && isActuallyFocused) {
-            // Resume: restart scan loop without flushing cache or wiping devices
-            updateScanSessionState('active')
-            autoConnect.resume()
-            log('[Scanner] Scan session resumed')
+            setScanSecondsRemaining(0)
+            log('[Scanner] Scan session stopped — user left the Scanner page')
         }
     }, [isActuallyFocused, autoConnect, stopScan, updateScanSessionState])
 
@@ -309,6 +305,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                             deviceFirmwareVersion: null,
                                             himaxFirmwareVersion: null,
                                             bleFirmwareUpdateAvailable: false,
+                                            aiProcessorFailed: false,
                                             initErrors: {
                                                 setUtc: initResult.errors?.setUtc,
                                                 deviceHealth: initResult.errors?.deviceHealth || []
@@ -452,6 +449,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                                 deviceFirmwareVersion: null,
                                 himaxFirmwareVersion: null,
                                 bleFirmwareUpdateAvailable: false,
+                                aiProcessorFailed: false,
                                 initErrors: {
                                     setUtc: initResult.errors?.setUtc,
                                     deviceHealth: initResult.errors?.deviceHealth || []
