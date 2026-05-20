@@ -11,7 +11,9 @@ CREATE TABLE firmware (
   location_path text NOT NULL,
   file_size_bytes bigint,
   release_notes text,
-  is_active boolean NOT NULL DEFAULT true
+  is_active boolean NOT NULL DEFAULT true,
+  crc_checksum text,
+  build_date text
 );
 
 -- Unique index for type/version combination (excluding soft-deleted)
@@ -27,6 +29,8 @@ COMMENT ON COLUMN firmware.location_path IS 'Location path in Supabase Storage';
 COMMENT ON COLUMN firmware.file_size_bytes IS 'Size of the firmware file in bytes';
 COMMENT ON COLUMN firmware.release_notes IS 'Release notes for this version';
 COMMENT ON COLUMN firmware.is_active IS 'Whether this firmware version is currently active/recommended';
+COMMENT ON COLUMN firmware.crc_checksum IS 'CRC16-CCITT checksum of the firmware binary (4-char uppercase hex, e.g. A3F2)';
+COMMENT ON COLUMN firmware.build_date IS 'Build date/time extracted from firmware image (used for 8.3 SD card filename)';
 COMMENT ON COLUMN firmware.modified_by IS 'User who last modified this record';
 COMMENT ON COLUMN firmware.deleted_at IS 'Soft delete timestamp - NULL means active';
 
