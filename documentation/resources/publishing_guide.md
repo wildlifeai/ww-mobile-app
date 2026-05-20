@@ -64,7 +64,7 @@ The `eas-build.yml` workflow handles this:
 ### Release Process
 
 1. **Merge `dev` → `main`** (via PR)
-2. **Bump the application version** in the following three files/locations:
+2. **Bump the application version** in the following locations:
    - **`package.json`**: Update the `"version"` field (e.g. `"0.0.53"` -> `"0.0.54"`).
    - **`app.config.ts`**:
      - Increment the Android `versionCode` integer (e.g. `53` -> `54`).
@@ -72,13 +72,23 @@ The `eas-build.yml` workflow handles this:
    
    *Tip: You can use `npm version patch` to update `package.json`, but remember to also manually increment the `versionCode` and `buildNumber` in `app.config.ts`.*
 
-3. **Commit the version bumps**:
+3. **Synchronize Android Native Directory**:
+   > [!IMPORTANT]
+   > Since the `android/` native directory is tracked and committed in git, EAS Build acts as a bare React Native builder. It reads `versionCode` and `versionName` directly from native files (like `android/app/build.gradle`) and ignores `app.config.ts`.
+   >
+   > **You MUST run the Expo prebuild command to sync the version bumps to the native directory before committing**:
+   > ```bash
+   > npx expo prebuild --no-install --platform android
+   > ```
+   > This will update the version code and name in `android/app/build.gradle` and update `expo_runtime_version` in `android/app/src/main/res/values/strings.xml` to match `app.config.ts`.
+
+4. **Commit the version bumps and native changes**:
    ```bash
-   git add package.json app.config.ts
+   git add package.json app.config.ts android/
    git commit -m "chore: bump version to 0.0.54 (build 54)"
    ```
 
-4. **Push and tag**:
+5. **Push and tag**:
    ```bash
    git push origin main
    git tag v0.0.54
