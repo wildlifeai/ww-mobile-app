@@ -92,8 +92,10 @@ export const TutorialScreen = () => {
     const handleExit = useCallback(() => {
         if (pendingTutorial) {
             dispatch(completeTutorial())
-        } else {
+        } else if (navigation.canGoBack()) {
             navigation.goBack()
+        } else {
+            navigation.navigate('Home')
         }
     }, [dispatch, navigation, pendingTutorial])
 

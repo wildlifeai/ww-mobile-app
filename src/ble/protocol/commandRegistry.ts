@@ -195,10 +195,12 @@ export const commandRegistry = {
     'aiinfo',
     () => 'AI info',
     /(?:Label|Serial|drive space)/i,
-    /(?:available|NACK)/i,
+    /(?:available|NACK|Unrecognised|Sleep)/i,
     (lines) => {
       const full = lines.join(' ');
-      if (full.toUpperCase().includes('NACK')) return { error: 'AI NACK' };
+      if (full.toUpperCase().includes('NACK') || full.toUpperCase().includes('UNRECOGNISED') || full.toUpperCase().includes('SLEEP')) {
+        return { error: 'AI NACK' };
+      }
       const totalMatch = full.match(/(\d+)\s*[Kk]\s*total/i);
       const freeMatch = full.match(/(\d+)\s*[Kk]\s*available/i);
       return {
@@ -206,7 +208,7 @@ export const commandRegistry = {
         free: freeMatch ? parseInt(freeMatch[1], 10) : undefined,
       };
     },
-    { timeoutMs: 12000, retryPolicy: { maxRetries: 0 }, failureRegex: /^(?:NACK|AI processor not responding)/i }
+    { timeoutMs: 12000, retryPolicy: { maxRetries: 0 }, failureRegex: /^(?:AI processor not responding)/i }
   ),
   wake: createSingleLineCommand<boolean>(
     'wake',

@@ -596,20 +596,26 @@ export const useStartDeployment = ({
                     setSdCardStatus({ total: sdStatus.totalSpaceMb, free: sdStatus.freeSpaceMb })
                     return
                 } catch (err: any) {
+                    // Try to determine the exact cause by reading selftest status
+                    try {
+                        const statusStr = await bleSession?.execute<string>(commandRegistry.selftest)
+                        const hexBits = extractErrorBits(statusStr)
+                        // eslint-disable-next-line no-bitwise
+                        if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
+                            Alert.alert('No SD Card Detected', 'The device reports no SD card is inserted.', [{ text: 'OK' }])
+                            setSdCardStatus(null)
+                            return
+                        }
+                    } catch (selftestErr) {
+                        logWarn('Selftest check failed during SD card error handling:', selftestErr)
+                    }
+
                     if (err.message.includes('AI NACK')) {
-                         Alert.alert('AI Coprocessor Error', 'The camera module is not responding.', [{ text: 'OK' }])
+                         Alert.alert('SD Card Error', 'The SD card check failed (NACK). Please make sure a formatted SD card is inserted.', [{ text: 'OK' }])
+                         setSdCardStatus(null)
                          return
                     }
-                    // Proceed to selftest fallback block if normal check failed
-                    const statusStr = await bleSession?.execute<string>(commandRegistry.selftest)
-                    const hexBits = extractErrorBits(statusStr)
-                    // eslint-disable-next-line no-bitwise
-                    if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
-                        Alert.alert('No SD Card Detected', 'The device reports no SD card is inserted.', [{ text: 'OK' }])
-                        setSdCardStatus(null)
-                        return
-                    }
-                    throw err; // Re-throw if it wasn't the SD card bit
+                    throw err; // Re-throw if it was some other error (e.g. timeout)
                 }
             }
         } catch (error) {

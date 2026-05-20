@@ -63,17 +63,28 @@ The `eas-build.yml` workflow handles this:
 
 ### Release Process
 
-```bash
-# 1. Merge dev → main (via PR)
-# 2. Bump version
-npm version patch   # or minor / major
+1. **Merge `dev` → `main`** (via PR)
+2. **Bump the application version** in the following three files/locations:
+   - **`package.json`**: Update the `"version"` field (e.g. `"0.0.53"` -> `"0.0.54"`).
+   - **`app.config.ts`**:
+     - Increment the Android `versionCode` integer (e.g. `53` -> `54`).
+     - Increment the iOS `buildNumber` string value (e.g. `"53"` -> `"54"`).
+   
+   *Tip: You can use `npm version patch` to update `package.json`, but remember to also manually increment the `versionCode` and `buildNumber` in `app.config.ts`.*
 
-# 3. Push and tag
-git push origin main
-git tag v1.2.3
-git push origin v1.2.3
-# → GitHub Action builds + submits automatically
-```
+3. **Commit the version bumps**:
+   ```bash
+   git add package.json app.config.ts
+   git commit -m "chore: bump version to 0.0.54 (build 54)"
+   ```
+
+4. **Push and tag**:
+   ```bash
+   git push origin main
+   git tag v0.0.54
+   git push origin v0.0.54
+   # → GitHub Action builds + submits automatically
+   ```
 
 ## Store Tracks
 

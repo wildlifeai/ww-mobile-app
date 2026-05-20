@@ -80,7 +80,11 @@ export const useDevicePreDeploymentChecks = () => {
                 } else if (sdStatus?.error) {
                     // AI responded but with an error — it IS awake
                     aiAwake = true
-                    newErrors.deviceHealth.push('AI Processor check failed or SD card missing')
+                    if (sdStatus.error.includes('NACK')) {
+                        newErrors.deviceHealth.push('No SD Card detected or SD Card check failed')
+                    } else {
+                        newErrors.deviceHealth.push(`AI Processor check failed: ${sdStatus.error}`)
+                    }
                 }
                 break // Got a response, stop retrying
             } catch (e) {
