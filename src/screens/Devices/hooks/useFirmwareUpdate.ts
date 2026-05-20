@@ -480,6 +480,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     const runHimaxUpdate = useCallback(async (source: HimaxFirmwareSource = 'sdcard') => {
         if (!device?.connected) throw new Error('Device disconnected.')
 
+        const session = createBleSession(device)
+
         if (source === 'download') {
             if (!latestFirmware) throw new Error('No firmware available for download. Sync reference data first.')
             
@@ -502,8 +504,10 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             appendLog('Transferring firmware to device SD card...')
             const configBytes = await FirmwareService.readFirmwareAsBytes(localUri)
             
+            let computedCrc: string | undefined;
+
             if (configBytes) {
-                await runFileTransferPipeline(device, {
+                const transferResult = await runFileTransferPipeline(device, {
                     filename: 'OUTPUT.IMG',
                     data: configBytes,
                     abortSignal: abortControllerRef.current?.signal,
@@ -511,17 +515,30 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                         if (!unmountedRef.current) setFileTransferProgress(p)
                     }
                 })
-                appendLog('Transfer complete.')
+                
+                // Convert numeric CRC back to 0xNNNN hex string to match firmware CLI expectations
+                if (transferResult && typeof transferResult.crc === 'number') {
+                    computedCrc = '0x' + transferResult.crc.toString(16).toUpperCase().padStart(4, '0')
+                    appendLog(`Transfer complete. Local CRC: ${computedCrc}`)
+                } else {
+                    appendLog('Transfer complete.')
+                }
             } else {
                 throw new Error('Failed to read firmware bytes')
             }
+
+            advancePhase('sending')
+            appendLog('Sending firmware flash command...')
+
+            await session.execute(() => commandRegistry.aifirmware('output.img', computedCrc))
+        } else {
+            // Source is 'sdcard'
+            advancePhase('sending')
+            appendLog('Sending firmware flash command...')
+
+            // No CRC checked for sdcard flash currently
+            await session.execute(() => commandRegistry.aifirmware('output.img'))
         }
-
-        advancePhase('sending')
-        appendLog('Sending firmware flash command...')
-
-        const session = createBleSession(device)
-        await session.execute(() => commandRegistry.aifirmware('output.img'))
 
         if (unmountedRef.current) return
 

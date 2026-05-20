@@ -223,7 +223,7 @@ export const commandRegistry = {
   ),
   aifirmware: createSingleLineCommand<boolean>(
     'aifirmware',
-    (filename: string) => `AI firmware ${filename}`,
+    (filename: string, crc?: string) => crc ? `AI firmware ${filename} ${crc}` : `AI firmware ${filename}`,
     /Firmware update (OK|FAILED)(?: \(error (-?\d+)\))?/i,
     (match) => {
       if (match[1].toUpperCase() === 'FAILED') {
