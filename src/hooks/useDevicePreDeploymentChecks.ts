@@ -7,6 +7,7 @@ import ReferenceDataService from '../services/ReferenceDataService'
 import { log, logWarn } from '../utils/logger'
 import { convertBleToSemanticVersion } from '../utils/versionUtils'
 import { InitPayload } from '../navigation/types'
+import { executeResetToDefaults } from '../ble/workflows/resetToDefaults'
 
 export const useDevicePreDeploymentChecks = () => {
     const { initialize: runBleStandardInit } = useBleInitialization()
@@ -96,6 +97,20 @@ export const useDevicePreDeploymentChecks = () => {
             payload.aiProcessorFailed = true
             newErrors.deviceHealth.push('AI processor did not respond — device cannot start monitoring')
             onProgress('AI processor not responding')
+        } else {
+            // 2b. Reset operational parameters to factory defaults (pre-flight check/align)
+            try {
+                onProgress('Aligning device parameters...')
+                await executeResetToDefaults(session, {
+                    skipIdentityReset: true,
+                    onProgress: (step) => {
+                        log(`[Pre-Deployment:Reset] ${step}`)
+                    }
+                })
+            } catch (resetErr) {
+                logWarn('[Pre-Deployment] OP reset failed during checks:', resetErr)
+                newErrors.deviceHealth.push('Failed to align device operational parameters')
+            }
         }
 
         // 3. Firmware Check (BLE firmware — no AI processor needed)
