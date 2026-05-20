@@ -50,7 +50,8 @@ export async function syncTime(
 
 export async function resetOps(
     session: BleSession,
-    { addLog, setStep, setProgress }: ProgressCallbacks
+    { addLog, setStep, setProgress }: ProgressCallbacks,
+    currentOps?: string[]
 ): Promise<void> {
     addLog('Resetting operational parameters...')
     setStep('Resetting device...')
@@ -58,6 +59,8 @@ export async function resetOps(
 
     try {
         await executeResetToDefaults(session, {
+            currentOps,
+            skipIdentityReset: true,
             onProgress: (step) => {
                 log(`[ResetOps] ${step}`)
             }
@@ -87,6 +90,7 @@ export async function syncAiModel(
     modelId: string | null | undefined,
     { addLog, setStep, setProgress }: ProgressCallbacks,
     eraseStaleModels: boolean = false,
+    currentOps?: string[]
 ): Promise<void> {
     addLog('Checking AI model...')
     setStep('AI Model...')
@@ -95,7 +99,7 @@ export async function syncAiModel(
     if (modelId) {
         try {
             // Check current model (wakes up the AI processor automatically if not already awake)
-            const ops = await session.execute(() => commandRegistry.getops())
+            const ops = currentOps || await session.execute(() => commandRegistry.getops())
             if (!ops || ops.length < 16) throw new Error('Insufficient operational parameters from device.')
             const currentId = parseInt(ops[14] ?? '0', 10) || 0
             const currentVer = parseInt(ops[15] ?? '0', 10) || 0
@@ -153,7 +157,7 @@ export async function syncAiModel(
     } else if (eraseStaleModels) {
         // No AI model assigned — check if device has a stale model loaded
         try {
-            const ops = await session.execute(() => commandRegistry.getops())
+            const ops = currentOps || await session.execute(() => commandRegistry.getops())
             const currentId = ops && ops.length > 14 ? parseInt(ops[14] ?? '0', 10) || 0 : 0
 
             if (currentId !== 0) {
@@ -177,7 +181,7 @@ export async function syncAiModel(
  */
 export async function configureDevice(
     device: ExtendedPeripheral,
-    startConfigure: (device: ExtendedPeripheral, config: any) => Promise<void>,
+    startConfigure: (device: ExtendedPeripheral, config: any, providedOps?: string[]) => Promise<void>,
     config: {
         deploymentId: string
         captureMethodId: number
@@ -186,6 +190,7 @@ export async function configureDevice(
         gpsLocation?: { latitude: number; longitude: number; altitude?: number | null } | null
     },
     { addLog, setStep, setProgress }: ProgressCallbacks,
+    currentOps?: string[]
 ): Promise<void> {
     addLog('Configuring device settings...')
     setStep('Configuring device...')
@@ -209,7 +214,7 @@ export async function configureDevice(
             longitude: config.gpsLocation.longitude,
             altitude: config.gpsLocation.altitude || 0
         } : undefined
-    })
+    }, currentOps)
 
     addLog('Device configuration successful')
     log('[Deployment] Device configuration successful')

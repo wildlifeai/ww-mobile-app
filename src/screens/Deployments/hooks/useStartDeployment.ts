@@ -124,27 +124,6 @@ export const useStartDeployment = ({
     // Standard BLE initialization plus initialization guard
     // const hasRunInitialization = useRef(false)
     const bleDeviceRef = useRef(bleDevice)
-    const hasRunInitReset = useRef(false)
-
-    // Reset OPs to factory defaults when the screen first mounts with a connected device.
-    // This clears any leftover MD test state (TEST_MODE_BITS, extended DPD, etc.)
-    // before the user configures the deployment.
-    useEffect(() => {
-        if (hasRunInitReset.current) return
-        if (!bleDevice?.connected || !bleSession) return
-
-        hasRunInitReset.current = true
-        log('[Deployment] Running initialization OP reset...')
-
-        const silentCb = {
-            addLog: (msg: string) => log(`[Deployment:InitReset] ${msg}`),
-            setStep: () => {},
-            setProgress: () => {},
-        }
-        pipeline.resetOps(bleSession, silentCb)
-            .then(() => log('[Deployment] Initialization OP reset complete'))
-            .catch(err => logWarn('[Deployment] Initialization OP reset failed (non-critical):', err))
-    }, [bleDevice?.connected, bleSession])
 
     
     // Memoized handlers to prevent infinite loops in child components
@@ -448,9 +427,15 @@ export const useStartDeployment = ({
         }
 
         try {
+            progress.addLog('Retrieving current parameters...')
+            progress.setFinishStep('Reading parameters...')
+            progress.setFinishProgress(0.02)
+            const currentOps = await bleSession.execute(commandRegistry.getops)
+            log(`[Deployment] Pre-flight OPs: ${currentOps.join(' ')}`)
+
             // 1-2. Shared pipeline steps (time sync, AI model)
             await pipeline.syncTime(bleSession, cb)
-            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true)
+            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true, currentOps)
 
             // 4. Gather snapshot data (unique to production deployment)
             progress.addLog('Gathering snapshot data...')
@@ -476,17 +461,19 @@ export const useStartDeployment = ({
                 }
             }
 
-            try {
-                let response = initPayload?.deviceFirmwareVersion
-                if (!response) {
-                    response = await bleSession?.execute(commandRegistry.version)
+            if (bleDevice) {
+                try {
+                    let response = initPayload?.deviceFirmwareVersion
+                    if (!response) {
+                        response = await bleSession?.execute(commandRegistry.version)
+                    }
+                    if (response) {
+                        const resolvedId = await FirmwareService.getFirmwareIdByVersion('ble', response)
+                        if (resolvedId) bleFirmwareId = resolvedId
+                    }
+                } catch (e) {
+                    logWarn('Failed to resolve firmware ID:', e)
                 }
-                if (response) {
-                    const resolvedId = await FirmwareService.getFirmwareIdByVersion('ble', response)
-                    if (resolvedId) bleFirmwareId = resolvedId
-                }
-            } catch (e) {
-                logWarn('Failed to resolve firmware ID:', e)
             }
 
             // 5. Create deployment record
@@ -523,7 +510,7 @@ export const useStartDeployment = ({
 
             // 6. Reset OPs to factory defaults before applying deployment config
             try {
-                await pipeline.resetOps(bleSession, cb)
+                await pipeline.resetOps(bleSession, cb, currentOps)
             } catch (resetError) {
                 logWarn('[Deployment] OP reset failed, continuing with configuration:', resetError)
                 progress.addLog('OP reset failed — continuing with configuration')
@@ -537,7 +524,7 @@ export const useStartDeployment = ({
                     timelapseInterval: project.timelapse_interval_seconds || 300,
                     recordGpsInImages: project.record_gps_in_images || false,
                     gpsLocation,
-                }, cb)
+                }, cb, currentOps)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)
                 progress.addLog('Configuration failed — aborting deployment')

@@ -6,6 +6,8 @@ import { FACTORY_DEFAULTS, OP_PARAMETER } from '../../hooks/useDeviceSettings'
 export interface ResetToDefaultsOptions {
     onProgress?: (step: string, progress: number) => void
     isCancelled?: () => boolean
+    currentOps?: string[] | null
+    skipIdentityReset?: boolean
 }
 
 /**
@@ -25,12 +27,16 @@ export async function executeResetToDefaults(
     // Step 1: Read current OPs (this also wakes the device from DPD)
     onProgress?.('Reading current parameters...', 0.1)
     log('[ResetDefaults] Reading current operational parameters...')
-    let currentOps: string[] | null = null
-    try {
-        currentOps = await session.execute(commandRegistry.getops)
-        log(`[ResetDefaults] Current OPs: ${currentOps?.join(' ')}`)
-    } catch (err) {
-        logWarn('[ResetDefaults] Could not read current OPs, will write all defaults', err)
+    let currentOps: string[] | null = options?.currentOps !== undefined ? options.currentOps : null
+    if (options?.currentOps === undefined) {
+        try {
+            currentOps = await session.execute(commandRegistry.getops)
+            log(`[ResetDefaults] Current OPs: ${currentOps?.join(' ')}`)
+        } catch (err) {
+            logWarn('[ResetDefaults] Could not read current OPs, will write all defaults', err)
+        }
+    } else {
+        log(`[ResetDefaults] Using provided current OPs: ${currentOps?.join(' ')}`)
     }
 
     if (isCancelled && isCancelled()) throw new Error('Reset cancelled')
@@ -102,16 +108,24 @@ export async function executeResetToDefaults(
     }
 
     // Step 5: Clear deployment ID
-    onProgress?.('Clearing deployment ID...', 0.8)
-    log('[ResetDefaults] Clearing deployment ID...')
-    await session.execute(() => commandRegistry.setdid(null))
+    if (!options?.skipIdentityReset) {
+        onProgress?.('Clearing deployment ID...', 0.8)
+        log('[ResetDefaults] Clearing deployment ID...')
+        await session.execute(() => commandRegistry.setdid(null))
+    } else {
+        log('[ResetDefaults] Skipping clearing deployment ID (skipIdentityReset = true)')
+    }
 
     if (isCancelled && isCancelled()) throw new Error('Reset cancelled')
 
     // Step 6: Zero GPS
-    onProgress?.('Zeroing GPS...', 0.9)
-    log('[ResetDefaults] Zeroing GPS...')
-    await session.execute(() => commandRegistry.setgps('0,0,0'))
+    if (!options?.skipIdentityReset) {
+        onProgress?.('Zeroing GPS...', 0.9)
+        log('[ResetDefaults] Zeroing GPS...')
+        await session.execute(() => commandRegistry.setgps('0,0,0'))
+    } else {
+        log('[ResetDefaults] Skipping zeroing GPS (skipIdentityReset = true)')
+    }
 
     onProgress?.('Reset complete', 1.0)
     log(`[ResetDefaults] Factory reset complete. ${opsWritten} OPs written.`)
