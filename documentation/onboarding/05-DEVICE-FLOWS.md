@@ -76,6 +76,8 @@ On this screen:
 - `initErrors` displays any warnings from the upstream selftest (e.g., LoRaWAN connectivity)
 - A silent `resetOps` runs on mount to clear leftover state from previous sessions
 - `useBleSession` + `useBleActions` maintain the BLE heartbeat during form entry
+- **BLE query optimization:** On screen mount, the firmware versions are resolved silently from `initPayload` rather than actively querying the connected device over BLE. This prevents BLE command queue collisions during screen initialization.
+- **Focus state recheck:** When the screen regains focus (e.g., after the operator navigates back from a successful firmware update), the active BLE query `checkStatus()` is run to refresh the firmware status and clear the outdated firmware warning banner automatically.
 
 ### User Form
 
@@ -116,7 +118,7 @@ The screen is organized into cards:
 
 | Element | Notes |
 |---------|-------|
-| Warning banner | Orange banner with "Update Firmware" button navigating to `FirmwareStatusScreen`. Non-blocking — user can proceed without updating. |
+| Warning banner | Orange banner with "Update Firmware" button navigating to `FirmwareStatusScreen` with `restrictToLatest: true` (which hides developer version selection dropdowns to keep the operator flow clean and simple). Non-blocking — user can proceed without updating. |
 
 Project settings (capture method, sensitivity, timelapse interval, GPS image tagging) are inherited from the selected project and displayed as feature icons. The user can switch projects at any time via the dropdown.
 

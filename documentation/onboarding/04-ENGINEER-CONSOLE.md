@@ -100,7 +100,7 @@ Commands prefixed with `AI` — routed via BLE to the Himax chip. These interact
 | `AI info` | `30515200 K total... 30511056 K available.` | SD card space (total / available KB) |
 | `AI camera` | `HM0360` / `RP2` / `RP3` | Connected camera sensor type |
 | `AI inithm0360` | `OK` / `Error` | Reinitialise HM0360 sensor (recovery from black images) |
-| `AI firmware <file>` | `Firmware update OK/FAILED` | Update Himax firmware from SD card image |
+| `AI firmware <filename> [crc]` | `Firmware update OK/FAILED` | Update Himax firmware from SD card image (supports optional CRC validation) |
 
 #### Operational Parameters
 
@@ -227,8 +227,8 @@ All flows are accessible from the Engineer Console → **Flows** button. They ar
 | Flow | What It Does |
 |------|-------------|
 | `UPDATE_BLE_FIRMWARE` | Navigates to the DFU screen for Nordic nRF52 OTA update (ZIP format). |
-| `UPDATE_HIMAX_FIRMWARE` | Triggers Himax AI processor firmware update from SD card (`AI firmware` + `reset`). |
-| `FIRMWARE_STATUS` | Navigates to the Firmware Status screen — compares installed BLE + Himax versions against cloud, offers update buttons. |
+| `UPDATE_HIMAX_FIRMWARE` | Triggers Himax AI processor firmware update from SD card (`AI firmware` + `AI reset`). |
+| `FIRMWARE_STATUS` | Navigates to the Firmware Status screen — compares installed BLE + Himax versions against cloud, offers version selection, and provides updates. |
 
 ### 📁 File Transfer
 
