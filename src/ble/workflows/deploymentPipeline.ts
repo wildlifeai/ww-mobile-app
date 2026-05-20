@@ -94,10 +94,7 @@ export async function syncAiModel(
 
     if (modelId) {
         try {
-            // Wake up AI
-            await session.execute(() => commandRegistry.aiver())
-
-            // Check current model
+            // Check current model (wakes up the AI processor automatically if not already awake)
             const ops = await session.execute(() => commandRegistry.getops())
             if (!ops || ops.length < 16) throw new Error('Insufficient operational parameters from device.')
             const currentId = parseInt(ops[14] ?? '0', 10) || 0
@@ -156,7 +153,6 @@ export async function syncAiModel(
     } else if (eraseStaleModels) {
         // No AI model assigned — check if device has a stale model loaded
         try {
-            await session.execute(() => commandRegistry.aiver())
             const ops = await session.execute(() => commandRegistry.getops())
             const currentId = ops && ops.length > 14 ? parseInt(ops[14] ?? '0', 10) || 0 : 0
 

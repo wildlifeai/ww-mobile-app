@@ -477,7 +477,10 @@ export const useStartDeployment = ({
             }
 
             try {
-                const response = await bleSession?.execute(commandRegistry.version)
+                let response = initPayload?.deviceFirmwareVersion
+                if (!response) {
+                    response = await bleSession?.execute(commandRegistry.version)
+                }
                 if (response) {
                     const resolvedId = await FirmwareService.getFirmwareIdByVersion('ble', response)
                     if (resolvedId) bleFirmwareId = resolvedId
@@ -560,7 +563,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed])  
+    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion])  
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)

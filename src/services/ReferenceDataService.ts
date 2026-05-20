@@ -494,6 +494,8 @@ class ReferenceDataService {
                             rec.fileSizeBytes = row.file_size_bytes ?? 0
                             rec.releaseNotes = row.release_notes
                             rec.isActive = row.is_active || false
+                            rec.crcChecksum = row.crc_checksum || null
+                            rec.buildDate = row.build_date || null
                             rec.modifiedBy = row.modified_by || 'system'
                         })
                     } else {
@@ -506,6 +508,8 @@ class ReferenceDataService {
                             rec.fileSizeBytes = row.file_size_bytes ?? 0
                             rec.releaseNotes = row.release_notes
                             rec.isActive = row.is_active || false
+                            rec.crcChecksum = row.crc_checksum || null
+                            rec.buildDate = row.build_date || null
                             rec.modifiedBy = row.modified_by || 'system'
                         })
                     }
@@ -525,6 +529,24 @@ class ReferenceDataService {
         })
 
         log(`   ✅ Synced ${data.length} firmware records`)
+    }
+
+    /**
+     * Get all active firmwares for a specific type sorted by version descending
+     */
+    async getActiveFirmwares(type: 'ble' | 'himax' | 'config'): Promise<Firmware[]> {
+        const firmwares = await database.get<Firmware>('firmware')
+            .query(
+                Q.where('type', type),
+                Q.where('is_active', true)
+            )
+            .fetch()
+
+        return firmwares.sort((a, b) => {
+            const versionA = a?.version || '0.0.0'
+            const versionB = b?.version || '0.0.0'
+            return versionB.localeCompare(versionA, undefined, { numeric: true, sensitivity: 'base' })
+        })
     }
 
     /**

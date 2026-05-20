@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from 'react'
+import { useEffect, useCallback, useMemo, useRef } from 'react'
 import { StyleSheet, View } from 'react-native'
 
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
@@ -33,6 +33,8 @@ export const StartMonitoringDetailsStep = () => {
     const route = useRoute<StartMonitoringDetailsRouteProp>()
 
     const { projectId, deviceId, bleDeviceId, initPayload } = route.params || {}
+
+    const isFirstFocus = useRef(true)
 
     // Destructure everything from hook first
     const {
@@ -74,13 +76,19 @@ export const StartMonitoringDetailsStep = () => {
     }, [navigation, isDfuInProgress])
 
     const firmwareStatus = useFirmwareStatus({ 
-        device: (device || bleDevice) as ExtendedPeripheral | undefined 
+        device: (device || bleDevice) as ExtendedPeripheral | undefined,
+        initialBleVersion: initPayload?.deviceFirmwareVersion,
+        initialHimaxVersion: initPayload?.himaxFirmwareVersion,
     })
 
     // Re-check firmware status when this screen regains focus
     // (e.g. after returning from FirmwareUpdateScreen with a successful update)
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
+            if (isFirstFocus.current) {
+                isFirstFocus.current = false
+                return // Skip active BLE query on initial mount-focus
+            }
             if (bleDevice?.connected) {
                 firmwareStatus.checkStatus()
             }
@@ -224,7 +232,7 @@ export const StartMonitoringDetailsStep = () => {
                             textColor="#FFFFFF"
                             onPress={() => {
                                 isDfuInProgress.current = true
-                                navigation.navigate('FirmwareStatusScreen', { deviceId: bleDeviceId! })
+                                navigation.navigate('FirmwareStatusScreen', { deviceId: bleDeviceId!, restrictToLatest: true })
                             }}
                         >
                             <Text style={{ color: '#FFFFFF' }}>Update Firmware</Text>
@@ -329,7 +337,7 @@ export const StartMonitoringDetailsStep = () => {
                         if (id) {
                             // Suppress the disconnect alert during BLE DFU
                             isDfuInProgress.current = true
-                            navigation.navigate('FirmwareUpdateScreen', { deviceId: id, target })
+                            navigation.navigate('FirmwareUpdateScreen', { deviceId: id, target, restrictToLatest: true })
                         }
                     }}
                 />

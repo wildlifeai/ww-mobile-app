@@ -72,6 +72,7 @@ export const FirmwareStatusScreen = () => {
     const { colors, spacing } = useExtendedTheme()
 
     const deviceId = route.params?.deviceId
+    const restrictToLatest = route.params?.restrictToLatest ?? false
     const device = useAppSelector(state => state.devices[deviceId || ''])
 
     const {
@@ -116,7 +117,7 @@ export const FirmwareStatusScreen = () => {
                             spacing={spacing}
                             isChecking={isChecking}
                             isConnected={!!device?.connected}
-                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'ble' })}
+                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'ble', restrictToLatest })}
                         />
                         
                         <FirmwareComponentCard
@@ -126,7 +127,7 @@ export const FirmwareStatusScreen = () => {
                             spacing={spacing}
                             isChecking={isChecking}
                             isConnected={!!device?.connected}
-                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'himax' })}
+                            onUpdate={() => navigation.navigate('FirmwareUpdateScreen', { deviceId, target: 'himax', restrictToLatest })}
                         />
 
                         {lastChecked && (

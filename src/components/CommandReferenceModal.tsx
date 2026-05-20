@@ -1,6 +1,6 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { View, ScrollView, StyleSheet } from "react-native"
-import { Modal, Portal, IconButton, Divider, Button, Chip, Text } from "react-native-paper"
+import { Modal, Portal, IconButton, Divider, Button, Chip, Text, TouchableRipple } from "react-native-paper"
 import { WWText } from "./ui/WWText"
 import { useExtendedTheme } from "../theme"
 import { CommandNames, COMMANDS } from "../ble/types"
@@ -39,7 +39,7 @@ const getCommandSections = (): CommandSection[] => {
 
     return [
         {
-            title: '📡 BLE Processor (nRF52)',
+            title: 'BLE Processor',
             subtitle: 'Direct commands to the BLE chip — no AI prefix',
             groups: [
                 {
@@ -101,7 +101,7 @@ const getCommandSections = (): CommandSection[] => {
             ],
         },
         {
-            title: '🧠 AI Processor (Himax HX6538)',
+            title: 'AI Processor',
             subtitle: 'Commands prefixed with "AI" — routed via BLE to the Himax chip',
             groups: [
                 {
@@ -113,6 +113,14 @@ const getCommandSections = (): CommandSection[] => {
                         CommandNames.camera_type,
                         CommandNames.inithm0360,
                         CommandNames.ai_firmware,
+                    ]),
+                },
+                {
+                    title: 'SD Card & Files',
+                    icon: 'folder-outline',
+                    commands: pick([
+                        CommandNames.dir,
+                        CommandNames.format,
                     ]),
                 },
                 {
@@ -163,6 +171,18 @@ export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Prop
     const { colors, spacing } = useExtendedTheme()
     const sections = useMemo(() => getCommandSections(), [])
 
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+        'BLE Processor': true,
+        'AI Processor': true,
+    })
+
+    const toggleSection = (title: string) => {
+        setExpandedSections(prev => ({
+            ...prev,
+            [title]: !prev[title],
+        }))
+    }
+
     const dynamicStyles = useMemo(() => ({
         modal: {
             backgroundColor: colors.background
@@ -205,44 +225,59 @@ export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Prop
 
                     {sections.map((section) => (
                         <View key={section.title}>
-                            <View style={[styles.sectionHeaderRow, dynamicStyles.sectionHeader]}>
-                                <WWText variant="titleMedium" style={styles.sectionTitle}>
-                                    <Text>{section.title}</Text>
-                                </WWText>
-                                <WWText variant="bodySmall" style={dynamicStyles.sectionSubtitle}>
-                                    <Text>{section.subtitle}</Text>
-                                </WWText>
-                            </View>
-
-                            {section.groups
-                                .filter(g => g.commands.length > 0)
-                                .map((group) => (
-                                <View key={group.title}>
-                                    <View style={[styles.groupHeaderRow, dynamicStyles.groupHeader]}>
-                                        <Chip icon={group.icon} compact style={styles.groupChip}>
-                                            <Text>{group.title}</Text>
-                                        </Chip>
+                            <TouchableRipple
+                                onPress={() => toggleSection(section.title)}
+                                style={[styles.sectionHeaderRow, dynamicStyles.sectionHeader]}
+                                rippleColor="rgba(0, 0, 0, .05)"
+                            >
+                                <View style={styles.sectionHeaderContent}>
+                                    <View style={styles.sectionHeaderLeft}>
+                                        <WWText variant="titleMedium" style={styles.sectionTitle}>
+                                            <Text>{section.title}</Text>
+                                        </WWText>
+                                        <WWText variant="bodySmall" style={dynamicStyles.sectionSubtitle}>
+                                            <Text>{section.subtitle}</Text>
+                                        </WWText>
                                     </View>
-
-                                    {group.commands.map((cmd) => (
-                                        <View key={cmd.name} style={[styles.row, dynamicStyles.rowBorder]}>
-                                            <View style={styles.rowInfo}>
-                                                <WWText style={styles.boldText}><Text>{cmd.name}</Text></WWText>
-                                                {cmd.description ? (
-                                                    <WWText variant="bodySmall" style={dynamicStyles.descriptionText}>
-                                                        <Text>{cmd.description}</Text>
-                                                    </WWText>
-                                                ) : null}
-                                            </View>
-                                            <View style={styles.rowAction}>
-                                                <Button mode="contained" compact onPress={() => onRunCommand(cmd.name)}>
-                                                    <Text>Run</Text>
-                                                </Button>
-                                            </View>
-                                        </View>
-                                    ))}
+                                    <IconButton
+                                        icon={expandedSections[section.title] ? 'chevron-up' : 'chevron-down'}
+                                        size={24}
+                                        style={styles.sectionChevron}
+                                    />
                                 </View>
-                            ))}
+                            </TouchableRipple>
+
+                            {expandedSections[section.title] ? (
+                                section.groups
+                                    .filter(g => g.commands.length > 0)
+                                    .map((group) => (
+                                    <View key={group.title}>
+                                        <View style={[styles.groupHeaderRow, dynamicStyles.groupHeader]}>
+                                            <Chip icon={group.icon} compact style={styles.groupChip}>
+                                                <Text>{group.title}</Text>
+                                            </Chip>
+                                        </View>
+
+                                        {group.commands.map((cmd) => (
+                                            <View key={cmd.name} style={[styles.row, dynamicStyles.rowBorder]}>
+                                                <View style={styles.rowInfo}>
+                                                    <WWText style={styles.boldText}><Text>{cmd.name}</Text></WWText>
+                                                    {cmd.description ? (
+                                                        <WWText variant="bodySmall" style={dynamicStyles.descriptionText}>
+                                                            <Text>{cmd.description}</Text>
+                                                        </WWText>
+                                                    ) : null}
+                                                </View>
+                                                <View style={styles.rowAction}>
+                                                    <Button mode="contained" compact onPress={() => onRunCommand(cmd.name)}>
+                                                        <Text>Run</Text>
+                                                    </Button>
+                                                </View>
+                                            </View>
+                                        ))}
+                                    </View>
+                                ))
+                            ) : null}
                         </View>
                     ))}
                 </ScrollView>
@@ -268,11 +303,24 @@ const styles = StyleSheet.create({
         flex: 1
     },
     sectionHeaderRow: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
         borderRadius: 8,
         marginTop: 16,
         marginBottom: 4,
+        overflow: 'hidden',
+    },
+    sectionHeaderContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    sectionHeaderLeft: {
+        flex: 1,
+    },
+    sectionChevron: {
+        margin: 0,
+        marginRight: -8,
     },
     sectionTitle: {
         fontWeight: 'bold',

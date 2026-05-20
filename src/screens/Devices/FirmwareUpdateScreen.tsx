@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
 import { Button, ActivityIndicator, ProgressBar, IconButton, RadioButton } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -9,8 +9,10 @@ import { useAppSelector } from '../../redux'
 import ReferenceDataService from '../../services/ReferenceDataService'
 import { log, logWarn } from '../../utils/logger'
 import { WWText } from '../../components/ui/WWText'
+import { WWSelect } from '../../components/ui/WWSelect'
 import { FileTransferProgressCard } from '../../components/FileTransferProgressCard'
-import { useFirmwareUpdate, FirmwareTarget, HimaxFirmwareSource } from './hooks/useFirmwareUpdate'
+import { useFirmwareUpdate, FirmwareTarget, HimaxFirmwareSource, firmware83Filename } from './hooks/useFirmwareUpdate'
+import Firmware from '../../database/models/Firmware'
 
 const TARGET_TITLES: Record<FirmwareTarget, string> = {
     ble: 'BLE Firmware Update',
@@ -29,6 +31,7 @@ export const FirmwareUpdateScreen = () => {
 
     const deviceId = route.params?.deviceId
     const target: FirmwareTarget = route.params?.target || 'himax'
+    const restrictToLatest = route.params?.restrictToLatest ?? false
     const device = useAppSelector(state => state.devices[deviceId || ''])
     
     const [himaxSource, setHimaxSource] = useState<HimaxFirmwareSource>('sdcard')
@@ -51,6 +54,8 @@ export const FirmwareUpdateScreen = () => {
         newVersion,
         latestFirmware,
         isPreflightDone,
+        sdCardFiles,
+        availableDbFirmwares,
         startUpdate,
         cancelUpdate,
     } = useFirmwareUpdate({ target, device })
@@ -62,6 +67,100 @@ export const FirmwareUpdateScreen = () => {
             .then(() => log('[FW Update Screen] Firmware sync complete'))
             .catch(err => logWarn('[FW Update Screen] Firmware sync failed:', err))
     }, [target])
+
+    const [selectedOptionKey, setSelectedOptionKey] = useState<string>('')
+
+    const firmwareOptions = useMemo(() => {
+        if (target !== 'himax') return []
+
+        const options: Array<{
+            key: string
+            label: string
+            type: 'db' | 'sd'
+            dbRecord?: Firmware
+            filename: string
+            existsOnSd: boolean
+        }> = []
+
+        const matchedSdFiles = new Set<string>()
+
+        availableDbFirmwares.forEach(fw => {
+            const filename = firmware83Filename(fw.version, fw.buildDate)
+            const existsOnSd = sdCardFiles.some(f => f.toUpperCase() === filename.toUpperCase())
+            if (existsOnSd) {
+                matchedSdFiles.add(filename.toUpperCase())
+            }
+
+            options.push({
+                key: `db-${fw.id}`,
+                label: `${fw.name || fw.version} ${existsOnSd ? '(On SD Card)' : '(Download Required)'}`,
+                type: 'db',
+                dbRecord: fw,
+                filename,
+                existsOnSd,
+            })
+        })
+
+        sdCardFiles.forEach(filename => {
+            if (!matchedSdFiles.has(filename.toUpperCase())) {
+                options.push({
+                    key: `sd-${filename}`,
+                    label: `${filename} (SD Card Only)`,
+                    type: 'sd',
+                    filename,
+                    existsOnSd: true,
+                })
+            }
+        })
+
+        return options
+    }, [availableDbFirmwares, sdCardFiles, target])
+
+    const filteredOptions = useMemo(() => {
+        if (restrictToLatest) {
+            const latestDbOption = firmwareOptions.find(o => o.type === 'db')
+            return latestDbOption ? [latestDbOption] : []
+        }
+        return firmwareOptions
+    }, [firmwareOptions, restrictToLatest])
+
+    const selectOptions = useMemo(() => {
+        return filteredOptions.map(o => ({
+            label: o.label,
+            value: o.key,
+        }))
+    }, [filteredOptions])
+
+    const selectedOption = useMemo(() => {
+        return filteredOptions.find(o => o.key === selectedOptionKey)
+    }, [filteredOptions, selectedOptionKey])
+
+    useEffect(() => {
+        if (filteredOptions.length > 0) {
+            const exists = filteredOptions.some(o => o.key === selectedOptionKey)
+            if (!exists) {
+                setSelectedOptionKey(filteredOptions[0].key)
+            }
+        } else {
+            setSelectedOptionKey('')
+        }
+    }, [filteredOptions, selectedOptionKey])
+
+    useEffect(() => {
+        if (selectedOption) {
+            if (selectedOption.type === 'sd') {
+                setHimaxSource('sdcard')
+            } else if (selectedOption.type === 'db') {
+                if (!selectedOption.existsOnSd) {
+                    setHimaxSource('download')
+                } else {
+                    if (himaxSource !== 'sdcard' && himaxSource !== 'download') {
+                        setHimaxSource('sdcard')
+                    }
+                }
+            }
+        }
+    }, [selectedOption, himaxSource])
 
     const isDfuMode = !!device?.name?.includes('DfuTarg')
 
@@ -111,35 +210,60 @@ export const FirmwareUpdateScreen = () => {
                             </WWText>
                         </View>
 
-                        {/* Latest available */}
-                        {latestFirmware && (
+                        {/* Latest available (BLE only) */}
+                        {target === 'ble' && latestFirmware && (
                             <View style={styles.preflightRow}>
                                 <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
                                     Latest Available
                                 </WWText>
                                 <WWText variant="bodyMedium" style={{ color: colors.primary, flex: 1, textAlign: 'right' }}>
-                                    {target === 'himax' ? latestFirmware.name || latestFirmware.version : latestFirmware.version}
+                                    {latestFirmware.version}
                                 </WWText>
                             </View>
                         )}
 
+                        {/* Himax Version Selection Dropdown */}
+                        {target === 'himax' && selectOptions.length > 0 && (
+                            <View style={[styles.marginTop12, styles.marginBottom8]}>
+                                <WWSelect
+                                    label="Select Firmware Version"
+                                    options={selectOptions}
+                                    value={selectedOptionKey}
+                                    onChange={setSelectedOptionKey}
+                                    disabled={isUpdating}
+                                />
+                            </View>
+                        )}
+
                         {/* Himax Source Selection */}
-                        {target === 'himax' && (
+                        {target === 'himax' && selectedOption && (
                             <View style={styles.sourceSelection}>
                                 <WWText variant="titleSmall" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
                                     Firmware Source
                                 </WWText>
                                 <RadioButton.Group onValueChange={value => setHimaxSource(value as HimaxFirmwareSource)} value={himaxSource}>
                                     <View style={styles.radioRow}>
-                                        <RadioButton value="sdcard" />
-                                        <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1 }}>
-                                            Use existing MANIFEST/output.img on SD card
+                                        <RadioButton 
+                                            value="sdcard" 
+                                            disabled={!selectedOption.existsOnSd} 
+                                        />
+                                        <WWText 
+                                            variant="bodyMedium" 
+                                            style={{ color: colors.onSurfaceVariant, flex: 1, opacity: selectedOption.existsOnSd ? 1 : 0.5 }}
+                                        >
+                                            Use existing MANIFEST/{selectedOption.filename} on SD card
                                         </WWText>
                                     </View>
                                     <View style={styles.radioRow}>
-                                        <RadioButton value="download" disabled={!latestFirmware} />
-                                        <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1 }}>
-                                            Download {latestFirmware ? `"${latestFirmware.locationPath}"` : 'latest firmware'} from DB into MANIFEST/output.img on SD card
+                                        <RadioButton 
+                                            value="download" 
+                                            disabled={selectedOption.type !== 'db'} 
+                                        />
+                                        <WWText 
+                                            variant="bodyMedium" 
+                                            style={{ color: colors.onSurfaceVariant, flex: 1, opacity: selectedOption.type === 'db' ? 1 : 0.5 }}
+                                        >
+                                            Download {selectedOption.dbRecord ? `"${selectedOption.dbRecord.locationPath}"` : 'firmware'} from DB into MANIFEST/{selectedOption.filename} on SD card
                                         </WWText>
                                     </View>
                                 </RadioButton.Group>
@@ -171,7 +295,7 @@ export const FirmwareUpdateScreen = () => {
                         <View style={styles.marginTop12}>
                             <FileTransferProgressCard
                                 title="Downloading Firmware"
-                                filename={latestFirmware?.locationPath}
+                                filename={selectedOption?.dbRecord?.locationPath || latestFirmware?.locationPath}
                                 isIndeterminate={downloadProgress?.progress === null}
                                 progress={downloadProgress?.progress || 0}
                                 speedBytesPerSec={downloadProgress?.speedBytesPerSec}
@@ -189,7 +313,7 @@ export const FirmwareUpdateScreen = () => {
                         <View style={styles.marginTop12}>
                             <FileTransferProgressCard
                                 title="Transferring to Device"
-                                filename="OUTPUT.IMG"
+                                filename={selectedOption?.filename || 'OUTPUT.IMG'}
                                 isIndeterminate={false}
                                 progress={fileTransferProgress.percentage / 100}
                                 speedBytesPerSec={fileTransferProgress.elapsedMs > 0 ? (fileTransferProgress.bytesSent / fileTransferProgress.elapsedMs) * 1000 : 0} 
@@ -280,8 +404,12 @@ export const FirmwareUpdateScreen = () => {
                 {!isComplete && !isUpdating && (
                     <Button
                         mode="contained"
-                        onPress={() => startUpdate({ himaxSource })}
+                        onPress={() => startUpdate({ 
+                            himaxSource, 
+                            selectedFirmware: selectedOption?.type === 'db' ? selectedOption.dbRecord : selectedOption?.filename 
+                        })}
                         loading={!isPreflightDone}
+                        disabled={!isPreflightDone || (target === 'himax' && !selectedOption)}
                     >
                         <WWText>{isFailed ? 'Retry Update' : 'Start Update'}</WWText>
                     </Button>
