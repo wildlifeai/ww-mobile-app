@@ -293,9 +293,15 @@ export const useDevDeployment = ({
         }
 
         try {
+            progress.addLog('Retrieving current parameters...')
+            progress.setFinishStep('Reading parameters...')
+            progress.setFinishProgress(0.02)
+            const currentOps = await bleSession.execute(commandRegistry.getops)
+            log(`[DevDeploy] Pre-flight OPs: ${currentOps.join(' ')}`)
+
             // 1-2. Shared pipeline steps
             await pipeline.syncTime(bleSession, cb)
-            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb)
+            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true, currentOps)
 
             // 4. Persist project settings (dev-specific)
             progress.addLog('Saving project settings...')
@@ -303,6 +309,14 @@ export const useDevDeployment = ({
             progress.setFinishProgress(0.25)
             await persistProjectSettings()
             progress.addLog('Project settings saved')
+
+            // 4b. Reset OPs to factory defaults before applying dev config (shared pipeline)
+            try {
+                await pipeline.resetOps(bleSession, cb, currentOps)
+            } catch (resetError) {
+                logWarn('[DevDeploy] OP reset failed, continuing with configuration:', resetError)
+                progress.addLog('OP reset failed — continuing with configuration')
+            }
 
             // 5. Create deployment record
             progress.addLog('Creating deployment record...')
@@ -340,7 +354,7 @@ export const useDevDeployment = ({
                 timelapseInterval: effectiveTimelapseInterval,
                 recordGpsInImages: project.record_gps_in_images || false,
                 gpsLocation,
-            }, cb)
+            }, cb, currentOps)
 
             // 7. Flash OPs (dev-specific)
             progress.addLog('Setting flash parameters...')
