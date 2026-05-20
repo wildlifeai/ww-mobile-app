@@ -420,7 +420,7 @@ export const FirmwareUpdateScreen = () => {
                         mode="contained"
                         onPress={() => navigation.goBack()}
                     >
-                        <WWText>Back to Engineer Console</WWText>
+                        <WWText>Back to Firmware Status</WWText>
                     </Button>
                 )}
 

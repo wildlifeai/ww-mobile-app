@@ -1,7 +1,8 @@
+import { useEffect } from 'react'
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native'
 import { Button, ActivityIndicator, Divider } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRoute, useNavigation } from '@react-navigation/native'
+import { useRoute, useNavigation, useIsFocused } from '@react-navigation/native'
 
 import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
@@ -74,6 +75,7 @@ export const FirmwareStatusScreen = () => {
     const deviceId = route.params?.deviceId
     const restrictToLatest = route.params?.restrictToLatest ?? false
     const device = useAppSelector(state => state.devices[deviceId || ''])
+    const isFocused = useIsFocused()
 
     const {
         isChecking,
@@ -82,6 +84,13 @@ export const FirmwareStatusScreen = () => {
         checkStatus,
         errorMsg,
     } = useFirmwareStatus({ device })
+
+    // Automatically check firmware status when this screen is focused and device is connected
+    useEffect(() => {
+        if (isFocused && device?.connected) {
+            checkStatus()
+        }
+    }, [isFocused, device?.connected, checkStatus])
 
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>

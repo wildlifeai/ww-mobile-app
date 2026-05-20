@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react'
 import { StyleSheet, View } from 'react-native'
 
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
+import { useNavigation, useRoute, RouteProp, useIsFocused } from '@react-navigation/native'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWButton } from '../../components/ui/WWButton'
 import { RootStackParamList } from '../../navigation/types'
@@ -35,6 +35,7 @@ export const StartMonitoringDetailsStep = () => {
     const { projectId, deviceId, bleDeviceId, initPayload } = route.params || {}
 
     const isFirstFocus = useRef(true)
+    const isFocused = useIsFocused()
 
     // Destructure everything from hook first
     const {
@@ -82,20 +83,17 @@ export const StartMonitoringDetailsStep = () => {
     })
 
     // Re-check firmware status when this screen regains focus
-    // (e.g. after returning from FirmwareUpdateScreen with a successful update)
+    // (e.g. after returning from FirmwareUpdateScreen/FirmwareStatusScreen with a successful update)
     useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => {
+        if (isFocused && bleDevice?.connected) {
             if (isFirstFocus.current) {
                 isFirstFocus.current = false
                 return // Skip active BLE query on initial mount-focus
             }
-            if (bleDevice?.connected) {
-                firmwareStatus.checkStatus()
-            }
-        })
-        return unsubscribe
+            firmwareStatus.checkStatus()
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [navigation, bleDevice?.connected])
+    }, [isFocused, bleDevice?.connected])
 
     const isAnyFirmwareOutdated = !firmwareStatus.isChecking && (
         firmwareStatus.statuses.ble.isOutdated || 

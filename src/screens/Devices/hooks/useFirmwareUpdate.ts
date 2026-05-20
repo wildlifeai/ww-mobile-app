@@ -409,8 +409,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         if (isUpdating && device && !device.connected) {
             // Reconnecting and rebooting phases legitimately lose BLE connection
             if (phase === 'reconnecting' || phase === 'rebooting') return
-            // Entering DFU disconnects to reboot into bootloader
-            if (target === 'ble' && phase === 'entering_dfu') return
+            // Entering DFU, scanning, and flashing phases legitimately lose BLE connection for BLE target
+            if (target === 'ble' && (phase === 'entering_dfu' || phase === 'scanning' || phase === 'flashing')) return
 
             logError('[FW Update] Device unexpectedly disconnected during phase:', phase)
             
