@@ -1,6 +1,6 @@
 # Himax Firmware Update
 
-> **Related**: [File-Transfer-Protocol.md](File-Transfer-Protocol.md) (BLE file transfer for uploading `output.img`), [BLE_Architecture.md](BLE_Architecture.md) (BLE command system), [04-ENGINEER-CONSOLE.md](../onboarding/04-ENGINEER-CONSOLE.md) (`AI firmware` command).
+> **Related**: [File-Transfer-Protocol.md](File-Transfer-Protocol.md) (BLE file transfer for uploading firmware images), [BLE_Architecture.md](BLE_Architecture.md) (BLE command system), [04-ENGINEER-CONSOLE.md](../onboarding/04-ENGINEER-CONSOLE.md) (`AI firmware` command).
 
 ## Overview
 
@@ -11,19 +11,19 @@ The WW500 device contains two processors with independent firmware:
 | **nRF52840** | BLE radio, relay, power management | Nordic DFU (separate flow via `DfuScreen`) |
 | **HX6538** (Himax) | AI inference, camera, SD card | This flow — flash from SD card over BLE |
 
-This document covers the **HX6538 firmware update** — flashing `output.img` from the device's SD card to the Himax processor's XIP flash. Typical duration: 20–60 seconds for a ~442 KB image.
+This document covers the **HX6538 firmware update** — flashing a firmware image (`<filename>.IMG` derived dynamically in 8.3 format or defaulting to `OUTPUT.IMG`) from the device's SD card to the Himax processor's XIP flash. Typical duration: 20–60 seconds for a ~442 KB image.
 
 ---
 
 ## Prerequisites
 
-1. **`/MANIFEST/output.img`** must exist on the device's SD card
+1. **`/MANIFEST/<filename>.IMG`** (e.g., `26520A59.IMG` or `OUTPUT.IMG`) must exist on the device's SD card
 2. Device must be **connected via BLE** and responsive
 3. **Battery level ≥ 30%** recommended (app warns below this)
 4. No other BLE commands in-flight (enforced by transport lock)
 
 > [!NOTE]
-> If `output.img` is not present, the HX6538 responds with `"Firmware update FAILED (error -1). Existing firmware unchanged."` and the existing firmware is untouched.
+> If the specified image is not present on the SD card, the HX6538 responds with `"Firmware update FAILED (error -1). Existing firmware unchanged."` and the existing firmware is untouched.
 
 ---
 
@@ -40,9 +40,9 @@ This document covers the **HX6538 firmware update** — flashing `output.img` fr
 
 | Component | Responsibility |
 |-----------|---------------|
-| **Mobile App** | Sends `"AI firmware output.img"`, waits for response, handles UI |
+| **Mobile App** | Sends `"AI firmware <filename> [crc]"`, waits for response, handles UI |
 | **nRF52840** | Relays command to HX6538 via I2C, manages AI state machine (wake → selftest → process → sleep) |
-| **HX6538** | Reads `output.img` from SD, erases target flash slot, writes + verifies firmware, updates slot selector |
+| **HX6538** | Reads the target image from SD `/MANIFEST/`, performs CRC verification, erases target flash slot, writes + verifies firmware, updates slot selector |
 
 ---
 
@@ -51,16 +51,15 @@ This document covers the **HX6538 firmware update** — flashing `output.img` fr
 ```
 Mobile App                     nRF52840                         HX6538
     |                             |                                |
-    |-- "AI firmware output.img" →|                                |
+    |-- "AI firmware <file> [crc]" →|                                |
     |                             |-- wake HX6538 (if sleeping) -->|
     |                             |<-- "Wake 2026-04-22T..." ------|
     |<-- "Wake" ------------------|                                |
     |                             |-- "selftest" ----------------->|
     |                             |<-- "selfTest 0000" ------------|
     |<-- "Error bits = 0x0000" ---|                                |
-    |                             |-- "firmware output.img" ------>|
+    |                             |-- "firmware <file> [crc]" ------>|
     |                             |    (Erase → Write → Verify)    |
-    |                             |<-- "Firmware update OK..."  ---|
     |<-- "Firmware update OK..." -|                                |
     |                             |<-- "Sleep 42 41 1 2 ..." -----|
     |<-- "Sleep" (stats) ---------|                                |
@@ -87,11 +86,12 @@ Accessible from Engineer Console → Flows → "Update Himax Firmware".
 ```typescript
 aifirmware: createSingleLineCommand<boolean>(
     'aifirmware',
-    (filename: string) => `AI firmware ${filename}`,
+    (filename: string, crc?: string) => crc ? `AI firmware ${filename} ${crc}` : `AI firmware ${filename}`,
     /Firmware update (OK|FAILED)(?: \(error (-?\d+)\))?/i,
     (match) => {
       if (match[1].toUpperCase() === 'FAILED') {
          const errorCode = match[2] ? parseInt(match[2], 10) : NaN;
+         const errorMsg = FIRMWARE_ERROR_CODES[errorCode] ?? `unknown error (${match[2] ?? '?'})`;
          throw new Error(`Firmware update failed: ${errorMsg}`);
       }
       return true;
@@ -107,7 +107,7 @@ aifirmware: createSingleLineCommand<boolean>(
 ```
 
 **Key behaviors:**
-- Sends `"AI firmware output.img"` over BLE NUS
+- Sends `"AI firmware <filename> [crc]"` over BLE NUS (with CRC validation if provided)
 - Waits up to **120 seconds** for `/Firmware update (OK|FAILED)/i`
 - All intermediate lines (`Wake`, `Error bits`, progress) are **ignored**
 - On `OK` → returns `true`; on `FAILED` → throws with error code
@@ -119,7 +119,7 @@ aifirmware: createSingleLineCommand<boolean>(
 ┌─ runCommandPipeline ──────────────────────────────────┐
 │  1. transportLock.acquire('aifirmware')                │
 │  2. bleEventBus.emit(HEARTBEAT_PAUSE, true)            │
-│  3. runCommand → writeToDevice("AI firmware output.img")│
+│  3. runCommand → writeToDevice("AI firmware <filename> [crc]")│
 │     └─ Wait for regex match or timeout (120s)          │
 │  4. finally:                                           │
 │     └─ bleEventBus.emit(HEARTBEAT_PAUSE, false)        │
@@ -139,18 +139,18 @@ After `"Firmware update OK..."`, the app:
 
 ## nRF52 AI State Machine
 
-When the app sends `"AI firmware output.img"`, the nRF52 does **not** simply forward it. It runs through a managed sequence:
+When the app sends `"AI firmware <filename> [crc]"`, the nRF52 does **not** simply forward it. It runs through a managed sequence:
 
 ```
 SLEEP
-  → Receives "AI firmware output.img" from BLE
+  → Receives "AI firmware <filename> [crc]" from BLE
   → Wakes HX6538 via GPIO/I2C → Sends "Wake" to BLE → WOKEN
 
 WOKEN
   → Runs mandatory selftest → Sends "Error bits = 0x0000" to BLE → IDLE
 
 IDLE
-  → Forwards "firmware output.img" to HX6538 via I2C → PROCESSING
+  → Forwards "firmware <filename> [crc]" to HX6538 via I2C → PROCESSING
 
 PROCESSING
   → Waits for HX6538 response (20–60 seconds)
@@ -181,7 +181,7 @@ The firmware identifies the **active slot** and programs the **other**:
 ### Flash Sequence
 
 1. **Erase** — 16 × 64KB blocks at target slot (~2 seconds)
-2. **Write** — Entire `output.img` from SD to flash, verified per-chunk (15–40 seconds)
+2. **Write** — Entire firmware image from SD to flash, verified per-chunk (15–40 seconds)
 3. **Full verify** — Byte-for-byte verification of entire slot (5–10 seconds)
 4. **Slot selector update** — Points bootloader to new slot (only on success)
 
@@ -197,7 +197,7 @@ The slot selector is only updated after successful write AND verify. At every fa
 
 | Code | Meaning |
 |------|---------|
-| `-1` | Firmware file not found on SD card (`/MANIFEST/output.img`) |
+| `-1` | Firmware file not found on SD card (`/MANIFEST/<filename>`) |
 | `-2` | SD card read error |
 | `-3` | Flash erase failed |
 | `-4` | Flash write failed |
@@ -248,7 +248,7 @@ Phases only advance forward. If the nRF52 does not relay intermediate HX6538 out
 ## Testing Checklist
 
 ### Pre-Flight
-- [ ] `output.img` present at `/MANIFEST/output.img` on SD card
+- [ ] Target `.IMG` file present at `/MANIFEST/<filename>` on SD card
 - [ ] Device connected via BLE and responsive
 - [ ] Battery level ≥ 30%
 
@@ -264,7 +264,7 @@ Phases only advance forward. If the nRF52 does not relay intermediate HX6538 out
 - [ ] BLE connection drops (expected)
 
 ### Failure Cases
-- [ ] Missing `output.img` → error -1 → app shows failure
+- [ ] Missing target image file → error -1 → app shows failure
 - [ ] BLE disconnect during update → app shows failure, device firmware unchanged
 - [ ] 120-second timeout → app shows failure
 

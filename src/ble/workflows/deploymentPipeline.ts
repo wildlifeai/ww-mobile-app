@@ -11,7 +11,8 @@ import { runFileTransferPipeline } from '../protocol/fileTransfer'
 import ReferenceDataService from '../../services/ReferenceDataService'
 import AiModelService from '../../services/AiModelService'
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice'
-import { FACTORY_DEFAULTS, OP_PARAMETER } from '../../hooks/useDeviceSettings'
+
+import { executeResetToDefaults } from './resetToDefaults'
 import { log, logWarn } from '../../utils/logger'
 
 interface ProgressCallbacks {
@@ -45,63 +46,26 @@ export async function syncTime(
  * values that differ from FACTORY_DEFAULTS. Each setop receives a
  * confirmation response, so no verification pass is needed.
  */
-/**
- * OPs that configureDevice() will set — no point resetting these to defaults
- * only to overwrite them 2 seconds later.
- */
-const CONFIGURE_MANAGED_OPS: Set<number> = new Set([
-    OP_PARAMETER.TIMELAPSE_INTERVAL,
-    OP_PARAMETER.INTERVAL_BEFORE_DPD,
-    OP_PARAMETER.CAMERA_ENABLED,
-    OP_PARAMETER.MD_INTERVAL,
-    OP_PARAMETER.MD_SENSITIVITY,
-    OP_PARAMETER.IMAGES_COUNT,
-    OP_PARAMETER.IMAGES_FILE_INDEX,
-])
+
 
 export async function resetOps(
     session: BleSession,
-    { addLog, setStep, setProgress }: ProgressCallbacks
+    { addLog, setStep, setProgress }: ProgressCallbacks,
+    currentOps?: string[]
 ): Promise<void> {
     addLog('Resetting operational parameters...')
     setStep('Resetting device...')
     setProgress(0.06)
 
     try {
-        // Read current OPs (this also wakes the device from DPD)
-        let currentOps: string[] | null = null
-        try {
-            currentOps = await session.execute(commandRegistry.getops)
-            log(`[ResetOps] Current OPs: ${currentOps?.join(' ')}`)
-        } catch {
-            logWarn('[ResetOps] Could not read current OPs, will write all defaults')
-        }
-
-        // Diff against factory defaults — only write what differs.
-        // Skip OPs managed by configureDevice() to avoid redundant BLE writes.
-        const opsToWrite: { index: number; value: number }[] = []
-        for (const [indexStr, defaultValue] of Object.entries(FACTORY_DEFAULTS)) {
-            const index = parseInt(indexStr, 10)
-            if (CONFIGURE_MANAGED_OPS.has(index)) continue
-            if (currentOps && currentOps.length > index && currentOps[index] === defaultValue.toString()) continue
-            opsToWrite.push({ index, value: defaultValue })
-        }
-
-        if (opsToWrite.length === 0) {
-            addLog('OPs already at defaults — skipping')
-            log('[ResetOps] All OPs already at defaults')
-        } else {
-            log(`[ResetOps] Writing ${opsToWrite.length} OPs to defaults (skipped ${CONFIGURE_MANAGED_OPS.size} configure-managed)`)
-            for (const { index, value } of opsToWrite) {
-                log(`[ResetOps] Setting OP ${index} = ${value}`)
-                await session.execute(() => commandRegistry.setop({ index, value }))
+        await executeResetToDefaults(session, {
+            currentOps,
+            skipIdentityReset: true,
+            onProgress: (step) => {
+                log(`[ResetOps] ${step}`)
             }
-            addLog(`Reset ${opsToWrite.length} parameters to defaults`)
-        }
-
-        // Note: deployment ID and GPS are handled by configureDevice() —
-        // no need to clear them here and then immediately re-set them.
-
+        })
+        addLog('Device parameters reset successfully')
         setProgress(0.09)
     } catch (e) {
         logWarn('[ResetOps] Reset failed, continuing:', e)
@@ -126,6 +90,7 @@ export async function syncAiModel(
     modelId: string | null | undefined,
     { addLog, setStep, setProgress }: ProgressCallbacks,
     eraseStaleModels: boolean = false,
+    currentOps?: string[]
 ): Promise<void> {
     addLog('Checking AI model...')
     setStep('AI Model...')
@@ -133,11 +98,8 @@ export async function syncAiModel(
 
     if (modelId) {
         try {
-            // Wake up AI
-            await session.execute(() => commandRegistry.aiver())
-
-            // Check current model
-            const ops = await session.execute(() => commandRegistry.getops())
+            // Check current model (wakes up the AI processor automatically if not already awake)
+            const ops = currentOps || await session.execute(() => commandRegistry.getops())
             if (!ops || ops.length < 16) throw new Error('Insufficient operational parameters from device.')
             const currentId = parseInt(ops[14] ?? '0', 10) || 0
             const currentVer = parseInt(ops[15] ?? '0', 10) || 0
@@ -195,8 +157,7 @@ export async function syncAiModel(
     } else if (eraseStaleModels) {
         // No AI model assigned — check if device has a stale model loaded
         try {
-            await session.execute(() => commandRegistry.aiver())
-            const ops = await session.execute(() => commandRegistry.getops())
+            const ops = currentOps || await session.execute(() => commandRegistry.getops())
             const currentId = ops && ops.length > 14 ? parseInt(ops[14] ?? '0', 10) || 0 : 0
 
             if (currentId !== 0) {
@@ -220,7 +181,7 @@ export async function syncAiModel(
  */
 export async function configureDevice(
     device: ExtendedPeripheral,
-    startConfigure: (device: ExtendedPeripheral, config: any) => Promise<void>,
+    startConfigure: (device: ExtendedPeripheral, config: any, providedOps?: string[]) => Promise<void>,
     config: {
         deploymentId: string
         captureMethodId: number
@@ -229,6 +190,7 @@ export async function configureDevice(
         gpsLocation?: { latitude: number; longitude: number; altitude?: number | null } | null
     },
     { addLog, setStep, setProgress }: ProgressCallbacks,
+    currentOps?: string[]
 ): Promise<void> {
     addLog('Configuring device settings...')
     setStep('Configuring device...')
@@ -252,7 +214,7 @@ export async function configureDevice(
             longitude: config.gpsLocation.longitude,
             altitude: config.gpsLocation.altitude || 0
         } : undefined
-    })
+    }, currentOps)
 
     addLog('Device configuration successful')
     log('[Deployment] Device configuration successful')

@@ -11,6 +11,8 @@ export default class Firmware extends Model {
     @field('file_size_bytes') fileSizeBytes!: number
     @text('release_notes') releaseNotes!: string | null
     @field('is_active') isActive!: boolean
+    @text('crc_checksum') crcChecksum!: string | null
+    @text('build_date') buildDate!: string | null
     @text('modified_by') modifiedBy!: string
 
     @readonly @date('created_at') createdAt!: Date

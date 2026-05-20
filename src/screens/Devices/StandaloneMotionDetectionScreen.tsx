@@ -65,7 +65,7 @@ export const StandaloneMotionDetectionScreen = () => {
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
             >
-                <WWBleDisconnectedBanner connected={!!device?.connected} />
+                <WWBleDisconnectedBanner connected={!!device?.connected} dfuInProgress={!!device?.dfuInProgress} />
                 <MotionDetectionSection
                     bleDevice={device}
                     isInitializing={false}

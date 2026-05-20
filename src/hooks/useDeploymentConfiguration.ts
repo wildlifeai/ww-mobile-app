@@ -138,14 +138,15 @@ export const useDeploymentConfiguration = () => {
      */
     const configure = useCallback(async (
         device: ExtendedPeripheral,
-        config: DeploymentConfig
+        config: DeploymentConfig,
+        providedOps?: string[]
     ): Promise<void> => {
         log('[DeployConfig] Starting deployment configuration sequence...')
         const session = createBleSession(device)
 
         try {
             // Transaction pre-flight: fetch ops
-            const currentOps = await session.execute(commandRegistry.getops)
+            const currentOps = providedOps || await session.execute(commandRegistry.getops)
 
             // 1. Set deployment ID (with auto-fallback and GPS enforce)
             await setDeploymentId(session, config.deploymentId, config.location, config.recordGpsInImages, currentOps)

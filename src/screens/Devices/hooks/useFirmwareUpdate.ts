@@ -11,7 +11,8 @@ import ReferenceDataService from '../../../services/ReferenceDataService'
 import Firmware from '../../../database/models/Firmware'
 import { runFileTransferPipeline } from '../../../ble/protocol/fileTransfer'
 import { FileTransferProgress } from '../../../ble/protocol/fileTransfer/fileTransferTypes'
-import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
+import { ExtendedPeripheral, setDfuStatus } from '../../../redux/slices/devicesSlice'
+import { useAppDispatch } from '../../../redux'
 import { useBle } from '../../../hooks/useBle'
 import { log, logError, logWarn } from '../../../utils/logger'
 import { convertBleToSemanticVersion } from '../../../utils/versionUtils'
@@ -89,9 +90,83 @@ const HIMAX_PHASE_LABELS: Record<UpdatePhase, string> = {
     failed: 'Update failed.',
 }
 
-// ────────────────────────────────────────────────────────────────────
-// Helpers (file-scoped, not hooks)
-// ────────────────────────────────────────────────────────────────────
+const MONTH_CHAR: Record<number, string> = {
+    1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9',
+    10: 'A', 11: 'B', 12: 'C'
+};
+
+const HOUR_CHAR: Record<number, string> = {
+    0: '0', 1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9',
+    10: 'A', 11: 'B', 12: 'C', 13: 'D', 14: 'E', 15: 'F', 16: 'G', 17: 'H', 18: 'I', 19: 'J',
+    20: 'K', 21: 'L', 22: 'M', 23: 'N'
+};
+
+const MONTH_MAP: Record<string, number> = {
+    Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6,
+    Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12
+};
+
+export function firmware83Filename(version?: string | null, buildDate?: string | null): string {
+    if (!version) return 'OUTPUT.IMG';
+    try {
+        // Match HH:MM:SS Mon DD YYYY
+        // Note: version string looks like: "WW500_C02 10:59:43 May 20 2026"
+        const match = version.match(/(\d{2}):(\d{2}):\d{2}\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})/);
+        if (match) {
+            const hour = parseInt(match[1], 10);
+            const minute = parseInt(match[2], 10);
+            const monthAbbr = match[3];
+            const day = parseInt(match[4], 10);
+            const year = parseInt(match[5], 10);
+
+            const monthNum = MONTH_MAP[monthAbbr];
+            if (monthNum !== undefined) {
+                const yy = (year % 100).toString().padStart(2, '0');
+                const m = MONTH_CHAR[monthNum];
+                const dd = day.toString().padStart(2, '0');
+                const h = HOUR_CHAR[hour];
+                const mm = minute.toString().padStart(2, '0');
+                if (m && h) {
+                    return `${yy}${m}${dd}${h}${mm}.IMG`;
+                }
+            }
+        }
+
+        // Fallback: try parsing buildDate (e.g., "May 20 2026")
+        if (buildDate) {
+            const matchDate = buildDate.trim().match(/^([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})$/);
+            if (matchDate) {
+                const monthAbbr = matchDate[1];
+                const day = parseInt(matchDate[2], 10);
+                const year = parseInt(matchDate[3], 10);
+
+                const monthNum = MONTH_MAP[monthAbbr];
+                if (monthNum !== undefined) {
+                    const yy = (year % 100).toString().padStart(2, '0');
+                    const m = MONTH_CHAR[monthNum];
+                    const dd = day.toString().padStart(2, '0');
+                    if (m) {
+                        return `${yy}${m}${dd}000.IMG`;
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        logWarn('[FW Update] Failed to parse 8.3 filename:', e);
+    }
+    return 'OUTPUT.IMG';
+}
+
+function parseSdCardFiles(lines: string[]): string[] {
+    return lines
+        .map(line => line.trim())
+        .filter(line => line && !/End of directory/i.test(line) && !/\bdirs?,\s+\bfiles?/i.test(line))
+        .map(line => {
+            const parts = line.split(/\s+/);
+            return parts[parts.length - 1]?.toUpperCase();
+        })
+        .filter(name => name && name.endsWith('.IMG'));
+}
 
 /** Scan for the Nordic DFU bootloader (advertises as "WW500_DFU" or "DfuTarg") */
 function scanForBootloader(timeoutMs = 10000): Promise<string | null> {
@@ -173,6 +248,7 @@ export type HimaxFirmwareSource = 'sdcard' | 'download'
 
 export interface StartUpdateOptions {
     himaxSource?: HimaxFirmwareSource
+    selectedFirmware?: Firmware | string
 }
 
 interface UseFirmwareUpdateOptions {
@@ -182,6 +258,7 @@ interface UseFirmwareUpdateOptions {
 
 export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) {
     const { connectDevice, disconnectDevice } = useBle()
+    const dispatch = useAppDispatch()
 
     const [phase, setPhase] = useState<UpdatePhase>('idle')
     const [dfuProgress, setDfuProgress] = useState(0) // 0-100 for BLE DFU
@@ -200,6 +277,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     const [previousVersion, setPreviousVersion] = useState<string | null>(null)
     const [newVersion, setNewVersion] = useState<string | null>(null)
     const [latestFirmware, setLatestFirmware] = useState<Firmware | null>(null)
+    const [sdCardFiles, setSdCardFiles] = useState<string[]>([])
+    const [availableDbFirmwares, setAvailableDbFirmwares] = useState<Firmware[]>([])
     const [isPreflightDone, setIsPreflightDone] = useState(false)
     const preflightDoneRef = useRef(false)
 
@@ -247,7 +326,10 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     // ── Pre-flight: run on mount ───────────────────────────────────
 
     useEffect(() => {
-        if (!device?.connected) {
+        const isDfuMode = !!device?.name?.includes('DfuTarg')
+
+        // Normal devices must be connected for preflight. DFU devices can skip this requirement.
+        if (!device?.connected && !isDfuMode) {
             preflightDoneRef.current = false
             return
         }
@@ -259,25 +341,43 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         let cancelled = false
 
         const run = async () => {
-            const session = createBleSession(device)
-            try {
-                // Battery
-                const batt = await session.execute(() => commandRegistry.battery())
-                if (!cancelled) setBatteryLevel(batt)
-                log(`[FW Update] Battery: ${batt}%`)
-            } catch (e) {
-                logWarn('[FW Update] Battery query failed:', e)
-            }
+            // Only perform BLE command queries if it's NOT a DFU device
+            if (!isDfuMode) {
+                const session = device ? createBleSession(device) : null
+                if (!session) throw new Error('Device not available')
+                try {
+                    // Battery
+                    const batt = await session.execute(() => commandRegistry.battery())
+                    if (!cancelled) setBatteryLevel(batt)
+                    log(`[FW Update] Battery: ${batt}%`)
+                } catch (e) {
+                    logWarn('[FW Update] Battery query failed:', e)
+                }
 
-            try {
-                // Current version
-                const ver = target === 'ble'
-                    ? await session.execute(() => commandRegistry.version())
-                    : await session.execute(() => commandRegistry.aiver())
-                if (!cancelled) setPreviousVersion(ver)
-                log(`[FW Update] Current ${target} version: ${ver}`)
-            } catch (e) {
-                logWarn('[FW Update] Version query failed:', e)
+                try {
+                    // Current version
+                    const ver = target === 'ble'
+                        ? await session.execute(() => commandRegistry.version())
+                        : await session.execute(() => commandRegistry.aiver())
+                    if (!cancelled) setPreviousVersion(ver)
+                    log(`[FW Update] Current ${target} version: ${ver}`)
+                } catch (e) {
+                    logWarn('[FW Update] Version query failed:', e)
+                }
+
+                if (target === 'himax') {
+                    try {
+                        const files = await session.execute(() => commandRegistry.dir())
+                        log(`[FW Update] dir command output:`, files)
+                        const parsed = parseSdCardFiles(files)
+                        if (!cancelled) setSdCardFiles(parsed)
+                    } catch (e) {
+                        logWarn('[FW Update] dir command failed:', e)
+                        if (!cancelled) setSdCardFiles([])
+                    }
+                }
+            } else {
+                log('[FW Update] Device is in DFU mode. Skipping battery/version checks.')
             }
 
             // Latest available firmware from local DB
@@ -288,13 +388,22 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 logWarn('[FW Update] Could not load latest firmware record:', e)
             }
 
+            if (target === 'himax') {
+                try {
+                    const activeFws = await ReferenceDataService.getActiveFirmwares('himax')
+                    if (!cancelled) setAvailableDbFirmwares(activeFws)
+                } catch (e) {
+                    logWarn('[FW Update] Could not load active firmware records:', e)
+                }
+            }
+
             if (!cancelled) setIsPreflightDone(true)
         }
 
         run()
         return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [device?.connected, isUpdating, target])
+    }, [device?.connected, device?.name, isUpdating, target])
 
     // ── Graceful Disconnect Fallback ───────────────────────────────
     
@@ -302,8 +411,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         if (isUpdating && device && !device.connected) {
             // Reconnecting and rebooting phases legitimately lose BLE connection
             if (phase === 'reconnecting' || phase === 'rebooting') return
-            // Entering DFU disconnects to reboot into bootloader
-            if (target === 'ble' && phase === 'entering_dfu') return
+            // Entering DFU, scanning, and flashing phases legitimately lose BLE connection for BLE target
+            if (target === 'ble' && (phase === 'entering_dfu' || phase === 'scanning' || phase === 'flashing')) return
 
             logError('[FW Update] Device unexpectedly disconnected during phase:', phase)
             
@@ -373,24 +482,29 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         })
         appendLog(`Downloaded: ${latestFirmware.version}`)
 
-        // 2. Enter DFU mode
-        advancePhase('entering_dfu')
-        appendLog('Switching to DFU mode...')
+        const isDfuMode = !!device?.name?.includes('DfuTarg')
+        let bootloaderAddr = device.id
 
-        if (device.connected) {
-            try {
-                const session = createBleSession(device)
-                await session.execute(() => commandRegistry.dfu())
-                await new Promise(r => setTimeout(r, 500))
+        // 2. Enter DFU mode (skip if already in DFU)
+        if (!isDfuMode) {
+            advancePhase('entering_dfu')
+            appendLog('Switching to DFU mode...')
+
+            if (device.connected) {
                 try {
-                    const disSession = createBleSession(device)
-                    await disSession.execute(() => commandRegistry.disconnect())
-                } catch (_e) { /* expected */ } finally {
-                    await disconnectDevice(device)
+                    const session = createBleSession(device)
+                    await session.execute(() => commandRegistry.dfu())
+                    await new Promise(r => setTimeout(r, 500))
+                    try {
+                        const disSession = createBleSession(device)
+                        await disSession.execute(() => commandRegistry.disconnect())
+                    } catch (_e) { /* expected */ } finally {
+                        await disconnectDevice(device)
+                    }
+                    await new Promise(r => setTimeout(r, 5000))
+                } catch (e) {
+                    logWarn('[FW Update] DFU command error (may be expected):', e)
                 }
-                await new Promise(r => setTimeout(r, 5000))
-            } catch (e) {
-                logWarn('[FW Update] DFU command error (may be expected):', e)
             }
         }
 
@@ -401,11 +515,14 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             } catch (_e) { /* non-fatal */ }
         }
 
-        // 4. Scan for bootloader
-        advancePhase('scanning')
-        appendLog('Searching for bootloader...')
-        const bootloaderAddr = await scanForBootloader(10000)
-        if (!bootloaderAddr) throw new Error('Bootloader not found. Make sure the device is nearby.')
+        // 4. Scan for bootloader (skip if already in DFU)
+        if (!isDfuMode) {
+            advancePhase('scanning')
+            appendLog('Searching for bootloader...')
+            const scannedAddr = await scanForBootloader(10000)
+            if (!scannedAddr) throw new Error('Bootloader not found. Make sure the device is nearby.')
+            bootloaderAddr = scannedAddr
+        }
 
         appendLog(`Found bootloader: ${bootloaderAddr}`)
 
@@ -459,16 +576,35 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
     // ── Himax flow ─────────────────────────────────────────────────
 
-    const runHimaxUpdate = useCallback(async (source: HimaxFirmwareSource = 'sdcard') => {
+    const runHimaxUpdate = useCallback(async (source: HimaxFirmwareSource = 'sdcard', selectedFirmware?: Firmware | string) => {
         if (!device?.connected) throw new Error('Device disconnected.')
 
+        const session = createBleSession(device)
+
+        let fwToFlash: Firmware | null = null
+        let filenameToFlash = 'output.img'
+
+        if (selectedFirmware) {
+            if (typeof selectedFirmware === 'string') {
+                filenameToFlash = selectedFirmware
+            } else {
+                fwToFlash = selectedFirmware
+                filenameToFlash = firmware83Filename(selectedFirmware.version, selectedFirmware.buildDate)
+            }
+        } else {
+            fwToFlash = latestFirmware
+            if (latestFirmware) {
+                filenameToFlash = firmware83Filename(latestFirmware.version, latestFirmware.buildDate)
+            }
+        }
+
         if (source === 'download') {
-            if (!latestFirmware) throw new Error('No firmware available for download. Sync reference data first.')
+            if (!fwToFlash) throw new Error('No firmware available for download. Sync reference data first.')
             
             // 1. Download firmware
             advancePhase('downloading')
             appendLog('Downloading firmware package...')
-            const localUri = await FirmwareService.ensureFirmwareDownloaded(latestFirmware, {
+            const localUri = await FirmwareService.ensureFirmwareDownloaded(fwToFlash, {
                 signal: abortControllerRef.current?.signal,
                 onStateChange: (state) => {
                     if (!unmountedRef.current) setDownloadState(state)
@@ -477,33 +613,55 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                     if (!unmountedRef.current) setDownloadProgress(data)
                 }
             })
-            appendLog(`Downloaded: ${latestFirmware.version}`)
+            appendLog(`Downloaded: ${fwToFlash.version}`)
+
+            const imgName = filenameToFlash;
+            appendLog(`Target firmware filename: ${imgName}`);
 
             // 2. Transfer firmware to SD card
             advancePhase('transferring')
             appendLog('Transferring firmware to device SD card...')
             const configBytes = await FirmwareService.readFirmwareAsBytes(localUri)
             
+            let computedCrc: string | undefined;
+
             if (configBytes) {
-                await runFileTransferPipeline(device, {
-                    filename: 'OUTPUT.IMG',
+                const transferResult = await runFileTransferPipeline(device, {
+                    filename: imgName,
                     data: configBytes,
                     abortSignal: abortControllerRef.current?.signal,
                     onProgress: (p) => {
                         if (!unmountedRef.current) setFileTransferProgress(p)
                     }
                 })
-                appendLog('Transfer complete.')
+                
+                // Convert numeric CRC back to 0xNNNN hex string to match firmware CLI expectations
+                if (transferResult && typeof transferResult.crc === 'number') {
+                    computedCrc = '0x' + transferResult.crc.toString(16).toUpperCase().padStart(4, '0')
+                    appendLog(`Transfer complete. Local CRC: ${computedCrc}`)
+                } else {
+                    appendLog('Transfer complete.')
+                }
             } else {
                 throw new Error('Failed to read firmware bytes')
             }
+
+            advancePhase('sending')
+            appendLog('Sending firmware flash command...')
+
+            await session.execute(() => commandRegistry.aifirmware(imgName, computedCrc))
+        } else {
+            // Source is 'sdcard'
+            advancePhase('sending')
+            appendLog('Sending firmware flash command...')
+
+            const targetCrc = fwToFlash?.crcChecksum || undefined
+            if (targetCrc) {
+                appendLog(`Using database CRC for flash: ${targetCrc}`)
+            }
+
+            await session.execute(() => commandRegistry.aifirmware(filenameToFlash, targetCrc))
         }
-
-        advancePhase('sending')
-        appendLog('Sending firmware flash command...')
-
-        const session = createBleSession(device)
-        await session.execute(() => commandRegistry.aifirmware('output.img'))
 
         if (unmountedRef.current) return
 
@@ -558,11 +716,14 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         
         abortControllerRef.current = new AbortController()
 
+        // Mark DFU in progress so the disconnect banner is suppressed
+        if (device?.id) dispatch(setDfuStatus({ id: device.id, status: true }))
+
         try {
             if (target === 'ble') {
                 await runBleDfu()
             } else {
-                await runHimaxUpdate(options?.himaxSource)
+                await runHimaxUpdate(options?.himaxSource, options?.selectedFirmware)
             }
         } catch (err: any) {
             if (!unmountedRef.current) {
@@ -571,9 +732,11 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 advancePhase('failed')
             }
         } finally {
+            // Clear DFU flag regardless of success/failure
+            if (device?.id) dispatch(setDfuStatus({ id: device.id, status: false }))
             if (!unmountedRef.current) setIsUpdating(false)
         }
-    }, [target, runBleDfu, runHimaxUpdate, advancePhase])
+    }, [target, runBleDfu, runHimaxUpdate, advancePhase, dispatch, device?.id])
 
     // ── Derived values ─────────────────────────────────────────────
 
@@ -633,6 +796,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         newVersion: displayNewVersion,
         latestFirmware,
         isPreflightDone,
+        sdCardFiles,
+        availableDbFirmwares,
 
         // Actions
         startUpdate,

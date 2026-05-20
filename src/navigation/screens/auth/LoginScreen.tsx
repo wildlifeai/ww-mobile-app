@@ -7,7 +7,7 @@ import { WWTextInput } from "../../../components/ui/WWTextInput"
 import { Field } from "../../../components/form/Field"
 import { useLoginMutation } from "../../../redux/api/auth"
 import { useAppDispatch } from "../../../redux"
-import { setCredentials } from "../../../redux/slices/authSlice"
+import { setCredentials, triggerTutorial } from "../../../redux/slices/authSlice"
 import { useAppNavigation } from "../../../hooks/useAppNavigation"
 import { WWText } from "../../../components/ui/WWText"
 import * as SecureStore from 'expo-secure-store'
@@ -78,6 +78,7 @@ export const Login = () => {
 			}
 
 			dispatch(setCredentials(response))
+			dispatch(triggerTutorial())
 		} catch (err) {
 			logError("❌ Login failed - Full error details:", {
 				message: err instanceof Error ? err.message : "Unknown error",

@@ -252,6 +252,132 @@ The `react-doctor.yml` GitHub Action also runs on all PRs (informational):
 
 ---
 
+## Role-Based Test Accounts
+
+The backend seeds **17 pre-configured user accounts** across 4 organisations for development and testing. These accounts are available on the staging/dev Supabase instance and in local environments after seeding.
+
+> [!IMPORTANT]
+> **Credentials**: Usernames are listed in [`ww-backend/supabase/seeds/USER-CREDENTIALS-REFERENCE.md`](https://github.com/wildlifeai/wildlife-watcher-backend/blob/main/supabase/seeds/USER-CREDENTIALS-REFERENCE.md). The shared password is stored as a GitHub Secret (`SEED_USER_PASSWORD`) and is available to developers on request.
+
+### Quick Login Reference
+
+| Role | User | Email | Organisation | Use For |
+|------|------|-------|--------------|---------|
+| **ww_admin** | Alice Smith | `alice@ww.org` | General | Platform-wide admin testing |
+| **Org Manager** | Laura Admin | `laura@ww.org` | Wildlife Research | Org management, project creation |
+| **Org Manager** | Apps Manager | `apps@wildlife.ai` | General | Cross-org manager testing |
+| **Project Admin** | Nancy Admin | `nancy@ww.org` | Wildlife Research | Project-scoped admin (no org-level) |
+| **Project Member** | Mark Member | `mark@ww.org` | Wildlife Research | Read-only project access |
+| **Project Member** | Carol White | `carol@ww.org` | General | Cross-org project membership |
+| **Unassigned** | Emma Davis | `emma@ww.org` | General | No projects — empty state testing |
+
+> **Full list**: 17 users across General, Wildlife Research Institute, Conservation Society, and Park Rangers Network. See the backend reference doc for the complete table.
+
+### Mobile App Permission Matrix
+
+The mobile app maps backend roles to a client-side permission object via `calculatePermissions()` in [`authSlice.ts`](../../src/redux/slices/authSlice.ts). The following table shows what each role can do in the app:
+
+| Capability | `ww_admin` | `project_admin` | `project_member` |
+|------------|:----------:|:----------------:|:-----------------:|
+| View projects | ✅ | ✅ | ✅ |
+| Create projects | ✅ | ✅ | ❌ |
+| Edit/delete projects | ✅ | ✅ | ❌ |
+| Manage project members | ✅ | ✅ | ❌ (view only) |
+| View deployments | ✅ | ✅ | ✅ |
+| Start/stop deployments | ✅ | ✅ | ✅ |
+| Manage devices | ✅ | ✅ | ❌ (view only) |
+| Manage users | ✅ | ❌ | ❌ |
+| Access all organisations | ✅ | ❌ | ❌ |
+
+### Automated Testing with Test Accounts
+
+These accounts enable automated validation of RBAC-gated features via Maestro E2E tests. Below are the key scenarios to validate:
+
+#### 1. Multi-Tenant Isolation (Critical)
+
+```yaml
+# Login as Laura (Wildlife Research) → should NOT see Conservation Society projects
+- launchApp: { clearState: true }
+- inputText: { id: "email-input", text: "laura@ww.org" }
+- inputText: { id: "password-input", text: "${SEED_USER_PASSWORD}" }
+- tapOn: { id: "login-button" }
+- assertVisible: "Tiger Tracking Program"
+- assertNotVisible: "Marine Life Documentation"
+```
+
+**Test users**:
+- `laura@ww.org` → sees only Wildlife Research projects
+- `oliver@ww.org` → sees only Conservation Society projects
+- `alice@ww.org` → sees all orgs she belongs to (ww_admin)
+
+#### 2. Permission-Gated UI Elements
+
+```yaml
+# Login as Mark (project_member) → Create Project button should be hidden
+- launchApp: { clearState: true }
+- inputText: { id: "email-input", text: "mark@ww.org" }
+# ... login ...
+- assertNotVisible: { id: "create-project-button" }
+
+# Login as Laura (org manager) → Create Project button should be visible
+- launchApp: { clearState: true }
+- inputText: { id: "email-input", text: "laura@ww.org" }
+# ... login ...
+- assertVisible: { id: "create-project-button" }
+```
+
+#### 3. Empty State Handling
+
+```yaml
+# Login as Emma (no project assignments) → should see empty project list
+- launchApp: { clearState: true }
+- inputText: { id: "email-input", text: "emma@ww.org" }
+# ... login ...
+- assertVisible: "No projects"
+```
+
+#### 4. Cross-Organisation Project Membership
+
+```yaml
+# Carol (General org) is assigned to Tiger Tracking (Wildlife Research org)
+- launchApp: { clearState: true }
+- inputText: { id: "email-input", text: "carol@ww.org" }
+# ... login ...
+- assertVisible: "Tiger Tracking Program"
+- assertNotVisible: "Bird Migration Study"   # Not assigned
+```
+
+#### 5. Tutorial Gate (First Login)
+
+After login, new users see the tutorial carousel before reaching the main app. Validate that `completeTutorial()` correctly transitions to the home screen:
+
+```yaml
+- launchApp: { clearState: true }
+- inputText: { id: "email-input", text: "emma@ww.org" }
+# ... login ...
+- assertVisible: { id: "tutorial-skip-button" }
+- tapOn: { id: "tutorial-skip-button" }
+- assertVisible: { id: "bottom-tab-scanner" }    # Main app loaded
+```
+
+### Local Seeding
+
+To use these accounts locally:
+
+```bash
+# 1. Reset the local Supabase database
+cd ../ww-backend
+supabase db reset
+
+# 2. Run the seed script (requires SEED_USER_PASSWORD in .env.test)
+bash scripts/seed-local.sh
+```
+
+> [!TIP]
+> When writing new features that depend on user roles, always test with at least three accounts: `alice@ww.org` (admin), `laura@ww.org` (org manager), and `mark@ww.org` (member) to catch permission regressions.
+
+---
+
 ## Best Practices
 
 - **Type Imports**: Always import types from `src/types/index.ts` (the central export) instead of specific files like `database.types.ts`. This significantly reduces memory usage and Jest crash risks during test runs by avoiding parsing huge auto-generated backend schemas.
@@ -266,4 +392,4 @@ The `react-doctor.yml` GitHub Action also runs on all PRs (informational):
 
 ---
 
-**Last Updated**: 2026-05-16
+**Last Updated**: 2026-05-18

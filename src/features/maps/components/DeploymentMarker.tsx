@@ -36,14 +36,20 @@ const DeploymentMarkerComponent: React.FC<Props> = ({ deployment, onPress }) => 
         }
     }
 
+    // Safety: skip rendering if coordinates are null/undefined
+    // (prevents native ReadableNativeMap.getDouble crash on Android)
+    if (deployment.latitude == null || deployment.longitude == null) {
+        return null
+    }
+
     const color = getMarkerColor(deployment.deploymentStatusId)
 
     return (
         <Marker
             ref={markerRef}
             coordinate={{
-                latitude: deployment.latitude!,
-                longitude: deployment.longitude!,
+                latitude: deployment.latitude,
+                longitude: deployment.longitude,
             }}
             onPress={(e) => {
                 // Stop bubbling to prevent map press

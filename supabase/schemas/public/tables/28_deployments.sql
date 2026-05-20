@@ -50,7 +50,15 @@ CREATE TABLE deployments (
   sd_card_total_kb_at_start integer,
   sd_card_available_kb_at_start integer,
   lorawan_rssi_at_start integer,
-  lorawan_snr_at_start double precision
+  lorawan_snr_at_start double precision,
+
+  -- CamtrapDP alignment fields
+  camera_tilt float CHECK (camera_tilt IS NULL OR (camera_tilt >= -90 AND camera_tilt <= 90)),
+  detection_distance float CHECK (detection_distance IS NULL OR (detection_distance >= 0)),
+  bait_use text CHECK (bait_use IS NULL OR (bait_use IN ('none', 'scent', 'food', 'visual', 'acoustic', 'other'))),
+  feature_type text CHECK (feature_type IS NULL OR (feature_type IN ('roadTrail', 'waterSource', 'burrow', 'nestSite', 'other'))),
+  habitat text,
+  deployment_tags text[]
 );
 
 -- Indexes
@@ -95,6 +103,12 @@ COMMENT ON COLUMN deployments.sd_card_total_kb_at_start IS 'Total SD card capaci
 COMMENT ON COLUMN deployments.sd_card_available_kb_at_start IS 'Available SD card capacity recorded at deployment start (KB).';
 COMMENT ON COLUMN deployments.lorawan_rssi_at_start IS 'LoRaWAN RSSI recorded at deployment start.';
 COMMENT ON COLUMN deployments.lorawan_snr_at_start IS 'LoRaWAN SNR recorded at deployment start.';
+COMMENT ON COLUMN deployments.camera_tilt IS 'Camera tilt angle in degrees (CamtrapDP cameraTilt).';
+COMMENT ON COLUMN deployments.detection_distance IS 'Maximum detection distance in metres (CamtrapDP detectionDistance).';
+COMMENT ON COLUMN deployments.bait_use IS 'Attractant used: none, scent, food, visual, acoustic, or other (CamtrapDP baitUse).';
+COMMENT ON COLUMN deployments.feature_type IS 'Feature monitored: roadTrail, waterSource, burrow, nestSite, or other (CamtrapDP featureType).';
+COMMENT ON COLUMN deployments.habitat IS 'Free-text habitat description at the deployment location (CamtrapDP habitat).';
+COMMENT ON COLUMN deployments.deployment_tags IS 'Array of grouping tags for this deployment (CamtrapDP deploymentTags).';
 
 ALTER TABLE deployments ENABLE ROW LEVEL SECURITY;
 

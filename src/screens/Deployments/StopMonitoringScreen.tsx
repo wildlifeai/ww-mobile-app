@@ -284,6 +284,7 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
             <DeploymentMonitorView
                 device={storeDevice}
                 captureMethodId={deployment.captureMethodId}
+                deploymentStartTime={deployment.deploymentStart}
                 onContinueMonitoring={handleContinueMonitoring}
                 onStopMonitoring={handleStopMonitoring}
                 isStoppingMonitoring={isEnding}

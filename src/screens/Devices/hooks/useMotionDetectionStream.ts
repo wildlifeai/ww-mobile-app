@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { unstable_batchedUpdates } from 'react-native'
 
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
-import { log, logError } from '../../../utils/logger'
+import { log, logError, logWarn } from '../../../utils/logger'
 import { bleEventBus, BleEvent } from '../../../ble/protocol/eventBus'
 import { commandRegistry } from '../../../ble/protocol/commandRegistry'
 import { bleTransport } from '../../../ble/protocol/bleTransportController'
@@ -117,6 +117,14 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 bleTransport.clearAll()
                 log('[MotionDetectionStream] Command queue cleared — ready for next test.')
 
+                // Reset test mode bits so subsequent captures save JPEG files.
+                // Done async after DPD — will briefly wake the device.
+                if (device) {
+                    const cleanupSession = createBleSession(device)
+                    cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: 0 }))
+                        .then(() => log('[MotionDetectionStream] TEST_MODE_BITS reset to 0'))
+                        .catch((e: any) => logWarn('[MotionDetectionStream] Failed to reset test mode bits:', e))
+                }
             }
 
             // Detect firmware errors that prevent capture
@@ -442,7 +450,15 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
         })
         log('[MotionDetectionStream] Stopped MD test — no longer processing incoming frames.')
         log(`[MotionDetectionStream] Device will finish remaining capture frames in the background.`)
-    }, [])
+
+        // Reset test mode bits so subsequent captures save JPEG files.
+        if (device) {
+            const cleanupSession = createBleSession(device)
+            cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: 0 }))
+                .then(() => log('[MotionDetectionStream] TEST_MODE_BITS reset to 0 (stop)'))
+                .catch((e: any) => logWarn('[MotionDetectionStream] Failed to reset test mode bits on stop:', e))
+        }
+    }, [device])
 
     return useMemo(() => ({
         mdGrid,

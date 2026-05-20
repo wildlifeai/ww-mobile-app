@@ -223,7 +223,7 @@ export const commandRegistry = {
   ),
   aifirmware: createSingleLineCommand<boolean>(
     'aifirmware',
-    (filename: string) => `AI firmware ${filename}`,
+    (filename: string, crc?: string) => crc ? `AI firmware ${filename} ${crc}` : `AI firmware ${filename}`,
     /Firmware update (OK|FAILED)(?: \(error (-?\d+)\))?/i,
     (match) => {
       if (match[1].toUpperCase() === 'FAILED') {
@@ -468,5 +468,17 @@ export const commandRegistry = {
     /^OK$/i,
     () => true,
     { timeoutMs: 10000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Error/i }
+  ),
+  format: createSingleLineCommand<boolean>(
+    'format',
+    () => 'AI format',
+    /(WARNING|Formatted OK|Format failed)/i,
+    (match) => {
+      if (match[0].toUpperCase().includes('FAILED')) {
+         throw new Error('Format failed');
+      }
+      return true;
+    },
+    { timeoutMs: 25000, retryPolicy: { maxRetries: 0 } }
   ),
 };

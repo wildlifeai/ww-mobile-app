@@ -132,7 +132,7 @@ export const EngineerConsoleScreen = () => {
                 onShowFlows={() => dispatch({ type: 'SET_IS_FLOWS_VISIBLE', payload: true })}
             />
 
-            <WWBleDisconnectedBanner connected={!!device?.connected} />
+            <WWBleDisconnectedBanner connected={!!device?.connected} dfuInProgress={!!device?.dfuInProgress} />
 
             <View style={styles.consoleContainer}>
                 <BleConsoleOutput entries={consoleState.consoleHistory} />

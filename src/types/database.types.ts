@@ -622,11 +622,13 @@ export type Database = {
           activity_detection_sensitivity_id: number | null
           ai_model_id: string | null
           altitude: number | null
+          bait_use: string | null
           battery_level_at_start: number | null
           ble_firmware_id: string | null
           camera_height: number | null
           camera_location_image_paths: Json | null
           camera_model: string | null
+          camera_tilt: number | null
           capture_method_id: number | null
           config_firmware_id: string | null
           created_at: string | null
@@ -635,10 +637,14 @@ export type Database = {
           deployment_photos: Json | null
           deployment_start: string
           deployment_status_id: number | null
+          deployment_tags: string[] | null
+          detection_distance: number | null
           device_eui: string | null
           device_id: string
           end_deployment_comments: string | null
           ended_by: string | null
+          feature_type: string | null
+          habitat: string | null
           himax_firmware_id: string | null
           id: string
           latitude: number | null
@@ -666,11 +672,13 @@ export type Database = {
           activity_detection_sensitivity_id?: number | null
           ai_model_id?: string | null
           altitude?: number | null
+          bait_use?: string | null
           battery_level_at_start?: number | null
           ble_firmware_id?: string | null
           camera_height?: number | null
           camera_location_image_paths?: Json | null
           camera_model?: string | null
+          camera_tilt?: number | null
           capture_method_id?: number | null
           config_firmware_id?: string | null
           created_at?: string | null
@@ -679,10 +687,14 @@ export type Database = {
           deployment_photos?: Json | null
           deployment_start: string
           deployment_status_id?: number | null
+          deployment_tags?: string[] | null
+          detection_distance?: number | null
           device_eui?: string | null
           device_id: string
           end_deployment_comments?: string | null
           ended_by?: string | null
+          feature_type?: string | null
+          habitat?: string | null
           himax_firmware_id?: string | null
           id?: string
           latitude?: number | null
@@ -710,11 +722,13 @@ export type Database = {
           activity_detection_sensitivity_id?: number | null
           ai_model_id?: string | null
           altitude?: number | null
+          bait_use?: string | null
           battery_level_at_start?: number | null
           ble_firmware_id?: string | null
           camera_height?: number | null
           camera_location_image_paths?: Json | null
           camera_model?: string | null
+          camera_tilt?: number | null
           capture_method_id?: number | null
           config_firmware_id?: string | null
           created_at?: string | null
@@ -723,10 +737,14 @@ export type Database = {
           deployment_photos?: Json | null
           deployment_start?: string
           deployment_status_id?: number | null
+          deployment_tags?: string[] | null
+          detection_distance?: number | null
           device_eui?: string | null
           device_id?: string
           end_deployment_comments?: string | null
           ended_by?: string | null
+          feature_type?: string | null
+          habitat?: string | null
           himax_firmware_id?: string | null
           id?: string
           latitude?: number | null
@@ -850,6 +868,54 @@ export type Database = {
           },
         ]
       }
+      detections: {
+        Row: {
+          ai_model_id: string | null
+          bbox: Json | null
+          category: string | null
+          confidence: number | null
+          created_at: string | null
+          id: string
+          is_blank_candidate: boolean
+          media_id: string
+        }
+        Insert: {
+          ai_model_id?: string | null
+          bbox?: Json | null
+          category?: string | null
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          is_blank_candidate?: boolean
+          media_id: string
+        }
+        Update: {
+          ai_model_id?: string | null
+          bbox?: Json | null
+          category?: string | null
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          is_blank_candidate?: boolean
+          media_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "detections_ai_model_id_fkey"
+            columns: ["ai_model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "detections_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "media"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       devices: {
         Row: {
           bluetooth_id: string
@@ -931,6 +997,8 @@ export type Database = {
       }
       firmware: {
         Row: {
+          build_date: string | null
+          crc_checksum: string | null
           created_at: string | null
           deleted_at: string | null
           file_size_bytes: number | null
@@ -945,6 +1013,8 @@ export type Database = {
           version: string
         }
         Insert: {
+          build_date?: string | null
+          crc_checksum?: string | null
           created_at?: string | null
           deleted_at?: string | null
           file_size_bytes?: number | null
@@ -959,6 +1029,8 @@ export type Database = {
           version: string
         }
         Update: {
+          build_date?: string | null
+          crc_checksum?: string | null
           created_at?: string | null
           deleted_at?: string | null
           file_size_bytes?: number | null
@@ -1105,6 +1177,188 @@ export type Database = {
             columns: ["lorawan_message_id"]
             isOneToOne: false
             referencedRelation: "lorawan_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      media: {
+        Row: {
+          capture_method_id: number | null
+          created_at: string | null
+          deleted_at: string | null
+          deployment_id: string
+          exif_metadata: Json | null
+          favorite: boolean
+          file_hash: string | null
+          file_mediatype: string
+          file_name: string | null
+          file_path: string
+          file_public: boolean
+          id: string
+          media_comments: string | null
+          timestamp: string | null
+          updated_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          capture_method_id?: number | null
+          created_at?: string | null
+          deleted_at?: string | null
+          deployment_id: string
+          exif_metadata?: Json | null
+          favorite?: boolean
+          file_hash?: string | null
+          file_mediatype?: string
+          file_name?: string | null
+          file_path: string
+          file_public?: boolean
+          id?: string
+          media_comments?: string | null
+          timestamp?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          capture_method_id?: number | null
+          created_at?: string | null
+          deleted_at?: string | null
+          deployment_id?: string
+          exif_metadata?: Json | null
+          favorite?: boolean
+          file_hash?: string | null
+          file_mediatype?: string
+          file_name?: string | null
+          file_path?: string
+          file_public?: boolean
+          id?: string
+          media_comments?: string | null
+          timestamp?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_capture_method_id_fkey"
+            columns: ["capture_method_id"]
+            isOneToOne: false
+            referencedRelation: "capture_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "media_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      observations: {
+        Row: {
+          behavior: string | null
+          classification_method: string | null
+          classification_probability: number | null
+          classification_timestamp: string | null
+          classified_by: string | null
+          count: number | null
+          created_at: string | null
+          deleted_at: string | null
+          deployment_id: string
+          event_id: string | null
+          gbif_confidence: number | null
+          gbif_match_type: string | null
+          gbif_taxon_key: number | null
+          id: string
+          individual_id: string | null
+          life_stage: string | null
+          media_id: string | null
+          observation_comments: string | null
+          observation_level: string | null
+          observation_tags: string[] | null
+          observation_type: string | null
+          scientific_name: string | null
+          sex: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          behavior?: string | null
+          classification_method?: string | null
+          classification_probability?: number | null
+          classification_timestamp?: string | null
+          classified_by?: string | null
+          count?: number | null
+          created_at?: string | null
+          deleted_at?: string | null
+          deployment_id: string
+          event_id?: string | null
+          gbif_confidence?: number | null
+          gbif_match_type?: string | null
+          gbif_taxon_key?: number | null
+          id?: string
+          individual_id?: string | null
+          life_stage?: string | null
+          media_id?: string | null
+          observation_comments?: string | null
+          observation_level?: string | null
+          observation_tags?: string[] | null
+          observation_type?: string | null
+          scientific_name?: string | null
+          sex?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          behavior?: string | null
+          classification_method?: string | null
+          classification_probability?: number | null
+          classification_timestamp?: string | null
+          classified_by?: string | null
+          count?: number | null
+          created_at?: string | null
+          deleted_at?: string | null
+          deployment_id?: string
+          event_id?: string | null
+          gbif_confidence?: number | null
+          gbif_match_type?: string | null
+          gbif_taxon_key?: number | null
+          id?: string
+          individual_id?: string | null
+          life_stage?: string | null
+          media_id?: string | null
+          observation_comments?: string | null
+          observation_level?: string | null
+          observation_tags?: string[] | null
+          observation_type?: string | null
+          scientific_name?: string | null
+          sex?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "observations_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "observations_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observations_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "media"
             referencedColumns: ["id"]
           },
         ]

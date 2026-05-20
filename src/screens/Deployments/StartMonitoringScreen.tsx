@@ -1,7 +1,7 @@
-import { useEffect, useCallback, useMemo } from 'react'
+import { useEffect, useCallback, useMemo, useRef } from 'react'
 import { StyleSheet, View } from 'react-native'
 
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
+import { useNavigation, useRoute, RouteProp, useIsFocused } from '@react-navigation/native'
 import { WWScreenView } from '../../components/ui/WWScreenView'
 import { WWButton } from '../../components/ui/WWButton'
 import { RootStackParamList } from '../../navigation/types'
@@ -34,10 +34,13 @@ export const StartMonitoringDetailsStep = () => {
 
     const { projectId, deviceId, bleDeviceId, initPayload } = route.params || {}
 
+    const isFirstFocus = useRef(true)
+    const isFocused = useIsFocused()
+
     // Destructure everything from hook first
     const {
         formState, submitting, project, availableProjects, sensitivityLabel,
-        device, bleDevice, isInitializing, initProgress, initStep, initErrors,
+        device, bleDevice, isInitializing, initProgress, initStep, initErrors, aiProcessorFailed,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         handleImageCaptured,
         handleNotesChange, handleProjectChange,
@@ -49,6 +52,7 @@ export const StartMonitoringDetailsStep = () => {
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
         isMonitoring, handleMonitorDisconnect, handleStopMonitoring, isStoppingMonitoring,
+        deploymentStartTime,
         // DFU control
         isDfuInProgress,
     } = useStartDeployment({ deviceId, bleDeviceId, projectId, navigation, initPayload })
@@ -73,8 +77,23 @@ export const StartMonitoringDetailsStep = () => {
     }, [navigation, isDfuInProgress])
 
     const firmwareStatus = useFirmwareStatus({ 
-        device: (device || bleDevice) as ExtendedPeripheral | undefined 
+        device: bleDevice as ExtendedPeripheral | undefined,
+        initialBleVersion: initPayload?.deviceFirmwareVersion,
+        initialHimaxVersion: initPayload?.himaxFirmwareVersion,
     })
+
+    // Re-check firmware status when this screen regains focus
+    // (e.g. after returning from FirmwareUpdateScreen/FirmwareStatusScreen with a successful update)
+    useEffect(() => {
+        if (isFocused && bleDevice?.connected) {
+            if (isFirstFocus.current) {
+                isFirstFocus.current = false
+                return // Skip active BLE query on initial mount-focus
+            }
+            firmwareStatus.checkStatus()
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isFocused, bleDevice?.connected])
 
     const isAnyFirmwareOutdated = !firmwareStatus.isChecking && (
         firmwareStatus.statuses.ble.isOutdated || 
@@ -132,6 +151,7 @@ export const StartMonitoringDetailsStep = () => {
                 <DeploymentMonitorView
                     device={bleDevice as any}
                     captureMethodId={project?.capture_method_id}
+                    deploymentStartTime={deploymentStartTime}
                     onContinueMonitoring={handleMonitorDisconnect}
                     onStopMonitoring={handleStopMonitoring}
                     isStoppingMonitoring={isStoppingMonitoring}
@@ -168,8 +188,32 @@ export const StartMonitoringDetailsStep = () => {
                     />
                 )}
 
+                {/* AI Processor Failure — Critical Blocker */}
+                {aiProcessorFailed && (
+                    <View style={{ backgroundColor: '#FFEBEE', marginBottom: 16, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#EF5350' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                            <WWIcon source="alert-octagon" size={24} color="#C62828" />
+                            <Text variant="titleSmall" style={{ color: '#C62828', marginLeft: 8, flex: 1, fontWeight: 'bold' }}>
+                                AI Processor Not Responding
+                            </Text>
+                        </View>
+                        <Text variant="bodySmall" style={{ color: '#C62828', marginBottom: 8 }}>
+                            The AI processor (camera module) did not wake up after multiple attempts. The device cannot start monitoring without it. Please go back and try reconnecting to the device.
+                        </Text>
+                        <Button
+                            mode="contained"
+                            buttonColor="#C62828"
+                            textColor="#FFFFFF"
+                            icon="arrow-left"
+                            onPress={() => navigation.goBack()}
+                        >
+                            <Text style={{ color: '#FFFFFF' }}>Back to Scanner</Text>
+                        </Button>
+                    </View>
+                )}
+
                 {/* Firmware Warning Banner */}
-                {isAnyFirmwareOutdated && (
+                {isAnyFirmwareOutdated && !aiProcessorFailed && (
                     <View style={{ backgroundColor: '#FFF3E0', marginBottom: 16, padding: 12, borderRadius: 8 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                             <WWIcon source="alert-circle-outline" size={24} color="#E65100" />
@@ -186,7 +230,7 @@ export const StartMonitoringDetailsStep = () => {
                             textColor="#FFFFFF"
                             onPress={() => {
                                 isDfuInProgress.current = true
-                                navigation.navigate('FirmwareStatusScreen', { deviceId: bleDeviceId! })
+                                navigation.navigate('FirmwareStatusScreen', { deviceId: bleDeviceId!, restrictToLatest: true })
                             }}
                         >
                             <Text style={{ color: '#FFFFFF' }}>Update Firmware</Text>
@@ -291,7 +335,7 @@ export const StartMonitoringDetailsStep = () => {
                         if (id) {
                             // Suppress the disconnect alert during BLE DFU
                             isDfuInProgress.current = true
-                            navigation.navigate('FirmwareUpdateScreen', { deviceId: id, target })
+                            navigation.navigate('FirmwareUpdateScreen', { deviceId: id, target, restrictToLatest: true })
                         }
                     }}
                 />
@@ -301,6 +345,7 @@ export const StartMonitoringDetailsStep = () => {
                         mode="contained"
                         onPress={handleStartDeployment}
                         loading={submitting}
+                        disabled={aiProcessorFailed}
                         style={styles.deployButton}
                     >
                         <Text>Start Monitoring</Text>

@@ -76,7 +76,7 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
         <ScrollView style={styles.container} contentContainerStyle={[styles.content, { gap: spacing }]} keyboardShouldPersistTaps="handled">
             
 
-            <WWBleDisconnectedBanner connected={!!device?.connected} />
+            <WWBleDisconnectedBanner connected={!!device?.connected} dfuInProgress={!!device?.dfuInProgress} />
 
             <Surface style={[styles.card, { backgroundColor: colors.surface, marginTop: 8 }]} elevation={1}>
                 

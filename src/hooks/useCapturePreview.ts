@@ -175,10 +175,29 @@ export const useCapturePreview = ({
 
             const session = createBleSession(device);
 
-            // Go straight to capture — no getops/setop round-trips.
-            // OP 10 (camera enabled) defaults to 1 in firmware and is set during deployment.
-            // If a device somehow has OP 10 = 0, the firmware returns "Camera system not
-            // enabled" which is classified as CONFIG_ERROR and surfaced to the user.
+            // Pre-flight: verify device state before capture.
+            // Read current OPs and ensure camera is enabled (OP 10) and
+            // TEST_MODE_BITS (OP 18) is 0 (no skip-file-creation from prior MD test).
+            setCaptureStage('Checking device state…')
+            try {
+                const ops = await session.execute(() => commandRegistry.getops())
+                if (ops) {
+                    const cameraEnabled = parseInt(ops[10] ?? '1', 10)
+                    const testModeBits = parseInt(ops[18] ?? '0', 10)
+
+                    if (cameraEnabled !== 1) {
+                        log(`[useCapturePreview] Camera not enabled (OP 10 = ${cameraEnabled}), enabling…`)
+                        await session.execute(() => commandRegistry.setop({ index: 10, value: 1 }))
+                    }
+                    if (testModeBits !== 0) {
+                        log(`[useCapturePreview] TEST_MODE_BITS not zero (OP 18 = ${testModeBits}), clearing…`)
+                        await session.execute(() => commandRegistry.setop({ index: 18, value: 0 }))
+                    }
+                }
+            } catch (e) {
+                logWarn('[useCapturePreview] Pre-flight getops failed, proceeding anyway:', e)
+            }
+
             setCaptureStage(`Capturing ${captureCount} image(s)...`)
             log(`[useCapturePreview] Sending capture command (AI capture ${captureCount} ${captureInterval})...`)
             const captureResult = await session.execute(() => commandRegistry.capture(captureCount, captureInterval))

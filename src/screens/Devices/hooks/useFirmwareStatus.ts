@@ -22,6 +22,8 @@ export interface FirmwareComponentStatus {
 
 interface UseFirmwareStatusOptions {
     device: ExtendedPeripheral | undefined
+    initialBleVersion?: string | null
+    initialHimaxVersion?: string | null
 }
 
 export interface UseFirmwareStatusReturn {
@@ -32,14 +34,14 @@ export interface UseFirmwareStatusReturn {
     errorMsg: string | null
 }
 
-export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirmwareStatusReturn {
+export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersion }: UseFirmwareStatusOptions): UseFirmwareStatusReturn {
     const [isChecking, setIsChecking] = useState(false)
     const [lastChecked, setLastChecked] = useState<Date | null>(null)
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
     const [statuses, setStatuses] = useState<Record<'ble' | 'himax', FirmwareComponentStatus>>({
-        ble: { type: 'ble', currentVersion: null, latestVersion: null, latestFirmware: null, isOutdated: false },
-        himax: { type: 'himax', currentVersion: null, latestVersion: null, latestFirmware: null, isOutdated: false },
+        ble: { type: 'ble', currentVersion: initialBleVersion || null, latestVersion: null, latestFirmware: null, isOutdated: false },
+        himax: { type: 'himax', currentVersion: initialHimaxVersion || null, latestVersion: null, latestFirmware: null, isOutdated: false },
     })
 
     const isMounted = useRef(true)
@@ -123,9 +125,57 @@ export function useFirmwareStatus({ device }: UseFirmwareStatusOptions): UseFirm
     // Auto-check on mount or connection
     useEffect(() => {
         if (device?.connected) {
-            checkStatus()
+            if (initialBleVersion && initialHimaxVersion) {
+                // Perform a silent, cloud-only version metadata check
+                const checkSilent = async () => {
+                    setIsChecking(true)
+                    setErrorMsg(null)
+                    try {
+                        const latestBle = await ReferenceDataService.getLatestFirmware('ble')
+                        const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
+
+                        const currentBleVersion = convertBleToSemanticVersion(initialBleVersion)
+                        const rawHimaxVer = initialHimaxVersion
+                        const match = rawHimaxVer.match(/(?:V|v)?(\d+\.\d+\.\d+)/)
+                        const currentHimaxVersion = match ? `v${match[1]}` : rawHimaxVer
+
+                        const bleOutdated = !!latestBle?.version && currentBleVersion !== latestBle.version
+                        const himaxOutdated = !!latestHimax?.version && currentHimaxVersion !== latestHimax.version
+
+                        if (!isMounted.current) return
+
+                        setStatuses({
+                            ble: {
+                                type: 'ble',
+                                currentVersion: currentBleVersion || 'Unknown',
+                                latestVersion: latestBle?.version || 'Unknown',
+                                latestFirmware: latestBle,
+                                isOutdated: bleOutdated,
+                            },
+                            himax: {
+                                type: 'himax',
+                                currentVersion: currentHimaxVersion || 'Unknown',
+                                latestVersion: latestHimax?.version || 'Unknown',
+                                latestFirmware: latestHimax,
+                                isOutdated: himaxOutdated,
+                            },
+                        })
+                        setLastChecked(new Date())
+                    } catch (error) {
+                        if (!isMounted.current) return
+                        logError('[FirmwareStatus] Silent check failed:', error)
+                    } finally {
+                        if (isMounted.current) {
+                            setIsChecking(false)
+                        }
+                    }
+                }
+                checkSilent()
+            } else {
+                checkStatus()
+            }
         }
-    }, [device?.connected, checkStatus])
+    }, [device?.connected, checkStatus, initialBleVersion, initialHimaxVersion])
 
     return {
         isChecking,

@@ -21,6 +21,7 @@ const WifiIcon = (props: any) => <List.Icon {...props} icon="wifi" />
 const QuestionIcon = (props: any) => <List.Icon {...props} icon="help-circle-outline" />
 const InfoIcon = (props: any) => <List.Icon {...props} icon="information-outline" />
 const SecurityIcon = (props: any) => <List.Icon {...props} icon="shield-check-outline" />
+const TutorialIcon = (props: any) => <List.Icon {...props} icon="school" />
 const DeleteIcon = (props: any) => <List.Icon {...props} icon="delete-outline" color="#B3261E" />
 
 export const Settings = () => {
@@ -51,7 +52,7 @@ export const Settings = () => {
 	}
 
 	const openPrivacyPolicy = () => {
-		Linking.openURL('https://wildlife.ai/privacy') 
+		Linking.openURL('https://wildlifewatcher.ai/privacy') 
 	}
 
 	const openAccountDeletion = () => {
@@ -95,6 +96,14 @@ export const Settings = () => {
 
 				<List.Section>
 					<List.Subheader>About</List.Subheader>
+					<List.Item
+						title="App Tutorial"
+						description="Replay the getting started walkthrough"
+						left={TutorialIcon}
+						right={ChevronIcon}
+						onPress={() => navigation.navigate("Tutorial")}
+						testID="tutorial-settings-button"
+					/>
 					<List.Item
 						title="App Version"
 						description={`v${DeviceInfo.getVersion()} (${DeviceInfo.getBuildNumber()})`}

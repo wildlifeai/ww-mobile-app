@@ -47,6 +47,8 @@ export enum CommandNames {
 	getdid = "getdid",
 	ai_firmware = "ai_firmware",
 	inithm0360 = "inithm0360",
+	dir = "dir",
+	format = "format",
 
 	// BLE-processor commands (lowercase)
 	setutc = "setutc",
@@ -439,6 +441,18 @@ export const COMMANDS: {
 		writeCommand: () => 'AI inithm0360',
 		readRegex: /^(OK|Error)/i,
 		description: "Reinitialise HM0360 camera sensor registers (diagnostic for black images)",
+		type: 'command',
+	},
+	[CommandNames.dir]: {
+		name: CommandNames.dir,
+		writeCommand: () => 'AI dir',
+		description: "Lists the files in the current directory of the SD card",
+		type: 'command',
+	},
+	[CommandNames.format]: {
+		name: CommandNames.format,
+		writeCommand: () => 'AI format',
+		description: "Formats the SD card as FAT32 (run twice to confirm)",
 		type: 'command',
 	},
 	[CommandNames.md]: {

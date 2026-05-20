@@ -99,6 +99,7 @@ export const useStartDeployment = ({
     const [initProgress, _setInitProgress] = useState(1.0)
     const [initStep, _setInitStep] = useState('Complete')
     const [initErrors, setInitErrors] = useState<{ selftest?: string; setUtc?: string; deviceHealth?: string[] }>(initPayload?.initErrors || {})
+    const aiProcessorFailed = initPayload?.aiProcessorFailed ?? false
 
     // Shared progress dialog state
     const progress = useDeploymentProgress()
@@ -123,27 +124,6 @@ export const useStartDeployment = ({
     // Standard BLE initialization plus initialization guard
     // const hasRunInitialization = useRef(false)
     const bleDeviceRef = useRef(bleDevice)
-    const hasRunInitReset = useRef(false)
-
-    // Reset OPs to factory defaults when the screen first mounts with a connected device.
-    // This clears any leftover MD test state (TEST_MODE_BITS, extended DPD, etc.)
-    // before the user configures the deployment.
-    useEffect(() => {
-        if (hasRunInitReset.current) return
-        if (!bleDevice?.connected || !bleSession) return
-
-        hasRunInitReset.current = true
-        log('[Deployment] Running initialization OP reset...')
-
-        const silentCb = {
-            addLog: (msg: string) => log(`[Deployment:InitReset] ${msg}`),
-            setStep: () => {},
-            setProgress: () => {},
-        }
-        pipeline.resetOps(bleSession, silentCb)
-            .then(() => log('[Deployment] Initialization OP reset complete'))
-            .catch(err => logWarn('[Deployment] Initialization OP reset failed (non-critical):', err))
-    }, [bleDevice?.connected, bleSession])
 
     
     // Memoized handlers to prevent infinite loops in child components
@@ -427,6 +407,14 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'BLE session not available.')
             return
         }
+        if (aiProcessorFailed) {
+            Alert.alert(
+                'AI Processor Not Responding',
+                'The AI processor did not wake up during pre-deployment checks. The device cannot start monitoring. Please try reconnecting or check the hardware.',
+                [{ text: 'OK' }]
+            )
+            return
+        }
 
         progress.reset('Starting deployment...')
         setSubmitting(true)
@@ -439,9 +427,15 @@ export const useStartDeployment = ({
         }
 
         try {
+            progress.addLog('Retrieving current parameters...')
+            progress.setFinishStep('Reading parameters...')
+            progress.setFinishProgress(0.02)
+            const currentOps = await bleSession.execute(commandRegistry.getops)
+            log(`[Deployment] Pre-flight OPs: ${currentOps.join(' ')}`)
+
             // 1-2. Shared pipeline steps (time sync, AI model)
             await pipeline.syncTime(bleSession, cb)
-            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true)
+            await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true, currentOps)
 
             // 4. Gather snapshot data (unique to production deployment)
             progress.addLog('Gathering snapshot data...')
@@ -467,14 +461,19 @@ export const useStartDeployment = ({
                 }
             }
 
-            try {
-                const response = await bleSession?.execute(commandRegistry.version)
-                if (response) {
-                    const resolvedId = await FirmwareService.getFirmwareIdByVersion('ble', response)
-                    if (resolvedId) bleFirmwareId = resolvedId
+            if (bleDevice) {
+                try {
+                    let response = initPayload?.deviceFirmwareVersion
+                    if (!response) {
+                        response = await bleSession?.execute(commandRegistry.version)
+                    }
+                    if (response) {
+                        const resolvedId = await FirmwareService.getFirmwareIdByVersion('ble', response)
+                        if (resolvedId) bleFirmwareId = resolvedId
+                    }
+                } catch (e) {
+                    logWarn('Failed to resolve firmware ID:', e)
                 }
-            } catch (e) {
-                logWarn('Failed to resolve firmware ID:', e)
             }
 
             // 5. Create deployment record
@@ -506,11 +505,12 @@ export const useStartDeployment = ({
                 cameraImagePaths: [],
             })
             deploymentIdRef.current = newDeployment.id
+            setDeploymentStartTime(newDeployment.deploymentStart || new Date())
             progress.addLog(`Deployment created: ${newDeployment.id.substring(0, 8)}...`)
 
             // 6. Reset OPs to factory defaults before applying deployment config
             try {
-                await pipeline.resetOps(bleSession, cb)
+                await pipeline.resetOps(bleSession, cb, currentOps)
             } catch (resetError) {
                 logWarn('[Deployment] OP reset failed, continuing with configuration:', resetError)
                 progress.addLog('OP reset failed — continuing with configuration')
@@ -524,7 +524,7 @@ export const useStartDeployment = ({
                     timelapseInterval: project.timelapse_interval_seconds || 300,
                     recordGpsInImages: project.record_gps_in_images || false,
                     gpsLocation,
-                }, cb)
+                }, cb, currentOps)
             } catch (configError) {
                 logError('[Deployment] Configuration failed:', configError)
                 progress.addLog('Configuration failed — aborting deployment')
@@ -550,7 +550,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total])  
+    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion])  
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)
@@ -620,13 +620,17 @@ export const useStartDeployment = ({
 
 
 
+    // Keep track of start time when deployment is created
+    const [deploymentStartTime, setDeploymentStartTime] = useState<Date | null>(null)
+
     return {
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
-        device, bleDevice, isInitializing, initProgress, initStep, initErrors,
+        device, bleDevice, isInitializing, initProgress, initStep, initErrors, aiProcessorFailed,
         finishProgress: progress.finishProgress, finishStep: progress.finishStep,
         finishLogs: progress.finishLogs, isFinishing: progress.isFinishing,
         isStartSuccess: progress.isSuccess,
         isMonitoring: monitoring.isMonitoring,
+        deploymentStartTime,
         handleMonitorDisconnect: monitoring.handleMonitorDisconnect,
         handleStopMonitoring: monitoring.handleStopMonitoring,
         isStoppingMonitoring: monitoring.isStoppingMonitoring,

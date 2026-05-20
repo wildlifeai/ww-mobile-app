@@ -60,7 +60,7 @@ export const DevDeploymentTestScreen = () => {
         testModeBits, setTestModeBits,
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
-        submitting,
+        submitting, deploymentStartTime,
         handleStartDeployment,
         isMonitoring, handleMonitorDisconnect, handleStopMonitoring, isStoppingMonitoring,
         isFinishing, finishProgress, finishStep, finishLogs,
@@ -106,6 +106,7 @@ export const DevDeploymentTestScreen = () => {
                 <DeploymentMonitorView
                     device={bleDevice as any}
                     captureMethodId={captureMethodOverride}
+                    deploymentStartTime={deploymentStartTime}
                     onContinueMonitoring={handleMonitorDisconnect}
                     onStopMonitoring={handleStopMonitoring}
                     isStoppingMonitoring={isStoppingMonitoring}
@@ -147,7 +148,7 @@ export const DevDeploymentTestScreen = () => {
             <ScrollView contentContainerStyle={[styles.content, { gap: spacing }]} keyboardShouldPersistTaps="handled">
 
                 {/* Connection status banner */}
-                <WWBleDisconnectedBanner connected={isConnected} />
+                <WWBleDisconnectedBanner connected={isConnected} dfuInProgress={!!bleDevice?.dfuInProgress} />
 
                 {/* ═══════════════════════════════════════ */}
                 {/* 1. PROJECT SETTINGS */}

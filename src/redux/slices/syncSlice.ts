@@ -32,6 +32,7 @@ export interface EntitySyncMap {
 // Sync state interface
 export interface SyncState {
 	isGlobalSyncing: boolean // Tracks if a global pull/sync is in progress
+	hasCompletedInitialSync: boolean // True after first successful sync — routing decisions are invalid until this is true
 	overall: "synced" | "syncing" | "pending" | "error"
 	entities: {
 		projects: EntitySyncMap
@@ -56,6 +57,7 @@ export interface SyncState {
 // Initial state
 const initialState: SyncState = {
 	isGlobalSyncing: false,
+	hasCompletedInitialSync: false,
 	overall: "synced",
 	entities: {
 		projects: {},
@@ -211,6 +213,11 @@ const syncSlice = createSlice({
 			return initialState
 		},
 
+		// Mark initial sync as complete — routing decisions are now valid
+		markInitialSyncComplete: (state) => {
+			state.hasCompletedInitialSync = true
+		},
+
 		// Update queue counts (called by offline middleware)
 		updateQueueCounts: (
 			state,
@@ -238,6 +245,7 @@ export const {
 	markEntityError,
 	clearEntityError,
 	resetSyncStatus,
+	markInitialSyncComplete,
 	updateQueueCounts,
 } = syncSlice.actions
 
@@ -245,6 +253,7 @@ export const {
 export const selectOverallSyncStatus = (state: SyncRootState) => state.sync.overall
 export const selectQueueStatus = (state: SyncRootState) => state.sync.queue
 export const selectLastSync = (state: SyncRootState) => state.sync.lastSync
+export const selectHasCompletedInitialSync = (state: SyncRootState) => state.sync.hasCompletedInitialSync
 export const selectSyncErrors = (state: SyncRootState) => state.sync.errors
 
 // Selector for specific entity sync status

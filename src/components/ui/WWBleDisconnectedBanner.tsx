@@ -9,19 +9,22 @@ import { WWText } from './WWText'
 interface Props {
     /** Whether the BLE device is currently connected */
     connected: boolean
+    /** Whether a DFU/firmware update is in progress (disconnect is expected) */
+    dfuInProgress?: boolean
 }
 
 /**
  * A themed banner shown at the top of BLE-dependent screens when the
  * Bluetooth connection is lost (e.g. after the app is backgrounded).
  *
- * Renders nothing when `connected` is `true`.
+ * Renders nothing when `connected` is `true` or when a DFU update is
+ * in progress (the disconnect is expected during firmware flashing).
  */
-export const WWBleDisconnectedBanner = ({ connected }: Props) => {
+export const WWBleDisconnectedBanner = ({ connected, dfuInProgress }: Props) => {
     const { colors } = useTheme()
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
 
-    if (connected) return null
+    if (connected || dfuInProgress) return null
 
     return (
         <View style={[styles.container, { backgroundColor: 'rgba(176, 0, 32, 0.1)' }]}>
