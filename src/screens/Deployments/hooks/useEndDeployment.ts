@@ -84,6 +84,7 @@ export const useEndDeployment = ({
         // Reset and Show Progress Dialog
         setIsEnding(true)
         progress.reset('Stopping...')
+        progress.addLog('Preparing to stop monitoring...')
 
         try {
             // Pre-fetch all ops once for the entire end-deployment sequence
@@ -91,11 +92,14 @@ export const useEndDeployment = ({
             let session: any = null
             if (storeDevice) {
                 try {
+                    progress.addLog('Reading device parameters...')
                     session = createBleSession(storeDevice)
                     cachedOps = await session.execute(commandRegistry.getops)
+                    progress.addLog('Device parameters read')
                     log('[EndDeployment] Pre-fetched bulk ops for end-deployment')
                 } catch (err) {
                     logWarn('[EndDeployment] Bulk ops fetch failed, proceeding without cache', err)
+                    progress.addLog('Warning: Could not read device parameters')
                 }
             }
 
