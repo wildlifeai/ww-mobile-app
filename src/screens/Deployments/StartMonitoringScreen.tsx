@@ -77,7 +77,7 @@ export const StartMonitoringDetailsStep = () => {
     }, [navigation, isDfuInProgress])
 
     const firmwareStatus = useFirmwareStatus({ 
-        device: (device || bleDevice) as ExtendedPeripheral | undefined,
+        device: bleDevice as ExtendedPeripheral | undefined,
         initialBleVersion: initPayload?.deviceFirmwareVersion,
         initialHimaxVersion: initPayload?.himaxFirmwareVersion,
     })
