@@ -106,7 +106,8 @@ const MONTH_MAP: Record<string, number> = {
     Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12
 };
 
-export function firmware83Filename(version: string, buildDate?: string | null): string {
+export function firmware83Filename(version?: string | null, buildDate?: string | null): string {
+    if (!version) return 'OUTPUT.IMG';
     try {
         // Match HH:MM:SS Mon DD YYYY
         // Note: version string looks like: "WW500_C02 10:59:43 May 20 2026"
@@ -342,7 +343,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         const run = async () => {
             // Only perform BLE command queries if it's NOT a DFU device
             if (!isDfuMode) {
-                const session = createBleSession(device!)
+                const session = device ? createBleSession(device) : null
+                if (!session) throw new Error('Device not available')
                 try {
                     // Battery
                     const batt = await session.execute(() => commandRegistry.battery())
