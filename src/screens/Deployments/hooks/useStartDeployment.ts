@@ -433,9 +433,14 @@ export const useStartDeployment = ({
             const currentOps = await bleSession.execute(commandRegistry.getops)
             log(`[Deployment] Pre-flight OPs: ${currentOps.join(' ')}`)
 
-            // 1-2. Shared pipeline steps (time sync, AI model)
-            await pipeline.syncTime(bleSession, cb)
+            // 1-2. Shared pipeline steps
+            // IMPORTANT: AI model sync must run BEFORE time sync.
+            // The getops() call above wakes the AI processor from DPD. The firmware has
+            // a 1000ms inactivity timer that shuts down the IMAGE task. setutc is handled
+            // by the BLE module (not the AI processor), so it does NOT reset this timer.
+            // If syncTime runs first, the IMAGE task dies before loadmodel arrives.
             await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true, currentOps)
+            await pipeline.syncTime(bleSession, cb)
 
             // 4. Gather snapshot data (unique to production deployment)
             progress.addLog('Gathering snapshot data...')

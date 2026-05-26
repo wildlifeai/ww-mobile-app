@@ -128,8 +128,8 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 
 | Step | Action | Detail |
 |------|--------|--------|
-| 1 | Time Sync | `setutc` — see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#key-commands) |
-| 2 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Always issues `erasemodel` → `loadmodel` if OPs mismatch. Retries reference data sync if model not found locally. |
+| 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Always issues `erasemodel` → `loadmodel` if OPs mismatch. Retries reference data sync if model not found locally. Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
+| 2 | Time Sync | `setutc` — see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#key-commands). Handled by BLE module (not AI processor). |
 | 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
 | 5 | Reset to Defaults | `pipeline.resetOps()` calls `executeResetToDefaults()` — shared workflow that intelligently resets parameters, skips tracking counters, and clears AI models. |
