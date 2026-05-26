@@ -51,7 +51,7 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 | Step | Function | Purpose |
 |------|----------|---------|
 | Time Sync | `pipeline.syncTime()` | `setutc` — syncs device clock |
-| AI Model Sync | `pipeline.syncAiModel()` | Compares and transfers model if mismatched |
+| AI Model Sync | `pipeline.syncAiModel()` | Checks SD card for existing model files; only downloads and transfers missing files. Always loads via `erasemodel` → `loadmodel` if OPs mismatch. |
 | Configure Device | `pipeline.configureDevice()` | Sets capture method OPs, deployment ID, GPS |
 
 ### Standard Deployment Pipeline
@@ -136,4 +136,4 @@ When BMP mode is enabled and the picture count is odd, it auto-increments to the
 
 ---
 
-*Last Updated: May 15, 2026*
+*Last Updated: May 27, 2026*
