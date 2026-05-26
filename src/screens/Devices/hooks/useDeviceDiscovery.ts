@@ -32,7 +32,7 @@ type UseDeviceDiscoveryOptions = {
 
 /**
  * Scan session lifecycle:
- *   idle → active → expired (30s timeout or user leaves page)
+ *   idle → active → expired (15s timeout or user leaves page)
  *
  * When the user leaves the Scanner tab, the scan session is fully stopped
  * and transitions to 'expired'. A new search must be started manually.
@@ -90,7 +90,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         setScanSessionState(state)
     }, [])
 
-    const SCAN_DURATION_SECONDS = 30
+    const SCAN_DURATION_SECONDS = 15
     const [scanSecondsRemaining, setScanSecondsRemaining] = useState(SCAN_DURATION_SECONDS)
 
     // ── Operation token for connection cleanup ──
@@ -127,9 +127,12 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     // Auto-connect state machine — declared early because startScanSession and handleDeviceSelect use it
     const autoConnect = useAutoConnectStateMachine()
 
-    // Start a NEW 30-second scan session (always a clean restart)
+    // Start a NEW 15-second scan session (always a clean restart)
     const startScanSession = useCallback(async () => {
         autoConnect.resetAll()
+
+        // Stop any in-flight scan burst before flushing
+        await stopScan()
 
         // Flush stale Redux devices and native BLE cache
         await flushBleCache()
@@ -137,7 +140,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         updateScanSessionState('active')
         setScanSecondsRemaining(SCAN_DURATION_SECONDS)
         log(`[Scanner] New scan session started (${SCAN_DURATION_SECONDS}s)`)
-    }, [autoConnect, flushBleCache, updateScanSessionState])
+    }, [autoConnect, stopScan, flushBleCache, updateScanSessionState])
 
     // ── Stop scan when user leaves the page ──
     useEffect(() => {
