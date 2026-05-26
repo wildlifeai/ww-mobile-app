@@ -189,11 +189,14 @@ export async function syncAiModel(
                 addLog('All model files present on SD card — skipping transfer')
             }
 
-            // 6. Erase old model and load the target model
+            // 6. Load the target model
+            // NOTE: Do NOT call erasemodel before loadmodel — it destroys the
+            // flash-cached copy, forcing a slow SD→flash re-copy (~62 × 4KB writes).
+            // The firmware's loadmodel command handles replacement on its own.
+            // If the model is already in flash, it loads instantly (~23ms).
             addLog('Loading model...')
             setStep('Loading model...')
             setProgress(0.19)
-            await session.execute(() => commandRegistry.erasemodel())
             await session.execute(() => commandRegistry.loadmodel(numericId, numericVer))
             addLog('AI model loaded successfully')
 
