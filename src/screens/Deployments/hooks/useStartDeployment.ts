@@ -604,7 +604,7 @@ export const useStartDeployment = ({
                     // Try to determine the exact cause by reading selftest status
                     try {
                         const statusStr = await bleSession?.execute<string>(commandRegistry.selftest)
-                        const hexBits = extractErrorBits(statusStr)
+                        const hexBits = statusStr ? extractErrorBits(statusStr) : null
                         // eslint-disable-next-line no-bitwise
                         if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
                             Alert.alert('No SD Card Detected', 'The device reports no SD card is inserted.', [{ text: 'OK' }])

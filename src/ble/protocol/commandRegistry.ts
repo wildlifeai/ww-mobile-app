@@ -198,9 +198,10 @@ export const commandRegistry = {
     /(?:available|NACK|Unrecognised|Sleep)/i,
     (lines) => {
       const full = lines.join(' ');
-      if (full.toUpperCase().includes('NACK') || full.toUpperCase().includes('UNRECOGNISED') || full.toUpperCase().includes('SLEEP')) {
-        return { error: 'AI NACK' };
-      }
+      const upper = full.toUpperCase();
+      if (upper.includes('UNRECOGNISED')) return { error: 'AI UNRECOGNISED' };
+      if (upper.includes('SLEEP')) return { error: 'AI SLEEP' };
+      if (upper.includes('NACK')) return { error: 'AI NACK' };
       const totalMatch = full.match(/(\d+)\s*[Kk]\s*total/i);
       const freeMatch = full.match(/(\d+)\s*[Kk]\s*available/i);
       return {

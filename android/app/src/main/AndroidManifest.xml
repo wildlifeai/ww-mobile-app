@@ -50,7 +50,7 @@
         <data android:scheme="wildlifewatcher"/>
         <data android:scheme="exp+ww-expo-poc"/>
       </intent-filter>
-      <intent-filter android:autoVerify="true" data-generated="true">
+      <intent-filter android:autoVerify="true">
         <action android:name="android.intent.action.VIEW"/>
         <data android:scheme="https" android:host="wildlifewatcher.ai" android:pathPrefix="/reset-password"/>
         <category android:name="android.intent.category.BROWSABLE"/>
