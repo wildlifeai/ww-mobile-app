@@ -11,4 +11,11 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
+# Google Maps SDK — prevent R8 from stripping map classes in release builds
+-keep class com.google.android.gms.maps.** { *; }
+-keep class com.google.android.gms.common.** { *; }
+
+# react-native-maps (AirMaps)
+-keep class com.airbnb.android.react.maps.** { *; }
+
 # Add any project specific keep options here:
