@@ -92,6 +92,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
 
     const SCAN_DURATION_SECONDS = 15
     const [scanSecondsRemaining, setScanSecondsRemaining] = useState(SCAN_DURATION_SECONDS)
+    const [scanSessionId, setScanSessionId] = useState(0)
 
     // ── Operation token for connection cleanup ──
     // Prevents stale async completions from corrupting state after navigation
@@ -131,16 +132,21 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     const startScanSession = useCallback(async () => {
         autoConnect.resetAll()
 
-        // Stop any in-flight scan burst before flushing
+        // 1. Temporarily mark scan session as idle to stop background scanning and prevent race conditions
+        updateScanSessionState('idle')
+
+        // 2. Stop any in-flight scan burst before flushing
         await stopScan()
 
-        // Flush stale Redux devices and native BLE cache
+        // 3. Flush stale Redux devices and native BLE cache
         await flushBleCache()
 
+        // 4. Reset/Increment session ID so that the countdown timer runs freshly
+        setScanSessionId(prev => prev + 1)
         updateScanSessionState('active')
         setScanSecondsRemaining(SCAN_DURATION_SECONDS)
-        log(`[Scanner] New scan session started (${SCAN_DURATION_SECONDS}s)`)
-    }, [autoConnect, stopScan, flushBleCache, updateScanSessionState])
+        log(`[Scanner] New scan session started (${SCAN_DURATION_SECONDS}s), session ID: ${scanSessionId + 1}`)
+    }, [autoConnect, stopScan, flushBleCache, updateScanSessionState, scanSessionId])
 
     // ── Stop scan when user leaves the page ──
     useEffect(() => {
@@ -175,7 +181,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         }, 1000)
 
         return () => clearInterval(interval)
-    }, [scanSessionState, isActuallyFocused, processing, stopScan, updateScanSessionState])
+    }, [scanSessionId, scanSessionState, isActuallyFocused, processing, stopScan, updateScanSessionState])
 
     const handleScan = useCallback(() => {
         startScanSession()
