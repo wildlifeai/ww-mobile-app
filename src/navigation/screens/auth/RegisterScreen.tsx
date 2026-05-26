@@ -64,8 +64,9 @@ export const Register = () => {
 				return
 			}
 
-			dispatch(setCredentials(response))
+			// Trigger tutorial BEFORE setting credentials (see LoginScreen for rationale)
 			dispatch(triggerTutorial())
+			dispatch(setCredentials(response))
 		} catch (err) {
 			logError("Registration failed:", JSON.stringify(err))
 			Alert.alert(

@@ -77,8 +77,11 @@ export const Login = () => {
 				// Continue with login even if storage fails
 			}
 
-			dispatch(setCredentials(response))
+			// Trigger tutorial BEFORE setting credentials — setCredentials
+			// calls storeDataToStorage (async) which can break React batching,
+			// causing a render where token is set but pendingTutorial is false.
 			dispatch(triggerTutorial())
+			dispatch(setCredentials(response))
 		} catch (err) {
 			logError("❌ Login failed - Full error details:", {
 				message: err instanceof Error ? err.message : "Unknown error",
