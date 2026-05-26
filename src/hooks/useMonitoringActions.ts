@@ -84,29 +84,36 @@ export function useMonitoringActions({
 
         setIsStoppingMonitoring(true)
         progress.reset('Stopping...')
+        progress.addLog('Preparing to stop monitoring...')
 
         try {
             let cachedOps: string[] | null = null
             let session: any = null
             if (bleDevice) {
                 try {
+                    progress.addLog('Reading device parameters...')
                     session = createBleSession(bleDevice)
                     cachedOps = await session.execute(commandRegistry.getops)
+                    progress.addLog('Device parameters read')
                     log('[StopMonitoring] Pre-fetched bulk ops')
                 } catch (err) {
                     logWarn('[StopMonitoring] Bulk ops fetch failed', err)
+                    progress.addLog('Warning: Could not read device parameters')
                 }
             }
 
             // Clear deployment ID on device
             if (bleDevice && session) {
+                progress.addLog('Clearing configuration...')
                 progress.setFinishStep('Clearing config...')
                 progress.setFinishProgress(0.2)
                 try {
                     await session.execute(() => commandRegistry.setdid(null))
                     log('[StopMonitoring] ID cleared')
+                    progress.addLog('Configuration cleared')
                 } catch (e) {
                     logWarn('[StopMonitoring] Clear ID failed:', e)
+                    progress.addLog('Warning: Config clear partially failed')
                 }
 
                 // Clear GPS
@@ -119,27 +126,34 @@ export function useMonitoringActions({
             }
 
             // Update DB
+            progress.addLog('Updating monitoring record...')
             progress.setFinishStep('Updating record...')
             progress.setFinishProgress(0.3)
             await DeploymentService.endDeployment(deploymentIdRef.current, userId || null, notes)
+            progress.addLog('Record updated successfully')
 
             // Quiesce device
             if (bleDevice && session) {
+                progress.addLog('Finalizing stop...')
                 progress.setFinishStep('Finalizing...')
                 progress.setFinishProgress(0.6)
                 try {
                     await quiesceDevice(bleDevice, { isEndDeployment: true, cachedOps, sessionScope: session })
+                    progress.addLog('Device stopped')
                 } catch (e) {
                     logWarn('[StopMonitoring] Final stop warning:', e)
+                    progress.addLog('Warning: Final stop incomplete')
                 }
             }
 
             // Disconnect
+            progress.addLog('Disconnecting...')
             progress.setFinishStep('Disconnecting...')
             progress.setFinishProgress(0.8)
             if (bleDevice && session) {
                 try {
                     await session.execute(commandRegistry.disconnect)
+                    progress.addLog('Device disconnected')
                 } catch (e) {
                     logWarn('[StopMonitoring] Disconnect error:', e)
                 }
@@ -147,6 +161,8 @@ export function useMonitoringActions({
 
             progress.setFinishStep('Complete')
             progress.setFinishProgress(1.0)
+            progress.setIsSuccess(true)
+            progress.addLog('Monitoring stopped successfully')
 
             navigationTimerRef.current = setTimeout(() => {
                 navigationTimerRef.current = null
