@@ -94,62 +94,123 @@ export async function syncAiModel(
 ): Promise<void> {
     addLog('Checking AI model...')
     setStep('AI Model...')
-    setProgress(0.15)
+    setProgress(0.10)
 
     if (modelId) {
         try {
-            // Check current model (wakes up the AI processor automatically if not already awake)
+            // 1. Resolve the target model from local WatermelonDB
+            let targetModel = await AiModelService.getModelById(modelId)
+
+            // If not found, reference data may not have synced yet — try once
+            if (!targetModel) {
+                addLog('Model not found locally — syncing reference data...')
+                await ReferenceDataService.syncReferenceData()
+                targetModel = await AiModelService.getModelById(modelId)
+            }
+
+            if (!targetModel) {
+                addLog('⚠️ Assigned AI model not found after sync — continuing without model')
+                return
+            }
+
+            // 2. Resolve firmware IDs (family ID for OP14, version for OP15)
+            const firmwareIds = await ReferenceDataService.getFirmwareIds(targetModel)
+            if (!firmwareIds) {
+                addLog('⚠️ Could not resolve firmware IDs for model — continuing without model')
+                return
+            }
+            const { firmwareModelId: numericId, versionNumber: numericVer } = firmwareIds
+            const { modelExt: tflExt, labelsExt } = AiModelService.getModelFileExtensions(targetModel)
+            const tflFilename = `${numericId}V${numericVer}.${tflExt}`
+            const labelsFilename = `${numericId}V${numericVer}.${labelsExt}`
+
+            // 3. Check current OPs to see if model is already loaded
             const ops = currentOps || await session.execute(() => commandRegistry.getops())
             if (!ops || ops.length < 16) throw new Error('Insufficient operational parameters from device.')
             const currentId = parseInt(ops[14] ?? '0', 10) || 0
             const currentVer = parseInt(ops[15] ?? '0', 10) || 0
 
-            const targetModel = await AiModelService.getModelById(modelId)
+            if (currentId === numericId && currentVer === numericVer) {
+                addLog('AI model up to date')
+                return
+            }
 
-            if (targetModel) {
-                const { firmwareModelId: numericId, versionNumber: numericVer } = await ReferenceDataService.getFirmwareIds(targetModel)
+            addLog(`Model mismatch (Device: ${currentId}v${currentVer}, Target: ${numericId}v${numericVer})`)
 
-                if (currentId !== numericId || currentVer !== numericVer) {
-                    addLog(`Model mismatch (Device: ${currentId}v${currentVer}, Target: ${numericId}v${numericVer})`)
-                    addLog('Downloading AI model files...')
+            // 4. Check SD card for existing files (same pattern as ModelValidationTestScreen)
+            addLog('Checking SD card for existing model files...')
+            setStep('Checking SD card...')
+            setProgress(0.12)
 
-                    const localFiles = await AiModelService.ensureFilesDownloaded(targetModel)
+            let hasTfl = false
+            let hasLabels = false
+            try {
+                const files = await session.execute(commandRegistry.dir) as string[]
+                hasTfl = files.some(f => f.toUpperCase().includes(tflFilename.toUpperCase()))
+                hasLabels = files.some(f => f.toUpperCase().includes(labelsFilename.toUpperCase()))
+
+                if (hasTfl) addLog(`✅ ${tflFilename} found on SD card`)
+                else addLog(`📥 ${tflFilename} not on SD card`)
+                if (hasLabels) addLog(`✅ ${labelsFilename} found on SD card`)
+                else if (targetModel.labelsPath) addLog(`📥 ${labelsFilename} not on SD card`)
+            } catch (dirError) {
+                logWarn('SD card dir check failed, assuming files missing:', dirError)
+                addLog('Could not list SD card — will attempt transfer')
+            }
+
+            // 5. Only download and transfer files that are missing
+            if (!hasTfl || (!hasLabels && targetModel.labelsPath)) {
+                addLog('Downloading missing model files...')
+                setStep('Downloading model...')
+                setProgress(0.14)
+
+                const localFiles = await AiModelService.ensureFilesDownloaded(targetModel)
+
+                // Transfer TFL if missing
+                if (!hasTfl) {
+                    addLog(`Transferring ${tflFilename}...`)
+                    setStep('Transferring model...')
                     const modelBytes = await AiModelService.readModelAsBytes(localFiles.modelUri)
-                    const labelsBytes = localFiles.labelsUri ? await AiModelService.readModelAsBytes(localFiles.labelsUri) : null
-
-                    if (modelBytes) {
-                        addLog('Transferring AI model...')
-                        const { modelExt: tflExt } = AiModelService.getModelFileExtensions(targetModel)
-                        await runFileTransferPipeline(device, {
-                            filename: `${numericId}V${numericVer}.${tflExt}`,
-                            data: modelBytes,
-                            onProgress: (p) => setProgress(0.15 + (p.percentage / 100) * 0.05)
-                        })
-
-                        if (labelsBytes) {
-                            addLog('Transferring model labels...')
-                            const { labelsExt } = AiModelService.getModelFileExtensions(targetModel)
-                            await runFileTransferPipeline(device, {
-                                filename: `${numericId}V${numericVer}.${labelsExt}`,
-                                data: labelsBytes,
-                                onProgress: () => {}
-                            })
-                        }
-
-                        addLog('Erasing old model...')
-                        await session.execute(() => commandRegistry.erasemodel())
-
-                        addLog('Loading new model...')
-                        await session.execute(() => commandRegistry.loadmodel(numericId, numericVer))
-
-                        addLog('AI model updated successfully')
+                    if (!modelBytes) {
+                        throw new Error(`Failed to read model bytes from ${localFiles.modelUri}`)
                     }
-                } else {
-                    addLog('AI model up to date')
+                    await runFileTransferPipeline(device, {
+                        filename: tflFilename,
+                        data: modelBytes,
+                        onProgress: (p) => setProgress(0.14 + (p.percentage / 100) * 0.04)
+                    })
+                    addLog(`✅ ${tflFilename} transferred`)
+                }
+
+                // Transfer labels if missing
+                if (!hasLabels && localFiles.labelsUri) {
+                    addLog(`Transferring ${labelsFilename}...`)
+                    const labelsBytes = await AiModelService.readModelAsBytes(localFiles.labelsUri)
+                    if (!labelsBytes) {
+                        throw new Error(`Failed to read label bytes from ${localFiles.labelsUri}`)
+                    }
+                    await runFileTransferPipeline(device, {
+                        filename: labelsFilename,
+                        data: labelsBytes,
+                        onProgress: () => {}
+                    })
+                    addLog(`✅ ${labelsFilename} transferred`)
                 }
             } else {
-                addLog('Assigned AI model not found locally')
+                addLog('All model files present on SD card — skipping transfer')
             }
+
+            // 6. Load the target model
+            // NOTE: Do NOT call erasemodel before loadmodel — it destroys the
+            // flash-cached copy, forcing a slow SD→flash re-copy (~62 × 4KB writes).
+            // The firmware's loadmodel command handles replacement on its own.
+            // If the model is already in flash, it loads instantly (~23ms).
+            addLog('Loading model...')
+            setStep('Loading model...')
+            setProgress(0.19)
+            await session.execute(() => commandRegistry.loadmodel(numericId, numericVer))
+            addLog('AI model loaded successfully')
+
         } catch (e) {
             logWarn('Failed to update AI model:', e)
             addLog('AI model update failed, continuing...')

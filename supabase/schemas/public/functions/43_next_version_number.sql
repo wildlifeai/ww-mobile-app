@@ -21,7 +21,7 @@ BEGIN
     END IF;
 
     -- Atomically compute next version
-    SELECT pg_catalog.COALESCE(pg_catalog.MAX(version_number), 0) + 1
+    SELECT COALESCE(pg_catalog.MAX(version_number), 0) + 1
       INTO v_next
       FROM public.ai_models
      WHERE model_family_id = p_family_id;

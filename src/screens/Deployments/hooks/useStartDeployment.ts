@@ -408,9 +408,12 @@ export const useStartDeployment = ({
             return
         }
         if (aiProcessorFailed) {
+            const hasCameraError = initErrors.deviceHealth?.some(w => w.includes('Camera Error') || w.includes('Camera system not enabled') || w.includes('Neural Network Error'))
             Alert.alert(
-                'AI Processor Not Responding',
-                'The AI processor did not wake up during pre-deployment checks. The device cannot start monitoring. Please try reconnecting or check the hardware.',
+                hasCameraError ? 'Critical AI Processor Error' : 'AI Processor Not Responding',
+                hasCameraError 
+                    ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
+                    : 'The AI processor did not wake up during pre-deployment checks. The device cannot start monitoring. Please try reconnecting or check the hardware.',
                 [{ text: 'OK' }]
             )
             return
@@ -433,9 +436,14 @@ export const useStartDeployment = ({
             const currentOps = await bleSession.execute(commandRegistry.getops)
             log(`[Deployment] Pre-flight OPs: ${currentOps.join(' ')}`)
 
-            // 1-2. Shared pipeline steps (time sync, AI model)
-            await pipeline.syncTime(bleSession, cb)
+            // 1-2. Shared pipeline steps
+            // IMPORTANT: AI model sync must run BEFORE time sync.
+            // The getops() call above wakes the AI processor from DPD. The firmware has
+            // a 1000ms inactivity timer that shuts down the IMAGE task. setutc is handled
+            // by the BLE module (not the AI processor), so it does NOT reset this timer.
+            // If syncTime runs first, the IMAGE task dies before loadmodel arrives.
             await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true, currentOps)
+            await pipeline.syncTime(bleSession, cb)
 
             // 4. Gather snapshot data (unique to production deployment)
             progress.addLog('Gathering snapshot data...')
@@ -550,7 +558,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion])  
+    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth])  
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)
@@ -596,20 +604,26 @@ export const useStartDeployment = ({
                     setSdCardStatus({ total: sdStatus.totalSpaceMb, free: sdStatus.freeSpaceMb })
                     return
                 } catch (err: any) {
+                    // Try to determine the exact cause by reading selftest status
+                    try {
+                        const statusStr = await bleSession?.execute<string>(commandRegistry.selftest)
+                        const hexBits = statusStr ? extractErrorBits(statusStr) : null
+                        // eslint-disable-next-line no-bitwise
+                        if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
+                            Alert.alert('No SD Card Detected', 'The device reports no SD card is inserted.', [{ text: 'OK' }])
+                            setSdCardStatus(null)
+                            return
+                        }
+                    } catch (selftestErr) {
+                        logWarn('Selftest check failed during SD card error handling:', selftestErr)
+                    }
+
                     if (err.message.includes('AI NACK')) {
-                         Alert.alert('AI Coprocessor Error', 'The camera module is not responding.', [{ text: 'OK' }])
+                         Alert.alert('SD Card Error', 'The SD card check failed (NACK). Please make sure a formatted SD card is inserted.', [{ text: 'OK' }])
+                         setSdCardStatus(null)
                          return
                     }
-                    // Proceed to selftest fallback block if normal check failed
-                    const statusStr = await bleSession?.execute<string>(commandRegistry.selftest)
-                    const hexBits = extractErrorBits(statusStr)
-                    // eslint-disable-next-line no-bitwise
-                    if (hexBits && (parseInt(hexBits, 16) & 0x0800)) {
-                        Alert.alert('No SD Card Detected', 'The device reports no SD card is inserted.', [{ text: 'OK' }])
-                        setSdCardStatus(null)
-                        return
-                    }
-                    throw err; // Re-throw if it wasn't the SD card bit
+                    throw err; // Re-throw if it was some other error (e.g. timeout)
                 }
             }
         } catch (error) {
@@ -625,7 +639,7 @@ export const useStartDeployment = ({
 
     return {
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
-        device, bleDevice, isInitializing, initProgress, initStep, initErrors, aiProcessorFailed,
+        device, bleDevice, isInitializing, initProgress, initStep, initErrors, setInitErrors, aiProcessorFailed,
         finishProgress: progress.finishProgress, finishStep: progress.finishStep,
         finishLogs: progress.finishLogs, isFinishing: progress.isFinishing,
         isStartSuccess: progress.isSuccess,

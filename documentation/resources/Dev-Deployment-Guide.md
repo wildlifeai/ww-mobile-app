@@ -50,16 +50,16 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 
 | Step | Function | Purpose |
 |------|----------|---------|
-| Time Sync | `pipeline.syncTime()` | `setutc` — syncs device clock |
-| AI Model Sync | `pipeline.syncAiModel()` | Compares and transfers model if mismatched |
+| AI Model Sync | `pipeline.syncAiModel()` | Checks SD card for existing model files; only downloads and transfers missing files. Always loads via `erasemodel` → `loadmodel` if OPs mismatch. Runs first to stay within firmware's 1000ms IMAGE task window. |
+| Time Sync | `pipeline.syncTime()` | `setutc` — syncs device clock (BLE module, not AI processor) |
 | Configure Device | `pipeline.configureDevice()` | Sets capture method OPs, deployment ID, GPS |
 
 ### Standard Deployment Pipeline
 
 | Step | Action |
 |------|--------|
-| 1 | Time Sync |
-| 2 | AI Model Sync |
+| 1 | AI Model Sync |
+| 2 | Time Sync |
 | 3 | Snapshot Data (battery, network, version) |
 | 4 | Create DB Record |
 | 5 | Reset OPs (skip configure-managed OPs) |
@@ -71,8 +71,8 @@ Both flows share these pipeline functions from `deploymentPipeline.ts`:
 
 | Step | Action |
 |------|--------|
-| 1 | Time Sync |
-| 2 | AI Model Sync |
+| 1 | AI Model Sync |
+| 2 | Time Sync |
 | 3 | Persist project settings to DB |
 | 4 | Create DB Record |
 | 5 | Configure Device (capture method, deployment ID, GPS) |
@@ -136,4 +136,4 @@ When BMP mode is enabled and the picture count is odd, it auto-increments to the
 
 ---
 
-*Last Updated: May 15, 2026*
+*Last Updated: May 27, 2026*

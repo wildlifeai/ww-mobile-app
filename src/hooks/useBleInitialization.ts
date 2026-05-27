@@ -68,7 +68,7 @@ export const useBleInitialization = () => {
           statusMsg = await session.execute(commandRegistry.selftest)
           log('[BLE Init] Self-test result:', statusMsg)
           
-          hexBits = extractErrorBits(statusMsg)
+          hexBits = statusMsg ? extractErrorBits(statusMsg) : null
           if (hexBits) {
               bits = parseInt(hexBits, 16)
               // Bits 8-15 are AI processor errors. The BLE processor pre-sets

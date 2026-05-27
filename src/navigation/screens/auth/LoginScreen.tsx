@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form"
-import { StyleSheet, View, Image, Alert } from "react-native"
+import { StyleSheet, View, Image, Alert, Keyboard } from "react-native"
 import { Button, Checkbox, Text } from "react-native-paper"
 // import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView" - REMOVED
 import { WWScreenView } from "../../../components/ui/WWScreenView"
@@ -54,6 +54,7 @@ export const Login = () => {
 	}, [setValue])
 
 	const onSubmit = async (data: FormData) => {
+		Keyboard.dismiss()
 		try {
 			// Transform email to identifier format for existing API
 			const loginData = {
@@ -77,8 +78,11 @@ export const Login = () => {
 				// Continue with login even if storage fails
 			}
 
-			dispatch(setCredentials(response))
+			// Trigger tutorial BEFORE setting credentials — setCredentials
+			// calls storeDataToStorage (async) which can break React batching,
+			// causing a render where token is set but pendingTutorial is false.
 			dispatch(triggerTutorial())
+			dispatch(setCredentials(response))
 		} catch (err) {
 			logError("❌ Login failed - Full error details:", {
 				message: err instanceof Error ? err.message : "Unknown error",

@@ -163,7 +163,12 @@ export function createMultiLineCommand<T>(
         if (!isDone) throw new Error(`${name}: Result accessed before complete`);
         return parseResult(lines);
       },
-      getResult: function() { return this.parser(); }
+      getResult: function() { return this.parser(); },
+      onTimeout: () => {
+        if (lines.length > 0) {
+          isDone = true;
+        }
+      }
     };
   };
 }
@@ -195,10 +200,13 @@ export const commandRegistry = {
     'aiinfo',
     () => 'AI info',
     /(?:Label|Serial|drive space)/i,
-    /(?:available|NACK)/i,
+    /(?:available|NACK|Unrecogni[sz]ed|Sleep)/i,
     (lines) => {
       const full = lines.join(' ');
-      if (full.toUpperCase().includes('NACK')) return { error: 'AI NACK' };
+      const upper = full.toUpperCase();
+      if (upper.includes('UNRECOGNISED') || upper.includes('UNRECOGNIZED')) return { error: 'AI UNRECOGNISED' };
+      if (upper.includes('SLEEP')) return { error: 'AI SLEEP' };
+      if (upper.includes('NACK')) return { error: 'AI NACK' };
       const totalMatch = full.match(/(\d+)\s*[Kk]\s*total/i);
       const freeMatch = full.match(/(\d+)\s*[Kk]\s*available/i);
       return {
@@ -206,7 +214,7 @@ export const commandRegistry = {
         free: freeMatch ? parseInt(freeMatch[1], 10) : undefined,
       };
     },
-    { timeoutMs: 12000, retryPolicy: { maxRetries: 0 }, failureRegex: /^(?:NACK|AI processor not responding)/i }
+    { timeoutMs: 12000, retryPolicy: { maxRetries: 0 }, failureRegex: /^(?:AI processor not responding)/i }
   ),
   wake: createSingleLineCommand<boolean>(
     'wake',

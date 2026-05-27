@@ -128,8 +128,8 @@ When the user taps "Start Monitoring", `handleStartDeployment` in `useStartDeplo
 
 | Step | Action | Detail |
 |------|--------|--------|
-| 1 | Time Sync | `setutc` — see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#key-commands) |
-| 2 | AI Model Sync | Compares device model (ops[14]/ops[15]) vs project target. If mismatched: downloads model → transfers via BLE → `erasemodel` → `loadmodel` |
+| 1 | AI Model Sync | Checks SD card (`dir`) for existing model files before downloading. Only transfers missing files via BLE. Always issues `erasemodel` → `loadmodel` if OPs mismatch. Retries reference data sync if model not found locally. Runs **before** time sync to stay within the firmware's 1000ms IMAGE task inactivity window. |
+| 2 | Time Sync | `setutc` — see [BLE Command Reference](./04-ENGINEER-CONSOLE.md#key-commands). Handled by BLE module (not AI processor). |
 | 3 | Snapshot Data | Reads `battery`, `network` (if LoRaWAN required), `ver` for deployment record metadata |
 | 4 | Create DB Record | `DeploymentService.createDeployment()` → `OutboxService` → `SupabaseSyncService` |
 | 5 | Reset to Defaults | `pipeline.resetOps()` calls `executeResetToDefaults()` — shared workflow that intelligently resets parameters, skips tracking counters, and clears AI models. |
@@ -243,6 +243,7 @@ If the device is not connected, the user can "Force End (Database Only)":
 | "Deployment Initialisation Failed" | Device handshake timeout | Re-connect and keep phone close |
 | "Failed to Set Deployment ID" | BLE write error or AI NACK | Keep phone within 1m; app falls back to GPS-only |
 | "No SD Card Detected" | Stale selftest bits (false positive) | App now masks stale AI bits (8-15) before AI processor is woken. If warning persists after reconnection, the SD card is genuinely missing. |
+| "AI model update failed" | Reference data not synced or cloud download failed | Pipeline now retries sync automatically. If still failing, check internet connectivity; model file may need manual upload to Supabase storage. |
 
 ### End Deployment
 
@@ -254,4 +255,4 @@ If the device is not connected, the user can "Force End (Database Only)":
 
 ---
 
-*Last Updated: May 15, 2026*
+*Last Updated: May 27, 2026*

@@ -85,7 +85,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
     const minutes = Math.floor(scanSecondsRemaining / 60)
     const seconds = scanSecondsRemaining % 60
     const countdownText = `${minutes}:${String(seconds).padStart(2, '0')}`
-    const scanProgress = 1 - (scanSecondsRemaining / 30)
+    const scanProgress = 1 - (scanSecondsRemaining / 15)
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -113,7 +113,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                             />
                         </View>
 
-                        {/* Expired state: no device found after 60s */}
+                        {/* Expired state: no device found after 15s */}
                         {scanSessionState === 'expired' && (
                             <>
                                 <Text variant="headlineMedium" style={styles.autoTitleBold}>

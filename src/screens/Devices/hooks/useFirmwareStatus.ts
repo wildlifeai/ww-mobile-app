@@ -45,6 +45,7 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
     })
 
     const isMounted = useRef(true)
+    const hasRunActiveCheck = useRef(false)
     useEffect(() => {
         isMounted.current = true
         return () => { isMounted.current = false }
@@ -55,6 +56,7 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
 
         setIsChecking(true)
         setErrorMsg(null)
+        hasRunActiveCheck.current = true
 
         try {
             // 1. Fetch Latest Cloud Versions
@@ -75,7 +77,14 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
             }
 
             try {
-                // Wake up AI then ask version
+                // Wake up AI processor by querying aiinfo first (wakes from Deep Power Down)
+                try {
+                    await session.execute(() => commandRegistry.aiinfo())
+                } catch (wakeError) {
+                    logWarn('[FirmwareStatus] Failed to wake AI processor via aiinfo:', wakeError)
+                }
+
+                // Query Himax version
                 const rawHimaxVer = await session.execute(() => commandRegistry.aiver()) as string
                 // Himax sometimes returns things like "AI ver: 1.0.0" or "Firmware version: V1.2.0"
                 // Extracting just the version string cleanly.
@@ -125,6 +134,11 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
     // Auto-check on mount or connection
     useEffect(() => {
         if (device?.connected) {
+            if (hasRunActiveCheck.current) {
+                // If we've already done an active check, re-check actively on reconnect rather than silently with old cached params
+                checkStatus()
+                return
+            }
             if (initialBleVersion && initialHimaxVersion) {
                 // Perform a silent, cloud-only version metadata check
                 const checkSilent = async () => {

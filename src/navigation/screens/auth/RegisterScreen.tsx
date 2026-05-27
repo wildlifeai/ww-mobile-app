@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form"
-import { StyleSheet, View, Image, Alert } from "react-native"
+import { StyleSheet, View, Image, Alert, Keyboard } from "react-native"
 import { Button, Text } from "react-native-paper"
 // import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView" - REMOVED
 import { WWScreenView } from "../../../components/ui/WWScreenView"
@@ -38,6 +38,7 @@ export const Register = () => {
 	})
 
 	const onSubmit = async (data: FormData) => {
+		Keyboard.dismiss()
 		if (data.password !== data.confirmPassword) {
 			setError("confirmPassword", {
 				type: "manual",
@@ -64,8 +65,9 @@ export const Register = () => {
 				return
 			}
 
-			dispatch(setCredentials(response))
+			// Trigger tutorial BEFORE setting credentials (see LoginScreen for rationale)
 			dispatch(triggerTutorial())
+			dispatch(setCredentials(response))
 		} catch (err) {
 			logError("Registration failed:", JSON.stringify(err))
 			Alert.alert(

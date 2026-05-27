@@ -256,7 +256,7 @@ export type Database = {
           updated_at: string | null
           uploaded_by: string | null
           version: string
-          version_number: number | null
+          version_number: number
         }
         Insert: {
           compiled_format?: string | null
@@ -280,7 +280,7 @@ export type Database = {
           updated_at?: string | null
           uploaded_by?: string | null
           version: string
-          version_number?: number | null
+          version_number: number
         }
         Update: {
           compiled_format?: string | null
@@ -304,7 +304,7 @@ export type Database = {
           updated_at?: string | null
           uploaded_by?: string | null
           version?: string
-          version_number?: number | null
+          version_number?: number
         }
         Relationships: [
           {
@@ -355,6 +355,99 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "project_summary"
             referencedColumns: ["organisation_id"]
+          },
+        ]
+      }
+      annotation_runs: {
+        Row: {
+          completed_at: string | null
+          config: Json | null
+          created_by: string | null
+          deployment_id: string
+          id: string
+          model_id: string | null
+          observation_count: number | null
+          run_type: string
+          started_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          config?: Json | null
+          created_by?: string | null
+          deployment_id: string
+          id?: string
+          model_id?: string | null
+          observation_count?: number | null
+          run_type: string
+          started_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          config?: Json | null
+          created_by?: string | null
+          deployment_id?: string
+          id?: string
+          model_id?: string | null
+          observation_count?: number | null
+          run_type?: string
+          started_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "annotation_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "annotation_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "annotation_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "annotation_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "annotation_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annotation_runs_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "annotation_runs_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annotation_runs_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -583,6 +676,54 @@ export type Database = {
         }
         Relationships: []
       }
+      deployment_effort: {
+        Row: {
+          battery_failures: number
+          camera_uptime_hours: number
+          computed_at: string | null
+          deployment_id: string
+          false_trigger_rate: number
+          total_events: number
+          total_media: number
+          trap_nights: number
+        }
+        Insert: {
+          battery_failures?: number
+          camera_uptime_hours?: number
+          computed_at?: string | null
+          deployment_id: string
+          false_trigger_rate?: number
+          total_events?: number
+          total_media?: number
+          trap_nights?: number
+        }
+        Update: {
+          battery_failures?: number
+          camera_uptime_hours?: number
+          computed_at?: string | null
+          deployment_id?: string
+          false_trigger_rate?: number
+          total_events?: number
+          total_media?: number
+          trap_nights?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployment_effort_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: true
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "deployment_effort_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: true
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deployment_statuses: {
         Row: {
           created_at: string | null
@@ -630,7 +771,6 @@ export type Database = {
           camera_model: string | null
           camera_tilt: number | null
           capture_method_id: number | null
-          config_firmware_id: string | null
           created_at: string | null
           deleted_at: string | null
           deployment_end: string | null
@@ -680,7 +820,6 @@ export type Database = {
           camera_model?: string | null
           camera_tilt?: number | null
           capture_method_id?: number | null
-          config_firmware_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
           deployment_end?: string | null
@@ -730,7 +869,6 @@ export type Database = {
           camera_model?: string | null
           camera_tilt?: number | null
           capture_method_id?: number | null
-          config_firmware_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
           deployment_end?: string | null
@@ -797,13 +935,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "deployments_config_firmware_id_fkey"
-            columns: ["config_firmware_id"]
-            isOneToOne: false
-            referencedRelation: "firmware"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "deployments_deployment_status_id_fkey"
             columns: ["deployment_status_id"]
             isOneToOne: false
@@ -864,54 +995,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects_with_stats"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      detections: {
-        Row: {
-          ai_model_id: string | null
-          bbox: Json | null
-          category: string | null
-          confidence: number | null
-          created_at: string | null
-          id: string
-          is_blank_candidate: boolean
-          media_id: string
-        }
-        Insert: {
-          ai_model_id?: string | null
-          bbox?: Json | null
-          category?: string | null
-          confidence?: number | null
-          created_at?: string | null
-          id?: string
-          is_blank_candidate?: boolean
-          media_id: string
-        }
-        Update: {
-          ai_model_id?: string | null
-          bbox?: Json | null
-          category?: string | null
-          confidence?: number | null
-          created_at?: string | null
-          id?: string
-          is_blank_candidate?: boolean
-          media_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "detections_ai_model_id_fkey"
-            columns: ["ai_model_id"]
-            isOneToOne: false
-            referencedRelation: "ai_models"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "detections_media_id_fkey"
-            columns: ["media_id"]
-            isOneToOne: false
-            referencedRelation: "media"
             referencedColumns: ["id"]
           },
         ]
@@ -1260,86 +1343,327 @@ export type Database = {
           },
         ]
       }
+      observation_events: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          deployment_id: string
+          empty_event_score: number | null
+          end_time: string
+          event_duration_seconds: number
+          id: string
+          media_count: number
+          primary_media_id: string | null
+          review_status: string
+          start_time: string
+          taxon_id: string | null
+          trigger_type: string | null
+          updated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deployment_id: string
+          empty_event_score?: number | null
+          end_time: string
+          event_duration_seconds: number
+          id?: string
+          media_count?: number
+          primary_media_id?: string | null
+          review_status?: string
+          start_time: string
+          taxon_id?: string | null
+          trigger_type?: string | null
+          updated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          deployment_id?: string
+          empty_event_score?: number | null
+          end_time?: string
+          event_duration_seconds?: number
+          id?: string
+          media_count?: number
+          primary_media_id?: string | null
+          review_status?: string
+          start_time?: string
+          taxon_id?: string | null
+          trigger_type?: string | null
+          updated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_observation_events_primary_media"
+            columns: ["primary_media_id", "deployment_id"]
+            isOneToOne: false
+            referencedRelation: "media"
+            referencedColumns: ["id", "deployment_id"]
+          },
+          {
+            foreignKeyName: "observation_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observation_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observation_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observation_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observation_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observation_events_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "observation_events_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observation_events_taxon_id_fkey"
+            columns: ["taxon_id"]
+            isOneToOne: false
+            referencedRelation: "taxa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observation_events_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observation_events_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observation_events_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observation_events_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observation_events_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       observations: {
         Row: {
+          annotator_id: string | null
+          bbox_h: number | null
+          bbox_w: number | null
+          bbox_x: number | null
+          bbox_y: number | null
           behavior: string | null
           classification_method: string | null
           classification_probability: number | null
           classification_timestamp: string | null
           classified_by: string | null
+          classifier_category: string | null
+          confidence: number | null
           count: number | null
           created_at: string | null
           deleted_at: string | null
           deployment_id: string
-          event_id: string | null
-          gbif_confidence: number | null
-          gbif_match_type: string | null
-          gbif_taxon_key: number | null
           id: string
           individual_id: string | null
           life_stage: string | null
           media_id: string | null
           observation_comments: string | null
+          observation_event_id: string | null
           observation_level: string | null
           observation_tags: string[] | null
           observation_type: string | null
+          review_status: string
+          reviewer_id: string | null
           scientific_name: string | null
           sex: string | null
+          source_model_id: string | null
+          source_model_version: string | null
+          source_type: string | null
+          taxon_id: string | null
           updated_at: string | null
+          vernacular_name: string | null
         }
         Insert: {
+          annotator_id?: string | null
+          bbox_h?: number | null
+          bbox_w?: number | null
+          bbox_x?: number | null
+          bbox_y?: number | null
           behavior?: string | null
           classification_method?: string | null
           classification_probability?: number | null
           classification_timestamp?: string | null
           classified_by?: string | null
+          classifier_category?: string | null
+          confidence?: number | null
           count?: number | null
           created_at?: string | null
           deleted_at?: string | null
           deployment_id: string
-          event_id?: string | null
-          gbif_confidence?: number | null
-          gbif_match_type?: string | null
-          gbif_taxon_key?: number | null
           id?: string
           individual_id?: string | null
           life_stage?: string | null
           media_id?: string | null
           observation_comments?: string | null
+          observation_event_id?: string | null
           observation_level?: string | null
           observation_tags?: string[] | null
           observation_type?: string | null
+          review_status?: string
+          reviewer_id?: string | null
           scientific_name?: string | null
           sex?: string | null
+          source_model_id?: string | null
+          source_model_version?: string | null
+          source_type?: string | null
+          taxon_id?: string | null
           updated_at?: string | null
+          vernacular_name?: string | null
         }
         Update: {
+          annotator_id?: string | null
+          bbox_h?: number | null
+          bbox_w?: number | null
+          bbox_x?: number | null
+          bbox_y?: number | null
           behavior?: string | null
           classification_method?: string | null
           classification_probability?: number | null
           classification_timestamp?: string | null
           classified_by?: string | null
+          classifier_category?: string | null
+          confidence?: number | null
           count?: number | null
           created_at?: string | null
           deleted_at?: string | null
           deployment_id?: string
-          event_id?: string | null
-          gbif_confidence?: number | null
-          gbif_match_type?: string | null
-          gbif_taxon_key?: number | null
           id?: string
           individual_id?: string | null
           life_stage?: string | null
           media_id?: string | null
           observation_comments?: string | null
+          observation_event_id?: string | null
           observation_level?: string | null
           observation_tags?: string[] | null
           observation_type?: string | null
+          review_status?: string
+          reviewer_id?: string | null
           scientific_name?: string | null
           sex?: string | null
+          source_model_id?: string | null
+          source_model_version?: string | null
+          source_type?: string | null
+          taxon_id?: string | null
           updated_at?: string | null
+          vernacular_name?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_observations_event"
+            columns: ["observation_event_id", "deployment_id"]
+            isOneToOne: false
+            referencedRelation: "observation_events"
+            referencedColumns: ["id", "deployment_id"]
+          },
+          {
+            foreignKeyName: "fk_observations_media"
+            columns: ["media_id", "deployment_id"]
+            isOneToOne: false
+            referencedRelation: "media"
+            referencedColumns: ["id", "deployment_id"]
+          },
+          {
+            foreignKeyName: "observations_annotator_id_fkey"
+            columns: ["annotator_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observations_annotator_id_fkey"
+            columns: ["annotator_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observations_annotator_id_fkey"
+            columns: ["annotator_id"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observations_annotator_id_fkey"
+            columns: ["annotator_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observations_annotator_id_fkey"
+            columns: ["annotator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "observations_deployment_id_fkey"
             columns: ["deployment_id"]
@@ -1355,10 +1679,52 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "observations_media_id_fkey"
-            columns: ["media_id"]
+            foreignKeyName: "observations_reviewer_id_fkey"
+            columns: ["reviewer_id"]
             isOneToOne: false
-            referencedRelation: "media"
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observations_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observations_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observations_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "observations_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observations_source_model_id_fkey"
+            columns: ["source_model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observations_taxon_id_fkey"
+            columns: ["taxon_id"]
+            isOneToOne: false
+            referencedRelation: "taxa"
             referencedColumns: ["id"]
           },
         ]
@@ -1680,6 +2046,104 @@ export type Database = {
         }
         Relationships: []
       }
+      species_event_config: {
+        Row: {
+          created_at: string | null
+          gap_minutes: number
+          id: string
+          min_images: number
+          notes: string | null
+          taxon_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          gap_minutes?: number
+          id?: string
+          min_images?: number
+          notes?: string | null
+          taxon_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          gap_minutes?: number
+          id?: string
+          min_images?: number
+          notes?: string | null
+          taxon_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "species_event_config_taxon_id_fkey"
+            columns: ["taxon_id"]
+            isOneToOne: true
+            referencedRelation: "taxa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      taxa: {
+        Row: {
+          class: string | null
+          common_name: string | null
+          conservation_status: string | null
+          created_at: string | null
+          family: string | null
+          gbif_taxon_id: string | null
+          genus: string | null
+          id: string
+          inat_taxon_id: string | null
+          invasive_status: boolean | null
+          kingdom: string | null
+          nzor_id: string | null
+          order_name: string | null
+          phylum: string | null
+          rank: string
+          scientific_name: string
+          species: string | null
+        }
+        Insert: {
+          class?: string | null
+          common_name?: string | null
+          conservation_status?: string | null
+          created_at?: string | null
+          family?: string | null
+          gbif_taxon_id?: string | null
+          genus?: string | null
+          id?: string
+          inat_taxon_id?: string | null
+          invasive_status?: boolean | null
+          kingdom?: string | null
+          nzor_id?: string | null
+          order_name?: string | null
+          phylum?: string | null
+          rank: string
+          scientific_name: string
+          species?: string | null
+        }
+        Update: {
+          class?: string | null
+          common_name?: string | null
+          conservation_status?: string | null
+          created_at?: string | null
+          family?: string | null
+          gbif_taxon_id?: string | null
+          genus?: string | null
+          id?: string
+          inat_taxon_id?: string | null
+          invasive_status?: boolean | null
+          kingdom?: string | null
+          nzor_id?: string | null
+          order_name?: string | null
+          phylum?: string | null
+          rank?: string
+          scientific_name?: string
+          species?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -1768,7 +2232,6 @@ export type Database = {
           bluetooth_id: string | null
           camera_height: number | null
           camera_location_image_paths: Json | null
-          config_firmware_id: string | null
           created_at: string | null
           created_by_email: string | null
           created_by_name: string | null
@@ -1795,7 +2258,22 @@ export type Database = {
           status_description: string | null
           updated_at: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "deployments_ble_firmware_id_fkey"
+            columns: ["ble_firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployments_himax_firmware_id_fkey"
+            columns: ["himax_firmware_id"]
+            isOneToOne: false
+            referencedRelation: "firmware"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       geography_columns: {
         Row: {
@@ -1953,9 +2431,11 @@ export type Database = {
           description: string | null
           id: string | null
           is_active: boolean | null
+          is_archived: boolean | null
           is_baited: boolean | null
           is_monitoring_marked_individuals: boolean | null
           lorawan_device_count: number | null
+          lorawan_required: boolean | null
           member_count: number | null
           model_id: string | null
           modified_by: string | null
@@ -1980,9 +2460,11 @@ export type Database = {
           description?: string | null
           id?: string | null
           is_active?: boolean | null
+          is_archived?: boolean | null
           is_baited?: boolean | null
           is_monitoring_marked_individuals?: boolean | null
           lorawan_device_count?: never
+          lorawan_required?: boolean | null
           member_count?: never
           model_id?: string | null
           modified_by?: string | null
@@ -2007,9 +2489,11 @@ export type Database = {
           description?: string | null
           id?: string | null
           is_active?: boolean | null
+          is_archived?: boolean | null
           is_baited?: boolean | null
           is_monitoring_marked_individuals?: boolean | null
           lorawan_device_count?: never
+          lorawan_required?: boolean | null
           member_count?: never
           model_id?: string | null
           modified_by?: string | null

@@ -7,7 +7,7 @@ CREATE TABLE firmware (
   modified_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   name text NOT NULL,
   version text NOT NULL,
-  type text NOT NULL CHECK (type IN ('ble', 'himax', 'config')),
+  type text NOT NULL CHECK (type IN ('ble', 'himax')),
   location_path text NOT NULL,
   file_size_bytes bigint,
   release_notes text,

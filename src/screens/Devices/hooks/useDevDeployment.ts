@@ -300,8 +300,9 @@ export const useDevDeployment = ({
             log(`[DevDeploy] Pre-flight OPs: ${currentOps.join(' ')}`)
 
             // 1-2. Shared pipeline steps
-            await pipeline.syncTime(bleSession, cb)
+            // AI model sync must run BEFORE time sync — see useStartDeployment for rationale
             await pipeline.syncAiModel(bleDevice, bleSession, project.model_id, cb, true, currentOps)
+            await pipeline.syncTime(bleSession, cb)
 
             // 4. Persist project settings (dev-specific)
             progress.addLog('Saving project settings...')

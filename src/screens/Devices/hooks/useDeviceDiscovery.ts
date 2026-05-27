@@ -32,7 +32,7 @@ type UseDeviceDiscoveryOptions = {
 
 /**
  * Scan session lifecycle:
- *   idle → active → expired (30s timeout or user leaves page)
+ *   idle → active → expired (15s timeout or user leaves page)
  *
  * When the user leaves the Scanner tab, the scan session is fully stopped
  * and transitions to 'expired'. A new search must be started manually.
@@ -90,8 +90,9 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         setScanSessionState(state)
     }, [])
 
-    const SCAN_DURATION_SECONDS = 30
+    const SCAN_DURATION_SECONDS = 15
     const [scanSecondsRemaining, setScanSecondsRemaining] = useState(SCAN_DURATION_SECONDS)
+    const [scanSessionId, setScanSessionId] = useState(0)
 
     // ── Operation token for connection cleanup ──
     // Prevents stale async completions from corrupting state after navigation
@@ -127,17 +128,25 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
     // Auto-connect state machine — declared early because startScanSession and handleDeviceSelect use it
     const autoConnect = useAutoConnectStateMachine()
 
-    // Start a NEW 30-second scan session (always a clean restart)
+    // Start a NEW 15-second scan session (always a clean restart)
     const startScanSession = useCallback(async () => {
         autoConnect.resetAll()
 
-        // Flush stale Redux devices and native BLE cache
+        // 1. Temporarily mark scan session as idle to stop background scanning and prevent race conditions
+        updateScanSessionState('idle')
+
+        // 2. Stop any in-flight scan burst before flushing
+        await stopScan()
+
+        // 3. Flush stale Redux devices and native BLE cache
         await flushBleCache()
 
+        // 4. Reset/Increment session ID so that the countdown timer runs freshly
+        setScanSessionId(prev => prev + 1)
         updateScanSessionState('active')
         setScanSecondsRemaining(SCAN_DURATION_SECONDS)
-        log(`[Scanner] New scan session started (${SCAN_DURATION_SECONDS}s)`)
-    }, [autoConnect, flushBleCache, updateScanSessionState])
+        log(`[Scanner] New scan session started (${SCAN_DURATION_SECONDS}s), session ID: ${scanSessionId + 1}`)
+    }, [autoConnect, stopScan, flushBleCache, updateScanSessionState, scanSessionId])
 
     // ── Stop scan when user leaves the page ──
     useEffect(() => {
@@ -172,7 +181,7 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
         }, 1000)
 
         return () => clearInterval(interval)
-    }, [scanSessionState, isActuallyFocused, processing, stopScan, updateScanSessionState])
+    }, [scanSessionId, scanSessionState, isActuallyFocused, processing, stopScan, updateScanSessionState])
 
     const handleScan = useCallback(() => {
         startScanSession()
