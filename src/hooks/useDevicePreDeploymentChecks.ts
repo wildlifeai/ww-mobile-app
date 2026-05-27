@@ -111,7 +111,7 @@ export const useDevicePreDeploymentChecks = () => {
                 const hexBits = statusMsg ? extractErrorBits(statusMsg) : null
                 if (hexBits) {
                     const bits = parseInt(hexBits, 16)
-                    if (bits !== 0) {
+                    if (!isNaN(bits) && bits !== 0) {
                         logWarn(`[Pre-Deployment] Non-zero error bits detected after AI wake: ${hexBits} (${bits})`)
                         
                         const SelfTestErrorBits = {

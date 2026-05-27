@@ -200,11 +200,11 @@ export const commandRegistry = {
     'aiinfo',
     () => 'AI info',
     /(?:Label|Serial|drive space)/i,
-    /(?:available|NACK|Unrecognised|Sleep)/i,
+    /(?:available|NACK|Unrecogni[sz]ed|Sleep)/i,
     (lines) => {
       const full = lines.join(' ');
       const upper = full.toUpperCase();
-      if (upper.includes('UNRECOGNISED')) return { error: 'AI UNRECOGNISED' };
+      if (upper.includes('UNRECOGNISED') || upper.includes('UNRECOGNIZED')) return { error: 'AI UNRECOGNISED' };
       if (upper.includes('SLEEP')) return { error: 'AI SLEEP' };
       if (upper.includes('NACK')) return { error: 'AI NACK' };
       const totalMatch = full.match(/(\d+)\s*[Kk]\s*total/i);

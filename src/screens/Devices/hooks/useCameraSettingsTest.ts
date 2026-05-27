@@ -69,7 +69,7 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
     
     const handleCaptureError = useCallback((e: Error) => {
         logError('[CameraSettingsTest] Capture failed:', e)
-        Alert.alert('Camera Preview Failed', e.message || 'An error occurred while capturing preview image.')
+        Alert.alert('Camera Preview Failed', e?.message || 'An error occurred while capturing preview image.')
     }, [])
 
     // Setup Capture Preview hook

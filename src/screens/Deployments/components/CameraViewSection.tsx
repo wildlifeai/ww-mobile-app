@@ -29,7 +29,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
         onImageReceived: onImageCaptured,
         onError: (err) => {
             logError('Capture error:', err)
-            Alert.alert('Camera Preview Failed', err.message || 'An error occurred while capturing preview image.')
+            Alert.alert('Camera Preview Failed', err?.message || 'An error occurred while capturing preview image.')
         }
     })
 

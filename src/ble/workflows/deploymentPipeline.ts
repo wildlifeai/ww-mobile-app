@@ -114,7 +114,12 @@ export async function syncAiModel(
             }
 
             // 2. Resolve firmware IDs (family ID for OP14, version for OP15)
-            const { firmwareModelId: numericId, versionNumber: numericVer } = await ReferenceDataService.getFirmwareIds(targetModel)
+            const firmwareIds = await ReferenceDataService.getFirmwareIds(targetModel)
+            if (!firmwareIds) {
+                addLog('⚠️ Could not resolve firmware IDs for model — continuing without model')
+                return
+            }
+            const { firmwareModelId: numericId, versionNumber: numericVer } = firmwareIds
             const { modelExt: tflExt, labelsExt } = AiModelService.getModelFileExtensions(targetModel)
             const tflFilename = `${numericId}V${numericVer}.${tflExt}`
             const labelsFilename = `${numericId}V${numericVer}.${labelsExt}`
@@ -166,6 +171,9 @@ export async function syncAiModel(
                     addLog(`Transferring ${tflFilename}...`)
                     setStep('Transferring model...')
                     const modelBytes = await AiModelService.readModelAsBytes(localFiles.modelUri)
+                    if (!modelBytes) {
+                        throw new Error(`Failed to read model bytes from ${localFiles.modelUri}`)
+                    }
                     await runFileTransferPipeline(device, {
                         filename: tflFilename,
                         data: modelBytes,
@@ -178,6 +186,9 @@ export async function syncAiModel(
                 if (!hasLabels && localFiles.labelsUri) {
                     addLog(`Transferring ${labelsFilename}...`)
                     const labelsBytes = await AiModelService.readModelAsBytes(localFiles.labelsUri)
+                    if (!labelsBytes) {
+                        throw new Error(`Failed to read label bytes from ${localFiles.labelsUri}`)
+                    }
                     await runFileTransferPipeline(device, {
                         filename: labelsFilename,
                         data: labelsBytes,
