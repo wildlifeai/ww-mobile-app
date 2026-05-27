@@ -408,9 +408,12 @@ export const useStartDeployment = ({
             return
         }
         if (aiProcessorFailed) {
+            const hasCameraError = initErrors.deviceHealth?.some(w => w.includes('Camera Error') || w.includes('Camera system not enabled') || w.includes('Neural Network Error'))
             Alert.alert(
-                'AI Processor Not Responding',
-                'The AI processor did not wake up during pre-deployment checks. The device cannot start monitoring. Please try reconnecting or check the hardware.',
+                hasCameraError ? 'Critical AI Processor Error' : 'AI Processor Not Responding',
+                hasCameraError 
+                    ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
+                    : 'The AI processor did not wake up during pre-deployment checks. The device cannot start monitoring. Please try reconnecting or check the hardware.',
                 [{ text: 'OK' }]
             )
             return
@@ -555,7 +558,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion])  
+    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth])  
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)
@@ -636,7 +639,7 @@ export const useStartDeployment = ({
 
     return {
         formState, submitting, project, availableProjects, captureMethodName, sensitivityLabel,
-        device, bleDevice, isInitializing, initProgress, initStep, initErrors, aiProcessorFailed,
+        device, bleDevice, isInitializing, initProgress, initStep, initErrors, setInitErrors, aiProcessorFailed,
         finishProgress: progress.finishProgress, finishStep: progress.finishStep,
         finishLogs: progress.finishLogs, isFinishing: progress.isFinishing,
         isStartSuccess: progress.isSuccess,

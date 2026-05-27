@@ -40,7 +40,7 @@ export const StartMonitoringDetailsStep = () => {
     // Destructure everything from hook first
     const {
         formState, submitting, project, availableProjects, sensitivityLabel,
-        device, bleDevice, isInitializing, initProgress, initStep, initErrors, aiProcessorFailed,
+        device, bleDevice, isInitializing, initProgress, initStep, initErrors, setInitErrors, aiProcessorFailed,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         handleImageCaptured,
         handleNotesChange, handleProjectChange,
@@ -82,6 +82,23 @@ export const StartMonitoringDetailsStep = () => {
         initialHimaxVersion: initPayload?.himaxFirmwareVersion,
     })
 
+    // Sync firmwareStatus updates with initErrors.deviceHealth
+    useEffect(() => {
+        if (!firmwareStatus.isChecking) {
+            setInitErrors(prev => {
+                let health = prev.deviceHealth || []
+                if (!firmwareStatus.statuses.ble.isOutdated) {
+                    health = health.filter(msg => !msg.includes('Newer firmware available'))
+                }
+                if (!firmwareStatus.statuses.himax.isOutdated) {
+                    health = health.filter(msg => !msg.includes('Newer AI firmware available'))
+                }
+                if (health.length === (prev.deviceHealth?.length || 0)) return prev
+                return { ...prev, deviceHealth: health }
+            })
+        }
+    }, [firmwareStatus.statuses.ble.isOutdated, firmwareStatus.statuses.himax.isOutdated, firmwareStatus.isChecking, setInitErrors])
+
     // Re-check firmware status when this screen regains focus
     // (e.g. after returning from FirmwareUpdateScreen/FirmwareStatusScreen with a successful update)
     useEffect(() => {
@@ -120,6 +137,11 @@ export const StartMonitoringDetailsStep = () => {
         const model = aiModels.find(m => m.id === project.model_id)
         return model ? `${model.name} v${model.version}` : null
     }, [project?.model_id, aiModels])
+
+    const hasCameraError = useMemo(() => {
+        const warnings = initErrors.deviceHealth || []
+        return warnings.some(w => w.includes('Camera Error') || w.includes('Camera system not enabled') || w.includes('Neural Network Error'))
+    }, [initErrors.deviceHealth])
 
     const renderProjectSettingsRight = useCallback((props: any) => (
         <Button {...props} icon="help-circle-outline" onPress={() => showHelp('Associated Project', 'This section shows the project linked to this device and its active features.\n\n🔄 Motion icon: Activity detection is enabled\n⏱ Clock icon: Time-lapse capture is enabled\n📡 Waves icon: LoRaWAN connectivity is enabled\n🛰 Satellite icon: GPS location is recorded in images\n🧠 Brain icon: An AI model is assigned for analysis')}>
@@ -194,11 +216,13 @@ export const StartMonitoringDetailsStep = () => {
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                             <WWIcon source="alert-octagon" size={24} color="#C62828" />
                             <Text variant="titleSmall" style={{ color: '#C62828', marginLeft: 8, flex: 1, fontWeight: 'bold' }}>
-                                AI Processor Not Responding
+                                {hasCameraError ? 'Critical AI Processor Error' : 'AI Processor Not Responding'}
                             </Text>
                         </View>
                         <Text variant="bodySmall" style={{ color: '#C62828', marginBottom: 8 }}>
-                            The AI processor (camera module) did not wake up after multiple attempts. The device cannot start monitoring without it. Please go back and try reconnecting to the device.
+                            {hasCameraError 
+                                ? 'The AI processor has reported a critical camera or hardware error. Starting monitoring is blocked. Please check the camera module connections or hardware configuration.'
+                                : 'The AI processor (camera module) did not wake up after multiple attempts. The device cannot start monitoring without it. Please go back and try reconnecting to the device.'}
                         </Text>
                         <Button
                             mode="contained"

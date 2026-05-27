@@ -8,6 +8,7 @@ import { log, logWarn } from '../utils/logger'
 import { convertBleToSemanticVersion } from '../utils/versionUtils'
 import { InitPayload } from '../navigation/types'
 import { executeResetToDefaults } from '../ble/workflows/resetToDefaults'
+import { extractErrorBits } from '../ble/messageClassifier'
 
 export const useDevicePreDeploymentChecks = () => {
     const { initialize: runBleStandardInit } = useBleInitialization()
@@ -102,6 +103,68 @@ export const useDevicePreDeploymentChecks = () => {
             newErrors.deviceHealth.push('AI processor did not respond — device cannot start monitoring')
             onProgress('AI processor not responding')
         } else {
+            // Run post-wake health check (selftest) to evaluate fresh AI processor error bits (like 0x0300 camera errors)
+            try {
+                onProgress('Checking AI processor health...')
+                const statusMsg = await session.execute(commandRegistry.selftest)
+                log('[Pre-Deployment] Post-wake self-test result:', statusMsg)
+                const hexBits = statusMsg ? extractErrorBits(statusMsg) : null
+                if (hexBits) {
+                    const bits = parseInt(hexBits, 16)
+                    if (bits !== 0) {
+                        logWarn(`[Pre-Deployment] Non-zero error bits detected after AI wake: ${hexBits} (${bits})`)
+                        
+                        const SelfTestErrorBits = {
+                            LOW_BATTERY: 1 << 0,
+                            AI_PROCESSOR_NO_RESPONSE: 1 << 1,
+                            LORAWAN_ERROR: 1 << 2,
+                            WATCHDOG_RESET: 1 << 3,
+                            BROWNOUT_RESET: 1 << 4,
+                            MAIN_CAMERA_ERROR: 1 << 8,
+                            MOTION_DETECTOR_ERROR: 1 << 9,
+                            LED_FLASH_FAILURE: 1 << 10,
+                            NO_SD_CARD: 1 << 11,
+                            PDM_MIC_FAILURE: 1 << 12,
+                            NEURAL_NETWORK_ERROR: 1 << 13,
+                        }
+
+                        const addWarning = (warning: string) => {
+                            if (!newErrors.deviceHealth.includes(warning)) {
+                                newErrors.deviceHealth.push(warning)
+                            }
+                        }
+
+                        if (bits & SelfTestErrorBits.LOW_BATTERY) addWarning("Low Battery detected (Bit 0)")
+                        if (bits & SelfTestErrorBits.AI_PROCESSOR_NO_RESPONSE) addWarning("AI Processor not responding (Bit 1)")
+                        if (bits & SelfTestErrorBits.LORAWAN_ERROR) addWarning("LoRaWAN Error (Bit 2)")
+                        if (bits & SelfTestErrorBits.WATCHDOG_RESET) addWarning("Watchdog Reset occurred (Bit 3)")
+                        if (bits & SelfTestErrorBits.BROWNOUT_RESET) addWarning("Brownout Reset occurred (Bit 4)")
+                        if (bits & SelfTestErrorBits.MAIN_CAMERA_ERROR) addWarning("Main Camera Error (Bit 8)")
+                        if (bits & SelfTestErrorBits.MOTION_DETECTOR_ERROR) addWarning("Motion Detector Camera Error (Bit 9)")
+                        if (bits & SelfTestErrorBits.LED_FLASH_FAILURE) addWarning("LED Flash Circuit Failure (Bit 10)")
+                        if (bits & SelfTestErrorBits.NO_SD_CARD) addWarning("Device has no SD card detected (Bit 11)")
+                        if (bits & SelfTestErrorBits.PDM_MIC_FAILURE) addWarning("PDM Microphone Failure (Bit 12)")
+                        if (bits & SelfTestErrorBits.NEURAL_NETWORK_ERROR) addWarning("Neural Network Error (Bit 13)")
+
+                        const knownMask = 0x3F1F
+                        if ((bits & ~knownMask) !== 0) {
+                            addWarning(`Unknown hardware issue (Code: ${hexBits})`)
+                        }
+
+                        // Block starting deployment if there's a critical hardware error on the AI/Camera module
+                        const criticalAiErrorMask = SelfTestErrorBits.MAIN_CAMERA_ERROR | 
+                                                   SelfTestErrorBits.MOTION_DETECTOR_ERROR | 
+                                                   SelfTestErrorBits.NEURAL_NETWORK_ERROR
+                        
+                        if ((bits & criticalAiErrorMask) !== 0) {
+                            payload.aiProcessorFailed = true
+                        }
+                    }
+                }
+            } catch (e) {
+                logWarn('[Pre-Deployment] Post-wake health check failed:', e)
+            }
+
             // 2b. Reset operational parameters to factory defaults (pre-flight check/align)
             try {
                 onProgress('Aligning device parameters...')

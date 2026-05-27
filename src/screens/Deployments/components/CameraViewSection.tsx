@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { StyleSheet, View, Image } from 'react-native'
+import { StyleSheet, View, Image, Alert } from 'react-native'
 import { Card, Button, Text, ProgressBar, useTheme } from 'react-native-paper'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useCapturePreview } from '../../../hooks/useCapturePreview'
@@ -29,6 +29,7 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
         onImageReceived: onImageCaptured,
         onError: (err) => {
             logError('Capture error:', err)
+            Alert.alert('Camera Preview Failed', err.message || 'An error occurred while capturing preview image.')
         }
     })
 
