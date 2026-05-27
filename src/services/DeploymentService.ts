@@ -47,7 +47,6 @@ export const DeploymentService = {
             aiModelId?: string
             bleFirmwareId?: string
             himaxFirmwareId?: string
-            configFirmwareId?: string
             batteryLevelAtStart?: number
             sdCardTotalKbAtStart?: number
             sdCardAvailableKbAtStart?: number
@@ -122,7 +121,6 @@ export const DeploymentService = {
                     deployment.aiModelId = data.aiModelId
                     deployment.bleFirmwareId = data.bleFirmwareId
                     deployment.himaxFirmwareId = data.himaxFirmwareId
-                    deployment.configFirmwareId = data.configFirmwareId
                     deployment.batteryLevelAtStart = data.batteryLevelAtStart
                     deployment.sdCardTotalKbAtStart = data.sdCardTotalKbAtStart
                     deployment.sdCardAvailableKbAtStart = data.sdCardAvailableKbAtStart
@@ -423,7 +421,6 @@ function mapModelToPayload(model: Deployment): any {
         ai_model_id: model.aiModelId || null,
         ble_firmware_id: model.bleFirmwareId || null,
         himax_firmware_id: model.himaxFirmwareId || null,
-        config_firmware_id: model.configFirmwareId || null,
         battery_level_at_start: model.batteryLevelAtStart ?? null,
         sd_card_total_kb_at_start: model.sdCardTotalKbAtStart ?? null,
         sd_card_available_kb_at_start: model.sdCardAvailableKbAtStart ?? null,

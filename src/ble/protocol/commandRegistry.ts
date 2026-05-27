@@ -163,7 +163,12 @@ export function createMultiLineCommand<T>(
         if (!isDone) throw new Error(`${name}: Result accessed before complete`);
         return parseResult(lines);
       },
-      getResult: function() { return this.parser(); }
+      getResult: function() { return this.parser(); },
+      onTimeout: () => {
+        if (lines.length > 0) {
+          isDone = true;
+        }
+      }
     };
   };
 }

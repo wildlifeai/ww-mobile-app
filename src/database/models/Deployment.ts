@@ -28,7 +28,6 @@ export default class Deployment extends Model {
     @field('ai_model_id') aiModelId?: string
     @field('ble_firmware_id') bleFirmwareId?: string
     @field('himax_firmware_id') himaxFirmwareId?: string
-    @field('config_firmware_id') configFirmwareId?: string
     @field('battery_level_at_start') batteryLevelAtStart?: number
     @field('sd_card_total_kb_at_start') sdCardTotalKbAtStart?: number
     @field('sd_card_available_kb_at_start') sdCardAvailableKbAtStart?: number

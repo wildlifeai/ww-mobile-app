@@ -17,7 +17,10 @@ const path = require('path');
 // Configuration
 const VERBOSE = process.argv.includes('--verbose');
 const WATERMELON_SCHEMA_PATH = path.join(__dirname, '../src/database/schema.ts');
-const SUPABASE_TYPES_PATH = path.join(__dirname, '../src/types/supabase.ts');
+let SUPABASE_TYPES_PATH = path.join(__dirname, '../src/types/supabase.ts');
+if (!fs.existsSync(SUPABASE_TYPES_PATH) || fs.statSync(SUPABASE_TYPES_PATH).size === 0) {
+    SUPABASE_TYPES_PATH = path.join(__dirname, '../src/types/database.types.ts');
+}
 
 // Colors for terminal output
 const colors = {
@@ -173,7 +176,7 @@ function validateSchemas(watermelonTables, supabaseTables) {
         // Check each column
         for (const [columnName, watermelonColumn] of Object.entries(watermelonTable.columns)) {
             // Skip WatermelonDB-specific columns
-            if (['id', '_status', '_changed', 'last_modified_at'].includes(columnName)) {
+            if (['id', '_status', '_changed', 'last_modified_at', '_version', '_custom_sync_status', 'modified_by', 'deleted_at', 'created_at', 'updated_at'].includes(columnName)) {
                 continue;
             }
 
