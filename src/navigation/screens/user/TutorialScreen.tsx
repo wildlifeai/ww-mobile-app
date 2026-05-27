@@ -19,7 +19,7 @@ import {
     ImageSourcePropType,
     useWindowDimensions,
 } from 'react-native'
-import { Button, Text } from 'react-native-paper'
+import { Button } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAppDispatch, useAppSelector } from '../../../redux'
 import { completeTutorial } from '../../../redux/slices/authSlice'
@@ -208,7 +208,7 @@ export const TutorialScreen = () => {
                     textColor={colors.onSurfaceVariant}
                     testID="tutorial-skip-button"
                 >
-                    <Text>Skip</Text>
+                    Skip
                 </Button>
             </View>
 
@@ -275,7 +275,7 @@ export const TutorialScreen = () => {
                     style={styles.nextButton}
                     testID="tutorial-next-button"
                 >
-                    <Text>{isLastSlide ? 'Get Started' : 'Next'}</Text>
+                    {isLastSlide ? 'Get Started' : 'Next'}
                 </Button>
             </View>
         </View>

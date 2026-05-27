@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form"
-import { StyleSheet, View, Image, Alert } from "react-native"
+import { StyleSheet, View, Image, Alert, Keyboard } from "react-native"
 import { Button, Text } from "react-native-paper"
 // import { CustomKeyboardAvoidingView } from "../../components/CustomKeyboardAvoidingView" - REMOVED
 import { WWScreenView } from "../../../components/ui/WWScreenView"
@@ -38,6 +38,7 @@ export const Register = () => {
 	})
 
 	const onSubmit = async (data: FormData) => {
+		Keyboard.dismiss()
 		if (data.password !== data.confirmPassword) {
 			setError("confirmPassword", {
 				type: "manual",
