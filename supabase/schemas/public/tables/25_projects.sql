@@ -19,6 +19,7 @@ CREATE TABLE projects (
   activity_detection_sensitivity_id int REFERENCES activity_sensitivity (id),
   timelapse_interval_seconds int,
   lorawan_required boolean NOT NULL DEFAULT false,
+  record_gps_in_images boolean NOT NULL DEFAULT false,
   is_archived boolean NOT NULL DEFAULT false
 );
 

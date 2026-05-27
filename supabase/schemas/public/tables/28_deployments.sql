@@ -45,7 +45,7 @@ CREATE TABLE deployments (
   ai_model_id uuid REFERENCES ai_models (id),
   ble_firmware_id uuid REFERENCES firmware (id),
   himax_firmware_id uuid REFERENCES firmware (id),
-  config_firmware_id uuid REFERENCES firmware (id),
+
   battery_level_at_start integer,
   sd_card_total_kb_at_start integer,
   sd_card_available_kb_at_start integer,
@@ -97,7 +97,7 @@ COMMENT ON COLUMN deployments.lorawan_last_verified_at IS 'LoRaWAN verification 
 COMMENT ON COLUMN deployments.ai_model_id IS 'AI model assigned at deployment start.';
 COMMENT ON COLUMN deployments.ble_firmware_id IS 'BLE Firmware version active at deployment start.';
 COMMENT ON COLUMN deployments.himax_firmware_id IS 'Himax Firmware version active at deployment start.';
-COMMENT ON COLUMN deployments.config_firmware_id IS 'Config Firmware version active at deployment start.';
+
 COMMENT ON COLUMN deployments.battery_level_at_start IS 'Battery level recorded at deployment start (%).';
 COMMENT ON COLUMN deployments.sd_card_total_kb_at_start IS 'Total SD card capacity recorded at deployment start (KB).';
 COMMENT ON COLUMN deployments.sd_card_available_kb_at_start IS 'Available SD card capacity recorded at deployment start (KB).';

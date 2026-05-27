@@ -107,7 +107,7 @@ describe("AIModelSelect", () => {
 					model_family_id: null,
 					processing_log: null,
 					status: "validated",
-					version_number: null,
+					version_number: 1,
 				},
 				{
 					id: "223e4567-e89b-12d3-a456-426614174001",
@@ -131,7 +131,7 @@ describe("AIModelSelect", () => {
 					model_family_id: null,
 					processing_log: null,
 					status: "validated",
-					version_number: null,
+					version_number: 2,
 				},
 			]
 
@@ -179,7 +179,7 @@ describe("AIModelSelect", () => {
 					model_family_id: null,
 					processing_log: null,
 					status: "validated",
-					version_number: null,
+					version_number: 1,
 				},
 			]
 
@@ -343,7 +343,7 @@ describe("AIModelSelect", () => {
 					model_family_id: null,
 					processing_log: null,
 					status: "validated",
-					version_number: null,
+					version_number: 1,
 				},
 			]
 
@@ -469,7 +469,7 @@ describe("AIModelSelect", () => {
 					model_family_id: null,
 					processing_log: null,
 					status: "validated",
-					version_number: null,
+					version_number: 1,
 				},
 			]
 

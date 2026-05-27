@@ -23,6 +23,9 @@ CREATE TABLE media (
   uploaded_by uuid REFERENCES auth.users (id) ON DELETE SET NULL
 );
 
+-- Unique constraint to support composite FK from observations/observation_events
+ALTER TABLE media ADD CONSTRAINT uq_media_id_deployment UNIQUE (id, deployment_id);
+
 -- Indexes
 CREATE INDEX idx_media_deployment_id ON media (deployment_id);
 CREATE INDEX idx_media_timestamp ON media (timestamp);
