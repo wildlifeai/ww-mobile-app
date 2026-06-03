@@ -7,7 +7,7 @@
  * - Sidebar mode (navigated manually): uses navigation.goBack().
  */
 
-import { useRef, useCallback, useState } from 'react'
+import { useRef, useCallback, useState, useEffect } from 'react'
 import {
     View,
     FlatList,
@@ -88,6 +88,14 @@ export const TutorialScreen = () => {
     const flatListRef = useRef<FlatList>(null)
     const scrollX = useRef(new Animated.Value(0)).current
     const [currentIndex, setCurrentIndex] = useState(0)
+
+    const wasPendingRef = useRef(pendingTutorial)
+
+    useEffect(() => {
+        if (wasPendingRef.current && !pendingTutorial) {
+            navigation.navigate('Home')
+        }
+    }, [pendingTutorial, navigation])
 
     const handleExit = useCallback(() => {
         if (pendingTutorial) {
