@@ -115,36 +115,63 @@ sequenceDiagram
 
 ### Binary Image Pipeline
 
+The capture preview uses a **three-phase flow** separated by device sleep cycles. Each phase allows the device to fully complete its inactivity → Save State → DPD cycle before the next command wakes it fresh. This prevents the FatFS race condition where `txfile`'s open file handle was invalidated by a concurrent `save_configuration()`.
+
 ```mermaid
 sequenceDiagram
     participant UI as useCapturePreview
-    participant Sess as useBleSession
-    participant TX as transport.ts
+    participant Sess as BleSession
+    participant Dev as Device (nRF52/Himax)
     participant Router as rxRouter
     participant Bus as bleEventBus
     participant IR as ImageReassembler
     participant FS as FileSystem
 
-    UI->>Sess: session.execute(capture)
-    Sess-->>UI: "Captured 1 images..."
-    UI->>Sess: session.execute(txfile)
-    Note over Router: "7272 bytes in TL000163.JPG"
+    rect rgb(240, 248, 255)
+    Note over UI,Dev: Phase 1: SETUP
+    UI->>Sess: execute(getops)
+    Sess-->>UI: OpParams (check OP 10, 18)
+    opt Camera not enabled or test bits set
+        UI->>Sess: execute(setop 10 1)
+        UI->>Sess: execute(setop 18 0)
+    end
+    UI->>Sess: waitForSleep(5000)
+    Dev-->>Bus: DEVICE_SIGNAL(SLEEP)
+    Bus-->>UI: resolve
+    end
+
+    rect rgb(255, 248, 240)
+    Note over UI,Dev: Phase 2: CAPTURE
+    UI->>Sess: execute(capture 1 500)
+    Sess-->>UI: "Captured 1 images. Last is 59200A60.JPG"
+    UI->>Sess: waitForSleep(5000)
+    Note over Dev: Inactivity → Save State → DPD
+    Dev-->>Bus: DEVICE_SIGNAL(SLEEP)
+    Bus-->>UI: resolve
+    end
+
+    rect rgb(240, 255, 240)
+    Note over UI,Dev: Phase 3: TRANSFER
+    UI->>Sess: execute(txfile 59200A60.JPG)
+    Note over Dev: Wakes fresh — FatFS clean
+    Note over Router: "14242 bytes in 59200A60.JPG"
     Router->>Bus: textLine (announces byte count)
-    Bus->>IR: initialize(7272)
+    Bus->>IR: initialize(14242)
 
     loop For each BLE notification
         Note over Router: value[0] == 0x06? → binary
         Router->>Bus: binaryPacket event
         Bus->>IR: processPacket(data)
-        IR-->>UI: emit onImageProgress 0.45
+        IR-->>UI: emit onImageProgress
     end
 
-    Note over IR: totalBytesReceived >= 7272
+    Note over IR: totalBytesReceived >= 14242
     IR->>FS: writeAsStringAsync(base64)
     IR-->>UI: emit onImageComplete fileUri
 
-    Note over Router: "Finished sending 7272 bytes"
+    Note over Router: "Finished sending 14242 bytes"
     Router-->>UI: force_finalize safety net
+    end
 ```
 
 > [!NOTE]
@@ -669,14 +696,24 @@ byte[3..] = payload          // actual JPEG image data
 
 ### 12. Capture Preview (`useCapturePreview`)
 
-Orchestrates the full capture-preview flow:
+Orchestrates the full capture-preview flow using a **three-phase architecture** separated by device sleep cycles. Each phase lets the Himax complete its full lifecycle (inactivity timer → Save State → DPD) before the next command wakes it fresh, preventing the FatFS race condition where `txfile` and `save_configuration()` competed for the same filesystem.
 
-1. **Pre-flight Check:** `getops` to verify `CAMERA_ENABLED` (OP 10 = 1) and `TEST_MODE_BITS` (OP 18 = 0). Fixes either if needed (e.g. stale skip-file bit from a prior MD test).
-2. **Single Image Capture:** Send `AI capture 1 500` (500ms interval allows AE settling)
-3. **Start Download:** Send `AI txfile .` → Firmware announces byte count
-4. **Receive:** `ImageReassembler` processes binary packets via `bleEventBus.binaryPacket`
-5. **Completion:** Normal or `force_finalize` fallback
-6. **Timeout:** 20-second safety timeout triggers `force_finalize`
+**Phase 1 — Setup:**
+1. `getops` to verify `CAMERA_ENABLED` (OP 10 = 1) and `TEST_MODE_BITS` (OP 18 = 0). Fixes either if needed.
+2. `waitForSleep(5000)` — device enters DPD.
+
+**Phase 2 — Capture:**
+3. `AI capture 1 500` — captures a single image (500ms interval allows AE settling).
+4. Extract the captured filename from the response (e.g. `59200A60.JPG`).
+5. `waitForSleep(5000)` — **critical**: ensures Save State + DPD complete before file transfer.
+
+**Phase 3 — Transfer:**
+6. `AI txfile <filename>` — device wakes fresh from DPD, FatFS is clean, no competing operations.
+7. `ImageReassembler` processes binary packets via `bleEventBus.binaryPacket`.
+8. Normal completion or `force_finalize` fallback (30-second inactivity timeout).
+
+> [!NOTE]
+> The `waitForSleep()` method on `BleSession` listens for the `DEVICE_SIGNAL(SLEEP)` event from `bleEventBus`. It uses **static imports** for `DeviceSignal` — dynamic imports would defer the event handler to a microtask, causing the synchronously-emitted signal to be missed.
 
 > [!NOTE]
 > The pre-flight `getops` check ensures capture works correctly even if `TEST_BIT_SKIP_FILE_CREATION` (OP 18, bit 3) is still set from a prior motion detection test. Without it, the firmware captures but skips JPEG file creation, and the `txfile` download times out.

@@ -151,7 +151,15 @@ export const useCapturePreview = ({
         }
     }, [device])
 
-    // Start capture process
+    // Start capture process — three distinct phases separated by device sleep cycles:
+    //
+    // Phase 1 (SETUP):    Pre-flight checks (getops/setop) → device sleeps
+    // Phase 2 (CAPTURE):  Take photo (capture command) → device sleeps after Save State
+    // Phase 3 (TRANSFER): Download image (txfile command) → binary streaming
+    //
+    // Each phase lets the device fully complete its inactivity → Save State → DPD
+    // cycle before the next command wakes it. This prevents the FatFS race condition
+    // where txfile's open file handle was invalidated by a concurrent Save State.
     const startCapture = useCallback(async (captureCount: number = 1, captureInterval: number = 500) => {
         if (!device) {
             const error = new Error('No device connected')
@@ -165,7 +173,7 @@ export const useCapturePreview = ({
 
         try {
             setIsCapturing(true)
-            setCaptureStage('Initializing...')
+            setCaptureStage('Initializing…')
             setCapturedImageUri(null)
             setCaptureProgress(0)
             downloadRequested.current = false
@@ -175,10 +183,11 @@ export const useCapturePreview = ({
 
             const session = createBleSession(device);
 
-            // Pre-flight: verify device state before capture.
+            // ── Phase 1: SETUP ──────────────────────────────────────────
             // Read current OPs and ensure camera is enabled (OP 10) and
             // TEST_MODE_BITS (OP 18) is 0 (no skip-file-creation from prior MD test).
             setCaptureStage('Checking device state…')
+            log('[useCapturePreview] Phase 1: Setup — checking device state')
             try {
                 const ops = await session.execute(() => commandRegistry.getops())
                 if (ops) {
@@ -198,35 +207,34 @@ export const useCapturePreview = ({
                 logWarn('[useCapturePreview] Pre-flight getops failed, proceeding anyway:', e)
             }
 
-            setCaptureStage(`Capturing ${captureCount} image(s)...`)
-            log(`[useCapturePreview] Sending capture command (AI capture ${captureCount} ${captureInterval})...`)
+            // Let the device complete Save State and enter DPD before capture
+            log('[useCapturePreview] Phase 1 complete — waiting for device to sleep')
+            setCaptureStage('Waiting for device…')
+            await session.waitForSleep(5000)
+
+            // ── Phase 2: CAPTURE ────────────────────────────────────────
+            setCaptureStage(`Capturing ${captureCount} image(s)…`)
+            log(`[useCapturePreview] Phase 2: Capture — sending AI capture ${captureCount} ${captureInterval}`)
             const captureResult = await session.execute(() => commandRegistry.capture(captureCount, captureInterval))
             const capturedFilename = typeof captureResult === 'string' ? captureResult : '.'
-            log(`[useCapturePreview] Capture result: ${captureResult}. Target filename: ${capturedFilename}`)
+            log(`[useCapturePreview] Phase 2 complete — captured: ${capturedFilename}`)
 
-            // Start Download Process Tracker
+            // Wait for the device to complete its post-capture cycle:
+            // inactivity timer (1000ms) → Save State → DPD entry.
+            // This is the critical fix: the old flow sent txfile immediately,
+            // racing against Save State which corrupted the FatFS file handle.
+            setCaptureStage('Waiting for device…')
+            log('[useCapturePreview] Waiting for device to sleep after capture (Save State + DPD)')
+            await session.waitForSleep(5000)
+
+            // ── Phase 3: TRANSFER ───────────────────────────────────────
+            // Device wakes fresh from DPD — FatFS is clean, no competing operations.
             downloadRequested.current = true
-            
             resetDownloadTimeout()
 
-            setCaptureStage('Downloading image...')
-            log(`[useCapturePreview] Requesting file download for: ${capturedFilename}...`)
-
-            let txfileSuccess = false;
-            let attempts = 0;
-            const maxAttempts = 3;
-
-            while (attempts < maxAttempts && !txfileSuccess) {
-                try {
-                    attempts++;
-                    await session.execute(() => commandRegistry.txfile(capturedFilename))
-                    txfileSuccess = true;
-                } catch (txErr) {
-                    if (attempts >= maxAttempts) throw txErr;
-                    logWarn(`[useCapturePreview] txfile attempt ${attempts} failed, retrying in 300ms...`, txErr);
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                }
-            }
+            setCaptureStage('Downloading image…')
+            log(`[useCapturePreview] Phase 3: Transfer — requesting txfile ${capturedFilename}`)
+            await session.execute(() => commandRegistry.txfile(capturedFilename))
 
         } catch (error) {
             const err = error as Error

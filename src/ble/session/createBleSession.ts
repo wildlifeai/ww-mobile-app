@@ -1,9 +1,11 @@
 import { bleTransport } from '../protocol/bleTransportController';
 import { runCommandPipeline } from '../protocol/runCommandPipeline';
 import { bleEventBus, BleEvent } from '../protocol/eventBus';
+import { DeviceSignal } from '../protocol/deviceSignals';
 import BleManager from 'react-native-ble-manager';
 import { rxRouter } from '../protocol/rxRouter';
 import { ExtendedPeripheral } from '../../redux/slices/devicesSlice';
+import { log, logWarn } from '../../utils/logger';
 
 // ── Stream Registry ─────────────────────────────────────────────────
 // Manages active binary stream handlers. Fan-out happens on every
@@ -90,9 +92,7 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
     return new Promise((resolve) => {
       const timeoutId = setTimeout(() => {
         cleanup();
-        import('../../utils/logger').then(({ logWarn }) => {
-            logWarn(`[BleSession] Timed out waiting for Sleep signal after ${timeoutMs}ms.`);
-        });
+        logWarn(`[BleSession] Timed out waiting for Sleep signal after ${timeoutMs}ms.`);
         resolve();
       }, timeoutMs);
 
@@ -101,18 +101,18 @@ export function createBleSession(peripheral: ExtendedPeripheral) {
       };
 
       const onDeviceSignal = (event: BleEvent & { type: 'DEVICE_SIGNAL' }) => {
-        import('../protocol/deviceSignals').then(({ DeviceSignal }) => {
-            if (event.deviceId === peripheral.id && event.signal === DeviceSignal.SLEEP) {
-              clearTimeout(timeoutId);
-              cleanup();
-              resolve();
-            }
-        });
+        if (event.deviceId === peripheral.id && event.signal === DeviceSignal.SLEEP) {
+          clearTimeout(timeoutId);
+          cleanup();
+          log(`[BleSession] Sleep signal detected — proceeding.`);
+          resolve();
+        }
       };
 
       bleEventBus.on('deviceSignal', onDeviceSignal);
     });
   };
+
 
   return {
     execute,
