@@ -15,7 +15,7 @@ interface Props {
 
 
 
-export const DeploymentCardComponent: React.FC<Props> = ({ deployment, device, isVisible, onClose, onPress }) => {
+const DeploymentCardComponent: React.FC<Props> = ({ deployment, device, isVisible, onClose, onPress }) => {
     const { colors } = useExtendedTheme()
     const slideAnim = useSharedValue(300) // Start off-screen (down)
 

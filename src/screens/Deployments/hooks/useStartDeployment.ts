@@ -366,7 +366,7 @@ export const useStartDeployment = ({
             }
         })
 
-        return unsubscribe
+        return () => unsubscribe()
     }, [navigation, bleDevice]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Robust Connection Lost Alert

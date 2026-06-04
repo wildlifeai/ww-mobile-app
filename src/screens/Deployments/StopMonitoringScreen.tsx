@@ -213,7 +213,7 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
             )
         })
 
-        return unsubscribe
+        return () => unsubscribe()
     }, [navigation, isEnding, isEndDeploymentSuccess])
 
 

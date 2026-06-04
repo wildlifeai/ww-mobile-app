@@ -84,7 +84,7 @@ export function useSupabaseClient(): SupabaseClient<Database> {
 		})
 
 		// Cleanup subscription on unmount
-		return unsubscribe
+		return () => unsubscribe()
 	}, [client])
 
 	// Return current client (throw if still not initialized)
@@ -150,7 +150,7 @@ export function useSupabaseClientOptional(): SupabaseClient<Database> | null {
 		})
 
 		// Cleanup subscription on unmount
-		return unsubscribe
+		return () => unsubscribe()
 	}, [client])
 
 	return client

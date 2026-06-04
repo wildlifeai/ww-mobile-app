@@ -82,7 +82,7 @@ export const EditProjectScreen = () => {
 			)
 		})
 
-		return unsubscribe
+		return () => unsubscribe()
 	}, [navigation, isDirty])
 
 	// Save and go back
