@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 359,
+    version: 365,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -281,7 +281,7 @@ export default appSchema({
                 { name: 'project_id', type: 'string', isIndexed: true },
                 { name: 'sd_card_available_kb_at_start', type: 'number', isOptional: true },
                 { name: 'sd_card_total_kb_at_start', type: 'number', isOptional: true },
-                { name: 'setup_by', type: 'string' },
+                { name: 'setup_by', type: 'string', isOptional: true },
                 { name: 'start_deployment_comments', type: 'string', isOptional: true },
                 { name: 'timelapse_interval_seconds', type: 'number', isOptional: true },
                 { name: 'deployment_comments', type: 'string', isOptional: true },
@@ -477,7 +477,7 @@ export default appSchema({
         tableSchema({
             name: 'organisations',
             columns: [
-                { name: 'created_by', type: 'string' },
+                { name: 'created_by', type: 'string', isOptional: true },
                 { name: 'is_active', type: 'boolean' },
                 { name: 'name', type: 'string' },
                 { name: 'slug', type: 'string' },

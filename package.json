@@ -1,6 +1,6 @@
 {
   "name": "wildlifewatcher",
-  "version": "0.0.56",
+  "version": "0.0.57",
   "private": true,
   "scripts": {
     "android": "npm run types:cloud-dev && npm run db:sync-schema && npm run schema:generate && npx expo run:android",
@@ -110,7 +110,7 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.2",
-    "@babel/runtime": "^7.25.2",
+    "@babel/runtime": "^7.26.10",
     "@commitlint/cli": "^20.4.2",
     "@commitlint/config-conventional": "^20.4.2",
     "@morrowdigital/watermelondb-expo-plugin": "^2.3.3",
@@ -144,7 +144,22 @@
   },
   "overrides": {
     "react": "19.1.0",
-    "react-test-renderer": "19.1.0"
+    "react-test-renderer": "19.1.0",
+    "handlebars": "^4.7.9",
+    "@babel/plugin-transform-modules-systemjs": "^7.29.4",
+    "@xmldom/xmldom": "^0.8.13",
+    "fast-uri": "^3.1.2",
+    "fast-xml-parser": "^5.8.0",
+    "flatted": "^3.4.2",
+    "lodash": "^4.18.1",
+    "node-forge": "^1.4.0",
+    "tar": "^7.5.16",
+    "tmp": "^0.2.7",
+    "undici": "^6.26.0",
+    "postcss": "^8.5.10",
+    "qs": "^6.15.2",
+    "ws": "^8.21.0",
+    "yaml": "^2.9.0"
   },
   "engines": {
     "node": ">=20"

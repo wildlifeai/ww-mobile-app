@@ -7,7 +7,7 @@
  * - Sidebar mode (navigated manually): uses navigation.goBack().
  */
 
-import { useRef, useCallback, useState } from 'react'
+import { useRef, useCallback, useState, useEffect } from 'react'
 import {
     View,
     FlatList,
@@ -75,6 +75,8 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     },
 ]
 
+const hasMultipleImages = (item: TutorialStep) => item.images.length > 1
+
 export const TutorialScreen = () => {
     const dispatch = useAppDispatch()
     const navigation = useAppNavigation()
@@ -88,6 +90,14 @@ export const TutorialScreen = () => {
     const flatListRef = useRef<FlatList>(null)
     const scrollX = useRef(new Animated.Value(0)).current
     const [currentIndex, setCurrentIndex] = useState(0)
+
+    const wasPendingRef = useRef(pendingTutorial)
+
+    useEffect(() => {
+        if (wasPendingRef.current && !pendingTutorial) {
+            navigation.navigate('Home')
+        }
+    }, [pendingTutorial, navigation])
 
     const handleExit = useCallback(() => {
         if (pendingTutorial) {
@@ -126,7 +136,7 @@ export const TutorialScreen = () => {
     // Use screen height (not width) so the frame is substantial on tall phones
     const phoneFrameHeight = screenHeight * 0.52
     const phoneFrameWidth = Math.min(phoneFrameHeight * 0.48, screenWidth * 0.55)
-    const hasMultipleImages = (item: TutorialStep) => item.images.length > 1
+
 
     const renderPhoneFrame = useCallback(
         (source: ImageSourcePropType, frameWidth: number, frameHeight: number) => (
@@ -208,7 +218,7 @@ export const TutorialScreen = () => {
                     textColor={colors.onSurfaceVariant}
                     testID="tutorial-skip-button"
                 >
-                    Skip
+                    <WWText>{'Skip'}</WWText>
                 </Button>
             </View>
 

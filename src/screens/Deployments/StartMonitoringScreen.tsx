@@ -73,7 +73,7 @@ export const StartMonitoringDetailsStep = () => {
                 isDfuInProgress.current = false
             }
         })
-        return unsubscribe
+        return () => unsubscribe()
     }, [navigation, isDfuInProgress])
 
     const firmwareStatus = useFirmwareStatus({ 

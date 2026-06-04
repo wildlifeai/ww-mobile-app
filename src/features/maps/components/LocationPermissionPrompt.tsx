@@ -54,7 +54,7 @@ export const LocationPermissionPrompt: React.FC<
 						onPress={onRequestPermission}
 						activeOpacity={0.7}
 					>
-						<Text style={styles.primaryButtonText}>Enable Location</Text>
+						<Text style={styles.primaryButtonText}>Continue</Text>
 					</TouchableOpacity>
 				) : (
 					<TouchableOpacity
