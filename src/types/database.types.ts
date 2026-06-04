@@ -25,7 +25,6 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
-          updated_at: string | null
           user_id: string | null
         }
         Insert: {
@@ -38,7 +37,6 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
-          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
@@ -51,7 +49,6 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
-          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -63,7 +60,7 @@ export type Database = {
           description: string
           id: number
           is_active: boolean
-          modified_by: string
+          modified_by: string | null
           updated_at: string | null
           value: string
         }
@@ -73,7 +70,7 @@ export type Database = {
           description: string
           id?: number
           is_active?: boolean
-          modified_by: string
+          modified_by?: string | null
           updated_at?: string | null
           value: string
         }
@@ -83,7 +80,7 @@ export type Database = {
           description?: string
           id?: number
           is_active?: boolean
-          modified_by?: string
+          modified_by?: string | null
           updated_at?: string | null
           value?: string
         }
@@ -248,7 +245,7 @@ export type Database = {
           labels_path: string
           model_family_id: string | null
           model_path: string
-          modified_by: string
+          modified_by: string | null
           name: string
           organisation_id: string
           processing_log: Json | null
@@ -272,7 +269,7 @@ export type Database = {
           labels_path: string
           model_family_id?: string | null
           model_path: string
-          modified_by: string
+          modified_by?: string | null
           name: string
           organisation_id: string
           processing_log?: Json | null
@@ -296,7 +293,7 @@ export type Database = {
           labels_path?: string
           model_family_id?: string | null
           model_path?: string
-          modified_by?: string
+          modified_by?: string | null
           name?: string
           organisation_id?: string
           processing_log?: Json | null
@@ -629,7 +626,7 @@ export type Database = {
           description: string
           id: number
           is_active: boolean
-          modified_by: string
+          modified_by: string | null
           updated_at: string | null
           value: string
         }
@@ -639,7 +636,7 @@ export type Database = {
           description: string
           id?: number
           is_active?: boolean
-          modified_by: string
+          modified_by?: string | null
           updated_at?: string | null
           value: string
         }
@@ -649,7 +646,7 @@ export type Database = {
           description?: string
           id?: number
           is_active?: boolean
-          modified_by?: string
+          modified_by?: string | null
           updated_at?: string | null
           value?: string
         }
@@ -731,7 +728,7 @@ export type Database = {
           description: string
           id: number
           is_active: boolean
-          modified_by: string
+          modified_by: string | null
           updated_at: string | null
           value: string
         }
@@ -741,7 +738,7 @@ export type Database = {
           description: string
           id?: number
           is_active?: boolean
-          modified_by: string
+          modified_by?: string | null
           updated_at?: string | null
           value: string
         }
@@ -751,7 +748,7 @@ export type Database = {
           description?: string
           id?: number
           is_active?: boolean
-          modified_by?: string
+          modified_by?: string | null
           updated_at?: string | null
           value?: string
         }
@@ -802,7 +799,7 @@ export type Database = {
           project_id: string
           sd_card_available_kb_at_start: number | null
           sd_card_total_kb_at_start: number | null
-          setup_by: string
+          setup_by: string | null
           start_deployment_comments: string | null
           timelapse_interval_seconds: number | null
           updated_at: string | null
@@ -851,7 +848,7 @@ export type Database = {
           project_id: string
           sd_card_available_kb_at_start?: number | null
           sd_card_total_kb_at_start?: number | null
-          setup_by: string
+          setup_by?: string | null
           start_deployment_comments?: string | null
           timelapse_interval_seconds?: number | null
           updated_at?: string | null
@@ -900,7 +897,7 @@ export type Database = {
           project_id?: string
           sd_card_available_kb_at_start?: number | null
           sd_card_total_kb_at_start?: number | null
-          setup_by?: string
+          setup_by?: string | null
           start_deployment_comments?: string | null
           timelapse_interval_seconds?: number | null
           updated_at?: string | null
@@ -1006,7 +1003,7 @@ export type Database = {
           deleted_at: string | null
           device_eui: string | null
           id: string
-          modified_by: string
+          modified_by: string | null
           name: string
           organisation_id: string | null
           updated_at: string | null
@@ -1017,7 +1014,7 @@ export type Database = {
           deleted_at?: string | null
           device_eui?: string | null
           id?: string
-          modified_by: string
+          modified_by?: string | null
           name: string
           organisation_id?: string | null
           updated_at?: string | null
@@ -1028,7 +1025,7 @@ export type Database = {
           deleted_at?: string | null
           device_eui?: string | null
           id?: string
-          modified_by?: string
+          modified_by?: string | null
           name?: string
           organisation_id?: string | null
           updated_at?: string | null
@@ -1088,7 +1085,7 @@ export type Database = {
           id: string
           is_active: boolean
           location_path: string
-          modified_by: string
+          modified_by: string | null
           name: string
           release_notes: string | null
           type: string
@@ -1104,7 +1101,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           location_path: string
-          modified_by: string
+          modified_by?: string | null
           name: string
           release_notes?: string | null
           type: string
@@ -1120,7 +1117,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           location_path?: string
-          modified_by?: string
+          modified_by?: string | null
           name?: string
           release_notes?: string | null
           type?: string
@@ -1732,33 +1729,33 @@ export type Database = {
       organisations: {
         Row: {
           created_at: string | null
-          created_by: string
+          created_by: string | null
           deleted_at: string | null
           id: string
           is_active: boolean
-          modified_by: string
+          modified_by: string | null
           name: string
           slug: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
-          created_by: string
+          created_by?: string | null
           deleted_at?: string | null
           id?: string
           is_active?: boolean
-          modified_by?: string
+          modified_by?: string | null
           name: string
           slug: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
-          created_by?: string
+          created_by?: string | null
           deleted_at?: string | null
           id?: string
           is_active?: boolean
-          modified_by?: string
+          modified_by?: string | null
           name?: string
           slug?: string
           updated_at?: string | null
@@ -1858,7 +1855,7 @@ export type Database = {
           is_monitoring_marked_individuals: boolean | null
           lorawan_required: boolean
           model_id: string | null
-          modified_by: string
+          modified_by: string | null
           name: string
           organisation_id: string
           project_image: string | null
@@ -1882,7 +1879,7 @@ export type Database = {
           is_monitoring_marked_individuals?: boolean | null
           lorawan_required?: boolean
           model_id?: string | null
-          modified_by?: string
+          modified_by?: string | null
           name: string
           organisation_id: string
           project_image?: string | null
@@ -1906,7 +1903,7 @@ export type Database = {
           is_monitoring_marked_individuals?: boolean | null
           lorawan_required?: boolean
           model_id?: string | null
-          modified_by?: string
+          modified_by?: string | null
           name?: string
           organisation_id?: string
           project_image?: string | null
@@ -1996,7 +1993,7 @@ export type Database = {
           description: string
           id: number
           is_active: boolean
-          modified_by: string
+          modified_by: string | null
           updated_at: string | null
           value: string
         }
@@ -2006,7 +2003,7 @@ export type Database = {
           description: string
           id?: number
           is_active?: boolean
-          modified_by: string
+          modified_by?: string | null
           updated_at?: string | null
           value: string
         }
@@ -2016,7 +2013,7 @@ export type Database = {
           description?: string
           id?: number
           is_active?: boolean
-          modified_by?: string
+          modified_by?: string | null
           updated_at?: string | null
           value?: string
         }
@@ -2153,7 +2150,7 @@ export type Database = {
           granted_by: string | null
           id: string
           is_active: boolean
-          modified_by: string
+          modified_by: string | null
           role: string
           scope_id: string | null
           scope_type: string
@@ -2168,7 +2165,7 @@ export type Database = {
           granted_by?: string | null
           id?: string
           is_active?: boolean
-          modified_by?: string
+          modified_by?: string | null
           role: string
           scope_id?: string | null
           scope_type: string
@@ -2183,7 +2180,7 @@ export type Database = {
           granted_by?: string | null
           id?: string
           is_active?: boolean
-          modified_by?: string
+          modified_by?: string | null
           role?: string
           scope_id?: string | null
           scope_type?: string
@@ -2198,7 +2195,7 @@ export type Database = {
           deleted_at: string | null
           firstname: string
           id: string
-          modified_by: string
+          modified_by: string | null
           surname: string
           updated_at: string | null
         }
@@ -2207,7 +2204,7 @@ export type Database = {
           deleted_at?: string | null
           firstname: string
           id: string
-          modified_by?: string
+          modified_by?: string | null
           surname: string
           updated_at?: string | null
         }
@@ -2216,7 +2213,7 @@ export type Database = {
           deleted_at?: string | null
           firstname?: string
           id?: string
-          modified_by?: string
+          modified_by?: string | null
           surname?: string
           updated_at?: string | null
         }
