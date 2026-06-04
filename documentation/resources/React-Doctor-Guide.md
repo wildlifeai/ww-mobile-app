@@ -37,7 +37,7 @@ npx -y react-doctor@latest . --verbose   # with file-level details
 
 ## Configuration
 
-The config file is `react-doctor.config.json` at the project root.
+The config file is `doctor.config.json` at the project root.
 
 ### Ignored Rules
 
@@ -50,6 +50,8 @@ The following `jsx-a11y` rules are suppressed because they target HTML DOM eleme
 - `jsx-a11y/no-static-element-interactions`
 - `jsx-a11y/no-noninteractive-element-interactions`
 
+Additionally, `doctor.config.json` ignores baseline aesthetic warnings that are not strict bugs (e.g., `prefer-module-scope-pure-function`, `jsx-pascal-case`) and suppresses `deadCode` checking (`"deadCode": false`) to prevent false-positives like `unused-file` on Expo navigation routes.
+
 ### Ignored Files
 
 | Pattern | Reason |
@@ -61,11 +63,12 @@ The following `jsx-a11y` rules are suppressed because they target HTML DOM eleme
 
 ### Updating the Config
 
-To add a new ignored rule or file pattern:
+To add a new ignored rule, file pattern, or configuration option:
 
 ```jsonc
-// react-doctor.config.json
+// doctor.config.json
 {
+  "deadCode": false,
   "ignore": {
     "rules": ["plugin/rule-name"],   // add rule ID here
     "files": ["path/glob/**"]        // add file glob here
@@ -81,8 +84,10 @@ Alternatively, use the `"reactDoctor"` key in `package.json` (config file takes 
 - **Score 50–74** — Needs work. Review the flagged diagnostics.
 - **Score <50** — Critical. Prioritise fixing the most severe issues.
 
+- **Score 100** — Excellent! App currently maintains a 100/100 score on `npx -y react-doctor@latest .`.
+
 Use `--verbose` (enabled by default in CI) to see which files and line numbers are affected by each rule.
 
 ---
 
-**Last Updated**: 2026-02-20
+**Last Updated**: 2026-06-04
