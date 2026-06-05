@@ -1,6 +1,6 @@
 
 import { List, Text } from 'react-native-paper'
-import { getReadableVersion, getBuildNumber, getBundleId, getVersion } from 'react-native-device-info'
+import * as Application from 'expo-application'
 
 // Reusing icon helper
 const ListItemIcon = (iconName: string) => (props: any) => <List.Icon {...props} icon={iconName} />
@@ -14,10 +14,10 @@ const Icons = {
 
 export const BuildInfoSection = () => {
     const isDevelopment = __DEV__
-    const bundleId = getBundleId()
-    const appVersion = getVersion()
-    const buildNumber = getBuildNumber()
-    const readableVersion = getReadableVersion()
+    const bundleId = Application.applicationId || "unknown"
+    const appVersion = Application.nativeApplicationVersion || "unknown"
+    const buildNumber = Application.nativeBuildVersion || "unknown"
+    const readableVersion = `${appVersion}.${buildNumber}`
 
     return (
         <List.Section>

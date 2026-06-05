@@ -174,12 +174,11 @@ jest.mock("expo-constants", () => ({
     },
 }));
 
-// Mock React Native Device Info
-jest.mock("react-native-device-info", () => ({
-    getReadableVersion: jest.fn(() => "1.0.0"),
-    getBundleId: jest.fn(() => "com.wildlifeai.wildlifewatcher"),
-    getDeviceType: jest.fn(() => "Handset"),
-    isTablet: jest.fn(() => false),
+// Mock Expo Application
+jest.mock("expo-application", () => ({
+    nativeApplicationVersion: "1.0.0",
+    nativeBuildVersion: "1",
+    applicationId: "com.wildlifeai.wildlifewatcher",
 }));
 
 // Mock Expo Linking

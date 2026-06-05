@@ -159,12 +159,11 @@ jest.mock("react-native-document-picker", () => ({
 	},
 }))
 
-// Mock React Native Device Info
-jest.mock("react-native-device-info", () => ({
-	getVersion: jest.fn(() => Promise.resolve("1.0.0")),
-	getBuildNumber: jest.fn(() => Promise.resolve("1")),
-	getSystemVersion: jest.fn(() => Promise.resolve("14.0")),
-	getModel: jest.fn(() => Promise.resolve("iPhone")),
+// Mock Expo Application
+jest.mock("expo-application", () => ({
+	nativeApplicationVersion: "1.0.0",
+	nativeBuildVersion: "1",
+	applicationId: "com.wildlifeai.wildlifewatcher",
 }))
 
 // Mock Geolocation

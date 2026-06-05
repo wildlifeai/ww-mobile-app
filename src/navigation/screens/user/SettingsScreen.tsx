@@ -7,7 +7,7 @@ import { WWScreenView } from "../../../components/ui/WWScreenView"
 import { RootStackParamList } from "../../types"
 import { useExtendedTheme } from "../../../theme"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import DeviceInfo from "react-native-device-info"
+import * as Application from "expo-application"
 
 type SettingsNavigationProp = NativeStackNavigationProp<
 	RootStackParamList,
@@ -106,7 +106,7 @@ export const Settings = () => {
 					/>
 					<List.Item
 						title="App Version"
-						description={`v${DeviceInfo.getVersion()} (${DeviceInfo.getBuildNumber()})`}
+						description={`v${Application.nativeApplicationVersion} (${Application.nativeBuildVersion})`}
 						left={InfoIcon}
 					/>
 					<List.Item
