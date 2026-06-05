@@ -23,3 +23,5 @@ COMMENT ON COLUMN annotation_runs.config IS 'Key parameters used during executio
 ALTER TABLE annotation_runs ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT ON public.annotation_runs TO authenticated;
+
+GRANT ALL ON public.annotation_runs TO service_role;

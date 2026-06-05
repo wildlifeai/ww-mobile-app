@@ -99,3 +99,5 @@ COMMENT ON COLUMN observations.review_status IS 'Scientific validation workflow 
 ALTER TABLE observations ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT ON public.observations TO authenticated;
+
+GRANT ALL ON public.observations TO service_role;
