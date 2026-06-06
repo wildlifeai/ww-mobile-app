@@ -11,7 +11,7 @@ CREATE TABLE taxa (
   genus text,
   species text,
   gbif_taxon_id text,
-  inat_taxon_id text,
+  inat_taxon_id text UNIQUE,
   nzor_id text,
   conservation_status text,
   invasive_status boolean DEFAULT false,
@@ -25,9 +25,11 @@ COMMENT ON COLUMN taxa.rank IS 'Taxonomic rank (e.g. species, genus, family).';
 COMMENT ON COLUMN taxa.gbif_taxon_id IS 'GBIF backbone taxon ID for integration and export validation.';
 COMMENT ON COLUMN taxa.inat_taxon_id IS 'iNaturalist taxon ID for upload mapping and syncing.';
 COMMENT ON COLUMN taxa.nzor_id IS 'New Zealand Organisms Register ID for local context.';
-COMMENT ON COLUMN taxa.conservation_status IS 'IUCN conservation status (e.g. LC, NT, VU, EN, CR).';
+COMMENT ON COLUMN taxa.conservation_status IS 'IUCN conservation status using full category names (e.g. Least Concern, Near Threatened, Vulnerable, Endangered, Critically Endangered, Extinct).';
 COMMENT ON COLUMN taxa.invasive_status IS 'True if the species is introduced/invasive in New Zealand.';
 
 ALTER TABLE taxa ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT ON public.taxa TO authenticated;
+
+GRANT ALL ON public.taxa TO service_role;

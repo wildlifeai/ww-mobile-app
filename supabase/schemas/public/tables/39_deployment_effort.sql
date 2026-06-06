@@ -21,3 +21,5 @@ COMMENT ON COLUMN deployment_effort.total_media IS 'Total media files registered
 ALTER TABLE deployment_effort ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT ON public.deployment_effort TO authenticated;
+
+GRANT ALL ON public.deployment_effort TO service_role;

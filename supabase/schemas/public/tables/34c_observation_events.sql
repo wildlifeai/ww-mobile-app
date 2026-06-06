@@ -54,3 +54,5 @@ COMMENT ON COLUMN observation_events.trigger_type IS 'Scientific trigger categor
 ALTER TABLE observation_events ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT ON public.observation_events TO authenticated;
+
+GRANT ALL ON public.observation_events TO service_role;

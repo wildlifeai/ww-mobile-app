@@ -45,7 +45,7 @@ export const EditProjectScreen = () => {
 		isMotionDetection,
 		isTimeLapse,
 		handleSave,
-	} = useProjectDetails(projectId)
+	} = useProjectDetails(projectId, true)
 
 	const {
 		isLoading: isLoadingModels,

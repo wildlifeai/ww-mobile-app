@@ -16,3 +16,5 @@ COMMENT ON COLUMN species_event_config.min_images IS 'Minimum consecutive media 
 ALTER TABLE species_event_config ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT ON public.species_event_config TO authenticated;
+
+GRANT ALL ON public.species_event_config TO service_role;

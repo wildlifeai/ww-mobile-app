@@ -10,15 +10,24 @@ DECLARE
     v_next INTEGER;
     v_org_id UUID;
 BEGIN
-    -- Verify the family exists and get its org (FOR UPDATE prevents concurrent race)
+    -- Get the org without locking yet
     SELECT organisation_id INTO v_org_id
       FROM public.ai_model_families
-     WHERE id = p_family_id
-       FOR UPDATE;
+     WHERE id = p_family_id;
 
     IF v_org_id IS NULL THEN
         RAISE EXCEPTION 'ai_model_family % not found', p_family_id;
     END IF;
+
+    -- Security Fix: Ensure the caller has the organisation_manager role for this family's org.
+    IF COALESCE(current_setting('role', true), 'postgres') IN ('authenticated', 'anon') THEN
+        IF NOT public.has_organisation_role(public.get_current_user_id(), v_org_id, 'organisation_manager') THEN
+            RAISE EXCEPTION 'Unauthorized' USING ERRCODE = '42501';
+        END IF;
+    END IF;
+
+    -- Now acquire the lock (FOR UPDATE prevents concurrent race)
+    PERFORM 1 FROM public.ai_model_families WHERE id = p_family_id FOR UPDATE;
 
     -- Atomically compute next version
     SELECT COALESCE(pg_catalog.MAX(version_number), 0) + 1
