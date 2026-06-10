@@ -50,30 +50,17 @@ export function useMonitoringActions({
     }, [])
 
     const handleMonitorDisconnect = useCallback(async () => {
-        Alert.alert(
-            'Wildlife Watcher Monitoring',
-            'The bluetooth will be disconnected but the camera will continue monitoring for animals.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Disconnect',
-                    style: 'default',
-                    onPress: async () => {
-                        try {
-                            if (bleDevice) {
-                                try { await bleSession?.execute(commandRegistry.disconnect) } catch {} finally { await disconnectDevice(bleDevice) }
-                            }
-                            setIsMonitoring(false)
-                        } catch (error) {
-                            logError('Monitor disconnect failed:', error)
-                        } finally {
-                            isNavigatingAway.current = true
-                            navigation.navigate('Home', { initialTab: 'deployment' })
-                        }
-                    }
-                }
-            ]
-        )
+        try {
+            if (bleDevice) {
+                try { await bleSession?.execute(commandRegistry.disconnect) } catch {} finally { await disconnectDevice(bleDevice) }
+            }
+            setIsMonitoring(false)
+        } catch (error) {
+            logError('Monitor disconnect failed:', error)
+        } finally {
+            isNavigatingAway.current = true
+            navigation.navigate('Home', { initialTab: 'deployment' })
+        }
     }, [bleDevice, bleSession, disconnectDevice, navigation, isNavigatingAway])
 
     const handleStopMonitoring = useCallback(async (notes: string) => {

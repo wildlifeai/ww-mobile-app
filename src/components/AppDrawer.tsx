@@ -11,7 +11,7 @@ import { Surface, Text } from "react-native-paper"
 import { WWText } from "./ui/WWText"
 import { useExtendedTheme } from "../theme"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { getReadableVersion } from "react-native-device-info"
+import * as Application from "expo-application"
 import { SideNavigation } from "./SideNavigation"
 import { useAppSelector } from "../redux"
 
@@ -68,7 +68,7 @@ export const AppDrawer = ({ children }: PropsWithChildren<unknown>) => {
 							<View style={styles.version}>
 								<WWText variant="bodySmall" style={styles.versionLabel}><Text>Version</Text></WWText>
 								<WWText variant="bodySmall" style={styles.versionText}>
-									<Text>v{getReadableVersion()}</Text>
+									<Text>v{Application.nativeApplicationVersion}</Text>
 								</WWText>
 							</View>
 						</View>

@@ -30,11 +30,11 @@ export interface ProjectFormData {
 	lorawan_required: boolean
 }
 
-export const useProjectDetails = (projectId: string) => {
+export const useProjectDetails = (projectId: string, initialEditMode = false) => {
 	const navigation = useAppNavigation()
 
 	// State
-	const [isEditMode, setIsEditMode] = useState(false)
+	const [isEditMode, setIsEditMode] = useState(initialEditMode)
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
 	// Redux

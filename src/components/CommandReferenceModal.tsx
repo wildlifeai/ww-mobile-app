@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { View, ScrollView, StyleSheet } from "react-native"
-import { Modal, Portal, IconButton, Divider, Button, Chip, Text, TouchableRipple } from "react-native-paper"
+import { Modal, Portal, IconButton, Divider, Button, Chip, Text, TouchableRipple, Icon } from "react-native-paper"
 import { WWText } from "./ui/WWText"
 import { useExtendedTheme } from "../theme"
 import { CommandNames, COMMANDS } from "../ble/types"
@@ -20,6 +20,7 @@ interface CommandGroup {
 interface CommandSection {
     title: string
     subtitle: string
+    icon: string
     groups: CommandGroup[]
 }
 
@@ -41,6 +42,7 @@ const getCommandSections = (): CommandSection[] => {
         {
             title: 'BLE Processor',
             subtitle: 'Direct commands to the BLE chip — no AI prefix',
+            icon: 'bluetooth',
             groups: [
                 {
                     title: 'System & Identity',
@@ -103,6 +105,7 @@ const getCommandSections = (): CommandSection[] => {
         {
             title: 'AI Processor',
             subtitle: 'Commands prefixed with "AI" — routed via BLE to the Himax chip',
+            icon: 'brain',
             groups: [
                 {
                     title: 'AI System',
@@ -172,8 +175,8 @@ export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Prop
     const sections = useMemo(() => getCommandSections(), [])
 
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-        'BLE Processor': true,
-        'AI Processor': true,
+        'BLE Processor': false,
+        'AI Processor': false,
     })
 
     const toggleSection = (title: string) => {
@@ -231,6 +234,9 @@ export const CommandReferenceModal = ({ visible, onDismiss, onRunCommand }: Prop
                                 rippleColor="rgba(0, 0, 0, .05)"
                             >
                                 <View style={styles.sectionHeaderContent}>
+                                    <View style={styles.sectionIcon}>
+                                        <Icon source={section.icon} size={28} color={colors.primary} />
+                                    </View>
                                     <View style={styles.sectionHeaderLeft}>
                                         <WWText variant="titleMedium" style={styles.sectionTitle}>
                                             <Text>{section.title}</Text>
@@ -314,6 +320,11 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingVertical: 12,
+    },
+    sectionIcon: {
+        marginRight: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     sectionHeaderLeft: {
         flex: 1,
