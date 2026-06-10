@@ -126,8 +126,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                         .then(() => {
                             log('[MotionDetectionStream] TEST_MODE_BITS reset to 0')
                             if (originalDpdRef.current !== null) {
-                                return cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: originalDpdRef.current }))
-                                    .then(() => log(`[MotionDetectionStream] INTERVAL_BEFORE_DPD reset to ${originalDpdRef.current}`))
+                                const originalDpd = originalDpdRef.current
+                                originalDpdRef.current = null
+                                return cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: originalDpd }))
+                                    .then(() => log(`[MotionDetectionStream] INTERVAL_BEFORE_DPD reset to ${originalDpd}`))
                             }
                         })
                         .catch((e: any) => logWarn('[MotionDetectionStream] Failed to reset test mode bits:', e))
@@ -476,8 +478,10 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 .then(() => {
                     log('[MotionDetectionStream] TEST_MODE_BITS reset to 0 (stop)')
                     if (originalDpdRef.current !== null) {
-                        return cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: originalDpdRef.current }))
-                            .then(() => log(`[MotionDetectionStream] INTERVAL_BEFORE_DPD reset to ${originalDpdRef.current} (stop)`))
+                        const originalDpd = originalDpdRef.current
+                        originalDpdRef.current = null
+                        return cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: originalDpd }))
+                            .then(() => log(`[MotionDetectionStream] INTERVAL_BEFORE_DPD reset to ${originalDpd} (stop)`))
                     }
                 })
                 .catch((e: any) => logWarn('[MotionDetectionStream] Failed to reset test mode bits on stop:', e))
