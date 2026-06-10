@@ -26,7 +26,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ios: {
         supportsTablet: true,
         bundleIdentifier: BUNDLE_ID,
-        buildNumber: "57",
+        buildNumber: "58",
         config: {
             googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY_IOS,
         },
@@ -45,14 +45,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     android: {
         package: BUNDLE_ID,
-        versionCode: 57,
+        versionCode: 58,
         adaptiveIcon: {
             foregroundImage: "./assets/adaptive-icon.png",
             backgroundColor: "#ffffff"
         },
         config: {
             googleMaps: {
-                apiKey: "${GOOGLE_MAPS_API_KEY_ANDROID}",
+                apiKey: process.env.GOOGLE_MAPS_API_KEY_ANDROID,
             },
         },
         permissions: [

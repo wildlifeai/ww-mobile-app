@@ -92,20 +92,10 @@ android {
         applicationId 'com.wildlife.wildlifewatcher'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 57
-        versionName "0.0.57"
+        versionCode 58
+        versionName "0.0.58"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
-
-        // Read Google Maps API key: prefer .env file (local), fall back to
-        // system env var (EAS cloud builds set it via eas.json secrets).
-        def properties = new Properties()
-        def envFile = new File(projectRoot, ".env")
-        if (envFile.exists()) {
-            envFile.withInputStream { properties.load(it) }
-        }
-        def mapsKey = properties.getProperty("GOOGLE_MAPS_API_KEY_ANDROID", System.getenv("GOOGLE_MAPS_API_KEY_ANDROID") ?: "")
-        manifestPlaceholders = [GOOGLE_MAPS_API_KEY_ANDROID: mapsKey]
     }
     signingConfigs {
         debug {
