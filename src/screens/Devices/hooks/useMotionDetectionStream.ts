@@ -46,6 +46,7 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
     const [motionDetected, setMotionDetected] = useState(false)
     const [frameCount, setFrameCount] = useState(0)
     const motionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const originalDpdRef = useRef<number | null>(null)
 
     // Pipeline status — shows the user what the system is doing at each stage
     const [statusMessage, setStatusMessage] = useState<string>('')
@@ -122,7 +123,13 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 if (device) {
                     const cleanupSession = createBleSession(device)
                     cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: 0 }))
-                        .then(() => log('[MotionDetectionStream] TEST_MODE_BITS reset to 0'))
+                        .then(() => {
+                            log('[MotionDetectionStream] TEST_MODE_BITS reset to 0')
+                            if (originalDpdRef.current !== null) {
+                                return cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: originalDpdRef.current }))
+                                    .then(() => log(`[MotionDetectionStream] INTERVAL_BEFORE_DPD reset to ${originalDpdRef.current}`))
+                            }
+                        })
                         .catch((e: any) => logWarn('[MotionDetectionStream] Failed to reset test mode bits:', e))
                 }
             }
@@ -335,6 +342,17 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
                 await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: flashLed }))
             }
 
+            // 1d. Prevent DPD during test if interval > 1000ms
+            const currentDpd = currentOps ? parseInt(currentOps[OP_PARAMETER.INTERVAL_BEFORE_DPD] ?? '1000', 10) : -1
+            const requiredDpd = Math.max(1000, intervalMs + 2000)
+            if (currentDpd !== -1 && currentDpd < requiredDpd) {
+                log(`[MotionDetectionStream] Setting INTERVAL_BEFORE_DPD=${requiredDpd} to prevent sleep during test`)
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: requiredDpd }))
+                originalDpdRef.current = currentDpd
+            } else {
+                originalDpdRef.current = null
+            }
+
             // Check before firing md
             if (!activeRef.current) {
                 log('[MotionDetectionStream] Start aborted — stop was called during setup.')
@@ -455,7 +473,13 @@ export const useMotionDetectionStream = ({ device }: UseMotionDetectionStreamOpt
         if (device) {
             const cleanupSession = createBleSession(device)
             cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: 0 }))
-                .then(() => log('[MotionDetectionStream] TEST_MODE_BITS reset to 0 (stop)'))
+                .then(() => {
+                    log('[MotionDetectionStream] TEST_MODE_BITS reset to 0 (stop)')
+                    if (originalDpdRef.current !== null) {
+                        return cleanupSession.execute(() => commandRegistry.setop({ index: OP_PARAMETER.INTERVAL_BEFORE_DPD, value: originalDpdRef.current }))
+                            .then(() => log(`[MotionDetectionStream] INTERVAL_BEFORE_DPD reset to ${originalDpdRef.current} (stop)`))
+                    }
+                })
                 .catch((e: any) => logWarn('[MotionDetectionStream] Failed to reset test mode bits on stop:', e))
         }
     }, [device])

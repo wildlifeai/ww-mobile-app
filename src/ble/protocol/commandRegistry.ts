@@ -429,7 +429,7 @@ export const commandRegistry = {
     (level: number) => `AI md ${level}`,
     /^MD sensitivity set to/i,
     () => true,
-    { timeoutMs: 5000, retryPolicy: { maxRetries: 0 } }
+    { timeoutMs: 5000, retryPolicy: { maxRetries: 0 }, failureRegex: /^Sleep/i }
   ),
 
   erasemodel: createSingleLineCommand<boolean>(
