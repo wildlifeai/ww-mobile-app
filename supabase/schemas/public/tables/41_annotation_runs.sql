@@ -9,8 +9,8 @@ CREATE TABLE annotation_runs (
   observation_count int DEFAULT 0 CHECK (observation_count >= 0),
   created_by uuid REFERENCES users (id) ON DELETE SET NULL,
   CONSTRAINT chk_annotation_run_provenance CHECK (
-    (run_type <> 'ai_inference' OR model_id IS NOT NULL) AND
-    (run_type <> 'human_review' OR created_by IS NOT NULL)
+    (run_type <> 'ai_inference' OR model_id IS NOT NULL)
+    AND (run_type <> 'human_review' OR created_by IS NOT NULL)
   )
 );
 
@@ -23,3 +23,5 @@ COMMENT ON COLUMN annotation_runs.config IS 'Key parameters used during executio
 ALTER TABLE annotation_runs ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT ON public.annotation_runs TO authenticated;
+
+GRANT ALL ON public.annotation_runs TO service_role;

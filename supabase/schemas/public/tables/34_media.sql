@@ -49,3 +49,5 @@ COMMENT ON COLUMN media.deleted_at IS 'Soft delete timestamp — NULL means acti
 ALTER TABLE media ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT ON public.media TO authenticated;
+
+GRANT ALL ON public.media TO service_role;

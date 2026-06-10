@@ -3,12 +3,12 @@
 CREATE TABLE account_deletion_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at timestamptz DEFAULT now(),
-  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_id uuid REFERENCES auth.users (id) ON DELETE SET NULL,
   email text NOT NULL,
   reason text,
   status text NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending', 'approved', 'completed', 'rejected')),
-  reviewed_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  reviewed_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
   reviewed_at timestamptz,
   completed_at timestamptz,
   notes text

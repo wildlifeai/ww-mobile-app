@@ -4,7 +4,7 @@ CREATE TABLE firmware (
   created_at timestamptz DEFAULT (now()),
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
-  modified_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  modified_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
   name text NOT NULL,
   version text NOT NULL,
   type text NOT NULL CHECK (type IN ('ble', 'himax')),
@@ -19,7 +19,7 @@ CREATE TABLE firmware (
 -- Unique index for type/version combination (excluding soft-deleted)
 CREATE UNIQUE INDEX firmware_type_version_unique_idx
   ON firmware (type, version)
-  WHERE deleted_at IS NULL;
+  WHERE deleted_at IS null;
 
 COMMENT ON TABLE firmware IS 'Wildlife Watcher camera firmware versions managed by Wildlife.ai';
 COMMENT ON COLUMN firmware.name IS 'Firmware name';

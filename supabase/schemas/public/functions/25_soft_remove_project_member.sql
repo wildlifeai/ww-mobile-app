@@ -3,7 +3,7 @@
 CREATE OR REPLACE FUNCTION public.soft_remove_project_member(p_project_id uuid, p_user_id uuid)
 RETURNS void
 LANGUAGE plpgsql
-SECURITY invoker
+SECURITY INVOKER
 SET search_path = ''
 AS $$
 BEGIN

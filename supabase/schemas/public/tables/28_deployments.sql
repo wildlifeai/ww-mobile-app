@@ -4,7 +4,6 @@ CREATE TABLE deployments (
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
 
-
   -- Deployment lifecycle
   name text NOT NULL,
   setup_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
@@ -53,12 +52,12 @@ CREATE TABLE deployments (
   lorawan_snr_at_start double precision,
 
   -- CamtrapDP alignment fields
-  camera_tilt float CHECK (camera_tilt IS NULL OR (camera_tilt >= -90 AND camera_tilt <= 90)),
-  detection_distance float CHECK (detection_distance IS NULL OR (detection_distance >= 0)),
-  bait_use text CHECK (bait_use IS NULL OR (bait_use IN ('none', 'scent', 'food', 'visual', 'acoustic', 'other'))),
-  feature_type text CHECK (feature_type IS NULL OR (feature_type IN ('roadTrail', 'waterSource', 'burrow', 'nestSite', 'other'))),
+  camera_tilt float CHECK (camera_tilt IS null OR (camera_tilt >= -90 AND camera_tilt <= 90)),
+  detection_distance float CHECK (detection_distance IS null OR (detection_distance >= 0)),
+  bait_use text CHECK (bait_use IS null OR (bait_use IN ('none', 'scent', 'food', 'visual', 'acoustic', 'other'))),
+  feature_type text CHECK (feature_type IS null OR (feature_type IN ('roadTrail', 'waterSource', 'burrow', 'nestSite', 'other'))),
   habitat text,
-  deployment_tags text[]
+  deployment_tags text []
 );
 
 -- Indexes
