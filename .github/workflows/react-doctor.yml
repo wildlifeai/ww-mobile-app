@@ -23,8 +23,7 @@ jobs:
         uses: millionco/react-doctor@main
         with:
           directory: '.'
-          verbose: ${{ github.event.inputs.verbose || 'true' }}
-          node-version: '20'
+          node-version: '24'
 
       - name: Report score
         run: |
