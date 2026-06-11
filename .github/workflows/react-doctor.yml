@@ -24,13 +24,5 @@ jobs:
         with:
           directory: '.'
           node-version: '24'
-          version: '0.4.2'
           scope: 'full'
-
-      - name: Report score
-        run: |
-          echo "## 🩺 React Doctor Score: ${{ steps.doctor.outputs.score }}" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.doctor.outputs.score }}" -lt 99 ]; then
-            echo "::error::React Doctor score (${{ steps.doctor.outputs.score }}) is below the required threshold of 99."
-            exit 1
-          fi
+          blocking: 'error'
