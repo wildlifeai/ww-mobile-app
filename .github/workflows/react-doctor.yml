@@ -26,3 +26,4 @@ jobs:
           node-version: '24'
           scope: 'full'
           blocking: 'error'
+          project: ''
