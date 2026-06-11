@@ -93,7 +93,7 @@ export const FirmwareUpdateScreen = () => {
 
             options.push({
                 key: `db-${fw.id}`,
-                label: `${fw.name || fw.version} ${existsOnSd ? '(On SD Card)' : '(Download Required)'}`,
+                label: `${fw.name || fw.version} ${existsOnSd ? '(On SD Card)' : '(Download Disabled)'}`,
                 type: 'db',
                 dbRecord: fw,
                 filename,
@@ -257,13 +257,13 @@ export const FirmwareUpdateScreen = () => {
                                     <View style={styles.radioRow}>
                                         <RadioButton 
                                             value="download" 
-                                            disabled={selectedOption.type !== 'db'} 
+                                            disabled={true} 
                                         />
                                         <WWText 
                                             variant="bodyMedium" 
-                                            style={{ color: colors.onSurfaceVariant, flex: 1, opacity: selectedOption.type === 'db' ? 1 : 0.5 }}
+                                            style={{ color: colors.onSurfaceVariant, flex: 1, opacity: 0.5 }}
                                         >
-                                            Download {selectedOption.dbRecord ? `"${selectedOption.dbRecord.locationPath}"` : 'firmware'} from DB into MANIFEST/{selectedOption.filename} on SD card
+                                            Download {selectedOption.dbRecord ? `"${selectedOption.dbRecord.locationPath}"` : 'firmware'} from DB into MANIFEST/{selectedOption.filename} on SD card (Disabled)
                                         </WWText>
                                     </View>
                                 </RadioButton.Group>
@@ -409,7 +409,7 @@ export const FirmwareUpdateScreen = () => {
                             selectedFirmware: selectedOption?.type === 'db' ? selectedOption.dbRecord : selectedOption?.filename 
                         })}
                         loading={!isPreflightDone}
-                        disabled={!isPreflightDone || (target === 'himax' && !selectedOption)}
+                        disabled={!isPreflightDone || (target === 'himax' && (!selectedOption || himaxSource === 'download'))}
                     >
                         <WWText>{isFailed ? 'Retry Update' : 'Start Update'}</WWText>
                     </Button>
