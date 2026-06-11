@@ -25,6 +25,7 @@ CREATE TABLE deployments (
   altitude double precision,
   accuracy double precision,
   location GEOGRAPHY (POINT, 4326),
+  timezone text, -- IANA tz resolved from latitude/longitude (display-only)
   -- Camera configuration
   camera_height float,
   activity_detection_sensitivity_id int REFERENCES activity_sensitivity (id),
@@ -84,6 +85,7 @@ COMMENT ON COLUMN deployments.camera_location_image_paths IS 'Array of paths to 
 COMMENT ON COLUMN deployments.camera_height IS 'Height of the camera in meters.';
 COMMENT ON COLUMN deployments.altitude IS 'Altitude in meters from GPS.';
 COMMENT ON COLUMN deployments.accuracy IS 'GPS accuracy in meters.';
+COMMENT ON COLUMN deployments.timezone IS 'IANA time zone name (e.g. Pacific/Auckland) for this deployment location, resolved from latitude/longitude at creation/ingestion via timezonefinder. NULL falls back to UTC at display. media.timestamp stays UTC; this column is display-only and does not affect stored instants.';
 COMMENT ON COLUMN deployments.capture_method_id IS 'Mode of capture (timelapse, motion, etc).';
 COMMENT ON COLUMN deployments.project_id IS 'Project this deployment belongs to.';
 COMMENT ON COLUMN deployments.device_id IS 'Device used in this deployment.';

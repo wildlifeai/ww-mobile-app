@@ -355,165 +355,6 @@ export type Database = {
           },
         ]
       }
-      annotation_jobs: {
-        Row: {
-          anno_key: string
-          backend: string
-          completed_at: string | null
-          completed_count: number | null
-          created_at: string | null
-          created_by: string | null
-          cvat_project_id: number | null
-          cvat_task_ids: number[] | null
-          dataset_name: string
-          deployment_id: string
-          error_message: string | null
-          id: string
-          label_classes: string[]
-          observations_updated: number | null
-          sample_count: number | null
-          snapshot_created_at: string | null
-          snapshot_hash: string | null
-          snapshot_media_ids: string[] | null
-          status: string
-          synced_at: string | null
-          workflow_config: Json
-        }
-        Insert: {
-          anno_key: string
-          backend?: string
-          completed_at?: string | null
-          completed_count?: number | null
-          created_at?: string | null
-          created_by?: string | null
-          cvat_project_id?: number | null
-          cvat_task_ids?: number[] | null
-          dataset_name: string
-          deployment_id: string
-          error_message?: string | null
-          id?: string
-          label_classes?: string[]
-          observations_updated?: number | null
-          sample_count?: number | null
-          snapshot_created_at?: string | null
-          snapshot_hash?: string | null
-          snapshot_media_ids?: string[] | null
-          status?: string
-          synced_at?: string | null
-          workflow_config?: Json
-        }
-        Update: {
-          anno_key?: string
-          backend?: string
-          completed_at?: string | null
-          completed_count?: number | null
-          created_at?: string | null
-          created_by?: string | null
-          cvat_project_id?: number | null
-          cvat_task_ids?: number[] | null
-          dataset_name?: string
-          deployment_id?: string
-          error_message?: string | null
-          id?: string
-          label_classes?: string[]
-          observations_updated?: number | null
-          sample_count?: number | null
-          snapshot_created_at?: string | null
-          snapshot_hash?: string | null
-          snapshot_media_ids?: string[] | null
-          status?: string
-          synced_at?: string | null
-          workflow_config?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "annotation_jobs_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["deployment_id"]
-          },
-          {
-            foreignKeyName: "annotation_jobs_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      annotation_reviews: {
-        Row: {
-          annotation_id: string | null
-          annotation_job_id: string | null
-          annotation_target_id: string | null
-          created_at: string | null
-          decision: string
-          id: string
-          note: string | null
-          reviewer_id: string | null
-          time_spent_seconds: number | null
-        }
-        Insert: {
-          annotation_id?: string | null
-          annotation_job_id?: string | null
-          annotation_target_id?: string | null
-          created_at?: string | null
-          decision: string
-          id?: string
-          note?: string | null
-          reviewer_id?: string | null
-          time_spent_seconds?: number | null
-        }
-        Update: {
-          annotation_id?: string | null
-          annotation_job_id?: string | null
-          annotation_target_id?: string | null
-          created_at?: string | null
-          decision?: string
-          id?: string
-          note?: string | null
-          reviewer_id?: string | null
-          time_spent_seconds?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "annotation_reviews_annotation_id_fkey"
-            columns: ["annotation_id"]
-            isOneToOne: false
-            referencedRelation: "current_observation_annotations"
-            referencedColumns: ["annotation_id"]
-          },
-          {
-            foreignKeyName: "annotation_reviews_annotation_id_fkey"
-            columns: ["annotation_id"]
-            isOneToOne: false
-            referencedRelation: "observation_annotations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "annotation_reviews_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "annotation_reviews_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_metrics"
-            referencedColumns: ["job_id"]
-          },
-          {
-            foreignKeyName: "annotation_reviews_annotation_target_id_fkey"
-            columns: ["annotation_target_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_targets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       annotation_runs: {
         Row: {
           completed_at: string | null
@@ -603,113 +444,6 @@ export type Database = {
             columns: ["model_id"]
             isOneToOne: false
             referencedRelation: "ai_models"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      annotation_targets: {
-        Row: {
-          annotation_job_id: string
-          created_at: string | null
-          cvat_frame_index: number | null
-          cvat_job_id: number | null
-          cvat_shape_ids: number[] | null
-          cvat_task_id: number | null
-          dataset_name: string
-          deployment_id: string
-          error_message: string | null
-          fiftyone_sample_id: string | null
-          id: string
-          media_id: string
-          observation_id: string | null
-          status: string
-          synced_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          annotation_job_id: string
-          created_at?: string | null
-          cvat_frame_index?: number | null
-          cvat_job_id?: number | null
-          cvat_shape_ids?: number[] | null
-          cvat_task_id?: number | null
-          dataset_name: string
-          deployment_id: string
-          error_message?: string | null
-          fiftyone_sample_id?: string | null
-          id?: string
-          media_id: string
-          observation_id?: string | null
-          status?: string
-          synced_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          annotation_job_id?: string
-          created_at?: string | null
-          cvat_frame_index?: number | null
-          cvat_job_id?: number | null
-          cvat_shape_ids?: number[] | null
-          cvat_task_id?: number | null
-          dataset_name?: string
-          deployment_id?: string
-          error_message?: string | null
-          fiftyone_sample_id?: string | null
-          id?: string
-          media_id?: string
-          observation_id?: string | null
-          status?: string
-          synced_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "annotation_targets_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "annotation_targets_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_metrics"
-            referencedColumns: ["job_id"]
-          },
-          {
-            foreignKeyName: "annotation_targets_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["deployment_id"]
-          },
-          {
-            foreignKeyName: "annotation_targets_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "annotation_targets_media_id_fkey"
-            columns: ["media_id"]
-            isOneToOne: false
-            referencedRelation: "media"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "annotation_targets_observation_id_fkey"
-            columns: ["observation_id"]
-            isOneToOne: false
-            referencedRelation: "current_observation_annotations"
-            referencedColumns: ["observation_id"]
-          },
-          {
-            foreignKeyName: "annotation_targets_observation_id_fkey"
-            columns: ["observation_id"]
-            isOneToOne: false
-            referencedRelation: "observations"
             referencedColumns: ["id"]
           },
         ]
@@ -1370,6 +1104,7 @@ export type Database = {
           setup_by: string | null
           start_deployment_comments: string | null
           timelapse_interval_seconds: number | null
+          timezone: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1419,6 +1154,7 @@ export type Database = {
           setup_by?: string | null
           start_deployment_comments?: string | null
           timelapse_interval_seconds?: number | null
+          timezone?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1468,6 +1204,7 @@ export type Database = {
           setup_by?: string | null
           start_deployment_comments?: string | null
           timelapse_interval_seconds?: number | null
+          timezone?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -2478,130 +2215,236 @@ export type Database = {
           },
         ]
       }
-      observation_annotations: {
+      notification_rules: {
         Row: {
-          annotation_job_id: string | null
-          annotation_target_id: string | null
-          attributes: Json | null
-          bbox_h: number | null
-          bbox_w: number | null
-          bbox_x: number | null
-          bbox_y: number | null
-          confidence: number | null
+          channels: string[]
           created_at: string | null
-          created_by: string | null
+          digest: string
+          event_type: string
           id: string
-          is_current: boolean
-          observation_id: string
-          parent_id: string | null
-          priority: number
-          review_note: string | null
-          review_status: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          scientific_name: string | null
-          source: string
-          source_ref: string | null
-          version: number
+          is_active: boolean
+          project_id: string
+          species_filter: string | null
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
-          annotation_job_id?: string | null
-          annotation_target_id?: string | null
-          attributes?: Json | null
-          bbox_h?: number | null
-          bbox_w?: number | null
-          bbox_x?: number | null
-          bbox_y?: number | null
-          confidence?: number | null
+          channels?: string[]
           created_at?: string | null
-          created_by?: string | null
+          digest?: string
+          event_type: string
           id?: string
-          is_current?: boolean
-          observation_id: string
-          parent_id?: string | null
-          priority?: number
-          review_note?: string | null
-          review_status?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          scientific_name?: string | null
-          source: string
-          source_ref?: string | null
-          version: number
+          is_active?: boolean
+          project_id: string
+          species_filter?: string | null
+          updated_at?: string | null
+          user_id: string
         }
         Update: {
-          annotation_job_id?: string | null
-          annotation_target_id?: string | null
-          attributes?: Json | null
-          bbox_h?: number | null
-          bbox_w?: number | null
-          bbox_x?: number | null
-          bbox_y?: number | null
-          confidence?: number | null
+          channels?: string[]
           created_at?: string | null
-          created_by?: string | null
+          digest?: string
+          event_type?: string
           id?: string
-          is_current?: boolean
-          observation_id?: string
-          parent_id?: string | null
-          priority?: number
-          review_note?: string | null
-          review_status?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          scientific_name?: string | null
-          source?: string
-          source_ref?: string | null
-          version?: number
+          is_active?: boolean
+          project_id?: string
+          species_filter?: string | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "observation_annotations_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
+            foreignKeyName: "notification_rules_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "annotation_jobs"
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "notification_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "notification_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "notification_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "observation_annotations_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
+            foreignKeyName: "notification_rules_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "annotation_metrics"
-            referencedColumns: ["job_id"]
-          },
-          {
-            foreignKeyName: "observation_annotations_annotation_target_id_fkey"
-            columns: ["annotation_target_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_targets"
+            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "observation_annotations_observation_id_fkey"
-            columns: ["observation_id"]
+            foreignKeyName: "notification_rules_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "current_observation_annotations"
-            referencedColumns: ["observation_id"]
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
           },
           {
-            foreignKeyName: "observation_annotations_observation_id_fkey"
-            columns: ["observation_id"]
+            foreignKeyName: "notification_rules_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "observations"
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notification_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notification_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notification_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          data: Json | null
+          deployment_id: string | null
+          id: string
+          project_id: string | null
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string | null
+          data?: Json | null
+          deployment_id?: string | null
+          id?: string
+          project_id?: string | null
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string | null
+          data?: Json | null
+          deployment_id?: string | null
+          id?: string
+          project_id?: string | null
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "notifications_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "observation_annotations_parent_id_fkey"
-            columns: ["parent_id"]
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "current_observation_annotations"
-            referencedColumns: ["annotation_id"]
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
           },
           {
-            foreignKeyName: "observation_annotations_parent_id_fkey"
-            columns: ["parent_id"]
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "observation_annotations"
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -3506,98 +3349,6 @@ export type Database = {
       }
     }
     Views: {
-      annotation_metrics: {
-        Row: {
-          avg_secs_per_image: number | null
-          completion_pct: number | null
-          deployment_id: string | null
-          failed_count: number | null
-          in_progress_count: number | null
-          job_created_at: string | null
-          job_id: string | null
-          job_status: string | null
-          label_corrections: number | null
-          rejected_count: number | null
-          synced_at: string | null
-          synced_count: number | null
-          total_targets: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "annotation_jobs_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["deployment_id"]
-          },
-          {
-            foreignKeyName: "annotation_jobs_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      current_observation_annotations: {
-        Row: {
-          annotated_at: string | null
-          annotation_id: string | null
-          annotation_job_id: string | null
-          attributes: Json | null
-          bbox_h: number | null
-          bbox_w: number | null
-          bbox_x: number | null
-          bbox_y: number | null
-          confidence: number | null
-          created_by: string | null
-          current_name: string | null
-          deployment_id: string | null
-          media_id: string | null
-          observation_id: string | null
-          original_name: string | null
-          priority: number | null
-          source: string | null
-          version: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_observations_media"
-            columns: ["media_id", "deployment_id"]
-            isOneToOne: false
-            referencedRelation: "media"
-            referencedColumns: ["id", "deployment_id"]
-          },
-          {
-            foreignKeyName: "observation_annotations_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "observation_annotations_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_metrics"
-            referencedColumns: ["job_id"]
-          },
-          {
-            foreignKeyName: "observations_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["deployment_id"]
-          },
-          {
-            foreignKeyName: "observations_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       deployment_overview: {
         Row: {
           accuracy: number | null
