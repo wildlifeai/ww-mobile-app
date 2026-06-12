@@ -4,6 +4,7 @@ import Device from '../database/models/Device'
 import Deployment from '../database/models/Deployment'
 import { DeviceStatus, DeviceWithStatus, DeviceListItem } from '../types/device'
 import OutboxService from './OutboxService'
+import { DEPLOYMENT_STATUS } from './DeploymentService'
 
 import ProjectService from './ProjectService'
 import { log } from '../utils/logger'
@@ -72,7 +73,7 @@ export const DeviceService = {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const activeDeployments = await deploymentsCollection.query(
             Q.where('device_id', deviceId),
-            Q.where('deployment_status_id', 1) // 1 = DEPLOYED
+            Q.where('deployment_status_id', DEPLOYMENT_STATUS.STARTED)
         ).fetch()
 
         if (activeDeployments.length > 0) {
@@ -82,7 +83,7 @@ export const DeviceService = {
         // Check if any ended deployment exists
         const endedDeployments = await deploymentsCollection.query(
             Q.where('device_id', deviceId),
-            Q.where('deployment_status_id', Q.notEq(1)),
+            Q.where('deployment_status_id', DEPLOYMENT_STATUS.ENDED),
             Q.sortBy('deployment_end', Q.desc),
             Q.take(1)
         ).fetch()
@@ -109,7 +110,7 @@ export const DeviceService = {
         if (status === 'deployed') {
             const deployments = await deploymentsCollection.query(
                 Q.where('device_id', deviceId),
-                Q.where('deployment_status_id', 1) // 1 = DEPLOYED
+                Q.where('deployment_status_id', DEPLOYMENT_STATUS.STARTED)
             ).fetch()
             activeDeployment = deployments[0]
         }
@@ -118,7 +119,7 @@ export const DeviceService = {
         let lastDeployment: Deployment | undefined
         const endedDeployments = await deploymentsCollection.query(
             Q.where('device_id', deviceId),
-            Q.where('deployment_status_id', Q.notEq(1)),
+            Q.where('deployment_status_id', DEPLOYMENT_STATUS.ENDED),
             Q.sortBy('deployment_end', Q.desc),
             Q.take(1)
         ).fetch()

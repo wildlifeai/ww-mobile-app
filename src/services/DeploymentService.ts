@@ -8,14 +8,12 @@ import ProjectService from './ProjectService'
 import { log, logError, logWarn } from '../utils/logger'
 
 
-// Deployment Status IDs based on backend schema
-// 1 = deployed (Active)
-// 2 = recovery (Ended)
-// 3 = failed (Failed)
+// Deployment Status IDs based on backend deployment_statuses lookup table
+// 1 = planned, 2 = started (active), 3 = ended
 export const DEPLOYMENT_STATUS = {
-    DEPLOYED: 1,
-    RECOVERY: 2,
-    FAILED: 3
+    PLANNED: 1,
+    STARTED: 2,
+    ENDED: 3
 }
 
 export const DeploymentService = {
@@ -76,7 +74,7 @@ export const DeploymentService = {
                     deployment.deviceId = data.deviceId
                     deployment.setupBy = data.setupBy
                     deployment.deploymentStart = new Date()
-                    deployment.deploymentStatusId = DEPLOYMENT_STATUS.DEPLOYED
+                    deployment.deploymentStatusId = DEPLOYMENT_STATUS.STARTED
 
                     // Add capture method if provided
                     if (data.captureMethodId) {
@@ -201,7 +199,7 @@ export const DeploymentService = {
 
             // 1. Prepare update
             const updateOp = deployment.prepareUpdate((record) => {
-                record.deploymentStatusId = DEPLOYMENT_STATUS.RECOVERY
+                record.deploymentStatusId = DEPLOYMENT_STATUS.ENDED
                 record.deploymentEnd = new Date()
                 record.endedBy = endedBy ?? undefined
                 record.endDeploymentComments = notes
@@ -255,7 +253,7 @@ export const DeploymentService = {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const deployments = await deploymentsCollection.query(
             Q.where('device_id', deviceId),
-            Q.where('deployment_status_id', DEPLOYMENT_STATUS.DEPLOYED),
+            Q.where('deployment_status_id', DEPLOYMENT_STATUS.STARTED),
             Q.sortBy('deployment_start', Q.desc)
         ).fetch()
 
@@ -269,7 +267,7 @@ export const DeploymentService = {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const deployments = await deploymentsCollection.query(
             Q.where('device_id', deviceId),
-            Q.where('deployment_status_id', DEPLOYMENT_STATUS.DEPLOYED),
+            Q.where('deployment_status_id', DEPLOYMENT_STATUS.STARTED),
             Q.sortBy('deployment_start', Q.desc)
         ).fetch()
 
@@ -283,7 +281,7 @@ export const DeploymentService = {
         const deploymentsCollection = database.get<Deployment>('deployments')
         const deployments = await deploymentsCollection.query(
             Q.where('device_id', deviceId),
-            Q.where('deployment_status_id', Q.notEq(DEPLOYMENT_STATUS.DEPLOYED)), // Ended or Failed
+            Q.where('deployment_status_id', DEPLOYMENT_STATUS.ENDED),
             Q.sortBy('deployment_end', Q.desc),
             Q.take(1)
         ).fetch()

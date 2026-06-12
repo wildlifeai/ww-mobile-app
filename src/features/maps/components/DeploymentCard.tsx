@@ -42,9 +42,9 @@ const DeploymentCardComponent: React.FC<Props> = ({ deployment, device, isVisibl
     // Status helper (duplicated from MapScreen, could be shared util)
     const getStatusInfo = (statusId?: number | null) => {
         switch (statusId) {
-            case 1: return { label: 'Active', color: '#4CAF50', icon: 'check-circle' as const }
-            case 2: return { label: 'Ended', color: '#616161', icon: 'stop-circle' as const }
-            case 3: return { label: 'Failed', color: '#F44336', icon: 'alert-circle' as const }
+            case 1: return { label: 'Planned', color: '#2196F3', icon: 'clock-outline' as const }
+            case 2: return { label: 'Active', color: '#4CAF50', icon: 'check-circle' as const }
+            case 3: return { label: 'Ended', color: '#616161', icon: 'stop-circle' as const }
             default: return { label: 'Unknown', color: '#757575', icon: 'help-circle' as const }
         }
     }
