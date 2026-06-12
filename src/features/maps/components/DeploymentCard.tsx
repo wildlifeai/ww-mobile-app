@@ -4,6 +4,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-na
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useExtendedTheme } from '../../../theme'
 import type Deployment from '../../../database/models/Deployment'
+import { DeploymentPhotoStrip } from '../../../components/ui/DeploymentPhotoStrip'
 
 interface Props {
     deployment: Deployment | undefined | null
@@ -90,6 +91,8 @@ const DeploymentCardComponent: React.FC<Props> = ({ deployment, device, isVisibl
                         </Text>
                     </View>
                 )}
+
+                <DeploymentPhotoStrip deployment={deployment} />
 
                 <TouchableOpacity
                     style={[styles.button, { backgroundColor: colors.primary }]}

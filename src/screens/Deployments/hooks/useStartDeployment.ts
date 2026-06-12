@@ -5,6 +5,7 @@ import { Q } from '@nozbe/watermelondb'
 import database from '../../../database'
 import { useFocusEffect } from '@react-navigation/native'
 import { DeploymentService } from '../../../services/DeploymentService'
+import { DeploymentPhotoService } from '../../../services/DeploymentPhotoService'
 import ProjectService from '../../../services/ProjectService'
 import ReferenceDataService from '../../../services/ReferenceDataService'
 import Device from '../../../database/models/Device'
@@ -81,6 +82,9 @@ export const useStartDeployment = ({
         testImagePath: undefined as string | undefined
     })
 
+    // Phone photos of the deployment site (local file:// paths until uploaded)
+    const [deploymentPhotoPaths, setDeploymentPhotoPaths] = useState<string[]>([])
+
     const [submitting, setSubmitting] = useState(false)
     const [project, setProject] = useState<any>(null)
     const [availableProjects, setAvailableProjects] = useState<ProjectWithDetails[]>([])
@@ -129,6 +133,15 @@ export const useStartDeployment = ({
     // Memoized handlers to prevent infinite loops in child components
     const handleImageCaptured = useCallback((path: string) => {
         setFormState(prev => ({ ...prev, testImagePath: path }))
+    }, [])
+
+    const handleAddDeploymentPhoto = useCallback((path: string) => {
+        setDeploymentPhotoPaths(prev => [...prev, path])
+    }, [])
+
+    const handleRemoveDeploymentPhoto = useCallback((path: string) => {
+        setDeploymentPhotoPaths(prev => prev.filter(p => p !== path))
+        DeploymentPhotoService.removeLocalPhoto(path)
     }, [])
 
     const handleNotesChange = useCallback((notes: string) => {
@@ -510,11 +523,17 @@ export const useStartDeployment = ({
                 lorawanRssiAtStart: lorawanRssi,
                 lorawanSnrAtStart: lorawanSnr,
                 startComments: formState.notes,
-                cameraImagePaths: [],
+                cameraImagePaths: deploymentPhotoPaths,
             })
             deploymentIdRef.current = newDeployment.id
             setDeploymentStartTime(newDeployment.deploymentStart || new Date())
             progress.addLog(`Deployment created: ${newDeployment.id.substring(0, 8)}...`)
+
+            // Upload site photos in the background; failures are retried on later syncs
+            if (deploymentPhotoPaths.length > 0) {
+                DeploymentPhotoService.uploadPendingPhotos(newDeployment.id, user.id)
+                    .catch((e) => logWarn('[Deployment] Photo upload deferred:', e))
+            }
 
             // 6. Reset OPs to factory defaults before applying deployment config
             try {
@@ -558,7 +577,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth])  
+    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths])
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)
@@ -650,6 +669,8 @@ export const useStartDeployment = ({
         isStoppingMonitoring: monitoring.isStoppingMonitoring,
         isNavigatingAway, handleImageCaptured, handleNotesChange, handleProjectChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
+        // Deployment site photos
+        deploymentPhotoPaths, handleAddDeploymentPhoto, handleRemoveDeploymentPhoto,
         helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp,
         // Dropdown & Additional Location State
         locationName, setLocationName, availableLocations, isCustomLocation, setIsCustomLocation,

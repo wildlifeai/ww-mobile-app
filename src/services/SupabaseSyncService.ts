@@ -207,6 +207,17 @@ class SupabaseSyncService {
                 // log(`✅ Sync completed successfully in ${syncDuration}ms (total syncs: ${syncCount})`)
             })
 
+            // Retry any deployment photos still waiting to reach storage
+            // (lazy import: DeploymentPhotoService depends on this service)
+            try {
+                const { DeploymentPhotoService } = await import('./DeploymentPhotoService')
+                DeploymentPhotoService.uploadAllPending(user.id).catch((e: unknown) =>
+                    logWarn('⚠️ [SupabaseSyncService] Pending photo upload failed:', e)
+                )
+            } catch (e) {
+                logWarn('⚠️ [SupabaseSyncService] Could not start photo upload:', e)
+            }
+
             // Mark initial sync complete — routing decisions in the scanner are now valid
             if (this.store) {
                 try {
