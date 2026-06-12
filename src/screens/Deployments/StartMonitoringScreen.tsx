@@ -15,6 +15,7 @@ import { useGetAiModelsQuery } from '../../redux/api/projectsApi'
 import { LoRaWANSection } from './components/LoRaWANSection'
 
 import { MetadataSection } from './components/MetadataSection'
+import { DeploymentPhotosSection } from './components/DeploymentPhotosSection'
 import { HelpDialog } from '../../components/ui/HelpDialog'
 import { FinishProgressDialog } from '../Devices/components/FinishProgressDialog'
 import { AdvancedSettingsSection } from './components/AdvancedSettingsSection'
@@ -43,6 +44,7 @@ export const StartMonitoringDetailsStep = () => {
         device, bleDevice, isInitializing, initProgress, initStep, initErrors, setInitErrors, aiProcessorFailed,
         finishProgress, finishStep, finishLogs, isFinishing, isStartSuccess,
         handleImageCaptured,
+        deploymentPhotoPaths, handleAddDeploymentPhoto, handleRemoveDeploymentPhoto,
         handleNotesChange, handleProjectChange,
         handleCameraHeightChange, handleStartDeployment, handleFinishDismiss,
         helpVisible, helpTitle, helpContent, showHelp, handleDismissHelp,
@@ -330,6 +332,14 @@ export const StartMonitoringDetailsStep = () => {
                     notes={formState.notes}
                     onNotesChange={handleNotesChange}
                     onShowHelp={showHelp}
+                />
+
+                <DeploymentPhotosSection
+                    photoPaths={deploymentPhotoPaths}
+                    onAddPhoto={handleAddDeploymentPhoto}
+                    onRemovePhoto={handleRemoveDeploymentPhoto}
+                    onShowHelp={showHelp}
+                    disabled={submitting || isInitializing}
                 />
 
                 <AdvancedSettingsSection

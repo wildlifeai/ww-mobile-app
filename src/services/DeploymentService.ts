@@ -380,9 +380,12 @@ export const DeploymentService = {
 }
 
 /**
- * Helper to map model to plain object for sync (snake_case)
+ * Helper to map model to plain object for sync (snake_case).
+ * Exported because sync payloads must always be complete records:
+ * push_changes overwrites every column, so partial payloads would
+ * null out the missing fields.
  */
-function mapModelToPayload(model: Deployment): any {
+export function mapModelToPayload(model: Deployment): any {
     return {
         id: model.id,
         project_id: model.projectId,

@@ -117,6 +117,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         ],
         "expo-localization",
         [
+            "expo-image-picker",
+            {
+                "cameraPermission": "We need access to your camera to take photos of the deployment site.",
+                "photosPermission": "We need access to your photo library to select deployment photos."
+            }
+        ],
+        [
             "expo-location",
             {
                 "isAndroidBackgroundLocationEnabled": false,
