@@ -21,7 +21,7 @@ import { MapType } from "../types"
 import { useAppNavigation } from "../../../hooks/useAppNavigation"
 import { useAppDrawer } from "../../../components/AppDrawer"
 import { useExtendedTheme } from "../../../theme"
-import { DeploymentService } from "../../../services/DeploymentService"
+import { DeploymentService, DEPLOYMENT_STATUS } from "../../../services/DeploymentService"
 import type Deployment from "../../../database/models/Deployment"
 import { log } from '../../../utils/logger'
 import { OfflineIndicator } from '../../../components/ui/OfflineIndicator'
@@ -74,7 +74,7 @@ const MapScreenComponent: React.FC<Props> = ({ deployments, selectedDeploymentId
 	// Filter deployments to only show active ones
 	const filteredDeployments = useMemo(() => {
 		return deployments.filter(d =>
-			d.deploymentStatusId === 1 &&
+			d.deploymentStatusId === DEPLOYMENT_STATUS.STARTED &&
 			d.latitude != null &&
 			d.longitude != null
 		)
