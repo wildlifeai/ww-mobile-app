@@ -8,7 +8,7 @@ import { RootStackParamList } from '../../navigation/types'
 import { Card, Text, Button, IconButton, useTheme } from 'react-native-paper'
 import { WWSelect } from '../../components/ui/WWSelect'
 import { WWIcon } from '../../components/ui/WWIcon'
-import { InitializationHeader } from '../Devices/components/InitializationHeader'
+import { StatusInitializationHeader } from '../Devices/components/InitializationHeader'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useGetAiModelsQuery } from '../../redux/api/projectsApi'
 
@@ -196,17 +196,15 @@ export const StartMonitoringDetailsStep = () => {
     return (
         <WWScreenView style={styles.screenView}>
             <View style={styles.container}>
-                {/* Device Synchronization Header */}
+                {/* Initialization Header */}
                 {(device || bleDevice) && (
-                    <InitializationHeader
-                        device={device || { name: bleDevice?.name || 'Device', bluetoothId: bleDeviceId } as any}
+                    <StatusInitializationHeader
                         isInitializing={isInitializing}
                         initProgress={initProgress}
                         initStep={initStep}
                         initErrors={initErrors}
                         theme={theme}
-                        warningHintText="You can still proceed with monitoring, but we recommend addressing these issues if possible."
-                        hideDeviceDetails={true}
+                        warningHintText="You can still start monitoring, but please report these errors."
                     />
                 )}
 

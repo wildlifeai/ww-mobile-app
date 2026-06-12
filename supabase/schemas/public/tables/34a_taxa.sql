@@ -15,6 +15,10 @@ CREATE TABLE taxa (
   nzor_id text,
   conservation_status text,
   invasive_status boolean DEFAULT false,
+  -- Lifecycle for novel-species discovery: provisional 'candidate' taxa are created from
+  -- unassigned outlier clusters and promoted to 'confirmed' (or 'rejected') by an expert.
+  status text NOT NULL DEFAULT 'confirmed'
+    CHECK (status IN ('confirmed', 'candidate', 'rejected')),
   created_at timestamptz DEFAULT now()
 );
 
@@ -27,6 +31,7 @@ COMMENT ON COLUMN taxa.inat_taxon_id IS 'iNaturalist taxon ID for upload mapping
 COMMENT ON COLUMN taxa.nzor_id IS 'New Zealand Organisms Register ID for local context.';
 COMMENT ON COLUMN taxa.conservation_status IS 'IUCN conservation status using full category names (e.g. Least Concern, Near Threatened, Vulnerable, Endangered, Critically Endangered, Extinct).';
 COMMENT ON COLUMN taxa.invasive_status IS 'True if the species is introduced/invasive in New Zealand.';
+COMMENT ON COLUMN taxa.status IS 'Lifecycle: confirmed (known taxon), candidate (provisional unknown-species cluster pending expert review), or rejected.';
 
 ALTER TABLE taxa ENABLE ROW LEVEL SECURITY;
 

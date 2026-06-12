@@ -1,8 +1,8 @@
 -- Parsed LoRaWAN message data (extracted from raw_payload)
 CREATE TABLE lorawan_parsed_messages (
   id uuid PRIMARY KEY DEFAULT (gen_random_uuid()),
-  lorawan_message_id uuid NOT NULL REFERENCES lorawan_messages(id) ON DELETE CASCADE,
-  device_id uuid REFERENCES devices(id),
+  lorawan_message_id uuid NOT NULL REFERENCES lorawan_messages (id) ON DELETE CASCADE,
+  device_id uuid REFERENCES devices (id),
   battery_level integer,
   sd_card_used_capacity integer,
   model_output text

@@ -355,165 +355,6 @@ export type Database = {
           },
         ]
       }
-      annotation_jobs: {
-        Row: {
-          anno_key: string
-          backend: string
-          completed_at: string | null
-          completed_count: number | null
-          created_at: string | null
-          created_by: string | null
-          cvat_project_id: number | null
-          cvat_task_ids: number[] | null
-          dataset_name: string
-          deployment_id: string
-          error_message: string | null
-          id: string
-          label_classes: string[]
-          observations_updated: number | null
-          sample_count: number | null
-          snapshot_created_at: string | null
-          snapshot_hash: string | null
-          snapshot_media_ids: string[] | null
-          status: string
-          synced_at: string | null
-          workflow_config: Json
-        }
-        Insert: {
-          anno_key: string
-          backend?: string
-          completed_at?: string | null
-          completed_count?: number | null
-          created_at?: string | null
-          created_by?: string | null
-          cvat_project_id?: number | null
-          cvat_task_ids?: number[] | null
-          dataset_name: string
-          deployment_id: string
-          error_message?: string | null
-          id?: string
-          label_classes?: string[]
-          observations_updated?: number | null
-          sample_count?: number | null
-          snapshot_created_at?: string | null
-          snapshot_hash?: string | null
-          snapshot_media_ids?: string[] | null
-          status?: string
-          synced_at?: string | null
-          workflow_config?: Json
-        }
-        Update: {
-          anno_key?: string
-          backend?: string
-          completed_at?: string | null
-          completed_count?: number | null
-          created_at?: string | null
-          created_by?: string | null
-          cvat_project_id?: number | null
-          cvat_task_ids?: number[] | null
-          dataset_name?: string
-          deployment_id?: string
-          error_message?: string | null
-          id?: string
-          label_classes?: string[]
-          observations_updated?: number | null
-          sample_count?: number | null
-          snapshot_created_at?: string | null
-          snapshot_hash?: string | null
-          snapshot_media_ids?: string[] | null
-          status?: string
-          synced_at?: string | null
-          workflow_config?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "annotation_jobs_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["deployment_id"]
-          },
-          {
-            foreignKeyName: "annotation_jobs_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      annotation_reviews: {
-        Row: {
-          annotation_id: string | null
-          annotation_job_id: string | null
-          annotation_target_id: string | null
-          created_at: string | null
-          decision: string
-          id: string
-          note: string | null
-          reviewer_id: string | null
-          time_spent_seconds: number | null
-        }
-        Insert: {
-          annotation_id?: string | null
-          annotation_job_id?: string | null
-          annotation_target_id?: string | null
-          created_at?: string | null
-          decision: string
-          id?: string
-          note?: string | null
-          reviewer_id?: string | null
-          time_spent_seconds?: number | null
-        }
-        Update: {
-          annotation_id?: string | null
-          annotation_job_id?: string | null
-          annotation_target_id?: string | null
-          created_at?: string | null
-          decision?: string
-          id?: string
-          note?: string | null
-          reviewer_id?: string | null
-          time_spent_seconds?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "annotation_reviews_annotation_id_fkey"
-            columns: ["annotation_id"]
-            isOneToOne: false
-            referencedRelation: "current_observation_annotations"
-            referencedColumns: ["annotation_id"]
-          },
-          {
-            foreignKeyName: "annotation_reviews_annotation_id_fkey"
-            columns: ["annotation_id"]
-            isOneToOne: false
-            referencedRelation: "observation_annotations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "annotation_reviews_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "annotation_reviews_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_metrics"
-            referencedColumns: ["job_id"]
-          },
-          {
-            foreignKeyName: "annotation_reviews_annotation_target_id_fkey"
-            columns: ["annotation_target_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_targets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       annotation_runs: {
         Row: {
           completed_at: string | null
@@ -603,113 +444,6 @@ export type Database = {
             columns: ["model_id"]
             isOneToOne: false
             referencedRelation: "ai_models"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      annotation_targets: {
-        Row: {
-          annotation_job_id: string
-          created_at: string | null
-          cvat_frame_index: number | null
-          cvat_job_id: number | null
-          cvat_shape_ids: number[] | null
-          cvat_task_id: number | null
-          dataset_name: string
-          deployment_id: string
-          error_message: string | null
-          fiftyone_sample_id: string | null
-          id: string
-          media_id: string
-          observation_id: string | null
-          status: string
-          synced_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          annotation_job_id: string
-          created_at?: string | null
-          cvat_frame_index?: number | null
-          cvat_job_id?: number | null
-          cvat_shape_ids?: number[] | null
-          cvat_task_id?: number | null
-          dataset_name: string
-          deployment_id: string
-          error_message?: string | null
-          fiftyone_sample_id?: string | null
-          id?: string
-          media_id: string
-          observation_id?: string | null
-          status?: string
-          synced_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          annotation_job_id?: string
-          created_at?: string | null
-          cvat_frame_index?: number | null
-          cvat_job_id?: number | null
-          cvat_shape_ids?: number[] | null
-          cvat_task_id?: number | null
-          dataset_name?: string
-          deployment_id?: string
-          error_message?: string | null
-          fiftyone_sample_id?: string | null
-          id?: string
-          media_id?: string
-          observation_id?: string | null
-          status?: string
-          synced_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "annotation_targets_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "annotation_targets_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_metrics"
-            referencedColumns: ["job_id"]
-          },
-          {
-            foreignKeyName: "annotation_targets_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["deployment_id"]
-          },
-          {
-            foreignKeyName: "annotation_targets_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "annotation_targets_media_id_fkey"
-            columns: ["media_id"]
-            isOneToOne: false
-            referencedRelation: "media"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "annotation_targets_observation_id_fkey"
-            columns: ["observation_id"]
-            isOneToOne: false
-            referencedRelation: "current_observation_annotations"
-            referencedColumns: ["observation_id"]
-          },
-          {
-            foreignKeyName: "annotation_targets_observation_id_fkey"
-            columns: ["observation_id"]
-            isOneToOne: false
-            referencedRelation: "observations"
             referencedColumns: ["id"]
           },
         ]
@@ -918,6 +652,308 @@ export type Database = {
         }
         Relationships: []
       }
+      cluster_assignments: {
+        Row: {
+          cluster_id: number
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string | null
+          deployment_id: string
+          embedding_run_id: string
+          id: string
+          image_count: number
+          is_outlier_cluster: boolean
+          lock_expires: string | null
+          locked_at: string | null
+          locked_by: string | null
+          mean_confidence: number | null
+          purity_score: number | null
+          review_depth: string | null
+          review_state: string
+          scientific_name: string | null
+          taxon_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cluster_id: number
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string | null
+          deployment_id: string
+          embedding_run_id: string
+          id?: string
+          image_count?: number
+          is_outlier_cluster?: boolean
+          lock_expires?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          mean_confidence?: number | null
+          purity_score?: number | null
+          review_depth?: string | null
+          review_state?: string
+          scientific_name?: string | null
+          taxon_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cluster_id?: number
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string | null
+          deployment_id?: string
+          embedding_run_id?: string
+          id?: string
+          image_count?: number
+          is_outlier_cluster?: boolean
+          lock_expires?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          mean_confidence?: number | null
+          purity_score?: number | null
+          review_depth?: string | null
+          review_state?: string
+          scientific_name?: string | null
+          taxon_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cluster_assignments_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_embedding_run_id_fkey"
+            columns: ["embedding_run_id"]
+            isOneToOne: false
+            referencedRelation: "embedding_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cluster_assignments_taxon_id_fkey"
+            columns: ["taxon_id"]
+            isOneToOne: false
+            referencedRelation: "taxa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conservation_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string | null
+          deployment_id: string | null
+          details: Json | null
+          first_seen: string | null
+          id: string
+          project_id: string
+          severity: string
+          taxon_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string | null
+          deployment_id?: string | null
+          details?: Json | null
+          first_seen?: string | null
+          id?: string
+          project_id: string
+          severity?: string
+          taxon_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string | null
+          deployment_id?: string | null
+          details?: Json | null
+          first_seen?: string | null
+          id?: string
+          project_id?: string
+          severity?: string
+          taxon_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conservation_alerts_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "conservation_alerts_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "conservation_alerts_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "conservation_alerts_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "conservation_alerts_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conservation_alerts_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "conservation_alerts_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conservation_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "conservation_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "conservation_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "conservation_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conservation_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conservation_alerts_taxon_id_fkey"
+            columns: ["taxon_id"]
+            isOneToOne: false
+            referencedRelation: "taxa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       debug_storage_logs: {
         Row: {
           created_at: string | null
@@ -1068,6 +1104,7 @@ export type Database = {
           setup_by: string | null
           start_deployment_comments: string | null
           timelapse_interval_seconds: number | null
+          timezone: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1117,6 +1154,7 @@ export type Database = {
           setup_by?: string | null
           start_deployment_comments?: string | null
           timelapse_interval_seconds?: number | null
+          timezone?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1166,6 +1204,7 @@ export type Database = {
           setup_by?: string | null
           start_deployment_comments?: string | null
           timelapse_interval_seconds?: number | null
+          timezone?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1341,6 +1380,217 @@ export type Database = {
           },
         ]
       }
+      ecological_shift_reports: {
+        Row: {
+          alert_level: string | null
+          changed_clusters: Json | null
+          computed_at: string | null
+          created_at: string | null
+          deployment_id: string
+          divergence: number | null
+          id: string
+          method: string | null
+          period_a_end: string
+          period_a_start: string
+          period_b_end: string
+          period_b_start: string
+        }
+        Insert: {
+          alert_level?: string | null
+          changed_clusters?: Json | null
+          computed_at?: string | null
+          created_at?: string | null
+          deployment_id: string
+          divergence?: number | null
+          id?: string
+          method?: string | null
+          period_a_end: string
+          period_a_start: string
+          period_b_end: string
+          period_b_start: string
+        }
+        Update: {
+          alert_level?: string | null
+          changed_clusters?: Json | null
+          computed_at?: string | null
+          created_at?: string | null
+          deployment_id?: string
+          divergence?: number | null
+          id?: string
+          method?: string | null
+          period_a_end?: string
+          period_a_start?: string
+          period_b_end?: string
+          period_b_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecological_shift_reports_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "ecological_shift_reports_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      embedding_runs: {
+        Row: {
+          clustering_method: string | null
+          clustering_params: Json | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          deployment_id: string | null
+          embedding_dim: number
+          execution_provider: string | null
+          id: string
+          image_count: number
+          model_name: string
+          model_version: string
+          project_id: string | null
+          qdrant_collection: string
+          reduction_method: string | null
+          reduction_params: Json | null
+          scope: string
+          scope_id: string | null
+          status: string
+        }
+        Insert: {
+          clustering_method?: string | null
+          clustering_params?: Json | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deployment_id?: string | null
+          embedding_dim?: number
+          execution_provider?: string | null
+          id?: string
+          image_count?: number
+          model_name: string
+          model_version: string
+          project_id?: string | null
+          qdrant_collection?: string
+          reduction_method?: string | null
+          reduction_params?: Json | null
+          scope?: string
+          scope_id?: string | null
+          status?: string
+        }
+        Update: {
+          clustering_method?: string | null
+          clustering_params?: Json | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deployment_id?: string | null
+          embedding_dim?: number
+          execution_provider?: string | null
+          id?: string
+          image_count?: number
+          model_name?: string
+          model_version?: string
+          project_id?: string | null
+          qdrant_collection?: string
+          reduction_method?: string | null
+          reduction_params?: Json | null
+          scope?: string
+          scope_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "embedding_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "embedding_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "embedding_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "embedding_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "embedding_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "embedding_runs_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "embedding_runs_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "embedding_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "embedding_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "embedding_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "embedding_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "embedding_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       firmware: {
         Row: {
           build_date: string | null
@@ -1391,6 +1641,235 @@ export type Database = {
           version?: string
         }
         Relationships: []
+      }
+      inat_observation_media: {
+        Row: {
+          created_at: string | null
+          id: string
+          inat_observation_id: string
+          inat_photo_id: number | null
+          media_id: string
+          original_filename: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          inat_observation_id: string
+          inat_photo_id?: number | null
+          media_id: string
+          original_filename?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          inat_observation_id?: string
+          inat_photo_id?: number | null
+          media_id?: string
+          original_filename?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inat_observation_media_inat_observation_id_fkey"
+            columns: ["inat_observation_id"]
+            isOneToOne: false
+            referencedRelation: "inat_observations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inat_observation_media_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "media"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inat_observations: {
+        Row: {
+          community_taxon: string | null
+          community_taxon_id: string | null
+          created_at: string | null
+          deployment_id: string
+          error_message: string | null
+          geoprivacy: string
+          id: string
+          inat_observation_id: number | null
+          inat_uri: string | null
+          inat_uuid: string | null
+          last_synced_at: string | null
+          observation_event_id: string | null
+          quality_grade: string | null
+          species_guess: string | null
+          sync_status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          community_taxon?: string | null
+          community_taxon_id?: string | null
+          created_at?: string | null
+          deployment_id: string
+          error_message?: string | null
+          geoprivacy?: string
+          id?: string
+          inat_observation_id?: number | null
+          inat_uri?: string | null
+          inat_uuid?: string | null
+          last_synced_at?: string | null
+          observation_event_id?: string | null
+          quality_grade?: string | null
+          species_guess?: string | null
+          sync_status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          community_taxon?: string | null
+          community_taxon_id?: string | null
+          created_at?: string | null
+          deployment_id?: string
+          error_message?: string | null
+          geoprivacy?: string
+          id?: string
+          inat_observation_id?: number | null
+          inat_uri?: string | null
+          inat_uuid?: string | null
+          last_synced_at?: string | null
+          observation_event_id?: string | null
+          quality_grade?: string | null
+          species_guess?: string | null
+          sync_status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inat_observations_community_taxon_id_fkey"
+            columns: ["community_taxon_id"]
+            isOneToOne: false
+            referencedRelation: "taxa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inat_observations_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "inat_observations_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inat_observations_observation_event_id_fkey"
+            columns: ["observation_event_id"]
+            isOneToOne: false
+            referencedRelation: "observation_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inat_observations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "inat_observations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "inat_observations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "inat_observations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "inat_observations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inat_tokens: {
+        Row: {
+          created_at: string | null
+          encrypted_token: string
+          id: string
+          inat_username: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          encrypted_token: string
+          id?: string
+          inat_username?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          encrypted_token?: string
+          id?: string
+          inat_username?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inat_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "inat_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "inat_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "inat_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "inat_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       log_levels: {
         Row: {
@@ -1606,130 +2085,366 @@ export type Database = {
           },
         ]
       }
-      observation_annotations: {
+      media_assets: {
         Row: {
-          annotation_job_id: string | null
-          annotation_target_id: string | null
-          attributes: Json | null
-          bbox_h: number | null
-          bbox_w: number | null
-          bbox_x: number | null
-          bbox_y: number | null
-          confidence: number | null
+          animal_crop_url: string | null
           created_at: string | null
-          created_by: string | null
-          id: string
-          is_current: boolean
-          observation_id: string
-          parent_id: string | null
-          priority: number
-          review_note: string | null
-          review_status: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          scientific_name: string | null
-          source: string
-          source_ref: string | null
-          version: number
+          file_size_bytes: number | null
+          media_id: string
+          original_height: number | null
+          original_width: number | null
+          preview_url: string | null
+          storage_key: string | null
+          storage_provider: string | null
+          thumbnail_url: string | null
+          updated_at: string | null
         }
         Insert: {
-          annotation_job_id?: string | null
-          annotation_target_id?: string | null
-          attributes?: Json | null
-          bbox_h?: number | null
-          bbox_w?: number | null
-          bbox_x?: number | null
-          bbox_y?: number | null
-          confidence?: number | null
+          animal_crop_url?: string | null
           created_at?: string | null
-          created_by?: string | null
-          id?: string
-          is_current?: boolean
-          observation_id: string
-          parent_id?: string | null
-          priority?: number
-          review_note?: string | null
-          review_status?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          scientific_name?: string | null
-          source: string
-          source_ref?: string | null
-          version: number
+          file_size_bytes?: number | null
+          media_id: string
+          original_height?: number | null
+          original_width?: number | null
+          preview_url?: string | null
+          storage_key?: string | null
+          storage_provider?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
         }
         Update: {
-          annotation_job_id?: string | null
-          annotation_target_id?: string | null
-          attributes?: Json | null
-          bbox_h?: number | null
-          bbox_w?: number | null
-          bbox_x?: number | null
-          bbox_y?: number | null
-          confidence?: number | null
+          animal_crop_url?: string | null
           created_at?: string | null
-          created_by?: string | null
-          id?: string
-          is_current?: boolean
-          observation_id?: string
-          parent_id?: string | null
-          priority?: number
-          review_note?: string | null
-          review_status?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          scientific_name?: string | null
-          source?: string
-          source_ref?: string | null
-          version?: number
+          file_size_bytes?: number | null
+          media_id?: string
+          original_height?: number | null
+          original_width?: number | null
+          preview_url?: string | null
+          storage_key?: string | null
+          storage_provider?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "observation_annotations_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
+            foreignKeyName: "media_assets_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: true
+            referencedRelation: "media"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      media_embeddings: {
+        Row: {
+          active_learning_score: number | null
+          al_score_updated_at: string | null
+          cluster_confidence: number | null
+          cluster_id: number | null
+          cluster_purity: string | null
+          created_at: string | null
+          deployment_id: string
+          embedding_run_id: string | null
+          is_outlier: boolean
+          media_id: string
+          qdrant_point_id: string | null
+          umap_x: number | null
+          umap_y: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          active_learning_score?: number | null
+          al_score_updated_at?: string | null
+          cluster_confidence?: number | null
+          cluster_id?: number | null
+          cluster_purity?: string | null
+          created_at?: string | null
+          deployment_id: string
+          embedding_run_id?: string | null
+          is_outlier?: boolean
+          media_id: string
+          qdrant_point_id?: string | null
+          umap_x?: number | null
+          umap_y?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          active_learning_score?: number | null
+          al_score_updated_at?: string | null
+          cluster_confidence?: number | null
+          cluster_id?: number | null
+          cluster_purity?: string | null
+          created_at?: string | null
+          deployment_id?: string
+          embedding_run_id?: string | null
+          is_outlier?: boolean
+          media_id?: string
+          qdrant_point_id?: string | null
+          umap_x?: number | null
+          umap_y?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_media_embeddings_media"
+            columns: ["media_id", "deployment_id"]
             isOneToOne: false
-            referencedRelation: "annotation_jobs"
+            referencedRelation: "media"
+            referencedColumns: ["id", "deployment_id"]
+          },
+          {
+            foreignKeyName: "media_embeddings_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "media_embeddings_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "observation_annotations_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
+            foreignKeyName: "media_embeddings_embedding_run_id_fkey"
+            columns: ["embedding_run_id"]
             isOneToOne: false
-            referencedRelation: "annotation_metrics"
-            referencedColumns: ["job_id"]
+            referencedRelation: "embedding_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_rules: {
+        Row: {
+          channels: string[]
+          created_at: string | null
+          digest: string
+          event_type: string
+          id: string
+          is_active: boolean
+          project_id: string
+          species_filter: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          channels?: string[]
+          created_at?: string | null
+          digest?: string
+          event_type: string
+          id?: string
+          is_active?: boolean
+          project_id: string
+          species_filter?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          channels?: string[]
+          created_at?: string | null
+          digest?: string
+          event_type?: string
+          id?: string
+          is_active?: boolean
+          project_id?: string
+          species_filter?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
           },
           {
-            foreignKeyName: "observation_annotations_annotation_target_id_fkey"
-            columns: ["annotation_target_id"]
+            foreignKeyName: "notification_rules_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "annotation_targets"
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "notification_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "notification_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "observation_annotations_observation_id_fkey"
-            columns: ["observation_id"]
+            foreignKeyName: "notification_rules_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "current_observation_annotations"
-            referencedColumns: ["observation_id"]
-          },
-          {
-            foreignKeyName: "observation_annotations_observation_id_fkey"
-            columns: ["observation_id"]
-            isOneToOne: false
-            referencedRelation: "observations"
+            referencedRelation: "projects_with_stats"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "observation_annotations_parent_id_fkey"
-            columns: ["parent_id"]
+            foreignKeyName: "notification_rules_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "current_observation_annotations"
-            referencedColumns: ["annotation_id"]
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
           },
           {
-            foreignKeyName: "observation_annotations_parent_id_fkey"
-            columns: ["parent_id"]
+            foreignKeyName: "notification_rules_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "observation_annotations"
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notification_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notification_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notification_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          data: Json | null
+          deployment_id: string | null
+          id: string
+          project_id: string | null
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string | null
+          data?: Json | null
+          deployment_id?: string | null
+          id?: string
+          project_id?: string | null
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string | null
+          data?: Json | null
+          deployment_id?: string | null
+          id?: string
+          project_id?: string | null
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["deployment_id"]
+          },
+          {
+            foreignKeyName: "notifications_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_access_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles_detailed"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1906,11 +2621,13 @@ export type Database = {
           classification_timestamp: string | null
           classified_by: string | null
           classifier_category: string | null
+          cluster_id: number | null
           confidence: number | null
           count: number | null
           created_at: string | null
           deleted_at: string | null
           deployment_id: string
+          embedding_run_id: string | null
           id: string
           individual_id: string | null
           life_stage: string | null
@@ -1943,11 +2660,13 @@ export type Database = {
           classification_timestamp?: string | null
           classified_by?: string | null
           classifier_category?: string | null
+          cluster_id?: number | null
           confidence?: number | null
           count?: number | null
           created_at?: string | null
           deleted_at?: string | null
           deployment_id: string
+          embedding_run_id?: string | null
           id?: string
           individual_id?: string | null
           life_stage?: string | null
@@ -1980,11 +2699,13 @@ export type Database = {
           classification_timestamp?: string | null
           classified_by?: string | null
           classifier_category?: string | null
+          cluster_id?: number | null
           confidence?: number | null
           count?: number | null
           created_at?: string | null
           deleted_at?: string | null
           deployment_id?: string
+          embedding_run_id?: string | null
           id?: string
           individual_id?: string | null
           life_stage?: string | null
@@ -2067,6 +2788,13 @@ export type Database = {
             columns: ["deployment_id"]
             isOneToOne: false
             referencedRelation: "deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observations_embedding_run_id_fkey"
+            columns: ["embedding_run_id"]
+            isOneToOne: false
+            referencedRelation: "embedding_runs"
             referencedColumns: ["id"]
           },
           {
@@ -2494,6 +3222,7 @@ export type Database = {
           rank: string
           scientific_name: string
           species: string | null
+          status: string
         }
         Insert: {
           class?: string | null
@@ -2513,6 +3242,7 @@ export type Database = {
           rank: string
           scientific_name: string
           species?: string | null
+          status?: string
         }
         Update: {
           class?: string | null
@@ -2532,6 +3262,7 @@ export type Database = {
           rank?: string
           scientific_name?: string
           species?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -2587,6 +3318,7 @@ export type Database = {
         Row: {
           created_at: string | null
           deleted_at: string | null
+          email: string | null
           firstname: string
           id: string
           modified_by: string | null
@@ -2596,6 +3328,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           deleted_at?: string | null
+          email?: string | null
           firstname: string
           id: string
           modified_by?: string | null
@@ -2605,6 +3338,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           deleted_at?: string | null
+          email?: string | null
           firstname?: string
           id?: string
           modified_by?: string | null
@@ -2615,98 +3349,6 @@ export type Database = {
       }
     }
     Views: {
-      annotation_metrics: {
-        Row: {
-          avg_secs_per_image: number | null
-          completion_pct: number | null
-          deployment_id: string | null
-          failed_count: number | null
-          in_progress_count: number | null
-          job_created_at: string | null
-          job_id: string | null
-          job_status: string | null
-          label_corrections: number | null
-          rejected_count: number | null
-          synced_at: string | null
-          synced_count: number | null
-          total_targets: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "annotation_jobs_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["deployment_id"]
-          },
-          {
-            foreignKeyName: "annotation_jobs_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      current_observation_annotations: {
-        Row: {
-          annotated_at: string | null
-          annotation_id: string | null
-          annotation_job_id: string | null
-          attributes: Json | null
-          bbox_h: number | null
-          bbox_w: number | null
-          bbox_x: number | null
-          bbox_y: number | null
-          confidence: number | null
-          created_by: string | null
-          current_name: string | null
-          deployment_id: string | null
-          media_id: string | null
-          observation_id: string | null
-          original_name: string | null
-          priority: number | null
-          source: string | null
-          version: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_observations_media"
-            columns: ["media_id", "deployment_id"]
-            isOneToOne: false
-            referencedRelation: "media"
-            referencedColumns: ["id", "deployment_id"]
-          },
-          {
-            foreignKeyName: "observation_annotations_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "observation_annotations_annotation_job_id_fkey"
-            columns: ["annotation_job_id"]
-            isOneToOne: false
-            referencedRelation: "annotation_metrics"
-            referencedColumns: ["job_id"]
-          },
-          {
-            foreignKeyName: "observations_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployment_overview"
-            referencedColumns: ["deployment_id"]
-          },
-          {
-            foreignKeyName: "observations_deployment_id_fkey"
-            columns: ["deployment_id"]
-            isOneToOne: false
-            referencedRelation: "deployments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       deployment_overview: {
         Row: {
           accuracy: number | null

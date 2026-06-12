@@ -26,7 +26,7 @@ jobs:
       - name: Setup EAS
         uses: expo/expo-github-action@v8
         with:
-          eas-version: latest
+          eas-version: 20.1.0  # pinned: bump deliberately (EAS service stays compatible across CLI minors)
           token: ${{ secrets.EXPO_TOKEN }}
 
       # The standard-version library generates a CHANGELOG.md based on conventional commits

@@ -2,8 +2,8 @@
 CREATE TABLE lorawan_messages (
   id uuid PRIMARY KEY DEFAULT (gen_random_uuid()),
   device_eui text NOT NULL,
-  device_id uuid REFERENCES devices(id),
-  deployment_id uuid REFERENCES deployments(id),
+  device_id uuid REFERENCES devices (id),
+  deployment_id uuid REFERENCES deployments (id),
   raw_payload jsonb NOT NULL,
   received_at timestamptz DEFAULT (now()),
   processed_at timestamptz

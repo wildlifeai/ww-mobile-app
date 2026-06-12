@@ -4,7 +4,6 @@ CREATE TABLE deployments (
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
 
-
   -- Deployment lifecycle
   name text NOT NULL,
   setup_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
@@ -26,6 +25,7 @@ CREATE TABLE deployments (
   altitude double precision,
   accuracy double precision,
   location GEOGRAPHY (POINT, 4326),
+  timezone text, -- IANA tz resolved from latitude/longitude (display-only)
   -- Camera configuration
   camera_height float,
   activity_detection_sensitivity_id int REFERENCES activity_sensitivity (id),
@@ -53,12 +53,12 @@ CREATE TABLE deployments (
   lorawan_snr_at_start double precision,
 
   -- CamtrapDP alignment fields
-  camera_tilt float CHECK (camera_tilt IS NULL OR (camera_tilt >= -90 AND camera_tilt <= 90)),
-  detection_distance float CHECK (detection_distance IS NULL OR (detection_distance >= 0)),
-  bait_use text CHECK (bait_use IS NULL OR (bait_use IN ('none', 'scent', 'food', 'visual', 'acoustic', 'other'))),
-  feature_type text CHECK (feature_type IS NULL OR (feature_type IN ('roadTrail', 'waterSource', 'burrow', 'nestSite', 'other'))),
+  camera_tilt float CHECK (camera_tilt IS null OR (camera_tilt >= -90 AND camera_tilt <= 90)),
+  detection_distance float CHECK (detection_distance IS null OR (detection_distance >= 0)),
+  bait_use text CHECK (bait_use IS null OR (bait_use IN ('none', 'scent', 'food', 'visual', 'acoustic', 'other'))),
+  feature_type text CHECK (feature_type IS null OR (feature_type IN ('roadTrail', 'waterSource', 'burrow', 'nestSite', 'other'))),
   habitat text,
-  deployment_tags text[]
+  deployment_tags text []
 );
 
 -- Indexes
@@ -85,6 +85,7 @@ COMMENT ON COLUMN deployments.camera_location_image_paths IS 'Array of paths to 
 COMMENT ON COLUMN deployments.camera_height IS 'Height of the camera in meters.';
 COMMENT ON COLUMN deployments.altitude IS 'Altitude in meters from GPS.';
 COMMENT ON COLUMN deployments.accuracy IS 'GPS accuracy in meters.';
+COMMENT ON COLUMN deployments.timezone IS 'IANA time zone name (e.g. Pacific/Auckland) for this deployment location, resolved from latitude/longitude at creation/ingestion via timezonefinder. NULL falls back to UTC at display. media.timestamp stays UTC; this column is display-only and does not affect stored instants.';
 COMMENT ON COLUMN deployments.capture_method_id IS 'Mode of capture (timelapse, motion, etc).';
 COMMENT ON COLUMN deployments.project_id IS 'Project this deployment belongs to.';
 COMMENT ON COLUMN deployments.device_id IS 'Device used in this deployment.';

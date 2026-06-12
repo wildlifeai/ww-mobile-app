@@ -14,7 +14,7 @@ import { useBleActions } from '../../providers/BleEngineProvider'
 
 import { withObservables } from '@nozbe/watermelondb/react'
 import { selectCurrentUser } from '../../redux/slices/authSlice'
-import { InitializationHeader } from '../Devices/components/InitializationHeader'
+import { StatusInitializationHeader } from '../Devices/components/InitializationHeader'
 import Device from '../../database/models/Device'
 import { DeviceService } from '../../services/DeviceService'
 import type Deployment from '../../database/models/Deployment'
@@ -233,18 +233,15 @@ const StopMonitoringDetailsStepComponent: React.FC<InnerProps> = ({ deployment }
                 <View style={styles.container}>
                     {/* Initialization Header */}
                     {(deviceDb || storeDevice) && (
-                        <InitializationHeader
-                            device={deviceDb || { name: storeDevice?.name || 'Device', bluetoothId: bleDeviceId } as any}
+                        <StatusInitializationHeader
                             isInitializing={isInitializing}
                             initProgress={initProgress}
                             initStep={initStep}
                             initErrors={initErrors}
                             theme={theme}
-                            hideDeviceDetails={true}
+                            warningHintText="You can still stop monitoring, but please report these errors."
                         />
-                    )}
-
-                    <View style={styles.disconnectedBanner}>
+                    )}<View style={styles.disconnectedBanner}>
                         <Text variant="bodyLarge" style={{ textAlign: 'center', marginBottom: 12 }}>
                             Device is not connected. You can force end the deployment in the database, but the device will need to be manually reset later.
                         </Text>

@@ -9,8 +9,8 @@ CREATE TABLE annotation_runs (
   observation_count int DEFAULT 0 CHECK (observation_count >= 0),
   created_by uuid REFERENCES users (id) ON DELETE SET NULL,
   CONSTRAINT chk_annotation_run_provenance CHECK (
-    (run_type <> 'ai_inference' OR model_id IS NOT NULL) AND
-    (run_type <> 'human_review' OR created_by IS NOT NULL)
+    (run_type <> 'ai_inference' OR model_id IS NOT NULL)
+    AND (run_type <> 'human_review' OR created_by IS NOT NULL)
   )
 );
 

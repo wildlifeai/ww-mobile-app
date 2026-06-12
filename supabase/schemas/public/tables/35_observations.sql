@@ -69,6 +69,12 @@ CREATE TABLE observations (
     OR (classification_probability >= 0 AND classification_probability <= 1)
   ),
 
+  -- Embedding provenance (Wildlife Brain — links a label back to the run/cluster that proposed it)
+  embedding_run_id uuid REFERENCES embedding_runs (id) ON DELETE SET NULL,
+  cluster_id int, -- HDBSCAN label this observation was confirmed from (NULL for non-cluster labels)
+  -- A cluster-derived label must record which run it came from (traceable provenance).
+  CONSTRAINT chk_obs_cluster_provenance CHECK (cluster_id IS NULL OR embedding_run_id IS NOT NULL),
+
   -- Extra metadata
   observation_tags text [],
   observation_comments text
@@ -95,9 +101,13 @@ COMMENT ON COLUMN observations.source_model_id IS 'AI model reference if generat
 COMMENT ON COLUMN observations.annotator_id IS 'Authenticating user ID who labeled this record.';
 COMMENT ON COLUMN observations.reviewer_id IS 'Authenticating user ID who verified this record.';
 COMMENT ON COLUMN observations.review_status IS 'Scientific validation workflow stage.';
+COMMENT ON COLUMN observations.embedding_run_id IS 'Embedding run whose cluster proposed this label (deep provenance for publications/audits).';
+COMMENT ON COLUMN observations.cluster_id IS 'HDBSCAN cluster label this observation was bulk-confirmed from (NULL when not cluster-derived).';
 
 ALTER TABLE observations ENABLE ROW LEVEL SECURITY;
 
-GRANT SELECT ON public.observations TO authenticated;
+-- authenticated may read and write observations (writes scoped by RLS, see
+-- yyy_policies/71_observations.sql). DELETE withheld — soft-deletes are UPDATEs.
+GRANT SELECT, INSERT, UPDATE ON public.observations TO authenticated;
 
 GRANT ALL ON public.observations TO service_role;
