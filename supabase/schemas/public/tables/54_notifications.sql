@@ -26,6 +26,11 @@ CREATE TABLE notifications (
 CREATE INDEX idx_notifications_user ON notifications (user_id, created_at DESC);
 CREATE INDEX idx_notifications_user_unread ON notifications (user_id) WHERE read_at IS NULL;
 
+-- FK indexes so ON DELETE CASCADE from projects/deployments doesn't scan the
+-- whole (high-growth) table.
+CREATE INDEX idx_notifications_project ON notifications (project_id) WHERE project_id IS NOT NULL;
+CREATE INDEX idx_notifications_deployment ON notifications (deployment_id) WHERE deployment_id IS NOT NULL;
+
 COMMENT ON TABLE notifications IS 'Per-user in-app notifications (species detections, camera-silent, upload-complete, system). One row per recipient — the backend service role fans an event out to subscribed users. Recipients read their own rows and mark them read via RLS; inserts are service-role only.';
 COMMENT ON COLUMN notifications.user_id IS 'Recipient. Each notification belongs to exactly one user.';
 COMMENT ON COLUMN notifications.project_id IS 'Project the notification concerns; NULL for account-level messages.';
@@ -35,8 +40,10 @@ COMMENT ON COLUMN notifications.read_at IS 'When the recipient marked it read; N
 
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
--- Recipients read their own feed and mark rows read (UPDATE). Inserts are performed by
--- the backend with the service role (no INSERT grant to authenticated).
-GRANT SELECT, UPDATE ON public.notifications TO authenticated;
+-- Recipients read their own feed and mark rows read. The UPDATE grant is column-level
+-- (read_at only) so recipients cannot rewrite notification content; inserts are performed
+-- by the backend with the service role (no INSERT grant to authenticated).
+GRANT SELECT ON public.notifications TO authenticated;
+GRANT UPDATE (read_at) ON public.notifications TO authenticated;
 
 GRANT ALL ON public.notifications TO service_role;

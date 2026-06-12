@@ -4794,6 +4794,10 @@ export type Database = {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
       }
+      storage_can_access_deployment_photo: {
+        Args: { bucket_id: string; object_name: string; required_role?: string }
+        Returns: boolean
+      }
       storage_can_upload_model: {
         Args: { bucket_id: string; object_name: string }
         Returns: boolean

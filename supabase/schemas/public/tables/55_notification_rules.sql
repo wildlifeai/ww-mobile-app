@@ -25,7 +25,10 @@ CREATE TABLE notification_rules (
   digest text NOT NULL DEFAULT 'immediate' CHECK (digest IN ('immediate', 'daily')),
   is_active boolean NOT NULL DEFAULT true,
 
-  UNIQUE (user_id, project_id, event_type)
+  UNIQUE (user_id, project_id, event_type),
+
+  -- species_filter is only meaningful for species_detection rules.
+  CONSTRAINT chk_rules_species_filter CHECK (event_type = 'species_detection' OR species_filter IS null)
 );
 
 CREATE INDEX idx_notification_rules_project_event
