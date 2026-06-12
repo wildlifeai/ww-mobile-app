@@ -13,6 +13,8 @@ interface Props {
     disabled?: boolean
 }
 
+const MAX_PHOTOS = 5
+
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
     mediaTypes: ['images'],
     quality: 0.7,
@@ -28,9 +30,13 @@ export const DeploymentPhotosSection = ({
 }: Props) => {
     const [busy, setBusy] = useState(false)
 
+    const remainingSlots = MAX_PHOTOS - photoPaths.length
+    const atLimit = remainingSlots <= 0
+
     const handleResult = async (result: ImagePicker.ImagePickerResult) => {
         if (result.canceled || !result.assets?.length) return
-        for (const asset of result.assets) {
+        // Cap here too: Android pickers don't always honor selectionLimit
+        for (const asset of result.assets.slice(0, remainingSlots)) {
             const persisted = await DeploymentPhotoService.persistLocalPhoto(asset.uri)
             onAddPhoto(persisted)
         }
@@ -59,7 +65,7 @@ export const DeploymentPhotosSection = ({
             const result = await ImagePicker.launchImageLibraryAsync({
                 ...PICKER_OPTIONS,
                 allowsMultipleSelection: true,
-                selectionLimit: 5,
+                selectionLimit: remainingSlots,
             })
             await handleResult(result)
         } catch (e) {
@@ -114,7 +120,7 @@ export const DeploymentPhotosSection = ({
                         mode="outlined"
                         icon="camera"
                         onPress={takePhoto}
-                        disabled={disabled || busy}
+                        disabled={disabled || busy || atLimit}
                         style={styles.button}
                     >
                         <Text>Take Photo</Text>
@@ -123,7 +129,7 @@ export const DeploymentPhotosSection = ({
                         mode="outlined"
                         icon="image-multiple"
                         onPress={pickFromLibrary}
-                        disabled={disabled || busy}
+                        disabled={disabled || busy || atLimit}
                         style={styles.button}
                     >
                         <Text>From Library</Text>

@@ -56,7 +56,8 @@ export const DeploymentPhotoService = {
             await FileSystem.makeDirectoryAsync(PHOTOS_DIR, { intermediates: true })
         }
 
-        const extension = sourceUri.split('.').pop()?.toLowerCase() || 'jpg'
+        const cleanUri = sourceUri.split('?')[0]
+        const extension = (cleanUri.includes('.') && cleanUri.split('.').pop()?.toLowerCase()) || 'jpg'
         const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`
         const destination = PHOTOS_DIR + filename
 
