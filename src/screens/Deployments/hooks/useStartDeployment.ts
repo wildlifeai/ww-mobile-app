@@ -20,7 +20,7 @@ import { useBleActions } from '../../../providers/BleEngineProvider'
 import { useDeploymentConfiguration } from '../../../hooks/useDeploymentConfiguration'
 import { useBle } from '../../../hooks/useBle'
 import { useGPSLocation } from '../../../hooks/useGPSLocation'
-import { useDeviceSettings } from '../../../hooks/useDeviceSettings'
+import { useDeviceSettings, OP_PARAMETER, TEST_BIT_SAVE_BMP } from '../../../hooks/useDeviceSettings'
 import { useDeploymentProgress } from '../../../hooks/useDeploymentProgress'
 import { useMonitoringActions } from '../../../hooks/useMonitoringActions'
 import * as pipeline from '../../../ble/workflows/deploymentPipeline'
@@ -84,6 +84,10 @@ export const useStartDeployment = ({
 
     // Phone photos of the deployment site (local file:// paths until uploaded)
     const [deploymentPhotoPaths, setDeploymentPhotoPaths] = useState<string[]>([])
+
+    // Capture format (dev/testing quality trial): JPG+BMP by default; the advanced
+    // "Record JPEG only" toggle opts out. See bmp-ingestion-analysis.md.
+    const [recordJpegOnly, setRecordJpegOnly] = useState(false)
 
     const [submitting, setSubmitting] = useState(false)
     const [project, setProject] = useState<any>(null)
@@ -558,6 +562,21 @@ export const useStartDeployment = ({
                 throw configError
             }
 
+            // 7b. Capture format: JPG+BMP by default (quality trial); the advanced
+            // "Record JPEG only" toggle disables BMP. TEST_BIT_SAVE_BMP makes the
+            // firmware alternate JPG/BMP, so 2 pics/trigger yields one of each.
+            // Non-fatal: on failure the firmware keeps its clean-slate default
+            // (TEST_MODE_BITS=0 = JPEG only). See bmp-ingestion-analysis.md.
+            try {
+                const testModeBits = recordJpegOnly ? 0 : TEST_BIT_SAVE_BMP
+                const numPictures = recordJpegOnly ? 1 : 2
+                await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: testModeBits }))
+                await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.NUM_PICTURES, value: numPictures }))
+                progress.addLog(`Capture format: ${recordJpegOnly ? 'JPEG only' : 'JPG + BMP'} (${numPictures} pic${numPictures > 1 ? 's' : ''}/trigger)`)
+            } catch (formatError) {
+                logWarn('[Deployment] Failed to set capture format (non-fatal):', formatError)
+            }
+
             progress.setFinishStep('Complete')
             progress.setFinishProgress(1.0)
             progress.setIsSuccess(true)
@@ -577,7 +596,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths])
+    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths, recordJpegOnly])
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)
@@ -677,6 +696,8 @@ export const useStartDeployment = ({
         // Advanced Settings Exports
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
+        // Capture format (advanced): JPG+BMP default, opt out to JPEG only
+        recordJpegOnly, setRecordJpegOnly,
         // DFU control
         isDfuInProgress,
     }
