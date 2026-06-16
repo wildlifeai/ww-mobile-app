@@ -53,6 +53,7 @@ export const StartMonitoringDetailsStep = () => {
         // Advanced Settings
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
+        recordJpegOnly, setRecordJpegOnly,
         isMonitoring, handleMonitorDisconnect, handleStopMonitoring, isStoppingMonitoring,
         deploymentStartTime,
         // DFU control
@@ -357,6 +358,8 @@ export const StartMonitoringDetailsStep = () => {
                     sdCardStatus={sdCardStatus}
                     handleBatteryCheck={handleBatteryCheck}
                     handleSdCardCheck={handleSdCardCheck}
+                    recordJpegOnly={recordJpegOnly}
+                    setRecordJpegOnly={setRecordJpegOnly}
                     isInitializing={isInitializing}
                     bleDeviceConnected={!!bleDevice?.connected}
                     theme={theme}

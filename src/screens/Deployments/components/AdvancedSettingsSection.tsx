@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { List, Card, Button, Text, TextInput } from 'react-native-paper'
+import { List, Card, Button, Text, TextInput, Switch } from 'react-native-paper'
 import { WWButton } from '../../../components/ui/WWButton'
 import { WWSelect } from '../../../components/ui/WWSelect'
 
@@ -28,6 +28,8 @@ interface AdvancedSettingsSectionProps {
     sdCardStatus: { total: number; free: number } | null
     handleBatteryCheck: () => void
     handleSdCardCheck: () => void
+    recordJpegOnly: boolean
+    setRecordJpegOnly: (val: boolean) => void
     isInitializing: boolean
     bleDeviceConnected: boolean
     theme: any
@@ -51,6 +53,8 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
     sdCardStatus,
     handleBatteryCheck,
     handleSdCardCheck,
+    recordJpegOnly,
+    setRecordJpegOnly,
     isInitializing,
     bleDeviceConnected,
     theme,
@@ -96,6 +100,16 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
         </Button>
     ), [onShowHelp])
 
+
+    const renderFormatHelp = useCallback((props: any) => (
+        <Button
+            {...props}
+            icon="help-circle-outline"
+            onPress={() => onShowHelp('Capture Format', 'Off (default): the camera records each trigger as a high-quality raw BMP plus a JPG, and the website compresses the BMP — better image quality for the current testing phase.\n\nOn: record JPEG only — smaller files, faster uploads, less SD-card use.')}
+        >
+            <Text>Help</Text>
+        </Button>
+    ), [onShowHelp])
 
     const renderRightIcon = useCallback((props: any) => <List.Icon {...props} icon={expanded ? "chevron-up" : "chevron-down"} />, [expanded])
 
@@ -159,6 +173,22 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                                 mode="outlined"
                                 keyboardType="numeric"
                             />
+                        </View>
+                    </Card.Content>
+                </Card>
+
+                {/* Capture Format Card (dev/testing quality trial) */}
+                <Card style={styles.card}>
+                    <Card.Title title="Capture Format" right={renderFormatHelp} />
+                    <Card.Content style={styles.content}>
+                        <View style={styles.switchRow}>
+                            <View style={styles.switchLabel}>
+                                <Text variant="bodyMedium">Record JPEG only</Text>
+                                <Text style={styles.statusHint}>
+                                    Off (default): record JPG + raw BMP for higher quality. On: JPEG only — smaller, faster.
+                                </Text>
+                            </View>
+                            <Switch value={recordJpegOnly} onValueChange={setRecordJpegOnly} />
                         </View>
                     </Card.Content>
                 </Card>
@@ -228,6 +258,15 @@ const styles = StyleSheet.create({
     },
     inputContainer: {
         marginBottom: 8,
+    },
+    switchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    switchLabel: {
+        flex: 1,
     },
     switchButton: {
         marginTop: 4,

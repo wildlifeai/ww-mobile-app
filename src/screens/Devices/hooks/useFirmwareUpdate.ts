@@ -439,13 +439,17 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
             if (line.includes('Wake') && !line.includes('Wakeup_event')) {
                 advancePhase('waking')
-            } else if (line.includes('Erasing firmware slot') || line.includes('erased OK')) {
+            } else if (line.includes('erase_firmware_slot') || line.includes('Erasing firmware slot') || line.includes('erased OK')) {
+                // Current firmware: "erase_firmware_slot: slot N ..." / "... erased OK".
+                // Legacy strings kept for backward compatibility with older HX6538 builds.
                 advancePhase('flashing')
                 appendLog(line)
-            } else if (line.includes('Writing') && line.includes('bytes to firmware')) {
+            } else if (line.includes('write_firmware_from_sd') || (line.includes('Writing') && line.includes('bytes to firmware'))) {
+                // Current firmware: "write_firmware_from_sd: slot N — application only / full image".
                 advancePhase('flashing')
                 appendLog(line)
-            } else if (line.includes('chunk-verified OK') || line.includes('full verify OK')) {
+            } else if (line.includes('chunk-verified OK') || line.includes('verify_firmware_slot') || line.includes('verify OK') || line.includes('full verify OK')) {
+                // Current firmware: "... chunk-verified OK" and "verify_firmware_slot: slot N verify OK".
                 appendLog(line)
             } else if (/Firmware update OK/i.test(line)) {
                 // Don't advance to complete yet, runHimaxUpdate handles the sequence
