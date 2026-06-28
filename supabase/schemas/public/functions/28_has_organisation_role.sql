@@ -32,9 +32,17 @@ BEGIN
       AND ur.deleted_at IS NULL
       AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
       AND (
-        ur.role = required_role OR                                     -- Exact match
         ur.role = 'organisation_manager' OR                            -- Manager has all privileges
-        (required_role = 'project_member' AND ur.role IN ('organisation_member', 'project_admin')) -- Admin/Member can see projects
+        -- Hierarchy by REQUIRED level: a higher role always satisfies a lower
+        -- requirement, never the reverse (a viewer must NOT satisfy a member check).
+        CASE required_role
+          WHEN 'project_viewer' THEN
+            ur.role IN ('organisation_member', 'project_admin', 'project_member', 'project_viewer')
+          WHEN 'project_member' THEN
+            ur.role IN ('organisation_member', 'project_admin', 'project_member')
+          ELSE
+            ur.role = required_role
+        END
       )
   ) THEN
     RETURN true;

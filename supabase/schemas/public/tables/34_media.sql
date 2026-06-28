@@ -31,6 +31,8 @@ CREATE INDEX idx_media_deployment_id ON media (deployment_id);
 CREATE INDEX idx_media_timestamp ON media (timestamp);
 CREATE INDEX idx_media_file_hash ON media (file_hash);
 CREATE INDEX idx_media_deleted_at ON media (deleted_at);
+-- Per-user upload aggregation (admin_user_usage / my_upload_usage).
+CREATE INDEX idx_media_uploaded_by ON media (uploaded_by) WHERE deleted_at IS null;
 
 COMMENT ON TABLE media IS 'Image and video records captured by camera trap deployments. Equivalent to the CamtrapDP media table.';
 COMMENT ON COLUMN media.deployment_id IS 'Deployment that produced this media file.';

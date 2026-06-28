@@ -14,6 +14,9 @@ CREATE TABLE annotation_runs (
   )
 );
 
+-- Per-user compute aggregation (admin_user_usage / my_upload_usage).
+CREATE INDEX idx_annotation_runs_created_by ON annotation_runs (created_by);
+
 COMMENT ON TABLE annotation_runs IS 'Tracks history, provenance, and configuration of model inferences, human labeling, and clustering jobs.';
 COMMENT ON COLUMN annotation_runs.deployment_id IS 'Deployment of interest.';
 COMMENT ON COLUMN annotation_runs.run_type IS 'Category of job: ai_inference, human_review, or event_aggregation.';

@@ -10,8 +10,8 @@ CREATE TABLE ai_models (
   description text,
   organisation_id uuid NOT NULL REFERENCES organisations (id),
   uploaded_by uuid REFERENCES auth.users (id) ON DELETE SET NULL,
-  model_path text NOT NULL UNIQUE,
-  labels_path text NOT NULL UNIQUE,
+  model_path text UNIQUE,
+  labels_path text UNIQUE,
   file_size_bytes bigint,
   file_type text,
   detection_capabilities text [],
@@ -21,7 +21,14 @@ CREATE TABLE ai_models (
   file_hash text,
   compiled_format text,
   error_message text,
-  processing_log jsonb DEFAULT '[]' CHECK (jsonb_typeof(processing_log) = 'array')
+  processing_log jsonb DEFAULT '[]' CHECK (jsonb_typeof(processing_log) = 'array'),
+  -- Per-label interpretation set by the uploader after validation: which output
+  -- classes are target species (mapped to a taxon) vs background/negative classes.
+  -- Shape: { "<label>": { "role": "target"|"background",
+  --                        "taxon_id": uuid|null, "scientific_name": text|null,
+  --                        "vernacular_name": text|null, "threshold": int|null } }
+  -- Lets the website reflect on-device predictions as real taxa and skip negatives.
+  label_map jsonb DEFAULT '{}' CHECK (jsonb_typeof(label_map) = 'object')
 );
 
 -- Unique constraint for version within a family
@@ -43,6 +50,7 @@ COMMENT ON COLUMN ai_models.labels_path IS 'Path to the labels text file in Supa
 COMMENT ON COLUMN ai_models.file_size_bytes IS 'Model file size in bytes';
 COMMENT ON COLUMN ai_models.file_type IS 'Model file format (e.g., tflite, onnx)';
 COMMENT ON COLUMN ai_models.detection_capabilities IS 'Array of species this model can detect';
+COMMENT ON COLUMN ai_models.label_map IS 'Per-output-class interpretation set by the uploader: target species (with taxon mapping) vs background/negative class. Used to reflect on-device predictions as taxa and to skip negative classes.';
 COMMENT ON COLUMN ai_models.modified_by IS 'User who last modified this record';
 COMMENT ON COLUMN ai_models.deleted_at IS 'Soft delete timestamp - NULL means active';
 

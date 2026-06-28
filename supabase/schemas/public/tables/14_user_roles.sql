@@ -4,7 +4,7 @@ CREATE TABLE user_roles (
   updated_at timestamptz DEFAULT (now()),
   deleted_at timestamptz,
   user_id uuid NOT NULL,
-  role text NOT NULL CHECK (role IN ('ww_admin', 'organisation_manager', 'organisation_member', 'project_admin', 'project_member')),
+  role text NOT NULL CHECK (role IN ('ww_admin', 'organisation_manager', 'organisation_member', 'project_admin', 'project_member', 'project_viewer')),
   scope_type text NOT NULL CHECK (scope_type IN ('system', 'organisation', 'project')),
   scope_id uuid, -- NULL for system roles, organisation_id for org roles, project_id for project roles
   granted_by uuid, -- Allow NULL when granting user is deleted
@@ -42,6 +42,7 @@ ALTER TABLE user_roles ADD CONSTRAINT user_roles_role_scope_validation CHECK (
   OR (role = 'organisation_member' AND scope_type = 'organisation')
   OR (role = 'project_admin' AND scope_type IN ('organisation', 'project'))
   OR (role = 'project_member' AND scope_type IN ('organisation', 'project'))
+  OR (role = 'project_viewer' AND scope_type IN ('organisation', 'project'))
 );
 
 COMMENT ON TABLE user_roles IS 'Stores user role assignments with hierarchical scope (system > organisation > project). Implements the 4-tier role system for Wildlife Watcher.';

@@ -32,6 +32,11 @@ BEGIN
       AND ur.deleted_at IS NULL
       AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
       AND CASE required_role
+            -- project_viewer is the lowest (read-only) tier: members and admins
+            -- also satisfy a viewer-level (read) check, but a viewer does NOT
+            -- satisfy a project_member check, so write policies still exclude them.
+            WHEN 'project_viewer' THEN
+              ur.role IN ('project_viewer', 'project_member', 'project_admin')
             WHEN 'project_member' THEN
               ur.role IN ('project_member', 'project_admin')
             WHEN 'project_admin' THEN
@@ -57,6 +62,11 @@ BEGIN
       AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
       AND p.deleted_at IS NULL
       AND CASE required_role
+            -- project_viewer is the lowest (read-only) tier: members and admins
+            -- also satisfy a viewer-level (read) check, but a viewer does NOT
+            -- satisfy a project_member check, so write policies still exclude them.
+            WHEN 'project_viewer' THEN
+              ur.role IN ('project_viewer', 'project_member', 'project_admin')
             WHEN 'project_member' THEN
               ur.role IN ('project_member', 'project_admin')
             WHEN 'project_admin' THEN

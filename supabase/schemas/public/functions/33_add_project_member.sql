@@ -45,8 +45,8 @@ BEGIN
   -- VALIDATION 2: Role Type Check
   -- =============================================================================
   -- Only allow project-level roles (prevent privilege escalation)
-  IF p_role NOT IN ('project_admin', 'project_member') THEN
-    RAISE EXCEPTION 'Invalid role: must be project_admin or project_member'
+  IF p_role NOT IN ('project_admin', 'project_member', 'project_viewer') THEN
+    RAISE EXCEPTION 'Invalid role: must be project_admin, project_member or project_viewer'
       USING ERRCODE = '22023';
   END IF;
 
@@ -63,11 +63,14 @@ BEGIN
   -- VALIDATION 4: Same-Organisation Membership
   -- =============================================================================
   -- Verify user belongs to the same organisation as the project
+  -- A user may belong to several organisations; prefer the project's org so the
+  -- check doesn't fail non-deterministically when they DO belong to it.
   SELECT scope_id INTO STRICT v_user_org_id
   FROM public.user_roles
   WHERE user_id = p_user_id
     AND scope_type = 'organisation'
     AND deleted_at IS NULL
+  ORDER BY CASE WHEN scope_id = v_organisation_id THEN 0 ELSE 1 END
   LIMIT 1;
 
   IF v_user_org_id != v_organisation_id THEN

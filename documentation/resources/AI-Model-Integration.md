@@ -1,6 +1,12 @@
 # AI Model Integration
 
 > **Related**: [File-Transfer-Protocol.md](File-Transfer-Protocol.md) (BLE file transfer), [04-ENGINEER-CONSOLE.md](../onboarding/04-ENGINEER-CONSOLE.md) (OP parameters, `loadmodel` command).
+>
+> **Where this fits:** the mobile app owns **deployment** (stage 5) of the end-to-end
+> [Embedded Model Lifecycle](../../../ww-website/documentation/resources/embedded-model-lifecycle.md)
+> — models are uploaded, converted, and label-mapped on the website, then this app transfers a
+> `validated` model to the device over BLE (or the user copies the SD-card manifest). On-device
+> inference and the resulting EXIF predictions are downstream.
 
 ## Architecture
 
@@ -100,16 +106,56 @@ The mobile app always receives a ready-to-deploy `.TFL` binary from storage — 
 
 ---
 
+## Labels
+
+Every model carries a label set — the class names it predicts (e.g. `not rat`, `rat`).
+The app deploys these **alongside** the `.TFL` binary; both are needed for the device to
+turn output class indices into named predictions.
+
+### Where labels live
+
+Labels are tracked on the `ai_models` row (created/owned by the website + backend):
+
+| Field | What it is | Synced to mobile? |
+|---|---|---|
+| `detection_capabilities` | the **ordered class list** (canonical record) | ✅ (`detection_capabilities`, optional) |
+| `labels_path` | storage path to the deployable **`.TXT`** labels file (one label per line, in class order) | ✅ (`labels_path`) |
+| `label_map` | website-side mapping of each class → a species/taxon or "background" | ❌ (website-only; used to reflect predictions on the website, not needed on-device) |
+
+### What the app does with them
+
+`AiModelService.ensureFilesDownloaded` ([`src/services/AiModelService.ts`](../../src/services/AiModelService.ts))
+downloads **both** files from storage when preparing a model:
+
+```typescript
+// model binary
+const modelUri  = await this.downloadFileIfMissing(model.modelPath, …)
+// labels file (model.labelsPath → labels_<cacheKey>.txt)
+const labelsUri = model.labelsPath
+    ? await this.downloadFileIfMissing(model.labelsPath, …)  // no size check for labels
+    : null
+```
+
+The labels file is then transferred to the SD card `/MANIFEST/` next to the `.TFL`
+(same BLE file-transfer pipeline), so the firmware can load `labels.txt` and write named
+NN scores into each photo's EXIF. The label **order must match** the model's output
+tensor — the website writes `labels.txt` in the model's class order to guarantee this.
+
+> The full label lifecycle (origin → website mapping → device → EXIF) is in the
+> [Embedded Model Lifecycle](../../../ww-website/documentation/resources/embedded-model-lifecycle.md).
+
+---
+
 ## Key Source Files
 
 | File | Purpose |
 |------|---------|
 | `src/database/models/AiModel.ts` | WatermelonDB model with firmware ID fields |
-| `src/services/AiModelService.ts` | AI model metadata and registration |
+| `src/services/AiModelService.ts` | AI model metadata, label + binary download, registration |
 | `src/screens/Devices/AiModelTransferScreen.tsx` | Model upload UI |
 | `src/ble/protocol/fileTransfer/` | File transfer pipeline |
 | `src/ble/protocol/commandRegistry.ts` | `loadmodel`, `erasemodel`, `getop` commands |
 
 ---
 
-*Last Updated: May 16, 2026*
+*Last Updated: June 20, 2026*

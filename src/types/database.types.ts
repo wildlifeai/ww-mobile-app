@@ -242,9 +242,10 @@ export type Database = {
           file_size_bytes: number | null
           file_type: string | null
           id: string
-          labels_path: string
+          label_map: Json | null
+          labels_path: string | null
           model_family_id: string | null
-          model_path: string
+          model_path: string | null
           modified_by: string | null
           name: string
           organisation_id: string
@@ -266,9 +267,10 @@ export type Database = {
           file_size_bytes?: number | null
           file_type?: string | null
           id?: string
-          labels_path: string
+          label_map?: Json | null
+          labels_path?: string | null
           model_family_id?: string | null
-          model_path: string
+          model_path?: string | null
           modified_by?: string | null
           name: string
           organisation_id: string
@@ -290,9 +292,10 @@ export type Database = {
           file_size_bytes?: number | null
           file_type?: string | null
           id?: string
-          labels_path?: string
+          label_map?: Json | null
+          labels_path?: string | null
           model_family_id?: string | null
-          model_path?: string
+          model_path?: string | null
           modified_by?: string | null
           name?: string
           organisation_id?: string
@@ -2625,6 +2628,7 @@ export type Database = {
           confidence: number | null
           count: number | null
           created_at: string | null
+          crop_url: string | null
           deleted_at: string | null
           deployment_id: string
           embedding_run_id: string | null
@@ -2664,6 +2668,7 @@ export type Database = {
           confidence?: number | null
           count?: number | null
           created_at?: string | null
+          crop_url?: string | null
           deleted_at?: string | null
           deployment_id: string
           embedding_run_id?: string | null
@@ -2703,6 +2708,7 @@ export type Database = {
           confidence?: number | null
           count?: number | null
           created_at?: string | null
+          crop_url?: string | null
           deleted_at?: string | null
           deployment_id?: string
           embedding_run_id?: string | null
@@ -3263,6 +3269,33 @@ export type Database = {
           scientific_name?: string
           species?: string | null
           status?: string
+        }
+        Relationships: []
+      }
+      upload_quotas: {
+        Row: {
+          created_at: string | null
+          max_compute_seconds: number | null
+          max_photos: number | null
+          max_storage_bytes: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          max_compute_seconds?: number | null
+          max_photos?: number | null
+          max_storage_bytes?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          max_compute_seconds?: number | null
+          max_photos?: number | null
+          max_storage_bytes?: number | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -3893,6 +3926,24 @@ export type Database = {
             }
             Returns: string
           }
+      admin_user_usage: {
+        Args: never
+        Returns: {
+          compute_runs: number
+          compute_seconds: number
+          email: string
+          full_name: string
+          last_active: string
+          last_upload: string
+          max_compute_seconds: number
+          max_photos: number
+          max_storage_bytes: number
+          over_quota: boolean
+          photos_uploaded: number
+          storage_bytes: number
+          user_id: string
+        }[]
+      }
       check_user_uploader_role: {
         Args: { p_org_id: string; p_user_id: string }
         Returns: boolean
@@ -4149,6 +4200,18 @@ export type Database = {
         Returns: boolean
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      my_upload_usage: {
+        Args: never
+        Returns: {
+          compute_seconds: number
+          max_compute_seconds: number
+          max_photos: number
+          max_storage_bytes: number
+          over_quota: boolean
+          photos_uploaded: number
+          storage_bytes: number
+        }[]
+      }
       next_version_number: { Args: { p_family_id: string }; Returns: number }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
