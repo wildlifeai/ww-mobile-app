@@ -33,6 +33,18 @@ export const OP_PARAMETER = {
     TEST_MODE_BITS: 18,
     IMAGES_COUNT: 19,
     IMAGES_FILE_INDEX: 20,
+    /** LED used to illuminate motion-detection frames while asleep: 0 = none, 1 = visible, 2 = IR */
+    MD_FLASH_LED: 21,
+    /** Brightness of the motion-detection illumination (percent; 16 hardware levels) */
+    MD_FLASH_BRIGHTNESS_PERCENT: 22,
+    /** AE Mean (0-255) below this means the scene is dark and the flash is needed */
+    AE_DARK_THRESHOLD: 23,
+    /** Minutes between periodic AE light checks (flash in AE mode, timelapse disabled). 0 disables */
+    AE_CHECK_INTERVAL: 24,
+    /** Last AE flash decision (0/1). Runtime state - not user-set */
+    AE_FLASH_STATE: 25,
+    /** Automatic light-based camera image switching: 0 = off (manual switchslot only), 1 = automatic (planned) */
+    SLOT_SWITCH: 26,
 } as const
 
 /**
@@ -68,6 +80,12 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     [OP_PARAMETER.TEST_MODE_BITS]: 0,
     [OP_PARAMETER.IMAGES_COUNT]: 0,
     [OP_PARAMETER.IMAGES_FILE_INDEX]: 0,
+    [OP_PARAMETER.MD_FLASH_LED]: 2,
+    [OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT]: 5,
+    [OP_PARAMETER.AE_DARK_THRESHOLD]: 65,
+    [OP_PARAMETER.AE_CHECK_INTERVAL]: 15,
+    [OP_PARAMETER.AE_FLASH_STATE]: 0,
+    [OP_PARAMETER.SLOT_SWITCH]: 0,
 }
 
 

@@ -8,6 +8,7 @@ import { useExtendedTheme } from '../../theme'
 import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
 import { CameraViewSection } from '../Deployments/components/CameraViewSection'
+import { CameraSelector } from './components/CameraSelector'
 
 export const StandaloneCapturePreviewScreen = () => {
     const route = useRoute<any>()
@@ -58,6 +59,10 @@ export const StandaloneCapturePreviewScreen = () => {
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
             <View style={styles.content}>
+                <CameraSelector
+                    device={device}
+                    onShowHelp={handleShowHelp}
+                />
                 <CameraViewSection
                     device={device}
                     onImageCaptured={handleImageCaptured}
