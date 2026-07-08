@@ -18,6 +18,7 @@
 
 import { Platform } from 'react-native'
 import { NativeEventEmitter, NativeModules } from 'react-native'
+import BleManager from 'react-native-ble-manager'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { writeBinaryToDevice } from '../../transport'
 import { bleEventBus, BleEvent } from '../eventBus'
@@ -360,7 +361,23 @@ export async function runFileTransferPipeline(
     // Acquire lock FIRST, then wake the device. This eliminates the gap
     // where the device can Sleep between the wake check and FILE_START.
     bleTransport.acquireLock(transferId)
-    
+
+    // Ask Android for a fast connection interval for the duration of the
+    // session. The one-off request made at connect time (useBle.ts) is
+    // renegotiated away by the firmware ~20s after connecting, so it must be
+    // re-requested per transfer. Firmware >= feature/ble-fast-transfer also
+    // requests fast parameters from its side on FILE_START; either alone
+    // helps, both together are belt-and-braces. iOS has no equivalent API.
+    // Non-fatal: the transfer still works at the current interval.
+    if (Platform.OS === 'android') {
+      try {
+        await BleManager.requestConnectionPriority(peripheral.id, 1)
+        log('[FileTransfer] Requested high connection priority')
+      } catch (priorityErr: any) {
+        log(`[FileTransfer] requestConnectionPriority failed (non-fatal): ${priorityErr?.message ?? priorityErr}`)
+      }
+    }
+
     // Pause heartbeats
     bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: true, ts: Date.now() })
 
@@ -700,6 +717,12 @@ export async function runFileTransferPipeline(
     disconnectCleanup?.()
     if (abortSignal && abortHandler) {
       abortSignal.removeEventListener('abort', abortHandler)
+    }
+    // Return the connection to balanced priority — the fast interval is only
+    // needed while packets are flowing, and costs device battery otherwise.
+    // Fire-and-forget: rejects if the device already disconnected.
+    if (Platform.OS === 'android') {
+      BleManager.requestConnectionPriority(peripheral.id, 0).catch(() => {})
     }
     bleTransport.releaseLock(transferId)
     bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: false, ts: Date.now() })
