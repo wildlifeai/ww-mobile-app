@@ -13,6 +13,8 @@ export default class Firmware extends Model {
     @field('is_active') isActive!: boolean
     @text('crc_checksum') crcChecksum!: string | null
     @text('build_date') buildDate!: string | null
+    /** Camera variant the Himax image was built for: 'RP3' | 'HM0360' | null (BLE/legacy) */
+    @text('camera_variant') cameraVariant!: string | null
     @text('modified_by') modifiedBy!: string
 
     @readonly @date('created_at') createdAt!: Date

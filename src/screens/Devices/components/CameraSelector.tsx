@@ -4,7 +4,7 @@ import { Card, Button, Text, ActivityIndicator } from 'react-native-paper'
 
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { useCameraSwitch, CameraVariant } from '../../../hooks/useCameraSwitch'
-import { WWButton } from '../../../components/ui/WWButton'
+
 
 interface Props {
     device?: ExtendedPeripheral
@@ -19,6 +19,12 @@ const CAMERA_LABELS: Record<CameraVariant, string> = {
     unknown: 'Unknown',
 }
 
+// Short, glanceable labels for the two camera options
+const CAMERA_META: Record<Extract<CameraVariant, 'RP3' | 'HM0360'>, { emoji: string; label: string }> = {
+    RP3: { emoji: '🎨', label: 'Colour (day)' },
+    HM0360: { emoji: '🌙', label: 'Night-IR' },
+}
+
 /**
  * Manual camera selection for the dual-image WW500: choose between the colour
  * Raspberry Pi camera and the IR-capable HM0360 before taking a test photo.
@@ -28,6 +34,7 @@ export const CameraSelector = ({ device, disabled, onShowHelp }: Props) => {
     const {
         activeCamera,
         otherSlotCamera,
+        autoSwitchOn,
         isBusy,
         stage,
         refresh,
@@ -48,15 +55,19 @@ export const CameraSelector = ({ device, disabled, onShowHelp }: Props) => {
     const handleSelect = useCallback((target: CameraVariant) => {
         if (target === activeCamera || isBusy) return
 
+        const autoNote = autoSwitchOn
+            ? '\n\n⚠️ Auto camera switch is ON, so the device may switch back on its own at its next light check. Turn it off in the Light Sensor flow to stay on this camera.'
+            : ''
+
         Alert.alert(
             `Switch to ${CAMERA_LABELS[target]}?`,
-            'The device will restart with the other camera. This takes about 30 seconds.',
+            `The device will restart with the other camera. This takes about 30 seconds.${autoNote}`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 { text: 'Switch', onPress: () => { switchTo(target) } },
             ]
         )
-    }, [activeCamera, isBusy, switchTo])
+    }, [activeCamera, isBusy, switchTo, autoSwitchOn])
 
     const renderHelp = useCallback((props: any) => (
         <Button
@@ -71,27 +82,44 @@ export const CameraSelector = ({ device, disabled, onShowHelp }: Props) => {
         </Button>
     ), [onShowHelp])
 
+    // NOTE: paper <Button> is used directly (not WWButton) — WWButton wraps the
+    // button in a width:auto View, which swallows flex sizing in a row and
+    // collapsed these buttons into unlabelled slivers.
     const cameraButton = (variant: Extract<CameraVariant, 'RP3' | 'HM0360'>) => {
         const isActive = activeCamera === variant
         // A variant is selectable when it is running, or recorded in the other slot
         const isAvailable = isActive || otherSlotCamera === variant
 
         return (
-            <WWButton
+            <Button
                 mode={isActive ? 'contained' : 'outlined'}
+                icon={isActive ? 'check-circle' : 'camera-switch-outline'}
                 style={styles.cameraButton}
-                disabled={disabled || isBusy || !device?.connected || (!isAvailable && !isActive)}
+                disabled={disabled || isBusy || !device?.connected || !isAvailable}
                 onPress={() => handleSelect(variant)}
             >
-                <Text>{CAMERA_LABELS[variant]}{isActive ? ' ✓' : ''}</Text>
-            </WWButton>
+                {`${CAMERA_META[variant].emoji} ${CAMERA_META[variant].label}`}
+            </Button>
         )
     }
+
+    // One glanceable line saying what the device is doing right now
+    const statusLine = !device?.connected
+        ? 'Connect to the device to see its cameras.'
+        : isBusy
+            ? (stage || 'Working…')
+            : activeCamera === 'unknown'
+                ? 'Reading which camera is active…'
+                : `Active camera: ${CAMERA_META[activeCamera as 'RP3' | 'HM0360'].emoji} ${CAMERA_META[activeCamera as 'RP3' | 'HM0360'].label}. Tap the other to switch (~30 s restart).`
 
     return (
         <Card style={styles.card}>
             <Card.Title title="Camera" right={renderHelp} />
             <Card.Content>
+                <Text variant="bodySmall" style={styles.statusLine}>
+                    {statusLine}
+                </Text>
+
                 <View style={styles.buttonRow}>
                     {cameraButton('RP3')}
                     {cameraButton('HM0360')}
@@ -112,7 +140,16 @@ export const CameraSelector = ({ device, disabled, onShowHelp }: Props) => {
 
                 {!isBusy && activeCamera !== 'unknown' && otherSlotCamera === 'unknown' && (
                     <Text variant="labelSmall" style={styles.hintText}>
-                        The second camera image has not been loaded (or has not booted yet), so switching is unavailable.
+                        The other camera image hasn't announced itself yet (it does so the first
+                        time it boots), so switching is unavailable. Run a firmware update or
+                        switch once from the console to label it.
+                    </Text>
+                )}
+
+                {!isBusy && autoSwitchOn === true && (
+                    <Text variant="labelSmall" style={styles.hintText}>
+                        💡 Auto camera switch is ON — the device also picks its camera from the
+                        light level (see the Light Sensor flow), so it may override a manual choice.
                     </Text>
                 )}
             </Card.Content>
@@ -127,6 +164,10 @@ const styles = StyleSheet.create({
     buttonRow: {
         flexDirection: 'row',
         gap: 8,
+    },
+    statusLine: {
+        marginBottom: 12,
+        opacity: 0.8,
     },
     cameraButton: {
         flex: 1,

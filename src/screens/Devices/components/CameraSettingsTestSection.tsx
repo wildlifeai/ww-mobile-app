@@ -7,6 +7,8 @@ import { useCameraSettingsTest, CapturedImageInfo } from '../hooks/useCameraSett
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { ImagePreviewModal } from '../../../components/ImagePreviewModal'
 import { WWBleDisconnectedBanner } from '../../../components/ui/WWBleDisconnectedBanner'
+import { DeviceHealthBanner } from '../../../components/DeviceHealthBanner'
+import { useDeviceSelfTest } from '../../../hooks/useDeviceSelfTest'
 import { useState } from 'react'
 
 interface Props {
@@ -64,6 +66,22 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
         capturePreview
     } = useCameraSettingsTest({ device })
 
+    const { issues: healthIssues, isChecking: isCheckingHealth, refresh: recheckHealth } = useDeviceSelfTest({ device })
+
+    const busy = !device?.connected || isApplying || capturePreview.isCapturing
+
+    // Q8.8 white-balance presets (op27/op28): red gain, blue gain
+    const WB_PRESETS: Array<{ label: string; red: number; blue: number }> = [
+        { label: 'Off', red: 0, blue: 0 },           // correction disabled - raw hardware JPEG
+        { label: 'Unity', red: 256, blue: 256 },     // software encode, no WB (encoder A/B test)
+        { label: 'Dim', red: 286, blue: 326 },       // bench default for dim scenes
+        { label: 'Bright', red: 407, blue: 358 },    // bench-tuned for bright scenes
+    ]
+    const applyWbPreset = (red: number, blue: number) => {
+        updateCameraParam('wbRedGain', red)
+        updateCameraParam('wbBlueGain', blue)
+    }
+
     const [modalVisible, setModalVisible] = useState(false)
     const [selectedImage, setSelectedImage] = useState<CapturedImageInfo | null>(null)
 
@@ -77,6 +95,8 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
             
 
             <WWBleDisconnectedBanner connected={!!device?.connected} dfuInProgress={!!device?.dfuInProgress} />
+
+            <DeviceHealthBanner issues={healthIssues} onRecheck={recheckHealth} isChecking={isCheckingHealth} />
 
             <Surface style={[styles.card, { backgroundColor: colors.surface, marginTop: 8 }]} elevation={1}>
                 
@@ -105,6 +125,45 @@ export const CameraSettingsTestSection = ({ device }: Props) => {
                         disabled={!device?.connected || isApplying || capturePreview.isCapturing}
                     />
                 )}
+            </Surface>
+
+            <Surface style={[styles.card, { backgroundColor: colors.surface }]} elevation={1}>
+                <WWText variant="labelLarge">White Balance (RP3 colour camera)</WWText>
+                <WWText variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginTop: 2, marginBottom: 8 }}>
+                    Q8.8 gains: 256 = 1.0×, 0 = correction off (raw hardware JPEG). Applied on the next capture.
+                </WWText>
+                <View style={styles.presetRow}>
+                    {WB_PRESETS.map(p => {
+                        const active = cameraParams.wbRedGain === p.red && cameraParams.wbBlueGain === p.blue
+                        return (
+                            <Button
+                                key={p.label}
+                                compact
+                                mode={active ? 'contained' : 'outlined'}
+                                onPress={() => applyWbPreset(p.red, p.blue)}
+                                disabled={busy}
+                            >
+                                {p.label}
+                            </Button>
+                        )
+                    })}
+                </View>
+                <NumericInput
+                    label="Red gain (op27, 0-1024)"
+                    value={cameraParams.wbRedGain}
+                    onChange={(v: number) => updateCameraParam('wbRedGain', v)}
+                    min={0}
+                    max={1024}
+                    disabled={busy}
+                />
+                <NumericInput
+                    label="Blue gain (op28, 0-1024)"
+                    value={cameraParams.wbBlueGain}
+                    onChange={(v: number) => updateCameraParam('wbBlueGain', v)}
+                    min={0}
+                    max={1024}
+                    disabled={busy}
+                />
             </Surface>
 
 
@@ -237,6 +296,12 @@ const styles = StyleSheet.create({
     },
     inputGroup: {
         marginBottom: 16,
+    },
+    presetRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 12,
     },
     actionRow: {
         flexDirection: 'row',

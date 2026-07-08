@@ -1597,6 +1597,7 @@ export type Database = {
       firmware: {
         Row: {
           build_date: string | null
+          camera_variant: string | null
           crc_checksum: string | null
           created_at: string | null
           deleted_at: string | null
@@ -1613,6 +1614,7 @@ export type Database = {
         }
         Insert: {
           build_date?: string | null
+          camera_variant?: string | null
           crc_checksum?: string | null
           created_at?: string | null
           deleted_at?: string | null
@@ -1629,6 +1631,7 @@ export type Database = {
         }
         Update: {
           build_date?: string | null
+          camera_variant?: string | null
           crc_checksum?: string | null
           created_at?: string | null
           deleted_at?: string | null

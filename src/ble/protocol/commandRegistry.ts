@@ -318,7 +318,9 @@ export const commandRegistry = {
   enableCamera: createSingleLineCommand<boolean>(
     'enableCamera',
     () => 'AI enable',
-    /Camera Enabled/i,
+    // Firmware replies "Enabled Camera System" (CLI-commands.c prvEnable);
+    // older builds said "Camera Enabled" - accept both.
+    /Enabled Camera System|Camera Enabled/i,
     () => true,
     { timeoutMs: 10000, failureRegex: /already enabled/i }
   ),

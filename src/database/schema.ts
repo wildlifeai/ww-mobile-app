@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 387,
+    version: 390,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -418,6 +418,7 @@ export default appSchema({
             name: 'firmware',
             columns: [
                 { name: 'build_date', type: 'string', isOptional: true },
+                { name: 'camera_variant', type: 'string', isOptional: true },
                 { name: 'crc_checksum', type: 'string', isOptional: true },
                 { name: 'file_size_bytes', type: 'number', isOptional: true },
                 { name: 'is_active', type: 'boolean' },

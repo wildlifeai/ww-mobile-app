@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react'
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
 import { commandRegistry } from '../ble/protocol/commandRegistry'
+import { OP_PARAMETER } from './useDeviceSettings'
 import { log, logError, logWarn } from '../utils/logger'
 
 /**
@@ -22,6 +23,8 @@ interface UseCameraSwitchReturn {
     activeCamera: CameraVariant
     /** Camera variant recorded for the OTHER (inactive) firmware slot */
     otherSlotCamera: CameraVariant
+    /** Automatic light-based switching (op26) on? null = not read / unsupported */
+    autoSwitchOn: boolean | null
     /** Whether a slots query or a switch is in progress */
     isBusy: boolean
     /** Human-readable stage for UI feedback during a switch */
@@ -58,12 +61,15 @@ const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
  * next sleep. The BLE processor (and therefore the BLE connection) is not
  * affected - the reboot just looks like a Sleep/Wake cycle.
  *
- * Automatic light-based switching is planned firmware-side; this hook is the
- * manual path used by the capture-preview flow.
+ * This hook is the manual path used by the capture-preview flow. The firmware
+ * can also switch automatically based on light level (op26 = 1, tuned in the
+ * Light Sensor flow) - when that is on, a manual selection here may be
+ * reverted at the device's next light check, so the UI warns about it.
  */
 export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): UseCameraSwitchReturn => {
     const [activeCamera, setActiveCamera] = useState<CameraVariant>('unknown')
     const [otherSlotCamera, setOtherSlotCamera] = useState<CameraVariant>('unknown')
+    const [autoSwitchOn, setAutoSwitchOn] = useState<boolean | null>(null)
     const [isBusy, setIsBusy] = useState(false)
     const [stage, setStage] = useState('')
 
@@ -94,7 +100,19 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
             setIsBusy(false)
             setStage('')
         }
-    }, [querySlots])
+        // Also learn whether automatic (light-based) switching is on, so the
+        // UI can warn that a manual selection may be reverted. Non-fatal.
+        try {
+            if (device) {
+                const ops = await createBleSession(device).execute(() => commandRegistry.getops())
+                if (ops && ops.length > OP_PARAMETER.SLOT_SWITCH) {
+                    setAutoSwitchOn(parseInt(ops[OP_PARAMETER.SLOT_SWITCH], 10) === 1)
+                }
+            }
+        } catch (e) {
+            logWarn('[useCameraSwitch] getops (op26) query failed:', e)
+        }
+    }, [querySlots, device])
 
     const switchTo = useCallback(async (target: CameraVariant): Promise<boolean> => {
         if (!device) {
@@ -156,7 +174,7 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
         }
     }, [device, onError, querySlots])
 
-    return { activeCamera, otherSlotCamera, isBusy, stage, refresh, switchTo }
+    return { activeCamera, otherSlotCamera, autoSwitchOn, isBusy, stage, refresh, switchTo }
 }
 
 /** Send the switchslot command in its own session */

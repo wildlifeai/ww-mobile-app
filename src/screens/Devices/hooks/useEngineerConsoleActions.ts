@@ -108,6 +108,10 @@ export const useEngineerConsoleActions = ({
             navigation.navigate('StandaloneCapturePreviewScreen', { deviceId: device?.id })
             return
         }
+        if (cmdName === CommandNames.LIGHT_SENSOR) {
+            navigation.navigate('LightSensorScreen', { deviceId: device?.id })
+            return
+        }
         if (cmdName === CommandNames.UPDATE_HIMAX_FIRMWARE) {
             navigation.navigate('FirmwareUpdateScreen', { deviceId: device?.id, target: 'himax' })
             return

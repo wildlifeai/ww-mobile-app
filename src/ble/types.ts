@@ -66,6 +66,7 @@ export enum CommandNames {
 	UPDATE_HIMAX_FIRMWARE = "UPDATE_HIMAX_FIRMWARE",
 	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
 	CAMERA_SETTINGS_TEST = "CAMERA_SETTINGS_TEST",
+	LIGHT_SENSOR = "LIGHT_SENSOR",
 	FILE_TRANSFER_TEST = "FILE_TRANSFER_TEST",
 	MODEL_VALIDATION_TEST = "MODEL_VALIDATION_TEST",
 	TRANSFER_CONFIG = "TRANSFER_CONFIG",
@@ -618,6 +619,11 @@ export const COMMANDS: {
 	[CommandNames.CAMERA_SETTINGS_TEST]: {
 		name: CommandNames.CAMERA_SETTINGS_TEST,
 		description: "Open Camera Settings Test page",
+		type: 'process',
+	},
+	[CommandNames.LIGHT_SENSOR]: {
+		name: CommandNames.LIGHT_SENSOR,
+		description: "Day/night light sensor — decision, live AE readings and threshold tuning",
 		type: 'process',
 	},
 	[CommandNames.FILE_TRANSFER_TEST]: {
