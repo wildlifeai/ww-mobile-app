@@ -466,13 +466,16 @@ export const commandRegistry = {
   slots: createSingleLineCommand<{ activeSlot: number; running: string; slotA: string; slotB: string; autoSwitch: boolean }>(
     'slots',
     () => 'AI slots',
-    /Active slot (\d) running '([^']*)'\. Slot A: '([^']*)', Slot B: '([^']*)'\. Auto-switch: (on|off)/i,
+    // The '. Auto-switch: on/off' suffix only exists on op26-capable firmware;
+    // older (but still slots-capable) images omit it, so keep that group
+    // optional or the whole command fails to parse on them.
+    /Active slot (\d) running '([^']*)'\. Slot A: '([^']*)', Slot B: '([^']*)'(?:\. Auto-switch: (on|off))?/i,
     (match) => ({
       activeSlot: parseInt(match[1], 10),
       running: match[2],
       slotA: match[3],
       slotB: match[4],
-      autoSwitch: match[5].toLowerCase() === 'on',
+      autoSwitch: match[5] ? match[5].toLowerCase() === 'on' : false,
     }),
     // 8s: AI processor may need DPD wake cycle (3-5s)
     { timeoutMs: 8000, failureRegex: /Slots error/i }

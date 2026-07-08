@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 
 import { ExtendedPeripheral } from '../redux/slices/devicesSlice'
 import { createBleSession } from '../ble/session/createBleSession'
@@ -73,6 +73,14 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
     const [isBusy, setIsBusy] = useState(false)
     const [stage, setStage] = useState('')
 
+    // A camera switch polls for up to ~30s; guard against the screen unmounting
+    // mid-poll so we do not set state on an unmounted component.
+    const unmountedRef = useRef(false)
+    useEffect(() => {
+        unmountedRef.current = false
+        return () => { unmountedRef.current = true }
+    }, [])
+
     const querySlots = useCallback(async () => {
         if (!device) throw new Error('No device connected')
 
@@ -83,8 +91,10 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
         const slotVariants = [parseVariant(slots.slotA), parseVariant(slots.slotB)] as const
         const other = slotVariants[slots.activeSlot === 0 ? 1 : 0]
 
-        setActiveCamera(running)
-        setOtherSlotCamera(other)
+        if (!unmountedRef.current) {
+            setActiveCamera(running)
+            setOtherSlotCamera(other)
+        }
 
         return { running, other }
     }, [device])
@@ -97,15 +107,17 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
         } catch (e) {
             logWarn('[useCameraSwitch] slots query failed:', e)
         } finally {
-            setIsBusy(false)
-            setStage('')
+            if (!unmountedRef.current) {
+                setIsBusy(false)
+                setStage('')
+            }
         }
         // Also learn whether automatic (light-based) switching is on, so the
         // UI can warn that a manual selection may be reverted. Non-fatal.
         try {
             if (device) {
                 const ops = await createBleSession(device).execute(() => commandRegistry.getops())
-                if (ops && ops.length > OP_PARAMETER.SLOT_SWITCH) {
+                if (!unmountedRef.current && ops && ops.length > OP_PARAMETER.SLOT_SWITCH) {
                     setAutoSwitchOn(parseInt(ops[OP_PARAMETER.SLOT_SWITCH], 10) === 1)
                 }
             }
@@ -142,12 +154,14 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
             }
 
             // Flip the slot selector; the device resets at its next sleep
-            setStage(`Switching to ${target}…`)
+            if (!unmountedRef.current) setStage(`Switching to ${target}…`)
             log(`[useCameraSwitch] switching from ${running} to ${target}`)
             await session_switch(device)
 
             // Wait out the reset, then poll until the new image reports in
             for (let attempt = 1; attempt <= VERIFY_POLL_ATTEMPTS; attempt++) {
+                // Stop polling if the screen went away mid-switch
+                if (unmountedRef.current) return false
                 setStage(`Restarting camera (${attempt}/${VERIFY_POLL_ATTEMPTS})…`)
                 await delay(VERIFY_POLL_DELAY_MS)
                 try {
@@ -169,8 +183,10 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
             if (onError) onError(err)
             return false
         } finally {
-            setIsBusy(false)
-            setStage('')
+            if (!unmountedRef.current) {
+                setIsBusy(false)
+                setStage('')
+            }
         }
     }, [device, onError, querySlots])
 
