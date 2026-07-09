@@ -208,7 +208,7 @@ export const FileTransferTestScreen = () => {
         const fileCrc = crc16ccitt(file.data)
         const timestamp = new Date().toLocaleTimeString()
 
-        const modeLabel = state.transferMode === 'sliding-window' ? 'Sliding Window (2-pkt)' : 'Stop-and-Wait'
+        const modeLabel = state.transferMode === 'sliding-window' ? 'Sliding Window (12-pkt)' : 'Stop-and-Wait'
 
         const initialLogs = [
             { id: Math.random().toString(36).substr(2, 9), text: `[${timestamp}] Mode: ${modeLabel}` },
@@ -222,7 +222,11 @@ export const FileTransferTestScreen = () => {
         abortRef.current = new AbortController()
 
         try {
-            const transferWindowSize = state.transferMode === 'sliding-window' ? 2 : 1
+            // Phase 3: a deep window (12) streams packets ahead so the device is
+            // never idle waiting on the ~250ms app<->phone round-trip; throughput
+            // then becomes device-bound (~45ms/packet). Must stay <= the nRF's
+            // FILETX_FIFO_SLOTS (16) so the firmware FIFO never overflows.
+            const transferWindowSize = state.transferMode === 'sliding-window' ? 12 : 1
 
             const transferResult = await runFileTransferPipeline(device, {
                 filename: file.filename,
@@ -385,7 +389,7 @@ export const FileTransferTestScreen = () => {
                         </View>
                         <View style={styles.radioRow}>
                             <RadioButton.Item
-                                label="Sliding Window (2-packet)"
+                                label="Sliding Window (12-packet)"
                                 value="sliding-window"
                                 disabled={isTransferring || isBenchmarking}
                                 style={styles.radioItem}
