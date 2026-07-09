@@ -37,6 +37,10 @@ CREATE TABLE media_embeddings (
     OR (umap_x IS NOT NULL AND umap_y IS NOT NULL)
   ),
 
+  -- A vector and its model are set together or both NULL — a model without a vector
+  -- (or vice versa) is a broken row the search RPC can't use.
+  CONSTRAINT chk_embedding_model_presence CHECK ((embedding IS NULL) = (embedding_model IS NULL)),
+
   -- Prevent deployment drift: the (media, deployment) pair must match the media row.
   CONSTRAINT fk_media_embeddings_media
     FOREIGN KEY (media_id, deployment_id) REFERENCES media (id, deployment_id) ON DELETE CASCADE

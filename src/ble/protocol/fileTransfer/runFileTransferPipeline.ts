@@ -515,7 +515,12 @@ export async function runFileTransferPipeline(
           bleEventBus.on('textLine', onFtxAck)
 
           try {
-            while (highestAckedIndex < total - 1) {
+            // Stream until every packet has been SENT (not until every ack is
+            // in). With cumulative acks the firmware sends one ack per ~8
+            // packets, so the last <8 packets never get their own ack - they
+            // are confirmed by FILE_END / "ftx done" below (the HX processes
+            // the FIFO strictly in order, so FILE_END lands after all data).
+            while (nextToSend < total) {
               if (streamErr) throw streamErr
               if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected during transfer')
               if (abortSignal?.aborted) throw new FileTransferError('ABORTED', 'Transfer cancelled by user')
@@ -538,7 +543,9 @@ export async function runFileTransferPipeline(
                 throttledEmitProgress(highestAckedIndex)
               }
 
-              // Wait for the next ack to advance credit, or an error/stall.
+              // All sent - the tail is confirmed by FILE_END. Otherwise the
+              // window is full: wait for an ack to free credit (or error/stall).
+              if (nextToSend >= total) break
               const races: Promise<unknown>[] = [advanced, disconnectPromise, silencePromise]
               if (abortSignal) races.push(abortPromise)
               await Promise.race(races)
