@@ -2150,6 +2150,8 @@ export type Database = {
           cluster_purity: string | null
           created_at: string | null
           deployment_id: string
+          embedding: string | null
+          embedding_model: string | null
           embedding_run_id: string | null
           is_outlier: boolean
           media_id: string
@@ -2166,6 +2168,8 @@ export type Database = {
           cluster_purity?: string | null
           created_at?: string | null
           deployment_id: string
+          embedding?: string | null
+          embedding_model?: string | null
           embedding_run_id?: string | null
           is_outlier?: boolean
           media_id: string
@@ -2182,6 +2186,8 @@ export type Database = {
           cluster_purity?: string | null
           created_at?: string | null
           deployment_id?: string
+          embedding?: string | null
+          embedding_model?: string | null
           embedding_run_id?: string | null
           is_outlier?: boolean
           media_id?: string
@@ -4203,6 +4209,21 @@ export type Database = {
         Returns: boolean
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      match_media_embeddings: {
+        Args: {
+          match_count?: number
+          p_deployment_ids?: string[]
+          p_exclude_media_id?: string
+          p_model: string
+          query_embedding: string
+        }
+        Returns: {
+          cluster_id: number
+          deployment_id: string
+          distance: number
+          media_id: string
+        }[]
+      }
       my_upload_usage: {
         Args: never
         Returns: {

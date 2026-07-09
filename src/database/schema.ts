@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 390,
+    version: 394,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -596,6 +596,8 @@ export default appSchema({
                 { name: 'cluster_id', type: 'number', isOptional: true, isIndexed: true },
                 { name: 'cluster_purity', type: 'string', isOptional: true },
                 { name: 'deployment_id', type: 'string', isIndexed: true },
+                { name: 'embedding', type: 'string', isOptional: true },
+                { name: 'embedding_model', type: 'string', isOptional: true },
                 { name: 'embedding_run_id', type: 'string', isOptional: true, isIndexed: true },
                 { name: 'is_outlier', type: 'boolean' },
                 { name: 'media_id', type: 'string', isIndexed: true },
