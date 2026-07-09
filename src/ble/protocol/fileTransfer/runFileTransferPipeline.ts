@@ -490,6 +490,12 @@ export async function runFileTransferPipeline(
           let streamErr: FileTransferError | null = null
           let wake: (() => void) | null = null
 
+          // Some Android stacks silently step CONNECTION_PRIORITY_HIGH back
+          // down after ~30-60s of sustained traffic (seen as throughput decaying
+          // over a long transfer). Re-request it periodically during the stream.
+          let lastPriorityRefresh = Date.now()
+          const PRIORITY_REFRESH_MS = 20_000
+
           const onFtxAck = (event: BleEvent) => {
             if (event.type !== 'TEXT_LINE') return
             if (event.deviceId !== peripheral.id) return
@@ -528,6 +534,12 @@ export async function runFileTransferPipeline(
               // Arm the wakeup BEFORE sending, so an ack that arrives during the
               // writes still resolves it (no gap where acks are lost).
               const advanced = new Promise<void>((resolve) => { wake = resolve })
+
+              // Keep Android holding the fast connection interval (see above)
+              if (Platform.OS === 'android' && Date.now() - lastPriorityRefresh > PRIORITY_REFRESH_MS) {
+                lastPriorityRefresh = Date.now()
+                BleManager.requestConnectionPriority(peripheral.id, 1).catch(() => {})
+              }
 
               // Fill the window: keep <= windowSize packets unacknowledged.
               while (nextToSend < total && (nextToSend - (highestAckedIndex + 1)) < windowSize) {

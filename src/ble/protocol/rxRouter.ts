@@ -6,6 +6,11 @@ import { log } from '../../utils/logger';
 const BINARY_MARKER = 0x06;
 const HEADER_SIZE = 3;
 
+// Per-notification logging (hex dump + text classification) is expensive over
+// the dev bridge and accumulates cost during fast transfers (hundreds of
+// notifications/min). Flip to true only when debugging the RX path itself.
+const RX_ROUTER_VERBOSE = false;
+
 class RxRouter {
   private mainBuffers: Record<string, Buffer> = {};
   private textBuffers: Record<string, Buffer> = {};
@@ -27,7 +32,7 @@ class RxRouter {
     }
     
     this.mainBuffers[deviceId] = Buffer.concat([this.mainBuffers[deviceId], chunk]);
-    log(`[RxRouter] handleIncomingBytes: ${chunk.toString('hex')}`)
+    if (__DEV__ && RX_ROUTER_VERBOSE) log(`[RxRouter] handleIncomingBytes: ${chunk.toString('hex')}`)
     this.processBuffer(deviceId);
 
     // BLE notification boundary flush (debounced):
@@ -167,7 +172,7 @@ class RxRouter {
     // needs them as TEXT_LINE events to render the 16×16 MD grid.
     // The command pipeline already ignores unrecognised patterns.
 
-    log(`[RxRouter] classifyAndEmitText: "${line}"`);
+    if (__DEV__ && RX_ROUTER_VERBOSE) log(`[RxRouter] classifyAndEmitText: "${line}"`);
 
     // ── 3. Device Signals classification ──
     if (/^Sleep(\s+.*)?/i.test(line)) {
