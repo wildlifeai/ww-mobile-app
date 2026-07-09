@@ -33,6 +33,22 @@ export const OP_PARAMETER = {
     TEST_MODE_BITS: 18,
     IMAGES_COUNT: 19,
     IMAGES_FILE_INDEX: 20,
+    /** LED used to illuminate motion-detection frames while asleep: 0 = none, 1 = visible, 2 = IR */
+    MD_FLASH_LED: 21,
+    /** Brightness of the motion-detection illumination (percent; 16 hardware levels) */
+    MD_FLASH_BRIGHTNESS_PERCENT: 22,
+    /** AE Mean (0-255) below this means the scene is dark and the flash is needed */
+    AE_DARK_THRESHOLD: 23,
+    /** Minutes between periodic AE light checks (flash in AE mode, timelapse disabled). 0 disables */
+    AE_CHECK_INTERVAL: 24,
+    /** Last AE flash decision (0/1). Runtime state - not user-set */
+    AE_FLASH_STATE: 25,
+    /** Automatic light-based camera image switching: 0 = off (manual switchslot only), 1 = automatic (planned) */
+    SLOT_SWITCH: 26,
+    /** Software white-balance RED gain, Q8.8 (256 = 1.0x, 0 = correction off). RP3 colour camera only */
+    WB_RED_GAIN: 27,
+    /** Software white-balance BLUE gain, Q8.8 (256 = 1.0x, 0 = correction off). RP3 colour camera only */
+    WB_BLUE_GAIN: 28,
 } as const
 
 /**
@@ -68,13 +84,21 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     [OP_PARAMETER.TEST_MODE_BITS]: 0,
     [OP_PARAMETER.IMAGES_COUNT]: 0,
     [OP_PARAMETER.IMAGES_FILE_INDEX]: 0,
+    [OP_PARAMETER.MD_FLASH_LED]: 2,
+    [OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT]: 5,
+    [OP_PARAMETER.AE_DARK_THRESHOLD]: 65,
+    [OP_PARAMETER.AE_CHECK_INTERVAL]: 15,
+    [OP_PARAMETER.AE_FLASH_STATE]: 0,
+    [OP_PARAMETER.SLOT_SWITCH]: 0,
+    [OP_PARAMETER.WB_RED_GAIN]: 286,
+    [OP_PARAMETER.WB_BLUE_GAIN]: 326,
 }
 
 
 
 /**
  * Device settings interface
- * Only includes user-configurable parameters (5-13)
+ * Only includes user-configurable parameters (5-13, 21-24, 27-28)
  */
 export interface DeviceSettings {
     numPictures?: number              // Index 5 - Images per trigger (default: 1)
@@ -86,6 +110,12 @@ export interface DeviceSettings {
     motionDetectInterval?: number      // Index 11 - Motion detection interval in ms, 0=disabled (default: 0)
     flashDuration?: number             // Index 12 - Flash duration in ms (default: 100)
     flashLed?: number                  // Index 13 - LED mask: 0=off, 1=visible, 2=IR (default: 0)
+    mdFlashLed?: number                // Index 21 - MD illumination LED while asleep: 0=none, 1=visible, 2=IR (default: 2)
+    mdFlashBrightness?: number         // Index 22 - MD illumination brightness in percent (default: 5)
+    aeDarkThreshold?: number           // Index 23 - AE mean (0-255) below which the scene is dark (default: 65)
+    aeCheckInterval?: number           // Index 24 - Minutes between periodic AE light checks, 0=off (default: 15)
+    wbRedGain?: number                 // Index 27 - Software WB red gain, Q8.8 (256=1.0x, 0=off). RP3 only (default: 286)
+    wbBlueGain?: number                // Index 28 - Software WB blue gain, Q8.8 (256=1.0x, 0=off). RP3 only (default: 326)
 }
 
 export interface UseDeviceSettingsOptions {
@@ -178,6 +208,24 @@ export const useDeviceSettings = (options?: { onSettingsUpdated?: () => void, on
             }
             if (settings.flashLed !== undefined) {
                 updates.push({ index: OP_PARAMETER.FLASH_LED, value: settings.flashLed })
+            }
+            if (settings.mdFlashLed !== undefined) {
+                updates.push({ index: OP_PARAMETER.MD_FLASH_LED, value: settings.mdFlashLed })
+            }
+            if (settings.mdFlashBrightness !== undefined) {
+                updates.push({ index: OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT, value: settings.mdFlashBrightness })
+            }
+            if (settings.aeDarkThreshold !== undefined) {
+                updates.push({ index: OP_PARAMETER.AE_DARK_THRESHOLD, value: settings.aeDarkThreshold })
+            }
+            if (settings.aeCheckInterval !== undefined) {
+                updates.push({ index: OP_PARAMETER.AE_CHECK_INTERVAL, value: settings.aeCheckInterval })
+            }
+            if (settings.wbRedGain !== undefined) {
+                updates.push({ index: OP_PARAMETER.WB_RED_GAIN, value: settings.wbRedGain })
+            }
+            if (settings.wbBlueGain !== undefined) {
+                updates.push({ index: OP_PARAMETER.WB_BLUE_GAIN, value: settings.wbBlueGain })
             }
 
             // Camera is always enabled by firmware.

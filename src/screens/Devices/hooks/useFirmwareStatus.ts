@@ -18,6 +18,8 @@ export interface FirmwareComponentStatus {
     latestVersion: string | null
     latestFirmware: Firmware | null
     isOutdated: boolean
+    /** Himax only: latest active firmware per camera variant (dual-image devices) */
+    variants?: { RP3: Firmware | null; HM0360: Firmware | null }
 }
 
 interface UseFirmwareStatusOptions {
@@ -62,6 +64,9 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
             // 1. Fetch Latest Cloud Versions
             const latestBle = await ReferenceDataService.getLatestFirmware('ble')
             const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
+            // Dual-image devices hold one firmware per camera variant
+            const latestRp3 = await ReferenceDataService.getLatestHimaxByVariant('RP3')
+            const latestHm0360 = await ReferenceDataService.getLatestHimaxByVariant('HM0360')
 
             let currentBleVersion: string | null = null
             let currentHimaxVersion: string | null = null
@@ -114,6 +119,7 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                     latestVersion: latestHimax?.version || 'Unknown',
                     latestFirmware: latestHimax,
                     isOutdated: himaxOutdated,
+                    variants: { RP3: latestRp3, HM0360: latestHm0360 },
                 },
             })
 

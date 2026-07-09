@@ -318,7 +318,9 @@ export const commandRegistry = {
   enableCamera: createSingleLineCommand<boolean>(
     'enableCamera',
     () => 'AI enable',
-    /Camera Enabled/i,
+    // Firmware replies "Enabled Camera System" (CLI-commands.c prvEnable);
+    // older builds said "Camera Enabled" - accept both.
+    /Enabled Camera System|Camera Enabled/i,
     () => true,
     { timeoutMs: 10000, failureRegex: /already enabled/i }
   ),
@@ -453,6 +455,48 @@ export const commandRegistry = {
     () => 'camera_type',
     /Camera type: (.*)/i,
     (match) => match[1].trim()
+  ),
+
+  // -- Day/night dual-image camera switching --
+  // The device holds two firmware images in A/B flash slots: an HM0360 (night/IR)
+  // variant and an RP3/IMX708 (day/colour) variant. See slots/switchslot on the
+  // Himax CLI and camera_switch.c in the firmware.
+
+  /** Report the active firmware slot and the camera variant recorded in each slot. */
+  slots: createSingleLineCommand<{ activeSlot: number; running: string; slotA: string; slotB: string; autoSwitch: boolean }>(
+    'slots',
+    () => 'AI slots',
+    // The '. Auto-switch: on/off' suffix only exists on op26-capable firmware;
+    // older (but still slots-capable) images omit it, so keep that group
+    // optional or the whole command fails to parse on them.
+    /Active slot (\d) running '([^']*)'\. Slot A: '([^']*)', Slot B: '([^']*)'(?:\. Auto-switch: (on|off))?/i,
+    (match) => ({
+      activeSlot: parseInt(match[1], 10),
+      running: match[2],
+      slotA: match[3],
+      slotB: match[4],
+      autoSwitch: match[5] ? match[5].toLowerCase() === 'on' : false,
+    }),
+    // 8s: AI processor may need DPD wake cycle (3-5s)
+    { timeoutMs: 8000, failureRegex: /Slots error/i }
+  ),
+
+  /**
+   * Manually boot the firmware image in the other slot (day/night camera change).
+   * The device resets when it next sleeps, so expect a disconnect/Sleep+Wake
+   * cycle shortly after the response.
+   */
+  switchslot: createSingleLineCommand<{ newSlot: number; variant: string }>(
+    'switchslot',
+    () => 'AI switchslot',
+    /Switched to slot (\d) \('([^']*)'\)\. Reset scheduled\./i,
+    (match) => ({ newSlot: parseInt(match[1], 10), variant: match[2] }),
+    {
+      timeoutMs: 10000,
+      retryPolicy: { maxRetries: 0 },
+      idempotent: false,
+      failureRegex: /Slot switch failed/i,
+    }
   ),
   
   flashh: createSingleLineCommand<boolean>(

@@ -63,6 +63,13 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
 
                 <WWBleDisconnectedBanner connected={!!device?.connected} dfuInProgress={!!device?.dfuInProgress} />
 
+                {!capturedImageUri && !isCapturing && (
+                    <Text variant="bodySmall" style={styles.captionText}>
+                        Takes a photo with the active camera and shows it here (about 15 s) —
+                        use it to check aim, framing and image quality.
+                    </Text>
+                )}
+
                 {isCapturing && (
                     <View style={styles.progressContainer}>
                         <ProgressBar progress={captureProgress} color={theme.colors.primary} />
@@ -78,11 +85,11 @@ export const CameraViewSection = ({ device, onImageCaptured, onShowHelp }: Props
                     disabled={!device?.connected || isCapturing}
                     loading={isCapturing}
                 >
-                    <Text>{!device?.connected 
-                        ? 'Device Disconnected' 
+                    <Text>{!device?.connected
+                        ? 'Device Disconnected'
                         : isCapturing
                             ? (captureProgress > 0 ? `${captureStage} ${Math.round(captureProgress * 100)}%` : (captureStage || 'Capturing…'))
-                            : (capturedImageUri ? 'Test Again' : 'Test Camera View')}</Text>
+                            : (capturedImageUri ? '📸 Take Another Photo' : '📸 Take Test Photo')}</Text>
                 </WWButton>
                 </Card.Content>
             </Card>
@@ -110,6 +117,10 @@ const styles = StyleSheet.create({
     },
     progressContainer: {
         marginBottom: 8,
+    },
+    captionText: {
+        marginBottom: 12,
+        opacity: 0.8,
     },
     progressText: {
         textAlign: 'center',

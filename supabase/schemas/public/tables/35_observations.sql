@@ -39,6 +39,12 @@ CREATE TABLE observations (
   ),
   classifier_category text, -- 'animal' | 'person' | 'vehicle' | 'blank'
 
+  -- Per-observation rendition: this detection's bbox cropped from the frame
+  -- (Supabase Storage, media-renditions bucket). Complements the single hero
+  -- crop on media_assets.animal_crop_url so multi-animal frames get one crop per
+  -- box. NULL for whole-image/blank observations or until the crop pipeline runs.
+  crop_url text,
+
   -- Count and physical metrics
   count int CHECK (count IS NULL OR count >= 0),
   life_stage text CHECK (life_stage IS NULL OR (life_stage IN ('adult', 'subadult', 'juvenile', 'hatchling', 'unknown'))),
@@ -95,6 +101,7 @@ COMMENT ON COLUMN observations.observation_level IS 'Discriminating level: media
 COMMENT ON COLUMN observations.observation_type IS 'Category classification: animal, human, vehicle, blank, or unknown.';
 COMMENT ON COLUMN observations.taxon_id IS 'Link to taxonomical reference table.';
 COMMENT ON COLUMN observations.scientific_name IS 'Denormalised scientific name (e.g. Apteryx mantelli) for direct CamtrapDP compatibility.';
+COMMENT ON COLUMN observations.crop_url IS 'Per-observation bounding-box crop in Supabase Storage (media-renditions bucket). One crop per detection, complementing media_assets.animal_crop_url (the single hero crop). NULL for whole-image/blank observations.';
 COMMENT ON COLUMN observations.vernacular_name IS 'Denormalised common name (e.g. North Island Brown Kiwi).';
 COMMENT ON COLUMN observations.source_type IS 'Indicates whether the label came from AI, human review, imported packages, or consensus voting.';
 COMMENT ON COLUMN observations.source_model_id IS 'AI model reference if generated automatically.';

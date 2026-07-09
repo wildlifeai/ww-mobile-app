@@ -41,8 +41,8 @@ BEGIN
   END IF;
 
   -- Validate role: Must be valid project role
-  IF p_new_role NOT IN ('project_admin', 'project_member') THEN
-    RAISE EXCEPTION 'Invalid role: must be project_admin or project_member' USING ERRCODE = '22023';
+  IF p_new_role NOT IN ('project_admin', 'project_member', 'project_viewer') THEN
+    RAISE EXCEPTION 'Invalid role: must be project_admin, project_member or project_viewer' USING ERRCODE = '22023';
   END IF;
 
   -- Get current role
@@ -64,8 +64,9 @@ BEGIN
     RAISE EXCEPTION 'User already has this role' USING ERRCODE = '22023';
   END IF;
 
-  -- Last admin protection: Prevent demoting yourself if you're the last admin
-  IF p_updated_by = p_user_id AND p_new_role = 'project_member' THEN
+  -- Last admin protection: Prevent demoting yourself (to member OR viewer) if
+  -- you're the last admin, which would leave the project unmanageable.
+  IF p_updated_by = p_user_id AND p_new_role IN ('project_member', 'project_viewer') THEN
     IF NOT EXISTS (
       SELECT 1 FROM public.user_roles
       WHERE scope_type = 'project'

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
-import { Button, ActivityIndicator, ProgressBar, IconButton, RadioButton } from 'react-native-paper'
+import { Button, ActivityIndicator, ProgressBar, IconButton, RadioButton, Checkbox } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
 
@@ -21,7 +21,29 @@ const TARGET_TITLES: Record<FirmwareTarget, string> = {
 
 const TARGET_DESCRIPTIONS: Record<FirmwareTarget, string> = {
     ble: 'Downloads the latest BLE firmware from the cloud and flashes it via Nordic DFU. The device will reboot into a bootloader, apply the update, then reconnect.',
-    himax: 'Flashes the Himax AI processor using MANIFEST/output.img from the SD card. Ensure the correct firmware file is on the SD card before starting.',
+    himax: 'Updates the camera firmware. The WW500 holds two images - a colour (RP3) and a night-IR (HM0360) camera - and an update flashes both, normally from the MANIFEST folder on the SD card.',
+}
+
+// Human labels for the camera variants held in the A/B firmware slots
+const VARIANT_META: Record<'RP3' | 'HM0360', { emoji: string; label: string }> = {
+    RP3: { emoji: '🎨', label: 'Colour (RP3)' },
+    HM0360: { emoji: '🌙', label: 'Night-IR (HM0360)' },
+}
+
+/** Decode the camera variant from a website-generated 8.3 image name (R/H prefix). */
+const variantFromFilename = (filename: string): 'RP3' | 'HM0360' | null => {
+    const c = filename.trim().charAt(0).toUpperCase()
+    if (!/\.IMG$/i.test(filename)) return null
+    if (c === 'R') return 'RP3'
+    if (c === 'H') return 'HM0360'
+    return null
+}
+
+/** Compact "7 Jul 23:35" from a firmware version string like "WW500_C02 23:35:10 Jul  7 2026". */
+const shortBuild = (version?: string | null): string => {
+    if (!version) return ''
+    const m = version.match(/(\d{2}):(\d{2}):\d{2}\s+([A-Za-z]{3})\s+(\d{1,2})\s+\d{4}/)
+    return m ? `${m[4]} ${m[3]} ${m[1]}:${m[2]}` : version
 }
 
 export const FirmwareUpdateScreen = () => {
@@ -50,15 +72,23 @@ export const FirmwareUpdateScreen = () => {
         phase,
         batteryLevel,
         isBatteryLow,
+        isLikelyExternalPower,
         previousVersion,
         newVersion,
         latestFirmware,
         isPreflightDone,
         sdCardFiles,
         availableDbFirmwares,
+        runningVariant,
+        pairProgress,
         startUpdate,
         cancelUpdate,
     } = useFirmwareUpdate({ target, device })
+
+    // Low battery blocks flashing unless the user confirms the device is on
+    // USB / external power (bench setups read the battery rail as ~0-5%).
+    const [externalPowerConfirmed, setExternalPowerConfirmed] = useState(false)
+    const [showAdvanced, setShowAdvanced] = useState(false)
     
     useEffect(() => {
         // Force a re-sync of firmware data when entering this screen
@@ -85,15 +115,21 @@ export const FirmwareUpdateScreen = () => {
         const matchedSdFiles = new Set<string>()
 
         availableDbFirmwares.forEach(fw => {
-            const filename = firmware83Filename(fw.version, fw.buildDate)
+            // The variant letter is part of the on-SD filename (R/H prefix) -
+            // matching without it never finds dual-image files.
+            const filename = firmware83Filename(fw.version, fw.buildDate, fw.cameraVariant)
             const existsOnSd = sdCardFiles.some(f => f.toUpperCase() === filename.toUpperCase())
             if (existsOnSd) {
                 matchedSdFiles.add(filename.toUpperCase())
             }
 
+            const meta = fw.cameraVariant ? VARIANT_META[fw.cameraVariant as 'RP3' | 'HM0360'] : undefined
+            const display = meta
+                ? `${meta.emoji} ${meta.label} — build ${shortBuild(fw.version)}`
+                : `${fw.name || fw.version}`
             options.push({
                 key: `db-${fw.id}`,
-                label: `${fw.name || fw.version} ${existsOnSd ? '(On SD Card)' : '(Download Disabled)'}`,
+                label: `${display} ${existsOnSd ? '· on SD card' : '· cloud (download disabled)'}`,
                 type: 'db',
                 dbRecord: fw,
                 filename,
@@ -103,9 +139,13 @@ export const FirmwareUpdateScreen = () => {
 
         sdCardFiles.forEach(filename => {
             if (!matchedSdFiles.has(filename.toUpperCase())) {
+                const v = variantFromFilename(filename)
+                const meta = v ? VARIANT_META[v] : undefined
                 options.push({
                     key: `sd-${filename}`,
-                    label: `${filename} (SD Card Only)`,
+                    label: meta
+                        ? `${meta.emoji} ${meta.label} — ${filename} · on SD card`
+                        : `${filename} · on SD card only`,
                     type: 'sd',
                     filename,
                     existsOnSd: true,
@@ -114,6 +154,47 @@ export const FirmwareUpdateScreen = () => {
         })
 
         return options
+    }, [availableDbFirmwares, sdCardFiles, target])
+
+    // Latest available build per camera variant (availableDbFirmwares is newest-first)
+    const latestByVariant = useMemo(() => {
+        if (target !== 'himax') return null
+        const rp3 = availableDbFirmwares.find(fw => fw.cameraVariant === 'RP3') ?? null
+        const hm = availableDbFirmwares.find(fw => fw.cameraVariant === 'HM0360') ?? null
+        return (rp3 || hm) ? { rp3, hm } : null
+    }, [availableDbFirmwares, target])
+
+    const latestLabel = useMemo(() => {
+        if (!latestByVariant) return null
+        const { rp3, hm } = latestByVariant
+        if (rp3 && hm) {
+            const a = shortBuild(rp3.version)
+            const b = shortBuild(hm.version)
+            return a === b ? `build ${a} (both cameras)` : `🎨 ${a} · 🌙 ${b}`
+        }
+        const single = rp3 ?? hm
+        if (!single) return null
+        const meta = VARIANT_META[(single.cameraVariant as 'RP3' | 'HM0360') ?? 'RP3']
+        return `${meta.emoji} build ${shortBuild(single.version)} only`
+    }, [latestByVariant])
+
+    // Device already on the latest build (for the camera it is running)?
+    const deviceUpToDate = useMemo(() => {
+        if (!latestByVariant || !previousVersion) return false
+        const cur = previousVersion.trim()
+        return [latestByVariant.rp3?.version?.trim(), latestByVariant.hm?.version?.trim()].includes(cur)
+    }, [latestByVariant, previousVersion])
+
+    // The one-tap pair update needs both camera images: a variant-labelled DB
+    // record per camera whose (variant-lettered) file is already on the SD card.
+    const pairOnSd = useMemo(() => {
+        if (target !== 'himax') return false
+        return (['RP3', 'HM0360'] as const).every(v =>
+            availableDbFirmwares.some(fw =>
+                fw.cameraVariant === v &&
+                sdCardFiles.some(f => f.toUpperCase() === firmware83Filename(fw.version, fw.buildDate, v).toUpperCase())
+            )
+        )
     }, [availableDbFirmwares, sdCardFiles, target])
 
     const filteredOptions = useMemo(() => {
@@ -164,6 +245,10 @@ export const FirmwareUpdateScreen = () => {
 
     const isDfuMode = !!device?.name?.includes('DfuTarg')
 
+    // Flashing on a genuinely low battery risks a brick; the user can override
+    // when the device is on USB / external power (where the reading is meaningless).
+    const batteryGateOk = !isBatteryLow || externalPowerConfirmed
+
     const title = TARGET_TITLES[target]
     const description = TARGET_DESCRIPTIONS[target]
 
@@ -194,11 +279,30 @@ export const FirmwareUpdateScreen = () => {
                             <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
                                 Battery
                             </WWText>
-                            <WWText variant="bodyMedium" style={{ color: isBatteryLow ? colors.error : colors.onSurfaceVariant }}>
-                                {isDfuMode ? 'N/A (DFU)' : (batteryLevel !== null ? `${batteryLevel}%` : '—')}
-                                {isBatteryLow ? ' ⚠️ Low' : (batteryLevel !== null && !isDfuMode ? ' ✓' : '')}
+                            <WWText
+                                variant="bodyMedium"
+                                style={{ color: isLikelyExternalPower ? colors.onSurfaceVariant : (isBatteryLow ? colors.error : colors.onSurfaceVariant) }}
+                            >
+                                {isDfuMode
+                                    ? 'N/A (DFU)'
+                                    : isLikelyExternalPower
+                                        ? `${batteryLevel}% ⚡ external power?`
+                                        : (batteryLevel !== null ? `${batteryLevel}%` : '—')}
+                                {!isLikelyExternalPower && isBatteryLow ? ' ⚠️ Low' : (!isLikelyExternalPower && batteryLevel !== null && !isDfuMode ? ' ✓' : '')}
                             </WWText>
                         </View>
+
+                        {/* Current camera (himax) */}
+                        {target === 'himax' && runningVariant && !isDfuMode && (
+                            <View style={styles.preflightRow}>
+                                <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+                                    Current Camera
+                                </WWText>
+                                <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+                                    {VARIANT_META[runningVariant].emoji} {VARIANT_META[runningVariant].label}
+                                </WWText>
+                            </View>
+                        )}
 
                         {/* Current version */}
                         <View style={styles.preflightRow}>
@@ -222,8 +326,36 @@ export const FirmwareUpdateScreen = () => {
                             </View>
                         )}
 
+                        {/* Latest available (himax: the camera pair) */}
+                        {target === 'himax' && latestLabel && !isDfuMode && (
+                            <View style={styles.preflightRow}>
+                                <WWText variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
+                                    Latest Available
+                                </WWText>
+                                <WWText
+                                    variant="bodyMedium"
+                                    style={{ color: deviceUpToDate ? colors.onSurfaceVariant : colors.primary, flex: 1, textAlign: 'right' }}
+                                >
+                                    {latestLabel}{deviceUpToDate ? ' ✓ up to date' : ''}
+                                </WWText>
+                            </View>
+                        )}
+
+                        {/* Advanced: pick a specific image (expert flow) */}
+                        {target === 'himax' && !restrictToLatest && (
+                            <Button
+                                mode="text"
+                                compact
+                                onPress={() => setShowAdvanced(v => !v)}
+                                style={styles.marginTop12}
+                                disabled={isUpdating}
+                            >
+                                {showAdvanced ? '▾ Hide advanced (single image)' : '▸ Advanced: flash a single image'}
+                            </Button>
+                        )}
+
                         {/* Himax Version Selection Dropdown */}
-                        {target === 'himax' && selectOptions.length > 0 && (
+                        {target === 'himax' && (showAdvanced || restrictToLatest) && selectOptions.length > 0 && (
                             <View style={[styles.marginTop12, styles.marginBottom8]}>
                                 <WWSelect
                                     label="Select Firmware Version"
@@ -236,7 +368,7 @@ export const FirmwareUpdateScreen = () => {
                         )}
 
                         {/* Himax Source Selection */}
-                        {target === 'himax' && selectedOption && (
+                        {target === 'himax' && (showAdvanced || restrictToLatest) && selectedOption && (
                             <View style={styles.sourceSelection}>
                                 <WWText variant="titleSmall" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
                                     Firmware Source
@@ -272,12 +404,58 @@ export const FirmwareUpdateScreen = () => {
                     </View>
                 )}
 
-                {/* ── Battery Warning ── */}
+                {/* ── Battery Warning + external-power override ── */}
                 {isBatteryLow && !isComplete && (
                     <View style={[styles.warningBanner, { marginBottom: spacing }]}>
                         <WWText style={styles.warningText}>
-                            ⚠️ Battery is below 30%. Updating with low battery risks bricking the device. Charge before continuing.
+                            {isLikelyExternalPower
+                                ? `⚡ Battery reads ${batteryLevel}% — this usually means the device is running from USB / a bench supply (no battery detected). If it IS battery-powered, charge before updating.`
+                                : '⚠️ Battery is below 30%. Updating with low battery risks bricking the device. Charge before continuing.'}
                         </WWText>
+                        <View style={styles.overrideRow}>
+                            <Checkbox
+                                status={externalPowerConfirmed ? 'checked' : 'unchecked'}
+                                onPress={() => setExternalPowerConfirmed(v => !v)}
+                                color="#FFF3E0"
+                                uncheckedColor="#FFF3E0"
+                            />
+                            <WWText style={[styles.warningText, { flex: 1 }]} onPress={() => setExternalPowerConfirmed(v => !v)}>
+                                The device is on USB / external power — allow the update
+                            </WWText>
+                        </View>
+                    </View>
+                )}
+
+                {/* ── Primary action: update both cameras ── */}
+                {target === 'himax' && !restrictToLatest && !isComplete && !isUpdating && (
+                    <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
+                        <WWText variant="titleSmall" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
+                            Update both cameras
+                        </WWText>
+                        <WWText variant="bodyMedium" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
+                            Flashes the {VARIANT_META.RP3.emoji} colour and {VARIANT_META.HM0360.emoji} night-IR images
+                            {latestLabel ? ` (${latestLabel})` : ''} from the SD card in two passes (about 2 minutes).
+                            The device finishes on the camera it is using now.
+                        </WWText>
+                        {!pairOnSd && isPreflightDone && (
+                            <WWText variant="bodySmall" style={[styles.marginBottom8, { color: colors.error }]}>
+                                Both camera images were not found on the SD card — regenerate the Setup Folder on the
+                                website and copy the MANIFEST folder to the SD card, or use Advanced below.
+                            </WWText>
+                        )}
+                        <Button
+                            mode="contained"
+                            onPress={() => startUpdate({ himaxSource: 'sdcard' })}
+                            loading={!isPreflightDone}
+                            disabled={!isPreflightDone || !pairOnSd || !batteryGateOk}
+                        >
+                            <WWText>Update both cameras from SD</WWText>
+                        </Button>
+                        {!batteryGateOk && (
+                            <WWText variant="bodySmall" style={[styles.marginTop12, { color: colors.error }]}>
+                                Blocked by low battery — tick the external-power box above if bench-powered.
+                            </WWText>
+                        )}
                     </View>
                 )}
 
@@ -365,6 +543,14 @@ export const FirmwareUpdateScreen = () => {
                             Error: {errorMsg}
                         </WWText>
                     )}
+
+                    {/* Partial pair: one image landed, the other did not */}
+                    {isFailed && pairProgress && pairProgress.done > 0 && pairProgress.done < pairProgress.total && (
+                        <WWText style={[styles.marginTop12, { color: '#FFCC80' }]}>
+                            ⚠️ {pairProgress.done} of {pairProgress.total} camera images updated — the device is usable
+                            but the cameras are on different builds. Press Retry to finish the pair.
+                        </WWText>
+                    )}
                 </View>
 
                 {/* ── Success Panel ── */}
@@ -373,9 +559,17 @@ export const FirmwareUpdateScreen = () => {
                         <View style={styles.successHeader}>
                             <IconButton icon="check-circle" iconColor="#A5D6A7" size={28} style={styles.margin0} />
                             <WWText variant="titleMedium" style={styles.successTitle}>
-                                Firmware Updated Successfully
+                                {target === 'himax' && pairProgress?.total === 2 && pairProgress.done === 2
+                                    ? 'Both Cameras Updated'
+                                    : 'Firmware Updated Successfully'}
                             </WWText>
                         </View>
+
+                        {target === 'himax' && runningVariant && (
+                            <WWText variant="bodyMedium" style={styles.successText}>
+                                Now running: {VARIANT_META[runningVariant].emoji} {VARIANT_META[runningVariant].label}
+                            </WWText>
+                        )}
 
                         {previousVersion && (
                             <WWText variant="bodyMedium" style={styles.successText}>
@@ -400,18 +594,22 @@ export const FirmwareUpdateScreen = () => {
                     </View>
                 )}
 
-                {/* ── Action Buttons ── */}
-                {!isComplete && !isUpdating && (
+                {/* ── Action Buttons ──
+                    BLE: the single Start button.
+                    Himax: shown for the advanced single-image flow (or restrictToLatest),
+                    and after a failure so Retry is always reachable. The primary
+                    pair flow has its own button above. */}
+                {!isComplete && !isUpdating && (target === 'ble' || showAdvanced || restrictToLatest || isFailed) && (
                     <Button
                         mode="contained"
-                        onPress={() => startUpdate({ 
-                            himaxSource, 
-                            selectedFirmware: selectedOption?.type === 'db' ? selectedOption.dbRecord : selectedOption?.filename 
+                        onPress={() => startUpdate({
+                            himaxSource,
+                            selectedFirmware: selectedOption?.type === 'db' ? selectedOption.dbRecord : selectedOption?.filename
                         })}
                         loading={!isPreflightDone}
-                        disabled={!isPreflightDone || (target === 'himax' && (!selectedOption || himaxSource === 'download'))}
+                        disabled={!isPreflightDone || !batteryGateOk || (target === 'himax' && (!selectedOption || himaxSource === 'download'))}
                     >
-                        <WWText>{isFailed ? 'Retry Update' : 'Start Update'}</WWText>
+                        <WWText>{isFailed ? 'Retry Update' : (target === 'himax' ? 'Flash Selected Image Only' : 'Start Update')}</WWText>
                     </Button>
                 )}
 
@@ -449,6 +647,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#BF360C',
         padding: 12,
         borderRadius: 8,
+    },
+    overrideRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
     },
     marginTop12: {
         marginTop: 12,

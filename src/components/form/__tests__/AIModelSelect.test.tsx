@@ -108,6 +108,7 @@ describe("AIModelSelect", () => {
 					processing_log: null,
 					status: "validated",
 					version_number: 1,
+				label_map: null,
 				},
 				{
 					id: "223e4567-e89b-12d3-a456-426614174001",
@@ -132,6 +133,7 @@ describe("AIModelSelect", () => {
 					processing_log: null,
 					status: "validated",
 					version_number: 2,
+				label_map: null,
 				},
 			]
 
@@ -180,6 +182,7 @@ describe("AIModelSelect", () => {
 					processing_log: null,
 					status: "validated",
 					version_number: 1,
+				label_map: null,
 				},
 			]
 
@@ -344,6 +347,7 @@ describe("AIModelSelect", () => {
 					processing_log: null,
 					status: "validated",
 					version_number: 1,
+				label_map: null,
 				},
 			]
 
@@ -470,6 +474,7 @@ describe("AIModelSelect", () => {
 					processing_log: null,
 					status: "validated",
 					version_number: 1,
+				label_map: null,
 				},
 			]
 

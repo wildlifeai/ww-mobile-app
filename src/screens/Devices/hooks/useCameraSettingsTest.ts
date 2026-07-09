@@ -13,7 +13,11 @@ export interface CameraTestParams {
     ledBrightness: number
     flashDuration: number
     flashLed: number
+    wbRedGain: number      // op27, Q8.8 (256 = 1.0x, 0 = correction off). RP3 colour camera only
+    wbBlueGain: number     // op28, Q8.8 (256 = 1.0x, 0 = correction off). RP3 colour camera only
 }
+
+// (The day/night light-sensor state moved to its own flow - see useLightSensor.ts)
 
 export interface AEData {
     integration: string
@@ -37,7 +41,16 @@ export interface UseCameraSettingsTestOptions {
 const DEFAULT_PARAMS: CameraTestParams = {
     ledBrightness: 5,
     flashDuration: 100,
-    flashLed: 0
+    flashLed: 0,
+    wbRedGain: 286,
+    wbBlueGain: 326
+}
+
+/** Parse one op value out of a getops array; returns fallback when absent/non-numeric (older firmware). */
+const opInt = (ops: string[], index: number, fallback: number): number => {
+    if (!ops || ops.length <= index) return fallback
+    const v = parseInt(ops[index], 10)
+    return isNaN(v) ? fallback : v
 }
 
 export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) => {
@@ -125,6 +138,31 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
         return () => { bleEventBus.removeListener('textLine', messageListener); }
     }, [device])
 
+    // Seed the UI once per mount from the device's real op values, so the lab
+    // shows what the camera is actually using (not just factory defaults).
+    const didSeedRef = useRef(false)
+    useEffect(() => {
+        if (!device?.connected || didSeedRef.current) return
+        didSeedRef.current = true
+        const seed = async () => {
+            try {
+                const session = createBleSession(device)
+                const ops = await session.execute(() => commandRegistry.getops())
+                setCameraParams(prev => ({
+                    ...prev,
+                    ledBrightness: opInt(ops, OP_PARAMETER.LED_BRIGHTNESS, prev.ledBrightness),
+                    flashLed: opInt(ops, OP_PARAMETER.FLASH_LED, prev.flashLed),
+                    wbRedGain: opInt(ops, OP_PARAMETER.WB_RED_GAIN, prev.wbRedGain),
+                    wbBlueGain: opInt(ops, OP_PARAMETER.WB_BLUE_GAIN, prev.wbBlueGain)
+                }))
+            } catch (e) {
+                // Non-fatal: the lab still works with defaults; values sync on Apply.
+                logError('[CameraSettingsTest] Failed to seed params from device:', e)
+            }
+        }
+        seed()
+    }, [device])
+
     const updateCameraParam = useCallback(<K extends keyof CameraTestParams>(key: K, value: CameraTestParams[K]) => {
         setCameraParams(prev => {
             return { ...prev, [key]: value }
@@ -159,6 +197,16 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
             }
             if (currentOps[OP_PARAMETER.FLASH_LED] !== String(cameraParams.flashLed)) {
                 await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.FLASH_LED, value: cameraParams.flashLed }))
+            }
+
+            // White-balance gains (op27/28) - only meaningful on the RP3 colour
+            // camera; harmless no-ops on HM0360 builds. 0 disables correction.
+            setApplyStage('Applying white balance...')
+            if (currentOps[OP_PARAMETER.WB_RED_GAIN] !== String(cameraParams.wbRedGain)) {
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.WB_RED_GAIN, value: cameraParams.wbRedGain }))
+            }
+            if (currentOps[OP_PARAMETER.WB_BLUE_GAIN] !== String(cameraParams.wbBlueGain)) {
+                await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.WB_BLUE_GAIN, value: cameraParams.wbBlueGain }))
             }
 
             // 2. Wait for the device to naturally enter DPD (Sleep).

@@ -8,7 +8,7 @@ CREATE TABLE project_invitations (
   inviter_id UUID NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
   invitee_email TEXT NOT NULL,
   invitee_id UUID REFERENCES auth.users (id) ON DELETE SET NULL,
-  role TEXT NOT NULL CHECK (role IN ('project_admin', 'project_member')),
+  role TEXT NOT NULL CHECK (role IN ('project_admin', 'project_member', 'project_viewer')),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'expired')),
   expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + INTERVAL '30 days'),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

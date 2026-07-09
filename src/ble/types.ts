@@ -42,6 +42,8 @@ export enum CommandNames {
 	loadmodel = "loadmodel",
 	wake = "wake",
 	camera_type = "camera_type",
+	slots = "slots",
+	switchslot = "switchslot",
 	md = "md",
 	setdid = "setdid",
 	getdid = "getdid",
@@ -64,6 +66,7 @@ export enum CommandNames {
 	UPDATE_HIMAX_FIRMWARE = "UPDATE_HIMAX_FIRMWARE",
 	MOTION_DETECTION_PREVIEW = "MOTION_DETECTION_PREVIEW",
 	CAMERA_SETTINGS_TEST = "CAMERA_SETTINGS_TEST",
+	LIGHT_SENSOR = "LIGHT_SENSOR",
 	FILE_TRANSFER_TEST = "FILE_TRANSFER_TEST",
 	MODEL_VALIDATION_TEST = "MODEL_VALIDATION_TEST",
 	TRANSFER_CONFIG = "TRANSFER_CONFIG",
@@ -436,6 +439,20 @@ export const COMMANDS: {
 		description: "Get connected camera type",
 		type: 'command',
 	},
+	[CommandNames.slots]: {
+		name: CommandNames.slots,
+		readCommand: "AI slots",
+		readRegex: /Active slot (\d) running '([^']*)'/i,
+		description: "Report firmware slots and the camera variant in each (day/night switching)",
+		type: 'command',
+	},
+	[CommandNames.switchslot]: {
+		name: CommandNames.switchslot,
+		readCommand: "AI switchslot",
+		readRegex: /(Switched to slot \d|Slot switch failed)/i,
+		description: "Boot the other firmware slot (day/night camera change); device resets at next sleep",
+		type: 'command',
+	},
 	[CommandNames.inithm0360]: {
 		name: CommandNames.inithm0360,
 		writeCommand: () => 'AI inithm0360',
@@ -602,6 +619,11 @@ export const COMMANDS: {
 	[CommandNames.CAMERA_SETTINGS_TEST]: {
 		name: CommandNames.CAMERA_SETTINGS_TEST,
 		description: "Open Camera Settings Test page",
+		type: 'process',
+	},
+	[CommandNames.LIGHT_SENSOR]: {
+		name: CommandNames.LIGHT_SENSOR,
+		description: "Day/night light sensor — decision, live AE readings and threshold tuning",
 		type: 'process',
 	},
 	[CommandNames.FILE_TRANSFER_TEST]: {

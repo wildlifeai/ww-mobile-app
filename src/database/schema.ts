@@ -12,7 +12,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-    version: 384,
+    version: 394,
     tables: [
         tableSchema({
             name: 'account_deletion_requests',
@@ -91,9 +91,10 @@ export default appSchema({
                 { name: 'file_hash', type: 'string', isOptional: true },
                 { name: 'file_size_bytes', type: 'number', isOptional: true },
                 { name: 'file_type', type: 'string', isOptional: true },
-                { name: 'labels_path', type: 'string' },
+                { name: 'label_map', type: 'string', isOptional: true },
+                { name: 'labels_path', type: 'string', isOptional: true },
                 { name: 'model_family_id', type: 'string', isOptional: true, isIndexed: true },
-                { name: 'model_path', type: 'string' },
+                { name: 'model_path', type: 'string', isOptional: true },
                 { name: 'name', type: 'string' },
                 { name: 'organisation_id', type: 'string', isIndexed: true },
                 { name: 'processing_log', type: 'string', isOptional: true },
@@ -417,6 +418,7 @@ export default appSchema({
             name: 'firmware',
             columns: [
                 { name: 'build_date', type: 'string', isOptional: true },
+                { name: 'camera_variant', type: 'string', isOptional: true },
                 { name: 'crc_checksum', type: 'string', isOptional: true },
                 { name: 'file_size_bytes', type: 'number', isOptional: true },
                 { name: 'is_active', type: 'boolean' },
@@ -594,6 +596,8 @@ export default appSchema({
                 { name: 'cluster_id', type: 'number', isOptional: true, isIndexed: true },
                 { name: 'cluster_purity', type: 'string', isOptional: true },
                 { name: 'deployment_id', type: 'string', isIndexed: true },
+                { name: 'embedding', type: 'string', isOptional: true },
+                { name: 'embedding_model', type: 'string', isOptional: true },
                 { name: 'embedding_run_id', type: 'string', isOptional: true, isIndexed: true },
                 { name: 'is_outlier', type: 'boolean' },
                 { name: 'media_id', type: 'string', isIndexed: true },
@@ -690,6 +694,7 @@ export default appSchema({
                 { name: 'cluster_id', type: 'number', isOptional: true, isIndexed: true },
                 { name: 'confidence', type: 'number', isOptional: true },
                 { name: 'count', type: 'number', isOptional: true },
+                { name: 'crop_url', type: 'string', isOptional: true },
                 { name: 'deployment_id', type: 'string', isIndexed: true },
                 { name: 'embedding_run_id', type: 'string', isOptional: true, isIndexed: true },
                 { name: 'individual_id', type: 'string', isOptional: true, isIndexed: true },
@@ -884,6 +889,22 @@ export default appSchema({
                 { name: 'scientific_name', type: 'string' },
                 { name: 'species', type: 'string', isOptional: true },
                 { name: 'status', type: 'string' },
+                // System & Sync Fields
+                { name: 'created_at', type: 'number' },
+                { name: 'updated_at', type: 'number' },
+                { name: 'deleted_at', type: 'number' },
+                { name: '_version', type: 'number' },
+                { name: '_custom_sync_status', type: 'string', isOptional: true },
+                { name: 'modified_by', type: 'string' },
+            ],
+        }),
+        tableSchema({
+            name: 'upload_quotas',
+            columns: [
+                { name: 'max_compute_seconds', type: 'number', isOptional: true },
+                { name: 'max_photos', type: 'number', isOptional: true },
+                { name: 'max_storage_bytes', type: 'number', isOptional: true },
+                { name: 'user_id', type: 'string', isIndexed: true },
                 // System & Sync Fields
                 { name: 'created_at', type: 'number' },
                 { name: 'updated_at', type: 'number' },

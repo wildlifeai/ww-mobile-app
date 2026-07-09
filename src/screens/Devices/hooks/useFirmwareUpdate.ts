@@ -106,8 +106,12 @@ const MONTH_MAP: Record<string, number> = {
     Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12
 };
 
-export function firmware83Filename(version?: string | null, buildDate?: string | null): string {
-    if (!version) return 'OUTPUT.IMG';
+/** First filename character per camera variant: R........IMG / H........IMG */
+const VARIANT_LETTER: Record<string, string> = { RP3: 'R', HM0360: 'H' };
+
+export function firmware83Filename(version?: string | null, buildDate?: string | null, variant?: string | null): string {
+    const letter = variant ? VARIANT_LETTER[variant] : undefined;
+    if (!version) return letter ? `${letter}_OUT.IMG` : 'OUTPUT.IMG';
     try {
         // Match HH:MM:SS Mon DD YYYY
         // Note: version string looks like: "WW500_C02 10:59:43 May 20 2026"
@@ -127,7 +131,10 @@ export function firmware83Filename(version?: string | null, buildDate?: string |
                 const h = HOUR_CHAR[hour];
                 const mm = minute.toString().padStart(2, '0');
                 if (m && h) {
-                    return `${yy}${m}${dd}${h}${mm}.IMG`;
+                    // With a variant, the letter replaces the first year digit so the
+                    // two images of a dual-image MANIFEST have distinct names
+                    // (must match firmware_83_filename in ww-website manifest.py)
+                    return letter ? `${letter}${year % 10}${m}${dd}${h}${mm}.IMG` : `${yy}${m}${dd}${h}${mm}.IMG`;
                 }
             }
         }
@@ -146,7 +153,7 @@ export function firmware83Filename(version?: string | null, buildDate?: string |
                     const m = MONTH_CHAR[monthNum];
                     const dd = day.toString().padStart(2, '0');
                     if (m) {
-                        return `${yy}${m}${dd}000.IMG`;
+                        return letter ? `${letter}${year % 10}${m}${dd}000.IMG` : `${yy}${m}${dd}000.IMG`;
                     }
                 }
             }
@@ -154,7 +161,7 @@ export function firmware83Filename(version?: string | null, buildDate?: string |
     } catch (e) {
         logWarn('[FW Update] Failed to parse 8.3 filename:', e);
     }
-    return 'OUTPUT.IMG';
+    return letter ? `${letter}_OUT.IMG` : 'OUTPUT.IMG';
 }
 
 function parseSdCardFiles(lines: string[]): string[] {
@@ -280,6 +287,13 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     const [sdCardFiles, setSdCardFiles] = useState<string[]>([])
     const [availableDbFirmwares, setAvailableDbFirmwares] = useState<Firmware[]>([])
     const [isPreflightDone, setIsPreflightDone] = useState(false)
+    // Which camera variant the device is running right now (from 'slots'), and
+    // dual-image pass progress ({total, done}) for the pair-update UI.
+    const [runningVariant, setRunningVariant] = useState<'RP3' | 'HM0360' | null>(null)
+    const [pairProgress, setPairProgress] = useState<{ total: number; done: number } | null>(null)
+    // True while waiting for the device to come back between the two pair
+    // passes - drives an honest status label instead of "pre-flight checks".
+    const [interPassWait, setInterPassWait] = useState(false)
     const preflightDoneRef = useRef(false)
 
     const unmountedRef = useRef(false)
@@ -374,6 +388,19 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                     } catch (e) {
                         logWarn('[FW Update] dir command failed:', e)
                         if (!cancelled) setSdCardFiles([])
+                    }
+
+                    try {
+                        // Which camera image is running now - orients the user and
+                        // lets the pair update report what it will finish on.
+                        const slots = await session.execute(() => commandRegistry.slots())
+                        const running = /RP3/i.test(slots.running) ? 'RP3'
+                            : /HM0360/i.test(slots.running) ? 'HM0360' : null
+                        if (!cancelled) setRunningVariant(running)
+                        log(`[FW Update] Running camera variant: ${running ?? 'unknown'}`)
+                    } catch (e) {
+                        // Older firmware without 'slots' - non-fatal
+                        logWarn('[FW Update] slots query failed (older firmware?):', e)
                     }
                 }
             } else {
@@ -580,34 +607,27 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
     // ── Himax flow ─────────────────────────────────────────────────
 
-    const runHimaxUpdate = useCallback(async (source: HimaxFirmwareSource = 'sdcard', selectedFirmware?: Firmware | string) => {
+    /**
+     * Flash a single Himax firmware image (one A/B slot) and wait for the
+     * device to reset into it. The caller decides which image(s) and in
+     * which order - see runHimaxUpdate.
+     */
+    const flashHimaxImage = useCallback(async (
+        source: HimaxFirmwareSource,
+        fwToFlash: Firmware | null,
+        filenameToFlash: string,
+        passLabel: string,
+    ) => {
         if (!device?.connected) throw new Error('Device disconnected.')
 
         const session = createBleSession(device)
 
-        let fwToFlash: Firmware | null = null
-        let filenameToFlash = 'output.img'
-
-        if (selectedFirmware) {
-            if (typeof selectedFirmware === 'string') {
-                filenameToFlash = selectedFirmware
-            } else {
-                fwToFlash = selectedFirmware
-                filenameToFlash = firmware83Filename(selectedFirmware.version, selectedFirmware.buildDate)
-            }
-        } else {
-            fwToFlash = latestFirmware
-            if (latestFirmware) {
-                filenameToFlash = firmware83Filename(latestFirmware.version, latestFirmware.buildDate)
-            }
-        }
-
         if (source === 'download') {
             if (!fwToFlash) throw new Error('No firmware available for download. Sync reference data first.')
-            
+
             // 1. Download firmware
             advancePhase('downloading')
-            appendLog('Downloading firmware package...')
+            appendLog(`${passLabel}Downloading firmware package...`)
             const localUri = await FirmwareService.ensureFirmwareDownloaded(fwToFlash, {
                 signal: abortControllerRef.current?.signal,
                 onStateChange: (state) => {
@@ -617,16 +637,16 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                     if (!unmountedRef.current) setDownloadProgress(data)
                 }
             })
-            appendLog(`Downloaded: ${fwToFlash.version}`)
+            appendLog(`${passLabel}Downloaded: ${fwToFlash.version}`)
 
             const imgName = filenameToFlash;
-            appendLog(`Target firmware filename: ${imgName}`);
+            appendLog(`${passLabel}Target firmware filename: ${imgName}`);
 
             // 2. Transfer firmware to SD card
             advancePhase('transferring')
-            appendLog('Transferring firmware to device SD card...')
+            appendLog(`${passLabel}Transferring firmware to device SD card...`)
             const configBytes = await FirmwareService.readFirmwareAsBytes(localUri)
-            
+
             let computedCrc: string | undefined;
 
             if (configBytes) {
@@ -638,30 +658,30 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                         if (!unmountedRef.current) setFileTransferProgress(p)
                     }
                 })
-                
+
                 // Convert numeric CRC back to 0xNNNN hex string to match firmware CLI expectations
                 if (transferResult && typeof transferResult.crc === 'number') {
                     computedCrc = '0x' + transferResult.crc.toString(16).toUpperCase().padStart(4, '0')
-                    appendLog(`Transfer complete. Local CRC: ${computedCrc}`)
+                    appendLog(`${passLabel}Transfer complete. Local CRC: ${computedCrc}`)
                 } else {
-                    appendLog('Transfer complete.')
+                    appendLog(`${passLabel}Transfer complete.`)
                 }
             } else {
                 throw new Error('Failed to read firmware bytes')
             }
 
             advancePhase('sending')
-            appendLog('Sending firmware flash command...')
+            appendLog(`${passLabel}Sending firmware flash command...`)
 
             await session.execute(() => commandRegistry.aifirmware(imgName, computedCrc))
         } else {
             // Source is 'sdcard'
             advancePhase('sending')
-            appendLog('Sending firmware flash command...')
+            appendLog(`${passLabel}Sending firmware flash command...`)
 
             const targetCrc = fwToFlash?.crcChecksum || undefined
             if (targetCrc) {
-                appendLog(`Using database CRC for flash: ${targetCrc}`)
+                appendLog(`${passLabel}Using database CRC for flash: ${targetCrc}`)
             }
 
             await session.execute(() => commandRegistry.aifirmware(filenameToFlash, targetCrc))
@@ -669,15 +689,15 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
         if (unmountedRef.current) return
 
-        appendLog('Firmware write complete. Waiting for device to sleep...')
+        appendLog(`${passLabel}Firmware write complete. Waiting for device to sleep...`)
 
         // Wait for the Himax to finish and send Sleep signal
         await session.waitForSleep(5000)
         if (unmountedRef.current) return
 
-        // New flow: send AI reset to reload parameters, wait, then aiver
+        // Send AI reset to boot the newly-written slot and reload parameters
         advancePhase('rebooting')
-        appendLog('Sending AI reset to reload parameters...')
+        appendLog(`${passLabel}Sending AI reset to boot the new image...`)
         try {
             const resetSession = createBleSession(device)
             await resetSession.execute(() => commandRegistry.aireset())
@@ -685,24 +705,192 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             logWarn('[FW Update] AI reset command error/timeout (may be expected):', e)
         }
 
-        appendLog('Waiting for AI processor to reboot...')
+        appendLog(`${passLabel}Waiting for AI processor to reboot...`)
         await new Promise(r => setTimeout(r, 4000))
-        if (unmountedRef.current) return
+    }, [device, advancePhase, appendLog])
 
-        // Query new version — BLE is still connected, no reconnect needed
-        advancePhase('verifying')
-        appendLog('Checking new AI firmware version...')
-        try {
-            const verSession = createBleSession(device)
-            const ver = await verSession.execute(() => commandRegistry.aiver())
-            if (!unmountedRef.current) setNewVersion(ver)
-            appendLog(`New version: ${ver}`)
-        } catch (e) {
-            logWarn('[FW Update] Post-update version query failed:', e)
+    /**
+     * Poll the AI processor with a light command until it responds, or the
+     * timeout elapses. Used between the two pair passes: the AI reset that
+     * boots the freshly-written slot drops the BLE session ("Session Reset"
+     * from bleTransport.clearAll), so a fixed delay is not enough - the next
+     * flash command must wait until the device actually answers again.
+     */
+    const waitForAiReady = useCallback(async (timeoutMs: number) => {
+        const deadline = Date.now() + timeoutMs
+        let attempt = 0
+        while (Date.now() < deadline) {
+            if (unmountedRef.current) return
+            attempt++
+            try {
+                const s = createBleSession(device!)
+                await s.execute(() => commandRegistry.aiver())
+                log(`[FW Update] AI readiness poll ${attempt}: online`)
+                appendLog('AI processor is back online.')
+                return
+            } catch (e: any) {
+                log(`[FW Update] AI readiness poll ${attempt} failed: ${e?.message}`)
+                await new Promise(r => setTimeout(r, 2500))
+            }
+        }
+        // Proceed anyway - the flash command itself will fail loudly if the
+        // device really is gone, and the retry wrapper gets a second chance.
+        appendLog('AI processor slow to respond - attempting next image anyway...')
+    }, [device, appendLog])
+
+    /**
+     * Update the Himax firmware.
+     *
+     * The WW500 holds TWO firmware images in A/B flash slots (RP3 colour
+     * camera and HM0360 night/IR camera). Each `AI firmware` command writes
+     * the INACTIVE slot and switches to it, so a full update is two passes -
+     * ordered so the device finishes on the camera variant it started with.
+     *
+     * Falls back to the single-image flow when variant-labelled records are
+     * not available (legacy firmware database) or when an explicit SD-card
+     * filename is given.
+     */
+    const runHimaxUpdate = useCallback(async (source: HimaxFirmwareSource = 'sdcard', selectedFirmware?: Firmware | string) => {
+        if (!device?.connected) throw new Error('Device disconnected.')
+
+        const verifyAndComplete = async () => {
+            if (unmountedRef.current) return
+            advancePhase('verifying')
+            appendLog('Checking new AI firmware version...')
+            try {
+                const verSession = createBleSession(device)
+                const ver = await verSession.execute(() => commandRegistry.aiver())
+                if (!unmountedRef.current) setNewVersion(ver)
+                appendLog(`New version: ${ver}`)
+            } catch (e) {
+                logWarn('[FW Update] Post-update version query failed:', e)
+            }
+            try {
+                // Re-read which camera image the device finished on, so the
+                // success banner can say "now running ..." with confidence.
+                const slotSession = createBleSession(device)
+                const slots = await slotSession.execute(() => commandRegistry.slots())
+                const running = /RP3/i.test(slots.running) ? 'RP3'
+                    : /HM0360/i.test(slots.running) ? 'HM0360' : null
+                if (!unmountedRef.current && running) setRunningVariant(running)
+            } catch (e) {
+                logWarn('[FW Update] Post-update slots query failed:', e)
+            }
+            advancePhase('complete')
         }
 
-        advancePhase('complete')
-    }, [device, latestFirmware, advancePhase, appendLog])
+        // Explicit SD-card filename: single-pass legacy behaviour (the variant
+        // cannot be known from a bare filename)
+        if (typeof selectedFirmware === 'string') {
+            if (!unmountedRef.current) setPairProgress({ total: 1, done: 0 })
+            await flashHimaxImage(source, null, selectedFirmware, '')
+            if (!unmountedRef.current) setPairProgress({ total: 1, done: 1 })
+            await verifyAndComplete()
+            return
+        }
+
+        // Resolve the image pair
+        const primary: Firmware | null = selectedFirmware ?? latestFirmware
+        let pair: Firmware[] = []
+
+        if (primary?.cameraVariant) {
+            const otherVariant = primary.cameraVariant === 'RP3' ? 'HM0360' : 'RP3'
+            const other = await ReferenceDataService.getLatestHimaxByVariant(otherVariant as 'RP3' | 'HM0360')
+            pair = other ? [other, primary] : [primary]
+        } else {
+            // No variant on the chosen record (or none chosen) - try to build the
+            // pair from the latest of each variant, else legacy single image
+            const rp3 = await ReferenceDataService.getLatestHimaxByVariant('RP3')
+            const hm = await ReferenceDataService.getLatestHimaxByVariant('HM0360')
+            if (rp3 && hm) {
+                pair = [hm, rp3]
+            } else if (primary) {
+                pair = [primary]
+            } else {
+                throw new Error('No firmware available. Sync reference data first.')
+            }
+        }
+
+        if (pair.length === 1) {
+            appendLog('Only one camera variant available - single-image update')
+        } else {
+            // Each flash switches the device to the newly-written slot, so flash
+            // the OTHER variant first and the device's CURRENT variant last -
+            // the device then finishes on the (updated) camera it started with.
+            try {
+                const slotSession = createBleSession(device)
+                const slots = await slotSession.execute(() => commandRegistry.slots())
+                const running = /RP3/i.test(slots.running) ? 'RP3'
+                    : /HM0360/i.test(slots.running) ? 'HM0360' : null
+                appendLog(`Device is running the ${running ?? 'unknown'} camera image`)
+                if (running && pair[0].cameraVariant === running) {
+                    pair = [pair[1], pair[0]]
+                }
+            } catch (e) {
+                // Older firmware without the slots command - order doesn't matter
+                // for correctness, only for which camera ends up active
+                logWarn('[FW Update] slots query failed (older firmware?) - using default order:', e)
+            }
+        }
+
+        if (!unmountedRef.current) setPairProgress({ total: pair.length, done: 0 })
+
+        // Errors from a transient link drop (the AI reset between passes tears
+        // the BLE session down) - retried once after re-establishing contact.
+        const TRANSIENT_ERROR = /Session Reset|DEVICE_DISCONNECTED|time.?out/i
+
+        for (let i = 0; i < pair.length; i++) {
+            const fw = pair[i]
+            const passLabel = pair.length === 2
+                ? `[${i + 1}/2 ${fw.cameraVariant ?? 'unknown'}] `
+                : ''
+            const filename = firmware83Filename(fw.version, fw.buildDate, fw.cameraVariant)
+
+            // Update the completed-pass count BEFORE the boundary wait/phase
+            // rewind, so the overall progress bar never runs backwards at the
+            // pass boundary (it jumps from ~41% to 51%, not down to ~10%).
+            if (!unmountedRef.current) setPairProgress({ total: pair.length, done: i })
+
+            if (i > 0) {
+                // The phase machine is forward-only within a pass; rewind it for
+                // the second image so downloading/transferring show correctly
+                phaseRef.current = 'preflight'
+                if (!unmountedRef.current) setPhase('preflight')
+                appendLog(`Starting second image (${fw.cameraVariant ?? 'unknown'})...`)
+                // The previous pass ended in an AI reset; wait until the device
+                // answers again rather than racing the reboot.
+                if (!unmountedRef.current) setInterPassWait(true)
+                try {
+                    await waitForAiReady(25000)
+                } finally {
+                    if (!unmountedRef.current) setInterPassWait(false)
+                }
+                if (unmountedRef.current) return
+            }
+
+            try {
+                await flashHimaxImage(source, fw, filename, passLabel)
+            } catch (e: any) {
+                if (!TRANSIENT_ERROR.test(String(e?.message ?? e))) throw e
+                appendLog(`${passLabel}Link dropped during flash - reconnecting and retrying once...`)
+                if (!unmountedRef.current) setInterPassWait(true)
+                try {
+                    await waitForAiReady(25000)
+                } finally {
+                    if (!unmountedRef.current) setInterPassWait(false)
+                }
+                if (unmountedRef.current) return
+                phaseRef.current = 'preflight'
+                if (!unmountedRef.current) setPhase('preflight')
+                await flashHimaxImage(source, fw, filename, passLabel)
+            }
+            if (unmountedRef.current) return
+        }
+
+        if (!unmountedRef.current) setPairProgress({ total: pair.length, done: pair.length })
+
+        await verifyAndComplete()
+    }, [device, latestFirmware, advancePhase, appendLog, flashHimaxImage, waitForAiReady])
 
     // ── Public start ───────────────────────────────────────────────
 
@@ -715,6 +903,8 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         setFileTransferProgress(null)
         setDownloadProgress(null)
         setDownloadState('idle')
+        setPairProgress(null)
+        setInterPassWait(false)
         phaseRef.current = 'idle'
         setPhase('idle')
         
@@ -745,7 +935,14 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     // ── Derived values ─────────────────────────────────────────────
 
     const labels = target === 'ble' ? BLE_PHASE_LABELS : HIMAX_PHASE_LABELS
-    const statusLabel = labels[phase]
+    // Pass-aware status for dual-image updates: an honest boundary message while
+    // waiting for the device to restart, and an "Image N of M" prefix otherwise.
+    let statusLabel = labels[phase]
+    if (target === 'himax' && isUpdating && pairProgress && pairProgress.total > 1) {
+        statusLabel = interPassWait
+            ? `Image ${pairProgress.done} of ${pairProgress.total} installed — waiting for the camera to restart…`
+            : `[Image ${Math.min(pairProgress.done + 1, pairProgress.total)} of ${pairProgress.total}] ${labels[phase]}`
+    }
 
     // For BLE DFU and Himax File Transfer, interpolate real progress during specific phases
     let progress: number
@@ -760,6 +957,13 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         progress = PHASE_PROGRESS[phase]
     }
 
+    // Dual-image update: scale the per-pass progress into an overall bar so it
+    // never runs backwards at the pass boundary (pass 1 = 0-50%, pass 2 = 50-100%).
+    if (target === 'himax' && pairProgress && pairProgress.total > 1) {
+        progress = Math.min(1, (pairProgress.done + Math.min(progress, 1)) / pairProgress.total)
+        if (phase === 'complete') progress = 1
+    }
+
     const cancelUpdate = useCallback(() => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort()
@@ -767,6 +971,11 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
     }, [])
 
     const isBatteryLow = batteryLevel !== null && batteryLevel < 30
+    // A reading this low almost always means the battery rail is not powered at
+    // all - i.e. the device is running from USB / a bench supply with no (or
+    // flat-flat) batteries. Surfaced so the UI can say "external power?" instead
+    // of presenting a scary-but-meaningless percentage.
+    const isLikelyExternalPower = batteryLevel !== null && batteryLevel <= 5
     const isComplete = phase === 'complete'
     const isFailed = phase === 'failed'
 
@@ -796,12 +1005,15 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         // Pre-flight
         batteryLevel,
         isBatteryLow,
+        isLikelyExternalPower,
         previousVersion: displayPreviousVersion,
         newVersion: displayNewVersion,
         latestFirmware,
         isPreflightDone,
         sdCardFiles,
         availableDbFirmwares,
+        runningVariant,
+        pairProgress,
 
         // Actions
         startUpdate,

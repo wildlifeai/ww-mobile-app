@@ -496,6 +496,7 @@ class ReferenceDataService {
                             rec.isActive = row.is_active || false
                             rec.crcChecksum = row.crc_checksum || null
                             rec.buildDate = row.build_date || null
+                            rec.cameraVariant = row.camera_variant || null
                             rec.modifiedBy = row.modified_by || 'system'
                         })
                     } else {
@@ -510,6 +511,7 @@ class ReferenceDataService {
                             rec.isActive = row.is_active || false
                             rec.crcChecksum = row.crc_checksum || null
                             rec.buildDate = row.build_date || null
+                            rec.cameraVariant = row.camera_variant || null
                             rec.modifiedBy = row.modified_by || 'system'
                         })
                     }
@@ -547,6 +549,29 @@ class ReferenceDataService {
             const versionB = b?.version || '0.0.0'
             return versionB.localeCompare(versionA, undefined, { numeric: true, sensitivity: 'base' })
         })
+    }
+
+    /**
+     * Get the latest active Himax firmware for a specific camera variant
+     * ('RP3' colour or 'HM0360' night/IR). Returns null when no record for
+     * that variant exists (e.g. legacy databases without variant labels).
+     */
+    async getLatestHimaxByVariant(variant: 'RP3' | 'HM0360'): Promise<Firmware | null> {
+        const firmwares = await database.get<Firmware>('firmware')
+            .query(
+                Q.where('type', 'himax'),
+                Q.where('is_active', true),
+                Q.where('camera_variant', variant)
+            )
+            .fetch()
+
+        const sorted = firmwares.sort((a, b) => {
+            const versionA = a?.version || '0.0.0'
+            const versionB = b?.version || '0.0.0'
+            return versionB.localeCompare(versionA, undefined, { numeric: true, sensitivity: 'base' })
+        })
+
+        return sorted.length > 0 ? sorted[0] : null
     }
 
     /**

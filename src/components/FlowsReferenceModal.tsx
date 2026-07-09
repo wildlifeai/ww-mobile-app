@@ -46,6 +46,15 @@ const getFlowGroups = (): FlowGroup[] => {
                 .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
         },
         {
+            title: 'Light Sensor (day/night)',
+            icon: 'theme-light-dark',
+            commands: processCommands
+                .filter(cmd => [
+                    CommandNames.LIGHT_SENSOR,
+                ].includes(cmd.name))
+                .map(cmd => ({ name: cmd.name, description: cmd.description || '' })),
+        },
+        {
             title: 'Device Configuration',
             icon: 'cog-outline',
             commands: processCommands
