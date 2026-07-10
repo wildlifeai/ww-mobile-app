@@ -166,6 +166,11 @@ export interface FileTransferOptions {
   data: Uint8Array
   onProgress?: (progress: FileTransferProgress) => void
   abortSignal?: AbortSignal
-  /** Window size for pipelining. 1 = stop-and-wait (default), 2 = sliding window. */
+  /**
+   * Window size for pipelining (packets in flight). Defaults to 12.
+   * Firmware >= 0.30.47 acks only every 4th data packet, so values <= 4
+   * (including 1 = stop-and-wait) deadlock against it — override only for
+   * protocol testing against known firmware.
+   */
   windowSize?: number
 }

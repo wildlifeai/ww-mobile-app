@@ -101,7 +101,14 @@ export async function runFileTransferPipeline(
   options: FileTransferOptions,
 ): Promise<FileTransferResult> {
   const { filename, data, onProgress, abortSignal, windowSize: requestedWindowSize } = options
-  const windowSize = requestedWindowSize ?? 1
+  // Default to the sliding window. Firmware >= 0.30.47 forwards only every 4th
+  // data-ack (cumulative acks, FILETX_ACK_EVERY), so the old stop-and-wait
+  // default DEADLOCKS against it: the app waits for an ack the nRF is holding
+  // back until 3 more packets arrive. Any window > 4 is safe; 12 matches the
+  // nRF's 16-slot relay FIFO with headroom. On pre-FIFO firmware a deep window
+  // fails fast with an ftx error (prompting the BLE firmware update) rather
+  // than hanging. Callers should only override this for protocol testing.
+  const windowSize = requestedWindowSize ?? 12
   const transferId = generateTransferId()
   const startTime = Date.now()
 
