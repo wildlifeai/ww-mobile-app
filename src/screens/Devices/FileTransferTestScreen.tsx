@@ -129,7 +129,7 @@ const initialState: TransferState = {
     transferLog: [],
     isBenchmarking: false,
     benchmarkResults: [],
-    transferMode: 'stop-and-wait',
+    transferMode: 'sliding-window',
 }
 
 type TransferAction =
@@ -380,7 +380,7 @@ export const FileTransferTestScreen = () => {
                     >
                         <View style={styles.radioRow}>
                             <RadioButton.Item
-                                label="Stop-and-Wait (current)"
+                                label="Stop-and-Wait (legacy, slow)"
                                 value="stop-and-wait"
                                 disabled={isTransferring || isBenchmarking}
                                 style={styles.radioItem}
@@ -389,7 +389,7 @@ export const FileTransferTestScreen = () => {
                         </View>
                         <View style={styles.radioRow}>
                             <RadioButton.Item
-                                label="Sliding Window (12-packet)"
+                                label="Sliding Window (12-packet, recommended)"
                                 value="sliding-window"
                                 disabled={isTransferring || isBenchmarking}
                                 style={styles.radioItem}
@@ -397,9 +397,10 @@ export const FileTransferTestScreen = () => {
                             />
                         </View>
                     </RadioButton.Group>
-                    {transferMode === 'sliding-window' && (
+                    {transferMode === 'stop-and-wait' && (
                         <WWText variant="bodySmall" style={{ opacity: 0.7, marginTop: 4 }}>
-                            ⚠️ Requires firmware with 2-slot packet buffer. Falls back gracefully on older firmware.
+                            ⚠️ Legacy baseline. The firmware batches acks (every 4 packets), so a
+                            1-packet window stalls until the device times out. Use Sliding Window.
                         </WWText>
                     )}
                 </View>

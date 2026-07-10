@@ -490,12 +490,6 @@ export async function runFileTransferPipeline(
           let streamErr: FileTransferError | null = null
           let wake: (() => void) | null = null
 
-          // Some Android stacks silently step CONNECTION_PRIORITY_HIGH back
-          // down after ~30-60s of sustained traffic (seen as throughput decaying
-          // over a long transfer). Re-request it periodically during the stream.
-          let lastPriorityRefresh = Date.now()
-          const PRIORITY_REFRESH_MS = 20_000
-
           const onFtxAck = (event: BleEvent) => {
             if (event.type !== 'TEXT_LINE') return
             if (event.deviceId !== peripheral.id) return
@@ -522,10 +516,10 @@ export async function runFileTransferPipeline(
 
           try {
             // Stream until every packet has been SENT (not until every ack is
-            // in). With cumulative acks the firmware sends one ack per ~8
-            // packets, so the last <8 packets never get their own ack - they
-            // are confirmed by FILE_END / "ftx done" below (the HX processes
-            // the FIFO strictly in order, so FILE_END lands after all data).
+            // in). With cumulative acks the firmware sends one ack per 4
+            // packets (FILETX_ACK_EVERY), so the last <4 packets never get their
+            // own ack - they are confirmed by FILE_END / "ftx done" below (the HX
+            // processes the FIFO strictly in order, so FILE_END lands after all data).
             while (nextToSend < total) {
               if (streamErr) throw streamErr
               if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected during transfer')
@@ -535,13 +529,22 @@ export async function runFileTransferPipeline(
               // writes still resolves it (no gap where acks are lost).
               const advanced = new Promise<void>((resolve) => { wake = resolve })
 
-              // Keep Android holding the fast connection interval (see above)
-              if (Platform.OS === 'android' && Date.now() - lastPriorityRefresh > PRIORITY_REFRESH_MS) {
-                lastPriorityRefresh = Date.now()
-                BleManager.requestConnectionPriority(peripheral.id, 1).catch(() => {})
-              }
+              // NOTE: no periodic requestConnectionPriority(HIGH) refresh here.
+              // Measured on Android: re-requesting HIGH mid-transfer forces a
+              // connection-parameter renegotiation that desyncs the nRF<->HX I2C
+              // handshake and hangs the transfer ~24s in (DEVICE_SILENT). Without it
+              // the transfer completes reliably; Android holds the fast interval for
+              // ~24s (great for typical previews/small models) then decays it, so
+              // large files finish slower but still succeed. Holding the fast interval
+              // longer is an OS-level limitation, not fixable from here.
 
               // Fill the window: keep <= windowSize packets unacknowledged.
+              // Writes are awaited one at a time. react-native-ble-manager serialises
+              // all GATT ops through a main-thread command queue, so firing them
+              // concurrently (Promise.all) does NOT pipeline — it only risks
+              // overrunning the nRF FIFO / HX I2C relay (seen as "AI processor not
+              // responding"). The real throughput limiter was JS-thread congestion
+              // from per-ack Engineer-Console logging, fixed in useBleListeners.
               while (nextToSend < total && (nextToSend - (highestAckedIndex + 1)) < windowSize) {
                 await writeBinaryToDevice(peripheral, preBuiltPackets[nextToSend].packet, false)
                 nextToSend++
