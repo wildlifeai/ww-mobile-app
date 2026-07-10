@@ -169,7 +169,7 @@ export interface FileTransferOptions {
   /**
    * Window size for pipelining (packets in flight). Defaults to 12.
    * Firmware >= 0.30.47 acks only every 4th data packet, so values <= 4
-   * (including 1 = stop-and-wait) deadlock against it — override only for
+   * (including 1 = stop-and-wait) deadlock against it - override only for
    * protocol testing against known firmware.
    */
   windowSize?: number
