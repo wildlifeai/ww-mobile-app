@@ -23,6 +23,15 @@ import SamplingDesign from './models/SamplingDesign'
 import { logError } from '../utils/logger'
 
 
+// NOTE on schema versioning: this adapter deliberately configures NO
+// `migrations`. WatermelonDB's behaviour without migrations is to RESET the
+// local database (wipe + recreate from `schema`) whenever `schema.version`
+// changes - it does not crash or fail to open. That is acceptable here
+// because the local DB is a sync cache regenerated from the backend
+// (schema.ts itself is auto-generated from the Supabase schema, and versions
+// are bumped in lock-step with backend syncs). The one caveat: any pending
+// SyncOutbox entries are lost on a version bump, so avoid bumping the schema
+// version in releases where offline-queued writes are likely in flight.
 const adapter = new SQLiteAdapter({
     schema,
     onSetUpError: error => {

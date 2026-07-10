@@ -19,6 +19,7 @@ import { ImageReassembler } from "../utils/ImageReassembler"
 import { imageReassemblerEmitter, readlineParserEmitter } from "../ble/emitters"
 import { rxRouter } from "../ble/protocol/rxRouter"
 import { bleEventBus, BleEvent } from "../ble/protocol/eventBus"
+import { bleTransport } from "../ble/protocol/bleTransportController"
 import { markPeripheralRemoved } from "./useScanLoop"
 
 // Lazy-load the emitter to avoid accessing NativeModules during import
@@ -111,9 +112,21 @@ export const useBleListeners = () => {
     // Subscribe to bleEventBus for telemetry rendering in UI
     useEffect(() => {
         const handleRawRx = (event: BleEvent & { type: 'RAW_RX' }) => {
-            log(`[useBleListeners] RAW_RX received for ${event.deviceId}: ${event.line}`)
-            
-            // Look for transfer startup string (e.g. "12169 bytes in 592009C0.JPG")
+            // During an exclusive transfer (file TX) the device streams a high rate
+            // of "ftx ack N" lines. Logging each to the console AND dispatching it into
+            // the Redux Engineer-Console log grows an array that is re-copied and
+            // re-rendered on every ack; that JS-thread work compounds and throttles the
+            // BLE write callbacks (measured: per-packet write time climbing 260→350ms+
+            // and throughput decaying over a transfer). The transfer has its own
+            // structured logging, so skip the teletype capture while it holds the lock.
+            const transferActive = bleTransport.isLocked
+
+            if (!transferActive) {
+                log(`[useBleListeners] RAW_RX received for ${event.deviceId}: ${event.line}`)
+            }
+
+            // Look for transfer startup string (e.g. "12169 bytes in 592009C0.JPG").
+            // Cheap regex — keep it running so incoming image transfers still init.
             const imageStartMatch = event.line.match(/^\s*(\d+)\s+bytes\s+in\s+([A-Za-z0-9_.-]+)/i)
             if (imageStartMatch) {
                 const size = parseInt(imageStartMatch[1], 10)
@@ -121,6 +134,8 @@ export const useBleListeners = () => {
                 log(`[useBleListeners] Detected image transfer start: ${filename} (${size} bytes)`)
                 reassemblerRef.current?.initialize(size)
             }
+
+            if (transferActive) return
 
             dispatch(
                 logAdded({
@@ -135,6 +150,7 @@ export const useBleListeners = () => {
         };
 
         const handleRawTx = (event: BleEvent & { type: 'RAW_TX' }) => {
+            if (bleTransport.isLocked) return
             log(`[useBleListeners] RAW_TX received for ${event.deviceId}: ${event.command}`)
             dispatch(
                 logAdded({

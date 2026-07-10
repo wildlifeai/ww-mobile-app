@@ -201,11 +201,14 @@ export const useCameraSettingsTest = ({ device }: UseCameraSettingsTestOptions) 
 
             // White-balance gains (op27/28) - only meaningful on the RP3 colour
             // camera; harmless no-ops on HM0360 builds. 0 disables correction.
+            // Older firmware doesn't have these OPs at all (getops returns a
+            // shorter array) - guard on length so we don't issue a setop the
+            // device will reject, aborting the whole Apply flow.
             setApplyStage('Applying white balance...')
-            if (currentOps[OP_PARAMETER.WB_RED_GAIN] !== String(cameraParams.wbRedGain)) {
+            if (currentOps.length > OP_PARAMETER.WB_RED_GAIN && currentOps[OP_PARAMETER.WB_RED_GAIN] !== String(cameraParams.wbRedGain)) {
                 await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.WB_RED_GAIN, value: cameraParams.wbRedGain }))
             }
-            if (currentOps[OP_PARAMETER.WB_BLUE_GAIN] !== String(cameraParams.wbBlueGain)) {
+            if (currentOps.length > OP_PARAMETER.WB_BLUE_GAIN && currentOps[OP_PARAMETER.WB_BLUE_GAIN] !== String(cameraParams.wbBlueGain)) {
                 await session.execute(() => commandRegistry.setop({ index: OP_PARAMETER.WB_BLUE_GAIN, value: cameraParams.wbBlueGain }))
             }
 

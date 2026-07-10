@@ -18,6 +18,7 @@
 
 import { Platform } from 'react-native'
 import { NativeEventEmitter, NativeModules } from 'react-native'
+import BleManager from 'react-native-ble-manager'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
 import { writeBinaryToDevice } from '../../transport'
 import { bleEventBus, BleEvent } from '../eventBus'
@@ -309,47 +310,6 @@ export async function runFileTransferPipeline(
     return Promise.race(races).finally(() => { active = false })
   }
 
-  // Helper for sliding window: waits for ANY ftx ack whose wire number is
-  // in the in-flight map. Rejects on ftx err, timeout, disconnect, abort.
-  function prepareWindowAckWait(
-    inFlight: Map<number, { sendTime: number; index: number }>,
-    timeoutMs: number,
-  ): Promise<string> {
-    if (isDisconnected) {
-      return Promise.reject(
-        new FileTransferError('DISCONNECTED', 'Device disconnected'),
-      )
-    }
-
-    resetSilenceTimer()
-    let active = true
-
-    const ackPromise = stream.waitFor((line: string) => {
-      if (!active) return false
-
-      // Accept any ACK for an in-flight packet
-      if (line.startsWith('ftx ack ')) {
-        const ackNum = parseInt(line.split(' ')[2], 10)
-        if (inFlight.has(ackNum)) return true
-        // ACK for packet not in window — ignore (duplicate)
-        return false
-      }
-
-      // Device error — fatal for this session
-      if (line.startsWith('ftx err ')) {
-        const code = parseInt(line.split(' ')[2], 10)
-        throw new FileTransferError('DEVICE_ERROR', `Device error: ${line}`, code)
-      }
-
-      return false
-    }, timeoutMs)
-
-    const races: Promise<any>[] = [ackPromise, disconnectPromise, silencePromise]
-    if (abortSignal) races.push(abortPromise)
-
-    return Promise.race(races).finally(() => { active = false })
-  }
-
   // ── Acquire transport lock + execute transfer ──────────────────
   try {
     // Ensure no other commands are running
@@ -360,7 +320,23 @@ export async function runFileTransferPipeline(
     // Acquire lock FIRST, then wake the device. This eliminates the gap
     // where the device can Sleep between the wake check and FILE_START.
     bleTransport.acquireLock(transferId)
-    
+
+    // Ask Android for a fast connection interval for the duration of the
+    // session. The one-off request made at connect time (useBle.ts) is
+    // renegotiated away by the firmware ~20s after connecting, so it must be
+    // re-requested per transfer. Firmware >= feature/ble-fast-transfer also
+    // requests fast parameters from its side on FILE_START; either alone
+    // helps, both together are belt-and-braces. iOS has no equivalent API.
+    // Non-fatal: the transfer still works at the current interval.
+    if (Platform.OS === 'android') {
+      try {
+        await BleManager.requestConnectionPriority(peripheral.id, 1)
+        log('[FileTransfer] Requested high connection priority')
+      } catch (priorityErr: any) {
+        log(`[FileTransfer] requestConnectionPriority failed (non-fatal): ${priorityErr?.message ?? priorityErr}`)
+      }
+    }
+
     // Pause heartbeats
     bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: true, ts: Date.now() })
 
@@ -493,101 +469,105 @@ export async function runFileTransferPipeline(
             }
           }
         } else {
-          // ── Sliding Window mode (window = 2) ────────────────────────
-          // Keeps up to `windowSize` packets in-flight simultaneously.
-          // On ACK N, immediately sends next unsent packet, overlapping
-          // BLE round-trip with transmission.
-          log(`[FileTransfer] DATA phase: sliding window (w=${windowSize})`)
+          // ── Credit streaming (window > 1) — Phase 3 ─────────────────
+          // The previous per-ack waitFor() registered and removed a listener
+          // for each ack, leaving a gap (during the next writeWithoutResponse)
+          // in which acks were LOST once the device got fast (~45ms/packet) -
+          // causing the window to jam and throughput to collapse to ~250 B/s.
+          //
+          // Instead use ONE persistent listener with no gap. Acks are treated
+          // cumulatively: the HX writes and acks strictly in order, so
+          // "ftx ack N" means every packet up to the one whose wire number is N
+          // is safely written - a missed ack is harmlessly covered by a later
+          // one. The sender keeps up to `windowSize` packets in flight so the
+          // device is never starved. Stalls are caught by the shared silence
+          // timer (SILENCE_TIMEOUT_MS) and disconnect/abort promises.
+          log(`[FileTransfer] DATA phase: credit streaming (window=${windowSize})`)
 
+          const total = preBuiltPackets.length
           let nextToSend = 0
-          const inFlight = new Map<number, { sendTime: number; index: number }>()
+          let highestAckedIndex = -1
+          let streamErr: FileTransferError | null = null
+          let wake: (() => void) | null = null
 
-          // Helper: send packet at index and track it
-          const sendNext = async () => {
-            if (nextToSend >= preBuiltPackets.length) return
-            if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected')
-            if (abortSignal?.aborted) throw new FileTransferError('ABORTED', 'Transfer cancelled by user')
-
-            const { wireNum, packet } = preBuiltPackets[nextToSend]
-            const idx = nextToSend
-            nextToSend++
-
-            // Track before write so we measure full round-trip
-            inFlight.set(wireNum, { sendTime: Date.now(), index: idx })
-            await writeBinaryToDevice(peripheral, packet, false)
-          }
-
-          // Fill initial window
-          const initialFill = Math.min(windowSize, preBuiltPackets.length)
-          for (let i = 0; i < initialFill; i++) {
-            await sendNext()
-          }
-
-          // ACK-driven loop: process ACKs and refill the window
-          let consecutiveTimeouts = 0
-
-          while (inFlight.size > 0) {
-            if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected during transfer')
-            if (abortSignal?.aborted) throw new FileTransferError('ABORTED', 'Transfer cancelled by user')
-
-            try {
-              // Wait for next ftx ack/err — accept any in-flight packet
-              const line = await prepareWindowAckWait(
-                inFlight,
-                ACK_TIMEOUT_MS,
-              )
-
-              const ackNum = parseInt(line.split(' ')[2], 10)
-
-              if (inFlight.has(ackNum)) {
-                const entry = inFlight.get(ackNum)!
-                const roundtrip = Date.now() - entry.sendTime
-                inFlight.delete(ackNum)
-
-                // Update progress
-                ackTimes.push(roundtrip)
-                if (ackTimes.length > ACK_TIMES_MAX) ackTimes.shift()
-                wirePacketNum = preBuiltPackets[entry.index].wireNum
-                bytesSent = preBuiltPackets[entry.index].chunkEnd
-                packetsAcked++
-                consecutiveTimeouts = 0
-
-                // Track wrap cycles
-                if (wirePacketNum === 1 && packetsAcked > 1) {
-                  wrapCycles++
-                  log(`[FileTransfer] Packet number wrapped 255→1 (cycle ${wrapCycles})`)
-                }
-
-                throttledEmitProgress(entry.index)
-
-                // Refill window
-                if (nextToSend < preBuiltPackets.length && inFlight.size < windowSize) {
-                  await sendNext()
-                }
+          const onFtxAck = (event: BleEvent) => {
+            if (event.type !== 'TEXT_LINE') return
+            if (event.deviceId !== peripheral.id) return
+            const line = event.line
+            if (typeof line !== 'string') return
+            if (line.startsWith('ftx ack ')) {
+              const tok = line.slice('ftx ack '.length).trim()
+              if (tok === '0' || tok === 'end') return // start/end handled elsewhere
+              const wire = parseInt(tok, 10)
+              if (Number.isNaN(wire)) return
+              // Map the (cumulative) wire number to the highest not-yet-acked
+              // sent index carrying that wire number.
+              for (let i = highestAckedIndex + 1; i < nextToSend; i++) {
+                if (preBuiltPackets[i].wireNum === wire) { highestAckedIndex = i; break }
               }
-              // else: duplicate ACK, ignore
-            } catch (err: any) {
-              const isTimeout = err instanceof StreamTimeoutError ||
-                (err instanceof FileTransferError && err.reason === 'ACK_TIMEOUT')
-
-              if (!isTimeout) throw err
-
-              consecutiveTimeouts++
-              const waitingFor = [...inFlight.keys()].join(', ')
-              log(`[FileTransfer] Window ACK timeout (${consecutiveTimeouts}/${MAX_CONSECUTIVE_TIMEOUTS}), in-flight: [${waitingFor}]`)
-
-              if (consecutiveTimeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
-                throw new FileTransferError('ACK_TIMEOUT', `${MAX_CONSECUTIVE_TIMEOUTS} consecutive ACK timeouts — Bluetooth connection unstable`)
-              }
-
-              // Retry: resend all in-flight packets
-              for (const [wireNum, entry] of inFlight) {
-                log(`[FileTransfer] Resending packet ${wireNum}`)
-                const { packet } = preBuiltPackets[entry.index]
-                inFlight.set(wireNum, { ...entry, sendTime: Date.now() })
-                await writeBinaryToDevice(peripheral, packet, false)
-              }
+              wake?.()
+            } else if (line.startsWith('ftx err ')) {
+              const code = parseInt(line.split(' ')[2], 10)
+              streamErr = new FileTransferError('DEVICE_ERROR', `Device error: ${line}`, code)
+              wake?.()
             }
+          }
+          bleEventBus.on('textLine', onFtxAck)
+
+          try {
+            // Stream until every packet has been SENT (not until every ack is
+            // in). With cumulative acks the firmware sends one ack per 4
+            // packets (FILETX_ACK_EVERY), so the last <4 packets never get their
+            // own ack - they are confirmed by FILE_END / "ftx done" below (the HX
+            // processes the FIFO strictly in order, so FILE_END lands after all data).
+            while (nextToSend < total) {
+              if (streamErr) throw streamErr
+              if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected during transfer')
+              if (abortSignal?.aborted) throw new FileTransferError('ABORTED', 'Transfer cancelled by user')
+
+              // Arm the wakeup BEFORE sending, so an ack that arrives during the
+              // writes still resolves it (no gap where acks are lost).
+              const advanced = new Promise<void>((resolve) => { wake = resolve })
+
+              // NOTE: no periodic requestConnectionPriority(HIGH) refresh here.
+              // Measured on Android: re-requesting HIGH mid-transfer forces a
+              // connection-parameter renegotiation that desyncs the nRF<->HX I2C
+              // handshake and hangs the transfer ~24s in (DEVICE_SILENT). Without it
+              // the transfer completes reliably; Android holds the fast interval for
+              // ~24s (great for typical previews/small models) then decays it, so
+              // large files finish slower but still succeed. Holding the fast interval
+              // longer is an OS-level limitation, not fixable from here.
+
+              // Fill the window: keep <= windowSize packets unacknowledged.
+              // Writes are awaited one at a time. react-native-ble-manager serialises
+              // all GATT ops through a main-thread command queue, so firing them
+              // concurrently (Promise.all) does NOT pipeline — it only risks
+              // overrunning the nRF FIFO / HX I2C relay (seen as "AI processor not
+              // responding"). The real throughput limiter was JS-thread congestion
+              // from per-ack Engineer-Console logging, fixed in useBleListeners.
+              while (nextToSend < total && (nextToSend - (highestAckedIndex + 1)) < windowSize) {
+                await writeBinaryToDevice(peripheral, preBuiltPackets[nextToSend].packet, false)
+                nextToSend++
+              }
+
+              // Progress (based on cumulative acks)
+              if (highestAckedIndex >= 0) {
+                bytesSent = preBuiltPackets[highestAckedIndex].chunkEnd
+                packetsAcked = highestAckedIndex + 1
+                wirePacketNum = preBuiltPackets[highestAckedIndex].wireNum
+                throttledEmitProgress(highestAckedIndex)
+              }
+
+              // All sent - the tail is confirmed by FILE_END. Otherwise the
+              // window is full: wait for an ack to free credit (or error/stall).
+              if (nextToSend >= total) break
+              const races: Promise<unknown>[] = [advanced, disconnectPromise, silencePromise]
+              if (abortSignal) races.push(abortPromise)
+              await Promise.race(races)
+            }
+          } finally {
+            bleEventBus.removeListener('textLine', onFtxAck)
+            wake = null
           }
         }
 
@@ -700,6 +680,12 @@ export async function runFileTransferPipeline(
     disconnectCleanup?.()
     if (abortSignal && abortHandler) {
       abortSignal.removeEventListener('abort', abortHandler)
+    }
+    // Return the connection to balanced priority — the fast interval is only
+    // needed while packets are flowing, and costs device battery otherwise.
+    // Fire-and-forget: rejects if the device already disconnected.
+    if (Platform.OS === 'android') {
+      BleManager.requestConnectionPriority(peripheral.id, 0).catch(() => {})
     }
     bleTransport.releaseLock(transferId)
     bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: false, ts: Date.now() })
