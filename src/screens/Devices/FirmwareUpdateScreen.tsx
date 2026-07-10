@@ -129,7 +129,7 @@ export const FirmwareUpdateScreen = () => {
                 : `${fw.name || fw.version}`
             options.push({
                 key: `db-${fw.id}`,
-                label: `${display} ${existsOnSd ? '· on SD card' : '· cloud (download disabled)'}`,
+                label: `${display} ${existsOnSd ? '· on SD card' : '· cloud'}`,
                 type: 'db',
                 dbRecord: fw,
                 filename,
@@ -197,6 +197,12 @@ export const FirmwareUpdateScreen = () => {
         )
     }, [availableDbFirmwares, sdCardFiles, target])
 
+    // Cloud fallback for the pair update: a variant-labelled DB record per
+    // camera (downloaded per pass by the update hook). Preferred source is
+    // still the SD card - no download, no BLE transfer, ~2 min total.
+    const pairInDb = !!(latestByVariant?.rp3 && latestByVariant?.hm)
+    const pairSource: HimaxFirmwareSource | null = pairOnSd ? 'sdcard' : (pairInDb ? 'download' : null)
+
     const filteredOptions = useMemo(() => {
         if (restrictToLatest) {
             const latestDbOption = firmwareOptions.find(o => o.type === 'db')
@@ -263,9 +269,13 @@ export const FirmwareUpdateScreen = () => {
                     {title}
                 </WWText>
 
-                <WWText style={{ marginBottom: spacing }}>
-                    {description}
-                </WWText>
+                {/* The himax flow explains itself in the action card below - a
+                    standing paragraph here just pushed the button off-screen. */}
+                {target === 'ble' && (
+                    <WWText style={{ marginBottom: spacing }}>
+                        {description}
+                    </WWText>
+                )}
 
                 {/* ── Pre-flight Info ── */}
                 {!isComplete && (
@@ -341,66 +351,6 @@ export const FirmwareUpdateScreen = () => {
                             </View>
                         )}
 
-                        {/* Advanced: pick a specific image (expert flow) */}
-                        {target === 'himax' && !restrictToLatest && (
-                            <Button
-                                mode="text"
-                                compact
-                                onPress={() => setShowAdvanced(v => !v)}
-                                style={styles.marginTop12}
-                                disabled={isUpdating}
-                            >
-                                {showAdvanced ? '▾ Hide advanced (single image)' : '▸ Advanced: flash a single image'}
-                            </Button>
-                        )}
-
-                        {/* Himax Version Selection Dropdown */}
-                        {target === 'himax' && (showAdvanced || restrictToLatest) && selectOptions.length > 0 && (
-                            <View style={[styles.marginTop12, styles.marginBottom8]}>
-                                <WWSelect
-                                    label="Select Firmware Version"
-                                    options={selectOptions}
-                                    value={selectedOptionKey}
-                                    onChange={setSelectedOptionKey}
-                                    disabled={isUpdating}
-                                />
-                            </View>
-                        )}
-
-                        {/* Himax Source Selection */}
-                        {target === 'himax' && (showAdvanced || restrictToLatest) && selectedOption && (
-                            <View style={styles.sourceSelection}>
-                                <WWText variant="titleSmall" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
-                                    Firmware Source
-                                </WWText>
-                                <RadioButton.Group onValueChange={value => setHimaxSource(value as HimaxFirmwareSource)} value={himaxSource}>
-                                    <View style={styles.radioRow}>
-                                        <RadioButton 
-                                            value="sdcard" 
-                                            disabled={!selectedOption.existsOnSd} 
-                                        />
-                                        <WWText 
-                                            variant="bodyMedium" 
-                                            style={{ color: colors.onSurfaceVariant, flex: 1, opacity: selectedOption.existsOnSd ? 1 : 0.5 }}
-                                        >
-                                            Use existing MANIFEST/{selectedOption.filename} on SD card
-                                        </WWText>
-                                    </View>
-                                    <View style={styles.radioRow}>
-                                        <RadioButton 
-                                            value="download" 
-                                            disabled={true} 
-                                        />
-                                        <WWText 
-                                            variant="bodyMedium" 
-                                            style={{ color: colors.onSurfaceVariant, flex: 1, opacity: 0.5 }}
-                                        >
-                                            Download {selectedOption.dbRecord ? `"${selectedOption.dbRecord.locationPath}"` : 'firmware'} from DB into MANIFEST/{selectedOption.filename} on SD card (Disabled)
-                                        </WWText>
-                                    </View>
-                                </RadioButton.Group>
-                            </View>
-                        )}
                     </View>
                 )}
 
@@ -426,30 +376,38 @@ export const FirmwareUpdateScreen = () => {
                     </View>
                 )}
 
-                {/* ── Primary action: update both cameras ── */}
+                {/* ── Primary action: update both cameras ──
+                    Source is chosen automatically: SD-card images when present
+                    (no transfer, ~2 min), else downloaded from the cloud and
+                    sent over BLE (~10 min). */}
                 {target === 'himax' && !restrictToLatest && !isComplete && !isUpdating && (
                     <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
                         <WWText variant="titleSmall" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
-                            Update both cameras
+                            Update both cameras{latestLabel ? ` — ${latestLabel}` : ''}
                         </WWText>
                         <WWText variant="bodyMedium" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
-                            Flashes the {VARIANT_META.RP3.emoji} colour and {VARIANT_META.HM0360.emoji} night-IR images
-                            {latestLabel ? ` (${latestLabel})` : ''} from the SD card in two passes (about 2 minutes).
-                            The device finishes on the camera it is using now.
+                            {pairSource === 'sdcard'
+                                ? `Flashes the ${VARIANT_META.RP3.emoji} colour and ${VARIANT_META.HM0360.emoji} night-IR images from the SD card in two passes (about 2 minutes).`
+                                : pairSource === 'download'
+                                    ? `Downloads the ${VARIANT_META.RP3.emoji} colour and ${VARIANT_META.HM0360.emoji} night-IR images from the cloud and sends them over Bluetooth (about 10 minutes — keep the phone nearby).`
+                                    : 'Flashes the colour and night-IR camera images in two passes.'}
+                            {' '}The device finishes on the camera it is using now.
                         </WWText>
-                        {!pairOnSd && isPreflightDone && (
+                        {!pairSource && isPreflightDone && (
                             <WWText variant="bodySmall" style={[styles.marginBottom8, { color: colors.error }]}>
-                                Both camera images were not found on the SD card — regenerate the Setup Folder on the
-                                website and copy the MANIFEST folder to the SD card, or use Advanced below.
+                                No firmware images available — sync the app to fetch the catalogue, or prepare the
+                                SD card from the website and reinsert it.
                             </WWText>
                         )}
                         <Button
                             mode="contained"
-                            onPress={() => startUpdate({ himaxSource: 'sdcard' })}
+                            onPress={() => pairSource && startUpdate({ himaxSource: pairSource })}
                             loading={!isPreflightDone}
-                            disabled={!isPreflightDone || !pairOnSd || !batteryGateOk}
+                            disabled={!isPreflightDone || !pairSource || !batteryGateOk}
                         >
-                            <WWText>Update both cameras from SD</WWText>
+                            <WWText>
+                                {pairSource === 'download' ? 'Update both cameras (cloud)' : 'Update both cameras'}
+                            </WWText>
                         </Button>
                         {!batteryGateOk && (
                             <WWText variant="bodySmall" style={[styles.marginTop12, { color: colors.error }]}>
@@ -459,7 +417,78 @@ export const FirmwareUpdateScreen = () => {
                     </View>
                 )}
 
-                {/* ── Status Panel ── */}
+                {/* ── Advanced: flash a specific image / choose the source ──
+                    Collapsed to a single text row by default; the card only
+                    appears when expanded (or when Flow 1 restricts to latest). */}
+                {target === 'himax' && !isComplete && !isUpdating && !restrictToLatest && !showAdvanced && (
+                    <Button
+                        mode="text"
+                        compact
+                        onPress={() => setShowAdvanced(true)}
+                        style={{ marginBottom: spacing }}
+                    >
+                        ▸ Advanced: flash a specific image
+                    </Button>
+                )}
+                {target === 'himax' && !isComplete && !isUpdating && (showAdvanced || restrictToLatest) && (
+                    <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing }]}>
+                        {!restrictToLatest && (
+                            <Button mode="text" compact onPress={() => setShowAdvanced(false)}>
+                                ▾ Hide advanced
+                            </Button>
+                        )}
+
+                        {selectOptions.length > 0 ? (
+                            <View style={styles.marginTop12}>
+                                <WWSelect
+                                    label="Firmware build"
+                                    options={selectOptions}
+                                    value={selectedOptionKey}
+                                    onChange={setSelectedOptionKey}
+                                    disabled={isUpdating}
+                                />
+                            </View>
+                        ) : (
+                            <WWText variant="bodySmall" style={[styles.marginTop12, { color: colors.onSurfaceVariant }]}>
+                                No firmware builds found — sync the app or insert a prepared SD card.
+                            </WWText>
+                        )}
+
+                        {selectedOption && (
+                            <View style={styles.sourceSelection}>
+                                <RadioButton.Group onValueChange={value => setHimaxSource(value as HimaxFirmwareSource)} value={himaxSource}>
+                                    <View style={styles.radioRow}>
+                                        <RadioButton
+                                            value="sdcard"
+                                            disabled={!selectedOption.existsOnSd}
+                                        />
+                                        <WWText
+                                            variant="bodyMedium"
+                                            style={{ color: colors.onSurfaceVariant, flex: 1, opacity: selectedOption.existsOnSd ? 1 : 0.5 }}
+                                        >
+                                            Use MANIFEST/{selectedOption.filename} already on the SD card
+                                        </WWText>
+                                    </View>
+                                    <View style={styles.radioRow}>
+                                        <RadioButton
+                                            value="download"
+                                            disabled={!selectedOption.dbRecord}
+                                        />
+                                        <WWText
+                                            variant="bodyMedium"
+                                            style={{ color: colors.onSurfaceVariant, flex: 1, opacity: selectedOption.dbRecord ? 1 : 0.5 }}
+                                        >
+                                            Download from the cloud, then send over Bluetooth into MANIFEST/{selectedOption.filename}
+                                        </WWText>
+                                    </View>
+                                </RadioButton.Group>
+                            </View>
+                        )}
+                    </View>
+                )}
+
+                {/* ── Status Panel — only once an update is underway ── */}
+                {(isUpdating || isComplete || isFailed || progressLogs.length > 0) && (
                 <View style={[styles.card, { backgroundColor: colors.surfaceVariant, marginBottom: spacing * 2 }]}>
                     <WWText variant="titleSmall" style={[styles.marginBottom8, { color: colors.onSurfaceVariant }]}>
                         Status
@@ -552,6 +581,7 @@ export const FirmwareUpdateScreen = () => {
                         </WWText>
                     )}
                 </View>
+                )}
 
                 {/* ── Success Panel ── */}
                 {isComplete && !isUpdating && (
@@ -607,9 +637,12 @@ export const FirmwareUpdateScreen = () => {
                             selectedFirmware: selectedOption?.type === 'db' ? selectedOption.dbRecord : selectedOption?.filename
                         })}
                         loading={!isPreflightDone}
-                        disabled={!isPreflightDone || !batteryGateOk || (target === 'himax' && (!selectedOption || himaxSource === 'download'))}
+                        disabled={!isPreflightDone || !batteryGateOk
+                            || (target === 'himax' && (!selectedOption
+                                || (himaxSource === 'download' && !selectedOption.dbRecord)
+                                || (himaxSource === 'sdcard' && !selectedOption.existsOnSd)))}
                     >
-                        <WWText>{isFailed ? 'Retry Update' : (target === 'himax' ? 'Flash Selected Image Only' : 'Start Update')}</WWText>
+                        <WWText>{isFailed ? 'Retry Update' : (target === 'himax' ? 'Flash Selected Build' : 'Start Update')}</WWText>
                     </Button>
                 )}
 

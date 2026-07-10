@@ -1,5 +1,6 @@
-import { useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
 import { StyleSheet, View, Alert } from 'react-native'
+import { useFocusEffect } from '@react-navigation/native'
 import { Card, Button, Text, ActivityIndicator } from 'react-native-paper'
 
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
@@ -44,13 +45,18 @@ export const CameraSelector = ({ device, disabled, onShowHelp }: Props) => {
         onError: (err) => Alert.alert('Camera Switch Failed', err.message),
     })
 
-    // Learn what is running when the device connects
-    useEffect(() => {
-        if (device?.connected) {
-            refresh()
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [device?.connected])
+    // Learn what is running when the device connects AND every time the screen
+    // regains focus - slot labels change after firmware updates and switches
+    // made elsewhere, and a stale/failed read left the buttons dead with no
+    // retry before.
+    useFocusEffect(
+        useCallback(() => {
+            if (device?.connected) {
+                refresh()
+            }
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [device?.connected])
+    )
 
     const handleSelect = useCallback((target: CameraVariant) => {
         if (target === activeCamera || isBusy) return
@@ -59,15 +65,24 @@ export const CameraSelector = ({ device, disabled, onShowHelp }: Props) => {
             ? '\n\n⚠️ Auto camera switch is ON, so the device may switch back on its own at its next light check. Turn it off in the Light Sensor flow to stay on this camera.'
             : ''
 
+        // The other slot may hold a valid image that simply never labelled
+        // itself (the label is written the first time an image boots, and that
+        // write can be missed after a firmware update). The firmware refuses
+        // to switch to a slot without valid firmware, so offering the switch
+        // is safe - and it self-heals the label on boot.
+        const unlabelledNote = otherSlotCamera === 'unknown'
+            ? '\n\nℹ️ The other slot has not announced its camera yet. If it holds different firmware, the device may boot the other camera type - switch back if so.'
+            : ''
+
         Alert.alert(
             `Switch to ${CAMERA_LABELS[target]}?`,
-            `The device will restart with the other camera. This takes about 30 seconds.${autoNote}`,
+            `The device will restart with the other camera. This takes about 30 seconds.${unlabelledNote}${autoNote}`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 { text: 'Switch', onPress: () => { switchTo(target) } },
             ]
         )
-    }, [activeCamera, isBusy, switchTo, autoSwitchOn])
+    }, [activeCamera, isBusy, switchTo, autoSwitchOn, otherSlotCamera])
 
     const renderHelp = useCallback((props: any) => (
         <Button
@@ -87,8 +102,13 @@ export const CameraSelector = ({ device, disabled, onShowHelp }: Props) => {
     // collapsed these buttons into unlabelled slivers.
     const cameraButton = (variant: Extract<CameraVariant, 'RP3' | 'HM0360'>) => {
         const isActive = activeCamera === variant
-        // A variant is selectable when it is running, or recorded in the other slot
-        const isAvailable = isActive || otherSlotCamera === variant
+        // A variant is selectable when it is running, recorded in the other
+        // slot, or the other slot is unlabelled (blind switch with confirm -
+        // the firmware validates the slot actually holds bootable firmware).
+        // Requires knowing what is active, so both buttons aren't live blind.
+        const isAvailable = isActive
+            || otherSlotCamera === variant
+            || (otherSlotCamera === 'unknown' && activeCamera !== 'unknown')
 
         return (
             <Button
@@ -141,8 +161,8 @@ export const CameraSelector = ({ device, disabled, onShowHelp }: Props) => {
                 {!isBusy && activeCamera !== 'unknown' && otherSlotCamera === 'unknown' && (
                     <Text variant="labelSmall" style={styles.hintText}>
                         The other camera image hasn't announced itself yet (it does so the first
-                        time it boots), so switching is unavailable. Run a firmware update or
-                        switch once from the console to label it.
+                        time it boots). You can still switch - the device checks the slot holds
+                        valid firmware, and the image labels itself when it starts.
                     </Text>
                 )}
 

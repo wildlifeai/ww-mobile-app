@@ -11,6 +11,7 @@ import ReferenceDataService from '../../../services/ReferenceDataService'
 import Firmware from '../../../database/models/Firmware'
 import { runFileTransferPipeline } from '../../../ble/protocol/fileTransfer'
 import { FileTransferProgress } from '../../../ble/protocol/fileTransfer/fileTransferTypes'
+import { verifyConfigDefaults } from '../../../ble/workflows/configVerification'
 import { ExtendedPeripheral, setDfuStatus } from '../../../redux/slices/devicesSlice'
 import { useAppDispatch } from '../../../redux'
 import { useBle } from '../../../hooks/useBle'
@@ -775,6 +776,25 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 if (!unmountedRef.current && running) setRunningVariant(running)
             } catch (e) {
                 logWarn('[FW Update] Post-update slots query failed:', e)
+            }
+            try {
+                // Empty-SD handshake: the firmware regenerates CONFIG.TXT from its
+                // in-RAM OPs at the next sleep, so verifying the OP vector against
+                // FACTORY_DEFAULTS confirms the configuration is sane without
+                // reading the file. Non-fatal — the update itself is already
+                // verified; mismatches are surfaced for the engineer to judge.
+                const cfgSession = createBleSession(device)
+                const cfg = await verifyConfigDefaults(cfgSession)
+                if (cfg.verified) {
+                    appendLog(`Configuration verified (${cfg.checkedCount} parameters at defaults)`)
+                } else {
+                    const details = Object.entries(cfg.mismatches)
+                        .map(([idx, m]) => `op${idx}=${m.actual} (default ${m.expected})`)
+                        .join(', ')
+                    appendLog(`Configuration differs from defaults: ${details}`)
+                }
+            } catch (e) {
+                logWarn('[FW Update] Post-update config verification failed (non-fatal):', e)
             }
             advancePhase('complete')
         }
