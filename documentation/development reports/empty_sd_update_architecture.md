@@ -4,6 +4,20 @@
 **Scope:** Himax (HX6538) firmware update over BLE, manifest ingestion, embedded-AI deployment
 **Grounded in:** `ww500_md` firmware (feat/ble-fast-transfer @3c0baafa), BLE fw 0.30.47, wwmobile feat/ble-fast-transfer @5cdc45a, and throughput measurements from the 2026-07-09/10 fast-transfer work.
 
+> **STATUS ADDENDUM (2026-07-10, feat/himax-update-pipeline):** a code audit found
+> that Flows 1, 2A, 2B and 3 are **already implemented** in the app:
+> `useFirmwareUpdate.runHimaxUpdate()` (dual-slot pair ordering via `AI slots`,
+> ftx transfer + `AI firmware <file> 0xCRC`, `AI reset`, `waitForAiReady`,
+> transient-drop retry, sdcard/download sources) driven by
+> `FirmwareUpdateScreen`; the Flow-1 gate lives in `StartMonitoringScreen`
+> (`onUpdateFirmware` → FirmwareUpdateScreen with `restrictToLatest`); Flow 3's
+> skip-if-present + transfer + `loadmodel` lives in `deploymentPipeline.ts`.
+> §1.1's "new orchestrator" is therefore **obsolete** — kept below only as
+> design rationale. The one gap was the §2.2 CONFIG.TXT handshake, added as
+> `src/ble/workflows/configVerification.ts` and wired into
+> `useFirmwareUpdate.verifyAndComplete()`. Still open: the §4 QA matrix run
+> and the §5 firmware asks.
+
 ---
 
 ## 0. What already exists (build on this, don't reinvent)
