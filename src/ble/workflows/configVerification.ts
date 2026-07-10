@@ -41,7 +41,7 @@ const VOLATILE_OPS = new Set<number>([
 ])
 
 export async function verifyConfigDefaults(session: BleSession): Promise<ConfigCheckResult> {
-    const currentOps = await session.execute(commandRegistry.getops)
+    const currentOps = await session.execute(() => commandRegistry.getops())
     const mismatches: ConfigCheckResult['mismatches'] = {}
     let checkedCount = 0
 
