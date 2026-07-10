@@ -29,7 +29,6 @@ SET search_path = ''
 AS $$
 DECLARE
   v_organisation_id UUID;
-  v_user_org_id UUID;
   v_result JSONB;
 BEGIN
   -- =============================================================================
@@ -62,19 +61,19 @@ BEGIN
   -- =============================================================================
   -- VALIDATION 4: Same-Organisation Membership
   -- =============================================================================
-  -- Verify user belongs to the same organisation as the project
-  -- A user may belong to several organisations; prefer the project's org so the
-  -- check doesn't fail non-deterministically when they DO belong to it.
-  SELECT scope_id INTO STRICT v_user_org_id
-  FROM public.user_roles
-  WHERE user_id = p_user_id
-    AND scope_type = 'organisation'
-    AND deleted_at IS NULL
-  ORDER BY CASE WHEN scope_id = v_organisation_id THEN 0 ELSE 1 END
-  LIMIT 1;
-
-  IF v_user_org_id != v_organisation_id THEN
-    RAISE EXCEPTION 'User must belong to same organisation as project (user org: %, project org: %)', v_user_org_id, v_organisation_id
+  -- Verify user belongs to the same organisation as the project. An EXISTS
+  -- check on the target organisation directly covers both failure modes
+  -- (user in a different org, or user in no org at all) with one predictable
+  -- error, without relying on STRICT + exception-handler coupling.
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.user_roles
+    WHERE user_id = p_user_id
+      AND scope_type = 'organisation'
+      AND scope_id = v_organisation_id
+      AND deleted_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'User does not belong to the same organisation as the project (project org: %)', v_organisation_id
       USING ERRCODE = '22023';
   END IF;
 
@@ -134,17 +133,11 @@ BEGIN
   RETURN v_result;
 
 EXCEPTION
-  -- Handle NOT FOUND errors from STRICT queries
+  -- The only remaining STRICT query is the project lookup (VALIDATION 3);
+  -- organisation membership is validated with a plain EXISTS above.
   WHEN NO_DATA_FOUND THEN
-    IF v_organisation_id IS NULL THEN
-      RAISE EXCEPTION 'Project not found or has been deleted'
-        USING ERRCODE = '22023';
-    ELSIF v_user_org_id IS NULL THEN
-      RAISE EXCEPTION 'User is not a member of any organisation'
-        USING ERRCODE = '22023';
-    ELSE
-      RAISE;
-    END IF;
+    RAISE EXCEPTION 'Project not found or has been deleted'
+      USING ERRCODE = '22023';
 END;
 $$;
 
