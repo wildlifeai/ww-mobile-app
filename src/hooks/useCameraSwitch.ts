@@ -145,12 +145,19 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
                 return true
             }
 
-            if (other !== target) {
+            if (other !== target && other !== 'unknown') {
                 throw new Error(
-                    other === 'unknown'
-                        ? `The other firmware slot has not been labelled yet - it may not contain the ${target} image. Load it via a firmware update first.`
-                        : `The other firmware slot holds ${other}, not ${target}. Load the ${target} image via a firmware update first.`
+                    `The other firmware slot holds ${other}, not ${target}. Load the ${target} image via a firmware update first.`
                 )
+            }
+            if (other === 'unknown') {
+                // A slot only labels itself the first time its image BOOTS, and
+                // that label write can be missed (it has silent failure paths) -
+                // seen after a dual-image update where the first image ran only
+                // briefly. Proceed: the firmware itself refuses to switch to a
+                // slot without a valid secure-boot image ("Slot switch failed"),
+                // and the verify polling below catches a wrong-variant boot.
+                log(`[useCameraSwitch] other slot unlabelled - switching blind (firmware validates the image)`)
             }
 
             // Flip the slot selector; the device resets at its next sleep
@@ -176,7 +183,10 @@ export const useCameraSwitch = ({ device, onError }: UseCameraSwitchOptions): Us
                 }
             }
 
-            throw new Error(`Device did not come back running ${target}. Check it with the 'AI slots' command.`)
+            throw new Error(
+                `Device did not come back running ${target}. It may have booted the other image - ` +
+                `check with 'AI slots' and switch again if needed.`
+            )
         } catch (error) {
             const err = error as Error
             logError('[useCameraSwitch] switch failed:', err)
