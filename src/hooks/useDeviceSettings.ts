@@ -85,11 +85,18 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     [OP_PARAMETER.IMAGES_COUNT]: 0,
     [OP_PARAMETER.IMAGES_FILE_INDEX]: 0,
     [OP_PARAMETER.MD_FLASH_LED]: 2,
-    [OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT]: 5,
+    // 50%: bench 5% was too dim for night-time motion detection at typical
+    // camera-to-subject distances. The IR LED only fires during each MD
+    // frame's integration window (HM0360 STROBE-gated, ~15 ms pulses).
+    [OP_PARAMETER.MD_FLASH_BRIGHTNESS_PERCENT]: 50,
     [OP_PARAMETER.AE_DARK_THRESHOLD]: 65,
     [OP_PARAMETER.AE_CHECK_INTERVAL]: 15,
     [OP_PARAMETER.AE_FLASH_STATE]: 0,
-    [OP_PARAMETER.SLOT_SWITCH]: 0,
+    // 1 = automatic day/night camera switching after each AE light check.
+    // resetOps diff-writes this during every deployment, so monitoring runs
+    // switch cameras with the light. Requires both firmware slots labelled
+    // (a dual-image update leaves them so).
+    [OP_PARAMETER.SLOT_SWITCH]: 1,
     [OP_PARAMETER.WB_RED_GAIN]: 286,
     [OP_PARAMETER.WB_BLUE_GAIN]: 326,
 }
