@@ -36,6 +36,29 @@ export interface UseFirmwareStatusReturn {
     errorMsg: string | null
 }
 
+/**
+ * Dual-image aware outdated check — the same rule as the update screen's
+ * `deviceUpToDate`. RP3 and HM0360 builds carry different version strings and
+ * the device only runs one of them, so it is up to date when its version
+ * matches EITHER variant's latest. Comparing against the single newest
+ * 'himax' row flagged "outdated" whenever the newest upload happened to be
+ * the other camera's build. An unknown current version is not outdated
+ * (unknown is not actionable — the card should not cry wolf).
+ */
+const isHimaxOutdated = (
+    current: string | null,
+    latestRp3: Firmware | null,
+    latestHm0360: Firmware | null,
+    latestGeneric: Firmware | null,
+): boolean => {
+    if (!current) return false
+    const cur = current.trim()
+    const variantVersions = [latestRp3?.version?.trim(), latestHm0360?.version?.trim()]
+        .filter((v): v is string => !!v)
+    if (variantVersions.length > 0) return !variantVersions.includes(cur)
+    return !!latestGeneric?.version && cur !== latestGeneric.version.trim()
+}
+
 export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersion }: UseFirmwareStatusOptions): UseFirmwareStatusReturn {
     const [isChecking, setIsChecking] = useState(false)
     const [lastChecked, setLastChecked] = useState<Date | null>(null)
@@ -101,9 +124,9 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
 
             if (!isMounted.current) return
 
-            // 3. Compute Outdated Flags
+            // 3. Compute Outdated Flags (himax: variant-aware, see isHimaxOutdated)
             const bleOutdated = !!latestBle?.version && currentBleVersion !== latestBle.version
-            const himaxOutdated = !!latestHimax?.version && currentHimaxVersion !== latestHimax.version
+            const himaxOutdated = isHimaxOutdated(currentHimaxVersion, latestRp3, latestHm0360, latestHimax)
 
             setStatuses({
                 ble: {
@@ -153,6 +176,8 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                     try {
                         const latestBle = await ReferenceDataService.getLatestFirmware('ble')
                         const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
+                        const latestRp3 = await ReferenceDataService.getLatestHimaxByVariant('RP3')
+                        const latestHm0360 = await ReferenceDataService.getLatestHimaxByVariant('HM0360')
 
                         const currentBleVersion = convertBleToSemanticVersion(initialBleVersion)
                         const rawHimaxVer = initialHimaxVersion
@@ -160,9 +185,20 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                         const currentHimaxVersion = match ? `v${match[1]}` : rawHimaxVer
 
                         const bleOutdated = !!latestBle?.version && currentBleVersion !== latestBle.version
-                        const himaxOutdated = !!latestHimax?.version && currentHimaxVersion !== latestHimax.version
+                        const himaxOutdated = isHimaxOutdated(currentHimaxVersion, latestRp3, latestHm0360, latestHimax)
 
                         if (!isMounted.current) return
+
+                        // The initial versions are a connect-time snapshot — stale
+                        // right after a firmware update. Never declare "outdated"
+                        // from the snapshot alone: escalate to the active check
+                        // (live `version`/`AI ver` queries) and let the device
+                        // decide. Up-to-date verdicts stay silent and BLE-quiet.
+                        if (bleOutdated || himaxOutdated) {
+                            logWarn('[FirmwareStatus] Snapshot looks outdated — verifying against the live device')
+                            await checkStatus()
+                            return
+                        }
 
                         setStatuses({
                             ble: {
@@ -178,6 +214,7 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                                 latestVersion: latestHimax?.version || 'Unknown',
                                 latestFirmware: latestHimax,
                                 isOutdated: himaxOutdated,
+                                variants: { RP3: latestRp3, HM0360: latestHm0360 },
                             },
                         })
                         setLastChecked(new Date())

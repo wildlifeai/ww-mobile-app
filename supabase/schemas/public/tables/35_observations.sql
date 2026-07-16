@@ -54,6 +54,10 @@ CREATE TABLE observations (
 
   -- Provenance (traceable lineage)
   source_type text CHECK (source_type IS NULL OR (source_type IN ('ai', 'human', 'imported', 'consensus'))),
+  -- For source_type='ai': which AI layer produced the row. 'edge' = the camera's
+  -- on-device model (ingested from EXIF UserComment); 'cloud' = the website
+  -- pipeline (SpeciesNet/BioCLIP). NULL for human/imported/consensus rows.
+  ai_origin text CHECK (ai_origin IS NULL OR (ai_origin IN ('edge', 'cloud'))),
   source_model_id uuid REFERENCES ai_models (id) ON DELETE SET NULL,
   source_model_version text,
   annotator_id uuid REFERENCES users (id) ON DELETE SET NULL,
@@ -104,6 +108,7 @@ COMMENT ON COLUMN observations.scientific_name IS 'Denormalised scientific name 
 COMMENT ON COLUMN observations.crop_url IS 'Per-observation bounding-box crop in Supabase Storage (media-renditions bucket). One crop per detection, complementing media_assets.animal_crop_url (the single hero crop). NULL for whole-image/blank observations.';
 COMMENT ON COLUMN observations.vernacular_name IS 'Denormalised common name (e.g. North Island Brown Kiwi).';
 COMMENT ON COLUMN observations.source_type IS 'Indicates whether the label came from AI, human review, imported packages, or consensus voting.';
+COMMENT ON COLUMN observations.ai_origin IS 'AI layer that produced an ai-sourced row: edge (camera on-device model, via EXIF) or cloud (website SpeciesNet/BioCLIP pipeline). NULL for non-AI rows.';
 COMMENT ON COLUMN observations.source_model_id IS 'AI model reference if generated automatically.';
 COMMENT ON COLUMN observations.annotator_id IS 'Authenticating user ID who labeled this record.';
 COMMENT ON COLUMN observations.reviewer_id IS 'Authenticating user ID who verified this record.';

@@ -577,6 +577,67 @@ export const useStartDeployment = ({
                 logWarn('[Deployment] Failed to set capture format (non-fatal):', formatError)
             }
 
+            // 7c. One-shot light check: take a single reference photo (every capture
+            // runs the AE light check on-device and persists the decision to op25),
+            // then read the verdict back and tell the user which camera mode the
+            // deployment starts in and when light is re-checked. Non-fatal: on any
+            // failure fall back to the last persisted decision from the pre-flight
+            // ops snapshot.
+            try {
+                progress.addLog('Checking light conditions...')
+                progress.setFinishStep('Checking light...')
+                progress.setFinishProgress(0.9)
+
+                let flashState: number | null = null
+                let checkInterval: number | null = null
+                let autoSwitch: number | null = null
+                let freshReading = false
+
+                try {
+                    // One photo; its AE sample refreshes op25 (and doubles as a
+                    // deployment-start reference shot on the SD card).
+                    await bleSession?.execute(() => commandRegistry.capture(1, 500))
+                    const opsAfter = await bleSession?.execute(commandRegistry.getops)
+                    if (opsAfter) {
+                        flashState = parseInt(opsAfter[OP_PARAMETER.AE_FLASH_STATE] ?? '', 10)
+                        checkInterval = parseInt(opsAfter[OP_PARAMETER.AE_CHECK_INTERVAL] ?? '', 10)
+                        autoSwitch = parseInt(opsAfter[OP_PARAMETER.SLOT_SWITCH] ?? '', 10)
+                        freshReading = !isNaN(flashState)
+                    }
+                } catch (captureError) {
+                    logWarn('[Deployment] Light-check capture failed, using last known decision:', captureError)
+                }
+
+                if (!freshReading) {
+                    // Pre-reset snapshot: op25 persists across sleep, so the last
+                    // session's decision is still meaningful, just not fresh.
+                    flashState = parseInt(currentOps[OP_PARAMETER.AE_FLASH_STATE] ?? '', 10)
+                    checkInterval = parseInt(currentOps[OP_PARAMETER.AE_CHECK_INTERVAL] ?? '', 10)
+                    autoSwitch = parseInt(currentOps[OP_PARAMETER.SLOT_SWITCH] ?? '', 10)
+                }
+
+                if (flashState !== null && !isNaN(flashState)) {
+                    const dark = flashState === 1
+                    const readingTag = freshReading ? 'Light check' : 'Light check (last known reading)'
+                    progress.addLog(dark
+                        ? `💡 ${readingTag}: DARK — starting in night mode (IR camera)`
+                        : `💡 ${readingTag}: BRIGHT — starting in day mode (colour camera)`)
+
+                    const intervalKnown = checkInterval !== null && !isNaN(checkInterval)
+                    if (autoSwitch === 1) {
+                        progress.addLog(intervalKnown && checkInterval! > 0
+                            ? `Light is re-checked after every photo and every ${checkInterval} min while asleep — the camera switches day/night automatically at the next sleep.`
+                            : 'Light is re-checked after every photo — the camera switches day/night automatically at the next sleep.')
+                    } else {
+                        progress.addLog('Auto day/night switching is OFF — the device stays in this camera mode.')
+                    }
+                } else {
+                    progress.addLog('Light conditions unknown — the device will decide day/night on its first capture.')
+                }
+            } catch (lightError) {
+                logWarn('[Deployment] Light check failed (non-fatal):', lightError)
+            }
+
             progress.setFinishStep('Complete')
             progress.setFinishProgress(1.0)
             progress.setIsSuccess(true)
