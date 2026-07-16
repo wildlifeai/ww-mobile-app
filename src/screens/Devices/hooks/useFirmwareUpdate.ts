@@ -83,7 +83,7 @@ const HIMAX_PHASE_LABELS: Record<UpdatePhase, string> = {
     transferring: 'Transferring firmware to SD card...',
     sending: 'Sending firmware update command...',
     waking: 'AI processor waking up...',
-    flashing: 'Writing firmware to flash...',
+    flashing: 'Writing firmware to flash — typically 5-10 min...',
     rebooting: 'Rebooting AI processor (takes 6-10s)...',
     reconnecting: 'Reconnecting to device...',
     verifying: 'Verifying new firmware version...',
@@ -270,6 +270,12 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
 
     const [phase, setPhase] = useState<UpdatePhase>('idle')
     const [dfuProgress, setDfuProgress] = useState(0) // 0-100 for BLE DFU
+    // Elapsed seconds since the Himax flash command went out. The device is
+    // silent over BLE for the whole erase+write+verify (its progress prints go
+    // to the local UART console only — see firmware xip_manager.c), so a
+    // ticking clock is the honest "still working" signal during that window.
+    const flashStartRef = useRef<number | null>(null)
+    const [flashElapsedSec, setFlashElapsedSec] = useState(0)
     const [fileTransferProgress, setFileTransferProgress] = useState<FileTransferProgress | null>(null)
     const [isUpdating, setIsUpdating] = useState(false)
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -491,6 +497,19 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         return () => { bleEventBus.removeListener('textLine', onRx) }
     }, [target, isUpdating, device?.id, advancePhase, appendLog])
 
+    // ── Himax flash elapsed clock ──────────────────────────────────
+    // Ticks once a second while the flash command is in flight (waking /
+    // flashing), driving the "(m:ss elapsed)" suffix on the status label.
+    useEffect(() => {
+        if (target !== 'himax' || !isUpdating || (phase !== 'waking' && phase !== 'flashing')) return
+        const id = setInterval(() => {
+            if (flashStartRef.current !== null && !unmountedRef.current) {
+                setFlashElapsedSec(Math.floor((Date.now() - flashStartRef.current) / 1000))
+            }
+        }, 1000)
+        return () => clearInterval(id)
+    }, [target, isUpdating, phase])
+
 
     // ── BLE DFU flow ───────────────────────────────────────────────
 
@@ -674,7 +693,20 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
             advancePhase('sending')
             appendLog(`${passLabel}Sending firmware flash command...`)
 
-            await session.execute(() => commandRegistry.aifirmware(imgName, computedCrc))
+            // The device reports nothing over BLE while it erases/writes flash
+            // (its progress prints go to the local UART console only); the next
+            // line we receive is the final "Firmware update OK/FAILED", minutes
+            // later. Start the elapsed clock and advance to 'flashing' after a
+            // short grace so the UI never sits frozen on "waking up".
+            flashStartRef.current = Date.now()
+            setFlashElapsedSec(0)
+            const flashPhaseTimer = setTimeout(() => advancePhase('flashing'), 8000)
+            try {
+                await session.execute(() => commandRegistry.aifirmware(imgName, computedCrc))
+            } finally {
+                clearTimeout(flashPhaseTimer)
+                flashStartRef.current = null
+            }
         } else {
             // Source is 'sdcard'
             advancePhase('sending')
@@ -685,7 +717,16 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
                 appendLog(`${passLabel}Using database CRC for flash: ${targetCrc}`)
             }
 
-            await session.execute(() => commandRegistry.aifirmware(filenameToFlash, targetCrc))
+            // Same silent-flash window as the download path (see above).
+            flashStartRef.current = Date.now()
+            setFlashElapsedSec(0)
+            const flashPhaseTimer = setTimeout(() => advancePhase('flashing'), 8000)
+            try {
+                await session.execute(() => commandRegistry.aifirmware(filenameToFlash, targetCrc))
+            } finally {
+                clearTimeout(flashPhaseTimer)
+                flashStartRef.current = null
+            }
         }
 
         if (unmountedRef.current) return
@@ -962,6 +1003,13 @@ export function useFirmwareUpdate({ target, device }: UseFirmwareUpdateOptions) 
         statusLabel = interPassWait
             ? `Image ${pairProgress.done} of ${pairProgress.total} installed — waiting for the camera to restart…`
             : `[Image ${Math.min(pairProgress.done + 1, pairProgress.total)} of ${pairProgress.total}] ${labels[phase]}`
+    }
+    // While the Himax writes flash the phone hears nothing over BLE — show a
+    // ticking elapsed clock so the long quiet window reads as work, not a hang.
+    if (target === 'himax' && isUpdating && (phase === 'waking' || phase === 'flashing') && flashElapsedSec > 0) {
+        const mm = Math.floor(flashElapsedSec / 60)
+        const ss = String(flashElapsedSec % 60).padStart(2, '0')
+        statusLabel = `${statusLabel} (${mm}:${ss} elapsed)`
     }
 
     // For BLE DFU and Himax File Transfer, interpolate real progress during specific phases

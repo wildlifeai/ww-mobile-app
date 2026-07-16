@@ -1304,6 +1304,97 @@ export type Database = {
           },
         ]
       }
+      device_alert_rules: {
+        Row: {
+          backoff_steps_min: number[]
+          clear_window_min: number
+          created_at: string | null
+          created_by: string | null
+          digest_send_utc: number | null
+          enabled: boolean
+          id: string
+          label: string
+          mode: string
+          model_family_id: string
+          project_id: string
+          threshold_pct: number
+          updated_at: string | null
+        }
+        Insert: {
+          backoff_steps_min?: number[]
+          clear_window_min?: number
+          created_at?: string | null
+          created_by?: string | null
+          digest_send_utc?: number | null
+          enabled?: boolean
+          id?: string
+          label: string
+          mode: string
+          model_family_id: string
+          project_id: string
+          threshold_pct?: number
+          updated_at?: string | null
+        }
+        Update: {
+          backoff_steps_min?: number[]
+          clear_window_min?: number
+          created_at?: string | null
+          created_by?: string | null
+          digest_send_utc?: number | null
+          enabled?: boolean
+          id?: string
+          label?: string
+          mode?: string
+          model_family_id?: string
+          project_id?: string
+          threshold_pct?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_alert_rules_model_family_id_fkey"
+            columns: ["model_family_id"]
+            isOneToOne: false
+            referencedRelation: "ai_model_families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_alert_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_overview"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "device_alert_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_members_detailed"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "device_alert_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_summary"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "device_alert_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_alert_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_with_stats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       devices: {
         Row: {
           bluetooth_id: string
@@ -2622,6 +2713,7 @@ export type Database = {
       }
       observations: {
         Row: {
+          ai_origin: string | null
           annotator_id: string | null
           bbox_h: number | null
           bbox_w: number | null
@@ -2662,6 +2754,7 @@ export type Database = {
           vernacular_name: string | null
         }
         Insert: {
+          ai_origin?: string | null
           annotator_id?: string | null
           bbox_h?: number | null
           bbox_w?: number | null
@@ -2702,6 +2795,7 @@ export type Database = {
           vernacular_name?: string | null
         }
         Update: {
+          ai_origin?: string | null
           annotator_id?: string | null
           bbox_h?: number | null
           bbox_w?: number | null
