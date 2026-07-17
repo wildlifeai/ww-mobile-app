@@ -49,6 +49,16 @@ export const OP_PARAMETER = {
     WB_RED_GAIN: 27,
     /** Software white-balance BLUE gain, Q8.8 (256 = 1.0x, 0 = correction off). RP3 colour camera only */
     WB_BLUE_GAIN: 28,
+    /** RP camera auto-exposure: 0 = off (init-table exposure), 1 = on. See firmware ae.c */
+    CAM_AE_ENABLE: 29,
+    /** RP camera auto-exposure target: raw bright-quartile (p75) luma, 0-250 (0 = built-in default) */
+    CAM_AE_TARGET: 30,
+    /** RP camera white balance: 0 = off, 1 = auto (grey-world per frame), 2 = manual op27/op28 */
+    CAM_WB_MODE: 31,
+    /** RP camera capture resolution: 0 = 640x480, 1 = 1280x960 single JPEG — REQUIRES the NN off (op14 = 0), so deployments must reset this */
+    CAM_RESOLUTION: 32,
+    /** MD global-motion rejection: skip the capture when an MD wake moves MORE than this many of the 256 grid blocks (whole-scene shift = camera knock/pan or lighting change, not an animal). 0 disables */
+    MD_BLOCK_NUM_MAX: 33,
 } as const
 
 /**
@@ -99,6 +109,17 @@ export const FACTORY_DEFAULTS: Record<number, number> = {
     [OP_PARAMETER.SLOT_SWITCH]: 1,
     [OP_PARAMETER.WB_RED_GAIN]: 286,
     [OP_PARAMETER.WB_BLUE_GAIN]: 326,
+    // 29-33: firmware in-RAM defaults (fatfs_task.c op_parameter[]). Including
+    // them here means resetOps clears bench experiments at deployment start and
+    // configVerification covers them — critically op32 (hi-res) and op33 (MD
+    // global-motion max): a bench-set op32=1 conflicts with the NN model a
+    // deployment loads (hi-res requires op14 = 0), and a bench-set op33 would
+    // silently change field MD behaviour.
+    [OP_PARAMETER.CAM_AE_ENABLE]: 1,
+    [OP_PARAMETER.CAM_AE_TARGET]: 110,
+    [OP_PARAMETER.CAM_WB_MODE]: 1,
+    [OP_PARAMETER.CAM_RESOLUTION]: 0,
+    [OP_PARAMETER.MD_BLOCK_NUM_MAX]: 0,
 }
 
 
