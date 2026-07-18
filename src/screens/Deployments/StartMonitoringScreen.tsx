@@ -54,6 +54,7 @@ export const StartMonitoringDetailsStep = () => {
         batteryLevel, sdCardStatus,
         handleBatteryCheck, handleSdCardCheck,
         recordJpegOnly, setRecordJpegOnly,
+        hiResPhotos, setHiResPhotos,
         isMonitoring, handleMonitorDisconnect, handleStopMonitoring, isStoppingMonitoring,
         deploymentStartTime,
         // DFU control
@@ -360,6 +361,8 @@ export const StartMonitoringDetailsStep = () => {
                     handleSdCardCheck={handleSdCardCheck}
                     recordJpegOnly={recordJpegOnly}
                     setRecordJpegOnly={setRecordJpegOnly}
+                    hiResPhotos={hiResPhotos}
+                    setHiResPhotos={setHiResPhotos}
                     isInitializing={isInitializing}
                     bleDeviceConnected={!!bleDevice?.connected}
                     theme={theme}

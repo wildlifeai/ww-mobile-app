@@ -89,6 +89,14 @@ export const useStartDeployment = ({
     // "Record JPEG only" toggle opts out. See bmp-ingestion-analysis.md.
     const [recordJpegOnly, setRecordJpegOnly] = useState(false)
 
+    // Hi-res photos (op32): one 1216x960 JPEG per trigger instead of 640x480.
+    // Requires no on-device AI model (the raw frame occupies the NN arena), so
+    // the toggle is blocked for projects with a model. Written after resetOps
+    // so the factory-reset diff does not clobber it. The firmware picks the
+    // datapath at sensor init, so hi-res starts from the first wake after the
+    // device next sleeps. See firmware _Documentation/hires-capture.md.
+    const [hiResPhotos, setHiResPhotos] = useState(false)
+
     const [submitting, setSubmitting] = useState(false)
     const [project, setProject] = useState<any>(null)
     const [availableProjects, setAvailableProjects] = useState<ProjectWithDetails[]>([])
@@ -303,6 +311,11 @@ export const useStartDeployment = ({
 
         log('[DeploymentDetails] Project changed by user:', projectId)
         setProject(newProject);
+
+        if (newProject.model_id) {
+            // Hi-res requires the NN off — not available for AI-model projects
+            setHiResPhotos(false)
+        }
 
         if (newProject.capture_method_id) {
             const methods = await ReferenceDataService.getCaptureMethods()
@@ -562,19 +575,36 @@ export const useStartDeployment = ({
                 throw configError
             }
 
-            // 7b. Capture format: JPG+BMP by default (quality trial); the advanced
+            // 7b. Capture format.
+            // Hi-res (op32=1): one 1216x960 JPEG per trigger via the CPU pipeline.
+            // Forces JPEG-only single-shot (BMP alternation and multi-shot are
+            // untested on the hi-res path, and single-shot also avoids the
+            // back-to-back delivery-contention caveat in hires-capture.md).
+            // Requires no AI model — guarded in the UI and re-checked here;
+            // resetOps/syncAiModel already erased any stale model when the
+            // project has none.
+            // Otherwise: JPG+BMP by default (quality trial); the advanced
             // "Record JPEG only" toggle disables BMP. TEST_BIT_SAVE_BMP makes the
             // firmware alternate JPG/BMP, so 2 pics/trigger yields one of each.
-            // Non-fatal: on failure the firmware keeps its clean-slate default
-            // (TEST_MODE_BITS=0 = JPEG only). See bmp-ingestion-analysis.md.
+            // Non-fatal: on failure the firmware keeps its clean-slate defaults
+            // (JPEG only, 640x480). See bmp-ingestion-analysis.md.
+            const hiRes = hiResPhotos && !project.model_id
             try {
-                const testModeBits = recordJpegOnly ? 0 : TEST_BIT_SAVE_BMP
-                const numPictures = recordJpegOnly ? 1 : 2
+                const testModeBits = (recordJpegOnly || hiRes) ? 0 : TEST_BIT_SAVE_BMP
+                const numPictures = (recordJpegOnly || hiRes) ? 1 : 2
                 await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.TEST_MODE_BITS, value: testModeBits }))
                 await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.NUM_PICTURES, value: numPictures }))
-                progress.addLog(`Capture format: ${recordJpegOnly ? 'JPEG only' : 'JPG + BMP'} (${numPictures} pic${numPictures > 1 ? 's' : ''}/trigger)`)
+                if (hiRes) {
+                    await bleSession?.execute(() => commandRegistry.setop({ index: OP_PARAMETER.CAM_RESOLUTION, value: 1 }))
+                    progress.addLog('Capture format: high-res JPEG (1216×960), 1 pic/trigger — starts from the first wake after the device sleeps')
+                } else {
+                    progress.addLog(`Capture format: ${recordJpegOnly ? 'JPEG only' : 'JPG + BMP'} (${numPictures} pic${numPictures > 1 ? 's' : ''}/trigger)`)
+                }
             } catch (formatError) {
                 logWarn('[Deployment] Failed to set capture format (non-fatal):', formatError)
+                if (hiRes) {
+                    progress.addLog('⚠️ Could not enable high-res — the deployment will record 640×480')
+                }
             }
 
             // 7c. One-shot light check: take a single reference photo (every capture
@@ -657,7 +687,7 @@ export const useStartDeployment = ({
             Alert.alert('Error', 'Failed to start deployment: ' + (error as any).message)
             isStartDeploymentInProgress.current = false
         }
-    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths, recordJpegOnly])
+    }, [formState.cameraHeight, formState.notes, bleDevice, bleSession, project, user, deviceId, startConfigure, progress, monitoring, batteryLevel, device?.deviceEui, gpsLocation, locationName, sdCardStatus?.free, sdCardStatus?.total, aiProcessorFailed, initPayload?.deviceFirmwareVersion, initErrors.deviceHealth, deploymentPhotoPaths, recordJpegOnly, hiResPhotos])
 
     const handleFinishDismiss = useCallback(() => {
         progress.setIsFinishing(false)
@@ -759,6 +789,8 @@ export const useStartDeployment = ({
         handleBatteryCheck, handleSdCardCheck,
         // Capture format (advanced): JPG+BMP default, opt out to JPEG only
         recordJpegOnly, setRecordJpegOnly,
+        // Hi-res photos (advanced): op32 = one 1216x960 JPEG per trigger; needs no AI model
+        hiResPhotos, setHiResPhotos,
         // DFU control
         isDfuInProgress,
     }
