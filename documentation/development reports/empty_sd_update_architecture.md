@@ -214,6 +214,8 @@ This avoids reading the file over BLE entirely — the OP vector in RAM *is* wha
 | E.8 | Second update immediately after first (overwrite staged files) | `FA_CREATE_ALWAYS` + f_sync path handles overwrite (regression for the fixed `ftx err 7`) |
 | E.9 | Device enters DPD between file 1 and file 2 (user idles at a dialog) | Pipeline re-wakes device (existing wake handshake) before TRANSFER-2; no silent hang |
 | E.10 | Monitoring attempted while update pipeline holds the transport lock | Blocked with clear message (lock already enforces exclusivity) |
+| E.11 | **Per-phone timing table** (CGP review ask, PR ww-hardware#27): run a fixed 512 KB transfer on ≥3 Android handsets + 1 iPhone; record burst KB/s, sustained KB/s, fast-interval grant duration | Table added to `BLE_Fast_File_Transfer.md`; large phone-to-phone variance is expected and documented, not a failure |
+| E.12 | **`AI_PROCESSOR_MSG_FILE_LOOPBACK` pass** (CGP review ask): exercise the nRF loopback test mode against the 16-slot FIFO + cumulative-ACK scheme | Loopback completes, CRC clean — confirms the test mode survived the fast-transfer rework (it was not separately exercised during development) |
 
 **Pass criteria for release:** all matrix rows on both platforms; 3 consecutive full Flow-1 runs on the Android decay device; zero occurrences of `AI processor not responding`, `I2C master did not read`, or `ftx err 7`.
 
