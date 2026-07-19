@@ -30,6 +30,8 @@ interface AdvancedSettingsSectionProps {
     handleSdCardCheck: () => void
     recordJpegOnly: boolean
     setRecordJpegOnly: (val: boolean) => void
+    hiResPhotos: boolean
+    setHiResPhotos: (val: boolean) => void
     isInitializing: boolean
     bleDeviceConnected: boolean
     theme: any
@@ -55,6 +57,8 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
     handleSdCardCheck,
     recordJpegOnly,
     setRecordJpegOnly,
+    hiResPhotos,
+    setHiResPhotos,
     isInitializing,
     bleDeviceConnected,
     theme,
@@ -63,6 +67,10 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
     onUpdateFirmware
 }) => {
     const [expanded, setExpanded] = useState(false)
+
+    // Hi-res (op32) needs the NN off: blocked whenever the project deploys an AI model
+    const hiResBlocked = !!project?.model_id
+    const hiResEnabled = hiResPhotos && !hiResBlocked
 
     // Battery Render Helpers
 
@@ -105,7 +113,7 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
         <Button
             {...props}
             icon="help-circle-outline"
-            onPress={() => onShowHelp('Capture Format', 'Off (default): the camera records each trigger as a high-quality raw BMP plus a JPG, and the website compresses the BMP — better image quality for the current testing phase.\n\nOn: record JPEG only — smaller files, faster uploads, less SD-card use.')}
+            onPress={() => onShowHelp('Capture Format', 'High-resolution photos: one 1216×960 JPEG per trigger instead of 640×480 — about 4× the detail, ~2 s per photo, larger files. Takes effect from the first wake after the device next sleeps. Not available when the project uses an on-device AI model: the model occupies the memory the high-res photo needs, so those deployments always record 640×480.\n\nRecord JPEG only — Off (default): the camera records each trigger as a high-quality raw BMP plus a JPG, and the website compresses the BMP — better image quality for the current testing phase. On: record JPEG only — smaller files, faster uploads, less SD-card use. High-res photos are always JPEG only.')}
         >
             <Text>Help</Text>
         </Button>
@@ -183,12 +191,33 @@ export const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = (
                     <Card.Content style={styles.content}>
                         <View style={styles.switchRow}>
                             <View style={styles.switchLabel}>
-                                <Text variant="bodyMedium">Record JPEG only</Text>
+                                <Text variant="bodyMedium">High-resolution photos</Text>
                                 <Text style={styles.statusHint}>
-                                    Off (default): record JPG + raw BMP for higher quality. On: JPEG only — smaller, faster.
+                                    {hiResBlocked
+                                        ? 'Unavailable: this project uses an on-device AI model, which needs the standard 640×480 pipeline.'
+                                        : 'One 1216×960 JPEG per trigger (~4× the detail, ~2 s per photo). Starts from the first wake after the device sleeps.'}
                                 </Text>
                             </View>
-                            <Switch value={recordJpegOnly} onValueChange={setRecordJpegOnly} />
+                            <Switch
+                                value={hiResEnabled}
+                                onValueChange={setHiResPhotos}
+                                disabled={hiResBlocked}
+                            />
+                        </View>
+                        <View style={styles.switchRow}>
+                            <View style={styles.switchLabel}>
+                                <Text variant="bodyMedium">Record JPEG only</Text>
+                                <Text style={styles.statusHint}>
+                                    {hiResEnabled
+                                        ? 'High-res photos are always JPEG only.'
+                                        : 'Off (default): record JPG + raw BMP for higher quality. On: JPEG only — smaller, faster.'}
+                                </Text>
+                            </View>
+                            <Switch
+                                value={hiResEnabled || recordJpegOnly}
+                                onValueChange={setRecordJpegOnly}
+                                disabled={hiResEnabled}
+                            />
                         </View>
                     </Card.Content>
                 </Card>
