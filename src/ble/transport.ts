@@ -75,11 +75,18 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
  *                      Use for FILE_START and FILE_END. If false, uses
  *                      write-without-response (fast, ACK-confirmed by protocol).
  *                      Use for FILE_DATA.
+ * @param timeoutMs     Per-write timeout. iOS CoreBluetooth can stall a
+ *                      write-with-response for well over 5 s during connection
+ *                      parameter renegotiation — callers on that path must pass
+ *                      a budget below the firmware's 15 s session-inactivity
+ *                      hold but above the observed stalls (see
+ *                      runFileTransferPipeline WRITE_TIMEOUT_MS).
  */
 export const writeBinaryToDevice = async (
 	peripheral: ExtendedPeripheral,
 	data: Uint8Array,
 	withResponse: boolean = false,
+	timeoutMs: number = 5000,
 ): Promise<void> => {
 	if (!peripheral.connected) {
 		throw new Error('Device disconnected')
@@ -95,7 +102,7 @@ export const writeBinaryToDevice = async (
 
 	const label = withResponse ? 'BleManager.write' : 'BleManager.writeWithoutResponse'
 
-	await invokeWithTimeout(writeFn, label, 5000)
+	await invokeWithTimeout(writeFn, label, timeoutMs)
 }
 
 

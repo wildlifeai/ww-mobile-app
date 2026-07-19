@@ -123,6 +123,17 @@ export async function runFileTransferPipeline(
   // expose - slower, but drops become impossible by protocol. Android keeps
   // the tuned without-response fast path.
   const writeWithResponse = Platform.OS === 'ios'
+
+  // iOS: CoreBluetooth stalls the in-flight write for >5 s when it
+  // renegotiates the connection interval (~30 s in, and again later). With the
+  // old 5 s write timeout the app aborted mid-stall while the firmware waited
+  // out its 15 s session-inactivity hold (bench 19 Jul 2026: died at packet
+  // ~197/2125 with "BleManager.write function timed out" while the device sat
+  // healthy). 12 s rides out observed stalls and stays under the firmware's
+  // 15 s budget, so both ends outlast the stall together. ATT ordering on the
+  // with-response path makes duplicate delivery impossible when the stalled
+  // write eventually flushes. Android keeps the 5 s default.
+  const WRITE_TIMEOUT_MS = Platform.OS === 'ios' ? 12000 : 5000
   const transferId = generateTransferId()
   const startTime = Date.now()
 
@@ -390,7 +401,7 @@ export async function runFileTransferPipeline(
         const fileStartT0 = Date.now()
         const startAckPromise = prepareAckWait({ phase: 'start' }, FILE_START_ACK_TIMEOUT_MS)
         if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected before FILE_START')
-        await writeBinaryToDevice(peripheral, startPacket, writeWithResponse)
+        await writeBinaryToDevice(peripheral, startPacket, writeWithResponse, WRITE_TIMEOUT_MS)
         log(`[FileTransfer] FILE_START sent: ${filename} (${data.length} bytes) [attempt ${sessionAttempt + 1}]`)
 
         await startAckPromise
@@ -433,7 +444,7 @@ export async function runFileTransferPipeline(
             currentAckStartTime = Date.now()
             currentAckPromise = prepareAckWait({ phase: 'data', packetNum: pkt.wireNum })
             if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected before write')
-            await writeBinaryToDevice(peripheral, pkt.packet, writeWithResponse)
+            await writeBinaryToDevice(peripheral, pkt.packet, writeWithResponse, WRITE_TIMEOUT_MS)
           }
 
           while (i < preBuiltPackets.length) {
@@ -453,7 +464,7 @@ export async function runFileTransferPipeline(
                 wirePacketNum = next.wireNum
                 currentAckStartTime = Date.now()
                 currentAckPromise = prepareAckWait({ phase: 'data', packetNum: next.wireNum })
-                await writeBinaryToDevice(peripheral, next.packet, writeWithResponse)
+                await writeBinaryToDevice(peripheral, next.packet, writeWithResponse, WRITE_TIMEOUT_MS)
               }
 
               // ── ACCOUNTING (next write is already in BLE stack) ────
@@ -486,7 +497,7 @@ export async function runFileTransferPipeline(
               wirePacketNum = pkt.wireNum
               currentAckStartTime = Date.now()
               currentAckPromise = prepareAckWait({ phase: 'data', packetNum: pkt.wireNum })
-              await writeBinaryToDevice(peripheral, pkt.packet, writeWithResponse)
+              await writeBinaryToDevice(peripheral, pkt.packet, writeWithResponse, WRITE_TIMEOUT_MS)
             }
           }
         } else {
@@ -567,8 +578,19 @@ export async function runFileTransferPipeline(
               // responding"). The real throughput limiter was JS-thread congestion
               // from per-ack Engineer-Console logging, fixed in useBleListeners.
               while (nextToSend < total && (nextToSend - (highestAckedIndex + 1)) < windowSize) {
-                await writeBinaryToDevice(peripheral, preBuiltPackets[nextToSend].packet, writeWithResponse)
+                await writeBinaryToDevice(peripheral, preBuiltPackets[nextToSend].packet, writeWithResponse, WRITE_TIMEOUT_MS)
                 nextToSend++
+                // On iOS a with-response write takes longer than the ack
+                // round-trip, so credit is replenished as fast as it is spent
+                // and this fill loop can span the ENTIRE transfer - emit
+                // progress here too or the UI sits at 0% (throttled, so this
+                // costs nothing on Android's fast path).
+                if (highestAckedIndex >= 0) {
+                  bytesSent = preBuiltPackets[highestAckedIndex].chunkEnd
+                  packetsAcked = highestAckedIndex + 1
+                  wirePacketNum = preBuiltPackets[highestAckedIndex].wireNum
+                  throttledEmitProgress(highestAckedIndex)
+                }
               }
 
               // Progress (based on cumulative acks)
@@ -608,7 +630,7 @@ export async function runFileTransferPipeline(
         const fileEndT0 = Date.now()
         const endAckPromise = prepareAckWait({ phase: 'end' })
         if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected before FILE_END')
-        await writeBinaryToDevice(peripheral, endPacket, writeWithResponse)
+        await writeBinaryToDevice(peripheral, endPacket, writeWithResponse, WRITE_TIMEOUT_MS)
         log(`[FileTransfer] FILE_END sent: CRC=0x${crc.toString(16).toUpperCase().padStart(4, '0')}`)
 
         await endAckPromise
@@ -642,7 +664,12 @@ export async function runFileTransferPipeline(
         const isFileTransferError = sessionErr instanceof FileTransferError
         const hasDeviceErrorReason = sessionErr?.reason === 'DEVICE_ERROR'
         const hasErrorCode7 = sessionErr?.errorCode === 7
-        const isRecoverable = isFileTransferError && hasDeviceErrorReason && hasErrorCode7
+        // A write timeout means CoreBluetooth stalled past WRITE_TIMEOUT_MS
+        // (seen on iOS interval renegotiations). The device parks the session
+        // and DPDs after its 15 s hold; a fresh FILE_START wakes it, so a
+        // full-session retry is safe and usually succeeds.
+        const isWriteTimeout = /timed out/i.test(String(sessionErr?.message ?? ''))
+        const isRecoverable = (isFileTransferError && hasDeviceErrorReason && hasErrorCode7) || isWriteTimeout
 
         log(`[FileTransfer] Session error caught: instanceof=${isFileTransferError}, reason=${sessionErr?.reason}, errorCode=${sessionErr?.errorCode} (type=${typeof sessionErr?.errorCode}), isRecoverable=${isRecoverable}`)
 
