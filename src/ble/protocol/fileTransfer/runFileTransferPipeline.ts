@@ -109,6 +109,20 @@ export async function runFileTransferPipeline(
   // fails fast with an ftx error (prompting the BLE firmware update) rather
   // than hanging. Callers should only override this for protocol testing.
   const windowSize = requestedWindowSize ?? 12
+
+  // iOS: use write-WITH-response for every transfer packet. CoreBluetooth
+  // silently DISCARDS .withoutResponse writes when its transmit queue is full,
+  // and react-native-ble-manager (11.x) never checks canSendWriteWithoutResponse
+  // nor waits for peripheralIsReadyToSendWriteWithoutResponse - so once iOS
+  // relaxes the connection interval (~30s in, and there is no iOS API to hold
+  // it fast), a window burst overruns the queue and packets vanish with no
+  // error. The strictly-ordered nRF->HX pipeline then waits forever for the
+  // gap and the transfer dies at DEVICE_SILENT (bench 16 Jul 2026: large
+  // binary stalled at ~packet 120 / 6%; TINY.TXT unaffected). ATT
+  // write-with-response provides the per-packet flow control iOS refuses to
+  // expose - slower, but drops become impossible by protocol. Android keeps
+  // the tuned without-response fast path.
+  const writeWithResponse = Platform.OS === 'ios'
   const transferId = generateTransferId()
   const startTime = Date.now()
 
@@ -376,7 +390,7 @@ export async function runFileTransferPipeline(
         const fileStartT0 = Date.now()
         const startAckPromise = prepareAckWait({ phase: 'start' }, FILE_START_ACK_TIMEOUT_MS)
         if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected before FILE_START')
-        await writeBinaryToDevice(peripheral, startPacket, false)
+        await writeBinaryToDevice(peripheral, startPacket, writeWithResponse)
         log(`[FileTransfer] FILE_START sent: ${filename} (${data.length} bytes) [attempt ${sessionAttempt + 1}]`)
 
         await startAckPromise
@@ -419,7 +433,7 @@ export async function runFileTransferPipeline(
             currentAckStartTime = Date.now()
             currentAckPromise = prepareAckWait({ phase: 'data', packetNum: pkt.wireNum })
             if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected before write')
-            await writeBinaryToDevice(peripheral, pkt.packet, false)
+            await writeBinaryToDevice(peripheral, pkt.packet, writeWithResponse)
           }
 
           while (i < preBuiltPackets.length) {
@@ -439,7 +453,7 @@ export async function runFileTransferPipeline(
                 wirePacketNum = next.wireNum
                 currentAckStartTime = Date.now()
                 currentAckPromise = prepareAckWait({ phase: 'data', packetNum: next.wireNum })
-                await writeBinaryToDevice(peripheral, next.packet, false)
+                await writeBinaryToDevice(peripheral, next.packet, writeWithResponse)
               }
 
               // ── ACCOUNTING (next write is already in BLE stack) ────
@@ -472,7 +486,7 @@ export async function runFileTransferPipeline(
               wirePacketNum = pkt.wireNum
               currentAckStartTime = Date.now()
               currentAckPromise = prepareAckWait({ phase: 'data', packetNum: pkt.wireNum })
-              await writeBinaryToDevice(peripheral, pkt.packet, false)
+              await writeBinaryToDevice(peripheral, pkt.packet, writeWithResponse)
             }
           }
         } else {
@@ -553,7 +567,7 @@ export async function runFileTransferPipeline(
               // responding"). The real throughput limiter was JS-thread congestion
               // from per-ack Engineer-Console logging, fixed in useBleListeners.
               while (nextToSend < total && (nextToSend - (highestAckedIndex + 1)) < windowSize) {
-                await writeBinaryToDevice(peripheral, preBuiltPackets[nextToSend].packet, false)
+                await writeBinaryToDevice(peripheral, preBuiltPackets[nextToSend].packet, writeWithResponse)
                 nextToSend++
               }
 
@@ -594,7 +608,7 @@ export async function runFileTransferPipeline(
         const fileEndT0 = Date.now()
         const endAckPromise = prepareAckWait({ phase: 'end' })
         if (isDisconnected) throw new FileTransferError('DISCONNECTED', 'Device disconnected before FILE_END')
-        await writeBinaryToDevice(peripheral, endPacket, false)
+        await writeBinaryToDevice(peripheral, endPacket, writeWithResponse)
         log(`[FileTransfer] FILE_END sent: CRC=0x${crc.toString(16).toUpperCase().padStart(4, '0')}`)
 
         await endAckPromise
