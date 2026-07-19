@@ -17,6 +17,7 @@
  */
 
 import { Platform } from 'react-native'
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake'
 import { NativeEventEmitter, NativeModules } from 'react-native'
 import BleManager from 'react-native-ble-manager'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
@@ -352,6 +353,15 @@ export async function runFileTransferPipeline(
     // Acquire lock FIRST, then wake the device. This eliminates the gap
     // where the device can Sleep between the wake check and FILE_START.
     bleTransport.acquireLock(transferId)
+
+    // Keep the screen awake for the whole session. iOS suspends the app when
+    // the display auto-locks (default 30 s) - the JS thread freezes mid-write,
+    // the device waits out its 15 s session hold and sleeps, and the transfer
+    // dies (bench 19 Jul 2026: every iOS large-file failure traced to this,
+    // masquerading as a CoreBluetooth stall). expo-keep-awake ships inside the
+    // expo package, so this is JS-only. A manual power-button press still
+    // suspends us - nothing app-side can prevent that.
+    activateKeepAwakeAsync(transferId).catch(() => { /* best effort */ })
 
     // Ask Android for a fast connection interval for the duration of the
     // session. The one-off request made at connect time (useBle.ts) is
@@ -736,6 +746,7 @@ export async function runFileTransferPipeline(
     if (Platform.OS === 'android') {
       BleManager.requestConnectionPriority(peripheral.id, 0).catch(() => {})
     }
+    deactivateKeepAwake(transferId).catch(() => { /* best effort */ })
     bleTransport.releaseLock(transferId)
     bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: false, ts: Date.now() })
     log(`[FileTransfer] Pipeline cleanup complete`)
