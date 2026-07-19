@@ -647,6 +647,18 @@ export async function runFileTransferPipeline(
         await endAckPromise
         log(`[FileTransfer] Transfer complete: "ftx done" received (FILE_END took ${Date.now() - fileEndT0}ms)`)
 
+        // "ftx done" confirms EVERY packet (the HX processes strictly in
+        // order, and the whole-file CRC just passed). Normalise the counters:
+        // the ack listener was removed when the send loop exited, so acks for
+        // the in-flight tail - plus the last <4 packets the firmware never
+        // individually acks (FILETX_ACK_EVERY) - would otherwise leave the
+        // 'complete' emission stuck at ~99%.
+        packetsAcked = totalPackets
+        bytesSent = data.length
+        if (preBuiltPackets.length > 0) {
+          wirePacketNum = preBuiltPackets[preBuiltPackets.length - 1].wireNum
+        }
+
         // ── Success ──────────────────────────────────────────────────
         emitProgress('complete')
         const duration = Date.now() - startTime
@@ -746,7 +758,10 @@ export async function runFileTransferPipeline(
     if (Platform.OS === 'android') {
       BleManager.requestConnectionPriority(peripheral.id, 0).catch(() => {})
     }
-    deactivateKeepAwake(transferId).catch(() => { /* best effort */ })
+    // Promise.resolve().then(...) swallows both sync throws and rejections,
+    // whatever signature future expo-keep-awake versions use - nothing here
+    // may prevent releaseLock() below from running.
+    Promise.resolve().then(() => deactivateKeepAwake(transferId)).catch(() => { /* best effort */ })
     bleTransport.releaseLock(transferId)
     bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: false, ts: Date.now() })
     log(`[FileTransfer] Pipeline cleanup complete`)
