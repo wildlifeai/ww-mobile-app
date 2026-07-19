@@ -533,9 +533,27 @@ export async function runFileTransferPipeline(
               const wire = parseInt(tok, 10)
               if (Number.isNaN(wire)) return
               // Map the (cumulative) wire number to the highest not-yet-acked
-              // sent index carrying that wire number.
-              for (let i = highestAckedIndex + 1; i < nextToSend; i++) {
-                if (preBuiltPackets[i].wireNum === wire) { highestAckedIndex = i; break }
+              // sent index carrying that wire number. The bound includes the
+              // IN-FLIGHT packet (nextToSend, not nextToSend-1): on the iOS
+              // with-response path the device can receive packet N on-air and
+              // ack it before the JS write promise for N resolves (nextToSend
+              // is only incremented after the await), and a cumulative ack
+              // value is never repeated - capping at nextToSend-1 would drop
+              // that mapping until the next ack, stalling credit and progress.
+              let acked = false
+              for (let i = highestAckedIndex + 1; i < Math.min(nextToSend + 1, total); i++) {
+                if (preBuiltPackets[i].wireNum === wire) { highestAckedIndex = i; acked = true; break }
+              }
+              // Progress accounting lives HERE, where the ack lands, so the UI
+              // updates even while the sender is parked inside a long
+              // write-with-response (iOS writes outlast the ack round-trip, so
+              // the send loop's own progress point can be starved for the
+              // entire transfer - the "0% forever" bug).
+              if (acked && highestAckedIndex >= 0) {
+                bytesSent = preBuiltPackets[highestAckedIndex].chunkEnd
+                packetsAcked = highestAckedIndex + 1
+                wirePacketNum = preBuiltPackets[highestAckedIndex].wireNum
+                throttledEmitProgress(highestAckedIndex)
               }
               wake?.()
             } else if (line.startsWith('ftx err ')) {
@@ -580,26 +598,9 @@ export async function runFileTransferPipeline(
               while (nextToSend < total && (nextToSend - (highestAckedIndex + 1)) < windowSize) {
                 await writeBinaryToDevice(peripheral, preBuiltPackets[nextToSend].packet, writeWithResponse, WRITE_TIMEOUT_MS)
                 nextToSend++
-                // On iOS a with-response write takes longer than the ack
-                // round-trip, so credit is replenished as fast as it is spent
-                // and this fill loop can span the ENTIRE transfer - emit
-                // progress here too or the UI sits at 0% (throttled, so this
-                // costs nothing on Android's fast path).
-                if (highestAckedIndex >= 0) {
-                  bytesSent = preBuiltPackets[highestAckedIndex].chunkEnd
-                  packetsAcked = highestAckedIndex + 1
-                  wirePacketNum = preBuiltPackets[highestAckedIndex].wireNum
-                  throttledEmitProgress(highestAckedIndex)
-                }
               }
 
-              // Progress (based on cumulative acks)
-              if (highestAckedIndex >= 0) {
-                bytesSent = preBuiltPackets[highestAckedIndex].chunkEnd
-                packetsAcked = highestAckedIndex + 1
-                wirePacketNum = preBuiltPackets[highestAckedIndex].wireNum
-                throttledEmitProgress(highestAckedIndex)
-              }
+              // (Progress is emitted reactively in onFtxAck as acks land.)
 
               // All sent - the tail is confirmed by FILE_END. Otherwise the
               // window is full: wait for an ack to free credit (or error/stall).
@@ -668,7 +669,7 @@ export async function runFileTransferPipeline(
         // (seen on iOS interval renegotiations). The device parks the session
         // and DPDs after its 15 s hold; a fresh FILE_START wakes it, so a
         // full-session retry is safe and usually succeeds.
-        const isWriteTimeout = /timed out/i.test(String(sessionErr?.message ?? ''))
+        const isWriteTimeout = /timed out/i.test(String(sessionErr?.message ?? sessionErr ?? ''))
         const isRecoverable = (isFileTransferError && hasDeviceErrorReason && hasErrorCode7) || isWriteTimeout
 
         log(`[FileTransfer] Session error caught: instanceof=${isFileTransferError}, reason=${sessionErr?.reason}, errorCode=${sessionErr?.errorCode} (type=${typeof sessionErr?.errorCode}), isRecoverable=${isRecoverable}`)
