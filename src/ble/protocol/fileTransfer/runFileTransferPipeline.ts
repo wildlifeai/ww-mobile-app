@@ -17,6 +17,7 @@
  */
 
 import { Platform } from 'react-native'
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake'
 import { NativeEventEmitter, NativeModules } from 'react-native'
 import BleManager from 'react-native-ble-manager'
 import { ExtendedPeripheral } from '../../../redux/slices/devicesSlice'
@@ -353,6 +354,15 @@ export async function runFileTransferPipeline(
     // where the device can Sleep between the wake check and FILE_START.
     bleTransport.acquireLock(transferId)
 
+    // Keep the screen awake for the whole session. iOS suspends the app when
+    // the display auto-locks (default 30 s) - the JS thread freezes mid-write,
+    // the device waits out its 15 s session hold and sleeps, and the transfer
+    // dies (bench 19 Jul 2026: every iOS large-file failure traced to this,
+    // masquerading as a CoreBluetooth stall). expo-keep-awake ships inside the
+    // expo package, so this is JS-only. A manual power-button press still
+    // suspends us - nothing app-side can prevent that.
+    activateKeepAwakeAsync(transferId).catch(() => { /* best effort */ })
+
     // Ask Android for a fast connection interval for the duration of the
     // session. The one-off request made at connect time (useBle.ts) is
     // renegotiated away by the firmware ~20s after connecting, so it must be
@@ -533,9 +543,27 @@ export async function runFileTransferPipeline(
               const wire = parseInt(tok, 10)
               if (Number.isNaN(wire)) return
               // Map the (cumulative) wire number to the highest not-yet-acked
-              // sent index carrying that wire number.
-              for (let i = highestAckedIndex + 1; i < nextToSend; i++) {
-                if (preBuiltPackets[i].wireNum === wire) { highestAckedIndex = i; break }
+              // sent index carrying that wire number. The bound includes the
+              // IN-FLIGHT packet (nextToSend, not nextToSend-1): on the iOS
+              // with-response path the device can receive packet N on-air and
+              // ack it before the JS write promise for N resolves (nextToSend
+              // is only incremented after the await), and a cumulative ack
+              // value is never repeated - capping at nextToSend-1 would drop
+              // that mapping until the next ack, stalling credit and progress.
+              let acked = false
+              for (let i = highestAckedIndex + 1; i < Math.min(nextToSend + 1, total); i++) {
+                if (preBuiltPackets[i].wireNum === wire) { highestAckedIndex = i; acked = true; break }
+              }
+              // Progress accounting lives HERE, where the ack lands, so the UI
+              // updates even while the sender is parked inside a long
+              // write-with-response (iOS writes outlast the ack round-trip, so
+              // the send loop's own progress point can be starved for the
+              // entire transfer - the "0% forever" bug).
+              if (acked && highestAckedIndex >= 0) {
+                bytesSent = preBuiltPackets[highestAckedIndex].chunkEnd
+                packetsAcked = highestAckedIndex + 1
+                wirePacketNum = preBuiltPackets[highestAckedIndex].wireNum
+                throttledEmitProgress(highestAckedIndex)
               }
               wake?.()
             } else if (line.startsWith('ftx err ')) {
@@ -580,26 +608,9 @@ export async function runFileTransferPipeline(
               while (nextToSend < total && (nextToSend - (highestAckedIndex + 1)) < windowSize) {
                 await writeBinaryToDevice(peripheral, preBuiltPackets[nextToSend].packet, writeWithResponse, WRITE_TIMEOUT_MS)
                 nextToSend++
-                // On iOS a with-response write takes longer than the ack
-                // round-trip, so credit is replenished as fast as it is spent
-                // and this fill loop can span the ENTIRE transfer - emit
-                // progress here too or the UI sits at 0% (throttled, so this
-                // costs nothing on Android's fast path).
-                if (highestAckedIndex >= 0) {
-                  bytesSent = preBuiltPackets[highestAckedIndex].chunkEnd
-                  packetsAcked = highestAckedIndex + 1
-                  wirePacketNum = preBuiltPackets[highestAckedIndex].wireNum
-                  throttledEmitProgress(highestAckedIndex)
-                }
               }
 
-              // Progress (based on cumulative acks)
-              if (highestAckedIndex >= 0) {
-                bytesSent = preBuiltPackets[highestAckedIndex].chunkEnd
-                packetsAcked = highestAckedIndex + 1
-                wirePacketNum = preBuiltPackets[highestAckedIndex].wireNum
-                throttledEmitProgress(highestAckedIndex)
-              }
+              // (Progress is emitted reactively in onFtxAck as acks land.)
 
               // All sent - the tail is confirmed by FILE_END. Otherwise the
               // window is full: wait for an ack to free credit (or error/stall).
@@ -636,6 +647,18 @@ export async function runFileTransferPipeline(
         await endAckPromise
         log(`[FileTransfer] Transfer complete: "ftx done" received (FILE_END took ${Date.now() - fileEndT0}ms)`)
 
+        // "ftx done" confirms EVERY packet (the HX processes strictly in
+        // order, and the whole-file CRC just passed). Normalise the counters:
+        // the ack listener was removed when the send loop exited, so acks for
+        // the in-flight tail - plus the last <4 packets the firmware never
+        // individually acks (FILETX_ACK_EVERY) - would otherwise leave the
+        // 'complete' emission stuck at ~99%.
+        packetsAcked = totalPackets
+        bytesSent = data.length
+        if (preBuiltPackets.length > 0) {
+          wirePacketNum = preBuiltPackets[preBuiltPackets.length - 1].wireNum
+        }
+
         // ── Success ──────────────────────────────────────────────────
         emitProgress('complete')
         const duration = Date.now() - startTime
@@ -668,7 +691,7 @@ export async function runFileTransferPipeline(
         // (seen on iOS interval renegotiations). The device parks the session
         // and DPDs after its 15 s hold; a fresh FILE_START wakes it, so a
         // full-session retry is safe and usually succeeds.
-        const isWriteTimeout = /timed out/i.test(String(sessionErr?.message ?? ''))
+        const isWriteTimeout = /timed out/i.test(String(sessionErr?.message ?? sessionErr ?? ''))
         const isRecoverable = (isFileTransferError && hasDeviceErrorReason && hasErrorCode7) || isWriteTimeout
 
         log(`[FileTransfer] Session error caught: instanceof=${isFileTransferError}, reason=${sessionErr?.reason}, errorCode=${sessionErr?.errorCode} (type=${typeof sessionErr?.errorCode}), isRecoverable=${isRecoverable}`)
@@ -735,6 +758,10 @@ export async function runFileTransferPipeline(
     if (Platform.OS === 'android') {
       BleManager.requestConnectionPriority(peripheral.id, 0).catch(() => {})
     }
+    // Promise.resolve().then(...) swallows both sync throws and rejections,
+    // whatever signature future expo-keep-awake versions use - nothing here
+    // may prevent releaseLock() below from running.
+    Promise.resolve().then(() => deactivateKeepAwake(transferId)).catch(() => { /* best effort */ })
     bleTransport.releaseLock(transferId)
     bleEventBus.emitEvent({ type: 'HEARTBEAT_PAUSE', isPaused: false, ts: Date.now() })
     log(`[FileTransfer] Pipeline cleanup complete`)
