@@ -45,12 +45,16 @@ export const writeToDevice: WriteFunction = async (peripheral, data) => {
 			const iosWithResponse = Platform.OS === "ios"
 			const serviceUuid = peripheral.services?.serviceCharacteristic || BLE_SERVICE_UUID
 			const writeUuid = peripheral.services?.writeCharacteristic || BLE_CHARACTERISTIC_WRITE_UUID
+			// iOS write-with-response can stall >5 s during connection parameter
+			// renegotiation (see writeBinaryToDevice docs) - budget 12 s there,
+			// matching the file-transfer pipeline's write timeout.
+			const timeoutMs = iosWithResponse ? 12000 : 5000
 			await invokeWithTimeout(
 				() => iosWithResponse
 					? BleManager.write(peripheral.id, serviceUuid, writeUuid, byteArray, 512)
 					: BleManager.writeWithoutResponse(peripheral.id, serviceUuid, writeUuid, byteArray, 512),
 				iosWithResponse ? "BleManager.write" : "BleManager.writeWithoutResponse",
-				5000 // 5s timeout
+				timeoutMs
 			)
 
 			log(
