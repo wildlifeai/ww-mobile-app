@@ -53,7 +53,7 @@ export const DeviceDiscoveryScreen: React.FC<Props> = ({ isActiveTab }) => {
                     </View>
 
                     <Text variant="titleLarge" style={styles.connectingTitle}>
-                        Connecting to {connectingDevice.name || connectingDevice.id}
+                        Connecting to {connectingDevice.name || 'your Wildlife Watcher'}
                     </Text>
                     
                     <View style={styles.progressSection}>
