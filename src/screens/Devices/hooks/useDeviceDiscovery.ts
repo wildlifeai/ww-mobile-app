@@ -476,6 +476,27 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                             return
                         }
                     }
+                } else {
+                    // Connect timed out / failed (connectDevice swallows the error
+                    // and returns connected:false). Without this branch the failure
+                    // fell through SILENTLY and the auto-connect machine kept
+                    // re-attempting the remembered device - on iOS (where a sleeping
+                    // device simply stops advertising and pending connects never
+                    // complete on their own) that looked like an endless "Pairing
+                    // via Bluetooth..." screen. Mark the device IGNORED_FOR_SESSION
+                    // (NOT resetDevice: that deletes its state, and with the device
+                    // still in the display list the auto-connect effect would
+                    // immediately re-attempt - an alert loop). Manual tap still
+                    // works, and "Search Again" clears the ignore.
+                    log(`Connect to ${device.id} failed/timed out - returning to scanner`)
+                    autoConnect.transition(device.id, 'IGNORED_FOR_SESSION')
+                    // Only alert while this screen is visible - the 13s timeout can
+                    // land after the user navigated elsewhere (review, PR #220)
+                    if (navigation.isFocused()) Alert.alert(
+                        'Device Not Reachable',
+                        'Your Wildlife Watcher did not respond - it is probably asleep and not advertising. Wake it (power-cycle or trigger a detection) and scan again.',
+                        [{ text: 'OK' }]
+                    )
                 }
             } catch (error) {
                 logError('Error connecting to device:', error)
