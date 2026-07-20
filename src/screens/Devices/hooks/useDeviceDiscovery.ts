@@ -490,7 +490,9 @@ export const useDeviceDiscovery = (options?: UseDeviceDiscoveryOptions) => {
                     // works, and "Search Again" clears the ignore.
                     log(`Connect to ${device.id} failed/timed out - returning to scanner`)
                     autoConnect.transition(device.id, 'IGNORED_FOR_SESSION')
-                    Alert.alert(
+                    // Only alert while this screen is visible - the 13s timeout can
+                    // land after the user navigated elsewhere (review, PR #220)
+                    if (navigation.isFocused()) Alert.alert(
                         'Device Not Reachable',
                         'Your Wildlife Watcher did not respond - it is probably asleep and not advertising. Wake it (power-cycle or trigger a detection) and scan again.',
                         [{ text: 'OK' }]
