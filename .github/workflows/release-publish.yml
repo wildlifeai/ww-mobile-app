@@ -10,12 +10,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: 'npm'
@@ -24,7 +24,7 @@ jobs:
         run: npm ci
 
       - name: Setup EAS
-        uses: expo/expo-github-action@v8
+        uses: expo/expo-github-action@v9
         with:
           eas-version: 20.1.0  # pinned: bump deliberately (EAS service stays compatible across CLI minors)
           token: ${{ secrets.EXPO_TOKEN }}
@@ -39,7 +39,7 @@ jobs:
         run: eas build --profile production --platform all --non-interactive --auto-submit
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           body_path: CHANGELOG.md
           draft: false

@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Run React Doctor
         id: doctor
@@ -24,7 +24,7 @@ jobs:
         # the CLI must understand, and @main + version:latest drift independently
         # (broke 2026-06-11: @main passed --scope, which stable 0.5.1 rejects).
         # Bump both together (Dependabot proposes the action tag).
-        uses: millionco/react-doctor@v2.1.0
+        uses: millionco/react-doctor@v2.2.7
         with:
           directory: '.'
           node-version: '24'

@@ -21,10 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: development 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: 'npm'
@@ -33,14 +33,14 @@ jobs:
         run: npm ci
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
           cache: 'gradle'
 
       - name: Setup EAS
-        uses: expo/expo-github-action@v8
+        uses: expo/expo-github-action@v9
         with:
           eas-version: 20.1.0  # pinned: bump deliberately (EAS service stays compatible across CLI minors)
           token: ${{ secrets.EXPO_TOKEN }}
@@ -67,7 +67,7 @@ jobs:
 
       - name: Restore cached APK
         id: cache-apk
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ./app-debug.apk
           key: android-apk-${{ steps.config.outputs.profile }}-${{ steps.fingerprint.outputs.hash }}-${{ hashFiles('package-lock.json', 'app.config.ts', 'eas.json', 'patches/**') }}
@@ -84,7 +84,7 @@ jobs:
           GOOGLE_MAPS_API_KEY_IOS: ${{ secrets.GOOGLE_MAPS_API_KEY_IOS }}
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-debug-apk
           path: ./app-debug.apk
@@ -94,10 +94,10 @@ jobs:
     name: iOS Prebuild Sanity Check
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: 'npm'
