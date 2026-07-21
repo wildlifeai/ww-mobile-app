@@ -675,8 +675,12 @@ export const useStartDeployment = ({
             // after syncAiModel loaded it).
             try {
                 const finalOps = await bleSession?.execute(commandRegistry.getops)
-                const modelId = parseInt(finalOps?.[OP_PARAMETER.MODEL_PROJECT] ?? '0', 10) || 0
-                const modelVer = parseInt(finalOps?.[OP_PARAMETER.MODEL_VERSION] ?? '0', 10) || 0
+                if (!finalOps) {
+                    // A failed read must NOT masquerade as 'NO MODEL LOADED'
+                    throw new Error('No operational parameters returned from device')
+                }
+                const modelId = parseInt(finalOps[OP_PARAMETER.MODEL_PROJECT] ?? '0', 10) || 0
+                const modelVer = parseInt(finalOps[OP_PARAMETER.MODEL_VERSION] ?? '0', 10) || 0
                 if (project.model_id && modelId !== 0) {
                     progress.addLog(`🧠 AI model active on device (ID ${modelId} v${modelVer})`)
                 } else if (project.model_id && modelId === 0) {
