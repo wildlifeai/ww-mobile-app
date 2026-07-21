@@ -124,8 +124,13 @@ export async function syncAiModel(
             }
             const { firmwareModelId: numericId, versionNumber: numericVer } = firmwareIds
             const { modelExt: tflExt, labelsExt } = AiModelService.getModelFileExtensions(targetModel)
-            const tflFilename = `${numericId}V${numericVer}.${tflExt}`
-            const labelsFilename = `${numericId}V${numericVer}.${labelsExt}`
+            // Uppercase: both the app's transfer validator and the firmware's
+            // fileRx require uppercase 8.3 names - a lowercase extension
+            // ('1V1.tfl') failed validation BEFORE any transfer, so the model
+            // never reached the SD card (bench 21 Jul). FAT is case-insensitive,
+            // so loadmodel finds the file either way.
+            const tflFilename = `${numericId}V${numericVer}.${tflExt}`.toUpperCase()
+            const labelsFilename = `${numericId}V${numericVer}.${labelsExt}`.toUpperCase()
 
             // 3. Check current OPs to see if model is already loaded
             const ops = currentOps || await session.execute(() => commandRegistry.getops())
