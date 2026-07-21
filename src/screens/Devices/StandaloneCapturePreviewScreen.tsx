@@ -1,5 +1,5 @@
-import { useLayoutEffect, useCallback } from 'react'
-import { StyleSheet, Alert, View } from 'react-native'
+import { useLayoutEffect, useCallback, useState } from 'react'
+import { StyleSheet, Alert, View, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { Appbar } from 'react-native-paper'
@@ -9,6 +9,7 @@ import { useAppSelector } from '../../redux'
 import { WWText } from '../../components/ui/WWText'
 import { CameraViewSection } from '../Deployments/components/CameraViewSection'
 import { CameraSelector } from './components/CameraSelector'
+import { ResolutionSelector } from './components/ResolutionSelector'
 import { DeviceHealthBanner } from '../../components/DeviceHealthBanner'
 import { useDeviceSelfTest } from '../../hooks/useDeviceSelfTest'
 
@@ -47,8 +48,16 @@ export const StandaloneCapturePreviewScreen = () => {
         Alert.alert(title, content)
     }, [])
 
-    const handleImageCaptured = useCallback((_path: string) => {
-        // Nothing special to do here, the component shows the image itself
+    // Actual pixel dimensions of the last capture - the ground truth when
+    // testing resolutions (the firmware notes hi-res in its console, but the
+    // received file is the proof)
+    const [lastDims, setLastDims] = useState<string | null>(null)
+    const handleImageCaptured = useCallback((path: string) => {
+        Image.getSize(
+            path,
+            (w, h) => setLastDims(`${w}×${h}`),
+            () => setLastDims(null)
+        )
     }, [])
 
     if (!device) {
@@ -67,17 +76,30 @@ export const StandaloneCapturePreviewScreen = () => {
                     device={device}
                     onShowHelp={handleShowHelp}
                 />
+                <ResolutionSelector
+                    device={device}
+                    onShowHelp={handleShowHelp}
+                />
                 <CameraViewSection
                     device={device}
                     onImageCaptured={handleImageCaptured}
                     onShowHelp={handleShowHelp}
                 />
+                {lastDims && (
+                    <WWText style={styles.dimsText}>Last capture: {lastDims} px</WWText>
+                )}
             </View>
         </SafeAreaView>
     )
 }
 
 const styles = StyleSheet.create({
+    dimsText: {
+        textAlign: 'center',
+        opacity: 0.7,
+        fontSize: 12,
+        marginTop: 6,
+    },
     container: {
         flex: 1,
     },
