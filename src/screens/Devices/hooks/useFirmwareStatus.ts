@@ -91,12 +91,18 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
         // Overall deadline: a hung network fetch or a BLE query whose response
         // was lost previously left the screen on a spinner indefinitely
         let deadlineTimer: ReturnType<typeof setTimeout> | undefined
+        let timedOut = false
         const deadline = new Promise<never>((_, reject) => {
-            deadlineTimer = setTimeout(() => reject(new Error(
-                'Firmware status check timed out - the device may have gone to sleep. Wake it and pull to refresh.')), 30000)
+            deadlineTimer = setTimeout(() => {
+                timedOut = true
+                reject(new Error(
+                    'Firmware status check timed out - the device may have gone to sleep. Wake it and pull to refresh.'))
+            }, 30000)
         })
-        try {
-            await Promise.race([deadline, (async () => {
+        // The losing branch of the race keeps running: guard its state writes
+        // behind timedOut (a late success must not clobber the declared error)
+        // and swallow its late rejection (already reported via the race).
+        const work = (async () => {
             // 1. Fetch Latest Cloud Versions
             const latestBle = await ReferenceDataService.getLatestFirmware('ble')
             const latestHimax = await ReferenceDataService.getLatestFirmware('himax')
@@ -135,7 +141,7 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
                 logWarn('[FirmwareStatus] Failed to read Himax version:', e)
             }
 
-            if (!isMounted.current) return
+            if (!isMounted.current || timedOut) return
 
             // 3. Compute Outdated Flags (himax: variant-aware, see isHimaxOutdated)
             const bleOutdated = !!latestBle?.version && currentBleVersion !== latestBle.version
@@ -160,7 +166,10 @@ export function useFirmwareStatus({ device, initialBleVersion, initialHimaxVersi
             })
 
             setLastChecked(new Date())
-            })()])
+        })()
+        work.catch(() => {})
+        try {
+            await Promise.race([deadline, work])
 
         } catch (error) {
             if (!isMounted.current) return
