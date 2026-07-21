@@ -43,9 +43,11 @@ export const useResolutionSwitch = ({ device, onError }: Options) => {
         if (!device?.connected) return
         try {
             const session = createBleSession(device)
+            // getop's parser returns just the value ('1'), not the full
+            // 'OpParam 32 = 1' line
             const raw = await session.execute(() => commandRegistry.getop(OP_PARAMETER.CAM_RESOLUTION)) as string
-            const m = String(raw).match(/[=]\s*(\d+)/)
-            setResolution(m ? (m[1] === '1' ? 'hires' : 'standard') : 'unknown')
+            const v = parseInt(String(raw).trim(), 10)
+            setResolution(Number.isNaN(v) ? 'unknown' : v === 1 ? 'hires' : 'standard')
         } catch (e) {
             logWarn('[Resolution] op32 read failed:', e)
             setResolution('unknown')
@@ -64,7 +66,7 @@ export const useResolutionSwitch = ({ device, onError }: Options) => {
             if (target === 'hires') {
                 setStage('Checking for a loaded AI model…')
                 const rawModel = await session.execute(() => commandRegistry.getop(OP_PARAMETER.MODEL_PROJECT)) as string
-                const modelId = parseInt(String(rawModel).match(/[=]\s*(-?\d+)/)?.[1] ?? '0', 10) || 0
+                const modelId = parseInt(String(rawModel).trim(), 10) || 0
                 if (modelId !== 0) {
                     if (!opts?.eraseModel) throw new ModelLoadedError()
                     setStage('Erasing AI model…')
